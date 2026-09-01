@@ -34,17 +34,17 @@ model {
 
     indexer = runtime "Hosted IDE plugin" {
       #identity
-      description "Serves bounded reads from the existing Project without import or refresh."
+      description "Serves bounded operations from the existing Project without hidden import or refresh."
     }
 
     composition = authority "Runtime composition" {
       #identity
-      description "Proves exactly one implementation for all twelve canonical operations."
+      description "Proves exactly one implementation for all thirteen canonical operations."
     }
 
     operations = service "Operation services" {
       #discovery
-      description "Runs bounded workspace, topology, symbol, relation, traversal, diagnostic, and change workflows."
+      description "Runs bounded workspace, index, topology, symbol, relation, traversal, diagnostic, and change workflows."
     }
 
     adapters = authority "K2 and effect adapters" {
@@ -120,6 +120,13 @@ model {
         color green
       }
     }
+    telemetry = module "runtime telemetry" {
+      #effect
+      description "Forwards allowlisted spans into private per-socket OTLP JSON Lines files."
+      style {
+        color amber
+      }
+    }
     runtime = module "runtime" {
       description "Contract-only dispatch and the complete implementation graph."
       style {
@@ -168,6 +175,7 @@ model {
   source.runtime -[depend]-> source.diagnostic "binds diagnostic services"
   source.runtime -[depend]-> source.change "binds change services"
   source.runtime -[depend]-> source.evidence "binds persistence"
+  source.runtime -[depend]-> source.telemetry "binds local trace forwarding"
   source.workspace -[depend]-> source.kernel "preserves evidence types"
   source.symbol -[depend]-> source.kernel "preserves evidence types"
   source.relation -[depend]-> source.kernel "preserves evidence types"
@@ -179,5 +187,7 @@ model {
   source.change -[depend]-> source.kernel "preserves proof transitions"
   source.evidence -[depend]-> source.kernel "stores host-neutral evidence"
   source.evidence -[depend]-> source.topology "publishes topology snapshots"
+  source.telemetry -[depend]-> source.protocol "derives exact socket output identity"
+  source.telemetry -[depend]-> source.kernel "implements host-neutral trace ports"
   source.protocol -[depend]-> source.kernel "binds operation identities"
 }

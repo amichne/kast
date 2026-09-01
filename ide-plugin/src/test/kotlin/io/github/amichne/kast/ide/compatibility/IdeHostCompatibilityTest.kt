@@ -94,17 +94,20 @@ internal const val HOSTED_IDE_BUILD = "262.9437.185"
 internal const val HOSTED_KOTLIN_PLUGIN_BUILD = "262.9437.185-IJ"
 internal const val HOSTED_RUNTIME_PROTOCOL = "kast.ide-hosted.runtime.v1"
 internal const val OPERATION_REGISTRY_DIGEST =
-    "sha256:cfe0a0d56914945d2eacfd765f34e017ff44fef4dc4f3c2353b7cf45dd449baf"
+    "sha256:6120d565d2d5fdb7e0e591bc0ea5359ae26cb8314d37271aeb289e4b2a685d42"
 internal const val WIRE_SCHEMA_DIGEST =
     "sha256:52966aebe99d44ba6754a71c563f444c851d8727106bbb754ae51822eec36fc7"
 
 internal val HOSTED_CAPABILITIES = listOf(
     "workspace.inspect",
+    "index.sync",
     "topology.build",
     "symbol.discover",
     "symbol.resolve",
     "symbol.describe",
+    "relation.read",
     "traversal.run",
+    "diagnostic.check",
     "change.plan",
     "change.apply",
     "change.verify",

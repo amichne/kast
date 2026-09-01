@@ -73,6 +73,7 @@ class InstalledRuntimeAssemblyTest {
                         TopologyExtractionFailure.COMPILER_UNAVAILABLE,
                     )
                 },
+                indexRefresh = { io.github.amichne.kast.workspace.contract.WorkspaceIndexRefresh.Refreshed },
                 change = unusedChangePhysicalPorts(),
             ),
         )
@@ -110,6 +111,7 @@ class InstalledRuntimeAssemblyTest {
                         TopologyExtractionFailure.COMPILER_UNAVAILABLE,
                     )
                 },
+                indexRefresh = { io.github.amichne.kast.workspace.contract.WorkspaceIndexRefresh.Refreshed },
                 change = unusedChangePhysicalPorts(),
             ),
         )

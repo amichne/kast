@@ -11,11 +11,14 @@ class HostedOperationProjectionTest {
         assertEquals(
             listOf(
                 CanonicalOperation.WORKSPACE_INSPECT,
+                CanonicalOperation.INDEX_SYNC,
                 CanonicalOperation.TOPOLOGY_BUILD,
                 CanonicalOperation.SYMBOL_DISCOVER,
                 CanonicalOperation.SYMBOL_RESOLVE,
                 CanonicalOperation.SYMBOL_DESCRIBE,
+                CanonicalOperation.RELATION_READ,
                 CanonicalOperation.TRAVERSAL_RUN,
+                CanonicalOperation.DIAGNOSTIC_CHECK,
                 CanonicalOperation.CHANGE_PLAN,
                 CanonicalOperation.CHANGE_APPLY,
                 CanonicalOperation.CHANGE_VERIFY,
@@ -23,13 +26,7 @@ class HostedOperationProjectionTest {
             ),
             HostedOperationProjection.publicDefinitions.map { it.operation },
         )
-        assertEquals(
-            listOf(
-                CanonicalOperation.RELATION_READ,
-                CanonicalOperation.DIAGNOSTIC_CHECK,
-            ),
-            HostedOperationProjection.internalDefinitions.map { it.operation },
-        )
+        assertTrue(HostedOperationProjection.internalDefinitions.isEmpty())
         assertTrue(HostedOperationProjection.unavailableDefinitions.isEmpty())
     }
 

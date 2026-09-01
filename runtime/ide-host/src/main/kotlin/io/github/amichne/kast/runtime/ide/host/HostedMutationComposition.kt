@@ -3,6 +3,8 @@ package io.github.amichne.kast.runtime.ide.host
 import io.github.amichne.kast.change.apply.AddDeclarationApplyRequest
 import io.github.amichne.kast.change.apply.AddDeclarationApplyResult
 import io.github.amichne.kast.change.apply.AddDeclarationApplyService
+import io.github.amichne.kast.change.apply.AppliedIndexSynchronizationScheduler
+import io.github.amichne.kast.change.apply.SuccessfulApplyIndexSynchronization
 import io.github.amichne.kast.change.apply.AddDeclarationSourceObserver
 import io.github.amichne.kast.change.apply.AddDeclarationSourceRollback
 import io.github.amichne.kast.change.apply.AddDeclarationSourceWriter
@@ -170,6 +172,7 @@ object HostedMutationComposition {
         journal: SqliteMutationRecoveryJournal,
         authority: SqliteDurableChangeAuthority,
         topologyPublisher: VerifiedTopologyDeltaPublicationOperations,
+        indexScheduler: AppliedIndexSynchronizationScheduler,
     ): HostedMutationState {
         val recoveryService = AddDeclarationRecoveryService(journal)
         val recovery = ChangeRecoveryOperations { binding ->
@@ -213,11 +216,14 @@ object HostedMutationComposition {
             ports.sourceObserver,
             ports.intentCompiler,
         )
-        val apply = AddDeclarationApplyService(
-            recoveryService,
-            ports.sourceObserver,
-            ports.sourceWriter,
-            ports.sourceRollback,
+        val apply = SuccessfulApplyIndexSynchronization(
+            AddDeclarationApplyService(
+                recoveryService,
+                ports.sourceObserver,
+                ports.sourceWriter,
+                ports.sourceRollback,
+            ),
+            indexScheduler,
         )
         val verification = VerifiedMutationService(
             publisher = { prior ->

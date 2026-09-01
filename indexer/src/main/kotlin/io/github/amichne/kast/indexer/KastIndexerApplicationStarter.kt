@@ -4,6 +4,9 @@ import com.intellij.openapi.application.ApplicationStarter
 import io.github.amichne.kast.runtime.composition.InstalledKastRuntime
 import io.github.amichne.kast.runtime.composition.InstalledKastRuntimeConstruction
 import io.github.amichne.kast.runtime.composition.InstalledKastRuntimeFailure
+import io.github.amichne.kast.runtime.composition.InstalledRuntimeBootstrapObserver
+import io.github.amichne.kast.runtime.composition.InstalledRuntimeBootstrapPhase
+import io.github.amichne.kast.runtime.composition.InstalledRuntimeIndexScope
 import kotlin.system.exitProcess
 
 private sealed interface InstalledIndexerStartupFailure {
@@ -46,15 +49,29 @@ class KastIndexerApplicationStarter : ApplicationStarter {
                 InstalledIndexerStartupFailure.Transport(preparation.failure),
             )
         }
+        val bootstrap = InstalledIndexerBootstrapReporter(
+            InstalledIndexerBootstrapStateSink(::reportBootstrapState),
+        )
         val dispatch = when (val runtime = InstalledKastRuntime.create(
             options.workspaceRoot,
             endpoint.stateDirectory,
+            object : InstalledRuntimeBootstrapObserver {
+                override fun observe(phase: InstalledRuntimeBootstrapPhase) {
+                    bootstrap.observe(phase)
+                }
+
+                override fun observeIndexScope(scope: InstalledRuntimeIndexScope) {
+                    reportIndexScope(scope)
+                }
+            },
         )) {
             is InstalledKastRuntimeConstruction.Created -> runtime.dispatch
-            is InstalledKastRuntimeConstruction.Rejected -> reject(
-                InstalledIndexerStartupFailure.Runtime(runtime.failures),
-            )
+            is InstalledKastRuntimeConstruction.Rejected -> {
+                bootstrap.rejectRuntime(runtime.failures)
+                reject(InstalledIndexerStartupFailure.Runtime(runtime.failures))
+            }
         }
+        bootstrap.beginTransportActivation()
         val transport = when (
             val activation = InstalledIndexerTransport.activate(
                 endpoint,
@@ -62,14 +79,24 @@ class KastIndexerApplicationStarter : ApplicationStarter {
             )
         ) {
             is IndexerTransportActivation.Activated -> activation.transport
-            is IndexerTransportActivation.Rejected -> reject(
-                InstalledIndexerStartupFailure.Transport(activation.failure),
-            )
+            is IndexerTransportActivation.Rejected -> {
+                bootstrap.rejectTransport(activation.failure)
+                reject(InstalledIndexerStartupFailure.Transport(activation.failure))
+            }
         }
+        bootstrap.ready()
         transport.use { installedTransport ->
             installedTransport.serve()
         }
     }
+}
+
+private fun reportBootstrapState(state: InstalledIndexerBootstrapState) {
+    System.err.println("kast-indexer: bootstrap: $state")
+}
+
+private fun reportIndexScope(scope: InstalledRuntimeIndexScope) {
+    System.err.println("kast-indexer: index-scope: ${scope.processDiagnostic()}")
 }
 
 private fun reject(failure: InstalledIndexerStartupFailure): Nothing {

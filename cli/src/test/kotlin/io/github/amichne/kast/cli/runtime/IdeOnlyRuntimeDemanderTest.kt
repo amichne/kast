@@ -62,7 +62,7 @@ class IdeOnlyRuntimeDemanderTest {
     }
 
     @Test
-    fun `pre-dispatch capability admission rejects internal routes and unavailable plan intents`() {
+    fun `pre-dispatch capability admission admits public reads and rejects unavailable plan intents`() {
         val fixture = ideEndpointFixture()
         val demander = IdeOnlyRuntimeDemander(
             fixture.admitter(IdeEndpointDescriptorRead.Complete(fixture.document)),
@@ -70,11 +70,18 @@ class IdeOnlyRuntimeDemanderTest {
         )
 
         assertEquals(
-            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.IdeCapabilityUnavailable),
+            RuntimeAdmission.Ready::class,
             demander.demand(
                 fixture.root,
                 HostedRuntimeDemand.Operation(CanonicalOperation.RELATION_READ),
-            ),
+            )::class,
+        )
+        assertEquals(
+            RuntimeAdmission.Ready::class,
+            demander.demand(
+                fixture.root,
+                HostedRuntimeDemand.Operation(CanonicalOperation.DIAGNOSTIC_CHECK),
+            )::class,
         )
         assertEquals(
             RuntimeAdmission.Rejected(RuntimeAdmissionFailure.IdeVariantUnavailable),

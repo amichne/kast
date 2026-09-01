@@ -30,12 +30,16 @@ class OperationMetadata:
 
 OPERATION_DESCRIPTIONS = {
     "workspace.inspect": "Report exact-root readiness and workspace identity.",
+    "index.sync": "Refresh admitted source roots, await indexing, and publish current semantic evidence.",
     "topology.build": "Build or reuse the durable graph and return its generation and digest.",
     "symbol.discover": "Find bounded candidates by name, location, structure, or text.",
     "symbol.resolve": "Refine one candidate into an exact symbol selector.",
     "symbol.describe": "Describe one exact, current-generation symbol.",
     "relation.read": "Read one bounded semantic relation from an exact symbol.",
-    "traversal.run": "Read the eligible durable snapshot with explicit depth and result limits.",
+    "traversal.run": (
+        "Read one exact-root semantic generation as normalized node, edge, and proof tables "
+        "with explicit depth and result limits."
+    ),
     "diagnostic.check": "Read compiler diagnostics for one explicit scope.",
     "change.plan": "Derive a typed plan without writing the workspace.",
     "change.apply": "Apply one admitted plan and return an application identity.",
@@ -53,8 +57,8 @@ LIFECYCLE_DESCRIPTIONS = {
 
 LOCAL_COMMAND_DESCRIPTIONS = {
     "product inspect": (
-        "Report installed control identity plus direct root and IDE endpoint evidence without "
-        "requiring compatible runtime admission."
+        "Report installed control identity plus direct root, IDE endpoint, and default trace "
+        "destination evidence without requiring compatible runtime admission."
     ),
 }
 
@@ -229,6 +233,21 @@ def render(
         for command in semantic
         if command.hosted_exposure != "public"
     )
+    deferred_section = ""
+    if deferred_rows:
+        deferred_section = f"""
+## Canonical operations without a direct hosted route
+
+<Warning>
+  These operations remain in the canonical registry and command graph but the
+  installed IDE endpoint does not publish them as direct routes.
+</Warning>
+
+| Operation | Command shape | Current availability |
+| --- | --- | --- |
+{deferred_rows}
+"""
+    public_count = sum(command.hosted_exposure == "public" for command in semantic)
     lifecycle_rows = "\n".join(
         f"| `kast {command}` | {LIFECYCLE_DESCRIPTIONS[command]} |"
         for command in lifecycle
@@ -265,9 +284,14 @@ Run `kast --schema` when a tool needs the contract as JSON. Run a command with
 
 The schema's `serverProjection` is generated with the installed command graph.
 It owns server-visible tool names and descriptions, closed input and output
-JSON Schemas, deferred-loading policy, and field-to-CLI option bindings. It
-contains every operation marked `public` by the hosted registry and excludes
-internal-only operations. A broker must qualify and consume that projection
+JSON Schemas, deferred-loading policy, explicit approval policy, and
+field-to-CLI option bindings. Common reads use the workflow façades
+`workspace_ensure_ready`, `symbol_lookup`, `symbol_inspect`, `semantic_query`,
+`impact_analyze`, and `diagnostic_check` while retaining their canonical
+operation IDs and evidence documents. Every `change_*` tool requires
+`explicit` approval; read tools carry the closed `none` policy. The projection
+contains every operation marked `public` by the hosted registry. A broker must
+qualify and consume that projection
 from its exact configured `kast` executable; it must not infer tool shapes from
 the executable's version or from the human-readable command strings.
 
@@ -275,25 +299,13 @@ the executable's version or from the human-readable command strings.
 
 Run semantic commands from the repository root. Each command emits one JSON
 document on standard output. A rejected command emits one diagnostic document
-on standard error. The installed IDE plugin publishes the ten operations marked
+on standard error. The installed IDE plugin publishes the {public_count} operations marked
 `public` by the generated operation registry:
 
 | Operation | Command shape | Result role |
 | --- | --- | --- |
 {hosted_rows}
-
-## Canonical operations without a direct hosted route
-
-<Warning>
-  These operations remain in the canonical registry and command graph because
-  hosted topology, traversal, planning, and verification consume them
-  internally. The installed IDE endpoint does not publish them as direct
-  routes.
-</Warning>
-
-| Operation | Command shape | Current availability |
-| --- | --- | --- |
-{deferred_rows}
+{deferred_section}
 
 ## Runtime lifecycle
 
@@ -312,6 +324,15 @@ not require successful hosted runtime admission.
 | Command | Result |
 | --- | --- |
 {local_command_rows}
+
+## Default local traces
+
+Every ready endpoint forwards topology and traversal spans asynchronously to a
+private folder derived from its exact socket namespace. `kast product inspect`
+reports the `otlp-json-lines-v1` format, forwarding state, `directoryPath`, and
+epoch-specific `traceFilePath`. The directory uses mode `0700`; trace files use
+mode `0600`. Paths, selectors, source text, exception messages, and stack traces
+are excluded from the allowlisted span fields.
 
 ## Process-local flags
 

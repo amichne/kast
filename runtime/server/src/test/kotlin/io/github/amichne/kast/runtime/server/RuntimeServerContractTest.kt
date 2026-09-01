@@ -84,7 +84,7 @@ class RuntimeServerContractTest {
         assertEquals(
             RuntimeServerConstruction.Rejected(
                 setOf(
-                    RuntimeServerConstructionFailure.UnexpectedBinding(
+                    RuntimeServerConstructionFailure.DuplicateBinding(
                         CanonicalOperation.RELATION_READ,
                     ),
                 ),
@@ -96,17 +96,17 @@ class RuntimeServerContractTest {
             ),
         )
 
-        val internalBinding = allBindings.single {
+        val diagnosticBinding = allBindings.single {
             it.operation == CanonicalOperation.DIAGNOSTIC_CHECK
         }
-        val document = internalBinding.wireBinding
+        val document = diagnosticBinding.wireBinding
             .encodeRequest(TestRequest(TestOutcomeKind.COMPLETE))
             .encodedDocument()
         assertEquals(
-            ServerDispatch.Rejected(
-                ServerDispatchFailure.UnsupportedOperation(CanonicalOperation.DIAGNOSTIC_CHECK),
-            ),
-            server.dispatch(document),
+            expectedOutcome(CanonicalOperation.DIAGNOSTIC_CHECK, TestOutcomeKind.COMPLETE),
+            diagnosticBinding.wireBinding.decodeOutcome(
+                server.dispatch(document).responseDocument(),
+            ).decodedValue(),
         )
     }
 

@@ -6,8 +6,8 @@ keywords: ["architecture", "K2", "IntelliJ", "wire protocol"]
 ---
 
 Kast places a narrow command boundary in front of an already-running supported
-IDE. It reuses the exact open Project without opening, focusing, importing, or
-refreshing it.
+IDE. Startup reuses the exact open Project without opening, focusing,
+importing, or automatically refreshing it.
 
 ## One request, end to end
 
@@ -51,10 +51,9 @@ fails closed. There is no private IDE installation, runtime acquisition, VFS
 refresh, Gradle import, or isolated indexing fallback.
 
 Before the plugin publishes readiness, its hosted composition constructs the
-exact ten-operation public capability set: workspace inspection, topology
-build, three symbol operations, traversal, and the four AddDeclaration
-lifecycle operations. Direct relation and diagnostic routes remain internal
-services used by those workflows.
+exact thirteen-operation public capability set: workspace inspection, index
+synchronization, topology build, three symbol operations, relation reads,
+traversal, diagnostics, and the four AddDeclaration lifecycle operations.
 
 Source-root identity comes from IntelliJ's canonical local source-folder URL,
 not from an existence-dependent `VirtualFile`. A declared source directory may
@@ -91,9 +90,9 @@ The Kotlin control executable parses `symbol.describe` and constructs a
 one bounded frame to the admitted socket.
 
 `IdeEndpointTransport` reads the frame and passes it to `HostedIdeRuntime`.
-The runtime delegates the four read routes to `IdeReadRuntimeDispatch` and the
-six topology, traversal, and change routes to its exact hosted-effects table.
-This request reaches `HostedSymbolDescription`. The
+The runtime delegates compiler-backed reads to `IdeReadRuntimeDispatch` and
+binds workspace, index, topology, traversal, and change effects through its
+exact hosted table. This request reaches `HostedSymbolDescription`. The
 `IntellijSymbolExactCompilerAdapter` resolves the selector using request-local
 Project, PSI, index, and K2 authority, then detaches a host-neutral symbol
 description.
@@ -117,8 +116,8 @@ diagnostic to standard error for a boundary rejection.
     - [`HostedIdeReadProductionComposition`](https://github.com/amichne/kast/blob/main/runtime/ide-read/src/main/kotlin/io/github/amichne/kast/runtime/ide/read/preparation/composition/HostedIdeReadProductionComposition.kt)
       binds the four routes to the retained Project and native adapters.
     - [`HostedIdeRuntime`](https://github.com/amichne/kast/blob/main/runtime/ide-host/src/main/kotlin/io/github/amichne/kast/runtime/ide/host/HostedIdeRuntime.kt)
-      composes those reads with the six exact topology, traversal, and change
-      routes.
+      composes those reads with the exact workspace, index, topology,
+      traversal, and change routes.
     - [`IntellijSymbolExactCompilerAdapter`](https://github.com/amichne/kast/blob/main/symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/exact/IntellijSymbolExactCompilerAdapter.kt)
       confines exact request-local K2 work.
   </Accordion>
@@ -131,7 +130,7 @@ diagnostic to standard error for a boundary rejection.
         CLI[Kotlin control executable] --> ADMIT[Exact endpoint admission]
         CLI --> WIRE[Typed wire documents]
         WIRE --> TRANSPORT[IDE plugin transport]
-        TRANSPORT --> DISPATCH[Exact ten-route hosted dispatch]
+        TRANSPORT --> DISPATCH[Exact hosted dispatch]
         DISPATCH --> ROUTES[Hosted read and effect routes]
         ROUTES --> K2[Request-local IntelliJ adapters]
         K2 --> EVIDENCE[Host-neutral evidence]
@@ -173,6 +172,13 @@ canonical candidates; if their paths, source roots, and content hashes exactly
 match the durable snapshot, Kast rebinds that snapshot to the new lease as
 `reused` instead of repeating K2 extraction.
 
+`index.sync` is the explicit stale-file repair boundary. It refreshes the
+admitted local source roots, waits for IntelliJ indexing, and publishes a
+successor only when the resulting source evidence moved. The same operation is
+queued asynchronously after an `AppliedUnverified` hosted apply, and only that
+successful physical-apply variant can schedule it. Apply rejection and
+recovery-required outcomes do not enqueue synchronization.
+
 The endpoint retains a source-root-filtered IntelliJ VFS transition counter.
 A matching descendant or source-root-ancestor structural event advances the
 source lineage; a targeted mutation proof also advances it when the physical
@@ -205,18 +211,34 @@ serialized or reused after their workspace generation changes.
 
 <Columns cols={3}>
   <Card title="Hosted now" icon="circle-check">
-    Workspace inspection, topology, symbol reads, traversal, and the
-    AddDeclaration lifecycle are the ten public installed capabilities.
+    Workspace inspection, index synchronization, topology, symbol reads,
+    relation reads, traversal, diagnostics, and the AddDeclaration lifecycle
+    are the thirteen public installed capabilities.
   </Card>
-  <Card title="Internal services" icon="circle-dashed">
-    Relation and diagnostic operations remain canonical internal services and
-    have no direct endpoint routes.
+  <Card title="Compiler-grounded reads" icon="circle-dashed">
+    Relation and diagnostic routes use the same typed compiler services as
+    planning and verification while remaining independently callable.
   </Card>
   <Card title="IDE-owned lifecycle" icon="power">
     `stop`, `clean`, and `reindex` reject for the active hosted endpoint. Close,
     restart, or reindex the Project through IntelliJ.
   </Card>
 </Columns>
+
+## Performance traces stay local by default
+
+Before endpoint publication, the hosted composition proves a private trace
+destination beside the exact socket namespace. Completed topology and traversal
+spans are forwarded asynchronously as OTLP JSON Lines. `kast product inspect`
+exposes the exact directory, epoch-specific trace file, format, and forwarding
+state for a ready endpoint.
+
+The span tree separates workspace admission, snapshot eligibility and reads,
+candidate enumeration, extraction, revalidation, publication, snapshot open,
+and traversal expansion. Its custom attributes are limited to closed outcome
+and failure variants plus non-negative file or record counts. Paths, selectors,
+source text, exception messages, and stack traces never enter this telemetry
+contract.
 
 ## Exact endpoint identity is part of the result
 

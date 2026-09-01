@@ -89,11 +89,7 @@ class IdeHostCompatibilityNegativeTest {
     }
 
     @Test
-    fun `unknown duplicate missing extra and reordered capabilities fail closed`() {
-        assertRejected(
-            expected.copy(capabilities = HOSTED_CAPABILITIES + "diagnostic.check"),
-            rejectedCapabilityMismatch(HOSTED_CAPABILITIES + "diagnostic.check"),
-        )
+    fun `unknown duplicate missing and reordered capabilities fail closed`() {
         assertRejected(
             expected.copy(capabilities = HOSTED_CAPABILITIES + "other.read"),
             IdeHostCompatibilityFailure.UnknownCapability(operationId("other.read")),

@@ -58,9 +58,14 @@ import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
 import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildResult
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
+import io.github.amichne.kast.workspace.contract.IndexSynchronizationOperations
+import io.github.amichne.kast.protocol.contract.IndexSyncQualification
+import io.github.amichne.kast.protocol.contract.IndexSyncRejection
+import io.github.amichne.kast.protocol.contract.IndexSyncRequest
+import io.github.amichne.kast.protocol.contract.IndexSyncResult
 
 /**
- * Operation-specific protocol projection boundary for the twelve target service associations.
+ * Operation-specific protocol projection boundary for the thirteen target service associations.
  *
  * Implementations parse public boundary documents into the supplied strong service contracts and
  * project their closed results back to protocol outcomes. Canonical definitions, serializers, and
@@ -75,6 +80,10 @@ interface KastOperationHandlerFactory {
         WorkspaceInspectQualification,
         WorkspaceInspectRejection
         >
+
+    fun indexSync(
+        operations: IndexSynchronizationOperations,
+    ): OperationHandler<IndexSyncRequest, IndexSyncResult, IndexSyncQualification, IndexSyncRejection>
 
     fun topologyBuild(
         operations: TopologyBuildOperations,

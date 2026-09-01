@@ -10,6 +10,9 @@ import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ex.ProjectManagerEx
 import com.intellij.openapi.startup.StartupManager
+import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefresh
+import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefreshFailure
+import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefreshOperations
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
 import org.jetbrains.plugins.gradle.settings.GradleSystemSettings
 import org.jetbrains.plugins.gradle.util.GradleConstants
@@ -43,6 +46,18 @@ enum class InstalledIntellijWorkspaceFailure {
     MODEL_STATE_IDENTITY_REJECTED,
 }
 
+/** Ordered installed workspace bootstrap boundaries visible to the owning runtime. */
+enum class InstalledIntellijWorkspaceBootstrapPhase {
+    PROJECT_IMPORT,
+    INDEXING,
+    MODEL_CAPTURE,
+}
+
+/** Explicit effect boundary for observing installed workspace bootstrap progress. */
+fun interface InstalledIntellijWorkspaceBootstrapObserver {
+    fun observe(phase: InstalledIntellijWorkspaceBootstrapPhase)
+}
+
 /** Detached complete model proof from one exact IntelliJ-opened Gradle workspace. */
 class InstalledIntellijWorkspaceModel internal constructor(
     val capture: InstalledGradleModelCapture,
@@ -70,6 +85,27 @@ class InstalledIntellijWorkspaceModel internal constructor(
                 InstalledGradleModelCaptureFailure.INDEXING_UNAVAILABLE,
             )
     }
+
+    /** Refreshes the exact admitted roots, then proves installed indexing has become quiescent. */
+    fun awaitIndexReadinessAfter(
+        refresh: WorkspaceIndexRefreshOperations,
+    ): WorkspaceIndexRefreshOperations = WorkspaceIndexRefreshOperations { workspace ->
+        when (val physical = refresh.refresh(workspace)) {
+            is WorkspaceIndexRefresh.Rejected -> physical
+            WorkspaceIndexRefresh.Refreshed -> when (awaitInstalledIndexingQuiescence(project)) {
+                InstalledIndexingReadiness.READY -> WorkspaceIndexRefresh.Refreshed
+                InstalledIndexingReadiness.INTERRUPTED -> WorkspaceIndexRefresh.Rejected(
+                    WorkspaceIndexRefreshFailure.INDEXING_INTERRUPTED,
+                )
+                InstalledIndexingReadiness.TIMED_OUT -> WorkspaceIndexRefresh.Rejected(
+                    WorkspaceIndexRefreshFailure.INDEXING_TIMED_OUT,
+                )
+                InstalledIndexingReadiness.FAILED -> WorkspaceIndexRefresh.Rejected(
+                    WorkspaceIndexRefreshFailure.INDEXING_FAILED,
+                )
+            }
+        }
+    }
 }
 
 sealed interface InstalledIntellijWorkspaceOpening {
@@ -92,7 +128,12 @@ object InstalledIntellijWorkspace {
      * model. [InstalledIntellijWorkspaceFailure] closes every expected bootstrap failure. The live
      * project and Gradle objects remain inside this adapter and the IntelliJ project lifecycle.
      */
-    fun open(workspaceRoot: Path): InstalledIntellijWorkspaceOpening {
+    fun open(
+        workspaceRoot: Path,
+        observer: InstalledIntellijWorkspaceBootstrapObserver =
+            InstalledIntellijWorkspaceBootstrapObserver {},
+    ): InstalledIntellijWorkspaceOpening {
+        observer.observe(InstalledIntellijWorkspaceBootstrapPhase.PROJECT_IMPORT)
         GradleSystemSettings.getInstance().isDownloadSources = false
         val gradleJvm = when (val admission = InstalledGradleJvm.admit(
             System.getProperty("java.home")
@@ -110,7 +151,7 @@ object InstalledIntellijWorkspace {
             return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED)
         }
         return try {
-            openObserved(workspaceRoot, gradleJvm, importObserver)
+            openObserved(workspaceRoot, gradleJvm, importObserver, observer)
         } finally {
             notificationManager.removeNotificationListener(importObserver)
         }
@@ -120,6 +161,7 @@ object InstalledIntellijWorkspace {
         workspaceRoot: Path,
         gradleJvm: InstalledGradleJvm,
         importObserver: InstalledGradleImportObserver,
+        observer: InstalledIntellijWorkspaceBootstrapObserver,
     ): InstalledIntellijWorkspaceOpening {
         val preparation = InstalledProjectOpenPreparation(workspaceRoot, gradleJvm)
         val project = try {
@@ -203,6 +245,7 @@ object InstalledIntellijWorkspace {
                 InstalledIntellijWorkspaceFailure.PROJECT_JVM_UNAVAILABLE,
             )
         }
+        observer.observe(InstalledIntellijWorkspaceBootstrapPhase.INDEXING)
         when (awaitInstalledIndexingQuiescence(project)) {
             InstalledIndexingReadiness.READY -> Unit
             InstalledIndexingReadiness.INTERRUPTED -> return rejected(
@@ -212,6 +255,7 @@ object InstalledIntellijWorkspace {
             InstalledIndexingReadiness.FAILED,
                 -> return rejected(InstalledIntellijWorkspaceFailure.MODEL_UNAVAILABLE)
         }
+        observer.observe(InstalledIntellijWorkspaceBootstrapPhase.MODEL_CAPTURE)
         val capture = when (val captured = captureInstalledGradleModel(project, workspaceRoot)) {
             is io.github.amichne.kast.kernel.Refinement.Refined -> captured.value
             is io.github.amichne.kast.kernel.Refinement.Rejected -> return rejected(

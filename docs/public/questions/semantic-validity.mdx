@@ -1,23 +1,29 @@
 ---
-title: "Diagnostics are an internal service"
-sidebarTitle: "Internal diagnostics"
-description: "Understand why diagnostic checking supports hosted planning and verification without a direct endpoint route."
+title: "Check semantic diagnostics"
+sidebarTitle: "Diagnostics"
+description: "Read compiler diagnostics for one explicit workspace scope and generation."
 icon: "stethoscope"
 keywords: ["diagnostics", "compiler", "availability"]
-hidden: true
-noindex: true
 ---
 
-<Warning>
-  The installed endpoint does not publish a direct `diagnostic.check` route.
-  Hosted AddDeclaration planning and verification invoke the same canonical
-  diagnostic service internally within their typed proof obligations.
-</Warning>
+Run the public diagnostic operation with one explicit scope and result bound:
+
+```console
+kast diagnostic check \
+  --scope app/src/main/kotlin \
+  --limit 100
+```
 
 ## Canonical contract
 
-The diagnostic operation remains in the typed operation registry, command
-graph, and `kast --schema`. Its presence defines a stable command and wire
-identity; it does not grant callers a separate diagnostic capability.
+`diagnostic.check` is published in the typed operation registry, command graph,
+installed server projection, and IDE endpoint capability descriptor. The scope
+is resolved against the exact workspace root and bound to its current semantic
+generation.
+
+A **Complete** result proves the admitted files were analyzed within the
+requested bound. A qualified result retains known diagnostics together with
+the analyzed files and exact limitations. A stale generation, unavailable
+index, or rejected scope fails closed instead of manufacturing an empty result.
 
 Use the [CLI reference](/reference/cli) as the availability boundary.

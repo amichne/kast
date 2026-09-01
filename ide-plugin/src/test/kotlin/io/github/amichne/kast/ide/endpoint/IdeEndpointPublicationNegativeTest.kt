@@ -7,6 +7,7 @@ import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityCandidate
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointCanonicalRoot
+import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointLocation
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointSocketDirectory
 import io.github.amichne.kast.protocol.wire.metadata.IdeProcessId
 import io.github.amichne.kast.protocol.wire.metadata.IdeRuntimeEpoch
@@ -294,10 +295,9 @@ internal fun prepareEndpoint(
     }
     return IdeEndpointPreparation.prepare(
         IdeEndpointPreparationCandidate(
-            descriptorRoot,
             runtime ?: completeRuntime(projectRoot, admitted),
             policy,
-            socketDirectory(directory),
+            refined(IdeEndpointLocation.locate(socketDirectory(directory), descriptorRoot)),
             processId(),
             runtimeEpoch(),
         ),

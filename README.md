@@ -52,8 +52,10 @@ kast workspace inspect
 ```
 
 `kast product inspect` reports the installed control identity and direct local
-endpoint evidence even when compatibility admission fails. Use it to see the
-exact expected and observed identity before repairing a mismatched installation.
+endpoint evidence even when compatibility admission fails. For a ready
+endpoint it also reports the default trace format, directory, and epoch-specific
+trace file. Use it to see the exact expected and observed identity before
+repairing a mismatched installation or collecting performance evidence.
 
 `kast start` admits only the compatible endpoint for this exact root, or returns
 a typed blocker. It never opens a Project, imports Gradle, refreshes VFS, starts
@@ -66,31 +68,46 @@ outside-workspace roots still fail closed.
 
 ## Ask a repository question
 
-The installed endpoint publishes ten IDE-hosted operations. The generated
-[CLI reference](https://kast.michne.com/reference/cli/) distinguishes those
-public routes from relation and diagnostic services that remain internal to
-hosted workflows, and `kast --schema` returns the complete contract as JSON.
+The installed endpoint publishes thirteen IDE-hosted operations. The generated
+[CLI reference](https://kast.michne.com/reference/cli/) describes those public
+routes, and `kast --schema` returns the complete contract as JSON.
 Its `serverProjection` is the installed executable's authority for
 server-visible tool names, descriptions, input and output JSON Schemas, loading
-policy, and field-to-CLI bindings. It advertises every public hosted operation
-and excludes the internal-only relation and diagnostic services. A broker can
-therefore follow the selected installed path without carrying a Kast-version
-lookup table.
+policy, explicit approval policy, and field-to-CLI bindings. Common read paths
+are named `workspace_ensure_ready`, `symbol_lookup`, `symbol_inspect`,
+`semantic_query`, `impact_analyze`, and `diagnostic_check`; the canonical
+operation IDs and evidence documents remain unchanged beneath those façades.
+Every `change_*` tool is marked `explicit` approval while read tools are marked
+`none`. The projection advertises every public hosted operation from executable
+admission. A broker can therefore follow the selected
+installed path without carrying a Kast-version lookup table.
 
 | Question | Command path |
 | --- | --- |
 | What is Kast ready to inspect? | `kast workspace inspect` |
+| How do I refresh stale files and semantic evidence? | `kast index sync` |
 | What declaration is this? | `kast symbol discover ...`, then `kast symbol resolve ...` and `kast symbol describe ...` |
-| How is this code connected? | `kast topology build`, then `kast traversal run ...` |
+| How is this code connected? | `kast relation read ...` for one hop, or `kast topology build` then `kast traversal run ...` for bounded depth |
+| What diagnostics exist in this scope? | `kast diagnostic check ...` |
 | How can I add a declaration safely? | `kast change plan ...`, `kast change apply ...`, `kast change verify ...`, and `kast change recover ...` |
 
 Discovery returns bounded candidates. Resolution refines one candidate into an
 exact, generation-bound selector. Description returns detached compiler
-evidence for that selector. A successful apply publishes the newer workspace
+evidence for that selector. Bounded traversal returns one exact
+`canonicalRoot`/generation snapshot identity plus normalized `nodes`, `edges`,
+and proof-identity tables; repeated full signatures stay behind the on-demand
+`symbol_inspect` façade. A successful apply publishes the newer workspace
 generation in the same endpoint, so prior selectors become stale immediately
 and verification can continue without restarting IntelliJ. The successor also
 activates read routes at that exact generation, so freshly resolved selectors
 can consume the verified topology without reconstructing the endpoint.
+
+`kast index sync` is the explicit repair path for source files changed outside
+IntelliJ. It refreshes only the admitted local source roots, waits for IntelliJ
+indexing, and publishes current semantic evidence. A hosted change schedules
+the same synchronization asynchronously only after an `AppliedUnverified`
+success. Rejected or recovery-required applies do not schedule it, and a
+scheduling failure cannot rewrite the already-proven apply outcome.
 
 Reopening the IntelliJ Project conservatively advances the semantic generation,
 so selectors from the previous process remain stale. `kast topology build`
@@ -115,6 +132,23 @@ host-neutral documents.
 
 [How Kast works](https://kast.michne.com/explanation/how-kast-works/) traces a
 concrete `kast symbol describe` request through the Kotlin implementation.
+
+## Inspect topology and traversal latency
+
+Each ready socket namespace forwards OpenTelemetry traces asynchronously by
+default. The private directory is `/tmp/.k<root-digest>.otel` with mode `0700`,
+and each IDE runtime epoch appends OTLP JSON Lines to
+`traces-<runtime-epoch>.jsonl` with mode `0600`. Run `kast product inspect` to
+read the exact `directoryPath`, `traceFilePath`, format, and forwarding state
+instead of reconstructing those paths.
+
+The first spans cover `kast.topology.build`, `kast.traversal.run`, and their
+meaningful workspace, snapshot, extraction, publication, and expansion phases.
+Attributes are allowlisted to closed outcome and failure classes plus
+non-negative file or record counts. Repository paths, selectors, source text,
+exception messages, and stack traces are not exported. Trace files persist
+outside the retired socket state directory; apply the host's retention policy
+after the endpoint stops.
 
 ## Know what the result proves
 
@@ -158,7 +192,7 @@ installer boundary, assign an unreleased semantic version and select the local
 release directory explicitly:
 
 ```shell
-release_version=0.29.1
+release_version="${KAST_RELEASE_VERSION:?set KAST_RELEASE_VERSION to an unreleased semantic version}"
 ./gradlew -Pversion="$release_version" assembleIdeHostedRelease
 bash install.sh install --purge-existing \
   --version "$release_version" \

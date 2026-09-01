@@ -16,7 +16,7 @@ import java.nio.file.Path
 
 class CliSurfaceContractTest {
     @Test
-    fun `public syntax is exact over all twelve canonical operations`() {
+    fun `public syntax is exact over all thirteen canonical operations`() {
         val surface = commandGraphFactory().surface
 
         assertEquals(CanonicalOperation.entries, surface.semanticCommands.map { it.operation })
@@ -85,13 +85,10 @@ class CliSurfaceContractTest {
         )
         assertTrue(helpText.contains("Show the installed IDE-hosted product version"))
         assertTrue(helpText.contains("product"))
-        assertEquals(
-            2,
-            "Canonical command shape; not hosted by the current IDE endpoint."
-                .toRegex(RegexOption.LITERAL)
-                .findAll(helpText)
-                .count(),
+        assertTrue(
+            helpText.contains("Read compiler-grounded semantic relations from exact symbols."),
         )
+        assertTrue(helpText.contains("Read compiler diagnostics for explicit workspace scopes."))
         assertTrue(helpText.contains("Admit the existing exact-root IDE endpoint."))
         assertTrue(helpText.contains("Reject because the IDE owns endpoint lifecycle."))
         assertTrue(helpText.contains("Report the admitted exact-root IDE endpoint as running."))

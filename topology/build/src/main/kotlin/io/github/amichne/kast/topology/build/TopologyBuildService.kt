@@ -1,6 +1,14 @@
 package io.github.amichne.kast.topology.build
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.KastObservability
+import io.github.amichne.kast.kernel.KastSpanCompletion
+import io.github.amichne.kast.kernel.KastSpanCount
+import io.github.amichne.kast.kernel.KastSpanFailure
+import io.github.amichne.kast.kernel.KastSpanMeasurement
+import io.github.amichne.kast.kernel.KastSpanName
+import io.github.amichne.kast.kernel.KastSpanObservation
+import io.github.amichne.kast.kernel.KastTraceSpan
 import io.github.amichne.kast.topology.contract.CompleteTopologyFile
 import io.github.amichne.kast.topology.contract.CompleteTopologyGeneration
 import io.github.amichne.kast.topology.contract.PublishedTopologySnapshot
@@ -124,11 +132,18 @@ class TopologyBuildService private constructor(
     private val candidates: TopologyCandidateEnumerator,
     private val extractor: TopologyFileExtractor,
     private val snapshots: TopologySnapshotStore,
+    private val observability: KastObservability,
     private val authority: TopologyBuildAuthority,
 ) : TopologyBuildOperations {
-    override suspend fun build(): TopologyBuildResult = authority.execute(::buildAuthorized)
+    override suspend fun build(): TopologyBuildResult = observability.inSpan(
+        KastSpanName.TOPOLOGY_BUILD,
+    ) { span ->
+        authority.execute { buildAuthorized(span) }.also { result ->
+            span.observe(result.traceObservation())
+        }
+    }
 
-    private suspend fun buildAuthorized(): TopologyBuildResult {
+    private suspend fun buildAuthorized(trace: KastTraceSpan): TopologyBuildResult {
         val workspace = when (val state = workspaces.inspect()) {
             is WorkspaceRuntimeState.Ready -> state.workspace
             WorkspaceRuntimeState.Absent,
@@ -139,11 +154,29 @@ class TopologyBuildService private constructor(
                 -> return rejected(TopologyBuildFailure.WorkspaceNotReady)
         }
         val identity = TopologyWorkspaceIdentity.from(workspace)
-        val eligibility = when (
-            val guarded = leaseGuard.whileCurrent(workspace.readLease) {
+        val eligibilityUse = trace.child(KastSpanName.TOPOLOGY_SNAPSHOT_ELIGIBILITY) { span ->
+            leaseGuard.whileCurrent(workspace.readLease) {
                 snapshots.eligible(identity)
+            }.also { guarded ->
+                span.observe(
+                    when (guarded) {
+                        SemanticReadLeaseUse.Moved -> rejectedObservation(
+                            KastSpanFailure.TOPOLOGY_WORKSPACE_MOVED,
+                        )
+                        is SemanticReadLeaseUse.Completed -> when (guarded.value) {
+                            is TopologySnapshotEligibility.Rejected -> rejectedObservation(
+                                KastSpanFailure.TOPOLOGY_SNAPSHOT,
+                            )
+                            is TopologySnapshotEligibility.Eligible,
+                            is TopologySnapshotEligibility.Stale,
+                            TopologySnapshotEligibility.Unavailable,
+                                -> completeObservation()
+                        }
+                    },
+                )
             }
-        ) {
+        }
+        val eligibility = when (val guarded = eligibilityUse) {
             SemanticReadLeaseUse.Moved -> return TopologyBuildResult.WorkspaceMoved
             is SemanticReadLeaseUse.Completed -> guarded.value
         }
@@ -164,7 +197,7 @@ class TopologyBuildService private constructor(
                 PriorTopologySnapshot.Stale(existing.latest)
             TopologySnapshotEligibility.Unavailable -> PriorTopologySnapshot.Unavailable
         }
-        val candidateSet = when (val enumeration = candidates.enumerate(workspace)) {
+        val candidateSet = when (val enumeration = enumerate(workspace, trace)) {
             is TopologyCandidateEnumeration.Complete -> enumeration.candidates
             is TopologyCandidateEnumeration.Rejected ->
                 return rejected(TopologyBuildFailure.Enumeration(enumeration.failure))
@@ -174,7 +207,20 @@ class TopologyBuildService private constructor(
         }
         when (prior) {
             is PriorTopologySnapshot.Stale -> {
-                val content = when (val read = snapshots.read(prior.snapshot)) {
+                val content = when (val read = trace.child(
+                    KastSpanName.TOPOLOGY_SNAPSHOT_READ,
+                ) { span ->
+                    snapshots.read(prior.snapshot).also { result ->
+                        span.observe(
+                            when (result) {
+                                is TopologySnapshotContentRead.Loaded -> completeObservation()
+                                is TopologySnapshotContentRead.Rejected -> rejectedObservation(
+                                    KastSpanFailure.TOPOLOGY_SNAPSHOT,
+                                )
+                            },
+                        )
+                    }
+                }) {
                     is TopologySnapshotContentRead.Loaded -> read.content
                     is TopologySnapshotContentRead.Rejected ->
                         return rejected(TopologyBuildFailure.SnapshotRead(read.failure))
@@ -187,6 +233,7 @@ class TopologyBuildService private constructor(
                         candidateSet,
                         reuse.generation,
                         TopologyPublicationMode.REBOUND,
+                        trace,
                     )
                     TopologyGenerationReuse.Rejected ->
                         return rejected(TopologyBuildFailure.SnapshotContractViolation)
@@ -196,27 +243,41 @@ class TopologyBuildService private constructor(
             PriorTopologySnapshot.Unavailable -> Unit
         }
         val completed = mutableListOf<CompleteTopologyFile>()
-        for (file in candidateSet.files) {
-            val request = when (val admitted = candidateSet.extractionRequest(file)) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected ->
-                    return rejected(TopologyBuildFailure.ExtractionContractViolation)
-            }
-            when (val extraction = extractor.extract(request)) {
-                is TopologyFileExtraction.Complete -> completed += extraction.file
-                is TopologyFileExtraction.Failed -> {
-                    if (extraction.file !in candidateSet.files) {
-                        return rejected(TopologyBuildFailure.ExtractionContractViolation)
+        val extractionFailure = trace.child(KastSpanName.TOPOLOGY_EXTRACTION) { span ->
+            for (file in candidateSet.files) {
+                val request = when (val admitted = candidateSet.extractionRequest(file)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> {
+                        span.observe(rejectedObservation(KastSpanFailure.TOPOLOGY_EXTRACTION))
+                        return@child rejected(TopologyBuildFailure.ExtractionContractViolation)
                     }
-                    return rejected(
-                        TopologyBuildFailure.Extraction(
-                            extraction.file.path,
-                            extraction.failure,
-                        ),
-                    )
+                }
+                when (val extraction = extractor.extract(request)) {
+                    is TopologyFileExtraction.Complete -> completed += extraction.file
+                    is TopologyFileExtraction.Failed -> {
+                        span.observe(rejectedObservation(KastSpanFailure.TOPOLOGY_EXTRACTION))
+                        if (extraction.file !in candidateSet.files) {
+                            return@child rejected(
+                                TopologyBuildFailure.ExtractionContractViolation,
+                            )
+                        }
+                        return@child rejected(
+                            TopologyBuildFailure.Extraction(
+                                extraction.file.path,
+                                extraction.failure,
+                            ),
+                        )
+                    }
                 }
             }
+            span.observe(
+                completeObservation(
+                    KastSpanMeasurement.FileCount(exactCount(completed.size)),
+                ),
+            )
+            null
         }
+        if (extractionFailure != null) return extractionFailure
         val generation = when (
             val admitted = CompleteTopologyGeneration.admit(
                 workspace,
@@ -234,27 +295,43 @@ class TopologyBuildService private constructor(
             candidateSet,
             generation,
             TopologyPublicationMode.EXTRACTED,
+            trace,
         )
     }
 
-    private fun publishCompleteGeneration(
+    private suspend fun publishCompleteGeneration(
         workspace: PublishedWorkspace,
         originalCandidates: TopologyCandidateSet,
         generation: CompleteTopologyGeneration,
         mode: TopologyPublicationMode,
+        trace: KastTraceSpan,
     ): TopologyBuildResult {
-        val observedCandidates = when (val enumeration = candidates.enumerate(workspace)) {
+        val observedCandidates = when (val enumeration = enumerate(workspace, trace)) {
             is TopologyCandidateEnumeration.Complete -> enumeration.candidates
             is TopologyCandidateEnumeration.Rejected ->
                 return rejected(TopologyBuildFailure.Enumeration(enumeration.failure))
         }
-        val stableGeneration = when (
-            val validation = RevalidatedTopologyGeneration.validate(
+        val validation = trace.child(KastSpanName.TOPOLOGY_REVALIDATION) { span ->
+            RevalidatedTopologyGeneration.validate(
                 originalCandidates,
                 observedCandidates,
                 generation,
-            )
-        ) {
+            ).also { result ->
+                span.observe(
+                    when (result) {
+                        is Refinement.Refined -> completeObservation(
+                            KastSpanMeasurement.FileCount(
+                                exactCount(result.value.generation.files.size),
+                            ),
+                        )
+                        is Refinement.Rejected -> rejectedObservation(
+                            KastSpanFailure.TOPOLOGY_EXTRACTION,
+                        )
+                    },
+                )
+            }
+        }
+        val stableGeneration = when (validation) {
             is Refinement.Refined -> validation.value
             is Refinement.Rejected -> return when (val failure = validation.failure) {
                 is TopologyGenerationRevalidationFailure.SourceEvidenceMoved -> rejected(
@@ -268,11 +345,28 @@ class TopologyBuildService private constructor(
                     rejected(TopologyBuildFailure.ExtractionContractViolation)
             }
         }
-        return when (
-            val guarded = leaseGuard.whileCurrent(workspace.readLease) {
+        val publicationUse = trace.child(KastSpanName.TOPOLOGY_PUBLICATION) { span ->
+            leaseGuard.whileCurrent(workspace.readLease) {
                 snapshots.publish(stableGeneration.generation)
+            }.also { guarded ->
+                span.observe(
+                    when (guarded) {
+                        SemanticReadLeaseUse.Moved -> rejectedObservation(
+                            KastSpanFailure.TOPOLOGY_WORKSPACE_MOVED,
+                        )
+                        is SemanticReadLeaseUse.Completed -> when (guarded.value) {
+                            is TopologyPublicationResult.Published,
+                            is TopologyPublicationResult.Unchanged,
+                                -> completeObservation()
+                            is TopologyPublicationResult.Rejected -> rejectedObservation(
+                                KastSpanFailure.TOPOLOGY_PUBLICATION,
+                            )
+                        }
+                    },
+                )
             }
-        ) {
+        }
+        return when (val guarded = publicationUse) {
             SemanticReadLeaseUse.Moved -> TopologyBuildResult.WorkspaceMoved
             is SemanticReadLeaseUse.Completed -> when (val publication = guarded.value) {
                 is TopologyPublicationResult.Published -> {
@@ -307,14 +401,38 @@ class TopologyBuildService private constructor(
             candidates: TopologyCandidateEnumerator,
             extractor: TopologyFileExtractor,
             snapshots: TopologySnapshotStore,
+            observability: KastObservability = KastObservability.Disabled,
         ): TopologyBuildOperations = TopologyBuildService(
             workspaces,
             leaseGuard,
             candidates,
             extractor,
             snapshots,
+            observability,
             TopologyBuildAuthority(),
         )
+    }
+
+    private suspend fun enumerate(
+        workspace: PublishedWorkspace,
+        trace: KastTraceSpan,
+    ): TopologyCandidateEnumeration = trace.child(
+        KastSpanName.TOPOLOGY_CANDIDATE_ENUMERATION,
+    ) { span ->
+        candidates.enumerate(workspace).also { result ->
+            span.observe(
+                when (result) {
+                    is TopologyCandidateEnumeration.Complete -> completeObservation(
+                        KastSpanMeasurement.FileCount(
+                            exactCount(result.candidates.files.size),
+                        ),
+                    )
+                    is TopologyCandidateEnumeration.Rejected -> rejectedObservation(
+                        KastSpanFailure.TOPOLOGY_ENUMERATION,
+                    )
+                },
+            )
+        }
     }
 }
 
@@ -327,3 +445,47 @@ private enum class TopologyPublicationMode { EXTRACTED, REBOUND }
 
 private fun rejected(failure: TopologyBuildFailure): TopologyBuildResult.Rejected =
     TopologyBuildResult.Rejected(failure)
+
+private fun TopologyBuildResult.traceObservation(): KastSpanObservation = when (this) {
+    is TopologyBuildResult.Published -> completeObservation(
+        KastSpanMeasurement.FileCount(exactCount(snapshot.manifest.cardinalities.files)),
+    )
+    is TopologyBuildResult.Reused -> completeObservation(
+        KastSpanMeasurement.FileCount(exactCount(snapshot.manifest.cardinalities.files)),
+    )
+    TopologyBuildResult.WorkspaceMoved -> rejectedObservation(
+        KastSpanFailure.TOPOLOGY_WORKSPACE_MOVED,
+    )
+    is TopologyBuildResult.Rejected -> rejectedObservation(
+        when (failure) {
+            TopologyBuildFailure.WorkspaceNotReady ->
+                KastSpanFailure.TOPOLOGY_WORKSPACE_NOT_READY
+            TopologyBuildFailure.SnapshotContractViolation,
+            is TopologyBuildFailure.SnapshotRead,
+                -> KastSpanFailure.TOPOLOGY_SNAPSHOT
+            is TopologyBuildFailure.Enumeration -> KastSpanFailure.TOPOLOGY_ENUMERATION
+            is TopologyBuildFailure.Extraction,
+            TopologyBuildFailure.ExtractionContractViolation,
+                -> KastSpanFailure.TOPOLOGY_EXTRACTION
+            is TopologyBuildFailure.Coverage -> KastSpanFailure.TOPOLOGY_COVERAGE
+            is TopologyBuildFailure.Publication -> KastSpanFailure.TOPOLOGY_PUBLICATION
+        },
+    )
+}
+
+private fun completeObservation(
+    vararg measurements: KastSpanMeasurement,
+): KastSpanObservation = KastSpanObservation(
+    KastSpanCompletion.Complete,
+    measurements.toSet(),
+)
+
+private fun rejectedObservation(failure: KastSpanFailure): KastSpanObservation =
+    KastSpanObservation(KastSpanCompletion.Rejected(failure))
+
+private fun exactCount(value: Int): KastSpanCount = when (val count = KastSpanCount.parse(
+    value.toLong(),
+)) {
+    is Refinement.Refined -> count.value
+    is Refinement.Rejected -> error("Collection size cannot be negative")
+}

@@ -20,7 +20,7 @@ internal fun diagnosticCommandGroup(
     return CommandFamily(
         KastCommandGroup(
             "diagnostic",
-            "Canonical command shape; not hosted by the current IDE endpoint.",
+            "Read compiler diagnostics for explicit workspace scopes.",
         ).subcommands(check),
         listOf(check),
     )

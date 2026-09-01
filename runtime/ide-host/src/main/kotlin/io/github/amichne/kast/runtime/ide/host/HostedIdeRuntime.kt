@@ -7,16 +7,22 @@ import io.github.amichne.kast.runtime.server.RuntimeServer
 import io.github.amichne.kast.runtime.server.RuntimeServerConstruction
 import io.github.amichne.kast.runtime.server.ServerDispatch
 import io.github.amichne.kast.change.verify.DurableChangeAuthority
+import io.github.amichne.kast.diagnostic.contract.DiagnosticOperations
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
 import io.github.amichne.kast.protocol.contract.ChangePlanRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeVerifyRejection
+import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.runtime.server.TypedOperationBinding
+import io.github.amichne.kast.relation.contract.RelationOperations
+import io.github.amichne.kast.protocol.contract.RelationReadRejection
+import io.github.amichne.kast.protocol.contract.IndexSyncRejection
+import io.github.amichne.kast.workspace.contract.IndexSynchronizationOperations
 
 sealed interface HostedIdeRuntimeConstruction {
     data class Created(val runtime: HostedIdeRuntime) : HostedIdeRuntimeConstruction
@@ -61,13 +67,19 @@ class HostedIdeRuntime private constructor(
     companion object {
         internal fun create(
             reads: HostedReadRuntimeOperations,
+            workspace: HostedWorkspaceOperations,
             topology: HostedTopologyOperations,
             selectors: HostedExactSelectorOperations,
+            relations: RelationOperations,
+            diagnostics: DiagnosticOperations,
+            indexSync: IndexSynchronizationOperations,
             mutation: HostedMutationState,
             mutationAdmission: HostedMutationAdmissionOperations,
             authority: DurableChangeAuthority,
         ): HostedIdeRuntimeConstruction = when (val server = RuntimeServer.createHostedEffects(
-            HostedTopologyProtocol.bindings(topology, selectors) +
+            HostedTopologyProtocol.bindings(topology, selectors, relations) +
+                HostedDiagnosticProtocol.bindings(workspace, diagnostics) +
+                HostedIndexSyncProtocol.bindings(indexSync) +
                 HostedMutationProtocol.bindings(mutation, mutationAdmission, selectors, authority),
         )) {
             is RuntimeServerConstruction.Created -> HostedIdeRuntimeConstruction.Created(
@@ -81,12 +93,24 @@ class HostedIdeRuntime private constructor(
             val server = RuntimeServer.createHostedEffects(
                 listOf(
                     TypedOperationBinding(
+                        CanonicalOperationWireBindings.indexSync,
+                        OperationHandler { OperationOutcome.Rejected(IndexSyncRejection.WORKSPACE_NOT_READY) },
+                    ),
+                    TypedOperationBinding(
                         CanonicalOperationWireBindings.topologyBuild,
                         OperationHandler { OperationOutcome.Rejected(TopologyBuildRejection.WorkspaceNotReady) },
                     ),
                     TypedOperationBinding(
+                        CanonicalOperationWireBindings.relationRead,
+                        OperationHandler { OperationOutcome.Rejected(RelationReadRejection.WORKSPACE_NOT_READY) },
+                    ),
+                    TypedOperationBinding(
                         CanonicalOperationWireBindings.traversalRun,
                         OperationHandler { OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED) },
+                    ),
+                    TypedOperationBinding(
+                        CanonicalOperationWireBindings.diagnosticCheck,
+                        OperationHandler { OperationOutcome.Rejected(DiagnosticCheckRejection.WORKSPACE_NOT_READY) },
                     ),
                     TypedOperationBinding(
                         CanonicalOperationWireBindings.changePlan,

@@ -17,6 +17,7 @@ import io.github.amichne.kast.runtime.composition.change.InstalledChangeVerifica
 import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelBoundary
 import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelRead
 import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelReadOperations
+import io.github.amichne.kast.runtime.composition.platform.InstalledGradleWorkspaceModel
 import io.github.amichne.kast.runtime.composition.platform.InstalledWorkspaceModelAdapter
 import io.github.amichne.kast.runtime.composition.platform.projectInstalledGradleModel
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalKastOperationHandlerFactory
@@ -24,6 +25,8 @@ import io.github.amichne.kast.symbol.intellij.InstalledIntellijSymbolPorts
 import io.github.amichne.kast.symbol.intellij.InstalledSymbolScopeOperations
 import io.github.amichne.kast.workspace.contract.WorkspacePublicationRun
 import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspace
+import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceBootstrapObserver
+import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceBootstrapPhase
 import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceModel
 import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceOpening
 import io.github.amichne.kast.workspace.intellij.InstalledGradleModelCapture
@@ -32,19 +35,24 @@ import io.github.amichne.kast.workspace.intellij.IntellijWorkspaceReconciliation
 import io.github.amichne.kast.workspace.service.WorkspacePublicationCoordinator
 import io.github.amichne.kast.topology.contract.TopologyFileExtractor
 import io.github.amichne.kast.topology.intellij.intellijSynchronizedTopologyCandidateEnumerator
+import io.github.amichne.kast.topology.intellij.intellijSourceRootIndexRefresh
 import io.github.amichne.kast.topology.intellij.installedIntellijTopologyExtractor
+import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefreshOperations
+import java.util.concurrent.ForkJoinPool
 
 /** Closed construction inputs whose live platform values remain behind narrow adapter ports. */
 internal data class InstalledRuntimeAssemblyInputs(
     val workspaceModel: InstalledGradleModelReadOperations,
     val semantic: SemanticRuntimePorts,
     val topologyExtractor: TopologyFileExtractor,
+    val indexRefresh: WorkspaceIndexRefreshOperations,
     val change: InstalledChangePhysicalPorts,
 )
 
 private data class InstalledRuntimePlatformPorts(
     val semantic: SemanticRuntimePorts,
     val topologyExtractor: TopologyFileExtractor,
+    val indexRefresh: WorkspaceIndexRefreshOperations,
     val change: InstalledChangePhysicalPorts,
 )
 
@@ -66,6 +74,9 @@ internal fun productionInstalledRuntimeAssembler(): InstalledRuntimeAssembler =
     InstalledRuntimeAssembler { request ->
         val workspaceModel = when (val opened = InstalledIntellijWorkspace.open(
             request.workspaceRoot.path,
+            InstalledIntellijWorkspaceBootstrapObserver { phase ->
+                request.bootstrapObserver.observe(phase.runtimePhase())
+            },
         )) {
             is InstalledIntellijWorkspaceOpening.Opened -> opened.model
             is InstalledIntellijWorkspaceOpening.Rejected -> return@InstalledRuntimeAssembler rejected(
@@ -87,14 +98,39 @@ internal fun productionInstalledRuntimeAssembler(): InstalledRuntimeAssembler =
                 InstalledRuntimeWorkspaceFailure.ModelRefinementUnavailable(read.failure),
             )
         }
+        publishInstalledRuntimeIndexScope(initial.model, request.bootstrapObserver)
+        request.bootstrapObserver.observe(InstalledRuntimeBootstrapPhase.RUNTIME_ASSEMBLY)
         assembleInstalledRuntime(
             request,
             RefreshingInstalledGradleModelReads(initial, workspaceModel),
             { workspace, model ->
-                productionPlatformPorts(request, workspace, model)
+                productionPlatformPorts(
+                    request,
+                    workspace,
+                    model,
+                    workspaceModel.awaitIndexReadinessAfter(intellijSourceRootIndexRefresh()),
+                )
             },
         )
     }
+
+internal fun publishInstalledRuntimeIndexScope(
+    model: InstalledGradleWorkspaceModel,
+    observer: InstalledRuntimeBootstrapObserver,
+) {
+    observer.observeIndexScope(
+        InstalledRuntimeIndexScope(model.root, model.sourceRoots),
+    )
+}
+
+private fun InstalledIntellijWorkspaceBootstrapPhase.runtimePhase():
+    InstalledRuntimeBootstrapPhase = when (this) {
+    InstalledIntellijWorkspaceBootstrapPhase.PROJECT_IMPORT ->
+        InstalledRuntimeBootstrapPhase.PROJECT_IMPORT
+    InstalledIntellijWorkspaceBootstrapPhase.INDEXING -> InstalledRuntimeBootstrapPhase.INDEXING
+    InstalledIntellijWorkspaceBootstrapPhase.MODEL_CAPTURE ->
+        InstalledRuntimeBootstrapPhase.MODEL_CAPTURE
+}
 
 private class RefreshingInstalledGradleModelReads(
     initial: InstalledGradleModelRead.Captured,
@@ -156,7 +192,12 @@ internal fun productionInstalledRuntimeAssembler(
         request,
         inputs.workspaceModel,
     ) { _, _ ->
-        InstalledRuntimePlatformPorts(inputs.semantic, inputs.topologyExtractor, inputs.change)
+        InstalledRuntimePlatformPorts(
+            inputs.semantic,
+            inputs.topologyExtractor,
+            inputs.indexRefresh,
+            inputs.change,
+        )
     }
 }
 
@@ -219,6 +260,7 @@ private fun assembleInstalledRuntime(
             platform.topologyExtractor,
             topologySnapshots,
         ),
+        IndexRuntimePorts(platform.indexRefresh, ForkJoinPool.commonPool()),
         ChangeRuntimePorts(
             recovery,
             platform.change.sourceObserver,
@@ -263,6 +305,7 @@ private fun productionPlatformPorts(
     request: InstalledKastRuntimeRequest,
     workspace: WorkspacePublicationCoordinator,
     model: InstalledWorkspaceModelAdapter,
+    indexRefresh: WorkspaceIndexRefreshOperations,
 ): InstalledRuntimePlatformPorts {
     val root = request.workspaceRoot.canonicalRoot
     val symbols = InstalledIntellijSymbolPorts.create(
@@ -284,6 +327,7 @@ private fun productionPlatformPorts(
             installedIntellijDiagnosticCompiler(root, workspace),
         ),
         installedIntellijTopologyExtractor(root, workspace),
+        indexRefresh,
         InstalledChangePhysicalPorts(
             change.sourceObserver,
             change.sourceWriter,

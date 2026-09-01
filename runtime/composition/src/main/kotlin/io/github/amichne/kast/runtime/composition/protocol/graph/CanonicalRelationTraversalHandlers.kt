@@ -215,10 +215,17 @@ internal class CanonicalTraversalRunHandler(
             is Refinement.Rejected ->
                 return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
         }
+        val snapshotRoot = when (
+            val admitted = ProtocolText.parse(plan.start.lease.workspaceRoot.value)
+        ) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected ->
+                return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
+        }
         val envelope = EvidenceEnvelope(
             CanonicalOperation.TRAVERSAL_RUN.id,
             plan.start.lease.generation,
-            TraversalRunResult(bounded),
+            TraversalRunResult(snapshotRoot, bounded),
         )
         return when (projection) {
             TraversalProjection.Complete -> OperationOutcome.Complete(envelope)

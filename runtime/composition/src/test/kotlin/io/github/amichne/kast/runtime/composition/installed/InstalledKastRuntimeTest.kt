@@ -98,6 +98,32 @@ class InstalledKastRuntimeTest {
     }
 
     @Test
+    fun `admitted runtime carries the explicit bootstrap observer into assembly`(
+        @TempDir temporary: Path,
+    ) {
+        val root = Files.createDirectories(temporary.resolve("repo"))
+        Files.writeString(root.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
+        val state = Files.createDirectories(temporary.resolve("state"))
+        val observed = mutableListOf<InstalledRuntimeBootstrapPhase>()
+        val dispatch = KastRuntimeDispatchOperations { KastRuntimeDispatch.Responded(it) }
+
+        val construction = InstalledKastRuntime.create(
+            root,
+            state,
+            InstalledRuntimeAssembler { request ->
+                InstalledRuntimeBootstrapPhase.entries.forEach(
+                    request.bootstrapObserver::observe,
+                )
+                InstalledRuntimeAssembly.Assembled(dispatch)
+            },
+            InstalledRuntimeBootstrapObserver(observed::add),
+        )
+
+        assertSame(dispatch, (construction as InstalledKastRuntimeConstruction.Created).dispatch)
+        assertEquals(InstalledRuntimeBootstrapPhase.entries, observed)
+    }
+
+    @Test
     fun `invalid installed paths fail closed before assembly`(@TempDir temporary: Path) {
         val rootWithoutSettings = Files.createDirectories(temporary.resolve("repo"))
         val missingState = temporary.resolve("missing-state")

@@ -161,13 +161,6 @@ class IdeEndpointDescriptorNegativeTest {
         assertRejected(
             candidate.copy(
                 capabilities = candidate.capabilities +
-                    HostedCapabilityCandidate("diagnostic.check", emptyList()),
-            ),
-            hostedCapabilityFailure(HostedCapabilitySetFailure.CanonicalProjectionMismatch),
-        )
-        assertRejected(
-            candidate.copy(
-                capabilities = candidate.capabilities +
                     HostedCapabilityCandidate("a".repeat(97), emptyList()),
             ),
             hostedCapabilityFailure(

@@ -6,10 +6,10 @@ icon: "share-2"
 keywords: ["relations", "topology", "traversal", "generation"]
 ---
 
-Kast exposes repository connections through `topology.build` and
-`traversal.run`. It does not expose a direct `relation.read` route. Relation
-compilers remain an internal hosted service for topology, traversal, planning,
-and verification.
+Kast exposes a live, one-hop compiler relation through `relation.read` and a
+bounded multi-hop graph workflow through `topology.build` and `traversal.run`.
+Both retain the exact selector and workspace generation that admitted the
+question.
 
 ## Publish before traversing
 
@@ -17,6 +17,19 @@ and verification.
   <Step title="Resolve an exact starting symbol">
     Use `kast symbol discover` and `kast symbol resolve` to obtain an exact,
     generation-bound selector.
+  </Step>
+
+  <Step title="Read one compiler-confirmed hop">
+    ```console
+    kast relation read \
+      --selector '<exact-selector>' \
+      --relation callers \
+      --limit 50
+    ```
+
+    Use the direct read for current-generation references, callers, callees,
+    implementations, inheritors, overrides, or type uses. Complete and
+    qualified results preserve compiler provenance and explicit coverage.
   </Step>
 
   <Step title="Build complete topology">
@@ -41,7 +54,10 @@ and verification.
 
     Traversal reads only the eligible durable snapshot. It never starts hidden
     compiler work and keeps depth, result, work, time, and byte limits attached
-    to the outcome.
+    to the outcome. The wire result normalizes repeated symbols and proof
+    identities into compact `nodes`, `edges`, and `proofs` tables. Full compiler
+    signatures are fetched only when needed through `symbol_inspect` (the
+    façade over `symbol.describe`).
   </Step>
 </Steps>
 
@@ -65,6 +81,15 @@ before the restart remain stale.
   depth, and result bound. A qualified result keeps its reached bound visible;
   stale or unavailable topology rejects.
 </Info>
+
+## Locate slow phases
+
+Ready endpoints forward `kast.topology.build` and `kast.traversal.run` span
+trees asynchronously to the private OTLP JSON Lines file reported by
+`kast product inspect`. Child spans distinguish snapshot eligibility and reads,
+candidate enumeration, extraction, revalidation, publication, snapshot open,
+and traversal expansion. Only closed outcome classes and non-negative file or
+record counts are exported; repository paths and symbol selectors are excluded.
 
 [Add a declaration safely](/questions/safe-change) or
 [review the evidence boundary](/concepts/evidence-boundaries).

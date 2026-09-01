@@ -6,6 +6,7 @@ import io.github.amichne.kast.cli.ProductEndpointObservation
 import io.github.amichne.kast.cli.ProductInspection
 import io.github.amichne.kast.cli.ProductWorkspaceObservation
 import io.github.amichne.kast.protocol.contract.AdmittedIdeHostCompatibility
+import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointTelemetryOutput
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -63,6 +64,7 @@ private sealed interface ProductEndpointDocument {
         val processId: Long,
         val runtimeEpoch: Long,
         val socketPath: String,
+        val telemetry: ProductTelemetryDocument,
         val compatibility: ProductCompatibilityDocument,
     ) : ProductEndpointDocument
 
@@ -72,6 +74,14 @@ private sealed interface ProductEndpointDocument {
         val failure: ProductEndpointFailureDocument,
     ) : ProductEndpointDocument
 }
+
+@Serializable
+private data class ProductTelemetryDocument(
+    val state: String,
+    val format: String,
+    val directoryPath: String,
+    val traceFilePath: String,
+)
 
 @Serializable
 private sealed interface ProductEndpointFailureDocument {
@@ -129,12 +139,21 @@ private fun ProductEndpointObservation.outputDocument(): ProductEndpointDocument
         processId = endpoint.descriptor.processId.value,
         runtimeEpoch = endpoint.descriptor.runtimeEpoch.value,
         socketPath = endpoint.descriptor.socketPath.value,
+        telemetry = endpoint.telemetry.outputDocument(),
         compatibility = endpoint.descriptor.compatibility.outputDocument(),
     )
     is ProductEndpointObservation.Rejected -> ProductEndpointDocument.Rejected(
         failure.outputDocument(),
     )
 }
+
+private fun IdeEndpointTelemetryOutput.outputDocument(): ProductTelemetryDocument =
+    ProductTelemetryDocument(
+        state = "forwarding",
+        format = format.identity,
+        directoryPath = directoryPath.value,
+        traceFilePath = traceFilePath.value,
+    )
 
 private fun IdeEndpointAdmissionFailure.outputDocument(): ProductEndpointFailureDocument =
     when (this) {
