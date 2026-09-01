@@ -98,7 +98,10 @@ internal data class SymbolDescribeResultWireDocument(val symbol: SymbolWireDocum
 @Serializable
 internal data class RelationReadResultWireDocument(val relations: List<RelationFactWireDocument>)
 @Serializable
-internal data class TraversalRunResultWireDocument(val records: List<TraversalRecordWireDocument>)
+internal data class TraversalRunResultWireDocument(
+    val snapshotRoot: String,
+    val records: List<TraversalRecordWireDocument>,
+)
 
 @Serializable
 internal data class RelationFactWireDocument(
@@ -368,15 +371,21 @@ internal fun RelationReadResultWireDocument.toContract(): WireDocumentConversion
         .mapConverted(::RelationReadResult)
 
 internal fun TraversalRunResult.toSymbolWireDocument() =
-    TraversalRunResultWireDocument(records.values.map { it.toWireDocument() })
+    TraversalRunResultWireDocument(
+        snapshotRoot = snapshotRoot.value,
+        records = records.values.map { it.toWireDocument() },
+    )
 /**
  * `TraversalRunResultWireDocument -> TraversalRunResult` establishes a bounded exact-symbol list;
  * invalid raw fields become `WireFailure.InvalidPayload` at this wire boundary.
  */
 internal fun TraversalRunResultWireDocument.toContract(): WireDocumentConversion<TraversalRunResult> =
-    records.convertEach { it.toContract() }
-        .flatMapConverted { values -> values.toBoundedList() }
-        .mapConverted(::TraversalRunResult)
+    combineConverted(
+        snapshotRoot.toProtocolText(),
+        records.convertEach { it.toContract() }
+            .flatMapConverted { values -> values.toBoundedList() },
+        ::TraversalRunResult,
+    )
 
 private fun RelationFactDocument.toWireDocument(): RelationFactWireDocument =
     RelationFactWireDocument(

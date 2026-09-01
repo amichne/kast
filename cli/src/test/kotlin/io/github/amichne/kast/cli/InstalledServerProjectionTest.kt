@@ -22,6 +22,84 @@ import org.junit.jupiter.api.Test
 
 class InstalledServerProjectionTest {
     @Test
+    fun `installed broker exposes workflow facade names and explicit change approval`() {
+        val tools = projectionTools()
+
+        assertEquals(
+            listOf(
+                "workspace_ensure_ready",
+                "topology_build",
+                "symbol_lookup",
+                "symbol_resolve",
+                "symbol_inspect",
+                "semantic_query",
+                "impact_analyze",
+                "diagnostic_check",
+                "change_plan",
+                "change_apply",
+                "change_verify",
+                "change_recover",
+            ),
+            tools.map { it.getValue("name").jsonPrimitive.content },
+        )
+        assertEquals(
+            listOf("start"),
+            tools.tool("workspace.inspect").cliCommand(),
+        )
+        assertTrue(
+            tools.filter { it.getValue("name").jsonPrimitive.content.startsWith("change_") }
+                .all {
+                    it.getValue("approvalPolicy").jsonPrimitive.content ==
+                        InstalledServerApprovalPolicy.EXPLICIT.serialValue
+                },
+        )
+        assertTrue(
+            tools.filterNot { it.getValue("name").jsonPrimitive.content.startsWith("change_") }
+                .all {
+                    it.getValue("approvalPolicy").jsonPrimitive.content ==
+                        InstalledServerApprovalPolicy.NONE.serialValue
+                },
+        )
+    }
+
+    @Test
+    fun `installed broker publishes executable read operations`() {
+        val tools = projectionTools()
+
+        assertEquals(
+            listOf(
+                "workspace.inspect",
+                "topology.build",
+                "symbol.discover",
+                "symbol.resolve",
+                "symbol.describe",
+                "relation.read",
+                "traversal.run",
+                "diagnostic.check",
+                "change.plan",
+                "change.apply",
+                "change.verify",
+                "change.recover",
+            ),
+            tools.map { it.getValue("operationId").jsonPrimitive.content },
+        )
+        assertEquals(
+            listOf("selector", "relation", "limit"),
+            tools.tool("relation.read").cliOptionFields(),
+        )
+        assertEquals(
+            listOf("scope", "limit"),
+            tools.tool("diagnostic.check").cliOptionFields(),
+        )
+        tools.tool("relation.read").outputSchema().assertAdmits(
+            """{"status":"completed","document":{"operation":"relation.read","status":"complete","relations":[]}}""",
+        )
+        tools.tool("diagnostic.check").outputSchema().assertAdmits(
+            """{"status":"completed","document":{"operation":"diagnostic.check","status":"complete","diagnostics":[]}}""",
+        )
+    }
+
+    @Test
     fun `installed schema owns broker tool shapes and exact cli bindings`() {
         val schema = installedSchema(
             operationRegistry = "{}",
@@ -45,7 +123,20 @@ class InstalledServerProjectionTest {
             tools.map { it.getValue("operationId").jsonPrimitive.content },
         )
         assertEquals(
-            expectedPublicOperations.map { it.replace('.', '_') },
+            listOf(
+                "workspace_ensure_ready",
+                "topology_build",
+                "symbol_lookup",
+                "symbol_resolve",
+                "symbol_inspect",
+                "semantic_query",
+                "impact_analyze",
+                "diagnostic_check",
+                "change_plan",
+                "change_apply",
+                "change_verify",
+                "change_recover",
+            ),
             tools.map { it.getValue("name").jsonPrimitive.content },
         )
         assertTrue(tools.all { it.getValue("deferLoading").jsonPrimitive.content.toBoolean() })
@@ -78,12 +169,14 @@ class InstalledServerProjectionTest {
         )
         assertEquals(
             linkedMapOf(
-                "workspace.inspect" to listOf("workspace", "inspect"),
+                "workspace.inspect" to listOf("start"),
                 "topology.build" to listOf("topology", "build"),
                 "symbol.discover" to listOf("symbol", "discover"),
                 "symbol.resolve" to listOf("symbol", "resolve"),
                 "symbol.describe" to listOf("symbol", "describe"),
+                "relation.read" to listOf("relation", "read"),
                 "traversal.run" to listOf("traversal", "run"),
+                "diagnostic.check" to listOf("diagnostic", "check"),
                 "change.plan" to listOf("change", "plan"),
                 "change.apply" to listOf("change", "apply"),
                 "change.verify" to listOf("change", "verify"),
@@ -101,8 +194,10 @@ class InstalledServerProjectionTest {
                     listOf("mode", "query", "kind", "match", "file", "offset", "scope", "limit"),
                 "symbol.resolve" to listOf("candidate"),
                 "symbol.describe" to listOf("selector"),
+                "relation.read" to listOf("selector", "relation", "limit"),
                 "traversal.run" to
                     listOf("selector", "relation", "maximumDepth", "maximumResults"),
+                "diagnostic.check" to listOf("scope", "limit"),
                 "change.plan" to listOf("intent", "target", "declaration"),
                 "change.apply" to listOf("plan"),
                 "change.verify" to listOf("application"),
@@ -119,7 +214,7 @@ class InstalledServerProjectionTest {
                 .containsAll(listOf("operation", "status", "symbol")),
         )
         assertTrue(
-            tools.tool("traversal.run").completedDocumentProperty("records") != null,
+            tools.tool("traversal.run").completedDocumentProperty("graph") != null,
         )
 
         val changePlanProperties = tools.tool("change.plan")

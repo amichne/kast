@@ -166,7 +166,7 @@ object CanonicalOperationDefinitions {
         OperationCost.BOUNDED_READ,
         OperationScope.SYMBOL,
         CompletenessPolicy.QUALIFIED_ALLOWED,
-        HostedExposure.INTERNAL_ONLY,
+        HostedExposure.PUBLIC,
     )
 
     val traversalRun = definition(
@@ -196,7 +196,7 @@ object CanonicalOperationDefinitions {
         OperationCost.BOUNDED_READ,
         OperationScope.PROJECT,
         CompletenessPolicy.QUALIFIED_ALLOWED,
-        HostedExposure.INTERNAL_ONLY,
+        HostedExposure.PUBLIC,
     )
 
     val changePlan = definition(

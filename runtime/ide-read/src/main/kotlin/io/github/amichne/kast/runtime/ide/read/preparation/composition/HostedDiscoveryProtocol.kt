@@ -22,6 +22,8 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
 import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
+import io.github.amichne.kast.protocol.contract.SymbolTextScopeDocument
+import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
 import io.github.amichne.kast.symbol.contract.SymbolCompilerRejection
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
@@ -33,6 +35,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification as DomainQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest as DomainRequest
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceOffset
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
@@ -41,6 +44,8 @@ import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import java.nio.file.InvalidPathException
+import java.nio.file.Path
 
 internal sealed interface HostedDiscoveryRequestAdmission {
     data class Admitted(val request: DomainRequest) : HostedDiscoveryRequestAdmission
@@ -51,17 +56,16 @@ internal sealed interface HostedDiscoveryRequestAdmission {
  * Proof transition: `(SemanticReadLease, SymbolDiscoverRequest) ->
  * HostedDiscoveryRequestAdmission`.
  *
- * Establishes one bounded name query over the exact current workspace, including generated roots
- * and readable libraries already owned by the IDE Project. Unsupported targets and every failed
- * primitive refinement remain closed. Raw protocol values leave only at their owning refinements.
+ * Establishes one bounded name, location, structure, or text query over the exact current
+ * workspace and Gradle-owned source roots. Name queries may include readable project libraries;
+ * source/location modes cannot widen beyond their workspace or exact-file scope. Every failed
+ * primitive refinement remains closed. Raw protocol values leave only at their owning refinements.
  */
 internal fun admitHostedDiscoveryRequest(
     lease: SemanticReadLease,
     request: SymbolDiscoverRequest,
 ): HostedDiscoveryRequestAdmission {
-    val target = request.target as? SymbolDiscoverTargetDocument.Name
-        ?: return HostedDiscoveryRequestAdmission.Rejected
-    val pattern = refined(SymbolDiscoveryPattern.parse(target.query.value))
+    val meaning = request.target.hostedMeaning(lease)
         ?: return HostedDiscoveryRequestAdmission.Rejected
     val results = refined(ResultLimit.parse(request.limit.value))
         ?: return HostedDiscoveryRequestAdmission.Rejected
@@ -75,25 +79,100 @@ internal fun admitHostedDiscoveryRequest(
         DomainRequest(
             SymbolSearchScopeRequest(
                 lease,
-                SymbolSearchScope.Workspace(
-                    SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-                    SymbolGeneratedSourcePolicy.INCLUDE,
-                    SymbolLibraryPolicy.INCLUDE,
-                ),
+                meaning.scope,
             ),
-            SymbolDiscoveryTarget.Name(
-                when (target.kind) {
-                    SymbolNameKindDocument.FILE -> SymbolNameDiscoveryKind.FILE
-                    SymbolNameKindDocument.CLASS -> SymbolNameDiscoveryKind.CLASS
-                    SymbolNameKindDocument.SYMBOL -> SymbolNameDiscoveryKind.SYMBOL
-                },
-                pattern,
-                when (target.match) {
-                    SymbolDiscoveryMatchDocument.FUZZY -> SymbolDiscoveryMatch.FUZZY
-                    SymbolDiscoveryMatchDocument.EXACT_NAME -> SymbolDiscoveryMatch.EXACT_NAME
-                },
-            ),
+            meaning.target,
             SymbolDiscoveryBudget(ResourceBudget(results, work, elapsed), bytes),
+        ),
+    )
+}
+
+private data class HostedDiscoveryMeaning(
+    val scope: SymbolSearchScope,
+    val target: SymbolDiscoveryTarget,
+)
+
+private fun SymbolDiscoverTargetDocument.hostedMeaning(
+    lease: SemanticReadLease,
+): HostedDiscoveryMeaning? = when (this) {
+    is SymbolDiscoverTargetDocument.Name -> HostedDiscoveryMeaning(
+        workspaceScope(SymbolLibraryPolicy.INCLUDE),
+        SymbolDiscoveryTarget.Name(
+            when (kind) {
+                SymbolNameKindDocument.FILE -> SymbolNameDiscoveryKind.FILE
+                SymbolNameKindDocument.CLASS -> SymbolNameDiscoveryKind.CLASS
+                SymbolNameKindDocument.SYMBOL -> SymbolNameDiscoveryKind.SYMBOL
+            },
+            refined(SymbolDiscoveryPattern.parse(query.value)) ?: return null,
+            when (match) {
+                SymbolDiscoveryMatchDocument.FUZZY -> SymbolDiscoveryMatch.FUZZY
+                SymbolDiscoveryMatchDocument.EXACT_NAME -> SymbolDiscoveryMatch.EXACT_NAME
+            },
+        ),
+    )
+    is SymbolDiscoverTargetDocument.Location -> {
+        val exactFile = hostedFile(lease, file.value) ?: return null
+        HostedDiscoveryMeaning(
+            exactFileScope(exactFile),
+            SymbolDiscoveryTarget.Location(
+                exactFile,
+                refined(SymbolDiscoverySourceOffset.parse(offset.value)) ?: return null,
+            ),
+        )
+    }
+    is SymbolDiscoverTargetDocument.Structure -> {
+        val exactFile = hostedFile(lease, file.value) ?: return null
+        HostedDiscoveryMeaning(
+            exactFileScope(exactFile),
+            SymbolDiscoveryTarget.Structure(exactFile),
+        )
+    }
+    is SymbolDiscoverTargetDocument.Text -> {
+        val target = SymbolDiscoveryTarget.Text(
+            refined(SymbolDiscoveryPattern.parse(query.value)) ?: return null,
+        )
+        when (val textScope = scope) {
+            SymbolTextScopeDocument.Workspace -> HostedDiscoveryMeaning(
+                workspaceScope(SymbolLibraryPolicy.EXCLUDE),
+                target,
+            )
+            is SymbolTextScopeDocument.File -> {
+                val exactFile = hostedFile(lease, textScope.file.value) ?: return null
+                HostedDiscoveryMeaning(exactFileScope(exactFile), target)
+            }
+        }
+    }
+}
+
+private fun workspaceScope(libraries: SymbolLibraryPolicy): SymbolSearchScope.Workspace =
+    SymbolSearchScope.Workspace(
+        SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+        SymbolGeneratedSourcePolicy.INCLUDE,
+        libraries,
+    )
+
+private fun exactFileScope(file: CanonicalWorkspaceFilePath): SymbolSearchScope.ExactFile =
+    SymbolSearchScope.ExactFile(
+        file,
+        SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+        SymbolGeneratedSourcePolicy.INCLUDE,
+    )
+
+private fun hostedFile(
+    lease: SemanticReadLease,
+    raw: String,
+): CanonicalWorkspaceFilePath? {
+    val relative = try {
+        Path.of(raw)
+    } catch (_: InvalidPathException) {
+        return null
+    }
+    if (relative.isAbsolute) return null
+    val root = Path.of(lease.workspaceRoot.value)
+    return refined(
+        CanonicalWorkspaceFilePath.fromCanonicalPath(
+            lease.workspaceRoot,
+            root.resolve(relative).normalize(),
         ),
     )
 }

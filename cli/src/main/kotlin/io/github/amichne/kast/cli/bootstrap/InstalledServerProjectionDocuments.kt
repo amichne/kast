@@ -33,11 +33,23 @@ internal data class InstalledServerToolDocument(
     val name: String,
     val description: String,
     val deferLoading: Boolean,
+    val approvalPolicy: InstalledServerApprovalPolicy,
     val cliUsage: String,
     val inputSchema: JsonElement,
     val outputSchema: JsonElement,
     val invocation: InstalledServerCliInvocationDocument,
 )
+
+@Serializable
+internal enum class InstalledServerApprovalPolicy(
+    val serialValue: String,
+) {
+    @kotlinx.serialization.SerialName("none")
+    NONE("none"),
+
+    @kotlinx.serialization.SerialName("explicit")
+    EXPLICIT("explicit"),
+}
 
 @Serializable
 internal data class InstalledServerCliInvocationDocument(
@@ -100,13 +112,15 @@ private enum class InstalledServerTool(
     private val inputSchema: JsonObject,
     private val command: List<String>,
     private val optionFields: List<ServerCliOptionField>,
+    private val approvalPolicy: InstalledServerApprovalPolicy = InstalledServerApprovalPolicy.NONE,
 ) {
     WORKSPACE_INSPECT(
         operation = CanonicalOperation.WORKSPACE_INSPECT,
-        toolName = "workspace_inspect",
-        toolDescription = "Inspect exact-root workspace readiness and canonical identity.",
+        toolName = "workspace_ensure_ready",
+        toolDescription =
+            "Admit the exact-root endpoint and report its readiness and canonical identity.",
         inputSchema = objectSchema(),
-        command = listOf("workspace", "inspect"),
+        command = listOf("start"),
         optionFields = emptyList(),
     ),
     TOPOLOGY_BUILD(
@@ -120,9 +134,9 @@ private enum class InstalledServerTool(
     ),
     SYMBOL_DISCOVER(
         operation = CanonicalOperation.SYMBOL_DISCOVER,
-        toolName = "symbol_discover",
+        toolName = "symbol_lookup",
         toolDescription =
-            "Discover bounded Kotlin symbol candidates through Kast's canonical operation.",
+            "Look up bounded Kotlin candidates by name or exact file and offset.",
         inputSchema = symbolDiscoverInputSchema(),
         command = listOf("symbol", "discover"),
         optionFields = listOf(
@@ -152,19 +166,36 @@ private enum class InstalledServerTool(
     ),
     SYMBOL_DESCRIBE(
         operation = CanonicalOperation.SYMBOL_DESCRIBE,
-        toolName = "symbol_describe",
-        toolDescription = "Describe one exact current-generation Kotlin symbol.",
+        toolName = "symbol_inspect",
+        toolDescription = "Inspect one exact current-generation Kotlin symbol.",
         inputSchema = objectSchema(
             ServerSchemaProperty("selector", textSchema("Exact symbol selector.")),
         ),
         command = listOf("symbol", "describe"),
         optionFields = listOf(ServerCliOptionField("selector", "--selector")),
     ),
+    RELATION_READ(
+        operation = CanonicalOperation.RELATION_READ,
+        toolName = "semantic_query",
+        toolDescription =
+            "Query one bounded compiler-grounded relation from an exact symbol selector.",
+        inputSchema = objectSchema(
+            ServerSchemaProperty("selector", textSchema("Exact starting selector.")),
+            ServerSchemaProperty("relation", relationSchema()),
+            ServerSchemaProperty("limit", countSchema("Maximum returned relations.")),
+        ),
+        command = listOf("relation", "read"),
+        optionFields = listOf(
+            ServerCliOptionField("selector", "--selector"),
+            ServerCliOptionField("relation", "--relation"),
+            ServerCliOptionField("limit", "--limit"),
+        ),
+    ),
     TRAVERSAL_RUN(
         operation = CanonicalOperation.TRAVERSAL_RUN,
-        toolName = "traversal_run",
+        toolName = "impact_analyze",
         toolDescription =
-            "Traverse one Kast semantic relation with explicit depth and result bounds.",
+            "Analyze bounded transitive impact over one durable semantic relation.",
         inputSchema = objectSchema(
             ServerSchemaProperty("selector", textSchema("Exact starting selector.")),
             ServerSchemaProperty("relation", relationSchema()),
@@ -183,6 +214,20 @@ private enum class InstalledServerTool(
             ServerCliOptionField("relation", "--relation"),
             ServerCliOptionField("maximumDepth", "--maximum-depth"),
             ServerCliOptionField("maximumResults", "--maximum-results"),
+        ),
+    ),
+    DIAGNOSTIC_CHECK(
+        operation = CanonicalOperation.DIAGNOSTIC_CHECK,
+        toolName = "diagnostic_check",
+        toolDescription = "Check bounded compiler diagnostics within one explicit scope.",
+        inputSchema = objectSchema(
+            ServerSchemaProperty("scope", workspaceFileSchema()),
+            ServerSchemaProperty("limit", countSchema("Maximum returned diagnostics.")),
+        ),
+        command = listOf("diagnostic", "check"),
+        optionFields = listOf(
+            ServerCliOptionField("scope", "--scope"),
+            ServerCliOptionField("limit", "--limit"),
         ),
     ),
     CHANGE_PLAN(
@@ -204,6 +249,7 @@ private enum class InstalledServerTool(
             ServerCliOptionField("target", "--target"),
             ServerCliOptionField("declaration", "--declaration"),
         ),
+        approvalPolicy = InstalledServerApprovalPolicy.EXPLICIT,
     ),
     CHANGE_APPLY(
         operation = CanonicalOperation.CHANGE_APPLY,
@@ -214,6 +260,7 @@ private enum class InstalledServerTool(
         ),
         command = listOf("change", "apply"),
         optionFields = listOf(ServerCliOptionField("plan", "--plan")),
+        approvalPolicy = InstalledServerApprovalPolicy.EXPLICIT,
     ),
     CHANGE_VERIFY(
         operation = CanonicalOperation.CHANGE_VERIFY,
@@ -224,6 +271,7 @@ private enum class InstalledServerTool(
         ),
         command = listOf("change", "verify"),
         optionFields = listOf(ServerCliOptionField("application", "--application")),
+        approvalPolicy = InstalledServerApprovalPolicy.EXPLICIT,
     ),
     CHANGE_RECOVER(
         operation = CanonicalOperation.CHANGE_RECOVER,
@@ -234,6 +282,7 @@ private enum class InstalledServerTool(
         ),
         command = listOf("change", "recover"),
         optionFields = listOf(ServerCliOptionField("plan", "--plan")),
+        approvalPolicy = InstalledServerApprovalPolicy.EXPLICIT,
     ),
     ;
 
@@ -242,6 +291,7 @@ private enum class InstalledServerTool(
         name = toolName,
         description = toolDescription,
         deferLoading = true,
+        approvalPolicy = approvalPolicy,
         cliUsage = cliUsage,
         inputSchema = inputSchema,
         outputSchema = installedServerOutputSchema(operation),
@@ -362,7 +412,7 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
     CanonicalOperation.TRAVERSAL_RUN -> proofQualifiedOutcomeSchema(
         operation,
         traversalQualificationSchema(),
-        ServerSchemaProperty("records", arraySchema(traversalRecordSchema())),
+        ServerSchemaProperty("graph", normalizedTraversalGraphSchema()),
     )
     CanonicalOperation.DIAGNOSTIC_CHECK -> proofQualifiedOutcomeSchema(
         operation,
@@ -761,9 +811,70 @@ private fun relationFactSchema(): JsonObject = objectSchema(
     ),
 )
 
-private fun traversalRecordSchema(): JsonObject = objectSchema(
+private fun normalizedTraversalGraphSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty(
+        "snapshot",
+        objectSchema(
+            ServerSchemaProperty(
+                "canonicalRoot",
+                textSchema("Exact canonical workspace root for the whole graph."),
+            ),
+            ServerSchemaProperty(
+                "generation",
+                integerSchema(0, description = "Exact semantic evidence generation."),
+            ),
+        ),
+    ),
+    ServerSchemaProperty("nodes", arraySchema(normalizedTraversalNodeSchema())),
+    ServerSchemaProperty("edges", arraySchema(normalizedTraversalEdgeSchema())),
+    ServerSchemaProperty("proofs", arraySchema(normalizedTraversalProofSchema())),
+)
+
+private fun normalizedTraversalNodeSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("id", integerSchema(0, description = "Graph-local node index.")),
+    ServerSchemaProperty("selector", textSchema("Exact generation-bound selector.")),
+    ServerSchemaProperty(
+        "kind",
+        enumSchema(
+            listOf("classlike", "constructor", "function", "property", "type-alias"),
+            "Compiler symbol kind.",
+        ),
+    ),
+    ServerSchemaProperty("name", textSchema("Source declaration name.")),
+    ServerSchemaProperty("qualifiedIdentity", textSchema("Compiler qualified identity.")),
+    ServerSchemaProperty("file", textSchema("Exact source file.")),
+    ServerSchemaProperty("range", sourceRangeSchema()),
+    ServerSchemaProperty("proof", integerSchema(0, description = "Graph-local proof index.")),
+)
+
+private fun normalizedTraversalEdgeSchema(): JsonObject = objectSchema(
     ServerSchemaProperty("depth", integerSchema(0, description = "Breadth-first hop depth.")),
-    ServerSchemaProperty("relation", relationFactSchema()),
+    ServerSchemaProperty("meaning", relationSchema()),
+    ServerSchemaProperty("source", integerSchema(0, description = "Source node index.")),
+    ServerSchemaProperty("target", integerSchema(0, description = "Target node index.")),
+    ServerSchemaProperty(
+        "occurrence",
+        objectSchema(
+            ServerSchemaProperty("file", textSchema("Exact occurrence file.")),
+            ServerSchemaProperty("range", sourceRangeSchema()),
+        ),
+    ),
+    ServerSchemaProperty(
+        "provenance",
+        enumSchema(
+            listOf("k2-authored-source", "k2-generated-source", "k2-project-library"),
+            "Compiler and source-root provenance.",
+        ),
+    ),
+    ServerSchemaProperty(
+        "coverage",
+        constantSchema("exact-compiler-confirmed", "Per-edge compiler coverage proof."),
+    ),
+)
+
+private fun normalizedTraversalProofSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("id", integerSchema(0, description = "Graph-local proof index.")),
+    ServerSchemaProperty("identity", compilerIdentitySchema()),
 )
 
 private fun diagnosticSchema(): JsonObject = objectSchema(

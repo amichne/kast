@@ -27,6 +27,7 @@
           "questions/workspace-readiness",
           "questions/declaration-identity",
           "questions/code-connections",
+          "questions/semantic-validity",
           "questions/safe-change"
         ]
       },

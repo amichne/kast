@@ -24,9 +24,14 @@ import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadResult
+import io.github.amichne.kast.protocol.contract.RelationFactCoverageDocument
+import io.github.amichne.kast.protocol.contract.RelationFactDocument
 import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
+import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
+import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
+import io.github.amichne.kast.protocol.contract.RelationProvenanceDocument
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
@@ -38,7 +43,9 @@ import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
+import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
 import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
+import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
 import io.github.amichne.kast.protocol.contract.WorkspaceStateDocument
@@ -48,9 +55,65 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 
 class GeneratedCliProjectionTest {
+    @Test
+    fun `traversal graph normalizes repeated nodes and retains compact proof references`() {
+        val source = symbol("exact:A", "A", "src/A.kt")
+        val target = symbol("exact:B", "B", "src/B.kt")
+        val fact = RelationFactDocument(
+            meaning = RelationKindDocument.CALLERS,
+            source = source,
+            target = target,
+            occurrence = RelationOccurrenceDocument(text("src/B.kt"), range(4, 8)),
+            provenance = RelationProvenanceDocument.K2_AUTHORED_SOURCE,
+            coverage = RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
+        )
+
+        val records = listOf(
+            TraversalRecordDocument(depth(1), fact),
+            TraversalRecordDocument(depth(2), fact),
+        )
+        val graph = normalizeTraversalGraph(
+            text("/workspace"),
+            EvidenceGeneration.parse(1).refined(),
+            records,
+        )
+
+        assertEquals(2, graph.nodes.size)
+        assertEquals(2, graph.edges.size)
+        assertEquals(2, graph.proofs.size)
+        assertEquals(listOf(0, 0), graph.edges.map { it.source.value })
+        assertEquals(listOf(1, 1), graph.edges.map { it.target.value })
+        assertEquals(
+            source.compilerEvidence.identity.value,
+            graph.proofs[graph.nodes.first().proof.value].identity,
+        )
+        val projected = traversalRunCliProjector.project(
+            OperationOutcome.Complete(
+                evidence(
+                    CanonicalOperation.TRAVERSAL_RUN,
+                    TraversalRunResult(text("/workspace"), bounded(records)),
+                ),
+            ),
+        ) as ProjectedCliOutcome.Complete
+        val document = Json.parseToJsonElement(projected.document.value).jsonObject
+        val projectedGraph = document.getValue("graph").jsonObject
+        val snapshot = projectedGraph.getValue("snapshot").jsonObject
+        assertTrue("records" !in document)
+        assertEquals("/workspace", snapshot.getValue("canonicalRoot").toString().trim('"'))
+        assertEquals("1", snapshot.getValue("generation").toString())
+        assertEquals(2, projectedGraph.getValue("nodes").jsonArray.size)
+        assertEquals(2, projectedGraph.getValue("edges").jsonArray.size)
+        assertEquals(2, projectedGraph.getValue("proofs").jsonArray.size)
+        assertTrue(
+            projectedGraph.getValue("nodes").jsonArray
+                .none { "compilerEvidence" in it.jsonObject },
+        )
+    }
+
     @Test
     fun `generated discovery serializer preserves every closed item variant`() {
         val result = SymbolDiscoverResult(
@@ -216,7 +279,10 @@ class GeneratedCliProjectionTest {
         ) as ProjectedCliOutcome.Qualified
         val traversal = traversalRunCliProjector.project(
             OperationOutcome.Qualified(
-                evidence(CanonicalOperation.TRAVERSAL_RUN, TraversalRunResult(bounded(emptyList()))),
+                evidence(
+                    CanonicalOperation.TRAVERSAL_RUN,
+                    TraversalRunResult(text("/workspace"), bounded(emptyList())),
+                ),
                 traversalQualification(),
             ),
         ) as ProjectedCliOutcome.Qualified
@@ -272,8 +338,24 @@ class GeneratedCliProjectionTest {
     private fun text(raw: String): ProtocolText = ProtocolText.parse(raw).refined()
 
     private fun offset(raw: Int): ProtocolOffset = ProtocolOffset.parse(raw).refined()
+    private fun depth(raw: Int): TraversalDepthDocument =
+        TraversalDepthDocument.parse(raw).refined()
+
     private fun range(start: Int, end: Int): SourceRangeDocument =
         SourceRangeDocument.create(offset(start), offset(end)).refined()
+
+    private fun symbol(selector: String, name: String, file: String): SymbolDocument {
+        val signature = CompilerSignatureDocument.ClassLike(text("sample.$name"))
+        return SymbolDocument.create(
+            selector = text(selector),
+            kind = SymbolKindDocument.CLASSLIKE,
+            name = text(name),
+            qualifiedIdentity = SymbolQualifiedIdentityDocument.Available(text("sample.$name")),
+            file = text(file),
+            range = range(0, name.length),
+            compilerEvidence = CompilerSymbolEvidenceDocument.fromSignature(signature).refined(),
+        ).refined()
+    }
 
     private fun <Value> bounded(values: List<Value>): BoundedProtocolList<Value> =
         BoundedProtocolList.create(values).refined()
