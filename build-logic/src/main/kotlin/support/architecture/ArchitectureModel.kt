@@ -92,6 +92,7 @@ enum class ModuleId(val projectPath: String) {
     EVIDENCE_CONTRACT(":evidence:contract"),
     EVIDENCE_SQLITE(":evidence:sqlite"),
     RUNTIME_SERVER(":runtime:server"),
+    RUNTIME_TELEMETRY(":runtime:telemetry"),
     RUNTIME_COMPOSITION(":runtime:composition"),
     RUNTIME_IDE_READ(":runtime:ide-read"),
     RUNTIME_IDE_HOST(":runtime:ide-host"),

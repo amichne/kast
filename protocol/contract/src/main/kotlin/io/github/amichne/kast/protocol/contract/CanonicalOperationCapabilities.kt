@@ -4,6 +4,8 @@ import io.github.amichne.kast.kernel.CapabilityMarker
 
 interface WorkspaceInspectCapability : CapabilityMarker
 
+interface IndexSyncCapability : CapabilityMarker
+
 interface TopologyBuildCapability : CapabilityMarker
 
 interface SymbolDiscoverCapability : CapabilityMarker

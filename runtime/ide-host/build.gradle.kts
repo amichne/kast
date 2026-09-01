@@ -8,6 +8,7 @@ dependencies {
 
     implementation(project(":runtime:ide-read"))
     implementation(project(":runtime:server"))
+    implementation(project(":runtime:telemetry"))
     implementation(project(":workspace:contract"))
     implementation(project(":workspace:service"))
     implementation(project(":topology:contract"))

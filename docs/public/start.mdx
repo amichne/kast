@@ -53,16 +53,17 @@ repository root and uses its compiler-backed evidence.
     kast --schema
     ```
 
-    `kast --schema` lists all twelve canonical operations, command shapes, wire
+    `kast --schema` lists all thirteen canonical operations, command shapes, wire
     schema, and the installed `serverProjection`. That projection owns the
     server-visible tool names, descriptions, input and output JSON Schemas,
     deferred-loading policy, explicit approval policy, and exact field-to-CLI
     bindings for every public hosted operation. Read workflows appear as
     `workspace_ensure_ready`, `symbol_lookup`, `symbol_inspect`,
     `semantic_query`, `impact_analyze`, and `diagnostic_check`; every
-    `change_*` tool requires explicit approval. The current hosted endpoint publishes twelve operations:
-    workspace inspection, topology build, three symbol operations, relation reads,
-    traversal, diagnostics, and four AddDeclaration lifecycle operations.
+    `change_*` tool requires explicit approval. The current hosted endpoint
+    publishes thirteen operations: workspace inspection, index synchronization,
+    topology build, three symbol operations, relation reads, traversal,
+    diagnostics, and four AddDeclaration lifecycle operations.
   </Step>
 
   <Step title="Start the exact repository">
@@ -72,12 +73,14 @@ repository root and uses its compiler-backed evidence.
 
     ```console
     cd /path/to/kotlin-repository
+    kast product inspect
     kast start
     ```
 
     Kast admits the compatible exact-root endpoint published by that Project.
-    It never opens a Project, imports Gradle, refreshes VFS, or starts an
-    isolated indexing process.
+    Startup never opens a Project, imports Gradle, refreshes VFS, or starts an
+    isolated indexing process. Use the explicit `kast index sync` operation
+    when files changed outside IntelliJ and its view is stale.
   </Step>
 
   <Step title="Inspect the first answer">
@@ -120,7 +123,7 @@ repository root and uses its compiler-backed evidence.
     base requires an explicit semantic version.
 
     ```shell
-    release_version=0.29.1
+    release_version="${KAST_RELEASE_VERSION:?set KAST_RELEASE_VERSION to an unreleased semantic version}"
     ./gradlew -Pversion="$release_version" assembleIdeHostedRelease
     bash install.sh install --purge-existing \
       --version "$release_version" \
@@ -129,6 +132,24 @@ repository root and uses its compiler-backed evidence.
 
     `--release-base-url` also accepts an HTTPS mirror. It does not bypass
     checksums, archive validation, product smoke checks, or plugin matching.
+  </Accordion>
+
+  <Accordion title="Find the default OpenTelemetry traces" icon="activity">
+    Every ready endpoint asynchronously forwards topology and traversal spans
+    into a private folder derived from its exact socket namespace. Inspect the
+    authoritative destination instead of reconstructing it:
+
+    ```console
+    kast product inspect
+    ```
+
+    The ready endpoint document reports forwarding state,
+    `otlp-json-lines-v1`, `directoryPath`, and an epoch-specific
+    `traceFilePath`. The directory uses mode `0700`, trace files use mode
+    `0600`, and the exported allowlist excludes repository paths, selectors,
+    source text, exception messages, and stack traces. Kast leaves the sibling
+    trace folder in place when socket state retires so operators can inspect it;
+    apply the host's retention policy after the endpoint stops.
   </Accordion>
 
   <Accordion title="Uninstall Kast" icon="trash-2">

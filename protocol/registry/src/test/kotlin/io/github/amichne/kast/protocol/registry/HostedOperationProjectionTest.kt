@@ -11,6 +11,7 @@ class HostedOperationProjectionTest {
         assertEquals(
             listOf(
                 CanonicalOperation.WORKSPACE_INSPECT,
+                CanonicalOperation.INDEX_SYNC,
                 CanonicalOperation.TOPOLOGY_BUILD,
                 CanonicalOperation.SYMBOL_DISCOVER,
                 CanonicalOperation.SYMBOL_RESOLVE,

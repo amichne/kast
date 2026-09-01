@@ -38,6 +38,11 @@ import io.github.amichne.kast.protocol.contract.OperationRejection
 import io.github.amichne.kast.protocol.contract.OperationRequest
 import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.OperationTypeBinding
+import io.github.amichne.kast.protocol.contract.IndexSyncCapability
+import io.github.amichne.kast.protocol.contract.IndexSyncQualification
+import io.github.amichne.kast.protocol.contract.IndexSyncRejection
+import io.github.amichne.kast.protocol.contract.IndexSyncRequest
+import io.github.amichne.kast.protocol.contract.IndexSyncResult
 import io.github.amichne.kast.protocol.contract.RelationReadCapability
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
@@ -76,7 +81,7 @@ import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
 import kotlin.reflect.KClass
 
-/** Sole production metadata catalog for the twelve canonical public operations. */
+/** Sole production metadata catalog for the thirteen canonical public operations. */
 object CanonicalOperationDefinitions {
     val workspaceInspect = definition(
         CanonicalOperation.WORKSPACE_INSPECT,
@@ -90,6 +95,21 @@ object CanonicalOperationDefinitions {
         OperationCost.HOST_NEUTRAL,
         OperationScope.WORKSPACE,
         CompletenessPolicy.QUALIFIED_ALLOWED,
+        HostedExposure.PUBLIC,
+    )
+
+    val indexSync = definition(
+        CanonicalOperation.INDEX_SYNC,
+        IndexSyncRequest::class,
+        IndexSyncResult::class,
+        IndexSyncQualification::class,
+        IndexSyncRejection::class,
+        IndexSyncCapability::class,
+        OperationLane.REGISTERED_LONG_WORK,
+        OperationEffect.INTELLIJ_READ_AND_PERSISTENCE_WRITE,
+        OperationCost.PHYSICAL_EFFECT,
+        OperationScope.WORKSPACE,
+        CompletenessPolicy.COMPLETE_REQUIRED,
         HostedExposure.PUBLIC,
     )
 
@@ -262,6 +282,7 @@ object CanonicalOperationDefinitions {
 
     val all: List<OperationDefinition<*, *, *, *, *>> = listOf(
         workspaceInspect,
+        indexSync,
         topologyBuild,
         symbolDiscover,
         symbolResolve,

@@ -123,6 +123,15 @@ private enum class InstalledServerTool(
         command = listOf("start"),
         optionFields = emptyList(),
     ),
+    INDEX_SYNC(
+        operation = CanonicalOperation.INDEX_SYNC,
+        toolName = "index_sync",
+        toolDescription =
+            "Refresh admitted source roots, wait for indexing, and publish semantic evidence.",
+        inputSchema = objectSchema(),
+        command = listOf("index", "sync"),
+        optionFields = emptyList(),
+    ),
     TOPOLOGY_BUILD(
         operation = CanonicalOperation.TOPOLOGY_BUILD,
         toolName = "topology_build",
@@ -389,6 +398,13 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
                 listOf("absent", "starting", "reconciling", "ready", "blocked", "stopping"),
                 "Workspace runtime state.",
             ),
+        ),
+    )
+    CanonicalOperation.INDEX_SYNC -> outcomeSchema(
+        operation,
+        ServerSchemaProperty(
+            "state",
+            enumSchema(listOf("synchronized", "unchanged"), "Index synchronization result."),
         ),
     )
     CanonicalOperation.TOPOLOGY_BUILD -> topologyBuildDocumentSchema(operation)

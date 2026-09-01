@@ -41,6 +41,9 @@ import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
+import io.github.amichne.kast.protocol.contract.IndexSyncQualification
+import io.github.amichne.kast.protocol.contract.IndexSyncRejection
+import io.github.amichne.kast.protocol.contract.IndexSyncResult
 import kotlinx.serialization.Serializable
 
 internal val workspaceInspectCliProjector = CliOutcomeProjector<
@@ -48,6 +51,12 @@ internal val workspaceInspectCliProjector = CliOutcomeProjector<
     WorkspaceInspectQualification,
     WorkspaceInspectRejection,
     > { outcome -> CanonicalReadCliDocuments.projectWorkspace(outcome) }
+
+internal val indexSyncCliProjector = CliOutcomeProjector<
+    IndexSyncResult,
+    IndexSyncQualification,
+    IndexSyncRejection,
+    > { outcome -> CanonicalIndexCliDocuments.project(outcome) }
 
 internal val symbolDiscoverCliProjector = CliOutcomeProjector<
     SymbolDiscoverResult,

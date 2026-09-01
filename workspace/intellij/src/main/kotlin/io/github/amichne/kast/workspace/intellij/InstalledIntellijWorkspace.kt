@@ -10,6 +10,9 @@ import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ex.ProjectManagerEx
 import com.intellij.openapi.startup.StartupManager
+import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefresh
+import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefreshFailure
+import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefreshOperations
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
 import org.jetbrains.plugins.gradle.settings.GradleSystemSettings
 import org.jetbrains.plugins.gradle.util.GradleConstants
@@ -81,6 +84,27 @@ class InstalledIntellijWorkspaceModel internal constructor(
             -> io.github.amichne.kast.kernel.Refinement.Rejected(
                 InstalledGradleModelCaptureFailure.INDEXING_UNAVAILABLE,
             )
+    }
+
+    /** Refreshes the exact admitted roots, then proves installed indexing has become quiescent. */
+    fun awaitIndexReadinessAfter(
+        refresh: WorkspaceIndexRefreshOperations,
+    ): WorkspaceIndexRefreshOperations = WorkspaceIndexRefreshOperations { workspace ->
+        when (val physical = refresh.refresh(workspace)) {
+            is WorkspaceIndexRefresh.Rejected -> physical
+            WorkspaceIndexRefresh.Refreshed -> when (awaitInstalledIndexingQuiescence(project)) {
+                InstalledIndexingReadiness.READY -> WorkspaceIndexRefresh.Refreshed
+                InstalledIndexingReadiness.INTERRUPTED -> WorkspaceIndexRefresh.Rejected(
+                    WorkspaceIndexRefreshFailure.INDEXING_INTERRUPTED,
+                )
+                InstalledIndexingReadiness.TIMED_OUT -> WorkspaceIndexRefresh.Rejected(
+                    WorkspaceIndexRefreshFailure.INDEXING_TIMED_OUT,
+                )
+                InstalledIndexingReadiness.FAILED -> WorkspaceIndexRefresh.Rejected(
+                    WorkspaceIndexRefreshFailure.INDEXING_FAILED,
+                )
+            }
+        }
     }
 }
 

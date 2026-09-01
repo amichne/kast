@@ -29,6 +29,7 @@ views {
     source.runtime -> source.diagnostic "binds compiler diagnostics"
     source.runtime -> source.change "binds plan, apply, verify, and recovery"
     source.runtime -> source.evidence "binds the sole persistence adapter"
+    source.runtime -> source.telemetry "binds local trace forwarding"
     source.workspace -> source.kernel "retains host-neutral evidence"
     source.symbol -> source.kernel "retains exact selectors"
     source.relation -> source.kernel "retains bounded outcomes"
@@ -40,6 +41,8 @@ views {
     source.change -> source.kernel "retains proof transitions"
     source.evidence -> source.kernel "stores host-neutral evidence"
     source.evidence -> source.topology "publishes topology snapshots"
+    source.telemetry -> source.protocol "derives exact socket output identity"
+    source.telemetry -> source.kernel "implements host-neutral trace ports"
     source.protocol -> source.kernel "binds permanent operation identities"
   }
 }

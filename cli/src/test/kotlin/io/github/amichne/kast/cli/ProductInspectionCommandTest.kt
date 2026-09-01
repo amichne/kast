@@ -17,6 +17,42 @@ import java.nio.file.Path
 
 class ProductInspectionCommandTest {
     @Test
+    fun `ready product inspection reports the active per-socket telemetry folder`() {
+        val fixture = ideEndpointFixture()
+        val inspector = InstalledProductInspector(
+            control = fixture.policy.supportedCompatibility,
+            rootDiscovery = CanonicalRootDiscoverer {
+                CanonicalRootDiscovery.Discovered(fixture.root)
+            },
+            endpointAdmitter = IdeEndpointAdmitter(
+                fixture.socketDirectory,
+                fixture.policy,
+                IdeEndpointDescriptorReader { IdeEndpointDescriptorRead.Complete(fixture.document) },
+                IdeEndpointProcessProbe { IdeEndpointProcessObservation.Alive },
+                IdeEndpointReachabilityProbe { IdeEndpointReachability.Reachable },
+            ),
+        )
+
+        val exit = cli(inspector).execute(listOf("product", "inspect"), Path.of("/unobserved"))
+
+        val output = Json.parseToJsonElement((exit as CliExit.Complete).document.value).jsonObject
+        val telemetry = output.getValue("workspace").jsonObject
+            .getValue("endpoint").jsonObject
+            .getValue("telemetry").jsonObject
+        val expected = fixture.location.telemetryOutput(fixture.runtimeEpoch())
+        assertEquals("forwarding", telemetry.getValue("state").jsonPrimitive.content)
+        assertEquals("otlp-json-lines-v1", telemetry.getValue("format").jsonPrimitive.content)
+        assertEquals(
+            expected.directoryPath.value,
+            telemetry.getValue("directoryPath").jsonPrimitive.content,
+        )
+        assertEquals(
+            expected.traceFilePath.value,
+            telemetry.getValue("traceFilePath").jsonPrimitive.content,
+        )
+    }
+
+    @Test
     fun `product inspection reports an incompatible endpoint without runtime admission`() {
         val fixture = ideEndpointFixture()
         var semanticBoundaryTouched = false
@@ -37,27 +73,9 @@ class ProductInspectionCommandTest {
                 IdeEndpointReachabilityProbe { IdeEndpointReachability.Reachable },
             ),
         )
-        val cli = KastCli(
-            commandGraphFactory = commandGraphFactory(),
-            rootDiscovery = CanonicalRootDiscoverer {
-                semanticBoundaryTouched = true
-                error("semantic root discovery must not run")
-            },
-            endpointLocator = RuntimeEndpointLocator {
-                semanticBoundaryTouched = true
-                error("runtime endpoint lookup must not run")
-            },
-            runtimeDemander = RuntimeDemander { _, _ ->
-                semanticBoundaryTouched = true
-                error("runtime demand must not run")
-            },
-            wireClient = WireClient { _, _ ->
-                semanticBoundaryTouched = true
-                error("wire exchange must not run")
-            },
-            localMetadata = localMetadata(),
-            lifecycle = ExactRootRuntimeLifecycle(),
-            productInspector = inspector,
+        val cli = cli(
+            inspector,
+            semanticBoundaryTouched = { semanticBoundaryTouched = true },
         )
 
         val parsed = commandGraphFactory().parse(listOf("product", "inspect"))
@@ -86,6 +104,32 @@ class ProductInspectionCommandTest {
         assertEquals("1.2.3", mismatch.getValue("expected").jsonPrimitive.content)
         assertEquals("1.2.4", mismatch.getValue("observed").jsonPrimitive.content)
     }
+
+    private fun cli(
+        inspector: ProductInspector,
+        semanticBoundaryTouched: () -> Unit = {},
+    ) = KastCli(
+        commandGraphFactory = commandGraphFactory(),
+        rootDiscovery = CanonicalRootDiscoverer {
+            semanticBoundaryTouched()
+            error("semantic root discovery must not run")
+        },
+        endpointLocator = RuntimeEndpointLocator {
+            semanticBoundaryTouched()
+            error("runtime endpoint lookup must not run")
+        },
+        runtimeDemander = RuntimeDemander { _, _ ->
+            semanticBoundaryTouched()
+            error("runtime demand must not run")
+        },
+        wireClient = WireClient { _, _ ->
+            semanticBoundaryTouched()
+            error("wire exchange must not run")
+        },
+        localMetadata = localMetadata(),
+        lifecycle = ExactRootRuntimeLifecycle(),
+        productInspector = inspector,
+    )
 
     private fun commandGraphFactory(): CliCommandGraphFactory = when (
         val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())

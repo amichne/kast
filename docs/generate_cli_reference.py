@@ -30,6 +30,7 @@ class OperationMetadata:
 
 OPERATION_DESCRIPTIONS = {
     "workspace.inspect": "Report exact-root readiness and workspace identity.",
+    "index.sync": "Refresh admitted source roots, await indexing, and publish current semantic evidence.",
     "topology.build": "Build or reuse the durable graph and return its generation and digest.",
     "symbol.discover": "Find bounded candidates by name, location, structure, or text.",
     "symbol.resolve": "Refine one candidate into an exact symbol selector.",
@@ -56,8 +57,8 @@ LIFECYCLE_DESCRIPTIONS = {
 
 LOCAL_COMMAND_DESCRIPTIONS = {
     "product inspect": (
-        "Report installed control identity plus direct root and IDE endpoint evidence without "
-        "requiring compatible runtime admission."
+        "Report installed control identity plus direct root, IDE endpoint, and default trace "
+        "destination evidence without requiring compatible runtime admission."
     ),
 }
 
@@ -323,6 +324,15 @@ not require successful hosted runtime admission.
 | Command | Result |
 | --- | --- |
 {local_command_rows}
+
+## Default local traces
+
+Every ready endpoint forwards topology and traversal spans asynchronously to a
+private folder derived from its exact socket namespace. `kast product inspect`
+reports the `otlp-json-lines-v1` format, forwarding state, `directoryPath`, and
+epoch-specific `traceFilePath`. The directory uses mode `0700`; trace files use
+mode `0600`. Paths, selectors, source text, exception messages, and stack traces
+are excluded from the allowlisted span fields.
 
 ## Process-local flags
 

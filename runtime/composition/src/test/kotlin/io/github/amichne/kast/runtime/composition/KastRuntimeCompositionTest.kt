@@ -1,7 +1,7 @@
 package io.github.amichne.kast.runtime.composition
 
 import io.github.amichne.kast.change.apply.AddDeclarationApplyOperations
-import io.github.amichne.kast.change.apply.AddDeclarationApplyService
+import io.github.amichne.kast.change.apply.SuccessfulApplyIndexSynchronization
 import io.github.amichne.kast.change.apply.AddDeclarationSourceObserver
 import io.github.amichne.kast.change.apply.AddDeclarationSourceRollback
 import io.github.amichne.kast.change.apply.AddDeclarationSourceWriter
@@ -49,6 +49,10 @@ import io.github.amichne.kast.protocol.contract.OperationQualification
 import io.github.amichne.kast.protocol.contract.OperationRejection
 import io.github.amichne.kast.protocol.contract.OperationRequest
 import io.github.amichne.kast.protocol.contract.OperationResult
+import io.github.amichne.kast.protocol.contract.IndexSyncQualification
+import io.github.amichne.kast.protocol.contract.IndexSyncRejection
+import io.github.amichne.kast.protocol.contract.IndexSyncRequest
+import io.github.amichne.kast.protocol.contract.IndexSyncResult
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
@@ -105,9 +109,12 @@ import io.github.amichne.kast.workspace.contract.WorkspaceCandidate
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidateCapture
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidateReconciliation
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
+import io.github.amichne.kast.workspace.contract.IndexSynchronizationOperations
+import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefresh
 import io.github.amichne.kast.workspace.contract.WorkspaceReconciliationPort
 import io.github.amichne.kast.workspace.contract.WorkspaceSignal
 import io.github.amichne.kast.workspace.service.WorkspacePublicationCoordinator
+import io.github.amichne.kast.workspace.service.WorkspaceIndexSynchronizationService
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
@@ -124,6 +131,7 @@ class KastRuntimeCompositionTest {
                 "WorkspaceRuntimePorts",
                 "SemanticRuntimePorts",
                 "TopologyRuntimePorts",
+                "IndexRuntimePorts",
                 "ChangeRuntimePorts",
                 "KastOperationHandlerFactory",
             ),
@@ -138,12 +146,14 @@ class KastRuntimeCompositionTest {
             workspacePorts(),
             semanticPorts(),
             topologyPorts(),
+            IndexRuntimePorts({ WorkspaceIndexRefresh.Refreshed }, { command -> command.run() }),
             changePorts(),
             handlers,
         ).created()
         val operations = composition.operations
 
         assertSame(operations.workspaceInspect, handlers.observed.getValue(CanonicalOperation.WORKSPACE_INSPECT))
+        assertSame(operations.indexSync, handlers.observed.getValue(CanonicalOperation.INDEX_SYNC))
         assertSame(operations.topologyBuild, handlers.observed.getValue(CanonicalOperation.TOPOLOGY_BUILD))
         assertSame(operations.symbolDiscover, handlers.observed.getValue(CanonicalOperation.SYMBOL_DISCOVER))
         assertSame(operations.symbolResolve, handlers.observed.getValue(CanonicalOperation.SYMBOL_RESOLVE))
@@ -159,10 +169,11 @@ class KastRuntimeCompositionTest {
         assertSame(operations.symbolResolve, operations.symbolDescribe)
 
         assertSame(WorkspacePublicationCoordinator::class.java, operations.workspaceInspect.javaClass)
+        assertSame(WorkspaceIndexSynchronizationService::class.java, operations.indexSync.javaClass)
         assertSame(SymbolDiscoveryService::class.java, operations.symbolDiscover.javaClass)
         assertSame(SymbolExactService::class.java, operations.symbolResolve.javaClass)
         assertSame(RelationService::class.java, operations.relationRead.javaClass)
-        assertSame(AddDeclarationApplyService::class.java, operations.changeApply.javaClass)
+        assertSame(SuccessfulApplyIndexSynchronization::class.java, operations.changeApply.javaClass)
         assertSame(VerifiedMutationService::class.java, operations.changeVerify.javaClass)
     }
 
@@ -179,6 +190,13 @@ class KastRuntimeCompositionTest {
                 CanonicalOperation.WORKSPACE_INSPECT,
                 operations,
                 WorkspaceInspectRejection.RUNTIME_BLOCKED,
+            )
+
+        override fun indexSync(operations: IndexSynchronizationOperations) =
+            record<IndexSyncRequest, IndexSyncResult, IndexSyncQualification, IndexSyncRejection>(
+                CanonicalOperation.INDEX_SYNC,
+                operations,
+                IndexSyncRejection.WORKSPACE_NOT_READY,
             )
 
         override fun topologyBuild(operations: TopologyBuildOperations) =

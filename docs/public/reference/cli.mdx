@@ -33,12 +33,13 @@ the executable's version or from the human-readable command strings.
 
 Run semantic commands from the repository root. Each command emits one JSON
 document on standard output. A rejected command emits one diagnostic document
-on standard error. The installed IDE plugin publishes the 12 operations marked
+on standard error. The installed IDE plugin publishes the 13 operations marked
 `public` by the generated operation registry:
 
 | Operation | Command shape | Result role |
 | --- | --- | --- |
 | `workspace.inspect` | `kast workspace inspect` | Report exact-root readiness and workspace identity. |
+| `index.sync` | `kast index sync` | Refresh admitted source roots, await indexing, and publish current semantic evidence. |
 | `topology.build` | `kast topology build` | Build or reuse the durable graph and return its generation and digest. |
 | `symbol.discover` | `kast symbol discover --mode <name\|location\|structure\|text> ... --limit <1..1000>` | Find bounded candidates by name, location, structure, or text. |
 | `symbol.resolve` | `kast symbol resolve --candidate <candidate-selector>` | Refine one candidate into an exact symbol selector. |
@@ -72,7 +73,16 @@ not require successful hosted runtime admission.
 
 | Command | Result |
 | --- | --- |
-| `kast product inspect` | Report installed control identity plus direct root and IDE endpoint evidence without requiring compatible runtime admission. |
+| `kast product inspect` | Report installed control identity plus direct root, IDE endpoint, and default trace destination evidence without requiring compatible runtime admission. |
+
+## Default local traces
+
+Every ready endpoint forwards topology and traversal spans asynchronously to a
+private folder derived from its exact socket namespace. `kast product inspect`
+reports the `otlp-json-lines-v1` format, forwarding state, `directoryPath`, and
+epoch-specific `traceFilePath`. The directory uses mode `0700`; trace files use
+mode `0600`. Paths, selectors, source text, exception messages, and stack traces
+are excluded from the allowlisted span fields.
 
 ## Process-local flags
 

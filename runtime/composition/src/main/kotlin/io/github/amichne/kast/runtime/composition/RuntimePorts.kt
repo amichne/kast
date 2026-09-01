@@ -15,7 +15,9 @@ import io.github.amichne.kast.symbol.contract.SymbolExactCompilerPort
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumerator
 import io.github.amichne.kast.topology.contract.TopologyFileExtractor
 import io.github.amichne.kast.topology.contract.TopologySnapshotStore
+import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefreshOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceReconciliationPort
+import java.util.concurrent.Executor
 
 /** Narrow workspace effects from which composition constructs the publication coordinator. */
 data class WorkspaceRuntimePorts(
@@ -36,6 +38,12 @@ data class TopologyRuntimePorts(
     val candidates: TopologyCandidateEnumerator,
     val extractor: TopologyFileExtractor,
     val snapshots: TopologySnapshotStore,
+)
+
+/** Physical index refresh and asynchronous execution effects owned by runtime composition. */
+data class IndexRuntimePorts(
+    val refresh: WorkspaceIndexRefreshOperations,
+    val asynchronousExecutor: Executor,
 )
 
 /** Narrow durable, physical, and resulting-proof effects for the closed change workflow. */

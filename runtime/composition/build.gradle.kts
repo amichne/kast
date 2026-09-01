@@ -34,4 +34,5 @@ dependencies {
     implementation(project(":evidence:contract"))
     implementation(project(":evidence:sqlite"))
     implementation(project(":runtime:server"))
+    implementation(project(":runtime:telemetry"))
 }

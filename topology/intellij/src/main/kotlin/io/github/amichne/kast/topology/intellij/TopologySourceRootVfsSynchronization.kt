@@ -10,6 +10,9 @@ import io.github.amichne.kast.topology.contract.TopologyExtractionRequest
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.SourceRoot
+import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefresh
+import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefreshFailure
+import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefreshOperations
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
 
@@ -99,6 +102,30 @@ fun intellijSynchronizedTopologyCandidateEnumerator(): TopologyCandidateEnumerat
             InstalledTopologySourceRootVfsSynchronizer,
             AdmittedSourceRootEnumerator(),
         ).enumerate(workspace)
+    }
+
+/**
+ * Public physical refresh capability shared by manual index synchronization and topology reads.
+ * The implementation deliberately delegates to the sole admitted-root VFS authority above.
+ */
+fun intellijSourceRootIndexRefresh(): WorkspaceIndexRefreshOperations =
+    WorkspaceIndexRefreshOperations { workspace ->
+        when (
+            val synchronization = InstalledTopologySourceRootVfsSynchronizer.synchronize(
+                workspace,
+                workspace.sourceRoots,
+            )
+        ) {
+            TopologySourceRootVfsSynchronization.Synchronized -> WorkspaceIndexRefresh.Refreshed
+            is TopologySourceRootVfsSynchronization.Rejected -> WorkspaceIndexRefresh.Rejected(
+                when (synchronization.failure) {
+                    TopologySourceRootVfsSynchronizationFailure.INVALID_SOURCE_ROOT_SCOPE ->
+                        WorkspaceIndexRefreshFailure.INVALID_SOURCE_ROOT_SCOPE
+                    TopologySourceRootVfsSynchronizationFailure.REFRESH_UNAVAILABLE ->
+                        WorkspaceIndexRefreshFailure.REFRESH_UNAVAILABLE
+                },
+            )
+        }
     }
 
 /** One retry is permitted only when live VFS bytes disagree with admitted disk evidence. */

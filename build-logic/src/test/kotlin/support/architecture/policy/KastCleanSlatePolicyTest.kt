@@ -46,6 +46,7 @@ class KastCleanSlatePolicyTest {
                 ":evidence:contract",
                 ":evidence:sqlite",
                 ":runtime:server",
+                ":runtime:telemetry",
                 ":runtime:composition",
                 ":runtime:ide-read",
                 ":runtime:ide-host",
@@ -112,6 +113,7 @@ class KastCleanSlatePolicyTest {
                 ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                     ModuleId.DISTRIBUTION_MANAGED,
                     ModuleId.EVIDENCE_SQLITE,
+                    ModuleId.RUNTIME_TELEMETRY,
                     ModuleId.INDEXER,
                 ),
                 ForbiddenEffect.SOURCE_FILESYSTEM_WRITE to emptySet(),

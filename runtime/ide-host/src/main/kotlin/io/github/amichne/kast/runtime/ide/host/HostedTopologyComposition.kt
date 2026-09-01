@@ -6,6 +6,14 @@ import io.github.amichne.kast.change.verify.ResultingGenerationPublication
 import io.github.amichne.kast.change.verify.ResultingGenerationPublicationRejection
 import io.github.amichne.kast.change.verify.ResultingGenerationPublisher
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.KastObservability
+import io.github.amichne.kast.kernel.KastSpanCompletion
+import io.github.amichne.kast.kernel.KastSpanCount
+import io.github.amichne.kast.kernel.KastSpanFailure
+import io.github.amichne.kast.kernel.KastSpanMeasurement
+import io.github.amichne.kast.kernel.KastSpanName
+import io.github.amichne.kast.kernel.KastSpanObservation
+import io.github.amichne.kast.kernel.KastTraceSpan
 import io.github.amichne.kast.relation.contract.RelationReadRejection
 import io.github.amichne.kast.relation.service.RelationService
 import io.github.amichne.kast.topology.build.TopologyBuildService
@@ -30,6 +38,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspacePublicationSerialization
 import io.github.amichne.kast.workspace.contract.WorkspacePublicationBlocker
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
+import io.github.amichne.kast.workspace.contract.WorkspacePublicationRun
 import io.github.amichne.kast.workspace.service.ResultingWorkspacePublication
 
 /** One exact host-supplied attempt to move an admitted workspace publication forward. */
@@ -206,6 +215,33 @@ class HostedWorkspaceOperations(
             }
         }
 
+    /** Publishes source evidence observed after a physical refresh of the exact current lease. */
+    fun publishAfterIndexRefresh(prior: PublishedWorkspace): WorkspacePublicationRun =
+        serialization.serialized {
+            val current = state as? WorkspaceRuntimeState.Ready
+                ?: return@serialized WorkspacePublicationRun.Invalidated
+            if (current.workspace.readLease != prior.readLease) {
+                return@serialized WorkspacePublicationRun.Invalidated
+            }
+            when (val refreshed = refresh(HostedWorkspaceTransitionCause.OBSERVED_SOURCE_EVENT)) {
+                is WorkspaceRuntimeState.Ready -> when {
+                    refreshed.workspace.readLease == prior.readLease &&
+                        refreshed.workspace.sourceState == prior.sourceState ->
+                        WorkspacePublicationRun.Unchanged(refreshed.workspace)
+                    refreshed.workspace.root == prior.root &&
+                        refreshed.workspace.generation.value > prior.generation.value ->
+                        WorkspacePublicationRun.Published(refreshed.workspace)
+                    else -> WorkspacePublicationRun.Invalidated
+                }
+                is WorkspaceRuntimeState.Blocked -> WorkspacePublicationRun.Blocked(refreshed.blocker)
+                WorkspaceRuntimeState.Absent,
+                WorkspaceRuntimeState.Reconciling,
+                WorkspaceRuntimeState.Starting,
+                WorkspaceRuntimeState.Stopping,
+                -> WorkspacePublicationRun.Invalidated
+            }
+        }
+
     private fun refresh(cause: HostedWorkspaceTransitionCause): WorkspaceRuntimeState {
         val current = state as? WorkspaceRuntimeState.Ready ?: return state
         state = try {
@@ -250,6 +286,7 @@ object HostedTopologyComposition {
     fun create(
         workspaces: HostedWorkspaceOperations,
         ports: HostedTopologyRuntimePorts,
+        observability: KastObservability = KastObservability.Disabled,
     ): HostedTopologyOperations = HostedTopologyOperations(
         build = TopologyBuildService.create(
             workspaces,
@@ -257,11 +294,13 @@ object HostedTopologyComposition {
             ports.candidates,
             ports.extractor,
             ports.snapshots,
+            observability,
         ),
         traversal = HostedTopologyBackedTraversalOperations(
             workspaces,
             ports.snapshots,
             ports.snapshots,
+            observability,
         ),
     )
 }
@@ -271,9 +310,31 @@ private class HostedTopologyBackedTraversalOperations(
     private val workspaces: WorkspaceInspectionOperations,
     private val snapshotReader: TopologySnapshotReader,
     private val contentReader: TopologySnapshotContentReader,
+    private val observability: KastObservability,
 ) : TraversalOperations {
-    override suspend fun run(plan: TraversalPlan): TraversalResult {
-        val workspace = when (val state = workspaces.inspect()) {
+    override suspend fun run(plan: TraversalPlan): TraversalResult = observability.inSpan(
+        KastSpanName.TRAVERSAL_RUN,
+    ) { span ->
+        runObserved(plan, span).also { result -> span.observe(result.hostedTraceObservation()) }
+    }
+
+    private suspend fun runObserved(
+        plan: TraversalPlan,
+        trace: KastTraceSpan,
+    ): TraversalResult {
+        val workspace = when (val state = trace.child(KastSpanName.TRAVERSAL_WORKSPACE) { span ->
+            workspaces.inspect().also { observed ->
+                span.observe(
+                    if (observed is WorkspaceRuntimeState.Ready) {
+                        hostedCompleteObservation()
+                    } else {
+                        hostedRejectedObservation(
+                            KastSpanFailure.TRAVERSAL_WORKSPACE_NOT_READY,
+                        )
+                    },
+                )
+            }
+        }) {
             is WorkspaceRuntimeState.Ready -> state.workspace
             WorkspaceRuntimeState.Absent,
             is WorkspaceRuntimeState.Blocked,
@@ -289,9 +350,25 @@ private class HostedTopologyBackedTraversalOperations(
                 TraversalRejection.OneHopRejected(RelationReadRejection.STALE_GENERATION),
             )
         }
-        val snapshot = when (
-            val eligible = snapshotReader.eligible(TopologyWorkspaceIdentity.from(workspace))
-        ) {
+        val snapshot = when (val eligible = trace.child(
+            KastSpanName.TRAVERSAL_SNAPSHOT_ELIGIBILITY,
+        ) { span ->
+            snapshotReader.eligible(TopologyWorkspaceIdentity.from(workspace)).also { result ->
+                span.observe(
+                    when (result) {
+                        is TopologySnapshotEligibility.Eligible -> hostedCompleteObservation()
+                        is TopologySnapshotEligibility.Stale -> hostedRejectedObservation(
+                            KastSpanFailure.TRAVERSAL_EVIDENCE_STALE,
+                        )
+                        TopologySnapshotEligibility.Unavailable,
+                        is TopologySnapshotEligibility.Rejected,
+                        -> hostedRejectedObservation(
+                            KastSpanFailure.TRAVERSAL_EVIDENCE_UNAVAILABLE,
+                        )
+                    },
+                )
+            }
+        }) {
             is TopologySnapshotEligibility.Eligible -> eligible.snapshot
             is TopologySnapshotEligibility.Stale ->
                 return rejected(TraversalRejection.RequiredEvidenceStale)
@@ -299,17 +376,79 @@ private class HostedTopologyBackedTraversalOperations(
             is TopologySnapshotEligibility.Rejected,
             -> return rejected(TraversalRejection.RequiredEvidenceUnavailable)
         }
-        val compiler = when (val opened = SqliteTopologyRelationCompiler.open(
-            snapshot,
-            contentReader,
-        )) {
+        val compiler = when (val opened = trace.child(
+            KastSpanName.TRAVERSAL_SNAPSHOT_OPEN,
+        ) { span ->
+            SqliteTopologyRelationCompiler.open(snapshot, contentReader).also { result ->
+                span.observe(
+                    when (result) {
+                        is SqliteTopologyRelationCompilerOpening.Opened ->
+                            hostedCompleteObservation()
+                        is SqliteTopologyRelationCompilerOpening.Rejected ->
+                            hostedRejectedObservation(
+                                KastSpanFailure.TRAVERSAL_EVIDENCE_UNAVAILABLE,
+                            )
+                    },
+                )
+            }
+        }) {
             is SqliteTopologyRelationCompilerOpening.Opened -> opened.compiler
             is SqliteTopologyRelationCompilerOpening.Rejected ->
                 return rejected(TraversalRejection.RequiredEvidenceUnavailable)
         }
         val relations = RelationService(workspaces, compiler)
-        return traversalOperations(relations).run(plan)
+        return trace.child(KastSpanName.TRAVERSAL_EXPANSION) { span ->
+            traversalOperations(relations).run(plan).also { result ->
+                span.observe(result.hostedTraceObservation())
+            }
+        }
     }
 }
 
 private fun rejected(reason: TraversalRejection): TraversalResult = TraversalResult.Rejected(reason)
+
+private fun TraversalResult.hostedTraceObservation(): KastSpanObservation = when (this) {
+    is TraversalResult.Complete -> hostedCompleteObservation(
+        KastSpanMeasurement.RecordCount(hostedExactCount(page.records.size)),
+    )
+    is TraversalResult.Qualified -> KastSpanObservation(
+        KastSpanCompletion.Qualified,
+        setOf(KastSpanMeasurement.RecordCount(hostedExactCount(page.records.size))),
+    )
+    is TraversalResult.Rejected -> hostedRejectedObservation(
+        when (val rejection = reason) {
+            is TraversalRejection.OneHopRejected -> when (rejection.reason) {
+                RelationReadRejection.WORKSPACE_NOT_READY ->
+                    KastSpanFailure.TRAVERSAL_WORKSPACE_NOT_READY
+                RelationReadRejection.STALE_GENERATION ->
+                    KastSpanFailure.TRAVERSAL_STALE_GENERATION
+                else -> KastSpanFailure.TRAVERSAL_ONE_HOP
+            }
+            TraversalRejection.RequiredEvidenceStale ->
+                KastSpanFailure.TRAVERSAL_EVIDENCE_STALE
+            TraversalRejection.RequiredEvidenceUnavailable ->
+                KastSpanFailure.TRAVERSAL_EVIDENCE_UNAVAILABLE
+            TraversalRejection.ReaderContractViolation ->
+                KastSpanFailure.TRAVERSAL_READER_CONTRACT
+            TraversalRejection.TraversalContractViolation ->
+                KastSpanFailure.TRAVERSAL_CONTRACT
+        },
+    )
+}
+
+private fun hostedCompleteObservation(
+    vararg measurements: KastSpanMeasurement,
+): KastSpanObservation = KastSpanObservation(
+    KastSpanCompletion.Complete,
+    measurements.toSet(),
+)
+
+private fun hostedRejectedObservation(failure: KastSpanFailure): KastSpanObservation =
+    KastSpanObservation(KastSpanCompletion.Rejected(failure))
+
+private fun hostedExactCount(value: Int): KastSpanCount = when (
+    val parsed = KastSpanCount.parse(value.toLong())
+) {
+    is Refinement.Refined -> parsed.value
+    is Refinement.Rejected -> error("Collection size cannot be negative")
+}
