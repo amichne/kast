@@ -85,6 +85,17 @@ class CliSurfaceContractTest {
         )
         assertTrue(helpText.contains("Show the installed IntelliJ sidecar product version"))
         assertTrue(helpText.contains("product"))
+        assertTrue(
+            helpText.contains(
+                "Read bounded compiler-grounded semantic relations from the isolated sidecar.",
+            ),
+        )
+        assertTrue(
+            helpText.contains(
+                "Read bounded compiler diagnostics for explicit workspace scopes in the " +
+                    "isolated IntelliJ sidecar.",
+            ),
+        )
         assertTrue(helpText.contains("Start the isolated exact-root IntelliJ sidecar."))
         assertTrue(helpText.contains("Stop only the process proven to own this exact workspace endpoint."))
         assertTrue(helpText.contains("Report exact-root runtime and private cache identity and state."))
@@ -92,8 +103,8 @@ class CliSurfaceContractTest {
         assertTrue(helpText.contains("Quarantine the exact Kast-owned cache"))
         assertTrue(helpText.contains("sidecar-backed changes"))
         assertTrue(helpText.contains("durable generation-bound repository topology"))
-        assertTrue(helpText.contains("Read bounded semantic relations"))
-        assertTrue(helpText.contains("Read bounded IntelliJ diagnostics"))
+        assertTrue(helpText.contains("Read bounded compiler-grounded semantic relations"))
+        assertTrue(helpText.contains("Read bounded compiler diagnostics"))
         assertTrue(helpText.contains("workspace"))
         assertTrue(helpText.contains("change"))
         CliLifecycleCommand.entries.forEach { command ->

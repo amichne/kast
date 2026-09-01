@@ -20,7 +20,8 @@ internal fun diagnosticCommandGroup(
     return CommandFamily(
         KastCommandGroup(
             "diagnostic",
-            "Read bounded IntelliJ diagnostics from the isolated sidecar.",
+            "Read bounded compiler diagnostics for explicit workspace scopes in the isolated " +
+                "IntelliJ sidecar.",
         ).subcommands(check),
         listOf(check),
     )

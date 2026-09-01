@@ -78,27 +78,34 @@ outside-workspace roots still fail closed.
 
 ## Ask a repository question
 
-The installed sidecar publishes ten public semantic operations. The generated
-[CLI reference](https://kast.michne.com/reference/cli/) distinguishes those
-public routes from relation and diagnostic services that remain internal to
-sidecar workflows, and `kast --schema` returns the complete contract as JSON.
+The installed sidecar publishes twelve public semantic operations. The generated
+[CLI reference](https://kast.michne.com/reference/cli/) describes those public
+routes, and `kast --schema` returns the complete contract as JSON.
 Its `serverProjection` is the installed executable's authority for
 server-visible tool names, descriptions, input and output JSON Schemas, loading
-policy, and field-to-CLI bindings. It advertises every public sidecar operation
-and excludes the internal-only relation and diagnostic services. A broker can
-therefore follow the selected installed path without carrying a Kast-version
-lookup table.
+policy, explicit approval policy, and field-to-CLI bindings. Common read paths
+are named `workspace_ensure_ready`, `symbol_lookup`, `symbol_inspect`,
+`semantic_query`, `impact_analyze`, and `diagnostic_check`; the canonical
+operation IDs and evidence documents remain unchanged beneath those façades.
+Every `change_*` tool is marked `explicit` approval while read tools are marked
+`none`. The projection advertises every public sidecar operation from executable
+admission. A broker can therefore follow the selected installed sidecar without
+carrying a Kast-version lookup table.
 
 | Question | Command path |
 | --- | --- |
 | What is Kast ready to inspect? | `kast workspace inspect` |
 | What declaration is this? | `kast symbol discover ...`, then `kast symbol resolve ...` and `kast symbol describe ...` |
-| How is this code connected? | `kast topology build`, then `kast traversal run ...` |
+| How is this code connected? | `kast relation read ...` for one hop, or `kast topology build` then `kast traversal run ...` for bounded depth |
+| What diagnostics exist in this scope? | `kast diagnostic check ...` |
 | How can I add a declaration safely? | `kast change plan ...`, `kast change apply ...`, `kast change verify ...`, and `kast change recover ...` |
 
 Discovery returns bounded candidates. Resolution refines one candidate into an
 exact, generation-bound selector. Description returns detached compiler
-evidence for that selector. A successful apply publishes the newer workspace
+evidence for that selector. Bounded traversal returns one exact
+`canonicalRoot`/generation snapshot identity plus normalized `nodes`, `edges`,
+and proof-identity tables; repeated full signatures stay behind the on-demand
+`symbol_inspect` façade. A successful apply publishes the newer workspace
 generation in the same endpoint, so prior selectors become stale immediately
 and verification can continue without restarting the sidecar. The successor also
 activates read routes at that exact generation, so freshly resolved selectors

@@ -241,6 +241,7 @@ class Acceptance:
         )
 
         traversal_limit = positive_integer(bounds, "traversalResultLimit")
+        traversal_depth = positive_integer(bounds, "traversalMaximumDepth")
         traversal = self.command(
             "traversal",
             "run",
@@ -249,12 +250,14 @@ class Acceptance:
             "--relation",
             "callees",
             "--maximum-depth",
-            str(positive_integer(bounds, "traversalMaximumDepth")),
+            str(traversal_depth),
             "--maximum-results",
             str(traversal_limit),
         )
-        self.prove_bounded_result(
-            traversal, "traversal.run", "records", traversal_limit
+        self.prove_normalized_traversal_graph(
+            traversal,
+            traversal_limit,
+            traversal_depth,
         )
 
         self.prove_generation_transition(exact_routers[0], next(iter(route_overloads)))
@@ -399,6 +402,114 @@ class Acceptance:
             fail(f"{operation} returned no bounded semantic evidence: {document}")
         if len(values) > limit:
             fail(f"{operation} returned {len(values)} results for limit {limit}")
+
+    def prove_normalized_traversal_graph(
+        self,
+        document: dict[str, Any],
+        result_limit: int,
+        maximum_depth: int,
+    ) -> None:
+        if document.get("operation") != "traversal.run" or document.get("status") not in {
+            "complete",
+            "qualified",
+        }:
+            fail(f"traversal.run returned no semantic evidence: {document}")
+        if "records" in document:
+            fail(f"traversal.run retained the denormalized records projection: {document}")
+
+        graph = document.get("graph")
+        if not isinstance(graph, dict):
+            fail(f"traversal.run omitted its normalized graph: {document}")
+        snapshot = graph.get("snapshot")
+        nodes = graph.get("nodes")
+        edges = graph.get("edges")
+        proofs = graph.get("proofs")
+        if not isinstance(snapshot, dict):
+            fail(f"traversal.run omitted its snapshot identity: {graph}")
+        if snapshot.get("canonicalRoot") != str(self.workspace.resolve()):
+            fail(f"traversal.run returned a foreign snapshot root: {snapshot}")
+        generation = snapshot.get("generation")
+        if not isinstance(generation, int) or isinstance(generation, bool) or generation < 1:
+            fail(f"traversal.run returned an invalid snapshot generation: {snapshot}")
+        if not isinstance(nodes, list) or not nodes:
+            fail(f"traversal.run returned no normalized nodes: {graph}")
+        if not isinstance(edges, list) or not edges:
+            fail(f"traversal.run returned no normalized edges: {graph}")
+        if len(edges) > result_limit:
+            fail(
+                f"traversal.run returned {len(edges)} edges for limit {result_limit}"
+            )
+        if not isinstance(proofs, list) or not proofs:
+            fail(f"traversal.run returned no normalized proofs: {graph}")
+
+        node_ids: set[int] = set()
+        node_proof_ids: set[int] = set()
+        selectors: set[str] = set()
+        for node in nodes:
+            if not isinstance(node, dict):
+                fail(f"traversal.run returned a non-object node: {node}")
+            node_id = node.get("id")
+            proof_id = node.get("proof")
+            selector = node.get("selector")
+            if not isinstance(node_id, int) or isinstance(node_id, bool):
+                fail(f"traversal.run returned an invalid node identity: {node}")
+            if not isinstance(proof_id, int) or isinstance(proof_id, bool):
+                fail(f"traversal.run returned an invalid node proof reference: {node}")
+            if not isinstance(selector, str) or not selector:
+                fail(f"traversal.run returned a node without an exact selector: {node}")
+            if node_id in node_ids or selector in selectors:
+                fail(f"traversal.run returned a duplicate normalized node: {node}")
+            node_ids.add(node_id)
+            node_proof_ids.add(proof_id)
+            selectors.add(selector)
+        if node_ids != set(range(len(nodes))):
+            fail(f"traversal.run node identities are not dense: {sorted(node_ids)}")
+
+        proof_ids: set[int] = set()
+        proof_identities: set[str] = set()
+        for proof in proofs:
+            if not isinstance(proof, dict):
+                fail(f"traversal.run returned a non-object proof: {proof}")
+            proof_id = proof.get("id")
+            identity = proof.get("identity")
+            if not isinstance(proof_id, int) or isinstance(proof_id, bool):
+                fail(f"traversal.run returned an invalid proof identity: {proof}")
+            if not isinstance(identity, str) or not identity:
+                fail(f"traversal.run returned an empty compiler proof: {proof}")
+            if proof_id in proof_ids or identity in proof_identities:
+                fail(f"traversal.run returned a duplicate normalized proof: {proof}")
+            proof_ids.add(proof_id)
+            proof_identities.add(identity)
+        if proof_ids != set(range(len(proofs))):
+            fail(f"traversal.run proof identities are not dense: {sorted(proof_ids)}")
+        if node_proof_ids != proof_ids:
+            fail(
+                "traversal.run node proof references do not match the proof table: "
+                f"nodes={sorted(node_proof_ids)}, proofs={sorted(proof_ids)}"
+            )
+
+        referenced_node_ids: set[int] = set()
+        for edge in edges:
+            if not isinstance(edge, dict):
+                fail(f"traversal.run returned a non-object edge: {edge}")
+            source = edge.get("source")
+            target = edge.get("target")
+            depth = edge.get("depth")
+            if source not in node_ids or target not in node_ids:
+                fail(f"traversal.run returned a dangling edge: {edge}")
+            if (
+                not isinstance(depth, int)
+                or isinstance(depth, bool)
+                or depth < 1
+                or depth > maximum_depth
+            ):
+                fail(f"traversal.run returned an out-of-bounds edge depth: {edge}")
+            referenced_node_ids.update((source, target))
+        if referenced_node_ids != node_ids:
+            fail(
+                "traversal.run returned unreferenced normalized nodes: "
+                f"nodes={sorted(node_ids)}, referenced={sorted(referenced_node_ids)}"
+            )
 
 
 def git(workspace: Path, *arguments: str) -> str:

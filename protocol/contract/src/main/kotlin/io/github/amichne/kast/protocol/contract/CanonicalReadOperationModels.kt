@@ -263,6 +263,8 @@ data class TraversalRunRequest(
 ) : OperationRequest
 
 data class TraversalRunResult(
+    /** Canonical workspace root shared by every selector and proof in [records]. */
+    val snapshotRoot: ProtocolText,
     val records: BoundedProtocolList<TraversalRecordDocument>,
 ) : OperationResult
 

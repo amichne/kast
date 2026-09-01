@@ -22,7 +22,7 @@ internal fun relationCommandGroup(
     return CommandFamily(
         KastCommandGroup(
             "relation",
-            "Read bounded semantic relations from the isolated sidecar.",
+            "Read bounded compiler-grounded semantic relations from the isolated sidecar.",
         ).subcommands(read),
         listOf(read),
     )

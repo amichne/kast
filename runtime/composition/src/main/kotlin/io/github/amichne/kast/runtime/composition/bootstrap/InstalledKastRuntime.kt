@@ -4,6 +4,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelFailure
 import io.github.amichne.kast.runtime.composition.protocol.WorkspaceInspectHandlerConstructionFailure
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.SourceRoot
 import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceFailure
 import java.io.IOException
 import java.nio.file.Files
@@ -135,7 +136,36 @@ class InstalledRuntimeStateDirectory private constructor(
 class InstalledKastRuntimeRequest internal constructor(
     internal val workspaceRoot: InstalledWorkspaceRoot,
     internal val stateDirectory: InstalledRuntimeStateDirectory,
+    internal val bootstrapObserver: InstalledRuntimeBootstrapObserver,
 )
+
+/** Ordered production runtime bootstrap boundaries visible to the installed process owner. */
+enum class InstalledRuntimeBootstrapPhase {
+    PROJECT_IMPORT,
+    INDEXING,
+    MODEL_CAPTURE,
+    RUNTIME_ASSEMBLY,
+}
+
+/** Explicit effect boundary for observing production runtime bootstrap progress. */
+fun interface InstalledRuntimeBootstrapObserver {
+    fun observe(phase: InstalledRuntimeBootstrapPhase)
+
+    /** Receives the detached exact-root semantic index authority after model capture. */
+    fun observeIndexScope(scope: InstalledRuntimeIndexScope) = Unit
+}
+
+/** Detached proof of the exact workspace and Gradle source roots admitted for semantic reads. */
+class InstalledRuntimeIndexScope internal constructor(
+    internal val workspaceRoot: CanonicalWorkspaceRoot,
+    sourceRoots: List<SourceRoot>,
+) {
+    internal val sourceRoots: List<SourceRoot> = sourceRoots.toList()
+
+    /** Boundary extraction used only by the owning process diagnostic stream. */
+    fun processDiagnostic(): String =
+        "workspaceRoot=${workspaceRoot.value}, sourceRoots=$sourceRoots"
+}
 
 /** Finite installed construction failures visible to the isolated host. */
 sealed interface InstalledKastRuntimeFailure {
@@ -238,7 +268,25 @@ object InstalledKastRuntime {
     ): InstalledKastRuntimeConstruction = create(
         workspaceRoot,
         stateDirectory,
+        InstalledRuntimeBootstrapObserver {},
+    )
+
+    /**
+     * Proof transition: `(Path, Path, InstalledRuntimeBootstrapObserver) ->
+     * InstalledKastRuntimeConstruction`.
+     *
+     * Preserves the same exact-root runtime proof while making every production bootstrap phase
+     * an explicit effect owned by the caller.
+     */
+    fun create(
+        workspaceRoot: Path,
+        stateDirectory: Path,
+        bootstrapObserver: InstalledRuntimeBootstrapObserver,
+    ): InstalledKastRuntimeConstruction = create(
+        workspaceRoot,
+        stateDirectory,
         productionInstalledRuntimeAssembler(),
+        bootstrapObserver,
     )
 
     /**
@@ -253,6 +301,18 @@ object InstalledKastRuntime {
         workspaceRoot: Path,
         stateDirectory: Path,
         assembler: InstalledRuntimeAssembler,
+    ): InstalledKastRuntimeConstruction = create(
+        workspaceRoot,
+        stateDirectory,
+        assembler,
+        {},
+    )
+
+    internal fun create(
+        workspaceRoot: Path,
+        stateDirectory: Path,
+        assembler: InstalledRuntimeAssembler,
+        bootstrapObserver: InstalledRuntimeBootstrapObserver,
     ): InstalledKastRuntimeConstruction {
         val failures = linkedSetOf<InstalledKastRuntimeFailure>()
         val root = when (val admitted = InstalledWorkspaceRoot.admit(workspaceRoot)) {
@@ -270,7 +330,11 @@ object InstalledKastRuntime {
             }
         }
         if (failures.isNotEmpty()) return InstalledKastRuntimeConstruction.Rejected(failures)
-        val request = InstalledKastRuntimeRequest(checkNotNull(root), checkNotNull(state))
+        val request = InstalledKastRuntimeRequest(
+            checkNotNull(root),
+            checkNotNull(state),
+            bootstrapObserver,
+        )
         return when (val assembly = assembler.assemble(request)) {
             is InstalledRuntimeAssembly.Assembled ->
                 InstalledKastRuntimeConstruction.Created(assembly.dispatch)

@@ -213,6 +213,7 @@ class CanonicalOperationWireBindingsTest {
                 count(100),
             ),
             TraversalRunResult(
+                text("/workspace"),
                 BoundedProtocolList.create(
                     listOf(
                         traversal(

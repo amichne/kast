@@ -43,6 +43,18 @@ enum class InstalledIntellijWorkspaceFailure {
     MODEL_STATE_IDENTITY_REJECTED,
 }
 
+/** Ordered installed workspace bootstrap boundaries visible to the owning runtime. */
+enum class InstalledIntellijWorkspaceBootstrapPhase {
+    PROJECT_IMPORT,
+    INDEXING,
+    MODEL_CAPTURE,
+}
+
+/** Explicit effect boundary for observing installed workspace bootstrap progress. */
+fun interface InstalledIntellijWorkspaceBootstrapObserver {
+    fun observe(phase: InstalledIntellijWorkspaceBootstrapPhase)
+}
+
 /** Detached complete model proof from one exact IntelliJ-opened Gradle workspace. */
 class InstalledIntellijWorkspaceModel internal constructor(
     val capture: InstalledGradleModelCapture,
@@ -93,7 +105,12 @@ object InstalledIntellijWorkspace {
      * bootstrap failure. The live project and Gradle objects remain inside this adapter and the
      * IntelliJ project lifecycle.
      */
-    fun open(workspaceRoot: Path): InstalledIntellijWorkspaceOpening {
+    fun open(
+        workspaceRoot: Path,
+        observer: InstalledIntellijWorkspaceBootstrapObserver =
+            InstalledIntellijWorkspaceBootstrapObserver {},
+    ): InstalledIntellijWorkspaceOpening {
+        observer.observe(InstalledIntellijWorkspaceBootstrapPhase.PROJECT_IMPORT)
         GradleSystemSettings.getInstance().isDownloadSources = false
         val gradleJvm = when (val admission = InstalledGradleJvm.admit(
             System.getProperty("java.home")
@@ -111,7 +128,7 @@ object InstalledIntellijWorkspace {
             return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED)
         }
         return try {
-            openObserved(workspaceRoot, gradleJvm, importObserver)
+            openObserved(workspaceRoot, gradleJvm, importObserver, observer)
         } finally {
             notificationManager.removeNotificationListener(importObserver)
         }
@@ -121,6 +138,7 @@ object InstalledIntellijWorkspace {
         workspaceRoot: Path,
         gradleJvm: InstalledGradleJvm,
         importObserver: InstalledGradleImportObserver,
+        observer: InstalledIntellijWorkspaceBootstrapObserver,
     ): InstalledIntellijWorkspaceOpening {
         val preparation = InstalledProjectOpenPreparation(workspaceRoot, gradleJvm)
         val project = try {
@@ -210,6 +228,7 @@ object InstalledIntellijWorkspace {
         val moduleRematerializer = InstalledModuleRematerializer {
             materializeImportedModules(project, workspaceRoot)
         }
+        observer.observe(InstalledIntellijWorkspaceBootstrapPhase.INDEXING)
         when (awaitInstalledIndexingQuiescence(project, assignedProjectJvm, moduleRematerializer)) {
             InstalledIndexingReadiness.READY -> Unit
             InstalledIndexingReadiness.INTERRUPTED -> return rejected(
@@ -219,6 +238,7 @@ object InstalledIntellijWorkspace {
             InstalledIndexingReadiness.FAILED,
                 -> return rejected(InstalledIntellijWorkspaceFailure.MODEL_UNAVAILABLE)
         }
+        observer.observe(InstalledIntellijWorkspaceBootstrapPhase.MODEL_CAPTURE)
         val capture = when (val captured = captureInstalledGradleModel(project, workspaceRoot)) {
             is io.github.amichne.kast.kernel.Refinement.Refined -> captured.value
             is io.github.amichne.kast.kernel.Refinement.Rejected -> return rejected(

@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli.projection
 
 import io.github.amichne.kast.cli.CliJsonDocument
+import io.github.amichne.kast.cli.ProjectedCliOutcome
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
@@ -15,7 +16,6 @@ import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
-import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
@@ -100,31 +100,41 @@ internal object CanonicalReadCliDocuments {
             TraversalRunQualification,
             TraversalRunRejection,
             >,
-    ) = projectClosedOutcome(
-        outcome,
-        complete = { result ->
+    ): ProjectedCliOutcome = when (outcome) {
+        is OperationOutcome.Complete -> ProjectedCliOutcome.Complete(
             traversalCompleteFactory.create(
                 TraversalCompleteCliDocument(
                     operation = CanonicalOperation.TRAVERSAL_RUN.id.value,
                     status = "complete",
-                    records = result.records.values.map { it.toCliDocument() },
+                    graph = normalizeTraversalGraph(
+                        outcome.evidence.payload.snapshotRoot,
+                        outcome.evidence.generation,
+                        outcome.evidence.payload.records.values,
+                    ),
                 ),
-            )
-        },
-        qualified = { result, qualification ->
+            ),
+        )
+        is OperationOutcome.Qualified -> ProjectedCliOutcome.Qualified(
             traversalQualifiedFactory.create(
                 TraversalQualifiedCliDocument(
                     operation = CanonicalOperation.TRAVERSAL_RUN.id.value,
                     status = "qualified",
-                    records = result.records.values.map { it.toCliDocument() },
-                    qualification = qualification.toCliDocument(),
+                    graph = normalizeTraversalGraph(
+                        outcome.evidence.payload.snapshotRoot,
+                        outcome.evidence.generation,
+                        outcome.evidence.payload.records.values,
+                    ),
+                    qualification = outcome.qualification.toCliDocument(),
                 ),
-            )
-        },
-        rejected = { rejection ->
-            canonicalRejectedDocument(CanonicalOperation.TRAVERSAL_RUN, rejection.cliName())
-        },
-    )
+            ),
+        )
+        is OperationOutcome.Rejected -> ProjectedCliOutcome.Rejected(
+            canonicalRejectedDocument(
+                CanonicalOperation.TRAVERSAL_RUN,
+                outcome.reason.cliName(),
+            ),
+        )
+    }
 
     fun projectDiagnostics(
         outcome: OperationOutcome<
@@ -202,14 +212,14 @@ private data class RelationQualificationCliDocument(
 private data class TraversalCompleteCliDocument(
     val operation: String,
     val status: String,
-    val records: List<TraversalRecordCliDocument>,
+    val graph: NormalizedTraversalGraphCliDocument,
 )
 
 @Serializable
 private data class TraversalQualifiedCliDocument(
     val operation: String,
     val status: String,
-    val records: List<TraversalRecordCliDocument>,
+    val graph: NormalizedTraversalGraphCliDocument,
     val qualification: TraversalQualificationCliDocument,
 )
 
@@ -266,12 +276,6 @@ private data class RelationOccurrenceCliDocument(
 )
 
 @Serializable
-private data class TraversalRecordCliDocument(
-    val depth: Int,
-    val relation: RelationFactCliDocument,
-)
-
-@Serializable
 private data class DiagnosticCliDocument(
     val severity: String,
     val code: String,
@@ -294,9 +298,6 @@ private fun RelationFactDocument.toCliDocument(): RelationFactCliDocument =
         provenance.cliName(),
         coverage.cliName(),
     )
-
-private fun TraversalRecordDocument.toCliDocument(): TraversalRecordCliDocument =
-    TraversalRecordCliDocument(depth.value, relation.toCliDocument())
 
 private fun DiagnosticDocument.toCliDocument(): DiagnosticCliDocument = DiagnosticCliDocument(
     severity.cliName(),

@@ -240,6 +240,34 @@ class RuntimeProcessSessionTest {
 
     @Test
     @EnabledOnOs(OS.MAC)
+    fun `direct launch survives the initiating terminal hangup`(
+        @TempDir temporary: Path,
+    ) {
+        val endpoint = endpoint(temporary)
+        val pidFile = endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.pid")
+        val serviceFile = endpoint.socketPath.resolveSibling(
+            "${endpoint.socketPath.fileName}.service",
+        )
+
+        val start = JdkRuntimeProcessStarter.start(command(temporary, endpoint))
+        val accepted = assertInstanceOf(RuntimeProcessStart.Accepted::class.java, start)
+        awaitFile(pidFile)
+        awaitFile(serviceFile)
+        val process = ProcessHandle.of(Files.readString(pidFile).trim().toLong()).orElseThrow()
+
+        try {
+            signalHangup(process.pid())
+            Thread.sleep(250)
+            assertTrue(process.isAlive, "direct runtime must outlive the initiating terminal")
+            assertEquals(RuntimeSessionObservation.Present, accepted.session.observe())
+            assertEquals("", Files.readString(serviceFile).trim())
+        } finally {
+            retireDirectProcess(process, serviceFile)
+        }
+    }
+
+    @Test
+    @EnabledOnOs(OS.MAC)
     fun `launchd opt-in leaves the initiating caller process group`(
         @TempDir temporary: Path,
     ) {
@@ -453,6 +481,14 @@ class RuntimeProcessSessionTest {
         val output = process.inputReader().readText().trim()
         check(process.waitFor() == 0) { "could not inspect process group for $pid: $output" }
         return output.toLong()
+    }
+
+    private fun signalHangup(pid: Long) {
+        val process = ProcessBuilder("/bin/kill", "-HUP", pid.toString())
+            .redirectErrorStream(true)
+            .start()
+        val output = process.inputReader().readText().trim()
+        check(process.waitFor() == 0) { "could not hang up process $pid: $output" }
     }
 
     private fun retireDirectProcess(process: ProcessHandle, serviceFile: Path) {

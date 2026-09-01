@@ -18,9 +18,15 @@ import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationFactCoverageDocument
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
+import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
 import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
 import io.github.amichne.kast.protocol.contract.RelationProvenanceDocument
+import io.github.amichne.kast.protocol.contract.RelationReadQualification
+import io.github.amichne.kast.protocol.contract.RelationReadRejection
+import io.github.amichne.kast.protocol.contract.RelationReadRequest
+import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.SymbolDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
@@ -49,8 +55,10 @@ import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationFact
 import io.github.amichne.kast.relation.contract.RelationFactCoverage
+import io.github.amichne.kast.relation.contract.RelationIncompleteCoverage
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationLimitation
+import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.relation.contract.RelationProvenance
 import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.runtime.server.TypedOperationBinding
@@ -78,6 +86,9 @@ import io.github.amichne.kast.traversal.contract.TraversalQualification
 import io.github.amichne.kast.traversal.contract.TraversalRecord
 import io.github.amichne.kast.traversal.contract.TraversalRejection
 import io.github.amichne.kast.traversal.contract.TraversalResult as DomainTraversalResult
+import io.github.amichne.kast.relation.contract.RelationReadRejection as DomainRelationRejection
+import io.github.amichne.kast.relation.contract.RelationReadResult as DomainRelationResult
+import io.github.amichne.kast.relation.contract.RelationRequest as DomainRelationRequest
 
 private const val HOSTED_WORK_MULTIPLIER = 100L
 private const val HOSTED_TIME_MILLIS = 30_000L
@@ -88,16 +99,89 @@ internal object HostedTopologyProtocol {
     fun bindings(
         operations: HostedTopologyOperations,
         selectors: HostedExactSelectorOperations,
+        relations: RelationOperations,
     ): List<TypedOperationBinding<*, *, *, *>> = listOf(
         TypedOperationBinding(
             CanonicalOperationWireBindings.topologyBuild,
             HostedTopologyBuildHandler(operations.build),
         ),
         TypedOperationBinding(
+            CanonicalOperationWireBindings.relationRead,
+            HostedRelationReadHandler(relations, selectors),
+        ),
+        TypedOperationBinding(
             CanonicalOperationWireBindings.traversalRun,
             HostedTraversalRunHandler(operations.traversal, selectors),
         ),
     )
+}
+
+private class HostedRelationReadHandler(
+    private val operations: RelationOperations,
+    private val selectors: HostedExactSelectorOperations,
+) : OperationHandler<
+    RelationReadRequest,
+    RelationReadResult,
+    RelationReadQualification,
+    RelationReadRejection,
+    > {
+    override suspend fun execute(request: RelationReadRequest): OperationOutcome<
+        RelationReadResult,
+        RelationReadQualification,
+        RelationReadRejection,
+        > {
+        val selector = when (val lookup = selectors.exact(request.exactSelector)) {
+            is HostedExactLookup.Found -> lookup.selector
+            HostedExactLookup.Missing ->
+                return OperationOutcome.Rejected(RelationReadRejection.SELECTOR_STALE)
+            HostedExactLookup.TopologyUnavailable ->
+                return OperationOutcome.Rejected(RelationReadRejection.WORKSPACE_NOT_READY)
+        }
+        val budget = relationBudget(request.limit.value)
+            ?: return OperationOutcome.Rejected(RelationReadRejection.RELATION_UNSUPPORTED)
+        val domainRequest = DomainRelationRequest.start(
+            selector,
+            request.relation.meaning(),
+            budget,
+        )
+        return when (val result = operations.read(domainRequest)) {
+            is DomainRelationResult.Rejected ->
+                OperationOutcome.Rejected(result.reason.protocolReadRejection())
+            is DomainRelationResult.Complete -> project(
+                result.batch.facts,
+                result.batch.request.subject,
+                null,
+            )
+            is DomainRelationResult.Qualified -> project(
+                result.batch.facts,
+                result.batch.request.subject,
+                result.coverage,
+            )
+        }
+    }
+
+    private fun project(
+        facts: List<RelationFact>,
+        subject: RelationEndpoint,
+        qualification: RelationIncompleteCoverage?,
+    ): OperationOutcome<RelationReadResult, RelationReadQualification, RelationReadRejection> {
+        val documents = mutableListOf<RelationFactDocument>()
+        facts.forEach { fact ->
+            documents += fact.protocolDocument(selectors)
+                ?: return OperationOutcome.Rejected(RelationReadRejection.RELATION_UNSUPPORTED)
+        }
+        val bounded = BoundedProtocolList.create(documents).valueOrNull()
+            ?: return OperationOutcome.Rejected(RelationReadRejection.RELATION_UNSUPPORTED)
+        val envelope = EvidenceEnvelope(
+            CanonicalOperation.RELATION_READ.id,
+            subject.lease.generation,
+            RelationReadResult(bounded),
+        )
+        if (qualification == null) return OperationOutcome.Complete(envelope)
+        val document = qualification.protocolQualification()
+            ?: return OperationOutcome.Rejected(RelationReadRejection.RELATION_UNSUPPORTED)
+        return OperationOutcome.Qualified(envelope, document)
+    }
 }
 
 private class HostedTopologyBuildHandler(
@@ -203,10 +287,12 @@ private class HostedTraversalRunHandler(
             is Refinement.Rejected ->
                 return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
         }
+        val snapshotRoot = ProtocolText.parse(plan.start.lease.workspaceRoot.value).valueOrNull()
+            ?: return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
         val envelope = EvidenceEnvelope(
             CanonicalOperation.TRAVERSAL_RUN.id,
             plan.start.lease.generation,
-            TraversalRunResult(bounded),
+            TraversalRunResult(snapshotRoot, bounded),
         )
         return if (qualification == null) {
             OperationOutcome.Complete(envelope)
@@ -291,19 +377,25 @@ private fun TopologyBuildFailure.protocol(): TopologyBuildRejection = when (this
     )
 }
 
+private fun relationBudget(
+    results: Int,
+    elapsedMillis: Long = HOSTED_TIME_MILLIS,
+): RelationBudget? {
+    val resultLimit = ResultLimit.parse(results).valueOrNull() ?: return null
+    val work = WorkUnitLimit.parse(results * HOSTED_WORK_MULTIPLIER).valueOrNull() ?: return null
+    val elapsed = ElapsedTimeLimitMillis.parse(elapsedMillis).valueOrNull() ?: return null
+    val relationBytes = RelationByteLimit.parse(HOSTED_RETURNED_BYTES).valueOrNull() ?: return null
+    return RelationBudget(ResourceBudget(resultLimit, work, elapsed), relationBytes)
+}
+
 private fun traversalBudget(depth: Int, results: Int): TraversalBudget? {
     val resultLimit = ResultLimit.parse(results).valueOrNull() ?: return null
     val work = WorkUnitLimit.parse(results * HOSTED_WORK_MULTIPLIER).valueOrNull() ?: return null
     val elapsed = ElapsedTimeLimitMillis.parse(HOSTED_TIME_MILLIS).valueOrNull() ?: return null
-    val hopElapsed = ElapsedTimeLimitMillis.parse(HOSTED_HOP_TIME_MILLIS).valueOrNull() ?: return null
-    val relationBytes = RelationByteLimit.parse(HOSTED_RETURNED_BYTES).valueOrNull() ?: return null
     val bytes = TraversalByteLimit.parse(HOSTED_RETURNED_BYTES).valueOrNull() ?: return null
     val maximumDepth = TraversalDepthLimit.parse(depth).valueOrNull() ?: return null
     val frontier = TraversalFrontierLimit.parse(results).valueOrNull() ?: return null
-    val relation = RelationBudget(
-        ResourceBudget(resultLimit, work, hopElapsed),
-        relationBytes,
-    )
+    val relation = relationBudget(results, HOSTED_HOP_TIME_MILLIS) ?: return null
     return TraversalBudget(resultLimit, bytes, work, elapsed, maximumDepth, frontier, relation)
 }
 
@@ -456,6 +548,34 @@ private fun RelationProvenance.protocolDocument(): RelationProvenanceDocument = 
 private fun RelationFactCoverage.protocolDocument(): RelationFactCoverageDocument = when (this) {
     RelationFactCoverage.EXACT_COMPILER_CONFIRMED ->
         RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED
+}
+
+private fun RelationIncompleteCoverage.protocolQualification(): RelationReadQualification? {
+    val knownMinimum = RelationKnownMinimumDocument.parse(knownMinimum.value).valueOrNull()
+        ?: return null
+    val continuation = RelationContinuationDocument.parse(continuation.fingerprint.value)
+        .valueOrNull() ?: return null
+    return RelationReadQualification.create(
+        knownMinimum,
+        limitations.map(RelationLimitation::protocolDocument),
+        continuation,
+    ).valueOrNull()
+}
+
+private fun DomainRelationRejection.protocolReadRejection(): RelationReadRejection = when (this) {
+    DomainRelationRejection.WORKSPACE_NOT_READY,
+    DomainRelationRejection.WORKSPACE_ROOT_MISMATCH,
+    DomainRelationRejection.STALE_GENERATION,
+        -> RelationReadRejection.WORKSPACE_NOT_READY
+    DomainRelationRejection.STALE_SELECTOR -> RelationReadRejection.SELECTOR_STALE
+    DomainRelationRejection.SCOPE_REJECTED,
+    DomainRelationRejection.WORKSPACE_INDEX_UNAVAILABLE,
+    DomainRelationRejection.OUTSIDE_SCOPE,
+    DomainRelationRejection.AMBIGUOUS_SUBJECT,
+    DomainRelationRejection.UNSUPPORTED_SUBJECT,
+    DomainRelationRejection.COMPILER_IDENTITY_UNAVAILABLE,
+    DomainRelationRejection.COMPILER_CONTRACT_VIOLATION,
+        -> RelationReadRejection.RELATION_UNSUPPORTED
 }
 
 private fun TraversalQualification.protocolQualification(): TraversalRunQualification? {

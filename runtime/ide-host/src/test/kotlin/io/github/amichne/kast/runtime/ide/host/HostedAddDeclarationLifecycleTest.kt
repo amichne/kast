@@ -14,6 +14,9 @@ import io.github.amichne.kast.change.recovery.PriorStateEvidence
 import io.github.amichne.kast.change.recovery.RecoveryRequiredEvidence
 import io.github.amichne.kast.change.recovery.UndurableRecoveryRequirement
 import io.github.amichne.kast.evidence.contract.MutationPlanBinding
+import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
+import io.github.amichne.kast.diagnostic.contract.DiagnosticOperations
+import io.github.amichne.kast.diagnostic.contract.DiagnosticReadRejection
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
@@ -26,6 +29,9 @@ import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireEncoding
+import io.github.amichne.kast.relation.contract.RelationOperations
+import io.github.amichne.kast.relation.contract.RelationReadRejection
+import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.runtime.server.RuntimeServer
 import io.github.amichne.kast.runtime.server.RuntimeServerConstruction
 import io.github.amichne.kast.runtime.server.ServerDispatch
@@ -35,6 +41,8 @@ import io.github.amichne.kast.topology.contract.TopologyBuildResult
 import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.traversal.contract.TraversalRejection
 import io.github.amichne.kast.traversal.contract.TraversalResult
+import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
+import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -437,6 +445,14 @@ class HostedAddDeclarationLifecycleTest {
             },
         ),
         missingSelectors,
+        RelationOperations {
+            RelationReadResult.Rejected(RelationReadRejection.WORKSPACE_NOT_READY)
+        },
+    ) + HostedDiagnosticProtocol.bindings(
+        WorkspaceInspectionOperations { WorkspaceRuntimeState.Absent },
+        DiagnosticOperations {
+            DiagnosticCheckResult.Rejected(DiagnosticReadRejection.WORKSPACE_NOT_READY)
+        },
     )
 
     private fun publication(

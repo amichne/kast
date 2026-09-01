@@ -8,7 +8,9 @@ import io.github.amichne.kast.evidence.sqlite.SqliteTopologySnapshotStoreOpening
 import io.github.amichne.kast.evidence.sqlite.SqliteHostedWorkspaceGenerationAuthority
 import io.github.amichne.kast.evidence.sqlite.HostedWorkspaceGenerationIssuance
 import io.github.amichne.kast.evidence.sqlite.HostedWorkspaceGenerationResumption
+import io.github.amichne.kast.diagnostic.service.DiagnosticService
 import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.relation.service.RelationService
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumerator
 import io.github.amichne.kast.topology.contract.TopologyFileExtractor
 import io.github.amichne.kast.topology.build.VerifiedTopologyDeltaPublicationService
@@ -137,10 +139,15 @@ object HostedIdeRuntimeComposition {
         if (mutation is HostedMutationState.Rejected) {
             return rejected(HostedIdeRuntimeCompositionFailure.MUTATION_RECOVERY_REJECTED)
         }
+        val relations = RelationService(workspace, changePorts.relationCompiler)
+        val diagnostics = DiagnosticService(workspace, changePorts.diagnosticCompiler)
         return when (val runtime = HostedIdeRuntime.create(
             reads,
+            workspace,
             topology,
             selectors,
+            relations,
+            diagnostics,
             mutation,
             mutationAdmission,
             authority,

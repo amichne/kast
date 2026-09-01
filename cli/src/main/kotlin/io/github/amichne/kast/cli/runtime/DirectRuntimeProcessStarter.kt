@@ -18,7 +18,7 @@ internal object JdkRuntimeProcessStarter : RuntimeProcessStarter {
                 return RuntimeProcessStart.Rejected
         }
         val process = try {
-            ProcessBuilder(command.arguments)
+            ProcessBuilder(command.detachedArguments())
                 .apply {
                     environment().clear()
                     environment().putAll(environment.variables)
@@ -38,6 +38,15 @@ internal object JdkRuntimeProcessStarter : RuntimeProcessStarter {
     }
 }
 
+/**
+ * Boundary projection: `IndexerLaunchCommand -> List<String>`.
+ *
+ * Preserves the exact admitted indexer arguments while establishing terminal-hangup immunity for
+ * the default direct child. Raw arguments leave only at the [ProcessBuilder] boundary.
+ */
+private fun IndexerLaunchCommand.detachedArguments(): List<String> =
+    listOf(NOHUP_EXECUTABLE) + arguments
+
 /** Startup-scoped proof that the exact directly started child remains alive. */
 private class DirectRuntimeStartupSession(
     private val process: ProcessHandle,
@@ -52,3 +61,5 @@ private class DirectRuntimeStartupSession(
         RuntimeSessionObservation.Rejected
     }
 }
+
+private const val NOHUP_EXECUTABLE = "/usr/bin/nohup"
