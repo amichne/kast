@@ -225,6 +225,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
                 ApfsIndexSeedFilesystemProbe,
                 ApfsCoWIndexSeedCloner,
                 ConsoleIndexSeedConsentProvider,
+                JsonLineIndexSeedActivitySink(System.err),
             ),
         )
         val cacheReleaseIdentity = when (

@@ -21,7 +21,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
         requiredRuntimeClassEntries.convention(emptyList())
         requiredPluginJarPrefixes.convention(emptyList())
         requiredPluginClassEntries.convention(emptyList())
-        requiredPlatformPluginClassEntries.convention(emptyList())
+        requiredPlatformClassEntries.convention(emptyList())
         allowedPluginDescriptorJarPrefixes.convention(emptyList())
         forbiddenPortableDistJarSuffixes.convention(emptyList())
     }
@@ -40,7 +40,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
 
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val platformPluginLibsDirectory: DirectoryProperty
+    abstract val platformLibsDirectory: DirectoryProperty
 
     @get:Optional
     @get:InputDirectory
@@ -63,7 +63,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
     abstract val requiredPluginClassEntries: ListProperty<String>
 
     @get:Input
-    abstract val requiredPlatformPluginClassEntries: ListProperty<String>
+    abstract val requiredPlatformClassEntries: ListProperty<String>
 
     @get:Input
     abstract val allowedPluginDescriptorJarPrefixes: ListProperty<String>
@@ -125,7 +125,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
         ) {
             PluginPayloadOwnershipCheck.Owned -> Unit
             is PluginPayloadOwnershipCheck.Conflicting -> throw GradleException(
-                "Indexer payload must not include platform-plugin-owned Kotlin classes: " +
+                "Indexer payload must not include IntelliJ-platform-owned classes: " +
                 ownership.jarNames.joinToString(),
             )
         }
@@ -167,17 +167,17 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
             )
         }
 
-        val platformPluginLibsPath = platformPluginLibsDirectory.get().asFile.toPath()
-        val platformPluginClasspathEntries = jarEntriesRecursively(platformPluginLibsPath)
-        val missingPlatformPluginClasses = RuntimeClasspathAssertions.missingRequiredClassEntries(
-            runtimeLibsDirectory = platformPluginLibsPath,
-            classpathEntries = platformPluginClasspathEntries,
-            requiredClassEntries = requiredPlatformPluginClassEntries.get(),
+        val platformLibsPath = platformLibsDirectory.get().asFile.toPath()
+        val platformClasspathEntries = jarEntriesRecursively(platformLibsPath)
+        val missingPlatformClasses = RuntimeClasspathAssertions.missingRequiredClassEntries(
+            runtimeLibsDirectory = platformLibsPath,
+            classpathEntries = platformClasspathEntries,
+            requiredClassEntries = requiredPlatformClassEntries.get(),
         )
-        if (missingPlatformPluginClasses.isNotEmpty()) {
+        if (missingPlatformClasses.isNotEmpty()) {
             throw GradleException(
-                "IntelliJ Kotlin plugin is missing required platform-owned classes: " +
-                missingPlatformPluginClasses.joinToString(),
+                "IntelliJ is missing required platform-owned classes: " +
+                missingPlatformClasses.joinToString(),
             )
         }
     }

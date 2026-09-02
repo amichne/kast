@@ -4,6 +4,7 @@ import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.nio.file.InvalidPathException
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -11,7 +12,7 @@ import java.util.HexFormat
 
 private val INDEX_SEED_COMPATIBILITY_TOKEN = Regex("[A-Za-z0-9][A-Za-z0-9._+-]{0,127}")
 private val INDEX_SEED_DIGEST = Regex("sha256:[0-9a-f]{64}")
-private val INDEX_SEED_ENTRY = Regex("[A-Za-z0-9._/-]+")
+private const val MAX_INDEX_SEED_ENTRY_CHARACTERS = 4096
 private val IDEA_RUNTIME_BUILD = Regex("([0-9]{3})\\.[0-9]+(?:\\.[0-9]+)*")
 private val KOTLIN_RUNTIME_BUILD = Regex("([0-9]{3})\\.[0-9]+(?:\\.[0-9]+)*-IJ")
 
@@ -363,11 +364,8 @@ class IndexContentManifest private constructor(
             }
             val admitted = sortedMapOf<String, String>()
             entries.forEach { (entry, digest) ->
-                val normalized = entry.removeSuffix("/")
                 if (
-                    normalized.isBlank() || !INDEX_SEED_ENTRY.matches(entry) ||
-                    entry.startsWith('/') ||
-                    normalized.split('/').any { it.isBlank() || it == "." || it == ".." } ||
+                    !entry.isCanonicalIndexSeedManifestPath() ||
                     !INDEX_SEED_DIGEST.matches(digest)
                 ) {
                     return IndexContentManifestAdmission.Rejected(
@@ -381,6 +379,34 @@ class IndexContentManifest private constructor(
             )
         }
     }
+}
+
+private fun String.isCanonicalIndexSeedManifestPath(): Boolean {
+    if (
+        isEmpty() || length > MAX_INDEX_SEED_ENTRY_CHARACTERS ||
+        any(Char::isISOControl)
+    ) {
+        return false
+    }
+    val directory = endsWith('/')
+    val relative = if (directory) dropLast(1) else this
+    if (relative.isBlank()) return false
+    val path = try {
+        Path.of(relative)
+    } catch (_: InvalidPathException) {
+        return false
+    }
+    if (path.isAbsolute || path.normalize() != path) return false
+    if (
+        path.any { segment ->
+            val value = segment.toString()
+            value.isBlank() || value == "." || value == ".."
+        }
+    ) {
+        return false
+    }
+    val canonical = path.joinToString("/") { segment -> segment.toString() }
+    return relative == canonical
 }
 
 sealed interface IndexContentManifestAdmission {

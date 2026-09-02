@@ -16,3 +16,5 @@
    Prefer compiler proof over schema proof, schema proof over structured semantic evidence, semantic evidence over runtime observation, runtime observation over text, and text over heuristic inference. Never present weaker evidence as stronger evidence.
 8. Reduce the space in which error can exist.
    Prefer fewer states, fewer transitions, fewer representations, fewer execution paths, and fewer abstractions. Completion requires mechanical evidence that the intended invariant holds.
+9. Instrument as you investigate.
+   When diagnosing an opaque failure requires source-level investigation, progressively make that boundary observable in the same change. Add bounded, structured, typed stage and outcome evidence at the narrowest effect boundary, and test both success and failure signals. Temporary probes may guide diagnosis, but completion replaces them with durable instrumentation. Never record secrets, source payloads, or unbounded data.

@@ -30,6 +30,8 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
@@ -77,6 +79,51 @@ class InstalledBrokerServerTest {
             assertEquals(BROKER_SERVICE_STATE_SCHEMA_VERSION, state.schemaVersion)
             assertEquals(identity, state.serviceIdentity)
             assertEquals(BrokerServerFailure.KAST_QUALIFICATION_REJECTED, state.failure)
+        } finally {
+            retireOwnedTree(codexHome)
+        }
+    }
+
+    @Test
+    fun `Codex qualification rejection emits its exact bounded startup reason`(
+        @TempDir temporary: Path,
+    ) = runBlocking {
+        val suffix = UUID.randomUUID().toString().take(8)
+        val codexHome = Path.of("/private/tmp/kast-service-observed-$suffix")
+        Files.createDirectory(codexHome)
+        val userHome = temporary.toRealPath()
+        val kast = executable(userHome.resolve("kast"))
+        val codex = executable(userHome.resolve("codex"))
+        val output = ByteArrayOutputStream()
+        try {
+            val configuration = InstalledBrokerServerConfiguration.admit(
+                kast,
+                userHome,
+                mapOf(
+                    "CODEX_HOME" to codexHome.toString(),
+                    "CODEX_EXECUTABLE" to codex.toString(),
+                    "PATH" to "${codex.parent}:/usr/bin:/bin",
+                ),
+                InstalledProcessExecutor(kast, codex, rejectCodexQualification = true),
+                EchoCodexLauncher(),
+            ) as InstalledBrokerServerConfiguration.Configured
+
+            assertEquals(
+                InstalledBrokerServerStart.Rejected(
+                    InstalledBrokerServerFailure.CODEX_QUALIFICATION_REJECTED,
+                ),
+                InstalledBrokerServer.start(
+                    configuration.options.copy(
+                        startupActivitySink = JsonLineBrokerStartupActivitySink(
+                            PrintStream(output, true, Charsets.UTF_8),
+                        ),
+                    ),
+                ),
+            )
+            assertEquals(
+                """{"component":"kast-broker","event":"broker-startup-stage","stage":"codex-qualification","outcome":"rejected","reason":"codex-schema-generation-rejected"}""",
+                output.toString(Charsets.UTF_8).lineSequence().last { it.isNotBlank() },
+            )
         } finally {
             retireOwnedTree(codexHome)
         }
@@ -155,6 +202,7 @@ class InstalledBrokerServerTest {
         private val kast: Path,
         private val codex: Path,
         private val rejectKastQualification: Boolean = false,
+        private val rejectCodexQualification: Boolean = false,
     ) : BrokerProcessExecutor {
         override suspend fun execute(request: BrokerProcessRequest): BrokerProcessExecution = when {
             request.executable.path == kast && request.arguments == listOf("--version") ->
@@ -174,6 +222,9 @@ class InstalledBrokerServerTest {
                     "--experimental",
                     "--out",
                 ) -> {
+                if (rejectCodexQualification) {
+                    return BrokerProcessExecution.Completed(1, "", "rejected")
+                }
                 val output = Path.of(request.arguments.last())
                 CodexOwnedSchema.entries.forEach { schema ->
                     Files.writeString(output.resolve(schema.fileName), """{"type":"object"}""")

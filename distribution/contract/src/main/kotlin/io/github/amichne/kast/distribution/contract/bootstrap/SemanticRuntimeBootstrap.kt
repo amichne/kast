@@ -28,7 +28,11 @@ enum class SemanticRuntimeBootstrapFailure(
 
     PROJECT_JVM_UNAVAILABLE("project-jvm-unavailable"),
 
+    PLATFORM_LINKAGE_INVALID("platform-linkage-invalid"),
+
     GRADLE_IMPORT_FAILED("gradle-import-failed"),
+
+    GRADLE_JVM_CONFIGURATION_INVALID("gradle-jvm-configuration-invalid"),
 
     GRADLE_IMPORT_TIMED_OUT("gradle-import-timed-out"),
 

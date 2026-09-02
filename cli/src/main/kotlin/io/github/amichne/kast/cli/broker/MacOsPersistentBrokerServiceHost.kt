@@ -614,7 +614,7 @@ internal class MacOsPersistentBrokerServiceHost(
                 ENV_EXECUTABLE,
                 "-i",
                 "HOME=${command.userHome}",
-                "PATH=${command.codex.parent}:${command.kast.parent}:/usr/bin:/bin:/usr/sbin:/sbin",
+                "PATH=${command.executableSearchPath.value}",
                 "JAVA_HOME=${command.javaHome}",
                 "KAST_OPTS=${command.jvmUserHomeOption.value}",
                 "CODEX_HOME=${command.codexHome}",

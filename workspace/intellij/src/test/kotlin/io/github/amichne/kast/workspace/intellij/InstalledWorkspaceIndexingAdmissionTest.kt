@@ -5,6 +5,24 @@ import org.junit.jupiter.api.Test
 
 class InstalledWorkspaceIndexingAdmissionTest {
     @Test
+    fun `platform linkage failure is retained as an exact indexing rejection`() {
+        assertEquals(
+            InstalledIndexingPlatformObservation.Rejected(
+                InstalledIndexingReadinessFailure.PlatformLinkageInvalid,
+            ),
+            observeInstalledIndexingPlatform<Unit> { throw LinkageError("duplicate fixture") },
+        )
+        assertEquals(
+            InstalledWorkspaceIndexingAdmission.Rejected(
+                InstalledIntellijWorkspaceFailure.PLATFORM_LINKAGE_INVALID,
+            ),
+            InstalledIndexingReadiness.Rejected(
+                InstalledIndexingReadinessFailure.PlatformLinkageInvalid,
+            ).workspaceOpeningAdmission(),
+        )
+    }
+
+    @Test
     fun `only project JVM readiness failure becomes project JVM unavailable`() {
         assertEquals(
             InstalledWorkspaceIndexingAdmission.Rejected(

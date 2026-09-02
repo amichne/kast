@@ -204,6 +204,35 @@ class PersistentBrokerServiceTest {
         ) as BrokerServiceLaunchCommandResolution.Resolved
 
         assertEquals(tools.resolve("codex").toRealPath(), resolution.command.codex)
+        assertEquals(
+            links.toRealPath().toString(),
+            resolution.command.executableSearchPath.value.substringBefore(':'),
+        )
+    }
+
+    @Test
+    fun `Codex launcher directory participates in persistent service identity`(
+        @TempDir temporary: Path,
+    ) {
+        val fixture = installedFixture(temporary)
+        val tools = Path.of(fixture.environment.getValue("PATH"))
+        val firstLinks = Files.createDirectory(temporary.resolve("first-links"))
+        val secondLinks = Files.createDirectory(temporary.resolve("second-links"))
+        Files.createSymbolicLink(firstLinks.resolve("codex"), tools.resolve("codex"))
+        Files.createSymbolicLink(secondLinks.resolve("codex"), tools.resolve("codex"))
+
+        val first = BrokerServiceLaunchCommand.resolve(
+            fixture.kast,
+            fixture.userHome,
+            mapOf("PATH" to firstLinks.toString()),
+        ) as BrokerServiceLaunchCommandResolution.Resolved
+        val second = BrokerServiceLaunchCommand.resolve(
+            fixture.kast,
+            fixture.userHome,
+            mapOf("PATH" to secondLinks.toString()),
+        ) as BrokerServiceLaunchCommandResolution.Resolved
+
+        assertNotEquals(first.command.identity, second.command.identity)
     }
 
     @Test
@@ -283,6 +312,9 @@ class PersistentBrokerServiceTest {
         )
         assertTrue(submission.orEmpty().contains("JAVA_HOME=${command.javaHome}"))
         assertTrue(submission.orEmpty().contains("KAST_OPTS=${command.jvmUserHomeOption.value}"))
+        assertTrue(
+            submission.orEmpty().contains("PATH=${command.executableSearchPath.value}"),
+        )
         assertTrue(submission.orEmpty().contains(command.serviceLabel.value))
     }
 

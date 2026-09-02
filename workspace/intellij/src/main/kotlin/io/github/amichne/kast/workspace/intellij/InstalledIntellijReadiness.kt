@@ -26,9 +26,33 @@ internal sealed interface InstalledIndexingReadinessFailure {
     data object Interrupted : InstalledIndexingReadinessFailure
     data object ProjectDisposed : InstalledIndexingReadinessFailure
     data object PlatformObservationUnavailable : InstalledIndexingReadinessFailure
+    data object PlatformLinkageInvalid : InstalledIndexingReadinessFailure
     data object ProjectJvmUnavailable : InstalledIndexingReadinessFailure
     data object ModuleMaterializationUnavailable : InstalledIndexingReadinessFailure
     data object IndexingTimedOut : InstalledIndexingReadinessFailure
+}
+
+/** Closed observation result for platform calls that may reject linkage at a plugin boundary. */
+internal sealed interface InstalledIndexingPlatformObservation<out Value> {
+    data class Observed<Value>(val value: Value) : InstalledIndexingPlatformObservation<Value>
+
+    data class Rejected(
+        val failure: InstalledIndexingReadinessFailure,
+    ) : InstalledIndexingPlatformObservation<Nothing>
+}
+
+internal fun <Value> observeInstalledIndexingPlatform(
+    operation: () -> Value,
+): InstalledIndexingPlatformObservation<Value> = try {
+    InstalledIndexingPlatformObservation.Observed(operation())
+} catch (_: LinkageError) {
+    InstalledIndexingPlatformObservation.Rejected(
+        InstalledIndexingReadinessFailure.PlatformLinkageInvalid,
+    )
+} catch (_: RuntimeException) {
+    InstalledIndexingPlatformObservation.Rejected(
+        InstalledIndexingReadinessFailure.PlatformObservationUnavailable,
+    )
 }
 
 internal data class InstalledIndexingObservation(
@@ -272,8 +296,17 @@ internal fun awaitInstalledIndexingQuiescence(
     moduleRematerializer: InstalledModuleRematerializer,
 ): InstalledIndexingReadiness {
     var currentProjectJvm = projectJvm
-    val dumbService = DumbService.getInstance(project)
-    val scanner = UnindexedFilesScannerExecutor.getInstance(project)
+    val services = when (val observed = observeInstalledIndexingPlatform {
+        InstalledIndexingServices(
+            DumbService.getInstance(project),
+            UnindexedFilesScannerExecutor.getInstance(project),
+        )
+    }) {
+        is InstalledIndexingPlatformObservation.Observed -> observed.value
+        is InstalledIndexingPlatformObservation.Rejected -> return indexingRejected(
+            observed.failure,
+        )
+    }
     val deadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(READINESS_TIMEOUT_MINUTES)
     val quiescence = InstalledIndexingQuiescence(Duration.ofMillis(QUIESCENCE_MILLIS))
     val moduleContinuity = InstalledModuleContinuity(Duration.ofMillis(MODULE_RECOVERY_GRACE_MILLIS))
@@ -296,15 +329,8 @@ internal fun awaitInstalledIndexingQuiescence(
                 },
             )
         }
-        val smart = try {
-            !dumbService.isDumb
-        } catch (_: RuntimeException) {
-            return indexingRejected(
-                InstalledIndexingReadinessFailure.PlatformObservationUnavailable,
-            )
-        }
-        val moduleObservation = try {
-            ReadAction.nonBlocking<InstalledModuleJvmObservation> {
+        val observation = when (val observed = observeInstalledIndexingPlatform {
+            val moduleObservation = ReadAction.nonBlocking<InstalledModuleJvmObservation> {
                 val modules = ModuleManager.getInstance(project).modules
                     .filterNot { module -> module.isDisposed }
                 InstalledModuleJvmObservation(
@@ -315,31 +341,32 @@ internal fun awaitInstalledIndexingQuiescence(
                     ),
                 )
             }.executeSynchronously()
-        } catch (_: RuntimeException) {
-            return indexingRejected(
-                InstalledIndexingReadinessFailure.PlatformObservationUnavailable,
+            InstalledIndexingObservation(
+                smart = !services.dumbService.isDumb,
+                scannerRunning = services.scanner.isRunning.value,
+                scannerQueued = services.scanner.hasQueuedTasks,
+                scannerRevision = services.scanner.modificationTracker.modificationCount,
+                projectRootsRevision = moduleObservation.projectRootsRevision,
+                modulesReady = moduleObservation.modulesReady,
+                projectJvmReady = moduleObservation.projectJvmReady,
+            )
+        }) {
+            is InstalledIndexingPlatformObservation.Observed -> observed.value
+            is InstalledIndexingPlatformObservation.Rejected -> return indexingRejected(
+                observed.failure,
             )
         }
-        val observation = InstalledIndexingObservation(
-            smart = smart,
-            scannerRunning = scanner.isRunning.value,
-            scannerQueued = scanner.hasQueuedTasks,
-            scannerRevision = scanner.modificationTracker.modificationCount,
-            projectRootsRevision = moduleObservation.projectRootsRevision,
-            modulesReady = moduleObservation.modulesReady,
-            projectJvmReady = moduleObservation.projectJvmReady,
-        )
         if (observation != previousObservation) {
             READINESS_LOG.info("Kast indexing readiness observation: $observation")
             previousObservation = observation
         }
         val observedAt = System.nanoTime()
         val stability = quiescence.observe(observation, observedAt)
-        when (moduleContinuity.observe(moduleObservation.modulesReady, observedAt)) {
+        when (moduleContinuity.observe(observation.modulesReady, observedAt)) {
             InstalledModuleContinuityAction.AVAILABLE -> {
                 when (
                     projectJvmContinuity.observe(
-                        moduleObservation.projectJvmReady,
+                        observation.projectJvmReady,
                         observedAt,
                     )
                 ) {
@@ -396,6 +423,11 @@ private data class InstalledModuleJvmObservation(
     val modulesReady: Boolean,
     val projectJvmReady: Boolean,
     val projectRootsRevision: InstalledProjectRootsRevision,
+)
+
+private data class InstalledIndexingServices(
+    val dumbService: DumbService,
+    val scanner: UnindexedFilesScannerExecutor,
 )
 
 /**
