@@ -41,7 +41,7 @@
       },
       {
         "group": "Technical specification",
-        "icon": "diagram-project",
+        "icon": "network",
         "pages": [
           "technical-specification/index",
           "technical-specification/runtime-boundary",
@@ -94,5 +94,8 @@
       "title": "Page not found",
       "description": "The requested Kast documentation page does not exist. Return to the [documentation home](/)."
     }
+  },
+  "icons": {
+    "library": "lucide"
   }
 }
