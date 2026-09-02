@@ -6,7 +6,7 @@ import java.time.Duration
 
 class InstalledProjectJvmContinuityTest {
     @Test
-    fun `one delayed project JVM loss may be reasserted exactly once`() {
+    fun `each delayed project JVM loss starts a fresh reassertion interval`() {
         val grace = Duration.ofSeconds(5)
         val continuity = InstalledProjectJvmContinuity(grace)
 
@@ -27,13 +27,17 @@ class InstalledProjectJvmContinuityTest {
             continuity.observe(available = true, monotonicNanos = grace.toNanos()),
         )
         assertEquals(
-            InstalledProjectJvmContinuityAction.FAILED,
+            InstalledProjectJvmContinuityAction.REASSERT,
             continuity.observe(available = false, monotonicNanos = grace.toNanos() + 1),
+        )
+        assertEquals(
+            InstalledProjectJvmContinuityAction.WAITING,
+            continuity.observe(available = false, monotonicNanos = grace.toNanos() * 2),
         )
     }
 
     @Test
-    fun `unrestored project JVM fails after the finite grace interval`() {
+    fun `unrestored project JVM schedules another reassertion after the finite grace interval`() {
         val grace = Duration.ofSeconds(5)
         val continuity = InstalledProjectJvmContinuity(grace)
 
@@ -49,10 +53,17 @@ class InstalledProjectJvmContinuityTest {
             ),
         )
         assertEquals(
-            InstalledProjectJvmContinuityAction.FAILED,
+            InstalledProjectJvmContinuityAction.REASSERT,
             continuity.observe(
                 available = false,
                 monotonicNanos = 10 + grace.toNanos(),
+            ),
+        )
+        assertEquals(
+            InstalledProjectJvmContinuityAction.WAITING,
+            continuity.observe(
+                available = false,
+                monotonicNanos = 11 + grace.toNanos(),
             ),
         )
     }

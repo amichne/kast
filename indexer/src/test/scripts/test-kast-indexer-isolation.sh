@@ -82,6 +82,7 @@ installed_before="$(snapshot_tree "${installed}")"
 idea_before="$(snapshot_tree "${idea_home}")"
 
 runtime_id="sha256:$(printf 'c%.0s' {1..64})"
+bootstrap_attempt_id="123e4567-e89b-42d3-a456-426614174000"
 socket_a="${fixture}/runtime/kast-aaaaaaaaaaaaaaaaaaaaaaaa.sock"
 socket_b="${fixture}/runtime/kast-bbbbbbbbbbbbbbbbbbbbbbbb.sock"
 cache_a="${fixture}/cache-a"
@@ -106,7 +107,9 @@ run_launcher() {
       --idea-config-path="${cache}/config" \
       --idea-log-path="${cache}/log" \
       --private-plugins-path="${private_plugins}" \
-      --cache-state-path="${cache}/cache-state"
+      --cache-state-path="${cache}/cache-state" \
+      --bootstrap-state-path="${cache}/bootstrap-state" \
+      --bootstrap-attempt-id="${bootstrap_attempt_id}"
 }
 
 capture_a="${fixture}/capture-a"
@@ -135,7 +138,8 @@ python3 - \
   "${cache_a}" \
   "${cache_b}" \
   "${socket_a}" \
-  "${socket_b}" <<'PY'
+  "${socket_b}" \
+  "${bootstrap_attempt_id}" <<'PY'
 from pathlib import Path
 import sys
 
@@ -145,6 +149,7 @@ java_executable = sys.argv[5]
 private_plugins = sys.argv[6]
 caches = [Path(sys.argv[7]), Path(sys.argv[7]), Path(sys.argv[8])]
 sockets = [sys.argv[9], sys.argv[9], sys.argv[10]]
+bootstrap_attempt_id = sys.argv[11]
 property_names = ("system", "config", "log")
 observed = []
 
@@ -175,6 +180,8 @@ for capture, cache, socket in zip(captures, caches, sockets, strict=True):
         f"--idea-home={idea_home}",
         f"--java-executable={java_executable}",
         f"-Dkast.cache.state.path={cache}/cache-state",
+        f"-Dkast.bootstrap.state.path={cache}/bootstrap-state",
+        f"-Dkast.bootstrap.attempt.id={bootstrap_attempt_id}",
         "io.github.amichne.kast.indexer.KastIndexerMainKt",
     )
     if "-Dkast.untrusted.java-opts=true" in decoded:
@@ -225,6 +232,8 @@ launcher_arguments=(
   "--idea-log-path=${cache_a}/log"
   "--private-plugins-path=${private_plugins}"
   "--cache-state-path=${cache_a}/cache-state"
+  "--bootstrap-state-path=${cache_a}/bootstrap-state"
+  "--bootstrap-attempt-id=${bootstrap_attempt_id}"
 )
 launcher_owned=(
   idea-home
@@ -234,6 +243,8 @@ launcher_owned=(
   idea-log-path
   private-plugins-path
   cache-state-path
+  bootstrap-state-path
+  bootstrap-attempt-id
 )
 for omitted in "${launcher_owned[@]}"; do
   missing_capture="${fixture}/missing-${omitted}-capture"
@@ -285,7 +296,9 @@ alternate_output="$(
       --idea-config-path="${cache_a}/config" \
       --idea-log-path="${cache_a}/log" \
       --private-plugins-path="${private_plugins}" \
-      --cache-state-path="${cache_a}/cache-state" 2>&1
+      --cache-state-path="${cache_a}/cache-state" \
+      --bootstrap-state-path="${cache_a}/bootstrap-state" \
+      --bootstrap-attempt-id="${bootstrap_attempt_id}" 2>&1
 )"
 alternate_status=$?
 set -e

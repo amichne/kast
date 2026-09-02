@@ -49,8 +49,9 @@ class ProductInspectionCommandTest {
             is RuntimeEndpointResolution.Rejected -> error(resolution.failure)
         }
         val cacheIdentity = "sha256:${"c".repeat(64)}"
+        val physicalCacheRoot = temporary.resolve("cache/$cacheIdentity")
         val exactEndpoint = (
-            endpoint.forSidecarCache(cacheIdentity, identity.runtimeId) as
+            endpoint.forSidecarCache(cacheIdentity, identity.runtimeId, physicalCacheRoot) as
                 RuntimeEndpointResolution.Resolved
         ).endpoint
         val inspector = SidecarProductInspector(
@@ -62,6 +63,7 @@ class ProductInspectionCommandTest {
                         RootSidecarCacheStatus(
                             cacheIdentity,
                             identity.runtimeId,
+                            physicalCacheRoot,
                             KastCacheState.SMART,
                             temporary.resolve("IntelliJ IDEA.app"),
                             support.ideaBuild,

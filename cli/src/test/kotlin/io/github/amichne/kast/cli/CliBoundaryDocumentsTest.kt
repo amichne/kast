@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.cli.command.CliCommandFailure
 import io.github.amichne.kast.cli.command.CliLifecycleCommand
 import io.github.amichne.kast.cli.projection.CliBoundaryDocuments
+import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapFailure
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import io.github.amichne.kast.kernel.Refinement
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -49,6 +50,15 @@ class CliBoundaryDocumentsTest {
             CliBoundaryDocuments.usageRejected(
                 CliCommandFailure.ARGUMENTS_REJECTED,
                 textDocument("invalid option"),
+            ).value,
+        )
+        assertEquals(
+            "{\"status\":\"rejected\",\"boundary\":\"runtime\"," +
+                "\"reason\":\"project-jvm-unavailable\"}",
+            CliBoundaryDocuments.runtimeRejected(
+                RuntimeAdmissionFailure.IntellijBootstrap(
+                    SemanticRuntimeBootstrapFailure.PROJECT_JVM_UNAVAILABLE,
+                ),
             ).value,
         )
     }

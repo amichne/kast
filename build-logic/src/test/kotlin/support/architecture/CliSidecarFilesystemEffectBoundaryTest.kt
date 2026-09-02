@@ -15,6 +15,19 @@ class CliSidecarFilesystemEffectBoundaryTest {
         JvmClassName("io/github/amichne/kast/cli/InstalledSidecarRuntimeDemandKt"),
         JvmClassName("io/github/amichne/kast/cli/SidecarCacheIdentityFile"),
         JvmClassName("io/github/amichne/kast/cli/SidecarCacheStateFile"),
+        JvmClassName("io/github/amichne/kast/cli/bootstrap/SidecarBootstrapAttemptLock"),
+        JvmClassName("io/github/amichne/kast/cli/broker/MacOsPersistentBrokerServiceHost"),
+        JvmClassName(
+            "io/github/amichne/kast/cli/broker/InstalledBrokerServerConfiguration\$Companion",
+        ),
+        JvmClassName("io/github/amichne/kast/cli/broker/InstalledBrokerServerKt"),
+        JvmClassName("io/github/amichne/kast/cli/broker/OwnedBrokerServiceReadiness"),
+        JvmClassName(
+            "io/github/amichne/kast/cli/broker/protocol/codex/CodexProtocolQualifier\$retireTemporaryTree\$1\$1",
+        ),
+        JvmClassName("io/github/amichne/kast/cli/broker/protocol/FileThreadCatalogStore"),
+        JvmClassName("io/github/amichne/kast/cli/broker/runtime/OwnedUnixSocket"),
+        JvmClassName("io/github/amichne/kast/cli/broker/runtime/UnixSocketPathOwnership"),
     )
 
     @Test

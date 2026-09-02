@@ -1,6 +1,10 @@
 package io.github.amichne.kast.indexer
 
 import com.intellij.openapi.application.ApplicationStarter
+import io.github.amichne.kast.indexer.bootstrap.IndexerBootstrapRejectionPublication
+import io.github.amichne.kast.indexer.bootstrap.IndexerBootstrapStatePublication
+import io.github.amichne.kast.indexer.bootstrap.IndexerBootstrapStatePublisher
+import io.github.amichne.kast.indexer.bootstrap.IndexerBootstrapStatePublisherAdmission
 import io.github.amichne.kast.runtime.composition.InstalledKastRuntime
 import io.github.amichne.kast.runtime.composition.InstalledKastRuntimeConstruction
 import io.github.amichne.kast.runtime.composition.InstalledKastRuntimeFailure
@@ -27,6 +31,7 @@ private sealed interface InstalledIndexerStartupFailure {
     ) : InstalledIndexerStartupFailure
 
     data object CacheState : InstalledIndexerStartupFailure
+    data object BootstrapState : InstalledIndexerStartupFailure
 }
 
 private enum class IndexerTransportExecutionFailure {
@@ -54,6 +59,14 @@ class KastIndexerApplicationStarter : ApplicationStarter {
             is IndexerLaunchAdmission.Rejected -> reject(
                 InstalledIndexerStartupFailure.Launch(admission.failures),
             )
+        }
+        val bootstrapState = when (val admission = IndexerBootstrapStatePublisher.admit()) {
+            is IndexerBootstrapStatePublisherAdmission.Admitted -> admission.publisher
+            is IndexerBootstrapStatePublisherAdmission.Rejected ->
+                reject(InstalledIndexerStartupFailure.BootstrapState)
+        }
+        if (bootstrapState.publishStarting() != IndexerBootstrapStatePublication.PUBLISHED) {
+            reject(InstalledIndexerStartupFailure.BootstrapState)
         }
         if (
             IndexerCacheStatePublisher.publish(IndexerCacheState.REFRESHING) !=
@@ -86,6 +99,14 @@ class KastIndexerApplicationStarter : ApplicationStarter {
         )) {
             is InstalledKastRuntimeConstruction.Created -> runtime.dispatch
             is InstalledKastRuntimeConstruction.Rejected -> {
+                when (bootstrapState.publishRejection(runtime.failures)) {
+                    IndexerBootstrapRejectionPublication.PUBLISHED,
+                    IndexerBootstrapRejectionPublication.AMBIGUOUS,
+                    IndexerBootstrapRejectionPublication.UNAVAILABLE,
+                        -> Unit
+                    IndexerBootstrapRejectionPublication.REJECTED ->
+                        reject(InstalledIndexerStartupFailure.BootstrapState)
+                }
                 bootstrap.rejectRuntime(runtime.failures)
                 reject(InstalledIndexerStartupFailure.Runtime(runtime.failures))
             }
@@ -110,6 +131,9 @@ class KastIndexerApplicationStarter : ApplicationStarter {
             reject(InstalledIndexerStartupFailure.CacheState)
         }
         bootstrap.ready()
+        if (bootstrapState.publishReady() != IndexerBootstrapStatePublication.PUBLISHED) {
+            reject(InstalledIndexerStartupFailure.BootstrapState)
+        }
         transport.use { installedTransport ->
             when (
                 DetachedIndexerTransportExecutor.execute {

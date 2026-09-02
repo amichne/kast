@@ -9,15 +9,26 @@ import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.UnindexedFilesScannerExecutor
+import com.intellij.openapi.roots.ProjectRootManager
 import java.nio.file.Path
 import java.time.Duration
 import java.util.concurrent.TimeUnit
 
-internal enum class InstalledIndexingReadiness {
-    READY,
-    INTERRUPTED,
-    TIMED_OUT,
-    FAILED,
+internal sealed interface InstalledIndexingReadiness {
+    data object Ready : InstalledIndexingReadiness
+
+    data class Rejected(
+        val failure: InstalledIndexingReadinessFailure,
+    ) : InstalledIndexingReadiness
+}
+
+internal sealed interface InstalledIndexingReadinessFailure {
+    data object Interrupted : InstalledIndexingReadinessFailure
+    data object ProjectDisposed : InstalledIndexingReadinessFailure
+    data object PlatformObservationUnavailable : InstalledIndexingReadinessFailure
+    data object ProjectJvmUnavailable : InstalledIndexingReadinessFailure
+    data object ModuleMaterializationUnavailable : InstalledIndexingReadinessFailure
+    data object IndexingTimedOut : InstalledIndexingReadinessFailure
 }
 
 internal data class InstalledIndexingObservation(
@@ -25,9 +36,21 @@ internal data class InstalledIndexingObservation(
     val scannerRunning: Boolean,
     val scannerQueued: Boolean,
     val scannerRevision: Long,
+    val projectRootsRevision: InstalledProjectRootsRevision,
     val modulesReady: Boolean,
     val projectJvmReady: Boolean,
 )
+
+/** Monotonic IntelliJ roots-model evidence covering module SDK and language-level updates. */
+@JvmInline
+internal value class InstalledProjectRootsRevision(
+    val value: Long,
+) {
+    init {
+        require(value >= 0L)
+    }
+
+}
 
 internal enum class InstalledIndexingStability { WAITING, STABLE }
 
@@ -50,81 +73,97 @@ internal class InstalledModuleContinuity(
     private val grace: Duration,
 ) {
     private val graceNanos = grace.toNanos().also { nanos -> require(nanos > 0) }
-    private var recovery: ModuleRecovery? = null
+    private var state: ModuleContinuityState = ModuleContinuityState.AvailableBeforeRecovery
 
     fun observe(
         available: Boolean,
         monotonicNanos: Long,
     ): InstalledModuleContinuityAction {
-        val current = recovery
         if (available) {
-            if (current != null && !current.restored) {
-                recovery = current.copy(restored = true)
+            if (state is ModuleContinuityState.RecoveryRequested) {
+                state = ModuleContinuityState.Restored
             }
             return InstalledModuleContinuityAction.AVAILABLE
         }
-        if (current == null) {
-            recovery = ModuleRecovery(monotonicNanos, restored = false)
-            return InstalledModuleContinuityAction.REMATERIALIZE
+        return when (val current = state) {
+            ModuleContinuityState.AvailableBeforeRecovery -> {
+                state = ModuleContinuityState.RecoveryRequested(monotonicNanos)
+                InstalledModuleContinuityAction.REMATERIALIZE
+            }
+            is ModuleContinuityState.RecoveryRequested -> if (
+                monotonicNanos - current.requestedAtNanos >= graceNanos
+            ) {
+                InstalledModuleContinuityAction.FAILED
+            } else {
+                InstalledModuleContinuityAction.WAITING
+            }
+            ModuleContinuityState.Restored -> InstalledModuleContinuityAction.FAILED
         }
-        if (current.restored || monotonicNanos - current.requestedAtNanos >= graceNanos) {
-            return InstalledModuleContinuityAction.FAILED
-        }
-        return InstalledModuleContinuityAction.WAITING
     }
 }
 
-private data class ModuleRecovery(
-    val requestedAtNanos: Long,
-    val restored: Boolean,
-)
+private sealed interface ModuleContinuityState {
+    data object AvailableBeforeRecovery : ModuleContinuityState
+
+    data class RecoveryRequested(
+        val requestedAtNanos: Long,
+    ) : ModuleContinuityState
+
+    data object Restored : ModuleContinuityState
+}
 
 internal enum class InstalledProjectJvmContinuityAction {
     AVAILABLE,
     REASSERT,
     WAITING,
-    FAILED,
 }
 
 /**
- * Refines live module-SDK observations into one finite project-JVM reassertion allowance.
+ * Refines live project-SDK observations into bounded project-JVM reassertion intervals.
  *
- * A delayed Gradle/JPS workspace-model replacement may clear the project SDK after import. One
- * reassertion of the already-admitted exact Java home is allowed. Failure to restore the proof
- * within [grace], or any later loss of the restored proof, fails closed.
+ * Delayed Gradle/JPS workspace-model replacements may rewrite the project SDK more than once after
+ * import. Each observed loss admits one reassertion of the already-admitted exact Java home and a
+ * finite [grace] interval before another reassertion. The enclosing readiness timeout remains the
+ * sole terminal bound while Gradle is still changing the workspace model.
  */
 internal class InstalledProjectJvmContinuity(
     private val grace: Duration,
 ) {
     private val graceNanos = grace.toNanos().also { nanos -> require(nanos > 0) }
-    private var recovery: ProjectJvmRecovery? = null
+    private var state: ProjectJvmContinuityState = ProjectJvmContinuityState.Available
 
     fun observe(
         available: Boolean,
         monotonicNanos: Long,
     ): InstalledProjectJvmContinuityAction {
-        val current = recovery
         if (available) {
-            if (current != null && !current.restored) {
-                recovery = current.copy(restored = true)
-            }
+            state = ProjectJvmContinuityState.Available
             return InstalledProjectJvmContinuityAction.AVAILABLE
         }
-        if (current == null) {
-            recovery = ProjectJvmRecovery(monotonicNanos, restored = false)
-            return InstalledProjectJvmContinuityAction.REASSERT
+        return when (val current = state) {
+            ProjectJvmContinuityState.Available -> {
+                state = ProjectJvmContinuityState.AwaitingReassertion(monotonicNanos)
+                InstalledProjectJvmContinuityAction.REASSERT
+            }
+            is ProjectJvmContinuityState.AwaitingReassertion -> if (
+                monotonicNanos - current.requestedAtNanos >= graceNanos
+            ) {
+                state = ProjectJvmContinuityState.AwaitingReassertion(monotonicNanos)
+                InstalledProjectJvmContinuityAction.REASSERT
+            } else {
+                InstalledProjectJvmContinuityAction.WAITING
+            }
         }
-        if (current.restored || monotonicNanos - current.requestedAtNanos >= graceNanos) {
-            return InstalledProjectJvmContinuityAction.FAILED
-        }
-        return InstalledProjectJvmContinuityAction.WAITING
     }
 }
 
-private data class ProjectJvmRecovery(
-    val requestedAtNanos: Long,
-    val restored: Boolean,
-)
+private sealed interface ProjectJvmContinuityState {
+    data object Available : ProjectJvmContinuityState
+
+    data class AwaitingReassertion(
+        val requestedAtNanos: Long,
+    ) : ProjectJvmContinuityState
+}
 
 /**
  * Refines repeated platform observations into a continuous smart, non-executing scanner interval.
@@ -132,13 +171,15 @@ private data class ProjectJvmRecovery(
  * IDEA 2026.2 derives its public running flag from the presence of a queued task before the task is
  * taken for execution. It may retain both flags after explicitly skipping that task. The queued
  * marker remains diagnostic evidence, while `running && !queued` proves that the current task was
- * taken from the queue and is executing. An executing scanner or revision change resets this proof.
+ * taken from the queue and is executing. An executing scanner, scanner revision change, or project
+ * roots revision change resets this proof. The roots revision covers Gradle-owned module SDK and
+ * language-level writes without requiring those SDKs to equal the sidecar JBR.
  */
 internal class InstalledIndexingQuiescence(
     required: Duration,
 ) {
     private val requiredNanos = required.toNanos().also { nanos -> require(nanos > 0) }
-    private var candidate: StableIndexingCandidate? = null
+    private var state: IndexingQuiescenceState = IndexingQuiescenceState.Unstable
 
     fun observe(
         observation: InstalledIndexingObservation,
@@ -151,12 +192,20 @@ internal class InstalledIndexingQuiescence(
             !observation.modulesReady ||
             !observation.projectJvmReady
         ) {
-            candidate = null
+            state = IndexingQuiescenceState.Unstable
             return InstalledIndexingStability.WAITING
         }
-        val current = candidate
-        if (current == null || current.scannerRevision != observation.scannerRevision) {
-            candidate = StableIndexingCandidate(monotonicNanos, observation.scannerRevision)
+        val current = state
+        if (
+            current !is IndexingQuiescenceState.Candidate ||
+            current.scannerRevision != observation.scannerRevision ||
+            current.projectRootsRevision != observation.projectRootsRevision
+        ) {
+            state = IndexingQuiescenceState.Candidate(
+                monotonicNanos,
+                observation.scannerRevision,
+                observation.projectRootsRevision,
+            )
             return InstalledIndexingStability.WAITING
         }
         return if (monotonicNanos - current.sinceNanos >= requiredNanos) {
@@ -167,10 +216,15 @@ internal class InstalledIndexingQuiescence(
     }
 }
 
-private data class StableIndexingCandidate(
-    val sinceNanos: Long,
-    val scannerRevision: Long,
-)
+private sealed interface IndexingQuiescenceState {
+    data object Unstable : IndexingQuiescenceState
+
+    data class Candidate(
+        val sinceNanos: Long,
+        val scannerRevision: Long,
+        val projectRootsRevision: InstalledProjectRootsRevision,
+    ) : IndexingQuiescenceState
+}
 
 internal enum class InstalledModuleAvailability {
     AVAILABLE,
@@ -206,17 +260,18 @@ internal fun interface InstalledModuleRematerializer {
  * Proof transition: `Project + AssignedInstalledProjectJvm + InstalledModuleRematerializer ->
  * InstalledIndexingReadiness`.
  *
- * [InstalledIndexingReadiness.READY] establishes a continuous smart, scanner-idle interval with at
- * least one live IntelliJ module whose SDK resolves the admitted Java home after Gradle model and
- * SDK writes. Other variants close
- * interruption, timeout, disposal, and platform failure. Live indexing and module state remains
- * inside this bootstrap boundary.
+ * [InstalledIndexingReadiness.Ready] establishes a continuous smart, scanner-idle interval with at
+ * least one live IntelliJ module while the exact project SDK resolves the admitted Java home after
+ * Gradle model and SDK writes. [InstalledIndexingReadiness.Rejected] retains interruption,
+ * timeout, disposal, project-JVM, module-materialization, and platform-observation failures. Live
+ * indexing and module state remains inside this bootstrap boundary.
  */
 internal fun awaitInstalledIndexingQuiescence(
     project: Project,
     projectJvm: AssignedInstalledProjectJvm,
     moduleRematerializer: InstalledModuleRematerializer,
 ): InstalledIndexingReadiness {
+    var currentProjectJvm = projectJvm
     val dumbService = DumbService.getInstance(project)
     val scanner = UnindexedFilesScannerExecutor.getInstance(project)
     val deadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(READINESS_TIMEOUT_MINUTES)
@@ -227,12 +282,26 @@ internal fun awaitInstalledIndexingQuiescence(
     )
     var previousObservation: InstalledIndexingObservation? = null
     while (true) {
-        if (project.isDisposed) return InstalledIndexingReadiness.FAILED
-        if (System.nanoTime() >= deadline) return InstalledIndexingReadiness.TIMED_OUT
-        try {
-            dumbService.waitForSmartMode()
+        if (project.isDisposed) return indexingRejected(
+            InstalledIndexingReadinessFailure.ProjectDisposed,
+        )
+        if (System.nanoTime() >= deadline) {
+            return indexingRejected(
+                when {
+                    previousObservation?.projectJvmReady == false ->
+                        InstalledIndexingReadinessFailure.ProjectJvmUnavailable
+                    previousObservation?.modulesReady == false ->
+                        InstalledIndexingReadinessFailure.ModuleMaterializationUnavailable
+                    else -> InstalledIndexingReadinessFailure.IndexingTimedOut
+                },
+            )
+        }
+        val smart = try {
+            !dumbService.isDumb
         } catch (_: RuntimeException) {
-            return InstalledIndexingReadiness.FAILED
+            return indexingRejected(
+                InstalledIndexingReadinessFailure.PlatformObservationUnavailable,
+            )
         }
         val moduleObservation = try {
             ReadAction.nonBlocking<InstalledModuleJvmObservation> {
@@ -240,17 +309,23 @@ internal fun awaitInstalledIndexingQuiescence(
                     .filterNot { module -> module.isDisposed }
                 InstalledModuleJvmObservation(
                     modulesReady = modules.isNotEmpty(),
-                    projectJvmReady = modules.isNotEmpty() && modules.all(projectJvm::admits),
+                    projectJvmReady = currentProjectJvm.admitsProjectSdk(),
+                    projectRootsRevision = InstalledProjectRootsRevision(
+                        ProjectRootManager.getInstance(project).modificationCount,
+                    ),
                 )
             }.executeSynchronously()
         } catch (_: RuntimeException) {
-            return InstalledIndexingReadiness.FAILED
+            return indexingRejected(
+                InstalledIndexingReadinessFailure.PlatformObservationUnavailable,
+            )
         }
         val observation = InstalledIndexingObservation(
-            smart = !dumbService.isDumb,
+            smart = smart,
             scannerRunning = scanner.isRunning.value,
             scannerQueued = scanner.hasQueuedTasks,
             scannerRevision = scanner.modificationTracker.modificationCount,
+            projectRootsRevision = moduleObservation.projectRootsRevision,
             modulesReady = moduleObservation.modulesReady,
             projectJvmReady = moduleObservation.projectJvmReady,
         )
@@ -270,19 +345,21 @@ internal fun awaitInstalledIndexingQuiescence(
                 ) {
                     InstalledProjectJvmContinuityAction.AVAILABLE -> {
                         if (stability == InstalledIndexingStability.STABLE) {
-                            return InstalledIndexingReadiness.READY
+                            return InstalledIndexingReadiness.Ready
                         }
                     }
                     InstalledProjectJvmContinuityAction.REASSERT -> {
-                        when (projectJvm.reassertAfterImport(project)) {
-                            is InstalledProjectJvmAssignment.Assigned -> Unit
+                        when (val assignment = currentProjectJvm.reassertAfterImport(project)) {
+                            is InstalledProjectJvmAssignment.Assigned -> {
+                                currentProjectJvm = assignment.projectJvm
+                            }
                             is InstalledProjectJvmAssignment.Rejected ->
-                                return InstalledIndexingReadiness.FAILED
+                                return indexingRejected(
+                                    InstalledIndexingReadinessFailure.ProjectJvmUnavailable,
+                                )
                         }
                     }
                     InstalledProjectJvmContinuityAction.WAITING -> Unit
-                    InstalledProjectJvmContinuityAction.FAILED ->
-                        return InstalledIndexingReadiness.FAILED
                 }
             }
             InstalledModuleContinuityAction.REMATERIALIZE -> {
@@ -292,24 +369,33 @@ internal fun awaitInstalledIndexingQuiescence(
                         -> Unit
                     InstalledModuleMaterialization.UNAVAILABLE,
                     InstalledModuleMaterialization.FAILED,
-                        -> return InstalledIndexingReadiness.FAILED
+                        -> return indexingRejected(
+                            InstalledIndexingReadinessFailure.ModuleMaterializationUnavailable,
+                        )
                 }
             }
             InstalledModuleContinuityAction.WAITING -> Unit
-            InstalledModuleContinuityAction.FAILED -> return InstalledIndexingReadiness.FAILED
+            InstalledModuleContinuityAction.FAILED -> return indexingRejected(
+                InstalledIndexingReadinessFailure.ModuleMaterializationUnavailable,
+            )
         }
         try {
             Thread.sleep(POLL_MILLIS)
         } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
-            return InstalledIndexingReadiness.INTERRUPTED
+            return indexingRejected(InstalledIndexingReadinessFailure.Interrupted)
         }
     }
 }
 
+private fun indexingRejected(
+    failure: InstalledIndexingReadinessFailure,
+): InstalledIndexingReadiness.Rejected = InstalledIndexingReadiness.Rejected(failure)
+
 private data class InstalledModuleJvmObservation(
     val modulesReady: Boolean,
     val projectJvmReady: Boolean,
+    val projectRootsRevision: InstalledProjectRootsRevision,
 )
 
 /**

@@ -84,6 +84,7 @@ internal object SidecarCacheStateFile {
 data class RootSidecarCacheStatus(
     val cacheIdentity: String,
     val semanticRuntimeId: SemanticRuntimeId,
+    val cacheRoot: Path,
     val state: KastCacheState,
     val ideaHome: Path,
     val ideaBuild: String,
@@ -381,6 +382,7 @@ private data class CacheIdentityRecord(
     fun status(state: KastCacheState): RootSidecarCacheStatus = RootSidecarCacheStatus(
         identity.key,
         identity.semanticRuntimeId,
+        cacheRoot,
         state,
         ideaHome,
         identity.runtimeIdentity.supportedPair.ideaBuild,

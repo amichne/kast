@@ -66,7 +66,10 @@ import sys
 
 document = json.loads(sys.argv[1])
 assert document["operationRegistry"] == json.loads(Path(sys.argv[2]).read_text()), document
-assert document["cliProjection"]["localCommands"] == ["product inspect"], document
+assert document["cliProjection"]["localCommands"] == [
+    "product inspect",
+    "broker serve",
+], document
 PY
 
 fixture="${temporary_root}/workspace"

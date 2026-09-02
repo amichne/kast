@@ -98,6 +98,7 @@ class SidecarProductInspector(
                     val refined = resolution.endpoint.forSidecarCache(
                         cache.status.cacheIdentity,
                         cache.status.semanticRuntimeId,
+                        cache.status.cacheRoot,
                     )
                 ) {
                     is RuntimeEndpointResolution.Resolved -> refined.endpoint

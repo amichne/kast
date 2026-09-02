@@ -60,6 +60,10 @@ LOCAL_COMMAND_DESCRIPTIONS = {
         "Report installed sidecar identity plus direct root, Kast-cache, and default trace "
         "destination evidence without starting or admitting a runtime."
     ),
+    "broker serve": (
+        "Host the installed Kotlin/Ktor Codex tool broker. Normal semantic-runtime demand "
+        "keeps this process alive as a version-qualified launchd service."
+    ),
 }
 
 
@@ -321,11 +325,11 @@ Every other value is rejected.
 | --- | --- |
 {lifecycle_rows}
 
-## Process-local inspection
+## Process-local commands
 
-These commands inspect installed control, Kast-owned cache, and deterministic
-per-socket telemetry evidence directly. They do not require successful sidecar
-runtime admission.
+These commands stay inside the installed control product. Product inspection
+reads installed identity and Kast-owned state without starting the sidecar;
+broker serving hosts the local Codex App Server control socket.
 
 | Command | Result |
 | --- | --- |

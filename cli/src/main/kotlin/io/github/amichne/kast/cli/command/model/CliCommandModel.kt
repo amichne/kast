@@ -15,6 +15,7 @@ enum class CliProductCommand(
     val usage: String,
 ) {
     INSPECT("product inspect"),
+    BROKER_SERVE("broker serve"),
 }
 
 /** Process-local operator actions that do not extend the semantic wire protocol. */
@@ -36,6 +37,8 @@ sealed interface CliAction {
         ) : Local
 
         data object ProductInspect : Local
+
+        data object BrokerServe : Local
     }
 
     data class Semantic(

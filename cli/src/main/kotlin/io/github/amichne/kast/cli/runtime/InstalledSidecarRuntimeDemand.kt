@@ -170,7 +170,6 @@ fun interface SidecarProcessDemander {
 }
 
 internal class ExactSidecarProcessDemander(
-    private val endpointProbe: RuntimeEndpointProbe = JdkUnixDomainEndpointProbe,
     private val runtimeDemanderFactory: (
         IndexerExecutable,
         SidecarLaunchContext,
@@ -186,19 +185,6 @@ internal class ExactSidecarProcessDemander(
     ): RuntimeAdmission {
         if (endpoint.root != root) {
             return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
-        }
-        if (endpointProbe.probe(endpoint) is RuntimeEndpointReachability.Reachable) {
-            return RuntimeAdmission.Ready(endpoint)
-        }
-        if (
-            SidecarCacheStateFile.record(launch.cache.root, KastCacheState.REFRESHING) !=
-            CacheStateTransition.Recorded
-        ) {
-            return RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.SidecarCacheRejected(
-                    SidecarCacheFailure.FilesystemRejected,
-                ),
-            )
         }
         return runtimeDemanderFactory(executable, launch.context).demand(root, endpoint)
     }
@@ -264,10 +250,23 @@ class InstalledSidecarRootRuntimeDemander(
                 ),
             )
         }
+        val cache = when (
+            val preparation = cachePreparer.prepare(
+                runtime,
+                cacheIdentity,
+                startup.cacheIntent,
+            )
+        ) {
+            is SidecarCachePreparation.Prepared -> preparation.cache
+            is SidecarCachePreparation.Rejected -> return RuntimeAdmission.Rejected(
+                RuntimeAdmissionFailure.SidecarCacheRejected(preparation.failure),
+            )
+        }
         val exactEndpoint = when (
             val resolution = endpoint.forSidecarCache(
                 cacheIdentity.key,
                 cacheIdentity.semanticRuntimeId,
+                cache.root,
             )
         ) {
             is RuntimeEndpointResolution.Resolved -> resolution.endpoint
@@ -287,18 +286,6 @@ class InstalledSidecarRootRuntimeDemander(
                 )
         ) {
             return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.LegacySidecarActive)
-        }
-        val cache = when (
-            val preparation = cachePreparer.prepare(
-                runtime,
-                cacheIdentity,
-                startup.cacheIntent,
-            )
-        ) {
-            is SidecarCachePreparation.Prepared -> preparation.cache
-            is SidecarCachePreparation.Rejected -> return RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.SidecarCacheRejected(preparation.failure),
-            )
         }
         val context = when (
             val admission = SidecarLaunchContext.admit(

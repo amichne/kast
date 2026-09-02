@@ -1,5 +1,16 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLock
+import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLockExecution
+import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapStateFile
+import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapStateFileFailure
+import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapStateObservation
+import io.github.amichne.kast.cli.broker.PersistentBrokerServiceFailure
+import io.github.amichne.kast.distribution.contract.bootstrap.SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME
+import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapAttemptId
+import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapDocumentFailure
+import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapFailure
+import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapState
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifest
 import io.github.amichne.kast.distribution.managed.RuntimeStoreFailure
@@ -15,8 +26,10 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.security.MessageDigest
+import java.time.Duration
 import java.util.Base64
 import java.util.HexFormat
+import java.util.UUID
 
 /** An exact-root UDS endpoint. */
 class RuntimeEndpoint private constructor(
@@ -144,15 +157,22 @@ internal class Sha256RuntimeEndpointLocator(
 internal fun RuntimeEndpoint.forSidecarCache(
     cacheIdentity: String,
     semanticRuntimeId: SemanticRuntimeId,
+    physicalCacheRoot: Path,
 ): RuntimeEndpointResolution {
-    if (!Regex("sha256:[0-9a-f]{64}").matches(cacheIdentity)) {
+    if (
+        !Regex("sha256:[0-9a-f]{64}").matches(cacheIdentity) ||
+        !physicalCacheRoot.isAbsolute ||
+        physicalCacheRoot.normalize() != physicalCacheRoot
+    ) {
         return RuntimeEndpointResolution.Rejected(RuntimeEndpointFailure.INVALID_SOCKET_PATH)
     }
     val socketDirectory = socketPath.parent
         ?: return RuntimeEndpointResolution.Rejected(RuntimeEndpointFailure.INVALID_SOCKET_PATH)
     val exactToken = Base64.getUrlEncoder().withoutPadding().encodeToString(
         MessageDigest.getInstance("SHA-256").digest(
-            "$cacheIdentity\n${semanticRuntimeId.value}".toByteArray(StandardCharsets.UTF_8),
+            "$cacheIdentity\n${semanticRuntimeId.value}\n$physicalCacheRoot".toByteArray(
+                StandardCharsets.UTF_8,
+            ),
         ),
     )
     return RuntimeEndpoint.at(
@@ -218,6 +238,8 @@ class IndexerLaunchCommand private constructor(
     internal val arguments: List<String>,
     internal val runtime: InstalledIdeRuntime,
     internal val startupLog: Path,
+    internal val bootstrapState: Path,
+    internal val bootstrapAttemptId: SemanticRuntimeBootstrapAttemptId,
     internal val processSession: MacOsRuntimeProcessSession,
 ) {
     companion object {
@@ -234,6 +256,7 @@ class IndexerLaunchCommand private constructor(
             root: CanonicalRoot,
             endpoint: RuntimeEndpoint,
             context: SidecarLaunchContext,
+            bootstrapAttemptId: SemanticRuntimeBootstrapAttemptId,
         ): IndexerLaunchCommandConstruction = if (
             endpoint.root == root &&
             !Files.isSymbolicLink(context.logDirectory.resolve("startup.log"))
@@ -252,9 +275,15 @@ class IndexerLaunchCommand private constructor(
                         "--idea-log-path=${context.logDirectory}",
                         "--private-plugins-path=${context.privatePluginsDirectory}",
                         "--cache-state-path=${context.cacheRoot.resolve("cache-state")}",
+                        "--bootstrap-state-path=${context.cacheRoot.resolve(SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME)}",
+                        "--bootstrap-attempt-id=${bootstrapAttemptId.value}",
                     ),
                     runtime = context.runtime,
                     startupLog = context.logDirectory.resolve("startup.log"),
+                    bootstrapState = context.cacheRoot.resolve(
+                        SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME,
+                    ),
+                    bootstrapAttemptId = bootstrapAttemptId,
                     processSession = MacOsRuntimeProcessSession.from(endpoint),
                 ),
             )
@@ -345,6 +374,19 @@ sealed interface RuntimeAdmissionFailure {
         val failure: RuntimeProcessStartFailure,
     ) : RuntimeAdmissionFailure
     data object SessionEndedBeforeReady : RuntimeAdmissionFailure
+    data object BootstrapStateUnavailable : RuntimeAdmissionFailure
+    data object BootstrapAttemptUnavailable : RuntimeAdmissionFailure
+    data object BootstrapAttemptMismatch : RuntimeAdmissionFailure
+    data object BootstrapAttemptLockUnavailable : RuntimeAdmissionFailure
+    data class PersistentBroker(
+        val failure: PersistentBrokerServiceFailure,
+    ) : RuntimeAdmissionFailure
+    data class BootstrapProtocolRejected(
+        val failure: SemanticRuntimeBootstrapDocumentFailure,
+    ) : RuntimeAdmissionFailure
+    data class IntellijBootstrap(
+        val failure: SemanticRuntimeBootstrapFailure,
+    ) : RuntimeAdmissionFailure
     data object ProcessObservationFailed : RuntimeAdmissionFailure
     data object EndpointUnavailable : RuntimeAdmissionFailure
     data object RuntimeIdentityMismatch : RuntimeAdmissionFailure
@@ -385,6 +427,57 @@ internal fun RuntimeAdmissionFailure.outputReason(): String = when (this) {
             -> "process-start-failed"
     }
     RuntimeAdmissionFailure.SessionEndedBeforeReady -> "session-ended-before-ready"
+    RuntimeAdmissionFailure.BootstrapStateUnavailable -> "bootstrap-state-unavailable"
+    RuntimeAdmissionFailure.BootstrapAttemptUnavailable -> "bootstrap-attempt-unavailable"
+    RuntimeAdmissionFailure.BootstrapAttemptMismatch -> "bootstrap-attempt-mismatch"
+    RuntimeAdmissionFailure.BootstrapAttemptLockUnavailable ->
+        "bootstrap-attempt-lock-unavailable"
+    is RuntimeAdmissionFailure.PersistentBroker -> when (failure) {
+        PersistentBrokerServiceFailure.UNAVAILABLE -> "broker-unavailable"
+        PersistentBrokerServiceFailure.CONFIGURATION_REJECTED ->
+            "broker-configuration-rejected"
+        PersistentBrokerServiceFailure.KAST_QUALIFICATION_REJECTED ->
+            "broker-kast-qualification-rejected"
+        PersistentBrokerServiceFailure.CATALOG_REJECTED -> "broker-catalog-rejected"
+        PersistentBrokerServiceFailure.CODEX_QUALIFICATION_REJECTED ->
+            "broker-codex-qualification-rejected"
+        PersistentBrokerServiceFailure.THREAD_STORE_REJECTED ->
+            "broker-thread-store-rejected"
+        PersistentBrokerServiceFailure.UPSTREAM_REJECTED -> "broker-upstream-rejected"
+        PersistentBrokerServiceFailure.SERVER_REJECTED -> "broker-server-rejected"
+        PersistentBrokerServiceFailure.KAST_EXECUTABLE_UNAVAILABLE ->
+            "broker-kast-executable-unavailable"
+        PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE ->
+            "broker-codex-executable-unavailable"
+        PersistentBrokerServiceFailure.CODEX_HOME_REJECTED -> "broker-codex-home-rejected"
+        PersistentBrokerServiceFailure.USER_HOME_REJECTED -> "broker-user-home-rejected"
+        PersistentBrokerServiceFailure.JAVA_RUNTIME_UNAVAILABLE ->
+            "broker-java-runtime-unavailable"
+        PersistentBrokerServiceFailure.STATE_DIRECTORY_REJECTED ->
+            "broker-state-directory-rejected"
+        PersistentBrokerServiceFailure.SERVICE_LOCK_REJECTED ->
+            "broker-service-lock-rejected"
+        PersistentBrokerServiceFailure.SERVICE_OBSERVATION_REJECTED ->
+            "broker-service-observation-rejected"
+        PersistentBrokerServiceFailure.SERVICE_RETIREMENT_REJECTED ->
+            "broker-service-retirement-rejected"
+        PersistentBrokerServiceFailure.SERVICE_SUBMISSION_REJECTED ->
+            "broker-service-submission-rejected"
+        PersistentBrokerServiceFailure.READINESS_REJECTED -> "broker-readiness-rejected"
+        PersistentBrokerServiceFailure.PUBLIC_SOCKET_OWNED -> "broker-public-socket-owned"
+        PersistentBrokerServiceFailure.SOCKET_PROBE_REJECTED ->
+            "broker-socket-probe-rejected"
+        PersistentBrokerServiceFailure.LAUNCHCTL_TIMED_OUT -> "broker-launchctl-timed-out"
+        PersistentBrokerServiceFailure.STARTUP_TIMED_OUT -> "broker-startup-timed-out"
+        PersistentBrokerServiceFailure.INTERRUPTED -> "interrupted"
+    }
+    is RuntimeAdmissionFailure.BootstrapProtocolRejected -> when (failure) {
+        SemanticRuntimeBootstrapDocumentFailure.MALFORMED_DOCUMENT ->
+            "bootstrap-document-malformed"
+        SemanticRuntimeBootstrapDocumentFailure.UNSUPPORTED_SCHEMA ->
+            "bootstrap-schema-unsupported"
+    }
+    is RuntimeAdmissionFailure.IntellijBootstrap -> failure.wireName
     RuntimeAdmissionFailure.ProcessObservationFailed -> "process-observation-failed"
     RuntimeAdmissionFailure.EndpointUnavailable -> "endpoint-unavailable"
     RuntimeAdmissionFailure.RuntimeIdentityMismatch -> "runtime-identity-mismatch"
@@ -435,13 +528,71 @@ fun interface RuntimeDemander {
     ): RuntimeAdmission
 }
 
-private enum class RuntimeStartupBound(
-    val probeAttempts: Int,
-) {
-    ENTERPRISE_ACCEPTED(probeAttempts = 2_400),
+private const val RUNTIME_PROBE_INTERVAL_MILLIS = 100L
+private val RUNTIME_STARTUP_TIMEOUT: Duration = Duration.ofMinutes(17L)
+
+internal sealed interface RuntimeBootstrapAttemptGeneration {
+    data class Generated(
+        val attemptId: SemanticRuntimeBootstrapAttemptId,
+    ) : RuntimeBootstrapAttemptGeneration
+
+    data object Rejected : RuntimeBootstrapAttemptGeneration
 }
 
-private const val RUNTIME_PROBE_INTERVAL_MILLIS = 100L
+internal fun interface RuntimeBootstrapAttemptGenerator {
+    fun generate(): RuntimeBootstrapAttemptGeneration
+}
+
+/** Exact live-process evidence for one semantic-runtime bootstrap attempt. */
+internal sealed interface RuntimeBootstrapProcessObservation {
+    data object Absent : RuntimeBootstrapProcessObservation
+
+    data class Owned(
+        val attemptId: SemanticRuntimeBootstrapAttemptId,
+        val session: AcceptedRuntimeStartupSession,
+    ) : RuntimeBootstrapProcessObservation
+
+    /** An external service exists, but no exact child attempt can currently be proven. */
+    data object Uncorrelated : RuntimeBootstrapProcessObservation
+
+    data object Ambiguous : RuntimeBootstrapProcessObservation
+    data object Interrupted : RuntimeBootstrapProcessObservation
+}
+
+/** Exact executable, endpoint, and bootstrap-state identity visible in both launcher and JVM argv. */
+internal class RuntimeBootstrapProcessQuery private constructor(
+    internal val endpoint: RuntimeEndpoint,
+    internal val executable: IndexerExecutable,
+    internal val bootstrapState: Path,
+) {
+    companion object {
+        internal fun from(
+            endpoint: RuntimeEndpoint,
+            executable: IndexerExecutable,
+            launchContext: SidecarLaunchContext,
+        ): RuntimeBootstrapProcessQuery = RuntimeBootstrapProcessQuery(
+            endpoint,
+            executable,
+            launchContext.cacheRoot.resolve(SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME),
+        )
+    }
+}
+
+internal fun interface RuntimeBootstrapProcessAuthority {
+    /** Correlates an exact endpoint to the live child attempt encoded in its command line. */
+    fun observe(query: RuntimeBootstrapProcessQuery): RuntimeBootstrapProcessObservation
+}
+
+private object JdkRuntimeBootstrapAttemptGenerator : RuntimeBootstrapAttemptGenerator {
+    override fun generate(): RuntimeBootstrapAttemptGeneration = try {
+        when (val admitted = SemanticRuntimeBootstrapAttemptId.admit(UUID.randomUUID().toString())) {
+            is Refinement.Refined -> RuntimeBootstrapAttemptGeneration.Generated(admitted.value)
+            is Refinement.Rejected -> RuntimeBootstrapAttemptGeneration.Rejected
+        }
+    } catch (_: RuntimeException) {
+        RuntimeBootstrapAttemptGeneration.Rejected
+    }
+}
 
 /** Starts only the admitted indexer artifact with explicit exact-root and socket arguments. */
 internal class ExactRootProcessRuntimeDemander(
@@ -449,6 +600,10 @@ internal class ExactRootProcessRuntimeDemander(
     private val launchContext: SidecarLaunchContext,
     private val processStarter: RuntimeProcessStarter = JdkRuntimeProcessStarter,
     private val endpointProbe: RuntimeEndpointProbe = JdkUnixDomainEndpointProbe,
+    private val attemptGenerator: RuntimeBootstrapAttemptGenerator =
+        JdkRuntimeBootstrapAttemptGenerator,
+    private val bootstrapProcessAuthority: RuntimeBootstrapProcessAuthority =
+        JdkRuntimeBootstrapProcessAuthority,
 ) : RuntimeDemander {
     override fun demand(
         root: CanonicalRoot,
@@ -457,8 +612,109 @@ internal class ExactRootProcessRuntimeDemander(
         if (endpoint.root != root) {
             return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
         }
+        return when (val execution = SidecarBootstrapAttemptLock.withAcquired(
+            launchContext.cacheRoot,
+            RUNTIME_STARTUP_TIMEOUT,
+        ) { demandExclusively(root, endpoint) }) {
+            is SidecarBootstrapAttemptLockExecution.Executed -> execution.value
+            SidecarBootstrapAttemptLockExecution.Interrupted -> RuntimeAdmission.Rejected(
+                RuntimeAdmissionFailure.Interrupted,
+            )
+            SidecarBootstrapAttemptLockExecution.Rejected,
+            SidecarBootstrapAttemptLockExecution.TimedOut,
+                -> RuntimeAdmission.Rejected(
+                    RuntimeAdmissionFailure.BootstrapAttemptLockUnavailable,
+                )
+        }
+    }
+
+    private fun demandExclusively(
+        root: CanonicalRoot,
+        endpoint: RuntimeEndpoint,
+    ): RuntimeAdmission {
+        val processQuery = RuntimeBootstrapProcessQuery.from(
+            endpoint,
+            executable,
+            launchContext,
+        )
+        val bootstrapState = launchContext.cacheRoot.resolve(
+            SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME,
+        )
         if (endpointProbe.probe(endpoint) is RuntimeEndpointReachability.Reachable) {
-            return RuntimeAdmission.Ready(endpoint)
+            when (val admission = endpoint.reachableBootstrapAdmission(
+                bootstrapState,
+            )) {
+                is ReachableBootstrapAdmission.Ready -> return RuntimeAdmission.Ready(endpoint)
+                is ReachableBootstrapAdmission.Rejected -> return RuntimeAdmission.Rejected(
+                    admission.failure,
+                )
+                is ReachableBootstrapAdmission.Starting -> return when (
+                    val process = bootstrapProcessAuthority.observe(processQuery)
+                ) {
+                    is RuntimeBootstrapProcessObservation.Owned -> if (
+                        process.attemptId == admission.attemptId
+                    ) {
+                        awaitBootstrapAttempt(
+                            endpoint,
+                            bootstrapState,
+                            process.attemptId,
+                            process.session,
+                        )
+                    } else {
+                        RuntimeAdmission.Rejected(
+                            RuntimeAdmissionFailure.BootstrapAttemptMismatch,
+                        )
+                    }
+                    RuntimeBootstrapProcessObservation.Absent -> RuntimeAdmission.Rejected(
+                        RuntimeAdmissionFailure.SessionEndedBeforeReady,
+                    )
+                    RuntimeBootstrapProcessObservation.Uncorrelated -> RuntimeAdmission.Rejected(
+                        RuntimeAdmissionFailure.BootstrapAttemptUnavailable,
+                    )
+                    RuntimeBootstrapProcessObservation.Ambiguous -> RuntimeAdmission.Rejected(
+                        RuntimeAdmissionFailure.ProcessObservationFailed,
+                    )
+                    RuntimeBootstrapProcessObservation.Interrupted -> RuntimeAdmission.Rejected(
+                        RuntimeAdmissionFailure.Interrupted,
+                    )
+                }
+            }
+        }
+        when (val process = bootstrapProcessAuthority.observe(processQuery)) {
+            is RuntimeBootstrapProcessObservation.Owned -> return awaitBootstrapAttempt(
+                endpoint,
+                bootstrapState,
+                process.attemptId,
+                process.session,
+            )
+            RuntimeBootstrapProcessObservation.Absent -> Unit
+            RuntimeBootstrapProcessObservation.Uncorrelated -> return RuntimeAdmission.Rejected(
+                RuntimeAdmissionFailure.BootstrapAttemptUnavailable,
+            )
+            RuntimeBootstrapProcessObservation.Ambiguous -> return RuntimeAdmission.Rejected(
+                RuntimeAdmissionFailure.ProcessObservationFailed,
+            )
+            RuntimeBootstrapProcessObservation.Interrupted -> return RuntimeAdmission.Rejected(
+                RuntimeAdmissionFailure.Interrupted,
+            )
+        }
+        if (
+            SidecarCacheStateFile.record(
+                launchContext.cacheRoot,
+                KastCacheState.REFRESHING,
+            ) != CacheStateTransition.Recorded
+        ) {
+            return RuntimeAdmission.Rejected(
+                RuntimeAdmissionFailure.SidecarCacheRejected(
+                    SidecarCacheFailure.FilesystemRejected,
+                ),
+            )
+        }
+        val attemptId = when (val generation = attemptGenerator.generate()) {
+            is RuntimeBootstrapAttemptGeneration.Generated -> generation.attemptId
+            RuntimeBootstrapAttemptGeneration.Rejected -> return RuntimeAdmission.Rejected(
+                RuntimeAdmissionFailure.BootstrapAttemptUnavailable,
+            )
         }
         val command = when (
             val construction = IndexerLaunchCommand.create(
@@ -466,6 +722,7 @@ internal class ExactRootProcessRuntimeDemander(
                 root,
                 endpoint,
                 launchContext,
+                attemptId,
             )
         ) {
             is IndexerLaunchCommandConstruction.Created -> construction.command
@@ -474,8 +731,11 @@ internal class ExactRootProcessRuntimeDemander(
                     RuntimeAdmissionFailure.EndpointUnavailable,
                 )
         }
-        val session = when (val start = processStarter.start(command)) {
-            is RuntimeProcessStart.Accepted -> start.session
+        val started = when (val start = processStarter.start(command)) {
+            is RuntimeProcessStart.Started -> start
+            is RuntimeProcessStart.ExistingSession -> return RuntimeAdmission.Rejected(
+                RuntimeAdmissionFailure.BootstrapAttemptUnavailable,
+            )
             RuntimeProcessStart.Interrupted -> return RuntimeAdmission.Rejected(
                 RuntimeAdmissionFailure.Interrupted,
             )
@@ -483,14 +743,54 @@ internal class ExactRootProcessRuntimeDemander(
                 RuntimeAdmissionFailure.ProcessStartFailed(start.failure),
             )
         }
-        repeat(RuntimeStartupBound.ENTERPRISE_ACCEPTED.probeAttempts) {
-            if (endpointProbe.probe(endpoint) is RuntimeEndpointReachability.Reachable) {
-                return RuntimeAdmission.Ready(endpoint)
+        if (started.attemptId != command.bootstrapAttemptId) {
+            return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.BootstrapAttemptMismatch)
+        }
+        return awaitBootstrapAttempt(
+            endpoint,
+            command.bootstrapState,
+            command.bootstrapAttemptId,
+            started.session,
+        )
+    }
+
+    private fun awaitBootstrapAttempt(
+        endpoint: RuntimeEndpoint,
+        bootstrapState: Path,
+        attemptId: SemanticRuntimeBootstrapAttemptId,
+        session: AcceptedRuntimeStartupSession,
+    ): RuntimeAdmission {
+        val deadline = System.nanoTime() + RUNTIME_STARTUP_TIMEOUT.toNanos()
+        while (System.nanoTime() < deadline) {
+            val reachability = endpointProbe.probe(endpoint)
+            val bootstrap = SidecarBootstrapStateFile.observe(bootstrapState)
+            when (bootstrap) {
+                is SidecarBootstrapStateObservation.Observed -> {
+                    val state = bootstrap.state
+                    val owned = state.attemptId == attemptId
+                    if (owned) {
+                        when (state) {
+                            is SemanticRuntimeBootstrapState.Ready -> if (
+                                reachability is RuntimeEndpointReachability.Reachable
+                            ) {
+                                return RuntimeAdmission.Ready(endpoint)
+                            }
+                            is SemanticRuntimeBootstrapState.Rejected ->
+                                return RuntimeAdmission.Rejected(
+                                    RuntimeAdmissionFailure.IntellijBootstrap(state.failure),
+                                )
+                            is SemanticRuntimeBootstrapState.Starting -> Unit
+                        }
+                    }
+                }
+                is SidecarBootstrapStateObservation.Rejected -> Unit
             }
             when (session.observe()) {
                 RuntimeSessionObservation.Present -> Unit
                 RuntimeSessionObservation.Absent -> return RuntimeAdmission.Rejected(
-                    RuntimeAdmissionFailure.SessionEndedBeforeReady,
+                    bootstrap.sessionEndedBeforeReadyFailure(
+                        attemptId,
+                    ),
                 )
                 RuntimeSessionObservation.Rejected -> return RuntimeAdmission.Rejected(
                     RuntimeAdmissionFailure.ProcessObservationFailed,
@@ -507,6 +807,68 @@ internal class ExactRootProcessRuntimeDemander(
             }
         }
         return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
+    }
+}
+
+private sealed interface ReachableBootstrapAdmission {
+    data object Ready : ReachableBootstrapAdmission
+    data class Starting(
+        val attemptId: SemanticRuntimeBootstrapAttemptId,
+    ) : ReachableBootstrapAdmission
+    data class Rejected(
+        val failure: RuntimeAdmissionFailure,
+    ) : ReachableBootstrapAdmission
+}
+
+private fun RuntimeEndpoint.reachableBootstrapAdmission(
+    bootstrapState: Path,
+): ReachableBootstrapAdmission = when (
+    val observation = SidecarBootstrapStateFile.observe(bootstrapState)
+) {
+        is SidecarBootstrapStateObservation.Observed -> when (val state = observation.state) {
+            is SemanticRuntimeBootstrapState.Ready -> ReachableBootstrapAdmission.Ready
+            is SemanticRuntimeBootstrapState.Rejected -> ReachableBootstrapAdmission.Rejected(
+                RuntimeAdmissionFailure.BootstrapAttemptMismatch,
+            )
+            is SemanticRuntimeBootstrapState.Starting -> ReachableBootstrapAdmission.Starting(
+                state.attemptId,
+            )
+        }
+        is SidecarBootstrapStateObservation.Rejected -> when (val failure = observation.failure) {
+            is SidecarBootstrapStateFileFailure.DocumentRejected ->
+                ReachableBootstrapAdmission.Rejected(
+                RuntimeAdmissionFailure.BootstrapProtocolRejected(failure.failure),
+            )
+            SidecarBootstrapStateFileFailure.FilesystemRejected,
+            SidecarBootstrapStateFileFailure.PathRejected,
+                -> ReachableBootstrapAdmission.Rejected(
+                    RuntimeAdmissionFailure.BootstrapStateUnavailable,
+                )
+        }
+    }
+
+/** Preserves only a terminal state proven to belong to the accepted startup session. */
+private fun SidecarBootstrapStateObservation.sessionEndedBeforeReadyFailure(
+    startedAttempt: SemanticRuntimeBootstrapAttemptId,
+): RuntimeAdmissionFailure = when (this) {
+    is SidecarBootstrapStateObservation.Observed -> {
+        when (val state = state) {
+            is SemanticRuntimeBootstrapState.Rejected -> if (state.attemptId == startedAttempt) {
+                RuntimeAdmissionFailure.IntellijBootstrap(state.failure)
+            } else {
+                RuntimeAdmissionFailure.SessionEndedBeforeReady
+            }
+            is SemanticRuntimeBootstrapState.Ready,
+            is SemanticRuntimeBootstrapState.Starting,
+                -> RuntimeAdmissionFailure.SessionEndedBeforeReady
+        }
+    }
+    is SidecarBootstrapStateObservation.Rejected -> when (val failure = failure) {
+        is SidecarBootstrapStateFileFailure.DocumentRejected ->
+            RuntimeAdmissionFailure.SessionEndedBeforeReady
+        SidecarBootstrapStateFileFailure.FilesystemRejected,
+        SidecarBootstrapStateFileFailure.PathRejected,
+            -> RuntimeAdmissionFailure.SessionEndedBeforeReady
     }
 }
 

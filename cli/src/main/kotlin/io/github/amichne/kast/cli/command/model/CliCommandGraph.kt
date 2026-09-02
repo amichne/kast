@@ -13,6 +13,7 @@ import io.github.amichne.kast.cli.CliProjectionFailure
 import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.CliTextDocumentAdmission
 import io.github.amichne.kast.cli.command.change.changeCommandGroup
+import io.github.amichne.kast.cli.command.broker.brokerCommandGroup
 import io.github.amichne.kast.cli.command.diagnostic.diagnosticCommandGroup
 import io.github.amichne.kast.cli.command.lifecycle.lifecycleCommands
 import io.github.amichne.kast.cli.command.product.productCommandGroup
@@ -339,6 +340,7 @@ private sealed interface CliCommandSelection {
 
 private fun canonicalGraph(preparers: CanonicalCliRequestPreparers): CliCommandGraph {
     val product = productCommandGroup()
+    val broker = brokerCommandGroup()
     val workspace = workspaceCommandGroup(preparers)
     val index = indexCommandGroup(preparers)
     val topology = topologyCommandGroup(preparers)
@@ -353,6 +355,7 @@ private fun canonicalGraph(preparers: CanonicalCliRequestPreparers): CliCommandG
     val root = KastRootCommand().subcommands(
         listOf(
             product.root,
+            broker.root,
             workspace.root,
             index.root,
             topology.root,
@@ -363,7 +366,7 @@ private fun canonicalGraph(preparers: CanonicalCliRequestPreparers): CliCommandG
             change.root,
         ) + lifecycle
     )
-    return CliCommandGraph(root, semantic, product.commands, lifecycle)
+    return CliCommandGraph(root, semantic, product.commands + broker.commands, lifecycle)
 }
 
 internal class CommandFamily(

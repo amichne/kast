@@ -45,9 +45,9 @@ internal object JdkRuntimeProcessStarter : RuntimeProcessStarter {
             )
         }
         return when (val detachment = launcher.awaitDetachedChild()) {
-            is DirectRuntimeChildStart.Started -> RuntimeProcessStart.Accepted(
+            is DirectRuntimeChildStart.Started -> RuntimeProcessStart.Started(
                 DirectRuntimeStartupSession(detachment.process),
-                RuntimeProcessStartOrigin.STARTED,
+                command.bootstrapAttemptId,
             )
             DirectRuntimeChildStart.Interrupted -> RuntimeProcessStart.Interrupted
             DirectRuntimeChildStart.Rejected -> RuntimeProcessStart.Rejected(

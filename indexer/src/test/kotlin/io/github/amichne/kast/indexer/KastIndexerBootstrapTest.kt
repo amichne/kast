@@ -22,6 +22,8 @@ class KastIndexerBootstrapTest {
                     "--idea-log-path=/private/cache/log",
                     "--private-plugins-path=/installed/private-plugins",
                     "--cache-state-path=/private/cache/cache-state",
+                    "--bootstrap-state-path=/private/cache/bootstrap-state",
+                    "--bootstrap-attempt-id=123e4567-e89b-42d3-a456-426614174000",
                     "--workspace-root=/workspace",
                     "--socket-path=/runtime/kast.sock",
                     "--runtime-id=sha256:${"a".repeat(64)}",

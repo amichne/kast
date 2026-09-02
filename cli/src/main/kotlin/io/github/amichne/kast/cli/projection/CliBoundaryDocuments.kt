@@ -23,6 +23,14 @@ import kotlinx.serialization.Serializable
 
 /** Generated closed documents emitted by lifecycle and boundary orchestration. */
 internal object CliBoundaryDocuments {
+    fun brokerStopped(): CliJsonDocument = brokerStoppedFactory.create(
+        CliBrokerStoppedDocument(
+            command = "broker serve",
+            status = "complete",
+            broker = "stopped",
+        ),
+    )
+
     fun lifecycleComplete(
         command: CliLifecycleCommand,
         endpoint: RuntimeEndpoint,
@@ -113,6 +121,13 @@ internal object CliBoundaryDocuments {
         ),
     )
 }
+
+@Serializable
+private data class CliBrokerStoppedDocument(
+    val command: String,
+    val status: String,
+    val broker: String,
+)
 
 @Serializable
 private data class CliLifecycleCompleteDocument(
@@ -311,6 +326,8 @@ private fun RuntimeEndpointArtifact.lifecycleOutputName(): String = when (this) 
 
 private val lifecycleFactory =
     CliJsonDocument.generated(CliLifecycleCompleteDocument.serializer())
+private val brokerStoppedFactory =
+    CliJsonDocument.generated(CliBrokerStoppedDocument.serializer())
 private val statusWithoutCacheFactory =
     CliJsonDocument.generated(CliStatusWithoutCacheDocument.serializer())
 private val statusWithCacheFactory =

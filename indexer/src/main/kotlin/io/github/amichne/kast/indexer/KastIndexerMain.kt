@@ -47,6 +47,8 @@ internal object KastIndexerBootstrap {
         "--idea-log-path=",
         "--private-plugins-path=",
         "--cache-state-path=",
+        "--bootstrap-state-path=",
+        "--bootstrap-attempt-id=",
     )
 
     /**

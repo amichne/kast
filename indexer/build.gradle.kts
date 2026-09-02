@@ -65,6 +65,8 @@ dependencies {
     }
     compileOnly(ideaCompileLibs)
     indexerPluginRuntime(project(":runtime:composition"))
+    testImplementation(project(":distribution:contract"))
+    testImplementation(project(":workspace:intellij"))
     testImplementation(ideaCompileLibs)
     testRuntimeOnly(ideaLibs)
 }
@@ -138,6 +140,9 @@ tasks.named<SyncRuntimeLibsTask>("syncRuntimeLibs") {
 val indexerPluginRequiredClassEntries = listOf(
     "io/github/amichne/kast/indexer/KastIndexerApplicationStarter.class",
     "io/github/amichne/kast/indexer/InstalledIndexerTransport.class",
+    "io/github/amichne/kast/distribution/contract/bootstrap/SemanticRuntimeBootstrapState.class",
+    "io/github/amichne/kast/distribution/contract/bootstrap/SemanticRuntimeBootstrapCodec.class",
+    "io/github/amichne/kast/runtime/composition/semanticbootstrap/InstalledSemanticRuntimeBootstrapAttempt.class",
     "io/github/amichne/kast/runtime/composition/InstalledKastRuntime.class",
     "io/github/amichne/kast/workspace/intellij/provenance/GradleSourceRootProducerEvidence.class",
     "io/github/amichne/kast/workspace/intellij/provenance/GradleSourceRootProducerModel.class",

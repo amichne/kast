@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapAttemptId
+import io.github.amichne.kast.kernel.Refinement
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
@@ -37,6 +39,17 @@ internal sealed interface RuntimeProcessSearchResult {
     data object Ambiguous : RuntimeProcessSearchResult
 }
 
+internal sealed interface RuntimeBootstrapProcessSearchResult {
+    data object None : RuntimeBootstrapProcessSearchResult
+
+    data class Exact(
+        val process: ProcessHandle,
+        val attemptId: SemanticRuntimeBootstrapAttemptId,
+    ) : RuntimeBootstrapProcessSearchResult
+
+    data object Ambiguous : RuntimeBootstrapProcessSearchResult
+}
+
 internal fun interface RuntimeProcessSearch {
     /**
      * Proof transition: `RuntimeEndpoint -> RuntimeProcessSearchResult`.
@@ -48,6 +61,10 @@ internal fun interface RuntimeProcessSearch {
     fun find(endpoint: RuntimeEndpoint): RuntimeProcessSearchResult
 }
 
+internal fun interface RuntimeBootstrapProcessSearch {
+    fun find(query: RuntimeBootstrapProcessQuery): RuntimeBootstrapProcessSearchResult
+}
+
 internal object JdkRuntimeProcessAuthority : RuntimeProcessAuthority by ExactRuntimeProcessAuthority(
     processSearch = JdkRuntimeProcessSearch,
     processSessions = RuntimeProcessSessionResolver { DirectRuntimeProcessSession },
@@ -57,6 +74,18 @@ internal object LaunchdRuntimeProcessAuthority : RuntimeProcessAuthority by Exac
     processSearch = JdkRuntimeProcessSearch,
     processSessions = RuntimeProcessSessionResolver(MacOsRuntimeProcessSession::from),
 )
+
+internal object JdkRuntimeBootstrapProcessAuthority :
+    RuntimeBootstrapProcessAuthority by ExactRuntimeBootstrapProcessAuthority(
+        processSearch = JdkRuntimeBootstrapProcessSearch,
+        processSessions = RuntimeProcessSessionResolver { DirectRuntimeProcessSession },
+    )
+
+internal object LaunchdRuntimeBootstrapProcessAuthority :
+    RuntimeBootstrapProcessAuthority by ExactRuntimeBootstrapProcessAuthority(
+        processSearch = JdkRuntimeBootstrapProcessSearch,
+        processSessions = RuntimeProcessSessionResolver(MacOsRuntimeProcessSession::from),
+    )
 
 /** Direct mode has no authority between process attempts; exact process evidence remains primary. */
 private data object DirectRuntimeProcessSession : RuntimeProcessSession {
@@ -100,7 +129,94 @@ internal class ExactRuntimeProcessAuthority(
     }
 }
 
-private object JdkRuntimeProcessSearch : RuntimeProcessSearch {
+internal class ExactRuntimeBootstrapProcessAuthority(
+    private val processSearch: RuntimeBootstrapProcessSearch,
+    private val processSessions: RuntimeProcessSessionResolver,
+) : RuntimeBootstrapProcessAuthority {
+    override fun observe(query: RuntimeBootstrapProcessQuery): RuntimeBootstrapProcessObservation {
+        val processSession = processSessions.resolve(query.endpoint)
+        return when (val search = processSearch.find(query)) {
+            RuntimeBootstrapProcessSearchResult.None -> when (processSession.observe()) {
+                RuntimeSessionObservation.Absent -> RuntimeBootstrapProcessObservation.Absent
+                RuntimeSessionObservation.Present ->
+                    RuntimeBootstrapProcessObservation.Uncorrelated
+                RuntimeSessionObservation.Interrupted ->
+                    RuntimeBootstrapProcessObservation.Interrupted
+                RuntimeSessionObservation.Rejected ->
+                    RuntimeBootstrapProcessObservation.Ambiguous
+            }
+            is RuntimeBootstrapProcessSearchResult.Exact -> RuntimeBootstrapProcessObservation.Owned(
+                search.attemptId,
+                ProcessHandleRuntimeStartupSession(search.process),
+            )
+            RuntimeBootstrapProcessSearchResult.Ambiguous ->
+                RuntimeBootstrapProcessObservation.Ambiguous
+        }
+    }
+}
+
+/** Finds both the admitted pre-exec launcher and its eventual JVM under one exact query. */
+internal object JdkRuntimeBootstrapProcessSearch : RuntimeBootstrapProcessSearch {
+    override fun find(query: RuntimeBootstrapProcessQuery): RuntimeBootstrapProcessSearchResult {
+        val endpoint = query.endpoint
+        val exactArguments = setOf(
+            "--workspace-root=${endpoint.root.path}",
+            "--socket-path=${endpoint.socketPath}",
+            "--runtime-id=${endpoint.runtimeId.value}",
+            "--bootstrap-state-path=${query.bootstrapState}",
+        )
+        val launcher = query.executable.path.toString()
+        val current = ProcessHandle.current()
+        val currentUser = current.info().user().orElse(null)
+            ?: return RuntimeBootstrapProcessSearchResult.Ambiguous
+        val matches = mutableListOf<RuntimeBootstrapProcessSearchResult.Exact>()
+        var inaccessibleCandidate = false
+        try {
+            ProcessHandle.allProcesses().use { processes ->
+                processes.forEach { process ->
+                    if (process.pid() == current.pid()) return@forEach
+                    val info = process.info()
+                    val arguments = info.arguments().orElse(null)
+                    val commandLine = info.commandLine().orElse("")
+                    val isCandidate = arguments?.let { values ->
+                        values.contains(INDEXER_MAIN_CLASS) || values.contains(launcher)
+                    } == true ||
+                        commandLine.contains(INDEXER_MAIN_CLASS) || commandLine.contains(launcher)
+                    if (!isCandidate) return@forEach
+                    val user = info.user().orElse(null)
+                    if (user == null || arguments == null) {
+                        inaccessibleCandidate = true
+                    } else if (user == currentUser && exactArguments.all(arguments::contains)) {
+                        val rawAttempt = arguments.singleOrNull { argument ->
+                            argument.startsWith(BOOTSTRAP_ATTEMPT_ARGUMENT_PREFIX)
+                        }?.removePrefix(BOOTSTRAP_ATTEMPT_ARGUMENT_PREFIX)
+                        when (val admitted = rawAttempt?.let(
+                            SemanticRuntimeBootstrapAttemptId::admit,
+                        )) {
+                            is Refinement.Refined -> matches += RuntimeBootstrapProcessSearchResult.Exact(
+                                process,
+                                admitted.value,
+                            )
+                            is Refinement.Rejected,
+                            null,
+                                -> inaccessibleCandidate = true
+                        }
+                    }
+                }
+            }
+        } catch (_: SecurityException) {
+            return RuntimeBootstrapProcessSearchResult.Ambiguous
+        }
+        if (inaccessibleCandidate) return RuntimeBootstrapProcessSearchResult.Ambiguous
+        return when (matches.size) {
+            0 -> RuntimeBootstrapProcessSearchResult.None
+            1 -> matches.single()
+            else -> RuntimeBootstrapProcessSearchResult.Ambiguous
+        }
+    }
+}
+
+internal object JdkRuntimeProcessSearch : RuntimeProcessSearch {
     override fun find(endpoint: RuntimeEndpoint): RuntimeProcessSearchResult {
         val exactArguments = setOf(
             "--workspace-root=${endpoint.root.path}",
@@ -110,7 +226,7 @@ private object JdkRuntimeProcessSearch : RuntimeProcessSearch {
         val current = ProcessHandle.current()
         val currentUser = current.info().user().orElse(null)
             ?: return RuntimeProcessSearchResult.Ambiguous
-        val matches = mutableListOf<ProcessHandle>()
+        val matches = mutableListOf<RuntimeProcessSearchResult.Exact>()
         var inaccessibleIndexer = false
         try {
             ProcessHandle.allProcesses().use { processes ->
@@ -126,7 +242,7 @@ private object JdkRuntimeProcessSearch : RuntimeProcessSearch {
                     if (user == null || arguments == null) {
                         inaccessibleIndexer = true
                     } else if (user == currentUser && exactArguments.all(arguments::contains)) {
-                        matches += process
+                        matches += RuntimeProcessSearchResult.Exact(process)
                     }
                 }
             }
@@ -136,9 +252,19 @@ private object JdkRuntimeProcessSearch : RuntimeProcessSearch {
         if (inaccessibleIndexer) return RuntimeProcessSearchResult.Ambiguous
         return when (matches.size) {
             0 -> RuntimeProcessSearchResult.None
-            1 -> RuntimeProcessSearchResult.Exact(matches.single())
+            1 -> matches.single()
             else -> RuntimeProcessSearchResult.Ambiguous
         }
+    }
+}
+
+private class ProcessHandleRuntimeStartupSession(
+    private val process: ProcessHandle,
+) : AcceptedRuntimeStartupSession {
+    override fun observe(): RuntimeSessionObservation = try {
+        if (process.isAlive) RuntimeSessionObservation.Present else RuntimeSessionObservation.Absent
+    } catch (_: SecurityException) {
+        RuntimeSessionObservation.Rejected
     }
 }
 
@@ -220,3 +346,4 @@ private class SessionRuntimeOwnedProcess(
 
 private const val PROCESS_STOP_TIMEOUT_SECONDS = 10L
 private const val INDEXER_MAIN_CLASS = "io.github.amichne.kast.indexer.KastIndexerMainKt"
+private const val BOOTSTRAP_ATTEMPT_ARGUMENT_PREFIX = "--bootstrap-attempt-id="

@@ -97,6 +97,7 @@ class SidecarCliLifecycleTest {
                         RootSidecarCacheStatus(
                             cacheIdentity = cacheIdentity,
                             semanticRuntimeId = staleRuntimeId,
+                            cacheRoot = temporary.resolve("cache/$cacheIdentity"),
                             state = KastCacheState.SMART,
                             ideaHome = temporary.resolve("IntelliJ IDEA.app"),
                             ideaBuild = "262.9437.185",
@@ -116,7 +117,11 @@ class SidecarCliLifecycleTest {
         assertEquals(0, runtimeDemands)
         assertEquals(
             (
-                fixture.endpoint.forSidecarCache(cacheIdentity, staleRuntimeId) as
+                fixture.endpoint.forSidecarCache(
+                    cacheIdentity,
+                    staleRuntimeId,
+                    temporary.resolve("cache/$cacheIdentity"),
+                ) as
                     RuntimeEndpointResolution.Resolved
                 )
                 .endpoint,
@@ -216,6 +221,7 @@ class SidecarCliLifecycleTest {
         RootSidecarCacheStatus(
             cacheIdentity = cacheIdentity,
             semanticRuntimeId = semanticRuntimeId(),
+            cacheRoot = temporary.resolve("cache/$cacheIdentity"),
             state = KastCacheState.SMART,
             ideaHome = temporary.resolve("IntelliJ IDEA.app"),
             ideaBuild = "262.9437.185",

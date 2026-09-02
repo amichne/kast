@@ -77,13 +77,10 @@ class InstalledIntellijWorkspaceModel internal constructor(
         io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity,
         InstalledGradleModelCaptureFailure,
         > = when (awaitInstalledIndexingQuiescence(project, projectJvm, moduleRematerializer)) {
-        InstalledIndexingReadiness.READY -> capture.captureCurrentSemanticIdentity()
-        InstalledIndexingReadiness.INTERRUPTED,
-        InstalledIndexingReadiness.TIMED_OUT,
-        InstalledIndexingReadiness.FAILED,
-            -> io.github.amichne.kast.kernel.Refinement.Rejected(
-                InstalledGradleModelCaptureFailure.INDEXING_UNAVAILABLE,
-            )
+        InstalledIndexingReadiness.Ready -> capture.captureCurrentSemanticIdentity()
+        is InstalledIndexingReadiness.Rejected -> io.github.amichne.kast.kernel.Refinement.Rejected(
+            InstalledGradleModelCaptureFailure.INDEXING_UNAVAILABLE,
+        )
     }
 
     /** Refreshes the exact admitted roots, then proves installed indexing has become quiescent. */
@@ -93,17 +90,22 @@ class InstalledIntellijWorkspaceModel internal constructor(
         when (val physical = refresh.refresh(workspace)) {
             is WorkspaceIndexRefresh.Rejected -> physical
             WorkspaceIndexRefresh.Refreshed -> when (
-                awaitInstalledIndexingQuiescence(project, projectJvm, moduleRematerializer)
+                val readiness =
+                    awaitInstalledIndexingQuiescence(project, projectJvm, moduleRematerializer)
             ) {
-                InstalledIndexingReadiness.READY -> WorkspaceIndexRefresh.Refreshed
-                InstalledIndexingReadiness.INTERRUPTED -> WorkspaceIndexRefresh.Rejected(
-                    WorkspaceIndexRefreshFailure.INDEXING_INTERRUPTED,
-                )
-                InstalledIndexingReadiness.TIMED_OUT -> WorkspaceIndexRefresh.Rejected(
-                    WorkspaceIndexRefreshFailure.INDEXING_TIMED_OUT,
-                )
-                InstalledIndexingReadiness.FAILED -> WorkspaceIndexRefresh.Rejected(
-                    WorkspaceIndexRefreshFailure.INDEXING_FAILED,
+                InstalledIndexingReadiness.Ready -> WorkspaceIndexRefresh.Refreshed
+                is InstalledIndexingReadiness.Rejected -> WorkspaceIndexRefresh.Rejected(
+                    when (readiness.failure) {
+                        InstalledIndexingReadinessFailure.Interrupted ->
+                            WorkspaceIndexRefreshFailure.INDEXING_INTERRUPTED
+                        InstalledIndexingReadinessFailure.IndexingTimedOut ->
+                            WorkspaceIndexRefreshFailure.INDEXING_TIMED_OUT
+                        InstalledIndexingReadinessFailure.ModuleMaterializationUnavailable,
+                        InstalledIndexingReadinessFailure.PlatformObservationUnavailable,
+                        InstalledIndexingReadinessFailure.ProjectDisposed,
+                        InstalledIndexingReadinessFailure.ProjectJvmUnavailable,
+                            -> WorkspaceIndexRefreshFailure.INDEXING_FAILED
+                    },
                 )
             }
         }
@@ -119,6 +121,39 @@ sealed interface InstalledIntellijWorkspaceOpening {
         val failure: InstalledIntellijWorkspaceFailure,
     ) : InstalledIntellijWorkspaceOpening
 }
+
+/** Closed projection from the indexing wait into the installed workspace-opening boundary. */
+internal sealed interface InstalledWorkspaceIndexingAdmission {
+    data object Ready : InstalledWorkspaceIndexingAdmission
+
+    data class Rejected(
+        val failure: InstalledIntellijWorkspaceFailure,
+    ) : InstalledWorkspaceIndexingAdmission
+}
+
+/**
+ * Proof transition: `InstalledIndexingReadiness -> InstalledWorkspaceIndexingAdmission`.
+ *
+ * Retains the finite indexing cause at the workspace-opening boundary instead of using nullable
+ * or exceptional control flow.
+ */
+internal fun InstalledIndexingReadiness.workspaceOpeningAdmission():
+    InstalledWorkspaceIndexingAdmission = when (this) {
+        InstalledIndexingReadiness.Ready -> InstalledWorkspaceIndexingAdmission.Ready
+        is InstalledIndexingReadiness.Rejected -> InstalledWorkspaceIndexingAdmission.Rejected(
+            when (failure) {
+                InstalledIndexingReadinessFailure.Interrupted ->
+                    InstalledIntellijWorkspaceFailure.INDEXING_INTERRUPTED
+                InstalledIndexingReadinessFailure.ProjectJvmUnavailable ->
+                    InstalledIntellijWorkspaceFailure.PROJECT_JVM_UNAVAILABLE
+                InstalledIndexingReadinessFailure.IndexingTimedOut,
+                InstalledIndexingReadinessFailure.ModuleMaterializationUnavailable,
+                InstalledIndexingReadinessFailure.PlatformObservationUnavailable,
+                InstalledIndexingReadinessFailure.ProjectDisposed,
+                    -> InstalledIntellijWorkspaceFailure.STARTUP_FAILED
+            },
+        )
+    }
 
 /** Sole installed IntelliJ project-open, Gradle-import, and model-capture boundary. */
 object InstalledIntellijWorkspace {
@@ -255,14 +290,15 @@ object InstalledIntellijWorkspace {
             materializeImportedModules(project, workspaceRoot)
         }
         observer.observe(InstalledIntellijWorkspaceBootstrapPhase.INDEXING)
-        when (awaitInstalledIndexingQuiescence(project, assignedProjectJvm, moduleRematerializer)) {
-            InstalledIndexingReadiness.READY -> Unit
-            InstalledIndexingReadiness.INTERRUPTED -> return rejected(
-                InstalledIntellijWorkspaceFailure.INDEXING_INTERRUPTED,
-            )
-            InstalledIndexingReadiness.TIMED_OUT,
-            InstalledIndexingReadiness.FAILED,
-                -> return rejected(InstalledIntellijWorkspaceFailure.MODEL_UNAVAILABLE)
+        when (
+            val admission = awaitInstalledIndexingQuiescence(
+                project,
+                assignedProjectJvm,
+                moduleRematerializer,
+            ).workspaceOpeningAdmission()
+        ) {
+            InstalledWorkspaceIndexingAdmission.Ready -> Unit
+            is InstalledWorkspaceIndexingAdmission.Rejected -> return rejected(admission.failure)
         }
         observer.observe(InstalledIntellijWorkspaceBootstrapPhase.MODEL_CAPTURE)
         val capture = when (val captured = captureInstalledGradleModel(project, workspaceRoot)) {

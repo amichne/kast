@@ -19,6 +19,7 @@ gradle-tooling-api = "9.4.0"
 opentelemetry = "1.62.0"
 sqlite-jdbc = "3.53.2.0"
 json-schema-validator = "3.0.3"
+ktor = "3.5.2"
 
 [libraries]
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -44,6 +45,12 @@ opentelemetry-exporter-otlp = { module = "io.opentelemetry:opentelemetry-exporte
 opentelemetry-exporter-logging-otlp = { module = "io.opentelemetry:opentelemetry-exporter-logging-otlp", version.ref = "opentelemetry" }
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
 json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
+ktor-server-core = { module = "io.ktor:ktor-server-core-jvm", version.ref = "ktor" }
+ktor-server-cio = { module = "io.ktor:ktor-server-cio-jvm", version.ref = "ktor" }
+ktor-server-websockets = { module = "io.ktor:ktor-server-websockets-jvm", version.ref = "ktor" }
+ktor-client-core = { module = "io.ktor:ktor-client-core-jvm", version.ref = "ktor" }
+ktor-client-cio = { module = "io.ktor:ktor-client-cio-jvm", version.ref = "ktor" }
+ktor-client-websockets = { module = "io.ktor:ktor-client-websockets-jvm", version.ref = "ktor" }
 
 [bundles]
 test = [
@@ -54,6 +61,15 @@ test = [
 coroutines = [
     "coroutines-core",
     "coroutines-jdk8",
+]
+
+ktor-broker = [
+    "ktor-server-core",
+    "ktor-server-cio",
+    "ktor-server-websockets",
+    "ktor-client-core",
+    "ktor-client-cio",
+    "ktor-client-websockets",
 ]
 
 [plugins]

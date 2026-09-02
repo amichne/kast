@@ -1,6 +1,11 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
+import io.github.amichne.kast.distribution.contract.bootstrap.SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME
+import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapAttemptId
+import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapCodec
+import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapFailure
+import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapState
 import io.github.amichne.kast.kernel.Refinement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -17,32 +22,128 @@ import java.time.Duration
 
 class RuntimeProcessSessionTest {
     @Test
-    fun `demander waits for endpoint while exact session is between launch attempts`(
+    fun `reachable starting attempt waits without launching a duplicate child`(
         @TempDir temporary: Path,
     ) {
         val endpoint = endpoint(temporary)
+        val context = launchContext(temporary)
+        val runningAttempt = attempt("123e4567-e89b-42d3-a456-426614174001")
+        writeBootstrap(
+            context.cacheRoot.resolve(SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME),
+            SemanticRuntimeBootstrapState.Starting(runningAttempt),
+        )
         var probes = 0
+        var starts = 0
         val demander = ExactRootProcessRuntimeDemander(
             executable = executable(temporary),
-            launchContext = launchContext(temporary),
+            launchContext = context,
             processStarter = RuntimeProcessStarter {
-                RuntimeProcessStart.Accepted(
-                    AcceptedRuntimeStartupSession { RuntimeSessionObservation.Present },
-                    RuntimeProcessStartOrigin.EXISTING_SESSION,
-                )
+                starts += 1
+                error("reachable Starting must not launch another child")
             },
             endpointProbe = RuntimeEndpointProbe {
                 probes += 1
-                if (probes < 3) {
-                    RuntimeEndpointReachability.Unreachable
-                } else {
-                    RuntimeEndpointReachability.Reachable
+                if (probes == 2) {
+                    writeBootstrap(
+                        context.cacheRoot.resolve(SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME),
+                        SemanticRuntimeBootstrapState.Ready(runningAttempt),
+                    )
                 }
+                RuntimeEndpointReachability.Reachable
+            },
+            bootstrapProcessAuthority = RuntimeBootstrapProcessAuthority {
+                RuntimeBootstrapProcessObservation.Owned(
+                    runningAttempt,
+                    AcceptedRuntimeStartupSession { RuntimeSessionObservation.Present },
+                )
             },
         )
 
         assertEquals(RuntimeAdmission.Ready(endpoint), demander.demand(endpoint.root, endpoint))
-        assertEquals(3, probes)
+        assertEquals(0, starts)
+        assertEquals(2, probes)
+    }
+
+    @Test
+    fun `detached exact attempt is joined after cli exit without refreshing or relaunching`(
+        @TempDir temporary: Path,
+    ) {
+        val endpoint = endpoint(temporary)
+        val context = launchContext(temporary)
+        val runningAttempt = attempt("123e4567-e89b-42d3-a456-426614174009")
+        writeBootstrap(
+            context.cacheRoot.resolve(SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME),
+            SemanticRuntimeBootstrapState.Starting(runningAttempt),
+        )
+        assertEquals(
+            CacheStateTransition.Recorded,
+            SidecarCacheStateFile.record(context.cacheRoot, KastCacheState.SMART),
+        )
+        var probes = 0
+        var starts = 0
+        val demander = ExactRootProcessRuntimeDemander(
+            executable = executable(temporary),
+            launchContext = context,
+            processStarter = RuntimeProcessStarter {
+                starts += 1
+                error("a detached exact attempt must be joined")
+            },
+            endpointProbe = RuntimeEndpointProbe {
+                probes += 1
+                if (probes == 2) {
+                    writeBootstrap(
+                        context.cacheRoot.resolve(SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME),
+                        SemanticRuntimeBootstrapState.Ready(runningAttempt),
+                    )
+                    RuntimeEndpointReachability.Reachable
+                } else {
+                    RuntimeEndpointReachability.Unreachable
+                }
+            },
+            bootstrapProcessAuthority = RuntimeBootstrapProcessAuthority {
+                RuntimeBootstrapProcessObservation.Owned(
+                    runningAttempt,
+                    AcceptedRuntimeStartupSession { RuntimeSessionObservation.Present },
+                )
+            },
+        )
+
+        assertEquals(RuntimeAdmission.Ready(endpoint), demander.demand(endpoint.root, endpoint))
+        assertEquals(0, starts)
+        assertEquals(
+            CacheStateObservation.Observed(KastCacheState.SMART),
+            SidecarCacheStateFile.observe(context.cacheRoot),
+        )
+    }
+
+    @Test
+    fun `uncorrelated existing session fails closed without adopting a stale document`(
+        @TempDir temporary: Path,
+    ) {
+        val endpoint = endpoint(temporary)
+        val context = launchContext(temporary)
+        writeBootstrap(
+            context.cacheRoot.resolve(SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME),
+            SemanticRuntimeBootstrapState.Rejected(
+                attempt("123e4567-e89b-42d3-a456-426614174002"),
+                SemanticRuntimeBootstrapFailure.PROJECT_JVM_UNAVAILABLE,
+            ),
+        )
+        val demander = ExactRootProcessRuntimeDemander(
+            executable = executable(temporary),
+            launchContext = context,
+            processStarter = RuntimeProcessStarter {
+                RuntimeProcessStart.ExistingSession(
+                    AcceptedRuntimeStartupSession { RuntimeSessionObservation.Present },
+                )
+            },
+            endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Unreachable },
+        )
+
+        assertEquals(
+            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.BootstrapAttemptUnavailable),
+            demander.demand(endpoint.root, endpoint),
+        )
     }
 
     @Test
@@ -54,10 +155,10 @@ class RuntimeProcessSessionTest {
         val demander = ExactRootProcessRuntimeDemander(
             executable = executable(temporary),
             launchContext = launchContext(temporary),
-            processStarter = RuntimeProcessStarter {
-                RuntimeProcessStart.Accepted(
+            processStarter = RuntimeProcessStarter { command ->
+                RuntimeProcessStart.Started(
                     AcceptedRuntimeStartupSession { RuntimeSessionObservation.Absent },
-                    RuntimeProcessStartOrigin.STARTED,
+                    command.bootstrapAttemptId,
                 )
             },
             endpointProbe = RuntimeEndpointProbe {
@@ -74,6 +175,43 @@ class RuntimeProcessSessionTest {
     }
 
     @Test
+    fun `sidecar bootstrap rejection survives session exit as the exact runtime failure`(
+        @TempDir temporary: Path,
+    ) {
+        val endpoint = endpoint(temporary)
+        val expected = SemanticRuntimeBootstrapFailure.PROJECT_JVM_UNAVAILABLE
+        val demander = ExactRootProcessRuntimeDemander(
+            executable = executable(temporary),
+            launchContext = launchContext(temporary),
+            processStarter = RuntimeProcessStarter { command ->
+                writeBootstrap(
+                    command.bootstrapState,
+                    SemanticRuntimeBootstrapState.Rejected(
+                        command.bootstrapAttemptId,
+                        expected,
+                    ),
+                )
+                RuntimeProcessStart.Started(
+                    AcceptedRuntimeStartupSession { RuntimeSessionObservation.Absent },
+                    command.bootstrapAttemptId,
+                )
+            },
+            endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Unreachable },
+        )
+
+        val admission = demander.demand(endpoint.root, endpoint)
+
+        assertEquals(
+            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.IntellijBootstrap(expected)),
+            admission,
+        )
+        assertEquals(
+            "project-jvm-unavailable",
+            (admission as RuntimeAdmission.Rejected).failure.outputReason(),
+        )
+    }
+
+    @Test
     fun `startup session observation failure and interruption remain distinct`(
         @TempDir temporary: Path,
     ) {
@@ -82,10 +220,10 @@ class RuntimeProcessSessionTest {
             ExactRootProcessRuntimeDemander(
                 executable = executable(temporary),
                 launchContext = launchContext(temporary),
-                processStarter = RuntimeProcessStarter {
-                    RuntimeProcessStart.Accepted(
+                processStarter = RuntimeProcessStarter { command ->
+                    RuntimeProcessStart.Started(
                         AcceptedRuntimeStartupSession { observation },
-                        RuntimeProcessStartOrigin.STARTED,
+                        command.bootstrapAttemptId,
                     )
                 },
                 endpointProbe = RuntimeEndpointProbe {
@@ -118,9 +256,8 @@ class RuntimeProcessSessionTest {
         )
 
         assertEquals(
-            RuntimeProcessStart.Accepted(
+            RuntimeProcessStart.ExistingSession(
                 session,
-                RuntimeProcessStartOrigin.EXISTING_SESSION,
             ),
             session.start(command(temporary, endpoint)),
         )
@@ -148,7 +285,7 @@ class RuntimeProcessSessionTest {
             },
         )
 
-        assertInstanceOf(RuntimeProcessStart.Accepted::class.java, session.start(command))
+        assertInstanceOf(RuntimeProcessStart.Started::class.java, session.start(command))
         val environmentIndex = submission.orEmpty().indexOf("/usr/bin/env")
         val standardErrorIndex = submission.orEmpty().indexOf("-e")
         assertTrue(environmentIndex >= 0)
@@ -207,9 +344,8 @@ class RuntimeProcessSessionTest {
         )
 
         assertEquals(
-            RuntimeProcessStart.Accepted(
+            RuntimeProcessStart.ExistingSession(
                 session,
-                RuntimeProcessStartOrigin.EXISTING_SESSION,
             ),
             session.start(command(temporary, endpoint)),
         )
@@ -278,8 +414,8 @@ class RuntimeProcessSessionTest {
         val serviceFile = endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.service")
 
         val start = JdkRuntimeProcessStarter.start(command(temporary, endpoint))
-        val accepted = assertInstanceOf(RuntimeProcessStart.Accepted::class.java, start)
-        assertEquals(RuntimeProcessStartOrigin.STARTED, accepted.origin)
+        val accepted = assertInstanceOf(RuntimeProcessStart.Started::class.java, start)
+        assertEquals(command(temporary, endpoint).bootstrapAttemptId, accepted.attemptId)
         awaitFile(pidFile)
         awaitFile(serviceFile)
         val process = ProcessHandle.of(Files.readString(pidFile).trim().toLong()).orElseThrow()
@@ -305,7 +441,7 @@ class RuntimeProcessSessionTest {
         )
 
         val start = JdkRuntimeProcessStarter.start(command(temporary, endpoint))
-        val accepted = assertInstanceOf(RuntimeProcessStart.Accepted::class.java, start)
+        val accepted = assertInstanceOf(RuntimeProcessStart.Started::class.java, start)
         awaitFile(pidFile)
         awaitFile(serviceFile)
         val process = ProcessHandle.of(Files.readString(pidFile).trim().toLong()).orElseThrow()
@@ -339,8 +475,7 @@ class RuntimeProcessSessionTest {
 
         val start = LaunchdRuntimeProcessStarter.start(command)
         check(
-            start is RuntimeProcessStart.Accepted &&
-                start.origin == RuntimeProcessStartOrigin.STARTED
+            start is RuntimeProcessStart.Started
         ) { "runtime process did not start: $start" }
         awaitFile(pidFile)
         awaitFile(serviceFile)
@@ -374,8 +509,7 @@ class RuntimeProcessSessionTest {
         val command = failingCommand(temporary, endpoint, serviceFile)
         val start = session.start(command)
         check(
-            start is RuntimeProcessStart.Accepted &&
-                start.origin == RuntimeProcessStartOrigin.STARTED
+            start is RuntimeProcessStart.Started
         ) { "runtime process did not start: $start" }
         awaitFile(serviceFile)
 
@@ -458,6 +592,7 @@ class RuntimeProcessSessionTest {
             endpoint.root,
             endpoint,
             launchContext(temporary),
+            attempt(),
         )
     ) {
         is IndexerLaunchCommandConstruction.Created -> construction.command
@@ -490,6 +625,7 @@ class RuntimeProcessSessionTest {
             endpoint.root,
             endpoint,
             launchContext(temporary),
+            attempt(),
         )) {
             is IndexerLaunchCommandConstruction.Created -> construction.command
             is IndexerLaunchCommandConstruction.Rejected -> error(construction.failure)
@@ -537,6 +673,19 @@ class RuntimeProcessSessionTest {
             check(System.nanoTime() < deadline) { "runtime fixture did not publish $path" }
             Thread.sleep(10)
         }
+    }
+
+    private fun attempt(
+        raw: String = "123e4567-e89b-42d3-a456-426614174000",
+    ): SemanticRuntimeBootstrapAttemptId = when (
+        val admission = SemanticRuntimeBootstrapAttemptId.admit(raw)
+    ) {
+        is Refinement.Refined -> admission.value
+        is Refinement.Rejected -> error(admission.failure)
+    }
+
+    private fun writeBootstrap(path: Path, state: SemanticRuntimeBootstrapState) {
+        Files.writeString(path, SemanticRuntimeBootstrapCodec.encode(state))
     }
 
     private fun processGroup(pid: Long): Long {

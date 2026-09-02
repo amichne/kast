@@ -8,6 +8,10 @@ import io.github.amichne.kast.cli.command.CliCommandParsing
 import io.github.amichne.kast.cli.command.CliLifecycleCommand
 import io.github.amichne.kast.cli.projection.CliBoundaryDocuments
 import io.github.amichne.kast.cli.projection.ProductInspectionDocuments
+import io.github.amichne.kast.cli.broker.BrokerServerRun
+import io.github.amichne.kast.cli.broker.BrokerServerRunner
+import io.github.amichne.kast.cli.broker.UnavailableBrokerServerRunner
+import io.github.amichne.kast.cli.broker.outputReason
 import java.nio.file.Path
 
 /** Pure orchestration of the closed CLI boundaries and their explicit outer effects. */
@@ -21,6 +25,7 @@ class KastCli(
     private val lifecycle: RuntimeLifecycleController,
     private val productInspector: ProductInspector,
     private val cacheLifecycle: RootSidecarCacheLifecycle = NoRootSidecarCacheLifecycle,
+    private val brokerServerRunner: BrokerServerRunner = UnavailableBrokerServerRunner,
 ) {
     constructor(
         commandGraphFactory: CliCommandGraphFactory,
@@ -66,6 +71,13 @@ class KastCli(
         CliAction.Local.ProductInspect -> CliExit.Complete(
             ProductInspectionDocuments.complete(productInspector.inspect(start)),
         )
+        CliAction.Local.BrokerServe -> when (val run = brokerServerRunner.serve()) {
+            BrokerServerRun.Stopped -> CliExit.Complete(CliBoundaryDocuments.brokerStopped())
+            is BrokerServerRun.Rejected -> boundaryExit(
+                CliBoundaryExitStatus.RUNTIME,
+                run.failure.outputReason(),
+            )
+        }
         is CliAction.Semantic -> executeSemantic(action.request, start)
         is CliAction.Lifecycle -> executeLifecycle(action, start)
     }
@@ -204,6 +216,7 @@ class KastCli(
                 val resolution = endpoint.forSidecarCache(
                     cache.status.cacheIdentity,
                     cache.status.semanticRuntimeId,
+                    cache.status.cacheRoot,
                 )
             ) {
                 is RuntimeEndpointResolution.Resolved -> resolution.endpoint

@@ -34,13 +34,16 @@ application {
 
 dependencies {
     implementation(libs.clikt.core)
+    implementation(libs.bundles.coroutines)
+    implementation(libs.json.schema.validator)
+    implementation(libs.bundles.ktor.broker)
+    runtimeOnly(libs.logback.classic)
     implementation(project(":distribution:contract"))
     implementation(project(":distribution:managed"))
     implementation(project(":kernel"))
     implementation(project(":protocol:contract"))
     implementation(project(":protocol:registry"))
     implementation(project(":protocol:wire"))
-    testImplementation(libs.json.schema.validator)
 }
 
 tasks.named<Test>("test") {

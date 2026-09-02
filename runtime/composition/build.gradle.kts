@@ -4,6 +4,7 @@ plugins {
 }
 
 dependencies {
+    implementation(project(":distribution:contract"))
     implementation(project(":kernel"))
     implementation(project(":protocol:contract"))
     implementation(project(":protocol:registry"))

@@ -78,8 +78,15 @@ document = json.loads(sys.argv[1])
 registry = json.loads(Path(sys.argv[2]).read_text())
 assert document["operationRegistry"] == registry, document
 assert document["cliProjection"]["commands"], document
-assert document["cliProjection"]["localCommands"] == ["product inspect"], document
+assert document["cliProjection"]["localCommands"] == [
+    "product inspect",
+    "broker serve",
+], document
 PY
+
+broker_help="$(env "${command_environment[@]}" "$kast" broker --help)"
+grep -Fq 'serve' <<<"$broker_help" ||
+  fail "installed broker command is absent from help"
 
 inspection="$(cd "$fixture/repo" && env "${command_environment[@]}" "$kast" product inspect)"
 python3 - "$inspection" <<'PY'

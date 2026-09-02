@@ -1,5 +1,8 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.cli.broker.BrokerEnsuringRootRuntimeDemander
+import io.github.amichne.kast.cli.broker.InstalledPersistentBrokerService
+import io.github.amichne.kast.cli.broker.InstalledBrokerServerRunner
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
 import io.github.amichne.kast.cli.projection.CliLocalMetadataFailure
@@ -244,33 +247,47 @@ internal class InstalledKastCliComposition : KastCliComposition {
                 InstalledIdeRuntimeDiscovery.discover(supported, digest, selection)
             },
         )
+        val installedKastExecutable = installation.kastExecutable()
+            ?: return KastCliCompositionConstruction.Rejected(
+                InstalledCompositionFailure.ControlProductRejected(
+                    InstalledKastControlProductFailure.KAST_EXECUTABLE_UNAVAILABLE,
+                ),
+            )
+        val sidecarDemander = InstalledSidecarRootRuntimeDemander(
+            endpointLocator,
+            support,
+            userHome,
+            ManagedInstalledSidecarPayloadResolver(
+                manifest,
+                InstalledSemanticRuntimeResolver(::resolveInstalledRuntime),
+            ),
+            { supported, digest, selection ->
+                InstalledIdeRuntimeDiscovery.discover(supported, digest, selection)
+            },
+            cachePreparer,
+            ExactSidecarProcessDemander(
+                runtimeDemanderFactory = { executable, context ->
+                    ExactRootProcessRuntimeDemander(
+                        executable,
+                        context,
+                        processCapabilities.starter,
+                        bootstrapProcessAuthority = processCapabilities.bootstrapAuthority,
+                    )
+                },
+            ),
+            legacyProcessAuthority = processCapabilities.authority,
+        )
         return KastCliCompositionConstruction.Created(
             KastCli(
                 commandGraphFactory,
                 FilesystemCanonicalRootDiscovery,
                 endpointLocator,
-                InstalledSidecarRootRuntimeDemander(
-                    endpointLocator,
-                    support,
-                    userHome,
-                    ManagedInstalledSidecarPayloadResolver(
-                        manifest,
-                        InstalledSemanticRuntimeResolver(::resolveInstalledRuntime),
+                BrokerEnsuringRootRuntimeDemander(
+                    InstalledPersistentBrokerService(
+                        installedKastExecutable,
+                        userHome,
                     ),
-                    { supported, digest, selection ->
-                        InstalledIdeRuntimeDiscovery.discover(supported, digest, selection)
-                    },
-                    cachePreparer,
-                    ExactSidecarProcessDemander(
-                        runtimeDemanderFactory = { executable, context ->
-                            ExactRootProcessRuntimeDemander(
-                                executable,
-                                context,
-                                processCapabilities.starter,
-                            )
-                        },
-                    ),
-                    legacyProcessAuthority = processCapabilities.authority,
+                    sidecarDemander,
                 ),
                 UnixDomainWireClient(),
                 localMetadata,
@@ -289,7 +306,11 @@ internal class InstalledKastCliComposition : KastCliComposition {
                     cacheLifecycle,
                     endpointLocator,
                 ),
-                cacheLifecycle,
+                cacheLifecycle = cacheLifecycle,
+                brokerServerRunner = InstalledBrokerServerRunner(
+                    installedKastExecutable,
+                    userHome,
+                ),
             ),
         )
     }
@@ -301,6 +322,7 @@ internal enum class InstalledKastControlProductFailure {
     LIBRARY_DIRECTORY_INVALID,
     PRODUCT_ROOT_UNAVAILABLE,
     RESOURCE_DIRECTORY_UNAVAILABLE,
+    KAST_EXECUTABLE_UNAVAILABLE,
 }
 
 private sealed interface InstalledKastControlProductAdmission {
@@ -335,6 +357,8 @@ private sealed interface InstalledLocalMetadataConstruction {
 private class InstalledKastControlProduct private constructor(
     private val root: Path,
 ) {
+    fun kastExecutable(): Path? = admittedFile(root.resolve("bin/kast"), executable = true)
+
     /**
      * Proof transition: `KastPluginVersion + InstalledProtocolResources + CliCommandSurface ->
      * InstalledLocalMetadataConstruction`.
@@ -428,6 +452,21 @@ private class InstalledKastControlProduct private constructor(
         )
     } catch (_: IOException) {
         InstalledControlResourceRead.Rejected(resource)
+    }
+
+    private fun admittedFile(path: Path, executable: Boolean): Path? {
+        if (Files.isSymbolicLink(path)) return null
+        val physical = try {
+            path.toRealPath()
+        } catch (_: IOException) {
+            return null
+        } catch (_: SecurityException) {
+            return null
+        }
+        return physical.takeIf { candidate ->
+            Files.isRegularFile(candidate, java.nio.file.LinkOption.NOFOLLOW_LINKS) &&
+                (!executable || Files.isExecutable(candidate))
+        }
     }
 
     companion object {

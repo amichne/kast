@@ -66,6 +66,16 @@ Sidecar processes launch directly by default. Set `KAST_ENABLE_LAUNCHD=1` to
 opt into launchd-backed process ownership; leave it unset or set it to `0` for
 direct launch. Any other value is rejected instead of being guessed.
 
+Kast also keeps one local Kotlin/Ktor Codex tool broker alive whenever semantic
+runtime demand brings Kast up. The broker reads tool definitions from the exact
+installed `kast --schema`, generates and compiles the exact installed Codex App
+Server schemas, and exposes the control socket at
+`$CODEX_HOME/app-server-control/app-server-control.sock`. Its launchd identity
+includes both executable digests, so upgrading Kast or Codex replaces stale
+service state instead of reusing an unproven protocol. `kast broker serve` is
+the process entry point used by that managed service. The Kotlin port's imported
+[broker provenance](docs/broker-provenance.md) is recorded in-repository.
+
 Ordinary startup never reads the user's IDEA system directory. To accelerate a
 first private import from compatible indexes, shut down IDEA cleanly and run
 `kast start --seed-from-idea`. Interactive use discloses the allowlisted cache

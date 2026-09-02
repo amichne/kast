@@ -49,7 +49,7 @@ class InstalledSidecarRuntimeDemanderTest {
         val endpoint = fixture.observedEndpoint.single()
         val expectedToken = Base64.getUrlEncoder().withoutPadding().encodeToString(
             MessageDigest.getInstance("SHA-256").digest(
-                "${launch.cache.identity.key}\n${fixture.endpoint.runtimeId.value}"
+                "${launch.cache.identity.key}\n${fixture.endpoint.runtimeId.value}\n${launch.cache.root}"
                     .toByteArray(StandardCharsets.UTF_8),
             ),
         )
@@ -82,8 +82,17 @@ class InstalledSidecarRuntimeDemanderTest {
             is RuntimeEndpointResolution.Rejected -> error(resolution.failure)
         }
         val cacheIdentity = "sha256:${"c".repeat(64)}"
-        val exact = fixture.endpoint.forSidecarCache(cacheIdentity, fixture.endpoint.runtimeId)
-        val otherExact = otherBaseEndpoint.forSidecarCache(cacheIdentity, otherRuntimeId)
+        val physicalCacheRoot = temporary.resolve("cache/$cacheIdentity")
+        val exact = fixture.endpoint.forSidecarCache(
+            cacheIdentity,
+            fixture.endpoint.runtimeId,
+            physicalCacheRoot,
+        )
+        val otherExact = otherBaseEndpoint.forSidecarCache(
+            cacheIdentity,
+            otherRuntimeId,
+            physicalCacheRoot,
+        )
 
         assertTrue(exact is RuntimeEndpointResolution.Resolved)
         assertTrue(otherExact is RuntimeEndpointResolution.Resolved)
@@ -94,7 +103,27 @@ class InstalledSidecarRuntimeDemanderTest {
     }
 
     @Test
-    fun `reachable legacy endpoint blocks a second sidecar before cache preparation`(
+    fun `exact cache endpoint includes the physical cache root authority`(
+        @TempDir temporary: Path,
+    ) {
+        val fixture = demanderFixture(temporary)
+        val cacheIdentity = "sha256:${"c".repeat(64)}"
+        val first = fixture.endpoint.forSidecarCache(
+            cacheIdentity,
+            fixture.endpoint.runtimeId,
+            temporary.resolve("cache-a/$cacheIdentity"),
+        ) as RuntimeEndpointResolution.Resolved
+        val second = fixture.endpoint.forSidecarCache(
+            cacheIdentity,
+            fixture.endpoint.runtimeId,
+            temporary.resolve("cache-b/$cacheIdentity"),
+        ) as RuntimeEndpointResolution.Resolved
+
+        assertNotEquals(first.endpoint.socketPath, second.endpoint.socketPath)
+    }
+
+    @Test
+    fun `reachable legacy endpoint blocks launch after exact cache preparation`(
         @TempDir temporary: Path,
     ) {
         val fixture = demanderFixture(
@@ -112,7 +141,7 @@ class InstalledSidecarRuntimeDemanderTest {
             RuntimeAdmission.Rejected(RuntimeAdmissionFailure.LegacySidecarActive),
             admission,
         )
-        assertTrue(fixture.observedIntents.isEmpty())
+        assertEquals(listOf(StartupCacheIntent.ReuseOrFresh), fixture.observedIntents)
         assertTrue(fixture.observedLaunch.isEmpty())
     }
 
@@ -146,7 +175,7 @@ class InstalledSidecarRuntimeDemanderTest {
     }
 
     @Test
-    fun `already reachable sidecar preserves published smart cache state`(
+    fun `already reachable sidecar delegates correlated readiness and preserves smart cache state`(
         @TempDir temporary: Path,
     ) {
         val fixture = demanderFixture(temporary)
@@ -160,10 +189,13 @@ class InstalledSidecarRuntimeDemanderTest {
             CacheStateTransition.Recorded,
             SidecarCacheStateFile.record(launch.cache.root, KastCacheState.SMART),
         )
+        var delegated = false
         val demander = ExactSidecarProcessDemander(
-            endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Reachable },
             runtimeDemanderFactory = { _, _ ->
-                error("reachable endpoint must not construct a process demander")
+                RuntimeDemander { _, endpoint ->
+                    delegated = true
+                    RuntimeAdmission.Ready(endpoint)
+                }
             },
         )
 
@@ -175,6 +207,7 @@ class InstalledSidecarRuntimeDemanderTest {
         )
 
         assertEquals(RuntimeAdmission.Ready(fixture.endpoint), admission)
+        assertTrue(delegated)
         assertEquals(
             CacheStateObservation.Observed(KastCacheState.SMART),
             SidecarCacheStateFile.observe(launch.cache.root),

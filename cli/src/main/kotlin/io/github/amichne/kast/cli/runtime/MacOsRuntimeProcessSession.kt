@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapAttemptId
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -11,10 +12,15 @@ internal fun interface RuntimeProcessStarter {
 }
 
 internal sealed interface RuntimeProcessStart {
-    /** The selected mode accepted or already owned the exact session and retained observation. */
-    data class Accepted(
+    /** A newly submitted child whose bootstrap attempt is exactly the command attempt. */
+    data class Started(
         val session: AcceptedRuntimeStartupSession,
-        val origin: RuntimeProcessStartOrigin,
+        val attemptId: SemanticRuntimeBootstrapAttemptId,
+    ) : RuntimeProcessStart
+
+    /** A pre-existing service whose child attempt cannot be recovered from launchd ownership. */
+    data class ExistingSession(
+        val session: AcceptedRuntimeStartupSession,
     ) : RuntimeProcessStart
 
     data class Rejected(val failure: RuntimeProcessStartFailure) : RuntimeProcessStart
@@ -28,11 +34,6 @@ sealed interface RuntimeProcessStartFailure {
     data object SessionSubmissionRejected : RuntimeProcessStartFailure
     data object ProcessCreationRejected : RuntimeProcessStartFailure
     data object ChildStartRejected : RuntimeProcessStartFailure
-}
-
-internal enum class RuntimeProcessStartOrigin {
-    STARTED,
-    EXISTING_SESSION,
 }
 
 /** launchd process-effect adapter retained behind the explicit installed opt-in. */
@@ -57,10 +58,7 @@ internal class MacOsRuntimeProcessSession private constructor(
      */
     fun start(command: IndexerLaunchCommand): RuntimeProcessStart {
         when (observe()) {
-            RuntimeSessionObservation.Present -> return RuntimeProcessStart.Accepted(
-                this,
-                RuntimeProcessStartOrigin.EXISTING_SESSION,
-            )
+            RuntimeSessionObservation.Present -> return RuntimeProcessStart.ExistingSession(this)
             RuntimeSessionObservation.Interrupted -> return RuntimeProcessStart.Interrupted
             RuntimeSessionObservation.Rejected -> return RuntimeProcessStart.Rejected(
                 RuntimeProcessStartFailure.SessionObservationRejected,
@@ -76,12 +74,15 @@ internal class MacOsRuntimeProcessSession private constructor(
         return when (
             launchctl.invoke(submission, LaunchctlExitContract.CompletionOnly)
         ) {
-            LaunchctlInvocation.Completed -> RuntimeProcessStart.Accepted(
+            LaunchctlInvocation.Completed -> RuntimeProcessStart.Started(
                 this,
-                RuntimeProcessStartOrigin.STARTED,
+                command.bootstrapAttemptId,
             )
             LaunchctlInvocation.Interrupted -> RuntimeProcessStart.Interrupted
             LaunchctlInvocation.Absent -> RuntimeProcessStart.Rejected(
+                RuntimeProcessStartFailure.SessionSubmissionRejected,
+            )
+            LaunchctlInvocation.TimedOut -> RuntimeProcessStart.Rejected(
                 RuntimeProcessStartFailure.SessionSubmissionRejected,
             )
             LaunchctlInvocation.Rejected -> startAfterRejectedSubmission(
@@ -94,7 +95,7 @@ internal class MacOsRuntimeProcessSession private constructor(
      * Proof transition: `LaunchctlInvocation.Rejected + MacOsRuntimeProcessSession ->
      * RuntimeProcessStart`.
      *
-     * Refines a duplicate-submission race to [RuntimeProcessStart.Accepted] only when a second
+     * Refines a duplicate-submission race to [RuntimeProcessStart.ExistingSession] only when a second
      * exact-label observation proves launchd ownership. All unproven and interrupted states remain
      * closed [RuntimeProcessStart] failures.
      */
@@ -102,10 +103,7 @@ internal class MacOsRuntimeProcessSession private constructor(
         rejected: LaunchctlInvocation.Rejected,
     ): RuntimeProcessStart = when (rejected) {
         LaunchctlInvocation.Rejected -> when (observe()) {
-            RuntimeSessionObservation.Present -> RuntimeProcessStart.Accepted(
-                this,
-                RuntimeProcessStartOrigin.EXISTING_SESSION,
-            )
+            RuntimeSessionObservation.Present -> RuntimeProcessStart.ExistingSession(this)
             RuntimeSessionObservation.Absent,
             RuntimeSessionObservation.Rejected,
                 -> RuntimeProcessStart.Rejected(
@@ -169,7 +167,9 @@ internal class MacOsRuntimeProcessSession private constructor(
         LaunchctlInvocation.Completed -> RuntimeSessionObservation.Present
         LaunchctlInvocation.Absent -> RuntimeSessionObservation.Absent
         LaunchctlInvocation.Interrupted -> RuntimeSessionObservation.Interrupted
-        LaunchctlInvocation.Rejected -> RuntimeSessionObservation.Rejected
+        LaunchctlInvocation.Rejected,
+        LaunchctlInvocation.TimedOut,
+            -> RuntimeSessionObservation.Rejected
     }
 
     /**
@@ -190,9 +190,10 @@ internal class MacOsRuntimeProcessSession private constructor(
         ) {
             LaunchctlInvocation.Completed -> RuntimeSessionRetirement.Retired
             LaunchctlInvocation.Interrupted -> RuntimeSessionRetirement.Interrupted
-            LaunchctlInvocation.Absent,
-            LaunchctlInvocation.Rejected,
-                -> RuntimeSessionRetirement.Rejected
+        LaunchctlInvocation.Absent,
+        LaunchctlInvocation.Rejected,
+        LaunchctlInvocation.TimedOut,
+            -> RuntimeSessionRetirement.Rejected
         }
     }
 
@@ -271,6 +272,7 @@ internal sealed interface LaunchctlInvocation {
     data object Absent : LaunchctlInvocation
     data object Rejected : LaunchctlInvocation
     data object Interrupted : LaunchctlInvocation
+    data object TimedOut : LaunchctlInvocation
 }
 
 internal sealed interface LaunchctlExitContract {
@@ -308,20 +310,31 @@ private fun invokeLaunchctl(
     exitContract: LaunchctlExitContract,
 ): LaunchctlInvocation {
     if (System.getProperty("os.name") != MAC_OS_NAME) return LaunchctlInvocation.Rejected
-    val exitCode = try {
+    val process = try {
         ProcessBuilder(arguments)
             .redirectOutput(ProcessBuilder.Redirect.DISCARD)
             .redirectError(ProcessBuilder.Redirect.DISCARD)
             .start()
-            .waitFor()
-    } catch (_: InterruptedException) {
-        Thread.currentThread().interrupt()
-        return LaunchctlInvocation.Interrupted
     } catch (_: IOException) {
         return LaunchctlInvocation.Rejected
     } catch (_: SecurityException) {
         return LaunchctlInvocation.Rejected
     }
+    val completed = try {
+        process.waitFor(LAUNCHCTL_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS)
+    } catch (_: InterruptedException) {
+        process.destroyForcibly()
+        Thread.currentThread().interrupt()
+        return LaunchctlInvocation.Interrupted
+    } catch (_: SecurityException) {
+        process.destroyForcibly()
+        return LaunchctlInvocation.Rejected
+    }
+    if (!completed) {
+        process.destroyForcibly()
+        return LaunchctlInvocation.TimedOut
+    }
+    val exitCode = process.exitValue()
     if (exitCode == 0) return LaunchctlInvocation.Completed
     return when (exitContract) {
         LaunchctlExitContract.CompletionOnly -> LaunchctlInvocation.Rejected
@@ -340,6 +353,7 @@ private const val ENV_EXECUTABLE = "/usr/bin/env"
 private const val SHELL_EXECUTABLE = "/bin/sh"
 private const val NULL_DEVICE = "/dev/null"
 private const val SESSION_WRAPPER_NAME = "kast-indexer-session"
+private const val LAUNCHCTL_TIMEOUT_SECONDS = 5L
 private const val TERMINAL_STARTUP_WRAPPER =
     "\"${'$'}@\"; status=${'$'}?; " +
         "/bin/launchctl remove \"${'$'}XPC_SERVICE_NAME\" >/dev/null 2>&1 || true; " +

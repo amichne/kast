@@ -40,6 +40,8 @@ idea_config_path=""
 idea_log_path=""
 private_plugins_path=""
 cache_state_path=""
+bootstrap_state_path=""
+bootstrap_attempt_id=""
 for argument in "$@"; do
   case "${argument}" in
     --idea-home=*)
@@ -91,6 +93,20 @@ for argument in "$@"; do
       }
       cache_state_path="${argument#--cache-state-path=}"
       ;;
+    --bootstrap-state-path=*)
+      [[ -z "${bootstrap_state_path}" ]] || {
+        echo "kast-indexer: bootstrap-state-path argument must occur exactly once" >&2
+        exit 70
+      }
+      bootstrap_state_path="${argument#--bootstrap-state-path=}"
+      ;;
+    --bootstrap-attempt-id=*)
+      [[ -z "${bootstrap_attempt_id}" ]] || {
+        echo "kast-indexer: bootstrap-attempt-id argument must occur exactly once" >&2
+        exit 70
+      }
+      bootstrap_attempt_id="${argument#--bootstrap-attempt-id=}"
+      ;;
   esac
 done
 
@@ -128,6 +144,8 @@ require_argument "idea-config-path" "${idea_config_path}"
 require_argument "idea-log-path" "${idea_log_path}"
 require_argument "private-plugins-path" "${private_plugins_path}"
 require_argument "cache-state-path" "${cache_state_path}"
+require_argument "bootstrap-state-path" "${bootstrap_state_path}"
+require_argument "bootstrap-attempt-id" "${bootstrap_attempt_id}"
 
 require_canonical_directory "idea-home" "${idea_home}"
 require_canonical_directory "idea-system-path" "${idea_system_path}"
@@ -137,6 +155,15 @@ require_canonical_directory "private-plugins-path" "${private_plugins_path}"
 if [[ "${cache_state_path}" != /* || "$(dirname -- "${cache_state_path}")" != \
   "$(dirname -- "${idea_system_path}")" || -L "${cache_state_path}" ]]; then
   echo "kast-indexer: cache-state-path is not owned by the cache: ${cache_state_path}" >&2
+  exit 70
+fi
+if [[ "${bootstrap_state_path}" != /* || "$(dirname -- "${bootstrap_state_path}")" != \
+  "$(dirname -- "${idea_system_path}")" || -L "${bootstrap_state_path}" ]]; then
+  echo "kast-indexer: bootstrap-state-path is not owned by the cache: ${bootstrap_state_path}" >&2
+  exit 70
+fi
+if [[ ! "${bootstrap_attempt_id}" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$ ]]; then
+  echo "kast-indexer: bootstrap-attempt-id is invalid" >&2
   exit 70
 fi
 
@@ -193,6 +220,8 @@ idea_jvm_args=(
   "-Didea.plugins.path=${private_plugins_path}"
   "-Didea.log.path=${idea_log_path}"
   "-Dkast.cache.state.path=${cache_state_path}"
+  "-Dkast.bootstrap.state.path=${bootstrap_state_path}"
+  "-Dkast.bootstrap.attempt.id=${bootstrap_attempt_id}"
   "-Djna.boot.library.path=${idea_home}/lib/jna/${jna_arch}"
   "-Djna.nosys=true"
   "-Djna.noclasspath=true"

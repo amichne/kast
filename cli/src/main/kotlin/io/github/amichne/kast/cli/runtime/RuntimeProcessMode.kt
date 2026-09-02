@@ -43,15 +43,18 @@ internal object RuntimeProcessModeEnvironment {
 internal data class RuntimeProcessCapabilities(
     val starter: RuntimeProcessStarter,
     val authority: RuntimeProcessAuthority,
+    val bootstrapAuthority: RuntimeBootstrapProcessAuthority,
 )
 
 internal fun RuntimeProcessMode.capabilities(): RuntimeProcessCapabilities = when (this) {
     RuntimeProcessMode.Direct -> RuntimeProcessCapabilities(
         JdkRuntimeProcessStarter,
         JdkRuntimeProcessAuthority,
+        JdkRuntimeBootstrapProcessAuthority,
     )
     RuntimeProcessMode.Launchd -> RuntimeProcessCapabilities(
         LaunchdRuntimeProcessStarter,
         LaunchdRuntimeProcessAuthority,
+        LaunchdRuntimeBootstrapProcessAuthority,
     )
 }

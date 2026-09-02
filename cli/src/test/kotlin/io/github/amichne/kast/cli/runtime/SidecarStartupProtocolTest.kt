@@ -6,6 +6,8 @@ import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandParsing
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
+import io.github.amichne.kast.distribution.contract.bootstrap.SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME
+import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapAttemptId
 import io.github.amichne.kast.kernel.Refinement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -114,7 +116,10 @@ class SidecarStartupProtocolTest {
             privatePlugins,
         ).let { (it as SidecarLaunchContextAdmission.Admitted).context }
 
-        val command = IndexerLaunchCommand.create(executable, root, endpoint, context).let {
+        val attempt = SemanticRuntimeBootstrapAttemptId.admit(
+            "123e4567-e89b-42d3-a456-426614174000",
+        ).let { (it as Refinement.Refined).value }
+        val command = IndexerLaunchCommand.create(executable, root, endpoint, context, attempt).let {
             (it as IndexerLaunchCommandConstruction.Created).command
         }
 
@@ -131,6 +136,8 @@ class SidecarStartupProtocolTest {
                 "--idea-log-path=$log",
                 "--private-plugins-path=$privatePlugins",
                 "--cache-state-path=${cacheRoot.resolve("cache-state")}",
+                "--bootstrap-state-path=${cacheRoot.resolve(SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME)}",
+                "--bootstrap-attempt-id=${attempt.value}",
             ),
             command.arguments,
         )
