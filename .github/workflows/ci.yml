@@ -61,9 +61,10 @@ jobs:
           installedProductTest
           verifyKastArchitecture
 
-      - name: Verify release asset contract
+      - name: Verify release and acceptance isolation contracts
         run: |
           bash .github/scripts/release/test-admit-source.sh
           bash .github/scripts/release/test-module-knowledge-authority.sh
           python3 distribution/release/test_verify_assets_authority.py
           python3 distribution/release/verify_assets.py --self-test
+          python3 integration-tests/test_enterprise_acceptance.py
