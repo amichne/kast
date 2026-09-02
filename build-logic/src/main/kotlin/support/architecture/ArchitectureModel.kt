@@ -1,5 +1,7 @@
 package support.architecture
 
+import java.util.Collections
+
 enum class ModuleLifecycle {
     ACTIVE,
     PLANNED,
@@ -153,6 +155,11 @@ sealed interface ArchitecturePolicyValidation {
 }
 
 class ValidatedArchitecturePolicy internal constructor(
-    val modules: Map<ModuleId, ValidatedModulePolicy>,
-    val moduleOrder: List<ModuleId>,
-)
+    modules: Map<ModuleId, ValidatedModulePolicy>,
+    moduleOrder: List<ModuleId>,
+) {
+    val modules: Map<ModuleId, ValidatedModulePolicy> =
+        Collections.unmodifiableMap(LinkedHashMap(modules))
+    val moduleOrder: List<ModuleId> =
+        Collections.unmodifiableList(ArrayList(moduleOrder))
+}

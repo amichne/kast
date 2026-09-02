@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Verify the exact control, private sidecar, and emitted CLI schema release."""
+"""Verify the exact control, sidecar, CLI schema, and module-knowledge release."""
 
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 import hashlib
 import io
 import json
@@ -28,6 +29,8 @@ def arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--directory", type=Path)
     parser.add_argument("--release")
+    parser.add_argument("--source-revision")
+    parser.add_argument("--source-root", type=Path)
     parser.add_argument("--repository", default="amichne/kast")
     parser.add_argument("--report", type=Path)
     parser.add_argument("--negative-report", type=Path)
@@ -134,19 +137,132 @@ def schema_emitted_by_control(control: Path) -> bytes:
         return process.stdout
 
 
+def verify_module_knowledge(
+    knowledge: Path,
+    canonical_knowledge: Path,
+    architecture_report: Path,
+    version: str,
+    source_revision: str,
+) -> None:
+    try:
+        artifact = knowledge.read_bytes()
+        canonical = canonical_knowledge.read_bytes()
+    except OSError as failure:
+        reject(f"module knowledge authority could not be read: {failure}")
+    if artifact != canonical:
+        reject("module knowledge does not exactly match checked-out source authority")
+    try:
+        document = json.loads(canonical)
+    except (UnicodeDecodeError, json.JSONDecodeError) as failure:
+        reject(f"canonical module knowledge is not JSON: {failure}")
+    if not isinstance(document, dict):
+        reject("canonical module knowledge must be an object")
+    if document.get("schemaVersion") != 1:
+        reject("canonical module knowledge schema version is not supported")
+    if document.get("productVersion") != version:
+        reject("canonical module knowledge product version does not match release")
+    if document.get("sourceRevision") != source_revision:
+        reject("canonical module knowledge source revision does not match release commit")
+    verification = document.get("architectureVerification")
+    if not isinstance(verification, dict):
+        reject("canonical module knowledge has no architecture verification")
+    expected_report_digest = f"sha256:{sha256(architecture_report)}"
+    if verification.get("reportSha256") != expected_report_digest:
+        reject("module knowledge digest does not match the actual architecture report")
+
+
+@dataclass(frozen=True)
+class CanonicalModuleKnowledge:
+    knowledge: Path
+    architecture_report: Path
+
+
+def regenerate_module_knowledge(
+    source_root_candidate: Path,
+    version: str,
+    source_revision: str,
+) -> CanonicalModuleKnowledge:
+    try:
+        source_root = source_root_candidate.resolve(strict=True)
+    except OSError as failure:
+        reject(f"source root is unavailable: {failure}")
+    gradlew = source_root / "gradlew"
+    source_admission = source_root / ".github/scripts/release/admit-source.sh"
+    if (
+        not source_root.is_dir()
+        or not gradlew.is_file()
+        or gradlew.is_symlink()
+        or not source_admission.is_file()
+        or source_admission.is_symlink()
+    ):
+        reject("source root has no admitted release tooling")
+    identity = subprocess.run(
+        [
+            str(source_admission),
+            "--repository-root",
+            str(source_root),
+            "--expected-source-revision",
+            source_revision,
+        ],
+        cwd=source_root,
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if identity.returncode != 0 or identity.stdout.strip() != source_revision:
+        reject("checked-out source is not the clean release commit")
+    knowledge = source_root / "build/reports/kast-architecture/kast-module-knowledge.json"
+    architecture_report = (
+        source_root
+        / "build/reports/kast-architecture/verifyKastArchitecture.json"
+    )
+    if knowledge.is_symlink() or architecture_report.is_symlink():
+        reject("canonical module-knowledge outputs must not be symbolic links")
+    generated = subprocess.run(
+        [
+            str(gradlew),
+            "-Dorg.gradle.jvmargs=-Xmx5g",
+            f"-Pversion={version}",
+            f"-PkastSourceRevision={source_revision}",
+            "--rerun-tasks",
+            "generateKastModuleKnowledge",
+        ],
+        cwd=source_root,
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if generated.returncode != 0:
+        reject(
+            "canonical module knowledge regeneration failed: "
+            + generated.stderr.strip()
+        )
+    for output in (knowledge, architecture_report):
+        if output.is_symlink() or not output.is_file():
+            reject(f"canonical module-knowledge output is unavailable: {output}")
+    return CanonicalModuleKnowledge(knowledge, architecture_report)
+
+
 def verify(
     directory: Path,
     release: str,
     repository: str,
+    source_revision: str,
+    authority: CanonicalModuleKnowledge,
     report: Path | None,
 ) -> dict[str, object]:
     match = re.fullmatch(r"v(\d+\.\d+\.\d+)", release)
     if match is None:
         reject("release must be v<major>.<minor>.<patch>")
+    if re.fullmatch(r"[0-9a-f]{40}", source_revision) is None:
+        reject("source revision must be one full Git identity")
     version = match.group(1)
     control_name = f"kast-control-v{version}-macos-aarch64.tar.gz"
     sidecar_name = f"kast-semantic-runtime-{version}-macos-aarch64.zip"
     schema_name = f"kast-cli-schema-v{version}.json"
+    knowledge_name = f"kast-module-knowledge-v{version}.json"
     expected = {
         control_name,
         control_name + ".sha256",
@@ -154,6 +270,8 @@ def verify(
         sidecar_name + ".sha256",
         schema_name,
         schema_name + ".sha256",
+        knowledge_name,
+        knowledge_name + ".sha256",
     }
     observed = {path.name for path in directory.iterdir() if path.is_file()}
     if observed != expected:
@@ -161,12 +279,19 @@ def verify(
     control = directory / control_name
     sidecar = directory / sidecar_name
     schema = directory / schema_name
-    combined = control.stat().st_size + sidecar.stat().st_size + schema.stat().st_size
+    knowledge = directory / knowledge_name
+    combined = (
+        control.stat().st_size
+        + sidecar.stat().st_size
+        + schema.stat().st_size
+        + knowledge.stat().st_size
+    )
     if combined > MAXIMUM_COMBINED_BYTES:
         reject(f"combined payload exceeds 80 MiB: {combined}")
     verify_checksum(control)
     verify_checksum(sidecar)
     verify_checksum(schema)
+    verify_checksum(knowledge)
     manifest = control_manifest(control)
     archive = manifest.get("archive")
     if not isinstance(archive, dict):
@@ -193,6 +318,13 @@ def verify(
     verify_sidecar(sidecar)
     if schema.read_bytes() != schema_emitted_by_control(control):
         reject("published CLI schema does not exactly match control --schema")
+    verify_module_knowledge(
+        knowledge,
+        authority.knowledge,
+        authority.architecture_report,
+        version,
+        source_revision,
+    )
     document: dict[str, object] = {
         "schemaVersion": 1,
         "taskId": "SIDECAR-RELEASE",
@@ -217,6 +349,12 @@ def verify(
                 "bytes": schema.stat().st_size,
                 "sha256": sha256(schema),
             },
+            {
+                "kind": "MODULE_KNOWLEDGE",
+                "name": knowledge.name,
+                "bytes": knowledge.stat().st_size,
+                "sha256": sha256(knowledge),
+            },
         ],
         "combinedBytes": combined,
         "maximumCombinedBytes": MAXIMUM_COMBINED_BYTES,
@@ -239,13 +377,63 @@ def write_checksum(path: Path) -> None:
     )
 
 
-def synthetic_release(directory: Path, version: str) -> None:
+def synthetic_release(
+    directory: Path,
+    version: str,
+    architecture_report: Path,
+) -> None:
     schema = directory / f"kast-cli-schema-v{version}.json"
     schema_bytes = (
         b'{"schemaVersion":1,"operationRegistry":{},"wireSchema":{},'
         b'"cliProjection":{},"serverProjection":{}}\n'
     )
     schema.write_bytes(schema_bytes)
+    guide_content = "# Synthetic repository guidance\n"
+    module_knowledge = directory / f"kast-module-knowledge-v{version}.json"
+    module_knowledge.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "productVersion": version,
+                "sourceRevision": "a" * 40,
+                "architectureVerification": {
+                    "schemaVersion": 1,
+                    "taskPath": ":verifyKastArchitecture",
+                    "status": "ACCEPTED",
+                    "findings": [],
+                    "reportSha256": f"sha256:{sha256(architecture_report)}",
+                },
+                "architecturePolicy": {
+                    "schemaVersion": 2,
+                    "modules": [
+                        {"projectPath": ":kernel", "allowedProjectDependencies": []}
+                    ],
+                },
+                "observedProjectDependencies": [],
+                "observedExportedProjectDependencies": [],
+                "agentGuides": [
+                    {
+                        "path": "AGENTS.md",
+                        "scopeDirectory": ".",
+                        "sha256": "sha256:"
+                        + hashlib.sha256(guide_content.encode()).hexdigest(),
+                        "content": guide_content,
+                    }
+                ],
+                "moduleGuideBindings": [
+                    {
+                        "projectPath": ":kernel",
+                        "moduleDirectory": "kernel",
+                        "governingAgentGuidePaths": ["AGENTS.md"],
+                        "descendantAgentGuidePaths": [],
+                    }
+                ],
+            },
+            separators=(",", ":"),
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     sidecar = directory / f"kast-semantic-runtime-{version}-macos-aarch64.zip"
     with zipfile.ZipFile(sidecar, "w") as archive:
         archive.writestr("kast-indexer", b"#!/bin/sh\n")
@@ -295,15 +483,27 @@ def synthetic_release(directory: Path, version: str) -> None:
     write_checksum(control)
     write_checksum(sidecar)
     write_checksum(schema)
+    write_checksum(module_knowledge)
 
 
-def expect_rejected(source: Path, mutate) -> None:
+def expect_rejected(
+    source: Path,
+    authority: CanonicalModuleKnowledge,
+    mutate,
+) -> None:
     with tempfile.TemporaryDirectory() as raw:
         fixture = Path(raw)
         shutil.copytree(source, fixture, dirs_exist_ok=True)
         mutate(fixture)
         try:
-            verify(fixture, "v1.2.3", "amichne/kast", None)
+            verify(
+                fixture,
+                "v1.2.3",
+                "amichne/kast",
+                "a" * 40,
+                authority,
+                None,
+            )
         except ReleaseRejected:
             return
         reject("negative fixture was admitted")
@@ -311,11 +511,32 @@ def expect_rejected(source: Path, mutate) -> None:
 
 def self_test() -> None:
     with tempfile.TemporaryDirectory() as raw:
-        valid = Path(raw)
-        synthetic_release(valid, "1.2.3")
-        verify(valid, "v1.2.3", "amichne/kast", None)
+        root = Path(raw)
+        valid = root / "assets"
+        valid.mkdir()
+        architecture_report = root / "verifyKastArchitecture.json"
+        architecture_report.write_text(
+            '{"schemaVersion":1,"status":"ACCEPTED","findings":[]}\n',
+            encoding="utf-8",
+        )
+        synthetic_release(valid, "1.2.3", architecture_report)
+        canonical_knowledge = root / "canonical-module-knowledge.json"
+        shutil.copy2(
+            valid / "kast-module-knowledge-v1.2.3.json",
+            canonical_knowledge,
+        )
+        authority = CanonicalModuleKnowledge(canonical_knowledge, architecture_report)
+        verify(
+            valid,
+            "v1.2.3",
+            "amichne/kast",
+            "a" * 40,
+            authority,
+            None,
+        )
         expect_rejected(
             valid,
+            authority,
             lambda root: (root / "kast-ide-plugin-1.2.3.zip").write_bytes(b"public"),
         )
 
@@ -325,7 +546,7 @@ def self_test() -> None:
                 archive.writestr("idea-home/product-info.json", b"{}")
             write_checksum(sidecar)
 
-        expect_rejected(valid, embed_idea)
+        expect_rejected(valid, authority, embed_idea)
 
         def mismatch_manifest(root: Path) -> None:
             control = root / "kast-control-v1.2.3-macos-aarch64.tar.gz"
@@ -341,14 +562,14 @@ def self_test() -> None:
                 archive.addfile(member, io.BytesIO(manifest))
             write_checksum(control)
 
-        expect_rejected(valid, mismatch_manifest)
+        expect_rejected(valid, authority, mismatch_manifest)
 
         def mismatch_schema(root: Path) -> None:
             schema = root / "kast-cli-schema-v1.2.3.json"
             schema.write_text('{"schemaVersion":1}\n', encoding="utf-8")
             write_checksum(schema)
 
-        expect_rejected(valid, mismatch_schema)
+        expect_rejected(valid, authority, mismatch_schema)
 
         def unsafe_sidecar(root: Path) -> None:
             sidecar = root / "kast-semantic-runtime-1.2.3-macos-aarch64.zip"
@@ -356,7 +577,7 @@ def self_test() -> None:
                 archive.writestr("../escape", b"x")
             write_checksum(sidecar)
 
-        expect_rejected(valid, unsafe_sidecar)
+        expect_rejected(valid, authority, unsafe_sidecar)
 
         def exceed_size(root: Path) -> None:
             sidecar = root / "kast-semantic-runtime-1.2.3-macos-aarch64.zip"
@@ -364,8 +585,20 @@ def self_test() -> None:
                 output.truncate(MAXIMUM_COMBINED_BYTES + 1)
             write_checksum(sidecar)
 
-        expect_rejected(valid, exceed_size)
-    print("Rejected all 6 plugin-free sidecar release misuses")
+        expect_rejected(valid, authority, exceed_size)
+
+        def corrupt_knowledge(root: Path) -> None:
+            knowledge = root / "kast-module-knowledge-v1.2.3.json"
+            document = json.loads(knowledge.read_text(encoding="utf-8"))
+            document["agentGuides"][0]["content"] = "# Corrupted guidance\n"
+            knowledge.write_text(
+                json.dumps(document, separators=(",", ":")) + "\n",
+                encoding="utf-8",
+            )
+            write_checksum(knowledge)
+
+        expect_rejected(valid, authority, corrupt_knowledge)
+    print("Rejected all 7 release asset misuses")
 
 
 def write_negative_report(path: Path) -> None:
@@ -373,7 +606,7 @@ def write_negative_report(path: Path) -> None:
         "schemaVersion": 1,
         "taskId": "SIDECAR-RELEASE",
         "outcome": "REJECTED",
-        "rejectedFixtureCount": 6,
+        "rejectedFixtureCount": 7,
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
@@ -391,14 +624,31 @@ def main() -> None:
         if args.negative_report is not None:
             write_negative_report(args.negative_report)
         return
-    if args.directory is None or args.release is None:
-        reject("--directory and --release are required")
+    if (
+        args.directory is None
+        or args.release is None
+        or args.source_revision is None
+        or args.source_root is None
+    ):
+        reject("--directory, --release, --source-revision, and --source-root are required")
+    release_match = re.fullmatch(r"v(\d+\.\d+\.\d+)", args.release)
+    if release_match is None:
+        reject("release must be v<major>.<minor>.<patch>")
+    if re.fullmatch(r"[0-9a-f]{40}", args.source_revision) is None:
+        reject("source revision must be one full Git identity")
+    authority = regenerate_module_knowledge(
+        args.source_root,
+        release_match.group(1),
+        args.source_revision,
+    )
     print(
         json.dumps(
             verify(
                 args.directory.resolve(),
                 args.release,
                 args.repository,
+                args.source_revision,
+                authority,
                 args.report,
             ),
             separators=(",", ":"),

@@ -34,6 +34,10 @@ sealed interface ArchitectureObservationFailure {
     data class UnknownModuleRoleConvention(val pluginId: String) : ArchitectureObservationFailure
 
     data class DuplicateModuleRoleConvention(val module: ModuleId) : ArchitectureObservationFailure
+
+    data class ExportedProjectDependencyNotObserved(
+        val dependency: ProjectDependencyObservation,
+    ) : ArchitectureObservationFailure
 }
 
 sealed interface ArchitectureObservationValidation {
@@ -87,6 +91,9 @@ object ArchitectureObservationParser {
 
         val dependencies = rawProjectDependencies.mapNotNull(::parseDependency).toSet()
         val exportedDependencies = rawExportedProjectDependencies.mapNotNull(::parseDependency).toSet()
+        exportedDependencies.filterNot(dependencies::contains).mapTo(failures) {
+            ArchitectureObservationFailure.ExportedProjectDependencyNotObserved(it)
+        }
         val parsedConventions = rawModuleRoleConventions.mapNotNull { notation ->
             val parts = notation.split(ROLE_SEPARATOR)
             if (parts.size != 2) {

@@ -16,6 +16,9 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.net.StandardProtocolFamily
+import java.net.UnixDomainSocketAddress
+import java.nio.channels.ServerSocketChannel
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
@@ -265,6 +268,45 @@ class PersistentBrokerServiceTest {
         assertTrue(submission.orEmpty().contains("JAVA_HOME=${command.javaHome}"))
         assertTrue(submission.orEmpty().contains("KAST_OPTS=${command.jvmUserHomeOption.value}"))
         assertTrue(submission.orEmpty().contains(command.serviceLabel.value))
+    }
+
+    @Test
+    fun `clean homes submit exactly one service through the real JDK socket probe`() {
+        val temporary = Files.createTempDirectory(Path.of("/tmp"), "kb.")
+        val fixture = installedFixture(temporary)
+        val command = resolvedCommand(fixture)
+        var present = false
+        var submissions = 0
+        var listener: ServerSocketChannel? = null
+        val launchctl = LaunchctlInvoker { arguments, _ ->
+            when (arguments[1]) {
+                "list" -> if (present) LaunchctlInvocation.Completed else LaunchctlInvocation.Absent
+                "submit" -> {
+                    submissions += 1
+                    Files.createDirectories(command.publicSocket.parent)
+                    listener = ServerSocketChannel.open(StandardProtocolFamily.UNIX).also { server ->
+                        server.bind(UnixDomainSocketAddress.of(command.publicSocket))
+                    }
+                    writeReadiness(command)
+                    present = true
+                    LaunchctlInvocation.Completed
+                }
+                else -> error("unexpected launchctl operation: ${arguments[1]}")
+            }
+        }
+        try {
+            val host = MacOsPersistentBrokerServiceHost(
+                launchctl = launchctl,
+                sleeper = BrokerServiceSleeper { BrokerServiceSleep.CONTINUE },
+            )
+
+            assertEquals(PersistentBrokerServiceAdmission.Ready, host.ensure(command))
+            assertEquals(PersistentBrokerServiceAdmission.Ready, host.ensure(command))
+            assertEquals(1, submissions)
+        } finally {
+            listener?.close()
+            temporary.toFile().deleteRecursively()
+        }
     }
 
     @Test

@@ -4,11 +4,14 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
+from dataclasses import dataclass
+import hashlib
 import json
 import os
 from pathlib import Path
 import shutil
+import stat
 import subprocess
 import tempfile
 import time
@@ -52,19 +55,290 @@ def declaration_candidates(document: dict[str, Any]) -> list[str]:
     return candidates
 
 
+AMBIENT_ENVIRONMENT_ALLOWLIST = (
+    "CODEX_EXECUTABLE",
+    "DEVELOPER_DIR",
+    "JAVA_HOME",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+    "PATH",
+    "SDKROOT",
+)
+LAUNCHCTL_SERVICE_NOT_FOUND = 113
+
+
+def broker_service_label(codex_home: Path) -> str:
+    suffix = hashlib.sha256(str(codex_home).encode()).hexdigest()[:32]
+    return f"io.github.amichne.kast.broker.{suffix}"
+
+
+def launchctl_service(label: str) -> subprocess.CompletedProcess[bytes]:
+    return subprocess.run(
+        ["/bin/launchctl", "list", label],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+
+@dataclass(frozen=True)
+class IsolatedAcceptanceHost:
+    root: Path
+    home: Path
+    codex_home: Path
+    runtime: Path
+    archive: Path
+    app_server_control: Path
+    temporary: Path
+    workspace: Path
+
+    @classmethod
+    def create(
+        cls,
+        root_candidate: Path,
+        runtime_archive_candidate: Path,
+    ) -> IsolatedAcceptanceHost:
+        try:
+            root = root_candidate.resolve(strict=True)
+            source_archive = runtime_archive_candidate.resolve(strict=True)
+        except OSError as error:
+            fail(f"isolated host authority is unavailable: {error}")
+        if not root.is_dir() or not source_archive.is_file():
+            fail("isolated host root and runtime archive must have canonical file types")
+
+        def directory(name: str) -> Path:
+            candidate = root / name
+            candidate.mkdir(mode=0o700)
+            resolved = candidate.resolve(strict=True)
+            if resolved.parent != root or not resolved.is_dir():
+                fail(f"isolated host directory escaped its root: {name}")
+            return resolved
+
+        home = directory("home")
+        codex_home = directory("codex-home")
+        runtime = directory("runtime")
+        archive_directory = directory("archive")
+        app_server_control = codex_home / "app-server-control"
+        app_server_control.mkdir(mode=0o700)
+        app_server_control = app_server_control.resolve(strict=True)
+        temporary = directory("tmp")
+        workspace = directory("workspace")
+        archive = archive_directory / source_archive.name
+        shutil.copy2(source_archive, archive)
+        archive = archive.resolve(strict=True)
+        return cls(
+            root,
+            home,
+            codex_home,
+            runtime,
+            archive,
+            app_server_control,
+            temporary,
+            workspace,
+        )
+
+    @property
+    def service_label(self) -> str:
+        return broker_service_label(self.codex_home)
+
+    @property
+    def readiness_file(self) -> Path:
+        return self.codex_home / "broker/service-readiness.json"
+
+    @property
+    def broker_socket(self) -> Path:
+        return self.app_server_control / "app-server-control.sock"
+
+    def child_environment(
+        self,
+        ambient: Mapping[str, str] = os.environ,
+    ) -> dict[str, str]:
+        environment = {
+            name: ambient[name]
+            for name in AMBIENT_ENVIRONMENT_ALLOWLIST
+            if name in ambient
+        }
+        environment.update(
+            {
+                "HOME": str(self.home),
+                "CODEX_HOME": str(self.codex_home),
+                "JAVA_OPTS": f"-Duser.home={self.home}",
+                "TMPDIR": str(self.temporary),
+                "KAST_RUNTIME_DIRECTORY": str(self.runtime / "endpoints"),
+                "KAST_RUNTIME_STORE": str(self.runtime / "store"),
+                "KAST_RUNTIME_ARCHIVE": str(self.archive),
+                "KAST_CACHE_ROOT": str(self.runtime / "intellij-caches"),
+            }
+        )
+        return environment
+
+    def retire_broker(self, timeout_seconds: int) -> None:
+        observed = launchctl_service(self.service_label)
+        if observed.returncode == 0:
+            retired = subprocess.run(
+                ["/bin/launchctl", "remove", self.service_label],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            if retired.returncode != 0:
+                fail(
+                    "isolated broker retirement failed: "
+                    + retired.stderr.decode(errors="replace").strip()
+                )
+        elif observed.returncode != LAUNCHCTL_SERVICE_NOT_FOUND:
+            fail(
+                "isolated broker observation failed: "
+                + observed.stderr.decode(errors="replace").strip()
+            )
+
+        deadline = time.monotonic() + timeout_seconds
+        while time.monotonic() < deadline:
+            current = launchctl_service(self.service_label)
+            if current.returncode == LAUNCHCTL_SERVICE_NOT_FOUND:
+                break
+            if current.returncode != 0:
+                fail(
+                    "isolated broker retirement observation failed: "
+                    + current.stderr.decode(errors="replace").strip()
+                )
+            time.sleep(0.05)
+        else:
+            fail("isolated broker service remained registered after retirement")
+
+        self._retire_artifact(self.readiness_file, stat.S_ISREG, "readiness file")
+        self._retire_artifact(self.broker_socket, stat.S_ISSOCK, "socket")
+        for artifact in (self.readiness_file, self.broker_socket):
+            if os.path.lexists(artifact):
+                fail(f"isolated broker artifact remained after cleanup: {artifact}")
+
+    def _retire_artifact(self, path: Path, admitted_type, description: str) -> None:
+        try:
+            attributes = path.lstat()
+        except FileNotFoundError:
+            return
+        except OSError as error:
+            fail(f"isolated broker {description} could not be observed: {error}")
+        if not admitted_type(attributes.st_mode):
+            fail(f"isolated broker {description} has an unowned file type: {path}")
+        try:
+            path.unlink()
+        except OSError as error:
+            fail(f"isolated broker {description} could not be retired: {error}")
+
+    def assert_confined(self) -> None:
+        for path in self.root.rglob("*"):
+            try:
+                attributes = path.lstat()
+            except OSError as error:
+                fail(f"isolated host path could not be observed: {error}")
+            if stat.S_ISLNK(attributes.st_mode):
+                fail(f"acceptance created a symbolic link: {path}")
+            try:
+                path.resolve(strict=True).relative_to(self.root)
+            except (OSError, ValueError) as error:
+                fail(f"acceptance-created path escaped the isolated host: {path}: {error}")
+
+
+@dataclass(frozen=True)
+class AmbientBrokerSnapshot:
+    codex_home: Path
+    service_label: str
+    service_observation: tuple[int, bytes, bytes]
+    file_observation: tuple[tuple[str, str, int, str], ...]
+
+    @classmethod
+    def capture(cls, codex_home: Path | None = None) -> AmbientBrokerSnapshot:
+        authority = codex_home or ambient_codex_home()
+        label = broker_service_label(authority)
+        service = launchctl_service(label)
+        if service.returncode not in (0, LAUNCHCTL_SERVICE_NOT_FOUND):
+            fail(
+                "ambient broker observation failed: "
+                + service.stderr.decode(errors="replace").strip()
+            )
+        return cls(
+            authority,
+            label,
+            (service.returncode, service.stdout, service.stderr),
+            snapshot_paths(authority, ("broker", "app-server-control")),
+        )
+
+    def assert_unchanged(self) -> None:
+        current = AmbientBrokerSnapshot.capture(self.codex_home)
+        if current != self:
+            fail("ambient broker files or launchd service changed during acceptance")
+
+
+def ambient_codex_home() -> Path:
+    raw = os.environ.get("CODEX_HOME")
+    if raw is None:
+        try:
+            return Path.home().resolve(strict=True) / ".codex"
+        except OSError as error:
+            fail(f"ambient HOME is not canonical: {error}")
+    candidate = Path(raw)
+    if not candidate.is_absolute() or candidate != Path(os.path.normpath(raw)):
+        fail("ambient CODEX_HOME must be absolute and normalized")
+    return candidate
+
+
+def snapshot_paths(
+    root: Path,
+    relative_roots: tuple[str, ...],
+) -> tuple[tuple[str, str, int, str], ...]:
+    observations: list[tuple[str, str, int, str]] = []
+
+    def observe(path: Path, relative: Path) -> None:
+        try:
+            attributes = path.lstat()
+        except FileNotFoundError:
+            observations.append((relative.as_posix(), "absent", 0, ""))
+            return
+        except OSError as error:
+            fail(f"ambient broker path could not be observed: {path}: {error}")
+        mode = stat.S_IMODE(attributes.st_mode)
+        if stat.S_ISDIR(attributes.st_mode):
+            observations.append((relative.as_posix(), "directory", mode, ""))
+            try:
+                children = sorted(path.iterdir(), key=lambda child: child.name)
+            except OSError as error:
+                fail(f"ambient broker directory could not be listed: {path}: {error}")
+            for child in children:
+                observe(child, relative / child.name)
+        elif stat.S_ISREG(attributes.st_mode):
+            try:
+                digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            except OSError as error:
+                fail(f"ambient broker file could not be read: {path}: {error}")
+            observations.append((relative.as_posix(), "regular", mode, digest))
+        elif stat.S_ISLNK(attributes.st_mode):
+            try:
+                target = os.readlink(path)
+            except OSError as error:
+                fail(f"ambient broker link could not be read: {path}: {error}")
+            observations.append((relative.as_posix(), "symlink", mode, target))
+        elif stat.S_ISSOCK(attributes.st_mode):
+            observations.append((relative.as_posix(), "socket", mode, ""))
+        else:
+            observations.append((relative.as_posix(), "other", mode, ""))
+
+    for relative_root in relative_roots:
+        observe(root / relative_root, Path(relative_root))
+    return tuple(observations)
+
+
 class Acceptance:
     def __init__(
         self,
         executable: Path,
-        workspace: Path,
-        runtime: Path,
-        runtime_archive: Path,
+        host: IsolatedAcceptanceHost,
         bounds: dict[str, Any],
     ):
         self.executable = executable
-        self.workspace = workspace
-        self.runtime = runtime
-        self.runtime_archive = runtime_archive
+        self.workspace = host.workspace
+        self.environment = host.child_environment()
         self.maximum_output_bytes = positive_integer(bounds, "maximumOutputBytes")
         self.maximum_operation_seconds = positive_integer(bounds, "maximumOperationSeconds")
         self.maximum_startup_seconds = positive_integer(bounds, "maximumStartupSeconds")
@@ -83,13 +357,7 @@ class Acceptance:
         result = subprocess.run(
             [str(self.executable), *argv],
             cwd=self.workspace,
-            env={
-                **os.environ,
-                "KAST_RUNTIME_DIRECTORY": str(self.runtime / "endpoints"),
-                "KAST_RUNTIME_STORE": str(self.runtime / "store"),
-                "KAST_RUNTIME_ARCHIVE": str(self.runtime_archive),
-                "KAST_CACHE_ROOT": str(self.runtime / "intellij-caches"),
-            },
+            env=self.environment,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -544,6 +812,29 @@ def stop_indexer(acceptance: Acceptance) -> None:
         fail(f"acceptance cleanup did not retire the public runtime: {stopped}")
 
 
+def run_acceptance_scenario(
+    acceptance: Acceptance,
+    host: IsolatedAcceptanceHost,
+    bounds: dict[str, Any],
+    ambient: AmbientBrokerSnapshot,
+    cleanup_timeout_seconds: int,
+) -> None:
+    try:
+        acceptance.prove_installed_surface(bounds)
+        acceptance.prove_workspace_write_scope()
+    finally:
+        try:
+            stop_indexer(acceptance)
+        finally:
+            try:
+                host.retire_broker(cleanup_timeout_seconds)
+            finally:
+                try:
+                    host.assert_confined()
+                finally:
+                    ambient.assert_unchanged()
+
+
 def main() -> None:
     args = arguments()
     executable = args.product_root / "bin" / "kast"
@@ -567,29 +858,24 @@ def main() -> None:
 
     maximum_acceptance_seconds = positive_integer(bounds, "maximumAcceptanceSeconds")
     started_at = time.monotonic()
-    with tempfile.TemporaryDirectory(prefix="kast-enterprise-") as workspace_text:
-        with tempfile.TemporaryDirectory(prefix="kr.", dir="/tmp") as runtime_text:
-            workspace = Path(workspace_text)
-            runtime = Path(runtime_text)
-            shutil.copytree(
-                args.fixture,
-                workspace,
-                dirs_exist_ok=True,
-                ignore=shutil.ignore_patterns(".gradle", ".idea", "build"),
-            )
-            prepare_workspace_fixture(workspace)
-            acceptance = Acceptance(
-                executable,
-                workspace,
-                runtime,
-                args.runtime_archive,
-                bounds,
-            )
-            try:
-                acceptance.prove_installed_surface(bounds)
-            finally:
-                stop_indexer(acceptance)
-            acceptance.prove_workspace_write_scope()
+    ambient = AmbientBrokerSnapshot.capture()
+    with tempfile.TemporaryDirectory(prefix="ka.", dir="/tmp") as host_text:
+        host = IsolatedAcceptanceHost.create(Path(host_text), args.runtime_archive)
+        shutil.copytree(
+            args.fixture,
+            host.workspace,
+            dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns(".gradle", ".idea", "build"),
+        )
+        prepare_workspace_fixture(host.workspace)
+        acceptance = Acceptance(executable, host, bounds)
+        run_acceptance_scenario(
+            acceptance,
+            host,
+            bounds,
+            ambient,
+            maximum_acceptance_seconds,
+        )
     elapsed = time.monotonic() - started_at
     if elapsed > maximum_acceptance_seconds:
         fail(

@@ -1,5 +1,7 @@
 package support.architecture
 
+import java.util.Collections
+
 enum class ModuleCost {
     HOST_NEUTRAL,
     BOUNDED_READ,
@@ -49,9 +51,27 @@ internal data class ModuleRoleBoundary(
 )
 
 class ValidatedModulePolicy internal constructor(
-    private val policy: ModulePolicy,
-    internal val boundary: ModuleRoleBoundary,
+    policy: ModulePolicy,
+    boundary: ModuleRoleBoundary,
 ) {
+    internal val boundary: ModuleRoleBoundary = boundary.copy(
+        allowedDependencyRoles = immutableSet(boundary.allowedDependencyRoles),
+        allowedDependencyCosts = immutableSet(boundary.allowedDependencyCosts),
+        allowedExportedDependencyRoles = immutableSet(boundary.allowedExportedDependencyRoles),
+        allowedEffects = immutableSet(boundary.allowedEffects),
+        allowedScopedEffects = immutableSet(boundary.allowedScopedEffects),
+    )
+
+    private val policy: ModulePolicy = policy.copy(
+        allowedProjectDependencies = immutableSet(policy.allowedProjectDependencies),
+        allowedEffects = immutableSet(policy.allowedEffects),
+        allowedScopedEffectCallers = Collections.unmodifiableMap(
+            policy.allowedScopedEffectCallers.mapValuesTo(linkedMapOf()) { (_, callers) ->
+                immutableSet(callers)
+            },
+        ),
+    )
+
     val id: ModuleId get() = policy.id
     val lifecycle: ModuleLifecycle get() = policy.lifecycle
     val role: ModuleRole get() = boundary.role
@@ -62,6 +82,9 @@ class ValidatedModulePolicy internal constructor(
     val allowedScopedEffectCallers: Map<ForbiddenEffect, Set<JvmClassName>>
         get() = policy.allowedScopedEffectCallers
 }
+
+private fun <T> immutableSet(values: Collection<T>): Set<T> =
+    Collections.unmodifiableSet(LinkedHashSet(values))
 
 sealed interface ModulePolicyValidation {
     data class Valid(val module: ValidatedModulePolicy) : ModulePolicyValidation

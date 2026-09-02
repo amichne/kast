@@ -1,7 +1,5 @@
 package support.architecture.gradle
 
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
@@ -10,6 +8,7 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
@@ -17,18 +16,30 @@ import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import support.architecture.ArchitectureAdmission
+import support.architecture.ArchitectureReportFinding
 import support.architecture.ArchitectureObservationParser
 import support.architecture.ArchitectureObservationValidation
 import support.architecture.ArchitecturePolicyValidation
+import support.architecture.ArchitectureVerificationAdmission
 import support.architecture.ArchitectureViolation
 import support.architecture.BytecodeScanFailure
 import support.architecture.BytecodeScanOutcome
 import support.architecture.JvmEffectScanner
 import support.architecture.KastArchitecturePolicy
 import support.architecture.ObservedArchitecture
+import support.architecture.ObservedProjectGraph
 import support.architecture.ValidatedArchitecturePolicy
+import support.architecture.AcceptedArchitectureVerification
+import support.architecture.architectureFinding
+import support.architecture.encodeArchitectureReport
+import support.architecture.knowledge.ModuleKnowledgeProjection
+import support.architecture.knowledge.ModuleKnowledgeProjectionResult
+import support.architecture.knowledge.RawAgentGuide
+import support.architecture.knowledge.RawModuleKnowledgeInput
 import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 
 @CacheableTask
 abstract class VerifyKastArchitectureTask : DefaultTask() {
@@ -89,59 +100,30 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
                 parsed.failures.map { finding("INVALID_OBSERVATION", it.toString()) },
             )
         }
-        val effects = scanEffects(policy)
-        when (
-            val admission = ArchitectureAdmission.evaluate(
+        val effects = when (
+            val scan = scanArchitectureEffects(
                 policy,
-                ObservedArchitecture(
-                    graph.modules,
-                    graph.projectDependencies,
-                    effects,
-                    graph.exportedProjectDependencies,
-                    graph.moduleRoleConventions,
-                ),
+                classDirectoryOwners.get(),
+                rootDirectory.get().asFile.toPath(),
             )
         ) {
-            ArchitectureAdmission.Accepted -> writeReport("ACCEPTED", emptyList())
-            is ArchitectureAdmission.Rejected -> fail(
+            is ArchitectureEffectScan.Scanned -> scan.effects
+            is ArchitectureEffectScan.Rejected -> fail("BYTECODE_SCAN_FAILED", scan.findings)
+        }
+        when (
+            val admission = AcceptedArchitectureVerification.establish(
+                policy,
+                graph,
+                effects,
+            )
+        ) {
+            is ArchitectureVerificationAdmission.Accepted -> writeReport(
+                admission.evidence.reportBytes(),
+            )
+            is ArchitectureVerificationAdmission.Rejected -> fail(
                 "REJECTED",
                 admission.violations.map(::renderViolation).sortedBy(ArchitectureReportFinding::message),
             )
-        }
-    }
-
-    private fun scanEffects(policy: ValidatedArchitecturePolicy) =
-        classDirectoryOwners.get().groupByOwner().flatMapTo(linkedSetOf()) { (projectPath, directories) ->
-            val module = policy.modules.values.single { it.id.projectPath == projectPath }
-            val classFiles = directories.flatMap(::classFiles)
-            when (val scan = JvmEffectScanner.scan(module, classFiles)) {
-                is BytecodeScanOutcome.Scanned -> scan.effects()
-                is BytecodeScanOutcome.Failed -> fail(
-                    "BYTECODE_SCAN_FAILED",
-                    scan.failures().map(::renderScanFailure),
-                )
-            }
-        }
-
-    private fun List<String>.groupByOwner(): Map<String, List<Path>> =
-        map { notation ->
-            val parts = notation.split(CLASS_DIRECTORY_SEPARATOR, limit = 2)
-            if (parts.size != 2) {
-                fail(
-                    "INVALID_CLASS_DIRECTORY",
-                    listOf(finding("INVALID_CLASS_DIRECTORY", notation)),
-                )
-            }
-            parts[0] to rootDirectory.get().asFile.toPath().resolve(parts[1])
-        }.groupBy({ it.first }, { it.second })
-
-    private fun classFiles(directory: Path): List<Path> {
-        if (!Files.isDirectory(directory)) return emptyList()
-        return Files.walk(directory).use { paths ->
-            paths.filter(Files::isRegularFile)
-                .filter { it.fileName.toString().endsWith(".class") }
-                .sorted()
-                .toList()
         }
     }
 
@@ -161,24 +143,236 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
     private fun writeReport(
         status: String,
         findings: List<ArchitectureReportFinding>,
-    ) {
+    ) = writeReport(encodeArchitectureReport(status, findings))
+
+    private fun writeReport(encoded: ByteArray) {
         val target = reportFile.get().asFile.toPath()
         Files.createDirectories(target.parent)
-        Files.writeString(
-            target,
-            architectureReportJson.encodeToString(
-                ArchitectureReportDocument.serializer(),
-                ArchitectureReportDocument(
-                    schemaVersion = 1,
-                    status = status,
-                    findings = findings,
-                ),
-            ) + "\n",
-        )
+        Files.write(target, encoded)
     }
 
     companion object {
         const val CLASS_DIRECTORY_SEPARATOR: String = "|"
+    }
+}
+
+@CacheableTask
+abstract class GenerateKastModuleKnowledgeTask : DefaultTask() {
+    init {
+        observedProjectPaths.convention(emptyList())
+        observedProjectDependencies.convention(emptyList())
+        observedExportedProjectDependencies.convention(emptyList())
+        observedModuleRoleConventions.convention(emptyList())
+        classDirectoryOwners.convention(emptyList())
+        agentGuidePaths.convention(emptyList())
+    }
+
+    @get:Input
+    abstract val productVersion: org.gradle.api.provider.Property<String>
+
+    @get:Input
+    abstract val sourceRevision: org.gradle.api.provider.Property<String>
+
+    @get:Input
+    abstract val observedProjectPaths: ListProperty<String>
+
+    @get:Input
+    abstract val observedProjectDependencies: ListProperty<String>
+
+    @get:Input
+    abstract val observedExportedProjectDependencies: ListProperty<String>
+
+    @get:Input
+    abstract val observedModuleRoleConventions: ListProperty<String>
+
+    @get:Input
+    abstract val classDirectoryOwners: ListProperty<String>
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val compiledClassDirectories: ConfigurableFileCollection
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val architectureVerificationReport: RegularFileProperty
+
+    @get:Input
+    abstract val agentGuidePaths: ListProperty<String>
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val agentGuideFiles: ConfigurableFileCollection
+
+    @get:Internal
+    abstract val rootDirectory: DirectoryProperty
+
+    @get:OutputFile
+    abstract val outputFile: RegularFileProperty
+
+    @TaskAction
+    fun generate() {
+        val architecture = when (val policy = canonicalArchitecturePolicy()) {
+            is ArchitecturePolicyValidation.Valid -> policy.architecture
+            is ArchitecturePolicyValidation.Invalid -> throw GradleException(
+                "Canonical Kast repository architecture policy is invalid: ${policy.failures}",
+            )
+        }
+        val root = rootDirectory.get().asFile.toPath().toAbsolutePath().normalize()
+        val graph = when (
+            val parsed = ArchitectureObservationParser.parse(
+                architecture,
+                observedProjectPaths.get(),
+                observedProjectDependencies.get(),
+                observedExportedProjectDependencies.get(),
+                observedModuleRoleConventions.get(),
+            )
+        ) {
+            is ArchitectureObservationValidation.Valid -> parsed.graph
+            is ArchitectureObservationValidation.Invalid -> throw GradleException(
+                "Kast module knowledge observation rejected: ${parsed.failures}",
+            )
+        }
+        val effects = when (
+            val scan = scanArchitectureEffects(
+                architecture,
+                classDirectoryOwners.get(),
+                root,
+            )
+        ) {
+            is ArchitectureEffectScan.Scanned -> scan.effects
+            is ArchitectureEffectScan.Rejected -> throw GradleException(
+                "Kast module knowledge effect scan rejected: ${scan.findings}",
+            )
+        }
+        val verification = when (
+            val admission = AcceptedArchitectureVerification.establish(
+                architecture,
+                graph,
+                effects,
+            )
+        ) {
+            is ArchitectureVerificationAdmission.Accepted -> admission.evidence
+            is ArchitectureVerificationAdmission.Rejected -> throw GradleException(
+                "Kast module knowledge architecture rejected: ${admission.violations}",
+            )
+        }
+        val publishedReport = Files.readAllBytes(architectureVerificationReport.get().asFile.toPath())
+        if (!publishedReport.contentEquals(verification.reportBytes())) {
+            throw GradleException(
+                "Kast module knowledge report does not match the accepted typed architecture",
+            )
+        }
+        val expectedGuideFiles = agentGuidePaths.get().map { relative ->
+            val path = root.resolve(relative).normalize()
+            if (
+                !path.startsWith(root) ||
+                Files.isSymbolicLink(path) ||
+                !Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) ||
+                path.toRealPath() != path
+            ) {
+                throw GradleException("Tracked agent guide is not a canonical regular file: $relative")
+            }
+            path
+        }
+        val observedGuideFiles = agentGuideFiles.files.mapTo(linkedSetOf()) {
+            it.toPath().toAbsolutePath().normalize()
+        }
+        if (observedGuideFiles != expectedGuideFiles.toSet()) {
+            throw GradleException("Tracked agent-guide inputs do not match their Git identities")
+        }
+        val guides = expectedGuideFiles.map { path ->
+            RawAgentGuide(
+                relativePath = root.relativize(path).joinToString("/"),
+                content = Files.readString(path),
+            )
+        }
+        val result = ModuleKnowledgeProjection.render(
+            RawModuleKnowledgeInput(
+                productVersion = productVersion.get(),
+                sourceRevision = sourceRevision.get(),
+                architectureVerification = verification,
+                agentGuides = guides,
+            ),
+        )
+        val encoded = when (result) {
+            is ModuleKnowledgeProjectionResult.Complete -> result.encoded
+            is ModuleKnowledgeProjectionResult.Rejected -> throw GradleException(
+                "Kast module knowledge generation rejected: " +
+                    result.failures.joinToString(),
+            )
+        }
+        writeAtomically(outputFile.get().asFile.toPath(), encoded)
+    }
+
+    private fun writeAtomically(target: Path, content: String) {
+        Files.createDirectories(target.parent)
+        val temporary = Files.createTempFile(target.parent, target.fileName.toString(), ".tmp")
+        try {
+            Files.writeString(temporary, content)
+            try {
+                Files.move(
+                    temporary,
+                    target,
+                    StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING,
+                )
+            } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
+                Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING)
+            }
+        } finally {
+            Files.deleteIfExists(temporary)
+        }
+    }
+}
+
+private sealed interface ArchitectureEffectScan {
+    data class Scanned(val effects: Set<support.architecture.EffectObservation>) :
+        ArchitectureEffectScan
+
+    data class Rejected(val findings: List<ArchitectureReportFinding>) :
+        ArchitectureEffectScan
+}
+
+private fun scanArchitectureEffects(
+    policy: ValidatedArchitecturePolicy,
+    rawDirectoryOwners: List<String>,
+    rootDirectory: Path,
+): ArchitectureEffectScan {
+    val grouped = linkedMapOf<String, MutableList<Path>>()
+    for (notation in rawDirectoryOwners) {
+        val parts = notation.split(VerifyKastArchitectureTask.CLASS_DIRECTORY_SEPARATOR, limit = 2)
+        if (parts.size != 2) {
+            return ArchitectureEffectScan.Rejected(
+                listOf(finding("INVALID_CLASS_DIRECTORY", notation)),
+            )
+        }
+        grouped.getOrPut(parts[0]) { mutableListOf() }
+            .add(rootDirectory.resolve(parts[1]))
+    }
+    val effects = linkedSetOf<support.architecture.EffectObservation>()
+    for ((projectPath, directories) in grouped) {
+        val module = policy.modules.values.singleOrNull { it.id.projectPath == projectPath }
+            ?: return ArchitectureEffectScan.Rejected(
+                listOf(finding("INVALID_CLASS_DIRECTORY_OWNER", projectPath)),
+            )
+        val classFiles = directories.flatMap(::classFiles)
+        when (val scan = JvmEffectScanner.scan(module, classFiles)) {
+            is BytecodeScanOutcome.Scanned -> effects += scan.effects()
+            is BytecodeScanOutcome.Failed -> return ArchitectureEffectScan.Rejected(
+                scan.failures().map(::renderScanFailure),
+            )
+        }
+    }
+    return ArchitectureEffectScan.Scanned(effects)
+}
+
+private fun classFiles(directory: Path): List<Path> {
+    if (!Files.isDirectory(directory)) return emptyList()
+    return Files.walk(directory).use { paths ->
+        paths.filter(Files::isRegularFile)
+            .filter { it.fileName.toString().endsWith(".class") }
+            .sorted()
+            .toList()
     }
 }
 
@@ -274,33 +468,8 @@ private fun renderScanFailure(failure: BytecodeScanFailure): ArchitectureReportF
     )
 }
 
-@Serializable
-private data class ArchitectureReportDocument(
-    val schemaVersion: Int,
-    val status: String,
-    val findings: List<ArchitectureReportFinding>,
-)
-
-@Serializable
-private data class ArchitectureReportFinding(
-    val code: String,
-    val message: String,
-    val attributes: Map<String, String>,
-)
-
 private fun finding(
     code: String,
     message: String,
     vararg attributes: Pair<String, String>,
-): ArchitectureReportFinding = ArchitectureReportFinding(
-    code = code,
-    message = message,
-    attributes = mapOf(*attributes).toSortedMap(),
-)
-
-private val architectureReportJson = Json {
-    encodeDefaults = true
-    explicitNulls = true
-    ignoreUnknownKeys = false
-    isLenient = false
-}
+): ArchitectureReportFinding = architectureFinding(code, message, *attributes)
