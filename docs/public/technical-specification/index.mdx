@@ -1,0 +1,113 @@
+---
+title: "Technical specification"
+description: "A source-authenticated map of Kast's runtime, protocol, semantic services, effects, and proof boundaries for contributors and maintainers."
+icon: "diagram-project"
+keywords: ["architecture", "contributors", "maintainers", "LikeC4"]
+mode: "wide"
+---
+
+This is Kast's **Backing specification** for people who need to develop,
+review, operate, or maintain the implementation. It answers "how does this
+work?" at the level where a repository root becomes a runtime capability, an
+operation becomes a typed dispatch path, and compiler observations become
+host-neutral evidence.
+
+<Note>
+  This is a descriptive map, not an alternative authority. Kotlin types,
+  generated schemas and registries, architecture policy, executable tests, and
+  the released product remain stronger evidence. When this prose and a
+  mechanically verified source disagree, the source wins and this page must be
+  repaired.
+</Note>
+
+The [usage guides](/questions/workspace-readiness) begin with a question a
+caller wants to answer. This specification begins with the boundary that must
+prove the answer. It is intentionally selective: it explains the load-bearing
+mechanics and gives maintainers a trustworthy route into the code, rather than
+duplicating every type or function.
+
+## How to read this specification
+
+Follow information in the same direction that Kast does:
+
+<Steps>
+  <Step title="Locate the weak boundary">
+    CLI arguments, filesystem paths, JSON documents, installed IDE metadata,
+    and live compiler objects enter as untrusted observations.
+  </Step>
+  <Step title="Find the refinement">
+    A parser, private constructor, sealed result, registry constructor, or
+    admission service either proves a stronger value or returns finite failure
+    data.
+  </Step>
+  <Step title="Preserve the proof">
+    Exact root, operation, generation, scope, bounds, and limitations remain
+    attached as information moves through the system.
+  </Step>
+  <Step title="Identify the effect owner">
+    Process control, IntelliJ access, source writes, SQLite, time, and telemetry
+    belong to explicit adapters. The core does not acquire these capabilities
+    accidentally.
+  </Step>
+</Steps>
+
+## One request, seven trust transitions
+
+The view below is generated from the checked-in LikeC4 model. It is not a
+hand-maintained illustration. Select it to open LikeC4's full diagram browser.
+
+<Frame caption="One exact-root request moves from command input to detached evidence through admitted boundaries.">
+  <div className="kast-architecture-view" data-kast-view="runtime-flow" data-kast-browser="true" data-kast-dynamic-variant="diagram" aria-label="Interactive runtime request architecture view"></div>
+</Frame>
+
+| Transition | What becomes stronger |
+| --- | --- |
+| Command parsing | Raw arguments become one recognized CLI action and canonical operation identity. |
+| Runtime admission | A starting path becomes one canonical root and one compatible, exact-root sidecar endpoint. |
+| Frame admission | A bounded string becomes a structurally valid request envelope. |
+| Route selection | A permanent operation ID selects exactly one generated decoder and typed handler. |
+| Semantic execution | A generation-bound request receives request-local IntelliJ, PSI, index, and K2 authority. |
+| Detachment | Live compiler objects become stable domain identities, facts, coverage, and limitations. |
+| Outcome projection | The caller receives one complete, qualified, or rejected host-neutral document. |
+
+No later transition is allowed to erase an earlier identity. A transport reply
+cannot manufacture semantic success, and a current compiler observation cannot
+retroactively make a stale generation current.
+
+## Specification map
+
+<CardGroup cols={2}>
+  <Card title="Runtime boundary" icon="server" href="/technical-specification/runtime-boundary">
+    Exact-root identity, sidecar discovery, private state, workspace bootstrap,
+    readiness, and request-local compiler access.
+  </Card>
+  <Card title="Protocol and dispatch" icon="route" href="/technical-specification/protocol-and-dispatch">
+    The closed operation set, generated registry and wire bindings, bounded
+    transport, typed handler composition, and broker projection.
+  </Card>
+  <Card title="Semantic services" icon="fingerprint" href="/technical-specification/semantic-services">
+    Workspace, symbol, relation, traversal, topology, and diagnostic contracts,
+    including generation and budget behavior.
+  </Card>
+  <Card title="Change and evidence" icon="file-pen" href="/technical-specification/change-and-evidence">
+    Plan, apply, verify, and recover as proof-carrying state transitions around
+    the only public mutation lifecycle.
+  </Card>
+  <Card title="Module architecture" icon="boxes-stacked" href="/technical-specification/module-architecture">
+    Inward dependency direction, effect ownership, bytecode enforcement, and
+    the generated module-ownership view.
+  </Card>
+  <Card title="Verification and contribution" icon="badge-check" href="/technical-specification/verification-and-contribution">
+    Widening proof rings, distribution and enterprise validation, documentation
+    authentication, and the maintainer change path.
+  </Card>
+</CardGroup>
+
+## Primary authorities
+
+- The [Engineering Dictum](https://github.com/amichne/kast/blob/main/AGENTS.md)
+  defines the repository's correctness policy.
+- The [LikeC4 system model](https://github.com/amichne/kast/blob/main/docs/public/architecture/model.c4)
+  defines the named system and module boundaries rendered above.
+- [`InstalledRuntimeAssembly`](https://github.com/amichne/kast/blob/main/runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/bootstrap/InstalledRuntimeAssembly.kt)
+  constructs the production service, persistence, adapter, and handler graph.

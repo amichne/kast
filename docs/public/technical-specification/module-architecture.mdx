@@ -1,0 +1,107 @@
+---
+title: "Module architecture"
+description: "The dependency direction, effect ownership, build-time enforcement, and generated LikeC4 proof behind Kast's module graph."
+icon: "boxes-stacked"
+keywords: ["modules", "architecture", "effects", "LikeC4"]
+mode: "wide"
+---
+
+Kast's modules separate contracts, pure services, effect adapters, runtime
+composition, transport, and process hosts. This is not only organization for
+readability. The build treats dependency and effect placement as correctness
+properties.
+
+## Dependency direction is part of correctness
+
+The generated view follows dependencies from outer product surfaces toward
+host-neutral evidence and operation identity. Select it to open LikeC4's full
+diagram browser for closer inspection.
+
+<Frame caption="The current module-family dependency view is generated from the checked-in LikeC4 model.">
+  <div className="kast-architecture-view kast-architecture-view-modules" data-kast-view="module-ownership" data-kast-browser="true" data-kast-dynamic-variant="diagram" aria-label="Interactive module ownership architecture view"></div>
+</Frame>
+
+The view uses module families rather than every Gradle project so that the
+load-bearing direction remains visible:
+
+| Family | Ownership |
+| --- | --- |
+| `kernel` | Host-neutral refinement, outcome, limits, and evidence primitives. |
+| `*:contract` | Domain identities, requests, results, qualifications, rejections, and ports. |
+| `*:service` | Pure or capability-parameterized domain workflows. |
+| `*:intellij` | Request-local IntelliJ, PSI, K2, VFS, and source-effect adapters. |
+| `evidence:sqlite` | The sole JDBC-backed persistence adapter. |
+| `protocol` and `runtime:server` | Permanent operation identity, generated wire bindings, and contract-only dispatch. |
+| `runtime:*` | Production composition plus narrowly owned IDE-read and telemetry boundaries. |
+| `cli` and `indexer` | Process orchestration and the installed sidecar host. |
+
+Contracts point inward. Volatile platform objects and physical effects stay at
+the edge. Runtime composition may depend on many domains because its purpose is
+to construct the complete implementation graph; those domains do not depend
+back on composition.
+
+## Effect ownership
+
+The architecture policy names effects that ordinary core code must not acquire,
+including IntelliJ platform access, Gradle import, JDBC, filesystem writes,
+process control, workspace transitions, topology publication, and source
+mutation.
+
+Modules receive a role plus an allowed dependency and effect profile. Some
+effects are further narrowed to named JVM classes. For example, a service can
+depend on a filesystem port without gaining general `java.nio.file.Files`
+write authority, while the SQLite or telemetry adapter can own the physical
+write it implements.
+
+This distinction keeps "uses an effectful abstraction" separate from "may
+perform the effect."
+
+## Architecture enforcement
+
+`verifyKastArchitecture` combines several evidence sources:
+
+1. the canonical module inventory and role policy;
+2. the direct Gradle project dependencies actually resolved by the build;
+3. required and forbidden dependency edges;
+4. compiled JVM bytecode scanned for classified effect references;
+5. narrowly scoped structural boundaries that require more precise checks.
+
+Policy construction itself is typed and fail-closed. Unknown modules,
+duplicate targets, invalid role combinations, unapproved dependencies, and
+effect observations produce finite validation failures. Bytecode that cannot be
+read or classified does not pass by absence.
+
+## The diagrams are generated proof artifacts
+
+The LikeC4 sources define the system boundary, module families, relationships,
+tags, and the two published views. `generate_bundle.py` uses the locked LikeC4
+version to generate the `kast-view` web component bundle.
+
+The bundle carries two provenance records:
+
+- a SHA-256 digest of the npm lockfile that selects the generator;
+- a SHA-256 digest of a canonical semantic model computed from the C4 sources.
+
+Check mode regenerates the compute-only model, extracts and canonicalizes the
+model embedded in the committed bundle, removes layout-only data, and compares
+semantic structure. Layout churn cannot authenticate a semantic change, and a
+stale generated bundle cannot pass.
+
+Mintlify publishes only the generated `.js` bundle. The C4 inputs remain
+excluded from the site asset surface but stay reviewable in the repository.
+Because Mintlify loads content-root JavaScript as a custom script, the MDX pages
+can mount the official LikeC4 web component without hand-translating the model
+to a second diagram language.
+
+## Primary authorities
+
+- [`settings.gradle.kts`](https://github.com/amichne/kast/blob/main/settings.gradle.kts)
+  declares the physical Gradle project set.
+- [`ArchitectureModel`](https://github.com/amichne/kast/blob/main/build-logic/src/main/kotlin/support/architecture/ArchitectureModel.kt)
+  defines typed module, role, lifecycle, dependency, and effect policy values.
+- [`ArchitecturePolicyValidator`](https://github.com/amichne/kast/blob/main/build-logic/src/main/kotlin/support/architecture/validation/ArchitecturePolicyValidator.kt)
+  validates the observed repository graph against admitted policy.
+- The [LikeC4 model](https://github.com/amichne/kast/blob/main/docs/public/architecture/model.c4)
+  defines architecture elements and relationships.
+- The [LikeC4 views](https://github.com/amichne/kast/blob/main/docs/public/architecture/views.c4)
+  define the runtime-flow and module-ownership projections rendered in this specification.

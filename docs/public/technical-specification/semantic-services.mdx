@@ -1,0 +1,112 @@
+---
+title: "Semantic services"
+description: "The shared proof contract and distinct mechanics of workspace, symbol, relation, traversal, topology, and diagnostic operations."
+icon: "fingerprint"
+keywords: ["symbols", "relations", "traversal", "topology", "diagnostics"]
+---
+
+Semantic services sit between protocol handlers and effectful adapters. They
+own domain admission and outcome meaning; adapters own IntelliJ and K2
+interaction. A service can ask a port for evidence, but it cannot treat
+arbitrary provider output as trusted.
+
+## The shared service contract
+
+Across read domains, successful evidence preserves:
+
+- the exact canonical workspace root and semantic generation;
+- an admitted scope and operation-specific identity;
+- deterministic ordering and explicit resource bounds;
+- complete coverage or a non-empty, typed qualification;
+- host-neutral values detached from live compiler objects.
+
+Services inspect readiness before effectful work and revalidate generation
+where a move could invalidate the result. Provider output is admitted back
+against the original request. Root, lease, scope, subject, continuation,
+coverage, or budget mismatches close as contract rejection.
+
+## Workspace and index
+
+`workspace.inspect` exposes the current lifecycle state and, when ready, the
+published workspace evidence needed by later operations. It does not trigger
+startup or claim semantic readiness from process liveness.
+
+`index.sync` is an explicit transition. It refreshes only admitted local source
+roots, waits for indexing quiescence, captures source identity, and reconciles
+a successor workspace publication. Missing paths, outside-root inputs, failed
+refresh, or incomplete indexing remain finite failures.
+
+## Symbol identity
+
+Symbol work is deliberately split:
+
+<Steps>
+  <Step title="Discover">
+    `symbol.discover` searches an admitted scope and returns bounded candidates.
+    A candidate is evidence for further refinement, not an exact declaration.
+  </Step>
+  <Step title="Resolve">
+    `symbol.resolve` refines one candidate and its generation into an exact
+    selector. Ambiguity and staleness reject rather than pick a plausible match.
+  </Step>
+  <Step title="Describe">
+    `symbol.describe` reopens the exact selector under the current lease and
+    projects compiler identity, signature, location, and related detached facts.
+  </Step>
+</Steps>
+
+Aliases, overloads, repeated names, and generated declarations are the reason
+for this separation. Text narrows the search; compiler identity completes it.
+
+## Relations and traversal
+
+`relation.read` asks for one compiler-grounded hop from an exact subject under
+one meaning, direction, scope, and budget. Complete output proves one-hop
+coverage. Qualified output retains facts plus named limits and continuation.
+
+`traversal.run` is a deterministic workflow over repeated one-hop reads. Its
+plan includes depth, frontier, record, byte, work-unit, and elapsed-time
+ceilings. The engine attenuates every delegated one-hop budget to remaining
+aggregate capacity, validates each returned batch against the request, and
+emits either complete traversal evidence or a resumable qualified checkpoint.
+
+Traversal does not convert incomplete relation pages into a complete graph.
+
+## Topology
+
+`topology.build` explicitly enumerates admitted source candidates, extracts
+per-file K2 evidence, revalidates source identity, and publishes one immutable
+generation-bound graph snapshot. Startup publishes workspace readiness, not a
+full topology.
+
+Durable snapshot reuse is conditional. Candidate paths, source roots, and
+content hashes must match before an unchanged snapshot can be rebound to a new
+generation. Otherwise extraction and publication run again. Pure graph
+algorithms operate on detached nodes and edges after publication.
+
+## Diagnostics
+
+`diagnostic.check` compiles an explicit set of files under one
+`DiagnosticScope`. `DiagnosticService` checks the lease before and after the
+compiler port runs, then admits provider coverage:
+
+- complete coverage must account for every requested file;
+- qualified coverage must separate analyzed files from files with explicit
+  limitations and account for the whole scope;
+- every fact must retain the same scope and generation.
+
+Compiler output that violates this contract becomes
+`COMPILER_CONTRACT_VIOLATION`; it is not partially trusted.
+
+## Primary authorities
+
+- [`SymbolDiscoveryService`](https://github.com/amichne/kast/blob/main/symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolDiscoveryService.kt)
+  owns candidate admission and bounded discovery outcomes.
+- [`RelationService`](https://github.com/amichne/kast/blob/main/relation/service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt)
+  owns current-lease one-hop evidence admission.
+- [`TraversalService`](https://github.com/amichne/kast/blob/main/traversal/service/src/main/kotlin/io/github/amichne/kast/traversal/service/TraversalService.kt)
+  owns deterministic traversal state, aggregate budgets, and checkpoints.
+- [`InstalledIntellijTopologyExtractor`](https://github.com/amichne/kast/blob/main/topology/intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/InstalledIntellijTopologyExtractor.kt)
+  selects the one exact live Project for topology extraction.
+- [`DiagnosticService`](https://github.com/amichne/kast/blob/main/diagnostic/service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticService.kt)
+  owns scope, lease, coverage, and compiler-output admission.

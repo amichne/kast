@@ -17,7 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 TOOLING = ROOT / "docs/tooling/likec4"
 ARCHITECTURE = ROOT / "docs/public/architecture"
-DEFAULT_OUTPUT = ARCHITECTURE / "likec4-views.mjs"
+DEFAULT_OUTPUT = ROOT / "docs/public/likec4-views.js"
 LOCKFILE = TOOLING / "package-lock.json"
 CANONICALIZER = TOOLING / "canonicalize_bundle_model.mjs"
 WRAPPER_START = b"var LikeC4Views=(function("

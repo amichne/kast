@@ -40,6 +40,19 @@
         ]
       },
       {
+        "group": "Technical specification",
+        "icon": "diagram-project",
+        "pages": [
+          "technical-specification/index",
+          "technical-specification/runtime-boundary",
+          "technical-specification/protocol-and-dispatch",
+          "technical-specification/semantic-services",
+          "technical-specification/change-and-evidence",
+          "technical-specification/module-architecture",
+          "technical-specification/verification-and-contribution"
+        ]
+      },
+      {
         "group": "Reference",
         "icon": "terminal",
         "pages": [

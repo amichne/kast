@@ -1,0 +1,103 @@
+---
+title: "Runtime boundary"
+description: "How Kast proves one canonical repository root, starts or admits a private IntelliJ sidecar, and publishes generation-bound readiness."
+icon: "server"
+keywords: ["sidecar", "IntelliJ", "workspace", "generation"]
+---
+
+The runtime boundary turns a directory on disk into a narrow semantic
+capability. The important result of startup is not merely a running JVM. It is
+evidence that one compatible process, endpoint, workspace, and semantic
+generation all belong to the same canonical repository root.
+
+## Exact-root admission
+
+The control executable begins by canonicalizing the caller's starting path.
+That root contributes to endpoint identity, private state location, and the
+workspace identity carried by later requests. Admission then checks the
+installed sidecar contract, IDEA home, IDEA build, Kotlin plugin, JBR,
+bootstrap classes, Gradle integration, endpoint descriptor, socket, and process
+ownership.
+
+The result is closed:
+
+- an existing endpoint is reused only when its root and complete product
+  identity agree;
+- a missing endpoint may be started through the admitted runtime;
+- an ambiguous, stale, incompatible, unreachable, or wrong-root endpoint is a
+  typed blocker.
+
+The caller never gains authority by selecting a nearby open IntelliJ Project or
+by finding a plausible socket. Exact identity is established before transport
+is useful.
+
+## Private process and private state
+
+The sidecar runs the supported local IntelliJ distribution headlessly, but its
+mutable state is Kast-owned. Config, system, plugins, logs, indexes, endpoint
+metadata, socket state, persistence, and telemetry live outside the user's IDE
+directories. Kast supplies its private plugin to that process and does not
+install a plugin into the user's IDE.
+
+Ordinary startup does not read the user's IDEA cache. Optional index seeding is
+a distinct, consent-bearing boundary: it requires a stopped, compatible IDEA
+source and validates an allowlisted copy before atomically publishing it into
+Kast's private cache. Seeded indexes remain an acceleration hint, never
+readiness proof.
+
+<Warning>
+  Process liveness is weaker than endpoint ownership. Lifecycle operations act
+  only after descriptor, PID, executable, root, and socket evidence establish
+  that the target is Kast's exact process.
+</Warning>
+
+## Workspace bootstrap and publication
+
+Inside the sidecar, bootstrap proceeds in a strict order:
+
+1. Admit launch arguments and private state paths.
+2. Open the exact on-disk IntelliJ Project.
+3. Link and import the Gradle model using the admitted project and Gradle JVMs.
+4. Refresh the VFS and wait for strengthened indexing quiescence.
+5. Capture a detached module and source-root model.
+6. Reconcile durable workspace publication and issue the current read lease.
+7. Construct the complete runtime and publish the endpoint.
+
+Declared local source-root identity comes from IntelliJ model URLs. A declared
+directory may be absent and still remain part of the model, but it contributes
+no source files. Malformed, non-local, conflicting, or outside-root identities
+are rejected.
+
+Readiness is a domain state, not a health boolean. Absent, starting,
+reconciling, blocked, ready, and stopping states cannot be confused. A ready
+workspace carries the exact canonical root and current semantic generation
+needed to construct a `SemanticReadLease`.
+
+## Request-local compiler state
+
+IntelliJ Projects, VFS handles, PSI elements, K2 symbols, analysis sessions, and
+native scopes are live platform values. They remain inside adapter calls and
+must not be retained as durable evidence. Each semantic request observes the
+current ready workspace, performs its compiler work, and revalidates the lease
+when the operation requires protection against a moving generation.
+
+This is why a selector is generation-bound and why a sidecar restart advances
+generation conservatively. The text of a declaration may be unchanged while
+the authority that established its identity has expired.
+
+`index.sync` is the explicit repair boundary for on-disk changes made outside
+the sidecar. It refreshes admitted source roots, waits for indexing, captures
+current source identity, and publishes a successor generation. Startup itself
+does not perform a complete topology build; topology remains an explicit
+operation with its own proof contract.
+
+## Primary authorities
+
+- [`InstalledSidecarRootRuntimeDemander`](https://github.com/amichne/kast/blob/main/cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledSidecarRuntimeDemand.kt)
+  owns installed-runtime discovery, cache preparation, start, and exact endpoint admission.
+- [`KastIndexerApplicationStarter`](https://github.com/amichne/kast/blob/main/indexer/src/main/kotlin/io/github/amichne/kast/indexer/KastIndexerApplicationStarter.kt)
+  owns the IntelliJ application bootstrap and endpoint lifetime.
+- [`InstalledIntellijWorkspace`](https://github.com/amichne/kast/blob/main/workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledIntellijWorkspace.kt)
+  owns project open, Gradle import, indexing, and detached workspace capture.
+- [`InstalledKastRuntime`](https://github.com/amichne/kast/blob/main/runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/bootstrap/InstalledKastRuntime.kt)
+  admits the exact workspace and state directory into runtime composition.

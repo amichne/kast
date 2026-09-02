@@ -1,0 +1,122 @@
+---
+title: "Verification and contribution"
+description: "How maintainers widen proof from focused module checks to architecture, distribution, enterprise, and documentation validation."
+icon: "badge-check"
+keywords: ["testing", "CI", "distribution", "contributors"]
+---
+
+A Kast change is complete only when the strongest relevant executable evidence
+supports it. The repository therefore verifies pure domain behavior, compiled
+architecture, runtime integration, the installed product, semantic acceptance,
+and documentation as distinct layers.
+
+## Verification rings
+
+Use the narrowest check that can disprove the change, then widen only as the
+affected surface requires:
+
+| Ring | Typical evidence | What it proves |
+| --- | --- | --- |
+| Focused | One module test or targeted test class | The next domain invariant or regression. |
+| Owning module | Module `test` and `check` tasks | Compilation, tests, and module-local policy. |
+| Architecture | `verifyKastArchitecture` | Admitted modules, dependencies, roles, and compiled effects. |
+| Product assembly | `assembleSidecarRelease` and distribution checks | Control and sidecar artifacts are coherent and physically separated. |
+| Installed product | Packaging shell and Python verification | The archive, installer, metadata, lifecycle, and passive commands work outside Gradle internals. |
+| Enterprise | Staged product against the multi-module fixture | End-to-end semantic behavior, mutation, isolation, and performance bounds. |
+| Documentation | Registry generation, LikeC4 check, docs contract, and `mint validate` | Published commands, claims, links, pages, and diagrams match their authorities. |
+
+Running a broader ring does not make a missing narrow invariant precise. A
+focused test explains the intended property; wider checks prove that the
+property composes with the product.
+
+## Installed product proof
+
+The control command and private sidecar are built and verified as one matched
+product. Verification checks metadata and SHA-256 records, archive safety,
+runtime identity, required resources, control-versus-sidecar content
+separation, relocatability, and lifecycle behavior.
+
+Passive commands are tested as passive: status and product inspection must not
+start the sidecar merely to report absence. Start, stop, clean, reindex, cache
+reuse, and wrong-root behavior are exercised against a staged installation,
+not inferred from unit tests.
+
+Release assets also provide machine-readable CLI schema and module knowledge.
+The latter binds a release version and Git revision to accepted architecture
+evidence, canonical module policy, observed direct dependencies, and applicable
+repository guidance. It is a transportable index into stronger authorities,
+not a replacement for them.
+
+## Enterprise acceptance
+
+The enterprise fixture supplies a real multi-module Gradle workspace with
+cross-module symbols and relationships. The acceptance runner operates the
+staged product through its public command boundary and checks semantic
+determinism, bounded output, topology and traversal behavior, generation
+transitions, mutation lifecycle, recovery, and measured performance ceilings.
+
+This layer catches errors that an in-process test cannot represent: packaging
+omissions, launcher environment mistakes, incompatible private plugin layout,
+socket isolation, and failure to preserve identity across process boundaries.
+
+## Keep this specification authenticated
+
+The documentation workflow forms its own proof chain:
+
+```text
+CanonicalOperation and command graph
+  -> generated operation registry
+  -> generated CLI reference
+
+LikeC4 source and locked generator
+  -> provenance-checked web-component bundle
+  -> embedded technical views
+
+Source authorities and Mintlify navigation
+  -> docs/test_public_docs.py
+  -> mint validate
+```
+
+When mechanics change, update the source contract first. Regenerate derived
+artifacts with their owning task, update only the affected explanation, and add
+or strengthen a docs assertion for any claim whose drift would mislead a
+maintainer. Do not patch generated CLI or LikeC4 output by hand.
+
+## Contributor path
+
+<Steps>
+  <Step title="Name the invariant and owner">
+    Identify the boundary input, trusted domain value, finite failure set,
+    package or module owner, and executable proof that can fail before the fix.
+  </Step>
+  <Step title="Orient through contracts">
+    Start at the canonical operation or domain contract, then follow service,
+    adapter, composition, wire, and CLI projections only as far as the change
+    requires.
+  </Step>
+  <Step title="Prove the narrow behavior">
+    Add the smallest public-behavior test, observe the intended failure, and
+    implement the narrowest typed transition that makes it pass.
+  </Step>
+  <Step title="Widen verification">
+    Run owning-module and architecture checks, then product, enterprise, or
+    documentation rings when the changed surface crosses those boundaries.
+  </Step>
+  <Step title="Leave an authority trail">
+    Keep durable rationale in contracts, tests, architecture policy, or this
+    specification. Generated artifacts must retain their provenance.
+  </Step>
+</Steps>
+
+## Primary authorities
+
+- The [root Gradle build](https://github.com/amichne/kast/blob/main/build.gradle.kts)
+  composes architecture, distribution, acceptance, and installation tasks.
+- [`test-installed-product.sh`](https://github.com/amichne/kast/blob/main/packaging/test-installed-product.sh)
+  verifies the staged control and sidecar product through public behavior.
+- [`enterprise_acceptance.py`](https://github.com/amichne/kast/blob/main/integration-tests/enterprise_acceptance.py)
+  drives end-to-end semantic and performance acceptance.
+- [`test_public_docs.py`](https://github.com/amichne/kast/blob/main/docs/test_public_docs.py)
+  binds public pages, claims, navigation, authorities, and architecture embeds.
+- The [documentation workflow](https://github.com/amichne/kast/blob/main/.github/workflows/docs.yml)
+  regenerates and validates the published documentation surface.

@@ -1,0 +1,16 @@
+.kast-architecture-view {
+  display: block;
+  inline-size: 100%;
+  min-block-size: 42rem;
+  overflow: hidden;
+}
+
+.kast-architecture-view-modules {
+  min-block-size: 52rem;
+}
+
+@media (max-width: 768px) {
+  .kast-architecture-view {
+    min-block-size: 32rem;
+  }
+}

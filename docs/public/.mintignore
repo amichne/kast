@@ -1,3 +1,6 @@
-# LikeC4 inputs and the generated web-component bundle remain repository proof,
-# but the Mintlify pages use a native Mermaid projection of the same boundary.
-architecture/
+# LikeC4 source inputs remain repository proof. The generated .js web-component
+# bundle is deliberately published so Mintlify can load the authenticated views.
+architecture/likec4.config.json
+architecture/model.c4
+architecture/specification.c4
+architecture/views.c4

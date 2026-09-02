@@ -1,0 +1,100 @@
+---
+title: "Protocol and dispatch"
+description: "How permanent operation identities stay synchronized across registry metadata, wire documents, runtime handlers, CLI commands, and agent projections."
+icon: "route"
+keywords: ["protocol", "wire", "registry", "dispatch"]
+---
+
+Kast's protocol is organized around a closed set of permanent operation
+identities. Request classes, JSON documents, CLI spellings, and tool names are
+projections of those identities, not competing sources of truth.
+
+## One operation, four synchronized surfaces
+
+Every public semantic operation must exist coherently in four runtime surfaces:
+
+1. `CanonicalOperation` gives it one permanent `OperationId` in a closed enum.
+2. `OperationRegistry` proves one fully typed definition and unique schema
+   identity for every canonical operation.
+3. `OperationWireTable` proves one generated request and outcome serializer
+   binding for every operation.
+4. `TypedOperationBinding` pairs that exact wire binding with a handler whose
+   request, result, qualification, and rejection types agree at compile time.
+
+Construction fails with finite missing, duplicate, unexpected, unknown, or
+untyped cases. There is no fallback map keyed by unchecked strings.
+
+The current closed set contains thirteen operations:
+
+| Domain | Canonical operations |
+| --- | --- |
+| Workspace | `workspace.inspect`, `index.sync` |
+| Topology | `topology.build` |
+| Symbol | `symbol.discover`, `symbol.resolve`, `symbol.describe` |
+| Graph reads | `relation.read`, `traversal.run` |
+| Diagnostics | `diagnostic.check` |
+| Change | `change.plan`, `change.apply`, `change.verify`, `change.recover` |
+
+Adding a fourteenth operation means extending the closed identity set and
+satisfying every generated and runtime completeness proof. Omitting a binding
+cannot silently produce a partial server.
+
+## Bounded wire transport
+
+The control process and sidecar exchange one request and response at a time on
+an exact-root Unix-domain socket. Physical socket acceptance and frame limits
+belong to the indexer transport. Typed dispatch begins only after a complete raw
+document crosses that boundary.
+
+`RuntimeServer.dispatch` performs a monotonic sequence:
+
+```text
+String
+  -> admitted WireRequestEnvelope
+  -> canonical route
+  -> generated request decoder
+  -> typed operation handler
+  -> closed OperationOutcome
+  -> generated outcome encoder
+  -> response document
+```
+
+Envelope rejection, request decoding failure, unsupported operation, handler
+outcome, and response encoding failure stay distinguishable. A valid JSON
+frame is not evidence that an operation succeeded.
+
+## Typed handler composition
+
+The runtime server deliberately knows protocol contracts but not IntelliJ,
+SQLite, or process control. Production composition constructs service ports and
+adapters, then captures each handler behind its matching
+`TypedOperationBinding`. The server's internal dispatch table may erase generic
+details only after the association has been proven.
+
+This avoids a common dynamic-dispatch failure mode where a route, decoder, and
+handler all exist but accept subtly different models. In Kast, that mismatch is
+excluded before the server is constructed.
+
+## Server projection and broker
+
+The CLI command graph and `kast --schema` are derived consumer surfaces. The
+schema includes the operation registry plus a server projection that maps
+canonical operations to agent-facing tool names, JSON Schemas, loading policy,
+approval policy, and CLI field bindings.
+
+The local Ktor broker consumes the exact installed projection. It does not keep
+a hand-authored table for a particular Kast version. Read façades can therefore
+use task-oriented names while permanent operation IDs and wire outcome
+documents remain stable below them. Mutating tools retain explicit approval in
+the projection.
+
+## Primary authorities
+
+- [`CanonicalOperation`](https://github.com/amichne/kast/blob/main/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt)
+  owns the complete public identity set and unknown-operation resolution.
+- [`OperationRegistry`](https://github.com/amichne/kast/blob/main/protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationRegistry.kt)
+  proves exactly complete typed metadata and schema identity.
+- [`OperationWireTable`](https://github.com/amichne/kast/blob/main/protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireTable.kt)
+  proves generated serializer completeness.
+- [`RuntimeServer`](https://github.com/amichne/kast/blob/main/runtime/server/src/main/kotlin/io/github/amichne/kast/runtime/server/RuntimeServer.kt)
+  admits raw documents and dispatches only through the exact typed binding table.
