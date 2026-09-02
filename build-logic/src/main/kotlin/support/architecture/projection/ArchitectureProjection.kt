@@ -48,8 +48,8 @@ internal sealed interface ModuleRoleConventionDocument {
 }
 
 object ArchitectureProjection {
-    fun render(policy: ValidatedArchitecturePolicy): String {
-        val document = ArchitectureProjectionDocument(
+    internal fun document(policy: ValidatedArchitecturePolicy): ArchitectureProjectionDocument =
+        ArchitectureProjectionDocument(
             schemaVersion = 2,
             modules = policy.moduleOrder.map { id ->
                 val module = policy.modules.getValue(id)
@@ -75,6 +75,9 @@ object ArchitectureProjection {
                 )
             },
         )
+
+    fun render(policy: ValidatedArchitecturePolicy): String {
+        val document = document(policy)
         return architectureProjectionJson.encodeToString(
             ArchitectureProjectionDocument.serializer(),
             document,

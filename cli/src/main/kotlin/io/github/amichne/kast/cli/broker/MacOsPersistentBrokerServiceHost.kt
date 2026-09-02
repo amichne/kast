@@ -27,8 +27,102 @@ internal fun interface BrokerSocketProbe {
 
 internal enum class BrokerSocketReachability { REACHABLE, UNREACHABLE, REJECTED }
 
-private object JdkBrokerSocketProbe : BrokerSocketProbe {
+internal fun interface BrokerSocketPathObserver {
+    fun observe(path: Path): BrokerSocketPathObservation
+}
+
+/** Finite Unix socket-path evidence established without following symbolic links. */
+internal sealed interface BrokerSocketPathObservation {
+    /** The leaf or its immediate parent is absent beneath an admitted canonical directory. */
+    data object Absent : BrokerSocketPathObservation
+
+    data object Socket : BrokerSocketPathObservation
+    data object WrongType : BrokerSocketPathObservation
+    data object Rejected : BrokerSocketPathObservation
+}
+
+internal object JdkBrokerSocketPathObserver : BrokerSocketPathObserver {
+    override fun observe(path: Path): BrokerSocketPathObservation {
+        if (!path.isAbsolute || path.normalize() != path) {
+            return BrokerSocketPathObservation.Rejected
+        }
+        val parent = path.parent ?: return BrokerSocketPathObservation.Rejected
+        when (admitParent(parent)) {
+            BrokerSocketParentAdmission.Absent -> return BrokerSocketPathObservation.Absent
+            BrokerSocketParentAdmission.Rejected -> return BrokerSocketPathObservation.Rejected
+            BrokerSocketParentAdmission.Admitted -> Unit
+        }
+        val mode = try {
+            Files.getAttribute(path, UNIX_MODE_ATTRIBUTE, LinkOption.NOFOLLOW_LINKS) as? Int
+                ?: return BrokerSocketPathObservation.Rejected
+        } catch (_: NoSuchFileException) {
+            return BrokerSocketPathObservation.Absent
+        } catch (_: IOException) {
+            return BrokerSocketPathObservation.Rejected
+        } catch (_: UnsupportedOperationException) {
+            return BrokerSocketPathObservation.Rejected
+        } catch (_: SecurityException) {
+            return BrokerSocketPathObservation.Rejected
+        }
+        return if (mode and UNIX_FILE_TYPE_MASK == UNIX_SOCKET_FILE_TYPE) {
+            BrokerSocketPathObservation.Socket
+        } else {
+            BrokerSocketPathObservation.WrongType
+        }
+    }
+
+    private fun admitParent(parent: Path): BrokerSocketParentAdmission = try {
+        if (
+            parent.toRealPath() == parent &&
+            Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)
+        ) {
+            BrokerSocketParentAdmission.Admitted
+        } else {
+            BrokerSocketParentAdmission.Rejected
+        }
+    } catch (_: NoSuchFileException) {
+        if (Files.isSymbolicLink(parent)) {
+            BrokerSocketParentAdmission.Rejected
+        } else {
+            val existingParent = parent.parent ?: return BrokerSocketParentAdmission.Rejected
+            if (canonicalDirectory(existingParent)) {
+                BrokerSocketParentAdmission.Absent
+            } else {
+                BrokerSocketParentAdmission.Rejected
+            }
+        }
+    } catch (_: IOException) {
+        BrokerSocketParentAdmission.Rejected
+    } catch (_: SecurityException) {
+        BrokerSocketParentAdmission.Rejected
+    }
+
+    private fun canonicalDirectory(path: Path): Boolean = try {
+        path.toRealPath() == path && Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)
+    } catch (_: IOException) {
+        false
+    } catch (_: SecurityException) {
+        false
+    }
+
+    private const val UNIX_MODE_ATTRIBUTE = "unix:mode"
+    private const val UNIX_FILE_TYPE_MASK = 0xF000
+    private const val UNIX_SOCKET_FILE_TYPE = 0xC000
+}
+
+private enum class BrokerSocketParentAdmission { Admitted, Absent, Rejected }
+
+internal object JdkBrokerSocketProbe : BrokerSocketProbe {
+    private val pathObserver: BrokerSocketPathObserver = JdkBrokerSocketPathObserver
+
     override fun probe(path: Path): BrokerSocketReachability {
+        when (pathObserver.observe(path)) {
+            BrokerSocketPathObservation.Absent -> return BrokerSocketReachability.UNREACHABLE
+            BrokerSocketPathObservation.WrongType,
+            BrokerSocketPathObservation.Rejected,
+                -> return BrokerSocketReachability.REJECTED
+            BrokerSocketPathObservation.Socket -> Unit
+        }
         val channel = try {
             SocketChannel.open(StandardProtocolFamily.UNIX)
         } catch (_: IOException) {
