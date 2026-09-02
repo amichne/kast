@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify the exact control-plus-private-sidecar Kast release."""
+"""Verify the exact control, private sidecar, and emitted CLI schema release."""
 
 from __future__ import annotations
 
@@ -7,9 +7,11 @@ import argparse
 import hashlib
 import io
 import json
+import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
+import subprocess
 import tarfile
 import tempfile
 import zipfile
@@ -96,6 +98,42 @@ def verify_sidecar(sidecar: Path) -> None:
             reject("sidecar archive exposes a public plugin root")
 
 
+def schema_emitted_by_control(control: Path) -> bytes:
+    with tempfile.TemporaryDirectory() as raw:
+        root = Path(raw)
+        home = root / "home"
+        home.mkdir()
+        with tarfile.open(control, "r:gz") as archive:
+            archive.extractall(root, filter="data")
+        executable = root / "bin/kast"
+        environment = os.environ.copy()
+        environment["HOME"] = str(home)
+        environment["JAVA_OPTS"] = f"-Duser.home={home}"
+        try:
+            process = subprocess.run(
+                [executable, "--schema"],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=60,
+                env=environment,
+            )
+        except (OSError, subprocess.TimeoutExpired) as failure:
+            reject(f"control schema execution failed: {failure}")
+        if process.returncode != 0:
+            reject(
+                "control --schema failed: "
+                + process.stderr.decode("utf-8", errors="replace").strip()
+            )
+        try:
+            document = json.loads(process.stdout)
+        except (UnicodeDecodeError, json.JSONDecodeError) as failure:
+            reject(f"control --schema did not emit JSON: {failure}")
+        if not isinstance(document, dict) or document.get("schemaVersion") != 1:
+            reject("control --schema did not emit the canonical schema document")
+        return process.stdout
+
+
 def verify(
     directory: Path,
     release: str,
@@ -108,22 +146,27 @@ def verify(
     version = match.group(1)
     control_name = f"kast-control-v{version}-macos-aarch64.tar.gz"
     sidecar_name = f"kast-semantic-runtime-{version}-macos-aarch64.zip"
+    schema_name = f"kast-cli-schema-v{version}.json"
     expected = {
         control_name,
         control_name + ".sha256",
         sidecar_name,
         sidecar_name + ".sha256",
+        schema_name,
+        schema_name + ".sha256",
     }
     observed = {path.name for path in directory.iterdir() if path.is_file()}
     if observed != expected:
         reject(f"asset set mismatch: expected {sorted(expected)}, observed {sorted(observed)}")
     control = directory / control_name
     sidecar = directory / sidecar_name
-    combined = control.stat().st_size + sidecar.stat().st_size
+    schema = directory / schema_name
+    combined = control.stat().st_size + sidecar.stat().st_size + schema.stat().st_size
     if combined > MAXIMUM_COMBINED_BYTES:
         reject(f"combined payload exceeds 80 MiB: {combined}")
     verify_checksum(control)
     verify_checksum(sidecar)
+    verify_checksum(schema)
     manifest = control_manifest(control)
     archive = manifest.get("archive")
     if not isinstance(archive, dict):
@@ -148,6 +191,8 @@ def verify(
     if required != ["kast-indexer", "runtime-libs/", "private-plugins/kast-indexer/"]:
         reject("runtime manifest does not require the plugin-free sidecar layout")
     verify_sidecar(sidecar)
+    if schema.read_bytes() != schema_emitted_by_control(control):
+        reject("published CLI schema does not exactly match control --schema")
     document: dict[str, object] = {
         "schemaVersion": 1,
         "taskId": "SIDECAR-RELEASE",
@@ -165,6 +210,12 @@ def verify(
                 "name": sidecar.name,
                 "bytes": sidecar.stat().st_size,
                 "sha256": sha256(sidecar),
+            },
+            {
+                "kind": "CLI_SCHEMA",
+                "name": schema.name,
+                "bytes": schema.stat().st_size,
+                "sha256": sha256(schema),
             },
         ],
         "combinedBytes": combined,
@@ -189,6 +240,12 @@ def write_checksum(path: Path) -> None:
 
 
 def synthetic_release(directory: Path, version: str) -> None:
+    schema = directory / f"kast-cli-schema-v{version}.json"
+    schema_bytes = (
+        b'{"schemaVersion":1,"operationRegistry":{},"wireSchema":{},'
+        b'"cliProjection":{},"serverProjection":{}}\n'
+    )
+    schema.write_bytes(schema_bytes)
     sidecar = directory / f"kast-semantic-runtime-{version}-macos-aarch64.zip"
     with zipfile.ZipFile(sidecar, "w") as archive:
         archive.writestr("kast-indexer", b"#!/bin/sh\n")
@@ -218,7 +275,13 @@ def synthetic_release(directory: Path, version: str) -> None:
     control = directory / f"kast-control-v{version}-macos-aarch64.tar.gz"
     with tarfile.open(control, "w:gz") as archive:
         for name, content, mode in (
-            ("bin/kast", b"#!/bin/sh\n", 0o755),
+            (
+                "bin/kast",
+                b"#!/bin/sh\nprintf '%s\\n' '{\"schemaVersion\":1,"
+                b"\"operationRegistry\":{},\"wireSchema\":{},"
+                b"\"cliProjection\":{},\"serverProjection\":{}}'\n",
+                0o755,
+            ),
             (
                 "share/kast/semantic-runtime.json",
                 json.dumps(manifest, separators=(",", ":")).encode(),
@@ -231,6 +294,7 @@ def synthetic_release(directory: Path, version: str) -> None:
             archive.addfile(member, io.BytesIO(content))
     write_checksum(control)
     write_checksum(sidecar)
+    write_checksum(schema)
 
 
 def expect_rejected(source: Path, mutate) -> None:
@@ -279,6 +343,13 @@ def self_test() -> None:
 
         expect_rejected(valid, mismatch_manifest)
 
+        def mismatch_schema(root: Path) -> None:
+            schema = root / "kast-cli-schema-v1.2.3.json"
+            schema.write_text('{"schemaVersion":1}\n', encoding="utf-8")
+            write_checksum(schema)
+
+        expect_rejected(valid, mismatch_schema)
+
         def unsafe_sidecar(root: Path) -> None:
             sidecar = root / "kast-semantic-runtime-1.2.3-macos-aarch64.zip"
             with zipfile.ZipFile(sidecar, "a") as archive:
@@ -294,7 +365,7 @@ def self_test() -> None:
             write_checksum(sidecar)
 
         expect_rejected(valid, exceed_size)
-    print("Rejected all 5 plugin-free sidecar release misuses")
+    print("Rejected all 6 plugin-free sidecar release misuses")
 
 
 def write_negative_report(path: Path) -> None:
@@ -302,7 +373,7 @@ def write_negative_report(path: Path) -> None:
         "schemaVersion": 1,
         "taskId": "SIDECAR-RELEASE",
         "outcome": "REJECTED",
-        "rejectedFixtureCount": 5,
+        "rejectedFixtureCount": 6,
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
