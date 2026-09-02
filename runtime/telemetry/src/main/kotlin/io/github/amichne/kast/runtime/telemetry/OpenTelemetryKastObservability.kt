@@ -90,6 +90,8 @@ class OpenTelemetryKastObservability private constructor(
                         span.setAttribute(FILE_COUNT, measurement.count.value)
                     is KastSpanMeasurement.RecordCount ->
                         span.setAttribute(RECORD_COUNT, measurement.count.value)
+                    is KastSpanMeasurement.WorkUnitCount ->
+                        span.setAttribute(WORK_UNIT_COUNT, measurement.count.value)
                 }
             }
         }
@@ -105,6 +107,7 @@ private val OUTCOME = AttributeKey.stringKey("io.github.amichne.kast.outcome")
 private val FAILURE_TYPE = AttributeKey.stringKey("io.github.amichne.kast.failure.type")
 private val FILE_COUNT = AttributeKey.longKey("io.github.amichne.kast.file.count")
 private val RECORD_COUNT = AttributeKey.longKey("io.github.amichne.kast.record.count")
+private val WORK_UNIT_COUNT = AttributeKey.longKey("io.github.amichne.kast.work.unit.count")
 
 /** Stable OpenTelemetry registry attribute used only for escaped unexpected failures. */
 private val ERROR_TYPE = AttributeKey.stringKey("error.type")

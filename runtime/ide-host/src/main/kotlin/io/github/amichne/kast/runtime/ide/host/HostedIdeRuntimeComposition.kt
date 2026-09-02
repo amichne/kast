@@ -179,7 +179,7 @@ object HostedIdeRuntimeComposition {
         if (mutation is HostedMutationState.Rejected) {
             return rejected(HostedIdeRuntimeCompositionFailure.MUTATION_RECOVERY_REJECTED)
         }
-        val relations = RelationService(workspace, changePorts.relationCompiler)
+        val relations = RelationService(workspace, changePorts.relationCompiler, observability)
         val diagnostics = DiagnosticService(workspace, changePorts.diagnosticCompiler)
         return when (val runtime = HostedIdeRuntime.create(
             reads,
@@ -192,6 +192,7 @@ object HostedIdeRuntimeComposition {
             mutation,
             mutationAdmission,
             authority,
+            observability,
         )) {
             is HostedIdeRuntimeConstruction.Created -> HostedIdeRuntimeCompositionResult.Created(
                 runtime.runtime,

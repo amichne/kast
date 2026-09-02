@@ -34,7 +34,10 @@ class OpenTelemetryKastObservabilityTest {
                 extraction.observe(
                     KastSpanObservation(
                         KastSpanCompletion.Complete,
-                        setOf(KastSpanMeasurement.FileCount(KastSpanCount.parse(3).refined())),
+                        setOf(
+                            KastSpanMeasurement.FileCount(KastSpanCount.parse(3).refined()),
+                            KastSpanMeasurement.WorkUnitCount(KastSpanCount.parse(8).refined()),
+                        ),
                     ),
                 )
             }
@@ -62,6 +65,10 @@ class OpenTelemetryKastObservabilityTest {
         assertEquals(
             3L,
             child.attributes.get(AttributeKey.longKey("io.github.amichne.kast.file.count")),
+        )
+        assertEquals(
+            8L,
+            child.attributes.get(AttributeKey.longKey("io.github.amichne.kast.work.unit.count")),
         )
         assertFalse(capture.spans.toString().contains("/workspace"))
     }

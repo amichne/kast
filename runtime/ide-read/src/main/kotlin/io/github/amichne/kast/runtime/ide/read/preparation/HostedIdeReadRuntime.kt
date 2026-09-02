@@ -1,5 +1,6 @@
 package io.github.amichne.kast.runtime.ide.read.preparation
 
+import io.github.amichne.kast.kernel.KastObservability
 import io.github.amichne.kast.protocol.contract.AdmittedIdeHostCompatibility
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointCanonicalRoot
 import io.github.amichne.kast.kernel.Refinement
@@ -247,7 +248,10 @@ class HostedIdeReadRuntime private constructor(
      * failures remain [IdeReadRuntimeDispatchResult]. Raw wire text may leave only at the endpoint
      * frame boundary.
      */
-    suspend fun dispatch(document: String): IdeReadRuntimeDispatchResult = dispatch.dispatch(document)
+    suspend fun dispatch(
+        document: String,
+        observability: KastObservability = KastObservability.Disabled,
+    ): IdeReadRuntimeDispatchResult = dispatch.dispatch(document, observability)
 
     companion object {
         /**

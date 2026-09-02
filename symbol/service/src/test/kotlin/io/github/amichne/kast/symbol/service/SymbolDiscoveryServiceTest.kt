@@ -2,6 +2,14 @@ package io.github.amichne.kast.symbol.service
 
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.kernel.KastObservability
+import io.github.amichne.kast.kernel.KastSpanCompletion
+import io.github.amichne.kast.kernel.KastSpanCount
+import io.github.amichne.kast.kernel.KastSpanFailure
+import io.github.amichne.kast.kernel.KastSpanMeasurement
+import io.github.amichne.kast.kernel.KastSpanName
+import io.github.amichne.kast.kernel.KastSpanObservation
+import io.github.amichne.kast.kernel.KastTraceSpan
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
@@ -52,15 +60,30 @@ class SymbolDiscoveryServiceTest {
         val workspace = published(generation = 7L)
         val request = request(workspace.readLease)
         val compiler = RecordingCompiler(compilation(request))
+        val trace = RecordingSymbolObservability()
         val service = SymbolDiscoveryService(
             WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
             compiler,
+            trace,
         )
 
         val result = runSuspend { service.discover(request) }
 
         assertInstanceOf(SymbolDiscoveryResult.Discovered::class.java, result)
         assertEquals(listOf(request), compiler.requests)
+        assertEquals(listOf(KastSpanName.SYMBOL_DISCOVERY), trace.names)
+        assertEquals(
+            listOf(
+                KastSpanObservation(
+                    KastSpanCompletion.Complete,
+                    setOf(
+                        KastSpanMeasurement.RecordCount(KastSpanCount.parse(0L).refined()),
+                        KastSpanMeasurement.WorkUnitCount(KastSpanCount.parse(0L).refined()),
+                    ),
+                ),
+            ),
+            trace.observations,
+        )
     }
 
     @Test
@@ -68,17 +91,20 @@ class SymbolDiscoveryServiceTest {
         val workspace = published(generation = 7L)
         val staleRequest = request(lease(generation = 6L))
         val compiler = RecordingCompiler(compilation(staleRequest))
+        val trace = RecordingSymbolObservability()
 
         val stale = runSuspend {
             SymbolDiscoveryService(
                 WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
                 compiler,
+                trace,
             ).discover(staleRequest)
         }
         val unavailable = runSuspend {
             SymbolDiscoveryService(
                 WorkspaceInspectionOperations { WorkspaceRuntimeState.Reconciling },
                 compiler,
+                trace,
             ).discover(request(workspace.readLease))
         }
 
@@ -91,6 +117,13 @@ class SymbolDiscoveryServiceTest {
             unavailable,
         )
         assertEquals(emptyList<SymbolDiscoveryRequest>(), compiler.requests)
+        assertEquals(
+            listOf(
+                rejectedObservation(KastSpanFailure.SYMBOL_STALE_GENERATION),
+                rejectedObservation(KastSpanFailure.SYMBOL_WORKSPACE_NOT_READY),
+            ),
+            trace.observations,
+        )
     }
 
     @Test
@@ -98,9 +131,11 @@ class SymbolDiscoveryServiceTest {
         val workspace = published(generation = 7L)
         val request = request(workspace.readLease)
         val otherRequest = request(lease(generation = 8L))
+        val trace = RecordingSymbolObservability()
         val service = SymbolDiscoveryService(
             WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
             RecordingCompiler(compilation(otherRequest)),
+            trace,
         )
 
         assertEquals(
@@ -108,6 +143,10 @@ class SymbolDiscoveryServiceTest {
                 SymbolDiscoveryRejection.COMPILER_CONTRACT_VIOLATION,
             ),
             runSuspend { service.discover(request) },
+        )
+        assertEquals(
+            listOf(rejectedObservation(KastSpanFailure.SYMBOL_QUERY_REJECTED)),
+            trace.observations,
         )
     }
 
@@ -193,6 +232,9 @@ class SymbolDiscoveryServiceTest {
     private fun evidenceGeneration(value: Long): EvidenceGeneration =
         EvidenceGeneration.parse(value).refined()
 
+    private fun rejectedObservation(failure: KastSpanFailure): KastSpanObservation =
+        KastSpanObservation(KastSpanCompletion.Rejected(failure))
+
     private fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong = when (this) {
         is Refinement.Refined -> value
         is Refinement.Rejected -> error(failure.toString())
@@ -210,6 +252,28 @@ class SymbolDiscoveryServiceTest {
             },
         )
         return checkNotNull(completion).getOrThrow()
+    }
+}
+
+private class RecordingSymbolObservability : KastObservability, KastTraceSpan {
+    val names = mutableListOf<KastSpanName>()
+    val observations = mutableListOf<KastSpanObservation>()
+
+    override suspend fun <Value> inSpan(
+        name: KastSpanName,
+        operation: suspend (KastTraceSpan) -> Value,
+    ): Value {
+        names += name
+        return operation(this)
+    }
+
+    override suspend fun <Value> child(
+        name: KastSpanName,
+        operation: suspend (KastTraceSpan) -> Value,
+    ): Value = inSpan(name, operation)
+
+    override fun observe(observation: KastSpanObservation) {
+        observations += observation
     }
 }
 

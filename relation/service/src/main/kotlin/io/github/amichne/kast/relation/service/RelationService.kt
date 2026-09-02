@@ -1,5 +1,14 @@
 package io.github.amichne.kast.relation.service
 
+import io.github.amichne.kast.kernel.KastObservability
+import io.github.amichne.kast.kernel.KastSpanCompletion
+import io.github.amichne.kast.kernel.KastSpanCount
+import io.github.amichne.kast.kernel.KastSpanFailure
+import io.github.amichne.kast.kernel.KastSpanMeasurement
+import io.github.amichne.kast.kernel.KastSpanName
+import io.github.amichne.kast.kernel.KastSpanObservation
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.RelationBatch
 import io.github.amichne.kast.relation.contract.RelationCompilation
 import io.github.amichne.kast.relation.contract.RelationCompilerPort
 import io.github.amichne.kast.relation.contract.RelationCompilerRejection
@@ -16,6 +25,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 class RelationService(
     private val workspaces: WorkspaceInspectionOperations,
     private val compiler: RelationCompilerPort,
+    private val observability: KastObservability = KastObservability.Disabled,
 ) : RelationOperations {
     /**
      * Proof transition: `(WorkspaceRuntimeState, RelationRequest, RelationCompilation) ->
@@ -26,7 +36,12 @@ class RelationService(
      * generation, exact fact coverage, and continuation binding. [RelationReadRejection] is the
      * closed expected failure. Workspace observation and compiler execution are the only effects.
      */
-    override suspend fun read(request: RelationRequest): RelationReadResult {
+    override suspend fun read(request: RelationRequest): RelationReadResult =
+        observability.inSpan(KastSpanName.RELATION_READ) { span ->
+            readObserved(request).also { result -> span.observe(result.traceObservation()) }
+        }
+
+    private suspend fun readObserved(request: RelationRequest): RelationReadResult {
         when (
             val admission = admitCurrentLease(
                 request.subject.lease,
@@ -104,6 +119,47 @@ class RelationService(
             else -> RelationLeaseAdmission.Admitted
         }
     }
+}
+
+private fun RelationReadResult.traceObservation(): KastSpanObservation = when (this) {
+    is RelationReadResult.Complete -> batch.completeObservation()
+    is RelationReadResult.Qualified -> batch.qualifiedObservation()
+    is RelationReadResult.Rejected -> KastSpanObservation(
+        KastSpanCompletion.Rejected(
+            when (reason) {
+                RelationReadRejection.WORKSPACE_NOT_READY ->
+                    KastSpanFailure.RELATION_WORKSPACE_NOT_READY
+                RelationReadRejection.WORKSPACE_ROOT_MISMATCH,
+                RelationReadRejection.STALE_GENERATION,
+                    -> KastSpanFailure.RELATION_WORKSPACE_MOVED
+                RelationReadRejection.SCOPE_REJECTED,
+                RelationReadRejection.WORKSPACE_INDEX_UNAVAILABLE,
+                RelationReadRejection.STALE_SELECTOR,
+                RelationReadRejection.OUTSIDE_SCOPE,
+                RelationReadRejection.AMBIGUOUS_SUBJECT,
+                RelationReadRejection.UNSUPPORTED_SUBJECT,
+                RelationReadRejection.COMPILER_IDENTITY_UNAVAILABLE,
+                RelationReadRejection.COMPILER_CONTRACT_VIOLATION,
+                    -> KastSpanFailure.RELATION_QUERY_REJECTED
+            },
+        ),
+    )
+}
+
+private fun RelationBatch.completeObservation(): KastSpanObservation =
+    KastSpanObservation(KastSpanCompletion.Complete, measurements())
+
+private fun RelationBatch.qualifiedObservation(): KastSpanObservation =
+    KastSpanObservation(KastSpanCompletion.Qualified, measurements())
+
+private fun RelationBatch.measurements(): Set<KastSpanMeasurement> = setOf(
+    KastSpanMeasurement.RecordCount(exactSpanCount(facts.size.toLong())),
+    KastSpanMeasurement.WorkUnitCount(exactSpanCount(examinedWorkUnits.value)),
+)
+
+private fun exactSpanCount(raw: Long): KastSpanCount = when (val parsed = KastSpanCount.parse(raw)) {
+    is Refinement.Refined -> parsed.value
+    is Refinement.Rejected -> error("A proven relation measurement cannot be negative")
 }
 
 private enum class RelationAdmissionPhase {

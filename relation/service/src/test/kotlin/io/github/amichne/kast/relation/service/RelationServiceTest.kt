@@ -2,6 +2,14 @@ package io.github.amichne.kast.relation.service
 
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.kernel.KastObservability
+import io.github.amichne.kast.kernel.KastSpanCompletion
+import io.github.amichne.kast.kernel.KastSpanCount
+import io.github.amichne.kast.kernel.KastSpanFailure
+import io.github.amichne.kast.kernel.KastSpanMeasurement
+import io.github.amichne.kast.kernel.KastSpanName
+import io.github.amichne.kast.kernel.KastSpanObservation
+import io.github.amichne.kast.kernel.KastTraceSpan
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
@@ -68,9 +76,11 @@ class RelationServiceTest {
         val request = request(workspace.readLease)
         val batch = emptyBatch(request)
         val compiler = RecordingCompiler(RelationCompilation.complete(batch))
+        val trace = RecordingRelationObservability()
         val service = RelationService(
             WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
             compiler,
+            trace,
         )
 
         val result = runSuspend { service.read(request) }
@@ -78,15 +88,30 @@ class RelationServiceTest {
         val complete = assertInstanceOf(RelationReadResult.Complete::class.java, result)
         assertEquals(0, complete.coverage.exactCount.value)
         assertEquals(listOf(request), compiler.requests)
+        assertEquals(listOf(KastSpanName.RELATION_READ), trace.names)
+        assertEquals(
+            listOf(
+                KastSpanObservation(
+                    KastSpanCompletion.Complete,
+                    setOf(
+                        KastSpanMeasurement.RecordCount(KastSpanCount.parse(0L).refined()),
+                        KastSpanMeasurement.WorkUnitCount(KastSpanCount.parse(0L).refined()),
+                    ),
+                ),
+            ),
+            trace.observations,
+        )
     }
 
     @Test
     fun `stale root and generation reject before compiler work`() {
         val workspace = published(19L)
         val compiler = RecordingCompiler()
+        val trace = RecordingRelationObservability()
         val service = RelationService(
             WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
             compiler,
+            trace,
         )
 
         assertEquals(
@@ -97,7 +122,46 @@ class RelationServiceTest {
             RelationReadResult.Rejected(RelationReadRejection.WORKSPACE_ROOT_MISMATCH),
             runSuspend { service.read(request(lease(19L, "/other"))) },
         )
+        assertEquals(
+            RelationReadResult.Rejected(RelationReadRejection.WORKSPACE_NOT_READY),
+            runSuspend {
+                RelationService(
+                    WorkspaceInspectionOperations { WorkspaceRuntimeState.Reconciling },
+                    compiler,
+                    trace,
+                ).read(request(workspace.readLease))
+            },
+        )
         assertEquals(emptyList<RelationRequest>(), compiler.requests)
+        assertEquals(
+            listOf(
+                rejectedObservation(KastSpanFailure.RELATION_WORKSPACE_MOVED),
+                rejectedObservation(KastSpanFailure.RELATION_WORKSPACE_MOVED),
+                rejectedObservation(KastSpanFailure.RELATION_WORKSPACE_NOT_READY),
+            ),
+            trace.observations,
+        )
+    }
+
+    @Test
+    fun `compiler rejection remains typed and records query rejection`() {
+        val workspace = published(19L)
+        val request = request(workspace.readLease)
+        val trace = RecordingRelationObservability()
+        val service = RelationService(
+            WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
+            RecordingCompiler(),
+            trace,
+        )
+
+        assertEquals(
+            RelationReadResult.Rejected(RelationReadRejection.COMPILER_CONTRACT_VIOLATION),
+            runSuspend { service.read(request) },
+        )
+        assertEquals(
+            listOf(rejectedObservation(KastSpanFailure.RELATION_QUERY_REJECTED)),
+            trace.observations,
+        )
     }
 
     @Test
@@ -127,9 +191,11 @@ class RelationServiceTest {
             setOf(RelationLimitation.PROVIDER_INCOMPLETE),
             RelationWorkOffset.parse(0L).refined(),
         ).refined()
+        val trace = RecordingRelationObservability()
         val service = RelationService(
             WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
             RecordingCompiler(qualified),
+            trace,
         )
 
         val result = assertInstanceOf(
@@ -139,6 +205,18 @@ class RelationServiceTest {
 
         assertEquals(0, result.coverage.knownMinimum.value)
         assertEquals(request.subject.fingerprint, result.coverage.continuation.subject)
+        assertEquals(
+            listOf(
+                KastSpanObservation(
+                    KastSpanCompletion.Qualified,
+                    setOf(
+                        KastSpanMeasurement.RecordCount(KastSpanCount.parse(0L).refined()),
+                        KastSpanMeasurement.WorkUnitCount(KastSpanCount.parse(0L).refined()),
+                    ),
+                ),
+            ),
+            trace.observations,
+        )
     }
 
     private fun emptyBatch(request: RelationRequest): RelationBatch = RelationBatch.create(
@@ -243,6 +321,9 @@ class RelationServiceTest {
     private fun root(): CanonicalWorkspaceRoot =
         CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
 
+    private fun rejectedObservation(failure: KastSpanFailure): KastSpanObservation =
+        KastSpanObservation(KastSpanCompletion.Rejected(failure))
+
     private fun <T> runSuspend(block: suspend () -> T): T {
         var outcome: Result<T>? = null
         block.startCoroutine(
@@ -271,6 +352,30 @@ class RelationServiceTest {
         override suspend fun read(request: RelationRequest): RelationCompilation {
             requests += request
             return result
+        }
+    }
+
+    private class RecordingRelationObservability : KastObservability {
+        val names = mutableListOf<KastSpanName>()
+        val observations = mutableListOf<KastSpanObservation>()
+
+        override suspend fun <Value> inSpan(
+            name: KastSpanName,
+            operation: suspend (KastTraceSpan) -> Value,
+        ): Value {
+            names += name
+            return operation(
+                object : KastTraceSpan {
+                    override suspend fun <Nested> child(
+                        name: KastSpanName,
+                        operation: suspend (KastTraceSpan) -> Nested,
+                    ): Nested = error("Relation read does not create child spans")
+
+                    override fun observe(observation: KastSpanObservation) {
+                        observations += observation
+                    }
+                },
+            )
         }
     }
 }

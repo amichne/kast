@@ -1,6 +1,7 @@
 package io.github.amichne.kast.runtime.ide.host
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.kernel.KastObservability
 import io.github.amichne.kast.protocol.contract.AdmittedIdeHostCompatibility
 import io.github.amichne.kast.protocol.contract.IdeHostCapability
 import io.github.amichne.kast.protocol.wire.WireRequestAdmission
@@ -16,7 +17,13 @@ import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 interface HostedReadRuntimeOperations {
     val canonicalRoot: IdeEndpointCanonicalRoot
     val compatibility: AdmittedIdeHostCompatibility
-    suspend fun dispatch(document: String): IdeReadRuntimeDispatchResult
+    suspend fun dispatch(document: String): IdeReadRuntimeDispatchResult =
+        dispatch(document, KastObservability.Disabled)
+
+    suspend fun dispatch(
+        document: String,
+        observability: KastObservability,
+    ): IdeReadRuntimeDispatchResult
 }
 
 sealed interface HostedReadRuntimeStaging {
@@ -26,6 +33,11 @@ sealed interface HostedReadRuntimeStaging {
 
 internal fun interface HostedReadDispatchOperations {
     suspend fun dispatch(document: String): IdeReadRuntimeDispatchResult
+
+    suspend fun dispatch(
+        document: String,
+        observability: KastObservability,
+    ): IdeReadRuntimeDispatchResult = dispatch(document)
 }
 
 /**
@@ -60,7 +72,10 @@ internal class HostedGenerationReadDispatch(
         return HostedReadRuntimeStaging.Staged
     }
 
-    suspend fun dispatch(document: String): IdeReadRuntimeDispatchResult {
+    suspend fun dispatch(
+        document: String,
+        observability: KastObservability = KastObservability.Disabled,
+    ): IdeReadRuntimeDispatchResult {
         val operation = when (val admission = WireRequestEnvelope.admit(document)) {
             is WireRequestAdmission.Admitted -> admission.request.operation
             is WireRequestAdmission.Rejected -> return IdeReadRuntimeDispatchResult.Rejected(
@@ -82,7 +97,7 @@ internal class HostedGenerationReadDispatch(
             -> return unavailable()
         }
         val selected = select(lease.generation) ?: return unavailable()
-        val result = selected.dispatch(document)
+        val result = selected.dispatch(document, observability)
         return when (val current = workspace.inspect()) {
             is WorkspaceRuntimeState.Ready -> if (current.workspace.readLease == lease) {
                 result
@@ -137,8 +152,10 @@ class HostedLiveReadRuntimeOperations(
         )
     }
 
-    override suspend fun dispatch(document: String): IdeReadRuntimeDispatchResult =
-        dispatches.dispatch(document)
+    override suspend fun dispatch(
+        document: String,
+        observability: KastObservability,
+    ): IdeReadRuntimeDispatchResult = dispatches.dispatch(document, observability)
 }
 
 internal class StaticHostedReadRuntimeOperations(
@@ -146,8 +163,10 @@ internal class StaticHostedReadRuntimeOperations(
 ) : HostedReadRuntimeOperations {
     override val canonicalRoot: IdeEndpointCanonicalRoot = runtime.canonicalRoot
     override val compatibility: AdmittedIdeHostCompatibility = runtime.compatibility
-    override suspend fun dispatch(document: String): IdeReadRuntimeDispatchResult =
-        runtime.dispatch(document)
+    override suspend fun dispatch(
+        document: String,
+        observability: KastObservability,
+    ): IdeReadRuntimeDispatchResult = runtime.dispatch(document, observability)
 }
 
 private data class GenerationReadDispatch(
@@ -159,8 +178,18 @@ private val hostedReadOperations = IdeHostCapability.entries.mapTo(linkedSetOf()
     it.operation
 }
 
-private fun HostedIdeReadRuntime.asDispatchOperations() =
-    HostedReadDispatchOperations { document -> dispatch(document) }
+private fun HostedIdeReadRuntime.asDispatchOperations(): HostedReadDispatchOperations {
+    val runtime = this
+    return object : HostedReadDispatchOperations {
+        override suspend fun dispatch(document: String): IdeReadRuntimeDispatchResult =
+            runtime.dispatch(document)
+
+        override suspend fun dispatch(
+            document: String,
+            observability: KastObservability,
+        ): IdeReadRuntimeDispatchResult = runtime.dispatch(document, observability)
+    }
+}
 
 private fun unavailable(): IdeReadRuntimeDispatchResult = IdeReadRuntimeDispatchResult.Rejected(
     IdeReadRuntimeDispatchFailure.RuntimeGenerationUnavailable,
