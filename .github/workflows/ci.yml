@@ -60,3 +60,6 @@ jobs:
           build
           installedProductTest
           verifyKastArchitecture
+
+      - name: Verify release asset contract
+        run: python3 distribution/release/verify_assets.py --self-test

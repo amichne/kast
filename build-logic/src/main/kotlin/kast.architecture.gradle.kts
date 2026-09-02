@@ -2,6 +2,7 @@ import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.tasks.SourceSetContainer
 import support.architecture.ArchitectureObservationParser
 import support.architecture.ModuleRoleConvention
+import support.architecture.gradle.GenerateKastModuleKnowledgeTask
 import support.architecture.gradle.VerifyKastArchitectureTask
 
 plugins {
@@ -13,6 +14,29 @@ val verifyKastArchitecture = tasks.register<VerifyKastArchitectureTask>("verifyK
     description = "Verifies module dependencies, exports, roles, and permitted effect owners."
     rootDirectory.set(layout.projectDirectory)
     reportFile.set(layout.buildDirectory.file("reports/kast-architecture/verifyKastArchitecture.json"))
+}
+
+val repositoryAgentGuides = fileTree(layout.projectDirectory) {
+    include("AGENTS.md", "**/AGENTS.md")
+    exclude(".agent-turn/**", ".git/**", "**/build/**")
+}
+
+tasks.register<GenerateKastModuleKnowledgeTask>("generateKastModuleKnowledge") {
+    group = "distribution"
+    description = "Serializes the verified module architecture and scoped AGENTS.md knowledge."
+    productVersion.set(providers.provider { project.version.toString() })
+    sourceRevision.set(providers.gradleProperty("kastSourceRevision"))
+    observedProjectDependencies.set(
+        verifyKastArchitecture.flatMap { it.observedProjectDependencies },
+    )
+    observedExportedProjectDependencies.set(
+        verifyKastArchitecture.flatMap { it.observedExportedProjectDependencies },
+    )
+    architectureVerificationReport.set(verifyKastArchitecture.flatMap { it.reportFile })
+    agentGuideFiles.from(repositoryAgentGuides)
+    rootDirectory.set(layout.projectDirectory)
+    outputFile.set(layout.buildDirectory.file("reports/kast-architecture/kast-module-knowledge.json"))
+    dependsOn(verifyKastArchitecture)
 }
 
 subprojects {

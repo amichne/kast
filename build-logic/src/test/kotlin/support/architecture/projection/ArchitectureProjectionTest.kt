@@ -56,7 +56,7 @@ class ArchitectureProjectionTest {
         val filesystem = cli.allowedScopedEffects.single()
 
         assertEquals("FILESYSTEM_WRITE", filesystem.effect)
-        assertEquals(8, filesystem.callerClasses.size)
+        assertEquals(17, filesystem.callerClasses.size)
         assertTrue(filesystem.callerClasses.all { it.startsWith("io/github/amichne/kast/cli/") })
     }
 }

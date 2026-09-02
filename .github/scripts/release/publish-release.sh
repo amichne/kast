@@ -53,6 +53,7 @@ assets_directory="$(cd "${assets_directory}" && pwd -P)"
 control="${assets_directory}/kast-control-v${version}-macos-aarch64.tar.gz"
 sidecar="${assets_directory}/kast-semantic-runtime-${version}-macos-aarch64.zip"
 schema="${assets_directory}/kast-cli-schema-v${version}.json"
+knowledge="${assets_directory}/kast-module-knowledge-v${version}.json"
 assets=(
   "${control}"
   "${control}.sha256"
@@ -60,6 +61,8 @@ assets=(
   "${sidecar}.sha256"
   "${schema}"
   "${schema}.sha256"
+  "${knowledge}"
+  "${knowledge}.sha256"
 )
 for asset in "${assets[@]}"; do
   [[ -f "${asset}" ]] || fail "missing release asset: ${asset}"
@@ -81,6 +84,7 @@ gh release download "${release}" --repo "${repository}" --dir "${verification_di
 python3 distribution/release/verify_assets.py \
   --directory "${verification_directory}" \
   --release "${release}" \
+  --source-revision "${commit}" \
   --repository "${repository}"
 gh release edit "${release}" --repo "${repository}" --draft=false --latest
 gh release view "${release}" --repo "${repository}" \
