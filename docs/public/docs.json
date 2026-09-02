@@ -10,6 +10,9 @@
   },
   "logo": "/images/kast-mark.svg",
   "favicon": "/images/kast-mark.svg",
+  "icons": {
+    "library": "lucide"
+  },
   "navigation": {
     "groups": [
       {
@@ -41,7 +44,7 @@
       },
       {
         "group": "Technical specification",
-        "icon": "diagram-project",
+        "icon": "network",
         "pages": [
           "technical-specification/index",
           "technical-specification/runtime-boundary",

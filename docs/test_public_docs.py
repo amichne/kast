@@ -27,6 +27,37 @@ SIDECAR_LIFECYCLE_AUTHORITY = ROOT / (
 INSTALL_COMMAND = (
     "curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash"
 )
+APPROVED_LUCIDE_ICONS = {
+    "activity",
+    "badge-check",
+    "boxes",
+    "braces",
+    "circle-check",
+    "circle-dashed",
+    "code-xml",
+    "compass",
+    "copy-check",
+    "file-pen",
+    "folder-key",
+    "folder-tree",
+    "gauge",
+    "git-pull-request-create",
+    "monitor-check",
+    "network",
+    "package-check",
+    "power",
+    "rocket",
+    "rotate-ccw",
+    "route",
+    "scan-search",
+    "server",
+    "share-2",
+    "shield-check",
+    "stethoscope",
+    "terminal",
+    "trash-2",
+    "workflow",
+}
 
 PAGES = {
     "index.mdx": [
@@ -306,6 +337,35 @@ def frontmatter(text: str, relative: str) -> str:
     return metadata
 
 
+def check_icon_system(config: dict[str, object], groups: list[dict[str, object]]) -> None:
+    require(
+        config.get("icons") == {"library": "lucide"},
+        "Mintlify icon library must be Lucide",
+    )
+
+    referenced_icons: set[str] = set()
+    for group in groups:
+        icon = group.get("icon")
+        require(isinstance(icon, str), f"{group.get('group')} navigation group has no icon")
+        referenced_icons.add(icon)
+
+    for relative in PAGES:
+        text = (PUBLIC / relative).read_text()
+        metadata = frontmatter(text, relative)
+        page_icon = re.search(r'^icon: "([^"]+)"$', metadata, re.MULTILINE)
+        require(page_icon is not None, f"{relative} has no sidebar icon")
+        assert page_icon is not None
+        referenced_icons.add(page_icon.group(1))
+        referenced_icons.update(re.findall(r'\bicon="([^"]+)"', text))
+
+    require(
+        referenced_icons == APPROVED_LUCIDE_ICONS,
+        "Mintlify Lucide icon contract changed: "
+        f"missing={sorted(APPROVED_LUCIDE_ICONS - referenced_icons)}, "
+        f"unapproved={sorted(referenced_icons - APPROVED_LUCIDE_ICONS)}",
+    )
+
+
 def check_config() -> None:
     require(CONFIG.is_file(), "Mintlify docs.json is missing")
     config = json.loads(CONFIG.read_text())
@@ -334,6 +394,7 @@ def check_config() -> None:
         destinations == expected_destinations,
         f"navigation and page contract differ: {destinations}",
     )
+    check_icon_system(config, groups)
 
     navbar = config.get("navbar", {})
     require(
