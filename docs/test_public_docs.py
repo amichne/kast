@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 
@@ -14,6 +16,9 @@ CONFIG = PUBLIC / "docs.json"
 MINTIGNORE = PUBLIC / ".mintignore"
 README = ROOT / "README.md"
 DOCS_WORKFLOW = ROOT / ".github/workflows/docs.yml"
+VERSION_CATALOG = ROOT / "gradle/libs.versions.toml"
+INSTALLER = ROOT / "install.sh"
+CLI_REFERENCE_GENERATOR = ROOT / "docs/generate_cli_reference.py"
 GENERATED_OPERATION_REGISTRY = ROOT / (
     "protocol/wire/build/generated/operation-registry/operation-registry.json"
 )
@@ -61,6 +66,7 @@ APPROVED_LUCIDE_ICONS = {
 
 PAGES = {
     "index.mdx": [
+        "13 typed operations",
         "The compiler sees more than text",
         "Start from the repository root",
         "Thirteen sidecar operations",
@@ -86,12 +92,16 @@ PAGES = {
         "kast start",
         "kast status",
         "<Steps>",
+        "<Tabs>",
         "<AccordionGroup>",
     ],
     "questions/workspace-readiness.mdx": [
         "kast workspace inspect",
         "exact root",
-        "<Columns cols={3}>",
+        "<Tabs>",
+        '"reason": "root-unavailable"',
+        '"reason": "runtime-blocked"',
+        "does not include a `generation` field",
     ],
     "questions/declaration-identity.mdx": [
         "kast symbol discover",
@@ -109,6 +119,7 @@ PAGES = {
         "kast diagnostic check",
         "explicit scope",
         "Complete",
+        "<Columns cols={3}>",
     ],
     "questions/safe-change.mdx": [
         "add-declaration",
@@ -168,8 +179,10 @@ PAGES = {
         "Workspace and index",
         "Symbol identity",
         "Relations and traversal",
+        "eligible SQLite topology snapshot",
         "Topology",
         "Diagnostics",
+        "installedIntellijTopologyExtractor",
     ],
     "technical-specification/change-and-evidence.mdx": [
         "Plan: compile intent into proof obligations",
@@ -255,6 +268,7 @@ TECHNICAL_SPECIFICATION_AUTHORITIES = {
         "symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolDiscoveryService.kt",
         "relation/service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt",
         "traversal/service/src/main/kotlin/io/github/amichne/kast/traversal/service/TraversalService.kt",
+        "runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/protocol/graph/TopologyBackedTraversalOperations.kt",
         "topology/intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/InstalledIntellijTopologyExtractor.kt",
         "diagnostic/service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticService.kt",
     ],
@@ -324,6 +338,15 @@ def page_route(relative: str) -> str:
     return relative.removesuffix(".mdx")
 
 
+def public_url_route(relative: str) -> str:
+    route = page_route(relative)
+    if route == "index":
+        return "/"
+    if route.endswith("/index"):
+        return f"/{route.removesuffix('/index')}"
+    return f"/{route}"
+
+
 def frontmatter(text: str, relative: str) -> str:
     match = re.match(r"\A---\n(?P<frontmatter>.*?)\n---\n", text, re.DOTALL)
     require(match is not None, f"{relative} has no YAML frontmatter")
@@ -377,6 +400,14 @@ def check_config() -> None:
         "Mintlify site description changed",
     )
     require(config.get("colors", {}).get("primary") == "#4F46E5", "Mintlify primary color changed")
+    require(
+        config.get("background")
+        == {
+            "decoration": "gradient",
+            "color": {"light": "#F8FAFC", "dark": "#090D18"},
+        },
+        "Mintlify background contract changed",
+    )
 
     groups = config.get("navigation", {}).get("groups")
     require(isinstance(groups, list), "Mintlify navigation groups are missing")
@@ -410,6 +441,49 @@ def check_config() -> None:
         config.get("footer", {}).get("socials", {}).get("github")
         == "https://github.com/amichne/kast",
         "Mintlify footer GitHub link changed",
+    )
+    require(
+        config.get("footer", {}).get("links")
+        == [
+            {
+                "header": "Use Kast",
+                "items": [
+                    {"label": "Quickstart", "href": "/start"},
+                    {"label": "CLI reference", "href": "/reference/cli"},
+                ],
+            },
+            {
+                "header": "Understand Kast",
+                "items": [
+                    {"label": "Trust the evidence", "href": "/concepts/evidence-boundaries"},
+                    {"label": "Technical specification", "href": "/technical-specification"},
+                ],
+            },
+            {
+                "header": "Source",
+                "items": [
+                    {"label": "GitHub", "href": "https://github.com/amichne/kast"},
+                    {
+                        "label": "MIT license",
+                        "href": "https://github.com/amichne/kast/blob/main/LICENSE",
+                    },
+                ],
+            },
+        ],
+        "Mintlify footer navigation changed",
+    )
+    require(
+        config.get("contextual")
+        == {
+            "options": ["copy", "view", "chatgpt", "claude", "cursor"],
+            "display": "header",
+        },
+        "Mintlify contextual actions changed",
+    )
+    require(
+        config.get("search", {}).get("prompt")
+        == "Search operations, evidence boundaries, and implementation authorities",
+        "Mintlify search prompt changed",
     )
     require(config.get("metadata", {}).get("timestamp") is True, "page timestamps are disabled")
 
@@ -496,9 +570,134 @@ def check_pages() -> None:
 
     check_readme()
     check_install_command()
+    check_documented_host_contract()
     check_installed_capability_contract()
     check_authored_cli_commands()
+    check_generated_cli_reference()
+    check_internal_links()
+    check_source_links()
+    check_workspace_examples()
     check_technical_specification()
+
+
+def catalog_version(catalog: str, key: str) -> str:
+    match = re.search(rf'^{re.escape(key)} = "([^"]+)"$', catalog, re.MULTILINE)
+    require(match is not None, f"version catalog has no {key!r}")
+    assert match is not None
+    return match.group(1)
+
+
+def check_documented_host_contract() -> None:
+    require(VERSION_CATALOG.is_file(), "Gradle version catalog is missing")
+    require(INSTALLER.is_file(), "installer authority is missing")
+    catalog = VERSION_CATALOG.read_text()
+    installer = INSTALLER.read_text()
+    idea_builds = {
+        catalog_version(catalog, "idea-indexer"),
+        catalog_version(catalog, "idea-platform-build"),
+        catalog_version(catalog, "ide-host-build"),
+    }
+    require(len(idea_builds) == 1, f"IDE build authorities disagree: {sorted(idea_builds)}")
+    idea_build = next(iter(idea_builds))
+    kotlin_build = catalog_version(catalog, "ide-kotlin-plugin-build")
+    java_match = re.search(r"\(\( java_major >= ([0-9]+) \)\)", installer)
+    require(java_match is not None, "installer Java requirement is unreadable")
+    assert java_match is not None
+    java_major = java_match.group(1)
+    require('[[ "$(uname -s)" == "Darwin" ]]' in installer, "installer macOS gate changed")
+    require("arm64|aarch64)" in installer, "installer architecture gate changed")
+
+    expected = (
+        "macOS on Apple silicon",
+        f"Java {java_major} or newer",
+        f"IntelliJ IDEA build {idea_build}",
+        f"Kotlin plugin build {kotlin_build}",
+    )
+    for relative, text in {
+        "README.md": README.read_text(),
+        "docs/public/start.mdx": (PUBLIC / "start.mdx").read_text(),
+    }.items():
+        normalized = " ".join(text.split())
+        for claim in expected:
+            require(claim in normalized, f"{relative} does not match host authority: {claim}")
+
+
+def check_generated_cli_reference() -> None:
+    require(CLI_REFERENCE_GENERATOR.is_file(), "CLI reference generator is missing")
+    completed = subprocess.run(
+        [sys.executable, str(CLI_REFERENCE_GENERATOR), "--check"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    require(
+        completed.returncode == 0,
+        "generated CLI reference is stale: "
+        f"{completed.stdout.strip()} {completed.stderr.strip()}".strip(),
+    )
+
+
+def check_internal_links() -> None:
+    known_routes = {public_url_route(relative) for relative in PAGES}
+    link_pattern = re.compile(r'\]\((/[^)\s#?]*)(?:[?#][^)]*)?\)|\bhref="(/[^"#?]*)')
+    for relative in PAGES:
+        text = (PUBLIC / relative).read_text()
+        for match in link_pattern.finditer(text):
+            destination = (match.group(1) or match.group(2)).rstrip("/") or "/"
+            asset = PUBLIC / destination.removeprefix("/")
+            require(
+                destination in known_routes or asset.is_file(),
+                f"{relative} links to unknown internal destination {destination}",
+            )
+
+
+def check_source_links() -> None:
+    path_pattern = re.compile(
+        r"https://github\.com/amichne/kast/(?:blob|tree)/main/([^)#\s]+)"
+    )
+    symbol_pattern = re.compile(
+        r"\[\`([^`]+)\`\]\(https://github\.com/amichne/kast/blob/main/([^)#]+)\)"
+    )
+    for relative in PAGES:
+        text = (PUBLIC / relative).read_text()
+        for path in path_pattern.findall(text):
+            require((ROOT / path).exists(), f"{relative} links to missing source {path}")
+        for symbol, path in symbol_pattern.findall(text):
+            if symbol == Path(path).name:
+                continue
+            source = (ROOT / path).read_text()
+            require(
+                re.search(rf"\b{re.escape(symbol)}\b", source) is not None,
+                f"{relative} names missing symbol {symbol!r} in {path}",
+            )
+
+
+def check_workspace_examples() -> None:
+    text = (PUBLIC / "questions/workspace-readiness.mdx").read_text()
+    examples = [json.loads(block) for block in re.findall(r"```json\n(.*?)\n\s*```", text, re.DOTALL)]
+    require(
+        examples
+        == [
+            {
+                "operation": "workspace.inspect",
+                "status": "complete",
+                "canonicalRoot": "/path/to/kotlin-repository",
+                "state": "ready",
+            },
+            {
+                "operation": "workspace.inspect",
+                "status": "rejected",
+                "reason": "root-unavailable",
+            },
+            {
+                "operation": "workspace.inspect",
+                "status": "rejected",
+                "reason": "runtime-blocked",
+            },
+        ],
+        f"workspace CLI examples changed: {examples}",
+    )
 
 
 def check_technical_specification() -> None:
@@ -720,6 +919,16 @@ def check_architecture_sources() -> None:
         require(token in mount, f"LikeC4 mount bridge is missing {token}")
     stylesheet = (PUBLIC / "kast-architecture.css").read_text()
     require(".kast-architecture-view" in stylesheet, "LikeC4 view sizing is missing")
+    require(
+        "--likec4-view-max-width: 28rem" in stylesheet,
+        "runtime architecture view has no readable desktop width bound",
+    )
+    require(
+        ".kast-architecture-view-modules" in stylesheet
+        and "--likec4-view-max-width: 100%" in stylesheet,
+        "module architecture view does not preserve its wide intrinsic layout",
+    )
+    require("min-block-size" not in stylesheet, "architecture view retains forced blank height")
 
 
 def main() -> None:

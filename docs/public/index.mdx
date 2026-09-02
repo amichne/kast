@@ -8,8 +8,13 @@ keywords: ["Kotlin", "compiler", "semantic analysis", "coding agents"]
 
 Kast gives engineers and coding agents a repo-local command boundary for
 questions whose answers depend on compiler identity, not a convincing reading
-of source text. Every answer keeps its repository root, evidence generation,
-scope, limits, and outcome attached.
+of source text. Every operation returns a closed status and preserves the
+proof-specific root, generation, scope, limits, and identities needed to judge
+its evidence.
+
+<Badge color="purple" icon="braces" shape="pill">13 typed operations</Badge>{' '}
+<Badge color="blue" icon="folder-key" shape="pill">Exact-root authority</Badge>{' '}
+<Badge color="green" icon="shield-check" shape="pill">Closed outcomes</Badge>
 
 ## The compiler sees more than text
 
@@ -49,7 +54,17 @@ kast start
 returns when semantic evidence is ready, or returns a typed blocker instead of
 manufacturing readiness.
 
-[Set up and start Kast](/start)
+<Card
+  title="Set up and start Kast"
+  icon="rocket"
+  href="/start"
+  cta="Open the quickstart"
+  arrow
+  horizontal
+>
+  Install the matched control and sidecar release, admit one repository, and
+  inspect the first compiler-backed result.
+</Card>
 
 ## Thirteen sidecar operations
 
@@ -59,19 +74,19 @@ reads, bounded traversal, scoped diagnostics, and the four-phase sidecar-backed
 AddDeclaration lifecycle.
 
 <Columns cols={2}>
-  <Card title="What is Kast ready to inspect?" icon="gauge" href="/questions/workspace-readiness">
+  <Card title="What is Kast ready to inspect?" icon="gauge" href="/questions/workspace-readiness" cta="Inspect readiness" arrow>
     See the exact root, semantic generation, and readiness limits before
     relying on later answers.
   </Card>
-  <Card title="What declaration is this?" icon="scan-search" href="/questions/declaration-identity">
+  <Card title="What declaration is this?" icon="scan-search" href="/questions/declaration-identity" cta="Establish identity" arrow>
     Refine a bounded candidate into an exact symbol, then ask for its compiler
     description.
   </Card>
-  <Card title="How is this code connected?" icon="route" href="/questions/code-connections">
+  <Card title="How is this code connected?" icon="route" href="/questions/code-connections" cta="Trace connections" arrow>
     Read a live compiler relation directly, or publish exact-generation
     topology and traverse it with explicit depth and result limits.
   </Card>
-  <Card title="How can I add a declaration safely?" icon="file-pen" href="/questions/safe-change">
+  <Card title="How can I add a declaration safely?" icon="file-pen" href="/questions/safe-change" cta="Follow the lifecycle" arrow>
     Plan, apply, publish, verify, or recover one admitted AddDeclaration
     mutation without restarting the endpoint.
   </Card>
@@ -85,9 +100,10 @@ AddDeclaration lifecycle.
   **Rejected** returns no evidence as success.
 </Info>
 
-Every successful semantic payload names the operation and evidence generation
-that produced it. A moved generation, unsupported scope, exhausted bound, or
-missing capability stays visible at the boundary.
+Every CLI outcome names its operation and status. Generation-sensitive
+authority remains in the selectors, snapshots, plans, receipts, and evidence
+documents that need it. A moved generation, unsupported scope, exhausted
+bound, or missing capability stays visible at the relevant boundary.
 
 [Learn how to judge an answer](/concepts/evidence-boundaries) or
 [see how Kast works](/explanation/how-kast-works).

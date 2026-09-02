@@ -31,11 +31,27 @@ headless IntelliJ sidecar and publishes its compiler-backed evidence.
   </Step>
 
   <Step title="Install Kast">
-    Use the repository installer as the installation boundary:
+    Use the repository installer as the installation boundary. Choose the
+    direct path or review the exact downloaded script before execution:
 
-    ```shell
-    curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash
-    ```
+    <Tabs>
+      <Tab title="Install directly" icon="terminal">
+        ```shell
+        curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash
+        ```
+      </Tab>
+
+      <Tab title="Review first" icon="scan-search">
+        ```shell
+        installer_file="$(mktemp)"
+        curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh \
+          --output "$installer_file"
+        less "$installer_file"
+        bash "$installer_file"
+        rm "$installer_file"
+        ```
+      </Tab>
+    </Tabs>
 
     The installer validates the host and Java version, then downloads the
     latest stable control command and matched private sidecar with their SHA-256

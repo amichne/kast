@@ -28,15 +28,19 @@ The semantic result has its own closed outcome and evidence coordinates.
 The thirteen sidecar operations cover workspace inspection, index
 synchronization, topology publication, three symbol operations, one-hop
 relation reads, bounded traversal, scoped diagnostics, and four AddDeclaration
-lifecycle phases. Index synchronization, exact symbol resolution, symbol
-description, topology publication, and each change phase require a complete
-result. Workspace inspection, discovery, relation, traversal, and diagnostic
-reads may return qualified evidence when the limitation is part of their public
-contract.
+lifecycle phases. The installed route may return qualified evidence for
+discovery, relation, traversal, diagnostics, and unresolved manual recovery.
+Index synchronization, topology publication, exact symbol resolution and
+description, planning, application, and verification require complete evidence
+for success. The shared workspace contract also models a reconciling
+qualification, but the installed exact-root handler publishes only complete
+ready evidence or a typed rejection.
 
-## Every answer has coordinates
+## Evidence is valid at its coordinates
 
-A semantic claim is valid only where all of its coordinates still hold:
+When an operation returns semantic evidence, judge it against the coordinates
+carried by its payload and by the selector, snapshot, plan, or receipt that
+authorized it:
 
 <Steps>
   <Step title="Exact root">

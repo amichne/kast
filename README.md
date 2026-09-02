@@ -2,8 +2,9 @@
 
 Kast gives engineers and coding agents compiler-grounded evidence about one
 exact Kotlin repository. It answers questions that source text alone cannot
-settle, and it keeps the repository root, semantic generation, scope, limits,
-and outcome attached to each answer.
+settle. Every operation returns a closed status and preserves the
+proof-specific root, generation, scope, limits, and identities needed to judge
+its evidence.
 
 [Read the documentation](https://kast.michne.com/) ·
 [Install Kast](https://kast.michne.com/start/) ·
@@ -185,11 +186,13 @@ closed outcome:
 | Qualified | The returned evidence remains usable within a named limitation. |
 | Rejected | Kast established no successful payload and returned a typed reason. |
 
-Exact symbol resolution, symbol description, topology publication, and every
-change phase require a complete result. Unknown, stale, unsupported, or
-inadmissible input fails closed. If a write cannot be durably recorded, Kast
-withdraws planning, application, and verification authority until recovery
-establishes a clean state.
+Index synchronization, topology publication, exact symbol resolution and
+description, planning, application, and verification require a complete result
+for success. Discovery, relation, traversal, diagnostics, and unresolved manual
+recovery may return qualified evidence with an explicit limitation. Unknown,
+stale, unsupported, or inadmissible input fails closed. If a write cannot be
+durably recorded, Kast withdraws planning, application, and verification
+authority until recovery establishes a clean state.
 
 [Trust the evidence](https://kast.michne.com/concepts/evidence-boundaries/)
 explains how root, operation, generation, scope, bounds, and qualification

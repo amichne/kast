@@ -27,9 +27,12 @@ coverage, or budget mismatches close as contract rejection.
 
 ## Workspace and index
 
-`workspace.inspect` exposes the current lifecycle state and, when ready, the
-published workspace evidence needed by later operations. It does not trigger
-startup or claim semantic readiness from process liveness.
+At the CLI lifecycle boundary, a semantic command may demand the exact-root
+sidecar before dispatch. Inside the admitted runtime, `workspace.inspect`
+itself only observes publication state; it never derives semantic readiness
+from process liveness. The installed handler returns a complete payload only
+for the ready exact root. Absent, starting, reconciling, stopping, mismatched,
+or blocked state returns a typed rejection.
 
 `index.sync` is an explicit transition. It refreshes only admitted local source
 roots, waits for indexing quiescence, captures source identity, and reconciles
@@ -64,11 +67,14 @@ for this separation. Text narrows the search; compiler identity completes it.
 one meaning, direction, scope, and budget. Complete output proves one-hop
 coverage. Qualified output retains facts plus named limits and continuation.
 
-`traversal.run` is a deterministic workflow over repeated one-hop reads. Its
-plan includes depth, frontier, record, byte, work-unit, and elapsed-time
-ceilings. The engine attenuates every delegated one-hop budget to remaining
-aggregate capacity, validates each returned batch against the request, and
-emits either complete traversal evidence or a resumable qualified checkpoint.
+`traversal.run` is a deterministic workflow over repeated one-hop relation
+batches. The installed route opens one eligible SQLite topology snapshot and
+binds the relation service to that detached graph; traversal does not silently
+start fresh compiler work. Its plan includes depth, frontier, record, byte,
+work-unit, and elapsed-time ceilings. The engine attenuates every delegated
+one-hop budget to remaining aggregate capacity, validates each returned batch
+against the request, and emits either complete traversal evidence or a
+resumable qualified checkpoint.
 
 Traversal does not convert incomplete relation pages into a complete graph.
 
@@ -106,7 +112,9 @@ Compiler output that violates this contract becomes
   owns current-lease one-hop evidence admission.
 - [`TraversalService`](https://github.com/amichne/kast/blob/main/traversal/service/src/main/kotlin/io/github/amichne/kast/traversal/service/TraversalService.kt)
   owns deterministic traversal state, aggregate budgets, and checkpoints.
-- [`InstalledIntellijTopologyExtractor`](https://github.com/amichne/kast/blob/main/topology/intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/InstalledIntellijTopologyExtractor.kt)
+- [`TopologyBackedTraversalOperations`](https://github.com/amichne/kast/blob/main/runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/protocol/graph/TopologyBackedTraversalOperations.kt)
+  admits one eligible durable snapshot and binds the traversal reader to it.
+- [`installedIntellijTopologyExtractor`](https://github.com/amichne/kast/blob/main/topology/intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/InstalledIntellijTopologyExtractor.kt)
   selects the one exact live Project for topology extraction.
 - [`DiagnosticService`](https://github.com/amichne/kast/blob/main/diagnostic/service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticService.kt)
   owns scope, lease, coverage, and compiler-output admission.

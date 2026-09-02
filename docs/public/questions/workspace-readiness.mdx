@@ -35,23 +35,59 @@ still rejected.
 
 ## Read readiness as evidence
 
-The result identifies `workspace.inspect` and the semantic generation that
-produced its payload.
+The installed route returns complete evidence only when the exact root has a
+published ready workspace. Every other installed state closes as one of two
+typed rejections.
 
-<Columns cols={3}>
-  <Card title="Complete">
-    The exact root has a published workspace model and satisfies the
-    operation's full readiness contract.
-  </Card>
-  <Card title="Qualified">
-    The returned workspace facts remain usable, and the response names the
-    limitation that prevents a stronger claim.
-  </Card>
-  <Card title="Rejected">
-    Kast could not establish the required workspace evidence. No workspace
-    payload is presented as success.
-  </Card>
-</Columns>
+<Tabs>
+  <Tab title="Ready" icon="circle-check">
+    ```json
+    {
+      "operation": "workspace.inspect",
+      "status": "complete",
+      "canonicalRoot": "/path/to/kotlin-repository",
+      "state": "ready"
+    }
+    ```
+
+    The root and ready state are established. Later operations can now issue
+    generation-bound selectors and snapshots.
+  </Tab>
+
+  <Tab title="Root unavailable" icon="circle-dashed">
+    ```json
+    {
+      "operation": "workspace.inspect",
+      "status": "rejected",
+      "reason": "root-unavailable"
+    }
+    ```
+
+    Kast cannot currently establish a ready workspace for this exact root.
+    Starting, reconciling, stopping, absent, and mismatched-root states remain
+    failures at the installed route.
+  </Tab>
+
+  <Tab title="Runtime blocked" icon="shield-check">
+    ```json
+    {
+      "operation": "workspace.inspect",
+      "status": "rejected",
+      "reason": "runtime-blocked"
+    }
+    ```
+
+    Workspace publication reached a typed blocker. Inspect the lifecycle and
+    repair the blocker before relying on semantic operations.
+  </Tab>
+</Tabs>
+
+<Note>
+  The current CLI projection does not include a `generation` field in the
+  `workspace.inspect` document. Use this operation to establish the ready root,
+  then preserve the generation-bound selectors, snapshots, plans, and receipts
+  returned by operations that issue them.
+</Note>
 
 <Note>
   `kast status` passively reports whether the exact sidecar is running and
@@ -66,10 +102,10 @@ Candidates and exact selectors are issued against a semantic generation. If
 the workspace moves, Kast rejects stale proof instead of treating an old
 identity as current.
 
-Restarting the sidecar also advances the generation conservatively. Kast cannot
-prove source content stayed unchanged while the Project was closed from the
-bounded workspace model alone. Rebuild topology to verify and, when the exact
-candidates match, rebind the durable snapshot to the new generation.
+Restarting the sidecar also advances the internal generation conservatively.
+Kast cannot prove source content stayed unchanged while the Project was closed
+from the bounded workspace model alone. Rebuild topology to verify and, when
+the exact candidates match, rebind the durable snapshot to the new generation.
 
 Once readiness is sufficient, [establish the exact declaration](/questions/declaration-identity)
 needed by the next question.

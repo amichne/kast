@@ -26,4 +26,24 @@ requested bound. A qualified result retains known diagnostics together with
 the analyzed files and exact limitations. A stale generation, unavailable
 index, or rejected scope fails closed instead of manufacturing an empty result.
 
+<Columns cols={3}>
+  <Card title="Complete" icon="circle-check">
+    The admitted scope is fully accounted for. An empty diagnostic list is
+    meaningful within that scope.
+  </Card>
+  <Card title="Qualified" icon="circle-dashed">
+    Known diagnostics remain usable, while analyzed files and limitations name
+    the coverage that is still missing.
+  </Card>
+  <Card title="Rejected" icon="shield-check">
+    No diagnostic payload is presented as success. Repair the typed blocker
+    before drawing a semantic conclusion.
+  </Card>
+</Columns>
+
+<Tip>
+  Treat “no diagnostics” as evidence only when the outcome is complete for the
+  exact scope you intended to inspect.
+</Tip>
+
 Use the [CLI reference](/reference/cli) as the availability boundary.

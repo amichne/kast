@@ -13,6 +13,13 @@
   "icons": {
     "library": "lucide"
   },
+  "background": {
+    "decoration": "gradient",
+    "color": {
+      "light": "#F8FAFC",
+      "dark": "#090D18"
+    }
+  },
   "navigation": {
     "groups": [
       {
@@ -80,7 +87,48 @@
   "footer": {
     "socials": {
       "github": "https://github.com/amichne/kast"
-    }
+    },
+    "links": [
+      {
+        "header": "Use Kast",
+        "items": [
+          {
+            "label": "Quickstart",
+            "href": "/start"
+          },
+          {
+            "label": "CLI reference",
+            "href": "/reference/cli"
+          }
+        ]
+      },
+      {
+        "header": "Understand Kast",
+        "items": [
+          {
+            "label": "Trust the evidence",
+            "href": "/concepts/evidence-boundaries"
+          },
+          {
+            "label": "Technical specification",
+            "href": "/technical-specification"
+          }
+        ]
+      },
+      {
+        "header": "Source",
+        "items": [
+          {
+            "label": "GitHub",
+            "href": "https://github.com/amichne/kast"
+          },
+          {
+            "label": "MIT license",
+            "href": "https://github.com/amichne/kast/blob/main/LICENSE"
+          }
+        ]
+      }
+    ]
   },
   "metadata": {
     "timestamp": true
@@ -90,6 +138,19 @@
   },
   "interaction": {
     "drilldown": true
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "cursor"
+    ],
+    "display": "header"
+  },
+  "search": {
+    "prompt": "Search operations, evidence boundaries, and implementation authorities"
   },
   "errors": {
     "404": {
