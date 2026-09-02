@@ -124,7 +124,7 @@ class InstalledBrokerServerTest {
                 """{"id":0,"method":"initialize","params":{"clientInfo":{"name":"test"}}}"""
             val request = " { \"id\" : 1, \"method\" : \"model/list\", \"params\" : {} } "
             client.webSocket({
-                url("ws://localhost/")
+                url("ws://localhost/rpc")
                 unixSocket(configuration.options.publicSocket.path.toString())
             }) {
                 send(initialize)

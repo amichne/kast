@@ -66,6 +66,10 @@ grep -Fq 'KAST_RUNTIME_ARCHIVE' "${install_prefix}/bin/kast" ||
   fail "launcher does not bind the installed sidecar payload"
 grep -Fq 'share/kast/local' "${install_prefix}/bin/kast" ||
   fail "launcher does not bind the coherent local product"
+grep -Fq 'export JAVA=' "${install_prefix}/bin/kast" ||
+  fail "launcher does not bind the Gradle-proven Java executable"
+grep -Fq 'export JAVA_HOME=' "${install_prefix}/bin/kast" ||
+  fail "launcher does not bind the Gradle-proven Java home"
 if grep -Eq '(^|/)idea-home/|product-info\.json|kast-ide-plugin' \
   < <(unzip -Z1 "${runtime_archive}"); then
   fail "local sidecar payload contains IDEA or a public plugin"

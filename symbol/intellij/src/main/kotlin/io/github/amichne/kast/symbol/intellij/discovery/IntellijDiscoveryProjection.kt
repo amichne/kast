@@ -12,6 +12,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateFailure
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 
 internal sealed interface IntellijDiscoveryItemFileResult {
     data class Found(
@@ -93,7 +94,9 @@ internal object IntellijPsiDiscoveryCandidateProjector : IntellijDiscoveryCandid
         item: NavigationItem,
         file: VirtualFile,
     ): Refinement<SymbolDiscoveryCandidate, SymbolDiscoveryCandidateFailure> {
-        val rawOffset = when (request.kind) {
+        val target = request.target as? SymbolDiscoveryTarget.Name
+            ?: return Refinement.Rejected(SymbolDiscoveryCandidateFailure.TARGET_KIND_MISMATCH)
+        val rawOffset = when (target.resultKind) {
             SymbolDiscoveryKind.FILE -> {
                 if (item !is PsiFile) {
                     return Refinement.Rejected(
@@ -119,7 +122,7 @@ internal object IntellijPsiDiscoveryCandidateProjector : IntellijDiscoveryCandid
         }
         val classifiedPath = nativePath(file)
         return SymbolDiscoveryCandidate.fromBoundary(
-            kind = request.kind,
+            kind = target.resultKind,
             rawName = item.name.orEmpty(),
             lease = request.scope.lease,
             nativePath = when (classifiedPath) {

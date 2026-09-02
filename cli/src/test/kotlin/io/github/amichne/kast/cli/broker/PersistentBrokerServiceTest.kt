@@ -25,6 +25,7 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
 
 class PersistentBrokerServiceTest {
     @Test
@@ -38,6 +39,21 @@ class PersistentBrokerServiceTest {
                 BrokerServiceStartupBudgets.retirementTimeoutNanos <
                 BrokerServiceStartupBudgets.lockTimeoutNanos,
         )
+    }
+
+    @Test
+    fun `raw Unix listener is not broker readiness`() {
+        val temporary = Files.createTempDirectory(Path.of("/private/tmp"), "kb-probe.")
+        val socket = temporary.resolve("raw.sock")
+        ServerSocketChannel.open(StandardProtocolFamily.UNIX).use { server ->
+            server.bind(UnixDomainSocketAddress.of(socket))
+            val acceptor = thread(start = true) {
+                server.accept().use { }
+            }
+            assertEquals(BrokerSocketReachability.REJECTED, JdkBrokerSocketProbe.probe(socket))
+            acceptor.join(5_000)
+        }
+        temporary.toFile().deleteRecursively()
     }
 
     @Test
@@ -271,22 +287,18 @@ class PersistentBrokerServiceTest {
     }
 
     @Test
-    fun `clean homes submit exactly one service through the real JDK socket probe`() {
-        val temporary = Files.createTempDirectory(Path.of("/tmp"), "kb.")
+    fun `clean homes submit exactly one service through admitted socket proof`() {
+        val temporary = Files.createTempDirectory(Path.of("/private/tmp"), "kb.")
         val fixture = installedFixture(temporary)
         val command = resolvedCommand(fixture)
         var present = false
         var submissions = 0
-        var listener: ServerSocketChannel? = null
         val launchctl = LaunchctlInvoker { arguments, _ ->
             when (arguments[1]) {
                 "list" -> if (present) LaunchctlInvocation.Completed else LaunchctlInvocation.Absent
                 "submit" -> {
                     submissions += 1
                     Files.createDirectories(command.publicSocket.parent)
-                    listener = ServerSocketChannel.open(StandardProtocolFamily.UNIX).also { server ->
-                        server.bind(UnixDomainSocketAddress.of(command.publicSocket))
-                    }
                     writeReadiness(command)
                     present = true
                     LaunchctlInvocation.Completed
@@ -297,6 +309,13 @@ class PersistentBrokerServiceTest {
         try {
             val host = MacOsPersistentBrokerServiceHost(
                 launchctl = launchctl,
+                socketProbe = BrokerSocketProbe {
+                    if (present) {
+                        BrokerSocketReachability.REACHABLE
+                    } else {
+                        BrokerSocketReachability.UNREACHABLE
+                    }
+                },
                 sleeper = BrokerServiceSleeper { BrokerServiceSleep.CONTINUE },
             )
 
@@ -304,7 +323,6 @@ class PersistentBrokerServiceTest {
             assertEquals(PersistentBrokerServiceAdmission.Ready, host.ensure(command))
             assertEquals(1, submissions)
         } finally {
-            listener?.close()
             temporary.toFile().deleteRecursively()
         }
     }

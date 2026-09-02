@@ -32,6 +32,8 @@ import io.github.amichne.kast.workspace.contract.SemanticReadLeaseUse
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /** Private capability whose construction and use exist only inside `:topology:build`. */
 private class TopologyBuildAuthority {
@@ -134,12 +136,13 @@ class TopologyBuildService private constructor(
     private val snapshots: TopologySnapshotStore,
     private val observability: KastObservability,
     private val authority: TopologyBuildAuthority,
+    private val buildGate: Mutex,
 ) : TopologyBuildOperations {
-    override suspend fun build(): TopologyBuildResult = observability.inSpan(
-        KastSpanName.TOPOLOGY_BUILD,
-    ) { span ->
-        authority.execute { buildAuthorized(span) }.also { result ->
-            span.observe(result.traceObservation())
+    override suspend fun build(): TopologyBuildResult = buildGate.withLock {
+        observability.inSpan(KastSpanName.TOPOLOGY_BUILD) { span ->
+            authority.execute { buildAuthorized(span) }.also { result ->
+                span.observe(result.traceObservation())
+            }
         }
     }
 
@@ -410,6 +413,7 @@ class TopologyBuildService private constructor(
             snapshots,
             observability,
             TopologyBuildAuthority(),
+            Mutex(),
         )
     }
 

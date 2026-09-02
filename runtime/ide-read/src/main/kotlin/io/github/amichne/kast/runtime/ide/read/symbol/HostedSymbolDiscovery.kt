@@ -23,6 +23,8 @@ import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadProject
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedProjectCurrentRead
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochRelation
 import io.github.amichne.kast.workspace.contract.VfsPassiveReadCapability
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.CancellationException
 
 /** Closed failures before the retained Project can issue hosted discovery authority. */
@@ -71,6 +73,7 @@ internal class HostedSymbolDiscovery private constructor(
     private val project: HostedIdeReadProject,
     private val nativeDiscovery: HostedNativeSymbolDiscovery,
     private val singleFlight: ProjectReadSingleFlight,
+    private val executionGate: Mutex,
 ) : SymbolDiscoverReadPort {
     /**
      * Proof transition: `SymbolDiscoverRequest -> OperationOutcome<SymbolDiscoverResult,
@@ -82,6 +85,14 @@ internal class HostedSymbolDiscovery private constructor(
      * Raw Project and semantic values may exist only inside [nativeDiscovery].
      */
     override suspend fun execute(
+        request: SymbolDiscoverRequest,
+    ): OperationOutcome<
+        SymbolDiscoverResult,
+        SymbolDiscoverQualification,
+        SymbolDiscoverRejection,
+        > = executionGate.withLock { executeSerialized(request) }
+
+    private suspend fun executeSerialized(
         request: SymbolDiscoverRequest,
     ): OperationOutcome<
         SymbolDiscoverResult,
@@ -237,6 +248,7 @@ internal class HostedSymbolDiscovery private constructor(
                         candidate.project,
                         candidate.nativeDiscovery,
                         ProjectReadSingleFlight.bind(initial),
+                        Mutex(),
                     ),
                 )
             }

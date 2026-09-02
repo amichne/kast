@@ -71,11 +71,20 @@ Kast also keeps one local Kotlin/Ktor Codex tool broker alive whenever semantic
 runtime demand brings Kast up. The broker reads tool definitions from the exact
 installed `kast --schema`, generates and compiles the exact installed Codex App
 Server schemas, and exposes the control socket at
-`$CODEX_HOME/app-server-control/app-server-control.sock`. Its launchd identity
+`$CODEX_HOME/app-server-control/app-server-control.sock`. Codex connects to the
+canonical `/rpc` WebSocket route; `/` remains a compatibility route. Readiness
+requires a successful WebSocket upgrade and `initialize` exchange, so an
+unrelated Unix listener cannot be mistaken for a live broker. Its launchd identity
 includes both executable digests, so upgrading Kast or Codex replaces stale
 service state instead of reusing an unproven protocol. `kast broker serve` is
 the process entry point used by that managed service. The Kotlin port's imported
 [broker provenance](docs/broker-provenance.md) is recorded in-repository.
+
+Every admitted dynamic-tool call emits payload-free `tool-call-started` and
+`tool-call-finished` JSON lines, correlated by thread, turn, call, namespace,
+and tool. Follow them live with
+`tail -f "${CODEX_HOME:-$HOME/.codex}/broker/service.log"`; arguments, results,
+and working-directory content are deliberately omitted.
 
 Ordinary startup never reads the user's IDEA system directory. To accelerate a
 first private import from compatible indexes, shut down IDEA cleanly and run

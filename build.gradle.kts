@@ -176,6 +176,10 @@ val localInstallPrefix = providers.gradleProperty("kastLocalPrefix")
 
 val localProductDirectory = localInstallPrefix.map { it.resolve("share/kast/local") }
 val localLauncherFile = localInstallPrefix.map { it.resolve("bin/kast") }
+val localJavaHome = providers.systemProperty("java.home").map { configuredHome ->
+    file(configuredHome).toPath().toRealPath().toFile()
+}
+val localJavaExecutable = localJavaHome.map { home -> home.resolve("bin/java") }
 tasks.register<Exec>("installLocal") {
     group = "distribution"
     description =
@@ -185,6 +189,8 @@ tasks.register<Exec>("installLocal") {
     inputs.file(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
     inputs.file(layout.projectDirectory.file("packaging/install-local.sh"))
     inputs.property("localInstallPrefix", localInstallPrefix.map { it.absolutePath })
+    inputs.property("localJavaHome", localJavaHome.map { it.absolutePath })
+    inputs.property("localJavaExecutable", localJavaExecutable.map { it.absolutePath })
     outputs.dir(localProductDirectory)
     outputs.file(localLauncherFile)
     outputs.upToDateWhen { false }
@@ -200,6 +206,8 @@ tasks.register<Exec>("installLocal") {
         "KAST_LOCAL_RUNTIME_ARCHIVE",
         semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
     )
+    environment("KAST_LOCAL_JAVA_HOME", localJavaHome.get().absolutePath)
+    environment("KAST_LOCAL_JAVA_EXECUTABLE", localJavaExecutable.get().absolutePath)
     commandLine("bash", layout.projectDirectory.file("packaging/install-local.sh"))
 }
 

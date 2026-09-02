@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli.broker
 
 import io.github.amichne.kast.cli.broker.core.Broker
 import io.github.amichne.kast.cli.broker.core.BrokerLimits
+import io.github.amichne.kast.cli.broker.core.JsonLineBrokerInvocationActivitySink
 import io.github.amichne.kast.cli.broker.core.ProviderDefinition
 import io.github.amichne.kast.cli.broker.protocol.codex.CodexProtocolQualification
 import io.github.amichne.kast.cli.broker.protocol.codex.CodexProtocolQualificationOptions
@@ -415,6 +416,7 @@ internal class InstalledBrokerServer private constructor(
                         upstream = upstream,
                         maximumConnections = options.maximumConnections,
                         maximumMessageBytes = options.maximumMessageBytes,
+                        activitySink = JsonLineBrokerInvocationActivitySink(System.err),
                     ),
                 )
             ) {
