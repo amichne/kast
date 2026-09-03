@@ -271,6 +271,7 @@ private data class RelationFactCliDocument(
 
 @Serializable
 private data class RelationOccurrenceCliDocument(
+    val candidateSelector: String,
     val file: String,
     val range: SourceRangeCliDocument,
 )
@@ -285,6 +286,7 @@ private data class DiagnosticCliDocument(
 
 @Serializable
 private data class DiagnosticLocationCliDocument(
+    val candidateSelector: String,
     val file: String,
     val range: SourceRangeCliDocument,
 )
@@ -294,7 +296,11 @@ private fun RelationFactDocument.toCliDocument(): RelationFactCliDocument =
         meaning.cliName(),
         source.toCliDocument(),
         target.toCliDocument(),
-        RelationOccurrenceCliDocument(occurrence.file.value, occurrence.range.toReadCliDocument()),
+        RelationOccurrenceCliDocument(
+            occurrence.candidateSelector.value,
+            occurrence.file.value,
+            occurrence.range.toReadCliDocument(),
+        ),
         provenance.cliName(),
         coverage.cliName(),
     )
@@ -304,6 +310,7 @@ private fun DiagnosticDocument.toCliDocument(): DiagnosticCliDocument = Diagnost
     code.value,
     message.value,
     DiagnosticLocationCliDocument(
+        location.candidateSelector.value,
         location.file.value,
         SourceRangeCliDocument(
             location.range.startInclusive.value,

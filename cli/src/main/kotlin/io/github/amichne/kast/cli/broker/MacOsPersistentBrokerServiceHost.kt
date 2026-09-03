@@ -27,8 +27,11 @@ internal fun interface BrokerSocketProbe {
 
 internal enum class BrokerSocketReachability { REACHABLE, UNREACHABLE, REJECTED }
 
-private object JdkBrokerSocketProbe : BrokerSocketProbe {
+internal object JdkBrokerSocketProbe : BrokerSocketProbe {
     override fun probe(path: Path): BrokerSocketReachability {
+        if (Files.notExists(path, LinkOption.NOFOLLOW_LINKS)) {
+            return BrokerSocketReachability.UNREACHABLE
+        }
         val channel = try {
             SocketChannel.open(StandardProtocolFamily.UNIX)
         } catch (_: IOException) {
@@ -43,6 +46,8 @@ private object JdkBrokerSocketProbe : BrokerSocketProbe {
                 socket.connect(UnixDomainSocketAddress.of(path))
                 BrokerSocketReachability.REACHABLE
             } catch (_: ConnectException) {
+                BrokerSocketReachability.UNREACHABLE
+            } catch (_: NoSuchFileException) {
                 BrokerSocketReachability.UNREACHABLE
             } catch (_: IOException) {
                 BrokerSocketReachability.REJECTED
@@ -454,7 +459,8 @@ internal class MacOsPersistentBrokerServiceHost(
                 ENV_EXECUTABLE,
                 "-i",
                 "HOME=${command.userHome}",
-                "PATH=${command.codex.parent}:${command.kast.parent}:/usr/bin:/bin:/usr/sbin:/sbin",
+                "PATH=${command.codexInvocationDirectory.path}:" +
+                    "${command.kast.parent}:/usr/bin:/bin:/usr/sbin:/sbin",
                 "JAVA_HOME=${command.javaHome}",
                 "KAST_OPTS=${command.jvmUserHomeOption.value}",
                 "CODEX_HOME=${command.codexHome}",

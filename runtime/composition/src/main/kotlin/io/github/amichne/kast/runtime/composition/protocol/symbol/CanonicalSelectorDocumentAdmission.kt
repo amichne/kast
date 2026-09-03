@@ -2,6 +2,7 @@ package io.github.amichne.kast.runtime.composition.protocol
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CandidateSelector
 import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
@@ -73,13 +74,71 @@ internal fun SymbolDiscoveryFileIdentity.selectorDocumentProjection():
 }
 
 /**
- * Proof transition: `CandidateSelectorDocument -> SelectorDocumentAdmission`.
+ * Proof transition: `CandidateSelectorDocument -> SelectorDocumentAdmission<CandidateSelector>`.
  *
- * Admission establishes all domain types carried by a candidate selection; rejection closes every
- * malformed enum, path, scope, location, lease, candidate, and restore state. Primitive fields
- * leave only while calling their owning contract refinements.
+ * Admission dispatches the closed token discriminator, establishes its lease and workspace-file
+ * identity, and restores exactly the facts carried by that variant. Primitive fields leave only
+ * while calling their owning contract refinements.
  */
-internal fun CandidateSelectorDocument.admitCandidateSelection():
+internal fun CandidateSelectorDocument.admitCandidateSelector():
+    SelectorDocumentAdmission<CandidateSelector> {
+    return when (this) {
+        is CandidateSelectorDocument.Declaration -> when (val admitted = admitSelection()) {
+            is SelectorDocumentAdmission.Admitted -> when (
+                val restored = CandidateSelector.declaration(admitted.value)
+            ) {
+                is Refinement.Refined -> SelectorDocumentAdmission.Admitted(restored.value)
+                is Refinement.Rejected -> SelectorDocumentAdmission.Rejected
+            }
+            SelectorDocumentAdmission.Rejected -> SelectorDocumentAdmission.Rejected
+        }
+        is CandidateSelectorDocument.File -> {
+            val lease = when (val admitted = admitLease(root, generation)) {
+                is SelectorDocumentAdmission.Admitted -> admitted.value
+                SelectorDocumentAdmission.Rejected -> return SelectorDocumentAdmission.Rejected
+            }
+            val fileIdentity = when (
+                val admitted = admitFile(WORKSPACE_FILE, file, lease.workspaceRoot)
+            ) {
+                is SelectorDocumentAdmission.Admitted -> admitted.value
+                SelectorDocumentAdmission.Rejected -> return SelectorDocumentAdmission.Rejected
+            }
+            val workspaceFile = fileIdentity as? SymbolDiscoveryFileIdentity.Workspace
+                ?: return SelectorDocumentAdmission.Rejected
+            SelectorDocumentAdmission.Admitted(
+                CandidateSelector.restoreFile(lease, workspaceFile),
+            )
+        }
+        is CandidateSelectorDocument.Range -> {
+            val lease = when (val admitted = admitLease(root, generation)) {
+                is SelectorDocumentAdmission.Admitted -> admitted.value
+                SelectorDocumentAdmission.Rejected -> return SelectorDocumentAdmission.Rejected
+            }
+            val fileIdentity = when (
+                val admitted = admitFile(WORKSPACE_FILE, file, lease.workspaceRoot)
+            ) {
+                is SelectorDocumentAdmission.Admitted -> admitted.value
+                SelectorDocumentAdmission.Rejected -> return SelectorDocumentAdmission.Rejected
+            }
+            val workspaceFile = fileIdentity as? SymbolDiscoveryFileIdentity.Workspace
+                ?: return SelectorDocumentAdmission.Rejected
+            when (
+                val restored = CandidateSelector.restoreRange(
+                    lease,
+                    workspaceFile,
+                    startInclusive,
+                    endExclusive,
+                )
+            ) {
+                is Refinement.Refined -> SelectorDocumentAdmission.Admitted(restored.value)
+                is Refinement.Rejected -> SelectorDocumentAdmission.Rejected
+            }
+        }
+    }
+}
+
+/** Restores the declaration variant's discovery selection without adding source authority. */
+private fun CandidateSelectorDocument.Declaration.admitSelection():
     SelectorDocumentAdmission<SymbolDiscoverySelection> {
     val lease = when (val admission = admitLease(root, generation)) {
         is SelectorDocumentAdmission.Admitted -> admission.value

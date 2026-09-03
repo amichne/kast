@@ -6,15 +6,15 @@ import org.junit.jupiter.api.Test
 
 class CanonicalOperationDefinitionsTest {
     @Test
-    fun `production registry owns thirteen distinct typed operation definitions`() {
+    fun `production registry owns fourteen distinct typed operation definitions`() {
         val definitions = CanonicalOperationDefinitions.all
 
         assertEquals(CanonicalOperation.entries, definitions.map { it.operation })
-        assertEquals(13, definitions.map { it.requestType }.toSet().size)
-        assertEquals(13, definitions.map { it.resultType }.toSet().size)
-        assertEquals(13, definitions.map { it.qualificationType }.toSet().size)
-        assertEquals(13, definitions.map { it.rejectionType }.toSet().size)
-        assertEquals(13, definitions.map { it.schema }.toSet().size)
+        assertEquals(14, definitions.map { it.requestType }.toSet().size)
+        assertEquals(14, definitions.map { it.resultType }.toSet().size)
+        assertEquals(14, definitions.map { it.qualificationType }.toSet().size)
+        assertEquals(14, definitions.map { it.rejectionType }.toSet().size)
+        assertEquals(14, definitions.map { it.schema }.toSet().size)
         assertEquals(true, definitions.all { it.schema.value.endsWith(".v2") })
         assertEquals(definitions, CanonicalOperationDefinitions.registry.definitions)
         assertEquals(OperationLane.REGISTERED_LONG_WORK, CanonicalOperationDefinitions.topologyBuild.lane)

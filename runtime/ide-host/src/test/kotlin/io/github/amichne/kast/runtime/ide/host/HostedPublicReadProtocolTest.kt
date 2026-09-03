@@ -76,6 +76,7 @@ class HostedPublicReadProtocolTest {
                 HostedDiagnosticProtocol.bindings(
                     HostedWorkspaceOperations(fixture.workspace),
                     diagnostics,
+                    selectors,
                 ) + HostedIndexSyncProtocol.bindings {
                     io.github.amichne.kast.workspace.contract.IndexSynchronizationResult.Rejected(
                         io.github.amichne.kast.workspace.contract.IndexSynchronizationFailure.WorkspaceNotReady,

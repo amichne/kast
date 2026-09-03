@@ -49,6 +49,11 @@ import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
+import io.github.amichne.kast.protocol.contract.SourceReadCapability
+import io.github.amichne.kast.protocol.contract.SourceReadQualification
+import io.github.amichne.kast.protocol.contract.SourceReadRejection
+import io.github.amichne.kast.protocol.contract.SourceReadRequest
+import io.github.amichne.kast.protocol.contract.SourceReadResult
 import io.github.amichne.kast.protocol.contract.SymbolDescribeCapability
 import io.github.amichne.kast.protocol.contract.SymbolDescribeQualification
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRejection
@@ -81,7 +86,7 @@ import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
 import kotlin.reflect.KClass
 
-/** Sole production metadata catalog for the thirteen canonical public operations. */
+/** Sole production metadata catalog for the fourteen canonical public operations. */
 object CanonicalOperationDefinitions {
     val workspaceInspect = definition(
         CanonicalOperation.WORKSPACE_INSPECT,
@@ -171,6 +176,21 @@ object CanonicalOperationDefinitions {
         OperationCost.BOUNDED_READ,
         OperationScope.SYMBOL,
         CompletenessPolicy.COMPLETE_REQUIRED,
+        HostedExposure.PUBLIC,
+    )
+
+    val sourceRead = definition(
+        CanonicalOperation.SOURCE_READ,
+        SourceReadRequest::class,
+        SourceReadResult::class,
+        SourceReadQualification::class,
+        SourceReadRejection::class,
+        SourceReadCapability::class,
+        OperationLane.SCOPED_SEMANTIC_READ,
+        OperationEffect.INTELLIJ_READ,
+        OperationCost.BOUNDED_READ,
+        OperationScope.SOURCE,
+        CompletenessPolicy.QUALIFIED_ALLOWED,
         HostedExposure.PUBLIC,
     )
 
@@ -287,6 +307,7 @@ object CanonicalOperationDefinitions {
         symbolDiscover,
         symbolResolve,
         symbolDescribe,
+        sourceRead,
         relationRead,
         traversalRun,
         diagnosticCheck,

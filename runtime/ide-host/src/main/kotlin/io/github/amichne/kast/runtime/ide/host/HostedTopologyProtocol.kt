@@ -440,11 +440,26 @@ private fun RelationFact.protocolDocument(
         ?: return null
     val occurrenceRange = SourceRangeDocument.create(occurrenceStart, occurrenceEnd).valueOrNull()
         ?: return null
+    val occurrenceSelector = when (
+        val issued = selectors.issueRangeCandidate(
+            subject.lease,
+            occurrence.file,
+            occurrence.range.startInclusive,
+            occurrence.range.endExclusive,
+        )
+    ) {
+        is HostedCandidateIssuance.Issued -> issued.token
+        HostedCandidateIssuance.Rejected -> return null
+    }
     return RelationFactDocument(
         meaning = meaning.protocolKind(),
         source = sourceDocument,
         target = targetDocument,
-        occurrence = RelationOccurrenceDocument(occurrenceFile, occurrenceRange),
+        occurrence = RelationOccurrenceDocument(
+            occurrenceSelector,
+            occurrenceFile,
+            occurrenceRange,
+        ),
         provenance = provenance.protocolDocument(),
         coverage = coverage.protocolDocument(),
     )

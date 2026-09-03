@@ -13,6 +13,7 @@ enum class CanonicalOperation(
     SYMBOL_DISCOVER(canonicalOperationId("symbol.discover")),
     SYMBOL_RESOLVE(canonicalOperationId("symbol.resolve")),
     SYMBOL_DESCRIBE(canonicalOperationId("symbol.describe")),
+    SOURCE_READ(canonicalOperationId("source.read")),
     RELATION_READ(canonicalOperationId("relation.read")),
     TRAVERSAL_RUN(canonicalOperationId("traversal.run")),
     DIAGNOSTIC_CHECK(canonicalOperationId("diagnostic.check")),

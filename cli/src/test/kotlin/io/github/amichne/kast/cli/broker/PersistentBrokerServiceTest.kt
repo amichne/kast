@@ -25,6 +25,16 @@ import java.util.concurrent.TimeUnit
 
 class PersistentBrokerServiceTest {
     @Test
+    fun `missing public socket is an absent broker rather than an indeterminate probe`(
+        @TempDir temporary: Path,
+    ) {
+        assertEquals(
+            BrokerSocketReachability.UNREACHABLE,
+            JdkBrokerSocketProbe.probe(temporary.resolve("app-server-control.sock")),
+        )
+    }
+
+    @Test
     fun `startup and lock deadlines strictly contain every admitted child phase`() {
         assertTrue(
             BrokerServiceStartupBudgets.admittedChildPhasesNanos <
@@ -185,6 +195,7 @@ class PersistentBrokerServiceTest {
         ) as BrokerServiceLaunchCommandResolution.Resolved
 
         assertEquals(tools.resolve("codex").toRealPath(), resolution.command.codex)
+        assertEquals(links.toRealPath(), resolution.command.codexInvocationDirectory.path)
     }
 
     @Test
@@ -264,6 +275,12 @@ class PersistentBrokerServiceTest {
         )
         assertTrue(submission.orEmpty().contains("JAVA_HOME=${command.javaHome}"))
         assertTrue(submission.orEmpty().contains("KAST_OPTS=${command.jvmUserHomeOption.value}"))
+        assertTrue(
+            submission.orEmpty().contains(
+                "PATH=${command.codexInvocationDirectory.path}:" +
+                    "${command.kast.parent}:/usr/bin:/bin:/usr/sbin:/sbin",
+            ),
+        )
         assertTrue(submission.orEmpty().contains(command.serviceLabel.value))
     }
 

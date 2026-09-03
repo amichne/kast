@@ -150,6 +150,7 @@ enum class RelationFactCoverageDocument {
 }
 
 data class RelationOccurrenceDocument(
+    val candidateSelector: ProtocolText,
     val file: ProtocolText,
     val range: SourceRangeDocument,
 )
@@ -421,6 +422,7 @@ data class DiagnosticRangeDocument private constructor(
 }
 
 data class DiagnosticLocationDocument(
+    val candidateSelector: ProtocolText,
     val file: ProtocolText,
     val range: DiagnosticRangeDocument,
 )

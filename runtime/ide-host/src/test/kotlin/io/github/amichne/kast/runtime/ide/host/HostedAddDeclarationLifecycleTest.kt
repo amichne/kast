@@ -453,6 +453,7 @@ class HostedAddDeclarationLifecycleTest {
         DiagnosticOperations {
             DiagnosticCheckResult.Rejected(DiagnosticReadRejection.WORKSPACE_NOT_READY)
         },
+        missingSelectors,
     ) + HostedIndexSyncProtocol.bindings {
         io.github.amichne.kast.workspace.contract.IndexSynchronizationResult.Rejected(
             io.github.amichne.kast.workspace.contract.IndexSynchronizationFailure.WorkspaceNotReady,

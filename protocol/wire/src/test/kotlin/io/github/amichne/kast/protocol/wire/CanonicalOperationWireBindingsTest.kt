@@ -249,6 +249,7 @@ class CanonicalOperationWireBindingsTest {
                             text("UNUSED"),
                             text("unused"),
                             DiagnosticLocationDocument(
+                                text("candidate:diagnostic"),
                                 text("src/Target.kt"),
                                 DiagnosticRangeDocument.create(offset(3), offset(3)).refinedValue(),
                             ),
@@ -441,7 +442,7 @@ class CanonicalOperationWireBindingsTest {
         meaning,
         source,
         target,
-        RelationOccurrenceDocument(source.file, source.range),
+        RelationOccurrenceDocument(text("candidate:occurrence"), source.file, source.range),
         RelationProvenanceDocument.K2_AUTHORED_SOURCE,
         RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
     )

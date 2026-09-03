@@ -73,7 +73,6 @@ internal class IntellijNativeDiscoveryAdapter(
                             .filter(target.kind::isAdmittedContributor),
                     )
                     is SymbolDiscoveryTarget.Location,
-                    is SymbolDiscoveryTarget.Structure,
                     is SymbolDiscoveryTarget.Text,
                         -> IntellijSupplementalDiscoveryQuery(
                         project = project,

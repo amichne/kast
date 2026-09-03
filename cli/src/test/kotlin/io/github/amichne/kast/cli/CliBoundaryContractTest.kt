@@ -16,10 +16,13 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+import java.util.Base64
 
 class CliBoundaryContractTest {
     @Test
-    fun `exactly thirteen public command projections parse to canonical operations`() {
+    fun `exactly fourteen public command projections parse to canonical operations`() {
         val commands = mapOf(
             listOf("workspace", "inspect") to CanonicalOperation.WORKSPACE_INSPECT,
             listOf("index", "sync") to CanonicalOperation.INDEX_SYNC,
@@ -30,6 +33,8 @@ class CliBoundaryContractTest {
                 CanonicalOperation.SYMBOL_RESOLVE,
             listOf("symbol", "describe", "--selector", "selector") to
                 CanonicalOperation.SYMBOL_DESCRIBE,
+            listOf("source", "read", "--anchor", exactSelectorToken()) to
+                CanonicalOperation.SOURCE_READ,
             listOf(
                 "relation", "read", "--selector", "selector", "--relation", "references",
                 "--limit", "10",
@@ -166,6 +171,15 @@ class CliBoundaryContractTest {
     private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
         is Refinement.Refined -> value
         is Refinement.Rejected -> error("Expected refined value, got $failure")
+    }
+
+    private fun exactSelectorToken(): String {
+        val payload = "{}".toByteArray(StandardCharsets.UTF_8)
+        val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
+        val digest = MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { byte ->
+            (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+        }
+        return "exact:v2:$encoded:$digest"
     }
 }
 

@@ -46,6 +46,7 @@ enum class OperationScope {
     PROJECT,
     FILE,
     SYMBOL,
+    SOURCE,
 }
 
 /**

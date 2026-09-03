@@ -33,6 +33,7 @@ class InstalledServerProjectionTest {
                 "symbol_lookup",
                 "symbol_resolve",
                 "symbol_inspect",
+                "source_read",
                 "semantic_query",
                 "impact_analyze",
                 "diagnostic_check",
@@ -75,6 +76,7 @@ class InstalledServerProjectionTest {
                 "symbol.discover",
                 "symbol.resolve",
                 "symbol.describe",
+                "source.read",
                 "relation.read",
                 "traversal.run",
                 "diagnostic.check",
@@ -132,6 +134,7 @@ class InstalledServerProjectionTest {
                 "symbol_lookup",
                 "symbol_resolve",
                 "symbol_inspect",
+                "source_read",
                 "semantic_query",
                 "impact_analyze",
                 "diagnostic_check",
@@ -153,9 +156,9 @@ class InstalledServerProjectionTest {
             .getValue("anyOf")
             .jsonArray
             .map { it.jsonObject }
-        assertEquals(5, variants.size)
+        assertEquals(4, variants.size)
         assertEquals(
-            listOf("name", "location", "structure", "text", "text"),
+            listOf("name", "location", "text", "text"),
             variants.map { variant ->
                 variant.getValue("properties")
                     .jsonObject
@@ -178,6 +181,7 @@ class InstalledServerProjectionTest {
                 "symbol.discover" to listOf("symbol", "discover"),
                 "symbol.resolve" to listOf("symbol", "resolve"),
                 "symbol.describe" to listOf("symbol", "describe"),
+                "source.read" to listOf("source", "read"),
                 "relation.read" to listOf("relation", "read"),
                 "traversal.run" to listOf("traversal", "run"),
                 "diagnostic.check" to listOf("diagnostic", "check"),
@@ -199,6 +203,22 @@ class InstalledServerProjectionTest {
                     listOf("mode", "query", "kind", "match", "file", "offset", "scope", "limit"),
                 "symbol.resolve" to listOf("candidate"),
                 "symbol.describe" to listOf("selector"),
+                "source.read" to listOf(
+                    "anchor",
+                    "region",
+                    "declarationKinds",
+                    "visibility",
+                    "includeParameters",
+                    "includeCalls",
+                    "includeReferences",
+                    "containment",
+                    "text",
+                    "beforeLines",
+                    "afterLines",
+                    "entityLimit",
+                    "textByteLimit",
+                    "continuation",
+                ),
                 "relation.read" to listOf("selector", "relation", "limit"),
                 "traversal.run" to
                     listOf("selector", "relation", "maximumDepth", "maximumResults"),
@@ -243,7 +263,7 @@ class InstalledServerProjectionTest {
         val coverage = """{"status":"completed","document":{"operation":"topology.build","status":"rejected","reason":"coverage-incomplete","missing":["src/Missing.kt"],"unexpected":[],"duplicateCandidates":[],"duplicateCompletions":[],"workspaceMismatches":[],"candidateEvidenceMismatches":[],"duplicateSymbols":[],"missingEdgeTargets":[],"mismatchedEdgeEndpoints":[]}}"""
         val compatibility = """{"status":"rejected","diagnostic":{"status":"rejected","boundary":"runtime","reason":"ide-descriptor-rejected","details":{"type":"compatibility-rejected","failure":{"type":"mismatch","field":"kast-plugin-version","expected":"1.2.3","observed":"1.2.4"}}}}"""
         val longMessage = "x".repeat(20_000)
-        val diagnostic = """{"status":"completed","document":{"operation":"diagnostic.check","status":"complete","diagnostics":[{"severity":"warning","code":"LONG_MESSAGE","message":"$longMessage","location":{"file":"src/A.kt","range":{"startInclusive":0,"endExclusive":0}}}]}}"""
+        val diagnostic = """{"status":"completed","document":{"operation":"diagnostic.check","status":"complete","diagnostics":[{"severity":"warning","code":"LONG_MESSAGE","message":"$longMessage","location":{"candidateSelector":"candidate:diagnostic","file":"src/A.kt","range":{"startInclusive":0,"endExclusive":0}}}]}}"""
 
         assertAll(
             { tools.tool("topology.build").outputSchema().assertAdmits(coverage) },
@@ -310,6 +330,35 @@ class InstalledServerProjectionTest {
             { schema.assertAdmits(valid) },
             { schema.assertRejects(proofDropped) },
             { schema.assertRejects(incompatibleKind) },
+        )
+    }
+
+    @Test
+    fun `source read projection binds repeatable filters flags and proof rich outcomes`() {
+        val tool = projectionTools().tool("source.read")
+        val bindingTypes = tool.getValue("invocation")
+            .jsonObject
+            .getValue("bindings")
+            .jsonArray
+            .associate { binding ->
+                binding.jsonObject.getValue("inputField").jsonPrimitive.content to
+                    binding.jsonObject.getValue("type").jsonPrimitive.content
+            }
+        assertEquals("REPEATED_OPTION", bindingTypes.getValue("declarationKinds"))
+        assertEquals("REPEATED_OPTION", bindingTypes.getValue("visibility"))
+        assertEquals("FLAG", bindingTypes.getValue("includeCalls"))
+
+        val complete = """{"status":"completed","document":{"operation":"source.read","status":"complete","snapshot":{"canonicalRoot":"/workspace","generation":17,"sourceState":"state","file":"src/Empty.kt","textIdentity":"identity","coordinateUnit":"utf16-code-unit","length":0},"region":{"kind":"file","selection":{"selector":"source-selector-v1:payload:digest","range":{"startInclusive":0,"endExclusive":0}}},"entities":[],"text":{"type":"returned","selection":{"selector":"source-selector-v1:payload:digest","range":{"startInclusive":0,"endExclusive":0}},"text":""}}} """
+        val qualified = """{"status":"completed","document":{"operation":"source.read","status":"qualified","snapshot":{"canonicalRoot":"/workspace","generation":17,"sourceState":"state","file":"src/Target.kt","textIdentity":"identity","coordinateUnit":"utf16-code-unit","length":10},"region":{"kind":"declaration","selection":{"selector":"source-selector-v1:payload:digest","range":{"startInclusive":0,"endExclusive":10}}},"entities":[],"text":{"type":"withheld","reason":"byte-limit-reached"},"qualification":{"knownMinimumEntityCount":0,"limitations":["text-byte-limit-reached"],"continuation":{"type":"unavailable"}}}}"""
+        val missingRegionSelector = complete.replace(
+            "\"selection\":{\"selector\":\"source-selector-v1:payload:digest\",\"range\":{\"startInclusive\":0,\"endExclusive\":0}},",
+            "",
+        )
+
+        assertAll(
+            { tool.outputSchema().assertAdmits(complete) },
+            { tool.outputSchema().assertAdmits(qualified) },
+            { tool.outputSchema().assertRejects(missingRegionSelector) },
         )
     }
 

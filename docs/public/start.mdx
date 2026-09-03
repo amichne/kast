@@ -157,6 +157,23 @@ headless IntelliJ sidecar and publishes its compiler-backed evidence.
     checksums, archive validation, product smoke checks, or sidecar matching.
   </Accordion>
 
+  <Accordion title="Inspect a release's module knowledge" icon="network">
+    Every GitHub release includes a
+    `kast-module-knowledge-v&lt;version&gt;.json` asset and matching `.sha256`
+    record. The document identifies the exact release commit, preserves the
+    accepted Gradle architecture verification and canonical module dependency
+    policy, records the direct dependency graph admitted by that build, embeds
+    every repository `AGENTS.md` with its content digest, and maps each module
+    to governing and narrower descendant guidance.
+
+    Download it without installing Kast:
+
+    ```shell
+    gh release download "v${KAST_VERSION:?set KAST_VERSION}" \
+      --pattern "kast-module-knowledge-v${KAST_VERSION}.json*"
+    ```
+  </Accordion>
+
   <Accordion title="Find the default OpenTelemetry traces" icon="activity">
     Every ready endpoint asynchronously forwards topology and traversal spans
     into a private folder derived from its exact socket namespace. Inspect the

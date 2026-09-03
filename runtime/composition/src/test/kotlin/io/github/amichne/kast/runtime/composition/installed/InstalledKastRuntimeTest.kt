@@ -334,7 +334,11 @@ class InstalledKastRuntimeTest {
     fun `diagnostic handler binds exact file scope to current generation`(@TempDir temporary: Path) {
         val root = Files.createDirectories(temporary.resolve("repo")).toRealPath()
         val fixture = InstalledSymbolProtocolFixture.create(root)
-        val handler = CanonicalDiagnosticCheckHandler(fixture.workspace, fixture.diagnostic)
+        val handler = CanonicalDiagnosticCheckHandler(
+            fixture.workspace,
+            fixture.diagnostic,
+            CanonicalProtocolAuthority(),
+        )
 
         val outcome = runImmediate {
             handler.execute(

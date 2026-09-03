@@ -27,20 +27,25 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 
 internal fun SymbolDiscoveryCandidate.protocolDocument(
-    candidateSelector: ProtocolText?,
+    candidateSelector: ProtocolText,
 ): SymbolDiscoveryDocument? {
     val name = text(name.value) ?: return null
     val file = text(location.file.stableValue) ?: return null
     return when (val candidateLocation = location) {
-        is SymbolDiscoveryCandidateLocation.File -> SymbolDiscoveryDocument.File(name, file)
+        is SymbolDiscoveryCandidateLocation.File -> SymbolDiscoveryDocument.File(
+            candidateSelector,
+            name,
+            file,
+        )
         is SymbolDiscoveryCandidateLocation.Declaration -> SymbolDiscoveryDocument.Declaration(
-            candidateSelector ?: return null,
+            candidateSelector,
             kind.protocolDiscoveryKind() ?: return null,
             name,
             file,
             offset(candidateLocation.offset.value) ?: return null,
         )
         is SymbolDiscoveryCandidateLocation.Text -> SymbolDiscoveryDocument.TextMatch(
+            candidateSelector,
             name,
             file,
             range(

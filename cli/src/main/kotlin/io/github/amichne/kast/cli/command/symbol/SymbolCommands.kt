@@ -44,7 +44,7 @@ internal fun symbolCommandGroup(
     )
 }
 
-private enum class SymbolDiscoveryMode { NAME, LOCATION, STRUCTURE, TEXT }
+private enum class SymbolDiscoveryMode { NAME, LOCATION, TEXT }
 
 private enum class SymbolTextScope { WORKSPACE, FILE }
 
@@ -53,7 +53,7 @@ private class SymbolDiscoverCommand(
 ) : SemanticKastCommand<SymbolDiscoverRequest>(
     name = "discover",
     operation = CanonicalOperation.SYMBOL_DISCOVER,
-    schemaUsage = "symbol discover --mode <name|location|structure|text> ... --limit <1..1000>",
+    schemaUsage = "symbol discover --mode <name|location|text> ... --limit <1..1000>",
     preparer = preparers.symbolDiscover,
 ) {
     private val mode by closedChoiceOption(
@@ -63,7 +63,6 @@ private class SymbolDiscoverCommand(
         linkedMapOf(
             "name" to SymbolDiscoveryMode.NAME,
             "location" to SymbolDiscoveryMode.LOCATION,
-            "structure" to SymbolDiscoveryMode.STRUCTURE,
             "text" to SymbolDiscoveryMode.TEXT,
         ),
     ).defaultOnce(SymbolDiscoveryMode.NAME, "name")
@@ -101,13 +100,12 @@ private class SymbolDiscoverCommand(
     private val limit by protocolCountOption("--limit", "Maximum returned items.").requiredOnce()
 
     override fun help(context: Context): String =
-        "Discover symbols by name, source location, file structure, or bounded text search."
+        "Discover symbols by name, source location, or bounded text search."
 
     override fun helpEpilog(context: Context): String = """
         Mode contracts:
           name       --query <text> [--kind <file|class|symbol>] [--match <fuzzy|exact-name>]
           location   --file <path> --offset <offset>
-          structure  --file <path>
           text       --query <text> --scope <workspace|file> [--file <path>]
         Every mode requires --limit <1..1000>.
     """.trimIndent()
@@ -179,16 +177,6 @@ private object SymbolDiscoverCliInput {
                     return rejected(CliUsageFailure.SymbolDiscover.OPTIONS_DO_NOT_MATCH_MODE)
                 }
                 SymbolDiscoverTargetDocument.Location(file.value, offset.value)
-            }
-            SymbolDiscoveryMode.STRUCTURE -> {
-                if (
-                    file !is CliOptionValue.Present || query !is CliOptionValue.Absent ||
-                    kind !is CliOptionValue.Absent || match !is CliOptionValue.Absent ||
-                    offset !is CliOptionValue.Absent || scope !is CliOptionValue.Absent
-                ) {
-                    return rejected(CliUsageFailure.SymbolDiscover.OPTIONS_DO_NOT_MATCH_MODE)
-                }
-                SymbolDiscoverTargetDocument.Structure(file.value)
             }
             SymbolDiscoveryMode.TEXT -> when (
                 val refined = textTarget(query, kind, match, file, offset, scope)

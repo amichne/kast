@@ -375,7 +375,11 @@ class CodexDynamicToolsAdapterTest {
             meaning = RelationKindDocument.REFERENCES,
             source = symbol,
             target = symbol,
-            occurrence = RelationOccurrenceDocument(symbol.file, symbol.range),
+            occurrence = RelationOccurrenceDocument(
+                text("candidate:occurrence"),
+                symbol.file,
+                symbol.range,
+            ),
             provenance = RelationProvenanceDocument.K2_AUTHORED_SOURCE,
             coverage = RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
         )

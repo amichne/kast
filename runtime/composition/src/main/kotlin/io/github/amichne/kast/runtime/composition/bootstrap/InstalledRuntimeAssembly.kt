@@ -23,6 +23,7 @@ import io.github.amichne.kast.runtime.composition.platform.projectInstalledGradl
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalKastOperationHandlerFactory
 import io.github.amichne.kast.symbol.intellij.InstalledIntellijSymbolPorts
 import io.github.amichne.kast.symbol.intellij.InstalledSymbolScopeOperations
+import io.github.amichne.kast.source.intellij.InstalledIntellijSourceReadPort
 import io.github.amichne.kast.workspace.contract.WorkspacePublicationRun
 import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspace
 import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceBootstrapObserver
@@ -322,6 +323,7 @@ private fun productionPlatformPorts(
         SemanticRuntimePorts(
             symbols.discovery,
             symbols.exact,
+            InstalledIntellijSourceReadPort.create(root),
             relation,
             installedIntellijDiagnosticCompiler(root, workspace),
         ),

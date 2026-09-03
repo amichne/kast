@@ -143,6 +143,7 @@ internal sealed interface SymbolDiscoveryCliDocument {
     @Serializable
     @SerialName("file")
     data class File(
+        val candidateSelector: String,
         val name: String,
         val file: String,
     ) : SymbolDiscoveryCliDocument
@@ -160,6 +161,7 @@ internal sealed interface SymbolDiscoveryCliDocument {
     @Serializable
     @SerialName("text-match")
     data class TextMatch(
+        val candidateSelector: String,
         val query: String,
         val file: String,
         val range: SourceRangeCliDocument,
@@ -303,6 +305,7 @@ private fun CompilerReceiverDocument.toCliDocument(): CompilerReceiverCliDocumen
 
 private fun SymbolDiscoveryDocument.toCliDocument(): SymbolDiscoveryCliDocument = when (this) {
     is SymbolDiscoveryDocument.File -> SymbolDiscoveryCliDocument.File(
+        candidateSelector = candidateSelector.value,
         name = name.value,
         file = file.value,
     )
@@ -314,6 +317,7 @@ private fun SymbolDiscoveryDocument.toCliDocument(): SymbolDiscoveryCliDocument 
         offset = offset.value,
     )
     is SymbolDiscoveryDocument.TextMatch -> SymbolDiscoveryCliDocument.TextMatch(
+        candidateSelector = candidateSelector.value,
         query = query.value,
         file = file.value,
         range = range.toCliDocument(),

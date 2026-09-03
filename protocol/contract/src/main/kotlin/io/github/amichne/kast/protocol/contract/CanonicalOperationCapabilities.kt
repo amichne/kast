@@ -14,6 +14,8 @@ interface SymbolResolveCapability : CapabilityMarker
 
 interface SymbolDescribeCapability : CapabilityMarker
 
+interface SourceReadCapability : CapabilityMarker
+
 interface RelationReadCapability : CapabilityMarker
 
 interface TraversalRunCapability : CapabilityMarker

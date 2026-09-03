@@ -35,6 +35,9 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
 import io.github.amichne.kast.protocol.contract.SymbolResolveQualification
 import io.github.amichne.kast.protocol.contract.SymbolResolveRejection
 import io.github.amichne.kast.protocol.contract.SymbolResolveResult
+import io.github.amichne.kast.protocol.contract.SourceReadQualification
+import io.github.amichne.kast.protocol.contract.SourceReadRejection
+import io.github.amichne.kast.protocol.contract.SourceReadResult
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
@@ -75,6 +78,12 @@ internal val symbolDescribeCliProjector = CliOutcomeProjector<
     SymbolDescribeQualification,
     SymbolDescribeRejection,
     > { outcome -> CanonicalSymbolCliDocuments.projectDescription(outcome) }
+
+internal val sourceReadCliProjector = CliOutcomeProjector<
+    SourceReadResult,
+    SourceReadQualification,
+    SourceReadRejection,
+    > { outcome -> CanonicalSourceReadCliDocuments.project(outcome) }
 
 internal val relationReadCliProjector = CliOutcomeProjector<
     RelationReadResult,

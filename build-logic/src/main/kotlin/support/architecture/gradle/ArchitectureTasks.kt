@@ -10,6 +10,7 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
@@ -27,8 +28,13 @@ import support.architecture.JvmEffectScanner
 import support.architecture.KastArchitecturePolicy
 import support.architecture.ObservedArchitecture
 import support.architecture.ValidatedArchitecturePolicy
+import support.architecture.knowledge.ModuleKnowledgeProjection
+import support.architecture.knowledge.ModuleKnowledgeProjectionResult
+import support.architecture.knowledge.RawAgentGuide
+import support.architecture.knowledge.RawModuleKnowledgeInput
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 
 @CacheableTask
 abstract class VerifyKastArchitectureTask : DefaultTask() {
@@ -179,6 +185,94 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
 
     companion object {
         const val CLASS_DIRECTORY_SEPARATOR: String = "|"
+    }
+}
+
+@CacheableTask
+abstract class GenerateKastModuleKnowledgeTask : DefaultTask() {
+    @get:Input
+    abstract val productVersion: org.gradle.api.provider.Property<String>
+
+    @get:Input
+    abstract val sourceRevision: org.gradle.api.provider.Property<String>
+
+    @get:Input
+    abstract val observedProjectDependencies: ListProperty<String>
+
+    @get:Input
+    abstract val observedExportedProjectDependencies: ListProperty<String>
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val architectureVerificationReport: RegularFileProperty
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val agentGuideFiles: ConfigurableFileCollection
+
+    @get:Internal
+    abstract val rootDirectory: DirectoryProperty
+
+    @get:OutputFile
+    abstract val outputFile: RegularFileProperty
+
+    @TaskAction
+    fun generate() {
+        val architecture = when (val policy = canonicalArchitecturePolicy()) {
+            is ArchitecturePolicyValidation.Valid -> policy.architecture
+            is ArchitecturePolicyValidation.Invalid -> throw GradleException(
+                "Canonical Kast repository architecture policy is invalid: ${policy.failures}",
+            )
+        }
+        val root = rootDirectory.get().asFile.toPath().toAbsolutePath().normalize()
+        val guides = agentGuideFiles.files.map { file ->
+            val path = file.toPath().toAbsolutePath().normalize()
+            RawAgentGuide(
+                relativePath = root.relativize(path).joinToString("/"),
+                content = Files.readString(path),
+            )
+        }
+        val result = ModuleKnowledgeProjection.render(
+            architecture,
+            RawModuleKnowledgeInput(
+                productVersion = productVersion.get(),
+                sourceRevision = sourceRevision.get(),
+                architectureVerificationReport = Files.readAllBytes(
+                    architectureVerificationReport.get().asFile.toPath(),
+                ),
+                observedProjectDependencies = observedProjectDependencies.get(),
+                observedExportedProjectDependencies = observedExportedProjectDependencies.get(),
+                agentGuides = guides,
+            ),
+        )
+        val encoded = when (result) {
+            is ModuleKnowledgeProjectionResult.Complete -> result.encoded
+            is ModuleKnowledgeProjectionResult.Rejected -> throw GradleException(
+                "Kast module knowledge generation rejected: " +
+                    result.failures.joinToString(),
+            )
+        }
+        writeAtomically(outputFile.get().asFile.toPath(), encoded)
+    }
+
+    private fun writeAtomically(target: Path, content: String) {
+        Files.createDirectories(target.parent)
+        val temporary = Files.createTempFile(target.parent, target.fileName.toString(), ".tmp")
+        try {
+            Files.writeString(temporary, content)
+            try {
+                Files.move(
+                    temporary,
+                    target,
+                    StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING,
+                )
+            } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
+                Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING)
+            }
+        } finally {
+            Files.deleteIfExists(temporary)
+        }
     }
 }
 

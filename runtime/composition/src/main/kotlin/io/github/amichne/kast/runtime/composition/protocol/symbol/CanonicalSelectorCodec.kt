@@ -2,9 +2,9 @@ package io.github.amichne.kast.runtime.composition.protocol
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.symbol.contract.CandidateSelector
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
-import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -14,7 +14,6 @@ import java.security.MessageDigest
 import java.util.Base64
 
 internal enum class CanonicalSelectorEncodingFailure {
-    NON_DECLARATION_CANDIDATE,
     UNSUPPORTED_SCOPE,
     TOKEN_REJECTED,
 }
@@ -50,41 +49,54 @@ private val selectorJson = Json {
 
 internal object CanonicalSelectorCodec {
     /**
-     * Proof transition: `SymbolDiscoverySelection -> CanonicalSelectorEncoding`.
+     * Proof transition: `CandidateSelector -> CanonicalSelectorEncoding`.
      *
-     * [CanonicalSelectorEncoding.Encoded] establishes a digest-bound candidate document produced
-     * by the generated `CandidateSelectorDocument.serializer()` factory.
-     * [CanonicalSelectorEncodingFailure] closes non-declaration candidates, unsupported scopes,
-     * and public-text admission failure. Raw document text leaves only at the protocol-token edge.
+     * [CanonicalSelectorEncoding.Encoded] establishes one digest-bound, discriminated candidate
+     * document. [CanonicalSelectorEncodingFailure] closes unsupported declaration scopes and
+     * public-text admission failure. Raw document text leaves only at the protocol-token edge.
      */
-    fun encodeCandidate(selection: SymbolDiscoverySelection): CanonicalSelectorEncoding {
-        val location = when (val candidateLocation = selection.candidate.location) {
-            is SymbolDiscoveryCandidateLocation.Declaration -> candidateLocation
-            else -> return CanonicalSelectorEncoding.Rejected(
-                CanonicalSelectorEncodingFailure.NON_DECLARATION_CANDIDATE,
+    fun encodeCandidate(selector: CandidateSelector): CanonicalSelectorEncoding {
+        val document = when (selector) {
+            is CandidateSelector.Declaration -> {
+                val selection = selector.selection
+                val location = selection.candidate.location as
+                    SymbolDiscoveryCandidateLocation.Declaration
+                val scope = when (val projection = selection.scope.selectorDocumentProjection()) {
+                    is SelectorScopeDocumentProjection.Projected -> projection
+                    SelectorScopeDocumentProjection.Rejected ->
+                        return CanonicalSelectorEncoding.Rejected(
+                            CanonicalSelectorEncodingFailure.UNSUPPORTED_SCOPE,
+                        )
+                }
+                val file = selection.candidate.location.file.selectorDocumentProjection()
+                CandidateSelectorDocument.Declaration(
+                    root = selection.lease.workspaceRoot.value,
+                    generation = selection.lease.generation.value,
+                    sourceKinds = selection.scope.sourceKinds.name,
+                    generatedSources = selection.scope.generatedSources.name,
+                    scope = scope.kind,
+                    scopeFile = scope.file,
+                    libraries = scope.libraries,
+                    kind = selection.candidate.kind.name,
+                    name = selection.candidate.name.value,
+                    fileType = file.kind,
+                    file = file.value,
+                    offset = location.offset.value,
+                )
+            }
+            is CandidateSelector.File -> CandidateSelectorDocument.File(
+                root = selector.lease.workspaceRoot.value,
+                generation = selector.lease.generation.value,
+                file = selector.file.path.value,
+            )
+            is CandidateSelector.Range -> CandidateSelectorDocument.Range(
+                root = selector.lease.workspaceRoot.value,
+                generation = selector.lease.generation.value,
+                file = selector.file.path.value,
+                startInclusive = selector.startInclusive.value,
+                endExclusive = selector.endExclusive.value,
             )
         }
-        val scope = when (val projection = selection.scope.selectorDocumentProjection()) {
-            is SelectorScopeDocumentProjection.Projected -> projection
-            SelectorScopeDocumentProjection.Rejected -> return CanonicalSelectorEncoding.Rejected(
-                CanonicalSelectorEncodingFailure.UNSUPPORTED_SCOPE,
-            )
-        }
-        val file = selection.candidate.location.file.selectorDocumentProjection()
-        val document = CandidateSelectorDocument(
-            root = selection.lease.workspaceRoot.value,
-            generation = selection.lease.generation.value,
-            sourceKinds = selection.scope.sourceKinds.name,
-            generatedSources = selection.scope.generatedSources.name,
-            scope = scope.kind,
-            scopeFile = scope.file,
-            libraries = scope.libraries,
-            kind = selection.candidate.kind.name,
-            name = selection.candidate.name.value,
-            fileType = file.kind,
-            file = file.value,
-            offset = location.offset.value,
-        )
         return encodeToken(
             CANDIDATE_PREFIX,
             CANDIDATE_TOKEN_VERSION,
@@ -93,7 +105,7 @@ internal object CanonicalSelectorCodec {
     }
 
     /**
-     * Proof transition: `ProtocolText -> CanonicalSelectorDecoding<SymbolDiscoverySelection>`.
+     * Proof transition: `ProtocolText -> CanonicalSelectorDecoding<CandidateSelector>`.
      *
      * A decoded value establishes token structure, digest, generated-schema decoding, and all
      * lease, scope, file, candidate, and selection invariants. [CanonicalSelectorDecodingFailure]
@@ -101,7 +113,7 @@ internal object CanonicalSelectorCodec {
      */
     fun decodeCandidate(
         token: ProtocolText,
-    ): CanonicalSelectorDecoding<SymbolDiscoverySelection> {
+    ): CanonicalSelectorDecoding<CandidateSelector> {
         val payload = when (
             val admission = parseToken(token, CANDIDATE_PREFIX, CANDIDATE_TOKEN_VERSION)
         ) {
@@ -119,7 +131,7 @@ internal object CanonicalSelectorCodec {
                 CanonicalSelectorDecodingFailure.MALFORMED_DOCUMENT,
             )
         }
-        return document.admitCandidateSelection().asDecoding()
+        return document.admitCandidateSelector().asDecoding()
     }
 
     /**
@@ -278,6 +290,6 @@ private fun sha256(bytes: ByteArray): String =
 
 private const val CANDIDATE_PREFIX = "candidate"
 private const val EXACT_PREFIX = "exact"
-private const val CANDIDATE_TOKEN_VERSION = "v1"
+private const val CANDIDATE_TOKEN_VERSION = "v2"
 private const val EXACT_TOKEN_VERSION = "v2"
 private const val TOKEN_PART_COUNT = 4

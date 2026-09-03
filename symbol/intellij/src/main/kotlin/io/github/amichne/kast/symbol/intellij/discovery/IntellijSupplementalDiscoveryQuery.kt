@@ -10,7 +10,6 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiSearchHelper
 import com.intellij.psi.search.UsageSearchContext
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiUtilCore
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
@@ -25,9 +24,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
-import org.jetbrains.kotlin.psi.KtClassBody
 import org.jetbrains.kotlin.psi.KtClassOrObject
-import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import java.nio.file.Path
 
@@ -40,7 +37,7 @@ internal class IntellijSupplementalDiscoveryQuery(
      * Proof transition: `CompiledIntellijSearchScope + SymbolDiscoveryRequest ->
      * IntellijNativeDiscoveryExecution`.
      *
-     * Establishes bounded location, file-structure, or indexed-text evidence under one compiled
+     * Establishes bounded location or indexed-text evidence under one compiled
      * scope and semantic generation. Expected partial coverage remains a closed discovery
      * qualification. Live PSI, VFS, and search helpers remain request-local.
      */
@@ -62,16 +59,6 @@ internal class IntellijSupplementalDiscoveryQuery(
                 ) ?: return collector.unsupported()
                 file.declarationAt(target.offset.value)?.let { declaration ->
                     collector.accept(declaration.candidate(request))
-                }
-            }
-            is SymbolDiscoveryTarget.Structure -> {
-                val file = project.findPsiFile(
-                    request.scope.lease.workspaceRoot.value,
-                    target.file.value,
-                    compiledScope.nativeScope,
-                ) ?: return collector.unsupported()
-                for (declaration in file.structureDeclarations()) {
-                    if (!collector.accept(declaration.candidate(request))) break
                 }
             }
             is SymbolDiscoveryTarget.Text -> {
@@ -230,11 +217,6 @@ private fun PsiFile.declarationAt(offset: Int): KtNamedDeclaration? =
     generateSequence(findElementAt(offset)) { it.parent }
         .filterIsInstance<KtNamedDeclaration>()
         .firstOrNull()
-
-private fun PsiFile.structureDeclarations(): List<KtNamedDeclaration> =
-    PsiTreeUtil.collectElementsOfType(this, KtNamedDeclaration::class.java)
-        .filter { it.parent is KtFile || it.parent is KtClassBody }
-        .sortedBy { it.textRange.startOffset }
 
 private fun KtNamedDeclaration.candidate(
     request: SymbolDiscoveryRequest,

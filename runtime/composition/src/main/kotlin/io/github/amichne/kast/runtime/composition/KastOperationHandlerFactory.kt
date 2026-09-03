@@ -39,6 +39,10 @@ import io.github.amichne.kast.protocol.contract.SymbolResolveQualification
 import io.github.amichne.kast.protocol.contract.SymbolResolveRejection
 import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
 import io.github.amichne.kast.protocol.contract.SymbolResolveResult
+import io.github.amichne.kast.protocol.contract.SourceReadQualification
+import io.github.amichne.kast.protocol.contract.SourceReadRejection
+import io.github.amichne.kast.protocol.contract.SourceReadRequest
+import io.github.amichne.kast.protocol.contract.SourceReadResult
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
@@ -51,6 +55,7 @@ import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
+import io.github.amichne.kast.source.contract.SourceReadOperations
 import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.topology.contract.TopologyBuildOperations
 import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
@@ -65,7 +70,7 @@ import io.github.amichne.kast.protocol.contract.IndexSyncRequest
 import io.github.amichne.kast.protocol.contract.IndexSyncResult
 
 /**
- * Operation-specific protocol projection boundary for the thirteen target service associations.
+ * Operation-specific protocol projection boundary for the fourteen target service associations.
  *
  * Implementations parse public boundary documents into the supplied strong service contracts and
  * project their closed results back to protocol outcomes. Canonical definitions, serializers, and
@@ -119,6 +124,15 @@ interface KastOperationHandlerFactory {
         SymbolDescribeResult,
         SymbolDescribeQualification,
         SymbolDescribeRejection
+        >
+
+    fun sourceRead(
+        operations: SourceReadOperations,
+    ): OperationHandler<
+        SourceReadRequest,
+        SourceReadResult,
+        SourceReadQualification,
+        SourceReadRejection
         >
 
     fun relationRead(

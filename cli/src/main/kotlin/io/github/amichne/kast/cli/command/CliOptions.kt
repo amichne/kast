@@ -11,6 +11,9 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
+import io.github.amichne.kast.protocol.contract.SourceLineCountDocument
+import io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 
@@ -75,6 +78,45 @@ internal fun ParameterHolder.protocolOffsetOption(
         when (val parsed = ProtocolOffset.parse(number)) {
             is Refinement.Refined -> parsed.value
             is Refinement.Rejected -> fail("must be a non-negative integer")
+        }
+    }
+
+/** Refines a source-window line count to the closed `0..1000` protocol bound. */
+internal fun ParameterHolder.sourceLineCountOption(
+    name: String,
+    help: String,
+): NullableOption<SourceLineCountDocument, SourceLineCountDocument> =
+    option(name, help = help, metavar = "0..1000").convert("0..1000") { raw ->
+        val number = raw.toIntOrNull() ?: fail("must be an integer in 0..1000")
+        when (val parsed = SourceLineCountDocument.parse(number)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> fail("must be an integer in 0..1000")
+        }
+    }
+
+/** Refines the requested source-entity prefix bound to `1..1000`. */
+internal fun ParameterHolder.sourceEntityLimitOption(
+    name: String,
+    help: String,
+): NullableOption<SourceEntityLimitDocument, SourceEntityLimitDocument> =
+    option(name, help = help, metavar = "1..1000").convert("1..1000") { raw ->
+        val number = raw.toIntOrNull() ?: fail("must be an integer in 1..1000")
+        when (val parsed = SourceEntityLimitDocument.parse(number)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> fail("must be an integer in 1..1000")
+        }
+    }
+
+/** Refines the positive source-text byte budget without narrowing it to an entity count. */
+internal fun ParameterHolder.sourceTextByteLimitOption(
+    name: String,
+    help: String,
+): NullableOption<SourceTextByteLimitDocument, SourceTextByteLimitDocument> =
+    option(name, help = help, metavar = "positive-count").convert("positive-count") { raw ->
+        val number = raw.toLongOrNull() ?: fail("must be a positive integer")
+        when (val parsed = SourceTextByteLimitDocument.parse(number)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> fail("must be a positive integer")
         }
     }
 

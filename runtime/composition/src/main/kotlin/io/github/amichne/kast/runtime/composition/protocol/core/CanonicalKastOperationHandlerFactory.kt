@@ -14,6 +14,7 @@ import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalTopolo
 import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalTraversalRunHandler
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
+import io.github.amichne.kast.source.contract.SourceReadOperations
 import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.topology.contract.TopologyBuildOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
@@ -51,6 +52,10 @@ internal class CanonicalKastOperationHandlerFactory private constructor(
         operations: SymbolExactOperations,
     ) = CanonicalSymbolDescribeHandler(operations, protocolAuthority)
 
+    override fun sourceRead(
+        operations: SourceReadOperations,
+    ) = CanonicalSourceReadHandler(operations, protocolAuthority)
+
     override fun relationRead(
         operations: RelationOperations,
     ) = CanonicalRelationReadHandler(operations, protocolAuthority)
@@ -61,7 +66,7 @@ internal class CanonicalKastOperationHandlerFactory private constructor(
 
     override fun diagnosticCheck(
         operations: DiagnosticOperations,
-    ) = CanonicalDiagnosticCheckHandler(workspace, operations)
+    ) = CanonicalDiagnosticCheckHandler(workspace, operations, protocolAuthority)
 
     override fun changePlan(
         operations: ChangePlanningOperations,
@@ -90,7 +95,7 @@ internal class CanonicalKastOperationHandlerFactory private constructor(
          * ChangePlanAdmissionOperations) -> Refinement<CanonicalKastOperationHandlerFactory,
          * WorkspaceInspectHandlerConstructionFailure>`.
          *
-         * Establishes all thirteen canonical handlers under one exact installed root, one selector
+         * Establishes all fourteen canonical handlers under one exact installed root, one selector
          * authority, and one plan/apply/verify authority. The closed construction failure preserves
          * an unrepresentable root. Raw root extraction remains confined to workspace projection.
          */

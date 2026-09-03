@@ -81,7 +81,7 @@ class HostedIdeRuntime private constructor(
             observability: KastObservability = KastObservability.Disabled,
         ): HostedIdeRuntimeConstruction = when (val server = RuntimeServer.createHostedEffects(
                 HostedTopologyProtocol.bindings(topology, selectors, relations) +
-                HostedDiagnosticProtocol.bindings(workspace, diagnostics) +
+                HostedDiagnosticProtocol.bindings(workspace, diagnostics, selectors) +
                 HostedIndexSyncProtocol.bindings(indexSync) +
                 HostedMutationProtocol.bindings(mutation, mutationAdmission, selectors, authority),
         )) {

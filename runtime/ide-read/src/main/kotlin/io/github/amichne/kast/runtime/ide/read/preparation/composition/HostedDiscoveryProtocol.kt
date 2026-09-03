@@ -56,7 +56,7 @@ internal sealed interface HostedDiscoveryRequestAdmission {
  * Proof transition: `(SemanticReadLease, SymbolDiscoverRequest) ->
  * HostedDiscoveryRequestAdmission`.
  *
- * Establishes one bounded name, location, structure, or text query over the exact current
+ * Establishes one bounded name, location, or text query over the exact current
  * workspace and Gradle-owned source roots. Name queries may include readable project libraries;
  * source/location modes cannot widen beyond their workspace or exact-file scope. Every failed
  * primitive refinement remains closed. Raw protocol values leave only at their owning refinements.
@@ -118,13 +118,6 @@ private fun SymbolDiscoverTargetDocument.hostedMeaning(
                 exactFile,
                 refined(SymbolDiscoverySourceOffset.parse(offset.value)) ?: return null,
             ),
-        )
-    }
-    is SymbolDiscoverTargetDocument.Structure -> {
-        val exactFile = hostedFile(lease, file.value) ?: return null
-        HostedDiscoveryMeaning(
-            exactFileScope(exactFile),
-            SymbolDiscoveryTarget.Structure(exactFile),
         )
     }
     is SymbolDiscoverTargetDocument.Text -> {
@@ -189,8 +182,8 @@ internal fun SymbolCompilerRejection.hostedRejection(): SymbolDiscoverRejection 
 /**
  * Proof transition: `(SymbolDiscoveryOutcome, HostedSelectorAuthority) -> closed protocol outcome`.
  *
- * Preserves the complete or qualified domain outcome, issues candidate authority only for
- * declarations, and admits every detached protocol document before it leaves native composition.
+ * Preserves the complete or qualified domain outcome, issues candidate authority for every
+ * source-located variant, and admits every detached document before it leaves native composition.
  */
 internal fun SymbolDiscoveryOutcome.hostedOutcome(
     selectors: HostedSelectorAuthority,
@@ -200,13 +193,9 @@ internal fun SymbolDiscoveryOutcome.hostedOutcome(
         is SymbolDiscoveryOutcome.Qualified -> batch
     }
     val documents = batch.candidates.mapIndexed { ordinal, candidate ->
-        val token = if (candidate.location is SymbolDiscoveryCandidateLocation.Declaration) {
-            when (val issued = selectors.issueCandidate(batch, ordinal)) {
-                is HostedCandidateIssuance.Issued -> issued.token
-                HostedCandidateIssuance.Rejected -> return rejectedDiscovery()
-            }
-        } else {
-            null
+        val token = when (val issued = selectors.issueCandidate(batch, ordinal)) {
+            is HostedCandidateIssuance.Issued -> issued.token
+            HostedCandidateIssuance.Rejected -> return rejectedDiscovery()
         }
         candidate.hostedDocument(token) ?: return rejectedDiscovery()
     }
@@ -230,21 +219,22 @@ internal fun SymbolDiscoveryOutcome.hostedOutcome(
 }
 
 private fun SymbolDiscoveryCandidate.hostedDocument(
-    candidateSelector: ProtocolText?,
+    candidateSelector: ProtocolText,
 ): SymbolDiscoveryDocument? {
     val admittedName = refined(ProtocolText.parse(name.value)) ?: return null
     val admittedFile = refined(ProtocolText.parse(location.file.stableValue)) ?: return null
     return when (val candidateLocation = location) {
         is SymbolDiscoveryCandidateLocation.File ->
-            SymbolDiscoveryDocument.File(admittedName, admittedFile)
+            SymbolDiscoveryDocument.File(candidateSelector, admittedName, admittedFile)
         is SymbolDiscoveryCandidateLocation.Declaration -> SymbolDiscoveryDocument.Declaration(
-            candidateSelector ?: return null,
+            candidateSelector,
             kind.hostedKind() ?: return null,
             admittedName,
             admittedFile,
             refined(ProtocolOffset.parse(candidateLocation.offset.value)) ?: return null,
         )
         is SymbolDiscoveryCandidateLocation.Text -> SymbolDiscoveryDocument.TextMatch(
+            candidateSelector,
             admittedName,
             admittedFile,
             SourceRangeDocument.create(

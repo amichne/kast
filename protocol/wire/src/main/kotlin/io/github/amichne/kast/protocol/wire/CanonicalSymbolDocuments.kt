@@ -51,9 +51,6 @@ internal sealed interface SymbolDiscoverTargetWireDocument {
     @SerialName("location")
     data class Location(val file: String, val offset: Int) : SymbolDiscoverTargetWireDocument
     @Serializable
-    @SerialName("structure")
-    data class Structure(val file: String) : SymbolDiscoverTargetWireDocument
-    @Serializable
     @SerialName("text")
     data class Text(
         val query: String,
@@ -75,7 +72,11 @@ internal data class SymbolDiscoverResultWireDocument(val items: List<SymbolDisco
 internal sealed interface SymbolDiscoveryWireDocument {
     @Serializable
     @SerialName("file")
-    data class File(val name: String, val file: String) : SymbolDiscoveryWireDocument
+    data class File(
+        val candidateSelector: String,
+        val name: String,
+        val file: String,
+    ) : SymbolDiscoveryWireDocument
     @Serializable
     @SerialName("declaration")
     data class Declaration(
@@ -88,6 +89,7 @@ internal sealed interface SymbolDiscoveryWireDocument {
     @Serializable
     @SerialName("text-match")
     data class TextMatch(
+        val candidateSelector: String,
         val query: String,
         val file: String,
         val range: SourceRangeWireDocument,
@@ -115,6 +117,7 @@ internal data class RelationFactWireDocument(
 
 @Serializable
 internal data class RelationOccurrenceWireDocument(
+    val candidateSelector: String,
     val file: String,
     val range: SourceRangeWireDocument,
 )
@@ -246,8 +249,6 @@ private fun SymbolDiscoverTargetDocument.toWireDocument(): SymbolDiscoverTargetW
         )
         is SymbolDiscoverTargetDocument.Location ->
             SymbolDiscoverTargetWireDocument.Location(file.value, offset.value)
-        is SymbolDiscoverTargetDocument.Structure ->
-            SymbolDiscoverTargetWireDocument.Structure(file.value)
         is SymbolDiscoverTargetDocument.Text ->
             SymbolDiscoverTargetWireDocument.Text(query.value, scope.toWireDocument())
     }
@@ -266,9 +267,6 @@ private fun SymbolDiscoverTargetWireDocument.toContract():
         offset.toProtocolOffset(),
     ) { file, offset ->
         SymbolDiscoverTargetDocument.Location(file, offset)
-    }
-    is SymbolDiscoverTargetWireDocument.Structure -> file.toProtocolText().mapConverted { file ->
-        SymbolDiscoverTargetDocument.Structure(file)
     }
     is SymbolDiscoverTargetWireDocument.Text -> combineConverted(
         query.toProtocolText(),
@@ -307,7 +305,11 @@ internal fun SymbolDiscoverResultWireDocument.toContract():
     .mapConverted(::SymbolDiscoverResult)
 
 private fun SymbolDiscoveryDocument.toWireDocument(): SymbolDiscoveryWireDocument = when (this) {
-    is SymbolDiscoveryDocument.File -> SymbolDiscoveryWireDocument.File(name.value, file.value)
+    is SymbolDiscoveryDocument.File -> SymbolDiscoveryWireDocument.File(
+        candidateSelector.value,
+        name.value,
+        file.value,
+    )
     is SymbolDiscoveryDocument.Declaration -> SymbolDiscoveryWireDocument.Declaration(
         candidateSelector.value,
         kind.toWireDocument(),
@@ -316,6 +318,7 @@ private fun SymbolDiscoveryDocument.toWireDocument(): SymbolDiscoveryWireDocumen
         offset.value,
     )
     is SymbolDiscoveryDocument.TextMatch -> SymbolDiscoveryWireDocument.TextMatch(
+        candidateSelector.value,
         query.value,
         file.value,
         range.toWireDocument(),
@@ -330,9 +333,10 @@ private fun SymbolDiscoveryDocument.toWireDocument(): SymbolDiscoveryWireDocumen
 private fun SymbolDiscoveryWireDocument.toContract(): WireDocumentConversion<SymbolDiscoveryDocument> =
     when (this) {
     is SymbolDiscoveryWireDocument.File -> combineConverted(
+        candidateSelector.toProtocolText(),
         name.toProtocolText(),
         file.toProtocolText(),
-    ) { name, file -> SymbolDiscoveryDocument.File(name, file) }
+    ) { selector, name, file -> SymbolDiscoveryDocument.File(selector, name, file) }
     is SymbolDiscoveryWireDocument.Declaration -> combineConverted(
         candidateSelector.toProtocolText(),
         name.toProtocolText(),
@@ -342,10 +346,13 @@ private fun SymbolDiscoveryWireDocument.toContract(): WireDocumentConversion<Sym
         SymbolDiscoveryDocument.Declaration(selector, kind.toDiscoveryKind(), name, file, offset)
     }
     is SymbolDiscoveryWireDocument.TextMatch -> combineConverted(
+        candidateSelector.toProtocolText(),
         query.toProtocolText(),
         file.toProtocolText(),
         range.toContract(),
-    ) { query, file, range -> SymbolDiscoveryDocument.TextMatch(query, file, range) }
+    ) { selector, query, file, range ->
+        SymbolDiscoveryDocument.TextMatch(selector, query, file, range)
+    }
 }
 
 internal fun SymbolDescribeResult.toSymbolWireDocument() =
@@ -393,6 +400,7 @@ private fun RelationFactDocument.toWireDocument(): RelationFactWireDocument =
         source = source.toWireDocument(),
         target = target.toWireDocument(),
         occurrence = RelationOccurrenceWireDocument(
+            occurrence.candidateSelector.value,
             occurrence.file.value,
             occurrence.range.toWireDocument(),
         ),
@@ -418,6 +426,7 @@ private fun RelationFactWireDocument.toContract(): WireDocumentConversion<Relati
 
 private fun RelationOccurrenceWireDocument.toContract():
     WireDocumentConversion<RelationOccurrenceDocument> = combineConverted(
+    candidateSelector.toProtocolText(),
     file.toProtocolText(),
     range.toContract(),
     ::RelationOccurrenceDocument,

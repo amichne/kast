@@ -47,6 +47,7 @@ class OperationRegistryContractTest {
                 "symbol.discover",
                 "symbol.resolve",
                 "symbol.describe",
+                "source.read",
                 "relation.read",
                 "traversal.run",
                 "diagnostic.check",

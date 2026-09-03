@@ -142,6 +142,8 @@ internal fun SymbolResolveRejection.toWireDocument(): SymbolResolveRejectionWire
             SymbolResolveRejectionWireDocument.WORKSPACE_NOT_READY
         SymbolResolveRejection.CANDIDATE_STALE ->
             SymbolResolveRejectionWireDocument.CANDIDATE_STALE
+        SymbolResolveRejection.CANDIDATE_NOT_DECLARATION ->
+            SymbolResolveRejectionWireDocument.CANDIDATE_NOT_DECLARATION
         SymbolResolveRejection.AMBIGUOUS -> SymbolResolveRejectionWireDocument.AMBIGUOUS
         SymbolResolveRejection.NOT_FOUND -> SymbolResolveRejectionWireDocument.NOT_FOUND
     }
@@ -152,6 +154,8 @@ internal fun SymbolResolveRejectionWireDocument.toContract(): SymbolResolveRejec
             SymbolResolveRejection.WORKSPACE_NOT_READY
         SymbolResolveRejectionWireDocument.CANDIDATE_STALE ->
             SymbolResolveRejection.CANDIDATE_STALE
+        SymbolResolveRejectionWireDocument.CANDIDATE_NOT_DECLARATION ->
+            SymbolResolveRejection.CANDIDATE_NOT_DECLARATION
         SymbolResolveRejectionWireDocument.AMBIGUOUS -> SymbolResolveRejection.AMBIGUOUS
         SymbolResolveRejectionWireDocument.NOT_FOUND -> SymbolResolveRejection.NOT_FOUND
     }

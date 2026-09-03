@@ -85,6 +85,7 @@ internal data class DiagnosticWireDocument(
 
 @Serializable
 internal data class DiagnosticLocationWireDocument(
+    val candidateSelector: String,
     val file: String,
     val range: DiagnosticRangeWireDocument,
 )
@@ -151,6 +152,7 @@ internal enum class SymbolResolveQualificationWireDocument {
 internal enum class SymbolResolveRejectionWireDocument {
     @SerialName("workspace_not_ready") WORKSPACE_NOT_READY,
     @SerialName("candidate_stale") CANDIDATE_STALE,
+    @SerialName("candidate_not_declaration") CANDIDATE_NOT_DECLARATION,
     @SerialName("ambiguous") AMBIGUOUS,
     @SerialName("not_found") NOT_FOUND,
 }
@@ -406,6 +408,7 @@ private fun DiagnosticDocument.toWireDocument(): DiagnosticWireDocument = Diagno
     code = code.value,
     message = message.value,
     location = DiagnosticLocationWireDocument(
+        location.candidateSelector.value,
         location.file.value,
         DiagnosticRangeWireDocument(
             location.range.startInclusive.value,
@@ -425,6 +428,7 @@ private fun DiagnosticWireDocument.toContract(): WireDocumentConversion<Diagnost
 
 private fun DiagnosticLocationWireDocument.toContract():
     WireDocumentConversion<DiagnosticLocationDocument> = combineConverted(
+    candidateSelector.protocolText(),
     file.protocolText(),
     range.toContract(),
     ::DiagnosticLocationDocument,

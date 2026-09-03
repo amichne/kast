@@ -95,10 +95,6 @@ sealed interface SymbolDiscoverTargetDocument {
         val offset: ProtocolOffset,
     ) : SymbolDiscoverTargetDocument
 
-    data class Structure(
-        val file: ProtocolText,
-    ) : SymbolDiscoverTargetDocument
-
     data class Text(
         val query: ProtocolText,
         val scope: SymbolTextScopeDocument,
@@ -119,6 +115,7 @@ enum class SymbolDiscoveryKindDocument {
 /** Structured discovery evidence; each variant carries only facts proved for that mode. */
 sealed interface SymbolDiscoveryDocument {
     data class File(
+        val candidateSelector: ProtocolText,
         val name: ProtocolText,
         val file: ProtocolText,
     ) : SymbolDiscoveryDocument
@@ -132,6 +129,7 @@ sealed interface SymbolDiscoveryDocument {
     ) : SymbolDiscoveryDocument
 
     data class TextMatch(
+        val candidateSelector: ProtocolText,
         val query: ProtocolText,
         val file: ProtocolText,
         val range: SourceRangeDocument,
@@ -213,6 +211,7 @@ enum class SymbolResolveQualification : OperationQualification {
 enum class SymbolResolveRejection : OperationRejection {
     WORKSPACE_NOT_READY,
     CANDIDATE_STALE,
+    CANDIDATE_NOT_DECLARATION,
     AMBIGUOUS,
     NOT_FOUND,
 }

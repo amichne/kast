@@ -12,6 +12,7 @@ import io.github.amichne.kast.evidence.contract.WorkspacePublicationTransaction
 import io.github.amichne.kast.relation.contract.RelationCompilerPort
 import io.github.amichne.kast.symbol.contract.SymbolCompilerPort
 import io.github.amichne.kast.symbol.contract.SymbolExactCompilerPort
+import io.github.amichne.kast.source.contract.SourceReadPort
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumerator
 import io.github.amichne.kast.topology.contract.TopologyFileExtractor
 import io.github.amichne.kast.topology.contract.TopologySnapshotStore
@@ -29,6 +30,7 @@ data class WorkspaceRuntimePorts(
 data class SemanticRuntimePorts(
     val symbolDiscovery: SymbolCompilerPort,
     val symbolExact: SymbolExactCompilerPort,
+    val sourceRead: SourceReadPort,
     val relation: RelationCompilerPort,
     val diagnostic: DiagnosticCompilerPort,
 )
