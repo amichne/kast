@@ -390,4 +390,6 @@ for removed in "$runtime_store" "$cache_root" "$runtime_directory" "$config_file
   assert_absent "$removed"
 done
 
+bash "$repository_root/packaging/verification/test-published-sidecar-delivery-isolation.sh"
+
 printf 'installer contract: all checks passed\n'
