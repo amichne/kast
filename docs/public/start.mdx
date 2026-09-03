@@ -8,9 +8,13 @@ tags: ["installation", "host contract", "lifecycle", "IntelliJ"]
 timestamp: "2026-09-03T00:00:00-04:00"
 code_sources:
   - path: "install.sh"
-    lines: "89-133"
+    lines: "89-160"
   - path: "install.sh"
-    lines: "690-817"
+    lines: "407-551"
+  - path: "install.sh"
+    lines: "704-840"
+  - path: "install.sh"
+    lines: "1047-1246"
   - path: "gradle/libs.versions.toml"
     lines: "14-17"
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledIdeRuntimeDiscovery.kt"
@@ -35,45 +39,63 @@ icon: "rocket"
 keywords: ["install", "quickstart", "IntelliJ"]
 ---
 
-The first successful run opens one exact on-disk repository in a private
-headless IntelliJ sidecar and publishes its compiler-backed evidence.
+Use this page to install Kast, prove the host contract, and get one
+compiler-backed answer from an on-disk repository.
 
 ## Host contract
 
 | Requirement | Exact contract |
 | --- | --- |
 | Platform | macOS on Apple silicon |
-| Installer JVM | Java 25 or newer, selected from `$JAVA_HOME/bin/java` or `java` on `PATH` |
+| Installer JVM | Java 25 or newer from one discovered IntelliJ IDEA bundled JBR; no separate `JAVA_HOME` |
 | IDE compatibility | IDEA and Kotlin plugin builds on JetBrains platform release line 262 |
 | Repository | An on-disk Kotlin Gradle repository |
 
-The installer JVM and sidecar JVM are different boundaries. Java 25 runs the
-installed `kast` control command. The sidecar runs the bundled JBR from the
-admitted IntelliJ installation.
+Two separate checks keep this flexible:
+
+- The installer finds one Java-25-capable IntelliJ IDEA and uses its bundled
+  JBR for the `kast` command.
+- `kast start` independently admits the selected IDEA and Kotlin plugin before
+  starting semantic work.
 
 Reference pair: IDEA build 262.9437.185 and Kotlin plugin build
-262.9437.185-IJ. Compatible patch builds are accepted when IDEA and Kotlin
-plugin both remain on JetBrains platform release line 262. The reference pair
-is release metadata and a tested baseline, not an exact patch-version mandate.
-After admission, Kast preserves the exact observed patch pair in runtime and
-cache identity.
+262.9437.185-IJ. This is the tested baseline, not an exact patch mandate.
 
-Standard discovery checks exactly
-`/Applications/IntelliJ IDEA.app/Contents` and
-`$HOME/Applications/IntelliJ IDEA.app/Contents`. If neither path contains one
-unique release-line-compatible installation, pass
-`kast start --idea-home /absolute/IDEA/home`.
+Compatible patch builds are accepted when IDEA and Kotlin plugin both remain on
+JetBrains platform release line 262. Kast then preserves the observed patch pair
+in runtime and cache identity.
 
-<Info>
-  The installer verifies both release payloads: the `kast` command and its
-  small private sidecar extension. It installs no IDEA distribution and writes
-  nothing into a JetBrains plugin directory.
-</Info>
+Installer discovery searches:
+
+- `/Applications`;
+- `$HOME/Applications`; and
+- the legacy JetBrains Toolbox application store.
+
+If discovery finds zero or multiple eligible installations, pass
+`--idea-home "/absolute/IntelliJ IDEA.app"` or set `KAST_INSTALL_IDEA_HOME`.
+
+For semantic startup, use `kast start --idea-home /absolute/IDEA/home` when the
+compatible installation is outside the standard runtime paths.
+
+Sources: [installer discovery](https://github.com/amichne/kast/blob/main/install.sh#L407-L551)
+and the [IDEA/Kotlin compatibility authority](https://github.com/amichne/kast/blob/main/cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/IndexSeedProtocol.kt#L37-L105).
+
+## What gets installed
+
+One release publishes two digest-bound payloads behind one public `kast`
+command:
+
+| Payload | Responsibility |
+| --- | --- |
+| Control archive | CLI parsing, lifecycle, schemas, broker, and wire transport. |
+| Private semantic archive | Headless indexing and compiler integration. |
+
+Neither payload contains an IDEA distribution or writes to a JetBrains plugin
+directory.
 
 <Steps>
   <Step title="Install Kast">
-    Use the repository installer as the installation boundary. Choose the
-    direct path or review the exact downloaded script before execution:
+    Install directly, or review the downloaded script before execution:
 
     <Tabs>
       <Tab title="Install directly" icon="terminal">
@@ -94,10 +116,12 @@ unique release-line-compatible installation, pass
       </Tab>
     </Tabs>
 
-    The installer validates the host and Java version, then downloads the
-    latest stable control command and matched private sidecar with their SHA-256
-    records. It rejects unsafe archive paths or unexpected contents and
-    smoke-tests local metadata before moving either payload into place.
+    Before writing files, the installer:
+
+    - validates macOS, Apple silicon, IDEA, and its Java 25 JBR;
+    - downloads the matched control and semantic payloads with SHA-256 records;
+    - rejects unsafe archive paths or unexpected contents; and
+    - smoke-tests the installed metadata with the admitted JBR.
   </Step>
 
   <Step title="Confirm the local contract">
@@ -111,15 +135,27 @@ unique release-line-compatible installation, pass
     kast --schema
     ```
 
-    `kast --schema` lists all eleven canonical operations, command shapes, wire
-    schema, and the installed `serverProjection`. That projection owns the
-    server-visible tool names, descriptions, input and output JSON Schemas,
-    deferred-loading policy, explicit approval policy, and exact field-to-CLI
-    bindings for every public sidecar operation. Read workflows cover explicit
-    index and topology effects, symbol discovery and inspection, source and
-    relation reads, traversal, and diagnostics; every `change_*` tool requires
-    explicit approval. The current sidecar endpoint publishes eleven operations,
-    including verified application as one atomic completion boundary.
+    `kast --schema` is the installed command contract. It lists:
+
+    - all eleven canonical operations and command shapes;
+    - wire and input/output JSON Schemas;
+    - the installed `serverProjection`; and
+    - deferred-loading, approval, and field-to-CLI bindings.
+
+    Read workflows cover index and topology effects, symbol and source work,
+    relation reads, traversal, and diagnostics. Every `change_*` tool requires
+    explicit approval. The endpoint publishes eleven operations, with verified
+    application as one atomic completion boundary.
+
+    Editable defaults live at
+    `${XDG_CONFIG_HOME:-$HOME/.config}/kast/environment`:
+
+    - `KAST_RUNTIME_STORE`
+    - `KAST_RUNTIME_DIRECTORY`
+    - `KAST_CACHE_ROOT`
+    - `KAST_ENABLE_LAUNCHD`
+
+    A process environment value overrides its saved default.
   </Step>
 
   <Step title="Start the exact repository">
@@ -131,10 +167,12 @@ unique release-line-compatible installation, pass
     kast start
     ```
 
-    Kast discovers a release-line-compatible IDEA installation and starts its
-    JBR with private config, system, plugin, and log paths. It opens the Project,
-    imports the on-disk Gradle model, refreshes its private VFS, waits for smart
-    mode, and only then publishes semantic readiness.
+    `kast start` publishes readiness only after it:
+
+    1. admits a release-line-compatible IDEA and Kotlin plugin;
+    2. starts that installation's JBR with private state paths;
+    3. opens the exact Project and imports its Gradle model; and
+    4. refreshes the private VFS and reaches smart mode.
 
     Sidecar processes launch directly by default. Set
     `KAST_ENABLE_LAUNCHD=1` to opt into launchd-backed process ownership; leave
@@ -152,10 +190,11 @@ unique release-line-compatible installation, pass
     kast symbol discover --mode name --query PricePolicy --limit 25
     ```
 
-    `status` reports runtime identity and a cache state such as `fresh`,
-    `seeded`, `refreshing`, `smart`, or `rebuild-required`. `status` never starts
-    or repairs the runtime. A completed `start` establishes readiness; discovery
-    then returns bounded candidates, not an exact declaration claim.
+    Read the results separately:
+
+    - `status` reports runtime identity and cache state without starting or
+      repairing anything.
+    - Discovery returns bounded candidates, not an exact declaration claim.
   </Step>
 </Steps>
 
@@ -173,10 +212,12 @@ unique release-line-compatible installation, pass
 
 <AccordionGroup>
   <Accordion title="Where the installer writes files" icon="folder-tree">
-    The versioned control product and matched private sidecar live under
-    `${XDG_DATA_HOME:-$HOME/.local/share}/kast`. The command is linked at
-    `$HOME/.local/bin/kast`. Persistent private IDEA state lives under
-    `$HOME/.cache/kast`; no JetBrains path is written.
+    - Product: `${XDG_DATA_HOME:-$HOME/.local/share}/kast`
+    - Command: `$HOME/.local/bin/kast`
+    - Defaults: `${XDG_CONFIG_HOME:-$HOME/.config}/kast/environment`
+    - Private IDEA state: `$HOME/.cache/kast`
+
+    No JetBrains path is written.
   </Accordion>
 
   <Accordion title="Seed from a stopped IDEA cache" icon="copy-check">
@@ -188,18 +229,20 @@ unique release-line-compatible installation, pass
     kast start --cache seed
     ```
 
-    Interactive use first discloses copied categories, estimated size, and the
-    fact that required global VFS/index files can contain entries for other
-    projects. Supply `--source-idea-system /absolute/path` when the source is
-    non-standard. Non-interactive use must also pass
-    `--accept-global-index-copy`.
+    Interactive use discloses copied categories, estimated size, and the global
+    VFS/index caveat before copying. For other cases:
+
+    - use `--source-idea-system /absolute/path` for a non-standard source;
+    - use `--accept-global-index-copy` for non-interactive consent.
 
     Kast rejects a running, changed, incompatible, wrong-project, non-APFS, or
-    unconsented source. It validates manifests before atomically publishing the
-    clone and never mounts or modifies the source directory. While this runs,
-    stderr receives payload-free JSON lines for each bounded seed stage and its
-    `started`, `completed`, or `rejected` outcome. A rejection also carries one
-    finite reason; paths and copied content are never included.
+    unconsented source.
+
+    It also:
+
+    - validates manifests before publishing the clone;
+    - never mounts or modifies the source; and
+    - emits payload-free stage outcomes with one finite rejection reason.
   </Accordion>
 
   <Accordion title="Rebuild only Kast state" icon="rotate-ccw">
@@ -227,13 +270,12 @@ unique release-line-compatible installation, pass
   </Accordion>
 
   <Accordion title="Inspect a release's module knowledge" icon="network">
-    Every GitHub release includes a
-    `kast-module-knowledge-v&lt;version&gt;.json` asset and matching `.sha256`
-    record. The document identifies the exact release commit, preserves the
-    accepted Gradle architecture verification and canonical module dependency
-    policy, records the direct dependency graph admitted by that build, embeds
-    every repository `AGENTS.md` with its content digest, and maps each module
-    to governing and narrower descendant guidance.
+    Every release includes `kast-module-knowledge-v&lt;version&gt;.json` and its
+    `.sha256` record. It preserves:
+
+    - the release commit and accepted architecture verification;
+    - canonical module policy and the admitted direct dependency graph; and
+    - repository guidance, content digests, and module mappings.
 
     Download it without installing Kast:
 
@@ -252,13 +294,15 @@ unique release-line-compatible installation, pass
     kast product inspect
     ```
 
-    The product document reports enabled state, `otlp-json-lines-v1`,
-    `directoryPath`, and `traceFilePath` without starting the sidecar. The
-    directory uses mode `0700`, trace files use mode
-    `0600`, and the exported allowlist excludes repository paths, selectors,
-    source text, exception messages, and stack traces. The trace folder persists
-    across ordinary restarts inside the exact socket's state directory; apply
-    the host's retention policy as needed.
+    The product document reports, without starting the sidecar:
+
+    - enabled state and `otlp-json-lines-v1`;
+    - `directoryPath` and `traceFilePath`; and
+    - private directory mode `0700` and file mode `0600`.
+
+    Traces exclude repository paths, selectors, source text, exception messages,
+    and stack traces. The folder persists across ordinary restarts, so apply the
+    host's retention policy.
   </Accordion>
 
   <Accordion title="Uninstall Kast" icon="trash-2">

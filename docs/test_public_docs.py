@@ -352,6 +352,9 @@ STALE_CLAIMS = [
 ]
 
 DEFERRED_PAGES: set[str] = set()
+MAX_PROSE_WORDS = 55
+MAX_PROSE_CHARACTERS = 360
+LIST_ITEM = re.compile(r"^\s*(?:[-*+]|[0-9]+[.)])\s+(?P<text>.+)$")
 
 
 def require(condition: bool, message: str) -> None:
@@ -383,6 +386,71 @@ def frontmatter(text: str, relative: str) -> str:
         f"{relative} has no description",
     )
     return metadata
+
+
+def prose_blocks(text: str, has_frontmatter: bool) -> list[tuple[int, str]]:
+    lines = text.splitlines()
+    if has_frontmatter:
+        closing = next(
+            (index for index, line in enumerate(lines[1:], start=1) if line == "---"),
+            None,
+        )
+        require(closing is not None, "prose scan could not find closing frontmatter")
+        assert closing is not None
+        lines = [""] * (closing + 1) + lines[closing + 1 :]
+
+    blocks: list[tuple[int, str]] = []
+    current: list[str] = []
+    start_line = 0
+    in_fence = False
+
+    def finish() -> None:
+        nonlocal current, start_line
+        if current:
+            blocks.append((start_line, " ".join(current)))
+        current = []
+        start_line = 0
+
+    for line_number, line in enumerate(lines, start=1):
+        stripped = line.strip()
+        if stripped.startswith(("```", "~~~")):
+            finish()
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if not stripped:
+            finish()
+            continue
+
+        item = LIST_ITEM.match(line)
+        if item is not None:
+            finish()
+            start_line = line_number
+            current = [item.group("text")]
+            continue
+
+        if stripped.startswith(("#", "|", ">", "<")) or stripped == "---":
+            finish()
+            continue
+
+        if not current:
+            start_line = line_number
+        current.append(stripped)
+
+    finish()
+    return blocks
+
+
+def check_scan_friendly_prose(relative: str, text: str, has_frontmatter: bool) -> None:
+    for line_number, block in prose_blocks(text, has_frontmatter):
+        word_count = len(re.findall(r"\b[\w'-]+\b", block))
+        character_count = len(block)
+        require(
+            word_count <= MAX_PROSE_WORDS and character_count <= MAX_PROSE_CHARACTERS,
+            f"{relative}:{line_number} has an oversized prose block "
+            f"({word_count} words, {character_count} characters); split or structure it",
+        )
 
 
 def quoted_frontmatter_value(metadata: str, key: str, relative: str) -> str:
@@ -733,6 +801,7 @@ def check_pages() -> None:
             require(raw_html not in text, f"{relative} retains legacy site markup {raw_html}")
         for claim in STALE_CLAIMS:
             require(claim not in text, f"{relative} contains stale claim {claim!r}")
+        check_scan_friendly_prose(relative, text, has_frontmatter=True)
 
     index = (PUBLIC / "index.mdx").read_text()
     metadata = frontmatter(index, "index.mdx")
@@ -937,8 +1006,11 @@ def check_readme() -> None:
         "# Kast",
         "https://kast.michne.com/",
         "https://raw.githubusercontent.com/amichne/kast/main/install.sh",
-        "Kast supports macOS on Apple silicon, Java 25 or newer",
+        "bundled Java 25 JBR",
         "matched private sidecar",
+        "kast-control-*.tar.gz",
+        "kast-semantic-runtime-*.zip",
+        "KAST_RUNTIME_STORE",
         "eleven public semantic operations",
         "kast start",
         "kast symbol inspect",
@@ -964,6 +1036,7 @@ def check_readme() -> None:
         require(command in text, f"README.md omits public command {command!r}")
     for claim in STALE_CLAIMS:
         require(claim not in text, f"README.md contains stale claim {claim!r}")
+    check_scan_friendly_prose("README.md", text, has_frontmatter=False)
 
     headings = re.findall(r"^#\s+.+$", text, re.MULTILINE)
     require(headings == ["# Kast"], f"README.md has unexpected H1 headings: {headings}")
