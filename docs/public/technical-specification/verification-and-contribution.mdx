@@ -1,6 +1,20 @@
 ---
+type: "Technical Specification"
 title: "Verification and contribution"
 description: "How maintainers widen proof from focused module checks to architecture, distribution, enterprise, and documentation validation."
+resource: "file://docs/public/technical-specification/verification-and-contribution.mdx"
+tags: ["verification", "CI", "distribution", "contributors"]
+timestamp: "2026-09-03T00:00:00-04:00"
+code_sources:
+  - path: "packaging/test-installed-product.sh"
+    lines: "1-156"
+  - path: "integration-tests/enterprise_acceptance.py"
+    lines: "1-969"
+  - path: "docs/test_public_docs.py"
+    lines: "1-900"
+    symbols: ["check_pages"]
+  - path: ".github/workflows/docs.yml"
+    lines: "1-78"
 icon: "badge-check"
 keywords: ["testing", "CI", "distribution", "contributors"]
 ---
@@ -37,9 +51,9 @@ runtime identity, required resources, control-versus-sidecar content
 separation, relocatability, and lifecycle behavior.
 
 Passive commands are tested as passive: status and product inspection must not
-start the sidecar merely to report absence. Start, stop, clean, reindex, cache
-reuse, and wrong-root behavior are exercised against a staged installation,
-not inferred from unit tests.
+start the sidecar merely to report absence. Start, stop, status, cache reuse,
+cache seeding, cache rebuild, and wrong-root behavior are exercised against a
+staged installation, not inferred from unit tests.
 
 Release assets also provide machine-readable CLI schema and module knowledge.
 The latter binds a release version and Git revision to accepted architecture
@@ -81,6 +95,13 @@ When mechanics change, update the source contract first. Regenerate derived
 artifacts with their owning task, update only the affected explanation, and add
 or strengthen a docs assertion for any claim whose drift would mislead a
 maintainer. Do not patch generated CLI or LikeC4 output by hand.
+
+Every public page also declares bounded `code_sources` in its OKF header. Ask
+which pages cite a changed authority before editing prose:
+
+```shell
+python3 docs/test_public_docs.py --impact path/to/changed-source.kt
+```
 
 ## Contributor path
 

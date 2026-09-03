@@ -1,7 +1,15 @@
 ---
+type: "How-To"
 title: "Check semantic diagnostics"
 sidebarTitle: "Diagnostics"
 description: "Read compiler diagnostics for one explicit workspace scope and generation."
+resource: "file://docs/public/questions/semantic-validity.mdx"
+tags: ["diagnostics", "compiler", "scope", "evidence"]
+timestamp: "2026-09-03T00:00:00-04:00"
+code_sources:
+  - path: "diagnostic/service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticService.kt"
+    lines: "15-184"
+    symbols: ["DiagnosticService"]
 icon: "stethoscope"
 keywords: ["diagnostics", "compiler", "availability"]
 ---
@@ -26,20 +34,11 @@ requested bound. A qualified result retains known diagnostics together with
 the analyzed files and exact limitations. A stale generation, unavailable
 index, or rejected scope fails closed instead of manufacturing an empty result.
 
-<Columns cols={3}>
-  <Card title="Complete" icon="circle-check">
-    The admitted scope is fully accounted for. An empty diagnostic list is
-    meaningful within that scope.
-  </Card>
-  <Card title="Qualified" icon="circle-dashed">
-    Known diagnostics remain usable, while analyzed files and limitations name
-    the coverage that is still missing.
-  </Card>
-  <Card title="Rejected" icon="shield-check">
-    No diagnostic payload is presented as success. Repair the typed blocker
-    before drawing a semantic conclusion.
-  </Card>
-</Columns>
+| Outcome | How to read it |
+| --- | --- |
+| **Complete** | The admitted scope is fully accounted for. An empty diagnostic list is meaningful within that scope. |
+| **Qualified** | Known diagnostics remain usable, while analyzed files and limitations name the coverage still missing. |
+| **Rejected** | No diagnostic payload is presented as success. Repair the typed blocker before drawing a semantic conclusion. |
 
 <Tip>
   Treat “no diagnostics” as evidence only when the outcome is complete for the

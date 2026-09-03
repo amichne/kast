@@ -1,6 +1,23 @@
 ---
+type: "Technical Specification"
 title: "Runtime boundary"
 description: "How Kast proves one canonical repository root, starts or admits a private IntelliJ sidecar, and publishes generation-bound readiness."
+resource: "file://docs/public/technical-specification/runtime-boundary.mdx"
+tags: ["runtime", "sidecar", "workspace", "admission"]
+timestamp: "2026-09-03T00:00:00-04:00"
+code_sources:
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledSidecarRuntimeDemand.kt"
+    lines: "200-314"
+    symbols: ["InstalledSidecarRootRuntimeDemander"]
+  - path: "indexer/src/main/kotlin/io/github/amichne/kast/indexer/KastIndexerApplicationStarter.kt"
+    lines: "44-135"
+    symbols: ["KastIndexerApplicationStarter"]
+  - path: "workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledIntellijWorkspace.kt"
+    lines: "164-325"
+    symbols: ["InstalledIntellijWorkspace"]
+  - path: "runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/bootstrap/InstalledKastRuntime.kt"
+    lines: "282-438"
+    symbols: ["InstalledKastRuntime"]
 icon: "server"
 keywords: ["sidecar", "IntelliJ", "workspace", "generation"]
 ---

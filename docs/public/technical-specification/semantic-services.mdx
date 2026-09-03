@@ -1,6 +1,29 @@
 ---
+type: "Technical Specification"
 title: "Semantic services"
 description: "The shared proof contract and distinct mechanics of workspace, symbol, relation, traversal, topology, and diagnostic operations."
+resource: "file://docs/public/technical-specification/semantic-services.mdx"
+tags: ["symbols", "relations", "traversal", "diagnostics"]
+timestamp: "2026-09-03T00:00:00-04:00"
+code_sources:
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/command/lifecycle/LifecycleCommands.kt"
+    lines: "22-134"
+    symbols: ["lifecycleCommands"]
+  - path: "symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolDiscoveryService.kt"
+    lines: "24-156"
+    symbols: ["SymbolDiscoveryService"]
+  - path: "symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolExactService.kt"
+    lines: "22-206"
+    symbols: ["SymbolExactService"]
+  - path: "relation/service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt"
+    lines: "25-261"
+    symbols: ["RelationService"]
+  - path: "traversal/service/src/main/kotlin/io/github/amichne/kast/traversal/service/TraversalService.kt"
+    lines: "29-355"
+    symbols: ["TraversalService"]
+  - path: "diagnostic/service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticService.kt"
+    lines: "15-184"
+    symbols: ["DiagnosticService"]
 icon: "scan-search"
 keywords: ["symbols", "relations", "traversal", "topology", "diagnostics"]
 ---
@@ -28,11 +51,11 @@ coverage, or budget mismatches close as contract rejection.
 ## Workspace and index
 
 At the CLI lifecycle boundary, a semantic command may demand the exact-root
-sidecar before dispatch. Inside the admitted runtime, `workspace.inspect`
-itself only observes publication state; it never derives semantic readiness
-from process liveness. The installed handler returns a complete payload only
-for the ready exact root. Absent, starting, reconciling, stopping, mismatched,
-or blocked state returns a typed rejection.
+sidecar before dispatch. Readiness is not exposed as a separate workspace
+operation: a completed `start` establishes the ready exact root, while passive
+`status` reports lifecycle and cache state without claiming a semantic
+generation. Absent, starting, reconciling, stopping, mismatched, or blocked
+state cannot be promoted to ready evidence.
 
 `index.sync` is an explicit transition. It refreshes only admitted local source
 roots, waits for indexing quiescence, captures source identity, and reconciles
@@ -48,13 +71,11 @@ Symbol work is deliberately split:
     `symbol.discover` searches an admitted scope and returns bounded candidates.
     A candidate is evidence for further refinement, not an exact declaration.
   </Step>
-  <Step title="Resolve">
-    `symbol.resolve` refines one candidate and its generation into an exact
-    selector. Ambiguity and staleness reject rather than pick a plausible match.
-  </Step>
-  <Step title="Describe">
-    `symbol.inspect` reopens the exact selector under the current lease and
-    projects compiler identity, signature, location, and related detached facts.
+  <Step title="Inspect">
+    `symbol.inspect --candidate` refines one candidate and returns exact
+    compiler evidence atomically. `symbol.inspect --selector` starts from an
+    exact selector. Both paths reject ambiguity or staleness rather than pick a
+    plausible match.
   </Step>
 </Steps>
 

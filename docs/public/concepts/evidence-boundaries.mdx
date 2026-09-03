@@ -1,6 +1,17 @@
 ---
+type: "Concept"
 title: "Trust the evidence"
 description: "Interpret complete, qualified, and rejected Kast outcomes within their exact root, generation, scope, and bounds."
+resource: "file://docs/public/concepts/evidence-boundaries.mdx"
+tags: ["evidence", "outcomes", "generation", "scope"]
+timestamp: "2026-09-03T00:00:00-04:00"
+code_sources:
+  - path: "kernel/src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt"
+    lines: "3-22"
+    symbols: ["OperationOutcome", "Complete", "Qualified", "Rejected"]
+  - path: "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt"
+    lines: "7-20"
+    symbols: ["CanonicalOperation"]
 icon: "shield-check"
 keywords: ["evidence", "complete", "qualified", "rejected", "generation"]
 ---
@@ -10,20 +21,11 @@ The semantic result has its own closed outcome and evidence coordinates.
 
 ## Three closed outcomes
 
-<Columns cols={3}>
-  <Card title="Complete">
-    The operation met its admitted scope, bounds, and completeness policy. The
-    payload can support the full claim described by that operation.
-  </Card>
-  <Card title="Qualified">
-    The payload remains usable within a named limitation. The response keeps
-    the missing coverage or reached bound attached to the evidence.
-  </Card>
-  <Card title="Rejected">
-    Kast established no successful payload. The response returns one typed
-    reason from the operation's finite failure set.
-  </Card>
-</Columns>
+| Outcome | What it proves |
+| --- | --- |
+| **Complete** | The operation met its admitted scope, bounds, and completeness policy. The payload can support the full claim described by that operation. |
+| **Qualified** | The payload remains usable within a named limitation. Missing coverage or a reached bound stays attached to the evidence. |
+| **Rejected** | Kast established no successful payload. The response returns one typed reason from the operation's finite failure set. |
 
 The eleven sidecar operations cover index synchronization, topology
 publication, symbol discovery and inspection, source and one-hop relation
@@ -47,7 +49,7 @@ authorized it:
     The canonical repository checkout that owns the admitted sidecar endpoint.
   </Step>
   <Step title="Operation">
-    The typed question asked, such as `workspace.inspect` or `symbol.inspect`.
+    The typed question asked, such as `index.sync` or `symbol.inspect`.
   </Step>
   <Step title="Generation">
     The semantic workspace state against which selectors and evidence were

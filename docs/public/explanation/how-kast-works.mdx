@@ -1,6 +1,23 @@
 ---
+type: "Concept"
 title: "How Kast works"
 description: "Trace one typed request through Kast's isolated exact-root IntelliJ sidecar and back as host-neutral evidence."
+resource: "file://docs/public/explanation/how-kast-works.mdx"
+tags: ["architecture", "sidecar", "IntelliJ", "wire protocol"]
+timestamp: "2026-09-03T00:00:00-04:00"
+code_sources:
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledSidecarRuntimeDemand.kt"
+    lines: "200-314"
+    symbols: ["InstalledSidecarRootRuntimeDemander"]
+  - path: "runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/bootstrap/InstalledRuntimeAssembly.kt"
+    lines: "180-293"
+    symbols: ["InstalledRuntimeAssembly"]
+  - path: "indexer/src/main/kotlin/io/github/amichne/kast/indexer/InstalledIndexerTransport.kt"
+    lines: "38-255"
+    symbols: ["InstalledIndexerTransport"]
+  - path: "symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/InstalledIntellijSymbolPorts.kt"
+    lines: "20-105"
+    symbols: ["InstalledIntellijSymbolPorts"]
 icon: "workflow"
 keywords: ["architecture", "K2", "IntelliJ", "wire protocol"]
 ---
@@ -65,20 +82,11 @@ without preventing endpoint publication. Its absence contributes no source
 candidates until the directory appears. Malformed, non-local,
 outside-workspace, conflicting, or otherwise unproven roots still fail closed.
 
-<Columns cols={3}>
-  <Card title="Exact root" icon="folder-key">
-    The canonical checkout determines the descriptor and socket identity. A
-    focused window cannot substitute another Project.
-  </Card>
-  <Card title="Exact product" icon="badge-check">
-    CLI version, private-extension version, IDE build, Kotlin plugin build, registry
-    digest, wire digest, protocol identity, and capabilities must agree.
-  </Card>
-  <Card title="Private state" icon="monitor-check">
-    The sidecar's config, system, plugins, logs, socket, and persistent cache
-    must be physically distinct from the user's IDEA state.
-  </Card>
-</Columns>
+| Boundary | Required proof |
+| --- | --- |
+| **Exact root** | The canonical checkout determines the descriptor and socket identity. A focused window cannot substitute another Project. |
+| **Exact product** | CLI version, private-extension version, IDE build, Kotlin plugin build, registry digest, wire digest, protocol identity, and capabilities agree. |
+| **Private state** | The sidecar's config, system, plugins, logs, socket, and persistent cache are physically distinct from the user's IDEA state. |
 
 ## Optional index seeding is a validated copy
 
@@ -215,21 +223,11 @@ serialized or reused after their workspace generation changes.
 
 ## The current boundary is intentionally narrow
 
-<Columns cols={3}>
-  <Card title="Sidecar routes" icon="circle-check">
-    Index synchronization, topology, symbol discovery and inspection, source
-    and relation reads, traversal, diagnostics, planning, verified application,
-    and recovery are the eleven public installed capabilities.
-  </Card>
-  <Card title="Compiler-grounded reads" icon="circle-dashed">
-    Relation and diagnostic routes use the same typed compiler services as
-    planning and verification while remaining independently callable.
-  </Card>
-  <Card title="Kast-owned lifecycle" icon="power">
-    `start` owns admission and typed cache policy, `status` is passive, and
-    `stop` targets only the proven sidecar process and its endpoint artifacts.
-  </Card>
-</Columns>
+| Boundary | Current contract |
+| --- | --- |
+| **Sidecar routes** | Index synchronization, topology, symbol discovery and inspection, source and relation reads, traversal, diagnostics, planning, verified application, and recovery are the eleven public installed capabilities. |
+| **Compiler-grounded reads** | Relation and diagnostic routes use the same typed compiler services as planning and verification while remaining independently callable. |
+| **Kast-owned lifecycle** | `start` owns admission and typed cache policy, `status` is passive, and `stop` targets only the proven sidecar process and its endpoint artifacts. |
 
 ## Performance traces stay local by default
 

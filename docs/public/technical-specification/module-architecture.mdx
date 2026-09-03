@@ -1,6 +1,19 @@
 ---
+type: "Technical Specification"
 title: "Module architecture"
 description: "The dependency direction, effect ownership, build-time enforcement, and generated LikeC4 proof behind Kast's module graph."
+resource: "file://docs/public/technical-specification/module-architecture.mdx"
+tags: ["modules", "architecture", "effects", "LikeC4"]
+timestamp: "2026-09-03T00:00:00-04:00"
+code_sources:
+  - path: "build-logic/src/main/kotlin/support/architecture/ArchitectureModel.kt"
+    lines: "5-165"
+    symbols: ["ModuleId", "ModulePolicy"]
+  - path: "build-logic/src/main/kotlin/support/architecture/validation/ArchitecturePolicyValidator.kt"
+    lines: "3-144"
+    symbols: ["ArchitecturePolicyValidator"]
+  - path: "settings.gradle.kts"
+    lines: "1-65"
 icon: "boxes"
 keywords: ["modules", "architecture", "effects", "LikeC4"]
 mode: "wide"

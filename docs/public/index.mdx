@@ -1,6 +1,17 @@
 ---
+type: "Documentation Index"
 title: "Kast"
 description: "Compiler-grounded evidence for exact Kotlin repositories."
+resource: "file://docs/public/index.mdx"
+tags: ["Kotlin", "compiler", "operations", "evidence"]
+timestamp: "2026-09-03T00:00:00-04:00"
+code_sources:
+  - path: "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt"
+    lines: "7-20"
+    symbols: ["CanonicalOperation"]
+  - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalOperationDefinitions.kt"
+    lines: "75-260"
+    symbols: ["CanonicalOperationDefinitions"]
 mode: "wide"
 icon: "braces"
 keywords: ["Kotlin", "compiler", "semantic analysis", "coding agents"]
@@ -12,7 +23,7 @@ of source text. Every operation returns a closed status and preserves the
 proof-specific root, generation, scope, limits, and identities needed to judge
 its evidence.
 
-<div className="flex flex-wrap gap-2"><Badge color="purple" icon="braces" shape="pill">11 typed operations</Badge> <Badge color="blue" icon="folder-key" shape="pill">Exact-root authority</Badge> <Badge color="green" icon="shield-check" shape="pill">Closed outcomes</Badge></div>
+**Eleven operations. One exact root. No guessed success.**
 
 ## The compiler sees more than text
 
@@ -27,16 +38,9 @@ class Checkout(private val policy: BillingPricePolicy) {
 }
 ```
 
-<Columns cols={2}>
-  <Card title="Text can suggest">
-    A search can find `PricePolicy`, `policy`, and `price`. It cannot establish
-    which declaration the alias names or which overload receives `order`.
-  </Card>
-  <Card title="Compiler evidence can establish">
-    The property and call each have an exact compiler identity. Their source
-    locations and semantic relationship remain part of the result.
-  </Card>
-</Columns>
+| Text can suggest | Compiler evidence can establish |
+| --- | --- |
+| A search can find `PricePolicy`, `policy`, and `price`; it cannot establish which declaration the alias names or which overload receives `order`. | The property and call each have an exact compiler identity. Their source locations and semantic relationship remain part of the result. |
 
 The distinction becomes important when an answer crosses files, modules, or a
 change boundary. Kast makes the strength and limits of that answer visible.
@@ -52,17 +56,8 @@ kast start
 returns when semantic evidence is ready, or returns a typed blocker instead of
 manufacturing readiness.
 
-<Card
-  title="Set up and start Kast"
-  icon="rocket"
-  href="/start"
-  cta="Open the quickstart"
-  arrow
-  horizontal
->
-  Install the matched control and sidecar release, admit one repository, and
-  inspect the first compiler-backed result.
-</Card>
+[Set up and start Kast](/start) to install the matched control and sidecar
+release, admit one repository, and inspect the first compiler-backed result.
 
 ## Eleven sidecar operations
 
@@ -71,24 +66,12 @@ topology build, candidate discovery, compiler-backed symbol inspection, bounded
 source reads, one-hop relation reads, bounded traversal, scoped diagnostics,
 and planning, verified application, or recovery for AddDeclaration changes.
 
-<Columns cols={2}>
-  <Card title="What is Kast ready to inspect?" icon="gauge" href="/questions/workspace-readiness" cta="Inspect readiness" arrow>
-    See the exact root, semantic generation, and readiness limits before
-    relying on later answers.
-  </Card>
-  <Card title="What declaration is this?" icon="scan-search" href="/questions/declaration-identity" cta="Establish identity" arrow>
-    Refine a bounded candidate or inspect an exact selector and receive exact
-    compiler evidence in one operation.
-  </Card>
-  <Card title="How is this code connected?" icon="route" href="/questions/code-connections" cta="Trace connections" arrow>
-    Read a live compiler relation directly, or publish exact-generation
-    topology and traverse it with explicit depth and result limits.
-  </Card>
-  <Card title="How can I add a declaration safely?" icon="file-pen" href="/questions/safe-change" cta="Follow the lifecycle" arrow>
-    Plan, apply with successor publication and verification, or recover one
-    admitted AddDeclaration mutation without restarting the endpoint.
-  </Card>
-</Columns>
+| Question | Evidence path |
+| --- | --- |
+| [What is Kast ready to inspect?](/questions/workspace-readiness) | Check the exact root, semantic generation, and readiness limits before relying on later answers. |
+| [What declaration is this?](/questions/declaration-identity) | Refine a bounded candidate or inspect an exact selector and receive exact compiler evidence in one operation. |
+| [How is this code connected?](/questions/code-connections) | Read a live compiler relation directly, or publish exact-generation topology and traverse it with explicit bounds. |
+| [How can I add a declaration safely?](/questions/safe-change) | Plan, apply with successor publication and verification, or recover one admitted AddDeclaration mutation without restarting the endpoint. |
 
 ## Evidence keeps its boundary
 
