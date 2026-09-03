@@ -3,14 +3,28 @@ package io.github.amichne.kast.cli.broker
 import io.github.amichne.kast.cli.LaunchctlExitContract
 import io.github.amichne.kast.cli.LaunchctlInvocation
 import io.github.amichne.kast.cli.LaunchctlInvoker
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.websocket.webSocketSession
+import io.ktor.client.request.unixSocket
+import io.ktor.client.request.url
+import io.ktor.websocket.Frame
+import io.ktor.websocket.close
+import io.ktor.websocket.readText
+import io.ktor.websocket.send
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import java.io.IOException
 import java.net.ConnectException
-import java.net.StandardProtocolFamily
-import java.net.UnixDomainSocketAddress
 import java.nio.channels.FileChannel
 import java.nio.channels.OverlappingFileLockException
-import java.nio.channels.SocketChannel
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.NoSuchFileException
@@ -123,28 +137,82 @@ internal object JdkBrokerSocketProbe : BrokerSocketProbe {
                 -> return BrokerSocketReachability.REJECTED
             BrokerSocketPathObservation.Socket -> Unit
         }
-        val channel = try {
-            SocketChannel.open(StandardProtocolFamily.UNIX)
-        } catch (_: IOException) {
-            return BrokerSocketReachability.REJECTED
-        } catch (_: UnsupportedOperationException) {
-            return BrokerSocketReachability.REJECTED
-        } catch (_: SecurityException) {
-            return BrokerSocketReachability.REJECTED
-        }
-        return channel.use { socket ->
-            try {
-                socket.connect(UnixDomainSocketAddress.of(path))
-                BrokerSocketReachability.REACHABLE
-            } catch (_: ConnectException) {
+        return try {
+            runBlocking(Dispatchers.IO) { exchangeInitialize(path) }
+        } catch (failure: Exception) {
+            if (failure.hasCause<ConnectException>()) {
                 BrokerSocketReachability.UNREACHABLE
-            } catch (_: IOException) {
-                BrokerSocketReachability.REJECTED
-            } catch (_: SecurityException) {
-                BrokerSocketReachability.REJECTED
+            } else {
+                when (pathObserver.observe(path)) {
+                    BrokerSocketPathObservation.Absent -> BrokerSocketReachability.UNREACHABLE
+                    BrokerSocketPathObservation.Socket,
+                    BrokerSocketPathObservation.WrongType,
+                    BrokerSocketPathObservation.Rejected,
+                        -> BrokerSocketReachability.REJECTED
+                }
             }
         }
     }
+
+    private suspend fun exchangeInitialize(path: Path): BrokerSocketReachability {
+        val client = HttpClient(CIO) {
+            install(WebSockets) { maxFrameSize = MAXIMUM_READINESS_FRAME_BYTES }
+        }
+        return try {
+            withTimeoutOrNull(READINESS_EXCHANGE_TIMEOUT_MILLIS) {
+                val session = client.webSocketSession {
+                    url("ws://localhost/rpc")
+                    unixSocket(path.toString())
+                }
+                try {
+                    session.send(READINESS_INITIALIZE_REQUEST)
+                    while (true) {
+                        val frame = session.incoming.receiveCatching().getOrNull()
+                            ?: return@withTimeoutOrNull BrokerSocketReachability.REJECTED
+                        val message = (frame as? Frame.Text)?.readText()
+                            ?: return@withTimeoutOrNull BrokerSocketReachability.REJECTED
+                        val document = parseObject(message)
+                            ?: return@withTimeoutOrNull BrokerSocketReachability.REJECTED
+                        val responseId = (document["id"] as? JsonPrimitive)?.contentOrNull
+                        if (responseId != READINESS_REQUEST_ID) continue
+                        return@withTimeoutOrNull if (
+                            document["method"] == null &&
+                            document.containsKey("result") &&
+                            !document.containsKey("error")
+                        ) {
+                            BrokerSocketReachability.REACHABLE
+                        } else {
+                            BrokerSocketReachability.REJECTED
+                        }
+                    }
+                    @Suppress("UNREACHABLE_CODE")
+                    BrokerSocketReachability.REJECTED
+                } finally {
+                    session.close()
+                }
+            } ?: BrokerSocketReachability.REJECTED
+        } finally {
+            client.close()
+        }
+    }
+
+    private fun parseObject(message: String): JsonObject? = try {
+        Json.parseToJsonElement(message) as? JsonObject
+    } catch (_: SerializationException) {
+        null
+    } catch (_: IllegalArgumentException) {
+        null
+    }
+
+    private inline fun <reified Failure : Throwable> Throwable.hasCause(): Boolean =
+        generateSequence(this) { current -> current.cause }
+            .any { current -> current is Failure }
+
+    private const val READINESS_REQUEST_ID = "kast-readiness-v1"
+    private const val READINESS_EXCHANGE_TIMEOUT_MILLIS = 3_000L
+    private const val MAXIMUM_READINESS_FRAME_BYTES = 1024L * 1024L
+    private val READINESS_INITIALIZE_REQUEST =
+        """{"id":"$READINESS_REQUEST_ID","method":"initialize","params":{"clientInfo":{"name":"kast-readiness","version":"$VENDORED_BROKER_VERSION"},"capabilities":{"experimentalApi":true}}}"""
 }
 
 internal fun interface BrokerServiceSleeper {
@@ -274,9 +342,7 @@ internal class MacOsPersistentBrokerServiceHost(
             when (socketProbe.probe(command.publicSocket)) {
                 BrokerSocketReachability.REACHABLE -> PersistentBrokerServiceAdmission.Ready
                 BrokerSocketReachability.UNREACHABLE -> retireAndSubmit(command, readiness)
-                BrokerSocketReachability.REJECTED -> rejected(
-                    PersistentBrokerServiceFailure.SOCKET_PROBE_REJECTED,
-                )
+                BrokerSocketReachability.REJECTED -> retireAndSubmit(command, readiness)
             }
         } else {
             retireAndSubmit(command, readiness)
@@ -548,7 +614,7 @@ internal class MacOsPersistentBrokerServiceHost(
                 ENV_EXECUTABLE,
                 "-i",
                 "HOME=${command.userHome}",
-                "PATH=${command.codex.parent}:${command.kast.parent}:/usr/bin:/bin:/usr/sbin:/sbin",
+                "PATH=${command.executableSearchPath.value}",
                 "JAVA_HOME=${command.javaHome}",
                 "KAST_OPTS=${command.jvmUserHomeOption.value}",
                 "CODEX_HOME=${command.codexHome}",

@@ -3,6 +3,7 @@ package io.github.amichne.kast.workspace.intellij
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListener
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType
+import com.intellij.openapi.externalSystem.service.execution.ExternalSystemJdkException
 import org.jetbrains.plugins.gradle.util.GradleConstants
 import java.io.IOException
 import java.nio.file.Path
@@ -152,14 +153,15 @@ internal sealed interface InstalledGradleImportOutcome {
     data object Completed : InstalledGradleImportOutcome
     data object Failed : InstalledGradleImportOutcome
     data object Cancelled : InstalledGradleImportOutcome
+    data object InvalidJvmConfiguration : InstalledGradleImportOutcome
 }
 
 /**
  * Proof transition: `CompletableFuture<Void> -> CompletableFuture<InstalledGradleImportOutcome>`.
  *
- * Refines IntelliJ's callback future into closed completed, failed, or cancelled import data. The
- * platform `Void` future and exceptional completion remain confined to the External System
- * callback boundary.
+ * Refines IntelliJ's callback future into closed completed, failed, cancelled, or invalid-JVM
+ * import data. The platform `Void` future and exceptional completion remain confined to the
+ * External System callback boundary.
  */
 internal fun CompletableFuture<Void>.closedImportOutcome():
     CompletableFuture<InstalledGradleImportOutcome> = handle { _, failure ->
@@ -171,9 +173,15 @@ internal fun CompletableFuture<Void>.closedImportOutcome():
             failure is CompletionException &&
                 failure.cause is java.util.concurrent.CancellationException ->
                 InstalledGradleImportOutcome.Cancelled
+            failure.hasCause<ExternalSystemJdkException>() ->
+                InstalledGradleImportOutcome.InvalidJvmConfiguration
             else -> InstalledGradleImportOutcome.Failed
         }
     }
+
+private inline fun <reified Failure : Throwable> Throwable?.hasCause(): Boolean =
+    generateSequence(this) { current -> current.cause }
+        .any { current -> current is Failure }
 
 private enum class GradleTaskIdentity { EXACT_WORKSPACE, OTHER }
 private enum class GradleTaskKind { PROJECT_RESOLUTION, OTHER }

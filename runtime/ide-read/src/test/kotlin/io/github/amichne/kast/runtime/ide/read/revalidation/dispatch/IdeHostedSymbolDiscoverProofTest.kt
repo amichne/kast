@@ -25,9 +25,14 @@ import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointCanonicalRoot
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadProject
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadProjectTestRead
 import java.util.concurrent.CancellationException
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.yield
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -97,6 +102,30 @@ class IdeHostedSymbolDiscoverAcceptance {
         val evidence = (outcome as OperationOutcome.Complete).evidence
         assertEquals(CanonicalOperation.SYMBOL_DISCOVER.id, evidence.operation)
         assertEquals(1, evidence.payload.items.values.size)
+    }
+
+    @Test
+    fun `overlapping current discovery calls wait and both preserve evidence`() = runTest {
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val calls = AtomicInteger()
+        val discovery = preparedDiscovery { _, _ ->
+            if (calls.incrementAndGet() == 1) {
+                entered.complete(Unit)
+                release.await()
+            }
+            completeOutcome(items = 1)
+        }
+
+        val first = async { discovery.execute(request(limit = 1)) }
+        entered.await()
+        val second = async { discovery.execute(request(limit = 1)) }
+        yield()
+        release.complete(Unit)
+
+        assertTrue(first.await() is OperationOutcome.Complete)
+        assertTrue(second.await() is OperationOutcome.Complete)
+        assertEquals(2, calls.get())
     }
 }
 

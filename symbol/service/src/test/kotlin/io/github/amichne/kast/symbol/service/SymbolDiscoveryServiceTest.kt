@@ -34,6 +34,8 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
+import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
@@ -171,14 +173,46 @@ class SymbolDiscoveryServiceTest {
         )
     }
 
-    private fun compilation(request: SymbolDiscoveryRequest): SymbolCompilation =
+    @Test
+    fun `structure discovery admits compiler backed classes and callables together`() {
+        val workspace = published(generation = 7L)
+        val sourceFile = Path.of("/workspace/src/main/kotlin/Widget.kt")
+        val request = request(
+            workspace.readLease,
+            SymbolDiscoveryTarget.Structure(
+                CanonicalWorkspaceFilePath.fromCanonicalPath(root(), sourceFile).refined(),
+            ),
+        )
+        val candidates = listOf(
+            candidate(request, SymbolDiscoveryKind.CLASS, "Widget", sourceFile, 0),
+            candidate(request, SymbolDiscoveryKind.SYMBOL, "render", sourceFile, 32),
+        ).sorted()
+        val service = SymbolDiscoveryService(
+            WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
+            RecordingCompiler(compilation(request, candidates)),
+        )
+
+        assertInstanceOf(
+            SymbolDiscoveryResult.Discovered::class.java,
+            runSuspend { service.discover(request) },
+        )
+    }
+
+    private fun compilation(
+        request: SymbolDiscoveryRequest,
+        candidates: List<SymbolDiscoveryCandidate> = emptyList(),
+    ): SymbolCompilation =
         SymbolCompilation.Compiled(
             SymbolDiscoveryOutcome.Complete(
                 SymbolDiscoveryBatch.create(
                     request = request,
-                    candidates = emptyList(),
-                    encodedBytes = SymbolDiscoveryByteCount.parse(0L).refined(),
-                    examinedWorkUnits = SymbolDiscoveryWorkCount.parse(0L).refined(),
+                    candidates = candidates,
+                    encodedBytes = SymbolDiscoveryByteCount.parse(
+                        candidates.sumOf { candidate -> candidate.projectedUtf8Size().value },
+                    ).refined(),
+                    examinedWorkUnits = SymbolDiscoveryWorkCount.parse(
+                        candidates.size.toLong(),
+                    ).refined(),
                     timings = SymbolDiscoveryTimings(
                         nativeQuery = SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
                         projection = SymbolDiscoveryElapsedNanoseconds.parse(0L).refined(),
@@ -187,7 +221,14 @@ class SymbolDiscoveryServiceTest {
             ),
         )
 
-    private fun request(lease: SemanticReadLease): SymbolDiscoveryRequest = SymbolDiscoveryRequest(
+    private fun request(
+        lease: SemanticReadLease,
+        target: SymbolDiscoveryTarget = SymbolDiscoveryTarget.Name(
+            kind = SymbolNameDiscoveryKind.SYMBOL,
+            pattern = SymbolDiscoveryPattern.parse("Service").refined(),
+            match = SymbolDiscoveryMatch.FUZZY,
+        ),
+    ): SymbolDiscoveryRequest = SymbolDiscoveryRequest(
         scope = SymbolSearchScopeRequest(
             lease = lease,
             scope = SymbolSearchScope.Workspace(
@@ -196,11 +237,7 @@ class SymbolDiscoveryServiceTest {
                 libraries = SymbolLibraryPolicy.EXCLUDE,
             ),
         ),
-        target = SymbolDiscoveryTarget.Name(
-            kind = SymbolNameDiscoveryKind.SYMBOL,
-            pattern = SymbolDiscoveryPattern.parse("Service").refined(),
-            match = SymbolDiscoveryMatch.FUZZY,
-        ),
+        target = target,
         budget = SymbolDiscoveryBudget(
             resources = ResourceBudget(
                 resultLimit = ResultLimit.parse(10).refined(),
@@ -210,6 +247,21 @@ class SymbolDiscoveryServiceTest {
             returnedBytes = SymbolDiscoveryByteLimit.parse(10_000L).refined(),
         ),
     )
+
+    private fun candidate(
+        request: SymbolDiscoveryRequest,
+        kind: SymbolDiscoveryKind,
+        name: String,
+        file: Path,
+        offset: Int,
+    ): SymbolDiscoveryCandidate = SymbolDiscoveryCandidate.fromBoundary(
+        kind = kind,
+        rawName = name,
+        lease = request.scope.lease,
+        nativePath = file,
+        virtualFileUrl = file.toUri().toString(),
+        rawOffset = offset,
+    ).refined()
 
     private fun published(generation: Long): PublishedWorkspace {
         val candidate = WorkspaceCandidate(

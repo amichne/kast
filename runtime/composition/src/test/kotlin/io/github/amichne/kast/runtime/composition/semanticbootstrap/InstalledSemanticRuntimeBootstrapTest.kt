@@ -67,4 +67,64 @@ class InstalledSemanticRuntimeBootstrapTest {
             attempt.rejectionDocument(setOf(projectJvm, stateDirectory)),
         )
     }
+
+    @Test
+    fun `invalid Gradle JVM configuration projects into its exact document`() {
+        val rawAttempt = "123e4567-e89b-42d3-a456-426614174000"
+        val attempt = (
+            InstalledSemanticRuntimeBootstrapAttempt.admit(rawAttempt) as
+                InstalledSemanticRuntimeBootstrapAttemptAdmission.Admitted
+            ).attempt
+        val runtimeFailure = InstalledKastRuntimeFailure.Assembly(
+            InstalledRuntimeAssemblyFailure.WorkspacePublication(
+                InstalledRuntimeWorkspaceFailure.IntellijBootstrap(
+                    InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID,
+                ),
+            ),
+        )
+        val projected = attempt.rejectionDocument(setOf(runtimeFailure)) as
+            InstalledSemanticRuntimeBootstrapRejection.Projected
+        val attemptId = (SemanticRuntimeBootstrapAttemptId.admit(rawAttempt) as
+            Refinement.Refined).value
+
+        assertEquals(
+            Refinement.Refined(
+                SemanticRuntimeBootstrapState.Rejected(
+                    attemptId,
+                    SemanticRuntimeBootstrapFailure.GRADLE_JVM_CONFIGURATION_INVALID,
+                ),
+            ),
+            SemanticRuntimeBootstrapCodec.decode(projected.document.boundaryValue()),
+        )
+    }
+
+    @Test
+    fun `platform linkage rejection projects into its exact document`() {
+        val rawAttempt = "123e4567-e89b-42d3-a456-426614174000"
+        val attempt = (
+            InstalledSemanticRuntimeBootstrapAttempt.admit(rawAttempt) as
+                InstalledSemanticRuntimeBootstrapAttemptAdmission.Admitted
+            ).attempt
+        val runtimeFailure = InstalledKastRuntimeFailure.Assembly(
+            InstalledRuntimeAssemblyFailure.WorkspacePublication(
+                InstalledRuntimeWorkspaceFailure.IntellijBootstrap(
+                    InstalledIntellijWorkspaceFailure.PLATFORM_LINKAGE_INVALID,
+                ),
+            ),
+        )
+        val projected = attempt.rejectionDocument(setOf(runtimeFailure)) as
+            InstalledSemanticRuntimeBootstrapRejection.Projected
+        val attemptId = (SemanticRuntimeBootstrapAttemptId.admit(rawAttempt) as
+            Refinement.Refined).value
+
+        assertEquals(
+            Refinement.Refined(
+                SemanticRuntimeBootstrapState.Rejected(
+                    attemptId,
+                    SemanticRuntimeBootstrapFailure.PLATFORM_LINKAGE_INVALID,
+                ),
+            ),
+            SemanticRuntimeBootstrapCodec.decode(projected.document.boundaryValue()),
+        )
+    }
 }

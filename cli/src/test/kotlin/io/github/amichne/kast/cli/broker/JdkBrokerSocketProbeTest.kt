@@ -9,6 +9,7 @@ import java.nio.channels.ServerSocketChannel
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
+import kotlin.concurrent.thread
 
 class JdkBrokerSocketProbeTest {
     @Test
@@ -72,7 +73,7 @@ class JdkBrokerSocketProbeTest {
     }
 
     @Test
-    fun `real JDK probe distinguishes live stale and absent Unix sockets`(
+    fun `real JDK probe distinguishes broker protocol from stale and absent sockets`(
         @TempDir temporary: Path,
     ) {
         val admittedParent = Files.createDirectory(temporary.resolve("sockets")).toRealPath()
@@ -82,11 +83,13 @@ class JdkBrokerSocketProbeTest {
         val live = admittedParent.resolve("live.sock")
         ServerSocketChannel.open(StandardProtocolFamily.UNIX).use { listener ->
             listener.bind(UnixDomainSocketAddress.of(live))
+            val acceptor = thread(start = true) { listener.accept().use { } }
             assertEquals(
                 BrokerSocketPathObservation.Socket,
                 JdkBrokerSocketPathObserver.observe(live),
             )
-            assertEquals(BrokerSocketReachability.REACHABLE, JdkBrokerSocketProbe.probe(live))
+            assertEquals(BrokerSocketReachability.REJECTED, JdkBrokerSocketProbe.probe(live))
+            acceptor.join(5_000)
         }
 
         val stale = admittedParent.resolve("stale.sock")

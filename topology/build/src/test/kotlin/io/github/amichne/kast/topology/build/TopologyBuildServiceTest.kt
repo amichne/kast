@@ -19,6 +19,7 @@ import io.github.amichne.kast.topology.contract.TopologySnapshotContent
 import io.github.amichne.kast.topology.contract.TopologySnapshotContentRead
 import io.github.amichne.kast.topology.contract.TopologySnapshotEligibility
 import io.github.amichne.kast.topology.contract.TopologySnapshotManifest
+import io.github.amichne.kast.topology.contract.TopologySnapshotReadFailure
 import io.github.amichne.kast.topology.contract.TopologySnapshotStore
 import io.github.amichne.kast.topology.contract.TopologySourceFile
 import io.github.amichne.kast.topology.contract.TopologyWorkspaceIdentity
@@ -37,6 +38,9 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.yield
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -370,6 +374,67 @@ class TopologyBuildServiceTest {
         val result = service.build()
 
         assertEquals(TopologyBuildResult.Published(snapshot), result)
+        assertEquals(1, publicationCalls.get())
+    }
+
+    @Test
+    fun `overlapping builds publish once and reuse the durable snapshot`() = runTest {
+        val fixture = fixture()
+        val snapshot = fixture.snapshot()
+        val extractionEntered = CompletableDeferred<Unit>()
+        val releaseExtraction = CompletableDeferred<Unit>()
+        val extractionCalls = AtomicInteger()
+        val publicationCalls = AtomicInteger()
+        val snapshots = object : TopologySnapshotStore {
+            private var published = false
+
+            @Synchronized
+            override fun eligible(identity: TopologyWorkspaceIdentity): TopologySnapshotEligibility =
+                if (published) {
+                    TopologySnapshotEligibility.Eligible(snapshot)
+                } else {
+                    TopologySnapshotEligibility.Unavailable
+                }
+
+            override fun read(snapshot: PublishedTopologySnapshot): TopologySnapshotContentRead =
+                TopologySnapshotContentRead.Rejected(TopologySnapshotReadFailure.STORAGE_UNAVAILABLE)
+
+            @Synchronized
+            override fun publish(
+                generation: CompleteTopologyGeneration,
+            ): TopologyPublicationResult {
+                publicationCalls.incrementAndGet()
+                return if (published) {
+                    TopologyPublicationResult.Unchanged(snapshot)
+                } else {
+                    published = true
+                    TopologyPublicationResult.Published(snapshot)
+                }
+            }
+        }
+        val service = TopologyBuildService.create(
+            ready(fixture.workspace),
+            CurrentGuard(fixture.workspace.readLease),
+            TopologyCandidateEnumerator { fixture.enumeration },
+            TopologyFileExtractor {
+                extractionCalls.incrementAndGet()
+                extractionEntered.complete(Unit)
+                releaseExtraction.await()
+                TopologyFileExtraction.Complete(fixture.complete)
+            },
+            snapshots,
+        )
+
+        val first = async { service.build() }
+        extractionEntered.await()
+        val second = async { service.build() }
+        yield()
+        releaseExtraction.complete(Unit)
+        val results = listOf(first.await(), second.await())
+
+        assertEquals(1, results.count { result -> result is TopologyBuildResult.Published })
+        assertEquals(1, results.count { result -> result is TopologyBuildResult.Reused })
+        assertEquals(1, extractionCalls.get())
         assertEquals(1, publicationCalls.get())
     }
 

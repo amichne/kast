@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli.broker
 
 import io.github.amichne.kast.cli.broker.core.Broker
 import io.github.amichne.kast.cli.broker.core.BrokerLimits
+import io.github.amichne.kast.cli.broker.core.JsonLineBrokerInvocationActivitySink
 import io.github.amichne.kast.cli.broker.core.ProviderDefinition
 import io.github.amichne.kast.cli.broker.protocol.codex.CodexProtocolQualification
 import io.github.amichne.kast.cli.broker.protocol.codex.CodexProtocolQualificationOptions
@@ -207,6 +208,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     limits = BrokerLimits.defaults(),
                     maximumConnections = 8,
                     maximumMessageBytes = MAXIMUM_MESSAGE_BYTES,
+                    startupActivitySink = JsonLineBrokerStartupActivitySink(System.err),
                 ),
             )
         }
@@ -286,6 +288,7 @@ internal data class InstalledBrokerServerOptions(
     val limits: BrokerLimits,
     val maximumConnections: Int,
     val maximumMessageBytes: Int,
+    val startupActivitySink: BrokerStartupActivitySink,
 )
 
 internal enum class InstalledBrokerServerFailure {
@@ -347,64 +350,102 @@ internal class InstalledBrokerServer private constructor(
 
     companion object {
         internal suspend fun start(options: InstalledBrokerServerOptions): InstalledBrokerServerStart {
+            val activity = BrokerStartupActivityPublisher(options.startupActivitySink)
+            var stage = BrokerStartupStage.READINESS_ACQUISITION
+            activity.started(stage)
             val readiness = when (val beginning = options.readiness.begin()) {
                 BrokerReadinessBeginning.NotManaged -> null
                 is BrokerReadinessBeginning.Begun -> beginning.owned
-                BrokerReadinessBeginning.Rejected -> return rejected(
-                    InstalledBrokerServerFailure.READINESS_REJECTED,
-                )
+                BrokerReadinessBeginning.Rejected -> {
+                    val failure = InstalledBrokerServerFailure.READINESS_REJECTED
+                    activity.rejected(stage, BrokerStartupRejection.Server(failure))
+                    return rejected(failure)
+                }
             }
+            activity.completed(stage)
             fun rejectWithState(
+                rejectedStage: BrokerStartupStage,
                 failure: InstalledBrokerServerFailure,
+                rejection: BrokerStartupRejection = BrokerStartupRejection.Server(failure),
             ): InstalledBrokerServerStart.Rejected {
+                activity.rejected(rejectedStage, rejection)
                 readiness?.reject(failure.serverFailure())
                 return rejected(failure)
             }
+            stage = BrokerStartupStage.KAST_QUALIFICATION
+            activity.started(stage)
             val kast = when (val qualification = KastProviderQualifier.qualify(options.kastOptions)) {
-                is KastProviderQualification.Qualified -> qualification.registration
+                is KastProviderQualification.Qualified -> qualification.registration.also {
+                    activity.completed(stage)
+                }
                 is KastProviderQualification.Rejected -> return rejectWithState(
+                    stage,
                     InstalledBrokerServerFailure.KAST_QUALIFICATION_REJECTED,
                 )
             }
+            stage = BrokerStartupStage.GRADLE_DEFINITION
+            activity.started(stage)
             val gradle = when (val definition = GradleProvider.registration()) {
-                is Validation.Validated -> definition.value
+                is Validation.Validated -> definition.value.also { activity.completed(stage) }
                 is Validation.Rejected -> return rejectWithState(
+                    stage,
                     InstalledBrokerServerFailure.GRADLE_DEFINITION_REJECTED,
                 )
             }
+            stage = BrokerStartupStage.CATALOG
+            activity.started(stage)
             val broker = when (
                 val creation = Broker.create(
                     listOf<ProviderDefinition>(gradle, kast),
                     options.limits,
                 )
             ) {
-                is Validation.Validated -> creation.value
+                is Validation.Validated -> creation.value.also { activity.completed(stage) }
                 is Validation.Rejected -> return rejectWithState(
+                    stage,
                     InstalledBrokerServerFailure.CATALOG_REJECTED,
                 )
             }
+            stage = BrokerStartupStage.CODEX_QUALIFICATION
+            activity.started(stage)
             val protocol = when (
                 val qualification = CodexProtocolQualifier.qualify(options.protocolOptions)
             ) {
-                is CodexProtocolQualification.Qualified -> qualification
+                is CodexProtocolQualification.Qualified -> qualification.also {
+                    activity.completed(stage)
+                }
                 is CodexProtocolQualification.Rejected -> return rejectWithState(
+                    stage,
                     InstalledBrokerServerFailure.CODEX_QUALIFICATION_REJECTED,
+                    BrokerStartupRejection.CodexQualification(qualification.failure),
                 )
             }
+            stage = BrokerStartupStage.THREAD_STORE
+            activity.started(stage)
             val store = when (val opened = FileThreadCatalogStore.open(options.threadStore)) {
-                is FileThreadCatalogStoreOpen.Opened -> opened.store
+                is FileThreadCatalogStoreOpen.Opened -> opened.store.also {
+                    activity.completed(stage)
+                }
                 is FileThreadCatalogStoreOpen.Rejected -> return rejectWithState(
+                    stage,
                     InstalledBrokerServerFailure.THREAD_STORE_REJECTED,
                 )
             }
+            stage = BrokerStartupStage.UPSTREAM
+            activity.started(stage)
             val upstream = when (
                 val started = ManagedCodexUpstream.start(options.upstreamOptions)
             ) {
-                is ManagedCodexUpstreamStart.Started -> started.upstream
+                is ManagedCodexUpstreamStart.Started -> started.upstream.also {
+                    activity.completed(stage)
+                }
                 is ManagedCodexUpstreamStart.Rejected -> return rejectWithState(
+                    stage,
                     InstalledBrokerServerFailure.UPSTREAM_REJECTED,
                 )
             }
+            stage = BrokerStartupStage.PUBLIC_SERVER
+            activity.started(stage)
             val publicServer = when (
                 val started = KtorBrokerServer.start(
                     KtorBrokerServerOptions(
@@ -415,15 +456,23 @@ internal class InstalledBrokerServer private constructor(
                         upstream = upstream,
                         maximumConnections = options.maximumConnections,
                         maximumMessageBytes = options.maximumMessageBytes,
+                        activitySink = JsonLineBrokerInvocationActivitySink(System.err),
                     ),
                 )
             ) {
-                is KtorBrokerServerStart.Started -> started.server
+                is KtorBrokerServerStart.Started -> started.server.also {
+                    activity.completed(stage)
+                }
                 is KtorBrokerServerStart.Rejected -> {
                     upstream.close()
-                    return rejectWithState(InstalledBrokerServerFailure.PUBLIC_SERVER_REJECTED)
+                    return rejectWithState(
+                        stage,
+                        InstalledBrokerServerFailure.PUBLIC_SERVER_REJECTED,
+                    )
                 }
             }
+            stage = BrokerStartupStage.READINESS_PUBLICATION
+            activity.started(stage)
             if (readiness?.ready() == BrokerReadinessTransition.Rejected) {
                 try {
                     publicServer.close()
@@ -431,8 +480,15 @@ internal class InstalledBrokerServer private constructor(
                     upstream.close()
                 }
                 readiness.reject(BrokerServerFailure.READINESS_REJECTED)
+                activity.rejected(
+                    stage,
+                    BrokerStartupRejection.Server(
+                        InstalledBrokerServerFailure.READINESS_REJECTED,
+                    ),
+                )
                 return rejected(InstalledBrokerServerFailure.READINESS_REJECTED)
             }
+            activity.completed(stage)
             return InstalledBrokerServerStart.Started(
                 InstalledBrokerServer(publicServer, upstream, readiness),
             )

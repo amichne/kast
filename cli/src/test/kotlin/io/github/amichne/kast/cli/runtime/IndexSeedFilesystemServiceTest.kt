@@ -13,11 +13,93 @@ import java.nio.file.StandardCopyOption
 
 class IndexSeedFilesystemServiceTest {
     @Test
+    fun `stale source pid marker is not a live lock`(
+        @TempDir temporary: Path,
+    ) {
+        val source = Files.createDirectory(temporary.resolve("source-system")).toRealPath()
+        Files.writeString(source.resolve(".pid"), Long.MAX_VALUE.toString())
+
+        assertEquals(
+            SourceIdeQuiescence(
+                SourceIdeProcessState.STOPPED,
+                SourceIdeLockState.UNLOCKED,
+            ),
+            FilesystemSourceIdeQuiescenceProbe.observe(source),
+        )
+    }
+
+    @Test
+    fun `live source pid and source port remain locked`(
+        @TempDir temporary: Path,
+    ) {
+        val liveSource = Files.createDirectory(temporary.resolve("live-source")).toRealPath()
+        Files.writeString(liveSource.resolve(".pid"), ProcessHandle.current().pid().toString())
+        assertEquals(
+            SourceIdeQuiescence(
+                SourceIdeProcessState.RUNNING,
+                SourceIdeLockState.LOCKED,
+            ),
+            FilesystemSourceIdeQuiescenceProbe.observe(liveSource),
+        )
+
+        val portLockedSource = Files.createDirectory(temporary.resolve("port-locked-source"))
+            .toRealPath()
+        Files.writeString(portLockedSource.resolve(".pid"), Long.MAX_VALUE.toString())
+        Files.writeString(portLockedSource.resolve(".port"), "6942")
+        assertEquals(
+            SourceIdeQuiescence(
+                SourceIdeProcessState.STOPPED,
+                SourceIdeLockState.LOCKED,
+            ),
+            FilesystemSourceIdeQuiescenceProbe.observe(portLockedSource),
+        )
+    }
+
+    @Test
+    fun `escaped IntelliJ project state identifies the exact project cache`(
+        @TempDir temporary: Path,
+    ) {
+        val fixture = seedFixture(temporary)
+        val escapedProjectRoot = fixture.projectRoot.toString().replace("&", "&amp;")
+        Files.writeString(
+            fixture.sourceSystem.resolve("projects/target.0123abcd/cache-state.xml"),
+            """
+            <project version="4">
+              <component name="ExternalSystemProjectTracker">{
+                &quot;projectData&quot;: {
+                  &quot;GRADLE&quot;: {
+                    &quot;$escapedProjectRoot&quot;: {}
+                  }
+                }
+              }</component>
+            </project>
+            """.trimIndent(),
+        )
+
+        val publication = service(cloner = CopyingTestCloner)
+            .seed(fixture.request())
+            .seeded()
+
+        assertTrue(
+            Files.exists(
+                publication.systemDirectory.resolve("projects/target.0123abcd/cache-state.xml"),
+            ),
+        )
+    }
+
+    @Test
     fun `seed publishes only the fixed global and exact project allowlist`(
         @TempDir temporary: Path,
     ) {
         val fixture = seedFixture(temporary)
-        val service = service(cloner = CopyingTestCloner)
+        val activity = mutableListOf<IndexSeedActivity>()
+        val service = service(
+            cloner = CopyingTestCloner,
+            activitySink = IndexSeedActivitySink { event ->
+                activity += event
+                IndexSeedActivityPublication.PUBLISHED
+            },
+        )
 
         val publication = service.seed(fixture.request()).seeded()
 
@@ -41,6 +123,15 @@ class IndexSeedFilesystemServiceTest {
         assertFalse(Files.exists(publication.systemDirectory.resolve("log")))
         assertFalse(Files.exists(publication.systemDirectory.resolve("projects/other.89abcdef")))
         assertTrue(Files.exists(publication.root.resolve("seed-receipt.properties")))
+        assertEquals(
+            IndexSeedStage.entries.flatMap { stage ->
+                listOf(
+                    IndexSeedActivity.Started(stage),
+                    IndexSeedActivity.Completed(stage),
+                )
+            },
+            activity,
+        )
     }
 
     @Test
@@ -108,11 +199,20 @@ class IndexSeedFilesystemServiceTest {
         assertFalse(copyAttempted)
 
         val failed = seedFixture(temporary.resolve("failed"))
+        val activity = mutableListOf<IndexSeedActivity>()
         assertEquals(
             IndexSeedFailure.CopyFailure,
             service(
                 cloner = IndexSeedCloner { _, _ -> IndexSeedCopyResult.Rejected },
+                activitySink = IndexSeedActivitySink { event ->
+                    activity += event
+                    IndexSeedActivityPublication.PUBLISHED
+                },
             ).seed(failed.request()).rejected(),
+        )
+        assertEquals(
+            IndexSeedActivity.Rejected(IndexSeedStage.COPY, IndexSeedFailure.CopyFailure),
+            activity.last(),
         )
         assertFalse(Files.exists(failed.cacheRoot.resolve(failed.cacheIdentity.key)))
     }
@@ -161,11 +261,13 @@ class IndexSeedFilesystemServiceTest {
             IndexSeedFilesystem.APFS
         },
         consentProvider: IndexSeedConsentProvider = RejectingIndexSeedConsentProvider,
+        activitySink: IndexSeedActivitySink = IndexSeedActivitySink.Disabled,
     ): IndexSeedFilesystemService = IndexSeedFilesystemService(
         quiescenceProbe,
         filesystemProbe,
         cloner,
         consentProvider,
+        activitySink,
     )
 
     private fun seedFixture(temporary: Path): SeedFixture {
@@ -208,7 +310,7 @@ class IndexSeedFilesystemServiceTest {
             runtime,
             semanticRuntimeId,
         ).derivedForSeed()
-        return SeedFixture(source, cacheRoot, runtime, cacheIdentity)
+        return SeedFixture(source, project, cacheRoot, runtime, cacheIdentity)
     }
 
     private fun write(root: Path, relative: String, content: String) {
@@ -236,6 +338,7 @@ class IndexSeedFilesystemServiceTest {
 
 private data class SeedFixture(
     val sourceSystem: Path,
+    val projectRoot: Path,
     val cacheRoot: Path,
     val runtime: InstalledIdeRuntime,
     val cacheIdentity: KastCacheIdentity,

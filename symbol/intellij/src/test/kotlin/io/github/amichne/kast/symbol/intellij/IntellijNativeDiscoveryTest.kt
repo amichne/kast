@@ -231,14 +231,17 @@ class SymbolDiscoveryTest {
             },
             projector = { discoveryRequest, item, file ->
                 val fake = item as FakeItem
+                val resultKind = (
+                    discoveryRequest.target as SymbolDiscoveryTarget.Name
+                ).resultKind
                 projectedNames += fake.candidateName
                 SymbolDiscoveryCandidate.fromBoundary(
-                    kind = discoveryRequest.kind,
+                    kind = resultKind,
                     rawName = fake.candidateName,
                     lease = discoveryRequest.scope.lease,
                     nativePath = Path.of("/workspace/src/${file.name}"),
                     virtualFileUrl = file.url,
-                    rawOffset = if (discoveryRequest.kind == SymbolDiscoveryKind.FILE) {
+                    rawOffset = if (resultKind == SymbolDiscoveryKind.FILE) {
                         null
                     } else {
                         fake.candidateName.length

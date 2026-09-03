@@ -63,8 +63,11 @@ class NativeSymbolDedupReviewRegressionTest {
         val query = IntellijNativeDiscoveryQuery(
             itemFile = { IntellijDiscoveryItemFileResult.Found(file) },
             projector = { candidateRequest, _, _ ->
+                val resultKind = (
+                    candidateRequest.target as SymbolDiscoveryTarget.Name
+                ).resultKind
                 SymbolDiscoveryCandidate.fromBoundary(
-                    kind = candidateRequest.kind,
+                    kind = resultKind,
                     rawName = item.candidateName,
                     lease = candidateRequest.scope.lease,
                     nativePath = Path.of("/workspace/src/ReviewItem.kt"),

@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli.broker.runtime
 
 import io.github.amichne.kast.cli.broker.core.Broker
+import io.github.amichne.kast.cli.broker.core.BrokerInvocationActivitySink
 import io.github.amichne.kast.cli.broker.protocol.ThreadCatalogStore
 import io.github.amichne.kast.cli.broker.protocol.codex.CodexProtocolAdapter
 import io.github.amichne.kast.cli.broker.protocol.codex.CodexProtocolContracts
@@ -96,6 +97,7 @@ internal data class KtorBrokerServerOptions(
     val maximumConnections: Int,
     val maximumMessageBytes: Int,
     val connectionInitializationTimeoutMillis: Long = 10_000,
+    val activitySink: BrokerInvocationActivitySink = BrokerInvocationActivitySink.Disabled,
 )
 
 internal enum class KtorBrokerServerFailure {
@@ -115,12 +117,17 @@ internal sealed interface KtorBrokerServerStart {
 internal class KtorBrokerServer private constructor(
     private val engine: EmbeddedServer<*, *>,
     private val ownedSocket: OwnedUnixSocket,
+    private val ownershipLease: UnixSocketOwnershipLease,
 ) {
     internal suspend fun close() {
         try {
             engine.stopSuspend(gracePeriodMillis = 500, timeoutMillis = 2_000)
         } finally {
-            ownedSocket.retire()
+            try {
+                ownedSocket.retire()
+            } finally {
+                ownershipLease.close()
+            }
         }
     }
 
@@ -132,15 +139,34 @@ internal class KtorBrokerServer private constructor(
             ) {
                 return KtorBrokerServerStart.Rejected(KtorBrokerServerFailure.INVALID_LIMIT)
             }
-            when (UnixSocketPathOwnership.prepare(options.publicSocket.path)) {
-                UnixSocketPathPreparation.PREPARED -> Unit
-                UnixSocketPathPreparation.OWNED -> return KtorBrokerServerStart.Rejected(
+            val ownershipLease = when (
+                val acquisition = UnixSocketPathOwnership.acquireLease(options.publicSocket.path)
+            ) {
+                is UnixSocketOwnershipLeaseAcquisition.Acquired -> acquisition.lease
+                UnixSocketOwnershipLeaseAcquisition.Owned -> return KtorBrokerServerStart.Rejected(
                     KtorBrokerServerFailure.SOCKET_PATH_OWNED,
                 )
-                UnixSocketPathPreparation.REJECTED -> return KtorBrokerServerStart.Rejected(
+                UnixSocketOwnershipLeaseAcquisition.Rejected ->
+                    return KtorBrokerServerStart.Rejected(
+                        KtorBrokerServerFailure.SOCKET_PATH_REJECTED,
+                    )
+                UnixSocketOwnershipLeaseAcquisition.ParentRejected ->
+                    return KtorBrokerServerStart.Rejected(
+                        KtorBrokerServerFailure.SOCKET_PARENT_REJECTED,
+                    )
+            }
+            when (UnixSocketPathOwnership.prepare(options.publicSocket.path)) {
+                UnixSocketPathPreparation.PREPARED -> Unit
+                UnixSocketPathPreparation.OWNED -> return rejectedAfterLease(
+                    ownershipLease,
+                    KtorBrokerServerFailure.SOCKET_PATH_OWNED,
+                )
+                UnixSocketPathPreparation.REJECTED -> return rejectedAfterLease(
+                    ownershipLease,
                     KtorBrokerServerFailure.SOCKET_PATH_REJECTED,
                 )
-                UnixSocketPathPreparation.PARENT_REJECTED -> return KtorBrokerServerStart.Rejected(
+                UnixSocketPathPreparation.PARENT_REJECTED -> return rejectedAfterLease(
+                    ownershipLease,
                     KtorBrokerServerFailure.SOCKET_PARENT_REJECTED,
                 )
             }
@@ -153,21 +179,23 @@ internal class KtorBrokerServer private constructor(
                         maxFrameSize = options.maximumMessageBytes.toLong()
                     }
                     routing {
-                        webSocket("/") {
-                            val count = connectionCount.incrementAndGet()
-                            try {
-                                if (count > options.maximumConnections) {
-                                    close(
-                                        CloseReason(
-                                            CloseReason.Codes.TRY_AGAIN_LATER,
-                                            "connection limit exceeded",
-                                        ),
-                                    )
-                                } else {
-                                    bridgeConnection(this, options)
+                        BrokerWebSocketRoute.entries.forEach { route ->
+                            webSocket(route.path) {
+                                val count = connectionCount.incrementAndGet()
+                                try {
+                                    if (count > options.maximumConnections) {
+                                        close(
+                                            CloseReason(
+                                                CloseReason.Codes.TRY_AGAIN_LATER,
+                                                "connection limit exceeded",
+                                            ),
+                                        )
+                                    } else {
+                                        bridgeConnection(this, options)
+                                    }
+                                } finally {
+                                    connectionCount.decrementAndGet()
                                 }
-                            } finally {
-                                connectionCount.decrementAndGet()
                             }
                         }
                     }
@@ -181,6 +209,7 @@ internal class KtorBrokerServer private constructor(
                 )
             } catch (_: Exception) {
                 engine.stopSuspend(gracePeriodMillis = 0, timeoutMillis = 1_000)
+                ownershipLease.close()
                 return KtorBrokerServerStart.Rejected(
                     KtorBrokerServerFailure.SERVER_START_REJECTED,
                 )
@@ -188,11 +217,22 @@ internal class KtorBrokerServer private constructor(
             val owned = OwnedUnixSocket.capture(options.publicSocket.path)
                 ?: run {
                     engine.stopSuspend(gracePeriodMillis = 0, timeoutMillis = 1_000)
+                    ownershipLease.close()
                     return KtorBrokerServerStart.Rejected(
                         KtorBrokerServerFailure.SOCKET_IDENTITY_REJECTED,
                     )
                 }
-            return KtorBrokerServerStart.Started(KtorBrokerServer(engine, owned))
+            return KtorBrokerServerStart.Started(
+                KtorBrokerServer(engine, owned, ownershipLease),
+            )
+        }
+
+        private fun rejectedAfterLease(
+            lease: UnixSocketOwnershipLease,
+            failure: KtorBrokerServerFailure,
+        ): KtorBrokerServerStart.Rejected {
+            lease.close()
+            return KtorBrokerServerStart.Rejected(failure)
         }
 
         private suspend fun bridgeConnection(
@@ -209,7 +249,12 @@ internal class KtorBrokerServer private constructor(
                     return
                 }
             }
-            val adapter = CodexProtocolAdapter(options.broker, options.contracts, options.threadStore)
+            val adapter = CodexProtocolAdapter(
+                options.broker,
+                options.contracts,
+                options.threadStore,
+                options.activitySink,
+            )
             try {
                 val initializationRouting = adapter.fromDownstream(initialize.message)
                 if (initializationRouting !is ProtocolRouting.ForwardUpstream) {
@@ -409,3 +454,8 @@ internal class KtorBrokerServer private constructor(
 private data class InitializeRequest(val message: String, val idKey: String)
 
 private enum class InitializationResponse { UNRELATED, SUCCESS, FAILURE }
+
+private enum class BrokerWebSocketRoute(val path: String) {
+    CODEX("/rpc"),
+    LEGACY("/"),
+}

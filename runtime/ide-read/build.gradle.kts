@@ -36,6 +36,7 @@ private val workspaceIdeaLibraries = files(
 ).builtBy(":workspace:intellij-read:extractWorkspaceReadIdeaDistribution")
 
 dependencies {
+    implementation(catalog.findLibrary("coroutines-core").get())
     implementation(project(":protocol:wire"))
     implementation(project(":symbol:contract"))
     implementation(project(":symbol:intellij"))

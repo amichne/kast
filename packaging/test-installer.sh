@@ -27,9 +27,11 @@ assert_present() {
 
 home="$fixture_root/home"
 stub_bin="$fixture_root/stub-bin"
+java_home="$fixture_root/java-home"
 test_state="$fixture_root/state"
 assets="$fixture_root/assets/v9.8.7"
-mkdir -p "$home" "$stub_bin" "$test_state" "$assets"
+mkdir -p "$home" "$stub_bin" "$java_home/bin" "$test_state" "$assets"
+java_home="$(CDPATH='' cd -- "$java_home" && pwd -P)"
 
 launchctl_state="$test_state/launchctl-service"
 launchctl_log="$test_state/launchctl.log"
@@ -94,8 +96,10 @@ printf '%s\n' '#!/usr/bin/env bash' \
 chmod +x "$stub_bin/uname"
 
 printf '%s\n' '#!/usr/bin/env bash' \
-  'printf '\''openjdk version "25.0.3" 2026-04-21\n'\'' >&2' >"$stub_bin/java"
-chmod +x "$stub_bin/java"
+  'printf '\''openjdk version "25.0.3" 2026-04-21\n'\'' >&2' \
+  'printf "    java.home = %s\n" "${KAST_TEST_JAVA_HOME:?}" >&2' >"$java_home/bin/java"
+chmod +x "$java_home/bin/java"
+ln -s "$java_home/bin/java" "$stub_bin/java"
 
 printf '%s\n' '#!/usr/bin/env bash' \
   'set -euo pipefail' \
@@ -162,6 +166,7 @@ installer_environment=(
   "KAST_TEST_PROCESS_LOG=$process_log"
   "KAST_TEST_CURL_LOG=$curl_log"
   "KAST_TEST_ASSET_DIR=$assets"
+  "KAST_TEST_JAVA_HOME=$java_home"
   "KAST_INSTALL_PROCESS_TABLE_COMMAND=$stub_bin/ps"
   "KAST_INSTALL_PROCESS_KILL_COMMAND=$stub_bin/kill"
   "TMPDIR=$fixture_root/tmp"
@@ -261,6 +266,10 @@ env "${installer_environment[@]}" bash "$repository_root/install.sh" install \
 version_root="$custom_install/versions/9.8.7"
 [[ -x "$version_root/bin/kast" ]] || fail "verified control release was not installed"
 [[ -x "$version_root/bin/kast-complete" ]] || fail "complete launcher was not installed"
+grep -Fq "export JAVA='$java_home/bin/java'" "$version_root/bin/kast-complete" ||
+  fail "complete launcher did not retain the installation-proven Java executable"
+grep -Fq "export JAVA_HOME='$java_home'" "$version_root/bin/kast-complete" ||
+  fail "complete launcher did not retain the installation-proven Java home"
 [[ -f "$version_root/share/kast/runtime/$runtime_name" ]] ||
   fail "private sidecar archive was not installed"
 [[ -L "$custom_install/current" && -L "$custom_bin/kast" ]] ||

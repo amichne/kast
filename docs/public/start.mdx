@@ -147,7 +147,10 @@ headless IntelliJ sidecar and publishes its compiler-backed evidence.
 
     Kast rejects a running, changed, incompatible, wrong-project, non-APFS, or
     unconsented source. It validates manifests before atomically publishing the
-    clone and never mounts or modifies the source directory.
+    clone and never mounts or modifies the source directory. While this runs,
+    stderr receives payload-free JSON lines for each bounded seed stage and its
+    `started`, `completed`, or `rejected` outcome. A rejection also carries one
+    finite reason; paths and copied content are never included.
   </Accordion>
 
   <Accordion title="Rebuild only Kast state" icon="rotate-ccw">

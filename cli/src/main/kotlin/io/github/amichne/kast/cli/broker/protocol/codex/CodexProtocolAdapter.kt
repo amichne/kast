@@ -5,6 +5,10 @@ import io.github.amichne.kast.cli.broker.core.BrokerDispatch
 import io.github.amichne.kast.cli.broker.core.BrokerDispatchRequest
 import io.github.amichne.kast.cli.broker.core.BrokerFailure
 import io.github.amichne.kast.cli.broker.core.BrokerInvocationContext
+import io.github.amichne.kast.cli.broker.core.BrokerInvocationActivity
+import io.github.amichne.kast.cli.broker.core.BrokerInvocationActivityPublication
+import io.github.amichne.kast.cli.broker.core.BrokerInvocationActivitySink
+import io.github.amichne.kast.cli.broker.core.BrokerInvocationCompletion
 import io.github.amichne.kast.cli.broker.core.BrokerLimit
 import io.github.amichne.kast.cli.broker.core.ProviderNamespace
 import io.github.amichne.kast.cli.broker.core.ToolAddress
@@ -19,6 +23,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -78,6 +83,7 @@ internal class CodexProtocolAdapter(
     private val broker: Broker,
     private val contracts: CodexProtocolContracts,
     private val threadStore: ThreadCatalogStore,
+    private val activitySink: BrokerInvocationActivitySink = BrokerInvocationActivitySink.Disabled,
 ) : AutoCloseable {
     private val pendingThreadOperations = ConcurrentHashMap<String, PendingThreadOperation>()
     private val activeInvocations = ConcurrentHashMap<String, ActiveInvocation>()
@@ -163,10 +169,11 @@ internal class CodexProtocolAdapter(
         if (!invocationCapacity.tryAcquire()) {
             return dynamicToolFailure(id, "BROKER_OVERLOADED_IN_FLIGHT_CALLS_PER_CONNECTION")
         }
-        val operation = invocationScope.async {
+        val address = ToolAddress(namespace, tool)
+        val operation = invocationScope.async(start = CoroutineStart.LAZY) {
             broker.dispatch(
                 BrokerDispatchRequest(
-                    ToolAddress(namespace, tool),
+                    address,
                     arguments,
                     context,
                 ),
@@ -181,6 +188,16 @@ internal class CodexProtocolAdapter(
             invocationCapacity.release()
             return dynamicToolFailure(id, "DUPLICATE_INVOCATION")
         }
+        if (
+            publishActivity(BrokerInvocationActivity.Started(context, address)) ==
+            BrokerInvocationActivityPublication.REJECTED
+        ) {
+            activeInvocations.remove(invocationId)
+            operation.cancel()
+            invocationCapacity.release()
+            return dynamicToolFailure(id, "BROKER_ACTIVITY_UNAVAILABLE")
+        }
+        operation.start()
         val dispatch = try {
             operation.await()
         } catch (_: CancellationException) {
@@ -188,6 +205,18 @@ internal class CodexProtocolAdapter(
         } finally {
             activeInvocations.remove(invocationId)
             invocationCapacity.release()
+        }
+        val completion = when (dispatch) {
+            is BrokerDispatch.Completed -> BrokerInvocationCompletion.COMPLETED
+            is BrokerDispatch.Rejected -> BrokerInvocationCompletion.REJECTED
+            null -> BrokerInvocationCompletion.CANCELLED
+        }
+        if (
+            publishActivity(
+                BrokerInvocationActivity.Finished(context, address, completion),
+            ) == BrokerInvocationActivityPublication.REJECTED
+        ) {
+            return dynamicToolFailure(id, "BROKER_ACTIVITY_UNAVAILABLE")
         }
         val presentation = when (dispatch) {
             is BrokerDispatch.Completed -> dispatch.presentation
@@ -201,6 +230,14 @@ internal class CodexProtocolAdapter(
         invocationScope.cancel()
         activeInvocations.clear()
         pendingThreadOperations.clear()
+    }
+
+    private fun publishActivity(
+        activity: BrokerInvocationActivity,
+    ): BrokerInvocationActivityPublication = try {
+        activitySink.publish(activity)
+    } catch (_: RuntimeException) {
+        BrokerInvocationActivityPublication.REJECTED
     }
 
     private fun initialize(document: JsonObject): ProtocolRouting {

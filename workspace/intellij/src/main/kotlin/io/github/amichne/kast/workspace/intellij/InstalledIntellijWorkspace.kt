@@ -3,7 +3,6 @@ package io.github.amichne.kast.workspace.intellij
 import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
-import com.intellij.openapi.externalSystem.service.notification.ExternalSystemProgressNotificationManager
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.module.ModuleManager
@@ -14,6 +13,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefresh
 import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefreshFailure
 import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefreshOperations
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
+import org.jetbrains.plugins.gradle.settings.GradleSettings
 import org.jetbrains.plugins.gradle.settings.GradleSystemSettings
 import org.jetbrains.plugins.gradle.util.GradleConstants
 import java.nio.file.Path
@@ -30,7 +30,9 @@ enum class InstalledIntellijWorkspaceFailure {
     STARTUP_FAILED,
     GRADLE_JVM_UNAVAILABLE,
     PROJECT_JVM_UNAVAILABLE,
+    PLATFORM_LINKAGE_INVALID,
     GRADLE_IMPORT_FAILED,
+    GRADLE_JVM_CONFIGURATION_INVALID,
     GRADLE_IMPORT_TIMED_OUT,
     INDEXING_INTERRUPTED,
     MODEL_UNAVAILABLE,
@@ -101,6 +103,7 @@ class InstalledIntellijWorkspaceModel internal constructor(
                         InstalledIndexingReadinessFailure.IndexingTimedOut ->
                             WorkspaceIndexRefreshFailure.INDEXING_TIMED_OUT
                         InstalledIndexingReadinessFailure.ModuleMaterializationUnavailable,
+                        InstalledIndexingReadinessFailure.PlatformLinkageInvalid,
                         InstalledIndexingReadinessFailure.PlatformObservationUnavailable,
                         InstalledIndexingReadinessFailure.ProjectDisposed,
                         InstalledIndexingReadinessFailure.ProjectJvmUnavailable,
@@ -146,6 +149,8 @@ internal fun InstalledIndexingReadiness.workspaceOpeningAdmission():
                     InstalledIntellijWorkspaceFailure.INDEXING_INTERRUPTED
                 InstalledIndexingReadinessFailure.ProjectJvmUnavailable ->
                     InstalledIntellijWorkspaceFailure.PROJECT_JVM_UNAVAILABLE
+                InstalledIndexingReadinessFailure.PlatformLinkageInvalid ->
+                    InstalledIntellijWorkspaceFailure.PLATFORM_LINKAGE_INVALID
                 InstalledIndexingReadinessFailure.IndexingTimedOut,
                 InstalledIndexingReadinessFailure.ModuleMaterializationUnavailable,
                 InstalledIndexingReadinessFailure.PlatformObservationUnavailable,
@@ -161,7 +166,7 @@ object InstalledIntellijWorkspace {
      * Proof transition: `Path -> InstalledIntellijWorkspaceOpening`.
      *
      * [InstalledIntellijWorkspaceOpening.Opened] establishes that IntelliJ opened the exact path,
-     * completed one observed project-open import or explicit Gradle link, reached smart mode, and
+     * completed one explicit Gradle refresh or link, reached smart mode, and
      * detached one complete Gradle model. [InstalledIntellijWorkspaceFailure] closes every expected
      * bootstrap failure. The live project and Gradle objects remain inside this adapter and the
      * IntelliJ project lifecycle.
@@ -183,29 +188,19 @@ object InstalledIntellijWorkspace {
                 InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE,
             )
         }
-        val importObserver = InstalledGradleImportObserver(workspaceRoot)
-        val notificationManager = ExternalSystemProgressNotificationManager.getInstance()
-        if (!notificationManager.addNotificationListener(importObserver)) {
-            return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED)
-        }
-        return try {
-            openObserved(workspaceRoot, gradleJvm, importObserver, observer)
-        } finally {
-            notificationManager.removeNotificationListener(importObserver)
-        }
+        return openObserved(workspaceRoot, gradleJvm, observer)
     }
 
     private fun openObserved(
         workspaceRoot: Path,
         gradleJvm: InstalledGradleJvm,
-        importObserver: InstalledGradleImportObserver,
         observer: InstalledIntellijWorkspaceBootstrapObserver,
     ): InstalledIntellijWorkspaceOpening {
-        val preparation = InstalledProjectOpenPreparation(workspaceRoot, gradleJvm)
+        val preparation = InstalledProjectOpenPreparation(gradleJvm)
         val project = try {
             ProjectManagerEx.getInstanceEx().openProject(
                 workspaceRoot,
-                openProjectTask(preparation),
+                installedProjectOpenTask(preparation),
             )
         } catch (_: RuntimeException) {
             null
@@ -236,8 +231,21 @@ object InstalledIntellijWorkspace {
             FutureCompletion.FAILED,
                 -> return rejected(InstalledIntellijWorkspaceFailure.STARTUP_FAILED)
         }
-        if (prepared.importOperation is InstalledGradleImportOperation.AwaitLinked) {
-            importObserver.closeProjectOpenAdmission()
+        val linkPresence = when (val resolution = try {
+            linkedGradleProject(GradleSettings.getInstance(project), workspaceRoot)
+        } catch (_: RuntimeException) {
+            InstalledGradleLinkPresenceResolution.Rejected
+        }) {
+            is InstalledGradleLinkPresenceResolution.Resolved -> resolution.presence
+            InstalledGradleLinkPresenceResolution.Rejected -> return rejected(
+                InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED,
+            )
+        }
+        val importOperation = when (val application = linkPresence.applyImportJvm(gradleJvm)) {
+            is InstalledGradleImportApplication.Applied -> application.operation
+            InstalledGradleImportApplication.Rejected -> return rejected(
+                InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED,
+            )
         }
 
         val imported = CompletableFuture<Void>()
@@ -245,8 +253,11 @@ object InstalledIntellijWorkspace {
         val specification = ImportSpecBuilder(project, GradleConstants.SYSTEM_ID)
             .withCallback(imported)
         val importCompletion = try {
-            when (prepared.importOperation) {
-                InstalledGradleImportOperation.AwaitLinked -> importObserver.completion
+            when (importOperation) {
+                InstalledGradleImportOperation.RefreshLinked -> {
+                    ExternalSystemUtil.refreshProject(workspaceRoot.toString(), specification)
+                    closedImported
+                }
                 InstalledGradleImportOperation.LinkUnlinked -> {
                     val settings = GradleProjectSettings(workspaceRoot.toString()).apply {
                         this.gradleJvm = gradleJvm.projectSettingsSelector()
@@ -265,6 +276,9 @@ object InstalledIntellijWorkspace {
             )
             InstalledGradleImportWait.TIMED_OUT -> return rejected(
                 InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_TIMED_OUT,
+            )
+            InstalledGradleImportWait.INVALID_JVM_CONFIGURATION -> return rejected(
+                InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID,
             )
             InstalledGradleImportWait.CANCELLED,
             InstalledGradleImportWait.FAILED,
@@ -317,18 +331,6 @@ object InstalledIntellijWorkspace {
         )
     }
 
-    private fun openProjectTask(
-        preparation: InstalledProjectOpenPreparation,
-    ): OpenProjectTask = OpenProjectTask.build().copy(
-        isRefreshVfsNeeded = true,
-        runConfigurators = true,
-        runConversionBeforeOpen = false,
-        preloadServices = true,
-        beforeOpen = { project ->
-            preparation.prepare(project) is InstalledProjectOpenPreparationState.Prepared
-        },
-    )
-
     private fun awaitStartup(
         project: com.intellij.openapi.project.Project,
     ): FutureCompletion {
@@ -352,8 +354,9 @@ object InstalledIntellijWorkspace {
      * InstalledGradleImportWait`.
      *
      * Establishes one closed terminal import observation within the installed timeout.
-     * [InstalledGradleImportWait] closes cancellation, timeout, interruption, and unexpected
-     * future failure. The future remains inside the installed import boundary.
+     * [InstalledGradleImportWait] closes cancellation, timeout, interruption, invalid JVM
+     * configuration, and unexpected future failure. The future remains inside the installed import
+     * boundary.
      */
     private fun awaitImport(
         future: CompletableFuture<InstalledGradleImportOutcome>,
@@ -362,6 +365,8 @@ object InstalledIntellijWorkspace {
             InstalledGradleImportOutcome.Completed -> InstalledGradleImportWait.COMPLETED
             InstalledGradleImportOutcome.Failed -> InstalledGradleImportWait.FAILED
             InstalledGradleImportOutcome.Cancelled -> InstalledGradleImportWait.CANCELLED
+            InstalledGradleImportOutcome.InvalidJvmConfiguration ->
+                InstalledGradleImportWait.INVALID_JVM_CONFIGURATION
         }
     } catch (_: InterruptedException) {
         Thread.currentThread().interrupt()
@@ -419,6 +424,19 @@ object InstalledIntellijWorkspace {
     }
 }
 
+/** Project-open policy that prevents cached External System state from racing JVM admission. */
+internal fun installedProjectOpenTask(
+    preparation: InstalledProjectOpenPreparation,
+): OpenProjectTask = OpenProjectTask.build().copy(
+    isRefreshVfsNeeded = true,
+    runConfigurators = false,
+    runConversionBeforeOpen = false,
+    preloadServices = true,
+    beforeOpen = { project ->
+        preparation.prepare(project) is InstalledProjectOpenPreparationState.Prepared
+    },
+)
+
 private fun InstalledGradleModelCaptureFailure.workspaceFailure(): InstalledIntellijWorkspaceFailure =
     when (this) {
         InstalledGradleModelCaptureFailure.ROOT_UNAVAILABLE ->
@@ -458,14 +476,13 @@ private enum class InstalledGradleImportWait {
     CANCELLED,
     TIMED_OUT,
     INTERRUPTED,
+    INVALID_JVM_CONFIGURATION,
 }
 
 private fun InstalledProjectOpenPreparationFailure.workspaceFailure():
     InstalledIntellijWorkspaceFailure = when (this) {
         InstalledProjectOpenPreparationFailure.PROJECT_JVM_REJECTED ->
             InstalledIntellijWorkspaceFailure.PROJECT_JVM_UNAVAILABLE
-        InstalledProjectOpenPreparationFailure.GRADLE_SETTINGS_REJECTED ->
-            InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED
     }
 
 private fun rejected(

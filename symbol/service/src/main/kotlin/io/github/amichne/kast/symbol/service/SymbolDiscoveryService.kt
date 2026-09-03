@@ -106,7 +106,7 @@ class SymbolDiscoveryService(
             batch.lease == request.scope.lease &&
             batch.scope == request.scope.scope &&
             batch.examinedWorkUnits.value <= request.budget.resources.workUnitLimit.value &&
-            batch.candidates.all { candidate -> candidate.kind == request.kind }
+            batch.candidates.all { candidate -> request.target.admits(candidate.kind) }
         return if (contractHolds) {
             SymbolDiscoveryResult.Discovered(outcome)
         } else {
