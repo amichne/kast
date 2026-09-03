@@ -28,25 +28,34 @@ icon: "server"
 keywords: ["sidecar", "IntelliJ", "workspace", "generation"]
 ---
 
-The runtime boundary turns a directory on disk into a narrow semantic
-capability. The important result of startup is not merely a running JVM. It is
-evidence that one compatible process, endpoint, workspace, and semantic
-generation all belong to the same canonical repository root.
+The runtime boundary admits one canonical repository root before semantic work
+begins.
+
+A ready runtime proves that the same root owns:
+
+- the compatible sidecar process;
+- its endpoint and workspace; and
+- the current semantic generation.
 
 ## Exact-root admission
 
-The control executable begins by canonicalizing the caller's starting path.
-That root contributes to endpoint identity, private state location, and the
-workspace identity carried by later requests. Admission then checks the
-installed sidecar contract, IDEA home, release-line compatibility for the IDEA
-and Kotlin plugin builds, JBR, bootstrap classes, Gradle integration, endpoint
-descriptor, socket, and process ownership.
+The control executable first canonicalizes the caller's starting path. That
+root determines endpoint identity, private state, and later workspace requests.
 
-Compatibility is intentionally less specific than identity. The installed
-release's reference pair is IDEA `262.9437.185` and Kotlin plugin
-`262.9437.185-IJ`, but admission accepts well-formed patch builds when both stay
-on platform release line `262`. The observed patch build identities are then
-preserved exactly in runtime, cache, and endpoint evidence.
+Admission then verifies:
+
+- the installed sidecar contract;
+- IDEA and Kotlin plugin release-line compatibility;
+- JBR, bootstrap classes, and Gradle integration; and
+- endpoint descriptor, socket, and process ownership.
+
+Compatibility is intentionally broader than identity.
+
+- The installed reference pair is IDEA `262.9437.185` and Kotlin plugin
+  `262.9437.185-IJ`.
+- Well-formed patch builds are accepted when both remain on release line `262`.
+- The observed patch build identities remain in runtime, cache, and endpoint
+  evidence.
 
 The result is closed:
 
@@ -62,15 +71,18 @@ is useful.
 
 ## Private process and private state
 
-The sidecar runs the release-line-compatible local IntelliJ distribution
-headlessly, but its mutable state is Kast-owned. Config, system, plugins, logs,
-indexes, endpoint metadata, socket state, persistence, and telemetry live
-outside the user's IDE directories. Kast supplies its private plugin to that
-process and does not install a plugin into the user's IDE. The private plugin
-payload excludes Kotlin standard-library, coroutine, and Kotlin-plugin classes
-owned by the selected IntelliJ platform; distribution verification proves both
-their absence from Kast's payload and their presence in IntelliJ before
-packaging.
+The sidecar runs a release-line-compatible local IntelliJ distribution
+headlessly. It does not modify the user's IDE instance.
+
+Kast owns the sidecar's:
+
+- config, system, plugin, log, and index directories;
+- endpoint, socket, persistence, and telemetry state; and
+- private plugin installation.
+
+The private plugin excludes Kotlin standard-library, coroutine, and
+Kotlin-plugin classes already owned by the selected IntelliJ platform.
+Distribution checks prove that separation before packaging.
 
 Ordinary startup does not read the user's IDEA cache. Optional index seeding is
 a distinct, consent-bearing boundary: it requires a stopped, compatible IDEA
@@ -110,11 +122,15 @@ needed to construct a `SemanticReadLease`.
 
 ## Request-local compiler state
 
-IntelliJ Projects, VFS handles, PSI elements, K2 symbols, analysis sessions, and
-native scopes are live platform values. They remain inside adapter calls and
-must not be retained as durable evidence. Each semantic request observes the
-current ready workspace, performs its compiler work, and revalidates the lease
-when the operation requires protection against a moving generation.
+Live IntelliJ and compiler objects never become durable evidence. This includes
+Projects, VFS handles, PSI elements, K2 symbols, analysis sessions, and native
+scopes.
+
+Each semantic request instead:
+
+1. observes the current ready workspace;
+2. performs compiler work inside the adapter; and
+3. revalidates its lease when generation movement could invalidate the result.
 
 This is why a selector is generation-bound and why a sidecar restart advances
 generation conservatively. The text of a declaration may be unchanged while

@@ -77,11 +77,32 @@ for asset in "${assets[@]}"; do
   [[ -f "${asset}" ]] || fail "missing release asset: ${asset}"
 done
 
-gh release create "${release}" "${assets[@]}" \
+upload_assets=(
+  "${control}#Control - public CLI, lifecycle, schemas, broker, and wire transport"
+  "${control}.sha256"
+  "${sidecar}#Private semantic runtime - headless IntelliJ indexer and compiler integration"
+  "${sidecar}.sha256"
+  "${schema}"
+  "${schema}.sha256"
+  "${knowledge}"
+  "${knowledge}.sha256"
+)
+release_notes="$(
+  printf '%s\n' \
+    "Kast installs one public \`kast\` command from two matched, digest-bound payloads:" \
+    '' \
+    '- **Control:** CLI parsing, lifecycle, schemas, broker, and typed wire transport. It contains no IntelliJ semantic implementation.' \
+    '- **Private semantic runtime:** the headless indexer and compiler integration loaded with the supported local IDEA. It contains no IDEA distribution.' \
+    '' \
+    'The control manifest pins the semantic runtime URL, size, and SHA-256 digest; the two payloads form one versioned product.'
+)"
+
+gh release create "${release}" "${upload_assets[@]}" \
   --repo "${repository}" \
   --target "${commit}" \
   --title "Kast ${release}" \
   --generate-notes \
+  --notes "${release_notes}" \
   --draft
 
 verification_directory="$(mktemp -d "${TMPDIR:-/tmp}/kast-release-draft.XXXXXX")"

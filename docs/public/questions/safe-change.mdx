@@ -69,12 +69,15 @@ The live endpoint immediately withdraws mutation authority.
 kast change recover --plan '<plan-identity>'
 ```
 
-A `PriorState` or `RolledBack` result first publishes a successor generation
-for the physical recovery, then re-audits the durable journal and installs a
-fresh clean mutation state in the same endpoint. You can resolve a current
-selector, rebuild topology, and create a new plan without restarting. An
-unresolved recovery remains qualified as manual recovery required and does not
-regain writer authority.
+A `PriorState` or `RolledBack` result restores a clean mutation boundary:
+
+1. Publish a successor generation for the physical recovery.
+2. Re-audit the durable journal.
+3. Install fresh mutation state in the same endpoint.
+
+You can then resolve a current selector, rebuild topology, and plan again
+without restarting. Unresolved recovery remains qualified as manual recovery
+required and cannot regain writer authority.
 
 <Warning>
   Do not treat transport success, a physical file write, or a durable plan as

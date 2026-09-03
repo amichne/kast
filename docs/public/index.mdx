@@ -17,13 +17,21 @@ icon: "braces"
 keywords: ["Kotlin", "compiler", "semantic analysis", "coding agents"]
 ---
 
-Kast gives engineers and coding agents a repo-local command boundary for
-questions whose answers depend on compiler identity, not a convincing reading
-of source text. Every operation returns a closed status and preserves the
-proof-specific root, generation, scope, limits, and identities needed to judge
-its evidence.
+Kast is a repo-local semantic runtime for Kotlin repositories. It answers code
+questions through IntelliJ and the Kotlin compiler, then returns the root,
+generation, scope, limits, and identities needed to judge each result.
 
-**Eleven operations. One exact root. No guessed success.**
+## Choose the depth that matches the question
+
+The navigation above separates first-run work from task guides, the evidence
+model, and source-backed reference material.
+
+| Section | Use it to |
+| --- | --- |
+| **Setup** | Install, admit one repository, and verify the first result. [Set up and start Kast.](/start) |
+| **Guides** | Answer a concrete question about readiness, identity, connections, diagnostics, or change. [Choose an evidence path.](#eleven-sidecar-operations) |
+| **Concepts** | Understand what Kast proves and where that proof stops. [Trust the evidence.](/concepts/evidence-boundaries) |
+| **Reference** | Read exact command and implementation contracts. Open the [CLI reference](/reference/cli) or [technical specification](/technical-specification). |
 
 ## The compiler sees more than text
 

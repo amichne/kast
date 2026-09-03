@@ -9,7 +9,8 @@ val sidecarArchive = tasks.named<Zip>("semanticRuntimeArchive")
 
 val assembleSidecarRelease by tasks.registering(Sync::class) {
     group = "distribution"
-    description = "Assembles matched control and private sidecar assets without a public plugin."
+    description =
+        "Publishes role-separated control and private semantic assets for one matched product."
     dependsOn(controlArchive, sidecarArchive)
     into(releaseDirectory)
     from(controlArchive.flatMap(Tar::getArchiveFile))

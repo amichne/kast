@@ -5,25 +5,27 @@ root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 fixture="$(mktemp -d "${TMPDIR:-/tmp}/kast-public-installer.XXXXXX")"
 trap 'rm -rf "$fixture"' EXIT
 mkdir -p "$fixture/home"
+mkdir -p "$fixture/home/Applications"
 
 bash -n "$root/install.sh"
 
-run_until_java_check() {
+run_until_idea_check() {
   local output="$1"
   shift
   if env \
     HOME="$fixture/home" \
-    JAVA_HOME="$fixture/missing-java" \
+    JAVA_HOME="$fixture/ambient-java-must-not-be-used" \
+    KAST_INSTALL_IDEA_SEARCH_ROOT="$fixture/home/Applications" \
     "$@" \
     bash "$root/install.sh" >"$output" 2>&1; then
-    echo "public-installer: missing-Java fixture unexpectedly succeeded" >&2
+    echo "public-installer: missing-IDEA fixture unexpectedly succeeded" >&2
     exit 1
   fi
-  grep -F "kast-install: JAVA_HOME has no executable bin/java" "$output" >/dev/null
+  grep -F "kast-install: no IntelliJ IDEA with a bundled JBR was found" "$output" >/dev/null
 }
 
 unicode_output="$fixture/unicode.out"
-run_until_java_check "$unicode_output" LANG=en_US.UTF-8 NO_COLOR=1
+run_until_idea_check "$unicode_output" LANG=en_US.UTF-8 NO_COLOR=1
 grep -F '██╗  ██╗ █████╗ ███████╗████████╗' "$unicode_output" >/dev/null
 grep -F 'Compiler-grounded Kotlin evidence from your terminal' "$unicode_output" >/dev/null
 if LC_ALL=C grep -q $'\033' "$unicode_output"; then
@@ -32,7 +34,7 @@ if LC_ALL=C grep -q $'\033' "$unicode_output"; then
 fi
 
 ascii_output="$fixture/ascii.out"
-run_until_java_check "$ascii_output" LANG=en_US.UTF-8 NO_COLOR=1 KAST_ASCII=1
+run_until_idea_check "$ascii_output" LANG=en_US.UTF-8 NO_COLOR=1 KAST_ASCII=1
 grep -F '* KAST INSTALLER' "$ascii_output" >/dev/null
 if grep -F '██╗  ██╗' "$ascii_output" >/dev/null; then
   echo "public-installer: ASCII fallback contains the Unicode banner" >&2
@@ -40,11 +42,11 @@ if grep -F '██╗  ██╗' "$ascii_output" >/dev/null; then
 fi
 
 color_output="$fixture/color.out"
-run_until_java_check "$color_output" \
+run_until_idea_check "$color_output" \
   LANG=en_US.UTF-8 NO_COLOR= KAST_ASCII=1 CLICOLOR_FORCE=1
 if ! LC_ALL=C grep -F -q $'\033[1;36m' "$color_output"; then
   echo "public-installer: forced color did not style the compact banner" >&2
   exit 1
 fi
 
-echo "public-installer: banner, ASCII fallback, color, and failure output passed"
+echo "public-installer: banner, ASCII fallback, color, and IDEA discovery failure passed"

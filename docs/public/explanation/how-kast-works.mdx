@@ -29,10 +29,11 @@ keywords: ["architecture", "K2", "IntelliJ", "wire protocol"]
 ---
 
 Kast places a narrow command boundary in front of an isolated headless Project.
-The sidecar uses one release-line-compatible local IDEA installation and its
-JBR, Kotlin plugin, Gradle integration, PSI, and indexes. Kast preserves the
-exact observed host identities, while all mutable IDE state stays under
-Kast-owned paths.
+
+- The host is one release-line-compatible local IDEA installation.
+- Runtime identity retains the exact observed IDEA, Kotlin plugin, and JBR.
+- Config, indexes, plugins, logs, and other mutable state stay under Kast-owned
+  paths.
 
 ## One request, end to end
 
@@ -66,31 +67,34 @@ documents. PSI and K2 objects never cross the wire.
 
 ## What `kast start` means
 
-`kast start` discovers or admits one compatible IDEA home. It verifies that the
-observed IDEA and Kotlin plugin builds remain on the platform release lines
-declared by the installed Kast release, then preserves their exact patch
-identities alongside the JBR and private payload. It also verifies bootstrap
-classes and Gradle integration before launching a headless process with private
-config, system, plugin, and log directories. The Project is imported from disk,
-its VFS is refreshed, and the endpoint is published only after smart mode and
-semantic canaries succeed.
+**Bottom line:** `kast start` publishes an endpoint only after the host and
+repository are semantically ready.
+
+Before launch, Kast verifies:
+
+- Compatible IDEA and Kotlin plugin release lines.
+- Exact observed patch, JBR, and private-payload identities.
+- Required bootstrap classes and Gradle integration.
+
+The sidecar then imports the Project, refreshes its private VFS, waits for smart
+mode, and runs semantic canaries. Only then does it publish the endpoint.
 
 Missing, ambiguous, wrong-build, wrong-root, stale-cache, or unreachable
 evidence fails closed. A missing cache causes a fresh private import; it does not
 authorize reading the user's IDEA cache. Kast ships no IDEA distribution and
 has no user-IDE plugin fallback.
 
-Before the sidecar publishes readiness, its composition constructs the
-exact eleven-operation public capability set: index synchronization, topology
-build, symbol discovery and inspection, source and relation reads, traversal,
-diagnostics, and planning, verified application, or recovery for changes.
+Before readiness, composition constructs the exact eleven-operation public capability set.
+The [CLI reference](/reference/cli#sidecar-endpoint-operations) lists each
+operation and command shape.
 
 Source-root identity comes from IntelliJ's canonical local source-folder URL,
-not from an existence-dependent `VirtualFile`. A declared source directory may
-therefore be absent, including an empty resources or generated-source root,
-without preventing endpoint publication. Its absence contributes no source
-candidates until the directory appears. Malformed, non-local,
-outside-workspace, conflicting, or otherwise unproven roots still fail closed.
+not from an existence-dependent `VirtualFile`.
+
+- An absent resources or generated-source directory can remain declared.
+- Until it exists, that directory contributes no source candidates.
+- Malformed, non-local, outside-workspace, conflicting, or unproven roots fail
+  closed.
 
 | Boundary | Required proof |
 | --- | --- |
@@ -100,21 +104,26 @@ outside-workspace, conflicting, or otherwise unproven roots still fail closed.
 
 ## Optional index seeding is a validated copy
 
-`kast start --cache seed` is the only lifecycle intent authorized to read an IDEA
-system directory. The source must belong to the exact runtime and target
-project, and IDEA must be fully stopped with no live lock or matching process.
-Interactive startup discloses the version-specific allowlist, estimated bytes,
-and the unavoidable presence of other-project entries in required global
-VFS/index files. Non-interactive startup must carry
-`--accept-global-index-copy` as explicit consent.
+`kast start --cache seed` is the only lifecycle intent authorized to read an
+IDEA system directory.
 
-On APFS, Kast copy-on-write clones the allowlisted global identity data and only
-the target project's dedicated model/index cache into an unpublished staging
-directory. Local History, logs, AI data, VCS logs, editor state, temporary
-data, and other projects' dedicated caches are excluded. Source and clone
-manifests plus source quiescence are checked again before an atomic publish.
-The seed is only an acceleration hint: corrupt, changed, or incompatible state
-becomes a typed failure or `rebuild-required`, never semantic success.
+It requires:
+
+- The exact runtime and target Project.
+- A fully stopped IDEA with no live lock or matching process.
+- Explicit disclosure of the allowlist, estimated bytes, and shared entries in
+  required global VFS/index files.
+- `--accept-global-index-copy` for non-interactive consent.
+
+On APFS, Kast copy-on-write clones only:
+
+- Allowlisted global identity data.
+- The target Project's dedicated model/index cache.
+
+It excludes Local History, logs, AI data, VCS logs, editor state, temporary
+data, and other Projects' dedicated caches. Kast rechecks manifests and source
+quiescence before atomic publication. A bad seed becomes a typed failure or
+`rebuild-required`, never semantic success.
 
 The foreground seed coordinator emits payload-free JSON-line activity for its
 bounded validation, discovery, quiescence, copy, clone-validation, receipt, and
@@ -139,12 +148,14 @@ The Kotlin control executable parses `symbol.inspect` and constructs a
 `SymbolInspectRequestDocument`. `UnixDomainWireClient` sends that document as
 one bounded frame to the admitted socket.
 
-The private `InstalledIndexerTransport` reads the frame and passes it through
-`KastIndexerHost` to `InstalledKastRuntime`. `CanonicalKastOperationHandlerFactory`
-binds the complete eleven-operation protocol to the exact workspace graph.
-This request reaches the symbol service created by `InstalledIntellijSymbolPorts`.
-Its request-local IntelliJ adapters resolve the selector with Project, PSI,
-index, and K2 authority, then detach a host-neutral symbol description.
+The request follows four owners:
+
+1. `InstalledIndexerTransport` reads the bounded frame.
+2. `KastIndexerHost` passes it to `InstalledKastRuntime`.
+3. `CanonicalKastOperationHandlerFactory` dispatches it on the exact workspace
+   graph.
+4. `InstalledIntellijSymbolPorts` resolves the selector with Project, PSI,
+   index, and K2 authority, then detaches host-neutral evidence.
 
 The same RPC returns one closed outcome. The control executable writes one JSON
 document to standard output for complete or qualified evidence, or one JSON
@@ -201,13 +212,15 @@ diagnostic to standard error for a boundary rejection.
 
 ## How the live generation moves
 
-Sidecar startup imports the exact Gradle project, waits for smart mode and
-indexing quiescence, captures the admitted source-root model and current source
-identity, and publishes that evidence as one durable semantic generation. It
-does not perform a full repository topology build during startup. An explicit
-`topology.build` enumerates admitted candidates; when paths, roots, and content
-hashes exactly match a durable snapshot, Kast can rebind that snapshot to the
-current generation instead of repeating K2 extraction.
+Startup publishes one durable semantic generation after it:
+
+- Imports the exact Gradle Project.
+- Reaches smart mode and indexing quiescence.
+- Captures the admitted source-root model and source identity.
+
+Startup does not build full repository topology. An explicit `topology.build`
+can rebind a durable snapshot when its paths, roots, and content hashes still
+match; otherwise Kast repeats extraction.
 
 `index.sync` is the explicit stale-file repair boundary. It refreshes the
 admitted local source roots, waits for the same strengthened indexing
@@ -247,12 +260,16 @@ traversal spans are forwarded asynchronously as OTLP JSON Lines. `kast product i
 exposes the enabled directory, trace file, and format without starting the
 runtime.
 
-The span tree separates workspace admission, snapshot eligibility and reads,
-candidate enumeration, extraction, revalidation, publication, snapshot open,
-and traversal expansion. Its custom attributes are limited to closed outcome
-and failure variants plus non-negative file or record counts. Paths, selectors,
-source text, exception messages, and stack traces never enter this telemetry
-contract.
+The span tree separates admission, snapshot reads, enumeration, extraction,
+revalidation, publication, snapshot open, and traversal expansion.
+
+Custom attributes include only:
+
+- Closed outcome and failure variants.
+- Non-negative file or record counts.
+
+They never include paths, selectors, source text, exception messages, or stack
+traces.
 
 ## Exact endpoint identity is part of the result
 

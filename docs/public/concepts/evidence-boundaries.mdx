@@ -27,16 +27,17 @@ The semantic result has its own closed outcome and evidence coordinates.
 | **Qualified** | The payload remains usable within a named limitation. Missing coverage or a reached bound stays attached to the evidence. |
 | **Rejected** | Kast established no successful payload. The response returns one typed reason from the operation's finite failure set. |
 
-The eleven sidecar operations cover index synchronization, topology
-publication, symbol discovery and inspection, source and one-hop relation
-reads, bounded traversal, scoped diagnostics, and planning, verified
-application, or recovery. The installed route may return qualified evidence for
-discovery, relation, traversal, diagnostics, and unresolved manual recovery.
-Index synchronization, topology publication, exact symbol inspection,
-planning, and verified application require complete evidence
-for success. The shared workspace contract also models a reconciling
-qualification, but the installed exact-root handler publishes only complete
-ready evidence or a typed rejection.
+Outcome support varies by operation:
+
+- Discovery, relation, traversal, diagnostics, and manual recovery may return
+  qualified evidence.
+- Index synchronization, topology publication, exact symbol inspection,
+  planning, and verified application require complete evidence for success.
+- Workspace readiness is either complete or rejected on the installed
+  exact-root route; its internal reconciling state is not published as ready.
+
+The [CLI reference](/reference/cli) lists all eleven sidecar operations and
+their command shapes.
 
 ## Evidence is valid at its coordinates
 
@@ -82,6 +83,5 @@ scope that matters. Before treating "no matches" as a repository fact, check:
 - scope and result limits cover the decision
 - the outcome is complete, not qualified or rejected
 
-The [CLI reference](/reference/cli) lists the current operations.
 [How Kast works](/explanation/how-kast-works) shows where their evidence is
 admitted and projected.

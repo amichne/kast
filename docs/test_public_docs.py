@@ -71,7 +71,9 @@ APPROVED_LUCIDE_ICONS = {
 
 PAGES = {
     "index.mdx": [
-        "Eleven operations. One exact root. No guessed success.",
+        "Choose the depth that matches the question",
+        "Install, admit one repository, and verify the first result",
+        "Read exact command and implementation contracts",
         "The compiler sees more than text",
         "Start from the repository root",
         "Eleven sidecar operations",
@@ -233,28 +235,34 @@ PAGES = {
 }
 
 EXPECTED_NAVIGATION = {
-    "Get started": ["index", "start"],
-    "Guides": [
-        "questions/workspace-readiness",
-        "questions/declaration-identity",
-        "questions/code-connections",
-        "questions/semantic-validity",
-        "questions/safe-change",
-    ],
-    "Concepts": [
-        "concepts/evidence-boundaries",
-        "explanation/how-kast-works",
-    ],
-    "Technical specification": [
-        "technical-specification/index",
-        "technical-specification/runtime-boundary",
-        "technical-specification/protocol-and-dispatch",
-        "technical-specification/semantic-services",
-        "technical-specification/change-and-evidence",
-        "technical-specification/module-architecture",
-        "technical-specification/verification-and-contribution",
-    ],
-    "Reference": ["reference/cli"],
+    "Setup": {"Start here": ["index", "start"]},
+    "Guides": {
+        "Answer a code question": [
+            "questions/workspace-readiness",
+            "questions/declaration-identity",
+            "questions/code-connections",
+            "questions/semantic-validity",
+            "questions/safe-change",
+        ],
+    },
+    "Concepts": {
+        "Evidence model": [
+            "concepts/evidence-boundaries",
+            "explanation/how-kast-works",
+        ],
+    },
+    "Reference": {
+        "Command surface": ["reference/cli"],
+        "Technical specification": [
+            "technical-specification/index",
+            "technical-specification/runtime-boundary",
+            "technical-specification/protocol-and-dispatch",
+            "technical-specification/semantic-services",
+            "technical-specification/change-and-evidence",
+            "technical-specification/module-architecture",
+            "technical-specification/verification-and-contribution",
+        ],
+    },
 }
 
 TECHNICAL_SPECIFICATION_AUTHORITIES = {
@@ -344,6 +352,9 @@ STALE_CLAIMS = [
 ]
 
 DEFERRED_PAGES: set[str] = set()
+MAX_PROSE_WORDS = 55
+MAX_PROSE_CHARACTERS = 360
+LIST_ITEM = re.compile(r"^\s*(?:[-*+]|[0-9]+[.)])\s+(?P<text>.+)$")
 
 
 def require(condition: bool, message: str) -> None:
@@ -375,6 +386,71 @@ def frontmatter(text: str, relative: str) -> str:
         f"{relative} has no description",
     )
     return metadata
+
+
+def prose_blocks(text: str, has_frontmatter: bool) -> list[tuple[int, str]]:
+    lines = text.splitlines()
+    if has_frontmatter:
+        closing = next(
+            (index for index, line in enumerate(lines[1:], start=1) if line == "---"),
+            None,
+        )
+        require(closing is not None, "prose scan could not find closing frontmatter")
+        assert closing is not None
+        lines = [""] * (closing + 1) + lines[closing + 1 :]
+
+    blocks: list[tuple[int, str]] = []
+    current: list[str] = []
+    start_line = 0
+    in_fence = False
+
+    def finish() -> None:
+        nonlocal current, start_line
+        if current:
+            blocks.append((start_line, " ".join(current)))
+        current = []
+        start_line = 0
+
+    for line_number, line in enumerate(lines, start=1):
+        stripped = line.strip()
+        if stripped.startswith(("```", "~~~")):
+            finish()
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if not stripped:
+            finish()
+            continue
+
+        item = LIST_ITEM.match(line)
+        if item is not None:
+            finish()
+            start_line = line_number
+            current = [item.group("text")]
+            continue
+
+        if stripped.startswith(("#", "|", ">", "<")) or stripped == "---":
+            finish()
+            continue
+
+        if not current:
+            start_line = line_number
+        current.append(stripped)
+
+    finish()
+    return blocks
+
+
+def check_scan_friendly_prose(relative: str, text: str, has_frontmatter: bool) -> None:
+    for line_number, block in prose_blocks(text, has_frontmatter):
+        word_count = len(re.findall(r"\b[\w'-]+\b", block))
+        character_count = len(block)
+        require(
+            word_count <= MAX_PROSE_WORDS and character_count <= MAX_PROSE_CHARACTERS,
+            f"{relative}:{line_number} has an oversized prose block "
+            f"({word_count} words, {character_count} characters); split or structure it",
+        )
 
 
 def quoted_frontmatter_value(metadata: str, key: str, relative: str) -> str:
@@ -549,32 +625,47 @@ def check_config() -> None:
     )
     require(
         config.get("colors")
-        == {"primary": "#B45309", "light": "#92400E", "dark": "#F59E0B"},
+        == {"primary": "#3154C7", "light": "#27439F", "dark": "#8FA7FF"},
         "Mintlify color contract changed",
     )
     require(
         config.get("background")
         == {
-            "color": {"light": "#FAF7F2", "dark": "#11100E"},
+            "color": {"light": "#FBFBF9", "dark": "#171816"},
         },
         "Mintlify background contract changed",
     )
+    require(config.get("fonts") == {"family": "SUSE"}, "Mintlify typography contract changed")
+    require(
+        config.get("appearance") == {"default": "light", "strict": False},
+        "Mintlify appearance contract changed",
+    )
     require("gradient" not in CONFIG.read_text().lower(), "Mintlify background uses a gradient")
 
-    groups = config.get("navigation", {}).get("groups")
-    require(isinstance(groups, list), "Mintlify navigation groups are missing")
-    navigation = {group["group"]: group["pages"] for group in groups}
-    require(
-        "Technical specification" in navigation,
-        "technical specification navigation is missing",
-    )
+    tabs = config.get("navigation", {}).get("tabs")
+    require(isinstance(tabs, list), "Mintlify navigation tabs are missing")
+    navigation: dict[str, dict[str, list[str]]] = {}
+    groups: list[dict[str, object]] = []
+    for tab in tabs:
+        tab_name = tab.get("tab")
+        tab_groups = tab.get("groups")
+        require(isinstance(tab_name, str), "Mintlify navigation tab has no name")
+        require(isinstance(tab_groups, list), f"{tab_name} navigation groups are missing")
+        groups.extend(tab_groups)
+        navigation[tab_name] = {group["group"]: group["pages"] for group in tab_groups}
     require(navigation == EXPECTED_NAVIGATION, f"unexpected Mintlify navigation: {navigation}")
-    destinations = [path for pages in navigation.values() for path in pages]
+    destinations = [
+        path
+        for tab_groups in navigation.values()
+        for pages in tab_groups.values()
+        for path in pages
+    ]
     expected_destinations = [
         page_route(relative) for relative in PAGES if relative not in DEFERRED_PAGES
     ]
     require(
-        destinations == expected_destinations,
+        len(destinations) == len(set(destinations))
+        and set(destinations) == set(expected_destinations),
         f"navigation and page contract differ: {destinations}",
     )
     check_icon_system(config, groups)
@@ -586,7 +677,7 @@ def check_config() -> None:
     )
     require(
         navbar.get("primary")
-        == {"type": "button", "label": "Get started", "href": "/start"},
+        == {"type": "button", "label": "Install Kast", "href": "/start"},
         "Mintlify primary navigation action changed",
     )
     require(
@@ -634,7 +725,7 @@ def check_config() -> None:
     )
     require(
         config.get("search", {}).get("prompt")
-        == "Search operations, evidence boundaries, and implementation authorities",
+        == "Search Kast documentation",
         "Mintlify search prompt changed",
     )
     require(config.get("metadata", {}).get("timestamp") is True, "page timestamps are disabled")
@@ -710,6 +801,7 @@ def check_pages() -> None:
             require(raw_html not in text, f"{relative} retains legacy site markup {raw_html}")
         for claim in STALE_CLAIMS:
             require(claim not in text, f"{relative} contains stale claim {claim!r}")
+        check_scan_friendly_prose(relative, text, has_frontmatter=True)
 
     index = (PUBLIC / "index.mdx").read_text()
     metadata = frontmatter(index, "index.mdx")
@@ -914,8 +1006,11 @@ def check_readme() -> None:
         "# Kast",
         "https://kast.michne.com/",
         "https://raw.githubusercontent.com/amichne/kast/main/install.sh",
-        "Kast supports macOS on Apple silicon, Java 25 or newer",
+        "bundled Java 25 JBR",
         "matched private sidecar",
+        "kast-control-*.tar.gz",
+        "kast-semantic-runtime-*.zip",
+        "KAST_RUNTIME_STORE",
         "eleven public semantic operations",
         "kast start",
         "kast symbol inspect",
@@ -941,6 +1036,7 @@ def check_readme() -> None:
         require(command in text, f"README.md omits public command {command!r}")
     for claim in STALE_CLAIMS:
         require(claim not in text, f"README.md contains stale claim {claim!r}")
+    check_scan_friendly_prose("README.md", text, has_frontmatter=False)
 
     headings = re.findall(r"^#\s+.+$", text, re.MULTILINE)
     require(headings == ["# Kast"], f"README.md has unexpected H1 headings: {headings}")

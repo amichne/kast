@@ -50,12 +50,13 @@ coverage, or budget mismatches close as contract rejection.
 
 ## Workspace and index
 
-At the CLI lifecycle boundary, a semantic command may demand the exact-root
-sidecar before dispatch. Readiness is not exposed as a separate workspace
-operation: a completed `start` establishes the ready exact root, while passive
-`status` reports lifecycle and cache state without claiming a semantic
-generation. Absent, starting, reconciling, stopping, mismatched, or blocked
-state cannot be promoted to ready evidence.
+A semantic command may demand the exact-root sidecar before dispatch.
+
+- Completed `start` establishes a ready exact root.
+- Passive `status` reports lifecycle and cache state without claiming a
+  semantic generation.
+- Absent, starting, reconciling, stopping, mismatched, or blocked states cannot
+  become ready evidence.
 
 `index.sync` is an explicit transition. It refreshes only admitted local source
 roots, waits for indexing quiescence, captures source identity, and reconciles
@@ -88,14 +89,18 @@ for this separation. Text narrows the search; compiler identity completes it.
 one meaning, direction, scope, and budget. Complete output proves one-hop
 coverage. Qualified output retains facts plus named limits and continuation.
 
-`traversal.run` is a deterministic workflow over repeated one-hop relation
-batches. The installed route opens one eligible SQLite topology snapshot and
-binds the relation service to that detached graph; traversal does not silently
-start fresh compiler work. Its plan includes depth, frontier, record, byte,
-work-unit, and elapsed-time ceilings. The engine attenuates every delegated
-one-hop budget to remaining aggregate capacity, validates each returned batch
-against the request, and emits either complete traversal evidence or a
-resumable qualified checkpoint.
+`traversal.run` repeats deterministic one-hop relation batches over one
+eligible SQLite topology snapshot. It does not silently start fresh compiler
+work.
+
+Every plan bounds:
+
+- depth and frontier size;
+- records and bytes; and
+- work units and elapsed time.
+
+The engine reduces each delegated budget to remaining capacity, validates every
+batch, and returns either complete evidence or a resumable checkpoint.
 
 Traversal does not convert incomplete relation pages into a complete graph.
 

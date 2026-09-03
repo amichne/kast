@@ -4,9 +4,12 @@
   "name": "Kast",
   "description": "Compiler-grounded evidence for exact Kotlin repositories.",
   "colors": {
-    "primary": "#B45309",
-    "light": "#92400E",
-    "dark": "#F59E0B"
+    "primary": "#3154C7",
+    "light": "#27439F",
+    "dark": "#8FA7FF"
+  },
+  "fonts": {
+    "family": "SUSE"
   },
   "logo": "/images/kast-mark.svg",
   "favicon": "/images/kast-mark.svg",
@@ -15,57 +18,81 @@
   },
   "background": {
     "color": {
-      "light": "#FAF7F2",
-      "dark": "#11100E"
+      "light": "#FBFBF9",
+      "dark": "#171816"
     }
   },
+  "appearance": {
+    "default": "light",
+    "strict": false
+  },
   "navigation": {
-    "groups": [
+    "tabs": [
       {
-        "group": "Get started",
-        "icon": "rocket",
-        "pages": [
-          "index",
-          "start"
+        "tab": "Setup",
+        "groups": [
+          {
+            "group": "Start here",
+            "icon": "rocket",
+            "pages": [
+              "index",
+              "start"
+            ]
+          }
         ]
       },
       {
-        "group": "Guides",
-        "icon": "compass",
-        "pages": [
-          "questions/workspace-readiness",
-          "questions/declaration-identity",
-          "questions/code-connections",
-          "questions/semantic-validity",
-          "questions/safe-change"
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Answer a code question",
+            "icon": "compass",
+            "pages": [
+              "questions/workspace-readiness",
+              "questions/declaration-identity",
+              "questions/code-connections",
+              "questions/semantic-validity",
+              "questions/safe-change"
+            ]
+          }
         ]
       },
       {
-        "group": "Concepts",
-        "icon": "shield-check",
-        "pages": [
-          "concepts/evidence-boundaries",
-          "explanation/how-kast-works"
+        "tab": "Concepts",
+        "groups": [
+          {
+            "group": "Evidence model",
+            "icon": "shield-check",
+            "pages": [
+              "concepts/evidence-boundaries",
+              "explanation/how-kast-works"
+            ]
+          }
         ]
       },
       {
-        "group": "Technical specification",
-        "icon": "network",
-        "pages": [
-          "technical-specification/index",
-          "technical-specification/runtime-boundary",
-          "technical-specification/protocol-and-dispatch",
-          "technical-specification/semantic-services",
-          "technical-specification/change-and-evidence",
-          "technical-specification/module-architecture",
-          "technical-specification/verification-and-contribution"
-        ]
-      },
-      {
-        "group": "Reference",
-        "icon": "terminal",
-        "pages": [
-          "reference/cli"
+        "tab": "Reference",
+        "groups": [
+          {
+            "group": "Command surface",
+            "icon": "terminal",
+            "pages": [
+              "reference/cli"
+            ]
+          },
+          {
+            "group": "Technical specification",
+            "icon": "network",
+            "pages": [
+              "technical-specification/index",
+              "technical-specification/runtime-boundary",
+              "technical-specification/protocol-and-dispatch",
+              "technical-specification/semantic-services",
+              "technical-specification/change-and-evidence",
+              "technical-specification/module-architecture",
+              "technical-specification/verification-and-contribution"
+            ]
+          }
         ]
       }
     ]
@@ -79,7 +106,7 @@
     ],
     "primary": {
       "type": "button",
-      "label": "Get started",
+      "label": "Install Kast",
       "href": "/start"
     }
   },
@@ -149,7 +176,7 @@
     "display": "header"
   },
   "search": {
-    "prompt": "Search operations, evidence boundaries, and implementation authorities"
+    "prompt": "Search Kast documentation"
   },
   "errors": {
     "404": {
