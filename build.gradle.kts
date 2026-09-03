@@ -70,7 +70,8 @@ val semanticRuntimeArchive by tasks.registering(Zip::class) {
 
 tasks.register("assembleKastSemanticRuntimeDist") {
     group = "distribution"
-    description = "Assembles the independently installable private sidecar payload."
+    description =
+        "Assembles the separately published private sidecar admitted by its matched control."
     dependsOn(semanticRuntimeArchive)
 }
 
@@ -114,7 +115,7 @@ val stageKastControlProduct by tasks.registering(Sync::class) {
 
 val assembleKastControlDist by tasks.registering(Tar::class) {
     group = "distribution"
-    description = "Builds the default control-only Kast archive."
+    description = "Builds the public CLI, lifecycle, schema, broker, and wire-control archive."
     dependsOn(stageKastControlProduct)
     from(controlProductDirectory)
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))

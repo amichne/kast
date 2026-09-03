@@ -95,12 +95,16 @@ Usage:
              [--install-root <absolute-path>] [--bin-dir <absolute-path>]
              [--runtime-store <absolute-path>]
              [--runtime-directory <absolute-path>]
+             [--cache-root <absolute-path>]
+             [--enable-launchd <0-or-1>]
+             [--idea-home <absolute-app-or-contents-path>]
              [--repository <owner/name>]
              [--release-base-url <https-or-file-url>]
   install.sh uninstall [--install-root <absolute-path>]
              [--bin-dir <absolute-path>]
              [--runtime-store <absolute-path>]
              [--runtime-directory <absolute-path>]
+             [--cache-root <absolute-path>]
 
 Defaults:
   version       latest stable GitHub release
@@ -108,8 +112,12 @@ Defaults:
   bin-dir       $HOME/.local/bin
   runtime-store $HOME/.cache/kast/semantic-runtimes
   runtime-dir   ${TMPDIR:-/tmp}/kast-runtime
+  cache-root    $HOME/.cache/kast/intellij-caches
+  launchd       0 (direct process ownership)
+  IDEA home     the sole IntelliJ IDEA found in standard macOS locations
   repository    amichne/kast
   release URL   https://github.com/<repository>/releases/download
+  config file   ${XDG_CONFIG_HOME:-$HOME/.config}/kast/environment
 
 Environment equivalents:
   KAST_VERSION
@@ -117,8 +125,20 @@ Environment equivalents:
   KAST_BIN_DIR
   KAST_RUNTIME_STORE
   KAST_RUNTIME_DIRECTORY
+  KAST_CACHE_ROOT
+  KAST_ENABLE_LAUNCHD
+  KAST_INSTALL_IDEA_HOME
+  KAST_INSTALL_IDEA_SEARCH_ROOT
   KAST_REPOSITORY
   KAST_RELEASE_BASE_URL
+
+KAST_INSTALL_IDEA_HOME bypasses automatic discovery. It may name either the
+IntelliJ IDEA application bundle or its Contents directory. The optional
+KAST_INSTALL_IDEA_SEARCH_ROOT limits automatic traversal to one absolute root.
+
+The installer writes the four runtime settings to the config file as literal
+KEY=value records. Edit that file after installation or override any setting
+in the process environment; process values take precedence.
 
 uninstall is the destructive recovery operation. It removes current and
 historical Kast commands, installation roots, runtime caches and sockets,
@@ -128,9 +148,15 @@ Kast IDE plugins. It preserves repositories and non-Kast JetBrains state.
 --purge-existing runs that exact operation after the requested release has
 been downloaded and verified, but before any installation path is changed.
 
-The installer downloads and verifies the control distribution and its small
-private sidecar payload. The payload contains no IDEA home and installs nothing
-into JetBrains plugin directories; Kast uses the exactly supported local IDEA.
+The release intentionally has two matched payloads but installs one public
+command. The control distribution owns CLI parsing, schemas, lifecycle, and
+wire transport. The private semantic runtime owns the headless IntelliJ
+indexer and compiler integration. The control manifest pins the sidecar URL,
+size, and digest, so neither payload can be substituted or installed alone.
+The split keeps IntelliJ/compiler classes out of the always-available control
+and lets the semantic payload be realized and cached only on semantic demand.
+Neither payload contains an IDEA home or writes JetBrains plugin directories;
+Kast uses a release-line-compatible local IDEA and its bundled JBR.
 USAGE
 }
 
@@ -144,6 +170,22 @@ require_absolute_path() {
   case "$value" in
     /*) ;;
     *) fail "$name must be an absolute path: $value" ;;
+  esac
+}
+
+require_literal_configuration_value() {
+  local name="$1"
+  local value="$2"
+  [[ -n "$value" ]] || fail "$name must not be empty"
+  case "$value" in
+    *$'\n'*|*$'\r'*) fail "$name must be one literal line" ;;
+  esac
+}
+
+validate_enable_launchd() {
+  case "$1" in
+    0|1) ;;
+    *) fail "enable launchd must be 0 or 1: $1" ;;
   esac
 }
 
@@ -264,6 +306,7 @@ validate_cleanup_plan() {
   require_safe_cleanup_root "legacy install root" "$legacy_install_root"
   require_safe_cleanup_root "runtime cache root" "$runtime_cache_root"
   require_safe_cleanup_root "runtime store" "$runtime_store"
+  require_safe_cleanup_root "sidecar cache root" "$cache_root"
   require_safe_cleanup_root "runtime directory" "$runtime_directory"
   require_safe_cleanup_root "default runtime directory" "$default_runtime_directory"
   require_safe_cleanup_root "runtime socket directory" "$runtime_socket_directory"
@@ -294,6 +337,7 @@ purge_kast() {
   remove_owned_path "$default_install_root"
   remove_owned_path "$legacy_install_root"
   remove_owned_path "$runtime_store"
+  remove_owned_path "$cache_root"
   remove_owned_path "$runtime_cache_root"
   remove_owned_path "$runtime_directory"
   remove_owned_path "$default_runtime_directory"
@@ -358,6 +402,152 @@ java_runtime_home() {
   physical_home="$(CDPATH='' cd -- "$executable_directory/.." && pwd -P)" || return 1
   [[ -x "$physical_home/bin/java" ]] || return 1
   printf '%s\n' "$physical_home"
+}
+
+idea_bundled_java_major() {
+  local release_file="$1"
+  local version major architecture
+  [[ -f "$release_file" ]] || return 1
+  version="$(
+    sed -nE 's/^JAVA_VERSION="([^"]+)".*$/\1/p' "$release_file" |
+      awk 'NR == 1 { print; exit }'
+  )"
+  [[ -n "$version" ]] || return 1
+  major="${version%%.*}"
+  [[ "$major" =~ ^[0-9]+$ ]] || return 1
+  architecture="$(
+    sed -nE 's/^OS_ARCH="([^"]+)".*$/\1/p' "$release_file" |
+      awk 'NR == 1 { print; exit }'
+  )"
+  case "$architecture" in
+    aarch64|arm64) ;;
+    *) return 1 ;;
+  esac
+  printf '%s\n' "$major"
+}
+
+canonical_idea_home() {
+  local requested="$1"
+  local candidate physical_home java_major
+  case "$requested" in
+    *.app) candidate="$requested/Contents" ;;
+    *) candidate="$requested" ;;
+  esac
+  [[ -d "$candidate" ]] || return 1
+  physical_home="$(CDPATH='' cd -- "$candidate" && pwd -P)" || return 1
+  [[ -f "$physical_home/Resources/build.txt" ]] || return 1
+  [[ -d "$physical_home/plugins/Kotlin" ]] || return 1
+  [[ -x "$physical_home/jbr/Contents/Home/bin/java" ]] || return 1
+  java_major="$(
+    idea_bundled_java_major "$physical_home/jbr/Contents/Home/release"
+  )" || return 1
+  (( java_major >= 25 )) || return 1
+  printf '%s\n' "$physical_home"
+}
+
+discover_installed_idea_home() {
+  local configured_root root application candidate existing
+  local selected_count=0
+  local -a search_roots=("")
+  local -a candidates=("")
+
+  configured_root="${KAST_INSTALL_IDEA_SEARCH_ROOT:-}"
+  if [[ -n "$configured_root" ]]; then
+    require_absolute_path "IDEA search root" "$configured_root"
+    [[ -d "$configured_root" ]] || fail "IDEA search root is unavailable: $configured_root"
+    search_roots+=("$configured_root")
+  else
+    search_roots+=(
+      "/Applications"
+      "$HOME/Applications"
+      "$HOME/Library/Application Support/JetBrains/Toolbox/apps"
+    )
+  fi
+
+  for root in "${search_roots[@]}"; do
+    [[ -n "$root" && -d "$root" ]] || continue
+    while IFS= read -r -d '' application; do
+      candidate="$(canonical_idea_home "$application" || true)"
+      [[ -n "$candidate" ]] || continue
+      for existing in "${candidates[@]}"; do
+        [[ "$existing" != "$candidate" ]] || continue 2
+      done
+      candidates+=("$candidate")
+      selected_count=$((selected_count + 1))
+    done < <(
+      find "$root" \( -type d -o -type l \) -name '*.app' -prune \
+        -name 'IntelliJ IDEA*.app' -print0
+    )
+  done
+
+  case "$selected_count" in
+    1)
+      for candidate in "${candidates[@]}"; do
+        [[ -z "$candidate" ]] || printf '%s\n' "$candidate"
+      done
+      ;;
+    0)
+      fail "no IntelliJ IDEA with a bundled JBR was found; install IDEA or set KAST_INSTALL_IDEA_HOME"
+      ;;
+    *)
+      warning "multiple IntelliJ IDEA installations provide a bundled JBR"
+      for candidate in "${candidates[@]}"; do
+        [[ -z "$candidate" ]] || info "candidate: $candidate"
+      done
+      fail "IDEA discovery is ambiguous; rerun with --idea-home"
+      ;;
+  esac
+}
+
+resolve_installer_idea_home() {
+  local requested="$1"
+  local resolved
+  if [[ -n "$requested" ]]; then
+    require_absolute_path "IDEA home" "$requested"
+    resolved="$(canonical_idea_home "$requested" || true)"
+    [[ -n "$resolved" ]] ||
+      fail "IDEA home has no build metadata, Kotlin plugin, or bundled JBR: $requested"
+    printf '%s\n' "$resolved"
+  else
+    discover_installed_idea_home
+  fi
+}
+
+load_persisted_runtime_configuration() {
+  local path="$1"
+  local line
+  [[ -e "$path" || -L "$path" ]] || return 0
+  [[ -f "$path" && ! -L "$path" ]] || fail "runtime configuration is not a regular file: $path"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    case "$line" in
+      ''|\#*) ;;
+      KAST_RUNTIME_STORE=*)
+        [[ "$persisted_runtime_store_set" == false ]] ||
+          fail "runtime configuration repeats KAST_RUNTIME_STORE"
+        persisted_runtime_store="${line#*=}"
+        persisted_runtime_store_set=true
+        ;;
+      KAST_RUNTIME_DIRECTORY=*)
+        [[ "$persisted_runtime_directory_set" == false ]] ||
+          fail "runtime configuration repeats KAST_RUNTIME_DIRECTORY"
+        persisted_runtime_directory="${line#*=}"
+        persisted_runtime_directory_set=true
+        ;;
+      KAST_CACHE_ROOT=*)
+        [[ "$persisted_cache_root_set" == false ]] ||
+          fail "runtime configuration repeats KAST_CACHE_ROOT"
+        persisted_cache_root="${line#*=}"
+        persisted_cache_root_set=true
+        ;;
+      KAST_ENABLE_LAUNCHD=*)
+        [[ "$persisted_enable_launchd_set" == false ]] ||
+          fail "runtime configuration repeats KAST_ENABLE_LAUNCHD"
+        persisted_enable_launchd="${line#*=}"
+        persisted_enable_launchd_set=true
+        ;;
+      *) fail "runtime configuration has an unsupported record: $line" ;;
+    esac
+  done < "$path"
 }
 
 shell_single_quote() {
@@ -448,10 +638,10 @@ verify_runtime_archive_paths() {
         ;;
       kast-indexer) has_executable=true ;;
       runtime-libs/*) has_runtime_libraries=true ;;
-      private-plugins/kast-indexer/lib/*) has_private_plugin=true ;;
       private-plugins|private-plugins/|private-plugins/kast-indexer|\
         private-plugins/kast-indexer/|private-plugins/kast-indexer/lib|\
         private-plugins/kast-indexer/lib/) ;;
+      private-plugins/kast-indexer/lib/*) has_private_plugin=true ;;
       *) fail "sidecar payload contains an unexpected root: $entry" ;;
     esac
   done < "$listing"
@@ -511,10 +701,44 @@ install_runtime_archive() {
   staged_runtime_checksum=""
 }
 
+install_runtime_configuration() {
+  local path="$1"
+  local root
+  root="$(dirname -- "$path")"
+  if [[ -e "$root" || -L "$root" ]]; then
+    [[ -d "$root" && ! -L "$root" ]] ||
+      fail "runtime configuration root is invalid: $root"
+  else
+    mkdir -p "$root"
+  fi
+  if [[ -e "$path" || -L "$path" ]]; then
+    [[ -f "$path" && ! -L "$path" ]] ||
+      fail "runtime configuration path is invalid: $path"
+  fi
+  staged_configuration="$(mktemp "$root/.environment.XXXXXX")"
+  {
+    printf '%s\n' \
+      '# Kast runtime configuration. Values are literal; shell syntax is not evaluated.' \
+      '# A variable already present in the process environment takes precedence.' \
+      '# Verified and extracted versions of the private semantic runtime.'
+    printf 'KAST_RUNTIME_STORE=%s\n' "$runtime_store"
+    printf '%s\n' '# Logical root used to derive short per-repository socket namespaces.'
+    printf 'KAST_RUNTIME_DIRECTORY=%s\n' "$runtime_directory"
+    printf '%s\n' '# Private IntelliJ config, system, plugin, log, and optional seed caches.'
+    printf 'KAST_CACHE_ROOT=%s\n' "$cache_root"
+    printf '%s\n' '# 0 starts detached processes directly; 1 delegates ownership to launchd.'
+    printf 'KAST_ENABLE_LAUNCHD=%s\n' "$enable_launchd"
+  } > "$staged_configuration"
+  chmod 600 "$staged_configuration"
+  mv -f "$staged_configuration" "$path"
+  staged_configuration=""
+}
+
 install_complete_launcher() {
   local root="$1"
   local java_executable="$2"
   local java_home="$3"
+  local config_file="$4"
   local launcher="$root/bin/kast-complete"
   staged_launcher="$(mktemp "$root/bin/.kast-complete.XXXXXX")"
   {
@@ -530,6 +754,45 @@ install_complete_launcher() {
     printf '%s\n' '  esac'
     printf '%s\n' 'done'
     printf '%s\n' 'script_dir="$(CDPATH= cd -- "$(dirname -- "$script_path")" && pwd -P)"'
+    printf 'config_file=%s\n' "$(shell_single_quote "$config_file")"
+    printf '%s\n' 'if [ -e "$config_file" ] || [ -L "$config_file" ]; then'
+    printf '%s\n' '  if [ ! -f "$config_file" ] || [ -L "$config_file" ]; then'
+    printf '%s\n' '    echo "kast: runtime configuration is not a regular file: $config_file" >&2'
+    printf '%s\n' '    exit 1'
+    printf '%s\n' '  fi'
+    printf '%s\n' \
+      '  seen_runtime_store=false' \
+      '  seen_runtime_directory=false' \
+      '  seen_cache_root=false' \
+      '  seen_enable_launchd=false'
+    printf '%s\n' '  while IFS= read -r config_line || [ -n "$config_line" ]; do'
+    printf '%s\n' '    case "$config_line" in'
+    printf '%s\n' "      ''|'#'*) ;;"
+    printf '%s\n' '      KAST_RUNTIME_STORE=*)'
+    printf '%s\n' '        [ "$seen_runtime_store" = false ] || { echo "kast: runtime configuration repeats KAST_RUNTIME_STORE" >&2; exit 1; }'
+    printf '%s\n' '        seen_runtime_store=true'
+    printf '%s\n' '        [ "${KAST_RUNTIME_STORE+x}" = x ] || KAST_RUNTIME_STORE=${config_line#*=}'
+    printf '%s\n' '        ;;'
+    printf '%s\n' '      KAST_RUNTIME_DIRECTORY=*)'
+    printf '%s\n' '        [ "$seen_runtime_directory" = false ] || { echo "kast: runtime configuration repeats KAST_RUNTIME_DIRECTORY" >&2; exit 1; }'
+    printf '%s\n' '        seen_runtime_directory=true'
+    printf '%s\n' '        [ "${KAST_RUNTIME_DIRECTORY+x}" = x ] || KAST_RUNTIME_DIRECTORY=${config_line#*=}'
+    printf '%s\n' '        ;;'
+    printf '%s\n' '      KAST_CACHE_ROOT=*)'
+    printf '%s\n' '        [ "$seen_cache_root" = false ] || { echo "kast: runtime configuration repeats KAST_CACHE_ROOT" >&2; exit 1; }'
+    printf '%s\n' '        seen_cache_root=true'
+    printf '%s\n' '        [ "${KAST_CACHE_ROOT+x}" = x ] || KAST_CACHE_ROOT=${config_line#*=}'
+    printf '%s\n' '        ;;'
+    printf '%s\n' '      KAST_ENABLE_LAUNCHD=*)'
+    printf '%s\n' '        [ "$seen_enable_launchd" = false ] || { echo "kast: runtime configuration repeats KAST_ENABLE_LAUNCHD" >&2; exit 1; }'
+    printf '%s\n' '        seen_enable_launchd=true'
+    printf '%s\n' '        [ "${KAST_ENABLE_LAUNCHD+x}" = x ] || KAST_ENABLE_LAUNCHD=${config_line#*=}'
+    printf '%s\n' '        ;;'
+    printf '%s\n' '      *) echo "kast: runtime configuration has an unsupported record: $config_line" >&2; exit 1 ;;'
+    printf '%s\n' '    esac'
+    printf '%s\n' '  done < "$config_file"'
+    printf '%s\n' '  export KAST_RUNTIME_STORE KAST_RUNTIME_DIRECTORY KAST_CACHE_ROOT KAST_ENABLE_LAUNCHD'
+    printf '%s\n' 'fi'
     printf '%s\n' "runtime_archive=\"\$script_dir/../share/kast/runtime/$runtime_name\""
     printf '%s\n' 'control_executable="$script_dir/kast"'
     printf '%s\n' 'if [ ! -x "$control_executable" ] || [ ! -f "$runtime_archive" ]; then'
@@ -549,6 +812,8 @@ install_complete_launcher() {
 verify_control_root() {
   local root="$1"
   local expected_version="$2"
+  local java_executable="$3"
+  local java_home="$4"
   local version_output link
 
   [[ -x "$root/bin/kast" ]] || fail "control archive has no executable bin/kast"
@@ -564,10 +829,14 @@ verify_control_root() {
   [[ ! -e "$root/kast-indexer" && ! -e "$root/idea-home" ]] ||
     fail "control archive contains semantic runtime content"
 
-  version_output="$(KAST_RUNTIME_STORE="$runtime_store" "$root/bin/kast" --version)"
+  version_output="$(
+    JAVA="$java_executable" JAVA_HOME="$java_home" KAST_RUNTIME_STORE="$runtime_store" \
+      "$root/bin/kast" --version
+  )"
   [[ "$version_output" == "kast ${expected_version} (IntelliJ sidecar)" ]] ||
     fail "installed metadata reports an unexpected version: $version_output"
-  KAST_RUNTIME_STORE="$runtime_store" "$root/bin/kast" --schema >/dev/null
+  JAVA="$java_executable" JAVA_HOME="$java_home" KAST_RUNTIME_STORE="$runtime_store" \
+    "$root/bin/kast" --schema >/dev/null
 }
 
 [[ -n "${HOME:-}" ]] || fail "HOME is unavailable"
@@ -578,8 +847,35 @@ legacy_install_root="${HOME}/.local/share/kast"
 runtime_cache_root="${HOME}/.cache/kast"
 default_runtime_directory="${TMPDIR:-/tmp}/kast-runtime"
 config_root="${config_home}/kast"
+config_file="$config_root/environment"
 legacy_config_root="${HOME}/.config/kast"
 application_support_root="${HOME}/Library/Application Support/Kast"
+
+if [[ $# -eq 1 ]]; then
+  case "$1" in
+    --help|-h)
+      usage
+      exit 0
+      ;;
+  esac
+elif [[ $# -eq 2 ]]; then
+  case "$1:$2" in
+    install:--help|install:-h|uninstall:--help|uninstall:-h)
+      usage
+      exit 0
+      ;;
+  esac
+fi
+
+persisted_runtime_store=""
+persisted_runtime_store_set=false
+persisted_runtime_directory=""
+persisted_runtime_directory_set=false
+persisted_cache_root=""
+persisted_cache_root_set=false
+persisted_enable_launchd=""
+persisted_enable_launchd_set=false
+load_persisted_runtime_configuration "$config_file"
 
 action="install"
 purge_existing=false
@@ -588,8 +884,35 @@ repository="${KAST_REPOSITORY:-$DEFAULT_REPOSITORY}"
 release_base_url="${KAST_RELEASE_BASE_URL:-}"
 install_root="${KAST_INSTALL_ROOT:-$default_install_root}"
 bin_dir="${KAST_BIN_DIR:-${HOME}/.local/bin}"
-runtime_store="${KAST_RUNTIME_STORE:-$runtime_cache_root/semantic-runtimes}"
-runtime_directory="${KAST_RUNTIME_DIRECTORY:-$default_runtime_directory}"
+if [[ ${KAST_RUNTIME_STORE+x} == x ]]; then
+  runtime_store="$KAST_RUNTIME_STORE"
+elif [[ "$persisted_runtime_store_set" == true ]]; then
+  runtime_store="$persisted_runtime_store"
+else
+  runtime_store="$runtime_cache_root/semantic-runtimes"
+fi
+if [[ ${KAST_RUNTIME_DIRECTORY+x} == x ]]; then
+  runtime_directory="$KAST_RUNTIME_DIRECTORY"
+elif [[ "$persisted_runtime_directory_set" == true ]]; then
+  runtime_directory="$persisted_runtime_directory"
+else
+  runtime_directory="$default_runtime_directory"
+fi
+if [[ ${KAST_CACHE_ROOT+x} == x ]]; then
+  cache_root="$KAST_CACHE_ROOT"
+elif [[ "$persisted_cache_root_set" == true ]]; then
+  cache_root="$persisted_cache_root"
+else
+  cache_root="$runtime_cache_root/intellij-caches"
+fi
+if [[ ${KAST_ENABLE_LAUNCHD+x} == x ]]; then
+  enable_launchd="$KAST_ENABLE_LAUNCHD"
+elif [[ "$persisted_enable_launchd_set" == true ]]; then
+  enable_launchd="$persisted_enable_launchd"
+else
+  enable_launchd=0
+fi
+idea_home="${KAST_INSTALL_IDEA_HOME:-}"
 runtime_socket_directory=""
 default_runtime_socket_directory=""
 process_table_command="${KAST_INSTALL_PROCESS_TABLE_COMMAND:-ps}"
@@ -597,6 +920,8 @@ process_kill_command="${KAST_INSTALL_PROCESS_KILL_COMMAND:-kill}"
 version_option_set=false
 repository_option_set=false
 release_base_url_option_set=false
+enable_launchd_option_set=false
+idea_home_option_set=false
 
 if [[ ${#} -gt 0 ]]; then
   case "$1" in
@@ -639,6 +964,23 @@ while [[ $# -gt 0 ]]; do
       runtime_directory="$2"
       shift 2
       ;;
+    --cache-root)
+      [[ $# -ge 2 ]] || fail "--cache-root requires a value"
+      cache_root="$2"
+      shift 2
+      ;;
+    --enable-launchd)
+      [[ $# -ge 2 ]] || fail "--enable-launchd requires a value"
+      enable_launchd="$2"
+      enable_launchd_option_set=true
+      shift 2
+      ;;
+    --idea-home)
+      [[ $# -ge 2 ]] || fail "--idea-home requires a value"
+      idea_home="$2"
+      idea_home_option_set=true
+      shift 2
+      ;;
     --repository)
       [[ $# -ge 2 ]] || fail "--repository requires a value"
       repository="$2"
@@ -651,20 +993,20 @@ while [[ $# -gt 0 ]]; do
       release_base_url_option_set=true
       shift 2
       ;;
-    --help|-h)
-      usage
-      exit 0
-      ;;
     *) fail "unknown argument: $1" ;;
   esac
 done
+
+[[ "$idea_home_option_set" == false || -n "$idea_home" ]] ||
+  fail "--idea-home must not be empty"
 
 if [[ "$action" == "uninstall" ]]; then
   [[ "$purge_existing" == false ]] ||
     fail "--purge-existing is valid only with install"
   [[ "$version_option_set" == false && "$repository_option_set" == false && \
-    "$release_base_url_option_set" == false ]] ||
-    fail "--version, --repository, and --release-base-url are valid only with install"
+    "$release_base_url_option_set" == false && "$enable_launchd_option_set" == false && \
+    "$idea_home_option_set" == false ]] ||
+    fail "--version, --repository, --release-base-url, --enable-launchd, and --idea-home are valid only with install"
   require_command rm
   require_command find
   require_command shasum
@@ -693,6 +1035,8 @@ require_command wc
 require_command tr
 require_command mktemp
 require_command find
+require_command dirname
+require_command mkdir
 require_command readlink
 require_command mv
 require_command cp
@@ -706,19 +1050,23 @@ case "$(uname -m)" in
   *) fail "only macOS/AArch64 is supported" ;;
 esac
 
-if [[ -n "${JAVA_HOME:-}" ]]; then
-  java_executable="${JAVA_HOME}/bin/java"
-  [[ -x "$java_executable" ]] || fail "JAVA_HOME has no executable bin/java: $JAVA_HOME"
-else
-  require_command java
-  java_executable="$(command -v java)"
-fi
+print_banner
+note "discovering an installed IntelliJ IDEA and its bundled runtime"
+idea_home="$(resolve_installer_idea_home "$idea_home")"
+bundled_java_home="$(CDPATH='' cd -- "$idea_home/jbr/Contents/Home" && pwd -P)" ||
+  fail "unable to resolve IntelliJ IDEA's bundled runtime home: $idea_home"
+java_executable="$bundled_java_home/bin/java"
 java_home="$(java_runtime_home "$java_executable")" ||
-  fail "unable to identify the Java runtime home used by the Kast launcher"
+  fail "unable to identify IntelliJ IDEA's bundled runtime home"
+[[ "$java_home" == "$bundled_java_home" ]] ||
+  fail "IntelliJ IDEA's bundled Java reports an external runtime home: $java_home"
 java_executable="$java_home/bin/java"
 java_major="$(java_major_version "$java_executable")" ||
-  fail "unable to identify the Java version used by the Kast launcher"
-(( java_major >= 25 )) || fail "Java 25 or newer is required; found Java $java_major"
+  fail "unable to identify IntelliJ IDEA's bundled Java version"
+(( java_major >= 25 )) ||
+  fail "IntelliJ IDEA's bundled runtime must be Java 25 or newer; found Java $java_major"
+info "IDEA home: $idea_home"
+info "installer runtime: $java_home (Java $java_major)"
 
 validate_repository "$repository"
 if [[ -n "$release_base_url" ]]; then
@@ -730,6 +1078,11 @@ require_absolute_path "install root" "$install_root"
 require_absolute_path "binary directory" "$bin_dir"
 require_absolute_path "runtime store" "$runtime_store"
 require_absolute_path "runtime directory" "$runtime_directory"
+require_absolute_path "sidecar cache root" "$cache_root"
+require_literal_configuration_value "runtime store" "$runtime_store"
+require_literal_configuration_value "runtime directory" "$runtime_directory"
+require_literal_configuration_value "sidecar cache root" "$cache_root"
+validate_enable_launchd "$enable_launchd"
 runtime_socket_directory="$(runtime_socket_directory_for "$runtime_directory")"
 default_runtime_socket_directory="$(
   runtime_socket_directory_for "$default_runtime_directory"
@@ -765,6 +1118,7 @@ staged_root=""
 staged_runtime=""
 staged_runtime_checksum=""
 staged_launcher=""
+staged_configuration=""
 cleanup() {
   rm -rf "$temporary_root"
   if [[ -n "$staged_root" && -e "$staged_root" ]]; then
@@ -773,6 +1127,7 @@ cleanup() {
   [[ -z "$staged_runtime" ]] || rm -f "$staged_runtime"
   [[ -z "$staged_runtime_checksum" ]] || rm -f "$staged_runtime_checksum"
   [[ -z "$staged_launcher" ]] || rm -f "$staged_launcher"
+  [[ -z "$staged_configuration" ]] || rm -f "$staged_configuration"
 }
 trap cleanup EXIT
 
@@ -783,7 +1138,7 @@ runtime_archive="$temporary_root/$runtime_name"
 runtime_checksum="$temporary_root/$runtime_name.sha256"
 runtime_listing="$temporary_root/runtime.list"
 
-note "downloading plugin-free Kast $version distribution"
+note "downloading the matched Kast $version control and private semantic runtime"
 for asset in \
   "$control_name" \
   "$control_name.sha256" \
@@ -808,7 +1163,7 @@ verify_runtime_archive_paths "$runtime_archive" "$runtime_listing"
 verified_root="$temporary_root/verified-control"
 mkdir -p "$verified_root"
 tar -xzf "$archive" -C "$verified_root"
-verify_control_root "$verified_root" "$version"
+verify_control_root "$verified_root" "$version" "$java_executable" "$java_home"
 verify_runtime_manifest \
   "$verified_root/share/kast/semantic-runtime.json" \
   "$runtime_name" \
@@ -833,19 +1188,21 @@ if [[ -e "$target_root" || -L "$target_root" ]]; then
     fail "existing version has no control identity: $target_root"
   [[ "$(< "$target_root/.kast-control-sha256")" == "$control_digest" ]] ||
     fail "existing version does not match the immutable release: $target_root"
-  verify_control_root "$target_root" "$version"
+  verify_control_root "$target_root" "$version" "$java_executable" "$java_home"
   [[ -f "$target_root/.kast-runtime-sha256" ]] ||
     fail "existing version has no sidecar identity: $target_root"
   [[ "$(< "$target_root/.kast-runtime-sha256")" == "$runtime_digest" ]] ||
     fail "existing version sidecar does not match the immutable release: $target_root"
   install_runtime_archive "$target_root" "$runtime_archive" "$runtime_checksum" "$runtime_digest"
-  install_complete_launcher "$target_root" "$java_executable" "$java_home"
+  install_complete_launcher \
+    "$target_root" "$java_executable" "$java_home" "$config_file"
 else
   staged_root="$(mktemp -d "$versions_root/.install-${version}.XXXXXX")"
   tar -xzf "$archive" -C "$staged_root"
-  verify_control_root "$staged_root" "$version"
+  verify_control_root "$staged_root" "$version" "$java_executable" "$java_home"
   install_runtime_archive "$staged_root" "$runtime_archive" "$runtime_checksum" "$runtime_digest"
-  install_complete_launcher "$staged_root" "$java_executable" "$java_home"
+  install_complete_launcher \
+    "$staged_root" "$java_executable" "$java_home" "$config_file"
   printf '%s\n' "$control_digest" > "$staged_root/.kast-control-sha256"
   printf '%s\n' "$runtime_digest" > "$staged_root/.kast-runtime-sha256"
   mv "$staged_root" "$target_root"
@@ -872,17 +1229,21 @@ if [[ -e "$command_link" || -L "$command_link" ]]; then
   esac
 fi
 
+install_runtime_configuration "$config_file"
+
 # `ln -sfn` replaces only the installer-owned links checked above. It does not
 # follow a `current` symlink to the installed version directory.
 ln -sfn "versions/$version" "$current_link"
 ln -sfn "$install_root/current/bin/kast-complete" "$command_link"
 
-verify_control_root "$target_root" "$version"
+verify_control_root "$target_root" "$version" "$java_executable" "$java_home"
 "$command_link" --version >/dev/null
 
 note "installed Kast $version"
 note "command: $command_link"
+note "configuration: $config_file"
 note "private sidecar: $target_root/share/kast/runtime/$runtime_name"
+info "runtime knobs: KAST_RUNTIME_STORE, KAST_RUNTIME_DIRECTORY, KAST_CACHE_ROOT, KAST_ENABLE_LAUNCHD"
 case ":${PATH:-}:" in
   *":$bin_dir:"*) ;;
   *) warning "add $bin_dir to PATH" ;;

@@ -27,11 +27,28 @@ assert_present() {
 
 home="$fixture_root/home"
 stub_bin="$fixture_root/stub-bin"
-java_home="$fixture_root/java-home"
+idea_home="$home/Applications/IntelliJ IDEA.app/Contents"
+java_home="$idea_home/jbr/Contents/Home"
 test_state="$fixture_root/state"
 assets="$fixture_root/assets/v9.8.7"
-mkdir -p "$home" "$stub_bin" "$java_home/bin" "$test_state" "$assets"
+mkdir -p "$home" "$stub_bin" "$java_home/bin" "$idea_home/Resources" \
+  "$idea_home/plugins/Kotlin" "$test_state" "$assets"
 java_home="$(CDPATH='' cd -- "$java_home" && pwd -P)"
+idea_home="$(CDPATH='' cd -- "$idea_home" && pwd -P)"
+printf 'IU-262.9437.185\n' >"$idea_home/Resources/build.txt"
+
+legacy_idea_home="$home/Applications/IntelliJ IDEA 2025.3.app/Contents"
+legacy_java_home="$legacy_idea_home/jbr/Contents/Home"
+mkdir -p "$legacy_java_home/bin" "$legacy_idea_home/Resources" \
+  "$legacy_idea_home/plugins/Kotlin"
+legacy_java_home="$(CDPATH='' cd -- "$legacy_java_home" && pwd -P)"
+printf 'IU-253.1\n' >"$legacy_idea_home/Resources/build.txt"
+printf 'JAVA_VERSION="21.0.8"\nOS_ARCH="aarch64"\n' >"$legacy_java_home/release"
+printf '%s\n' '#!/usr/bin/env bash' \
+  'printf '\''openjdk version "21.0.8" 2025-07-15\n'\'' >&2' \
+  "printf '    java.home = %s\\n' '$legacy_java_home' >&2" \
+  >"$legacy_java_home/bin/java"
+chmod +x "$legacy_java_home/bin/java"
 
 launchctl_state="$test_state/launchctl-service"
 launchctl_log="$test_state/launchctl.log"
@@ -96,10 +113,11 @@ printf '%s\n' '#!/usr/bin/env bash' \
 chmod +x "$stub_bin/uname"
 
 printf '%s\n' '#!/usr/bin/env bash' \
+  'runtime_home="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)"' \
   'printf '\''openjdk version "25.0.3" 2026-04-21\n'\'' >&2' \
-  'printf "    java.home = %s\n" "${KAST_TEST_JAVA_HOME:?}" >&2' >"$java_home/bin/java"
+  'printf "    java.home = %s\n" "$runtime_home" >&2' >"$java_home/bin/java"
 chmod +x "$java_home/bin/java"
-ln -s "$java_home/bin/java" "$stub_bin/java"
+printf 'JAVA_VERSION="25.0.3"\nOS_ARCH="aarch64"\n' >"$java_home/release"
 
 printf '%s\n' '#!/usr/bin/env bash' \
   'set -euo pipefail' \
@@ -130,6 +148,8 @@ application_support="$home/Library/Application Support/Kast"
 legacy_plugin="$home/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-indexer"
 plugin_sibling="$home/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/keep"
 runtime_directory="$fixture_root/tmp/kast-runtime"
+runtime_store="$home/custom/semantic-runtimes"
+cache_root="$home/custom/intellij-caches-\$(printf injected)"
 runtime_socket_directory="/tmp/kast-runtime-$(
   printf '%s' "$runtime_directory" \
     | sed -E 's:/+:/:g' \
@@ -140,7 +160,8 @@ runtime_socket_directory="/tmp/kast-runtime-$(
 seed_prior_installations() {
   mkdir -p "$default_data" "$legacy_data" "$custom_install" "$custom_bin" \
     "$default_cache" "$xdg_config" "$legacy_config" "$application_support" \
-    "$legacy_plugin" "$plugin_sibling" "$runtime_directory" \
+    "$legacy_plugin" "$plugin_sibling" "$runtime_directory" "$runtime_store" \
+    "$cache_root" \
     "$runtime_socket_directory" "$home/.local/bin"
   printf 'old launcher\n' >"$custom_bin/kast"
   printf 'old launcher\n' >"$home/.local/bin/kast"
@@ -157,7 +178,11 @@ installer_environment=(
   "XDG_CONFIG_HOME=$home/xdg-config"
   "KAST_INSTALL_ROOT=$custom_install"
   "KAST_BIN_DIR=$custom_bin"
+  "KAST_RUNTIME_STORE=$runtime_store"
   "KAST_RUNTIME_DIRECTORY=$runtime_directory"
+  "KAST_CACHE_ROOT=$cache_root"
+  "KAST_ENABLE_LAUNCHD=1"
+  "KAST_INSTALL_IDEA_SEARCH_ROOT=$home/Applications"
   "KAST_TEST_LAUNCHCTL_STATE=$launchctl_state"
   "KAST_TEST_LAUNCHCTL_LOG=$launchctl_log"
   "KAST_TEST_BREW_STATE=$brew_state"
@@ -166,22 +191,22 @@ installer_environment=(
   "KAST_TEST_PROCESS_LOG=$process_log"
   "KAST_TEST_CURL_LOG=$curl_log"
   "KAST_TEST_ASSET_DIR=$assets"
-  "KAST_TEST_JAVA_HOME=$java_home"
   "KAST_INSTALL_PROCESS_TABLE_COMMAND=$stub_bin/ps"
   "KAST_INSTALL_PROCESS_KILL_COMMAND=$stub_bin/kill"
   "TMPDIR=$fixture_root/tmp"
-  "JAVA_HOME="
+  "JAVA_HOME=$fixture_root/ambient-java-must-not-be-used"
   "PATH=$stub_bin:/usr/bin:/bin"
 )
 
 mkdir -p "$fixture_root/tmp"
 seed_prior_installations
 printf 'running\n' >"$process_state"
-env "${installer_environment[@]}" bash "$repository_root/install.sh" uninstall \
+env -i "${installer_environment[@]}" bash "$repository_root/install.sh" uninstall \
   >"$fixture_root/uninstall.out" 2>&1
 
 for removed in "$default_data" "$legacy_data" "$custom_install" "$custom_bin/kast" \
-  "$default_cache" "$xdg_config" "$legacy_config" "$application_support" \
+  "$default_cache" "$runtime_store" "$cache_root" "$xdg_config" \
+  "$legacy_config" "$application_support" \
   "$legacy_plugin" "$runtime_directory" "$runtime_socket_directory" \
   "$home/.local/bin/kast" \
   "$home/.local/bin/_kastctl"; do
@@ -195,12 +220,12 @@ grep -Fxq 'uninstall --force kast' "$brew_log" || fail "Homebrew formula was not
 grep -Fxq -- '-TERM 777' "$process_log" || fail "orphaned indexer was not stopped"
 grep -Fq '888' "$process_log" && fail "unrelated process was stopped"
 
-env "${installer_environment[@]}" bash "$repository_root/install.sh" uninstall \
+env -i "${installer_environment[@]}" bash "$repository_root/install.sh" uninstall \
   >"$fixture_root/uninstall-again.out" 2>&1 || fail "second uninstall was not idempotent"
 
 unsafe_marker="$home/unsafe-marker"
 printf 'preserve\n' >"$unsafe_marker"
-if env "${installer_environment[@]}" bash "$repository_root/install.sh" uninstall \
+if env -i "${installer_environment[@]}" bash "$repository_root/install.sh" uninstall \
   --install-root "$home" >"$fixture_root/unsafe.out" 2>&1; then
   fail "uninstall accepted HOME as a recursive cleanup root"
 fi
@@ -225,6 +250,10 @@ printf '%s\n' '#!/usr/bin/env bash' \
   'case "${1:-}" in' \
   '  --version) printf "kast 9.8.7 (IntelliJ sidecar)\n" ;;' \
   '  --schema) printf "{}\n" ;;' \
+  '  --test-runtime-config)' \
+  '    printf "%s\n" "${KAST_RUNTIME_STORE:?}" "${KAST_RUNTIME_DIRECTORY:?}"' \
+  '    printf "%s\n" "${KAST_CACHE_ROOT:?}" "${KAST_ENABLE_LAUNCHD:?}"' \
+  '    ;;' \
   '  *) exit 64 ;;' \
   'esac' >"$control_root/bin/kast"
 chmod +x "$control_root/bin/kast"
@@ -244,7 +273,7 @@ incomplete_assets="$fixture_root/incomplete-assets"
 mkdir -p "$incomplete_assets"
 cp "$assets/$control_name" "$assets/$control_name.sha256" \
   "$assets/$runtime_name.sha256" "$incomplete_assets"
-if env "${installer_environment[@]}" KAST_TEST_ASSET_DIR="$incomplete_assets" \
+if env -i "${installer_environment[@]}" KAST_TEST_ASSET_DIR="$incomplete_assets" \
   bash "$repository_root/install.sh" install --purge-existing --version 9.8.7 \
   --repository example/kast >"$fixture_root/unavailable.out" 2>&1; then
   fail "installation succeeded without the private sidecar payload"
@@ -256,7 +285,7 @@ grep -Fq 'purging prior Kast installations' "$fixture_root/unavailable.out" &&
   fail "purge removed the prior installation before artifact verification"
 
 install_output="$fixture_root/install.out"
-env "${installer_environment[@]}" bash "$repository_root/install.sh" install \
+env -i "${installer_environment[@]}" bash "$repository_root/install.sh" install \
   --purge-existing --version 9.8.7 --release-base-url "file://$fixture_root/assets" \
   >"$install_output" 2>&1 || {
   cat "$install_output" >&2
@@ -267,9 +296,32 @@ version_root="$custom_install/versions/9.8.7"
 [[ -x "$version_root/bin/kast" ]] || fail "verified control release was not installed"
 [[ -x "$version_root/bin/kast-complete" ]] || fail "complete launcher was not installed"
 grep -Fq "export JAVA='$java_home/bin/java'" "$version_root/bin/kast-complete" ||
-  fail "complete launcher did not retain the installation-proven Java executable"
+  fail "complete launcher did not retain IDEA's installation-proven Java executable"
 grep -Fq "export JAVA_HOME='$java_home'" "$version_root/bin/kast-complete" ||
-  fail "complete launcher did not retain the installation-proven Java home"
+  fail "complete launcher did not retain IDEA's installation-proven Java home"
+config_file="$xdg_config/environment"
+[[ -f "$config_file" && ! -L "$config_file" ]] ||
+  fail "runtime configuration was not installed"
+for knob in KAST_RUNTIME_STORE KAST_RUNTIME_DIRECTORY KAST_CACHE_ROOT KAST_ENABLE_LAUNCHD; do
+  grep -Fq "$knob=" "$config_file" || fail "runtime configuration did not expose $knob"
+done
+expected_runtime_config="$(printf '%s\n' \
+  "$runtime_store" "$runtime_directory" "$cache_root" '1')"
+actual_runtime_config="$(
+  env -u KAST_RUNTIME_STORE -u KAST_RUNTIME_DIRECTORY -u KAST_CACHE_ROOT \
+    -u KAST_ENABLE_LAUNCHD "$custom_bin/kast" --test-runtime-config
+)"
+[[ "$actual_runtime_config" == "$expected_runtime_config" ]] ||
+  fail "installed runtime configuration was not applied by the public launcher"
+override_store="$home/override-semantic-runtimes"
+overridden_runtime_config="$(
+  env KAST_RUNTIME_STORE="$override_store" KAST_ENABLE_LAUNCHD=0 \
+    "$custom_bin/kast" --test-runtime-config
+)"
+expected_override_config="$(printf '%s\n' \
+  "$override_store" "$runtime_directory" "$cache_root" '0')"
+[[ "$overridden_runtime_config" == "$expected_override_config" ]] ||
+  fail "process environment did not override installed runtime configuration"
 [[ -f "$version_root/share/kast/runtime/$runtime_name" ]] ||
   fail "private sidecar archive was not installed"
 [[ -L "$custom_install/current" && -L "$custom_bin/kast" ]] ||
@@ -285,8 +337,57 @@ fi
 [[ "$("$custom_bin/kast" --version)" == "kast 9.8.7 (IntelliJ sidecar)" ]] ||
   fail "public command did not select the sidecar control"
 grep -Fq 'installed Kast 9.8.7' "$install_output" || fail "installation did not complete"
+grep -Fq "configuration: $config_file" "$install_output" ||
+  fail "installation did not disclose its editable runtime configuration"
 grep -Fxq "file://$fixture_root/assets/v9.8.7/$control_name" "$curl_log" ||
   fail "control asset URL was not requested"
 grep -Fxq "$runtime_url" "$curl_log" || fail "sidecar asset URL was not requested"
+
+second_idea_app="$home/Applications/IntelliJ IDEA EAP.app"
+cp -R "${idea_home%/Contents}" "$second_idea_app"
+ambiguous_output="$fixture_root/ambiguous-idea.out"
+if env -i "${installer_environment[@]}" bash "$repository_root/install.sh" install \
+  --version 9.8.7 --release-base-url "file://$fixture_root/assets" \
+  >"$ambiguous_output" 2>&1; then
+  fail "automatic discovery guessed between multiple IDEA installations"
+fi
+grep -Fq 'IDEA discovery is ambiguous; rerun with --idea-home' "$ambiguous_output" ||
+  fail "ambiguous IDEA discovery did not retain its explicit failure"
+
+explicit_output="$fixture_root/explicit-idea.out"
+env -i "${installer_environment[@]}" bash "$repository_root/install.sh" install \
+  --idea-home "${idea_home%/Contents}" \
+  --version 9.8.7 --release-base-url "file://$fixture_root/assets" \
+  >"$explicit_output" 2>&1 || {
+  cat "$explicit_output" >&2
+  fail "explicit IDEA application did not disambiguate installer runtime discovery"
+}
+
+mkdir -p "$runtime_store" "$cache_root" "$runtime_directory"
+persisted_uninstall_output="$fixture_root/persisted-config-uninstall.out"
+env -i \
+  HOME="$home" \
+  XDG_DATA_HOME="$home/xdg-data" \
+  XDG_CONFIG_HOME="$home/xdg-config" \
+  KAST_INSTALL_ROOT="$custom_install" \
+  KAST_BIN_DIR="$custom_bin" \
+  KAST_TEST_LAUNCHCTL_STATE="$launchctl_state" \
+  KAST_TEST_LAUNCHCTL_LOG="$launchctl_log" \
+  KAST_TEST_BREW_STATE="$brew_state" \
+  KAST_TEST_BREW_LOG="$brew_log" \
+  KAST_TEST_PROCESS_STATE="$process_state" \
+  KAST_TEST_PROCESS_LOG="$process_log" \
+  KAST_INSTALL_PROCESS_TABLE_COMMAND="$stub_bin/ps" \
+  KAST_INSTALL_PROCESS_KILL_COMMAND="$stub_bin/kill" \
+  TMPDIR="$fixture_root/tmp" \
+  PATH="$stub_bin:/usr/bin:/bin" \
+  bash "$repository_root/install.sh" uninstall \
+  >"$persisted_uninstall_output" 2>&1 || {
+  cat "$persisted_uninstall_output" >&2
+  fail "uninstall did not consume the installed runtime configuration"
+}
+for removed in "$runtime_store" "$cache_root" "$runtime_directory" "$config_file"; do
+  assert_absent "$removed"
+done
 
 printf 'installer contract: all checks passed\n'
