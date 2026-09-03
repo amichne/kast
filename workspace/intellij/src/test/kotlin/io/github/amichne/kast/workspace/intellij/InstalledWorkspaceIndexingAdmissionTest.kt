@@ -23,18 +23,6 @@ class InstalledWorkspaceIndexingAdmissionTest {
     }
 
     @Test
-    fun `only project JVM readiness failure becomes project JVM unavailable`() {
-        assertEquals(
-            InstalledWorkspaceIndexingAdmission.Rejected(
-                InstalledIntellijWorkspaceFailure.PROJECT_JVM_UNAVAILABLE,
-            ),
-            InstalledIndexingReadiness.Rejected(
-                InstalledIndexingReadinessFailure.ProjectJvmUnavailable,
-            ).workspaceOpeningAdmission(),
-        )
-    }
-
-    @Test
     fun `non JVM indexing failures remain startup failures`() {
         listOf(
             InstalledIndexingReadinessFailure.IndexingTimedOut,

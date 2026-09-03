@@ -47,6 +47,115 @@ class CodexProtocolQualifierTest {
     }
 
     @Test
+    fun `contracts reject lifecycle schemas incompatible with MCP projection`() {
+        val objectSchema = Json.parseToJsonElement("""{"type":"object"}""").jsonObject
+        val dynamicOnlyNotification = Json.parseToJsonElement(
+            """
+            {
+              "type":"object",
+              "required":["item"],
+              "properties":{
+                "item":{
+                  "type":"object",
+                  "required":["type"],
+                  "properties":{"type":{"const":"dynamicToolCall"}}
+                }
+              }
+            }
+            """.trimIndent(),
+        ).jsonObject
+
+        val definition = CodexProtocolContracts.define(
+            CodexOwnedSchema.entries.associateWith { schema ->
+                when (schema) {
+                    CodexOwnedSchema.ITEM_STARTED_NOTIFICATION,
+                    CodexOwnedSchema.ITEM_COMPLETED_NOTIFICATION,
+                    -> dynamicOnlyNotification
+                    else -> objectSchema
+                }
+            },
+        )
+
+        assertInstanceOf(
+            io.github.amichne.kast.kernel.Validation.Rejected::class.java,
+            definition,
+        )
+    }
+
+    @Test
+    fun `contracts reject item container schemas incompatible with MCP projection`() {
+        val objectSchema = Json.parseToJsonElement("""{"type":"object"}""").jsonObject
+        val dynamicOnlyTurnsResponse = Json.parseToJsonElement(
+            """{"type":"object","required":["data"],"properties":{"data":{"type":"array","items":{"type":"object","required":["items"],"properties":{"items":{"type":"array","items":{"type":"object","required":["type"],"properties":{"type":{"const":"dynamicToolCall"}}}}}}}}}""",
+        ).jsonObject
+
+        val definition = CodexProtocolContracts.define(
+            CodexOwnedSchema.entries.associateWith { schema ->
+                if (schema == CodexOwnedSchema.THREAD_TURNS_LIST_RESPONSE) {
+                    dynamicOnlyTurnsResponse
+                } else {
+                    objectSchema
+                }
+            },
+        )
+
+        assertInstanceOf(
+            io.github.amichne.kast.kernel.Validation.Rejected::class.java,
+            definition,
+        )
+    }
+
+    @Test
+    fun `contracts reject schemas that exclude failed MCP projections`() {
+        val objectSchema = Json.parseToJsonElement("""{"type":"object"}""").jsonObject
+        val noFailedMcpNotification = Json.parseToJsonElement(
+            """
+            {
+              "type":"object",
+              "required":["item"],
+              "properties":{
+                "item":{
+                  "oneOf":[
+                    {
+                      "type":"object",
+                      "required":["type","status"],
+                      "properties":{
+                        "type":{"const":"dynamicToolCall"},
+                        "status":{"type":"string"}
+                      }
+                    },
+                    {
+                      "type":"object",
+                      "required":["type","status"],
+                      "properties":{
+                        "type":{"const":"mcpToolCall"},
+                        "status":{"enum":["inProgress","completed"]}
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+            """.trimIndent(),
+        ).jsonObject
+
+        val definition = CodexProtocolContracts.define(
+            CodexOwnedSchema.entries.associateWith { schema ->
+                if (schema == CodexOwnedSchema.ITEM_COMPLETED_NOTIFICATION) {
+                    noFailedMcpNotification
+                } else {
+                    objectSchema
+                }
+            },
+        )
+
+        assertInstanceOf(
+            io.github.amichne.kast.kernel.Validation.Rejected::class.java,
+            definition,
+        )
+    }
+
+    @Test
     fun `qualification compiles the exact installed experimental schemas`(
         @TempDir temporary: Path,
     ) = runBlocking {

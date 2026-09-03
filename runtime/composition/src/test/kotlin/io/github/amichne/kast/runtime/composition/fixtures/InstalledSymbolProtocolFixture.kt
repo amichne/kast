@@ -22,6 +22,7 @@ import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.relation.contract.RelationProvenance
 import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.relation.contract.RelationResultCount
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.service.RelationService
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
@@ -198,6 +199,7 @@ internal class InstalledSymbolProtocolFixture private constructor(
                     fact.canonicalProjection().toByteArray(Charsets.UTF_8).size.toLong(),
                 ).refinedFixture(),
                 RelationWorkCount.parse(1).refinedFixture(),
+                RelationResultCount.parse(1).refinedFixture(),
             ).refinedFixture()
             return RelationCompilation.complete(batch)
         }

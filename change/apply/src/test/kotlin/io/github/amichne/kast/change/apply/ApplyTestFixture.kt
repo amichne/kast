@@ -51,6 +51,7 @@ import io.github.amichne.kast.relation.contract.RelationCompilation
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.relation.contract.RelationResultCount
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
@@ -332,6 +333,7 @@ internal class ApplyTestFixture(
             emptyList(),
             RelationByteCount.parse(0L).refined(),
             RelationWorkCount.parse(0L).refined(),
+            RelationResultCount.parse(0).refined(),
         ).refined()
         val complete = RelationCompilation.complete(batch)
         return RelationReadResult.Complete(complete.batch, complete.coverage)

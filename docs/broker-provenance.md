@@ -26,3 +26,14 @@ Admitted dynamic-tool invocations publish one payload-free start event and one f
 event to `$CODEX_HOME/broker/service.log`. Each JSON line carries only thread, turn, call,
 namespace, tool, and completion identity; tool arguments, results, and working-directory content
 never enter this activity stream.
+
+The active WebSocket session has a separate, user-facing presentation boundary. For namespaces
+owned by Kast, dynamic-tool lifecycle items are projected one-for-one to Codex's `mcpToolCall`
+shape before they reach the downstream CLI. The projection preserves the complete arguments and
+result content, adds parsed JSON as `structuredContent` when the result is a single JSON object,
+and retains call identity, status, and duration. Codex renders that as its native `Called
+namespace.tool(arguments)` card with a nested, compactly formatted result. Live notifications,
+final turn snapshots, thread start/resume/fork and read/mutation responses, thread list/search,
+review and queued-turn responses, and turns/items/timeline pages use the same projection. Startup
+qualification proves both the dynamic source shape and the rendered MCP shape against every
+installed item-bearing schema. Other namespaces remain byte-exact pass-through.

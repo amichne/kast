@@ -22,11 +22,13 @@ import io.github.amichne.kast.relation.contract.RelationCompilation
 import io.github.amichne.kast.relation.contract.RelationCompilerPort
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationMeaning
+import io.github.amichne.kast.relation.contract.RelationIncompleteCoverage
+import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
 import io.github.amichne.kast.relation.contract.RelationReadRejection
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.relation.contract.RelationResultCount
 import io.github.amichne.kast.relation.contract.RelationWorkCount
-import io.github.amichne.kast.relation.contract.RelationWorkOffset
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
@@ -186,10 +188,12 @@ class RelationServiceTest {
     fun `qualified empty evidence retains known minimum and continuation`() {
         val workspace = published(19L)
         val request = request(workspace.readLease)
-        val qualified = RelationCompilation.qualified(
+        val qualified = RelationCompilation.qualifiedResumable(
             emptyBatch(request),
             setOf(RelationLimitation.PROVIDER_INCOMPLETE),
-            RelationWorkOffset.parse(0L).refined(),
+            request.providerCursor.advance(
+                RelationProviderItemDescriptor.parse("filtered-provider-item").refined(),
+            ),
         ).refined()
         val trace = RecordingRelationObservability()
         val service = RelationService(
@@ -204,7 +208,11 @@ class RelationServiceTest {
         )
 
         assertEquals(0, result.coverage.knownMinimum.value)
-        assertEquals(request.subject.fingerprint, result.coverage.continuation.subject)
+        val coverage = assertInstanceOf(
+            RelationIncompleteCoverage.Resumable::class.java,
+            result.coverage,
+        )
+        assertEquals(request.subject.fingerprint, coverage.continuation.subject)
         assertEquals(
             listOf(
                 KastSpanObservation(
@@ -224,6 +232,7 @@ class RelationServiceTest {
         emptyList(),
         RelationByteCount.parse(0L).refined(),
         RelationWorkCount.parse(0L).refined(),
+        RelationResultCount.parse(0).refined(),
     ).refined()
 
     private fun request(lease: SemanticReadLease): RelationRequest = RelationRequest.start(

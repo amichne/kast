@@ -4,6 +4,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.topology.contract.TopologyCandidateSet
 import io.github.amichne.kast.topology.contract.TopologyExtractionFailure
+import io.github.amichne.kast.topology.contract.TopologyFileExtraction
 import io.github.amichne.kast.topology.contract.TopologySourceFile
 import io.github.amichne.kast.topology.contract.TopologySymbol
 import io.github.amichne.kast.topology.contract.TopologyWorkspaceIdentity
@@ -11,23 +12,20 @@ import java.nio.file.Path
 
 /** Exact content-identified candidate generation authorized to share detached projections. */
 internal data class TopologyProjectionRegistryKey internal constructor(
-    val candidates: TopologyCandidateSet,
+    val workspace: TopologyWorkspaceIdentity,
+    val files: List<TopologySourceFile>,
 ) {
-    val workspace: TopologyWorkspaceIdentity = candidates.workspace
-    val files: List<TopologySourceFile> = candidates.files
-
     companion object {
         /**
          * Proof transition: `TopologyCandidateSet -> TopologyProjectionRegistryKey`.
          *
-         * Preserves the exact candidate-set capability whose workspace identity, canonical file
-         * ownership, and content hashes authorize reuse of detached compiler projections. Key
-         * comparison is constant-time capability identity; a separately enumerated set must earn
-         * a new registry. Raw candidate extraction remains at the admitted-root enumerator
-         * boundary.
+         * Preserves the exact workspace identity, canonical file ownership, and content hashes
+         * that authorize reuse of detached compiler projections. Separately enumerated but equal
+         * evidence therefore resolves to the same source-generation key; changed evidence cannot.
+         * Raw candidate extraction remains at the admitted-root enumerator boundary.
          */
         fun from(candidates: TopologyCandidateSet): TopologyProjectionRegistryKey =
-            TopologyProjectionRegistryKey(candidates)
+            TopologyProjectionRegistryKey(candidates.workspace, candidates.files)
     }
 }
 
@@ -174,6 +172,42 @@ internal class TopologyProjectionRegistryCache {
     }
 }
 
+/**
+ * Retains detached per-file outcomes for the last exact content generation.
+ *
+ * Semantic failures are stable evidence for that generation and are never recomputed after an
+ * unrelated unchanged index synchronization. VFS content mismatch remains outside the cache so
+ * the one explicitly authorized refresh/retry can observe repaired physical state.
+ */
+internal class TopologyReadEpochCache {
+    private var state: TopologyReadEpochState = TopologyReadEpochState.Empty
+
+    @Synchronized
+    fun resolve(
+        key: TopologyProjectionRegistryKey,
+        file: TopologySourceFile,
+        build: () -> TopologyFileExtraction,
+    ): TopologyFileExtraction {
+        val epoch = when (val current = state) {
+            is TopologyReadEpochState.Active -> if (current.key == key) {
+                current
+            } else {
+                TopologyReadEpochState.Active(key).also { state = it }
+            }
+            TopologyReadEpochState.Empty -> TopologyReadEpochState.Active(key).also { state = it }
+        }
+        epoch.outcomes[file]?.let { return it }
+        val outcome = build()
+        if (
+            outcome !is TopologyFileExtraction.Failed ||
+            outcome.failure != TopologyExtractionFailure.VFS_CONTENT_MISMATCH
+        ) {
+            epoch.outcomes[file] = outcome
+        }
+        return outcome
+    }
+}
+
 private data class TopologyDeclarationLocation(
     val file: TopologySourceFile,
     val range: ExactDeclarationTextRange,
@@ -193,4 +227,13 @@ private sealed interface TopologyProjectionRegistryState {
     data class Ready(
         val registry: TopologyProjectionRegistry,
     ) : TopologyProjectionRegistryState
+}
+
+private sealed interface TopologyReadEpochState {
+    data object Empty : TopologyReadEpochState
+
+    data class Active(
+        val key: TopologyProjectionRegistryKey,
+        val outcomes: MutableMap<TopologySourceFile, TopologyFileExtraction> = mutableMapOf(),
+    ) : TopologyReadEpochState
 }

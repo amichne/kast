@@ -2,6 +2,7 @@ package io.github.amichne.kast.traversal.service
 
 import io.github.amichne.kast.relation.contract.RelationEndpointFingerprint
 import io.github.amichne.kast.relation.contract.RelationBudget
+import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.traversal.contract.TraversalCheckpoint
 import io.github.amichne.kast.traversal.contract.TraversalFrontierEntry
 import io.github.amichne.kast.traversal.contract.TraversalLimitation
@@ -15,6 +16,7 @@ internal class MutableTraversalState(
     val frontier: MutableList<TraversalFrontierEntry>,
     val visited: MutableSet<RelationEndpointFingerprint>,
     var pending: TraversalPendingState,
+    val terminalRelationLimitations: MutableSet<RelationLimitation>,
 ) {
     /**
      * Proof transition: `MutableTraversalState -> TraversalWorkAvailability`.
@@ -66,6 +68,7 @@ internal class MutableTraversalState(
             checkpoint.frontier.toMutableList(),
             checkpoint.visited.toMutableSet(),
             checkpoint.pending,
+            checkpoint.terminalRelationLimitations.toMutableSet(),
         )
     }
 }

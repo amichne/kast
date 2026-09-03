@@ -11,9 +11,12 @@ import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
+import io.github.amichne.kast.protocol.contract.RelationReadPositionDocument
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
+import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
+import io.github.amichne.kast.protocol.contract.TraversalRunPositionDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -44,7 +47,19 @@ internal data class RelationReadRequestDocument(
     val exactSelector: String,
     val relation: RelationKindWireDocument,
     val limit: Int,
+    val position: RelationReadPositionWireDocument,
 )
+
+@Serializable
+internal sealed interface RelationReadPositionWireDocument {
+    @Serializable
+    @SerialName("start")
+    data object Start : RelationReadPositionWireDocument
+
+    @Serializable
+    @SerialName("resume")
+    data class Resume(val continuation: String) : RelationReadPositionWireDocument
+}
 
 @Serializable
 internal data class TraversalRunRequestDocument(
@@ -52,7 +67,19 @@ internal data class TraversalRunRequestDocument(
     val relation: RelationKindWireDocument,
     val maximumDepth: Int,
     val maximumResults: Int,
+    val position: TraversalRunPositionWireDocument = TraversalRunPositionWireDocument.Start,
 )
+
+@Serializable
+internal sealed interface TraversalRunPositionWireDocument {
+    @Serializable
+    @SerialName("start")
+    data object Start : TraversalRunPositionWireDocument
+
+    @Serializable
+    @SerialName("resume")
+    data class Resume(val continuation: String) : TraversalRunPositionWireDocument
+}
 
 @Serializable
 internal data class DiagnosticCheckRequestDocument(
@@ -139,11 +166,22 @@ internal enum class RelationKindWireDocument {
 }
 
 @Serializable
-internal data class RelationReadQualificationWireDocument(
-    val knownMinimum: Int,
-    val limitations: List<RelationLimitationWireDocument>,
-    val continuation: String,
-)
+internal sealed interface RelationReadQualificationWireDocument {
+    @Serializable
+    @SerialName("resumable")
+    data class Resumable(
+        val knownMinimum: Int,
+        val limitations: List<RelationLimitationWireDocument>,
+        val continuation: String,
+    ) : RelationReadQualificationWireDocument
+
+    @Serializable
+    @SerialName("terminal_incomplete")
+    data class TerminalIncomplete(
+        val knownMinimum: Int,
+        val limitations: List<RelationLimitationWireDocument>,
+    ) : RelationReadQualificationWireDocument
+}
 
 @Serializable
 internal enum class RelationLimitationWireDocument {
@@ -163,14 +201,34 @@ internal enum class RelationReadRejectionWireDocument {
     @SerialName("workspace_not_ready") WORKSPACE_NOT_READY,
     @SerialName("selector_stale") SELECTOR_STALE,
     @SerialName("relation_unsupported") RELATION_UNSUPPORTED,
+    @SerialName("continuation_malformed") CONTINUATION_MALFORMED,
+    @SerialName("continuation_subject_mismatch") CONTINUATION_SUBJECT_MISMATCH,
+    @SerialName("continuation_relation_mismatch") CONTINUATION_RELATION_MISMATCH,
+    @SerialName("continuation_scope_mismatch") CONTINUATION_SCOPE_MISMATCH,
+    @SerialName("continuation_generation_mismatch") CONTINUATION_GENERATION_MISMATCH,
+    @SerialName("continuation_cursor_moved") CONTINUATION_CURSOR_MOVED,
 }
 
 @Serializable
-internal data class TraversalRunQualificationWireDocument(
-    val limitations: List<TraversalLimitationWireDocument>,
-    val relationLimitations: List<RelationLimitationWireDocument>,
-    val continuation: String,
-)
+internal sealed interface TraversalRunQualificationWireDocument {
+    val limitations: List<TraversalLimitationWireDocument>
+    val relationLimitations: List<RelationLimitationWireDocument>
+
+    @Serializable
+    @SerialName("resumable")
+    data class Resumable(
+        override val limitations: List<TraversalLimitationWireDocument>,
+        override val relationLimitations: List<RelationLimitationWireDocument>,
+        val continuation: String,
+    ) : TraversalRunQualificationWireDocument
+
+    @Serializable
+    @SerialName("terminal_incomplete")
+    data class TerminalIncomplete(
+        override val limitations: List<TraversalLimitationWireDocument>,
+        override val relationLimitations: List<RelationLimitationWireDocument>,
+    ) : TraversalRunQualificationWireDocument
+}
 
 @Serializable
 internal enum class TraversalLimitationWireDocument {
@@ -189,6 +247,11 @@ internal enum class TraversalRunRejectionWireDocument {
     @SerialName("selector_stale") SELECTOR_STALE,
     @SerialName("topology_build_required") TOPOLOGY_BUILD_REQUIRED,
     @SerialName("plan_rejected") PLAN_REJECTED,
+    @SerialName("continuation_malformed") CONTINUATION_MALFORMED,
+    @SerialName("continuation_subject_mismatch") CONTINUATION_SUBJECT_MISMATCH,
+    @SerialName("continuation_relation_mismatch") CONTINUATION_RELATION_MISMATCH,
+    @SerialName("continuation_scope_mismatch") CONTINUATION_SCOPE_MISMATCH,
+    @SerialName("continuation_generation_mismatch") CONTINUATION_GENERATION_MISMATCH,
 }
 
 @Serializable
@@ -264,7 +327,16 @@ internal fun SymbolInspectRequestDocument.toContract(): WireDocumentConversion<S
     }
 
 internal fun RelationReadRequest.toReadDocument(): RelationReadRequestDocument =
-    RelationReadRequestDocument(exactSelector.value, relation.toWireDocument(), limit.value)
+    RelationReadRequestDocument(
+        exactSelector.value,
+        relation.toWireDocument(),
+        limit.value,
+        when (val value = position) {
+            RelationReadPositionDocument.Start -> RelationReadPositionWireDocument.Start
+            is RelationReadPositionDocument.Resume ->
+                RelationReadPositionWireDocument.Resume(value.continuation.value)
+        },
+    )
 
 /**
  * Proof transition: `RelationReadRequestDocument -> RelationReadRequest`.
@@ -275,7 +347,30 @@ internal fun RelationReadRequest.toReadDocument(): RelationReadRequestDocument =
  */
 internal fun RelationReadRequestDocument.toContract(): WireDocumentConversion<RelationReadRequest> =
     combineConverted(exactSelector.protocolText(), limit.protocolCount()) { selector, count ->
-        RelationReadRequest(selector, relation.toContract(), count)
+        selector to count
+    }.flatMapConverted { (selector, count) ->
+        when (val value = position) {
+            RelationReadPositionWireDocument.Start -> WireDocumentConversion.Converted(
+                RelationReadRequest(
+                    selector,
+                    relation.toContract(),
+                    count,
+                    RelationReadPositionDocument.Start,
+                ),
+            )
+            is RelationReadPositionWireDocument.Resume ->
+                io.github.amichne.kast.protocol.contract.RelationContinuationDocument
+                    .parse(value.continuation)
+                    .toWireDocumentConversion()
+                    .mapConverted { continuation ->
+                        RelationReadRequest(
+                            selector,
+                            relation.toContract(),
+                            count,
+                            RelationReadPositionDocument.Resume(continuation),
+                        )
+                    }
+        }
     }
 
 internal fun TraversalRunRequest.toReadDocument(): TraversalRunRequestDocument =
@@ -284,6 +379,12 @@ internal fun TraversalRunRequest.toReadDocument(): TraversalRunRequestDocument =
         relation.toWireDocument(),
         maximumDepth.value,
         maximumResults.value,
+        when (val value = position) {
+            TraversalRunPositionDocument.Start ->
+                TraversalRunPositionWireDocument.Start
+            is TraversalRunPositionDocument.Resume ->
+                TraversalRunPositionWireDocument.Resume(value.continuation.value)
+        },
     )
 
 /**
@@ -298,7 +399,32 @@ internal fun TraversalRunRequestDocument.toContract(): WireDocumentConversion<Tr
         exactSelector.protocolText(),
         maximumDepth.protocolCount(),
         maximumResults.protocolCount(),
-    ) { selector, depth, results -> TraversalRunRequest(selector, relation.toContract(), depth, results) }
+    ) { selector, depth, results -> Triple(selector, depth, results) }
+        .flatMapConverted { (selector, depth, results) ->
+            when (val value = position) {
+                TraversalRunPositionWireDocument.Start -> WireDocumentConversion.Converted(
+                    TraversalRunRequest(
+                        selector,
+                        relation.toContract(),
+                        depth,
+                        results,
+                        TraversalRunPositionDocument.Start,
+                    ),
+                )
+                is TraversalRunPositionWireDocument.Resume ->
+                    TraversalContinuationDocument.parse(value.continuation)
+                        .toWireDocumentConversion()
+                        .mapConverted { continuation ->
+                            TraversalRunRequest(
+                                selector,
+                                relation.toContract(),
+                                depth,
+                                results,
+                                TraversalRunPositionDocument.Resume(continuation),
+                            )
+                        }
+            }
+        }
 
 internal fun DiagnosticCheckRequest.toReadDocument(): DiagnosticCheckRequestDocument =
     DiagnosticCheckRequestDocument(scope.value, limit.value)

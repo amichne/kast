@@ -1,6 +1,9 @@
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import java.nio.charset.CharacterCodingException
+import java.security.MessageDigest
+import java.util.Base64
 
 private const val MAX_PROTOCOL_TEXT_LENGTH = 1_048_576
 private const val MAX_PROTOCOL_ITEMS = 1_000
@@ -104,10 +107,19 @@ enum class RelationKindDocument {
     TYPE_USES,
 }
 
+sealed interface RelationReadPositionDocument {
+    data object Start : RelationReadPositionDocument
+
+    data class Resume(
+        val continuation: RelationContinuationDocument,
+    ) : RelationReadPositionDocument
+}
+
 data class RelationReadRequest(
     val exactSelector: ProtocolText,
     val relation: RelationKindDocument,
     val limit: ProtocolCount,
+    val position: RelationReadPositionDocument = RelationReadPositionDocument.Start,
 ) : OperationRequest
 
 data class RelationReadResult(
@@ -171,7 +183,10 @@ value class RelationKnownMinimumDocument private constructor(val value: Int) {
 }
 
 enum class RelationContinuationDocumentFailure {
-    INVALID_SHA256,
+    UNKNOWN_TOKEN_FAMILY,
+    INVALID_TOKEN_STRUCTURE,
+    INVALID_PAYLOAD_ENCODING,
+    PAYLOAD_DIGEST_MISMATCH,
 }
 
 @JvmInline
@@ -179,12 +194,50 @@ value class RelationContinuationDocument private constructor(val value: String) 
     companion object {
         fun parse(
             raw: String,
-        ): Refinement<RelationContinuationDocument, RelationContinuationDocumentFailure> =
-            if (raw.length == 64 && raw.all { it in '0'..'9' || it in 'a'..'f' }) {
-                Refinement.Refined(RelationContinuationDocument(raw))
-            } else {
-                Refinement.Rejected(RelationContinuationDocumentFailure.INVALID_SHA256)
+        ): Refinement<RelationContinuationDocument, RelationContinuationDocumentFailure> {
+            val parts = raw.split(':')
+            if (parts.firstOrNull() != RELATION_CONTINUATION_TOKEN_FAMILY) {
+                return Refinement.Rejected(
+                    RelationContinuationDocumentFailure.UNKNOWN_TOKEN_FAMILY,
+                )
             }
+            if (
+                parts.size != RELATION_CONTINUATION_TOKEN_PART_COUNT ||
+                parts[1] != RELATION_CONTINUATION_TOKEN_VERSION
+            ) {
+                return Refinement.Rejected(
+                    RelationContinuationDocumentFailure.INVALID_TOKEN_STRUCTURE,
+                )
+            }
+            val payload = try {
+                Base64.getUrlDecoder().decode(parts[2])
+            } catch (_: IllegalArgumentException) {
+                return Refinement.Rejected(
+                    RelationContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING,
+                )
+            }
+            if (
+                payload.isEmpty() ||
+                Base64.getUrlEncoder().withoutPadding().encodeToString(payload) != parts[2]
+            ) {
+                return Refinement.Rejected(
+                    RelationContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING,
+                )
+            }
+            try {
+                payload.decodeToString(throwOnInvalidSequence = true)
+            } catch (_: CharacterCodingException) {
+                return Refinement.Rejected(
+                    RelationContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING,
+                )
+            }
+            if (parts[3] != relationContinuationSha256(payload)) {
+                return Refinement.Rejected(
+                    RelationContinuationDocumentFailure.PAYLOAD_DIGEST_MISMATCH,
+                )
+            }
+            return Refinement.Refined(RelationContinuationDocument(raw))
+        }
     }
 }
 
@@ -193,42 +246,87 @@ enum class RelationReadQualificationFailure {
     NON_CANONICAL_LIMITATIONS,
 }
 
-/** Exact known-minimum relation coverage plus every limitation and resumable proof identity. */
-@ConsistentCopyVisibility
-data class RelationReadQualification private constructor(
-    val knownMinimum: RelationKnownMinimumDocument,
-    val limitations: List<RelationLimitationDocument>,
-    val continuation: RelationContinuationDocument,
-) : OperationQualification {
+/** Exact incomplete relation coverage, split by whether additional provider work remains. */
+sealed interface RelationReadQualification : OperationQualification {
+    val knownMinimum: RelationKnownMinimumDocument
+    val limitations: List<RelationLimitationDocument>
+
+    @ConsistentCopyVisibility
+    data class Resumable internal constructor(
+        override val knownMinimum: RelationKnownMinimumDocument,
+        override val limitations: List<RelationLimitationDocument>,
+        val continuation: RelationContinuationDocument,
+    ) : RelationReadQualification
+
+    @ConsistentCopyVisibility
+    data class TerminalIncomplete internal constructor(
+        override val knownMinimum: RelationKnownMinimumDocument,
+        override val limitations: List<RelationLimitationDocument>,
+    ) : RelationReadQualification
+
     companion object {
-        fun create(
+        fun resumable(
             knownMinimum: RelationKnownMinimumDocument,
             limitations: List<RelationLimitationDocument>,
             continuation: RelationContinuationDocument,
-        ): Refinement<RelationReadQualification, RelationReadQualificationFailure> {
-            if (limitations.isEmpty()) {
-                return Refinement.Rejected(RelationReadQualificationFailure.EMPTY_LIMITATIONS)
-            }
-            if (limitations != limitations.distinct().sortedBy { it.ordinal }) {
-                return Refinement.Rejected(
-                    RelationReadQualificationFailure.NON_CANONICAL_LIMITATIONS,
+        ): Refinement<Resumable, RelationReadQualificationFailure> =
+            when (val admitted = admitRelationLimitations(limitations)) {
+                is Refinement.Refined -> Refinement.Refined(
+                    Resumable(knownMinimum, admitted.value, continuation),
                 )
+                is Refinement.Rejected -> admitted
             }
-            return Refinement.Refined(
-                RelationReadQualification(
-                    knownMinimum,
-                    java.util.List.copyOf(limitations),
-                    continuation,
-                ),
-            )
-        }
+
+        fun terminalIncomplete(
+            knownMinimum: RelationKnownMinimumDocument,
+            limitations: List<RelationLimitationDocument>,
+        ): Refinement<TerminalIncomplete, RelationReadQualificationFailure> =
+            when (val admitted = admitRelationLimitations(limitations)) {
+                is Refinement.Refined -> Refinement.Refined(
+                    TerminalIncomplete(knownMinimum, admitted.value),
+                )
+                is Refinement.Rejected -> admitted
+            }
     }
 }
+
+private fun admitRelationLimitations(
+    limitations: List<RelationLimitationDocument>,
+): Refinement<List<RelationLimitationDocument>, RelationReadQualificationFailure> = when {
+    limitations.isEmpty() ->
+        Refinement.Rejected(RelationReadQualificationFailure.EMPTY_LIMITATIONS)
+    limitations != limitations.distinct().sortedBy { it.ordinal } ->
+        Refinement.Rejected(RelationReadQualificationFailure.NON_CANONICAL_LIMITATIONS)
+    else -> Refinement.Refined(java.util.List.copyOf(limitations))
+}
+
+private fun relationContinuationSha256(bytes: ByteArray): String =
+    MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { byte ->
+        (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+    }
+
+private const val RELATION_CONTINUATION_TOKEN_FAMILY = "relation-continuation"
+private const val RELATION_CONTINUATION_TOKEN_VERSION = "v1"
+private const val RELATION_CONTINUATION_TOKEN_PART_COUNT = 4
 
 enum class RelationReadRejection : OperationRejection {
     WORKSPACE_NOT_READY,
     SELECTOR_STALE,
     RELATION_UNSUPPORTED,
+    CONTINUATION_MALFORMED,
+    CONTINUATION_SUBJECT_MISMATCH,
+    CONTINUATION_RELATION_MISMATCH,
+    CONTINUATION_SCOPE_MISMATCH,
+    CONTINUATION_GENERATION_MISMATCH,
+    CONTINUATION_CURSOR_MOVED,
+}
+
+sealed interface TraversalRunPositionDocument {
+    data object Start : TraversalRunPositionDocument
+
+    data class Resume(
+        val continuation: TraversalContinuationDocument,
+    ) : TraversalRunPositionDocument
 }
 
 data class TraversalRunRequest(
@@ -236,6 +334,7 @@ data class TraversalRunRequest(
     val relation: RelationKindDocument,
     val maximumDepth: ProtocolCount,
     val maximumResults: ProtocolCount,
+    val position: TraversalRunPositionDocument = TraversalRunPositionDocument.Start,
 ) : OperationRequest
 
 data class TraversalRunResult(
@@ -279,7 +378,10 @@ enum class TraversalLimitationDocument {
 }
 
 enum class TraversalContinuationDocumentFailure {
-    INVALID_SHA256,
+    UNKNOWN_TOKEN_FAMILY,
+    INVALID_TOKEN_STRUCTURE,
+    INVALID_PAYLOAD_ENCODING,
+    PAYLOAD_DIGEST_MISMATCH,
 }
 
 @JvmInline
@@ -287,12 +389,55 @@ value class TraversalContinuationDocument private constructor(val value: String)
     companion object {
         fun parse(
             raw: String,
-        ): Refinement<TraversalContinuationDocument, TraversalContinuationDocumentFailure> =
-            if (raw.length == 64 && raw.all { it in '0'..'9' || it in 'a'..'f' }) {
-                Refinement.Refined(TraversalContinuationDocument(raw))
-            } else {
-                Refinement.Rejected(TraversalContinuationDocumentFailure.INVALID_SHA256)
+        ): Refinement<TraversalContinuationDocument, TraversalContinuationDocumentFailure> {
+            val parts = raw.split(':')
+            if (parts.firstOrNull() != TRAVERSAL_CONTINUATION_TOKEN_FAMILY) {
+                return Refinement.Rejected(
+                    TraversalContinuationDocumentFailure.UNKNOWN_TOKEN_FAMILY,
+                )
             }
+            if (
+                parts.size != TRAVERSAL_CONTINUATION_TOKEN_PART_COUNT ||
+                parts[1] != TRAVERSAL_CONTINUATION_TOKEN_VERSION
+            ) {
+                return Refinement.Rejected(
+                    TraversalContinuationDocumentFailure.INVALID_TOKEN_STRUCTURE,
+                )
+            }
+            val payload = try {
+                Base64.getUrlDecoder().decode(parts[2])
+            } catch (_: IllegalArgumentException) {
+                return Refinement.Rejected(
+                    TraversalContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING,
+                )
+            }
+            if (
+                payload.isEmpty() ||
+                Base64.getUrlEncoder().withoutPadding().encodeToString(payload) != parts[2]
+            ) {
+                return Refinement.Rejected(
+                    TraversalContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING,
+                )
+            }
+            try {
+                payload.decodeToString(throwOnInvalidSequence = true)
+            } catch (_: CharacterCodingException) {
+                return Refinement.Rejected(
+                    TraversalContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING,
+                )
+            }
+            if (parts[3] != traversalContinuationSha256(payload)) {
+                return Refinement.Rejected(
+                    TraversalContinuationDocumentFailure.PAYLOAD_DIGEST_MISMATCH,
+                )
+            }
+            if (raw.length > MAX_PROTOCOL_TEXT_LENGTH) {
+                return Refinement.Rejected(
+                    TraversalContinuationDocumentFailure.INVALID_TOKEN_STRUCTURE,
+                )
+            }
+            return Refinement.Refined(TraversalContinuationDocument(raw))
+        }
     }
 }
 
@@ -302,61 +447,126 @@ enum class TraversalRunQualificationFailure {
     NON_CANONICAL_RELATION_LIMITATIONS,
     MISSING_RELATION_LIMITATIONS,
     UNEXPECTED_RELATION_LIMITATIONS,
+    TERMINAL_LIMITATION_RESUMABLE,
+    TERMINAL_WITHOUT_TERMINAL_LIMITATION,
 }
 
-/** Every traversal and one-hop limitation plus the exact deterministic resume identity. */
-@ConsistentCopyVisibility
-data class TraversalRunQualification private constructor(
-    val limitations: List<TraversalLimitationDocument>,
-    val relationLimitations: List<RelationLimitationDocument>,
-    val continuation: TraversalContinuationDocument,
-) : OperationQualification {
+/** Incomplete traversal coverage, split by whether additional deterministic work remains. */
+sealed interface TraversalRunQualification : OperationQualification {
+    val limitations: List<TraversalLimitationDocument>
+    val relationLimitations: List<RelationLimitationDocument>
+
+    @ConsistentCopyVisibility
+    data class Resumable internal constructor(
+        override val limitations: List<TraversalLimitationDocument>,
+        override val relationLimitations: List<RelationLimitationDocument>,
+        val continuation: TraversalContinuationDocument,
+    ) : TraversalRunQualification
+
+    @ConsistentCopyVisibility
+    data class TerminalIncomplete internal constructor(
+        override val limitations: List<TraversalLimitationDocument>,
+        override val relationLimitations: List<RelationLimitationDocument>,
+    ) : TraversalRunQualification
+
     companion object {
-        fun create(
+        fun resumable(
             limitations: List<TraversalLimitationDocument>,
             relationLimitations: List<RelationLimitationDocument>,
             continuation: TraversalContinuationDocument,
-        ): Refinement<TraversalRunQualification, TraversalRunQualificationFailure> {
-            if (limitations.isEmpty()) {
-                return Refinement.Rejected(TraversalRunQualificationFailure.EMPTY_LIMITATIONS)
+        ): Refinement<Resumable, TraversalRunQualificationFailure> =
+            when (val admitted = admitTraversalLimitations(limitations, relationLimitations)) {
+                is Refinement.Refined -> if (
+                    TraversalLimitationDocument.DEPTH_LIMIT_REACHED in admitted.value.first
+                ) {
+                    Refinement.Rejected(
+                        TraversalRunQualificationFailure.TERMINAL_LIMITATION_RESUMABLE,
+                    )
+                } else {
+                    Refinement.Refined(
+                        Resumable(admitted.value.first, admitted.value.second, continuation),
+                    )
+                }
+                is Refinement.Rejected -> admitted
             }
-            if (limitations != limitations.distinct().sortedBy { it.ordinal }) {
-                return Refinement.Rejected(
-                    TraversalRunQualificationFailure.NON_CANONICAL_LIMITATIONS,
-                )
+
+        fun terminalIncomplete(
+            limitations: List<TraversalLimitationDocument>,
+            relationLimitations: List<RelationLimitationDocument>,
+        ): Refinement<TerminalIncomplete, TraversalRunQualificationFailure> =
+            when (val admitted = admitTraversalLimitations(limitations, relationLimitations)) {
+                is Refinement.Refined -> if (
+                    TraversalLimitationDocument.ONE_HOP_INCOMPLETE !in admitted.value.first &&
+                    TraversalLimitationDocument.DEPTH_LIMIT_REACHED !in admitted.value.first
+                ) {
+                    Refinement.Rejected(
+                        TraversalRunQualificationFailure.TERMINAL_WITHOUT_TERMINAL_LIMITATION,
+                    )
+                } else {
+                    Refinement.Refined(
+                        TerminalIncomplete(admitted.value.first, admitted.value.second),
+                    )
+                }
+                is Refinement.Rejected -> admitted
             }
-            if (relationLimitations != relationLimitations.distinct().sortedBy { it.ordinal }) {
-                return Refinement.Rejected(
-                    TraversalRunQualificationFailure.NON_CANONICAL_RELATION_LIMITATIONS,
-                )
-            }
-            val oneHopIncomplete = TraversalLimitationDocument.ONE_HOP_INCOMPLETE in limitations
-            if (oneHopIncomplete && relationLimitations.isEmpty()) {
-                return Refinement.Rejected(
-                    TraversalRunQualificationFailure.MISSING_RELATION_LIMITATIONS,
-                )
-            }
-            if (!oneHopIncomplete && relationLimitations.isNotEmpty()) {
-                return Refinement.Rejected(
-                    TraversalRunQualificationFailure.UNEXPECTED_RELATION_LIMITATIONS,
-                )
-            }
-            return Refinement.Refined(
-                TraversalRunQualification(
-                    java.util.List.copyOf(limitations),
-                    java.util.List.copyOf(relationLimitations),
-                    continuation,
-                ),
-            )
-        }
     }
 }
+
+private fun admitTraversalLimitations(
+    limitations: List<TraversalLimitationDocument>,
+    relationLimitations: List<RelationLimitationDocument>,
+): Refinement<
+    Pair<List<TraversalLimitationDocument>, List<RelationLimitationDocument>>,
+    TraversalRunQualificationFailure,
+    > {
+    if (limitations.isEmpty()) {
+        return Refinement.Rejected(TraversalRunQualificationFailure.EMPTY_LIMITATIONS)
+    }
+    if (limitations != limitations.distinct().sortedBy { it.ordinal }) {
+        return Refinement.Rejected(
+            TraversalRunQualificationFailure.NON_CANONICAL_LIMITATIONS,
+        )
+    }
+    if (relationLimitations != relationLimitations.distinct().sortedBy { it.ordinal }) {
+        return Refinement.Rejected(
+            TraversalRunQualificationFailure.NON_CANONICAL_RELATION_LIMITATIONS,
+        )
+    }
+    val oneHopIncomplete = TraversalLimitationDocument.ONE_HOP_INCOMPLETE in limitations
+    if (oneHopIncomplete && relationLimitations.isEmpty()) {
+        return Refinement.Rejected(
+            TraversalRunQualificationFailure.MISSING_RELATION_LIMITATIONS,
+        )
+    }
+    if (!oneHopIncomplete && relationLimitations.isNotEmpty()) {
+        return Refinement.Rejected(
+            TraversalRunQualificationFailure.UNEXPECTED_RELATION_LIMITATIONS,
+        )
+    }
+    return Refinement.Refined(
+        java.util.List.copyOf(limitations) to java.util.List.copyOf(relationLimitations),
+    )
+}
+
+private fun traversalContinuationSha256(bytes: ByteArray): String =
+    MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { byte ->
+        (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+    }
+
+private const val TRAVERSAL_CONTINUATION_TOKEN_FAMILY = "traversal-continuation"
+private const val TRAVERSAL_CONTINUATION_TOKEN_VERSION = "v1"
+private const val TRAVERSAL_CONTINUATION_TOKEN_PART_COUNT = 4
 
 enum class TraversalRunRejection : OperationRejection {
     WORKSPACE_NOT_READY,
     SELECTOR_STALE,
     TOPOLOGY_BUILD_REQUIRED,
     PLAN_REJECTED,
+    CONTINUATION_MALFORMED,
+    CONTINUATION_SUBJECT_MISMATCH,
+    CONTINUATION_RELATION_MISMATCH,
+    CONTINUATION_SCOPE_MISMATCH,
+    CONTINUATION_GENERATION_MISMATCH,
 }
 
 data class DiagnosticCheckRequest(

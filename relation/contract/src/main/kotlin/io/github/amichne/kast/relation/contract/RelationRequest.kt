@@ -63,36 +63,168 @@ data class RelationBudget(
     val returnedBytes: RelationByteLimit,
 )
 
-enum class RelationWorkOffsetFailure {
+enum class RelationProviderPositionFailure {
     NEGATIVE,
 }
 
 @JvmInline
-value class RelationWorkOffset private constructor(
+value class RelationProviderPosition private constructor(
     val value: Long,
 ) {
     companion object {
-        val Zero: RelationWorkOffset = RelationWorkOffset(0L)
+        val Zero: RelationProviderPosition = RelationProviderPosition(0L)
 
         /**
-         * Proof transition: `Long -> Refinement<RelationWorkOffset,
-         * RelationWorkOffsetFailure>`.
+         * Proof transition: `Long -> Refinement<RelationProviderPosition,
+         * RelationProviderPositionFailure>`.
          *
          * Establishes a non-negative native enumeration position.
-         * [RelationWorkOffsetFailure] is the closed expected failure. Raw offsets may be
+         * [RelationProviderPositionFailure] is the closed expected failure. Raw positions may be
          * extracted only by the relation compiler collector and continuation codec.
          */
-        fun parse(raw: Long): Refinement<RelationWorkOffset, RelationWorkOffsetFailure> =
+        fun parse(
+            raw: Long,
+        ): Refinement<RelationProviderPosition, RelationProviderPositionFailure> =
             if (raw >= 0L) {
-                Refinement.Refined(RelationWorkOffset(raw))
+                Refinement.Refined(RelationProviderPosition(raw))
             } else {
-                Refinement.Rejected(RelationWorkOffsetFailure.NEGATIVE)
+                Refinement.Rejected(RelationProviderPositionFailure.NEGATIVE)
             }
     }
 }
 
+/** Stable native enumeration family. An implementation-order change requires a new member. */
+enum class RelationProviderKind {
+    INTELLIJ_REFERENCES_V1,
+    INTELLIJ_DEFINITIONS_V1,
+    INTELLIJ_CALLEES_V1,
+    ;
+
+    companion object {
+        fun forMeaning(meaning: RelationMeaning): RelationProviderKind = when (meaning) {
+            RelationMeaning.References,
+            RelationMeaning.Callers,
+            RelationMeaning.TypeUses,
+                -> INTELLIJ_REFERENCES_V1
+            RelationMeaning.Implementations,
+            RelationMeaning.Inheritors,
+            RelationMeaning.Overrides,
+                -> INTELLIJ_DEFINITIONS_V1
+            RelationMeaning.Callees -> INTELLIJ_CALLEES_V1
+        }
+    }
+}
+
+enum class RelationProviderItemDescriptorFailure {
+    BLANK,
+}
+
+/** Stable detached identity of one item in native provider order. */
 @JvmInline
-value class RelationContinuationFingerprint internal constructor(
+value class RelationProviderItemDescriptor private constructor(val value: String) {
+    companion object {
+        fun parse(
+            raw: String,
+        ): Refinement<RelationProviderItemDescriptor, RelationProviderItemDescriptorFailure> =
+            if (raw.isBlank()) {
+                Refinement.Rejected(RelationProviderItemDescriptorFailure.BLANK)
+            } else {
+                Refinement.Refined(RelationProviderItemDescriptor(raw))
+            }
+    }
+}
+
+enum class RelationProviderPrefixDigestFailure {
+    INVALID_SHA256,
+}
+
+@JvmInline
+value class RelationProviderPrefixDigest private constructor(val value: String) {
+    companion object {
+        fun parse(
+            raw: String,
+        ): Refinement<RelationProviderPrefixDigest, RelationProviderPrefixDigestFailure> =
+            if (raw.isCanonicalSha256()) {
+                Refinement.Refined(RelationProviderPrefixDigest(raw))
+            } else {
+                Refinement.Rejected(RelationProviderPrefixDigestFailure.INVALID_SHA256)
+            }
+
+        internal fun digest(bytes: ByteArray): RelationProviderPrefixDigest =
+            RelationProviderPrefixDigest(bytes.sha256())
+    }
+}
+
+/** Native resume position bound to the exact ordered prefix already consumed. */
+data class RelationProviderCursor private constructor(
+    val provider: RelationProviderKind,
+    val nextPosition: RelationProviderPosition,
+    val consumedPrefixDigest: RelationProviderPrefixDigest,
+) {
+    fun advance(item: RelationProviderItemDescriptor): RelationProviderCursor {
+        check(nextPosition.value < Long.MAX_VALUE) { "Relation provider position overflow" }
+        val canonical = buildString {
+            appendContinuationField(consumedPrefixDigest.value)
+            appendContinuationField(item.value)
+        }
+        return RelationProviderCursor(
+            provider,
+            RelationProviderPosition.parse(nextPosition.value + 1L).refinedInvariant(),
+            RelationProviderPrefixDigest.digest(canonical.toByteArray(StandardCharsets.UTF_8)),
+        )
+    }
+
+    companion object {
+        fun start(provider: RelationProviderKind): RelationProviderCursor {
+            val canonical = "kast-relation-provider-prefix-v1:${provider.name}"
+            return RelationProviderCursor(
+                provider,
+                RelationProviderPosition.Zero,
+                RelationProviderPrefixDigest.digest(canonical.toByteArray(StandardCharsets.UTF_8)),
+            )
+        }
+
+        fun restore(
+            provider: RelationProviderKind,
+            nextPosition: RelationProviderPosition,
+            consumedPrefixDigest: RelationProviderPrefixDigest,
+        ): RelationProviderCursor = RelationProviderCursor(
+            provider,
+            nextPosition,
+            consumedPrefixDigest,
+        )
+    }
+}
+
+enum class RelationScopeFingerprintFailure {
+    INVALID_SHA256,
+}
+
+@JvmInline
+value class RelationScopeFingerprint private constructor(val value: String) {
+    companion object {
+        fun parse(
+            raw: String,
+        ): Refinement<RelationScopeFingerprint, RelationScopeFingerprintFailure> =
+            if (raw.isCanonicalSha256()) {
+                Refinement.Refined(RelationScopeFingerprint(raw))
+            } else {
+                Refinement.Rejected(RelationScopeFingerprintFailure.INVALID_SHA256)
+            }
+
+        fun from(subject: RelationEndpoint): RelationScopeFingerprint =
+            RelationScopeFingerprint(
+                subject.selectorScopeCanonical().toByteArray(StandardCharsets.UTF_8).sha256(),
+            )
+    }
+}
+
+enum class RelationContinuationFingerprintFailure {
+    INVALID_SHA256,
+}
+
+@JvmInline
+value class RelationContinuationFingerprint private constructor(
     val value: String,
 ) {
     init {
@@ -101,19 +233,40 @@ value class RelationContinuationFingerprint internal constructor(
             value.all { character -> character in '0'..'9' || character in 'a'..'f' },
         )
     }
+
+    companion object {
+        fun parse(
+            raw: String,
+        ): Refinement<RelationContinuationFingerprint, RelationContinuationFingerprintFailure> =
+            if (raw.isCanonicalSha256()) {
+                Refinement.Refined(RelationContinuationFingerprint(raw))
+            } else {
+                Refinement.Rejected(RelationContinuationFingerprintFailure.INVALID_SHA256)
+            }
+
+        internal fun digest(canonical: String): RelationContinuationFingerprint =
+            RelationContinuationFingerprint(
+                canonical.toByteArray(StandardCharsets.UTF_8).sha256(),
+            )
+    }
 }
 
-/** Opaque resume authority bound to one exact subject, meaning, generation, and work position. */
+enum class RelationContinuationRestorationFailure {
+    INTEGRITY_MISMATCH,
+}
+
+/** Resume authority bound to one exact subject, scope, meaning, generation, and provider prefix. */
 class RelationContinuation private constructor(
     val subject: RelationEndpointFingerprint,
     val meaning: RelationMeaning,
+    val scope: RelationScopeFingerprint,
     val generation: EvidenceGeneration,
-    val nextWorkOffset: RelationWorkOffset,
+    val nextProviderCursor: RelationProviderCursor,
     val fingerprint: RelationContinuationFingerprint,
 ) {
     companion object {
         /**
-         * Proof transition: `(RelationRequest, RelationWorkOffset) -> RelationContinuation`.
+         * Proof transition: `(RelationRequest, RelationProviderCursor) -> RelationContinuation`.
          *
          * Establishes an opaque continuation bound to the request's exact subject, closed
          * meaning, and generation at the next native work position. Raw offset extraction is
@@ -121,49 +274,74 @@ class RelationContinuation private constructor(
          */
         fun issue(
             request: RelationRequest,
-            nextWorkOffset: RelationWorkOffset,
+            nextProviderCursor: RelationProviderCursor,
         ): RelationContinuation {
-            val canonical = buildString {
-                appendContinuationField(request.subject.fingerprint.value)
-                appendContinuationField(request.meaning.canonicalName())
-                appendContinuationField(request.subject.lease.generation.value.toString())
-                appendContinuationField(nextWorkOffset.value.toString())
-            }
-            val digest = MessageDigest.getInstance("SHA-256")
-                .digest(canonical.toByteArray(StandardCharsets.UTF_8))
+            check(nextProviderCursor.provider == RelationProviderKind.forMeaning(request.meaning))
+            val scope = RelationScopeFingerprint.from(request.subject)
             return RelationContinuation(
                 subject = request.subject.fingerprint,
                 meaning = request.meaning,
+                scope = scope,
                 generation = request.subject.lease.generation,
-                nextWorkOffset = nextWorkOffset,
-                fingerprint = RelationContinuationFingerprint(
-                    digest.joinToString(separator = "") { byte ->
-                        (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-                    },
+                nextProviderCursor = nextProviderCursor,
+                fingerprint = relationContinuationFingerprint(
+                    request.subject.fingerprint,
+                    request.meaning,
+                    scope,
+                    request.subject.lease.generation,
+                    nextProviderCursor,
                 ),
             )
         }
+
+        /** Restores detached continuation fields only when their domain fingerprint is exact. */
+        fun restore(
+            subject: RelationEndpointFingerprint,
+            meaning: RelationMeaning,
+            scope: RelationScopeFingerprint,
+            generation: EvidenceGeneration,
+            nextProviderCursor: RelationProviderCursor,
+            fingerprint: RelationContinuationFingerprint,
+        ): Refinement<RelationContinuation, RelationContinuationRestorationFailure> =
+            if (
+                fingerprint == relationContinuationFingerprint(
+                    subject,
+                    meaning,
+                    scope,
+                    generation,
+                    nextProviderCursor,
+                )
+            ) {
+                Refinement.Refined(
+                    RelationContinuation(
+                        subject,
+                        meaning,
+                        scope,
+                        generation,
+                        nextProviderCursor,
+                        fingerprint,
+                    ),
+                )
+            } else {
+                Refinement.Rejected(RelationContinuationRestorationFailure.INTEGRITY_MISMATCH)
+            }
     }
 }
 
 sealed interface RelationReadPosition {
-    val workOffset: RelationWorkOffset
-
-    data object Start : RelationReadPosition {
-        override val workOffset: RelationWorkOffset = RelationWorkOffset.Zero
-    }
+    data object Start : RelationReadPosition
 
     class Resume internal constructor(
         val continuation: RelationContinuation,
-    ) : RelationReadPosition {
-        override val workOffset: RelationWorkOffset = continuation.nextWorkOffset
-    }
+    ) : RelationReadPosition
 }
 
 enum class RelationResumeFailure {
     SUBJECT_MISMATCH,
     MEANING_MISMATCH,
+    SCOPE_MISMATCH,
     GENERATION_MISMATCH,
+    PROVIDER_MISMATCH,
 }
 
 /** Exact one-hop request; construction admits either the first page or a bound continuation. */
@@ -173,6 +351,15 @@ class RelationRequest private constructor(
     val budget: RelationBudget,
     val position: RelationReadPosition,
 ) {
+    val scopeFingerprint: RelationScopeFingerprint = RelationScopeFingerprint.from(subject)
+
+    val providerCursor: RelationProviderCursor = when (position) {
+        RelationReadPosition.Start -> RelationProviderCursor.start(
+            RelationProviderKind.forMeaning(meaning),
+        )
+        is RelationReadPosition.Resume -> position.continuation.nextProviderCursor
+    }
+
     companion object {
         /**
          * Proof transition: `(SymbolSelector, RelationMeaning, RelationBudget) -> RelationRequest`.
@@ -265,12 +452,16 @@ class RelationRequest private constructor(
             budget: RelationBudget,
             continuation: RelationContinuation,
         ): Refinement<RelationRequest, RelationResumeFailure> = when {
-            continuation.subject != subject.fingerprint ->
-                Refinement.Rejected(RelationResumeFailure.SUBJECT_MISMATCH)
+            continuation.scope != RelationScopeFingerprint.from(subject) ->
+                Refinement.Rejected(RelationResumeFailure.SCOPE_MISMATCH)
             continuation.meaning != meaning ->
                 Refinement.Rejected(RelationResumeFailure.MEANING_MISMATCH)
             continuation.generation != subject.lease.generation ->
                 Refinement.Rejected(RelationResumeFailure.GENERATION_MISMATCH)
+            continuation.subject != subject.fingerprint ->
+                Refinement.Rejected(RelationResumeFailure.SUBJECT_MISMATCH)
+            continuation.nextProviderCursor.provider != RelationProviderKind.forMeaning(meaning) ->
+                Refinement.Rejected(RelationResumeFailure.PROVIDER_MISMATCH)
             else -> Refinement.Refined(
                 RelationRequest(
                     subject,
@@ -297,4 +488,49 @@ private fun StringBuilder.appendContinuationField(value: String) {
     append(value.toByteArray(StandardCharsets.UTF_8).size)
     append(':')
     append(value)
+}
+
+private fun relationContinuationFingerprint(
+    subject: RelationEndpointFingerprint,
+    meaning: RelationMeaning,
+    scope: RelationScopeFingerprint,
+    generation: EvidenceGeneration,
+    cursor: RelationProviderCursor,
+): RelationContinuationFingerprint {
+    val canonical = buildString {
+        appendContinuationField(subject.value)
+        appendContinuationField(meaning.canonicalName())
+        appendContinuationField(scope.value)
+        appendContinuationField(generation.value.toString())
+        appendContinuationField(cursor.provider.name)
+        appendContinuationField(cursor.nextPosition.value.toString())
+        appendContinuationField(cursor.consumedPrefixDigest.value)
+    }
+    return RelationContinuationFingerprint.digest(canonical)
+}
+
+private fun RelationEndpoint.selectorScopeCanonical(): String {
+    val snapshot = io.github.amichne.kast.symbol.contract.SymbolSearchScope.snapshot(scope)
+    return buildString {
+        appendContinuationField(snapshot.kind.name)
+        appendContinuationField(snapshot.primary ?: "")
+        appendContinuationField(snapshot.secondary ?: "")
+        appendContinuationField(snapshot.sourceKinds.name)
+        appendContinuationField(snapshot.generatedSources.name)
+        appendContinuationField(snapshot.libraries?.name ?: "")
+    }
+}
+
+private fun ByteArray.sha256(): String =
+    MessageDigest.getInstance("SHA-256").digest(this).joinToString(separator = "") { byte ->
+        (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+    }
+
+private fun String.isCanonicalSha256(): Boolean =
+    length == RELATION_CONTINUATION_FINGERPRINT_LENGTH &&
+        all { character -> character in '0'..'9' || character in 'a'..'f' }
+
+private fun <Value, Failure> Refinement<Value, Failure>.refinedInvariant(): Value = when (this) {
+    is Refinement.Refined -> value
+    is Refinement.Rejected -> error("Internally derived relation value violated its invariant")
 }

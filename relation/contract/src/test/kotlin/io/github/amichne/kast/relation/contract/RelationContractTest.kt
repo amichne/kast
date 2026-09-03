@@ -113,21 +113,34 @@ class RelationContractTest {
     }
 
     @Test
-    fun `incomplete empty page is qualified and continuation cannot change meaning`() {
+    fun `terminal incomplete page has no continuation while resumable page stays bound`() {
         val request = request(RelationMeaning.References)
         val batch = RelationBatch.create(
             request,
             emptyList(),
             RelationByteCount.parse(0L).refined(),
             RelationWorkCount.parse(0L).refined(),
+            RelationResultCount.parse(0).refined(),
         ).refined()
-        val qualified = RelationCompilation.qualified(
+        val terminal = RelationCompilation.qualifiedTerminal(
             batch,
-            setOf(RelationLimitation.PROVIDER_INCOMPLETE),
-            RelationWorkOffset.Zero,
+            setOf(RelationLimitation.UNRESOLVED_TARGET),
+        ).refined()
+        val cursor = RelationProviderCursor.start(RelationProviderKind.INTELLIJ_REFERENCES_V1)
+            .advance(RelationProviderItemDescriptor.parse("first").refined())
+        val resumable = RelationCompilation.qualifiedResumable(
+            batch,
+            setOf(RelationLimitation.RESULT_LIMIT_REACHED),
+            cursor,
         ).refined()
 
-        assertEquals(0, qualified.coverage.knownMinimum.value)
+        assertInstanceOf(RelationIncompleteCoverage.TerminalIncomplete::class.java, terminal.coverage)
+        val resumableCoverage = assertInstanceOf(
+            RelationIncompleteCoverage.Resumable::class.java,
+            resumable.coverage,
+        )
+        assertEquals(0, terminal.coverage.knownMinimum.value)
+        assertEquals(0, batch.resultCount.value)
         assertEquals(
             RelationResumeFailure.MEANING_MISMATCH,
             (
@@ -135,11 +148,52 @@ class RelationContractTest {
                     (request.subject as RelationEndpoint.Subject).selector,
                     RelationMeaning.Callers,
                     request.budget,
-                    qualified.coverage.continuation,
+                    resumableCoverage.continuation,
                 ) as Refinement.Rejected
             ).failure,
         )
-        assertInstanceOf(RelationCompilation.Qualified::class.java, qualified)
+    }
+
+    @Test
+    fun `resumable page rejects a cursor that cannot make forward progress`() {
+        val request = request(RelationMeaning.References)
+        val batch = RelationBatch.create(
+            request,
+            emptyList(),
+            RelationByteCount.parse(0L).refined(),
+            RelationWorkCount.parse(0L).refined(),
+            RelationResultCount.parse(0).refined(),
+        ).refined()
+
+        val result = RelationCompilation.qualifiedResumable(
+            batch,
+            setOf(RelationLimitation.TIME_LIMIT_REACHED),
+            request.providerCursor,
+        )
+
+        assertEquals(
+            RelationIncompleteCoverageFailure.CURSOR_NOT_ADVANCED,
+            (result as Refinement.Rejected).failure,
+        )
+    }
+
+    @Test
+    fun `provider cursor commits order into its consumed prefix`() {
+        val first = RelationProviderItemDescriptor.parse("first").refined()
+        val second = RelationProviderItemDescriptor.parse("second").refined()
+
+        val forward = RelationProviderCursor.start(RelationProviderKind.INTELLIJ_REFERENCES_V1)
+            .advance(first)
+            .advance(second)
+        val moved = RelationProviderCursor.start(RelationProviderKind.INTELLIJ_REFERENCES_V1)
+            .advance(second)
+            .advance(first)
+
+        assertEquals(2L, forward.nextPosition.value)
+        org.junit.jupiter.api.Assertions.assertNotEquals(
+            forward.consumedPrefixDigest,
+            moved.consumedPrefixDigest,
+        )
     }
 
     private fun related(subject: RelationEndpoint): RelationEndpoint.Resolved =

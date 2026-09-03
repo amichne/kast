@@ -76,8 +76,16 @@ class IndexSeedFilesystemServiceTest {
             """.trimIndent(),
         )
 
+        val projectIdentity = fixture.projectIdentity()
         val publication = service(cloner = CopyingTestCloner)
-            .seed(fixture.request())
+            .seed(
+                fixture.request(
+                    projectEvidence = SeedProjectEvidence.Comparison(
+                        projectIdentity,
+                        projectIdentity,
+                    ),
+                ),
+            )
             .seeded()
 
         assertTrue(
@@ -88,7 +96,7 @@ class IndexSeedFilesystemServiceTest {
     }
 
     @Test
-    fun `seed publishes only the fixed global and exact project allowlist`(
+    fun `external seed publishes only the global allowlist without project proof`(
         @TempDir temporary: Path,
     ) {
         val fixture = seedFixture(temporary)
@@ -111,18 +119,15 @@ class IndexSeedFilesystemServiceTest {
         assertTrue(Files.exists(publication.systemDirectory.resolve(".home")))
         assertTrue(Files.exists(publication.systemDirectory.resolve("caches/vfs.dat")))
         assertTrue(Files.exists(publication.systemDirectory.resolve("index/symbols.dat")))
-        assertTrue(Files.exists(publication.systemDirectory.resolve("classpath/roots.dat")))
-        assertTrue(Files.exists(publication.systemDirectory.resolve("global-model-cache/model.dat")))
-        assertTrue(
-            Files.exists(
-                publication.systemDirectory.resolve("projects/target.0123abcd/cache-state.xml"),
-            ),
-        )
+        assertFalse(Files.exists(publication.systemDirectory.resolve("classpath")))
+        assertFalse(Files.exists(publication.systemDirectory.resolve("global-model-cache")))
+        assertFalse(Files.exists(publication.systemDirectory.resolve("projects")))
         assertFalse(Files.exists(publication.systemDirectory.resolve("LocalHistory")))
         assertFalse(Files.exists(publication.systemDirectory.resolve("vcs-log")))
         assertFalse(Files.exists(publication.systemDirectory.resolve("log")))
         assertFalse(Files.exists(publication.systemDirectory.resolve("projects/other.89abcdef")))
         assertTrue(Files.exists(publication.root.resolve("seed-receipt.properties")))
+        assertEquals(SeedProjectProofState.GlobalOnly, publication.receipt.projectProofState)
         assertEquals(
             IndexSeedStage.entries.flatMap { stage ->
                 listOf(
@@ -132,6 +137,54 @@ class IndexSeedFilesystemServiceTest {
             },
             activity,
         )
+    }
+
+    @Test
+    fun `exact project proof admits project model and classpath categories`(
+        @TempDir temporary: Path,
+    ) {
+        val fixture = seedFixture(temporary)
+        val identity = fixture.projectIdentity()
+
+        val publication = service(cloner = CopyingTestCloner).seed(
+            fixture.request(
+                projectEvidence = SeedProjectEvidence.Comparison(identity, identity),
+            ),
+        ).seeded()
+
+        assertEquals(IndexSeedCategory.entries.toSet(), publication.receipt.categories)
+        assertTrue(publication.receipt.projectProofState is SeedProjectProofState.Verified)
+        assertTrue(Files.exists(publication.systemDirectory.resolve("classpath/roots.dat")))
+        assertTrue(Files.exists(publication.systemDirectory.resolve("global-model-cache/model.dat")))
+        assertTrue(
+            Files.exists(
+                publication.systemDirectory.resolve("projects/target.0123abcd/cache-state.xml"),
+            ),
+        )
+    }
+
+    @Test
+    fun `incompatible project proof retires project categories but keeps global seed`(
+        @TempDir temporary: Path,
+    ) {
+        val fixture = seedFixture(temporary)
+        val expected = fixture.projectIdentity(gradleDistribution = "8.8")
+        val observed = fixture.projectIdentity(gradleDistribution = "8.7")
+
+        val publication = service(cloner = CopyingTestCloner).seed(
+            fixture.request(
+                projectEvidence = SeedProjectEvidence.Comparison(expected, observed),
+            ),
+        ).seeded()
+
+        assertTrue(publication.receipt.projectProofState is SeedProjectProofState.Retired)
+        assertEquals(
+            setOf(IndexSeedCategory.GLOBAL_VFS, IndexSeedCategory.GLOBAL_INDEXES),
+            publication.receipt.categories,
+        )
+        assertTrue(Files.exists(publication.systemDirectory.resolve("index/symbols.dat")))
+        assertFalse(Files.exists(publication.systemDirectory.resolve("classpath")))
+        assertFalse(Files.exists(publication.systemDirectory.resolve("projects")))
     }
 
     @Test
@@ -236,7 +289,10 @@ class IndexSeedFilesystemServiceTest {
                 fixture.request(IndexSeedConsentRequest.INTERACTIVE),
             ) is IndexSeedExecution.Seeded,
         )
-        assertEquals(IndexSeedCategory.entries.toSet(), observed?.categories)
+        assertEquals(
+            setOf(IndexSeedCategory.GLOBAL_VFS, IndexSeedCategory.GLOBAL_INDEXES),
+            observed?.categories,
+        )
         assertTrue((observed?.estimatedBytes?.value ?: 0L) > 0L)
 
         val denied = seedFixture(temporary.resolve("denied"))
@@ -345,13 +401,34 @@ private data class SeedFixture(
 ) {
     fun request(
         consent: IndexSeedConsentRequest = IndexSeedConsentRequest.PREGRANTED,
+        projectEvidence: SeedProjectEvidence = SeedProjectEvidence.Absent,
     ): IndexSeedRequest = IndexSeedRequest(
         sourceSystem,
         cacheRoot,
         runtime,
         cacheIdentity,
         consent,
+        projectEvidence,
     )
+
+    fun projectIdentity(
+        gradleDistribution: String = "8.8",
+    ): SeedProjectIdentity = when (
+        val admission = SeedProjectIdentity.admit(
+            SeedProjectIdentityCandidate(
+                projectRoot,
+                gradleDistribution,
+                "sha256:${"1".repeat(64)}",
+                "sha256:${"2".repeat(64)}",
+                "sha256:${"3".repeat(64)}",
+                "sha256:${"4".repeat(64)}",
+                "sha256:${"5".repeat(64)}",
+            ),
+        )
+    ) {
+        is SeedProjectIdentityAdmission.Admitted -> admission.identity
+        is SeedProjectIdentityAdmission.Rejected -> error(admission.failure)
+    }
 }
 
 private data object CopyingTestCloner : IndexSeedCloner {

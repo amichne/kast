@@ -79,7 +79,7 @@ class InstalledServerProjectionTest {
             tools.map { it.getValue("operationId").jsonPrimitive.content },
         )
         assertEquals(
-            listOf("selector", "relation", "limit"),
+            listOf("selector", "relation", "limit", "continuation"),
             tools.tool("relation.read").cliOptionFields(),
         )
         assertEquals(
@@ -202,9 +202,15 @@ class InstalledServerProjectionTest {
                     "textByteLimit",
                     "continuation",
                 ),
-                "relation.read" to listOf("selector", "relation", "limit"),
+                "relation.read" to listOf("selector", "relation", "limit", "continuation"),
                 "traversal.run" to
-                    listOf("selector", "relation", "maximumDepth", "maximumResults"),
+                    listOf(
+                        "selector",
+                        "relation",
+                        "maximumDepth",
+                        "maximumResults",
+                        "continuation",
+                    ),
                 "diagnostic.check" to listOf("scope", "limit"),
                 "change.plan" to listOf("intent", "target", "declaration"),
                 "change.apply" to listOf("plan"),

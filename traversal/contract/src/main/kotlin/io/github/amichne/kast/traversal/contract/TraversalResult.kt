@@ -197,13 +197,25 @@ enum class TraversalQualificationFailure {
     MISSING_RELATION_LIMITATION,
     UNEXPECTED_RELATION_LIMITATION,
     CONTINUATION_MISMATCH,
+    TERMINAL_LIMITATION_RESUMABLE,
+    TERMINAL_WITHOUT_TERMINAL_LIMITATION,
 }
 
-class TraversalQualification private constructor(
-    val limitations: Set<TraversalLimitation>,
-    val relationLimitations: Set<RelationLimitation>,
-    val continuation: TraversalContinuation,
-) {
+sealed interface TraversalQualification {
+    val limitations: Set<TraversalLimitation>
+    val relationLimitations: Set<RelationLimitation>
+
+    class Resumable internal constructor(
+        override val limitations: Set<TraversalLimitation>,
+        override val relationLimitations: Set<RelationLimitation>,
+        val continuation: TraversalContinuation,
+    ) : TraversalQualification
+
+    class TerminalIncomplete internal constructor(
+        override val limitations: Set<TraversalLimitation>,
+        override val relationLimitations: Set<RelationLimitation>,
+    ) : TraversalQualification
+
     companion object {
         /**
          * Proof transition: `(TraversalPage, limitations, relation limitations,
@@ -215,31 +227,77 @@ class TraversalQualification private constructor(
          * [TraversalQualificationFailure] is the closed expected failure. Raw limitation
          * collections may enter only from the pure traversal engine or transport.
          */
-        fun create(
+        fun resumable(
             page: TraversalPage,
             limitations: Set<TraversalLimitation>,
             relationLimitations: Set<RelationLimitation>,
             continuation: TraversalContinuation,
-        ): Refinement<TraversalQualification, TraversalQualificationFailure> = when {
-            limitations.isEmpty() ->
-                Refinement.Rejected(TraversalQualificationFailure.EMPTY_LIMITATIONS)
-            TraversalLimitation.ONE_HOP_INCOMPLETE in limitations &&
-            relationLimitations.isEmpty() ->
-                Refinement.Rejected(TraversalQualificationFailure.MISSING_RELATION_LIMITATION)
-            TraversalLimitation.ONE_HOP_INCOMPLETE !in limitations &&
-            relationLimitations.isNotEmpty() ->
-                Refinement.Rejected(TraversalQualificationFailure.UNEXPECTED_RELATION_LIMITATION)
-            continuation.identity != page.plan.identity ->
+        ): Refinement<Resumable, TraversalQualificationFailure> = when (
+            val admitted = admitTraversalLimitations(limitations, relationLimitations)
+        ) {
+            is Refinement.Rejected -> admitted
+            is Refinement.Refined -> if (
+                TraversalLimitation.DEPTH_LIMIT_REACHED in admitted.value.first
+            ) {
+                Refinement.Rejected(
+                    TraversalQualificationFailure.TERMINAL_LIMITATION_RESUMABLE,
+                )
+            } else if (continuation.identity != page.plan.identity) {
                 Refinement.Rejected(TraversalQualificationFailure.CONTINUATION_MISMATCH)
-            else -> Refinement.Refined(
-                TraversalQualification(
-                    limitations.toSortedSet(compareBy { it.ordinal }).toSet(),
-                    relationLimitations.toSortedSet(compareBy { it.ordinal }).toSet(),
-                    continuation,
-                ),
-            )
+            } else {
+                Refinement.Refined(
+                    Resumable(
+                        admitted.value.first,
+                        admitted.value.second,
+                        continuation,
+                    ),
+                )
+            }
+        }
+
+        fun terminalIncomplete(
+            limitations: Set<TraversalLimitation>,
+            relationLimitations: Set<RelationLimitation>,
+        ): Refinement<TerminalIncomplete, TraversalQualificationFailure> = when (
+            val admitted = admitTraversalLimitations(limitations, relationLimitations)
+        ) {
+            is Refinement.Rejected -> admitted
+            is Refinement.Refined -> if (
+                TraversalLimitation.ONE_HOP_INCOMPLETE !in admitted.value.first &&
+                TraversalLimitation.DEPTH_LIMIT_REACHED !in admitted.value.first
+            ) {
+                Refinement.Rejected(
+                    TraversalQualificationFailure.TERMINAL_WITHOUT_TERMINAL_LIMITATION,
+                )
+            } else {
+                Refinement.Refined(
+                    TerminalIncomplete(
+                        admitted.value.first,
+                        admitted.value.second,
+                    ),
+                )
+            }
         }
     }
+}
+
+private fun admitTraversalLimitations(
+    limitations: Set<TraversalLimitation>,
+    relationLimitations: Set<RelationLimitation>,
+): Refinement<
+    Pair<Set<TraversalLimitation>, Set<RelationLimitation>>,
+    TraversalQualificationFailure,
+    > = when {
+    limitations.isEmpty() ->
+        Refinement.Rejected(TraversalQualificationFailure.EMPTY_LIMITATIONS)
+    TraversalLimitation.ONE_HOP_INCOMPLETE in limitations && relationLimitations.isEmpty() ->
+        Refinement.Rejected(TraversalQualificationFailure.MISSING_RELATION_LIMITATION)
+    TraversalLimitation.ONE_HOP_INCOMPLETE !in limitations && relationLimitations.isNotEmpty() ->
+        Refinement.Rejected(TraversalQualificationFailure.UNEXPECTED_RELATION_LIMITATION)
+    else -> Refinement.Refined(
+        limitations.toSortedSet(compareBy { it.ordinal }).toSet() to
+            relationLimitations.toSortedSet(compareBy { it.ordinal }).toSet(),
+    )
 }
 
 @JvmInline
@@ -295,17 +353,31 @@ sealed interface TraversalResult {
          * retains exact deterministic resume state. [TraversalQualificationFailure] is the closed
          * expected failure. Raw limitations may enter only from the pure engine or transport.
          */
-        fun qualified(
+        fun qualifiedResumable(
             page: TraversalPage,
             limitations: Set<TraversalLimitation>,
             relationLimitations: Set<RelationLimitation>,
             continuation: TraversalContinuation,
         ): Refinement<Qualified, TraversalQualificationFailure> = when (
-            val qualification = TraversalQualification.create(
+            val qualification = TraversalQualification.resumable(
                 page,
                 limitations,
                 relationLimitations,
                 continuation,
+            )
+        ) {
+            is Refinement.Refined -> Refinement.Refined(Qualified(page, qualification.value))
+            is Refinement.Rejected -> qualification
+        }
+
+        fun qualifiedTerminal(
+            page: TraversalPage,
+            limitations: Set<TraversalLimitation>,
+            relationLimitations: Set<RelationLimitation>,
+        ): Refinement<Qualified, TraversalQualificationFailure> = when (
+            val qualification = TraversalQualification.terminalIncomplete(
+                limitations,
+                relationLimitations,
             )
         ) {
             is Refinement.Refined -> Refinement.Refined(Qualified(page, qualification.value))

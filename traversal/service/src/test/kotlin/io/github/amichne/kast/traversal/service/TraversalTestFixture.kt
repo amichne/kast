@@ -17,10 +17,11 @@ import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.RelationProvenance
+import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.relation.contract.RelationResultCount
 import io.github.amichne.kast.relation.contract.RelationWorkCount
-import io.github.amichne.kast.relation.contract.RelationWorkOffset
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
@@ -184,13 +185,20 @@ internal class TraversalTestFixture {
         val facts = targets.map { target -> fact(relationRequest, endpoint(relationRequest.subject, target)) }
             .sorted()
         val batch = batch(relationRequest, facts)
-        val nextOffset = RelationWorkOffset.parse(
-            relationRequest.position.workOffset.value + facts.size,
-        ).refined()
-        val qualified = RelationCompilation.qualified(
+        val consumedFactsCursor = facts.fold(relationRequest.providerCursor) { cursor, fact ->
+            cursor.advance(RelationProviderItemDescriptor.parse(fact.canonicalProjection()).refined())
+        }
+        val nextCursor = if (facts.isEmpty()) {
+            consumedFactsCursor.advance(
+                RelationProviderItemDescriptor.parse("filtered-provider-item").refined(),
+            )
+        } else {
+            consumedFactsCursor
+        }
+        val qualified = RelationCompilation.qualifiedResumable(
             batch,
             setOf(limitation),
-            nextOffset,
+            nextCursor,
         ).refined()
         return OneHopRelationRead.Completed(
             RelationReadResult.Qualified(batch, qualified.coverage),
@@ -248,10 +256,24 @@ internal class TraversalTestFixture {
         request: RelationRequest,
     ): RelationReadResult.Qualified {
         val batch = batch(request, emptyList())
-        val qualified = RelationCompilation.qualified(
+        val qualified = RelationCompilation.qualifiedResumable(
             batch,
             setOf(RelationLimitation.PROVIDER_INCOMPLETE),
-            request.position.workOffset,
+            request.providerCursor.advance(
+                RelationProviderItemDescriptor.parse("filtered-provider-item").refined(),
+            ),
+        ).refined()
+        return RelationReadResult.Qualified(batch, qualified.coverage)
+    }
+
+    fun terminalRelationResult(
+        request: RelationRequest,
+        targets: List<RelationEndpoint.Resolved> = emptyList(),
+    ): RelationReadResult.Qualified {
+        val batch = batch(request, targets.map { target -> fact(request, target) }.sorted())
+        val qualified = RelationCompilation.qualifiedTerminal(
+            batch,
+            setOf(RelationLimitation.UNRESOLVED_TARGET),
         ).refined()
         return RelationReadResult.Qualified(batch, qualified.coverage)
     }
@@ -313,6 +335,7 @@ internal class TraversalTestFixture {
             facts,
             RelationByteCount.parse(bytes).refined(),
             RelationWorkCount.parse(facts.size.toLong()).refined(),
+            RelationResultCount.parse(facts.size).refined(),
         ).refined()
     }
 }

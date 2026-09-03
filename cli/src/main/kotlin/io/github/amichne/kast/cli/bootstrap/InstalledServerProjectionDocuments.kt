@@ -223,16 +223,25 @@ private enum class InstalledServerTool(
         toolName = "semantic_query",
         toolDescription =
             "Query one bounded compiler-grounded relation from an exact symbol selector.",
-        inputSchema = objectSchema(
+        inputSchema = objectSchemaWithRequired(
+            setOf("selector", "relation", "limit"),
             ServerSchemaProperty("selector", textSchema("Exact starting selector.")),
             ServerSchemaProperty("relation", relationSchema()),
             ServerSchemaProperty("limit", countSchema("Maximum returned relations.")),
+            ServerSchemaProperty(
+                "continuation",
+                patternTextSchema(
+                    "^relation-continuation:v1:",
+                    "Continuation from a resumable relation page.",
+                ),
+            ),
         ),
         command = listOf("relation", "read"),
         optionFields = listOf(
             ServerCliOptionField("selector", "--selector"),
             ServerCliOptionField("relation", "--relation"),
             ServerCliOptionField("limit", "--limit"),
+            ServerCliOptionField("continuation", "--continuation"),
         ),
     ),
     TRAVERSAL_RUN(
@@ -240,7 +249,8 @@ private enum class InstalledServerTool(
         toolName = "impact_analyze",
         toolDescription =
             "Analyze bounded transitive impact over one durable semantic relation.",
-        inputSchema = objectSchema(
+        inputSchema = objectSchemaWithRequired(
+            setOf("selector", "relation", "maximumDepth", "maximumResults"),
             ServerSchemaProperty("selector", textSchema("Exact starting selector.")),
             ServerSchemaProperty("relation", relationSchema()),
             ServerSchemaProperty(
@@ -251,6 +261,13 @@ private enum class InstalledServerTool(
                 "maximumResults",
                 countSchema("Maximum returned symbols."),
             ),
+            ServerSchemaProperty(
+                "continuation",
+                patternTextSchema(
+                    "^traversal-continuation:v1:",
+                    "Continuation from a resumable traversal page.",
+                ),
+            ),
         ),
         command = listOf("traversal", "run"),
         optionFields = listOf(
@@ -258,6 +275,7 @@ private enum class InstalledServerTool(
             ServerCliOptionField("relation", "--relation"),
             ServerCliOptionField("maximumDepth", "--maximum-depth"),
             ServerCliOptionField("maximumResults", "--maximum-results"),
+            ServerCliOptionField("continuation", "--continuation"),
         ),
     ),
     DIAGNOSTIC_CHECK(
@@ -563,16 +581,33 @@ private fun proofQualifiedOutcomeSchema(
     ),
 )
 
-private fun relationQualificationSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty(
-        "knownMinimum",
-        integerSchema(0, description = "Known minimum relation count."),
+private fun relationQualificationSchema(): JsonObject = unionSchema(
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("resumable", "Coverage state.")),
+        ServerSchemaProperty(
+            "knownMinimum",
+            integerSchema(0, description = "Known minimum relation count."),
+        ),
+        ServerSchemaProperty("limitations", relationLimitationsSchema()),
+        ServerSchemaProperty(
+            "continuation",
+            patternTextSchema(
+                "^relation-continuation:v1:",
+                "Self-contained relation continuation.",
+            ),
+        ),
     ),
-    ServerSchemaProperty(
-        "limitations",
-        relationLimitationsSchema(),
+    objectSchema(
+        ServerSchemaProperty(
+            "type",
+            constantSchema("terminal_incomplete", "Coverage state."),
+        ),
+        ServerSchemaProperty(
+            "knownMinimum",
+            integerSchema(0, description = "Known minimum relation count."),
+        ),
+        ServerSchemaProperty("limitations", relationLimitationsSchema()),
     ),
-    ServerSchemaProperty("continuation", sha256Schema("Opaque relation continuation proof.")),
 )
 
 private fun sourceReadQualificationSchema(): JsonObject = objectSchema(
@@ -743,29 +778,42 @@ private fun sourceTextProjectionSchema(): JsonObject = unionSchema(
     ),
 )
 
-private fun traversalQualificationSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty(
-        "limitations",
-        arraySchema(
-            enumSchema(
-                listOf(
-                    "record-limit-reached",
-                    "byte-limit-reached",
-                    "work-limit-reached",
-                    "time-limit-reached",
-                    "depth-limit-reached",
-                    "frontier-limit-reached",
-                    "one-hop-incomplete",
-                ),
-                "Every traversal limitation.",
+private fun traversalQualificationSchema(): JsonObject = unionSchema(
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("resumable", "Coverage state.")),
+        ServerSchemaProperty("limitations", traversalLimitationsSchema()),
+        ServerSchemaProperty("relationLimitations", relationLimitationsSchema()),
+        ServerSchemaProperty(
+            "continuation",
+            patternTextSchema(
+                "^traversal-continuation:v1:",
+                "Self-contained traversal checkpoint.",
             ),
         ),
     ),
-    ServerSchemaProperty(
-        "relationLimitations",
-        relationLimitationsSchema(),
+    objectSchema(
+        ServerSchemaProperty(
+            "type",
+            constantSchema("terminal_incomplete", "Coverage state."),
+        ),
+        ServerSchemaProperty("limitations", traversalLimitationsSchema()),
+        ServerSchemaProperty("relationLimitations", relationLimitationsSchema()),
     ),
-    ServerSchemaProperty("continuation", sha256Schema("Opaque traversal continuation proof.")),
+)
+
+private fun traversalLimitationsSchema(): JsonObject = arraySchema(
+    enumSchema(
+        listOf(
+            "record-limit-reached",
+            "byte-limit-reached",
+            "work-limit-reached",
+            "time-limit-reached",
+            "depth-limit-reached",
+            "frontier-limit-reached",
+            "one-hop-incomplete",
+        ),
+        "Every traversal limitation.",
+    ),
 )
 
 private fun relationLimitationsSchema(): JsonObject = arraySchema(

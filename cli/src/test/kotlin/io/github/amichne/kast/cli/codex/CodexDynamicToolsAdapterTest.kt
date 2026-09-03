@@ -288,10 +288,10 @@ class CodexDynamicToolsAdapterTest {
                     CanonicalKastRead(
                         OperationOutcome.Qualified(
                             EvidenceEnvelope(CanonicalOperation.RELATION_READ.id, generation(), result),
-                            RelationReadQualification.create(
+                            RelationReadQualification.resumable(
                                 RelationKnownMinimumDocument.parse(0).refined(),
                                 listOf(RelationLimitationDocument.PROVIDER_INCOMPLETE),
-                                RelationContinuationDocument.parse("c".repeat(64)).refined(),
+                                relationContinuation("dynamic-tool"),
                             ).refined(),
                         ),
                         RELATION_JSON,
@@ -370,6 +370,19 @@ class CodexDynamicToolsAdapterTest {
             provenance = RelationProvenanceDocument.K2_AUTHORED_SOURCE,
             coverage = RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
         )
+
+        private fun relationContinuation(payloadText: String): RelationContinuationDocument {
+            val payload = payloadText.toByteArray()
+            val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+                .digest(payload)
+                .joinToString("") { byte ->
+                    (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+                }
+            return RelationContinuationDocument.parse(
+                "relation-continuation:v1:$encoded:$digest",
+            ).refined()
+        }
 
         private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
             is Refinement.Refined -> value

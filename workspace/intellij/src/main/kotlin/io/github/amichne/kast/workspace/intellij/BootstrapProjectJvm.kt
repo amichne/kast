@@ -12,90 +12,58 @@ import java.io.IOException
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 
-enum class InstalledProjectJvmFailure { PLATFORM_REJECTED }
+enum class BootstrapProjectJvmFailure { PLATFORM_REJECTED }
 
-sealed interface InstalledProjectJvmAssignment {
+sealed interface BootstrapProjectJvmAssignment {
     data class Assigned(
-        val projectJvm: AssignedInstalledProjectJvm,
-    ) : InstalledProjectJvmAssignment
+        val projectJvm: AssignedBootstrapProjectJvm,
+    ) : BootstrapProjectJvmAssignment
 
     data class Rejected(
-        val failure: InstalledProjectJvmFailure,
-    ) : InstalledProjectJvmAssignment
+        val failure: BootstrapProjectJvmFailure,
+    ) : BootstrapProjectJvmAssignment
 }
 
-/** IntelliJ project SDK-table identity derived only from the admitted process Java home. */
-class InstalledProjectJvm private constructor(
+/** Temporary IntelliJ project SDK-table identity derived only from the sidecar Java home. */
+class BootstrapProjectJvm private constructor(
     internal val home: Path,
 ) {
     /**
-     * Proof transition: `InstalledProjectJvm + Project -> InstalledProjectJvmAssignment`.
+     * Proof transition: `BootstrapProjectJvm + Project -> BootstrapProjectJvmAssignment`.
      *
      * Establishes a project SDK backed by a Java SDK created from the admitted physical home before
-     * startup waits. The project always receives Kast's private sidecar identity so reassertion can
-     * never replace a Gradle toolchain SDK-table entry used by modules. [InstalledProjectJvmFailure]
-     * is the closed expected platform failure. Raw SDK names and home paths leave only at the
-     * process-local IntelliJ SDK-table and project-model boundary.
+     * startup waits. This assignment is bootstrap-only and must not be reasserted after Gradle
+     * import. [BootstrapProjectJvmFailure] is the closed expected platform failure. Raw SDK names
+     * and home paths leave only at the process-local IntelliJ SDK-table and project-model boundary.
      */
-    fun assign(project: Project): InstalledProjectJvmAssignment =
-        AssignedInstalledProjectJvm.establish(this, project)
+    fun assign(project: Project): BootstrapProjectJvmAssignment =
+        AssignedBootstrapProjectJvm.establish(this, project)
 
     companion object {
         /**
-         * Proof transition: `InstalledGradleJvm -> InstalledProjectJvm`.
+         * Proof transition: `InstalledSidecarJvm -> BootstrapProjectJvm`.
          *
          * Preserves the admitted physical Java home for resolution under the project's existing SDK
          * identity. Raw home extraction is permitted only by [assign] at the isolated SDK-table
          * boundary.
          */
-        fun from(jvm: InstalledGradleJvm): InstalledProjectJvm =
-            InstalledProjectJvm(jvm.home)
+        fun from(jvm: InstalledSidecarJvm): BootstrapProjectJvm =
+            BootstrapProjectJvm(jvm.home)
     }
 }
 
-/** Exact project/JVM assignment proof retained across the subsequent Gradle import boundary. */
-class AssignedInstalledProjectJvm private constructor(
-    private val projectJvm: InstalledProjectJvm,
-    private val project: Project,
+/** Exact temporary project/JVM assignment proof retained until Gradle import starts. */
+class AssignedBootstrapProjectJvm private constructor(
 ) {
-    /**
-     * Proof transition: `(AssignedInstalledProjectJvm, Project) ->
-     * InstalledProjectJvmAssignment`.
-     *
-     * Re-establishes the same admitted SDK-table identity after Gradle import for the exact project
-     * carried by this capability. [InstalledProjectJvmFailure] is the closed expected failure.
-     * Live project access remains inside the installed IntelliJ workspace adapter.
-     */
-    fun reassertAfterImport(observed: Project): InstalledProjectJvmAssignment =
-        if (observed === project) {
-            projectJvm.assign(observed)
-        } else {
-            InstalledProjectJvmAssignment.Rejected(InstalledProjectJvmFailure.PLATFORM_REJECTED)
-        }
-
-    /**
-     * Proof transition: `AssignedInstalledProjectJvm -> Boolean`.
-     *
-     * `true` establishes that the exact live project still resolves the admitted process Java SDK
-     * home. Gradle-owned module SDKs are intentionally outside this invariant because toolchains
-     * may select a different Java version. This raw platform observation is internal to the
-     * installed IntelliJ adapter and must run under a read action.
-     */
-    internal fun admitsProjectSdk(): Boolean {
-        if (project.isDisposed) return false
-        val sdk = ProjectRootManager.getInstance(project).projectSdk ?: return false
-        return sdk.sdkType == JavaSdk.getInstance() && sdk.homePath == projectJvm.home.toString()
-    }
-
     companion object {
         /**
          * The sole constructor authority for this proof. A value is returned only after the exact
          * project model has accepted the admitted SDK-table identity.
          */
         internal fun establish(
-            projectJvm: InstalledProjectJvm,
+            projectJvm: BootstrapProjectJvm,
             project: Project,
-        ): InstalledProjectJvmAssignment = try {
+        ): BootstrapProjectJvmAssignment = try {
             val assignment = Runnable {
                 WriteAction.run<RuntimeException> {
                     val roots = ProjectRootManager.getInstance(project)
@@ -132,13 +100,13 @@ class AssignedInstalledProjectJvm private constructor(
             } else {
                 application.invokeAndWait(assignment)
             }
-            InstalledProjectJvmAssignment.Assigned(
-                AssignedInstalledProjectJvm(projectJvm, project),
+            BootstrapProjectJvmAssignment.Assigned(
+                AssignedBootstrapProjectJvm(),
             )
         } catch (failure: RuntimeException) {
             System.err.println("kast-indexer: project JVM assignment failed")
             failure.printStackTrace(System.err)
-            InstalledProjectJvmAssignment.Rejected(InstalledProjectJvmFailure.PLATFORM_REJECTED)
+            BootstrapProjectJvmAssignment.Rejected(BootstrapProjectJvmFailure.PLATFORM_REJECTED)
         }
     }
 }
@@ -151,7 +119,7 @@ internal sealed interface InstalledProjectOpenPreparationState {
     data object Pending : InstalledProjectOpenPreparationState
 
     data class Prepared(
-        val projectJvm: AssignedInstalledProjectJvm,
+        val projectJvm: AssignedBootstrapProjectJvm,
     ) : InstalledProjectOpenPreparationState
 
     data class Rejected(
@@ -161,7 +129,7 @@ internal sealed interface InstalledProjectOpenPreparationState {
 
 /** Installs the admitted project JVM before project-open state is loaded without configurators. */
 internal class InstalledProjectOpenPreparation(
-    private val gradleJvm: InstalledGradleJvm,
+    private val bootstrapJvm: BootstrapProjectJvm,
 ) {
     private var state: InstalledProjectOpenPreparationState =
         InstalledProjectOpenPreparationState.Pending
@@ -176,9 +144,9 @@ internal class InstalledProjectOpenPreparation(
      */
     fun prepare(project: Project): InstalledProjectOpenPreparationState {
         if (state !is InstalledProjectOpenPreparationState.Pending) return state
-        val assigned = when (val assignment = InstalledProjectJvm.from(gradleJvm).assign(project)) {
-            is InstalledProjectJvmAssignment.Assigned -> assignment.projectJvm
-            is InstalledProjectJvmAssignment.Rejected -> return reject(
+        val assigned = when (val assignment = bootstrapJvm.assign(project)) {
+            is BootstrapProjectJvmAssignment.Assigned -> assignment.projectJvm
+            is BootstrapProjectJvmAssignment.Rejected -> return reject(
                 InstalledProjectOpenPreparationFailure.PROJECT_JVM_REJECTED,
             )
         }
@@ -209,7 +177,9 @@ internal sealed interface InstalledGradleLinkPresence {
         internal val settings: GradleProjectSettings,
     ) : InstalledGradleLinkPresence
 
-    data object Unlinked : InstalledGradleLinkPresence
+    data class Unlinked internal constructor(
+        internal val settings: GradleProjectSettings,
+    ) : InstalledGradleLinkPresence
 }
 
 internal sealed interface InstalledGradleImportOperation {
@@ -253,11 +223,13 @@ internal fun linkedGradleProject(
             )
         }
     }
-    return InstalledGradleLinkPresenceResolution.Resolved(InstalledGradleLinkPresence.Unlinked)
+    return InstalledGradleLinkPresenceResolution.Resolved(
+        InstalledGradleLinkPresence.Unlinked(GradleProjectSettings(workspaceRoot.toString())),
+    )
 }
 
 /**
- * Proof transition: `InstalledGradleLinkPresence + InstalledGradleJvm ->
+ * Proof transition: `InstalledGradleLinkPresence + SelectedGradleJvm ->
  * InstalledGradleImportApplication`.
  *
  * [InstalledGradleImportApplication.Applied] establishes the only valid exact-workspace import
@@ -266,7 +238,7 @@ internal fun linkedGradleProject(
  * boundary.
  */
 internal fun InstalledGradleLinkPresence.applyImportJvm(
-    gradleJvm: InstalledGradleJvm,
+    gradleJvm: SelectedGradleJvm,
 ): InstalledGradleImportApplication = when (this) {
     is InstalledGradleLinkPresence.Linked -> {
         val previous = try {
@@ -282,9 +254,20 @@ internal fun InstalledGradleLinkPresence.applyImportJvm(
         }
         InstalledGradleImportApplication.Applied(InstalledGradleImportOperation.RefreshLinked)
     }
-    InstalledGradleLinkPresence.Unlinked -> InstalledGradleImportApplication.Applied(
-        InstalledGradleImportOperation.LinkUnlinked,
-    )
+    is InstalledGradleLinkPresence.Unlinked -> {
+        val previous = try {
+            settings.gradleJvm
+        } catch (_: RuntimeException) {
+            return InstalledGradleImportApplication.Rejected
+        }
+        try {
+            settings.gradleJvm = gradleJvm.projectSettingsSelector()
+        } catch (_: RuntimeException) {
+            runCatching { settings.gradleJvm = previous }
+            return InstalledGradleImportApplication.Rejected
+        }
+        InstalledGradleImportApplication.Applied(InstalledGradleImportOperation.LinkUnlinked)
+    }
 }
 
 @JvmInline

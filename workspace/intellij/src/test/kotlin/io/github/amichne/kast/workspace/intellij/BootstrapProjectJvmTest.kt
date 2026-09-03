@@ -4,18 +4,18 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
 
-class InstalledProjectJvmTest {
+class BootstrapProjectJvmTest {
     @Test
     fun `project JVM retains the admitted physical Java home without a repository SDK name`() {
         val javaHome = Path.of(System.getProperty("java.home")).toRealPath()
-        val gradleJvm = when (
-            val admission = InstalledGradleJvm.admit(javaHome.toString(), javaHome.toString())
+        val sidecarJvm = when (
+            val admission = InstalledSidecarJvm.admit(javaHome.toString(), javaHome.toString())
         ) {
-            is InstalledGradleJvmAdmission.Admitted -> admission.jvm
-            is InstalledGradleJvmAdmission.Rejected -> error(admission.failure)
+            is InstalledSidecarJvmAdmission.Admitted -> admission.jvm
+            is InstalledSidecarJvmAdmission.Rejected -> error(admission.failure)
         }
 
-        val projectJvm = InstalledProjectJvm.from(gradleJvm)
+        val projectJvm = BootstrapProjectJvm.from(sidecarJvm)
 
         assertEquals(javaHome, projectJvm.home)
     }

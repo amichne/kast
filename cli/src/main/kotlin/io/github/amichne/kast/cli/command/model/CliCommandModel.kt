@@ -88,6 +88,14 @@ sealed interface CliUsageFailure {
         DUPLICATE_SELECTION,
     }
 
+    enum class RelationRead : CliUsageFailure {
+        CONTINUATION_REJECTED,
+    }
+
+    enum class TraversalRun : CliUsageFailure {
+        CONTINUATION_REJECTED,
+    }
+
     enum class ChangePlan : CliUsageFailure {
         OPTIONS_DO_NOT_MATCH_INTENT,
     }
@@ -116,6 +124,10 @@ internal fun CliUsageFailure.message(): String = when (this) {
         "--before-lines and --after-lines require --text window"
     CliUsageFailure.SourceRead.DUPLICATE_SELECTION ->
         "declaration kinds and visibility values may each be selected once"
+    CliUsageFailure.RelationRead.CONTINUATION_REJECTED ->
+        "--continuation must be one intact relation continuation token"
+    CliUsageFailure.TraversalRun.CONTINUATION_REJECTED ->
+        "--continuation must be one intact traversal continuation token"
     CliUsageFailure.ChangePlan.OPTIONS_DO_NOT_MATCH_INTENT ->
         "options do not match the selected change intent"
 }

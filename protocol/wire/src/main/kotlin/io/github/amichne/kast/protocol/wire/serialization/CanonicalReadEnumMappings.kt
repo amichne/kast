@@ -133,25 +133,42 @@ internal fun RelationKindWireDocument.toContract(): RelationKindDocument = when 
 }
 
 internal fun RelationReadQualification.toWireDocument():
-    RelationReadQualificationWireDocument = RelationReadQualificationWireDocument(
-    knownMinimum = knownMinimum.value,
-    limitations = limitations.map(RelationLimitationDocument::toWireDocument),
-    continuation = continuation.value,
-)
+    RelationReadQualificationWireDocument = when (this) {
+    is RelationReadQualification.Resumable -> RelationReadQualificationWireDocument.Resumable(
+        knownMinimum = knownMinimum.value,
+        limitations = limitations.map(RelationLimitationDocument::toWireDocument),
+        continuation = continuation.value,
+    )
+    is RelationReadQualification.TerminalIncomplete ->
+        RelationReadQualificationWireDocument.TerminalIncomplete(
+            knownMinimum = knownMinimum.value,
+            limitations = limitations.map(RelationLimitationDocument::toWireDocument),
+        )
+}
 
 internal fun RelationReadQualificationWireDocument.toContract():
-    WireDocumentConversion<RelationReadQualification> =
-    RelationKnownMinimumDocument.parse(knownMinimum).toWireDocumentConversion()
-        .flatMapConverted { admittedMinimum ->
-            RelationContinuationDocument.parse(continuation).toWireDocumentConversion()
-                .flatMapConverted { admittedContinuation ->
-                    RelationReadQualification.create(
-                        admittedMinimum,
-                        limitations.map(RelationLimitationWireDocument::toContract),
-                        admittedContinuation,
-                    ).toWireDocumentConversion()
-                }
-        }
+    WireDocumentConversion<RelationReadQualification> = when (this) {
+    is RelationReadQualificationWireDocument.Resumable ->
+        RelationKnownMinimumDocument.parse(knownMinimum).toWireDocumentConversion()
+            .flatMapConverted { admittedMinimum ->
+                RelationContinuationDocument.parse(continuation).toWireDocumentConversion()
+                    .flatMapConverted { admittedContinuation ->
+                        RelationReadQualification.resumable(
+                            admittedMinimum,
+                            limitations.map(RelationLimitationWireDocument::toContract),
+                            admittedContinuation,
+                        ).toWireDocumentConversion()
+                    }
+            }
+    is RelationReadQualificationWireDocument.TerminalIncomplete ->
+        RelationKnownMinimumDocument.parse(knownMinimum).toWireDocumentConversion()
+            .flatMapConverted { admittedMinimum ->
+                RelationReadQualification.terminalIncomplete(
+                    admittedMinimum,
+                    limitations.map(RelationLimitationWireDocument::toContract),
+                ).toWireDocumentConversion()
+            }
+}
 
 private fun RelationLimitationDocument.toWireDocument(): RelationLimitationWireDocument =
     when (this) {
@@ -203,6 +220,18 @@ internal fun RelationReadRejection.toWireDocument(): RelationReadRejectionWireDo
         RelationReadRejection.SELECTOR_STALE -> RelationReadRejectionWireDocument.SELECTOR_STALE
         RelationReadRejection.RELATION_UNSUPPORTED ->
             RelationReadRejectionWireDocument.RELATION_UNSUPPORTED
+        RelationReadRejection.CONTINUATION_MALFORMED ->
+            RelationReadRejectionWireDocument.CONTINUATION_MALFORMED
+        RelationReadRejection.CONTINUATION_SUBJECT_MISMATCH ->
+            RelationReadRejectionWireDocument.CONTINUATION_SUBJECT_MISMATCH
+        RelationReadRejection.CONTINUATION_RELATION_MISMATCH ->
+            RelationReadRejectionWireDocument.CONTINUATION_RELATION_MISMATCH
+        RelationReadRejection.CONTINUATION_SCOPE_MISMATCH ->
+            RelationReadRejectionWireDocument.CONTINUATION_SCOPE_MISMATCH
+        RelationReadRejection.CONTINUATION_GENERATION_MISMATCH ->
+            RelationReadRejectionWireDocument.CONTINUATION_GENERATION_MISMATCH
+        RelationReadRejection.CONTINUATION_CURSOR_MOVED ->
+            RelationReadRejectionWireDocument.CONTINUATION_CURSOR_MOVED
     }
 
 internal fun RelationReadRejectionWireDocument.toContract(): RelationReadRejection =
@@ -212,25 +241,53 @@ internal fun RelationReadRejectionWireDocument.toContract(): RelationReadRejecti
         RelationReadRejectionWireDocument.SELECTOR_STALE -> RelationReadRejection.SELECTOR_STALE
         RelationReadRejectionWireDocument.RELATION_UNSUPPORTED ->
             RelationReadRejection.RELATION_UNSUPPORTED
+        RelationReadRejectionWireDocument.CONTINUATION_MALFORMED ->
+            RelationReadRejection.CONTINUATION_MALFORMED
+        RelationReadRejectionWireDocument.CONTINUATION_SUBJECT_MISMATCH ->
+            RelationReadRejection.CONTINUATION_SUBJECT_MISMATCH
+        RelationReadRejectionWireDocument.CONTINUATION_RELATION_MISMATCH ->
+            RelationReadRejection.CONTINUATION_RELATION_MISMATCH
+        RelationReadRejectionWireDocument.CONTINUATION_SCOPE_MISMATCH ->
+            RelationReadRejection.CONTINUATION_SCOPE_MISMATCH
+        RelationReadRejectionWireDocument.CONTINUATION_GENERATION_MISMATCH ->
+            RelationReadRejection.CONTINUATION_GENERATION_MISMATCH
+        RelationReadRejectionWireDocument.CONTINUATION_CURSOR_MOVED ->
+            RelationReadRejection.CONTINUATION_CURSOR_MOVED
     }
 
 internal fun TraversalRunQualification.toWireDocument():
-    TraversalRunQualificationWireDocument = TraversalRunQualificationWireDocument(
-    limitations = limitations.map(TraversalLimitationDocument::toWireDocument),
-    relationLimitations = relationLimitations.map(RelationLimitationDocument::toWireDocument),
-    continuation = continuation.value,
-)
+    TraversalRunQualificationWireDocument = when (this) {
+    is TraversalRunQualification.Resumable -> TraversalRunQualificationWireDocument.Resumable(
+        limitations = limitations.map(TraversalLimitationDocument::toWireDocument),
+        relationLimitations = relationLimitations.map(RelationLimitationDocument::toWireDocument),
+        continuation = continuation.value,
+    )
+    is TraversalRunQualification.TerminalIncomplete ->
+        TraversalRunQualificationWireDocument.TerminalIncomplete(
+            limitations = limitations.map(TraversalLimitationDocument::toWireDocument),
+            relationLimitations = relationLimitations.map(
+                RelationLimitationDocument::toWireDocument,
+            ),
+        )
+}
 
 internal fun TraversalRunQualificationWireDocument.toContract():
-    WireDocumentConversion<TraversalRunQualification> =
-    TraversalContinuationDocument.parse(continuation).toWireDocumentConversion()
-        .flatMapConverted { admittedContinuation ->
-            TraversalRunQualification.create(
-                limitations.map(TraversalLimitationWireDocument::toContract),
-                relationLimitations.map(RelationLimitationWireDocument::toContract),
-                admittedContinuation,
-            ).toWireDocumentConversion()
-        }
+    WireDocumentConversion<TraversalRunQualification> = when (this) {
+    is TraversalRunQualificationWireDocument.Resumable ->
+        TraversalContinuationDocument.parse(continuation).toWireDocumentConversion()
+            .flatMapConverted { admittedContinuation ->
+                TraversalRunQualification.resumable(
+                    limitations.map(TraversalLimitationWireDocument::toContract),
+                    relationLimitations.map(RelationLimitationWireDocument::toContract),
+                    admittedContinuation,
+                ).toWireDocumentConversion()
+            }
+    is TraversalRunQualificationWireDocument.TerminalIncomplete ->
+        TraversalRunQualification.terminalIncomplete(
+            limitations.map(TraversalLimitationWireDocument::toContract),
+            relationLimitations.map(RelationLimitationWireDocument::toContract),
+        ).toWireDocumentConversion()
+}
 
 private fun TraversalLimitationDocument.toWireDocument(): TraversalLimitationWireDocument =
     when (this) {
@@ -277,6 +334,16 @@ internal fun TraversalRunRejection.toWireDocument(): TraversalRunRejectionWireDo
         TraversalRunRejection.TOPOLOGY_BUILD_REQUIRED ->
             TraversalRunRejectionWireDocument.TOPOLOGY_BUILD_REQUIRED
         TraversalRunRejection.PLAN_REJECTED -> TraversalRunRejectionWireDocument.PLAN_REJECTED
+        TraversalRunRejection.CONTINUATION_MALFORMED ->
+            TraversalRunRejectionWireDocument.CONTINUATION_MALFORMED
+        TraversalRunRejection.CONTINUATION_SUBJECT_MISMATCH ->
+            TraversalRunRejectionWireDocument.CONTINUATION_SUBJECT_MISMATCH
+        TraversalRunRejection.CONTINUATION_RELATION_MISMATCH ->
+            TraversalRunRejectionWireDocument.CONTINUATION_RELATION_MISMATCH
+        TraversalRunRejection.CONTINUATION_SCOPE_MISMATCH ->
+            TraversalRunRejectionWireDocument.CONTINUATION_SCOPE_MISMATCH
+        TraversalRunRejection.CONTINUATION_GENERATION_MISMATCH ->
+            TraversalRunRejectionWireDocument.CONTINUATION_GENERATION_MISMATCH
     }
 
 internal fun TraversalRunRejectionWireDocument.toContract(): TraversalRunRejection =
@@ -287,6 +354,16 @@ internal fun TraversalRunRejectionWireDocument.toContract(): TraversalRunRejecti
         TraversalRunRejectionWireDocument.TOPOLOGY_BUILD_REQUIRED ->
             TraversalRunRejection.TOPOLOGY_BUILD_REQUIRED
         TraversalRunRejectionWireDocument.PLAN_REJECTED -> TraversalRunRejection.PLAN_REJECTED
+        TraversalRunRejectionWireDocument.CONTINUATION_MALFORMED ->
+            TraversalRunRejection.CONTINUATION_MALFORMED
+        TraversalRunRejectionWireDocument.CONTINUATION_SUBJECT_MISMATCH ->
+            TraversalRunRejection.CONTINUATION_SUBJECT_MISMATCH
+        TraversalRunRejectionWireDocument.CONTINUATION_RELATION_MISMATCH ->
+            TraversalRunRejection.CONTINUATION_RELATION_MISMATCH
+        TraversalRunRejectionWireDocument.CONTINUATION_SCOPE_MISMATCH ->
+            TraversalRunRejection.CONTINUATION_SCOPE_MISMATCH
+        TraversalRunRejectionWireDocument.CONTINUATION_GENERATION_MISMATCH ->
+            TraversalRunRejection.CONTINUATION_GENERATION_MISMATCH
     }
 
 internal fun DiagnosticCheckQualification.toWireDocument():

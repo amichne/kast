@@ -27,7 +27,6 @@ internal sealed interface InstalledIndexingReadinessFailure {
     data object ProjectDisposed : InstalledIndexingReadinessFailure
     data object PlatformObservationUnavailable : InstalledIndexingReadinessFailure
     data object PlatformLinkageInvalid : InstalledIndexingReadinessFailure
-    data object ProjectJvmUnavailable : InstalledIndexingReadinessFailure
     data object ModuleMaterializationUnavailable : InstalledIndexingReadinessFailure
     data object IndexingTimedOut : InstalledIndexingReadinessFailure
 }
@@ -62,7 +61,6 @@ internal data class InstalledIndexingObservation(
     val scannerRevision: Long,
     val projectRootsRevision: InstalledProjectRootsRevision,
     val modulesReady: Boolean,
-    val projectJvmReady: Boolean,
 )
 
 /** Monotonic IntelliJ roots-model evidence covering module SDK and language-level updates. */
@@ -136,59 +134,6 @@ private sealed interface ModuleContinuityState {
     data object Restored : ModuleContinuityState
 }
 
-internal enum class InstalledProjectJvmContinuityAction {
-    AVAILABLE,
-    REASSERT,
-    WAITING,
-}
-
-/**
- * Refines live project-SDK observations into bounded project-JVM reassertion intervals.
- *
- * Delayed Gradle/JPS workspace-model replacements may rewrite the project SDK more than once after
- * import. Each observed loss admits one reassertion of the already-admitted exact Java home and a
- * finite [grace] interval before another reassertion. The enclosing readiness timeout remains the
- * sole terminal bound while Gradle is still changing the workspace model.
- */
-internal class InstalledProjectJvmContinuity(
-    private val grace: Duration,
-) {
-    private val graceNanos = grace.toNanos().also { nanos -> require(nanos > 0) }
-    private var state: ProjectJvmContinuityState = ProjectJvmContinuityState.Available
-
-    fun observe(
-        available: Boolean,
-        monotonicNanos: Long,
-    ): InstalledProjectJvmContinuityAction {
-        if (available) {
-            state = ProjectJvmContinuityState.Available
-            return InstalledProjectJvmContinuityAction.AVAILABLE
-        }
-        return when (val current = state) {
-            ProjectJvmContinuityState.Available -> {
-                state = ProjectJvmContinuityState.AwaitingReassertion(monotonicNanos)
-                InstalledProjectJvmContinuityAction.REASSERT
-            }
-            is ProjectJvmContinuityState.AwaitingReassertion -> if (
-                monotonicNanos - current.requestedAtNanos >= graceNanos
-            ) {
-                state = ProjectJvmContinuityState.AwaitingReassertion(monotonicNanos)
-                InstalledProjectJvmContinuityAction.REASSERT
-            } else {
-                InstalledProjectJvmContinuityAction.WAITING
-            }
-        }
-    }
-}
-
-private sealed interface ProjectJvmContinuityState {
-    data object Available : ProjectJvmContinuityState
-
-    data class AwaitingReassertion(
-        val requestedAtNanos: Long,
-    ) : ProjectJvmContinuityState
-}
-
 /**
  * Refines repeated platform observations into a continuous smart, non-executing scanner interval.
  *
@@ -213,8 +158,7 @@ internal class InstalledIndexingQuiescence(
         if (
             !observation.smart ||
             scannerExecuting ||
-            !observation.modulesReady ||
-            !observation.projectJvmReady
+            !observation.modulesReady
         ) {
             state = IndexingQuiescenceState.Unstable
             return InstalledIndexingStability.WAITING
@@ -281,21 +225,19 @@ internal fun interface InstalledModuleRematerializer {
 }
 
 /**
- * Proof transition: `Project + AssignedInstalledProjectJvm + InstalledModuleRematerializer ->
+ * Proof transition: `Project + InstalledModuleRematerializer ->
  * InstalledIndexingReadiness`.
  *
  * [InstalledIndexingReadiness.Ready] establishes a continuous smart, scanner-idle interval with at
- * least one live IntelliJ module while the exact project SDK resolves the admitted Java home after
- * Gradle model and SDK writes. [InstalledIndexingReadiness.Rejected] retains interruption,
- * timeout, disposal, project-JVM, module-materialization, and platform-observation failures. Live
- * indexing and module state remains inside this bootstrap boundary.
+ * least one live IntelliJ module while the imported roots model remains unchanged after Gradle
+ * model and SDK writes. [InstalledIndexingReadiness.Rejected] retains interruption, timeout,
+ * disposal, module-materialization, and platform-observation failures. Live indexing and module
+ * state remains inside this bootstrap boundary.
  */
 internal fun awaitInstalledIndexingQuiescence(
     project: Project,
-    projectJvm: AssignedInstalledProjectJvm,
     moduleRematerializer: InstalledModuleRematerializer,
 ): InstalledIndexingReadiness {
-    var currentProjectJvm = projectJvm
     val services = when (val observed = observeInstalledIndexingPlatform {
         InstalledIndexingServices(
             DumbService.getInstance(project),
@@ -310,9 +252,6 @@ internal fun awaitInstalledIndexingQuiescence(
     val deadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(READINESS_TIMEOUT_MINUTES)
     val quiescence = InstalledIndexingQuiescence(Duration.ofMillis(QUIESCENCE_MILLIS))
     val moduleContinuity = InstalledModuleContinuity(Duration.ofMillis(MODULE_RECOVERY_GRACE_MILLIS))
-    val projectJvmContinuity = InstalledProjectJvmContinuity(
-        Duration.ofMillis(PROJECT_JVM_RECOVERY_GRACE_MILLIS),
-    )
     var previousObservation: InstalledIndexingObservation? = null
     while (true) {
         if (project.isDisposed) return indexingRejected(
@@ -321,8 +260,6 @@ internal fun awaitInstalledIndexingQuiescence(
         if (System.nanoTime() >= deadline) {
             return indexingRejected(
                 when {
-                    previousObservation?.projectJvmReady == false ->
-                        InstalledIndexingReadinessFailure.ProjectJvmUnavailable
                     previousObservation?.modulesReady == false ->
                         InstalledIndexingReadinessFailure.ModuleMaterializationUnavailable
                     else -> InstalledIndexingReadinessFailure.IndexingTimedOut
@@ -330,12 +267,11 @@ internal fun awaitInstalledIndexingQuiescence(
             )
         }
         val observation = when (val observed = observeInstalledIndexingPlatform {
-            val moduleObservation = ReadAction.nonBlocking<InstalledModuleJvmObservation> {
+            val moduleObservation = ReadAction.nonBlocking<InstalledModuleObservation> {
                 val modules = ModuleManager.getInstance(project).modules
                     .filterNot { module -> module.isDisposed }
-                InstalledModuleJvmObservation(
+                InstalledModuleObservation(
                     modulesReady = modules.isNotEmpty(),
-                    projectJvmReady = currentProjectJvm.admitsProjectSdk(),
                     projectRootsRevision = InstalledProjectRootsRevision(
                         ProjectRootManager.getInstance(project).modificationCount,
                     ),
@@ -348,7 +284,6 @@ internal fun awaitInstalledIndexingQuiescence(
                 scannerRevision = services.scanner.modificationTracker.modificationCount,
                 projectRootsRevision = moduleObservation.projectRootsRevision,
                 modulesReady = moduleObservation.modulesReady,
-                projectJvmReady = moduleObservation.projectJvmReady,
             )
         }) {
             is InstalledIndexingPlatformObservation.Observed -> observed.value
@@ -364,29 +299,8 @@ internal fun awaitInstalledIndexingQuiescence(
         val stability = quiescence.observe(observation, observedAt)
         when (moduleContinuity.observe(observation.modulesReady, observedAt)) {
             InstalledModuleContinuityAction.AVAILABLE -> {
-                when (
-                    projectJvmContinuity.observe(
-                        observation.projectJvmReady,
-                        observedAt,
-                    )
-                ) {
-                    InstalledProjectJvmContinuityAction.AVAILABLE -> {
-                        if (stability == InstalledIndexingStability.STABLE) {
-                            return InstalledIndexingReadiness.Ready
-                        }
-                    }
-                    InstalledProjectJvmContinuityAction.REASSERT -> {
-                        when (val assignment = currentProjectJvm.reassertAfterImport(project)) {
-                            is InstalledProjectJvmAssignment.Assigned -> {
-                                currentProjectJvm = assignment.projectJvm
-                            }
-                            is InstalledProjectJvmAssignment.Rejected ->
-                                return indexingRejected(
-                                    InstalledIndexingReadinessFailure.ProjectJvmUnavailable,
-                                )
-                        }
-                    }
-                    InstalledProjectJvmContinuityAction.WAITING -> Unit
+                if (stability == InstalledIndexingStability.STABLE) {
+                    return InstalledIndexingReadiness.Ready
                 }
             }
             InstalledModuleContinuityAction.REMATERIALIZE -> {
@@ -419,9 +333,8 @@ private fun indexingRejected(
     failure: InstalledIndexingReadinessFailure,
 ): InstalledIndexingReadiness.Rejected = InstalledIndexingReadiness.Rejected(failure)
 
-private data class InstalledModuleJvmObservation(
+private data class InstalledModuleObservation(
     val modulesReady: Boolean,
-    val projectJvmReady: Boolean,
     val projectRootsRevision: InstalledProjectRootsRevision,
 )
 
@@ -481,6 +394,5 @@ internal fun materializeImportedModules(
 private const val READINESS_TIMEOUT_MINUTES = 5L
 private const val QUIESCENCE_MILLIS = 1_500L
 private const val MODULE_RECOVERY_GRACE_MILLIS = 5_000L
-private const val PROJECT_JVM_RECOVERY_GRACE_MILLIS = 5_000L
 private const val POLL_MILLIS = 100L
 private val READINESS_LOG = Logger.getInstance("io.github.amichne.kast.indexingReadiness")

@@ -19,12 +19,15 @@ import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
 import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
+import io.github.amichne.kast.protocol.contract.RelationReadPositionDocument
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
 import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
+import io.github.amichne.kast.protocol.contract.TraversalRunPositionDocument
+import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import kotlinx.serialization.json.JsonElement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -38,21 +41,74 @@ class CanonicalReadGeneratedSerializationTest {
             relation = RelationKindDocument.CALLERS,
             limit = count(25),
         )
-        val document = json("""{"exactSelector":"exact:Target","relation":"callers","limit":25}""")
+        val document = json(
+            """{"exactSelector":"exact:Target","relation":"callers","limit":25,"position":{"type":"start"}}""",
+        )
 
         assertEquals(WireValueEncoding.Encoded(document), codec.encode(request, WireValueRole.REQUEST))
         assertEquals(WireDecoding.Decoded(request), codec.decode(document, WireValueRole.REQUEST))
         listOf(
             """{"exactSelector":"exact:Target","relation":"callers"}""",
-            """{"exactSelector":"exact:Target","relation":"callers","limit":25,"extra":true}""",
-            """{"exactSelector":"exact:Target","relation":"unknown","limit":25}""",
-            """{"exactSelector":"exact:Target","relation":"callers","limit":0}""",
+            """{"exactSelector":"exact:Target","relation":"callers","limit":25,"position":{"type":"start"},"extra":true}""",
+            """{"exactSelector":"exact:Target","relation":"unknown","limit":25,"position":{"type":"start"}}""",
+            """{"exactSelector":"exact:Target","relation":"callers","limit":0,"position":{"type":"start"}}""",
         ).forEach { malformed ->
             assertEquals(
                 WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.REQUEST)),
                 codec.decode(json(malformed), WireValueRole.REQUEST),
             )
         }
+        val continuation = relationContinuation("resume")
+        val resumed = request.copy(position = RelationReadPositionDocument.Resume(continuation))
+        val resumedDocument = json(
+            """{"exactSelector":"exact:Target","relation":"callers","limit":25,"position":{"type":"resume","continuation":"${continuation.value}"}}""",
+        )
+        assertEquals(
+            WireValueEncoding.Encoded(resumedDocument),
+            codec.encode(resumed, WireValueRole.REQUEST),
+        )
+        assertEquals(
+            WireDecoding.Decoded(resumed),
+            codec.decode(resumedDocument, WireValueRole.REQUEST),
+        )
+    }
+
+    @Test
+    fun `traversal request round trips closed start and resume positions`() {
+        val codec = CanonicalReadSerializers.traversalRunRequest
+        val start = TraversalRunRequest(
+            text("exact:Target"),
+            RelationKindDocument.CALLEES,
+            count(3),
+            count(25),
+        )
+        val startDocument = json(
+            """{"exactSelector":"exact:Target","relation":"callees","maximumDepth":3,"maximumResults":25,"position":{"type":"start"}}""",
+        )
+        assertEquals(WireValueEncoding.Encoded(startDocument), codec.encode(start, WireValueRole.REQUEST))
+        assertEquals(WireDecoding.Decoded(start), codec.decode(startDocument, WireValueRole.REQUEST))
+
+        val continuation = traversalContinuation("resume")
+        val resume = start.copy(
+            position = TraversalRunPositionDocument.Resume(continuation),
+        )
+        val resumeDocument = json(
+            """{"exactSelector":"exact:Target","relation":"callees","maximumDepth":3,"maximumResults":25,"position":{"type":"resume","continuation":"${continuation.value}"}}""",
+        )
+        assertEquals(
+            WireValueEncoding.Encoded(resumeDocument),
+            codec.encode(resume, WireValueRole.REQUEST),
+        )
+        assertEquals(WireDecoding.Decoded(resume), codec.decode(resumeDocument, WireValueRole.REQUEST))
+        assertEquals(
+            WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.REQUEST)),
+            codec.decode(
+                json(
+                    """{"exactSelector":"exact:Target","relation":"callees","maximumDepth":3,"maximumResults":25,"position":{"type":"resume","continuation":"bad"}}""",
+                ),
+                WireValueRole.REQUEST,
+            ),
+        )
     }
 
     @Test
@@ -89,38 +145,64 @@ class CanonicalReadGeneratedSerializationTest {
 
     @Test
     fun `proof carrying qualifications round trip and malformed claims fail closed`() {
-        val relation = RelationReadQualification.create(
+        val continuation = relationContinuation("qualification")
+        val relation = RelationReadQualification.resumable(
             RelationKnownMinimumDocument.parse(2).refinedValue(),
             listOf(
                 RelationLimitationDocument.RESULT_LIMIT_REACHED,
                 RelationLimitationDocument.PROVIDER_INCOMPLETE,
             ),
-            RelationContinuationDocument.parse("a".repeat(64)).refinedValue(),
+            continuation,
         ).refinedValue()
         assertQualification(
             CanonicalReadSerializers.relationReadQualification,
             relation,
-            """{"knownMinimum":2,"limitations":["result_limit_reached","provider_incomplete"],"continuation":"${"a".repeat(64)}"}""",
+            """{"type":"resumable","knownMinimum":2,"limitations":["result_limit_reached","provider_incomplete"],"continuation":"${continuation.value}"}""",
             listOf(
-                """{"knownMinimum":2,"limitations":["provider_incomplete","result_limit_reached"],"continuation":"${"a".repeat(64)}"}""",
-                """{"knownMinimum":2,"limitations":["provider_incomplete"],"continuation":"bad"}""",
+                """{"type":"resumable","knownMinimum":2,"limitations":["provider_incomplete","result_limit_reached"],"continuation":"${continuation.value}"}""",
+                """{"type":"resumable","knownMinimum":2,"limitations":["provider_incomplete"],"continuation":"bad"}""",
+            ),
+        )
+        val terminal = RelationReadQualification.terminalIncomplete(
+            RelationKnownMinimumDocument.parse(0).refinedValue(),
+            listOf(RelationLimitationDocument.UNRESOLVED_TARGET),
+        ).refinedValue()
+        assertQualification(
+            CanonicalReadSerializers.relationReadQualification,
+            terminal,
+            """{"type":"terminal_incomplete","knownMinimum":0,"limitations":["unresolved_target"]}""",
+            listOf(
+                """{"type":"terminal_incomplete","knownMinimum":0,"limitations":[],"continuation":"bad"}""",
             ),
         )
 
-        val traversal = TraversalRunQualification.create(
+        val traversalContinuation = traversalContinuation("qualification")
+        val traversal = TraversalRunQualification.resumable(
             listOf(
-                TraversalLimitationDocument.DEPTH_LIMIT_REACHED,
+                TraversalLimitationDocument.RECORD_LIMIT_REACHED,
                 TraversalLimitationDocument.ONE_HOP_INCOMPLETE,
             ),
             listOf(RelationLimitationDocument.PROVIDER_INCOMPLETE),
-            TraversalContinuationDocument.parse("b".repeat(64)).refinedValue(),
+            traversalContinuation,
         ).refinedValue()
         assertQualification(
             CanonicalReadSerializers.traversalRunQualification,
             traversal,
-            """{"limitations":["depth_limit_reached","one_hop_incomplete"],"relationLimitations":["provider_incomplete"],"continuation":"${"b".repeat(64)}"}""",
+            """{"type":"resumable","limitations":["record_limit_reached","one_hop_incomplete"],"relationLimitations":["provider_incomplete"],"continuation":"${traversalContinuation.value}"}""",
             listOf(
-                """{"limitations":["one_hop_incomplete"],"relationLimitations":[],"continuation":"${"b".repeat(64)}"}""",
+                """{"type":"resumable","limitations":["one_hop_incomplete"],"relationLimitations":[],"continuation":"${traversalContinuation.value}"}""",
+            ),
+        )
+        val terminalTraversal = TraversalRunQualification.terminalIncomplete(
+            listOf(TraversalLimitationDocument.ONE_HOP_INCOMPLETE),
+            listOf(RelationLimitationDocument.UNRESOLVED_TARGET),
+        ).refinedValue()
+        assertQualification(
+            CanonicalReadSerializers.traversalRunQualification,
+            terminalTraversal,
+            """{"type":"terminal_incomplete","limitations":["one_hop_incomplete"],"relationLimitations":["unresolved_target"]}""",
+            listOf(
+                """{"type":"terminal_incomplete","limitations":["one_hop_incomplete"],"relationLimitations":[]}""",
             ),
         )
 
@@ -212,6 +294,32 @@ class CanonicalReadGeneratedSerializationTest {
     private fun count(raw: Int): ProtocolCount = ProtocolCount.parse(raw).refinedValue()
 
     private fun offset(raw: Int): ProtocolOffset = ProtocolOffset.parse(raw).refinedValue()
+
+    private fun relationContinuation(payloadText: String): RelationContinuationDocument {
+        val payload = payloadText.toByteArray()
+        val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(payload)
+            .joinToString("") { byte ->
+                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+            }
+        return RelationContinuationDocument.parse(
+            "relation-continuation:v1:$encoded:$digest",
+        ).refinedValue()
+    }
+
+    private fun traversalContinuation(payloadText: String): TraversalContinuationDocument {
+        val payload = payloadText.toByteArray()
+        val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(payload)
+            .joinToString("") { byte ->
+                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+            }
+        return TraversalContinuationDocument.parse(
+            "traversal-continuation:v1:$encoded:$digest",
+        ).refinedValue()
+    }
 
     private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
         is Refinement.Refined -> value

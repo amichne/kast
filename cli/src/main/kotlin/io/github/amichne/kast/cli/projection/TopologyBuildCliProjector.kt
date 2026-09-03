@@ -191,7 +191,18 @@ private fun TopologyExtractionRejection.wireName(): String = when (this) {
         "source-content-changed-during-build"
     TopologyExtractionRejection.NOT_KOTLIN_PSI -> "not-kotlin-psi"
     TopologyExtractionRejection.COMPILER_UNAVAILABLE -> "compiler-unavailable"
-    TopologyExtractionRejection.FACT_REJECTED -> "fact-rejected"
+    TopologyExtractionRejection.DECLARATION_EVIDENCE_REJECTED ->
+        "declaration-evidence-rejected"
+    TopologyExtractionRejection.PROJECTION_REGISTRY_REJECTED ->
+        "projection-registry-rejected"
+    TopologyExtractionRejection.COMPILER_IDENTITY_MISMATCH ->
+        "compiler-identity-mismatch"
+    TopologyExtractionRejection.REFERENCE_TARGET_REJECTED ->
+        "reference-target-rejected"
+    TopologyExtractionRejection.OCCURRENCE_REJECTED -> "occurrence-rejected"
+    TopologyExtractionRejection.EDGE_REJECTED -> "edge-rejected"
+    TopologyExtractionRejection.OVERRIDE_REJECTED -> "override-rejected"
+    TopologyExtractionRejection.FILE_ADMISSION_REJECTED -> "file-admission-rejected"
 }
 
 private fun TopologyPublicationRejection.wireName(): String = when (this) {

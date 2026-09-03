@@ -42,6 +42,7 @@ internal sealed interface TopologySymbolProjection {
 internal sealed interface TopologyK2IdentityProjection {
     data class Projected(val symbol: TopologySymbol) : TopologyK2IdentityProjection
     data object Unsupported : TopologyK2IdentityProjection
+    data object CompilerIdentityMismatch : TopologyK2IdentityProjection
     data object Rejected : TopologyK2IdentityProjection
 }
 
@@ -50,6 +51,7 @@ internal sealed interface TopologyOverrideProjection {
         val symbols: List<TopologySymbol>,
     ) : TopologyOverrideProjection
 
+    data object CompilerIdentityMismatch : TopologyOverrideProjection
     data object Rejected : TopologyOverrideProjection
 }
 
@@ -138,7 +140,7 @@ internal fun KaSymbol.topologyIdentityProjection(
         ) {
             TopologyK2IdentityProjection.Projected(symbol.symbol)
         } else {
-            TopologyK2IdentityProjection.Rejected
+            TopologyK2IdentityProjection.CompilerIdentityMismatch
         }
         TopologyRegistrySymbolLookup.Unavailable -> TopologyK2IdentityProjection.Unsupported
         TopologyRegistrySymbolLookup.Rejected -> TopologyK2IdentityProjection.Rejected
@@ -162,6 +164,8 @@ internal fun KtNamedDeclaration.directOverrideTopologyIdentities(
             when (val projection = overridden.topologyIdentityProjection(registry)) {
                 is TopologyK2IdentityProjection.Projected -> symbols += projection.symbol
                 TopologyK2IdentityProjection.Unsupported -> Unit
+                TopologyK2IdentityProjection.CompilerIdentityMismatch ->
+                    return@analyze TopologyOverrideProjection.CompilerIdentityMismatch
                 TopologyK2IdentityProjection.Rejected ->
                     return@analyze TopologyOverrideProjection.Rejected
             }

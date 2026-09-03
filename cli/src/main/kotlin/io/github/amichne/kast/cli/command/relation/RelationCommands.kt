@@ -3,17 +3,23 @@ package io.github.amichne.kast.cli.command.relation
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.subcommands
 import io.github.amichne.kast.cli.command.CliActionResolution
+import io.github.amichne.kast.cli.command.CliOptionValue
+import io.github.amichne.kast.cli.command.CliUsageFailure
 import io.github.amichne.kast.cli.command.CommandFamily
 import io.github.amichne.kast.cli.command.KastCommandGroup
 import io.github.amichne.kast.cli.command.SemanticKastCommand
 import io.github.amichne.kast.cli.command.closedChoiceOption
 import io.github.amichne.kast.cli.command.protocolCountOption
 import io.github.amichne.kast.cli.command.protocolTextOption
+import io.github.amichne.kast.cli.command.optionalOnce
 import io.github.amichne.kast.cli.command.requiredOnce
 import io.github.amichne.kast.cli.projection.CanonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
+import io.github.amichne.kast.protocol.contract.RelationReadPositionDocument
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
+import io.github.amichne.kast.kernel.Refinement
 
 internal fun relationCommandGroup(
     preparers: CanonicalCliRequestPreparers,
@@ -61,9 +67,25 @@ private class RelationReadCommand(
     private val selector by protocolTextOption("--selector", "Exact symbol selector.").requiredOnce()
     private val relation by relationOption().requiredOnce()
     private val limit by protocolCountOption("--limit", "Maximum returned targets.").requiredOnce()
+    private val continuation by protocolTextOption(
+        "--continuation",
+        "Continuation returned by an earlier resumable relation read.",
+    ).optionalOnce()
 
     override fun help(context: Context): String = "Read one bounded relation from an exact symbol."
 
-    override fun resolveAction(): CliActionResolution =
-        prepare(RelationReadRequest(selector, relation, limit))
+    override fun resolveAction(): CliActionResolution {
+        val position = when (val supplied = continuation) {
+            CliOptionValue.Absent -> RelationReadPositionDocument.Start
+            is CliOptionValue.Present -> when (
+                val admitted = RelationContinuationDocument.parse(supplied.value.value)
+            ) {
+                is Refinement.Refined -> RelationReadPositionDocument.Resume(admitted.value)
+                is Refinement.Rejected -> return CliActionResolution.UsageRejected(
+                    CliUsageFailure.RelationRead.CONTINUATION_REJECTED,
+                )
+            }
+        }
+        return prepare(RelationReadRequest(selector, relation, limit, position))
+    }
 }
