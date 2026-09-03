@@ -1,7 +1,21 @@
 ---
+type: "How-To"
 title: "Trace code connections"
 sidebarTitle: "Topology and traversal"
 description: "Publish an exact-generation repository topology and traverse its semantic relations with explicit bounds."
+resource: "file://docs/public/questions/code-connections.mdx"
+tags: ["relations", "topology", "traversal", "generation"]
+timestamp: "2026-09-03T00:00:00-04:00"
+code_sources:
+  - path: "relation/service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt"
+    lines: "25-261"
+    symbols: ["RelationService"]
+  - path: "traversal/service/src/main/kotlin/io/github/amichne/kast/traversal/service/TraversalService.kt"
+    lines: "29-355"
+    symbols: ["TraversalService"]
+  - path: "runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/protocol/graph/TopologyBackedTraversalOperations.kt"
+    lines: "29-186"
+    symbols: ["TopologyBackedTraversalOperations"]
 icon: "share-2"
 keywords: ["relations", "topology", "traversal", "generation"]
 ---

@@ -1,6 +1,23 @@
 ---
+type: "Technical Specification"
 title: "Change and evidence"
 description: "How Kast separates planning, physical application, semantic verification, durable recovery, and SQLite persistence."
+resource: "file://docs/public/technical-specification/change-and-evidence.mdx"
+tags: ["change", "mutation", "verification", "recovery"]
+timestamp: "2026-09-03T00:00:00-04:00"
+code_sources:
+  - path: "change/plan/src/main/kotlin/io/github/amichne/kast/change/plan/PureAddDeclarationPlanningService.kt"
+    lines: "11-27"
+    symbols: ["PureAddDeclarationPlanningService"]
+  - path: "change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/AddDeclarationApplyService.kt"
+    lines: "170-331"
+    symbols: ["AddDeclarationApplyService"]
+  - path: "change/verify/src/main/kotlin/io/github/amichne/kast/change/verify/VerifiedMutationService.kt"
+    lines: "145-271"
+    symbols: ["VerifiedMutationService"]
+  - path: "evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationRecoveryJournal.kt"
+    lines: "27-295"
+    symbols: ["SqliteMutationRecoveryJournal"]
 icon: "file-pen"
 keywords: ["change", "mutation", "verification", "recovery", "SQLite"]
 ---

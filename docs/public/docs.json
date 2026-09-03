@@ -4,9 +4,9 @@
   "name": "Kast",
   "description": "Compiler-grounded evidence for exact Kotlin repositories.",
   "colors": {
-    "primary": "#4F46E5",
-    "light": "#818CF8",
-    "dark": "#6366F1"
+    "primary": "#B45309",
+    "light": "#92400E",
+    "dark": "#F59E0B"
   },
   "logo": "/images/kast-mark.svg",
   "favicon": "/images/kast-mark.svg",
@@ -14,10 +14,9 @@
     "library": "lucide"
   },
   "background": {
-    "decoration": "gradient",
     "color": {
-      "light": "#F8FAFC",
-      "dark": "#090D18"
+      "light": "#FAF7F2",
+      "dark": "#11100E"
     }
   },
   "navigation": {

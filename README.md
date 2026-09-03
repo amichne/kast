@@ -29,10 +29,14 @@ declaration the alias names and which overload receives `order`.
 
 ## Start from the repository root
 
-Kast supports macOS on Apple silicon, Java 25 or newer, IntelliJ IDEA build
-262.9437.185 with Kotlin plugin build 262.9437.185-IJ, and an on-disk Kotlin
-Gradle repository. It launches that exact local IDEA installation and its JBR
-as a headless sidecar with private config, system, plugin, and log directories.
+Kast supports macOS on Apple silicon, Java 25 or newer, and an on-disk Kotlin
+Gradle repository. Its installed sidecar admits IntelliJ and Kotlin plugin
+builds by JetBrains platform release line, not by one exact patch pair.
+
+Reference pair: IDEA build 262.9437.185 and Kotlin plugin build 262.9437.185-IJ.
+Compatible patch builds are accepted when IDEA and Kotlin plugin both remain on
+JetBrains platform release line 262. Kast preserves the exact observed build
+pair in runtime and cache identity after compatibility is proven.
 
 Install the latest stable control command and its matched private sidecar:
 
@@ -52,15 +56,17 @@ kast product inspect
 kast start
 ```
 
-`kast product inspect` reports the control, sidecar, supported IDEA/Kotlin pair,
-any Kast-owned cache, and the enabled per-socket telemetry destination for the
-current root without starting a runtime. Use it to find the exact trace folder
-and file before collecting performance evidence.
+`kast product inspect` reports the control, sidecar, release reference
+IDEA/Kotlin pair, any Kast-owned cache with its exact observed pair, and the
+enabled per-socket telemetry destination for the current root without starting
+a runtime. Use it to find the exact trace folder and file before collecting
+performance evidence.
 
-`kast start` discovers the exactly supported local IDEA home, starts one private
-headless Project, imports its on-disk Gradle model, waits for smart mode, and
-then publishes the exact-root endpoint. Use `--idea-home PATH` when discovery is
-ambiguous. Kast installs nothing into the user's IDE and ships no IDEA home.
+`kast start` discovers one release-line-compatible local IDEA home, starts one
+private headless Project, imports its on-disk Gradle model, waits for smart
+mode, and then publishes the exact-root endpoint. Use `--idea-home PATH` when
+discovery is missing or ambiguous. Kast installs nothing into the user's IDE
+and ships no IDEA home.
 
 Sidecar processes launch directly by default. Set `KAST_ENABLE_LAUNCHD=1` to
 opt into launchd-backed process ownership; leave it unset or set it to `0` for

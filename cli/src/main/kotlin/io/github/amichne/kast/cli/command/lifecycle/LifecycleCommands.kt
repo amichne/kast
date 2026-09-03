@@ -28,7 +28,7 @@ internal fun lifecycleCommands(): List<LifecycleKastCommand> = listOf(
 private data object StartCommand : LifecycleKastCommand("start", CliLifecycleCommand.START) {
     private val ideaHome by absolutePathOption(
         "--idea-home",
-        "Exactly supported local IntelliJ IDEA home.",
+        "Release-line-compatible local IntelliJ IDEA home.",
     ).optionalOnce()
     private val cacheMode by closedChoiceOption(
         "--cache",

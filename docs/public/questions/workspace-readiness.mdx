@@ -1,7 +1,18 @@
 ---
+type: "How-To"
 title: "What is Kast ready to inspect?"
 sidebarTitle: "Inspect readiness"
 description: "Read exact-root workspace readiness before relying on sidecar symbol evidence."
+resource: "file://docs/public/questions/workspace-readiness.mdx"
+tags: ["workspace", "readiness", "lifecycle", "exact root"]
+timestamp: "2026-09-03T00:00:00-04:00"
+code_sources:
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/RuntimeLifecycle.kt"
+    lines: "37-190"
+    symbols: ["ExactRootRuntimeLifecycle"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledSidecarRuntimeDemand.kt"
+    lines: "200-314"
+    symbols: ["InstalledSidecarRootRuntimeDemander"]
 icon: "gauge"
 keywords: ["workspace", "readiness", "generation", "exact root"]
 ---

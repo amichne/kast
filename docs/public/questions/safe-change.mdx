@@ -1,7 +1,24 @@
 ---
+type: "How-To"
 title: "Add a declaration safely"
 sidebarTitle: "Safe AddDeclaration"
 description: "Plan, apply with verification, and recover one typed AddDeclaration mutation through the live IDE endpoint."
+resource: "file://docs/public/questions/safe-change.mdx"
+tags: ["change", "planning", "verification", "recovery"]
+timestamp: "2026-09-03T00:00:00-04:00"
+code_sources:
+  - path: "change/plan/src/main/kotlin/io/github/amichne/kast/change/plan/PureAddDeclarationPlanningService.kt"
+    lines: "11-27"
+    symbols: ["PureAddDeclarationPlanningService"]
+  - path: "change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/AddDeclarationApplyService.kt"
+    lines: "170-331"
+    symbols: ["AddDeclarationApplyService"]
+  - path: "change/verify/src/main/kotlin/io/github/amichne/kast/change/verify/VerifiedMutationService.kt"
+    lines: "145-271"
+    symbols: ["VerifiedMutationService"]
+  - path: "evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationRecoveryJournal.kt"
+    lines: "27-295"
+    symbols: ["SqliteMutationRecoveryJournal"]
 icon: "git-pull-request-create"
 keywords: ["change", "add-declaration", "plan", "verify", "recover"]
 ---

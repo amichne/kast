@@ -1,13 +1,68 @@
 ---
+type: "Installation Guide"
 title: "Set up and start Kast"
 sidebarTitle: "Quickstart"
 description: "Install Kast, start an isolated exact-root IntelliJ sidecar, and inspect the first compiler-backed result."
+resource: "file://docs/public/start.mdx"
+tags: ["installation", "host contract", "lifecycle", "IntelliJ"]
+timestamp: "2026-09-03T00:00:00-04:00"
+code_sources:
+  - path: "install.sh"
+    lines: "89-133"
+  - path: "install.sh"
+    lines: "690-817"
+  - path: "gradle/libs.versions.toml"
+    lines: "14-17"
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledIdeRuntimeDiscovery.kt"
+    lines: "26-208"
+    symbols: ["InstalledIdeRuntimeDiscovery"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/IndexSeedProtocol.kt"
+    lines: "37-105"
+    symbols: ["SupportedIdeRuntimePair"]
+  - path: "cli/src/test/kotlin/io/github/amichne/kast/cli/runtime/InstalledIdeRuntimeDiscoveryTest.kt"
+    lines: "13-119"
+    symbols: ["InstalledIdeRuntimeDiscoveryTest"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/command/lifecycle/LifecycleCommands.kt"
+    lines: "22-134"
+    symbols: ["lifecycleCommands"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/RuntimeLifecycle.kt"
+    lines: "37-190"
+    symbols: ["ExactRootRuntimeLifecycle"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/RuntimeProcessMode.kt"
+    lines: "25-39"
+    symbols: ["RuntimeProcessModeEnvironment"]
 icon: "rocket"
 keywords: ["install", "quickstart", "IntelliJ"]
 ---
 
 The first successful run opens one exact on-disk repository in a private
 headless IntelliJ sidecar and publishes its compiler-backed evidence.
+
+## Host contract
+
+| Requirement | Exact contract |
+| --- | --- |
+| Platform | macOS on Apple silicon |
+| Installer JVM | Java 25 or newer, selected from `$JAVA_HOME/bin/java` or `java` on `PATH` |
+| IDE compatibility | IDEA and Kotlin plugin builds on JetBrains platform release line 262 |
+| Repository | An on-disk Kotlin Gradle repository |
+
+The installer JVM and sidecar JVM are different boundaries. Java 25 runs the
+installed `kast` control command. The sidecar runs the bundled JBR from the
+admitted IntelliJ installation.
+
+Reference pair: IDEA build 262.9437.185 and Kotlin plugin build
+262.9437.185-IJ. Compatible patch builds are accepted when IDEA and Kotlin
+plugin both remain on JetBrains platform release line 262. The reference pair
+is release metadata and a tested baseline, not an exact patch-version mandate.
+After admission, Kast preserves the exact observed patch pair in runtime and
+cache identity.
+
+Standard discovery checks exactly
+`/Applications/IntelliJ IDEA.app/Contents` and
+`$HOME/Applications/IntelliJ IDEA.app/Contents`. If neither path contains one
+unique release-line-compatible installation, pass
+`kast start --idea-home /absolute/IDEA/home`.
 
 <Info>
   The installer verifies both release payloads: the `kast` command and its
@@ -16,20 +71,6 @@ headless IntelliJ sidecar and publishes its compiler-backed evidence.
 </Info>
 
 <Steps>
-  <Step title="Check the host">
-    Kast currently requires:
-
-    - macOS on Apple silicon
-    - Java 25 or newer
-    - IntelliJ IDEA build 262.9437.185
-    - Kotlin plugin build 262.9437.185-IJ
-    - an on-disk Kotlin Gradle repository
-
-    Kast uses the installed IDE's JBR, Kotlin plugin, Gradle integration, PSI,
-    and indexing implementation. Its Project and mutable IDE state remain in
-    Kast-owned directories.
-  </Step>
-
   <Step title="Install Kast">
     Use the repository installer as the installation boundary. Choose the
     direct path or review the exact downloaded script before execution:
@@ -90,11 +131,10 @@ headless IntelliJ sidecar and publishes its compiler-backed evidence.
     kast start
     ```
 
-    Kast discovers the exactly supported standard IDEA installation and starts
-    its JBR with private config, system, plugin, and log paths. It opens the
-    Project, imports the on-disk Gradle model, refreshes its private VFS, waits
-    for smart mode, and only then publishes semantic readiness. If no unique
-    standard installation matches, pass `--idea-home /absolute/IDEA/home`.
+    Kast discovers a release-line-compatible IDEA installation and starts its
+    JBR with private config, system, plugin, and log paths. It opens the Project,
+    imports the on-disk Gradle model, refreshes its private VFS, waits for smart
+    mode, and only then publishes semantic readiness.
 
     Sidecar processes launch directly by default. Set
     `KAST_ENABLE_LAUNCHD=1` to opt into launchd-backed process ownership; leave
@@ -118,6 +158,18 @@ headless IntelliJ sidecar and publishes its compiler-backed evidence.
     then returns bounded candidates, not an exact declaration claim.
   </Step>
 </Steps>
+
+## Operate the lifecycle
+
+| Intent | Command | Contract |
+| --- | --- | --- |
+| Start or reuse | `kast start` | Admits the exact root and returns only after semantic readiness or a typed blocker. |
+| Observe | `kast status` | Reports runtime and cache state without starting or repairing anything. |
+| Reconcile files | `kast index sync` | Refreshes admitted source roots and publishes a successor semantic generation. |
+| Stop | `kast stop` | Targets only the process proven to own this exact-root endpoint. |
+| Rebuild private state | `kast start --cache rebuild` | Stops the exact sidecar, quarantines only Kast-owned cache state, and starts a fresh import. |
+
+## Optional and recovery paths
 
 <AccordionGroup>
   <Accordion title="Where the installer writes files" icon="folder-tree">

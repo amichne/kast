@@ -1,6 +1,29 @@
 ---
+type: "Technical Specification"
 title: "Runtime boundary"
 description: "How Kast proves one canonical repository root, starts or admits a private IntelliJ sidecar, and publishes generation-bound readiness."
+resource: "file://docs/public/technical-specification/runtime-boundary.mdx"
+tags: ["runtime", "sidecar", "workspace", "admission"]
+timestamp: "2026-09-03T00:00:00-04:00"
+code_sources:
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/IndexSeedProtocol.kt"
+    lines: "37-105"
+    symbols: ["SupportedIdeRuntimePair"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledIdeRuntimeDiscovery.kt"
+    lines: "58-208"
+    symbols: ["InstalledIdeRuntimeDiscovery"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledSidecarRuntimeDemand.kt"
+    lines: "200-314"
+    symbols: ["InstalledSidecarRootRuntimeDemander"]
+  - path: "indexer/src/main/kotlin/io/github/amichne/kast/indexer/KastIndexerApplicationStarter.kt"
+    lines: "44-135"
+    symbols: ["KastIndexerApplicationStarter"]
+  - path: "workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledIntellijWorkspace.kt"
+    lines: "164-325"
+    symbols: ["InstalledIntellijWorkspace"]
+  - path: "runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/bootstrap/InstalledKastRuntime.kt"
+    lines: "282-438"
+    symbols: ["InstalledKastRuntime"]
 icon: "server"
 keywords: ["sidecar", "IntelliJ", "workspace", "generation"]
 ---
@@ -15,9 +38,15 @@ generation all belong to the same canonical repository root.
 The control executable begins by canonicalizing the caller's starting path.
 That root contributes to endpoint identity, private state location, and the
 workspace identity carried by later requests. Admission then checks the
-installed sidecar contract, IDEA home, IDEA build, Kotlin plugin, JBR,
-bootstrap classes, Gradle integration, endpoint descriptor, socket, and process
-ownership.
+installed sidecar contract, IDEA home, release-line compatibility for the IDEA
+and Kotlin plugin builds, JBR, bootstrap classes, Gradle integration, endpoint
+descriptor, socket, and process ownership.
+
+Compatibility is intentionally less specific than identity. The installed
+release's reference pair is IDEA `262.9437.185` and Kotlin plugin
+`262.9437.185-IJ`, but admission accepts well-formed patch builds when both stay
+on platform release line `262`. The observed patch build identities are then
+preserved exactly in runtime, cache, and endpoint evidence.
 
 The result is closed:
 
@@ -33,14 +62,15 @@ is useful.
 
 ## Private process and private state
 
-The sidecar runs the supported local IntelliJ distribution headlessly, but its
-mutable state is Kast-owned. Config, system, plugins, logs, indexes, endpoint
-metadata, socket state, persistence, and telemetry live outside the user's IDE
-directories. Kast supplies its private plugin to that process and does not
-install a plugin into the user's IDE. The private plugin payload excludes
-Kotlin standard-library, coroutine, and Kotlin-plugin classes owned by the
-selected IntelliJ platform; distribution verification proves both their
-absence from Kast's payload and their presence in IntelliJ before packaging.
+The sidecar runs the release-line-compatible local IntelliJ distribution
+headlessly, but its mutable state is Kast-owned. Config, system, plugins, logs,
+indexes, endpoint metadata, socket state, persistence, and telemetry live
+outside the user's IDE directories. Kast supplies its private plugin to that
+process and does not install a plugin into the user's IDE. The private plugin
+payload excludes Kotlin standard-library, coroutine, and Kotlin-plugin classes
+owned by the selected IntelliJ platform; distribution verification proves both
+their absence from Kast's payload and their presence in IntelliJ before
+packaging.
 
 Ordinary startup does not read the user's IDEA cache. Optional index seeding is
 a distinct, consent-bearing boundary: it requires a stopped, compatible IDEA
@@ -98,6 +128,10 @@ operation with its own proof contract.
 
 ## Primary authorities
 
+- [`SupportedIdeRuntimePair`](https://github.com/amichne/kast/blob/main/cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/IndexSeedProtocol.kt)
+  admits the IDEA and Kotlin plugin platform release lines while retaining the exact observed pair.
+- [`InstalledIdeRuntimeDiscovery`](https://github.com/amichne/kast/blob/main/cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledIdeRuntimeDiscovery.kt)
+  verifies the selected installation's layout, JBR, Gradle integration, and compatible build identities.
 - [`InstalledSidecarRootRuntimeDemander`](https://github.com/amichne/kast/blob/main/cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledSidecarRuntimeDemand.kt)
   owns installed-runtime discovery, cache preparation, start, and exact endpoint admission.
 - [`KastIndexerApplicationStarter`](https://github.com/amichne/kast/blob/main/indexer/src/main/kotlin/io/github/amichne/kast/indexer/KastIndexerApplicationStarter.kt)

@@ -7,6 +7,7 @@ import json
 import re
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 
@@ -18,6 +19,15 @@ README = ROOT / "README.md"
 DOCS_WORKFLOW = ROOT / ".github/workflows/docs.yml"
 VERSION_CATALOG = ROOT / "gradle/libs.versions.toml"
 INSTALLER = ROOT / "install.sh"
+IDE_RUNTIME_COMPATIBILITY_AUTHORITY = ROOT / (
+    "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/IndexSeedProtocol.kt"
+)
+IDE_RUNTIME_DISCOVERY_PROOF = ROOT / (
+    "cli/src/test/kotlin/io/github/amichne/kast/cli/runtime/InstalledIdeRuntimeDiscoveryTest.kt"
+)
+LIFECYCLE_COMMAND_AUTHORITY = ROOT / (
+    "cli/src/main/kotlin/io/github/amichne/kast/cli/command/lifecycle/LifecycleCommands.kt"
+)
 CLI_REFERENCE_GENERATOR = ROOT / "docs/generate_cli_reference.py"
 GENERATED_OPERATION_REGISTRY = ROOT / (
     "protocol/wire/build/generated/operation-registry/operation-registry.json"
@@ -37,20 +47,15 @@ APPROVED_LUCIDE_ICONS = {
     "badge-check",
     "boxes",
     "braces",
-    "circle-check",
-    "circle-dashed",
     "code-xml",
     "compass",
     "copy-check",
     "file-pen",
-    "folder-key",
     "folder-tree",
     "gauge",
     "git-pull-request-create",
-    "monitor-check",
     "network",
     "package-check",
-    "power",
     "rocket",
     "rotate-ccw",
     "route",
@@ -66,7 +71,7 @@ APPROVED_LUCIDE_ICONS = {
 
 PAGES = {
     "index.mdx": [
-        "11 typed operations",
+        "Eleven operations. One exact root. No guessed success.",
         "The compiler sees more than text",
         "Start from the repository root",
         "Eleven sidecar operations",
@@ -77,8 +82,11 @@ PAGES = {
         "Evidence keeps its boundary",
     ],
     "start.mdx": [
+        "Host contract",
         "Java 25 or newer",
-        "IntelliJ IDEA build 262.9437.185",
+        "Reference pair:",
+        "Compatible patch builds are accepted",
+        "JetBrains platform release line 262",
         "https://raw.githubusercontent.com/amichne/kast/main/install.sh",
         "rejects unsafe archive paths",
         "does not edit your shell profile",
@@ -91,6 +99,8 @@ PAGES = {
         "diagnostics",
         "kast start",
         "kast status",
+        "kast stop",
+        "Operate the lifecycle",
         "<Steps>",
         "<Tabs>",
         "<AccordionGroup>",
@@ -117,7 +127,7 @@ PAGES = {
         "kast diagnostic check",
         "explicit scope",
         "Complete",
-        "<Columns cols={3}>",
+        "| Outcome | How to read it |",
     ],
     "questions/safe-change.mdx": [
         "add-declaration",
@@ -133,9 +143,10 @@ PAGES = {
         "Rejected",
         "generation",
         "eleven sidecar operations",
-        "<Columns cols={3}>",
+        "| Outcome | What it proves |",
     ],
     "explanation/how-kast-works.mdx": [
+        "release-line-compatible local IDEA installation",
         "exact eleven-operation public capability set",
         "Kotlin control executable",
         "SymbolInspectRequestDocument",
@@ -162,6 +173,7 @@ PAGES = {
     ],
     "technical-specification/runtime-boundary.mdx": [
         "Exact-root admission",
+        "observed patch build identities",
         "Private process and private state",
         "Workspace bootstrap and publication",
         "Request-local compiler state",
@@ -207,6 +219,7 @@ PAGES = {
         "documentation check fails",
         "Sidecar endpoint operations",
         "Kast owns the isolated sidecar lifecycle",
+        "release-line-compatible local IDEA build",
         "relation.read",
         "diagnostic.check",
         "Process-local commands",
@@ -251,6 +264,8 @@ TECHNICAL_SPECIFICATION_AUTHORITIES = {
         "runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/bootstrap/InstalledRuntimeAssembly.kt",
     ],
     "technical-specification/runtime-boundary.mdx": [
+        "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/IndexSeedProtocol.kt",
+        "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledIdeRuntimeDiscovery.kt",
         "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledSidecarRuntimeDemand.kt",
         "indexer/src/main/kotlin/io/github/amichne/kast/indexer/KastIndexerApplicationStarter.kt",
         "workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledIntellijWorkspace.kt",
@@ -322,6 +337,10 @@ STALE_CLAIMS = [
     "published set of twelve canonical operations",
     "four hosted operations",
     "exact four-operation capability set",
+    "`workspace.inspect`",
+    "`symbol.resolve`",
+    "`status`, `stop`, and `clean` remain passive",
+    "Start, stop, clean, reindex",
 ]
 
 DEFERRED_PAGES: set[str] = set()
@@ -356,6 +375,137 @@ def frontmatter(text: str, relative: str) -> str:
         f"{relative} has no description",
     )
     return metadata
+
+
+def quoted_frontmatter_value(metadata: str, key: str, relative: str) -> str:
+    match = re.search(rf'^{re.escape(key)}: "([^"]+)"$', metadata, re.MULTILINE)
+    require(match is not None, f"{relative} has no quoted OKF {key}")
+    assert match is not None
+    return match.group(1)
+
+
+def okf_code_sources(metadata: str, relative: str) -> list[tuple[str, int, int, list[str]]]:
+    lines = metadata.splitlines()
+    try:
+        source_index = lines.index("code_sources:")
+    except ValueError:
+        require(False, f"{relative} has no OKF code_sources")
+        raise AssertionError("unreachable")
+
+    block: list[str] = []
+    for line in lines[source_index + 1 :]:
+        if line and not line.startswith(" "):
+            break
+        if line:
+            block.append(line)
+
+    sources: list[tuple[str, int, int, list[str]]] = []
+    cursor = 0
+    while cursor < len(block):
+        path_match = re.fullmatch(r'  - path: "([^"]+)"', block[cursor])
+        require(path_match is not None, f"{relative} has malformed OKF source path")
+        assert path_match is not None
+        cursor += 1
+
+        require(cursor < len(block), f"{relative} source {path_match.group(1)} has no line range")
+        range_match = re.fullmatch(r'    lines: "([1-9][0-9]*)-([1-9][0-9]*)"', block[cursor])
+        require(range_match is not None, f"{relative} source {path_match.group(1)} has malformed lines")
+        assert range_match is not None
+        cursor += 1
+
+        symbols: list[str] = []
+        if cursor < len(block) and block[cursor].startswith("    symbols:"):
+            symbols_match = re.fullmatch(r"    symbols: (\[.*\])", block[cursor])
+            require(symbols_match is not None, f"{relative} has malformed OKF symbols")
+            assert symbols_match is not None
+            parsed_symbols = json.loads(symbols_match.group(1))
+            require(
+                isinstance(parsed_symbols, list)
+                and parsed_symbols
+                and all(isinstance(symbol, str) and symbol for symbol in parsed_symbols),
+                f"{relative} has invalid OKF symbols",
+            )
+            symbols = parsed_symbols
+            cursor += 1
+
+        sources.append(
+            (
+                path_match.group(1),
+                int(range_match.group(1)),
+                int(range_match.group(2)),
+                symbols,
+            )
+        )
+
+    require(sources, f"{relative} has no OKF code source entries")
+    return sources
+
+
+def check_okf_frontmatter(metadata: str, relative: str) -> None:
+    quoted_frontmatter_value(metadata, "type", relative)
+    resource = quoted_frontmatter_value(metadata, "resource", relative)
+    require(resource == f"file://docs/public/{relative}", f"{relative} has the wrong OKF resource")
+
+    tags_match = re.search(r"^tags: (\[.*\])$", metadata, re.MULTILINE)
+    require(tags_match is not None, f"{relative} has no OKF tags")
+    assert tags_match is not None
+    tags = json.loads(tags_match.group(1))
+    require(
+        isinstance(tags, list) and tags and all(isinstance(tag, str) and tag for tag in tags),
+        f"{relative} has invalid OKF tags",
+    )
+
+    timestamp = quoted_frontmatter_value(metadata, "timestamp", relative)
+    try:
+        parsed_timestamp = datetime.fromisoformat(timestamp)
+    except ValueError as error:
+        raise AssertionError(f"{relative} has invalid OKF timestamp") from error
+    require(parsed_timestamp.tzinfo is not None, f"{relative} OKF timestamp has no timezone")
+
+    for source_path, start, end, symbols in okf_code_sources(metadata, relative):
+        source = Path(source_path)
+        require(
+            not source.is_absolute() and ".." not in source.parts,
+            f"{relative} has non-repository OKF source {source_path}",
+        )
+        authority = ROOT / source
+        require(authority.is_file(), f"{relative} cites missing OKF source {source_path}")
+        authority_lines = authority.read_text().splitlines()
+        require(start <= end <= len(authority_lines), f"{relative} has invalid range {source_path}:{start}-{end}")
+        selected_source = "\n".join(authority_lines[start - 1 : end])
+        for symbol in symbols:
+            require(
+                re.search(rf"\b{re.escape(symbol)}\b", selected_source) is not None,
+                f"{relative} cites missing symbol {symbol!r} in {source_path}:{start}-{end}",
+            )
+
+
+def report_okf_impact(raw_paths: list[str]) -> None:
+    require(raw_paths, "usage: python3 docs/test_public_docs.py --impact SOURCE_PATH...")
+    requested: list[str] = []
+    for raw_path in raw_paths:
+        candidate = Path(raw_path)
+        if candidate.is_absolute():
+            try:
+                candidate = candidate.relative_to(ROOT)
+            except ValueError as error:
+                raise AssertionError(f"impact path is outside the repository: {raw_path}") from error
+        require(".." not in candidate.parts, f"impact path leaves the repository: {raw_path}")
+        requested.append(candidate.as_posix())
+
+    pages_by_source: dict[str, set[str]] = {}
+    for relative in PAGES:
+        metadata = frontmatter((PUBLIC / relative).read_text(), relative)
+        check_okf_frontmatter(metadata, relative)
+        for source_path, _start, _end, _symbols in okf_code_sources(metadata, relative):
+            pages_by_source.setdefault(source_path, set()).add(relative)
+
+    for source_path in requested:
+        pages = sorted(pages_by_source.get(source_path, []))
+        if pages:
+            print(f"{source_path}: {', '.join(pages)}")
+        else:
+            print(f"{source_path}: no mapped public page")
 
 
 def check_icon_system(config: dict[str, object], groups: list[dict[str, object]]) -> None:
@@ -397,15 +547,19 @@ def check_config() -> None:
         config.get("description") == "Compiler-grounded evidence for exact Kotlin repositories.",
         "Mintlify site description changed",
     )
-    require(config.get("colors", {}).get("primary") == "#4F46E5", "Mintlify primary color changed")
+    require(
+        config.get("colors")
+        == {"primary": "#B45309", "light": "#92400E", "dark": "#F59E0B"},
+        "Mintlify color contract changed",
+    )
     require(
         config.get("background")
         == {
-            "decoration": "gradient",
-            "color": {"light": "#F8FAFC", "dark": "#090D18"},
+            "color": {"light": "#FAF7F2", "dark": "#11100E"},
         },
         "Mintlify background contract changed",
     )
+    require("gradient" not in CONFIG.read_text().lower(), "Mintlify background uses a gradient")
 
     groups = config.get("navigation", {}).get("groups")
     require(isinstance(groups, list), "Mintlify navigation groups are missing")
@@ -543,6 +697,7 @@ def check_pages() -> None:
         require(page.is_file(), f"missing page: {relative}")
         text = page.read_text()
         metadata = frontmatter(text, relative)
+        check_okf_frontmatter(metadata, relative)
         if relative in DEFERRED_PAGES:
             require("hidden: true" in metadata, f"{relative} must stay out of navigation")
             require("noindex: true" in metadata, f"{relative} must not be indexed")
@@ -560,7 +715,7 @@ def check_pages() -> None:
     metadata = frontmatter(index, "index.mdx")
     require('mode: "wide"' in metadata, "homepage does not use Mintlify wide mode")
     require(
-        index.count('href="/questions/') == 4,
+        index.count("](/questions/") == 4,
         "homepage does not expose the four supported question guides",
     )
     order = [index.index(phrase) for phrase in PAGES["index.mdx"]]
@@ -588,8 +743,14 @@ def catalog_version(catalog: str, key: str) -> str:
 def check_documented_host_contract() -> None:
     require(VERSION_CATALOG.is_file(), "Gradle version catalog is missing")
     require(INSTALLER.is_file(), "installer authority is missing")
+    require(IDE_RUNTIME_COMPATIBILITY_AUTHORITY.is_file(), "IDE compatibility authority is missing")
+    require(IDE_RUNTIME_DISCOVERY_PROOF.is_file(), "IDE compatibility proof is missing")
+    require(LIFECYCLE_COMMAND_AUTHORITY.is_file(), "lifecycle command authority is missing")
     catalog = VERSION_CATALOG.read_text()
     installer = INSTALLER.read_text()
+    compatibility = IDE_RUNTIME_COMPATIBILITY_AUTHORITY.read_text()
+    discovery_proof = IDE_RUNTIME_DISCOVERY_PROOF.read_text()
+    lifecycle_commands = LIFECYCLE_COMMAND_AUTHORITY.read_text()
     idea_builds = {
         catalog_version(catalog, "idea-indexer"),
         catalog_version(catalog, "idea-platform-build"),
@@ -598,6 +759,25 @@ def check_documented_host_contract() -> None:
     require(len(idea_builds) == 1, f"IDE build authorities disagree: {sorted(idea_builds)}")
     idea_build = next(iter(idea_builds))
     kotlin_build = catalog_version(catalog, "ide-kotlin-plugin-build")
+    idea_release_line = idea_build.partition(".")[0]
+    kotlin_release_line = kotlin_build.partition(".")[0]
+    require(
+        idea_release_line == kotlin_release_line,
+        "documented IDEA and Kotlin reference builds use different platform release lines",
+    )
+    require(
+        "idea.releaseLine == observed.idea.releaseLine" in compatibility
+        and "kotlinPlugin.releaseLine == observed.kotlinPlugin.releaseLine" in compatibility,
+        "IDE compatibility no longer admits by independent platform release line",
+    )
+    require(
+        "compatible patch builds retain their exact installed runtime identity" in discovery_proof,
+        "IDE compatible-patch proof is missing",
+    )
+    require(
+        "Release-line-compatible local IntelliJ IDEA home." in lifecycle_commands,
+        "--idea-home help overstates patch-build specificity",
+    )
     java_match = re.search(r"\(\( java_major >= ([0-9]+) \)\)", installer)
     require(java_match is not None, "installer Java requirement is unreadable")
     assert java_match is not None
@@ -608,8 +788,14 @@ def check_documented_host_contract() -> None:
     expected = (
         "macOS on Apple silicon",
         f"Java {java_major} or newer",
-        f"IntelliJ IDEA build {idea_build}",
-        f"Kotlin plugin build {kotlin_build}",
+        "on-disk Kotlin Gradle repository",
+    )
+    reference_claim = (
+        f"Reference pair: IDEA build {idea_build} and Kotlin plugin build {kotlin_build}."
+    )
+    compatibility_claim = (
+        "Compatible patch builds are accepted when IDEA and Kotlin plugin both remain on "
+        f"JetBrains platform release line {idea_release_line}."
     )
     for relative, text in {
         "README.md": README.read_text(),
@@ -618,6 +804,11 @@ def check_documented_host_contract() -> None:
         normalized = " ".join(text.split())
         for claim in expected:
             require(claim in normalized, f"{relative} does not match host authority: {claim}")
+        require(reference_claim in normalized, f"{relative} does not label the release reference pair")
+        require(
+            compatibility_claim in normalized,
+            f"{relative} does not document release-line-compatible patch builds",
+        )
 
 
 def check_generated_cli_reference() -> None:
@@ -920,6 +1111,11 @@ def check_architecture_sources() -> None:
 
 
 def main() -> None:
+    arguments = sys.argv[1:]
+    if arguments:
+        require(arguments[0] == "--impact", "only --impact accepts command-line arguments")
+        report_okf_impact(arguments[1:])
+        return
     check_config()
     check_deployment()
     check_pages()

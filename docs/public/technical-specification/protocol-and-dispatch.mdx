@@ -1,6 +1,23 @@
 ---
+type: "Technical Specification"
 title: "Protocol and dispatch"
 description: "How permanent operation identities stay synchronized across registry metadata, wire documents, runtime handlers, CLI commands, and agent projections."
+resource: "file://docs/public/technical-specification/protocol-and-dispatch.mdx"
+tags: ["protocol", "registry", "wire", "dispatch"]
+timestamp: "2026-09-03T00:00:00-04:00"
+code_sources:
+  - path: "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt"
+    lines: "7-20"
+    symbols: ["CanonicalOperation"]
+  - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationRegistry.kt"
+    lines: "19-87"
+    symbols: ["OperationRegistry"]
+  - path: "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireTable.kt"
+    lines: "7-54"
+    symbols: ["OperationWireTable"]
+  - path: "runtime/server/src/main/kotlin/io/github/amichne/kast/runtime/server/RuntimeServer.kt"
+    lines: "13-82"
+    symbols: ["RuntimeServer"]
 icon: "route"
 keywords: ["protocol", "wire", "registry", "dispatch"]
 ---
