@@ -54,6 +54,20 @@ jobs:
           --version "$RELEASE_VERSION"
           --source-revision "$GITHUB_SHA"
 
+      - name: Admit release smoke runtime
+        run: |
+          idea_version="$(
+            sed -nE 's/^idea-indexer = "([0-9]+(\.[0-9]+)+)"$/\1/p' \
+              gradle/libs.versions.toml
+          )"
+          [[ -n "$idea_version" ]]
+          idea_platform_home="$GRADLE_USER_HOME/kast/indexer-idea-distributions/$idea_version"
+          [[ -f "$idea_platform_home/build.txt" ]]
+          [[ -d "$idea_platform_home/plugins/Kotlin" ]]
+          [[ -x "$JAVA_HOME/bin/java" ]]
+          [[ -f "$JAVA_HOME/release" ]]
+          printf 'KAST_RELEASE_IDEA_PLATFORM_HOME=%s\n' "$idea_platform_home" >> "$GITHUB_ENV"
+
       - name: Publish immutable GitHub release
         run: >-
           bash .github/scripts/release/publish-release.sh
@@ -66,3 +80,5 @@ jobs:
           bash packaging/verification/verify-published-sidecar-delivery.sh
           --release "v${RELEASE_VERSION}"
           --repository "$GITHUB_REPOSITORY"
+          --idea-platform-home "$KAST_RELEASE_IDEA_PLATFORM_HOME"
+          --java-home "$JAVA_HOME"
