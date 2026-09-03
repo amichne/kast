@@ -549,15 +549,20 @@ def check_config() -> None:
     )
     require(
         config.get("colors")
-        == {"primary": "#B45309", "light": "#92400E", "dark": "#F59E0B"},
+        == {"primary": "#3154C7", "light": "#27439F", "dark": "#8FA7FF"},
         "Mintlify color contract changed",
     )
     require(
         config.get("background")
         == {
-            "color": {"light": "#FAF7F2", "dark": "#11100E"},
+            "color": {"light": "#F7F6F2", "dark": "#171816"},
         },
         "Mintlify background contract changed",
+    )
+    require(config.get("fonts") == {"family": "SUSE"}, "Mintlify typography contract changed")
+    require(
+        config.get("appearance") == {"default": "light", "strict": False},
+        "Mintlify appearance contract changed",
     )
     require("gradient" not in CONFIG.read_text().lower(), "Mintlify background uses a gradient")
 
