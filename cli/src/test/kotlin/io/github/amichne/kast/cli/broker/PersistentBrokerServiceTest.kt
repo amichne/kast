@@ -33,7 +33,9 @@ class PersistentBrokerServiceTest {
     ) {
         assertEquals(
             BrokerSocketReachability.UNREACHABLE,
-            JdkBrokerSocketProbe.probe(temporary.resolve("app-server-control.sock")),
+            JdkBrokerSocketProbe.probe(
+                temporary.toRealPath().resolve("app-server-control.sock"),
+            ),
         )
     }
 
