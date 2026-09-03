@@ -71,7 +71,9 @@ APPROVED_LUCIDE_ICONS = {
 
 PAGES = {
     "index.mdx": [
-        "Eleven operations. One exact root. No guessed success.",
+        "Choose the depth that matches the question",
+        "Install, admit one repository, and verify the first result",
+        "Read exact command and implementation contracts",
         "The compiler sees more than text",
         "Start from the repository root",
         "Eleven sidecar operations",
@@ -233,28 +235,34 @@ PAGES = {
 }
 
 EXPECTED_NAVIGATION = {
-    "Get started": ["index", "start"],
-    "Guides": [
-        "questions/workspace-readiness",
-        "questions/declaration-identity",
-        "questions/code-connections",
-        "questions/semantic-validity",
-        "questions/safe-change",
-    ],
-    "Concepts": [
-        "concepts/evidence-boundaries",
-        "explanation/how-kast-works",
-    ],
-    "Technical specification": [
-        "technical-specification/index",
-        "technical-specification/runtime-boundary",
-        "technical-specification/protocol-and-dispatch",
-        "technical-specification/semantic-services",
-        "technical-specification/change-and-evidence",
-        "technical-specification/module-architecture",
-        "technical-specification/verification-and-contribution",
-    ],
-    "Reference": ["reference/cli"],
+    "Setup": {"Start here": ["index", "start"]},
+    "Guides": {
+        "Answer a code question": [
+            "questions/workspace-readiness",
+            "questions/declaration-identity",
+            "questions/code-connections",
+            "questions/semantic-validity",
+            "questions/safe-change",
+        ],
+    },
+    "Concepts": {
+        "Evidence model": [
+            "concepts/evidence-boundaries",
+            "explanation/how-kast-works",
+        ],
+    },
+    "Reference": {
+        "Command surface": ["reference/cli"],
+        "Technical specification": [
+            "technical-specification/index",
+            "technical-specification/runtime-boundary",
+            "technical-specification/protocol-and-dispatch",
+            "technical-specification/semantic-services",
+            "technical-specification/change-and-evidence",
+            "technical-specification/module-architecture",
+            "technical-specification/verification-and-contribution",
+        ],
+    },
 }
 
 TECHNICAL_SPECIFICATION_AUTHORITIES = {
@@ -555,7 +563,7 @@ def check_config() -> None:
     require(
         config.get("background")
         == {
-            "color": {"light": "#F7F6F2", "dark": "#171816"},
+            "color": {"light": "#FBFBF9", "dark": "#171816"},
         },
         "Mintlify background contract changed",
     )
@@ -566,20 +574,30 @@ def check_config() -> None:
     )
     require("gradient" not in CONFIG.read_text().lower(), "Mintlify background uses a gradient")
 
-    groups = config.get("navigation", {}).get("groups")
-    require(isinstance(groups, list), "Mintlify navigation groups are missing")
-    navigation = {group["group"]: group["pages"] for group in groups}
-    require(
-        "Technical specification" in navigation,
-        "technical specification navigation is missing",
-    )
+    tabs = config.get("navigation", {}).get("tabs")
+    require(isinstance(tabs, list), "Mintlify navigation tabs are missing")
+    navigation: dict[str, dict[str, list[str]]] = {}
+    groups: list[dict[str, object]] = []
+    for tab in tabs:
+        tab_name = tab.get("tab")
+        tab_groups = tab.get("groups")
+        require(isinstance(tab_name, str), "Mintlify navigation tab has no name")
+        require(isinstance(tab_groups, list), f"{tab_name} navigation groups are missing")
+        groups.extend(tab_groups)
+        navigation[tab_name] = {group["group"]: group["pages"] for group in tab_groups}
     require(navigation == EXPECTED_NAVIGATION, f"unexpected Mintlify navigation: {navigation}")
-    destinations = [path for pages in navigation.values() for path in pages]
+    destinations = [
+        path
+        for tab_groups in navigation.values()
+        for pages in tab_groups.values()
+        for path in pages
+    ]
     expected_destinations = [
         page_route(relative) for relative in PAGES if relative not in DEFERRED_PAGES
     ]
     require(
-        destinations == expected_destinations,
+        len(destinations) == len(set(destinations))
+        and set(destinations) == set(expected_destinations),
         f"navigation and page contract differ: {destinations}",
     )
     check_icon_system(config, groups)
@@ -591,7 +609,7 @@ def check_config() -> None:
     )
     require(
         navbar.get("primary")
-        == {"type": "button", "label": "Get started", "href": "/start"},
+        == {"type": "button", "label": "Install Kast", "href": "/start"},
         "Mintlify primary navigation action changed",
     )
     require(
@@ -639,7 +657,7 @@ def check_config() -> None:
     )
     require(
         config.get("search", {}).get("prompt")
-        == "Search operations, evidence boundaries, and implementation authorities",
+        == "Search Kast documentation",
         "Mintlify search prompt changed",
     )
     require(config.get("metadata", {}).get("timestamp") is True, "page timestamps are disabled")

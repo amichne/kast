@@ -18,7 +18,7 @@
   },
   "background": {
     "color": {
-      "light": "#F7F6F2",
+      "light": "#FBFBF9",
       "dark": "#171816"
     }
   },
@@ -27,52 +27,72 @@
     "strict": false
   },
   "navigation": {
-    "groups": [
+    "tabs": [
       {
-        "group": "Get started",
-        "icon": "rocket",
-        "pages": [
-          "index",
-          "start"
+        "tab": "Setup",
+        "groups": [
+          {
+            "group": "Start here",
+            "icon": "rocket",
+            "pages": [
+              "index",
+              "start"
+            ]
+          }
         ]
       },
       {
-        "group": "Guides",
-        "icon": "compass",
-        "pages": [
-          "questions/workspace-readiness",
-          "questions/declaration-identity",
-          "questions/code-connections",
-          "questions/semantic-validity",
-          "questions/safe-change"
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Answer a code question",
+            "icon": "compass",
+            "pages": [
+              "questions/workspace-readiness",
+              "questions/declaration-identity",
+              "questions/code-connections",
+              "questions/semantic-validity",
+              "questions/safe-change"
+            ]
+          }
         ]
       },
       {
-        "group": "Concepts",
-        "icon": "shield-check",
-        "pages": [
-          "concepts/evidence-boundaries",
-          "explanation/how-kast-works"
+        "tab": "Concepts",
+        "groups": [
+          {
+            "group": "Evidence model",
+            "icon": "shield-check",
+            "pages": [
+              "concepts/evidence-boundaries",
+              "explanation/how-kast-works"
+            ]
+          }
         ]
       },
       {
-        "group": "Technical specification",
-        "icon": "network",
-        "pages": [
-          "technical-specification/index",
-          "technical-specification/runtime-boundary",
-          "technical-specification/protocol-and-dispatch",
-          "technical-specification/semantic-services",
-          "technical-specification/change-and-evidence",
-          "technical-specification/module-architecture",
-          "technical-specification/verification-and-contribution"
-        ]
-      },
-      {
-        "group": "Reference",
-        "icon": "terminal",
-        "pages": [
-          "reference/cli"
+        "tab": "Reference",
+        "groups": [
+          {
+            "group": "Command surface",
+            "icon": "terminal",
+            "pages": [
+              "reference/cli"
+            ]
+          },
+          {
+            "group": "Technical specification",
+            "icon": "network",
+            "pages": [
+              "technical-specification/index",
+              "technical-specification/runtime-boundary",
+              "technical-specification/protocol-and-dispatch",
+              "technical-specification/semantic-services",
+              "technical-specification/change-and-evidence",
+              "technical-specification/module-architecture",
+              "technical-specification/verification-and-contribution"
+            ]
+          }
         ]
       }
     ]
@@ -86,7 +106,7 @@
     ],
     "primary": {
       "type": "button",
-      "label": "Get started",
+      "label": "Install Kast",
       "href": "/start"
     }
   },
@@ -156,7 +176,7 @@
     "display": "header"
   },
   "search": {
-    "prompt": "Search operations, evidence boundaries, and implementation authorities"
+    "prompt": "Search Kast documentation"
   },
   "errors": {
     "404": {
