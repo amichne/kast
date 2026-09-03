@@ -46,7 +46,7 @@ class ProjectReadEpochAuthorityBoundaryTest {
         )
 
         val ownerEffects = scanProjectReadEpochAdmission(
-            architecture.modules.getValue(ModuleId.IDE_PLUGIN),
+            architecture.modules.getValue(ModuleId.WORKSPACE_INTELLIJ_READ),
         )
         assertInstanceOf<ArchitectureAdmission.Accepted>(
             ArchitectureAdmission.evaluate(
@@ -59,7 +59,7 @@ class ProjectReadEpochAuthorityBoundaryTest {
             ),
         )
         assertEquals(
-            setOf(ModuleId.IDE_PLUGIN),
+            setOf(ModuleId.WORKSPACE_INTELLIJ_READ),
             architecture.modules.values
                 .filter { authorityEffect in it.allowedEffects }
                 .mapTo(linkedSetOf(), ValidatedModulePolicy::id),

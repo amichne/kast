@@ -49,7 +49,7 @@ class OperationWireContractTest {
             OperationWireTableConstruction.Rejected(
                 setOf(
                     OperationWireTableFailure.DuplicateSerializerBinding(
-                        CanonicalOperation.WORKSPACE_INSPECT,
+                        CanonicalOperation.INDEX_SYNC,
                     ),
                 ),
             ),

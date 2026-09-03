@@ -95,10 +95,6 @@ sealed interface SymbolDiscoverTargetDocument {
         val offset: ProtocolOffset,
     ) : SymbolDiscoverTargetDocument
 
-    data class Structure(
-        val file: ProtocolText,
-    ) : SymbolDiscoverTargetDocument
-
     data class Text(
         val query: ProtocolText,
         val scope: SymbolTextScopeDocument,
@@ -119,6 +115,7 @@ enum class SymbolDiscoveryKindDocument {
 /** Structured discovery evidence; each variant carries only facts proved for that mode. */
 sealed interface SymbolDiscoveryDocument {
     data class File(
+        val candidateSelector: ProtocolText,
         val name: ProtocolText,
         val file: ProtocolText,
     ) : SymbolDiscoveryDocument
@@ -132,6 +129,7 @@ sealed interface SymbolDiscoveryDocument {
     ) : SymbolDiscoveryDocument
 
     data class TextMatch(
+        val candidateSelector: ProtocolText,
         val query: ProtocolText,
         val file: ProtocolText,
         val range: SourceRangeDocument,
@@ -198,27 +196,21 @@ enum class SymbolDiscoverRejection : OperationRejection {
     QUERY_REJECTED,
 }
 
-data class SymbolResolveRequest(
-    val candidateSelector: ProtocolText,
-) : OperationRequest
+/** Closed selector authority accepted by `symbol.inspect`. */
+sealed interface SymbolInspectTarget {
+    /** Weaker discovery evidence that must be refined through compiler analysis. */
+    data class Candidate(
+        val selector: ProtocolText,
+    ) : SymbolInspectTarget
 
-data class SymbolResolveResult(
-    val exactSelector: ProtocolText,
-) : OperationResult
-
-enum class SymbolResolveQualification : OperationQualification {
-    EVIDENCE_INCOMPLETE,
+    /** Already exact compiler selector that must be revalidated before projection. */
+    data class Exact(
+        val selector: ProtocolText,
+    ) : SymbolInspectTarget
 }
 
-enum class SymbolResolveRejection : OperationRejection {
-    WORKSPACE_NOT_READY,
-    CANDIDATE_STALE,
-    AMBIGUOUS,
-    NOT_FOUND,
-}
-
-data class SymbolDescribeRequest(
-    val exactSelector: ProtocolText,
+data class SymbolInspectRequest(
+    val target: SymbolInspectTarget,
 ) : OperationRequest
 
 enum class SymbolKindDocument {
@@ -482,16 +474,19 @@ private fun <Value, Failure> Refinement<Value, Failure>.valueOrNull(): Value? = 
     is Refinement.Rejected -> null
 }
 
-data class SymbolDescribeResult(
+data class SymbolInspectResult(
     val symbol: SymbolDocument,
 ) : OperationResult
 
-enum class SymbolDescribeQualification : OperationQualification {
+enum class SymbolInspectQualification : OperationQualification {
     EVIDENCE_INCOMPLETE,
 }
 
-enum class SymbolDescribeRejection : OperationRejection {
+enum class SymbolInspectRejection : OperationRejection {
     WORKSPACE_NOT_READY,
-    SELECTOR_STALE,
+    CANDIDATE_STALE,
+    CANDIDATE_NOT_DECLARATION,
+    EXACT_SELECTOR_STALE,
+    AMBIGUOUS,
     NOT_FOUND,
 }

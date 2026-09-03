@@ -7,11 +7,10 @@ import io.github.amichne.kast.change.recovery.AddDeclarationRollbackPort
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilerPort
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
-import io.github.amichne.kast.protocol.contract.WorkspaceStateDocument
+import io.github.amichne.kast.protocol.contract.IndexSyncQualification
+import io.github.amichne.kast.protocol.contract.IndexSyncRejection
+import io.github.amichne.kast.protocol.contract.IndexSyncRequest
+import io.github.amichne.kast.protocol.contract.IndexSyncResult
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireEncoding
@@ -21,6 +20,7 @@ import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelR
 import io.github.amichne.kast.runtime.composition.platform.projectInstalledGradleModel
 import io.github.amichne.kast.symbol.contract.SymbolCompilerPort
 import io.github.amichne.kast.symbol.contract.SymbolExactCompilerPort
+import io.github.amichne.kast.source.contract.SourceReadPort
 import io.github.amichne.kast.topology.contract.TopologyExtractionFailure
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
@@ -83,14 +83,12 @@ class InstalledRuntimeAssemblyTest {
         val created = construction as InstalledKastRuntimeConstruction.Created
         assertTrue(Files.isRegularFile(state.resolve("workspace-publication.sqlite")))
         assertTrue(Files.isRegularFile(state.resolve("mutation-recovery.sqlite")))
-        val first = inspectWorkspace(created)
-        assertEquals(root.toString(), first.payload.canonicalRoot.value)
-        assertEquals(WorkspaceStateDocument.READY, first.payload.state)
+        val first = synchronizeIndex(created)
         assertEquals(1L, first.generation.value)
 
         val restarted = InstalledKastRuntime.create(root, state, assembler) as
             InstalledKastRuntimeConstruction.Created
-        val retained = inspectWorkspace(restarted)
+        val retained = synchronizeIndex(restarted)
         assertEquals(first.generation, retained.generation)
 
         val changedRead = projectInstalledGradleModel(
@@ -118,27 +116,27 @@ class InstalledRuntimeAssemblyTest {
         val changed = InstalledKastRuntime.create(root, state, changedAssembler) as
             InstalledKastRuntimeConstruction.Created
 
-        assertEquals(2L, inspectWorkspace(changed).generation.value)
+        assertEquals(2L, synchronizeIndex(changed).generation.value)
     }
 
-    private fun inspectWorkspace(
+    private fun synchronizeIndex(
         runtime: InstalledKastRuntimeConstruction.Created,
-    ): EvidenceEnvelope<WorkspaceInspectResult> {
-        val request = CanonicalOperationWireBindings.workspaceInspect
-            .encodeRequest(WorkspaceInspectRequest)
+    ): EvidenceEnvelope<IndexSyncResult> {
+        val request = CanonicalOperationWireBindings.indexSync
+            .encodeRequest(IndexSyncRequest)
             .encoded()
         val response = runAssemblyImmediate { runtime.dispatch.dispatch(request) } as
             KastRuntimeDispatch.Responded
         val outcome: OperationOutcome<
-            WorkspaceInspectResult,
-            WorkspaceInspectQualification,
-            WorkspaceInspectRejection,
-            > = CanonicalOperationWireBindings.workspaceInspect
+            IndexSyncResult,
+            IndexSyncQualification,
+            IndexSyncRejection,
+            > = CanonicalOperationWireBindings.indexSync
             .decodeOutcome(response.document)
             .decoded()
         return when (outcome) {
             is OperationOutcome.Complete -> outcome.evidence
-            else -> error("unexpected workspace outcome: $outcome")
+            else -> error("unexpected index outcome: $outcome")
         }
     }
 
@@ -155,6 +153,7 @@ class InstalledRuntimeAssemblyTest {
             ): io.github.amichne.kast.symbol.contract.SymbolDescriptionCompilation =
                 error("not executed")
         },
+        sourceRead = SourceReadPort { _, _ -> error("not executed") },
         relation = RelationCompilerPort { error("not executed") },
         diagnostic = DiagnosticCompilerPort { error("not executed") },
     )

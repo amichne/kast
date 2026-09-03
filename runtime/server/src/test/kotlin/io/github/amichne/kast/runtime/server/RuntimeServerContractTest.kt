@@ -26,7 +26,6 @@ import io.github.amichne.kast.protocol.registry.OperationEffect
 import io.github.amichne.kast.protocol.registry.OperationLane
 import io.github.amichne.kast.protocol.registry.OperationScope
 import io.github.amichne.kast.protocol.wire.GeneratedOperationWireBindingFactory
-import io.github.amichne.kast.protocol.wire.metadata.CanonicalHostedCapabilities
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireEncoding
 import io.github.amichne.kast.protocol.wire.WireFailure
@@ -55,58 +54,11 @@ class RuntimeServerContractTest {
             RuntimeServerConstruction.Rejected(
                 setOf(
                     RuntimeServerConstructionFailure.DuplicateBinding(
-                        CanonicalOperation.WORKSPACE_INSPECT,
+                        CanonicalOperation.INDEX_SYNC,
                     ),
                 ),
             ),
             RuntimeServer.create(bindings + bindings.first()),
-        )
-    }
-
-    @Test
-    fun `hosted binding table is exactly the generated public route set`() = runTest {
-        val allBindings = canonicalBindings()
-        val hostedBindings = allBindings.filter {
-            it.operation in CanonicalHostedCapabilities.operations
-        }
-        val server = RuntimeServer.createHosted(hostedBindings).createdServer()
-
-        assertEquals(
-            RuntimeServerConstruction.Rejected(
-                setOf(
-                    RuntimeServerConstructionFailure.MissingBinding(
-                        CanonicalOperation.CHANGE_RECOVER,
-                    ),
-                ),
-            ),
-            RuntimeServer.createHosted(hostedBindings.dropLast(1)),
-        )
-        assertEquals(
-            RuntimeServerConstruction.Rejected(
-                setOf(
-                    RuntimeServerConstructionFailure.DuplicateBinding(
-                        CanonicalOperation.RELATION_READ,
-                    ),
-                ),
-            ),
-            RuntimeServer.createHosted(
-                hostedBindings + allBindings.single {
-                    it.operation == CanonicalOperation.RELATION_READ
-                },
-            ),
-        )
-
-        val diagnosticBinding = allBindings.single {
-            it.operation == CanonicalOperation.DIAGNOSTIC_CHECK
-        }
-        val document = diagnosticBinding.wireBinding
-            .encodeRequest(TestRequest(TestOutcomeKind.COMPLETE))
-            .encodedDocument()
-        assertEquals(
-            expectedOutcome(CanonicalOperation.DIAGNOSTIC_CHECK, TestOutcomeKind.COMPLETE),
-            diagnosticBinding.wireBinding.decodeOutcome(
-                server.dispatch(document).responseDocument(),
-            ).decodedValue(),
         )
     }
 

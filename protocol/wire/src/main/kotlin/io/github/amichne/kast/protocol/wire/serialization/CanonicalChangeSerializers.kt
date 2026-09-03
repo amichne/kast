@@ -12,10 +12,6 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverQualification
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
-import io.github.amichne.kast.protocol.contract.ChangeVerifyQualification
-import io.github.amichne.kast.protocol.contract.ChangeVerifyRejection
-import io.github.amichne.kast.protocol.contract.ChangeVerifyRequest
-import io.github.amichne.kast.protocol.contract.ChangeVerifyResult
 internal object CanonicalChangeSerializers {
     private val factory = GeneratedWireCodecFactory(wireJson)
 
@@ -59,27 +55,6 @@ internal object CanonicalChangeSerializers {
         ChangeApplyRejectionDocument.serializer(),
         ChangeApplyRejection::toSerializableDocument,
         ChangeApplyRejectionDocument::toContract,
-    )
-
-    val changeVerifyRequest = factory.create(
-        ChangeVerifyRequestDocument.serializer(),
-        ChangeVerifyRequest::toSerializableDocument,
-        ChangeVerifyRequestDocument::toContract,
-    )
-    val changeVerifyResult = factory.create(
-        ChangeVerifyResultDocument.serializer(),
-        ChangeVerifyResult::toSerializableDocument,
-        ChangeVerifyResultDocument::toContract,
-    )
-    val changeVerifyQualification = factory.create(
-        ChangeVerifyQualificationDocument.serializer(),
-        ChangeVerifyQualification::toSerializableDocument,
-        ChangeVerifyQualificationDocument::toContract,
-    )
-    val changeVerifyRejection = factory.create(
-        ChangeVerifyRejectionDocument.serializer(),
-        ChangeVerifyRejection::toSerializableDocument,
-        ChangeVerifyRejectionDocument::toContract,
     )
 
     val changeRecoverRequest = factory.create(

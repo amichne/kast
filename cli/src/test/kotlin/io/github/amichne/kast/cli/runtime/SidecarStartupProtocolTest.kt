@@ -26,7 +26,7 @@ class SidecarStartupProtocolTest {
             listOf(
                 "start",
                 "--idea-home=$ideaHome",
-                "--seed-from-idea",
+                "--cache=seed",
                 "--source-idea-system=$sourceSystem",
                 "--accept-global-index-copy",
             ),
@@ -47,7 +47,7 @@ class SidecarStartupProtocolTest {
     @Test
     fun `seed without noninteractive acceptance requests interactive disclosure`() {
         val parsed = commandGraph().parse(
-            listOf("start", "--seed-from-idea"),
+            listOf("start", "--cache=seed"),
         ) as CliCommandParsing.Parsed
         val action = parsed.action as CliAction.Lifecycle.Start
 

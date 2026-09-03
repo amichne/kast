@@ -12,9 +12,6 @@ import io.github.amichne.kast.protocol.contract.ChangePlanResult
 import io.github.amichne.kast.protocol.contract.ChangeRecoverQualification
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
-import io.github.amichne.kast.protocol.contract.ChangeVerifyQualification
-import io.github.amichne.kast.protocol.contract.ChangeVerifyRejection
-import io.github.amichne.kast.protocol.contract.ChangeVerifyResult
 import kotlinx.serialization.Serializable
 
 internal object CanonicalChangeCliDocuments {
@@ -60,57 +57,25 @@ internal object CanonicalChangeCliDocuments {
         outcome,
         complete = { result ->
             applicationCompleteFactory.create(
-                ChangeApplicationCompleteCliDocument(
+                ChangeApplyCompleteCliDocument(
                     CanonicalOperation.CHANGE_APPLY.id.value,
                     "complete",
-                    result.applicationIdentity.value,
+                    result.receiptIdentity.value,
                 ),
             )
         },
         qualified = { result, qualification ->
             applicationQualifiedFactory.create(
-                ChangeApplicationQualifiedCliDocument(
+                ChangeApplyQualifiedCliDocument(
                     CanonicalOperation.CHANGE_APPLY.id.value,
                     "qualified",
-                    result.applicationIdentity.value,
+                    result.receiptIdentity.value,
                     qualification.cliName(),
                 ),
             )
         },
         rejected = { rejection ->
             canonicalRejectedDocument(CanonicalOperation.CHANGE_APPLY, rejection.cliName())
-        },
-    )
-
-    fun projectVerification(
-        outcome: OperationOutcome<
-            ChangeVerifyResult,
-            ChangeVerifyQualification,
-            ChangeVerifyRejection,
-            >,
-    ) = projectClosedOutcome(
-        outcome,
-        complete = { result ->
-            verificationCompleteFactory.create(
-                ChangeVerificationCompleteCliDocument(
-                    CanonicalOperation.CHANGE_VERIFY.id.value,
-                    "complete",
-                    result.receiptIdentity.value,
-                ),
-            )
-        },
-        qualified = { result, qualification ->
-            verificationQualifiedFactory.create(
-                ChangeVerificationQualifiedCliDocument(
-                    CanonicalOperation.CHANGE_VERIFY.id.value,
-                    "qualified",
-                    result.receiptIdentity.value,
-                    qualification.cliName(),
-                ),
-            )
-        },
-        rejected = { rejection ->
-            canonicalRejectedDocument(CanonicalOperation.CHANGE_VERIFY, rejection.cliName())
         },
     )
 
@@ -163,29 +128,14 @@ private data class ChangePlanQualifiedCliDocument(
 )
 
 @Serializable
-private data class ChangeApplicationCompleteCliDocument(
-    val operation: String,
-    val status: String,
-    val applicationIdentity: String,
-)
-
-@Serializable
-private data class ChangeApplicationQualifiedCliDocument(
-    val operation: String,
-    val status: String,
-    val applicationIdentity: String,
-    val qualification: String,
-)
-
-@Serializable
-private data class ChangeVerificationCompleteCliDocument(
+private data class ChangeApplyCompleteCliDocument(
     val operation: String,
     val status: String,
     val receiptIdentity: String,
 )
 
 @Serializable
-private data class ChangeVerificationQualifiedCliDocument(
+private data class ChangeApplyQualifiedCliDocument(
     val operation: String,
     val status: String,
     val receiptIdentity: String,
@@ -212,13 +162,9 @@ private val planCompleteFactory =
 private val planQualifiedFactory =
     CliJsonDocument.generated(ChangePlanQualifiedCliDocument.serializer())
 private val applicationCompleteFactory =
-    CliJsonDocument.generated(ChangeApplicationCompleteCliDocument.serializer())
+    CliJsonDocument.generated(ChangeApplyCompleteCliDocument.serializer())
 private val applicationQualifiedFactory =
-    CliJsonDocument.generated(ChangeApplicationQualifiedCliDocument.serializer())
-private val verificationCompleteFactory =
-    CliJsonDocument.generated(ChangeVerificationCompleteCliDocument.serializer())
-private val verificationQualifiedFactory =
-    CliJsonDocument.generated(ChangeVerificationQualifiedCliDocument.serializer())
+    CliJsonDocument.generated(ChangeApplyQualifiedCliDocument.serializer())
 private val recoveryCompleteFactory =
     CliJsonDocument.generated(ChangeRecoveryCompleteCliDocument.serializer())
 private val recoveryQualifiedFactory =

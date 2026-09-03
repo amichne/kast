@@ -19,7 +19,7 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
 import io.github.amichne.kast.protocol.contract.SymbolDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
-import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.RelationFactCoverageDocument
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
@@ -44,7 +44,6 @@ class SymbolPublicSurfaceWireTest {
                 SymbolDiscoveryMatchDocument.EXACT_NAME,
             ),
             SymbolDiscoverTargetDocument.Location(text("src/Controller.kt"), offset(27)),
-            SymbolDiscoverTargetDocument.Structure(text("src/Controller.kt")),
             SymbolDiscoverTargetDocument.Text(
                 text("accountId"),
                 SymbolTextScopeDocument.Workspace,
@@ -72,15 +71,20 @@ class SymbolPublicSurfaceWireTest {
     @Test
     fun `structured discovery items round trip without parsing display text`() {
         val items = listOf(
-            SymbolDiscoveryDocument.File(text("Controller.kt"), text("src/Controller.kt")),
+            SymbolDiscoveryDocument.File(
+                text("candidate:v2:file"),
+                text("Controller.kt"),
+                text("src/Controller.kt"),
+            ),
             SymbolDiscoveryDocument.Declaration(
-                candidateSelector = text("candidate:v1:payload"),
+                candidateSelector = text("candidate:v2:payload"),
                 kind = SymbolDiscoveryKindDocument.SYMBOL,
                 name = text("handle"),
                 file = text("src/Controller.kt"),
                 offset = offset(27),
             ),
             SymbolDiscoveryDocument.TextMatch(
+                candidateSelector = text("candidate:v2:range"),
                 query = text("accountId"),
                 file = text("src/Controller.kt"),
                 range = range(44, 53),
@@ -128,7 +132,7 @@ class SymbolPublicSurfaceWireTest {
             range = range(27, 61),
             compilerEvidence = CompilerSymbolEvidenceDocument.fromSignature(signature).refined(),
         ).refined()
-        val describe = SymbolDescribeResult(symbol)
+        val describe = SymbolInspectResult(symbol)
         val relation = RelationReadResult(
             BoundedProtocolList.create(
                 listOf(
@@ -136,7 +140,11 @@ class SymbolPublicSurfaceWireTest {
                         meaning = RelationKindDocument.REFERENCES,
                         source = symbol,
                         target = symbol,
-                        occurrence = RelationOccurrenceDocument(symbol.file, symbol.range),
+                        occurrence = RelationOccurrenceDocument(
+                            text("candidate:v2:occurrence"),
+                            symbol.file,
+                            symbol.range,
+                        ),
                         provenance = RelationProvenanceDocument.K2_AUTHORED_SOURCE,
                         coverage = RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
                     ),
@@ -147,7 +155,7 @@ class SymbolPublicSurfaceWireTest {
         val generation = EvidenceGeneration.parse(3).refined()
         val describeOutcome = OperationOutcome.Complete(
             EvidenceEnvelope(
-                CanonicalOperationWireBindings.symbolDescribe.operation.id,
+                CanonicalOperationWireBindings.symbolInspect.operation.id,
                 generation,
                 describe,
             ),
@@ -159,7 +167,7 @@ class SymbolPublicSurfaceWireTest {
                 relation,
             ),
         )
-        val describeDocument = CanonicalOperationWireBindings.symbolDescribe
+        val describeDocument = CanonicalOperationWireBindings.symbolInspect
             .encodeOutcome(describeOutcome)
             .encodedDocument()
         val relationDocument = CanonicalOperationWireBindings.relationRead
@@ -168,7 +176,7 @@ class SymbolPublicSurfaceWireTest {
 
         assertEquals(
             WireDecoding.Decoded(describeOutcome),
-            CanonicalOperationWireBindings.symbolDescribe.decodeOutcome(describeDocument),
+            CanonicalOperationWireBindings.symbolInspect.decodeOutcome(describeDocument),
         )
         assertEquals(
             WireDecoding.Decoded(relationOutcome),

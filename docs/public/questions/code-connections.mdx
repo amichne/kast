@@ -15,8 +15,8 @@ question.
 
 <Steps>
   <Step title="Resolve an exact starting symbol">
-    Use `kast symbol discover` and `kast symbol resolve` to obtain an exact,
-    generation-bound selector.
+    Use `kast symbol discover`, then `kast symbol inspect --candidate`, to
+    obtain an exact, generation-bound selector and compiler evidence.
   </Step>
 
   <Step title="Read one compiler-confirmed hop">
@@ -57,7 +57,7 @@ question.
     to the outcome. The wire result normalizes repeated symbols and proof
     identities into compact `nodes`, `edges`, and `proofs` tables. Full compiler
     signatures are fetched only when needed through `symbol_inspect` (the
-    façade over `symbol.describe`).
+    façade over `symbol.inspect`).
   </Step>
 </Steps>
 

@@ -18,10 +18,6 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
 import io.github.amichne.kast.protocol.contract.ChangeRecoveryDocumentState
-import io.github.amichne.kast.protocol.contract.ChangeVerifyQualification
-import io.github.amichne.kast.protocol.contract.ChangeVerifyRejection
-import io.github.amichne.kast.protocol.contract.ChangeVerifyRequest
-import io.github.amichne.kast.protocol.contract.ChangeVerifyResult
 import io.github.amichne.kast.protocol.contract.OperationQualification
 import io.github.amichne.kast.protocol.contract.OperationRejection
 import io.github.amichne.kast.protocol.contract.OperationRequest
@@ -46,10 +42,6 @@ class CanonicalChangeGeneratedSerializationTest {
             ChangeApplyResultDocument.serializer(),
             ChangeApplyQualificationDocument.serializer(),
             ChangeApplyRejectionDocument.serializer(),
-            ChangeVerifyRequestDocument.serializer(),
-            ChangeVerifyResultDocument.serializer(),
-            ChangeVerifyQualificationDocument.serializer(),
-            ChangeVerifyRejectionDocument.serializer(),
             ChangeRecoverRequestDocument.serializer(),
             ChangeRecoverResultDocument.serializer(),
             ChangeRecoveryStateDocument.serializer(),
@@ -57,7 +49,7 @@ class CanonicalChangeGeneratedSerializationTest {
             ChangeRecoverRejectionDocument.serializer(),
         )
 
-        assertEquals(18, serializers.map { it.descriptor.serialName }.distinct().size)
+        assertEquals(14, serializers.map { it.descriptor.serialName }.distinct().size)
     }
 
     @Test
@@ -92,21 +84,9 @@ class CanonicalChangeGeneratedSerializationTest {
             CanonicalOperationWireBindings.changeApply.requestPayload(ChangeApplyRequest(text("plan:1"))),
         )
         assertEquals(
-            wireJson.parseToJsonElement("""{"applicationIdentity":"application:1"}"""),
-            CanonicalOperationWireBindings.changeApply.resultPayload(
-                ChangeApplyResult(text("application:1")),
-            ),
-        )
-        assertEquals(
-            wireJson.parseToJsonElement("""{"applicationIdentity":"application:1"}"""),
-            CanonicalOperationWireBindings.changeVerify.requestPayload(
-                ChangeVerifyRequest(text("application:1")),
-            ),
-        )
-        assertEquals(
             wireJson.parseToJsonElement("""{"receiptIdentity":"receipt:1"}"""),
-            CanonicalOperationWireBindings.changeVerify.resultPayload(
-                ChangeVerifyResult(text("receipt:1")),
+            CanonicalOperationWireBindings.changeApply.resultPayload(
+                ChangeApplyResult(text("receipt:1")),
             ),
         )
         assertEquals(
@@ -141,7 +121,7 @@ class CanonicalChangeGeneratedSerializationTest {
         assertEquals(
             JsonPrimitive("recovery_required"),
             CanonicalOperationWireBindings.changeApply.qualificationPayload(
-                ChangeApplyResult(text("application:1")),
+                ChangeApplyResult(text("receipt:1")),
                 ChangeApplyQualification.RECOVERY_REQUIRED,
             ),
         )
@@ -152,16 +132,9 @@ class CanonicalChangeGeneratedSerializationTest {
             ),
         )
         assertEquals(
-            JsonPrimitive("proof_incomplete"),
-            CanonicalOperationWireBindings.changeVerify.qualificationPayload(
-                ChangeVerifyResult(text("receipt:1")),
-                ChangeVerifyQualification.PROOF_INCOMPLETE,
-            ),
-        )
-        assertEquals(
             JsonPrimitive("semantic_delta_rejected"),
-            CanonicalOperationWireBindings.changeVerify.rejectionPayload(
-                ChangeVerifyRejection.SEMANTIC_DELTA_REJECTED,
+            CanonicalOperationWireBindings.changeApply.rejectionPayload(
+                ChangeApplyRejection.SEMANTIC_DELTA_REJECTED,
             ),
         )
         assertEquals(

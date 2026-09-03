@@ -43,6 +43,7 @@ import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.relation.contract.RelationProvenance
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalProtocolAuthority
+import io.github.amichne.kast.runtime.composition.protocol.CandidateSelectorTokenIssuance
 import io.github.amichne.kast.runtime.composition.protocol.ExactSelectorLookup
 import io.github.amichne.kast.runtime.composition.protocol.RelationEndpointIssuance
 import io.github.amichne.kast.runtime.composition.protocol.RelationSubjectLookup
@@ -373,11 +374,23 @@ private fun RelationFact.protocolDocument(
         ?: return null
     val occurrenceRange = SourceRangeDocument.create(occurrenceStart, occurrenceEnd).refinedOrNull()
         ?: return null
+    val occurrenceSelector = when (
+        val issued = authority.issueRangeCandidate(
+            subject.lease,
+            occurrence.file,
+            occurrence.range.startInclusive,
+            occurrence.range.endExclusive,
+        )
+    ) {
+        is CandidateSelectorTokenIssuance.Issued -> issued.selector
+        is CandidateSelectorTokenIssuance.Rejected -> return null
+    }
     return RelationFactDocument(
         meaning = meaning.protocolDocument(),
         source = source.protocolDocument(authority) ?: return null,
         target = target.protocolDocument(authority) ?: return null,
         occurrence = RelationOccurrenceDocument(
+            candidateSelector = occurrenceSelector,
             file = ProtocolText.parse(occurrence.file.stableValue).refinedOrNull() ?: return null,
             range = occurrenceRange,
         ),

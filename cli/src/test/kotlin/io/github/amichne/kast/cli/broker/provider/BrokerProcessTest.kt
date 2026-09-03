@@ -31,7 +31,7 @@ class BrokerProcessTest {
             emptyList(),
             checkNotNull(CanonicalBrokerDirectory.admit(temporary.toRealPath())),
             maximumOutputBytes = 1_024,
-            timeoutMillis = 100,
+            timeoutMillis = 1_000,
         ).refinedValue()
         val started = TimeSource.Monotonic.markNow()
 

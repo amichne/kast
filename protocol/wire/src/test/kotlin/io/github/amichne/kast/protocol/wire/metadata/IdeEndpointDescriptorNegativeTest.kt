@@ -173,7 +173,7 @@ class IdeEndpointDescriptorNegativeTest {
             candidate.copy(capabilities = candidate.capabilities + candidate.capabilities.first()),
             hostedCapabilityFailure(
                 HostedCapabilitySetFailure.DuplicateOperation(
-                    io.github.amichne.kast.protocol.contract.CanonicalOperation.WORKSPACE_INSPECT,
+                    io.github.amichne.kast.protocol.contract.CanonicalOperation.INDEX_SYNC,
                 ),
             ),
         )

@@ -16,7 +16,7 @@ import java.nio.file.Path
 
 class CliSurfaceContractTest {
     @Test
-    fun `public syntax is exact over all thirteen canonical operations`() {
+    fun `public syntax is exact over all eleven canonical operations`() {
         val surface = commandGraphFactory().surface
 
         assertEquals(CanonicalOperation.entries, surface.semanticCommands.map { it.operation })
@@ -99,8 +99,6 @@ class CliSurfaceContractTest {
         assertTrue(helpText.contains("Start the isolated exact-root IntelliJ sidecar."))
         assertTrue(helpText.contains("Stop only the process proven to own this exact workspace endpoint."))
         assertTrue(helpText.contains("Report exact-root runtime and private cache identity and state."))
-        assertTrue(helpText.contains("retain the private cache"))
-        assertTrue(helpText.contains("Quarantine the exact Kast-owned cache"))
         assertTrue(helpText.contains("sidecar-backed changes"))
         assertTrue(helpText.contains("durable generation-bound repository topology"))
         assertTrue(helpText.contains("Read bounded compiler-grounded semantic relations"))

@@ -11,18 +11,14 @@ import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.RelationReadResult
-import io.github.amichne.kast.protocol.contract.SymbolDescribeQualification
-import io.github.amichne.kast.protocol.contract.SymbolDescribeRejection
-import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
-import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
+import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
-import io.github.amichne.kast.protocol.contract.SymbolResolveQualification
-import io.github.amichne.kast.protocol.contract.SymbolResolveRejection
-import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
-import io.github.amichne.kast.protocol.contract.SymbolResolveResult
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.OperationWireBinding
 import io.github.amichne.kast.protocol.wire.WireDecoding
@@ -75,16 +71,10 @@ internal interface CanonicalKastReadOperations {
         SymbolDiscoverRejection,
         >
 
-    fun resolve(request: SymbolResolveRequest): CanonicalKastReadAttempt<
-        SymbolResolveResult,
-        SymbolResolveQualification,
-        SymbolResolveRejection,
-        >
-
-    fun describe(request: SymbolDescribeRequest): CanonicalKastReadAttempt<
-        SymbolDescribeResult,
-        SymbolDescribeQualification,
-        SymbolDescribeRejection,
+    fun inspect(request: SymbolInspectRequest): CanonicalKastReadAttempt<
+        SymbolInspectResult,
+        SymbolInspectQualification,
+        SymbolInspectRejection,
         >
 
     fun relation(request: RelationReadRequest): CanonicalKastReadAttempt<
@@ -103,13 +93,8 @@ internal class CanonicalWireKastReadOperations(
         request,
     )
 
-    override fun resolve(request: SymbolResolveRequest) = invoke(
-        CanonicalOperationWireBindings.symbolResolve,
-        request,
-    )
-
-    override fun describe(request: SymbolDescribeRequest) = invoke(
-        CanonicalOperationWireBindings.symbolDescribe,
+    override fun inspect(request: SymbolInspectRequest) = invoke(
+        CanonicalOperationWireBindings.symbolInspect,
         request,
     )
 

@@ -23,10 +23,11 @@ import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
-import io.github.amichne.kast.protocol.contract.SymbolDescribeQualification
-import io.github.amichne.kast.protocol.contract.SymbolDescribeRejection
-import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
-import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
+import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
@@ -38,10 +39,6 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
 import io.github.amichne.kast.protocol.contract.SymbolDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
-import io.github.amichne.kast.protocol.contract.SymbolResolveQualification
-import io.github.amichne.kast.protocol.contract.SymbolResolveRejection
-import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
-import io.github.amichne.kast.protocol.contract.SymbolResolveResult
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -56,7 +53,7 @@ class CodexDynamicToolsAdapterTest {
 
         assertEquals(
             CodexDynamicToolCallResult.Rejected(CodexDynamicToolFailure.INVALID_ARGUMENTS),
-            adapter.call("kast", "symbol_resolve", json("{}")),
+            adapter.call("kast", "symbol_inspect", json("{}")),
         )
         assertEquals(
             CodexDynamicToolCallResult.Rejected(CodexDynamicToolFailure.INVALID_ARGUMENTS),
@@ -68,7 +65,7 @@ class CodexDynamicToolsAdapterTest {
         )
         assertEquals(
             CodexDynamicToolCallResult.Rejected(CodexDynamicToolFailure.UNKNOWN_TOOL),
-            adapter.call("other", "symbol_resolve", json("""{"query":"Target"}""")),
+            adapter.call("other", "symbol_inspect", json("""{"query":"Target"}""")),
         )
 
         assertEquals(emptyList<String>(), kast.calls)
@@ -76,7 +73,7 @@ class CodexDynamicToolsAdapterTest {
     }
 
     @Test
-    fun `canonical selector passes unchanged from resolve description into relation request`() {
+    fun `canonical selector passes unchanged from inspection into relation request`() {
         val selector = text("exact:v1:opaque-selector")
         val symbol = symbol(selector)
         val kast = RecordingKastReads(selector, symbol)
@@ -86,7 +83,7 @@ class CodexDynamicToolsAdapterTest {
             CodexDynamicToolCallResult.Succeeded(DESCRIBE_JSON),
             adapter.call(
                 "kast",
-                "symbol_resolve",
+                "symbol_inspect",
                 json("""{"query":"CanonicalSymbolDiscoverHandler"}"""),
             ),
         )
@@ -101,7 +98,7 @@ class CodexDynamicToolsAdapterTest {
             ),
         )
 
-        assertEquals(listOf("discover", "resolve", "describe", "relation"), kast.calls)
+        assertEquals(listOf("discover", "inspect", "relation"), kast.calls)
         assertEquals(selector, kast.relationRequest?.exactSelector)
         assertEquals(RelationKindDocument.CALLERS, kast.relationRequest?.relation)
         assertEquals(
@@ -127,7 +124,7 @@ class CodexDynamicToolsAdapterTest {
 
         adapter.call(
             "kast",
-            "symbol_resolve",
+            "symbol_inspect",
             json("""{"query":"CanonicalSymbolDiscoverHandler"}"""),
         )
         val result = adapter.call(
@@ -151,7 +148,7 @@ class CodexDynamicToolsAdapterTest {
 
         adapter.call(
             "kast",
-            "symbol_resolve",
+            "symbol_inspect",
             json("""{"query":"CanonicalSymbolDiscoverHandler"}"""),
         )
         repeat(2) {
@@ -172,7 +169,7 @@ class CodexDynamicToolsAdapterTest {
         val adapter = CodexDynamicToolsAdapter(kast)
         adapter.call(
             "kast",
-            "symbol_resolve",
+            "symbol_inspect",
             json("""{"query":"CanonicalSymbolDiscoverHandler"}"""),
         )
 
@@ -204,7 +201,7 @@ class CodexDynamicToolsAdapterTest {
         val adapter = CodexDynamicToolsAdapter(kast)
         adapter.call(
             "kast",
-            "symbol_resolve",
+            "symbol_inspect",
             json("""{"query":"CanonicalSymbolDiscoverHandler"}"""),
         )
 
@@ -259,29 +256,19 @@ class CodexDynamicToolsAdapterTest {
             )
         }
 
-        override fun resolve(request: SymbolResolveRequest): CanonicalKastReadAttempt<
-            SymbolResolveResult,
-            SymbolResolveQualification,
-            SymbolResolveRejection,
+        override fun inspect(request: SymbolInspectRequest): CanonicalKastReadAttempt<
+            SymbolInspectResult,
+            SymbolInspectQualification,
+            SymbolInspectRejection,
             > {
-            calls += "resolve"
-            return read(
-                CanonicalOperation.SYMBOL_RESOLVE,
-                SymbolResolveResult(exactSelector),
-                "resolve-json",
+            calls += "inspect"
+            assertEquals(
+                text("candidate:v1:opaque"),
+                (request.target as SymbolInspectTarget.Candidate).selector,
             )
-        }
-
-        override fun describe(request: SymbolDescribeRequest): CanonicalKastReadAttempt<
-            SymbolDescribeResult,
-            SymbolDescribeQualification,
-            SymbolDescribeRejection,
-            > {
-            calls += "describe"
-            assertEquals(exactSelector, request.exactSelector)
             return read(
-                CanonicalOperation.SYMBOL_DESCRIBE,
-                SymbolDescribeResult(exactSymbol),
+                CanonicalOperation.SYMBOL_INSPECT,
+                SymbolInspectResult(exactSymbol),
                 DESCRIBE_JSON,
             )
         }
@@ -375,7 +362,11 @@ class CodexDynamicToolsAdapterTest {
             meaning = RelationKindDocument.REFERENCES,
             source = symbol,
             target = symbol,
-            occurrence = RelationOccurrenceDocument(symbol.file, symbol.range),
+            occurrence = RelationOccurrenceDocument(
+                text("candidate:occurrence"),
+                symbol.file,
+                symbol.range,
+            ),
             provenance = RelationProvenanceDocument.K2_AUTHORED_SOURCE,
             coverage = RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
         )

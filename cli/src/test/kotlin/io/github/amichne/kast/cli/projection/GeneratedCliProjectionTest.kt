@@ -33,7 +33,7 @@ import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
 import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
 import io.github.amichne.kast.protocol.contract.RelationProvenanceDocument
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
-import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryKindDocument
@@ -46,9 +46,6 @@ import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
 import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
 import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
 import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
-import io.github.amichne.kast.protocol.contract.WorkspaceStateDocument
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -67,7 +64,11 @@ class GeneratedCliProjectionTest {
             meaning = RelationKindDocument.CALLERS,
             source = source,
             target = target,
-            occurrence = RelationOccurrenceDocument(text("src/B.kt"), range(4, 8)),
+            occurrence = RelationOccurrenceDocument(
+                text("candidate:occurrence"),
+                text("src/B.kt"),
+                range(4, 8),
+            ),
             provenance = RelationProvenanceDocument.K2_AUTHORED_SOURCE,
             coverage = RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
         )
@@ -119,7 +120,11 @@ class GeneratedCliProjectionTest {
         val result = SymbolDiscoverResult(
             bounded(
                 listOf(
-                    SymbolDiscoveryDocument.File(text("A.kt"), text("src/A.kt")),
+                    SymbolDiscoveryDocument.File(
+                        text("candidate:file"),
+                        text("A.kt"),
+                        text("src/A.kt"),
+                    ),
                     SymbolDiscoveryDocument.Declaration(
                         candidateSelector = text("candidate:A"),
                         kind = SymbolDiscoveryKindDocument.CLASS,
@@ -128,6 +133,7 @@ class GeneratedCliProjectionTest {
                         offset = offset(3),
                     ),
                     SymbolDiscoveryDocument.TextMatch(
+                        candidateSelector = text("candidate:range"),
                         query = text("TODO"),
                         file = text("src/A.kt"),
                         range = range(4, 8),
@@ -142,10 +148,12 @@ class GeneratedCliProjectionTest {
 
         assertEquals(
             "{\"operation\":\"symbol.discover\",\"status\":\"complete\",\"items\":[" +
-                "{\"type\":\"file\",\"name\":\"A.kt\",\"file\":\"src/A.kt\"}," +
+                "{\"type\":\"file\",\"candidateSelector\":\"candidate:file\"," +
+                "\"name\":\"A.kt\",\"file\":\"src/A.kt\"}," +
                 "{\"type\":\"declaration\",\"candidateSelector\":\"candidate:A\"," +
                 "\"kind\":\"class\",\"name\":\"A\",\"file\":\"src/A.kt\",\"offset\":3}," +
-                "{\"type\":\"text-match\",\"query\":\"TODO\",\"file\":\"src/A.kt\"," +
+                "{\"type\":\"text-match\",\"candidateSelector\":\"candidate:range\"," +
+                "\"query\":\"TODO\",\"file\":\"src/A.kt\"," +
                 "\"range\":{\"startInclusive\":4,\"endExclusive\":8}}]}",
             projected.document.value,
         )
@@ -155,7 +163,7 @@ class GeneratedCliProjectionTest {
     fun `generated symbol serializer preserves coherent compiler evidence`() {
         val signature = CompilerSignatureDocument.ClassLike(text("A"))
         val compilerEvidence = CompilerSymbolEvidenceDocument.fromSignature(signature).refined()
-        val result = SymbolDescribeResult(
+        val result = SymbolInspectResult(
             SymbolDocument.create(
                 selector = text("exact:A"),
                 kind = SymbolKindDocument.CLASSLIKE,
@@ -167,12 +175,12 @@ class GeneratedCliProjectionTest {
             ).refined(),
         )
 
-        val projected = symbolDescribeCliProjector.project(
-            OperationOutcome.Complete(evidence(CanonicalOperation.SYMBOL_DESCRIBE, result)),
+        val projected = symbolInspectCliProjector.project(
+            OperationOutcome.Complete(evidence(CanonicalOperation.SYMBOL_INSPECT, result)),
         ) as ProjectedCliOutcome.Complete
 
         assertEquals(
-                "{\"operation\":\"symbol.describe\",\"status\":\"complete\"," +
+                "{\"operation\":\"symbol.inspect\",\"status\":\"complete\"," +
                 "\"symbol\":{\"selector\":\"exact:A\",\"kind\":\"classlike\",\"name\":\"A\"," +
                 "\"qualifiedIdentity\":\"A\",\"file\":\"src/A.kt\"," +
                 "\"range\":{\"startInclusive\":0,\"endExclusive\":7}," +
@@ -191,7 +199,7 @@ class GeneratedCliProjectionTest {
             returnType = text("kotlin.Int"),
         )
         val compilerEvidence = CompilerSymbolEvidenceDocument.fromSignature(signature).refined()
-        val result = SymbolDescribeResult(
+        val result = SymbolInspectResult(
             SymbolDocument.create(
                 selector = text("exact:tag"),
                 kind = SymbolKindDocument.PROPERTY,
@@ -203,8 +211,8 @@ class GeneratedCliProjectionTest {
             ).refined(),
         )
 
-        val projected = symbolDescribeCliProjector.project(
-            OperationOutcome.Complete(evidence(CanonicalOperation.SYMBOL_DESCRIBE, result)),
+        val projected = symbolInspectCliProjector.project(
+            OperationOutcome.Complete(evidence(CanonicalOperation.SYMBOL_INSPECT, result)),
         ) as ProjectedCliOutcome.Complete
 
         assertTrue(projected.document.value.contains(
@@ -217,13 +225,6 @@ class GeneratedCliProjectionTest {
 
     @Test
     fun `generated qualified documents append qualification after payload`() {
-        val workspace = WorkspaceInspectResult(text("/repo"), WorkspaceStateDocument.RECONCILING)
-        val workspaceProjected = workspaceInspectCliProjector.project(
-            OperationOutcome.Qualified(
-                evidence(CanonicalOperation.WORKSPACE_INSPECT, workspace),
-                WorkspaceInspectQualification.RECONCILING,
-            ),
-        ) as ProjectedCliOutcome.Qualified
         val diagnosticsProjected = diagnosticCheckCliProjector.project(
             OperationOutcome.Qualified(
                 evidence(
@@ -236,6 +237,7 @@ class GeneratedCliProjectionTest {
                                     code = text("UNUSED_SYMBOL"),
                                     message = text("warning"),
                                     location = DiagnosticLocationDocument(
+                                        candidateSelector = text("candidate:diagnostic"),
                                         file = text("src/A.kt"),
                                         range = DiagnosticRangeDocument.create(
                                             offset(4),
@@ -252,15 +254,11 @@ class GeneratedCliProjectionTest {
         ) as ProjectedCliOutcome.Qualified
 
         assertEquals(
-            "{\"operation\":\"workspace.inspect\",\"status\":\"qualified\"," +
-                "\"canonicalRoot\":\"/repo\",\"state\":\"reconciling\"," +
-                "\"qualification\":\"reconciling\"}",
-            workspaceProjected.document.value,
-        )
-        assertEquals(
             "{\"operation\":\"diagnostic.check\",\"status\":\"qualified\"," +
                 "\"diagnostics\":[{\"severity\":\"warning\",\"code\":\"UNUSED_SYMBOL\"," +
-                "\"message\":\"warning\",\"location\":{\"file\":\"src/A.kt\"," +
+                "\"message\":\"warning\",\"location\":{" +
+                "\"candidateSelector\":\"candidate:diagnostic\"," +
+                "\"file\":\"src/A.kt\"," +
                 "\"range\":{\"startInclusive\":4,\"endExclusive\":4}}}]," +
                 "\"qualification\":{\"knownDiagnosticCount\":1," +
                 "\"resultLimitReached\":false,\"analyzedFiles\":[]," +

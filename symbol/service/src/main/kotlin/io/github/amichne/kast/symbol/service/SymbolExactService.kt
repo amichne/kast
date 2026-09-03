@@ -18,7 +18,7 @@ import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 
-/** Current-generation admission owner for public `symbol.resolve` and `symbol.describe`. */
+/** Current-generation admission owner for public `symbol.resolve` and `symbol.inspect`. */
 class SymbolExactService(
     private val workspaces: WorkspaceInspectionOperations,
     private val compiler: SymbolExactCompilerPort,

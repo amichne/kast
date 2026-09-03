@@ -25,7 +25,6 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
 import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
 import kotlinx.serialization.json.JsonElement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -149,16 +148,6 @@ class CanonicalReadGeneratedSerializationTest {
 
     @Test
     fun `generated empty and list documents reject unknown missing and invalid content`() {
-        val requestCodec = CanonicalReadSerializers.workspaceInspectRequest
-        assertEquals(
-            WireValueEncoding.Encoded(json("{}")),
-            requestCodec.encode(WorkspaceInspectRequest, WireValueRole.REQUEST),
-        )
-        assertEquals(
-            WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.REQUEST)),
-            requestCodec.decode(json("""{"extra":true}"""), WireValueRole.REQUEST),
-        )
-
         val resultCodec = CanonicalReadSerializers.diagnosticCheckResult
         val result = DiagnosticCheckResult(
             BoundedProtocolList.create(
@@ -168,6 +157,7 @@ class CanonicalReadGeneratedSerializationTest {
                         text("UNUSED"),
                         text("unused"),
                         DiagnosticLocationDocument(
+                            text("candidate:v2:diagnostic"),
                             text("src/A.kt"),
                             DiagnosticRangeDocument.create(offset(7), offset(7)).refinedValue(),
                         ),
@@ -176,7 +166,7 @@ class CanonicalReadGeneratedSerializationTest {
             ).refinedValue(),
         )
         val document = json(
-            """{"diagnostics":[{"severity":"warning","code":"UNUSED","message":"unused","location":{"file":"src/A.kt","range":{"startInclusive":7,"endExclusive":7}}}]}""",
+            """{"diagnostics":[{"severity":"warning","code":"UNUSED","message":"unused","location":{"candidateSelector":"candidate:v2:diagnostic","file":"src/A.kt","range":{"startInclusive":7,"endExclusive":7}}}]}""",
         )
         assertEquals(WireValueEncoding.Encoded(document), resultCodec.encode(result, WireValueRole.RESULT))
         assertEquals(WireDecoding.Decoded(result), resultCodec.decode(document, WireValueRole.RESULT))

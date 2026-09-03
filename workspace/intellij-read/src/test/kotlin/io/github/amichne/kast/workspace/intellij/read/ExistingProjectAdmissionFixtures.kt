@@ -21,10 +21,17 @@ internal val FIXTURE_COMPATIBILITY = IdeHostCompatibilityCandidate(
     operationRegistryDigest = "sha256:" + "1".repeat(64),
     wireSchemaDigest = "sha256:" + "2".repeat(64),
     capabilities = listOf(
-        "workspace.inspect",
+        "index.sync",
+        "topology.build",
         "symbol.discover",
-        "symbol.resolve",
-        "symbol.describe",
+        "symbol.inspect",
+        "source.read",
+        "relation.read",
+        "traversal.run",
+        "diagnostic.check",
+        "change.plan",
+        "change.apply",
+        "change.recover",
     ),
 )
 

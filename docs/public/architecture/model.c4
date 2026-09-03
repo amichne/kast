@@ -39,12 +39,12 @@ model {
 
     composition = authority "Runtime composition" {
       #identity
-      description "Proves exactly one implementation for all thirteen canonical operations."
+      description "Proves exactly one implementation for all eleven canonical operations."
     }
 
     operations = service "Operation services" {
       #discovery
-      description "Runs bounded workspace, index, topology, symbol, relation, traversal, diagnostic, and change workflows."
+      description "Runs bounded index, topology, symbol, source, relation, traversal, diagnostic, and change workflows."
     }
 
     adapters = authority "K2 and effect adapters" {

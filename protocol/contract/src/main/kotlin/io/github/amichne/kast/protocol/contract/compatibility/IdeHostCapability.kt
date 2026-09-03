@@ -28,18 +28,20 @@ data class IdeHostCapability private constructor(val operation: CanonicalOperati
 
         private val byOperation = CanonicalOperation.entries.associateWith(::IdeHostCapability)
 
-        val WORKSPACE_INSPECT = byOperation.getValue(CanonicalOperation.WORKSPACE_INSPECT)
+        val INDEX_SYNC = byOperation.getValue(CanonicalOperation.INDEX_SYNC)
+        val TOPOLOGY_BUILD = byOperation.getValue(CanonicalOperation.TOPOLOGY_BUILD)
         val SYMBOL_DISCOVER = byOperation.getValue(CanonicalOperation.SYMBOL_DISCOVER)
-        val SYMBOL_RESOLVE = byOperation.getValue(CanonicalOperation.SYMBOL_RESOLVE)
-        val SYMBOL_DESCRIBE = byOperation.getValue(CanonicalOperation.SYMBOL_DESCRIBE)
+        val SYMBOL_INSPECT = byOperation.getValue(CanonicalOperation.SYMBOL_INSPECT)
+        val SOURCE_READ = byOperation.getValue(CanonicalOperation.SOURCE_READ)
+        val RELATION_READ = byOperation.getValue(CanonicalOperation.RELATION_READ)
+        val TRAVERSAL_RUN = byOperation.getValue(CanonicalOperation.TRAVERSAL_RUN)
+        val DIAGNOSTIC_CHECK = byOperation.getValue(CanonicalOperation.DIAGNOSTIC_CHECK)
+        val CHANGE_PLAN = byOperation.getValue(CanonicalOperation.CHANGE_PLAN)
+        val CHANGE_APPLY = byOperation.getValue(CanonicalOperation.CHANGE_APPLY)
+        val CHANGE_RECOVER = byOperation.getValue(CanonicalOperation.CHANGE_RECOVER)
 
-        /** Existing read-route vocabulary; not an authority for the complete hosted surface. */
-        val entries: List<IdeHostCapability> = listOf(
-            WORKSPACE_INSPECT,
-            SYMBOL_DISCOVER,
-            SYMBOL_RESOLVE,
-            SYMBOL_DESCRIBE,
-        )
+        /** Exact compatibility projection of the canonical public operation set. */
+        val entries: List<IdeHostCapability> = CanonicalOperation.entries.map(byOperation::getValue)
     }
 }
 

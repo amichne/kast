@@ -7,18 +7,15 @@ import io.github.amichne.kast.protocol.contract.CompilerReceiverDocument
 import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
 import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
-import io.github.amichne.kast.protocol.contract.SymbolDescribeQualification
-import io.github.amichne.kast.protocol.contract.SymbolDescribeRejection
-import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
+import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.SymbolDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
-import io.github.amichne.kast.protocol.contract.SymbolResolveQualification
-import io.github.amichne.kast.protocol.contract.SymbolResolveRejection
-import io.github.amichne.kast.protocol.contract.SymbolResolveResult
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -58,50 +55,18 @@ internal object CanonicalSymbolCliDocuments {
         },
     )
 
-    fun projectResolution(
+    fun projectInspection(
         outcome: OperationOutcome<
-            SymbolResolveResult,
-            SymbolResolveQualification,
-            SymbolResolveRejection,
-            >,
-    ) = projectClosedOutcome(
-        outcome,
-        complete = { result ->
-            resolutionCompleteFactory.create(
-                SymbolResolutionCompleteCliDocument(
-                    operation = CanonicalOperation.SYMBOL_RESOLVE.id.value,
-                    status = "complete",
-                    exactSelector = result.exactSelector.value,
-                ),
-            )
-        },
-        qualified = { result, qualification ->
-            resolutionQualifiedFactory.create(
-                SymbolResolutionQualifiedCliDocument(
-                    operation = CanonicalOperation.SYMBOL_RESOLVE.id.value,
-                    status = "qualified",
-                    exactSelector = result.exactSelector.value,
-                    qualification = qualification.cliName(),
-                ),
-            )
-        },
-        rejected = { rejection ->
-            canonicalRejectedDocument(CanonicalOperation.SYMBOL_RESOLVE, rejection.cliName())
-        },
-    )
-
-    fun projectDescription(
-        outcome: OperationOutcome<
-            SymbolDescribeResult,
-            SymbolDescribeQualification,
-            SymbolDescribeRejection,
+            SymbolInspectResult,
+            SymbolInspectQualification,
+            SymbolInspectRejection,
             >,
     ) = projectClosedOutcome(
         outcome,
         complete = { result ->
             descriptionCompleteFactory.create(
                 SymbolDescriptionCompleteCliDocument(
-                    operation = CanonicalOperation.SYMBOL_DESCRIBE.id.value,
+                    operation = CanonicalOperation.SYMBOL_INSPECT.id.value,
                     status = "complete",
                     symbol = result.symbol.toCliDocument(),
                 ),
@@ -110,7 +75,7 @@ internal object CanonicalSymbolCliDocuments {
         qualified = { result, qualification ->
             descriptionQualifiedFactory.create(
                 SymbolDescriptionQualifiedCliDocument(
-                    operation = CanonicalOperation.SYMBOL_DESCRIBE.id.value,
+                    operation = CanonicalOperation.SYMBOL_INSPECT.id.value,
                     status = "qualified",
                     symbol = result.symbol.toCliDocument(),
                     qualification = qualification.cliName(),
@@ -118,7 +83,7 @@ internal object CanonicalSymbolCliDocuments {
             )
         },
         rejected = { rejection ->
-            canonicalRejectedDocument(CanonicalOperation.SYMBOL_DESCRIBE, rejection.cliName())
+            canonicalRejectedDocument(CanonicalOperation.SYMBOL_INSPECT, rejection.cliName())
         },
     )
 }
@@ -143,6 +108,7 @@ internal sealed interface SymbolDiscoveryCliDocument {
     @Serializable
     @SerialName("file")
     data class File(
+        val candidateSelector: String,
         val name: String,
         val file: String,
     ) : SymbolDiscoveryCliDocument
@@ -160,26 +126,12 @@ internal sealed interface SymbolDiscoveryCliDocument {
     @Serializable
     @SerialName("text-match")
     data class TextMatch(
+        val candidateSelector: String,
         val query: String,
         val file: String,
         val range: SourceRangeCliDocument,
     ) : SymbolDiscoveryCliDocument
 }
-
-@Serializable
-private data class SymbolResolutionCompleteCliDocument(
-    val operation: String,
-    val status: String,
-    val exactSelector: String,
-)
-
-@Serializable
-private data class SymbolResolutionQualifiedCliDocument(
-    val operation: String,
-    val status: String,
-    val exactSelector: String,
-    val qualification: String,
-)
 
 @Serializable
 private data class SymbolDescriptionCompleteCliDocument(
@@ -303,6 +255,7 @@ private fun CompilerReceiverDocument.toCliDocument(): CompilerReceiverCliDocumen
 
 private fun SymbolDiscoveryDocument.toCliDocument(): SymbolDiscoveryCliDocument = when (this) {
     is SymbolDiscoveryDocument.File -> SymbolDiscoveryCliDocument.File(
+        candidateSelector = candidateSelector.value,
         name = name.value,
         file = file.value,
     )
@@ -314,6 +267,7 @@ private fun SymbolDiscoveryDocument.toCliDocument(): SymbolDiscoveryCliDocument 
         offset = offset.value,
     )
     is SymbolDiscoveryDocument.TextMatch -> SymbolDiscoveryCliDocument.TextMatch(
+        candidateSelector = candidateSelector.value,
         query = query.value,
         file = file.value,
         range = range.toCliDocument(),
@@ -327,10 +281,6 @@ private val discoveryCompleteFactory =
     CliJsonDocument.generated(SymbolDiscoveryCompleteCliDocument.serializer())
 private val discoveryQualifiedFactory =
     CliJsonDocument.generated(SymbolDiscoveryQualifiedCliDocument.serializer())
-private val resolutionCompleteFactory =
-    CliJsonDocument.generated(SymbolResolutionCompleteCliDocument.serializer())
-private val resolutionQualifiedFactory =
-    CliJsonDocument.generated(SymbolResolutionQualifiedCliDocument.serializer())
 private val descriptionCompleteFactory =
     CliJsonDocument.generated(SymbolDescriptionCompleteCliDocument.serializer())
 private val descriptionQualifiedFactory =

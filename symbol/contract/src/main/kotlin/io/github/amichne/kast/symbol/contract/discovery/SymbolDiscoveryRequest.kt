@@ -110,12 +110,6 @@ sealed interface SymbolDiscoveryTarget {
         override fun admits(candidate: SymbolDiscoveryKind): Boolean = candidate.isDeclaration()
     }
 
-    data class Structure(
-        val file: CanonicalWorkspaceFilePath,
-    ) : SymbolDiscoveryTarget {
-        override fun admits(candidate: SymbolDiscoveryKind): Boolean = candidate.isDeclaration()
-    }
-
     data class Text(
         val pattern: SymbolDiscoveryPattern,
     ) : SymbolDiscoveryTarget {

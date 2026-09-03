@@ -179,9 +179,6 @@ internal object KastCleanSlateCrossRoleDependencies {
         ProjectDependencyObservation(ModuleId.RELATION_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
         ProjectDependencyObservation(ModuleId.TOPOLOGY_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
         ProjectDependencyObservation(ModuleId.DIAGNOSTIC_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
-        // IDE startup may name only the narrow host-neutral change port types it passes onward.
-        ProjectDependencyObservation(ModuleId.IDE_PLUGIN, ModuleId.CHANGE_APPLY),
-        ProjectDependencyObservation(ModuleId.IDE_PLUGIN, ModuleId.CHANGE_VERIFY),
     )
 }
 
@@ -241,6 +238,7 @@ private object ModuleRoleBoundaries {
             allowedEffects = setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,
                 ForbiddenEffect.PROJECT_FILE_INDEX_AUTHORITY,
+                ForbiddenEffect.PROJECT_READ_EPOCH_AUTHORITY,
             ),
         )
         ModuleRole.IDE_HOST -> boundary(
@@ -362,6 +360,8 @@ private object ModuleRoleBoundaries {
             allowedEffects = setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,
                 ForbiddenEffect.FILESYSTEM_WRITE,
+                ForbiddenEffect.UDS_BIND,
+                ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE,
             ),
         )
     }

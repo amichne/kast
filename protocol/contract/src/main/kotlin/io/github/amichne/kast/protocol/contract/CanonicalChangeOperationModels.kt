@@ -37,7 +37,7 @@ enum class ChangePlanQualification : OperationQualification {
 
 enum class ChangePlanRejection : OperationRejection {
     WORKSPACE_NOT_READY,
-    SYMBOL_RESOLVE_REQUIRED,
+    EXACT_SYMBOL_REQUIRED,
     EDITABLE_TARGET_REQUIRED,
     RELATION_READ_REQUIRED,
     TOPOLOGY_BUILD_REQUIRED,
@@ -52,7 +52,7 @@ data class ChangeApplyRequest(
 ) : OperationRequest
 
 data class ChangeApplyResult(
-    val applicationIdentity: ProtocolText,
+    val receiptIdentity: ProtocolText,
 ) : OperationResult
 
 enum class ChangeApplyQualification : OperationQualification {
@@ -67,22 +67,6 @@ enum class ChangeApplyRejection : OperationRejection {
     WRITE_SCOPE_REJECTED,
     ROLLED_BACK,
     RECOVERY_REQUIRED,
-}
-
-data class ChangeVerifyRequest(
-    val applicationIdentity: ProtocolText,
-) : OperationRequest
-
-data class ChangeVerifyResult(
-    val receiptIdentity: ProtocolText,
-) : OperationResult
-
-enum class ChangeVerifyQualification : OperationQualification {
-    PROOF_INCOMPLETE,
-}
-
-enum class ChangeVerifyRejection : OperationRejection {
-    APPLICATION_NOT_FOUND,
     RESULTING_GENERATION_UNAVAILABLE,
     OBLIGATION_FAILED,
     DIAGNOSTIC_REGRESSION,

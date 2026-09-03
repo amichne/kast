@@ -117,11 +117,11 @@ data class AgentToolDefinition(
 
 /** Canonical agent-facing read tools projected from the existing Kast operation models. */
 object CanonicalAgentToolDefinitions {
-    val symbolResolve = AgentToolDefinition(
-        name = toolName("symbol_resolve"),
+    val symbolInspect = AgentToolDefinition(
+        name = toolName("symbol_inspect"),
         description = text(
             "Find one exact Kotlin symbol by source name and return canonical Kast " +
-                "symbol.describe JSON; retain its returned JSON and opaque selector for " +
+                "symbol.inspect JSON; retain its returned JSON and opaque selector for " +
                 "the next call in the same exec program.",
         ),
         input = AgentToolInput.ExactSymbolName(
@@ -131,20 +131,19 @@ object CanonicalAgentToolDefinitions {
             ),
         ),
         execution = AgentToolExecution.start(CanonicalOperationDefinitions.symbolDiscover)
-            .then(CanonicalOperationDefinitions.symbolResolve)
-            .then(CanonicalOperationDefinitions.symbolDescribe),
+            .then(CanonicalOperationDefinitions.symbolInspect),
     )
 
     val relationRead = AgentToolDefinition(
         name = toolName("relation_read"),
         description = text(
             "Read one-hop Kast semantic relations from the exact selector returned by " +
-                "symbol_resolve, passed as exactSelector, without resolving again.",
+                "symbol_inspect, passed as exactSelector, without inspecting again.",
         ),
         input = AgentToolInput.ExactRelation(
             exactSelector = AgentToolTextInput(
                 inputName("exactSelector"),
-                text("Opaque symbol.selector returned by kast.symbol_resolve."),
+                text("Opaque symbol.selector returned by kast.symbol_inspect."),
             ),
             relation = AgentToolRelationInput(
                 inputName("relation"),
@@ -154,7 +153,7 @@ object CanonicalAgentToolDefinitions {
         execution = AgentToolExecution.start(CanonicalOperationDefinitions.relationRead),
     )
 
-    val all: List<AgentToolDefinition> = listOf(symbolResolve, relationRead)
+    val all: List<AgentToolDefinition> = listOf(symbolInspect, relationRead)
 
     private fun toolName(raw: String): AgentToolName = refined(AgentToolName.parse(raw))
 

@@ -12,10 +12,11 @@ import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.RelationReadResult
-import io.github.amichne.kast.protocol.contract.SymbolDescribeQualification
-import io.github.amichne.kast.protocol.contract.SymbolDescribeRejection
-import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
-import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
+import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
@@ -24,10 +25,6 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
 import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
-import io.github.amichne.kast.protocol.contract.SymbolResolveQualification
-import io.github.amichne.kast.protocol.contract.SymbolResolveRejection
-import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
-import io.github.amichne.kast.protocol.contract.SymbolResolveResult
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -44,7 +41,7 @@ private val boundaryJson = Json {
 }
 
 @Serializable
-internal data class SymbolResolveArgumentsDocument(
+internal data class SymbolInspectArgumentsDocument(
     val query: String,
 )
 
@@ -100,7 +97,7 @@ internal class CodexDynamicToolsAdapter(
     private val kast: CanonicalKastReadOperations,
 ) {
     private var selectorState: SelectorState = SelectorState.Absent
-    private var flow: DynamicToolFlow = DynamicToolFlow.AwaitingSymbolResolution
+    private var flow: DynamicToolFlow = DynamicToolFlow.AwaitingSymbolInspection
     private var callCount = 0
     private var malformedCount = 0
     private var correctiveCount = 0
@@ -128,7 +125,7 @@ internal class CodexDynamicToolsAdapter(
             correctiveCount += 1
         }
         val result = when (identity) {
-            KastDynamicTool.SYMBOL_RESOLVE -> resolve(arguments)
+            KastDynamicTool.SYMBOL_INSPECT -> inspect(arguments)
             KastDynamicTool.RELATION_READ -> relation(arguments)
         }
         if (result is CodexDynamicToolCallResult.Succeeded) {
@@ -147,8 +144,8 @@ internal class CodexDynamicToolsAdapter(
         relationRejectionNames = relationRejectionNames,
     )
 
-    private fun resolve(arguments: JsonElement): CodexDynamicToolCallResult {
-        val document = decode<SymbolResolveArgumentsDocument>(arguments)
+    private fun inspect(arguments: JsonElement): CodexDynamicToolCallResult {
+        val document = decode<SymbolInspectArgumentsDocument>(arguments)
             ?: return rejected(CodexDynamicToolFailure.INVALID_ARGUMENTS, malformed = true)
         val query = document.query.protocolText()
             ?: return rejected(CodexDynamicToolFailure.INVALID_ARGUMENTS, malformed = true)
@@ -178,31 +175,22 @@ internal class CodexDynamicToolsAdapter(
         if (candidates.size != 1) {
             return rejected(CodexDynamicToolFailure.EXACT_SYMBOL_NOT_UNIQUE)
         }
-        val resolution = when (
-            val attempt = kast.resolve(SymbolResolveRequest(candidates.single().candidateSelector))
+        val inspection = when (
+            val attempt = kast.inspect(
+                SymbolInspectRequest(
+                    SymbolInspectTarget.Candidate(candidates.single().candidateSelector),
+                ),
+            )
         ) {
             is CanonicalKastReadAttempt.Read -> attempt.value
             is CanonicalKastReadAttempt.Rejected -> return rejected(
                 CodexDynamicToolFailure.KAST_EXCHANGE_REJECTED,
             )
         }
-        val resolved = resolution.outcome.completePayload()
+        val inspected = inspection.outcome.completePayload()
             ?: return rejected(CodexDynamicToolFailure.KAST_OPERATION_REJECTED)
-        val description = when (
-            val attempt = kast.describe(SymbolDescribeRequest(resolved.exactSelector))
-        ) {
-            is CanonicalKastReadAttempt.Read -> attempt.value
-            is CanonicalKastReadAttempt.Rejected -> return rejected(
-                CodexDynamicToolFailure.KAST_EXCHANGE_REJECTED,
-            )
-        }
-        val described = description.outcome.completePayload()
-            ?: return rejected(CodexDynamicToolFailure.KAST_OPERATION_REJECTED)
-        if (described.symbol.selector != resolved.exactSelector) {
-            return rejected(CodexDynamicToolFailure.SELECTOR_CONTRACT_MISMATCH)
-        }
-        selectorState = SelectorState.Produced(resolved.exactSelector)
-        return CodexDynamicToolCallResult.Succeeded(description.canonicalJson)
+        selectorState = SelectorState.Produced(inspected.symbol.selector)
+        return CodexDynamicToolCallResult.Succeeded(inspection.canonicalJson)
     }
 
     private fun relation(arguments: JsonElement): CodexDynamicToolCallResult {
@@ -268,18 +256,18 @@ internal class CodexDynamicToolsAdapter(
     }
 
     private sealed interface DynamicToolFlow {
-        data object AwaitingSymbolResolution : DynamicToolFlow
+        data object AwaitingSymbolInspection : DynamicToolFlow
         data object AwaitingRelationRead : DynamicToolFlow
         data object Completed : DynamicToolFlow
 
         fun expects(tool: KastDynamicTool): Boolean = when (this) {
-            AwaitingSymbolResolution -> tool == KastDynamicTool.SYMBOL_RESOLVE
+            AwaitingSymbolInspection -> tool == KastDynamicTool.SYMBOL_INSPECT
             AwaitingRelationRead -> tool == KastDynamicTool.RELATION_READ
             Completed -> false
         }
 
         fun complete(tool: KastDynamicTool): DynamicToolFlow = when {
-            this == AwaitingSymbolResolution && tool == KastDynamicTool.SYMBOL_RESOLVE ->
+            this == AwaitingSymbolInspection && tool == KastDynamicTool.SYMBOL_INSPECT ->
                 AwaitingRelationRead
             this == AwaitingRelationRead && tool == KastDynamicTool.RELATION_READ -> Completed
             else -> this
@@ -287,14 +275,14 @@ internal class CodexDynamicToolsAdapter(
     }
 
     private enum class KastDynamicTool {
-        SYMBOL_RESOLVE,
+        SYMBOL_INSPECT,
         RELATION_READ,
         ;
 
         companion object {
             fun from(namespace: String?, tool: String): KastDynamicTool? = when {
                 namespace != KAST_NAMESPACE -> null
-                tool == CanonicalAgentToolDefinitions.symbolResolve.name.value -> SYMBOL_RESOLVE
+                tool == CanonicalAgentToolDefinitions.symbolInspect.name.value -> SYMBOL_INSPECT
                 tool == CanonicalAgentToolDefinitions.relationRead.name.value -> RELATION_READ
                 else -> null
             }

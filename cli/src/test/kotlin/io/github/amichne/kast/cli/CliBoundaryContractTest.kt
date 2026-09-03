@@ -16,20 +16,22 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+import java.util.Base64
 
 class CliBoundaryContractTest {
     @Test
-    fun `exactly thirteen public command projections parse to canonical operations`() {
+    fun `exactly eleven public command projections parse to canonical operations`() {
         val commands = mapOf(
-            listOf("workspace", "inspect") to CanonicalOperation.WORKSPACE_INSPECT,
             listOf("index", "sync") to CanonicalOperation.INDEX_SYNC,
             listOf("topology", "build") to CanonicalOperation.TOPOLOGY_BUILD,
             listOf("symbol", "discover", "--query", "Example", "--limit", "10") to
                 CanonicalOperation.SYMBOL_DISCOVER,
-            listOf("symbol", "resolve", "--candidate", "candidate") to
-                CanonicalOperation.SYMBOL_RESOLVE,
-            listOf("symbol", "describe", "--selector", "selector") to
-                CanonicalOperation.SYMBOL_DESCRIBE,
+            listOf("symbol", "inspect", "--candidate", "candidate") to
+                CanonicalOperation.SYMBOL_INSPECT,
+            listOf("source", "read", "--anchor", exactSelectorToken()) to
+                CanonicalOperation.SOURCE_READ,
             listOf(
                 "relation", "read", "--selector", "selector", "--relation", "references",
                 "--limit", "10",
@@ -45,8 +47,6 @@ class CliBoundaryContractTest {
                 "class A",
             ) to CanonicalOperation.CHANGE_PLAN,
             listOf("change", "apply", "--plan", "plan") to CanonicalOperation.CHANGE_APPLY,
-            listOf("change", "verify", "--application", "application") to
-                CanonicalOperation.CHANGE_VERIFY,
             listOf("change", "recover", "--plan", "plan") to CanonicalOperation.CHANGE_RECOVER,
         )
 
@@ -60,18 +60,20 @@ class CliBoundaryContractTest {
             assertEquals(operation, (action as CliAction.Semantic).request.operation)
         }
         assertTrue(factory.parse(emptyList()) is CliCommandParsing.Rejected)
+        assertTrue(factory.parse(listOf("workspace", "inspect")) is CliCommandParsing.Rejected)
+        assertTrue(factory.parse(listOf("symbol", "resolve")) is CliCommandParsing.Rejected)
+        assertTrue(factory.parse(listOf("symbol", "describe")) is CliCommandParsing.Rejected)
+        assertTrue(factory.parse(listOf("change", "verify")) is CliCommandParsing.Rejected)
         assertTrue(factory.parse(listOf("workspace", "refresh")) is CliCommandParsing.Rejected)
         assertTrue(factory.parse(listOf("up")) is CliCommandParsing.Rejected)
     }
 
     @Test
-    fun `five local lifecycle commands are admitted without semantic arguments`() {
+    fun `exactly three local lifecycle commands are admitted without semantic arguments`() {
         val commands = mapOf(
             "start" to CliLifecycleCommand.START,
             "stop" to CliLifecycleCommand.STOP,
             "status" to CliLifecycleCommand.STATUS,
-            "clean" to CliLifecycleCommand.CLEAN,
-            "reindex" to CliLifecycleCommand.REINDEX,
         )
 
         val factory = commandGraphFactory()
@@ -82,6 +84,9 @@ class CliBoundaryContractTest {
             assertTrue(action is CliAction.Lifecycle)
             assertEquals(command, (action as CliAction.Lifecycle).command)
         }
+        assertEquals(setOf("start", "status", "stop"), CliLifecycleCommand.entries.map { it.command }.toSet())
+        assertTrue(factory.parse(listOf("clean")) is CliCommandParsing.Rejected)
+        assertTrue(factory.parse(listOf("reindex")) is CliCommandParsing.Rejected)
         assertTrue(factory.parse(listOf("start", "unexpected")) is CliCommandParsing.Rejected)
     }
 
@@ -166,6 +171,15 @@ class CliBoundaryContractTest {
     private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
         is Refinement.Refined -> value
         is Refinement.Rejected -> error("Expected refined value, got $failure")
+    }
+
+    private fun exactSelectorToken(): String {
+        val payload = "{}".toByteArray(StandardCharsets.UTF_8)
+        val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
+        val digest = MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { byte ->
+            (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+        }
+        return "exact:v2:$encoded:$digest"
     }
 }
 

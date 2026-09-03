@@ -1,7 +1,7 @@
 package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.contract.RelationReadResult
-import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
@@ -19,9 +19,9 @@ internal object CanonicalSymbolSerializers {
         SymbolDiscoverResultWireDocument::toContract,
     )
     val describeResult = factory.create(
-        SymbolDescribeResultWireDocument.serializer(),
-        SymbolDescribeResult::toSymbolWireDocument,
-        SymbolDescribeResultWireDocument::toContract,
+        SymbolInspectResultWireDocument.serializer(),
+        SymbolInspectResult::toSymbolWireDocument,
+        SymbolInspectResultWireDocument::toContract,
     )
     val relationResult = factory.create(
         RelationReadResultWireDocument.serializer(),

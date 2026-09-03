@@ -19,7 +19,6 @@ import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
-import io.github.amichne.kast.protocol.contract.ChangeVerifyRequest
 import io.github.amichne.kast.protocol.contract.ProtocolText
 
 internal fun changeCommandGroup(
@@ -28,13 +27,12 @@ internal fun changeCommandGroup(
     val commands = listOf(
         ChangePlanCommand(preparers),
         ChangeApplyCommand(preparers),
-        ChangeVerifyCommand(preparers),
         ChangeRecoverCommand(preparers),
     )
     return CommandFamily(
         KastCommandGroup(
             "change",
-            "Plan, apply, verify, and recover typed sidecar-backed changes.",
+            "Plan, apply with verification, and recover typed sidecar-backed changes.",
         )
             .subcommands(commands),
         commands,
@@ -177,27 +175,10 @@ private class ChangeApplyCommand(
 ) {
     private val plan by protocolTextOption("--plan", "Plan identity.").requiredOnce()
 
-    override fun help(context: Context): String = "Apply one admitted change plan."
+    override fun help(context: Context): String =
+        "Apply one admitted change plan and return only after verified completion."
 
     override fun resolveAction(): CliActionResolution = prepare(ChangeApplyRequest(plan))
-}
-
-private class ChangeVerifyCommand(
-    preparers: CanonicalCliRequestPreparers,
-) : SemanticKastCommand<ChangeVerifyRequest>(
-    name = "verify",
-    operation = CanonicalOperation.CHANGE_VERIFY,
-    schemaUsage = "change verify --application <application-identity>",
-    preparer = preparers.changeVerify,
-) {
-    private val application by protocolTextOption(
-        "--application",
-        "Application identity.",
-    ).requiredOnce()
-
-    override fun help(context: Context): String = "Verify one applied change."
-
-    override fun resolveAction(): CliActionResolution = prepare(ChangeVerifyRequest(application))
 }
 
 private class ChangeRecoverCommand(

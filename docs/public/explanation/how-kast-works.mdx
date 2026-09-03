@@ -23,13 +23,13 @@ sequenceDiagram
     participant Dispatch as Semantic dispatch
     participant K2 as IntelliJ adapter
 
-    Caller->>CLI: kast symbol describe --selector ...
+    Caller->>CLI: kast symbol inspect --selector ...
     CLI->>Admission: canonical repository root
     Admission->>Endpoint: descriptor, process, socket, compatibility
     Endpoint-->>Admission: admitted exact-root capability
-    CLI->>Endpoint: bounded SymbolDescribeRequestDocument
+    CLI->>Endpoint: bounded SymbolInspectRequestDocument
     Endpoint->>Dispatch: admit and decode request
-    Dispatch->>K2: describe exact selector
+    Dispatch->>K2: inspect exact selector
     K2-->>Dispatch: detached host-neutral evidence
     Dispatch-->>CLI: typed outcome document
     CLI-->>Caller: complete, qualified, or rejected JSON
@@ -54,9 +54,9 @@ authorize reading the user's IDEA cache. Kast ships no IDEA distribution and
 has no user-IDE plugin fallback.
 
 Before the sidecar publishes readiness, its composition constructs the
-exact thirteen-operation public capability set: workspace inspection, index
-synchronization, topology build, three symbol operations, relation reads,
-traversal, diagnostics, and the four AddDeclaration lifecycle operations.
+exact eleven-operation public capability set: index synchronization, topology
+build, symbol discovery and inspection, source and relation reads, traversal,
+diagnostics, and planning, verified application, or recovery for changes.
 
 Source-root identity comes from IntelliJ's canonical local source-folder URL,
 not from an existence-dependent `VirtualFile`. A declared source directory may
@@ -82,7 +82,7 @@ outside-workspace, conflicting, or otherwise unproven roots still fail closed.
 
 ## Optional index seeding is a validated copy
 
-`kast start --seed-from-idea` is the only operation authorized to read an IDEA
+`kast start --cache seed` is the only lifecycle intent authorized to read an IDEA
 system directory. The source must belong to the exact runtime and target
 project, and IDEA must be fully stopped with no live lock or matching process.
 Interactive startup discloses the version-specific allowlist, estimated bytes,
@@ -111,19 +111,19 @@ finite reason without recording tool arguments, results, or repository content.
 
 ## Follow one symbol request
 
-Assume discovery and resolution already returned an exact selector:
+Assume inspection already returned an exact selector:
 
 ```console
-kast symbol describe --selector '<exact-selector>'
+kast symbol inspect --selector '<exact-selector>'
 ```
 
-The Kotlin control executable parses `symbol.describe` and constructs a
-`SymbolDescribeRequestDocument`. `UnixDomainWireClient` sends that document as
+The Kotlin control executable parses `symbol.inspect` and constructs a
+`SymbolInspectRequestDocument`. `UnixDomainWireClient` sends that document as
 one bounded frame to the admitted socket.
 
 The private `InstalledIndexerTransport` reads the frame and passes it through
 `KastIndexerHost` to `InstalledKastRuntime`. `CanonicalKastOperationHandlerFactory`
-binds the complete thirteen-operation protocol to the exact workspace graph.
+binds the complete eleven-operation protocol to the exact workspace graph.
 This request reaches the symbol service created by `InstalledIntellijSymbolPorts`.
 Its request-local IntelliJ adapters resolve the selector with Project, PSI,
 index, and K2 authority, then detach a host-neutral symbol description.
@@ -151,7 +151,7 @@ diagnostic to standard error for a boundary rejection.
     - [`InstalledKastRuntime`](https://github.com/amichne/kast/blob/main/runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/bootstrap/InstalledKastRuntime.kt)
       admits the exact workspace and state directory before composition.
     - [`InstalledRuntimeAssembly`](https://github.com/amichne/kast/blob/main/runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/bootstrap/InstalledRuntimeAssembly.kt)
-      constructs the workspace graph, persistence, and all thirteen canonical
+      constructs the workspace graph, persistence, and all eleven canonical
       operation handlers.
     - [`InstalledIntellijWorkspace`](https://github.com/amichne/kast/blob/main/workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledIntellijWorkspace.kt)
       owns project open, Gradle import, indexing, and detached model capture.
@@ -168,7 +168,7 @@ diagnostic to standard error for a boundary rejection.
         CLI --> WIRE[Typed wire documents]
         ADMIT --> SIDECAR[Private installed-IDE sidecar]
         WIRE --> TRANSPORT[Private sidecar transport]
-        TRANSPORT --> DISPATCH[Exact thirteen-route semantic dispatch]
+        TRANSPORT --> DISPATCH[Exact eleven-route semantic dispatch]
         DISPATCH --> ROUTES[Read and change routes]
         ROUTES --> K2[Request-local IntelliJ adapters]
         K2 --> EVIDENCE[Host-neutral evidence]
@@ -197,11 +197,11 @@ quiescence proof used at startup, captures current source identity, and
 reconciles the workspace publication. Missing, outside-root, refresh-failed,
 or indexing-failed state returns a typed rejection.
 
-Only an `AppliedUnverified` physical apply schedules that same synchronization
-asynchronously. Rejected and recovery-required apply outcomes enqueue nothing;
-failure to schedule cannot rewrite the already-proven apply result. Verification
-still requires a resulting same-root generation derived from the exact prior
-lease. Unresolved recovery never regains write authority.
+`change.apply` owns the full write, successor publication, and verification
+sequence. It returns success only with a verified receipt for a resulting
+same-root generation derived from the exact prior lease. Rejected and
+recovery-required outcomes cannot be presented as successful application, and
+unresolved recovery never regains write authority.
 
 ## Compiler objects stay inside the adapter
 
@@ -217,17 +217,17 @@ serialized or reused after their workspace generation changes.
 
 <Columns cols={3}>
   <Card title="Sidecar routes" icon="circle-check">
-    Workspace inspection, index synchronization, topology, symbol reads,
-    relation reads, traversal, diagnostics, and the AddDeclaration lifecycle
-    are the thirteen public installed capabilities.
+    Index synchronization, topology, symbol discovery and inspection, source
+    and relation reads, traversal, diagnostics, planning, verified application,
+    and recovery are the eleven public installed capabilities.
   </Card>
   <Card title="Compiler-grounded reads" icon="circle-dashed">
     Relation and diagnostic routes use the same typed compiler services as
     planning and verification while remaining independently callable.
   </Card>
   <Card title="Kast-owned lifecycle" icon="power">
-    `status` is passive, `stop` targets only the proven sidecar process,
-    `clean` retains the private cache, and `reindex` quarantines only that cache.
+    `start` owns admission and typed cache policy, `status` is passive, and
+    `stop` targets only the proven sidecar process and its endpoint artifacts.
   </Card>
 </Columns>
 

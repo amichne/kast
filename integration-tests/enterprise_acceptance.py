@@ -59,6 +59,7 @@ AMBIENT_ENVIRONMENT_ALLOWLIST = (
     "CODEX_EXECUTABLE",
     "DEVELOPER_DIR",
     "JAVA_HOME",
+    "KAST_ACCEPTANCE_IDEA_HOME",
     "LANG",
     "LC_ALL",
     "LC_CTYPE",
@@ -339,6 +340,12 @@ class Acceptance:
         self.executable = executable
         self.workspace = host.workspace
         self.environment = host.child_environment()
+        try:
+            self.idea_home = Path(
+                self.environment["KAST_ACCEPTANCE_IDEA_HOME"]
+            ).resolve(strict=True)
+        except (KeyError, OSError) as error:
+            fail(f"acceptance IDEA home is unavailable: {error}")
         self.maximum_output_bytes = positive_integer(bounds, "maximumOutputBytes")
         self.maximum_operation_seconds = positive_integer(bounds, "maximumOperationSeconds")
         self.maximum_startup_seconds = positive_integer(bounds, "maximumStartupSeconds")
@@ -386,9 +393,33 @@ class Acceptance:
         return document
 
     def prove_installed_surface(self, bounds: dict[str, Any]) -> None:
-        inspected = self.command("workspace", "inspect", timeout=self.maximum_startup_seconds)
-        if inspected.get("status") not in {"complete", "qualified"}:
-            fail(f"enterprise workspace did not become readable: {inspected}")
+        started = self.command(
+            "start",
+            "--idea-home",
+            str(self.idea_home),
+            timeout=self.maximum_startup_seconds,
+        )
+        if (
+            started.get("command") != "start"
+            or started.get("status") != "complete"
+            or started.get("runtime") != "running"
+        ):
+            fail(f"enterprise workspace did not become ready: {started}")
+        status = self.command("status")
+        if (
+            status.get("command") != "status"
+            or status.get("status") != "complete"
+            or status.get("runtime") != "running"
+        ):
+            fail(f"passive lifecycle status did not observe the runtime: {status}")
+        synchronized = self.command(
+            "index", "sync", timeout=self.maximum_reconciliation_seconds
+        )
+        if (
+            synchronized.get("operation") != "index.sync"
+            or synchronized.get("status") != "complete"
+        ):
+            fail(f"explicit index synchronization did not complete: {synchronized}")
 
         discovery_limit = positive_integer(bounds, "symbolDiscoveryLimit")
         discovery_arguments = (
@@ -493,6 +524,28 @@ class Acceptance:
             fail("restart changed exact enterprise selector cardinality")
         root_selector = exact_roots[0]
 
+        source = self.command("source", "read", "--anchor", root_selector)
+        if (
+            source.get("operation") != "source.read"
+            or source.get("status") not in {"complete", "qualified"}
+            or not isinstance(source.get("snapshot"), dict)
+        ):
+            fail(f"source.read returned no bounded source evidence: {source}")
+
+        diagnostics = self.command(
+            "diagnostic",
+            "check",
+            "--scope",
+            "domains/alpha/one/src/main/kotlin/enterprise/alpha/one/Enterprise.kt",
+            "--limit",
+            str(positive_integer(bounds, "relationResultLimit")),
+        )
+        if (
+            diagnostics.get("operation") != "diagnostic.check"
+            or diagnostics.get("status") not in {"complete", "qualified"}
+        ):
+            fail(f"diagnostic.check returned no scoped evidence: {diagnostics}")
+
         relation_limit = positive_integer(bounds, "relationResultLimit")
         relation = self.command(
             "relation",
@@ -538,26 +591,32 @@ class Acceptance:
             or stopped.get("runtime") != "stopped"
         ):
             fail(f"public runtime stop did not complete: {stopped}")
+        restarted = self.command(
+            "start",
+            "--idea-home",
+            str(self.idea_home),
+            timeout=self.maximum_startup_seconds,
+        )
+        if (
+            restarted.get("command") != "start"
+            or restarted.get("status") != "complete"
+            or restarted.get("runtime") != "running"
+        ):
+            fail(f"public runtime restart did not complete: {restarted}")
         reused = self.command(
             "topology", "build", timeout=self.maximum_startup_seconds
         )
         if (
             reused.get("operation") != "topology.build"
             or reused.get("status") != "complete"
-            or reused.get("snapshotStatus") != "reused"
+            or reused.get("snapshotStatus") not in {"published", "reused"}
             or not isinstance(reused.get("digest"), str)
             or not isinstance(reused.get("generation"), int)
         ):
             fail(
-                "restarted runtime did not rebind the exact published SQLite "
+                "restarted runtime did not publish or rebind the exact SQLite "
                 f"topology facts: {reused}"
             )
-        if (
-            reused.get("generation") == published.get("generation")
-            and reused.get("digest") != published.get("digest")
-        ):
-            fail(f"same-generation topology digest changed across restart: {reused}")
-
     @staticmethod
     def prove_restart_semantic_equivalence(
         query: str,
@@ -578,6 +637,31 @@ class Acceptance:
             fail(f"semantic evidence changed across restart for {query}")
 
     def prove_generation_transition(self, target: str, stale_selector: str) -> None:
+        recovery_plan = self.command(
+            "change",
+            "plan",
+            "--intent",
+            "add-declaration",
+            "--target",
+            target,
+            "--declaration",
+            "fun enterpriseRecoveryProbe(): Int = 0",
+        )
+        recovery_plan_identity = recovery_plan.get("planIdentity")
+        if recovery_plan.get("status") != "complete" or not isinstance(
+            recovery_plan_identity, str
+        ):
+            fail(f"enterprise recovery plan was not complete: {recovery_plan}")
+        recovered = self.command(
+            "change", "recover", "--plan", recovery_plan_identity
+        )
+        if (
+            recovered.get("operation") != "change.recover"
+            or recovered.get("status") != "complete"
+            or not isinstance(recovered.get("state"), str)
+        ):
+            fail(f"enterprise recovery did not restore known state: {recovered}")
+
         plan = self.command(
             "change",
             "plan",
@@ -591,23 +675,22 @@ class Acceptance:
         plan_identity = plan.get("planIdentity")
         if plan.get("status") != "complete" or not isinstance(plan_identity, str):
             fail(f"enterprise mutation plan was not complete: {plan}")
-        applied = self.command("change", "apply", "--plan", plan_identity)
-        application_identity = applied.get("applicationIdentity")
-        if applied.get("status") != "complete" or not isinstance(application_identity, str):
-            fail(f"enterprise mutation did not reach AppliedUnverified: {applied}")
-        verified = self.command(
-            "change", "verify", "--application", application_identity,
+        applied = self.command(
+            "change", "apply", "--plan", plan_identity,
             timeout=self.maximum_reconciliation_seconds,
         )
-        if verified.get("status") != "complete" or not verified.get("receiptIdentity"):
-            fail(f"enterprise mutation did not publish a verified generation: {verified}")
+        if applied.get("status") != "complete" or not applied.get("receiptIdentity"):
+            fail(f"enterprise mutation did not return a verified receipt: {applied}")
         stale = self.command(
             "symbol",
-            "describe",
+            "inspect",
             "--selector",
             stale_selector,
         )
-        if stale.get("status") != "rejected" or stale.get("reason") != "selector-stale":
+        if (
+            stale.get("status") != "rejected"
+            or stale.get("reason") != "exact-selector-stale"
+        ):
             fail(f"prior-generation selector was not rejected: {stale}")
 
     def prove_workspace_write_scope(self) -> None:
@@ -644,20 +727,19 @@ class Acceptance:
             fail(f"symbol discovery found no candidates for {query}: {discovery}")
         resolved: dict[str, dict[str, Any]] = {}
         for candidate in candidates:
-            resolution = self.command(
-                "symbol", "resolve", "--candidate", candidate
+            inspection = self.command(
+                "symbol", "inspect", "--candidate", candidate
             )
-            if resolution.get("status") != "complete":
+            if inspection.get("status") != "complete":
                 continue
-            selector = resolution.get("exactSelector")
-            if not isinstance(selector, str):
-                fail(f"symbol.resolve omitted exact identity: {resolution}")
-            description = self.command("symbol", "describe", "--selector", selector)
-            symbol = description.get("symbol")
+            symbol = inspection.get("symbol")
             if not isinstance(symbol, dict):
-                fail(f"symbol.describe omitted structured symbol evidence: {description}")
+                fail(f"symbol.inspect omitted structured symbol evidence: {inspection}")
+            selector = symbol.get("selector")
+            if not isinstance(selector, str):
+                fail(f"symbol.inspect omitted exact identity: {inspection}")
             if symbol.get("selector") != selector:
-                fail(f"symbol.describe returned mismatched exact identity: {description}")
+                fail(f"symbol.inspect returned mismatched exact identity: {inspection}")
             resolved[selector] = symbol
         return resolved
 

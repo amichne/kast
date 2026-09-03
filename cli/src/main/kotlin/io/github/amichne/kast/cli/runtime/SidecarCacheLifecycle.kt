@@ -302,7 +302,7 @@ class FilesystemRootSidecarCacheLifecycle(
             target,
             RuntimeStartupRequest.Requested(
                 StartupIdeHome.Explicit(record.ideaHome),
-                StartupCacheIntent.ReuseOrFresh,
+                StartupCacheIntent.Reuse,
             ),
         )
     }

@@ -10,18 +10,16 @@ class HostedOperationProjectionTest {
     fun `canonical definitions are the sole ordered hosted exposure authority`() {
         assertEquals(
             listOf(
-                CanonicalOperation.WORKSPACE_INSPECT,
                 CanonicalOperation.INDEX_SYNC,
                 CanonicalOperation.TOPOLOGY_BUILD,
                 CanonicalOperation.SYMBOL_DISCOVER,
-                CanonicalOperation.SYMBOL_RESOLVE,
-                CanonicalOperation.SYMBOL_DESCRIBE,
+                CanonicalOperation.SYMBOL_INSPECT,
+                CanonicalOperation.SOURCE_READ,
                 CanonicalOperation.RELATION_READ,
                 CanonicalOperation.TRAVERSAL_RUN,
                 CanonicalOperation.DIAGNOSTIC_CHECK,
                 CanonicalOperation.CHANGE_PLAN,
                 CanonicalOperation.CHANGE_APPLY,
-                CanonicalOperation.CHANGE_VERIFY,
                 CanonicalOperation.CHANGE_RECOVER,
             ),
             HostedOperationProjection.publicDefinitions.map { it.operation },

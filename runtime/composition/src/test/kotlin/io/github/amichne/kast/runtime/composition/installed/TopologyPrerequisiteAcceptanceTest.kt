@@ -17,7 +17,8 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
 import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
-import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.runtime.composition.change.requireCompleteChangePlanTraversal
@@ -25,7 +26,7 @@ import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeAuthor
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangePlanHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalProtocolAuthority
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDiscoverHandler
-import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolResolveHandler
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolInspectHandler
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmission
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionFailure
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionOperations
@@ -241,18 +242,20 @@ private fun resolvedContext(temporary: Path): ResolvedTopologyContext {
     val fixture = InstalledSymbolProtocolFixture.create(root)
     val authority = CanonicalProtocolAuthority()
     val discover = CanonicalSymbolDiscoverHandler(fixture.workspace, fixture.discovery, authority)
-    val resolve = CanonicalSymbolResolveHandler(fixture.exact, authority)
+    val inspect = CanonicalSymbolInspectHandler(fixture.exact, authority)
     val discovered = runImmediate {
         discover.execute(symbolDiscoverRequest("sample", 4))
     } as OperationOutcome.Complete
     val candidate = (
         discovered.evidence.payload.items.values.single() as SymbolDiscoveryDocument.Declaration
         ).candidateSelector
-    val resolved = runImmediate { resolve.execute(SymbolResolveRequest(candidate)) } as
+    val inspected = runImmediate {
+        inspect.execute(SymbolInspectRequest(SymbolInspectTarget.Candidate(candidate)))
+    } as
         OperationOutcome.Complete
     val workspace = runImmediate { fixture.workspace.inspect() } as
         io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState.Ready
-    val exact = resolved.evidence.payload.exactSelector
+    val exact = inspected.evidence.payload.symbol.selector
     val selector = when (val lookup = authority.exact(exact)) {
         is ExactSelectorLookup.Found -> lookup.selector
         ExactSelectorLookup.Missing -> error("resolved selector authority is required")

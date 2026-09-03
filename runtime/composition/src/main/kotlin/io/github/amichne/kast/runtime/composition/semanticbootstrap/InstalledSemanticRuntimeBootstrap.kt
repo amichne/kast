@@ -120,7 +120,6 @@ private fun InstalledRuntimeAssemblyFailure.intellijBootstrapFailure():
     is InstalledRuntimeAssemblyFailure.WorkspacePublication -> failure.intellijBootstrapFailure()
     is InstalledRuntimeAssemblyFailure.Composition,
     is InstalledRuntimeAssemblyFailure.Persistence,
-    is InstalledRuntimeAssemblyFailure.WorkspaceHandler,
         -> IntellijBootstrapFailureProjection.NotIntellijBootstrap
 }
 

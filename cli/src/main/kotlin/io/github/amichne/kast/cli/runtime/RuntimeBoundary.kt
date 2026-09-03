@@ -16,7 +16,6 @@ import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifest
 import io.github.amichne.kast.distribution.managed.RuntimeStoreFailure
 import io.github.amichne.kast.distribution.managed.SemanticRuntimeResolution
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointDescriptorFailure
 import java.io.IOException
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
@@ -391,19 +390,6 @@ sealed interface RuntimeAdmissionFailure {
     data object EndpointUnavailable : RuntimeAdmissionFailure
     data object RuntimeIdentityMismatch : RuntimeAdmissionFailure
     data object LegacySidecarActive : RuntimeAdmissionFailure
-    data object IdeRootInvalid : RuntimeAdmissionFailure
-    data object IdeLocationRejected : RuntimeAdmissionFailure
-    data object IdeDescriptorReadRejected : RuntimeAdmissionFailure
-    data class IdeDescriptorRejected(
-        val failure: IdeEndpointDescriptorFailure,
-    ) : RuntimeAdmissionFailure
-    data object IdeRootMismatch : RuntimeAdmissionFailure
-    data object IdeSocketMismatch : RuntimeAdmissionFailure
-    data object IdeProcessUnavailable : RuntimeAdmissionFailure
-    data object IdeProcessObservationRejected : RuntimeAdmissionFailure
-    data object IdeEndpointUnreachable : RuntimeAdmissionFailure
-    data object IdeCapabilityUnavailable : RuntimeAdmissionFailure
-    data object IdeVariantUnavailable : RuntimeAdmissionFailure
     data object Interrupted : RuntimeAdmissionFailure
     data class InstalledIdeRejected(val failure: IndexSeedFailure) : RuntimeAdmissionFailure
     data class SidecarCacheRejected(val failure: SidecarCacheFailure) : RuntimeAdmissionFailure
@@ -482,18 +468,6 @@ internal fun RuntimeAdmissionFailure.outputReason(): String = when (this) {
     RuntimeAdmissionFailure.EndpointUnavailable -> "endpoint-unavailable"
     RuntimeAdmissionFailure.RuntimeIdentityMismatch -> "runtime-identity-mismatch"
     RuntimeAdmissionFailure.LegacySidecarActive -> "legacy-sidecar-active"
-    RuntimeAdmissionFailure.IdeRootInvalid -> "ide-root-invalid"
-    RuntimeAdmissionFailure.IdeLocationRejected -> "ide-location-rejected"
-    RuntimeAdmissionFailure.IdeDescriptorReadRejected -> "ide-descriptor-read-rejected"
-    is RuntimeAdmissionFailure.IdeDescriptorRejected -> "ide-descriptor-rejected"
-    RuntimeAdmissionFailure.IdeRootMismatch -> "ide-root-mismatch"
-    RuntimeAdmissionFailure.IdeSocketMismatch -> "ide-socket-mismatch"
-    RuntimeAdmissionFailure.IdeProcessUnavailable -> "ide-process-unavailable"
-    RuntimeAdmissionFailure.IdeProcessObservationRejected ->
-        "ide-process-observation-rejected"
-    RuntimeAdmissionFailure.IdeEndpointUnreachable -> "ide-endpoint-unreachable"
-    RuntimeAdmissionFailure.IdeCapabilityUnavailable -> "ide-capability-unavailable"
-    RuntimeAdmissionFailure.IdeVariantUnavailable -> "ide-variant-unavailable"
     RuntimeAdmissionFailure.Interrupted -> "interrupted"
     is RuntimeAdmissionFailure.InstalledIdeRejected -> when (failure) {
         IndexSeedFailure.Ambiguity -> "idea-installation-ambiguous"

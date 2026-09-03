@@ -23,6 +23,7 @@ import io.github.amichne.kast.runtime.composition.platform.projectInstalledGradl
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalKastOperationHandlerFactory
 import io.github.amichne.kast.symbol.intellij.InstalledIntellijSymbolPorts
 import io.github.amichne.kast.symbol.intellij.InstalledSymbolScopeOperations
+import io.github.amichne.kast.source.intellij.InstalledIntellijSourceReadPort
 import io.github.amichne.kast.workspace.contract.WorkspacePublicationRun
 import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspace
 import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceBootstrapObserver
@@ -273,24 +274,18 @@ private fun assembleInstalledRuntime(
         ),
         request.observability,
     )
-    val handlers = when (val created = CanonicalKastOperationHandlerFactory.create(
-        request.workspaceRoot,
-        graph.operations.workspaceInspect,
+    val handlers = CanonicalKastOperationHandlerFactory.create(
+        graph.workspace,
         InstalledChangePlanningAdmission(
-            graph.operations.workspaceInspect,
-            graph.operations.symbolDescribe,
+            graph.workspace,
+            graph.operations.symbolInspect,
             graph.operations.relationRead,
             graph.operations.traversalRun,
             graph.operations.diagnosticCheck,
             platform.change.sourceObserver,
             platform.change.intentCompiler,
         ),
-    )) {
-        is Refinement.Refined -> created.value
-        is Refinement.Rejected -> return InstalledRuntimeAssembly.Rejected(
-            InstalledRuntimeAssemblyFailure.WorkspaceHandler(created.failure),
-        )
-    }
+    )
     return when (val composition = KastRuntimeComposition.bind(graph.operations, handlers)) {
         is KastRuntimeCompositionConstruction.Created ->
             InstalledRuntimeAssembly.Assembled(composition.composition)
@@ -322,6 +317,7 @@ private fun productionPlatformPorts(
         SemanticRuntimePorts(
             symbols.discovery,
             symbols.exact,
+            InstalledIntellijSourceReadPort.create(root),
             relation,
             installedIntellijDiagnosticCompiler(root, workspace),
         ),

@@ -1,7 +1,6 @@
 package io.github.amichne.kast.runtime.composition.protocol
 
 import io.github.amichne.kast.change.apply.AddDeclarationApplyFailure
-import io.github.amichne.kast.change.apply.AddDeclarationApplyOperations
 import io.github.amichne.kast.change.apply.AddDeclarationApplyResult
 import io.github.amichne.kast.change.apply.AppliedUnverified
 import io.github.amichne.kast.change.apply.MutationAdmissionFailure
@@ -15,12 +14,9 @@ import io.github.amichne.kast.change.verify.ChangeProofFailure
 import io.github.amichne.kast.change.verify.RenameSymbolProofFailure
 import io.github.amichne.kast.change.verify.ReplaceDeclarationProofFailure
 import io.github.amichne.kast.change.verify.VerifiedMutationBeforePublicationFailure
-import io.github.amichne.kast.change.verify.VerifiedMutationOperations
 import io.github.amichne.kast.change.verify.VerifiedMutationRequest
 import io.github.amichne.kast.change.verify.VerifiedMutationResult
-import io.github.amichne.kast.change.verify.ChangeApplicationIdentity
 import io.github.amichne.kast.change.verify.ChangeApplicationIssuance
-import io.github.amichne.kast.change.verify.ChangeApplicationLookup
 import io.github.amichne.kast.change.verify.ChangePlanIdentity
 import io.github.amichne.kast.change.verify.ChangePlanLookup
 import io.github.amichne.kast.change.verify.ChangeReceiptIssuance
@@ -39,11 +35,8 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
 import io.github.amichne.kast.protocol.contract.ChangeRecoveryDocumentState
-import io.github.amichne.kast.protocol.contract.ChangeVerifyQualification
-import io.github.amichne.kast.protocol.contract.ChangeVerifyRejection
-import io.github.amichne.kast.protocol.contract.ChangeVerifyRequest
-import io.github.amichne.kast.protocol.contract.ChangeVerifyResult
 import io.github.amichne.kast.runtime.composition.ChangeRecoveryOperations
+import io.github.amichne.kast.runtime.composition.VerifiedChangeApplyOperations
 import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
@@ -51,7 +44,7 @@ import io.github.amichne.kast.change.apply.ChangeApplyRequest as DomainChangeApp
 
 internal class CanonicalChangeApplyHandler(
     private val workspace: WorkspaceInspectionOperations,
-    private val operations: AddDeclarationApplyOperations,
+    private val operations: VerifiedChangeApplyOperations,
     private val authority: DurableChangeAuthority,
 ) : OperationHandler<
     ChangeApplyRequest,
@@ -81,8 +74,10 @@ internal class CanonicalChangeApplyHandler(
             ready.root,
             plan.writes.entries.mapTo(linkedSetOf()) { it.source },
         )
-        return when (val result = operations.apply(DomainChangeApplyRequest(plan, ready, writeScope))) {
-            is AppliedUnverified -> applied(result, plan)
+        return when (val result = operations.apply.apply(
+            DomainChangeApplyRequest(plan, ready, writeScope),
+        )) {
+            is AppliedUnverified -> verify(result, plan)
             is AddDeclarationApplyResult.Rejected ->
                 OperationOutcome.Rejected(result.failure.protocolRejection())
             is AddDeclarationApplyResult.RolledBack ->
@@ -92,82 +87,49 @@ internal class CanonicalChangeApplyHandler(
         }
     }
 
-    private fun applied(
+    private fun verify(
         result: AppliedUnverified,
         plan: io.github.amichne.kast.change.contract.ChangePlan,
     ): OperationOutcome<ChangeApplyResult, ChangeApplyQualification, ChangeApplyRejection> =
         when (val issued = authority.issueApplication(plan, result)) {
-            is ChangeApplicationIssuance.Issued -> OperationOutcome.Complete(
-                EvidenceEnvelope(
-                    CanonicalOperation.CHANGE_APPLY.id,
-                    result.priorLease.generation,
-                    ChangeApplyResult(issued.identity.protocolText()),
-                ),
-            )
+            is ChangeApplicationIssuance.Issued -> when (
+                val verification = operations.verify.verify(VerifiedMutationRequest(plan, result))
+            ) {
+                is VerifiedMutationResult.Verified -> complete(verification)
+                is VerifiedMutationResult.RejectedBeforePublication -> OperationOutcome.Rejected(
+                    when (verification.failure) {
+                        is VerifiedMutationBeforePublicationFailure.Admission ->
+                            ChangeApplyRejection.OBLIGATION_FAILED
+                        is VerifiedMutationBeforePublicationFailure.Publication ->
+                            ChangeApplyRejection.RESULTING_GENERATION_UNAVAILABLE
+                    },
+                )
+                is VerifiedMutationResult.RejectedAfterPublication,
+                is VerifiedMutationResult.RejectedAfterResultingWorkspace,
+                    -> OperationOutcome.Rejected(
+                        ChangeApplyRejection.RESULTING_GENERATION_UNAVAILABLE,
+                    )
+                is VerifiedMutationResult.RejectedAfterObservation ->
+                    OperationOutcome.Rejected(verification.failures.protocolRejection())
+            }
             is ChangeApplicationIssuance.Rejected ->
                 OperationOutcome.Rejected(ChangeApplyRejection.RECOVERY_REQUIRED)
         }
-}
 
-internal class CanonicalChangeVerifyHandler(
-    private val operations: VerifiedMutationOperations,
-    private val authority: DurableChangeAuthority,
-) : OperationHandler<
-    ChangeVerifyRequest,
-    ChangeVerifyResult,
-    ChangeVerifyQualification,
-    ChangeVerifyRejection,
-    > {
-    override suspend fun execute(request: ChangeVerifyRequest): OperationOutcome<
-        ChangeVerifyResult,
-        ChangeVerifyQualification,
-        ChangeVerifyRejection,
-        > {
-        val identity = ChangeApplicationIdentity.parse(request.applicationIdentity.value)
-            ?: return OperationOutcome.Rejected(ChangeVerifyRejection.APPLICATION_NOT_FOUND)
-        val pending = when (val lookup = authority.loadApplication(identity)) {
-            is ChangeApplicationLookup.Found -> lookup.application
-            ChangeApplicationLookup.Missing ->
-                return OperationOutcome.Rejected(ChangeVerifyRejection.APPLICATION_NOT_FOUND)
-            is ChangeApplicationLookup.Rejected ->
-                return OperationOutcome.Rejected(ChangeVerifyRejection.OBLIGATION_FAILED)
+    private fun complete(
+        result: VerifiedMutationResult.Verified,
+    ): OperationOutcome<ChangeApplyResult, ChangeApplyQualification, ChangeApplyRejection> =
+        when (val issued = authority.issueReceipt(result.receipt)) {
+            is ChangeReceiptIssuance.Issued -> OperationOutcome.Complete(
+                EvidenceEnvelope(
+                    CanonicalOperation.CHANGE_APPLY.id,
+                    result.receipt.resultingWorkspace.generation,
+                    ChangeApplyResult(issued.identity.protocolText()),
+                ),
+            )
+            is ChangeReceiptIssuance.Rejected ->
+                OperationOutcome.Rejected(ChangeApplyRejection.OBLIGATION_FAILED)
         }
-        return when (val result = operations.verify(
-            VerifiedMutationRequest(
-                pending.plan,
-                pending.application,
-            )
-        )) {
-            is VerifiedMutationResult.Verified -> when (
-                val issued = authority.issueReceipt(result.receipt)
-            ) {
-                is ChangeReceiptIssuance.Issued -> OperationOutcome.Complete(
-                    EvidenceEnvelope(
-                        CanonicalOperation.CHANGE_VERIFY.id,
-                        result.receipt.resultingWorkspace.generation,
-                        ChangeVerifyResult(issued.identity.protocolText()),
-                    ),
-                )
-                is ChangeReceiptIssuance.Rejected ->
-                    OperationOutcome.Rejected(ChangeVerifyRejection.OBLIGATION_FAILED)
-            }
-            is VerifiedMutationResult.RejectedBeforePublication -> OperationOutcome.Rejected(
-                when (result.failure) {
-                    is VerifiedMutationBeforePublicationFailure.Admission ->
-                        ChangeVerifyRejection.OBLIGATION_FAILED
-                    is VerifiedMutationBeforePublicationFailure.Publication ->
-                        ChangeVerifyRejection.RESULTING_GENERATION_UNAVAILABLE
-                },
-            )
-            is VerifiedMutationResult.RejectedAfterPublication,
-            is VerifiedMutationResult.RejectedAfterResultingWorkspace,
-                -> OperationOutcome.Rejected(
-                ChangeVerifyRejection.RESULTING_GENERATION_UNAVAILABLE,
-            )
-            is VerifiedMutationResult.RejectedAfterObservation ->
-                OperationOutcome.Rejected(result.failures.protocolRejection())
-        }
-    }
 }
 
 internal class CanonicalChangeRecoverHandler(
@@ -230,9 +192,6 @@ internal class CanonicalChangeRecoverHandler(
     )
 }
 
-private fun ChangeApplicationIdentity.protocolText(): io.github.amichne.kast.protocol.contract.ProtocolText =
-    protocolText(value)
-
 private fun io.github.amichne.kast.change.verify.ChangeReceiptIdentity.protocolText():
     io.github.amichne.kast.protocol.contract.ProtocolText = protocolText(value)
 
@@ -281,10 +240,10 @@ private fun AddDeclarationApplyFailure.protocolRejection(): ChangeApplyRejection
     }
 }
 
-private fun Set<ChangeProofFailure>.protocolRejection(): ChangeVerifyRejection = when {
-    any { it.isDiagnosticRegression() } -> ChangeVerifyRejection.DIAGNOSTIC_REGRESSION
-    any { it.isSemanticDeltaRejection() } -> ChangeVerifyRejection.SEMANTIC_DELTA_REJECTED
-    else -> ChangeVerifyRejection.OBLIGATION_FAILED
+private fun Set<ChangeProofFailure>.protocolRejection(): ChangeApplyRejection = when {
+    any { it.isDiagnosticRegression() } -> ChangeApplyRejection.DIAGNOSTIC_REGRESSION
+    any { it.isSemanticDeltaRejection() } -> ChangeApplyRejection.SEMANTIC_DELTA_REJECTED
+    else -> ChangeApplyRejection.OBLIGATION_FAILED
 }
 
 private fun ChangeProofFailure.isDiagnosticRegression(): Boolean = when (this) {

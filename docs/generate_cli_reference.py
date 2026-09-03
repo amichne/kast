@@ -29,12 +29,11 @@ class OperationMetadata:
 
 
 OPERATION_DESCRIPTIONS = {
-    "workspace.inspect": "Report exact-root readiness and workspace identity.",
     "index.sync": "Refresh admitted source roots, await indexing, and publish current semantic evidence.",
     "topology.build": "Build or reuse the durable graph and return its generation and digest.",
     "symbol.discover": "Find bounded candidates by name, location, structure, or text.",
-    "symbol.resolve": "Refine one candidate into an exact symbol selector.",
-    "symbol.describe": "Describe one exact, current-generation symbol.",
+    "symbol.inspect": "Refine a candidate or inspect an exact selector and return exact compiler evidence.",
+    "source.read": "Read bounded source text and structure without establishing compiler identity.",
     "relation.read": "Read one bounded semantic relation from an exact symbol.",
     "traversal.run": (
         "Read one exact-root semantic generation as normalized node, edge, and proof tables "
@@ -42,8 +41,7 @@ OPERATION_DESCRIPTIONS = {
     ),
     "diagnostic.check": "Read compiler diagnostics for one explicit scope.",
     "change.plan": "Derive a typed plan without writing the workspace.",
-    "change.apply": "Apply one admitted plan and return an application identity.",
-    "change.verify": "Check one application against resulting semantic evidence.",
+    "change.apply": "Apply one admitted plan, publish its successor, verify it, and return a receipt.",
     "change.recover": "Restore one plan to a known workspace state.",
 }
 
@@ -51,8 +49,6 @@ LIFECYCLE_DESCRIPTIONS = {
     "start": "Start or reuse the exact-root private sidecar and return workspace readiness.",
     "stop": "Stop only the process proven to own the exact-root sidecar endpoint.",
     "status": "Passively report exact-root runtime identity and private cache state.",
-    "clean": "Remove inactive exact-root endpoint artifacts while retaining the private cache.",
-    "reindex": "Quarantine only the exact Kast cache, then perform a fresh private import.",
 }
 
 LOCAL_COMMAND_DESCRIPTIONS = {

@@ -25,8 +25,6 @@ enum class CliLifecycleCommand(
     START("start"),
     STOP("stop"),
     STATUS("status"),
-    CLEAN("clean"),
-    REINDEX("reindex"),
 }
 
 /** One fully refined action selected by the public command graph. */
@@ -49,7 +47,6 @@ sealed interface CliAction {
         val command: CliLifecycleCommand
 
         data class Start(
-            val request: PreparedCliRequest,
             val startup: RuntimeStartupRequest,
         ) : Lifecycle {
             override val command: CliLifecycleCommand = CliLifecycleCommand.START
@@ -63,15 +60,6 @@ sealed interface CliAction {
             override val command: CliLifecycleCommand = CliLifecycleCommand.STATUS
         }
 
-        data object Clean : Lifecycle {
-            override val command: CliLifecycleCommand = CliLifecycleCommand.CLEAN
-        }
-
-        data class Reindex(
-            val request: PreparedCliRequest,
-        ) : Lifecycle {
-            override val command: CliLifecycleCommand = CliLifecycleCommand.REINDEX
-        }
     }
 }
 
@@ -88,6 +76,18 @@ sealed interface CliUsageFailure {
         TEXT_FILE_REJECTED,
     }
 
+    enum class SymbolInspect : CliUsageFailure {
+        EXACTLY_ONE_TARGET_REQUIRED,
+    }
+
+    enum class SourceRead : CliUsageFailure {
+        ANCHOR_REJECTED,
+        VISIBILITY_REQUIRES_DECLARATIONS,
+        CONTAINMENT_REQUIRES_ENTITIES,
+        WINDOW_LINES_REQUIRE_WINDOW_TEXT,
+        DUPLICATE_SELECTION,
+    }
+
     enum class ChangePlan : CliUsageFailure {
         OPTIONS_DO_NOT_MATCH_INTENT,
     }
@@ -95,7 +95,7 @@ sealed interface CliUsageFailure {
 
 internal fun CliUsageFailure.message(): String = when (this) {
     CliUsageFailure.Start.OPTIONS_REQUIRE_SEED ->
-        "--source-idea-system and --accept-global-index-copy require --seed-from-idea"
+        "--source-idea-system and --accept-global-index-copy require --cache seed"
     CliUsageFailure.SymbolDiscover.OPTIONS_DO_NOT_MATCH_MODE ->
         "options do not match the selected discovery mode"
     CliUsageFailure.SymbolDiscover.TEXT_SCOPE_REQUIRED ->
@@ -104,6 +104,18 @@ internal fun CliUsageFailure.message(): String = when (this) {
         "text discovery with --scope file requires --file"
     CliUsageFailure.SymbolDiscover.TEXT_FILE_REJECTED ->
         "text discovery with --scope workspace does not accept --file"
+    CliUsageFailure.SymbolInspect.EXACTLY_ONE_TARGET_REQUIRED ->
+        "symbol inspect requires exactly one of --candidate or --selector"
+    CliUsageFailure.SourceRead.ANCHOR_REJECTED ->
+        "--anchor must be one valid candidate, exact-symbol, or source selector token"
+    CliUsageFailure.SourceRead.VISIBILITY_REQUIRES_DECLARATIONS ->
+        "--visibility requires at least one --declaration-kind"
+    CliUsageFailure.SourceRead.CONTAINMENT_REQUIRES_ENTITIES ->
+        "--containment requires at least one entity filter"
+    CliUsageFailure.SourceRead.WINDOW_LINES_REQUIRE_WINDOW_TEXT ->
+        "--before-lines and --after-lines require --text window"
+    CliUsageFailure.SourceRead.DUPLICATE_SELECTION ->
+        "declaration kinds and visibility values may each be selected once"
     CliUsageFailure.ChangePlan.OPTIONS_DO_NOT_MATCH_INTENT ->
         "options do not match the selected change intent"
 }
@@ -160,17 +172,6 @@ internal abstract class SemanticKastCommand<Request : OperationRequest>(
             )
         }
 
-    protected fun prepareLifecycle(
-        request: Request,
-        action: (PreparedCliRequest) -> CliAction.Lifecycle,
-    ): CliActionResolution = when (val preparation = preparer.prepare(request)) {
-        is CliProjectionPreparation.Prepared -> CliActionResolution.Selected(
-            action(preparation.request),
-        )
-        is CliProjectionPreparation.Rejected -> CliActionResolution.ProjectionRejected(
-            preparation.failure,
-        )
-    }
 }
 
 internal abstract class LocalKastCommand(

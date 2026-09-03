@@ -13,7 +13,7 @@ sealed interface RuntimeEndpointArtifact
 /** Ephemeral markers whose presence identifies a published runtime endpoint. */
 enum class RuntimeEndpointMarker : RuntimeEndpointArtifact { SOCKET, DESCRIPTOR }
 
-/** Durable state retained across stop and removed only by destructive clean. */
+/** Persistent state owned by one exact endpoint and removed when that endpoint stops. */
 data object RuntimePersistentState : RuntimeEndpointArtifact
 
 internal sealed interface RuntimeEndpointMarkerObservation {
@@ -22,15 +22,6 @@ internal sealed interface RuntimeEndpointMarkerObservation {
     ) : RuntimeEndpointMarkerObservation
 
     data object Rejected : RuntimeEndpointMarkerObservation
-}
-
-internal sealed interface RuntimeEndpointMarkerRetirement {
-    data class Retired(
-        val removed: Set<RuntimeEndpointMarker>,
-    ) : RuntimeEndpointMarkerRetirement
-
-    data object Rejected : RuntimeEndpointMarkerRetirement
-    data object Interrupted : RuntimeEndpointMarkerRetirement
 }
 
 internal sealed interface RuntimeEndpointArtifactCleaning {
@@ -53,15 +44,6 @@ internal interface RuntimeEndpointArtifacts {
     fun observeMarkers(endpoint: RuntimeEndpoint): RuntimeEndpointMarkerObservation
 
     /**
-     * Proof transition: `InactiveRuntimeEndpoint -> RuntimeEndpointMarkerRetirement`.
-     *
-     * Establishes that the endpoint's exact socket and descriptor markers are absent while its
-     * persistent state is untouched. [RuntimeEndpointMarkerRetirement] closes removal rejection
-     * and interruption. Raw paths remain inside the lifecycle filesystem adapter.
-     */
-    fun retireMarkers(endpoint: InactiveRuntimeEndpoint): RuntimeEndpointMarkerRetirement
-
-    /**
      * Proof transition: `InactiveRuntimeEndpoint -> RuntimeEndpointArtifactCleaning`.
      *
      * Establishes that the exact socket, descriptor, and persistent state are all absent.
@@ -74,36 +56,6 @@ internal interface RuntimeEndpointArtifacts {
 internal object PosixRuntimeEndpointArtifacts : RuntimeEndpointArtifacts {
     override fun observeMarkers(endpoint: RuntimeEndpoint): RuntimeEndpointMarkerObservation =
         observeMarkers(RuntimeEndpointArtifactPaths.from(endpoint))
-
-    override fun retireMarkers(endpoint: InactiveRuntimeEndpoint): RuntimeEndpointMarkerRetirement {
-        val paths = RuntimeEndpointArtifactPaths.from(endpoint.endpoint)
-        val observed = when (val observation = observeMarkers(paths)) {
-            RuntimeEndpointMarkerObservation.Rejected ->
-                return RuntimeEndpointMarkerRetirement.Rejected
-            is RuntimeEndpointMarkerObservation.Observed -> observation.present
-        }
-        val targets = buildList {
-            if (RuntimeEndpointMarker.DESCRIPTOR in observed) {
-                add(RemovalTarget.Entry(paths.descriptor))
-            }
-            if (RuntimeEndpointMarker.SOCKET in observed) {
-                add(RemovalTarget.Entry(paths.socket))
-            }
-        }
-        return when (remove(targets)) {
-            RuntimeArtifactRemoval.REMOVED -> when (val remaining = observeMarkers(paths)) {
-                RuntimeEndpointMarkerObservation.Rejected ->
-                    RuntimeEndpointMarkerRetirement.Rejected
-                is RuntimeEndpointMarkerObservation.Observed -> if (remaining.present.isEmpty()) {
-                    RuntimeEndpointMarkerRetirement.Retired(observed)
-                } else {
-                    RuntimeEndpointMarkerRetirement.Rejected
-                }
-            }
-            RuntimeArtifactRemoval.REJECTED -> RuntimeEndpointMarkerRetirement.Rejected
-            RuntimeArtifactRemoval.INTERRUPTED -> RuntimeEndpointMarkerRetirement.Interrupted
-        }
-    }
 
     override fun clean(endpoint: InactiveRuntimeEndpoint): RuntimeEndpointArtifactCleaning {
         val paths = RuntimeEndpointArtifactPaths.from(endpoint.endpoint)

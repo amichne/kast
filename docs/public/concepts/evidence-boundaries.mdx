@@ -25,13 +25,13 @@ The semantic result has its own closed outcome and evidence coordinates.
   </Card>
 </Columns>
 
-The thirteen sidecar operations cover workspace inspection, index
-synchronization, topology publication, three symbol operations, one-hop
-relation reads, bounded traversal, scoped diagnostics, and four AddDeclaration
-lifecycle phases. The installed route may return qualified evidence for
+The eleven sidecar operations cover index synchronization, topology
+publication, symbol discovery and inspection, source and one-hop relation
+reads, bounded traversal, scoped diagnostics, and planning, verified
+application, or recovery. The installed route may return qualified evidence for
 discovery, relation, traversal, diagnostics, and unresolved manual recovery.
-Index synchronization, topology publication, exact symbol resolution and
-description, planning, application, and verification require complete evidence
+Index synchronization, topology publication, exact symbol inspection,
+planning, and verified application require complete evidence
 for success. The shared workspace contract also models a reconciling
 qualification, but the installed exact-root handler publishes only complete
 ready evidence or a typed rejection.
@@ -47,7 +47,7 @@ authorized it:
     The canonical repository checkout that owns the admitted sidecar endpoint.
   </Step>
   <Step title="Operation">
-    The typed question asked, such as `workspace.inspect` or `symbol.describe`.
+    The typed question asked, such as `workspace.inspect` or `symbol.inspect`.
   </Step>
   <Step title="Generation">
     The semantic workspace state against which selectors and evidence were

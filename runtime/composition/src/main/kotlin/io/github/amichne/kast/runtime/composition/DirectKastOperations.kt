@@ -18,6 +18,7 @@ import io.github.amichne.kast.evidence.contract.MutationPlanBinding
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
+import io.github.amichne.kast.source.contract.SourceReadOperations
 import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.topology.contract.TopologyBuildOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
@@ -31,6 +32,12 @@ class ChangePlanningOperations internal constructor(
     val renameSymbol: RenameSymbolPlanOperations,
 )
 
+/** Physical application plus mandatory successor-generation verification for `change.apply`. */
+class VerifiedChangeApplyOperations internal constructor(
+    val apply: AddDeclarationApplyOperations,
+    val verify: VerifiedMutationOperations,
+)
+
 /** Direct operation boundary for durable recovery of one admitted mutation binding. */
 fun interface ChangeRecoveryOperations {
     /**
@@ -42,21 +49,19 @@ fun interface ChangeRecoveryOperations {
     fun recover(binding: MutationPlanBinding): AddDeclarationRecoveryOutcome
 }
 
-/** Exact nominal target service association for the thirteen public operations. */
+/** Exact nominal target service association for the eleven public operations. */
 @ConsistentCopyVisibility
 data class DirectKastOperations internal constructor(
-    val workspaceInspect: WorkspaceInspectionOperations,
     val indexSync: IndexSynchronizationOperations,
     val topologyBuild: TopologyBuildOperations,
     val symbolDiscover: SymbolDiscoveryOperations,
-    val symbolResolve: SymbolExactOperations,
-    val symbolDescribe: SymbolExactOperations,
+    val symbolInspect: SymbolExactOperations,
+    val sourceRead: SourceReadOperations,
     val relationRead: RelationOperations,
     val traversalRun: TraversalOperations,
     val diagnosticCheck: DiagnosticOperations,
     val changePlan: ChangePlanningOperations,
-    val changeApply: AddDeclarationApplyOperations,
-    val changeVerify: VerifiedMutationOperations,
+    val changeApply: VerifiedChangeApplyOperations,
     val changeRecover: ChangeRecoveryOperations,
 ) {
     companion object {
@@ -67,8 +72,8 @@ data class DirectKastOperations internal constructor(
          * AddDeclarationRecoveryService, AddDeclarationRollbackPort) -> DirectKastOperations`.
          *
          * Establishes exactly one nominal target service association for every canonical
-         * operation. The four closed change intents share one pure planning boundary, and resolve
-         * and describe share one exact-symbol authority without an aggregate backend.
+         * operation. The four closed change intents share one pure planning boundary; inspection
+         * owns candidate-to-exact refinement; apply owns physical mutation and verification.
          */
         fun assemble(
             workspace: WorkspaceInspectionOperations,
@@ -76,6 +81,7 @@ data class DirectKastOperations internal constructor(
             topology: TopologyBuildOperations,
             symbolDiscovery: SymbolDiscoveryOperations,
             symbolExact: SymbolExactOperations,
+            sourceRead: SourceReadOperations,
             relation: RelationOperations,
             traversal: TraversalOperations,
             diagnostic: DiagnosticOperations,
@@ -84,12 +90,11 @@ data class DirectKastOperations internal constructor(
             changeRecovery: AddDeclarationRecoveryService,
             changeRollback: AddDeclarationRollbackPort,
         ): DirectKastOperations = DirectKastOperations(
-            workspaceInspect = workspace,
             indexSync = indexSync,
             topologyBuild = topology,
             symbolDiscover = symbolDiscovery,
-            symbolResolve = symbolExact,
-            symbolDescribe = symbolExact,
+            symbolInspect = symbolExact,
+            sourceRead = sourceRead,
             relationRead = relation,
             traversalRun = traversal,
             diagnosticCheck = diagnostic,
@@ -99,8 +104,7 @@ data class DirectKastOperations internal constructor(
                 replaceDeclaration = PureReplaceDeclarationPlanningService(),
                 renameSymbol = PureRenameSymbolPlanningService(),
             ),
-            changeApply = changeApply,
-            changeVerify = changeVerify,
+            changeApply = VerifiedChangeApplyOperations(changeApply, changeVerify),
             changeRecover = { binding ->
                 changeRecovery.recover(binding, changeRollback)
             },

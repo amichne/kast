@@ -49,10 +49,11 @@ class CanonicalProtocolAuthorityDurabilityTest {
         val restoredCandidate = assertInstanceOf(
             CandidateSelectorLookup.Found::class.java,
             CanonicalProtocolAuthority().candidate(candidateDocument),
-        ).selection
-        assertEquals(fixture.selection.lease, restoredCandidate.lease)
-        assertEquals(fixture.selection.scope, restoredCandidate.scope)
-        assertEquals(fixture.selection.candidate, restoredCandidate.candidate)
+        ).selector as io.github.amichne.kast.symbol.contract.CandidateSelector.Declaration
+        val restoredSelection = restoredCandidate.selection
+        assertEquals(fixture.selection.lease, restoredSelection.lease)
+        assertEquals(fixture.selection.scope, restoredSelection.scope)
+        assertEquals(fixture.selection.candidate, restoredSelection.candidate)
 
         val exactDocument = (first.issueExact(fixture.selector) as
             ExactSelectorIssuance.Issued).selector

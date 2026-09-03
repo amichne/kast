@@ -22,6 +22,7 @@ import io.github.amichne.kast.runtime.server.ServerDispatch
 import io.github.amichne.kast.runtime.server.TypedOperationBinding
 import io.github.amichne.kast.symbol.service.SymbolDiscoveryService
 import io.github.amichne.kast.symbol.service.SymbolExactService
+import io.github.amichne.kast.source.service.SourceReadService
 import io.github.amichne.kast.traversal.service.traversalOperations
 import io.github.amichne.kast.topology.build.TopologyBuildService
 import io.github.amichne.kast.workspace.service.ResultingWorkspacePublicationFailure
@@ -129,6 +130,7 @@ class KastRuntimeComposition private constructor(
                 observability,
             )
             val symbolExact = SymbolExactService(workspace, semanticPorts.symbolExact)
+            val sourceRead = SourceReadService(workspace, semanticPorts.sourceRead)
             val relation = RelationService(workspace, semanticPorts.relation, observability)
             val topology = TopologyBuildService.create(
                 workspace,
@@ -174,6 +176,7 @@ class KastRuntimeComposition private constructor(
                 topology,
                 symbolDiscovery,
                 symbolExact,
+                sourceRead,
                 relation,
                 traversal,
                 diagnostic,
@@ -191,10 +194,6 @@ class KastRuntimeComposition private constructor(
         ): KastRuntimeCompositionConstruction {
             val bindings: List<TypedOperationBinding<*, *, *, *>> = listOf(
                 TypedOperationBinding(
-                    CanonicalOperationWireBindings.workspaceInspect,
-                    handlers.workspaceInspect(operations.workspaceInspect),
-                ),
-                TypedOperationBinding(
                     CanonicalOperationWireBindings.indexSync,
                     handlers.indexSync(operations.indexSync),
                 ),
@@ -207,12 +206,12 @@ class KastRuntimeComposition private constructor(
                     handlers.symbolDiscover(operations.symbolDiscover),
                 ),
                 TypedOperationBinding(
-                    CanonicalOperationWireBindings.symbolResolve,
-                    handlers.symbolResolve(operations.symbolResolve),
+                    CanonicalOperationWireBindings.symbolInspect,
+                    handlers.symbolInspect(operations.symbolInspect),
                 ),
                 TypedOperationBinding(
-                    CanonicalOperationWireBindings.symbolDescribe,
-                    handlers.symbolDescribe(operations.symbolDescribe),
+                    CanonicalOperationWireBindings.sourceRead,
+                    handlers.sourceRead(operations.sourceRead),
                 ),
                 TypedOperationBinding(
                     CanonicalOperationWireBindings.relationRead,
@@ -233,10 +232,6 @@ class KastRuntimeComposition private constructor(
                 TypedOperationBinding(
                     CanonicalOperationWireBindings.changeApply,
                     handlers.changeApply(operations.changeApply),
-                ),
-                TypedOperationBinding(
-                    CanonicalOperationWireBindings.changeVerify,
-                    handlers.changeVerify(operations.changeVerify),
                 ),
                 TypedOperationBinding(
                     CanonicalOperationWireBindings.changeRecover,

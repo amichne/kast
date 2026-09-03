@@ -11,7 +11,7 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
-import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.SymbolDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
@@ -41,18 +41,18 @@ class CompilerEvidenceAdmissionTest {
         ).refined()
         val outcome = OperationOutcome.Complete(
             EvidenceEnvelope(
-                CanonicalOperationWireBindings.symbolDescribe.operation.id,
+                CanonicalOperationWireBindings.symbolInspect.operation.id,
                 EvidenceGeneration.parse(3).refined(),
-                SymbolDescribeResult(symbol),
+                SymbolInspectResult(symbol),
             ),
         )
 
-        val encoded = CanonicalOperationWireBindings.symbolDescribe.encodeOutcome(outcome)
+        val encoded = CanonicalOperationWireBindings.symbolInspect.encodeOutcome(outcome)
             .encodedDocument()
 
         assertEquals(
             WireDecoding.Decoded(outcome),
-            CanonicalOperationWireBindings.symbolDescribe.decodeOutcome(encoded),
+            CanonicalOperationWireBindings.symbolInspect.decodeOutcome(encoded),
         )
         assertTrue(encoded.contains("\"receiver\":{\"type\":\"present\",\"compilerType\":\"kotlin.String\"}"), encoded)
         assertTrue(encoded.contains("\"contextReceivers\":[\"sample.Context\"]"), encoded)
@@ -65,9 +65,9 @@ class CompilerEvidenceAdmissionTest {
         val evidence = CompilerSymbolEvidenceDocument.fromSignature(signature).refined()
         val outcome = OperationOutcome.Complete(
             EvidenceEnvelope(
-                CanonicalOperationWireBindings.symbolDescribe.operation.id,
+                CanonicalOperationWireBindings.symbolInspect.operation.id,
                 EvidenceGeneration.parse(3).refined(),
-                SymbolDescribeResult(
+                SymbolInspectResult(
                     SymbolDocument.create(
                         selector = text("exact:v2:payload"),
                         kind = SymbolKindDocument.CLASSLIKE,
@@ -82,7 +82,7 @@ class CompilerEvidenceAdmissionTest {
                 ),
             ),
         )
-        val encoded = CanonicalOperationWireBindings.symbolDescribe.encodeOutcome(outcome)
+        val encoded = CanonicalOperationWireBindings.symbolInspect.encodeOutcome(outcome)
             .encodedDocument()
 
         val malformed = listOf(
@@ -97,7 +97,7 @@ class CompilerEvidenceAdmissionTest {
         malformed.forEach { document ->
             assertEquals(
                 WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.RESULT)),
-                CanonicalOperationWireBindings.symbolDescribe.decodeOutcome(document),
+                CanonicalOperationWireBindings.symbolInspect.decodeOutcome(document),
             )
         }
     }

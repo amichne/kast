@@ -73,6 +73,8 @@ internal data class InstalledServerCliBindingDocument(
 @Serializable
 internal enum class InstalledServerBindingType {
     OPTION,
+    REPEATED_OPTION,
+    FLAG,
 }
 
 /**
@@ -114,15 +116,6 @@ private enum class InstalledServerTool(
     private val optionFields: List<ServerCliOptionField>,
     private val approvalPolicy: InstalledServerApprovalPolicy = InstalledServerApprovalPolicy.NONE,
 ) {
-    WORKSPACE_INSPECT(
-        operation = CanonicalOperation.WORKSPACE_INSPECT,
-        toolName = "workspace_ensure_ready",
-        toolDescription =
-            "Admit the exact-root endpoint and report its readiness and canonical identity.",
-        inputSchema = objectSchema(),
-        command = listOf("start"),
-        optionFields = emptyList(),
-    ),
     INDEX_SYNC(
         operation = CanonicalOperation.INDEX_SYNC,
         toolName = "index_sync",
@@ -159,29 +152,71 @@ private enum class InstalledServerTool(
             ServerCliOptionField("limit", "--limit"),
         ),
     ),
-    SYMBOL_RESOLVE(
-        operation = CanonicalOperation.SYMBOL_RESOLVE,
-        toolName = "symbol_resolve",
+    SYMBOL_INSPECT(
+        operation = CanonicalOperation.SYMBOL_INSPECT,
+        toolName = "symbol_inspect",
         toolDescription =
-            "Refine one Kast discovery candidate to an exact generation-bound selector.",
-        inputSchema = objectSchema(
-            ServerSchemaProperty(
-                "candidate",
-                textSchema("Candidate selector returned by discovery."),
+            "Refine a discovery candidate or inspect an exact current-generation Kotlin symbol.",
+        inputSchema = unionSchema(
+            objectSchema(
+                ServerSchemaProperty(
+                    "candidate",
+                    textSchema("Candidate selector returned by discovery."),
+                ),
+            ),
+            objectSchema(
+                ServerSchemaProperty("selector", textSchema("Exact symbol selector.")),
             ),
         ),
-        command = listOf("symbol", "resolve"),
-        optionFields = listOf(ServerCliOptionField("candidate", "--candidate")),
-    ),
-    SYMBOL_DESCRIBE(
-        operation = CanonicalOperation.SYMBOL_DESCRIBE,
-        toolName = "symbol_inspect",
-        toolDescription = "Inspect one exact current-generation Kotlin symbol.",
-        inputSchema = objectSchema(
-            ServerSchemaProperty("selector", textSchema("Exact symbol selector.")),
+        command = listOf("symbol", "inspect"),
+        optionFields = listOf(
+            ServerCliOptionField("candidate", "--candidate"),
+            ServerCliOptionField("selector", "--selector"),
         ),
-        command = listOf("symbol", "describe"),
-        optionFields = listOf(ServerCliOptionField("selector", "--selector")),
+    ),
+    SOURCE_READ(
+        operation = CanonicalOperation.SOURCE_READ,
+        toolName = "source_read",
+        toolDescription =
+            "Read one exact bounded Kotlin source region with typed structure and text.",
+        inputSchema = sourceReadInputSchema(),
+        command = listOf("source", "read"),
+        optionFields = listOf(
+            ServerCliOptionField("anchor", "--anchor"),
+            ServerCliOptionField("region", "--region"),
+            ServerCliOptionField(
+                "declarationKinds",
+                "--declaration-kind",
+                InstalledServerBindingType.REPEATED_OPTION,
+            ),
+            ServerCliOptionField(
+                "visibility",
+                "--visibility",
+                InstalledServerBindingType.REPEATED_OPTION,
+            ),
+            ServerCliOptionField(
+                "includeParameters",
+                "--include-parameters",
+                InstalledServerBindingType.FLAG,
+            ),
+            ServerCliOptionField(
+                "includeCalls",
+                "--include-calls",
+                InstalledServerBindingType.FLAG,
+            ),
+            ServerCliOptionField(
+                "includeReferences",
+                "--include-references",
+                InstalledServerBindingType.FLAG,
+            ),
+            ServerCliOptionField("containment", "--containment"),
+            ServerCliOptionField("text", "--text"),
+            ServerCliOptionField("beforeLines", "--before-lines"),
+            ServerCliOptionField("afterLines", "--after-lines"),
+            ServerCliOptionField("entityLimit", "--entity-limit"),
+            ServerCliOptionField("textByteLimit", "--text-byte-limit"),
+            ServerCliOptionField("continuation", "--continuation"),
+        ),
     ),
     RELATION_READ(
         operation = CanonicalOperation.RELATION_READ,
@@ -263,23 +298,13 @@ private enum class InstalledServerTool(
     CHANGE_APPLY(
         operation = CanonicalOperation.CHANGE_APPLY,
         toolName = "change_apply",
-        toolDescription = "Apply one admitted hosted change plan.",
+        toolDescription =
+            "Apply one admitted hosted change plan and return its verified receipt.",
         inputSchema = objectSchema(
             ServerSchemaProperty("plan", textSchema("Plan identity.")),
         ),
         command = listOf("change", "apply"),
         optionFields = listOf(ServerCliOptionField("plan", "--plan")),
-        approvalPolicy = InstalledServerApprovalPolicy.EXPLICIT,
-    ),
-    CHANGE_VERIFY(
-        operation = CanonicalOperation.CHANGE_VERIFY,
-        toolName = "change_verify",
-        toolDescription = "Verify one hosted change application against semantic evidence.",
-        inputSchema = objectSchema(
-            ServerSchemaProperty("application", textSchema("Application identity.")),
-        ),
-        command = listOf("change", "verify"),
-        optionFields = listOf(ServerCliOptionField("application", "--application")),
         approvalPolicy = InstalledServerApprovalPolicy.EXPLICIT,
     ),
     CHANGE_RECOVER(
@@ -309,7 +334,7 @@ private enum class InstalledServerTool(
             command = command,
             bindings = optionFields.map { field ->
                 InstalledServerCliBindingDocument(
-                    type = InstalledServerBindingType.OPTION,
+                    type = field.type,
                     inputField = field.inputField,
                     option = field.option,
                 )
@@ -321,11 +346,81 @@ private enum class InstalledServerTool(
 private data class ServerCliOptionField(
     val inputField: String,
     val option: String,
+    val type: InstalledServerBindingType = InstalledServerBindingType.OPTION,
 )
 
 private data class ServerSchemaProperty(
     val name: String,
     val schema: JsonObject,
+)
+
+private fun sourceReadInputSchema(): JsonObject = objectSchemaWithRequired(
+    setOf("anchor"),
+    ServerSchemaProperty(
+        "anchor",
+        patternTextSchema(
+            "^(candidate:v2|exact:v2|source-selector-v1):",
+            "Candidate, exact-symbol, or source selector token.",
+        ),
+    ),
+    ServerSchemaProperty(
+        "region",
+        enumSchema(
+            listOf(
+                "anchor",
+                "callable-body",
+                "class-body",
+                "file",
+                "enclosing-declaration",
+                "enclosing-callable-body",
+                "enclosing-class-body",
+            ),
+            "Selected structural region.",
+        ),
+    ),
+    ServerSchemaProperty(
+        "declarationKinds",
+        arraySchema(
+            enumSchema(
+                listOf("classlike", "constructor", "function", "property", "type-alias"),
+                "Requested declaration kind.",
+            ),
+        ),
+    ),
+    ServerSchemaProperty(
+        "visibility",
+        arraySchema(
+            enumSchema(
+                listOf("public", "protected", "internal", "private", "local"),
+                "Requested declaration visibility.",
+            ),
+        ),
+    ),
+    ServerSchemaProperty("includeParameters", booleanSchema("Include value parameters.")),
+    ServerSchemaProperty("includeCalls", booleanSchema("Include calls.")),
+    ServerSchemaProperty("includeReferences", booleanSchema("Include references.")),
+    ServerSchemaProperty(
+        "containment",
+        enumSchema(listOf("direct", "descendants"), "Structural containment policy."),
+    ),
+    ServerSchemaProperty(
+        "text",
+        enumSchema(listOf("complete", "none", "window"), "Requested source-text projection."),
+    ),
+    ServerSchemaProperty(
+        "beforeLines",
+        integerSchema(0, 1_000, "Whole lines before the anchor."),
+    ),
+    ServerSchemaProperty(
+        "afterLines",
+        integerSchema(0, 1_000, "Whole lines after the anchor."),
+    ),
+    ServerSchemaProperty("entityLimit", countSchema("Maximum returned entities.")),
+    ServerSchemaProperty(
+        "textByteLimit",
+        integerSchema(1, description = "Maximum UTF-8 bytes for returned text."),
+    ),
+    ServerSchemaProperty("continuation", textSchema("Snapshot-bound source continuation.")),
 )
 
 private fun symbolDiscoverInputSchema(): JsonObject = unionSchema(
@@ -358,11 +453,6 @@ private fun symbolDiscoverInputSchema(): JsonObject = unionSchema(
         ServerSchemaProperty("limit", countSchema("Maximum returned items.")),
     ),
     objectSchema(
-        ServerSchemaProperty("mode", constantSchema("structure", "Discovery mode.")),
-        ServerSchemaProperty("file", workspaceFileSchema()),
-        ServerSchemaProperty("limit", countSchema("Maximum returned items.")),
-    ),
-    objectSchema(
         ServerSchemaProperty("mode", constantSchema("text", "Discovery mode.")),
         ServerSchemaProperty("query", textSchema("Bounded source-text query.")),
         ServerSchemaProperty("scope", constantSchema("workspace", "Text discovery scope.")),
@@ -389,17 +479,6 @@ internal fun installedServerOutputSchema(operation: CanonicalOperation): JsonObj
 )
 
 private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject = when (operation) {
-    CanonicalOperation.WORKSPACE_INSPECT -> outcomeSchema(
-        operation,
-        ServerSchemaProperty("canonicalRoot", textSchema("Canonical workspace root.")),
-        ServerSchemaProperty(
-            "state",
-            enumSchema(
-                listOf("absent", "starting", "reconciling", "ready", "blocked", "stopping"),
-                "Workspace runtime state.",
-            ),
-        ),
-    )
     CanonicalOperation.INDEX_SYNC -> outcomeSchema(
         operation,
         ServerSchemaProperty(
@@ -412,13 +491,17 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
         operation,
         ServerSchemaProperty("items", arraySchema(symbolDiscoverySchema())),
     )
-    CanonicalOperation.SYMBOL_RESOLVE -> outcomeSchema(
-        operation,
-        ServerSchemaProperty("exactSelector", textSchema("Exact compiler-grounded selector.")),
-    )
-    CanonicalOperation.SYMBOL_DESCRIBE -> outcomeSchema(
+    CanonicalOperation.SYMBOL_INSPECT -> outcomeSchema(
         operation,
         ServerSchemaProperty("symbol", symbolSchema()),
+    )
+    CanonicalOperation.SOURCE_READ -> proofQualifiedOutcomeSchema(
+        operation,
+        sourceReadQualificationSchema(),
+        ServerSchemaProperty("snapshot", sourceSnapshotSchema()),
+        ServerSchemaProperty("region", sourceRegionSchema()),
+        ServerSchemaProperty("entities", arraySchema(sourceEntitySchema())),
+        ServerSchemaProperty("text", sourceTextProjectionSchema()),
     )
     CanonicalOperation.RELATION_READ -> proofQualifiedOutcomeSchema(
         operation,
@@ -442,13 +525,9 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
     CanonicalOperation.CHANGE_APPLY -> outcomeSchema(
         operation,
         ServerSchemaProperty(
-            "applicationIdentity",
-            textSchema("Durable change application identity."),
+            "receiptIdentity",
+            textSchema("Verified change receipt identity."),
         ),
-    )
-    CanonicalOperation.CHANGE_VERIFY -> outcomeSchema(
-        operation,
-        ServerSchemaProperty("receiptIdentity", textSchema("Verification receipt identity.")),
     )
     CanonicalOperation.CHANGE_RECOVER -> outcomeSchema(
         operation,
@@ -494,6 +573,174 @@ private fun relationQualificationSchema(): JsonObject = objectSchema(
         relationLimitationsSchema(),
     ),
     ServerSchemaProperty("continuation", sha256Schema("Opaque relation continuation proof.")),
+)
+
+private fun sourceReadQualificationSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty(
+        "knownMinimumEntityCount",
+        integerSchema(0, description = "Known minimum matching entity count."),
+    ),
+    ServerSchemaProperty(
+        "limitations",
+        nonEmptyArraySchema(
+            enumSchema(
+                listOf(
+                    "entity-limit-reached",
+                    "text-byte-limit-reached",
+                    "work-limit-reached",
+                    "time-limit-reached",
+                    "dumb-mode-transition",
+                    "semantic-resolution-incomplete",
+                    "unsupported-entity",
+                    "provider-failure",
+                ),
+                "Every source-read coverage limitation.",
+            ),
+        ),
+    ),
+    ServerSchemaProperty(
+        "continuation",
+        unionSchema(
+            objectSchema(
+                ServerSchemaProperty(
+                    "type",
+                    constantSchema("unavailable", "Continuation state."),
+                ),
+            ),
+            objectSchema(
+                ServerSchemaProperty(
+                    "type",
+                    constantSchema("available", "Continuation state."),
+                ),
+                ServerSchemaProperty(
+                    "continuation",
+                    textSchema("Snapshot-bound continuation proof."),
+                ),
+            ),
+        ),
+    ),
+)
+
+private fun sourceSnapshotSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("canonicalRoot", textSchema("Canonical workspace root.")),
+    ServerSchemaProperty("generation", integerSchema(0, description = "Semantic generation.")),
+    ServerSchemaProperty("sourceState", textSchema("Workspace source-state identity.")),
+    ServerSchemaProperty("file", textSchema("Exact workspace source file.")),
+    ServerSchemaProperty("textIdentity", textSchema("Committed document text identity.")),
+    ServerSchemaProperty(
+        "coordinateUnit",
+        constantSchema("utf16-code-unit", "Source coordinate unit."),
+    ),
+    ServerSchemaProperty("length", integerSchema(0, description = "Document UTF-16 length.")),
+)
+
+private fun sourceSelectionSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("selector", textSchema("Reusable exact source selector.")),
+    ServerSchemaProperty("range", diagnosticRangeSchema()),
+)
+
+private fun sourceRegionSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty(
+        "kind",
+        enumSchema(
+            listOf("anchor", "declaration", "callable-body", "class-body", "file", "window"),
+            "Established structural region kind.",
+        ),
+    ),
+    ServerSchemaProperty("selection", sourceSelectionSchema()),
+)
+
+private fun sourceEntitySchema(): JsonObject = unionSchema(
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("declaration", "Source entity kind.")),
+        ServerSchemaProperty(
+            "kind",
+            enumSchema(
+                listOf("classlike", "constructor", "function", "property", "type-alias"),
+                "Declaration kind.",
+            ),
+        ),
+        ServerSchemaProperty("name", textSchema("Declaration source name.")),
+        ServerSchemaProperty(
+            "visibility",
+            enumSchema(
+                listOf("public", "protected", "internal", "private", "local"),
+                "Compiler-established visibility.",
+            ),
+        ),
+        *sourceEntityCommonProperties(),
+        ServerSchemaProperty("semanticIdentity", sourceDeclarationSemanticIdentitySchema()),
+    ),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("value-parameter", "Source entity kind.")),
+        ServerSchemaProperty("name", textSchema("Value-parameter name.")),
+        *sourceEntityCommonProperties(),
+    ),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("call", "Source entity kind.")),
+        *sourceEntityCommonProperties(),
+        ServerSchemaProperty("callee", sourceSelectionSchema()),
+        ServerSchemaProperty("target", sourceEntityTargetSchema()),
+    ),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("reference", "Source entity kind.")),
+        ServerSchemaProperty("name", textSchema("Referenced source name.")),
+        *sourceEntityCommonProperties(),
+        ServerSchemaProperty("target", sourceEntityTargetSchema()),
+    ),
+)
+
+private fun sourceEntityCommonProperties(): Array<ServerSchemaProperty> = arrayOf(
+    ServerSchemaProperty("nestingDepth", integerSchema(0, description = "Structural nesting depth.")),
+    ServerSchemaProperty("parentSelector", textSchema("Exact structural parent selector.")),
+    ServerSchemaProperty("selection", sourceSelectionSchema()),
+)
+
+private fun sourceDeclarationSemanticIdentitySchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("type", constantSchema("candidate", "Semantic identity state.")),
+    ServerSchemaProperty("selector", textSchema("Resolvable declaration candidate selector.")),
+)
+
+private fun sourceEntityTargetSchema(): JsonObject = unionSchema(
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("candidate", "Semantic target state.")),
+        ServerSchemaProperty("selector", textSchema("Resolvable target candidate selector.")),
+    ),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("local", "Semantic target state.")),
+        ServerSchemaProperty("selector", textSchema("Exact local source selector.")),
+    ),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("unresolved", "Semantic target state.")),
+        ServerSchemaProperty(
+            "reason",
+            enumSchema(
+                listOf("name-not-found", "ambiguous", "error-type", "unsupported-target"),
+                "Compiler-established unresolved reason.",
+            ),
+        ),
+    ),
+)
+
+private fun sourceTextProjectionSchema(): JsonObject = unionSchema(
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("not-requested", "Text projection state.")),
+    ),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("returned", "Text projection state.")),
+        ServerSchemaProperty("selection", sourceSelectionSchema()),
+        ServerSchemaProperty("text", sourceTextSchema()),
+    ),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("withheld", "Text projection state.")),
+        ServerSchemaProperty(
+            "reason",
+            enumSchema(
+                listOf("byte-limit-reached", "provider-unavailable"),
+                "Explicit reason source text was withheld.",
+            ),
+        ),
+    ),
 )
 
 private fun traversalQualificationSchema(): JsonObject = objectSchema(
@@ -810,6 +1057,7 @@ private fun relationFactSchema(): JsonObject = objectSchema(
     ServerSchemaProperty(
         "occurrence",
         objectSchema(
+            ServerSchemaProperty("candidateSelector", textSchema("Occurrence candidate selector.")),
             ServerSchemaProperty("file", textSchema("Exact occurrence file.")),
             ServerSchemaProperty("range", sourceRangeSchema()),
         ),
@@ -871,6 +1119,7 @@ private fun normalizedTraversalEdgeSchema(): JsonObject = objectSchema(
     ServerSchemaProperty(
         "occurrence",
         objectSchema(
+            ServerSchemaProperty("candidateSelector", textSchema("Occurrence candidate selector.")),
             ServerSchemaProperty("file", textSchema("Exact occurrence file.")),
             ServerSchemaProperty("range", sourceRangeSchema()),
         ),
@@ -903,6 +1152,7 @@ private fun diagnosticSchema(): JsonObject = objectSchema(
     ServerSchemaProperty(
         "location",
         objectSchema(
+            ServerSchemaProperty("candidateSelector", textSchema("Diagnostic candidate selector.")),
             ServerSchemaProperty("file", textSchema("Diagnostic source file.")),
             ServerSchemaProperty("range", diagnosticRangeSchema()),
         ),
@@ -912,6 +1162,7 @@ private fun diagnosticSchema(): JsonObject = objectSchema(
 private fun symbolDiscoverySchema(): JsonObject = unionSchema(
     objectSchema(
         ServerSchemaProperty("type", constantSchema("file", "Discovery evidence variant.")),
+        ServerSchemaProperty("candidateSelector", textSchema("Candidate selector.")),
         ServerSchemaProperty("name", textSchema("File name.")),
         ServerSchemaProperty("file", textSchema("Discovered file.")),
     ),
@@ -928,6 +1179,7 @@ private fun symbolDiscoverySchema(): JsonObject = unionSchema(
     ),
     objectSchema(
         ServerSchemaProperty("type", constantSchema("text-match", "Discovery evidence variant.")),
+        ServerSchemaProperty("candidateSelector", textSchema("Candidate selector.")),
         ServerSchemaProperty("query", textSchema("Matched query.")),
         ServerSchemaProperty("file", textSchema("Matched file.")),
         ServerSchemaProperty("range", sourceRangeSchema()),
@@ -1054,6 +1306,23 @@ private fun objectSchema(vararg properties: ServerSchemaProperty): JsonObject = 
     }
 }
 
+private fun objectSchemaWithRequired(
+    required: Set<String>,
+    vararg properties: ServerSchemaProperty,
+): JsonObject = buildJsonObject {
+    require(required.all { requiredName -> properties.any { it.name == requiredName } })
+    put("type", "object")
+    put("additionalProperties", false)
+    putJsonObject("properties") {
+        properties.forEach { property -> put(property.name, property.schema) }
+    }
+    putJsonArray("required") {
+        properties.filter { it.name in required }.forEach { property ->
+            add(JsonPrimitive(property.name))
+        }
+    }
+}
+
 private fun unionSchema(vararg variants: JsonObject): JsonObject = buildJsonObject {
     putJsonArray("anyOf") {
         variants.forEach(::add)
@@ -1066,6 +1335,13 @@ private fun arraySchema(item: JsonObject): JsonObject = buildJsonObject {
     put("maxItems", MAXIMUM_PROTOCOL_COUNT)
 }
 
+private fun nonEmptyArraySchema(item: JsonObject): JsonObject = buildJsonObject {
+    put("type", "array")
+    put("items", item)
+    put("minItems", 1)
+    put("maxItems", MAXIMUM_PROTOCOL_COUNT)
+}
+
 private fun finiteArraySchema(item: JsonObject): JsonObject = buildJsonObject {
     put("type", "array")
     put("items", item)
@@ -1075,6 +1351,25 @@ private fun textSchema(description: String): JsonObject = buildJsonObject {
     put("type", "string")
     put("minLength", 1)
     put("maxLength", MAXIMUM_PROTOCOL_TEXT_LENGTH)
+    put("description", description)
+}
+
+private fun sourceTextSchema(): JsonObject = buildJsonObject {
+    put("type", "string")
+    put("maxLength", MAXIMUM_PROTOCOL_TEXT_LENGTH)
+    put("description", "Exact normalized source text; empty files remain valid.")
+}
+
+private fun patternTextSchema(pattern: String, description: String): JsonObject = buildJsonObject {
+    put("type", "string")
+    put("minLength", 1)
+    put("maxLength", MAXIMUM_PROTOCOL_TEXT_LENGTH)
+    put("pattern", pattern)
+    put("description", description)
+}
+
+private fun booleanSchema(description: String): JsonObject = buildJsonObject {
+    put("type", "boolean")
     put("description", description)
 }
 

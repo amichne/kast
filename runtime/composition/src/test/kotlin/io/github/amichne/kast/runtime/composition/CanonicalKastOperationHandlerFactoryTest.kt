@@ -30,12 +30,10 @@ class CanonicalKastOperationHandlerFactoryTest {
         val root = Files.createDirectories(temporary.resolve("repo")).toRealPath()
         Files.writeString(root.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
         val fixture = InstalledChangeProtocolFixture.create(root)
-        val installed = InstalledWorkspaceRoot.admit(root).required()
         val factory = CanonicalKastOperationHandlerFactory.create(
-            installed,
             fixture.workspace,
             ChangePlanAdmissionOperations { ChangePlanAdmission.AddFile(fixture.addFile) },
-        ).required()
+        )
         val planning = ChangePlanningOperations(
             PureAddFilePlanningService(),
             PureAddDeclarationPlanningService(),
@@ -43,11 +41,16 @@ class CanonicalKastOperationHandlerFactoryTest {
             PureRenameSymbolPlanningService(),
         )
         val plan = factory.changePlan(planning)
-        val apply = factory.changeApply {
-            AddDeclarationApplyResult.Rejected(
-                AddDeclarationApplyFailure.Admission(MutationAdmissionFailure.WRONG_ROOT),
-            )
-        }
+        val apply = factory.changeApply(
+            VerifiedChangeApplyOperations(
+                apply = {
+                    AddDeclarationApplyResult.Rejected(
+                        AddDeclarationApplyFailure.Admission(MutationAdmissionFailure.WRONG_ROOT),
+                    )
+                },
+                verify = { error("verification must not run after rejected application") },
+            ),
+        )
         val planned = immediate {
             plan.execute(
                 ChangePlanRequest(

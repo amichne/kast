@@ -6,13 +6,13 @@ icon: "gauge"
 keywords: ["workspace", "readiness", "generation", "exact root"]
 ---
 
-A running process is not proof that the repository model and compiler evidence
-are ready. Ask for workspace evidence before interpreting a later symbol
-result.
+A running process alone is not proof that the repository model and compiler
+evidence are ready. `start` is the sole admission flow and completes only after
+the exact-root runtime is ready for semantic requests.
 
 ```console
 cd /path/to/kotlin-repository
-kast workspace inspect
+kast start
 ```
 
 ## The answer belongs to one exact root
@@ -35,65 +35,35 @@ still rejected.
 
 ## Read readiness as evidence
 
-The installed route returns complete evidence only when the exact root has a
-published ready workspace. Every other installed state closes as one of two
-typed rejections.
+The lifecycle route returns complete evidence only after the exact-root runtime
+has reconciled its owned endpoint and admitted the workspace.
 
-<Tabs>
-  <Tab title="Ready" icon="circle-check">
-    ```json
-    {
-      "operation": "workspace.inspect",
-      "status": "complete",
-      "canonicalRoot": "/path/to/kotlin-repository",
-      "state": "ready"
-    }
-    ```
+```json
+{
+  "command": "start",
+  "status": "complete",
+  "runtime": "running",
+  "root": "/path/to/kotlin-repository",
+  "runtimeId": "kast-sidecar",
+  "removed": []
+}
+```
 
-    The root and ready state are established. Later operations can now issue
-    generation-bound selectors and snapshots.
-  </Tab>
-
-  <Tab title="Root unavailable" icon="circle-dashed">
-    ```json
-    {
-      "operation": "workspace.inspect",
-      "status": "rejected",
-      "reason": "root-unavailable"
-    }
-    ```
-
-    Kast cannot currently establish a ready workspace for this exact root.
-    Starting, reconciling, stopping, absent, and mismatched-root states remain
-    failures at the installed route.
-  </Tab>
-
-  <Tab title="Runtime blocked" icon="shield-check">
-    ```json
-    {
-      "operation": "workspace.inspect",
-      "status": "rejected",
-      "reason": "runtime-blocked"
-    }
-    ```
-
-    Workspace publication reached a typed blocker. Inspect the lifecycle and
-    repair the blocker before relying on semantic operations.
-  </Tab>
-</Tabs>
+The root and running state are established. Later operations can now issue
+generation-bound selectors and snapshots. Admission failures remain typed
+lifecycle-boundary rejections rather than semantic-operation results.
 
 <Note>
-  The current CLI projection does not include a `generation` field in the
-  `workspace.inspect` document. Use this operation to establish the ready root,
-  then preserve the generation-bound selectors, snapshots, plans, and receipts
-  returned by operations that issue them.
+  The lifecycle document does not include a semantic `generation` field. Use
+  `start` to establish readiness, then preserve the generation-bound selectors,
+  snapshots, plans, and receipts returned by semantic operations.
 </Note>
 
 <Note>
   `kast status` passively reports whether the exact sidecar is running and
   whether its private cache is fresh, seeded, refreshing, smart, or requires a
-  rebuild. `kast workspace inspect` may start the sidecar and answers whether
-  semantic workspace evidence is available. Keep those questions separate.
+  rebuild. It never starts or repairs the runtime. Use `kast start --cache
+  reuse|seed|rebuild` for admission and cache policy.
 </Note>
 
 ## Carry the generation forward

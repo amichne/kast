@@ -24,18 +24,18 @@ Every public semantic operation must exist coherently in four runtime surfaces:
 Construction fails with finite missing, duplicate, unexpected, unknown, or
 untyped cases. There is no fallback map keyed by unchecked strings.
 
-The current closed set contains thirteen operations:
+The current closed set contains eleven operations:
 
 | Domain | Canonical operations |
 | --- | --- |
-| Workspace | `workspace.inspect`, `index.sync` |
+| Workspace | `index.sync`, `source.read` |
 | Topology | `topology.build` |
-| Symbol | `symbol.discover`, `symbol.resolve`, `symbol.describe` |
+| Symbol | `symbol.discover`, `symbol.inspect` |
 | Graph reads | `relation.read`, `traversal.run` |
 | Diagnostics | `diagnostic.check` |
-| Change | `change.plan`, `change.apply`, `change.verify`, `change.recover` |
+| Change | `change.plan`, `change.apply`, `change.recover` |
 
-Adding a fourteenth operation means extending the closed identity set and
+Adding a twelfth operation means extending the closed identity set and
 satisfying every generated and runtime completeness proof. Omitting a binding
 cannot silently produce a partial server.
 

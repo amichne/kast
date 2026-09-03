@@ -10,10 +10,9 @@ import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
-import io.github.amichne.kast.protocol.contract.WorkspaceStateDocument
+import io.github.amichne.kast.protocol.contract.IndexSyncRequest
+import io.github.amichne.kast.protocol.contract.IndexSyncResult
+import io.github.amichne.kast.protocol.contract.IndexSyncStateDocument
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireEncoding
@@ -35,7 +34,7 @@ import java.util.concurrent.TimeUnit
 @Tag("native")
 class CliNativeTransportTest {
     @Test
-    fun `terminal startup rejection returns generated runtime boundary without wire exchange`(
+    fun `stopped runtime returns generated runtime boundary without startup or wire exchange`(
         @TempDir temporary: Path,
     ) {
         val root = Files.createDirectories(temporary.resolve("repo"))
@@ -47,6 +46,7 @@ class CliNativeTransportTest {
             runtimeId,
             temporary.resolve("runtime.sock"),
         ).resolvedEndpoint()
+        var runtimeDemanded = false
         var wireInvoked = false
         val cli = KastCli(
             commandGraphFactory = commandGraphFactory(),
@@ -55,31 +55,33 @@ class CliNativeTransportTest {
                 RuntimeEndpointResolution.Resolved(endpoint)
             },
             runtimeDemander = RuntimeDemander { _, _ ->
-                RuntimeAdmission.Rejected(RuntimeAdmissionFailure.SessionEndedBeforeReady)
+                runtimeDemanded = true
+                error("semantic dispatch must not demand runtime startup")
             },
             wireClient = WireClient { _, _ ->
                 wireInvoked = true
                 error("wire exchange must not run")
             },
             localMetadata = testLocalMetadata(),
-            lifecycle = ExactRootRuntimeLifecycle(),
+            lifecycle = observedLifecycle(RuntimeLifecycleState.STOPPED),
             productInspector = ProductInspector { error("product inspection must not run") },
         )
 
-        val exit = cli.execute(listOf("workspace", "inspect"), root)
+        val exit = cli.execute(listOf("index", "sync"), root)
 
         val rejected = assertInstanceOf(CliExit.BoundaryRejected::class.java, exit)
         assertEquals(CliBoundaryExitStatus.RUNTIME, rejected.status)
         assertEquals(
             "{\"status\":\"rejected\",\"boundary\":\"runtime\"," +
-                "\"reason\":\"session-ended-before-ready\"}",
+                "\"reason\":\"runtime-not-running\"}",
             rejected.document.value,
         )
+        assertEquals(false, runtimeDemanded)
         assertEquals(false, wireInvoked)
     }
 
     @Test
-    fun `workspace inspect traverses exact root UDS and typed wire`(@TempDir temporary: Path) {
+    fun `index sync traverses exact root UDS and typed wire`(@TempDir temporary: Path) {
         val root = Files.createDirectories(temporary.resolve("repo"))
         Files.writeString(root.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
         val nested = Files.createDirectories(root.resolve("module"))
@@ -95,20 +97,17 @@ class CliNativeTransportTest {
             val served = executor.submit {
                 server.accept().use { channel ->
                     val requestDocument = WireFrameCodec.read(channel).receivedDocument()
-                    val binding = CanonicalOperationWireBindings.workspaceInspect
+                    val binding = CanonicalOperationWireBindings.indexSync
                     val request = WireRequestEnvelope.admit(requestDocument).admittedRequest()
                     assertEquals(
-                        WireDecoding.Decoded(WorkspaceInspectRequest),
+                        WireDecoding.Decoded(IndexSyncRequest),
                         binding.decodeRequest(request),
                     )
                     val outcome = OperationOutcome.Complete(
                         EvidenceEnvelope(
                             operation = binding.operation.id,
                             generation = EvidenceGeneration.parse(17).refinedValue(),
-                            payload = WorkspaceInspectResult(
-                                ProtocolText.parse(canonicalRoot.path.toString()).refinedValue(),
-                                WorkspaceStateDocument.READY,
-                            ),
+                            payload = IndexSyncResult(IndexSyncStateDocument.UNCHANGED),
                         ),
                     )
                     assertEquals(
@@ -139,17 +138,17 @@ class CliNativeTransportTest {
                 },
                 wireClient = UnixDomainWireClient(),
                 localMetadata = testLocalMetadata(),
-                lifecycle = ExactRootRuntimeLifecycle(),
+                lifecycle = observedLifecycle(RuntimeLifecycleState.RUNNING),
                 productInspector = ProductInspector { error("product inspection must not run") },
             )
 
-            val exit = cli.execute(listOf("workspace", "inspect"), nested)
+            val exit = cli.execute(listOf("index", "sync"), nested)
 
             val complete = exit as CliExit.Complete
             assertEquals(0, complete.code)
             assertEquals(
-                "{\"operation\":\"workspace.inspect\",\"status\":\"complete\"," +
-                    "\"canonicalRoot\":\"${canonicalRoot.path}\",\"state\":\"ready\"}",
+                "{\"operation\":\"index.sync\",\"status\":\"complete\"," +
+                    "\"state\":\"unchanged\"}",
                 complete.document.value,
             )
             served.get(10, TimeUnit.SECONDS)
@@ -165,6 +164,16 @@ class CliNativeTransportTest {
     ) {
         is CliCommandGraphConstruction.Created -> construction.factory
         is CliCommandGraphConstruction.Rejected -> error("command graph: ${construction.failures}")
+    }
+
+    private fun observedLifecycle(
+        state: RuntimeLifecycleState,
+    ): RuntimeLifecycleController = object : RuntimeLifecycleController {
+        override fun status(endpoint: RuntimeEndpoint): RuntimeStatusResult =
+            RuntimeStatusResult.Observed(state)
+
+        override fun stop(endpoint: RuntimeEndpoint): RuntimeStopResult =
+            error("stop must not run during semantic dispatch")
     }
 
     private fun testLocalMetadata(): CliLocalMetadata = when (

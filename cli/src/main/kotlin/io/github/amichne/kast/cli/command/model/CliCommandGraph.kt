@@ -18,9 +18,9 @@ import io.github.amichne.kast.cli.command.diagnostic.diagnosticCommandGroup
 import io.github.amichne.kast.cli.command.lifecycle.lifecycleCommands
 import io.github.amichne.kast.cli.command.product.productCommandGroup
 import io.github.amichne.kast.cli.command.relation.relationCommandGroup
+import io.github.amichne.kast.cli.command.source.sourceCommandGroup
 import io.github.amichne.kast.cli.command.symbol.symbolCommandGroup
 import io.github.amichne.kast.cli.command.traversal.traversalCommandGroup
-import io.github.amichne.kast.cli.command.workspace.workspaceCommandGroup
 import io.github.amichne.kast.cli.command.workspace.indexCommandGroup
 import io.github.amichne.kast.cli.command.workspace.topologyCommandGroup
 import io.github.amichne.kast.cli.projection.CanonicalCliRequestPreparers
@@ -341,25 +341,34 @@ private sealed interface CliCommandSelection {
 private fun canonicalGraph(preparers: CanonicalCliRequestPreparers): CliCommandGraph {
     val product = productCommandGroup()
     val broker = brokerCommandGroup()
-    val workspace = workspaceCommandGroup(preparers)
     val index = indexCommandGroup(preparers)
     val topology = topologyCommandGroup(preparers)
     val symbol = symbolCommandGroup(preparers)
+    val source = sourceCommandGroup(preparers)
     val relation = relationCommandGroup(preparers)
     val traversal = traversalCommandGroup(preparers)
     val diagnostic = diagnosticCommandGroup(preparers)
     val change = changeCommandGroup(preparers)
-    val lifecycle = lifecycleCommands(preparers)
-    val semantic = listOf(workspace, index, topology, symbol, relation, traversal, diagnostic, change)
+    val lifecycle = lifecycleCommands()
+    val semantic = listOf(
+        index,
+        topology,
+        symbol,
+        source,
+        relation,
+        traversal,
+        diagnostic,
+        change,
+    )
         .flatMap(CommandFamily::semanticCommands)
     val root = KastRootCommand().subcommands(
         listOf(
             product.root,
             broker.root,
-            workspace.root,
             index.root,
             topology.root,
             symbol.root,
+            source.root,
             relation.root,
             traversal.root,
             diagnostic.root,

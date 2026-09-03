@@ -29,6 +29,18 @@ import kotlin.concurrent.thread
 
 class PersistentBrokerServiceTest {
     @Test
+    fun `missing public socket is an absent broker rather than an indeterminate probe`(
+        @TempDir temporary: Path,
+    ) {
+        assertEquals(
+            BrokerSocketReachability.UNREACHABLE,
+            JdkBrokerSocketProbe.probe(
+                temporary.toRealPath().resolve("app-server-control.sock"),
+            ),
+        )
+    }
+
+    @Test
     fun `startup and lock deadlines strictly contain every admitted child phase`() {
         assertTrue(
             BrokerServiceStartupBudgets.admittedChildPhasesNanos <

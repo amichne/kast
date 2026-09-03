@@ -12,66 +12,14 @@ import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
-import io.github.amichne.kast.protocol.contract.SymbolDescribeQualification
-import io.github.amichne.kast.protocol.contract.SymbolDescribeRejection
+import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
+import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
-import io.github.amichne.kast.protocol.contract.SymbolResolveQualification
-import io.github.amichne.kast.protocol.contract.SymbolResolveRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
 import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
-import io.github.amichne.kast.protocol.contract.WorkspaceStateDocument
-
-internal fun WorkspaceStateDocument.toWireDocument(): WorkspaceStateWireDocument = when (this) {
-    WorkspaceStateDocument.ABSENT -> WorkspaceStateWireDocument.ABSENT
-    WorkspaceStateDocument.STARTING -> WorkspaceStateWireDocument.STARTING
-    WorkspaceStateDocument.RECONCILING -> WorkspaceStateWireDocument.RECONCILING
-    WorkspaceStateDocument.READY -> WorkspaceStateWireDocument.READY
-    WorkspaceStateDocument.BLOCKED -> WorkspaceStateWireDocument.BLOCKED
-    WorkspaceStateDocument.STOPPING -> WorkspaceStateWireDocument.STOPPING
-}
-
-internal fun WorkspaceStateWireDocument.toContract(): WorkspaceStateDocument = when (this) {
-    WorkspaceStateWireDocument.ABSENT -> WorkspaceStateDocument.ABSENT
-    WorkspaceStateWireDocument.STARTING -> WorkspaceStateDocument.STARTING
-    WorkspaceStateWireDocument.RECONCILING -> WorkspaceStateDocument.RECONCILING
-    WorkspaceStateWireDocument.READY -> WorkspaceStateDocument.READY
-    WorkspaceStateWireDocument.BLOCKED -> WorkspaceStateDocument.BLOCKED
-    WorkspaceStateWireDocument.STOPPING -> WorkspaceStateDocument.STOPPING
-}
-
-internal fun WorkspaceInspectQualification.toWireDocument():
-    WorkspaceInspectQualificationWireDocument = when (this) {
-    WorkspaceInspectQualification.RECONCILING ->
-        WorkspaceInspectQualificationWireDocument.RECONCILING
-}
-
-internal fun WorkspaceInspectQualificationWireDocument.toContract():
-    WorkspaceInspectQualification = when (this) {
-    WorkspaceInspectQualificationWireDocument.RECONCILING ->
-        WorkspaceInspectQualification.RECONCILING
-}
-
-internal fun WorkspaceInspectRejection.toWireDocument():
-    WorkspaceInspectRejectionWireDocument = when (this) {
-    WorkspaceInspectRejection.ROOT_UNAVAILABLE ->
-        WorkspaceInspectRejectionWireDocument.ROOT_UNAVAILABLE
-    WorkspaceInspectRejection.RUNTIME_BLOCKED ->
-        WorkspaceInspectRejectionWireDocument.RUNTIME_BLOCKED
-}
-
-internal fun WorkspaceInspectRejectionWireDocument.toContract(): WorkspaceInspectRejection =
-    when (this) {
-        WorkspaceInspectRejectionWireDocument.ROOT_UNAVAILABLE ->
-            WorkspaceInspectRejection.ROOT_UNAVAILABLE
-        WorkspaceInspectRejectionWireDocument.RUNTIME_BLOCKED ->
-            WorkspaceInspectRejection.RUNTIME_BLOCKED
-    }
-
 internal fun SymbolDiscoverLimitation.toWireDocument():
     SymbolDiscoverLimitationWireDocument = when (this) {
     SymbolDiscoverLimitation.RESULT_LIMIT -> SymbolDiscoverLimitationWireDocument.RESULT_LIMIT
@@ -124,66 +72,44 @@ internal fun SymbolDiscoverRejectionWireDocument.toContract(): SymbolDiscoverRej
             SymbolDiscoverRejection.QUERY_REJECTED
     }
 
-internal fun SymbolResolveQualification.toWireDocument():
-    SymbolResolveQualificationWireDocument = when (this) {
-    SymbolResolveQualification.EVIDENCE_INCOMPLETE ->
-        SymbolResolveQualificationWireDocument.EVIDENCE_INCOMPLETE
+internal fun SymbolInspectQualification.toWireDocument():
+    SymbolInspectQualificationWireDocument = when (this) {
+    SymbolInspectQualification.EVIDENCE_INCOMPLETE ->
+        SymbolInspectQualificationWireDocument.EVIDENCE_INCOMPLETE
 }
 
-internal fun SymbolResolveQualificationWireDocument.toContract(): SymbolResolveQualification =
+internal fun SymbolInspectQualificationWireDocument.toContract(): SymbolInspectQualification =
     when (this) {
-        SymbolResolveQualificationWireDocument.EVIDENCE_INCOMPLETE ->
-            SymbolResolveQualification.EVIDENCE_INCOMPLETE
+        SymbolInspectQualificationWireDocument.EVIDENCE_INCOMPLETE ->
+            SymbolInspectQualification.EVIDENCE_INCOMPLETE
     }
 
-internal fun SymbolResolveRejection.toWireDocument(): SymbolResolveRejectionWireDocument =
+internal fun SymbolInspectRejection.toWireDocument(): SymbolInspectRejectionWireDocument =
     when (this) {
-        SymbolResolveRejection.WORKSPACE_NOT_READY ->
-            SymbolResolveRejectionWireDocument.WORKSPACE_NOT_READY
-        SymbolResolveRejection.CANDIDATE_STALE ->
-            SymbolResolveRejectionWireDocument.CANDIDATE_STALE
-        SymbolResolveRejection.AMBIGUOUS -> SymbolResolveRejectionWireDocument.AMBIGUOUS
-        SymbolResolveRejection.NOT_FOUND -> SymbolResolveRejectionWireDocument.NOT_FOUND
+        SymbolInspectRejection.WORKSPACE_NOT_READY ->
+            SymbolInspectRejectionWireDocument.WORKSPACE_NOT_READY
+        SymbolInspectRejection.CANDIDATE_STALE ->
+            SymbolInspectRejectionWireDocument.CANDIDATE_STALE
+        SymbolInspectRejection.CANDIDATE_NOT_DECLARATION ->
+            SymbolInspectRejectionWireDocument.CANDIDATE_NOT_DECLARATION
+        SymbolInspectRejection.EXACT_SELECTOR_STALE ->
+            SymbolInspectRejectionWireDocument.EXACT_SELECTOR_STALE
+        SymbolInspectRejection.AMBIGUOUS -> SymbolInspectRejectionWireDocument.AMBIGUOUS
+        SymbolInspectRejection.NOT_FOUND -> SymbolInspectRejectionWireDocument.NOT_FOUND
     }
 
-internal fun SymbolResolveRejectionWireDocument.toContract(): SymbolResolveRejection =
+internal fun SymbolInspectRejectionWireDocument.toContract(): SymbolInspectRejection =
     when (this) {
-        SymbolResolveRejectionWireDocument.WORKSPACE_NOT_READY ->
-            SymbolResolveRejection.WORKSPACE_NOT_READY
-        SymbolResolveRejectionWireDocument.CANDIDATE_STALE ->
-            SymbolResolveRejection.CANDIDATE_STALE
-        SymbolResolveRejectionWireDocument.AMBIGUOUS -> SymbolResolveRejection.AMBIGUOUS
-        SymbolResolveRejectionWireDocument.NOT_FOUND -> SymbolResolveRejection.NOT_FOUND
-    }
-
-internal fun SymbolDescribeQualification.toWireDocument():
-    SymbolDescribeQualificationWireDocument = when (this) {
-    SymbolDescribeQualification.EVIDENCE_INCOMPLETE ->
-        SymbolDescribeQualificationWireDocument.EVIDENCE_INCOMPLETE
-}
-
-internal fun SymbolDescribeQualificationWireDocument.toContract(): SymbolDescribeQualification =
-    when (this) {
-        SymbolDescribeQualificationWireDocument.EVIDENCE_INCOMPLETE ->
-            SymbolDescribeQualification.EVIDENCE_INCOMPLETE
-    }
-
-internal fun SymbolDescribeRejection.toWireDocument(): SymbolDescribeRejectionWireDocument =
-    when (this) {
-        SymbolDescribeRejection.WORKSPACE_NOT_READY ->
-            SymbolDescribeRejectionWireDocument.WORKSPACE_NOT_READY
-        SymbolDescribeRejection.SELECTOR_STALE ->
-            SymbolDescribeRejectionWireDocument.SELECTOR_STALE
-        SymbolDescribeRejection.NOT_FOUND -> SymbolDescribeRejectionWireDocument.NOT_FOUND
-    }
-
-internal fun SymbolDescribeRejectionWireDocument.toContract(): SymbolDescribeRejection =
-    when (this) {
-        SymbolDescribeRejectionWireDocument.WORKSPACE_NOT_READY ->
-            SymbolDescribeRejection.WORKSPACE_NOT_READY
-        SymbolDescribeRejectionWireDocument.SELECTOR_STALE ->
-            SymbolDescribeRejection.SELECTOR_STALE
-        SymbolDescribeRejectionWireDocument.NOT_FOUND -> SymbolDescribeRejection.NOT_FOUND
+        SymbolInspectRejectionWireDocument.WORKSPACE_NOT_READY ->
+            SymbolInspectRejection.WORKSPACE_NOT_READY
+        SymbolInspectRejectionWireDocument.CANDIDATE_STALE ->
+            SymbolInspectRejection.CANDIDATE_STALE
+        SymbolInspectRejectionWireDocument.CANDIDATE_NOT_DECLARATION ->
+            SymbolInspectRejection.CANDIDATE_NOT_DECLARATION
+        SymbolInspectRejectionWireDocument.EXACT_SELECTOR_STALE ->
+            SymbolInspectRejection.EXACT_SELECTOR_STALE
+        SymbolInspectRejectionWireDocument.AMBIGUOUS -> SymbolInspectRejection.AMBIGUOUS
+        SymbolInspectRejectionWireDocument.NOT_FOUND -> SymbolInspectRejection.NOT_FOUND
     }
 
 internal fun RelationKindDocument.toWireDocument(): RelationKindWireDocument = when (this) {

@@ -5,7 +5,6 @@ import io.github.amichne.kast.kernel.KastObservability
 import io.github.amichne.kast.protocol.wire.metadata.SidecarTelemetryOutput
 import io.github.amichne.kast.protocol.wire.metadata.SidecarTelemetryOutputFailure
 import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelFailure
-import io.github.amichne.kast.runtime.composition.protocol.WorkspaceInspectHandlerConstructionFailure
 import io.github.amichne.kast.runtime.telemetry.OpenTelemetryFileForwardingFailure
 import io.github.amichne.kast.runtime.telemetry.OpenTelemetryFileForwardingOpening
 import io.github.amichne.kast.runtime.telemetry.OpenTelemetryFileForwarding
@@ -221,10 +220,6 @@ sealed interface InstalledRuntimeAssemblyFailure {
 
     data class WorkspacePublication(
         val failure: InstalledRuntimeWorkspaceFailure,
-    ) : InstalledRuntimeAssemblyFailure
-
-    data class WorkspaceHandler(
-        val failure: WorkspaceInspectHandlerConstructionFailure,
     ) : InstalledRuntimeAssemblyFailure
 
     data class Composition(

@@ -86,93 +86,142 @@ class KastCli(
         request: PreparedCliRequest,
         start: Path,
     ): CliExit {
-        val boundary = when (val resolution = resolveRuntimeBoundary(start, request.hostedDemand)) {
+        val boundary = when (
+            val resolution = resolvePassiveRuntimeBoundary(start, CliLifecycleCommand.STATUS)
+        ) {
             is CliRuntimeBoundaryResolution.Resolved -> resolution
             is CliRuntimeBoundaryResolution.Rejected -> return resolution.exit
         }
-        return executeRequest(request, boundary)
+        return when (val observation = lifecycle.status(boundary.endpoint)) {
+            is RuntimeStatusResult.Observed -> if (
+                observation.state == RuntimeLifecycleState.RUNNING
+            ) {
+                executeRequest(request, boundary)
+            } else {
+                boundaryExit(CliBoundaryExitStatus.RUNTIME, "runtime-not-running")
+            }
+            is RuntimeStatusResult.Rejected -> boundaryExit(
+                CliBoundaryExitStatus.RUNTIME,
+                "runtime-observation-${observation.failure.name.lowercase().replace('_', '-')}",
+            )
+        }
     }
 
     private fun executeLifecycle(
         action: CliAction.Lifecycle,
         start: Path,
+    ): CliExit = when (action) {
+        is CliAction.Lifecycle.Start -> startExit(start, action.startup)
+        CliAction.Lifecycle.Status -> when (
+            val resolution = resolvePassiveRuntimeBoundary(start, action.command)
+        ) {
+            is CliRuntimeBoundaryResolution.Resolved -> statusExit(
+                resolution.endpoint,
+                lifecycle.status(resolution.endpoint),
+                resolution.cache,
+            )
+            is CliRuntimeBoundaryResolution.Rejected -> resolution.exit
+        }
+        CliAction.Lifecycle.Stop -> when (
+            val resolution = resolvePassiveRuntimeBoundary(start, action.command)
+        ) {
+            is CliRuntimeBoundaryResolution.Resolved -> stopExit(
+                action.command,
+                resolution.endpoint,
+                lifecycle.stop(resolution.endpoint),
+            )
+            is CliRuntimeBoundaryResolution.Rejected -> resolution.exit
+        }
+    }
+
+    private fun startExit(
+        start: Path,
+        startup: RuntimeStartupRequest,
     ): CliExit {
-        if (action is CliAction.Lifecycle.Start) {
-            val boundary = when (
-                val resolution = resolveRuntimeBoundary(
-                    start,
-                    action.request.hostedDemand,
-                    action.startup,
-                )
-            ) {
-                is CliRuntimeBoundaryResolution.Resolved -> resolution
-                is CliRuntimeBoundaryResolution.Rejected -> return resolution.exit
-            }
-            return executeRequest(action.request, boundary)
+        val root = when (val discovery = rootDiscovery.discover(start)) {
+            is CanonicalRootDiscovery.Discovered -> discovery.root
+            is CanonicalRootDiscovery.Rejected -> return boundaryExit(
+                CliBoundaryExitStatus.ROOT,
+                discovery.failure.name.lowercase(),
+            )
+        }
+        val reconciliation = when (val resolved = reconcileStart(root, startup)) {
+            is StartReconciliation.Reconciled -> resolved
+            is StartReconciliation.Rejected -> return resolved.exit
         }
         val boundary = when (
-            val resolution = resolvePassiveRuntimeBoundary(start, action.command)
+            val resolution = demandRuntimeBoundary(
+                root,
+                HostedRuntimeDemand.Lifecycle,
+                reconciliation.startup,
+            )
         ) {
             is CliRuntimeBoundaryResolution.Resolved -> resolution
             is CliRuntimeBoundaryResolution.Rejected -> return resolution.exit
         }
-        return when (action) {
-            CliAction.Lifecycle.Status -> statusExit(
+        return CliExit.Complete(
+            CliBoundaryDocuments.lifecycleComplete(
+                CliLifecycleCommand.START,
                 boundary.endpoint,
-                lifecycle.status(boundary.endpoint),
-                boundary.cache,
-            )
-            CliAction.Lifecycle.Stop -> stopExit(
-                action.command,
-                boundary.endpoint,
-                lifecycle.stop(boundary.endpoint),
-            )
-            CliAction.Lifecycle.Clean -> cleanExit(
-                action.command,
-                boundary.endpoint,
-                lifecycle.clean(boundary.endpoint),
-            )
-            is CliAction.Lifecycle.Reindex -> {
-                val stopped = lifecycle.stop(boundary.endpoint)
-                if (stopped is RuntimeStopResult.Rejected) {
-                    return stopExit(action.command, boundary.endpoint, stopped)
-                }
-                val restart = when (val quarantine = cacheLifecycle.quarantine(boundary.root.path)) {
-                    is RootSidecarCacheQuarantine.Quarantined -> quarantine.restart
-                    is RootSidecarCacheQuarantine.NoCache -> quarantine.restart
-                    is RootSidecarCacheQuarantine.Rejected -> return cacheLifecycleExit(
-                        action.command,
-                        quarantine.failure,
-                    )
-                }
-                val restarted = when (
-                    val resolution = demandRuntimeBoundary(
-                        boundary.root,
-                        action.request.hostedDemand,
-                        restart,
-                    )
-                ) {
-                    is CliRuntimeBoundaryResolution.Resolved -> resolution
-                    is CliRuntimeBoundaryResolution.Rejected -> return resolution.exit
-                }
-                executeRequest(action.request, restarted)
-            }
-            is CliAction.Lifecycle.Start -> error("start returned before passive resolution")
-        }
+                RuntimeLifecycleState.RUNNING,
+                reconciliation.removed,
+            ),
+        )
     }
 
-    private fun resolveRuntimeBoundary(
-        start: Path,
-        demand: HostedRuntimeDemand,
-        startup: RuntimeStartupRequest = RuntimeStartupRequest.Default,
-    ): CliRuntimeBoundaryResolution {
-        val root = when (val discovery = rootDiscovery.discover(start)) {
-            is CanonicalRootDiscovery.Discovered -> discovery.root
-            is CanonicalRootDiscovery.Rejected -> return CliRuntimeBoundaryResolution.Rejected(
-                boundaryExit(CliBoundaryExitStatus.ROOT, discovery.failure.name.lowercase()),
+    private fun reconcileStart(
+        root: CanonicalRoot,
+        startup: RuntimeStartupRequest,
+    ): StartReconciliation {
+        val boundary = when (
+            val resolution = resolvePassiveRuntimeBoundary(root, CliLifecycleCommand.START)
+        ) {
+            is CliRuntimeBoundaryResolution.Resolved -> resolution
+            is CliRuntimeBoundaryResolution.Rejected -> return StartReconciliation.Rejected(
+                resolution.exit,
             )
         }
-        return demandRuntimeBoundary(root, demand, startup)
+        val shouldStop = when (val status = lifecycle.status(boundary.endpoint)) {
+            is RuntimeStatusResult.Observed ->
+                status.state != RuntimeLifecycleState.RUNNING ||
+                    startup.cacheIntent == StartupCacheIntent.Rebuild
+            is RuntimeStatusResult.Rejected -> return StartReconciliation.Rejected(
+                boundaryExit(
+                    CliBoundaryExitStatus.RUNTIME,
+                    "start-${status.failure.name.lowercase().replace('_', '-')}",
+                ),
+            )
+        }
+        val removed = if (shouldStop) {
+            when (val stopped = lifecycle.stop(boundary.endpoint)) {
+                is RuntimeStopResult.Stopped -> stopped.removed
+                is RuntimeStopResult.Rejected -> return StartReconciliation.Rejected(
+                    stopExit(CliLifecycleCommand.START, boundary.endpoint, stopped)
+                        as CliExit.BoundaryRejected,
+                )
+            }
+        } else {
+            emptySet()
+        }
+        val admittedStartup = when (startup.cacheIntent) {
+            StartupCacheIntent.Rebuild -> when (
+                val quarantine = cacheLifecycle.quarantine(root.path)
+            ) {
+                is RootSidecarCacheQuarantine.Quarantined,
+                is RootSidecarCacheQuarantine.NoCache,
+                    -> RuntimeStartupRequest.Requested(
+                        startup.ideHome,
+                        StartupCacheIntent.Reuse,
+                    )
+                is RootSidecarCacheQuarantine.Rejected -> return StartReconciliation.Rejected(
+                    cacheLifecycleExit(CliLifecycleCommand.START, quarantine.failure),
+                )
+            }
+            StartupCacheIntent.Reuse,
+            is StartupCacheIntent.Seed,
+                -> startup
+        }
+        return StartReconciliation.Reconciled(admittedStartup, removed)
     }
 
     private fun demandRuntimeBoundary(
@@ -204,6 +253,13 @@ class KastCli(
                 boundaryExit(CliBoundaryExitStatus.ROOT, discovery.failure.name.lowercase()),
             )
         }
+        return resolvePassiveRuntimeBoundary(root, command)
+    }
+
+    private fun resolvePassiveRuntimeBoundary(
+        root: CanonicalRoot,
+        command: CliLifecycleCommand,
+    ): CliRuntimeBoundaryResolution {
         val endpoint = when (val resolution = endpointLocator.locate(root)) {
             is RuntimeEndpointResolution.Resolved -> resolution.endpoint
             is RuntimeEndpointResolution.Rejected -> return CliRuntimeBoundaryResolution.Rejected(
@@ -308,22 +364,6 @@ class KastCli(
         )
     }
 
-    private fun cleanExit(
-        command: CliLifecycleCommand,
-        endpoint: RuntimeEndpoint,
-        result: RuntimeCleanResult,
-    ): CliExit = when (result) {
-        is RuntimeCleanResult.Cleaned -> lifecycleCompletedExit(
-            command,
-            endpoint,
-            result.removed,
-        )
-        is RuntimeCleanResult.Rejected -> boundaryExit(
-            CliBoundaryExitStatus.RUNTIME,
-            "${command.command}-${result.failure.name.lowercase().replace('_', '-')}",
-        )
-    }
-
     private fun lifecycleCompletedExit(
         command: CliLifecycleCommand,
         endpoint: RuntimeEndpoint,
@@ -347,6 +387,15 @@ class KastCli(
             "response-decoding-rejected",
         )
     }
+}
+
+private sealed interface StartReconciliation {
+    data class Reconciled(
+        val startup: RuntimeStartupRequest,
+        val removed: Set<RuntimeEndpointArtifact>,
+    ) : StartReconciliation
+
+    data class Rejected(val exit: CliExit.BoundaryRejected) : StartReconciliation
 }
 
 private sealed interface CliRuntimeBoundaryResolution {
