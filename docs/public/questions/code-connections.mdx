@@ -66,29 +66,42 @@ question.
       --maximum-results 50
     ```
 
-    Traversal reads only the eligible durable snapshot. It never starts hidden
-    compiler work and keeps depth, result, work, time, and byte limits attached
-    to the outcome. The wire result normalizes repeated symbols and proof
-    identities into compact `nodes`, `edges`, and `proofs` tables. Full compiler
-    signatures are fetched only when needed through `symbol_inspect` (the
-    façade over `symbol.inspect`).
+    Traversal reads only an eligible durable snapshot; it starts no hidden
+    compiler work.
+
+    The result retains:
+
+    - Depth, result, work, time, and byte limits.
+    - Deduplicated `nodes`, `edges`, and `proofs` tables.
+
+    Fetch full signatures only when needed through `symbol_inspect`, the façade
+    over `symbol.inspect`.
   </Step>
 </Steps>
 
 ## Follow a workspace generation
 
-Topology snapshots and selectors belong to one semantic generation. A
-successful hosted apply publishes a newer generation in the same endpoint, so
-the prior selector and snapshot cannot silently answer for the changed source.
-After verification publishes the topology delta, resolve a fresh selector and
-traverse the resulting generation without restarting IntelliJ.
+**Bottom line:** snapshots and selectors belong to one semantic generation.
 
-A cold Project restart is deliberately different: Kast advances the semantic
-generation because layout metadata cannot prove source content stayed unchanged
-while the Project was closed. Run `kast topology build` once after reopening.
-The build verifies the exact current candidates and reports `reused` when it can
-rebind the unchanged durable snapshot to the new generation. Selectors from
-before the restart remain stale.
+After a successful hosted apply:
+
+- The same endpoint publishes a newer generation.
+- Prior selectors and snapshots become stale.
+- Resolve a fresh selector before traversing again.
+
+No IntelliJ restart is required.
+
+A cold Project restart always advances the semantic generation because layout
+metadata cannot prove closed-Project source stability.
+
+After reopening:
+
+1. Run `kast topology build`.
+2. Kast verifies the current candidates.
+3. An unchanged durable snapshot reports `reused` and binds to the new
+   generation.
+
+Selectors from before the restart remain stale.
 
 <Info>
   A complete traversal supports only the requested relation, direction, root,
@@ -98,12 +111,17 @@ before the restart remain stale.
 
 ## Locate slow phases
 
-Ready endpoints forward `kast.topology.build` and `kast.traversal.run` span
-trees asynchronously to the private OTLP JSON Lines file reported by
-`kast product inspect`. Child spans distinguish snapshot eligibility and reads,
-candidate enumeration, extraction, revalidation, publication, snapshot open,
-and traversal expansion. Only closed outcome classes and non-negative file or
-record counts are exported; repository paths and symbol selectors are excluded.
+`kast product inspect` reports the private OTLP JSON Lines file used by ready
+endpoints.
+
+Topology and traversal spans identify:
+
+- Snapshot eligibility, reads, and publication.
+- Candidate enumeration, extraction, and revalidation.
+- Snapshot open and traversal expansion.
+
+Only closed outcomes and non-negative counts are exported. Repository paths and
+symbol selectors are excluded.
 
 [Add a declaration safely](/questions/safe-change) or
 [review the evidence boundary](/concepts/evidence-boundaries).

@@ -37,12 +37,13 @@ on-disk authority.
 This prevents an answer from silently borrowing indexes, Gradle ownership, or
 source state from another checkout.
 
-The admitted model may include a declared local source directory that does not
-currently exist, such as an empty resources or generated-source root. Kast
-preserves that IntelliJ-owned root identity without inventing source content;
-topology enumeration simply has no candidates beneath it until it appears.
-Invalid protocols, malformed paths, and roots outside the exact workspace are
-still rejected.
+The admitted model may include a declared source directory that does not yet
+exist, such as an empty resources or generated-source root.
+
+- Kast preserves the IntelliJ-owned root identity.
+- It invents no source content.
+- Topology has no candidates there until the directory appears.
+- Invalid protocols, malformed paths, and outside-workspace roots are rejected.
 
 ## Read readiness as evidence
 
