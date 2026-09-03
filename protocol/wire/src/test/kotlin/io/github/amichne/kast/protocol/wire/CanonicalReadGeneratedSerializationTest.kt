@@ -168,6 +168,7 @@ class CanonicalReadGeneratedSerializationTest {
                         text("UNUSED"),
                         text("unused"),
                         DiagnosticLocationDocument(
+                            text("candidate:v2:diagnostic"),
                             text("src/A.kt"),
                             DiagnosticRangeDocument.create(offset(7), offset(7)).refinedValue(),
                         ),
@@ -176,7 +177,7 @@ class CanonicalReadGeneratedSerializationTest {
             ).refinedValue(),
         )
         val document = json(
-            """{"diagnostics":[{"severity":"warning","code":"UNUSED","message":"unused","location":{"file":"src/A.kt","range":{"startInclusive":7,"endExclusive":7}}}]}""",
+            """{"diagnostics":[{"severity":"warning","code":"UNUSED","message":"unused","location":{"candidateSelector":"candidate:v2:diagnostic","file":"src/A.kt","range":{"startInclusive":7,"endExclusive":7}}}]}""",
         )
         assertEquals(WireValueEncoding.Encoded(document), resultCodec.encode(result, WireValueRole.RESULT))
         assertEquals(WireDecoding.Decoded(result), resultCodec.decode(document, WireValueRole.RESULT))

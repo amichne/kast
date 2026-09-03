@@ -44,7 +44,6 @@ class SymbolPublicSurfaceWireTest {
                 SymbolDiscoveryMatchDocument.EXACT_NAME,
             ),
             SymbolDiscoverTargetDocument.Location(text("src/Controller.kt"), offset(27)),
-            SymbolDiscoverTargetDocument.Structure(text("src/Controller.kt")),
             SymbolDiscoverTargetDocument.Text(
                 text("accountId"),
                 SymbolTextScopeDocument.Workspace,
@@ -72,15 +71,20 @@ class SymbolPublicSurfaceWireTest {
     @Test
     fun `structured discovery items round trip without parsing display text`() {
         val items = listOf(
-            SymbolDiscoveryDocument.File(text("Controller.kt"), text("src/Controller.kt")),
+            SymbolDiscoveryDocument.File(
+                text("candidate:v2:file"),
+                text("Controller.kt"),
+                text("src/Controller.kt"),
+            ),
             SymbolDiscoveryDocument.Declaration(
-                candidateSelector = text("candidate:v1:payload"),
+                candidateSelector = text("candidate:v2:payload"),
                 kind = SymbolDiscoveryKindDocument.SYMBOL,
                 name = text("handle"),
                 file = text("src/Controller.kt"),
                 offset = offset(27),
             ),
             SymbolDiscoveryDocument.TextMatch(
+                candidateSelector = text("candidate:v2:range"),
                 query = text("accountId"),
                 file = text("src/Controller.kt"),
                 range = range(44, 53),
@@ -136,7 +140,11 @@ class SymbolPublicSurfaceWireTest {
                         meaning = RelationKindDocument.REFERENCES,
                         source = symbol,
                         target = symbol,
-                        occurrence = RelationOccurrenceDocument(symbol.file, symbol.range),
+                        occurrence = RelationOccurrenceDocument(
+                            text("candidate:v2:occurrence"),
+                            symbol.file,
+                            symbol.range,
+                        ),
                         provenance = RelationProvenanceDocument.K2_AUTHORED_SOURCE,
                         coverage = RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
                     ),

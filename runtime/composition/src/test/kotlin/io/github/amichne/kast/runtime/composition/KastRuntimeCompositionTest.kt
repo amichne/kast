@@ -69,6 +69,10 @@ import io.github.amichne.kast.protocol.contract.SymbolResolveQualification
 import io.github.amichne.kast.protocol.contract.SymbolResolveRejection
 import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
 import io.github.amichne.kast.protocol.contract.SymbolResolveResult
+import io.github.amichne.kast.protocol.contract.SourceReadQualification
+import io.github.amichne.kast.protocol.contract.SourceReadRejection
+import io.github.amichne.kast.protocol.contract.SourceReadRequest
+import io.github.amichne.kast.protocol.contract.SourceReadResult
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
@@ -95,6 +99,9 @@ import io.github.amichne.kast.symbol.contract.SymbolResolutionCompilation
 import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
 import io.github.amichne.kast.symbol.service.SymbolDiscoveryService
 import io.github.amichne.kast.symbol.service.SymbolExactService
+import io.github.amichne.kast.source.contract.SourceReadOperations
+import io.github.amichne.kast.source.contract.SourceReadPort
+import io.github.amichne.kast.source.service.SourceReadService
 import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.topology.contract.CompleteTopologyGeneration
 import io.github.amichne.kast.topology.contract.PublishedTopologySnapshot
@@ -158,6 +165,7 @@ class KastRuntimeCompositionTest {
         assertSame(operations.symbolDiscover, handlers.observed.getValue(CanonicalOperation.SYMBOL_DISCOVER))
         assertSame(operations.symbolResolve, handlers.observed.getValue(CanonicalOperation.SYMBOL_RESOLVE))
         assertSame(operations.symbolDescribe, handlers.observed.getValue(CanonicalOperation.SYMBOL_DESCRIBE))
+        assertSame(operations.sourceRead, handlers.observed.getValue(CanonicalOperation.SOURCE_READ))
         assertSame(operations.relationRead, handlers.observed.getValue(CanonicalOperation.RELATION_READ))
         assertSame(operations.traversalRun, handlers.observed.getValue(CanonicalOperation.TRAVERSAL_RUN))
         assertSame(operations.diagnosticCheck, handlers.observed.getValue(CanonicalOperation.DIAGNOSTIC_CHECK))
@@ -172,6 +180,7 @@ class KastRuntimeCompositionTest {
         assertSame(WorkspaceIndexSynchronizationService::class.java, operations.indexSync.javaClass)
         assertSame(SymbolDiscoveryService::class.java, operations.symbolDiscover.javaClass)
         assertSame(SymbolExactService::class.java, operations.symbolResolve.javaClass)
+        assertSame(SourceReadService::class.java, operations.sourceRead.javaClass)
         assertSame(RelationService::class.java, operations.relationRead.javaClass)
         assertSame(SuccessfulApplyIndexSynchronization::class.java, operations.changeApply.javaClass)
         assertSame(VerifiedMutationService::class.java, operations.changeVerify.javaClass)
@@ -225,6 +234,13 @@ class KastRuntimeCompositionTest {
                 CanonicalOperation.SYMBOL_DESCRIBE,
                 operations,
                 SymbolDescribeRejection.WORKSPACE_NOT_READY,
+            )
+
+        override fun sourceRead(operations: SourceReadOperations) =
+            record<SourceReadRequest, SourceReadResult, SourceReadQualification, SourceReadRejection>(
+                CanonicalOperation.SOURCE_READ,
+                operations,
+                SourceReadRejection.WORKSPACE_NOT_READY,
             )
 
         override fun relationRead(operations: RelationOperations) =
@@ -333,6 +349,7 @@ class KastRuntimeCompositionTest {
                     request: ExactSymbolRequest,
                 ): SymbolDescriptionCompilation = error("not executed")
             },
+            sourceRead = SourceReadPort { _, _ -> error("not executed") },
             relation = RelationCompilerPort { error("not executed") },
             diagnostic = DiagnosticCompilerPort { error("not executed") },
         )

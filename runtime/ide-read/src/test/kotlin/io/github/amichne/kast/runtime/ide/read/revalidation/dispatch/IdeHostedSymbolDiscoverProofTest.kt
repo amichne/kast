@@ -142,6 +142,7 @@ private fun discoveryEvidence(items: Int) = EvidenceEnvelope(
         refined(BoundedProtocolList.create(
             List(items) { ordinal ->
                 SymbolDiscoveryDocument.File(
+                    protocolText("candidate:v2:file:29:$ordinal"),
                     protocolText("Widget$ordinal.kt"),
                     protocolText("/workspace/kast/src/Widget$ordinal.kt"),
                 )

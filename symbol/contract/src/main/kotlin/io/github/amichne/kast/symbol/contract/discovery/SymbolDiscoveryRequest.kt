@@ -107,12 +107,6 @@ sealed interface SymbolDiscoveryTarget {
         override val resultKind: SymbolDiscoveryKind = SymbolDiscoveryKind.SYMBOL
     }
 
-    data class Structure(
-        val file: CanonicalWorkspaceFilePath,
-    ) : SymbolDiscoveryTarget {
-        override val resultKind: SymbolDiscoveryKind = SymbolDiscoveryKind.SYMBOL
-    }
-
     data class Text(
         val pattern: SymbolDiscoveryPattern,
     ) : SymbolDiscoveryTarget {

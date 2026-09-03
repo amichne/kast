@@ -56,7 +56,15 @@ class IdeHostedWorkspaceInspectAcceptance {
         }
 
         assertEquals(HostedWorkspaceKind.IDE_PROJECT, inspection.hostKind)
-        assertEquals(IdeHostCapability.entries, inspection.capabilities.capabilities)
+        assertEquals(
+            listOf(
+                IdeHostCapability.WORKSPACE_INSPECT,
+                IdeHostCapability.SYMBOL_DISCOVER,
+                IdeHostCapability.SYMBOL_RESOLVE,
+                IdeHostCapability.SYMBOL_DESCRIBE,
+            ),
+            inspection.capabilities.capabilities,
+        )
         assertEquals("/workspace/kast", inspection.canonicalRoot.value)
         val outcome = runSuspend { inspection.execute(WorkspaceInspectRequest) }
         assertTrue(outcome is OperationOutcome.Complete)

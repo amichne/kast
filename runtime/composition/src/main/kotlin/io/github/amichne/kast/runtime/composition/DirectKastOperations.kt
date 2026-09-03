@@ -18,6 +18,7 @@ import io.github.amichne.kast.evidence.contract.MutationPlanBinding
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
+import io.github.amichne.kast.source.contract.SourceReadOperations
 import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.topology.contract.TopologyBuildOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
@@ -42,7 +43,7 @@ fun interface ChangeRecoveryOperations {
     fun recover(binding: MutationPlanBinding): AddDeclarationRecoveryOutcome
 }
 
-/** Exact nominal target service association for the thirteen public operations. */
+/** Exact nominal target service association for the fourteen public operations. */
 @ConsistentCopyVisibility
 data class DirectKastOperations internal constructor(
     val workspaceInspect: WorkspaceInspectionOperations,
@@ -51,6 +52,7 @@ data class DirectKastOperations internal constructor(
     val symbolDiscover: SymbolDiscoveryOperations,
     val symbolResolve: SymbolExactOperations,
     val symbolDescribe: SymbolExactOperations,
+    val sourceRead: SourceReadOperations,
     val relationRead: RelationOperations,
     val traversalRun: TraversalOperations,
     val diagnosticCheck: DiagnosticOperations,
@@ -76,6 +78,7 @@ data class DirectKastOperations internal constructor(
             topology: TopologyBuildOperations,
             symbolDiscovery: SymbolDiscoveryOperations,
             symbolExact: SymbolExactOperations,
+            sourceRead: SourceReadOperations,
             relation: RelationOperations,
             traversal: TraversalOperations,
             diagnostic: DiagnosticOperations,
@@ -90,6 +93,7 @@ data class DirectKastOperations internal constructor(
             symbolDiscover = symbolDiscovery,
             symbolResolve = symbolExact,
             symbolDescribe = symbolExact,
+            sourceRead = sourceRead,
             relationRead = relation,
             traversalRun = traversal,
             diagnosticCheck = diagnostic,

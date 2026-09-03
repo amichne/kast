@@ -138,6 +138,8 @@ internal object JdkBrokerSocketProbe : BrokerSocketProbe {
                 BrokerSocketReachability.REACHABLE
             } catch (_: ConnectException) {
                 BrokerSocketReachability.UNREACHABLE
+            } catch (_: NoSuchFileException) {
+                BrokerSocketReachability.UNREACHABLE
             } catch (_: IOException) {
                 BrokerSocketReachability.REJECTED
             } catch (_: SecurityException) {
@@ -548,7 +550,8 @@ internal class MacOsPersistentBrokerServiceHost(
                 ENV_EXECUTABLE,
                 "-i",
                 "HOME=${command.userHome}",
-                "PATH=${command.codex.parent}:${command.kast.parent}:/usr/bin:/bin:/usr/sbin:/sbin",
+                "PATH=${command.codexInvocationDirectory.path}:" +
+                    "${command.kast.parent}:/usr/bin:/bin:/usr/sbin:/sbin",
                 "JAVA_HOME=${command.javaHome}",
                 "KAST_OPTS=${command.jvmUserHomeOption.value}",
                 "CODEX_HOME=${command.codexHome}",

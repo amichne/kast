@@ -11,6 +11,7 @@ import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
+import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
@@ -25,6 +26,7 @@ internal class CanonicalCliRequestPreparers(
     val symbolDiscover: CliRequestPreparer<SymbolDiscoverRequest>,
     val symbolResolve: CliRequestPreparer<SymbolResolveRequest>,
     val symbolDescribe: CliRequestPreparer<SymbolDescribeRequest>,
+    val sourceRead: CliRequestPreparer<SourceReadRequest>,
     val relationRead: CliRequestPreparer<RelationReadRequest>,
     val traversalRun: CliRequestPreparer<TraversalRunRequest>,
     val diagnosticCheck: CliRequestPreparer<DiagnosticCheckRequest>,
@@ -60,6 +62,10 @@ internal fun canonicalCliRequestPreparers(): CanonicalCliRequestPreparers =
         symbolDescribe = TypedCliProjection(
             CanonicalOperationWireBindings.symbolDescribe,
             symbolDescribeCliProjector,
+        ),
+        sourceRead = TypedCliProjection(
+            CanonicalOperationWireBindings.sourceRead,
+            sourceReadCliProjector,
         ),
         relationRead = TypedCliProjection(
             CanonicalOperationWireBindings.relationRead,

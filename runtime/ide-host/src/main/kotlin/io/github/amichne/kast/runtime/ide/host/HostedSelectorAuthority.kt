@@ -20,10 +20,12 @@ import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerReceiver
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.CandidateSelector
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.topology.contract.TopologySnapshotContentRead
@@ -33,11 +35,18 @@ import io.github.amichne.kast.topology.contract.TopologySnapshotReader
 import io.github.amichne.kast.topology.contract.TopologySymbol
 import io.github.amichne.kast.topology.contract.TopologyWorkspaceIdentity
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
+import io.github.amichne.kast.workspace.contract.SemanticReadLease
 
 /** Closed endpoint-scoped exact-token issuance owned by the hosted-effects runtime. */
 internal sealed interface HostedExactIssuance {
     data class Issued(val token: ProtocolText) : HostedExactIssuance
     data object Rejected : HostedExactIssuance
+}
+
+/** Closed hosted issuance of one generation-bound source-location candidate. */
+internal sealed interface HostedCandidateIssuance {
+    data class Issued(val token: ProtocolText) : HostedCandidateIssuance
+    data object Rejected : HostedCandidateIssuance
 }
 
 /** Closed exact-token lookup with topology absence distinct from stale token authority. */
@@ -50,6 +59,13 @@ internal sealed interface HostedExactLookup {
 /** Exact selector proof available only to the thin hosted topology and mutation handlers. */
 internal interface HostedExactSelectorOperations {
     fun issueExact(selector: SymbolSelector): HostedExactIssuance
+
+    fun issueRangeCandidate(
+        lease: SemanticReadLease,
+        file: SymbolDiscoveryFileIdentity,
+        startInclusive: Int,
+        endExclusive: Int,
+    ): HostedCandidateIssuance = HostedCandidateIssuance.Rejected
 
     suspend fun exact(token: ProtocolText): HostedExactLookup
 }
@@ -81,6 +97,7 @@ internal class HostedSelectorAuthority(
 ) : HostedExactSelectorOperations {
     private var sequence: HostedSelectorSequence = HostedSelectorSequence.Available(1)
     private val exact = linkedMapOf<ProtocolText, SymbolSelector>()
+    private val candidates = linkedMapOf<ProtocolText, CandidateSelector.Range>()
 
     override suspend fun exact(token: ProtocolText): HostedExactLookup {
         val current = when (val state = workspace.inspect()) {
@@ -143,6 +160,35 @@ internal class HostedSelectorAuthority(
     }
 
     @Synchronized
+    override fun issueRangeCandidate(
+        lease: SemanticReadLease,
+        file: SymbolDiscoveryFileIdentity,
+        startInclusive: Int,
+        endExclusive: Int,
+    ): HostedCandidateIssuance {
+        val current = (workspace.inspect() as? WorkspaceRuntimeState.Ready)?.workspace
+            ?: return HostedCandidateIssuance.Rejected
+        if (lease != current.readLease) return HostedCandidateIssuance.Rejected
+        val workspaceFile = file as? SymbolDiscoveryFileIdentity.Workspace
+            ?: return HostedCandidateIssuance.Rejected
+        val selector = when (
+            val restored = CandidateSelector.restoreRange(
+                lease,
+                workspaceFile,
+                startInclusive,
+                endExclusive,
+            )
+        ) {
+            is Refinement.Refined -> restored.value
+            is Refinement.Rejected -> return HostedCandidateIssuance.Rejected
+        }
+        val token = nextToken(selector.lease.generation.value, "hosted-candidate:range")
+            ?: return HostedCandidateIssuance.Rejected
+        candidates[token] = selector
+        return HostedCandidateIssuance.Issued(token)
+    }
+
+    @Synchronized
     private fun retained(token: ProtocolText): SymbolSelector? = exact[token]
 
     @Synchronized
@@ -150,7 +196,10 @@ internal class HostedSelectorAuthority(
         exact[token] = selector
     }
 
-    private fun nextToken(generation: Long): ProtocolText? {
+    private fun nextToken(
+        generation: Long,
+        family: String = "hosted-exact",
+    ): ProtocolText? {
         val current = sequence as? HostedSelectorSequence.Available ?: return null
         sequence = if (current.next == Long.MAX_VALUE) {
             HostedSelectorSequence.Exhausted
@@ -158,7 +207,7 @@ internal class HostedSelectorAuthority(
             HostedSelectorSequence.Available(current.next + 1)
         }
         return when (val parsed = ProtocolText.parse(
-            "hosted-exact:v1:$generation:${current.next}",
+            "$family:v1:$generation:${current.next}",
         )) {
             is Refinement.Refined -> parsed.value
             is Refinement.Rejected -> null

@@ -238,6 +238,16 @@ metadata, and matched sidecar identity before it removes an older installation.
 An explicit version is required for a custom HTTPS mirror or absolute `file://`
 release base.
 
+Each published release also provides `kast-cli-schema-v<version>.json` and
+`kast-module-knowledge-v<version>.json`, with a SHA-256 record for each. The
+module-knowledge document binds the release version and full Git revision to an
+accepted `verifyKastArchitecture` report, the canonical module policy (including
+allowed inter-module dependencies), the direct dependencies actually admitted
+by that build, the exact contents and digests of every
+repository `AGENTS.md`, and the governing or descendant guide paths associated
+with each module. These JSON assets can be downloaded directly from the GitHub
+release without installing Kast.
+
 Validate and preview the Mintlify documentation with:
 
 ```shell

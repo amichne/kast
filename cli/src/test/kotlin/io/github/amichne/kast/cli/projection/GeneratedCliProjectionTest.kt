@@ -67,7 +67,11 @@ class GeneratedCliProjectionTest {
             meaning = RelationKindDocument.CALLERS,
             source = source,
             target = target,
-            occurrence = RelationOccurrenceDocument(text("src/B.kt"), range(4, 8)),
+            occurrence = RelationOccurrenceDocument(
+                text("candidate:occurrence"),
+                text("src/B.kt"),
+                range(4, 8),
+            ),
             provenance = RelationProvenanceDocument.K2_AUTHORED_SOURCE,
             coverage = RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
         )
@@ -119,7 +123,11 @@ class GeneratedCliProjectionTest {
         val result = SymbolDiscoverResult(
             bounded(
                 listOf(
-                    SymbolDiscoveryDocument.File(text("A.kt"), text("src/A.kt")),
+                    SymbolDiscoveryDocument.File(
+                        text("candidate:file"),
+                        text("A.kt"),
+                        text("src/A.kt"),
+                    ),
                     SymbolDiscoveryDocument.Declaration(
                         candidateSelector = text("candidate:A"),
                         kind = SymbolDiscoveryKindDocument.CLASS,
@@ -128,6 +136,7 @@ class GeneratedCliProjectionTest {
                         offset = offset(3),
                     ),
                     SymbolDiscoveryDocument.TextMatch(
+                        candidateSelector = text("candidate:range"),
                         query = text("TODO"),
                         file = text("src/A.kt"),
                         range = range(4, 8),
@@ -142,10 +151,12 @@ class GeneratedCliProjectionTest {
 
         assertEquals(
             "{\"operation\":\"symbol.discover\",\"status\":\"complete\",\"items\":[" +
-                "{\"type\":\"file\",\"name\":\"A.kt\",\"file\":\"src/A.kt\"}," +
+                "{\"type\":\"file\",\"candidateSelector\":\"candidate:file\"," +
+                "\"name\":\"A.kt\",\"file\":\"src/A.kt\"}," +
                 "{\"type\":\"declaration\",\"candidateSelector\":\"candidate:A\"," +
                 "\"kind\":\"class\",\"name\":\"A\",\"file\":\"src/A.kt\",\"offset\":3}," +
-                "{\"type\":\"text-match\",\"query\":\"TODO\",\"file\":\"src/A.kt\"," +
+                "{\"type\":\"text-match\",\"candidateSelector\":\"candidate:range\"," +
+                "\"query\":\"TODO\",\"file\":\"src/A.kt\"," +
                 "\"range\":{\"startInclusive\":4,\"endExclusive\":8}}]}",
             projected.document.value,
         )
@@ -236,6 +247,7 @@ class GeneratedCliProjectionTest {
                                     code = text("UNUSED_SYMBOL"),
                                     message = text("warning"),
                                     location = DiagnosticLocationDocument(
+                                        candidateSelector = text("candidate:diagnostic"),
                                         file = text("src/A.kt"),
                                         range = DiagnosticRangeDocument.create(
                                             offset(4),
@@ -260,7 +272,9 @@ class GeneratedCliProjectionTest {
         assertEquals(
             "{\"operation\":\"diagnostic.check\",\"status\":\"qualified\"," +
                 "\"diagnostics\":[{\"severity\":\"warning\",\"code\":\"UNUSED_SYMBOL\"," +
-                "\"message\":\"warning\",\"location\":{\"file\":\"src/A.kt\"," +
+                "\"message\":\"warning\",\"location\":{" +
+                "\"candidateSelector\":\"candidate:diagnostic\"," +
+                "\"file\":\"src/A.kt\"," +
                 "\"range\":{\"startInclusive\":4,\"endExclusive\":4}}}]," +
                 "\"qualification\":{\"knownDiagnosticCount\":1," +
                 "\"resultLimitReached\":false,\"analyzedFiles\":[]," +

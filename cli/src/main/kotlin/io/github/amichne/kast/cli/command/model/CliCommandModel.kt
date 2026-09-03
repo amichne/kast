@@ -88,6 +88,14 @@ sealed interface CliUsageFailure {
         TEXT_FILE_REJECTED,
     }
 
+    enum class SourceRead : CliUsageFailure {
+        ANCHOR_REJECTED,
+        VISIBILITY_REQUIRES_DECLARATIONS,
+        CONTAINMENT_REQUIRES_ENTITIES,
+        WINDOW_LINES_REQUIRE_WINDOW_TEXT,
+        DUPLICATE_SELECTION,
+    }
+
     enum class ChangePlan : CliUsageFailure {
         OPTIONS_DO_NOT_MATCH_INTENT,
     }
@@ -104,6 +112,16 @@ internal fun CliUsageFailure.message(): String = when (this) {
         "text discovery with --scope file requires --file"
     CliUsageFailure.SymbolDiscover.TEXT_FILE_REJECTED ->
         "text discovery with --scope workspace does not accept --file"
+    CliUsageFailure.SourceRead.ANCHOR_REJECTED ->
+        "--anchor must be one valid candidate, exact-symbol, or source selector token"
+    CliUsageFailure.SourceRead.VISIBILITY_REQUIRES_DECLARATIONS ->
+        "--visibility requires at least one --declaration-kind"
+    CliUsageFailure.SourceRead.CONTAINMENT_REQUIRES_ENTITIES ->
+        "--containment requires at least one entity filter"
+    CliUsageFailure.SourceRead.WINDOW_LINES_REQUIRE_WINDOW_TEXT ->
+        "--before-lines and --after-lines require --text window"
+    CliUsageFailure.SourceRead.DUPLICATE_SELECTION ->
+        "declaration kinds and visibility values may each be selected once"
     CliUsageFailure.ChangePlan.OPTIONS_DO_NOT_MATCH_INTENT ->
         "options do not match the selected change intent"
 }

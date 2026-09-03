@@ -21,6 +21,7 @@ import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelR
 import io.github.amichne.kast.runtime.composition.platform.projectInstalledGradleModel
 import io.github.amichne.kast.symbol.contract.SymbolCompilerPort
 import io.github.amichne.kast.symbol.contract.SymbolExactCompilerPort
+import io.github.amichne.kast.source.contract.SourceReadPort
 import io.github.amichne.kast.topology.contract.TopologyExtractionFailure
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
@@ -155,6 +156,7 @@ class InstalledRuntimeAssemblyTest {
             ): io.github.amichne.kast.symbol.contract.SymbolDescriptionCompilation =
                 error("not executed")
         },
+        sourceRead = SourceReadPort { _, _ -> error("not executed") },
         relation = RelationCompilerPort { error("not executed") },
         diagnostic = DiagnosticCompilerPort { error("not executed") },
     )

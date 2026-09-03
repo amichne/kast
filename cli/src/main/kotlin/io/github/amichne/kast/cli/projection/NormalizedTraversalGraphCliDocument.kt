@@ -59,6 +59,7 @@ internal data class NormalizedTraversalEdgeCliDocument(
 
 @Serializable
 internal data class NormalizedTraversalOccurrenceCliDocument(
+    val candidateSelector: String,
     val file: String,
     val range: SourceRangeCliDocument,
 )
@@ -137,6 +138,7 @@ private fun RelationFactDocument.toNormalizedEdge(
     source = source,
     target = target,
     occurrence = NormalizedTraversalOccurrenceCliDocument(
+        candidateSelector = occurrence.candidateSelector.value,
         file = occurrence.file.value,
         range = SourceRangeCliDocument(
             occurrence.range.startInclusive.value,

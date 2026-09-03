@@ -22,6 +22,7 @@ import io.github.amichne.kast.runtime.server.ServerDispatch
 import io.github.amichne.kast.runtime.server.TypedOperationBinding
 import io.github.amichne.kast.symbol.service.SymbolDiscoveryService
 import io.github.amichne.kast.symbol.service.SymbolExactService
+import io.github.amichne.kast.source.service.SourceReadService
 import io.github.amichne.kast.traversal.service.traversalOperations
 import io.github.amichne.kast.topology.build.TopologyBuildService
 import io.github.amichne.kast.workspace.service.ResultingWorkspacePublicationFailure
@@ -129,6 +130,7 @@ class KastRuntimeComposition private constructor(
                 observability,
             )
             val symbolExact = SymbolExactService(workspace, semanticPorts.symbolExact)
+            val sourceRead = SourceReadService(workspace, semanticPorts.sourceRead)
             val relation = RelationService(workspace, semanticPorts.relation, observability)
             val topology = TopologyBuildService.create(
                 workspace,
@@ -174,6 +176,7 @@ class KastRuntimeComposition private constructor(
                 topology,
                 symbolDiscovery,
                 symbolExact,
+                sourceRead,
                 relation,
                 traversal,
                 diagnostic,
@@ -213,6 +216,10 @@ class KastRuntimeComposition private constructor(
                 TypedOperationBinding(
                     CanonicalOperationWireBindings.symbolDescribe,
                     handlers.symbolDescribe(operations.symbolDescribe),
+                ),
+                TypedOperationBinding(
+                    CanonicalOperationWireBindings.sourceRead,
+                    handlers.sourceRead(operations.sourceRead),
                 ),
                 TypedOperationBinding(
                     CanonicalOperationWireBindings.relationRead,

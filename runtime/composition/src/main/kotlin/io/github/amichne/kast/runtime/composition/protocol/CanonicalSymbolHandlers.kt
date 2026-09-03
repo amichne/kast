@@ -75,27 +75,16 @@ internal class CanonicalSymbolDiscoverHandler(
             is SymbolDiscoveryOutcome.Qualified -> outcome.batch
         }
         val selectors = when (val issuance = authority.issueCandidates(batch)) {
-            is CandidateSelectorIssuance.Issued -> issuance.selectors.iterator()
+            is CandidateSelectorIssuance.Issued -> issuance.selectors
             is CandidateSelectorIssuance.Rejected ->
                 return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
         }
-        val documents = batch.candidates.map { candidate ->
-            val selector = if (
-                candidate.location is
-                io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation.Declaration
-            ) {
-                if (!selectors.hasNext()) {
-                    return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
-                }
-                selectors.next()
-            } else {
-                null
-            }
+        if (selectors.size != batch.candidates.size) {
+            return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
+        }
+        val documents = batch.candidates.zip(selectors).map { (candidate, selector) ->
             candidate.protocolDocument(selector)
                 ?: return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
-        }
-        if (selectors.hasNext()) {
-            return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
         }
         val bounded = when (val admitted = BoundedProtocolList.create(documents)) {
             is Refinement.Refined -> admitted.value
@@ -163,7 +152,15 @@ internal class CanonicalSymbolResolveHandler(
         SymbolResolveRejection,
         > {
         val selection = when (val lookup = authority.candidate(request.candidateSelector)) {
-            is CandidateSelectorLookup.Found -> lookup.selection
+            is CandidateSelectorLookup.Found -> when (val selector = lookup.selector) {
+                is io.github.amichne.kast.symbol.contract.CandidateSelector.Declaration ->
+                    selector.selection
+                is io.github.amichne.kast.symbol.contract.CandidateSelector.File,
+                is io.github.amichne.kast.symbol.contract.CandidateSelector.Range,
+                    -> return OperationOutcome.Rejected(
+                        SymbolResolveRejection.CANDIDATE_NOT_DECLARATION,
+                    )
+            }
             CandidateSelectorLookup.Missing ->
                 return OperationOutcome.Rejected(SymbolResolveRejection.CANDIDATE_STALE)
         }

@@ -81,11 +81,6 @@ internal fun admitDiscoveryRequest(
                 ?: return DiscoveryRequestAdmission.Rejected
             exactFileScope(file) to SymbolDiscoveryTarget.Location(file, offset)
         }
-        is SymbolDiscoverTargetDocument.Structure -> {
-            val file = workspaceFile(workspace, target.file.value)
-                ?: return DiscoveryRequestAdmission.Rejected
-            exactFileScope(file) to SymbolDiscoveryTarget.Structure(file)
-        }
         is SymbolDiscoverTargetDocument.Text -> {
             val pattern = SymbolDiscoveryPattern.parse(target.query.value).refinedOrNull()
                 ?: return DiscoveryRequestAdmission.Rejected

@@ -32,6 +32,7 @@ data class IdeHostCapability private constructor(val operation: CanonicalOperati
         val SYMBOL_DISCOVER = byOperation.getValue(CanonicalOperation.SYMBOL_DISCOVER)
         val SYMBOL_RESOLVE = byOperation.getValue(CanonicalOperation.SYMBOL_RESOLVE)
         val SYMBOL_DESCRIBE = byOperation.getValue(CanonicalOperation.SYMBOL_DESCRIBE)
+        val SOURCE_READ = byOperation.getValue(CanonicalOperation.SOURCE_READ)
 
         /** Existing read-route vocabulary; not an authority for the complete hosted surface. */
         val entries: List<IdeHostCapability> = listOf(
@@ -39,6 +40,7 @@ data class IdeHostCapability private constructor(val operation: CanonicalOperati
             SYMBOL_DISCOVER,
             SYMBOL_RESOLVE,
             SYMBOL_DESCRIBE,
+            SOURCE_READ,
         )
     }
 }

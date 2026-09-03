@@ -23,6 +23,7 @@ import io.github.amichne.kast.runtime.ide.read.symbol.HostedSymbolResolutionCapa
 import io.github.amichne.kast.runtime.ide.read.symbol.HostedSymbolResolutionPreparation
 import io.github.amichne.kast.runtime.ide.read.workspace.HostedWorkspaceInspection
 import io.github.amichne.kast.runtime.ide.read.workspace.HostedWorkspaceInspectionPreparation
+import io.github.amichne.kast.symbol.contract.CandidateSelector
 import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
 import io.github.amichne.kast.symbol.contract.SymbolCompilation
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionCompilation
@@ -152,7 +153,16 @@ class PreparedHostedIdeReadProductionComposition internal constructor(
         lease: SemanticReadLease,
         token: io.github.amichne.kast.protocol.contract.ProtocolText,
     ): HostedCandidateSelectorAdmission = when (val lookup = selectors.candidate(token)) {
-        is HostedCandidateLookup.Found -> if (lookup.selection.lease == lease) {
+        is HostedCandidateLookup.Found -> if (lookup.selector.lease != lease) {
+            HostedCandidateSelectorAdmission.Rejected(SymbolResolveRejection.CANDIDATE_STALE)
+        } else if (
+            lookup.selector !is CandidateSelector.Declaration
+        ) {
+            HostedCandidateSelectorAdmission.Rejected(
+                SymbolResolveRejection.CANDIDATE_NOT_DECLARATION,
+            )
+        } else {
+            val selection = lookup.selector.selection
             HostedCandidateSelectorAdmission.Admitted(
                 HostedSymbolResolutionCapability {
                     val live = exactProject()
@@ -162,7 +172,7 @@ class PreparedHostedIdeReadProductionComposition internal constructor(
                         when (val compiled = exactAdapter.resolve(
                             live,
                             lease,
-                            SymbolResolutionRequest(lookup.selection),
+                            SymbolResolutionRequest(selection),
                             scope,
                         )) {
                             is SymbolResolutionCompilation.Resolved,
@@ -172,8 +182,6 @@ class PreparedHostedIdeReadProductionComposition internal constructor(
                     }
                 },
             )
-        } else {
-            HostedCandidateSelectorAdmission.Rejected(SymbolResolveRejection.CANDIDATE_STALE)
         }
         HostedCandidateLookup.Missing ->
             HostedCandidateSelectorAdmission.Rejected(SymbolResolveRejection.CANDIDATE_STALE)

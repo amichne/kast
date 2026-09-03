@@ -2,6 +2,7 @@ package io.github.amichne.kast.runtime.ide.read.composition
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.symbol.contract.CandidateSelector
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
@@ -15,7 +16,7 @@ internal sealed interface HostedCandidateIssuance {
 
 /** Closed endpoint-scoped candidate-token lookup. */
 internal sealed interface HostedCandidateLookup {
-    data class Found(val selection: SymbolDiscoverySelection) : HostedCandidateLookup
+    data class Found(val selector: CandidateSelector) : HostedCandidateLookup
     data object Missing : HostedCandidateLookup
 }
 
@@ -45,33 +46,55 @@ private sealed interface HostedSelectorSequence {
  */
 internal class HostedSelectorAuthority {
     private var sequence: HostedSelectorSequence = HostedSelectorSequence.Available(1)
-    private val candidates = linkedMapOf<ProtocolText, SymbolDiscoverySelection>()
+    private val candidates = linkedMapOf<ProtocolText, CandidateSelector>()
     private val exact = linkedMapOf<ProtocolText, SymbolSelector>()
 
     /**
      * Proof transition: `(SymbolDiscoveryBatch, Int) -> HostedCandidateIssuance`.
      *
-     * Establishes one batch-owned declaration selection retained behind a bounded protocol token.
-     * Non-declarations, invalid ordinals, exhausted identity, and token rejection remain closed.
-     * Raw token text leaves only at [ProtocolText.parse].
+     * Establishes one batch-owned candidate variant retained behind a bounded protocol token.
+     * Invalid ordinals, external file/range candidates, exhausted identity, and token rejection
+     * remain closed. Raw token text leaves only at [ProtocolText.parse].
      */
     @Synchronized
     fun issueCandidate(
         batch: SymbolDiscoveryBatch,
         ordinal: Int,
     ): HostedCandidateIssuance {
-        if (batch.candidates.getOrNull(ordinal)?.location !is
-            SymbolDiscoveryCandidateLocation.Declaration
-        ) {
-            return HostedCandidateIssuance.Rejected
-        }
-        val selection = when (val selected = SymbolDiscoverySelection.select(batch, ordinal)) {
-            is Refinement.Refined -> selected.value
-            is Refinement.Rejected -> return HostedCandidateIssuance.Rejected
-        }
-        val token = nextToken("candidate", selection.lease.generation.value)
+        val candidate = batch.candidates.getOrNull(ordinal)
             ?: return HostedCandidateIssuance.Rejected
-        candidates[token] = selection
+        val selector = when (candidate.location) {
+            is SymbolDiscoveryCandidateLocation.Declaration -> {
+                val selection = when (val selected = SymbolDiscoverySelection.select(batch, ordinal)) {
+                    is Refinement.Refined -> selected.value
+                    is Refinement.Rejected -> return HostedCandidateIssuance.Rejected
+                }
+                when (val candidateSelector = CandidateSelector.declaration(selection)) {
+                    is Refinement.Refined -> candidateSelector.value
+                    is Refinement.Rejected -> return HostedCandidateIssuance.Rejected
+                }
+            }
+            is SymbolDiscoveryCandidateLocation.File -> when (
+                val selected = CandidateSelector.file(candidate)
+            ) {
+                is Refinement.Refined -> selected.value
+                is Refinement.Rejected -> return HostedCandidateIssuance.Rejected
+            }
+            is SymbolDiscoveryCandidateLocation.Text -> when (
+                val selected = CandidateSelector.range(candidate)
+            ) {
+                is Refinement.Refined -> selected.value
+                is Refinement.Rejected -> return HostedCandidateIssuance.Rejected
+            }
+        }
+        val variant = when (selector) {
+            is CandidateSelector.Declaration -> "declaration"
+            is CandidateSelector.File -> "file"
+            is CandidateSelector.Range -> "range"
+        }
+        val token = nextToken("candidate:v2:$variant", selector.lease.generation.value)
+            ?: return HostedCandidateIssuance.Rejected
+        candidates[token] = selector
         return HostedCandidateIssuance.Issued(token)
     }
 

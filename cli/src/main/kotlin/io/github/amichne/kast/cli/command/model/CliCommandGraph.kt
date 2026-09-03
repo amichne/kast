@@ -18,6 +18,7 @@ import io.github.amichne.kast.cli.command.diagnostic.diagnosticCommandGroup
 import io.github.amichne.kast.cli.command.lifecycle.lifecycleCommands
 import io.github.amichne.kast.cli.command.product.productCommandGroup
 import io.github.amichne.kast.cli.command.relation.relationCommandGroup
+import io.github.amichne.kast.cli.command.source.sourceCommandGroup
 import io.github.amichne.kast.cli.command.symbol.symbolCommandGroup
 import io.github.amichne.kast.cli.command.traversal.traversalCommandGroup
 import io.github.amichne.kast.cli.command.workspace.workspaceCommandGroup
@@ -345,12 +346,23 @@ private fun canonicalGraph(preparers: CanonicalCliRequestPreparers): CliCommandG
     val index = indexCommandGroup(preparers)
     val topology = topologyCommandGroup(preparers)
     val symbol = symbolCommandGroup(preparers)
+    val source = sourceCommandGroup(preparers)
     val relation = relationCommandGroup(preparers)
     val traversal = traversalCommandGroup(preparers)
     val diagnostic = diagnosticCommandGroup(preparers)
     val change = changeCommandGroup(preparers)
     val lifecycle = lifecycleCommands(preparers)
-    val semantic = listOf(workspace, index, topology, symbol, relation, traversal, diagnostic, change)
+    val semantic = listOf(
+        workspace,
+        index,
+        topology,
+        symbol,
+        source,
+        relation,
+        traversal,
+        diagnostic,
+        change,
+    )
         .flatMap(CommandFamily::semanticCommands)
     val root = KastRootCommand().subcommands(
         listOf(
@@ -360,6 +372,7 @@ private fun canonicalGraph(preparers: CanonicalCliRequestPreparers): CliCommandG
             index.root,
             topology.root,
             symbol.root,
+            source.root,
             relation.root,
             traversal.root,
             diagnostic.root,

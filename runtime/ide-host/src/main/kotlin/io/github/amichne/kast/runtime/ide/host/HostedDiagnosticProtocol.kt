@@ -28,6 +28,8 @@ import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.runtime.server.TypedOperationBinding
+import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
@@ -41,10 +43,11 @@ internal object HostedDiagnosticProtocol {
     fun bindings(
         workspace: WorkspaceInspectionOperations,
         operations: DiagnosticOperations,
+        selectors: HostedExactSelectorOperations,
     ): List<TypedOperationBinding<*, *, *, *>> = listOf(
         TypedOperationBinding(
             CanonicalOperationWireBindings.diagnosticCheck,
-            HostedDiagnosticCheckHandler(workspace, operations),
+            HostedDiagnosticCheckHandler(workspace, operations, selectors),
         ),
     )
 }
@@ -52,6 +55,7 @@ internal object HostedDiagnosticProtocol {
 private class HostedDiagnosticCheckHandler(
     private val workspace: WorkspaceInspectionOperations,
     private val operations: DiagnosticOperations,
+    private val selectors: HostedExactSelectorOperations,
 ) : OperationHandler<
     DiagnosticCheckRequest,
     DiagnosticCheckResult,
@@ -104,7 +108,7 @@ private class HostedDiagnosticCheckHandler(
         > {
         val documents = mutableListOf<DiagnosticDocument>()
         facts.take(limit).forEach { fact ->
-            documents += fact.protocolDocument()
+            documents += fact.protocolDocument(selectors)
                 ?: return OperationOutcome.Rejected(DiagnosticCheckRejection.SCOPE_REJECTED)
         }
         val bounded = BoundedProtocolList.create(documents).valueOrNull()
@@ -172,10 +176,32 @@ private fun admitDiagnosticScope(
     return DiagnosticScope.fromCanonicalPaths(workspace.readLease, listOf(canonical)).valueOrNull()
 }
 
-private fun DiagnosticFact.protocolDocument(): DiagnosticDocument? {
+private fun DiagnosticFact.protocolDocument(
+    selectors: HostedExactSelectorOperations,
+): DiagnosticDocument? {
     val start = ProtocolOffset.parse(location.range.start.value).valueOrNull() ?: return null
     val end = ProtocolOffset.parse(location.range.endExclusive.value).valueOrNull() ?: return null
     val range = DiagnosticRangeDocument.create(start, end).valueOrNull() ?: return null
+    val workspaceFile = when (
+        val admitted = CanonicalWorkspaceFilePath.fromCanonicalPath(
+            scope.lease.workspaceRoot,
+            Path.of(location.file.value),
+        )
+    ) {
+        is Refinement.Refined -> SymbolDiscoveryFileIdentity.Workspace(admitted.value)
+        is Refinement.Rejected -> return null
+    }
+    val candidateSelector = when (
+        val issued = selectors.issueRangeCandidate(
+            scope.lease,
+            workspaceFile,
+            location.range.start.value,
+            location.range.endExclusive.value,
+        )
+    ) {
+        is HostedCandidateIssuance.Issued -> issued.token
+        HostedCandidateIssuance.Rejected -> return null
+    }
     return DiagnosticDocument(
         severity = when (severity) {
             io.github.amichne.kast.diagnostic.contract.DiagnosticSeverity.ERROR ->
@@ -188,6 +214,7 @@ private fun DiagnosticFact.protocolDocument(): DiagnosticDocument? {
         code = ProtocolText.parse(code.value).valueOrNull() ?: return null,
         message = ProtocolText.parse(message.value).valueOrNull() ?: return null,
         location = DiagnosticLocationDocument(
+            candidateSelector,
             ProtocolText.parse(location.file.value).valueOrNull() ?: return null,
             range,
         ),

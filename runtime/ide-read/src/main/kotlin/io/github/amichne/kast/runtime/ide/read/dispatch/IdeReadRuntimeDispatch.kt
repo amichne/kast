@@ -66,6 +66,7 @@ class IdeReadRuntimeDispatch(
             )
             CanonicalOperation.SYMBOL_RESOLVE -> symbolResolve.dispatch(admission.request)
             CanonicalOperation.SYMBOL_DESCRIBE -> symbolDescribe.dispatch(admission.request)
+            CanonicalOperation.SOURCE_READ,
             CanonicalOperation.INDEX_SYNC,
             CanonicalOperation.TOPOLOGY_BUILD,
             CanonicalOperation.RELATION_READ,

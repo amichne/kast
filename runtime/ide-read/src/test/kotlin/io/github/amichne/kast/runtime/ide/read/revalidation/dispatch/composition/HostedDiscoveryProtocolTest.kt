@@ -32,7 +32,6 @@ class HostedDiscoveryProtocolTest {
                 ),
             ),
             request(SymbolDiscoverTargetDocument.Location(text("src/Widget.kt"), offset(17))),
-            request(SymbolDiscoverTargetDocument.Structure(text("src/Widget.kt"))),
             request(
                 SymbolDiscoverTargetDocument.Text(
                     text("Widget"),
@@ -57,19 +56,16 @@ class HostedDiscoveryProtocolTest {
         assertInstanceOf(SymbolDiscoveryTarget.Name::class.java, admitted[0].target)
         assertInstanceOf(SymbolDiscoveryTarget.Location::class.java, admitted[1].target)
         assertInstanceOf(SymbolSearchScope.ExactFile::class.java, admitted[1].scope.scope)
-        assertInstanceOf(SymbolDiscoveryTarget.Structure::class.java, admitted[2].target)
-        assertInstanceOf(SymbolSearchScope.ExactFile::class.java, admitted[2].scope.scope)
+        assertInstanceOf(SymbolDiscoveryTarget.Text::class.java, admitted[2].target)
+        assertInstanceOf(SymbolSearchScope.Workspace::class.java, admitted[2].scope.scope)
         assertInstanceOf(SymbolDiscoveryTarget.Text::class.java, admitted[3].target)
-        assertInstanceOf(SymbolSearchScope.Workspace::class.java, admitted[3].scope.scope)
-        assertInstanceOf(SymbolDiscoveryTarget.Text::class.java, admitted[4].target)
-        assertInstanceOf(SymbolSearchScope.ExactFile::class.java, admitted[4].scope.scope)
+        assertInstanceOf(SymbolSearchScope.ExactFile::class.java, admitted[3].scope.scope)
     }
 
     @Test
     fun `outside workspace discovery paths fail closed before native search`() {
         val requests = listOf(
             request(SymbolDiscoverTargetDocument.Location(text("../cache/Widget.kt"), offset(1))),
-            request(SymbolDiscoverTargetDocument.Structure(text("/tmp/Widget.kt"))),
             request(
                 SymbolDiscoverTargetDocument.Text(
                     text("Widget"),

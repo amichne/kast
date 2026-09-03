@@ -68,12 +68,6 @@ class CliCommandGraphContractTest {
                 count(10),
             ),
             listOf(
-                "symbol", "discover", "--mode=structure", "--file=A.kt", "--limit=10",
-            ) to SymbolDiscoverRequest(
-                SymbolDiscoverTargetDocument.Structure(text("A.kt")),
-                count(10),
-            ),
-            listOf(
                 "symbol", "discover", "--mode=text", "--query=TODO", "--scope=workspace",
                 "--limit=10",
             ) to SymbolDiscoverRequest(
