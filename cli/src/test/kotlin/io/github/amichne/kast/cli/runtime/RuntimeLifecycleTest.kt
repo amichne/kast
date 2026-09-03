@@ -73,7 +73,7 @@ class RuntimeLifecycleTest {
     }
 
     @Test
-    fun `default stop closes the exact child process and preserves persistent state`(
+    fun `default stop closes the exact child process and removes owned artifacts`(
         @TempDir temporary: Path,
     ) {
         val endpoint = endpoint(temporary)
@@ -89,18 +89,13 @@ class RuntimeLifecycleTest {
 
         try {
             assertEquals(
-                RuntimeStopResult.Stopped(
-                    setOf(
-                        RuntimeEndpointMarker.SOCKET,
-                        RuntimeEndpointMarker.DESCRIPTOR,
-                    ),
-                ),
+                RuntimeStopResult.Stopped(allRuntimeEndpointArtifacts),
                 ExactRootRuntimeLifecycle().stop(endpoint),
             )
             assertEquals(false, process.isAlive)
             assertEquals(false, Files.exists(endpoint.socketPath))
             assertEquals(false, Files.exists(descriptor))
-            assertEquals("persistent", Files.readString(persisted))
+            assertEquals(false, Files.exists(persisted))
         } finally {
             if (process.isAlive) process.destroyForcibly()
             process.onExit().get(10, TimeUnit.SECONDS)
@@ -108,7 +103,7 @@ class RuntimeLifecycleTest {
     }
 
     @Test
-    fun `stop removes endpoint markers and preserves persistent state`(@TempDir temporary: Path) {
+    fun `stop removes all inactive exact endpoint artifacts`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
         val descriptor = endpoint.socketPath.resolveSibling(
             "${endpoint.socketPath.fileName}.endpoint.json",
@@ -126,17 +121,12 @@ class RuntimeLifecycleTest {
         )
 
         assertEquals(
-            RuntimeStopResult.Stopped(
-                setOf(
-                    RuntimeEndpointMarker.SOCKET,
-                    RuntimeEndpointMarker.DESCRIPTOR,
-                ),
-            ),
+            RuntimeStopResult.Stopped(allRuntimeEndpointArtifacts),
             lifecycle.stop(endpoint),
         )
         assertEquals(false, Files.exists(endpoint.socketPath))
         assertEquals(false, Files.exists(descriptor))
-        assertEquals("persistent", Files.readString(persisted))
+        assertEquals(false, Files.exists(persisted))
         assertEquals(
             RuntimeStatusResult.Observed(RuntimeLifecycleState.STOPPED),
             lifecycle.status(endpoint),
@@ -162,68 +152,6 @@ class RuntimeLifecycleTest {
             RuntimeStopResult.Rejected(RuntimeStopFailure.ACTIVE_ENDPOINT),
             lifecycle.stop(endpoint),
         )
-    }
-
-    @Test
-    fun `clean rejects a reachable endpoint and removes only exact stale artifacts`(
-        @TempDir temporary: Path,
-    ) {
-        val endpoint = endpoint(temporary)
-        val artifacts = FakeRuntimeEndpointArtifacts(
-            setOf(
-                RuntimeEndpointMarker.SOCKET,
-                RuntimeEndpointMarker.DESCRIPTOR,
-                RuntimePersistentState,
-            ),
-        )
-        var reachability: RuntimeEndpointReachability = RuntimeEndpointReachability.Reachable
-        val lifecycle = ExactRootRuntimeLifecycle(
-            endpointProbe = RuntimeEndpointProbe { reachability },
-            processAuthority = RuntimeProcessAuthority { RuntimeProcessObservation.Absent },
-            artifacts = artifacts,
-        )
-
-        assertEquals(
-            RuntimeCleanResult.Rejected(RuntimeCleanFailure.ACTIVE_ENDPOINT),
-            lifecycle.clean(endpoint),
-        )
-        reachability = RuntimeEndpointReachability.Unreachable
-        assertEquals(
-            RuntimeCleanResult.Cleaned(
-                allRuntimeEndpointArtifacts,
-            ),
-            lifecycle.clean(endpoint),
-        )
-        assertEquals(emptySet<RuntimeEndpointArtifact>(), artifacts.present)
-    }
-
-    @Test
-    fun `default clean removes the exact endpoint tree and preserves its siblings`(
-        @TempDir temporary: Path,
-    ) {
-        val endpoint = endpoint(temporary)
-        val descriptor = endpoint.socketPath.resolveSibling(
-            "${endpoint.socketPath.fileName}.endpoint.json",
-        )
-        val state = endpoint.socketPath.parent.toRealPath().resolve(
-            "${endpoint.socketPath.fileName}.state",
-        )
-        val sibling = Files.writeString(temporary.resolve("preserved.txt"), "preserved")
-        Files.writeString(endpoint.socketPath, "stale")
-        Files.writeString(descriptor, "stale")
-        Files.createDirectories(state)
-        Files.writeString(state.resolve("cache.bin"), "stale")
-
-        assertEquals(
-            RuntimeCleanResult.Cleaned(
-                allRuntimeEndpointArtifacts,
-            ),
-            ExactRootRuntimeLifecycle().clean(endpoint),
-        )
-        assertEquals(false, Files.exists(endpoint.socketPath))
-        assertEquals(false, Files.exists(descriptor))
-        assertEquals(false, Files.exists(state))
-        assertEquals("preserved", Files.readString(sibling))
     }
 
     private fun endpoint(temporary: Path): RuntimeEndpoint {
@@ -289,14 +217,6 @@ private class FakeRuntimeEndpointArtifacts(
         RuntimeEndpointMarkerObservation.Observed(
             present.filterIsInstance<RuntimeEndpointMarker>().toSet(),
         )
-
-    override fun retireMarkers(
-        endpoint: InactiveRuntimeEndpoint,
-    ): RuntimeEndpointMarkerRetirement {
-        val removed = present.filterIsInstance<RuntimeEndpointMarker>().toSet()
-        present -= removed
-        return RuntimeEndpointMarkerRetirement.Retired(removed)
-    }
 
     override fun clean(endpoint: InactiveRuntimeEndpoint): RuntimeEndpointArtifactCleaning {
         val removed = present

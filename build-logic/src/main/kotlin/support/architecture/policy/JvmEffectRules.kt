@@ -2,7 +2,7 @@ package support.architecture
 
 internal object EffectRules {
     private const val ENDPOINT_PUBLISHER_OWNER =
-        "io/github/amichne/kast/ide/endpoint/JdkIdeEndpointPublisher"
+        "io/github/amichne/kast/indexer/IndexerEndpointDescriptorKt"
     private const val PROJECT_READ_EPOCH_SESSION_OWNER =
         "io/github/amichne/kast/workspace/intellij/read/AdmittedIdeProjectSession"
     private val topologySourceRootVfsSynchronizer = JvmMember.of(
@@ -18,12 +18,6 @@ internal object EffectRules {
     )
     private val endpointFilesystemOwners = setOf(
         ENDPOINT_PUBLISHER_OWNER,
-        "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory",
-        "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory\$Companion",
-        "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory\$BoundSocket",
-        "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory\$DescriptorTemporary",
-        "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory\$IdentifiedDescriptorTemporary",
-        "io/github/amichne/kast/ide/endpoint/RetainedPublishedDescriptor",
     )
 
     private val filesystemMutators = setOf(
@@ -181,18 +175,12 @@ internal object EffectRules {
     private fun isEndpointUdsAuthority(caller: JvmMember, target: JvmMember): Boolean = when (
         caller.owner.internalName
     ) {
-        ENDPOINT_PUBLISHER_OWNER ->
+        "io/github/amichne/kast/indexer/InstalledIndexerTransport\$Companion" ->
             target.owner.internalName == "java/nio/channels/ServerSocketChannel" &&
-                target.name.value == "open"
-        "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory" ->
-            target.owner.internalName == "java/nio/channels/ServerSocketChannel" &&
-                target.name.value == "bind"
-        "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory\$BoundSocket" ->
+                target.name.value in setOf("open", "bind")
+        "io/github/amichne/kast/indexer/InstalledIndexerTransport" ->
             target.owner.internalName == "java/nio/channels/ServerSocketChannel" &&
                 target.name.value == "accept"
-        "io/github/amichne/kast/ide/endpoint/IdeEndpointFrameCodec" ->
-            target.owner.internalName == "java/nio/channels/SocketChannel" &&
-                target.name.value in setOf("read", "write")
         else -> false
     }
 

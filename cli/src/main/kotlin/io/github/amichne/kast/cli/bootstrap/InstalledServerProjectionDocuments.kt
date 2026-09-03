@@ -116,15 +116,6 @@ private enum class InstalledServerTool(
     private val optionFields: List<ServerCliOptionField>,
     private val approvalPolicy: InstalledServerApprovalPolicy = InstalledServerApprovalPolicy.NONE,
 ) {
-    WORKSPACE_INSPECT(
-        operation = CanonicalOperation.WORKSPACE_INSPECT,
-        toolName = "workspace_ensure_ready",
-        toolDescription =
-            "Admit the exact-root endpoint and report its readiness and canonical identity.",
-        inputSchema = objectSchema(),
-        command = listOf("start"),
-        optionFields = emptyList(),
-    ),
     INDEX_SYNC(
         operation = CanonicalOperation.INDEX_SYNC,
         toolName = "index_sync",
@@ -161,29 +152,27 @@ private enum class InstalledServerTool(
             ServerCliOptionField("limit", "--limit"),
         ),
     ),
-    SYMBOL_RESOLVE(
-        operation = CanonicalOperation.SYMBOL_RESOLVE,
-        toolName = "symbol_resolve",
+    SYMBOL_INSPECT(
+        operation = CanonicalOperation.SYMBOL_INSPECT,
+        toolName = "symbol_inspect",
         toolDescription =
-            "Refine one Kast discovery candidate to an exact generation-bound selector.",
-        inputSchema = objectSchema(
-            ServerSchemaProperty(
-                "candidate",
-                textSchema("Candidate selector returned by discovery."),
+            "Refine a discovery candidate or inspect an exact current-generation Kotlin symbol.",
+        inputSchema = unionSchema(
+            objectSchema(
+                ServerSchemaProperty(
+                    "candidate",
+                    textSchema("Candidate selector returned by discovery."),
+                ),
+            ),
+            objectSchema(
+                ServerSchemaProperty("selector", textSchema("Exact symbol selector.")),
             ),
         ),
-        command = listOf("symbol", "resolve"),
-        optionFields = listOf(ServerCliOptionField("candidate", "--candidate")),
-    ),
-    SYMBOL_DESCRIBE(
-        operation = CanonicalOperation.SYMBOL_DESCRIBE,
-        toolName = "symbol_inspect",
-        toolDescription = "Inspect one exact current-generation Kotlin symbol.",
-        inputSchema = objectSchema(
-            ServerSchemaProperty("selector", textSchema("Exact symbol selector.")),
+        command = listOf("symbol", "inspect"),
+        optionFields = listOf(
+            ServerCliOptionField("candidate", "--candidate"),
+            ServerCliOptionField("selector", "--selector"),
         ),
-        command = listOf("symbol", "describe"),
-        optionFields = listOf(ServerCliOptionField("selector", "--selector")),
     ),
     SOURCE_READ(
         operation = CanonicalOperation.SOURCE_READ,
@@ -309,23 +298,13 @@ private enum class InstalledServerTool(
     CHANGE_APPLY(
         operation = CanonicalOperation.CHANGE_APPLY,
         toolName = "change_apply",
-        toolDescription = "Apply one admitted hosted change plan.",
+        toolDescription =
+            "Apply one admitted hosted change plan and return its verified receipt.",
         inputSchema = objectSchema(
             ServerSchemaProperty("plan", textSchema("Plan identity.")),
         ),
         command = listOf("change", "apply"),
         optionFields = listOf(ServerCliOptionField("plan", "--plan")),
-        approvalPolicy = InstalledServerApprovalPolicy.EXPLICIT,
-    ),
-    CHANGE_VERIFY(
-        operation = CanonicalOperation.CHANGE_VERIFY,
-        toolName = "change_verify",
-        toolDescription = "Verify one hosted change application against semantic evidence.",
-        inputSchema = objectSchema(
-            ServerSchemaProperty("application", textSchema("Application identity.")),
-        ),
-        command = listOf("change", "verify"),
-        optionFields = listOf(ServerCliOptionField("application", "--application")),
         approvalPolicy = InstalledServerApprovalPolicy.EXPLICIT,
     ),
     CHANGE_RECOVER(
@@ -500,17 +479,6 @@ internal fun installedServerOutputSchema(operation: CanonicalOperation): JsonObj
 )
 
 private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject = when (operation) {
-    CanonicalOperation.WORKSPACE_INSPECT -> outcomeSchema(
-        operation,
-        ServerSchemaProperty("canonicalRoot", textSchema("Canonical workspace root.")),
-        ServerSchemaProperty(
-            "state",
-            enumSchema(
-                listOf("absent", "starting", "reconciling", "ready", "blocked", "stopping"),
-                "Workspace runtime state.",
-            ),
-        ),
-    )
     CanonicalOperation.INDEX_SYNC -> outcomeSchema(
         operation,
         ServerSchemaProperty(
@@ -523,11 +491,7 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
         operation,
         ServerSchemaProperty("items", arraySchema(symbolDiscoverySchema())),
     )
-    CanonicalOperation.SYMBOL_RESOLVE -> outcomeSchema(
-        operation,
-        ServerSchemaProperty("exactSelector", textSchema("Exact compiler-grounded selector.")),
-    )
-    CanonicalOperation.SYMBOL_DESCRIBE -> outcomeSchema(
+    CanonicalOperation.SYMBOL_INSPECT -> outcomeSchema(
         operation,
         ServerSchemaProperty("symbol", symbolSchema()),
     )
@@ -561,13 +525,9 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
     CanonicalOperation.CHANGE_APPLY -> outcomeSchema(
         operation,
         ServerSchemaProperty(
-            "applicationIdentity",
-            textSchema("Durable change application identity."),
+            "receiptIdentity",
+            textSchema("Verified change receipt identity."),
         ),
-    )
-    CanonicalOperation.CHANGE_VERIFY -> outcomeSchema(
-        operation,
-        ServerSchemaProperty("receiptIdentity", textSchema("Verification receipt identity.")),
     )
     CanonicalOperation.CHANGE_RECOVER -> outcomeSchema(
         operation,
@@ -736,24 +696,15 @@ private fun sourceEntityCommonProperties(): Array<ServerSchemaProperty> = arrayO
     ServerSchemaProperty("selection", sourceSelectionSchema()),
 )
 
-private fun sourceDeclarationSemanticIdentitySchema(): JsonObject = unionSchema(
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("candidate", "Semantic identity state.")),
-        ServerSchemaProperty("selector", textSchema("Resolvable declaration candidate selector.")),
-    ),
-    objectSchema(
-        ServerSchemaProperty(
-            "type",
-            constantSchema("existing-symbol", "Semantic identity state."),
-        ),
-        ServerSchemaProperty("selector", textSchema("Existing exact symbol selector.")),
-    ),
+private fun sourceDeclarationSemanticIdentitySchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("type", constantSchema("candidate", "Semantic identity state.")),
+    ServerSchemaProperty("selector", textSchema("Resolvable declaration candidate selector.")),
 )
 
 private fun sourceEntityTargetSchema(): JsonObject = unionSchema(
     objectSchema(
-        ServerSchemaProperty("type", constantSchema("symbol", "Semantic target state.")),
-        ServerSchemaProperty("selector", textSchema("Exact target symbol selector.")),
+        ServerSchemaProperty("type", constantSchema("candidate", "Semantic target state.")),
+        ServerSchemaProperty("selector", textSchema("Resolvable target candidate selector.")),
     ),
     objectSchema(
         ServerSchemaProperty("type", constantSchema("local", "Semantic target state.")),

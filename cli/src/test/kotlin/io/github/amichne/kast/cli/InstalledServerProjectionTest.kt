@@ -27,11 +27,9 @@ class InstalledServerProjectionTest {
 
         assertEquals(
             listOf(
-                "workspace_ensure_ready",
                 "index_sync",
                 "topology_build",
                 "symbol_lookup",
-                "symbol_resolve",
                 "symbol_inspect",
                 "source_read",
                 "semantic_query",
@@ -39,15 +37,11 @@ class InstalledServerProjectionTest {
                 "diagnostic_check",
                 "change_plan",
                 "change_apply",
-                "change_verify",
                 "change_recover",
             ),
             tools.map { it.getValue("name").jsonPrimitive.content },
         )
-        assertEquals(
-            listOf("start"),
-            tools.tool("workspace.inspect").cliCommand(),
-        )
+        assertEquals(listOf("symbol", "inspect"), tools.tool("symbol.inspect").cliCommand())
         assertTrue(
             tools.filter { it.getValue("name").jsonPrimitive.content.startsWith("change_") }
                 .all {
@@ -70,19 +64,16 @@ class InstalledServerProjectionTest {
 
         assertEquals(
             listOf(
-                "workspace.inspect",
                 "index.sync",
                 "topology.build",
                 "symbol.discover",
-                "symbol.resolve",
-                "symbol.describe",
+                "symbol.inspect",
                 "source.read",
                 "relation.read",
                 "traversal.run",
                 "diagnostic.check",
                 "change.plan",
                 "change.apply",
-                "change.verify",
                 "change.recover",
             ),
             tools.map { it.getValue("operationId").jsonPrimitive.content },
@@ -128,11 +119,9 @@ class InstalledServerProjectionTest {
         )
         assertEquals(
             listOf(
-                "workspace_ensure_ready",
                 "index_sync",
                 "topology_build",
                 "symbol_lookup",
-                "symbol_resolve",
                 "symbol_inspect",
                 "source_read",
                 "semantic_query",
@@ -140,7 +129,6 @@ class InstalledServerProjectionTest {
                 "diagnostic_check",
                 "change_plan",
                 "change_apply",
-                "change_verify",
                 "change_recover",
             ),
             tools.map { it.getValue("name").jsonPrimitive.content },
@@ -175,19 +163,16 @@ class InstalledServerProjectionTest {
         )
         assertEquals(
             linkedMapOf(
-                "workspace.inspect" to listOf("start"),
                 "index.sync" to listOf("index", "sync"),
                 "topology.build" to listOf("topology", "build"),
                 "symbol.discover" to listOf("symbol", "discover"),
-                "symbol.resolve" to listOf("symbol", "resolve"),
-                "symbol.describe" to listOf("symbol", "describe"),
+                "symbol.inspect" to listOf("symbol", "inspect"),
                 "source.read" to listOf("source", "read"),
                 "relation.read" to listOf("relation", "read"),
                 "traversal.run" to listOf("traversal", "run"),
                 "diagnostic.check" to listOf("diagnostic", "check"),
                 "change.plan" to listOf("change", "plan"),
                 "change.apply" to listOf("change", "apply"),
-                "change.verify" to listOf("change", "verify"),
                 "change.recover" to listOf("change", "recover"),
             ),
             tools.associate { tool ->
@@ -196,13 +181,11 @@ class InstalledServerProjectionTest {
         )
         assertEquals(
             linkedMapOf(
-                "workspace.inspect" to emptyList(),
                 "index.sync" to emptyList(),
                 "topology.build" to emptyList(),
                 "symbol.discover" to
                     listOf("mode", "query", "kind", "match", "file", "offset", "scope", "limit"),
-                "symbol.resolve" to listOf("candidate"),
-                "symbol.describe" to listOf("selector"),
+                "symbol.inspect" to listOf("candidate", "selector"),
                 "source.read" to listOf(
                     "anchor",
                     "region",
@@ -225,7 +208,6 @@ class InstalledServerProjectionTest {
                 "diagnostic.check" to listOf("scope", "limit"),
                 "change.plan" to listOf("intent", "target", "declaration"),
                 "change.apply" to listOf("plan"),
-                "change.verify" to listOf("application"),
                 "change.recover" to listOf("plan"),
             ),
             tools.associate { tool ->
@@ -235,7 +217,7 @@ class InstalledServerProjectionTest {
         assertEquals(tools.size, tools.map { it.getValue("outputSchema") }.distinct().size)
 
         assertTrue(
-            tools.tool("symbol.describe").completedDocumentRequiredProperties()
+            tools.tool("symbol.inspect").completedDocumentRequiredProperties()
                 .containsAll(listOf("operation", "status", "symbol")),
         )
         assertTrue(
@@ -261,13 +243,11 @@ class InstalledServerProjectionTest {
     fun `advertised output schemas admit emitted proof rich documents`() {
         val tools = projectionTools()
         val coverage = """{"status":"completed","document":{"operation":"topology.build","status":"rejected","reason":"coverage-incomplete","missing":["src/Missing.kt"],"unexpected":[],"duplicateCandidates":[],"duplicateCompletions":[],"workspaceMismatches":[],"candidateEvidenceMismatches":[],"duplicateSymbols":[],"missingEdgeTargets":[],"mismatchedEdgeEndpoints":[]}}"""
-        val compatibility = """{"status":"rejected","diagnostic":{"status":"rejected","boundary":"runtime","reason":"ide-descriptor-rejected","details":{"type":"compatibility-rejected","failure":{"type":"mismatch","field":"kast-plugin-version","expected":"1.2.3","observed":"1.2.4"}}}}"""
         val longMessage = "x".repeat(20_000)
         val diagnostic = """{"status":"completed","document":{"operation":"diagnostic.check","status":"complete","diagnostics":[{"severity":"warning","code":"LONG_MESSAGE","message":"$longMessage","location":{"candidateSelector":"candidate:diagnostic","file":"src/A.kt","range":{"startInclusive":0,"endExclusive":0}}}]}}"""
 
         assertAll(
             { tools.tool("topology.build").outputSchema().assertAdmits(coverage) },
-            { tools.tool("workspace.inspect").outputSchema().assertAdmits(compatibility) },
             {
                 installedServerOutputSchema(CanonicalOperation.DIAGNOSTIC_CHECK)
                     .assertAdmits(diagnostic)
@@ -277,28 +257,28 @@ class InstalledServerProjectionTest {
 
     @Test
     fun `symbol output schema rejects proof contradictions`() {
-        val schema = projectionTools().tool("symbol.describe").outputSchema()
-        val valid = symbolDescribeProcessDocument(
+        val schema = projectionTools().tool("symbol.inspect").outputSchema()
+        val valid = symbolInspectProcessDocument(
             kind = "classlike",
             qualifiedIdentity = "\"sample.Controller\"",
             signature = """{"type":"class-like","qualifiedIdentity":"sample.Controller"}""",
         )
-        val unavailableIdentity = symbolDescribeProcessDocument(
+        val unavailableIdentity = symbolInspectProcessDocument(
             kind = "classlike",
             qualifiedIdentity = "null",
             signature = """{"type":"class-like","qualifiedIdentity":"sample.Controller"}""",
         )
-        val incompatibleKind = symbolDescribeProcessDocument(
+        val incompatibleKind = symbolInspectProcessDocument(
             kind = "function",
             qualifiedIdentity = "\"sample.Controller\"",
             signature = """{"type":"class-like","qualifiedIdentity":"sample.Controller"}""",
         )
-        val property = symbolDescribeProcessDocument(
+        val property = symbolInspectProcessDocument(
             kind = "property",
             qualifiedIdentity = "\"sample.Controller\"",
             signature = """{"type":"property","qualifiedIdentity":"sample.Controller","receiver":{"type":"present","compilerType":"kotlin.String"},"contextReceivers":["sample.Context"],"returnType":"kotlin.Int"}""",
         )
-        val propertyWithoutReceiverProof = symbolDescribeProcessDocument(
+        val propertyWithoutReceiverProof = symbolInspectProcessDocument(
             kind = "property",
             qualifiedIdentity = "\"sample.Controller\"",
             signature = """{"type":"property","qualifiedIdentity":"sample.Controller","returnType":"kotlin.Int"}""",
@@ -422,11 +402,11 @@ class InstalledServerProjectionTest {
             .validate(document, InputFormat.JSON)
             .mapTo(linkedSetOf()) { it.message }
 
-    private fun symbolDescribeProcessDocument(
+    private fun symbolInspectProcessDocument(
         kind: String,
         qualifiedIdentity: String,
         signature: String,
-    ): String = """{"status":"completed","document":{"operation":"symbol.describe","status":"complete","symbol":{"selector":"exact:v1:3:1","kind":"$kind","name":"Controller","qualifiedIdentity":$qualifiedIdentity,"file":"src/Controller.kt","range":{"startInclusive":0,"endExclusive":10},"compilerEvidence":{"identity":"canonical-signature-sha256-v1|${"a".repeat(64)}","signature":$signature}}}}"""
+    ): String = """{"status":"completed","document":{"operation":"symbol.inspect","status":"complete","symbol":{"selector":"exact:v1:3:1","kind":"$kind","name":"Controller","qualifiedIdentity":$qualifiedIdentity,"file":"src/Controller.kt","range":{"startInclusive":0,"endExclusive":10},"compilerEvidence":{"identity":"canonical-signature-sha256-v1|${"a".repeat(64)}","signature":$signature}}}}"""
 
     private fun JsonObject.completedDocumentSchema(): JsonObject =
         getValue("outputSchema")

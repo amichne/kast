@@ -238,15 +238,15 @@ class InstalledBrokerServerTest {
             "schemaVersion": 2,
             "namespace": "kast",
             "tools": [{
-              "operationId": "workspace.inspect",
-              "name": "workspace_inspect",
-              "description": "Inspect the admitted workspace.",
+              "operationId": "index.sync",
+              "name": "index_sync",
+              "description": "Synchronize index evidence.",
               "deferLoading": false,
               "approvalPolicy": "none",
-              "cliUsage": "kast workspace inspect",
+              "cliUsage": "kast index sync",
               "inputSchema": {"type":"object","additionalProperties":false,"properties":{}},
               "outputSchema": {"type":"object"},
-              "invocation": {"type":"CLI","command":["workspace","inspect"],"bindings":[]}
+              "invocation": {"type":"CLI","command":["index","sync"],"bindings":[]}
             }]
           }
         }

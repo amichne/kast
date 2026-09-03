@@ -50,7 +50,6 @@ repository:
 cd /path/to/kotlin-repository
 kast product inspect
 kast start
-kast workspace inspect
 ```
 
 `kast product inspect` reports the control, sidecar, supported IDEA/Kotlin pair,
@@ -79,7 +78,7 @@ the process entry point used by that managed service. The Kotlin port's imported
 
 Ordinary startup never reads the user's IDEA system directory. To accelerate a
 first private import from compatible indexes, shut down IDEA cleanly and run
-`kast start --seed-from-idea`. Interactive use discloses the allowlisted cache
+`kast start --cache seed`. Interactive use discloses the allowlisted cache
 categories and estimated bytes; non-interactive use must also pass
 `--accept-global-index-copy`. The copy is validated and atomically published
 inside Kast's cache, and the source IDEA cache is never mounted or modified.
@@ -91,14 +90,14 @@ outside-workspace roots still fail closed.
 
 ## Ask a repository question
 
-The installed sidecar publishes thirteen public semantic operations. The generated
+The installed sidecar publishes eleven public semantic operations. The generated
 [CLI reference](https://kast.michne.com/reference/cli/) describes those public
 routes, and `kast --schema` returns the complete contract as JSON.
 Its `serverProjection` is the installed executable's authority for
 server-visible tool names, descriptions, input and output JSON Schemas, loading
 policy, explicit approval policy, and field-to-CLI bindings. Common read paths
-are named `workspace_ensure_ready`, `symbol_lookup`, `symbol_inspect`,
-`semantic_query`, `impact_analyze`, and `diagnostic_check`; the canonical
+cover index and topology effects, symbol discovery and inspection, source and
+relation reads, traversal, and diagnostics; the canonical
 operation IDs and evidence documents remain unchanged beneath those façades.
 Every `change_*` tool is marked `explicit` approval while read tools are marked
 `none`. The projection advertises every public sidecar operation from executable
@@ -107,16 +106,18 @@ carrying a Kast-version lookup table.
 
 | Question | Command path |
 | --- | --- |
-| What is Kast ready to inspect? | `kast workspace inspect` |
+| What is Kast ready to inspect? | `kast start`, observed passively with `kast status` |
 | How do I refresh stale files and semantic evidence? | `kast index sync` |
-| What declaration is this? | `kast symbol discover ...`, then `kast symbol resolve ...` and `kast symbol describe ...` |
+| What declaration is this? | `kast symbol discover ...`, then `kast symbol inspect --candidate ...` |
+| What source content and structure exist here? | `kast source read ...` |
 | How is this code connected? | `kast relation read ...` for one hop, or `kast topology build` then `kast traversal run ...` for bounded depth |
 | What diagnostics exist in this scope? | `kast diagnostic check ...` |
-| How can I add a declaration safely? | `kast change plan ...`, `kast change apply ...`, `kast change verify ...`, and `kast change recover ...` |
+| How can I add a declaration safely? | `kast change plan ...`, verified `kast change apply ...`, and `kast change recover ...` |
 
-Discovery returns bounded candidates. Resolution refines one candidate into an
-exact, generation-bound selector. Description returns detached compiler
-evidence for that selector. Bounded traversal returns one exact
+Discovery returns bounded candidates. Inspection refines one candidate into an
+exact, generation-bound selector and returns detached compiler evidence for it.
+Source reads remain source evidence and never establish compiler identity.
+Bounded traversal returns one exact
 `canonicalRoot`/generation snapshot identity plus normalized `nodes`, `edges`,
 and proof-identity tables; repeated full signatures stay behind the on-demand
 `symbol_inspect` façade. A successful apply publishes the newer workspace
@@ -155,7 +156,7 @@ PSI and K2 objects stay inside that process. The request and response cross the
 wire as host-neutral documents.
 
 [How Kast works](https://kast.michne.com/explanation/how-kast-works/) traces a
-concrete `kast symbol describe` request through the Kotlin implementation.
+concrete `kast symbol inspect` request through the Kotlin implementation.
 
 ## Inspect topology and traversal latency
 

@@ -19,7 +19,9 @@ sealed interface StartupIdeaSystem {
 
 /** Ordinary startup never grants authority to read a user IDEA system directory. */
 sealed interface StartupCacheIntent {
-    data object ReuseOrFresh : StartupCacheIntent
+    data object Reuse : StartupCacheIntent
+
+    data object Rebuild : StartupCacheIntent
 
     data class Seed(
         val sourceSystem: StartupIdeaSystem,
@@ -34,7 +36,7 @@ sealed interface RuntimeStartupRequest {
 
     data object Default : RuntimeStartupRequest {
         override val ideHome: StartupIdeHome = StartupIdeHome.Standard
-        override val cacheIntent: StartupCacheIntent = StartupCacheIntent.ReuseOrFresh
+        override val cacheIntent: StartupCacheIntent = StartupCacheIntent.Reuse
     }
 
     data class Requested(

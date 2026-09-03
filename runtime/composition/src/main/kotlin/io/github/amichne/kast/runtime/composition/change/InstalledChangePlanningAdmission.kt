@@ -69,12 +69,12 @@ internal class InstalledChangePlanningAdmission(
         val published = (workspace.inspect() as? WorkspaceRuntimeState.Ready)?.workspace
                         ?: return rejected(ChangePlanAdmissionFailure.WORKSPACE_NOT_READY)
         if (intent.selector.lease != published.readLease) {
-            return rejected(ChangePlanAdmissionFailure.SYMBOL_RESOLVE_REQUIRED)
+            return rejected(ChangePlanAdmissionFailure.EXACT_SYMBOL_REQUIRED)
         }
         val selector = when (val described = symbols.describe(ExactSymbolRequest(intent.selector))) {
             is SymbolDescriptionResult.Described -> described.description.selector
             is SymbolDescriptionResult.Rejected -> return rejected(
-                ChangePlanAdmissionFailure.SYMBOL_RESOLVE_REQUIRED,
+                ChangePlanAdmissionFailure.EXACT_SYMBOL_REQUIRED,
             )
         }
         val file = selector.file as? SymbolDiscoveryFileIdentity.Workspace
@@ -197,7 +197,7 @@ private fun TraversalRejection.admissionFailure(): ChangePlanAdmissionFailure = 
         io.github.amichne.kast.relation.contract.RelationReadRejection.WORKSPACE_ROOT_MISMATCH,
         io.github.amichne.kast.relation.contract.RelationReadRejection.STALE_GENERATION,
         io.github.amichne.kast.relation.contract.RelationReadRejection.STALE_SELECTOR,
-            -> ChangePlanAdmissionFailure.SYMBOL_RESOLVE_REQUIRED
+            -> ChangePlanAdmissionFailure.EXACT_SYMBOL_REQUIRED
         else -> ChangePlanAdmissionFailure.INTENT_REJECTED
     }
     TraversalRejection.ReaderContractViolation,

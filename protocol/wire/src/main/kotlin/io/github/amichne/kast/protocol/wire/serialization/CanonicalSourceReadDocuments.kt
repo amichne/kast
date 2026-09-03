@@ -222,17 +222,13 @@ internal sealed interface SourceDeclarationSemanticIdentityWireDocument {
     @Serializable
     @SerialName("candidate")
     data class Candidate(val selector: String) : SourceDeclarationSemanticIdentityWireDocument
-
-    @Serializable
-    @SerialName("existing-symbol")
-    data class ExistingSymbol(val selector: String) : SourceDeclarationSemanticIdentityWireDocument
 }
 
 @Serializable
 internal sealed interface SourceEntityTargetWireDocument {
     @Serializable
-    @SerialName("symbol")
-    data class Symbol(val selector: String) : SourceEntityTargetWireDocument
+    @SerialName("candidate")
+    data class Candidate(val selector: String) : SourceEntityTargetWireDocument
 
     @Serializable
     @SerialName("local")

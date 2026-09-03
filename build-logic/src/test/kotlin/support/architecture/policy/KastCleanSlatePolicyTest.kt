@@ -25,6 +25,9 @@ class KastCleanSlatePolicyTest {
                 ":symbol:contract",
                 ":symbol:service",
                 ":symbol:intellij",
+                ":source:contract",
+                ":source:service",
+                ":source:intellij",
                 ":relation:contract",
                 ":relation:service",
                 ":relation:intellij",
@@ -48,9 +51,6 @@ class KastCleanSlatePolicyTest {
                 ":runtime:server",
                 ":runtime:telemetry",
                 ":runtime:composition",
-                ":runtime:ide-read",
-                ":runtime:ide-host",
-                ":ide-plugin",
                 ":cli",
                 ":indexer",
             ),
@@ -58,20 +58,7 @@ class KastCleanSlatePolicyTest {
         )
         assertEquals(
             ModuleLifecycle.ACTIVE,
-            architecture.modules.getValue(ModuleId.IDE_PLUGIN).lifecycle,
-        )
-        assertEquals(
-            ModuleLifecycle.ACTIVE,
             architecture.modules.getValue(ModuleId.WORKSPACE_INTELLIJ_READ).lifecycle,
-        )
-        assertEquals(
-            ModuleLifecycle.ACTIVE,
-            architecture.modules.getValue(ModuleId.RUNTIME_IDE_READ).lifecycle,
-        )
-        assertTrue(
-            ModuleId.SYMBOL_INTELLIJ in architecture.modules
-                .getValue(ModuleId.RUNTIME_IDE_READ)
-                .allowedProjectDependencies,
         )
         assertTrue(
             ModuleId.SYMBOL_CONTRACT in architecture.modules
@@ -96,20 +83,20 @@ class KastCleanSlatePolicyTest {
                 ForbiddenEffect.INTELLIJ_PLATFORM to setOf(
                     ModuleId.WORKSPACE_INTELLIJ,
                     ModuleId.SYMBOL_INTELLIJ,
+                    ModuleId.SOURCE_INTELLIJ,
                     ModuleId.RELATION_INTELLIJ,
                     ModuleId.TOPOLOGY_INTELLIJ,
                     ModuleId.DIAGNOSTIC_INTELLIJ,
                     ModuleId.CHANGE_INTELLIJ,
                     ModuleId.INDEXER,
                     ModuleId.WORKSPACE_INTELLIJ_READ,
-                    ModuleId.RUNTIME_IDE_READ,
-                    ModuleId.IDE_PLUGIN,
                 ),
                 ForbiddenEffect.PROJECT_FILE_INDEX_AUTHORITY to
                     setOf(ModuleId.WORKSPACE_INTELLIJ_READ),
-                ForbiddenEffect.PROJECT_READ_EPOCH_AUTHORITY to setOf(ModuleId.IDE_PLUGIN),
-                ForbiddenEffect.UDS_BIND to setOf(ModuleId.IDE_PLUGIN),
-                ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE to setOf(ModuleId.IDE_PLUGIN),
+                ForbiddenEffect.PROJECT_READ_EPOCH_AUTHORITY to
+                    setOf(ModuleId.WORKSPACE_INTELLIJ_READ),
+                ForbiddenEffect.UDS_BIND to setOf(ModuleId.INDEXER),
+                ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE to setOf(ModuleId.INDEXER),
                 ForbiddenEffect.PROJECT_OPEN to emptySet(),
                 ForbiddenEffect.INTELLIJ_WRITE to setOf(ModuleId.CHANGE_INTELLIJ),
                 ForbiddenEffect.FILESYSTEM_WRITE to setOf(
@@ -147,20 +134,19 @@ class KastCleanSlatePolicyTest {
     }
 
     @Test
-    fun `full and hosted compositions retain distinct exact implementation graphs`() {
+    fun `one canonical composition retains the complete implementation graph`() {
         val architecture = canonicalArchitecture()
         val composition = architecture.modules.getValue(ModuleId.RUNTIME_COMPOSITION)
         val excluded = setOf(
             ModuleId.CLI,
             ModuleId.INDEXER,
             ModuleId.RUNTIME_COMPOSITION,
-            ModuleId.RUNTIME_IDE_HOST,
         )
 
         assertEquals(ModuleRole.COMPOSITION, composition.role)
         assertEquals(architecture.modules.keys - excluded, composition.allowedProjectDependencies)
         assertEquals(
-            setOf(ModuleId.RUNTIME_COMPOSITION, ModuleId.RUNTIME_IDE_HOST),
+            setOf(ModuleId.RUNTIME_COMPOSITION),
             architecture.modules.values
                 .filter { it.role == ModuleRole.COMPOSITION }
                 .mapTo(linkedSetOf(), ValidatedModulePolicy::id),

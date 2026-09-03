@@ -70,17 +70,15 @@ headless IntelliJ sidecar and publishes its compiler-backed evidence.
     kast --schema
     ```
 
-    `kast --schema` lists all thirteen canonical operations, command shapes, wire
+    `kast --schema` lists all eleven canonical operations, command shapes, wire
     schema, and the installed `serverProjection`. That projection owns the
     server-visible tool names, descriptions, input and output JSON Schemas,
     deferred-loading policy, explicit approval policy, and exact field-to-CLI
-    bindings for every public sidecar operation. Read workflows appear as
-    `workspace_ensure_ready`, `symbol_lookup`, `symbol_inspect`,
-    `semantic_query`, `impact_analyze`, and `diagnostic_check`; every
-    `change_*` tool requires explicit approval. The current sidecar endpoint
-    publishes thirteen operations: workspace inspection, index synchronization,
-    topology build, three symbol operations, relation reads, traversal,
-    diagnostics, and four AddDeclaration lifecycle operations.
+    bindings for every public sidecar operation. Read workflows cover explicit
+    index and topology effects, symbol discovery and inspection, source and
+    relation reads, traversal, and diagnostics; every `change_*` tool requires
+    explicit approval. The current sidecar endpoint publishes eleven operations,
+    including verified application as one atomic completion boundary.
   </Step>
 
   <Step title="Start the exact repository">
@@ -107,18 +105,17 @@ headless IntelliJ sidecar and publishes its compiler-backed evidence.
   </Step>
 
   <Step title="Inspect the first answer">
-    Read lifecycle state and compiler-backed workspace evidence separately:
+    Observe lifecycle state, then ask for compiler-backed evidence:
 
     ```console
     kast status
-    kast workspace inspect
     kast symbol discover --mode name --query PricePolicy --limit 25
     ```
 
     `status` reports runtime identity and a cache state such as `fresh`,
-    `seeded`, `refreshing`, `smart`, or `rebuild-required`. The semantic command
-    tells you what is ready. Discovery then returns bounded candidates, not an
-    exact declaration claim.
+    `seeded`, `refreshing`, `smart`, or `rebuild-required`. `status` never starts
+    or repairs the runtime. A completed `start` establishes readiness; discovery
+    then returns bounded candidates, not an exact declaration claim.
   </Step>
 </Steps>
 
@@ -136,7 +133,7 @@ headless IntelliJ sidecar and publishes its compiler-backed evidence.
     clone of the version-specific allowlist:
 
     ```shell
-    kast start --seed-from-idea
+    kast start --cache seed
     ```
 
     Interactive use first discloses copied categories, estimated size, and the
@@ -151,9 +148,10 @@ headless IntelliJ sidecar and publishes its compiler-backed evidence.
   </Accordion>
 
   <Accordion title="Rebuild only Kast state" icon="rotate-ccw">
-    `kast reindex` stops the exact sidecar, atomically quarantines only its
-    private cache, and starts a fresh import with the recorded IDEA runtime.
-    `kast clean` removes inactive endpoint artifacts but retains the cache.
+    `kast start --cache rebuild` stops the exact sidecar, atomically
+    quarantines only its private cache, and starts a fresh import. Ordinary
+    `kast start` reconciliation removes stale owned endpoint artifacts while
+    retaining reusable cache state.
   </Accordion>
 
   <Accordion title="Install a local matched release" icon="package-check">

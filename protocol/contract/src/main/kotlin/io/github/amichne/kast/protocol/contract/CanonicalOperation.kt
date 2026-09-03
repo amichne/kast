@@ -7,19 +7,16 @@ import io.github.amichne.kast.kernel.Refinement
 enum class CanonicalOperation(
     val id: OperationId,
 ) {
-    WORKSPACE_INSPECT(canonicalOperationId("workspace.inspect")),
     INDEX_SYNC(canonicalOperationId("index.sync")),
     TOPOLOGY_BUILD(canonicalOperationId("topology.build")),
     SYMBOL_DISCOVER(canonicalOperationId("symbol.discover")),
-    SYMBOL_RESOLVE(canonicalOperationId("symbol.resolve")),
-    SYMBOL_DESCRIBE(canonicalOperationId("symbol.describe")),
+    SYMBOL_INSPECT(canonicalOperationId("symbol.inspect")),
     SOURCE_READ(canonicalOperationId("source.read")),
     RELATION_READ(canonicalOperationId("relation.read")),
     TRAVERSAL_RUN(canonicalOperationId("traversal.run")),
     DIAGNOSTIC_CHECK(canonicalOperationId("diagnostic.check")),
     CHANGE_PLAN(canonicalOperationId("change.plan")),
     CHANGE_APPLY(canonicalOperationId("change.apply")),
-    CHANGE_VERIFY(canonicalOperationId("change.verify")),
     CHANGE_RECOVER(canonicalOperationId("change.recover")),
     ;
 

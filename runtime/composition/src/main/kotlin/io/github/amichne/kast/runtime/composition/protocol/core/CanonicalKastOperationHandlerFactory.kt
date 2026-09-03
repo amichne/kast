@@ -1,14 +1,11 @@
 package io.github.amichne.kast.runtime.composition.protocol
 
-import io.github.amichne.kast.change.apply.AddDeclarationApplyOperations
-import io.github.amichne.kast.change.verify.VerifiedMutationOperations
 import io.github.amichne.kast.diagnostic.contract.DiagnosticOperations
-import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.runtime.composition.ChangePlanningOperations
 import io.github.amichne.kast.runtime.composition.ChangeRecoveryOperations
-import io.github.amichne.kast.runtime.composition.InstalledWorkspaceRoot
 import io.github.amichne.kast.runtime.composition.KastOperationHandlerFactory
+import io.github.amichne.kast.runtime.composition.VerifiedChangeApplyOperations
 import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalRelationReadHandler
 import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalTopologyBuildHandler
 import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalTraversalRunHandler
@@ -22,16 +19,11 @@ import io.github.amichne.kast.workspace.contract.IndexSynchronizationOperations
 
 /** Canonical operation handlers sharing exact selector and change-transition authorities. */
 internal class CanonicalKastOperationHandlerFactory private constructor(
-    private val workspaceHandler: CanonicalWorkspaceInspectHandler,
     private val workspace: WorkspaceInspectionOperations,
     private val changeAdmission: ChangePlanAdmissionOperations,
     private val protocolAuthority: CanonicalProtocolAuthority,
     private val changeAuthority: CanonicalChangeAuthority,
 ) : KastOperationHandlerFactory {
-    override fun workspaceInspect(
-        operations: WorkspaceInspectionOperations,
-    ): CanonicalWorkspaceInspectHandler = workspaceHandler
-
     override fun indexSync(
         operations: IndexSynchronizationOperations,
     ) = CanonicalIndexSyncHandler(operations)
@@ -44,13 +36,9 @@ internal class CanonicalKastOperationHandlerFactory private constructor(
         operations: SymbolDiscoveryOperations,
     ) = CanonicalSymbolDiscoverHandler(workspace, operations, protocolAuthority)
 
-    override fun symbolResolve(
+    override fun symbolInspect(
         operations: SymbolExactOperations,
-    ) = CanonicalSymbolResolveHandler(operations, protocolAuthority)
-
-    override fun symbolDescribe(
-        operations: SymbolExactOperations,
-    ) = CanonicalSymbolDescribeHandler(operations, protocolAuthority)
+    ) = CanonicalSymbolInspectHandler(operations, protocolAuthority)
 
     override fun sourceRead(
         operations: SourceReadOperations,
@@ -78,12 +66,8 @@ internal class CanonicalKastOperationHandlerFactory private constructor(
     )
 
     override fun changeApply(
-        operations: AddDeclarationApplyOperations,
+        operations: VerifiedChangeApplyOperations,
     ) = CanonicalChangeApplyHandler(workspace, operations, changeAuthority)
-
-    override fun changeVerify(
-        operations: VerifiedMutationOperations,
-    ) = CanonicalChangeVerifyHandler(operations, changeAuthority)
 
     override fun changeRecover(
         operations: ChangeRecoveryOperations,
@@ -91,32 +75,20 @@ internal class CanonicalKastOperationHandlerFactory private constructor(
 
     companion object {
         /**
-         * Proof transition: `(InstalledWorkspaceRoot, WorkspaceInspectionOperations,
-         * ChangePlanAdmissionOperations) -> Refinement<CanonicalKastOperationHandlerFactory,
-         * WorkspaceInspectHandlerConstructionFailure>`.
+         * Proof transition: `(WorkspaceInspectionOperations,
+         * ChangePlanAdmissionOperations) -> CanonicalKastOperationHandlerFactory`.
          *
-         * Establishes all fourteen canonical handlers under one exact installed root, one selector
-         * authority, and one plan/apply/verify authority. The closed construction failure preserves
-         * an unrepresentable root. Raw root extraction remains confined to workspace projection.
+         * Establishes all eleven canonical handlers under one workspace authority, one selector
+         * authority, and one plan/apply/verify authority.
          */
         fun create(
-            root: InstalledWorkspaceRoot,
             workspace: WorkspaceInspectionOperations,
             changeAdmission: ChangePlanAdmissionOperations,
-        ): Refinement<
-            CanonicalKastOperationHandlerFactory,
-            WorkspaceInspectHandlerConstructionFailure,
-            > = when (val handler = CanonicalWorkspaceInspectHandler.create(root, workspace)) {
-            is Refinement.Refined -> Refinement.Refined(
-                CanonicalKastOperationHandlerFactory(
-                    handler.value,
-                    workspace,
-                    changeAdmission,
-                    CanonicalProtocolAuthority(),
-                    CanonicalChangeAuthority(),
-                ),
-            )
-            is Refinement.Rejected -> Refinement.Rejected(handler.failure)
-        }
+        ): CanonicalKastOperationHandlerFactory = CanonicalKastOperationHandlerFactory(
+            workspace,
+            changeAdmission,
+            CanonicalProtocolAuthority(),
+            CanonicalChangeAuthority(),
+        )
     }
 }

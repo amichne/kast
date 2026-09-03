@@ -194,10 +194,6 @@ class KastRuntimeComposition private constructor(
         ): KastRuntimeCompositionConstruction {
             val bindings: List<TypedOperationBinding<*, *, *, *>> = listOf(
                 TypedOperationBinding(
-                    CanonicalOperationWireBindings.workspaceInspect,
-                    handlers.workspaceInspect(operations.workspaceInspect),
-                ),
-                TypedOperationBinding(
                     CanonicalOperationWireBindings.indexSync,
                     handlers.indexSync(operations.indexSync),
                 ),
@@ -210,12 +206,8 @@ class KastRuntimeComposition private constructor(
                     handlers.symbolDiscover(operations.symbolDiscover),
                 ),
                 TypedOperationBinding(
-                    CanonicalOperationWireBindings.symbolResolve,
-                    handlers.symbolResolve(operations.symbolResolve),
-                ),
-                TypedOperationBinding(
-                    CanonicalOperationWireBindings.symbolDescribe,
-                    handlers.symbolDescribe(operations.symbolDescribe),
+                    CanonicalOperationWireBindings.symbolInspect,
+                    handlers.symbolInspect(operations.symbolInspect),
                 ),
                 TypedOperationBinding(
                     CanonicalOperationWireBindings.sourceRead,
@@ -240,10 +232,6 @@ class KastRuntimeComposition private constructor(
                 TypedOperationBinding(
                     CanonicalOperationWireBindings.changeApply,
                     handlers.changeApply(operations.changeApply),
-                ),
-                TypedOperationBinding(
-                    CanonicalOperationWireBindings.changeVerify,
-                    handlers.changeVerify(operations.changeVerify),
                 ),
                 TypedOperationBinding(
                     CanonicalOperationWireBindings.changeRecover,

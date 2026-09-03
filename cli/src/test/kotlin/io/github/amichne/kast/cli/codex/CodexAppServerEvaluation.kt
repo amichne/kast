@@ -165,7 +165,7 @@ internal object CodexEvaluationWorkflowPrompt {
         return """
             Find the exact Kotlin class named $query, then show its direct callers using Kast.
             Inspect ALL_TOOLS exactly once for Kast capabilities; do not search for shell separately.
-            If tools.kast__symbol_resolve and tools.kast__relation_read are present, use only those tools from one exec program. Do not inspect their implementations or use web, filesystem, shell, CLI, MCP, or another tool. The exec API returns the dynamic tool's text content as a JSON string. Run `const resolved = JSON.parse(await tools.kast__symbol_resolve({query:$query}));`, retain that parsed Kast document, run `const selector = resolved.body.result.symbol.selector;`, and pass that exact selector unchanged to tools.kast__relation_read({exactSelector:selector, relation:"callers"}). Do not call symbol_resolve again. Print both returned documents, then answer from them.
+            If tools.kast__symbol_inspect and tools.kast__relation_read are present, use only those tools from one exec program. Do not inspect their implementations or use web, filesystem, shell, CLI, MCP, or another tool. The exec API returns the dynamic tool's text content as a JSON string. Run `const inspected = JSON.parse(await tools.kast__symbol_inspect({query:$query}));`, retain that parsed Kast document, run `const selector = inspected.body.result.symbol.selector;`, and pass that exact selector unchanged to tools.kast__relation_read({exactSelector:selector, relation:"callers"}). Do not call symbol_inspect again. Print both returned documents, then answer from them.
             Otherwise, use the public kast CLI.
         """.trimIndent()
     }

@@ -21,10 +21,10 @@ class CodexDynamicToolWorkflowTest {
         assertTrue(prompt.contains("ALL_TOOLS exactly once"))
         assertTrue(prompt.contains("one exec program"))
         assertTrue(prompt.contains("retain that parsed Kast document"))
-        assertTrue(prompt.contains("const resolved = JSON.parse(await tools.kast__symbol_resolve"))
-        assertTrue(prompt.contains("const selector = resolved.body.result.symbol.selector"))
+        assertTrue(prompt.contains("const inspected = JSON.parse(await tools.kast__symbol_inspect"))
+        assertTrue(prompt.contains("const selector = inspected.body.result.symbol.selector"))
         assertTrue(prompt.contains("pass that exact selector"))
-        assertTrue(prompt.contains("Do not call symbol_resolve again"))
+        assertTrue(prompt.contains("Do not call symbol_inspect again"))
         assertTrue(prompt.contains("Do not inspect their implementations"))
         assertTrue(prompt.contains("or use web, filesystem, shell, CLI, MCP, or another tool"))
         assertTrue(prompt.contains("{exactSelector:selector, relation:\"callers\"}"))
@@ -70,7 +70,7 @@ class CodexDynamicToolWorkflowTest {
 
         assertTrue(descriptions.contains("same exec program"))
         assertTrue(descriptions.contains("retain"))
-        assertTrue(descriptions.contains("without resolving again"))
+        assertTrue(descriptions.contains("without inspecting again"))
     }
 
     @Test

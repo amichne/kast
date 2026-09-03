@@ -7,7 +7,7 @@ import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
 import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
-import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
@@ -37,7 +37,7 @@ class CanonicalSymbolGeneratedSerializationTest {
         val qualifiedIdentity = text("sample.Sample")
         val signature = CompilerSignatureDocument.TypeAlias(qualifiedIdentity)
         val evidence = CompilerSymbolEvidenceDocument.fromSignature(signature).refined()
-        val exact = SymbolDescribeResult(
+        val exact = SymbolInspectResult(
             SymbolDocument.create(
                 selector = text("exact:v1:sample"),
                 kind = SymbolKindDocument.TYPE_ALIAS,

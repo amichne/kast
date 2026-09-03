@@ -497,21 +497,18 @@ private fun SourceDeclarationSemanticIdentityDocument.toWireDocument():
     SourceDeclarationSemanticIdentityWireDocument = when (this) {
     is SourceDeclarationSemanticIdentityDocument.Candidate ->
         SourceDeclarationSemanticIdentityWireDocument.Candidate(selector.value)
-    is SourceDeclarationSemanticIdentityDocument.ExistingSymbol ->
-        SourceDeclarationSemanticIdentityWireDocument.ExistingSymbol(selector.value)
 }
 
 private fun SourceDeclarationSemanticIdentityWireDocument.toContract():
     WireDocumentConversion<SourceDeclarationSemanticIdentityDocument> = when (this) {
     is SourceDeclarationSemanticIdentityWireDocument.Candidate -> selector.protocolText()
         .mapConverted(SourceDeclarationSemanticIdentityDocument::Candidate)
-    is SourceDeclarationSemanticIdentityWireDocument.ExistingSymbol -> selector.protocolText()
-        .mapConverted(SourceDeclarationSemanticIdentityDocument::ExistingSymbol)
 }
 
 private fun SourceEntityTargetDocument.toWireDocument(): SourceEntityTargetWireDocument =
     when (this) {
-        is SourceEntityTargetDocument.Symbol -> SourceEntityTargetWireDocument.Symbol(selector.value)
+        is SourceEntityTargetDocument.Candidate ->
+            SourceEntityTargetWireDocument.Candidate(selector.value)
         is SourceEntityTargetDocument.Local -> SourceEntityTargetWireDocument.Local(selector.value)
         is SourceEntityTargetDocument.Unresolved ->
             SourceEntityTargetWireDocument.Unresolved(reason.toWireDocument())
@@ -519,8 +516,8 @@ private fun SourceEntityTargetDocument.toWireDocument(): SourceEntityTargetWireD
 
 private fun SourceEntityTargetWireDocument.toContract():
     WireDocumentConversion<SourceEntityTargetDocument> = when (this) {
-    is SourceEntityTargetWireDocument.Symbol -> selector.protocolText()
-        .mapConverted(SourceEntityTargetDocument::Symbol)
+    is SourceEntityTargetWireDocument.Candidate -> selector.protocolText()
+        .mapConverted(SourceEntityTargetDocument::Candidate)
     is SourceEntityTargetWireDocument.Local -> selector.protocolText()
         .mapConverted(SourceEntityTargetDocument::Local)
     is SourceEntityTargetWireDocument.Unresolved -> WireDocumentConversion.Converted(

@@ -15,7 +15,7 @@ import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
 import io.github.amichne.kast.protocol.contract.RelationProvenanceDocument
 import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
-import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
@@ -96,7 +96,7 @@ internal sealed interface SymbolDiscoveryWireDocument {
     ) : SymbolDiscoveryWireDocument
 }
 @Serializable
-internal data class SymbolDescribeResultWireDocument(val symbol: SymbolWireDocument)
+internal data class SymbolInspectResultWireDocument(val symbol: SymbolWireDocument)
 @Serializable
 internal data class RelationReadResultWireDocument(val relations: List<RelationFactWireDocument>)
 @Serializable
@@ -355,15 +355,15 @@ private fun SymbolDiscoveryWireDocument.toContract(): WireDocumentConversion<Sym
     }
 }
 
-internal fun SymbolDescribeResult.toSymbolWireDocument() =
-    SymbolDescribeResultWireDocument(symbol.toWireDocument())
+internal fun SymbolInspectResult.toSymbolWireDocument() =
+    SymbolInspectResultWireDocument(symbol.toWireDocument())
 /**
- * `SymbolDescribeResultWireDocument -> SymbolDescribeResult` establishes one exact symbol;
+ * `SymbolInspectResultWireDocument -> SymbolInspectResult` establishes one exact symbol;
  * invalid raw fields become `WireFailure.InvalidPayload` at this wire boundary.
  */
-internal fun SymbolDescribeResultWireDocument.toContract():
-    WireDocumentConversion<SymbolDescribeResult> = symbol.toContract().mapConverted(
-    ::SymbolDescribeResult,
+internal fun SymbolInspectResultWireDocument.toContract():
+    WireDocumentConversion<SymbolInspectResult> = symbol.toContract().mapConverted(
+    ::SymbolInspectResult,
 )
 
 internal fun RelationReadResult.toSymbolWireDocument() =

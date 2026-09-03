@@ -21,10 +21,6 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
 import io.github.amichne.kast.protocol.contract.ChangeRecoveryDocumentState
-import io.github.amichne.kast.protocol.contract.ChangeVerifyQualification
-import io.github.amichne.kast.protocol.contract.ChangeVerifyRejection
-import io.github.amichne.kast.protocol.contract.ChangeVerifyRequest
-import io.github.amichne.kast.protocol.contract.ChangeVerifyResult
 import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
 import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticDocument
@@ -59,10 +55,11 @@ import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
-import io.github.amichne.kast.protocol.contract.SymbolDescribeQualification
-import io.github.amichne.kast.protocol.contract.SymbolDescribeRejection
-import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
-import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
+import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
@@ -76,10 +73,6 @@ import io.github.amichne.kast.protocol.contract.SymbolDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
-import io.github.amichne.kast.protocol.contract.SymbolResolveQualification
-import io.github.amichne.kast.protocol.contract.SymbolResolveRejection
-import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
-import io.github.amichne.kast.protocol.contract.SymbolResolveResult
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
@@ -95,11 +88,6 @@ import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildResult
 import io.github.amichne.kast.protocol.contract.TopologyBuildStatus
 import io.github.amichne.kast.protocol.contract.TopologyExtractionRejection
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
-import io.github.amichne.kast.protocol.contract.WorkspaceStateDocument
 import io.github.amichne.kast.protocol.registry.CanonicalOperationDefinitions
 import io.github.amichne.kast.protocol.registry.HostedVariants
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -148,13 +136,6 @@ class CanonicalOperationWireBindingsTest {
     @Test
     fun `all production bindings round trip requests and every outcome variant`() {
         assertRoundTrips(
-            CanonicalOperationWireBindings.workspaceInspect,
-            WorkspaceInspectRequest,
-            WorkspaceInspectResult(text("/fixture"), WorkspaceStateDocument.READY),
-            WorkspaceInspectQualification.RECONCILING,
-            WorkspaceInspectRejection.RUNTIME_BLOCKED,
-        )
-        assertRoundTrips(
             CanonicalOperationWireBindings.symbolDiscover,
             discoverRequest("Target", 20),
             SymbolDiscoverResult(
@@ -174,18 +155,11 @@ class CanonicalOperationWireBindingsTest {
             SymbolDiscoverRejection.QUERY_REJECTED,
         )
         assertRoundTrips(
-            CanonicalOperationWireBindings.symbolResolve,
-            SymbolResolveRequest(text("candidate:Target")),
-            SymbolResolveResult(text("exact:Target")),
-            SymbolResolveQualification.EVIDENCE_INCOMPLETE,
-            SymbolResolveRejection.AMBIGUOUS,
-        )
-        assertRoundTrips(
-            CanonicalOperationWireBindings.symbolDescribe,
-            SymbolDescribeRequest(text("exact:Target")),
-            SymbolDescribeResult(symbol("exact:v1:Target", "Target")),
-            SymbolDescribeQualification.EVIDENCE_INCOMPLETE,
-            SymbolDescribeRejection.SELECTOR_STALE,
+            CanonicalOperationWireBindings.symbolInspect,
+            SymbolInspectRequest(SymbolInspectTarget.Exact(text("exact:Target"))),
+            SymbolInspectResult(symbol("exact:v1:Target", "Target")),
+            SymbolInspectQualification.EVIDENCE_INCOMPLETE,
+            SymbolInspectRejection.EXACT_SELECTOR_STALE,
         )
         assertRoundTrips(
             CanonicalOperationWireBindings.relationRead,
@@ -289,16 +263,9 @@ class CanonicalOperationWireBindingsTest {
         assertRoundTrips(
             CanonicalOperationWireBindings.changeApply,
             ChangeApplyRequest(text("plan:1")),
-            ChangeApplyResult(text("application:1")),
+            ChangeApplyResult(text("receipt:1")),
             ChangeApplyQualification.RECOVERY_REQUIRED,
             ChangeApplyRejection.CONTENT_CHANGED,
-        )
-        assertRoundTrips(
-            CanonicalOperationWireBindings.changeVerify,
-            ChangeVerifyRequest(text("application:1")),
-            ChangeVerifyResult(text("receipt:1")),
-            ChangeVerifyQualification.PROOF_INCOMPLETE,
-            ChangeVerifyRejection.SEMANTIC_DELTA_REJECTED,
         )
         assertRoundTrips(
             CanonicalOperationWireBindings.changeRecover,

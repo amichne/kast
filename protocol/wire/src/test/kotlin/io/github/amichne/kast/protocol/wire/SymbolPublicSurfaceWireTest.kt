@@ -19,7 +19,7 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
 import io.github.amichne.kast.protocol.contract.SymbolDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
-import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.RelationFactCoverageDocument
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
@@ -132,7 +132,7 @@ class SymbolPublicSurfaceWireTest {
             range = range(27, 61),
             compilerEvidence = CompilerSymbolEvidenceDocument.fromSignature(signature).refined(),
         ).refined()
-        val describe = SymbolDescribeResult(symbol)
+        val describe = SymbolInspectResult(symbol)
         val relation = RelationReadResult(
             BoundedProtocolList.create(
                 listOf(
@@ -155,7 +155,7 @@ class SymbolPublicSurfaceWireTest {
         val generation = EvidenceGeneration.parse(3).refined()
         val describeOutcome = OperationOutcome.Complete(
             EvidenceEnvelope(
-                CanonicalOperationWireBindings.symbolDescribe.operation.id,
+                CanonicalOperationWireBindings.symbolInspect.operation.id,
                 generation,
                 describe,
             ),
@@ -167,7 +167,7 @@ class SymbolPublicSurfaceWireTest {
                 relation,
             ),
         )
-        val describeDocument = CanonicalOperationWireBindings.symbolDescribe
+        val describeDocument = CanonicalOperationWireBindings.symbolInspect
             .encodeOutcome(describeOutcome)
             .encodedDocument()
         val relationDocument = CanonicalOperationWireBindings.relationRead
@@ -176,7 +176,7 @@ class SymbolPublicSurfaceWireTest {
 
         assertEquals(
             WireDecoding.Decoded(describeOutcome),
-            CanonicalOperationWireBindings.symbolDescribe.decodeOutcome(describeDocument),
+            CanonicalOperationWireBindings.symbolInspect.decodeOutcome(describeDocument),
         )
         assertEquals(
             WireDecoding.Decoded(relationOutcome),

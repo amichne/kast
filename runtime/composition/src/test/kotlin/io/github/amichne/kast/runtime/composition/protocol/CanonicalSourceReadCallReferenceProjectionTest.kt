@@ -37,14 +37,14 @@ import io.github.amichne.kast.source.contract.SourceTextIdentity
 import io.github.amichne.kast.source.contract.SourceTextProjection
 import io.github.amichne.kast.source.contract.Utf16CodeUnitCount
 import io.github.amichne.kast.source.contract.Utf16CodeUnitOffset
-import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CandidateSelector
 import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
-import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
-import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
@@ -61,7 +61,7 @@ import io.github.amichne.kast.source.contract.SourceReadResult as DomainSourceRe
 
 class CanonicalSourceReadCallReferenceProjectionTest {
     @Test
-    fun `call and reference targets project reusable source and exact selectors`() {
+    fun `call and reference targets project reusable source and candidate selectors`() {
         val fixture = fixture()
         val authority = CanonicalProtocolAuthority()
         var captured: io.github.amichne.kast.source.contract.SourceReadRequest? = null
@@ -85,8 +85,11 @@ class CanonicalSourceReadCallReferenceProjectionTest {
         val calleeSelection = call.callee.selector.decodeSource() as SourceSelector.Entity
         assertEquals(fixture.call.selector.fingerprint, callSelection.fingerprint)
         assertEquals(callSelection.fingerprint, calleeSelection.parent.fingerprint)
-        val symbolTarget = call.target as SourceEntityTargetDocument.Symbol
-        assertInstanceOf(ExactSelectorLookup.Found::class.java, authority.exact(symbolTarget.selector))
+        val candidateTarget = call.target as SourceEntityTargetDocument.Candidate
+        assertInstanceOf(
+            CandidateSelectorLookup.Found::class.java,
+            authority.candidate(candidateTarget.selector),
+        )
 
         val localTarget = local.target as SourceEntityTargetDocument.Local
         assertEquals(
@@ -138,7 +141,7 @@ class CanonicalSourceReadCallReferenceProjectionTest {
             range(snapshot, 0, source.length),
             SourceRegionKind.FILE,
         )
-        val targetSelector = exactTarget(lease, path, file, source.indexOf('\n'))
+        val targetSelector = candidateTarget(lease, path)
         val callStart = source.indexOf("target()", source.indexOf("fun subject"))
         val callSelector = entity(
             region,
@@ -156,7 +159,7 @@ class CanonicalSourceReadCallReferenceProjectionTest {
             callSelector,
             SourceNestingDepth.parse(0).refined(),
             calleeSelector,
-            SourceEntityTarget.Symbol(targetSelector),
+            SourceEntityTarget.Candidate(targetSelector),
         ).refined()
         val localStart = source.indexOf("local")
         val localTarget = SourceSelector.issueRoot(
@@ -199,36 +202,28 @@ class CanonicalSourceReadCallReferenceProjectionTest {
         )
     }
 
-    private fun exactTarget(
+    private fun candidateTarget(
         lease: SemanticReadLease,
         path: CanonicalWorkspaceFilePath,
-        file: SymbolDiscoveryFileIdentity.Workspace,
-        end: Int,
-    ): SymbolSelector {
-        val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
-            file,
-            0,
-            end,
+    ): CandidateSelector.Declaration {
+        val candidate = SymbolDiscoveryCandidate.fromBoundary(
+            SymbolDiscoveryKind.SYMBOL,
             "target",
-            "sample.target",
-            CompilerSymbolKind.FUNCTION,
-            CanonicalCompilerSignature.function(
-                "sample.target",
-                null,
-                emptyList(),
-                emptyList(),
-                0,
-            ).refined(),
+            lease,
+            Path.of(path.value),
+            "file://${path.value}",
+            0,
         ).refined()
-        return SymbolSelector.issue(
+        val selection = SymbolDiscoverySelection.restore(
             lease,
             SymbolSearchScope.ExactFile(
                 path,
                 SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
                 SymbolGeneratedSourcePolicy.INCLUDE,
             ),
-            evidence,
-        )
+            candidate,
+        ).refined()
+        return CandidateSelector.declaration(selection).refined()
     }
 
     private fun entity(

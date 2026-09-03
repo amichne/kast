@@ -62,7 +62,7 @@ internal sealed interface ChangePlanAdmission {
 /** Finite failures while refining a public intent into one exact typed planning request. */
 internal enum class ChangePlanAdmissionFailure {
     WORKSPACE_NOT_READY,
-    SYMBOL_RESOLVE_REQUIRED,
+    EXACT_SYMBOL_REQUIRED,
     EDITABLE_TARGET_REQUIRED,
     RELATION_READ_REQUIRED,
     TOPOLOGY_BUILD_REQUIRED,
@@ -104,7 +104,7 @@ internal class CanonicalChangePlanHandler(
         val authorized = when (val result = authorize(request.intent)) {
             is ChangeIntentAuthorization.Authorized -> result.intent
             ChangeIntentAuthorization.MissingTarget -> return OperationOutcome.Rejected(
-                ChangePlanRejection.SYMBOL_RESOLVE_REQUIRED,
+                ChangePlanRejection.EXACT_SYMBOL_REQUIRED,
             )
         }
         return when (val admitted = admission.admit(authorized)) {
@@ -197,8 +197,8 @@ private sealed interface ChangeIntentAuthorization {
 
 private fun ChangePlanAdmissionFailure.protocol(): ChangePlanRejection = when (this) {
     ChangePlanAdmissionFailure.WORKSPACE_NOT_READY -> ChangePlanRejection.WORKSPACE_NOT_READY
-    ChangePlanAdmissionFailure.SYMBOL_RESOLVE_REQUIRED ->
-        ChangePlanRejection.SYMBOL_RESOLVE_REQUIRED
+    ChangePlanAdmissionFailure.EXACT_SYMBOL_REQUIRED ->
+        ChangePlanRejection.EXACT_SYMBOL_REQUIRED
     ChangePlanAdmissionFailure.EDITABLE_TARGET_REQUIRED ->
         ChangePlanRejection.EDITABLE_TARGET_REQUIRED
     ChangePlanAdmissionFailure.RELATION_READ_REQUIRED ->
@@ -225,7 +225,7 @@ private fun ChangePlanningFailure.protocol(): ChangePlanRejection = when (this) 
         -> ChangePlanRejection.DIAGNOSTIC_CHECK_REQUIRED
     ChangePlanningFailure.EVIDENCE_LEASE_MISMATCH,
     ChangePlanningFailure.EVIDENCE_TARGET_MISMATCH,
-        -> ChangePlanRejection.SYMBOL_RESOLVE_REQUIRED
+        -> ChangePlanRejection.EXACT_SYMBOL_REQUIRED
 }
 
 private fun RenameSymbolPlanningFailure.protocol(): ChangePlanRejection = when (this) {

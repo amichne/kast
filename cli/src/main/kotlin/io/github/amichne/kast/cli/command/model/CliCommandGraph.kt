@@ -21,7 +21,6 @@ import io.github.amichne.kast.cli.command.relation.relationCommandGroup
 import io.github.amichne.kast.cli.command.source.sourceCommandGroup
 import io.github.amichne.kast.cli.command.symbol.symbolCommandGroup
 import io.github.amichne.kast.cli.command.traversal.traversalCommandGroup
-import io.github.amichne.kast.cli.command.workspace.workspaceCommandGroup
 import io.github.amichne.kast.cli.command.workspace.indexCommandGroup
 import io.github.amichne.kast.cli.command.workspace.topologyCommandGroup
 import io.github.amichne.kast.cli.projection.CanonicalCliRequestPreparers
@@ -342,7 +341,6 @@ private sealed interface CliCommandSelection {
 private fun canonicalGraph(preparers: CanonicalCliRequestPreparers): CliCommandGraph {
     val product = productCommandGroup()
     val broker = brokerCommandGroup()
-    val workspace = workspaceCommandGroup(preparers)
     val index = indexCommandGroup(preparers)
     val topology = topologyCommandGroup(preparers)
     val symbol = symbolCommandGroup(preparers)
@@ -351,9 +349,8 @@ private fun canonicalGraph(preparers: CanonicalCliRequestPreparers): CliCommandG
     val traversal = traversalCommandGroup(preparers)
     val diagnostic = diagnosticCommandGroup(preparers)
     val change = changeCommandGroup(preparers)
-    val lifecycle = lifecycleCommands(preparers)
+    val lifecycle = lifecycleCommands()
     val semantic = listOf(
-        workspace,
         index,
         topology,
         symbol,
@@ -368,7 +365,6 @@ private fun canonicalGraph(preparers: CanonicalCliRequestPreparers): CliCommandG
         listOf(
             product.root,
             broker.root,
-            workspace.root,
             index.root,
             topology.root,
             symbol.root,

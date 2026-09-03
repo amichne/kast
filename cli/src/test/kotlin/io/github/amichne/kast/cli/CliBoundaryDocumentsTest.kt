@@ -20,14 +20,14 @@ class CliBoundaryDocumentsTest {
         val endpoint = endpoint(temporary)
 
         val document = CliBoundaryDocuments.lifecycleComplete(
-            CliLifecycleCommand.CLEAN,
+            CliLifecycleCommand.STOP,
             endpoint,
             RuntimeLifecycleState.STOPPED,
             setOf(RuntimePersistentState, RuntimeEndpointMarker.SOCKET),
         )
 
         assertEquals(
-            "{\"command\":\"clean\",\"status\":\"complete\",\"runtime\":\"stopped\"," +
+            "{\"command\":\"stop\",\"status\":\"complete\",\"runtime\":\"stopped\"," +
                 "\"root\":\"${endpoint.root.path}\",\"runtimeId\":\"${endpoint.runtimeId.value}\"," +
                 "\"removed\":[\"socket\",\"state\"]}",
             document.value,

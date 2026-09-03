@@ -129,7 +129,7 @@ sealed interface VerifiedMutationResult {
     ) : VerifiedMutationResult
 }
 
-/** Public `change.verify` operation; only [VerifiedReceipt] is final mutation success. */
+/** Internal verification capability absorbed by public `change.apply` completion. */
 fun interface VerifiedMutationOperations {
     /**
      * Proof transition: `VerifiedMutationRequest -> VerifiedMutationResult`.

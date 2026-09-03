@@ -21,7 +21,7 @@ class CompilerEvidenceAdmissionTest {
     fun `compatibility capability proof cannot mutate after admission`() {
         val admitted = IdeHostCapabilitySet.parse(
             listOf(
-                CanonicalOperation.SYMBOL_DESCRIBE.id.value,
+                CanonicalOperation.SYMBOL_INSPECT.id.value,
                 CanonicalOperation.RELATION_READ.id.value,
             ),
         ).refined()
@@ -31,7 +31,7 @@ class CompilerEvidenceAdmissionTest {
             (admitted.capabilities as MutableList<IdeHostCapability>).clear()
         }
         assertEquals(
-            listOf(CanonicalOperation.SYMBOL_DESCRIBE, CanonicalOperation.RELATION_READ),
+            listOf(CanonicalOperation.SYMBOL_INSPECT, CanonicalOperation.RELATION_READ),
             admitted.capabilities.map(IdeHostCapability::operation),
         )
     }

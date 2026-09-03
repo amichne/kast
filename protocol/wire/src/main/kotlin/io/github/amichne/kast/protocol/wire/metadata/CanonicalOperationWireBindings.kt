@@ -17,7 +17,7 @@ private data class OperationRegistryOperationDocument(
     val intents: List<String>,
 )
 
-/** Sole generated serializer binding catalog for the fourteen production operation definitions. */
+/** Sole generated serializer binding catalog for the eleven production operation definitions. */
 object CanonicalOperationWireBindings {
     val operationRegistryDocument: String = wireJson.encodeToString(
         OperationRegistryDocument.serializer(),
@@ -42,15 +42,6 @@ object CanonicalOperationWireBindings {
         print(operationRegistryDocument)
     }
 
-    val workspaceInspect = OperationWireBinding(
-        CanonicalOperationDefinitions.workspaceInspect,
-        GeneratedOperationSerializers(
-            CanonicalReadSerializers.workspaceInspectRequest,
-            CanonicalReadSerializers.workspaceInspectResult,
-            CanonicalReadSerializers.workspaceInspectQualification,
-            CanonicalReadSerializers.workspaceInspectRejection,
-        ),
-    )
     val indexSync = OperationWireBinding(
         CanonicalOperationDefinitions.indexSync,
         GeneratedOperationSerializers(
@@ -78,22 +69,13 @@ object CanonicalOperationWireBindings {
             CanonicalReadSerializers.symbolDiscoverRejection,
         ),
     )
-    val symbolResolve = OperationWireBinding(
-        CanonicalOperationDefinitions.symbolResolve,
+    val symbolInspect = OperationWireBinding(
+        CanonicalOperationDefinitions.symbolInspect,
         GeneratedOperationSerializers(
-            CanonicalReadSerializers.symbolResolveRequest,
-            CanonicalReadSerializers.symbolResolveResult,
-            CanonicalReadSerializers.symbolResolveQualification,
-            CanonicalReadSerializers.symbolResolveRejection,
-        ),
-    )
-    val symbolDescribe = OperationWireBinding(
-        CanonicalOperationDefinitions.symbolDescribe,
-        GeneratedOperationSerializers(
-            CanonicalReadSerializers.symbolDescribeRequest,
-            CanonicalReadSerializers.symbolDescribeResult,
-            CanonicalReadSerializers.symbolDescribeQualification,
-            CanonicalReadSerializers.symbolDescribeRejection,
+            CanonicalReadSerializers.symbolInspectRequest,
+            CanonicalReadSerializers.symbolInspectResult,
+            CanonicalReadSerializers.symbolInspectQualification,
+            CanonicalReadSerializers.symbolInspectRejection,
         ),
     )
     val sourceRead = OperationWireBinding(
@@ -150,15 +132,6 @@ object CanonicalOperationWireBindings {
             CanonicalChangeSerializers.changeApplyRejection,
         ),
     )
-    val changeVerify = OperationWireBinding(
-        CanonicalOperationDefinitions.changeVerify,
-        GeneratedOperationSerializers(
-            CanonicalChangeSerializers.changeVerifyRequest,
-            CanonicalChangeSerializers.changeVerifyResult,
-            CanonicalChangeSerializers.changeVerifyQualification,
-            CanonicalChangeSerializers.changeVerifyRejection,
-        ),
-    )
     val changeRecover = OperationWireBinding(
         CanonicalOperationDefinitions.changeRecover,
         GeneratedOperationSerializers(
@@ -172,19 +145,16 @@ object CanonicalOperationWireBindings {
     internal val table: OperationWireTable = when (
         val construction = OperationWireTable.create(
             listOf(
-                workspaceInspect,
                 indexSync,
                 topologyBuild,
                 symbolDiscover,
-                symbolResolve,
-                symbolDescribe,
+                symbolInspect,
                 sourceRead,
                 relationRead,
                 traversalRun,
                 diagnosticCheck,
                 changePlan,
                 changeApply,
-                changeVerify,
                 changeRecover,
             ),
         )

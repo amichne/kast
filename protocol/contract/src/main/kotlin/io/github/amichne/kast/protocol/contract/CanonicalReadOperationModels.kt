@@ -94,31 +94,6 @@ class BoundedProtocolList<Value> private constructor(
     override fun toString(): String = "BoundedProtocolList(values=$values)"
 }
 
-data object WorkspaceInspectRequest : OperationRequest
-
-data class WorkspaceInspectResult(
-    val canonicalRoot: ProtocolText,
-    val state: WorkspaceStateDocument,
-) : OperationResult
-
-enum class WorkspaceStateDocument {
-    ABSENT,
-    STARTING,
-    RECONCILING,
-    READY,
-    BLOCKED,
-    STOPPING,
-}
-
-enum class WorkspaceInspectQualification : OperationQualification {
-    RECONCILING,
-}
-
-enum class WorkspaceInspectRejection : OperationRejection {
-    ROOT_UNAVAILABLE,
-    RUNTIME_BLOCKED,
-}
-
 enum class RelationKindDocument {
     REFERENCES,
     CALLERS,

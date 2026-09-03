@@ -25,7 +25,6 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
 import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
 import kotlinx.serialization.json.JsonElement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -149,16 +148,6 @@ class CanonicalReadGeneratedSerializationTest {
 
     @Test
     fun `generated empty and list documents reject unknown missing and invalid content`() {
-        val requestCodec = CanonicalReadSerializers.workspaceInspectRequest
-        assertEquals(
-            WireValueEncoding.Encoded(json("{}")),
-            requestCodec.encode(WorkspaceInspectRequest, WireValueRole.REQUEST),
-        )
-        assertEquals(
-            WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.REQUEST)),
-            requestCodec.decode(json("""{"extra":true}"""), WireValueRole.REQUEST),
-        )
-
         val resultCodec = CanonicalReadSerializers.diagnosticCheckResult
         val result = DiagnosticCheckResult(
             BoundedProtocolList.create(

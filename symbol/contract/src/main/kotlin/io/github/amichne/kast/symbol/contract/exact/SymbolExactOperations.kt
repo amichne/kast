@@ -41,7 +41,7 @@ sealed interface SymbolResolutionCompilation {
     ) : SymbolResolutionCompilation
 }
 
-/** Closed compiler-port output for `symbol.describe`. */
+/** Closed compiler-port output for `symbol.inspect`. */
 sealed interface SymbolDescriptionCompilation {
     data class Described(
         val description: SymbolDescription,
@@ -74,7 +74,7 @@ interface SymbolExactCompilerPort {
     suspend fun describe(request: ExactSymbolRequest): SymbolDescriptionCompilation
 }
 
-/** Finite public rejections shared by `symbol.resolve` and `symbol.describe`. */
+/** Finite public rejections shared by `symbol.resolve` and `symbol.inspect`. */
 enum class SymbolExactRejection {
     WORKSPACE_NOT_READY,
     WORKSPACE_ROOT_MISMATCH,
@@ -101,7 +101,7 @@ sealed interface SymbolResolutionResult {
     ) : SymbolResolutionResult
 }
 
-/** Closed public result of `symbol.describe`. */
+/** Closed public result of `symbol.inspect`. */
 sealed interface SymbolDescriptionResult {
     data class Described(
         val description: SymbolDescription,
@@ -112,7 +112,7 @@ sealed interface SymbolDescriptionResult {
     ) : SymbolDescriptionResult
 }
 
-/** Public operation boundary for `symbol.resolve` and `symbol.describe`. */
+/** Public operation boundary for `symbol.resolve` and `symbol.inspect`. */
 interface SymbolExactOperations {
     /**
      * Proof transition: `SymbolResolutionRequest -> SymbolResolutionResult`.

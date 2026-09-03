@@ -21,12 +21,12 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
 import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
-import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
 import io.github.amichne.kast.protocol.contract.SymbolTextScopeDocument
 
 internal fun symbolCommandGroup(
@@ -34,11 +34,10 @@ internal fun symbolCommandGroup(
 ): CommandFamily {
     val commands = listOf(
         SymbolDiscoverCommand(preparers),
-        SymbolResolveCommand(preparers),
-        SymbolDescribeCommand(preparers),
+        SymbolInspectCommand(preparers),
     )
     return CommandFamily(
-        KastCommandGroup("symbol", "Discover, resolve, and describe Kotlin symbols.")
+        KastCommandGroup("symbol", "Discover candidates and inspect exact Kotlin symbols.")
             .subcommands(commands),
         commands,
     )
@@ -229,35 +228,45 @@ private object SymbolDiscoverCliInput {
     ): Refinement.Rejected<CliUsageFailure.SymbolDiscover> = Refinement.Rejected(failure)
 }
 
-private class SymbolResolveCommand(
+private class SymbolInspectCommand(
     preparers: CanonicalCliRequestPreparers,
-) : SemanticKastCommand<SymbolResolveRequest>(
-    name = "resolve",
-    operation = CanonicalOperation.SYMBOL_RESOLVE,
-    schemaUsage = "symbol resolve --candidate <candidate-selector>",
-    preparer = preparers.symbolResolve,
+) : SemanticKastCommand<SymbolInspectRequest>(
+    name = "inspect",
+    operation = CanonicalOperation.SYMBOL_INSPECT,
+    schemaUsage = "symbol inspect <--candidate <candidate-selector>|--selector <exact-selector>>",
+    preparer = preparers.symbolInspect,
 ) {
     private val candidate by protocolTextOption(
         "--candidate",
         "Candidate selector returned by discovery.",
-    ).requiredOnce()
+    ).optionalOnce()
+    private val selector by protocolTextOption(
+        "--selector",
+        "Exact symbol selector.",
+    ).optionalOnce()
 
-    override fun help(context: Context): String = "Resolve one candidate to an exact selector."
+    override fun help(context: Context): String =
+        "Refine a candidate when necessary and return exact generation-bound compiler evidence."
 
-    override fun resolveAction(): CliActionResolution = prepare(SymbolResolveRequest(candidate))
+    override fun resolveAction(): CliActionResolution = when (
+        val refined = SymbolInspectCliInput.refine(candidate, selector)
+    ) {
+        is Refinement.Refined -> prepare(refined.value)
+        is Refinement.Rejected -> CliActionResolution.UsageRejected(refined.failure)
+    }
 }
 
-private class SymbolDescribeCommand(
-    preparers: CanonicalCliRequestPreparers,
-) : SemanticKastCommand<SymbolDescribeRequest>(
-    name = "describe",
-    operation = CanonicalOperation.SYMBOL_DESCRIBE,
-    schemaUsage = "symbol describe --selector <exact-selector>",
-    preparer = preparers.symbolDescribe,
-) {
-    private val selector by protocolTextOption("--selector", "Exact symbol selector.").requiredOnce()
-
-    override fun help(context: Context): String = "Describe one exact generation-bound symbol."
-
-    override fun resolveAction(): CliActionResolution = prepare(SymbolDescribeRequest(selector))
+private object SymbolInspectCliInput {
+    fun refine(
+        candidate: CliOptionValue<ProtocolText>,
+        exact: CliOptionValue<ProtocolText>,
+    ): Refinement<SymbolInspectRequest, CliUsageFailure.SymbolInspect> = when {
+        candidate is CliOptionValue.Present && exact is CliOptionValue.Absent ->
+            Refinement.Refined(
+                SymbolInspectRequest(SymbolInspectTarget.Candidate(candidate.value)),
+            )
+        candidate is CliOptionValue.Absent && exact is CliOptionValue.Present ->
+            Refinement.Refined(SymbolInspectRequest(SymbolInspectTarget.Exact(exact.value)))
+        else -> Refinement.Rejected(CliUsageFailure.SymbolInspect.EXACTLY_ONE_TARGET_REQUIRED)
+    }
 }

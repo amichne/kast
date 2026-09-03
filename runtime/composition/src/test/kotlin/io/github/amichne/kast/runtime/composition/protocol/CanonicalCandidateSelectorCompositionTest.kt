@@ -16,8 +16,9 @@ import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SourceRegionSelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceTextRequestDocument
-import io.github.amichne.kast.protocol.contract.SymbolResolveRejection
-import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.source.contract.SourceRange
 import io.github.amichne.kast.source.contract.SourceReadAnchor
 import io.github.amichne.kast.source.contract.SourceReadOperations
@@ -113,13 +114,13 @@ class CanonicalCandidateSelectorCompositionTest {
     }
 
     @Test
-    fun `symbol resolve rejects non declaration candidates before semantic operations`() {
+    fun `symbol inspect rejects non declaration candidates before semantic operations`() {
         val fixture = fixture()
         val authority = CanonicalProtocolAuthority()
         val fileToken = (authority.issueCandidates(fixture.batch) as
             CandidateSelectorIssuance.Issued).selectors.first()
         var executed = false
-        val handler = CanonicalSymbolResolveHandler(
+        val handler = CanonicalSymbolInspectHandler(
             object : SymbolExactOperations {
                 override suspend fun resolve(
                     request: io.github.amichne.kast.symbol.contract.SymbolResolutionRequest,
@@ -137,8 +138,10 @@ class CanonicalCandidateSelectorCompositionTest {
         )
 
         assertEquals(
-            OperationOutcome.Rejected(SymbolResolveRejection.CANDIDATE_NOT_DECLARATION),
-            runSuspend { handler.execute(SymbolResolveRequest(fileToken)) },
+            OperationOutcome.Rejected(SymbolInspectRejection.CANDIDATE_NOT_DECLARATION),
+            runSuspend {
+                handler.execute(SymbolInspectRequest(SymbolInspectTarget.Candidate(fileToken)))
+            },
         )
         assertFalse(executed)
     }

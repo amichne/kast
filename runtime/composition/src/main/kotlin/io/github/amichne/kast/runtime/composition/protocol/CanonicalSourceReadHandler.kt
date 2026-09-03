@@ -303,7 +303,7 @@ private fun protocolResult(
         kind = region.kind.protocol(),
         selection = region.selector.protocolSelection() ?: return null,
     )
-    val entityDocuments = entities.map { it.protocol(authority) ?: return null }
+    val entityDocuments = entities.map { it.protocol() ?: return null }
     val boundedEntities = BoundedProtocolList.create(entityDocuments).refinedOrNull() ?: return null
     val textDocument = when (text) {
         SourceTextProjection.NotRequested -> SourceTextProjectionDocument.NotRequested
@@ -323,7 +323,7 @@ private fun protocolResult(
     return ProtocolSourceReadResult(snapshotDocument, regionDocument, boundedEntities, textDocument)
 }
 
-private fun SourceEntity.protocol(authority: CanonicalProtocolAuthority): SourceEntityDocument? {
+private fun SourceEntity.protocol(): SourceEntityDocument? {
     val depth = SourceNestingDepthDocument.parse(nestingDepth.value).refinedOrNull() ?: return null
     val parent = protocolText(SourceSelectorTokenCodec.encode(parentSelector).value) ?: return null
     val selectionDocument = selector.protocolSelection() ?: return null
@@ -335,7 +335,7 @@ private fun SourceEntity.protocol(authority: CanonicalProtocolAuthority): Source
             depth,
             parent,
             selectionDocument,
-            semanticIdentity.protocol(authority) ?: return null,
+            semanticIdentity.protocol() ?: return null,
         )
         is SourceEntity.ValueParameter -> SourceEntityDocument.ValueParameter(
             selector.presentName() ?: return null,
@@ -348,14 +348,14 @@ private fun SourceEntity.protocol(authority: CanonicalProtocolAuthority): Source
             parent,
             selectionDocument,
             calleeSelector.protocolSelection() ?: return null,
-            target.protocol(authority) ?: return null,
+            target.protocol() ?: return null,
         )
         is SourceEntity.Reference -> SourceEntityDocument.Reference(
             selector.presentName() ?: return null,
             depth,
             parent,
             selectionDocument,
-            target.protocol(authority) ?: return null,
+            target.protocol() ?: return null,
         )
     }
 }
@@ -365,9 +365,8 @@ private fun SourceSelector.Entity.presentName(): ProtocolText? = when (val value
     is SourceEntityName.Present -> protocolText(value.value)
 }
 
-private fun DeclarationSemanticIdentity.protocol(
-    authority: CanonicalProtocolAuthority,
-): SourceDeclarationSemanticIdentityDocument? = when (this) {
+private fun DeclarationSemanticIdentity.protocol(): SourceDeclarationSemanticIdentityDocument? =
+    when (this) {
     is DeclarationSemanticIdentity.Candidate -> when (
         val encoded = CanonicalSelectorCodec.encodeCandidate(selector)
     ) {
@@ -375,19 +374,14 @@ private fun DeclarationSemanticIdentity.protocol(
             SourceDeclarationSemanticIdentityDocument.Candidate(encoded.token)
         is CanonicalSelectorEncoding.Rejected -> null
     }
-    is DeclarationSemanticIdentity.ExistingSymbol -> when (val issued = authority.issueExact(selector)) {
-        is ExactSelectorIssuance.Issued ->
-            SourceDeclarationSemanticIdentityDocument.ExistingSymbol(issued.selector)
-        is ExactSelectorIssuance.Rejected -> null
-    }
 }
 
-private fun SourceEntityTarget.protocol(
-    authority: CanonicalProtocolAuthority,
-): SourceEntityTargetDocument? = when (this) {
-    is SourceEntityTarget.Symbol -> when (val issued = authority.issueExact(selector)) {
-        is ExactSelectorIssuance.Issued -> SourceEntityTargetDocument.Symbol(issued.selector)
-        is ExactSelectorIssuance.Rejected -> null
+private fun SourceEntityTarget.protocol(): SourceEntityTargetDocument? = when (this) {
+    is SourceEntityTarget.Candidate -> when (
+        val encoded = CanonicalSelectorCodec.encodeCandidate(selector)
+    ) {
+        is CanonicalSelectorEncoding.Encoded -> SourceEntityTargetDocument.Candidate(encoded.token)
+        is CanonicalSelectorEncoding.Rejected -> null
     }
     is SourceEntityTarget.Local -> SourceEntityTargetDocument.Local(
         protocolText(SourceSelectorTokenCodec.encode(selector).value) ?: return null,

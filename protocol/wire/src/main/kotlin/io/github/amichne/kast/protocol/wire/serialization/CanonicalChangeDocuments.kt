@@ -59,8 +59,8 @@ internal enum class ChangePlanRejectionDocument {
     @SerialName("workspace_not_ready")
     WORKSPACE_NOT_READY,
 
-    @SerialName("symbol_resolve_required")
-    SYMBOL_RESOLVE_REQUIRED,
+    @SerialName("exact_symbol_required")
+    EXACT_SYMBOL_REQUIRED,
 
     @SerialName("editable_target_required")
     EDITABLE_TARGET_REQUIRED,
@@ -91,7 +91,7 @@ internal data class ChangeApplyRequestDocument(
 
 @Serializable
 internal data class ChangeApplyResultDocument(
-    val applicationIdentity: String,
+    val receiptIdentity: String,
 )
 
 @Serializable
@@ -122,28 +122,6 @@ internal enum class ChangeApplyRejectionDocument {
 
     @SerialName("recovery_required")
     RECOVERY_REQUIRED,
-}
-
-@Serializable
-internal data class ChangeVerifyRequestDocument(
-    val applicationIdentity: String,
-)
-
-@Serializable
-internal data class ChangeVerifyResultDocument(
-    val receiptIdentity: String,
-)
-
-@Serializable
-internal enum class ChangeVerifyQualificationDocument {
-    @SerialName("proof_incomplete")
-    PROOF_INCOMPLETE,
-}
-
-@Serializable
-internal enum class ChangeVerifyRejectionDocument {
-    @SerialName("application_not_found")
-    APPLICATION_NOT_FOUND,
 
     @SerialName("resulting_generation_unavailable")
     RESULTING_GENERATION_UNAVAILABLE,

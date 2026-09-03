@@ -43,7 +43,7 @@ value class CompilerSymbolIdentity private constructor(
     }
 }
 
-/** Closed compiler declaration families exposed by `symbol.describe`. */
+/** Closed compiler declaration families exposed by `symbol.inspect`. */
 enum class CompilerSymbolKind {
     CLASSLIKE,
     CONSTRUCTOR,

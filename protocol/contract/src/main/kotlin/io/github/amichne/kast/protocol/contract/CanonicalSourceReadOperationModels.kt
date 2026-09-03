@@ -326,7 +326,6 @@ value class SourceNestingDepthDocument private constructor(val value: Int) {
 
 sealed interface SourceDeclarationSemanticIdentityDocument {
     data class Candidate(val selector: ProtocolText) : SourceDeclarationSemanticIdentityDocument
-    data class ExistingSymbol(val selector: ProtocolText) : SourceDeclarationSemanticIdentityDocument
 }
 
 enum class SourceUnresolvedReasonDocument {
@@ -337,7 +336,7 @@ enum class SourceUnresolvedReasonDocument {
 }
 
 sealed interface SourceEntityTargetDocument {
-    data class Symbol(val selector: ProtocolText) : SourceEntityTargetDocument
+    data class Candidate(val selector: ProtocolText) : SourceEntityTargetDocument
     data class Local(val selector: ProtocolText) : SourceEntityTargetDocument
     data class Unresolved(val reason: SourceUnresolvedReasonDocument) : SourceEntityTargetDocument
 }

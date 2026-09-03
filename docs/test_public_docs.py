@@ -66,10 +66,10 @@ APPROVED_LUCIDE_ICONS = {
 
 PAGES = {
     "index.mdx": [
-        "13 typed operations",
+        "11 typed operations",
         "The compiler sees more than text",
         "Start from the repository root",
-        "Thirteen sidecar operations",
+        "Eleven sidecar operations",
         "What is Kast ready to inspect?",
         "What declaration is this?",
         "How is this code connected?",
@@ -82,9 +82,9 @@ PAGES = {
         "https://raw.githubusercontent.com/amichne/kast/main/install.sh",
         "rejects unsafe archive paths",
         "does not edit your shell profile",
-        "kast start --seed-from-idea",
+        "kast start --cache seed",
         "kast --schema",
-        "thirteen operations",
+        "eleven operations",
         "kast index sync",
         "OpenTelemetry traces",
         "relation reads",
@@ -96,17 +96,15 @@ PAGES = {
         "<AccordionGroup>",
     ],
     "questions/workspace-readiness.mdx": [
-        "kast workspace inspect",
+        "kast start",
         "exact root",
-        "<Tabs>",
-        '"reason": "root-unavailable"',
-        '"reason": "runtime-blocked"',
-        "does not include a `generation` field",
+        '"runtime": "running"',
+        "lifecycle document does not include a semantic `generation` field",
     ],
     "questions/declaration-identity.mdx": [
         "kast symbol discover",
-        "kast symbol resolve",
-        "kast symbol describe",
+        "kast symbol inspect --candidate",
+        "kast symbol inspect --selector",
         "<Steps>",
     ],
     "questions/code-connections.mdx": [
@@ -125,7 +123,7 @@ PAGES = {
         "add-declaration",
         "kast change plan",
         "kast change apply",
-        "kast change verify",
+        "verified receipt",
         "kast change recover",
         "without restarting",
     ],
@@ -134,13 +132,13 @@ PAGES = {
         "Qualified",
         "Rejected",
         "generation",
-        "thirteen sidecar operations",
+        "eleven sidecar operations",
         "<Columns cols={3}>",
     ],
     "explanation/how-kast-works.mdx": [
-        "exact thirteen-operation public capability set",
+        "exact eleven-operation public capability set",
         "Kotlin control executable",
-        "SymbolDescribeRequestDocument",
+        "SymbolInspectRequestDocument",
         "UnixDomainWireClient",
         "InstalledSidecarRootRuntimeDemander",
         "IndexSeedFilesystemService",
@@ -216,7 +214,7 @@ PAGES = {
         "broker serve",
         "Default local traces",
         "index.sync",
-        "workspace.inspect",
+        "source.read",
         "change.recover",
     ],
 }
@@ -680,20 +678,12 @@ def check_workspace_examples() -> None:
         examples
         == [
             {
-                "operation": "workspace.inspect",
+                "command": "start",
                 "status": "complete",
-                "canonicalRoot": "/path/to/kotlin-repository",
-                "state": "ready",
-            },
-            {
-                "operation": "workspace.inspect",
-                "status": "rejected",
-                "reason": "root-unavailable",
-            },
-            {
-                "operation": "workspace.inspect",
-                "status": "rejected",
-                "reason": "runtime-blocked",
+                "runtime": "running",
+                "root": "/path/to/kotlin-repository",
+                "runtimeId": "kast-sidecar",
+                "removed": [],
             },
         ],
         f"workspace CLI examples changed: {examples}",
@@ -735,9 +725,9 @@ def check_readme() -> None:
         "https://raw.githubusercontent.com/amichne/kast/main/install.sh",
         "Kast supports macOS on Apple silicon, Java 25 or newer",
         "matched private sidecar",
-        "thirteen public semantic operations",
+        "eleven public semantic operations",
         "kast start",
-        "kast workspace inspect",
+        "kast symbol inspect",
         "kast --schema",
         "```mermaid",
         "| Question | Command path |",
@@ -804,18 +794,16 @@ def check_installed_capability_contract() -> None:
     require(
         hosted
         == [
-            "workspace.inspect",
             "index.sync",
             "topology.build",
             "symbol.discover",
-            "symbol.resolve",
-            "symbol.describe",
+            "symbol.inspect",
+            "source.read",
             "relation.read",
             "traversal.run",
             "diagnostic.check",
             "change.plan",
             "change.apply",
-            "change.verify",
             "change.recover",
         ],
         f"installed sidecar capability surface changed: {hosted}",
@@ -832,7 +820,7 @@ def check_installed_capability_contract() -> None:
 
     canonical_source = CANONICAL_OPERATION_AUTHORITY.read_text()
     canonical = re.findall(r'canonicalOperationId\("([a-z.]+)"\)', canonical_source)
-    require(len(canonical) == 13, f"canonical operation surface changed: {canonical}")
+    require(len(canonical) == 11, f"canonical operation surface changed: {canonical}")
     reference = (PUBLIC / "reference/cli.mdx").read_text()
     for operation in hosted:
         require(

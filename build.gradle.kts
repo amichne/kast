@@ -234,6 +234,14 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     commandLine("bash", layout.projectDirectory.file("packaging/test-installed-product.sh"))
 }
 
+val enterpriseAcceptanceIdeaHome = providers.gradleProperty("kastAcceptanceIdeaHome")
+    .orElse(providers.environmentVariable("KAST_ACCEPTANCE_IDEA_HOME"))
+    .orElse(
+        providers.systemProperty("user.home").map { home ->
+            "$home/Applications/IntelliJ IDEA.app/Contents"
+        },
+    )
+
 tasks.register<Exec>("enterpriseAcceptance") {
     group = "verification"
     description = "Runs the installed sidecar enterprise fixture."
@@ -256,7 +264,9 @@ tasks.register<Exec>("enterpriseAcceptance") {
     inputs.file(layout.projectDirectory.file("integration-tests/enterprise_acceptance.py"))
     inputs.file(layout.projectDirectory.file("benchmarks/enterprise-acceptance.json"))
     inputs.dir(layout.projectDirectory.dir("fixtures/enterprise-workspace"))
+    inputs.dir(enterpriseAcceptanceIdeaHome)
     outputs.upToDateWhen { false }
+    environment("KAST_ACCEPTANCE_IDEA_HOME", enterpriseAcceptanceIdeaHome.get())
     commandLine(
         "python3",
         layout.projectDirectory.file("integration-tests/enterprise_acceptance.py"),

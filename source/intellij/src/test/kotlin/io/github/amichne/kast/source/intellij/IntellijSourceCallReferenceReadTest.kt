@@ -30,15 +30,14 @@ import io.github.amichne.kast.source.contract.SourceTextIdentity
 import io.github.amichne.kast.source.contract.TextProjection
 import io.github.amichne.kast.source.contract.Utf16CodeUnitCount
 import io.github.amichne.kast.source.contract.Utf16CodeUnitOffset
-import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CandidateSelector
 import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
-import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
-import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
-import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
@@ -69,7 +68,7 @@ class IntellijSourceCallReferenceReadTest {
         val firstCall = result.entities[0] as SourceEntity.Call
         assertEquals(firstCall.selector.fingerprint, firstCall.calleeSelector.parent.fingerprint)
         assertTrue(firstCall.selector.range.endExclusive > firstCall.calleeSelector.range.endExclusive)
-        assertInstanceOf(SourceEntityTarget.Symbol::class.java, firstCall.target)
+        assertInstanceOf(SourceEntityTarget.Candidate::class.java, firstCall.target)
 
         val local = result.entities[2] as SourceEntity.Reference
         val localTarget = local.target as SourceEntityTarget.Local
@@ -215,7 +214,7 @@ class IntellijSourceCallReferenceReadTest {
         """.trimIndent() + "\n"
         val snapshot = snapshot(text)
         val region = SourceSelector.issueRoot(range(snapshot, 0, text.length), SourceRegionKind.FILE)
-        val globalSelector = globalSelector(snapshot, text)
+        val globalSelector = globalSelector(snapshot)
         val localStart = text.indexOf("val local")
         val localDeclaration = entitySelector(
             snapshot,
@@ -242,7 +241,7 @@ class IntellijSourceCallReferenceReadTest {
             snapshot,
             region,
             listOf(
-                call(snapshot, region, text, directGlobalStart, "globalTarget", 0, SourceEntityTarget.Symbol(globalSelector)),
+                call(snapshot, region, text, directGlobalStart, "globalTarget", 0, SourceEntityTarget.Candidate(globalSelector)),
                 call(
                     snapshot,
                     region,
@@ -268,7 +267,7 @@ class IntellijSourceCallReferenceReadTest {
                     0,
                     SourceEntityTarget.Unresolved(CompilerUnresolvedReason.NAME_NOT_FOUND),
                 ),
-                call(snapshot, lambda, text, nestedGlobalStart, "globalTarget", 1, SourceEntityTarget.Symbol(globalSelector)),
+                call(snapshot, lambda, text, nestedGlobalStart, "globalTarget", 1, SourceEntityTarget.Candidate(globalSelector)),
             ),
         )
     }
@@ -340,32 +339,25 @@ class IntellijSourceCallReferenceReadTest {
         SourceEntityName.present(name).refined(),
     ).refined()
 
-    private fun globalSelector(snapshot: SourceSnapshot, text: String): SymbolSelector {
-        val end = text.indexOf('\n')
-        val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
-            snapshot.file,
-            0,
-            end,
+    private fun globalSelector(snapshot: SourceSnapshot): CandidateSelector.Declaration {
+        val candidate = SymbolDiscoveryCandidate.fromBoundary(
+            SymbolDiscoveryKind.SYMBOL,
             "globalTarget",
-            "sample.globalTarget",
-            CompilerSymbolKind.FUNCTION,
-            CanonicalCompilerSignature.function(
-                "sample.globalTarget",
-                null,
-                emptyList(),
-                emptyList(),
-                0,
-            ).refined(),
-        ).refined()
-        return SymbolSelector.issue(
             snapshot.lease,
-            SymbolSearchScope.Workspace(
+            Path.of(snapshot.file.path.value),
+            "file://${snapshot.file.path.value}",
+            0,
+        ).refined()
+        val selection = SymbolDiscoverySelection.restore(
+            snapshot.lease,
+            SymbolSearchScope.ExactFile(
+                snapshot.file.path,
                 SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
                 SymbolGeneratedSourcePolicy.INCLUDE,
-                SymbolLibraryPolicy.INCLUDE,
             ),
-            evidence,
-        )
+            candidate,
+        ).refined()
+        return CandidateSelector.declaration(selection).refined()
     }
 
     private fun snapshot(text: String): SourceSnapshot {

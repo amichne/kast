@@ -3,7 +3,6 @@ package io.github.amichne.kast.cli.command.lifecycle
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
-import io.github.amichne.kast.cli.CliProjectionPreparation
 import io.github.amichne.kast.cli.IndexSeedConsentRequest
 import io.github.amichne.kast.cli.RuntimeStartupRequest
 import io.github.amichne.kast.cli.StartupCacheIntent
@@ -16,31 +15,31 @@ import io.github.amichne.kast.cli.command.LifecycleKastCommand
 import io.github.amichne.kast.cli.command.CliOptionValue
 import io.github.amichne.kast.cli.command.CliUsageFailure
 import io.github.amichne.kast.cli.command.absolutePathOption
+import io.github.amichne.kast.cli.command.closedChoiceOption
+import io.github.amichne.kast.cli.command.defaultOnce
 import io.github.amichne.kast.cli.command.optionalOnce
-import io.github.amichne.kast.cli.projection.CanonicalCliRequestPreparers
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
 
-internal fun lifecycleCommands(
-    preparers: CanonicalCliRequestPreparers,
-): List<LifecycleKastCommand> = listOf(
-    StartCommand(preparers),
+internal fun lifecycleCommands(): List<LifecycleKastCommand> = listOf(
+    StartCommand,
     StopCommand,
     StatusCommand,
-    CleanCommand,
-    ReindexCommand(preparers),
 )
 
-private class StartCommand(
-    private val preparers: CanonicalCliRequestPreparers,
-) : LifecycleKastCommand("start", CliLifecycleCommand.START) {
+private data object StartCommand : LifecycleKastCommand("start", CliLifecycleCommand.START) {
     private val ideaHome by absolutePathOption(
         "--idea-home",
         "Exactly supported local IntelliJ IDEA home.",
     ).optionalOnce()
-    private val seedFromIdea by option(
-        "--seed-from-idea",
-        help = "Clone compatible quiescent IDEA indexes into Kast's private cache.",
-    ).flag(default = false)
+    private val cacheMode by closedChoiceOption(
+        "--cache",
+        "reuse|seed|rebuild",
+        "Private cache policy for this start.",
+        linkedMapOf(
+            "reuse" to StartCacheMode.REUSE,
+            "seed" to StartCacheMode.SEED,
+            "rebuild" to StartCacheMode.REBUILD,
+        ),
+    ).defaultOnce(StartCacheMode.REUSE, "reuse")
     private val sourceIdeaSystem by absolutePathOption(
         "--source-idea-system",
         "Source IntelliJ system directory used only for explicit seeding.",
@@ -57,7 +56,7 @@ private class StartCommand(
         val startup = when (
             val refinement = refineStartup(
                 ideaHome,
-                seedFromIdea,
+                cacheMode,
                 sourceIdeaSystem,
                 acceptGlobalIndexCopy,
             )
@@ -67,11 +66,11 @@ private class StartCommand(
                 refinement.failure,
             )
         }
-        return prepareInspection(preparers) { request ->
-            CliAction.Lifecycle.Start(request, startup)
-        }
+        return CliActionResolution.Selected(CliAction.Lifecycle.Start(startup))
     }
 }
+
+private enum class StartCacheMode { REUSE, SEED, REBUILD }
 
 private sealed interface StartInputRefinement {
     data class Refined(val request: RuntimeStartupRequest) : StartInputRefinement
@@ -80,15 +79,18 @@ private sealed interface StartInputRefinement {
 
 private fun refineStartup(
     ideaHome: CliOptionValue<java.nio.file.Path>,
-    seedFromIdea: Boolean,
+    cacheMode: StartCacheMode,
     sourceIdeaSystem: CliOptionValue<java.nio.file.Path>,
     acceptGlobalIndexCopy: Boolean,
 ): StartInputRefinement {
-    if (!seedFromIdea && (sourceIdeaSystem is CliOptionValue.Present || acceptGlobalIndexCopy)) {
+    if (
+        cacheMode != StartCacheMode.SEED &&
+        (sourceIdeaSystem is CliOptionValue.Present || acceptGlobalIndexCopy)
+    ) {
         return StartInputRefinement.Rejected(CliUsageFailure.Start.OPTIONS_REQUIRE_SEED)
     }
     if (
-        ideaHome is CliOptionValue.Absent && !seedFromIdea &&
+        ideaHome is CliOptionValue.Absent && cacheMode == StartCacheMode.REUSE &&
         sourceIdeaSystem is CliOptionValue.Absent && !acceptGlobalIndexCopy
     ) {
         return StartInputRefinement.Refined(RuntimeStartupRequest.Default)
@@ -97,8 +99,10 @@ private fun refineStartup(
         CliOptionValue.Absent -> StartupIdeHome.Standard
         is CliOptionValue.Present -> StartupIdeHome.Explicit(ideaHome.value)
     }
-    val cacheIntent = if (seedFromIdea) {
-        StartupCacheIntent.Seed(
+    val cacheIntent = when (cacheMode) {
+        StartCacheMode.REUSE -> StartupCacheIntent.Reuse
+        StartCacheMode.REBUILD -> StartupCacheIntent.Rebuild
+        StartCacheMode.SEED -> StartupCacheIntent.Seed(
             when (sourceIdeaSystem) {
                 CliOptionValue.Absent -> StartupIdeaSystem.Standard
                 is CliOptionValue.Present -> StartupIdeaSystem.Explicit(sourceIdeaSystem.value)
@@ -109,8 +113,6 @@ private fun refineStartup(
                 IndexSeedConsentRequest.INTERACTIVE
             },
         )
-    } else {
-        StartupCacheIntent.ReuseOrFresh
     }
     return StartInputRefinement.Refined(RuntimeStartupRequest.Requested(ideHome, cacheIntent))
 }
@@ -129,37 +131,4 @@ private data object StatusCommand : LifecycleKastCommand("status", CliLifecycleC
 
     override fun resolveAction(): CliActionResolution =
         CliActionResolution.Selected(CliAction.Lifecycle.Status)
-}
-
-private data object CleanCommand : LifecycleKastCommand("clean", CliLifecycleCommand.CLEAN) {
-    override fun help(context: Context): String =
-        "Remove only inactive exact-root endpoint artifacts; retain the private cache."
-
-    override fun resolveAction(): CliActionResolution =
-        CliActionResolution.Selected(CliAction.Lifecycle.Clean)
-}
-
-private class ReindexCommand(
-    private val preparers: CanonicalCliRequestPreparers,
-) : LifecycleKastCommand("reindex", CliLifecycleCommand.REINDEX) {
-    override fun help(context: Context): String =
-        "Quarantine the exact Kast-owned cache and rebuild with its recorded IDEA runtime."
-
-    override fun resolveAction(): CliActionResolution = prepareInspection(preparers) { request ->
-        CliAction.Lifecycle.Reindex(request)
-    }
-}
-
-private fun prepareInspection(
-    preparers: CanonicalCliRequestPreparers,
-    action: (io.github.amichne.kast.cli.PreparedCliRequest) -> CliAction.Lifecycle,
-): CliActionResolution = when (
-    val preparation = preparers.workspaceInspect.prepare(WorkspaceInspectRequest)
-) {
-    is CliProjectionPreparation.Prepared -> CliActionResolution.Selected(
-        action(preparation.request),
-    )
-    is CliProjectionPreparation.Rejected -> CliActionResolution.ProjectionRejected(
-        preparation.failure,
-    )
 }

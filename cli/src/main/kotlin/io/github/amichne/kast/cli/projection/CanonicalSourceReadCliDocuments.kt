@@ -108,17 +108,13 @@ private sealed interface SourceDeclarationSemanticIdentityCliDocument {
     @Serializable
     @SerialName("candidate")
     data class Candidate(val selector: String) : SourceDeclarationSemanticIdentityCliDocument
-
-    @Serializable
-    @SerialName("existing-symbol")
-    data class ExistingSymbol(val selector: String) : SourceDeclarationSemanticIdentityCliDocument
 }
 
 @Serializable
 private sealed interface SourceEntityTargetCliDocument {
     @Serializable
-    @SerialName("symbol")
-    data class Symbol(val selector: String) : SourceEntityTargetCliDocument
+    @SerialName("candidate")
+    data class Candidate(val selector: String) : SourceEntityTargetCliDocument
 
     @Serializable
     @SerialName("local")
@@ -265,12 +261,11 @@ private fun SourceDeclarationSemanticIdentityDocument.toCliDocument():
     SourceDeclarationSemanticIdentityCliDocument = when (this) {
     is SourceDeclarationSemanticIdentityDocument.Candidate ->
         SourceDeclarationSemanticIdentityCliDocument.Candidate(selector.value)
-    is SourceDeclarationSemanticIdentityDocument.ExistingSymbol ->
-        SourceDeclarationSemanticIdentityCliDocument.ExistingSymbol(selector.value)
 }
 
 private fun SourceEntityTargetDocument.toCliDocument(): SourceEntityTargetCliDocument = when (this) {
-    is SourceEntityTargetDocument.Symbol -> SourceEntityTargetCliDocument.Symbol(selector.value)
+    is SourceEntityTargetDocument.Candidate ->
+        SourceEntityTargetCliDocument.Candidate(selector.value)
     is SourceEntityTargetDocument.Local -> SourceEntityTargetCliDocument.Local(selector.value)
     is SourceEntityTargetDocument.Unresolved ->
         SourceEntityTargetCliDocument.Unresolved(reason.cliName())

@@ -41,19 +41,16 @@ class OperationRegistryContractTest {
     fun `canonical public operation set is exact and ordered`() {
         assertEquals(
             listOf(
-                "workspace.inspect",
                 "index.sync",
                 "topology.build",
                 "symbol.discover",
-                "symbol.resolve",
-                "symbol.describe",
+                "symbol.inspect",
                 "source.read",
                 "relation.read",
                 "traversal.run",
                 "diagnostic.check",
                 "change.plan",
                 "change.apply",
-                "change.verify",
                 "change.recover",
             ),
             CanonicalOperation.entries.map { it.id.value },
@@ -160,7 +157,7 @@ class OperationRegistryContractTest {
             completeOnly.bindQualified(evidence, TestQualification.TRUNCATED),
         )
 
-        val mismatched = evidence.copy(operation = CanonicalOperation.SYMBOL_DESCRIBE.id)
+        val mismatched = evidence.copy(operation = CanonicalOperation.SYMBOL_INSPECT.id)
         assertEquals(
             OperationOutcomeBinding.Rejected(
                 OperationOutcomeBindingFailure.EvidenceOperationMismatch(
@@ -178,7 +175,7 @@ class OperationRegistryContractTest {
 
     @Test
     fun `stronger prerequisite remains blocker data rather than execution authority`() {
-        val required = CanonicalOperation.WORKSPACE_INSPECT.id
+        val required = CanonicalOperation.TOPOLOGY_BUILD.id
         val blocker: OperationBlocker = OperationBlocker.StrongerOperationRequired(required)
 
         val recorded = when (blocker) {

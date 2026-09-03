@@ -2,7 +2,6 @@ package io.github.amichne.kast.source.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CandidateSelector
-import io.github.amichne.kast.symbol.contract.SymbolSelector
 
 enum class SourceRegionFailure {
     SELECTOR_IS_ENTITY,
@@ -59,10 +58,6 @@ sealed interface DeclarationSemanticIdentity {
     data class Candidate(
         val selector: CandidateSelector.Declaration,
     ) : DeclarationSemanticIdentity
-
-    data class ExistingSymbol(
-        val selector: SymbolSelector,
-    ) : DeclarationSemanticIdentity
 }
 
 enum class CompilerUnresolvedReason {
@@ -73,7 +68,7 @@ enum class CompilerUnresolvedReason {
 }
 
 sealed interface SourceEntityTarget {
-    data class Symbol(val selector: SymbolSelector) : SourceEntityTarget
+    data class Candidate(val selector: CandidateSelector.Declaration) : SourceEntityTarget
     data class Local(val selector: SourceSelector) : SourceEntityTarget
     data class Unresolved(val reason: CompilerUnresolvedReason) : SourceEntityTarget
 }

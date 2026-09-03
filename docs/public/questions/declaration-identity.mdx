@@ -27,24 +27,25 @@ Kast makes identity a visible refinement:
     from display text.
   </Step>
 
-  <Step title="Resolve one candidate">
+  <Step title="Inspect one candidate">
     Select the `candidateSelector` from the intended discovery item:
 
     ```console
-    kast symbol resolve --candidate '<candidate-selector>'
+    kast symbol inspect --candidate '<candidate-selector>'
     ```
 
-    Resolution succeeds only when that candidate still identifies one symbol
-    in the same root, scope, and semantic generation. Its `exactSelector` is a
-    capability for exact symbol operations, not another search string.
+    Inspection succeeds only when that candidate still identifies one symbol
+    in the same root, scope, and semantic generation. The result carries its
+    `exactSelector` together with exact compiler evidence, proving the
+    candidate-to-exact refinement in one operation.
   </Step>
 
-  <Step title="Describe the exact symbol">
+  <Step title="Reuse an exact selector">
     ```console
-    kast symbol describe --selector '<exact-selector>'
+    kast symbol inspect --selector '<exact-selector>'
     ```
 
-    The description is compiler-grounded and tied to the selector that
+    The evidence is compiler-grounded and tied to the selector that
     requested it. If the declaration moved with a newer generation, Kast
     closes the request instead of resolving a convenient current match.
   </Step>

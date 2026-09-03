@@ -64,7 +64,7 @@ class SidecarCacheLifecycleTest {
             preparer.prepare(
                 runtime,
                 cacheIdentity,
-                StartupCacheIntent.ReuseOrFresh,
+                StartupCacheIntent.Reuse,
             ),
         ).cache
 
@@ -116,7 +116,7 @@ class SidecarCacheLifecycleTest {
 
         val prepared = assertInstanceOf(
             SidecarCachePreparation.Prepared::class.java,
-            preparer.prepare(runtime, cacheIdentity, StartupCacheIntent.ReuseOrFresh),
+            preparer.prepare(runtime, cacheIdentity, StartupCacheIntent.Reuse),
         ).cache
         assertEquals(KastCacheState.FRESH, prepared.state)
         assertEquals(

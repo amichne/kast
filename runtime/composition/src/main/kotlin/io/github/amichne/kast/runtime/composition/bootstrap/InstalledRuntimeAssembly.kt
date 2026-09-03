@@ -274,24 +274,18 @@ private fun assembleInstalledRuntime(
         ),
         request.observability,
     )
-    val handlers = when (val created = CanonicalKastOperationHandlerFactory.create(
-        request.workspaceRoot,
-        graph.operations.workspaceInspect,
+    val handlers = CanonicalKastOperationHandlerFactory.create(
+        graph.workspace,
         InstalledChangePlanningAdmission(
-            graph.operations.workspaceInspect,
-            graph.operations.symbolDescribe,
+            graph.workspace,
+            graph.operations.symbolInspect,
             graph.operations.relationRead,
             graph.operations.traversalRun,
             graph.operations.diagnosticCheck,
             platform.change.sourceObserver,
             platform.change.intentCompiler,
         ),
-    )) {
-        is Refinement.Refined -> created.value
-        is Refinement.Rejected -> return InstalledRuntimeAssembly.Rejected(
-            InstalledRuntimeAssemblyFailure.WorkspaceHandler(created.failure),
-        )
-    }
+    )
     return when (val composition = KastRuntimeComposition.bind(graph.operations, handlers)) {
         is KastRuntimeCompositionConstruction.Created ->
             InstalledRuntimeAssembly.Assembled(composition.composition)

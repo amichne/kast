@@ -11,23 +11,12 @@ import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
-import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
-import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
-import io.github.amichne.kast.protocol.contract.SymbolResolveResult
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-
-@Serializable
-internal data object WorkspaceInspectRequestDocument
-
-@Serializable
-internal data class WorkspaceInspectResultDocument(
-    val canonicalRoot: String,
-    val state: WorkspaceStateWireDocument,
-)
 
 @Serializable
 internal data class SymbolDiscoverQualificationDocument(
@@ -35,19 +24,20 @@ internal data class SymbolDiscoverQualificationDocument(
 )
 
 @Serializable
-internal data class SymbolResolveRequestDocument(
-    val candidateSelector: String,
+internal data class SymbolInspectRequestDocument(
+    val target: SymbolInspectTargetWireDocument,
 )
 
 @Serializable
-internal data class SymbolResolveResultDocument(
-    val exactSelector: String,
-)
+internal sealed interface SymbolInspectTargetWireDocument {
+    @Serializable
+    @SerialName("candidate")
+    data class Candidate(val selector: String) : SymbolInspectTargetWireDocument
 
-@Serializable
-internal data class SymbolDescribeRequestDocument(
-    val exactSelector: String,
-)
+    @Serializable
+    @SerialName("exact")
+    data class Exact(val selector: String) : SymbolInspectTargetWireDocument
+}
 
 @Serializable
 internal data class RelationReadRequestDocument(
@@ -104,27 +94,6 @@ internal enum class DiagnosticSeverityWireDocument {
 }
 
 @Serializable
-internal enum class WorkspaceStateWireDocument {
-    @SerialName("absent") ABSENT,
-    @SerialName("starting") STARTING,
-    @SerialName("reconciling") RECONCILING,
-    @SerialName("ready") READY,
-    @SerialName("blocked") BLOCKED,
-    @SerialName("stopping") STOPPING,
-}
-
-@Serializable
-internal enum class WorkspaceInspectQualificationWireDocument {
-    @SerialName("reconciling") RECONCILING,
-}
-
-@Serializable
-internal enum class WorkspaceInspectRejectionWireDocument {
-    @SerialName("root_unavailable") ROOT_UNAVAILABLE,
-    @SerialName("runtime_blocked") RUNTIME_BLOCKED,
-}
-
-@Serializable
 internal enum class SymbolDiscoverLimitationWireDocument {
     @SerialName("result-limit") RESULT_LIMIT,
     @SerialName("byte-limit") BYTE_LIMIT,
@@ -144,28 +113,17 @@ internal enum class SymbolDiscoverRejectionWireDocument {
 }
 
 @Serializable
-internal enum class SymbolResolveQualificationWireDocument {
+internal enum class SymbolInspectQualificationWireDocument {
     @SerialName("evidence_incomplete") EVIDENCE_INCOMPLETE,
 }
 
 @Serializable
-internal enum class SymbolResolveRejectionWireDocument {
+internal enum class SymbolInspectRejectionWireDocument {
     @SerialName("workspace_not_ready") WORKSPACE_NOT_READY,
     @SerialName("candidate_stale") CANDIDATE_STALE,
     @SerialName("candidate_not_declaration") CANDIDATE_NOT_DECLARATION,
+    @SerialName("exact_selector_stale") EXACT_SELECTOR_STALE,
     @SerialName("ambiguous") AMBIGUOUS,
-    @SerialName("not_found") NOT_FOUND,
-}
-
-@Serializable
-internal enum class SymbolDescribeQualificationWireDocument {
-    @SerialName("evidence_incomplete") EVIDENCE_INCOMPLETE,
-}
-
-@Serializable
-internal enum class SymbolDescribeRejectionWireDocument {
-    @SerialName("workspace_not_ready") WORKSPACE_NOT_READY,
-    @SerialName("selector_stale") SELECTOR_STALE,
     @SerialName("not_found") NOT_FOUND,
 }
 
@@ -264,21 +222,6 @@ internal enum class DiagnosticCheckRejectionWireDocument {
     @SerialName("scope_rejected") SCOPE_REJECTED,
 }
 
-internal fun WorkspaceInspectResult.toReadDocument(): WorkspaceInspectResultDocument =
-    WorkspaceInspectResultDocument(canonicalRoot.value, state.toWireDocument())
-
-/**
- * Proof transition: `WorkspaceInspectResultDocument -> WorkspaceInspectResult`.
- *
- * Establishes a refined canonical root and a closed workspace state.
- * [WireDocumentConversion.Rejected] is the closed expected failure. Raw text extraction
- * is permitted only in this wire adapter.
- */
-internal fun WorkspaceInspectResultDocument.toContract():
-    WireDocumentConversion<WorkspaceInspectResult> = canonicalRoot.protocolText().mapConverted {
-    canonicalRoot -> WorkspaceInspectResult(canonicalRoot, state.toContract())
-}
-
 internal fun SymbolDiscoverQualification.toReadDocument():
     SymbolDiscoverQualificationDocument = SymbolDiscoverQualificationDocument(
     limitations.map { it.toWireDocument() },
@@ -296,41 +239,29 @@ internal fun SymbolDiscoverQualificationDocument.toContract():
     limitations.map { it.toContract() }.toSet(),
 ).toWireDocumentConversion()
 
-internal fun SymbolResolveRequest.toReadDocument(): SymbolResolveRequestDocument =
-    SymbolResolveRequestDocument(candidateSelector.value)
+internal fun SymbolInspectRequest.toReadDocument(): SymbolInspectRequestDocument =
+    SymbolInspectRequestDocument(
+        when (val value = target) {
+            is SymbolInspectTarget.Candidate ->
+                SymbolInspectTargetWireDocument.Candidate(value.selector.value)
+            is SymbolInspectTarget.Exact ->
+                SymbolInspectTargetWireDocument.Exact(value.selector.value)
+        },
+    )
 
 /**
- * Proof transition: `SymbolResolveRequestDocument -> SymbolResolveRequest`.
+ * Proof transition: `SymbolInspectRequestDocument -> SymbolInspectRequest`.
  *
- * Establishes a refined candidate selector. [WireDocumentConversion.Rejected] is the
+ * Establishes one explicitly typed candidate or exact selector. [WireDocumentConversion.Rejected] is the
  * closed expected failure. Raw text extraction is permitted only here.
  */
-internal fun SymbolResolveRequestDocument.toContract(): WireDocumentConversion<SymbolResolveRequest> =
-    candidateSelector.protocolText().mapConverted(::SymbolResolveRequest)
-
-internal fun SymbolResolveResult.toReadDocument(): SymbolResolveResultDocument =
-    SymbolResolveResultDocument(exactSelector.value)
-
-/**
- * Proof transition: `SymbolResolveResultDocument -> SymbolResolveResult`.
- *
- * Establishes a refined exact selector. [WireDocumentConversion.Rejected] is the
- * closed expected failure. Raw text extraction is permitted only here.
- */
-internal fun SymbolResolveResultDocument.toContract(): WireDocumentConversion<SymbolResolveResult> =
-    exactSelector.protocolText().mapConverted(::SymbolResolveResult)
-
-internal fun SymbolDescribeRequest.toReadDocument(): SymbolDescribeRequestDocument =
-    SymbolDescribeRequestDocument(exactSelector.value)
-
-/**
- * Proof transition: `SymbolDescribeRequestDocument -> SymbolDescribeRequest`.
- *
- * Establishes a refined exact selector. [WireDocumentConversion.Rejected] is the
- * closed expected failure. Raw text extraction is permitted only here.
- */
-internal fun SymbolDescribeRequestDocument.toContract(): WireDocumentConversion<SymbolDescribeRequest> =
-    exactSelector.protocolText().mapConverted(::SymbolDescribeRequest)
+internal fun SymbolInspectRequestDocument.toContract(): WireDocumentConversion<SymbolInspectRequest> =
+    when (val value = target) {
+        is SymbolInspectTargetWireDocument.Candidate -> value.selector.protocolText()
+            .mapConverted { SymbolInspectRequest(SymbolInspectTarget.Candidate(it)) }
+        is SymbolInspectTargetWireDocument.Exact -> value.selector.protocolText()
+            .mapConverted { SymbolInspectRequest(SymbolInspectTarget.Exact(it)) }
+    }
 
 internal fun RelationReadRequest.toReadDocument(): RelationReadRequestDocument =
     RelationReadRequestDocument(exactSelector.value, relation.toWireDocument(), limit.value)

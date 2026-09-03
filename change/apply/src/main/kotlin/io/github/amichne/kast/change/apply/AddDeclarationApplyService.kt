@@ -153,7 +153,7 @@ enum class AppliedUnverifiedRestorationFailure {
     APPLICATION_SUCCESSOR_UNSUPPORTED,
 }
 
-/** Public `change.apply` boundary for the one KCS-017 AddDeclaration mutation. */
+/** Internal physical-write boundary consumed by the verified public `change.apply` handler. */
 fun interface AddDeclarationApplyOperations {
     /**
      * Proof transition: `AddDeclarationApplyRequest -> AddDeclarationApplyResult`.

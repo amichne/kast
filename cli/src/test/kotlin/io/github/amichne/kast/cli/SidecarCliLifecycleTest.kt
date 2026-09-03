@@ -37,9 +37,6 @@ class SidecarCliLifecycleTest {
 
                 override fun stop(endpoint: RuntimeEndpoint): RuntimeStopResult =
                     error("stop was not requested")
-
-                override fun clean(endpoint: RuntimeEndpoint): RuntimeCleanResult =
-                    error("clean was not requested")
             },
             cacheLifecycle = object : RootSidecarCacheLifecycle {
                 override fun observe(root: Path): RootSidecarCacheObservation =
@@ -87,9 +84,6 @@ class SidecarCliLifecycleTest {
 
                 override fun stop(endpoint: RuntimeEndpoint): RuntimeStopResult =
                     error("stop was not requested")
-
-                override fun clean(endpoint: RuntimeEndpoint): RuntimeCleanResult =
-                    error("clean was not requested")
             },
             cacheLifecycle = object : RootSidecarCacheLifecycle {
                 override fun observe(root: Path): RootSidecarCacheObservation =
@@ -140,68 +134,6 @@ class SidecarCliLifecycleTest {
         )
     }
 
-    @Test
-    fun `reindex stops then quarantines private cache before fresh runtime demand`(
-        @TempDir temporary: Path,
-    ) {
-        val fixture = fixture(temporary)
-        val events = mutableListOf<String>()
-        val cacheIdentity = "sha256:${"d".repeat(64)}"
-        val restart = RuntimeStartupRequest.Requested(
-            StartupIdeHome.Explicit(temporary.resolve("IntelliJ IDEA.app")),
-            StartupCacheIntent.ReuseOrFresh,
-        )
-        val cli = fixture.cli(
-            runtimeDemander = object : RootRuntimeDemander {
-                override fun demand(
-                    root: CanonicalRoot,
-                    demand: HostedRuntimeDemand,
-                    startup: RuntimeStartupRequest,
-                ): RuntimeAdmission {
-                    events += "demand"
-                    assertEquals(restart, startup)
-                    return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
-                }
-            },
-            lifecycle = object : RuntimeLifecycleController {
-                override fun status(endpoint: RuntimeEndpoint): RuntimeStatusResult =
-                    error("reindex must not query status")
-
-                override fun stop(endpoint: RuntimeEndpoint): RuntimeStopResult {
-                    events += "stop"
-                    return RuntimeStopResult.Stopped()
-                }
-
-                override fun clean(endpoint: RuntimeEndpoint): RuntimeCleanResult {
-                    events += "clean"
-                    error("reindex must not delete endpoint or cache state")
-                }
-            },
-            cacheLifecycle = object : RootSidecarCacheLifecycle {
-                override fun observe(root: Path): RootSidecarCacheObservation {
-                    events += "observe"
-                    return observedCache(temporary, cacheIdentity)
-                }
-
-                override fun quarantine(root: Path): RootSidecarCacheQuarantine {
-                    events += "quarantine"
-                    return RootSidecarCacheQuarantine.Quarantined(
-                        temporary.resolve("quarantine/cache-key"),
-                        restart,
-                    )
-                }
-            },
-        )
-
-        val exit = cli.execute(listOf("reindex"), fixture.root.path)
-
-        assertEquals(listOf("observe", "stop", "quarantine", "demand"), events)
-        assertTrue(exit is CliExit.BoundaryRejected)
-        val rejected = exit as CliExit.BoundaryRejected
-        assertEquals(CliBoundaryExitStatus.RUNTIME, rejected.status)
-        assertTrue(rejected.document.value.contains("\"reason\":\"endpoint-unavailable\""))
-    }
-
     private fun observedLifecycle(state: RuntimeLifecycleState): RuntimeLifecycleController =
         object : RuntimeLifecycleController {
             override fun status(endpoint: RuntimeEndpoint): RuntimeStatusResult =
@@ -209,9 +141,6 @@ class SidecarCliLifecycleTest {
 
             override fun stop(endpoint: RuntimeEndpoint): RuntimeStopResult =
                 error("stop was not requested")
-
-            override fun clean(endpoint: RuntimeEndpoint): RuntimeCleanResult =
-                error("clean was not requested")
         }
 
     private fun observedCache(

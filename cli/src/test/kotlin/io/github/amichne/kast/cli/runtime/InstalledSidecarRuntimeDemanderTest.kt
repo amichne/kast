@@ -28,7 +28,7 @@ class InstalledSidecarRuntimeDemanderTest {
 
         assertTrue(admission is RuntimeAdmission.Ready)
         assertTrue(fixture.observedSelection.single() is IdeHomeSelection.Standard)
-        assertEquals(listOf(StartupCacheIntent.ReuseOrFresh), fixture.observedIntents)
+        assertEquals(listOf(StartupCacheIntent.Reuse), fixture.observedIntents)
         assertEquals(fixture.ideaRuntime, fixture.observedLaunch.single().runtime)
         assertTrue(fixture.observedLaunch.single().systemDirectory.startsWith(fixture.cacheRoot))
     }
@@ -141,7 +141,7 @@ class InstalledSidecarRuntimeDemanderTest {
             RuntimeAdmission.Rejected(RuntimeAdmissionFailure.LegacySidecarActive),
             admission,
         )
-        assertEquals(listOf(StartupCacheIntent.ReuseOrFresh), fixture.observedIntents)
+        assertEquals(listOf(StartupCacheIntent.Reuse), fixture.observedIntents)
         assertTrue(fixture.observedLaunch.isEmpty())
     }
 

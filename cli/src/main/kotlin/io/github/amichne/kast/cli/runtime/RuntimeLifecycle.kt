@@ -50,35 +50,18 @@ enum class RuntimeStopFailure {
     ACTIVE_ENDPOINT,
     PROCESS_AMBIGUOUS,
     PROCESS_TERMINATION_FAILED,
-    ENDPOINT_MARKER_RETIREMENT_FAILED,
+    ARTIFACT_CLEAN_FAILED,
     INTERRUPTED,
 }
 
 sealed interface RuntimeStopResult {
     data class Stopped(
-        val removed: Set<RuntimeEndpointMarker> = emptySet(),
+        val removed: Set<RuntimeEndpointArtifact> = emptySet(),
     ) : RuntimeStopResult
 
     data class Rejected(
         val failure: RuntimeStopFailure,
     ) : RuntimeStopResult
-}
-
-enum class RuntimeCleanFailure {
-    ACTIVE_ENDPOINT,
-    PROCESS_AMBIGUOUS,
-    ARTIFACT_CLEAN_FAILED,
-    INTERRUPTED,
-}
-
-sealed interface RuntimeCleanResult {
-    data class Cleaned(
-        val removed: Set<RuntimeEndpointArtifact>,
-    ) : RuntimeCleanResult
-
-    data class Rejected(
-        val failure: RuntimeCleanFailure,
-    ) : RuntimeCleanResult
 }
 
 interface RuntimeLifecycleController {
@@ -87,21 +70,6 @@ interface RuntimeLifecycleController {
 
     /** Stops only a process proven to own the exact endpoint. */
     fun stop(endpoint: RuntimeEndpoint): RuntimeStopResult
-
-    /** Removes only inactive artifacts derived from the exact endpoint. */
-    fun clean(endpoint: RuntimeEndpoint): RuntimeCleanResult
-}
-
-/** Lifecycle projection for an endpoint physically owned by the already-running IDE. */
-object IdeEndpointRuntimeLifecycle : RuntimeLifecycleController {
-    override fun status(endpoint: RuntimeEndpoint): RuntimeStatusResult =
-        RuntimeStatusResult.Observed(RuntimeLifecycleState.RUNNING)
-
-    override fun stop(endpoint: RuntimeEndpoint): RuntimeStopResult =
-        RuntimeStopResult.Rejected(RuntimeStopFailure.ACTIVE_ENDPOINT)
-
-    override fun clean(endpoint: RuntimeEndpoint): RuntimeCleanResult =
-        RuntimeCleanResult.Rejected(RuntimeCleanFailure.ACTIVE_ENDPOINT)
 }
 
 /** Minimal exact-root lifecycle coordination over existing process and UDS boundaries. */
@@ -152,44 +120,6 @@ class ExactRootRuntimeLifecycle internal constructor(
             }
         }
 
-    override fun clean(endpoint: RuntimeEndpoint): RuntimeCleanResult {
-        val reachability: RuntimeEndpointReachability.Unreachable = when (
-            endpointProbe.probe(endpoint)
-        ) {
-            RuntimeEndpointReachability.Reachable -> return RuntimeCleanResult.Rejected(
-                RuntimeCleanFailure.ACTIVE_ENDPOINT,
-            )
-            RuntimeEndpointReachability.Unreachable -> RuntimeEndpointReachability.Unreachable
-        }
-        val absence: RuntimeProcessObservation.Absent = when (
-            processAuthority.observe(endpoint)
-        ) {
-            RuntimeProcessObservation.Absent -> RuntimeProcessObservation.Absent
-            RuntimeProcessObservation.Ambiguous -> return RuntimeCleanResult.Rejected(
-                RuntimeCleanFailure.PROCESS_AMBIGUOUS,
-            )
-            is RuntimeProcessObservation.Owned -> return RuntimeCleanResult.Rejected(
-                RuntimeCleanFailure.ACTIVE_ENDPOINT,
-            )
-        }
-        val inactive = InactiveRuntimeEndpoint.afterObservedAbsence(
-            endpoint,
-            absence,
-            reachability,
-        )
-        return when (val cleaning = artifacts.clean(inactive)) {
-            is RuntimeEndpointArtifactCleaning.Cleaned -> RuntimeCleanResult.Cleaned(
-                cleaning.removed,
-            )
-            RuntimeEndpointArtifactCleaning.Rejected -> RuntimeCleanResult.Rejected(
-                RuntimeCleanFailure.ARTIFACT_CLEAN_FAILED,
-            )
-            RuntimeEndpointArtifactCleaning.Interrupted -> RuntimeCleanResult.Rejected(
-                RuntimeCleanFailure.INTERRUPTED,
-            )
-        }
-    }
-
     /**
      * Proof transition: `RuntimeEndpoint + RuntimeProcessObservation.Absent ->
      * RuntimeStopResult`.
@@ -205,7 +135,7 @@ class ExactRootRuntimeLifecycle internal constructor(
         RuntimeEndpointReachability.Reachable -> RuntimeStopResult.Rejected(
             RuntimeStopFailure.ACTIVE_ENDPOINT,
         )
-        RuntimeEndpointReachability.Unreachable -> stoppedAfterRetiringMarkers(
+        RuntimeEndpointReachability.Unreachable -> stoppedAfterCleaningArtifacts(
             InactiveRuntimeEndpoint.afterObservedAbsence(
                 endpoint,
                 absence,
@@ -229,7 +159,7 @@ class ExactRootRuntimeLifecycle internal constructor(
         RuntimeEndpointReachability.Reachable -> RuntimeStopResult.Rejected(
             RuntimeStopFailure.ACTIVE_ENDPOINT,
         )
-        RuntimeEndpointReachability.Unreachable -> stoppedAfterRetiringMarkers(
+        RuntimeEndpointReachability.Unreachable -> stoppedAfterCleaningArtifacts(
             InactiveRuntimeEndpoint.afterTermination(
                 endpoint,
                 termination,
@@ -241,20 +171,20 @@ class ExactRootRuntimeLifecycle internal constructor(
     /**
      * Proof transition: `InactiveRuntimeEndpoint -> RuntimeStopResult.Stopped`.
      *
-     * Establishes that the exact socket and descriptor markers are absent without removing
-     * persistent runtime state. [RuntimeStopFailure] closes marker retirement rejection and
-     * interruption. Raw paths stay inside [RuntimeEndpointArtifacts].
+     * Establishes that every artifact owned by the inactive endpoint is absent.
+     * [RuntimeStopFailure] closes cleanup rejection and interruption. Raw paths stay inside
+     * [RuntimeEndpointArtifacts].
      */
-    private fun stoppedAfterRetiringMarkers(
+    private fun stoppedAfterCleaningArtifacts(
         inactive: InactiveRuntimeEndpoint,
-    ): RuntimeStopResult = when (val retirement = artifacts.retireMarkers(inactive)) {
-        is RuntimeEndpointMarkerRetirement.Retired -> RuntimeStopResult.Stopped(
-            retirement.removed,
+    ): RuntimeStopResult = when (val cleaning = artifacts.clean(inactive)) {
+        is RuntimeEndpointArtifactCleaning.Cleaned -> RuntimeStopResult.Stopped(
+            cleaning.removed,
         )
-        RuntimeEndpointMarkerRetirement.Rejected -> RuntimeStopResult.Rejected(
-            RuntimeStopFailure.ENDPOINT_MARKER_RETIREMENT_FAILED,
+        RuntimeEndpointArtifactCleaning.Rejected -> RuntimeStopResult.Rejected(
+            RuntimeStopFailure.ARTIFACT_CLEAN_FAILED,
         )
-        RuntimeEndpointMarkerRetirement.Interrupted -> RuntimeStopResult.Rejected(
+        RuntimeEndpointArtifactCleaning.Interrupted -> RuntimeStopResult.Rejected(
             RuntimeStopFailure.INTERRUPTED,
         )
     }

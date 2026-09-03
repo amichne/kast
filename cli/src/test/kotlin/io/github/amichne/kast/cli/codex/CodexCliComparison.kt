@@ -260,7 +260,7 @@ internal class CodexCliComparison(
 
 private enum class CliSemanticStep {
     SYMBOL_DISCOVER,
-    SYMBOL_RESOLVE,
+    SYMBOL_INSPECT,
     RELATION_READ,
     OTHER;
 
@@ -268,7 +268,7 @@ private enum class CliSemanticStep {
         fun from(command: String): CliSemanticStep = when {
             Regex("(?:^|\\s)(?:--help|-h)(?:\\s|$)").containsMatchIn(command) -> OTHER
             Regex("\\bkast\\s+symbol\\s+discover\\b").containsMatchIn(command) -> SYMBOL_DISCOVER
-            Regex("\\bkast\\s+symbol\\s+resolve\\b").containsMatchIn(command) -> SYMBOL_RESOLVE
+            Regex("\\bkast\\s+symbol\\s+inspect\\b").containsMatchIn(command) -> SYMBOL_INSPECT
             Regex("\\bkast\\s+relation\\s+read\\b").containsMatchIn(command) -> RELATION_READ
             else -> OTHER
         }

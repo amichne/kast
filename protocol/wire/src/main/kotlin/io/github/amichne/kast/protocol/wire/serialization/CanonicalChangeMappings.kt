@@ -14,10 +14,6 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
 import io.github.amichne.kast.protocol.contract.ChangeRecoveryDocumentState
-import io.github.amichne.kast.protocol.contract.ChangeVerifyQualification
-import io.github.amichne.kast.protocol.contract.ChangeVerifyRejection
-import io.github.amichne.kast.protocol.contract.ChangeVerifyRequest
-import io.github.amichne.kast.protocol.contract.ChangeVerifyResult
 import io.github.amichne.kast.protocol.contract.ProtocolText
 
 internal fun ChangeApplyRequest.toSerializableDocument(): ChangeApplyRequestDocument =
@@ -33,16 +29,16 @@ internal fun ChangeApplyRequestDocument.toContract(): WireDocumentConversion<Cha
     planIdentity.refineChangeProtocolText().mapConverted(::ChangeApplyRequest)
 
 internal fun ChangeApplyResult.toSerializableDocument(): ChangeApplyResultDocument =
-    ChangeApplyResultDocument(applicationIdentity.value)
+    ChangeApplyResultDocument(receiptIdentity.value)
 
 /**
  * Proof transition: `ChangeApplyResultDocument -> ChangeApplyResult`.
  *
- * Establishes a refined application identity. [WireDocumentConversion.Rejected] is the closed
+ * Establishes a refined verified receipt identity. [WireDocumentConversion.Rejected] is the
  * closed expected failure. Raw result text may be extracted only here.
  */
 internal fun ChangeApplyResultDocument.toContract(): WireDocumentConversion<ChangeApplyResult> =
-    applicationIdentity.refineChangeProtocolText().mapConverted(::ChangeApplyResult)
+    receiptIdentity.refineChangeProtocolText().mapConverted(::ChangeApplyResult)
 
 internal fun ChangeApplyQualification.toSerializableDocument():
     ChangeApplyQualificationDocument = when (this) {
@@ -67,6 +63,13 @@ internal fun ChangeApplyRejection.toSerializableDocument(): ChangeApplyRejection
             ChangeApplyRejectionDocument.WRITE_SCOPE_REJECTED
         ChangeApplyRejection.ROLLED_BACK -> ChangeApplyRejectionDocument.ROLLED_BACK
         ChangeApplyRejection.RECOVERY_REQUIRED -> ChangeApplyRejectionDocument.RECOVERY_REQUIRED
+        ChangeApplyRejection.RESULTING_GENERATION_UNAVAILABLE ->
+            ChangeApplyRejectionDocument.RESULTING_GENERATION_UNAVAILABLE
+        ChangeApplyRejection.OBLIGATION_FAILED -> ChangeApplyRejectionDocument.OBLIGATION_FAILED
+        ChangeApplyRejection.DIAGNOSTIC_REGRESSION ->
+            ChangeApplyRejectionDocument.DIAGNOSTIC_REGRESSION
+        ChangeApplyRejection.SEMANTIC_DELTA_REJECTED ->
+            ChangeApplyRejectionDocument.SEMANTIC_DELTA_REJECTED
     }
 
 internal fun ChangeApplyRejectionDocument.toContract(): WireDocumentConversion<ChangeApplyRejection> =
@@ -81,73 +84,14 @@ internal fun ChangeApplyRejectionDocument.toContract(): WireDocumentConversion<C
             ChangeApplyRejectionDocument.ROLLED_BACK -> ChangeApplyRejection.ROLLED_BACK
             ChangeApplyRejectionDocument.RECOVERY_REQUIRED ->
                 ChangeApplyRejection.RECOVERY_REQUIRED
-        },
-    )
-
-internal fun ChangeVerifyRequest.toSerializableDocument(): ChangeVerifyRequestDocument =
-    ChangeVerifyRequestDocument(applicationIdentity.value)
-
-/**
- * Proof transition: `ChangeVerifyRequestDocument -> ChangeVerifyRequest`.
- *
- * Establishes a refined application identity. [WireDocumentConversion.Rejected] is the closed
- * closed expected failure. Raw request text may be extracted only here.
- */
-internal fun ChangeVerifyRequestDocument.toContract(): WireDocumentConversion<ChangeVerifyRequest> =
-    applicationIdentity.refineChangeProtocolText().mapConverted(::ChangeVerifyRequest)
-
-internal fun ChangeVerifyResult.toSerializableDocument(): ChangeVerifyResultDocument =
-    ChangeVerifyResultDocument(receiptIdentity.value)
-
-/**
- * Proof transition: `ChangeVerifyResultDocument -> ChangeVerifyResult`.
- *
- * Establishes a refined receipt identity. [WireDocumentConversion.Rejected] is the closed
- * closed expected failure. Raw result text may be extracted only here.
- */
-internal fun ChangeVerifyResultDocument.toContract(): WireDocumentConversion<ChangeVerifyResult> =
-    receiptIdentity.refineChangeProtocolText().mapConverted(::ChangeVerifyResult)
-
-internal fun ChangeVerifyQualification.toSerializableDocument():
-    ChangeVerifyQualificationDocument = when (this) {
-    ChangeVerifyQualification.PROOF_INCOMPLETE ->
-        ChangeVerifyQualificationDocument.PROOF_INCOMPLETE
-}
-
-internal fun ChangeVerifyQualificationDocument.toContract():
-    WireDocumentConversion<ChangeVerifyQualification> = WireDocumentConversion.Converted(
-    when (this) {
-        ChangeVerifyQualificationDocument.PROOF_INCOMPLETE ->
-            ChangeVerifyQualification.PROOF_INCOMPLETE
-    },
-)
-
-internal fun ChangeVerifyRejection.toSerializableDocument(): ChangeVerifyRejectionDocument =
-    when (this) {
-        ChangeVerifyRejection.APPLICATION_NOT_FOUND ->
-            ChangeVerifyRejectionDocument.APPLICATION_NOT_FOUND
-        ChangeVerifyRejection.RESULTING_GENERATION_UNAVAILABLE ->
-            ChangeVerifyRejectionDocument.RESULTING_GENERATION_UNAVAILABLE
-        ChangeVerifyRejection.OBLIGATION_FAILED -> ChangeVerifyRejectionDocument.OBLIGATION_FAILED
-        ChangeVerifyRejection.DIAGNOSTIC_REGRESSION ->
-            ChangeVerifyRejectionDocument.DIAGNOSTIC_REGRESSION
-        ChangeVerifyRejection.SEMANTIC_DELTA_REJECTED ->
-            ChangeVerifyRejectionDocument.SEMANTIC_DELTA_REJECTED
-    }
-
-internal fun ChangeVerifyRejectionDocument.toContract(): WireDocumentConversion<ChangeVerifyRejection> =
-    WireDocumentConversion.Converted(
-        when (this) {
-            ChangeVerifyRejectionDocument.APPLICATION_NOT_FOUND ->
-                ChangeVerifyRejection.APPLICATION_NOT_FOUND
-            ChangeVerifyRejectionDocument.RESULTING_GENERATION_UNAVAILABLE ->
-                ChangeVerifyRejection.RESULTING_GENERATION_UNAVAILABLE
-            ChangeVerifyRejectionDocument.OBLIGATION_FAILED ->
-                ChangeVerifyRejection.OBLIGATION_FAILED
-            ChangeVerifyRejectionDocument.DIAGNOSTIC_REGRESSION ->
-                ChangeVerifyRejection.DIAGNOSTIC_REGRESSION
-            ChangeVerifyRejectionDocument.SEMANTIC_DELTA_REJECTED ->
-                ChangeVerifyRejection.SEMANTIC_DELTA_REJECTED
+            ChangeApplyRejectionDocument.RESULTING_GENERATION_UNAVAILABLE ->
+                ChangeApplyRejection.RESULTING_GENERATION_UNAVAILABLE
+            ChangeApplyRejectionDocument.OBLIGATION_FAILED ->
+                ChangeApplyRejection.OBLIGATION_FAILED
+            ChangeApplyRejectionDocument.DIAGNOSTIC_REGRESSION ->
+                ChangeApplyRejection.DIAGNOSTIC_REGRESSION
+            ChangeApplyRejectionDocument.SEMANTIC_DELTA_REJECTED ->
+                ChangeApplyRejection.SEMANTIC_DELTA_REJECTED
         },
     )
 
@@ -312,8 +256,8 @@ internal fun ChangePlanRejection.toSerializableDocument(): ChangePlanRejectionDo
     when (this) {
         ChangePlanRejection.WORKSPACE_NOT_READY ->
             ChangePlanRejectionDocument.WORKSPACE_NOT_READY
-        ChangePlanRejection.SYMBOL_RESOLVE_REQUIRED ->
-            ChangePlanRejectionDocument.SYMBOL_RESOLVE_REQUIRED
+        ChangePlanRejection.EXACT_SYMBOL_REQUIRED ->
+            ChangePlanRejectionDocument.EXACT_SYMBOL_REQUIRED
         ChangePlanRejection.EDITABLE_TARGET_REQUIRED ->
             ChangePlanRejectionDocument.EDITABLE_TARGET_REQUIRED
         ChangePlanRejection.RELATION_READ_REQUIRED ->
@@ -334,8 +278,8 @@ internal fun ChangePlanRejectionDocument.toContract(): WireDocumentConversion<Ch
         when (this) {
             ChangePlanRejectionDocument.WORKSPACE_NOT_READY ->
                 ChangePlanRejection.WORKSPACE_NOT_READY
-            ChangePlanRejectionDocument.SYMBOL_RESOLVE_REQUIRED ->
-                ChangePlanRejection.SYMBOL_RESOLVE_REQUIRED
+            ChangePlanRejectionDocument.EXACT_SYMBOL_REQUIRED ->
+                ChangePlanRejection.EXACT_SYMBOL_REQUIRED
             ChangePlanRejectionDocument.EDITABLE_TARGET_REQUIRED ->
                 ChangePlanRejection.EDITABLE_TARGET_REQUIRED
             ChangePlanRejectionDocument.RELATION_READ_REQUIRED ->

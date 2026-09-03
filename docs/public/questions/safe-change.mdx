@@ -1,7 +1,7 @@
 ---
 title: "Add a declaration safely"
 sidebarTitle: "Safe AddDeclaration"
-description: "Plan, apply, publish, verify, and recover one typed AddDeclaration mutation through the live IDE endpoint."
+description: "Plan, apply with verification, and recover one typed AddDeclaration mutation through the live IDE endpoint."
 icon: "git-pull-request-create"
 keywords: ["change", "add-declaration", "plan", "verify", "recover"]
 ---
@@ -29,35 +29,24 @@ workspace generation. Then keep the same endpoint open through the mutation:
     lease into one durable plan identity.
   </Step>
 
-  <Step title="Apply and publish the successor generation">
+  <Step title="Apply, publish, and verify the successor generation">
     ```console
     kast change apply --plan '<plan-identity>'
     ```
 
-    A complete apply means the physical write and its application identity are
-    durable and the same hosted workspace owner has published a proven newer
-    generation. The read routes advance with that publication, and selectors
-    from the prior generation are stale immediately. That
-    `AppliedUnverified` success also schedules index synchronization
-    asynchronously. Rejected and recovery-required outcomes never schedule it.
-  </Step>
-
-  <Step title="Verify without restarting">
-    ```console
-    kast change verify --application '<application-identity>'
-    ```
-
-    Verification observes the newer generation, checks the planned semantic
-    obligations, and publishes the resulting topology delta. Resolve a fresh
-    selector before traversing the resulting topology.
+    A complete apply means the physical write is durable, the same workspace
+    owner has published a proven newer generation, and verification has checked
+    the planned semantic obligations. Success carries the verified receipt;
+    there is no successful-but-unverified public state. Selectors from the
+    prior generation are stale immediately.
   </Step>
 </Steps>
 
 ## Recover a post-write failure
 
 If source may have changed but Kast cannot durably issue the application
-identity, the apply request rejects as `recovery-required`. The live endpoint
-immediately withdraws planning, application, and verification authority.
+identity or verified receipt, the apply request rejects as `recovery-required`.
+The live endpoint immediately withdraws mutation authority.
 
 ```console
 kast change recover --plan '<plan-identity>'
@@ -72,8 +61,8 @@ regain writer authority.
 
 <Warning>
   Do not treat transport success, a physical file write, or a durable plan as
-  verified semantic success. Only a complete `change.verify` receipt closes
-  the normal lifecycle.
+  verified semantic success. Only a complete `change.apply` with its verified
+  receipt closes the normal lifecycle.
 </Warning>
 
 Endpoint restarts preserve durable plans, applications, receipts, topology,

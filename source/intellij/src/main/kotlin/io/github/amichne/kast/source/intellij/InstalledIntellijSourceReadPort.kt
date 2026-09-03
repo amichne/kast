@@ -815,7 +815,7 @@ private class NativeSourceEntityEnumerator(
         if (includeDeclarations) {
             val semanticVisibility = visibility(declaration, NativeVisibilityTarget.DECLARATION)
                 ?: return qualify(SourceReadLimitation.SEMANTIC_RESOLUTION_INCOMPLETE)
-            val candidate = declaration.candidateSelector(document, kind, name)
+            val candidate = declaration.candidateSelector(document.snapshot, kind, name)
                 ?: return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
             val entity = when (
                 val created = SourceEntity.Declaration.create(
@@ -865,7 +865,11 @@ private class NativeSourceEntityEnumerator(
                 parameter,
                 NativeVisibilityTarget.PRIMARY_CONSTRUCTOR_PROPERTY,
             ) ?: return qualify(SourceReadLimitation.SEMANTIC_RESOLUTION_INCOMPLETE)
-            val candidate = parameter.candidateSelector(document, DeclarationKind.PROPERTY, name)
+            val candidate = parameter.candidateSelector(
+                document.snapshot,
+                DeclarationKind.PROPERTY,
+                name,
+            )
                 ?: return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
             val property = when (
                 val created = SourceEntity.Declaration.create(
@@ -1021,10 +1025,16 @@ private fun KtNameReferenceExpression.isCallCallee(): Boolean =
     (parent as? KtCallExpression)?.calleeExpression === this
 
 private fun KtNamedDeclaration.candidateSelector(
-    document: LiveSourceDocument,
+    snapshot: SourceSnapshot,
     kind: DeclarationKind,
     name: String,
 ): CandidateSelector.Declaration? {
+    val file = containingFile?.virtualFile ?: return null
+    val nativePath = if (file.fileSystem.protocol == "file") {
+        runCatching { Path.of(file.path).toAbsolutePath().normalize() }.getOrNull()
+    } else {
+        null
+    } ?: return null
     val candidate = when (
         val created = SymbolDiscoveryCandidate.fromBoundary(
             if (kind == DeclarationKind.CLASSLIKE) {
@@ -1033,22 +1043,25 @@ private fun KtNamedDeclaration.candidateSelector(
                 SymbolDiscoveryKind.SYMBOL
             },
             name,
-            document.snapshot.lease,
-            Path.of(document.snapshot.file.path.value),
-            document.psiFile.virtualFile?.url ?: return null,
+            snapshot.lease,
+            nativePath,
+            file.url,
             textRange.startOffset,
         )
     ) {
         is Refinement.Refined -> created.value
         is Refinement.Rejected -> return null
     }
+    val candidateFile = (candidate.location as? SymbolDiscoveryCandidateLocation.Declaration)
+        ?.file as? SymbolDiscoveryFileIdentity.Workspace
+        ?: return null
     val scope = SymbolSearchScope.ExactFile(
-        document.snapshot.file.path,
+        candidateFile.path,
         SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
         SymbolGeneratedSourcePolicy.INCLUDE,
     )
     val selection = when (
-        val restored = SymbolDiscoverySelection.restore(document.snapshot.lease, scope, candidate)
+        val restored = SymbolDiscoverySelection.restore(snapshot.lease, scope, candidate)
     ) {
         is Refinement.Refined -> restored.value
         is Refinement.Rejected -> return null
@@ -1237,32 +1250,13 @@ private fun CandidateSelector.workspaceFile(): SymbolDiscoveryFileIdentity.Works
 private fun KaSymbol.sourceEntityTarget(document: LiveSourceDocument): SourceEntityTarget {
     val declaration = psi as? KtNamedDeclaration
         ?: return SourceEntityTarget.Unresolved(CompilerUnresolvedReason.UNSUPPORTED_TARGET)
-    val projection = when (val result = sourceProjection()) {
-        is SourceCompilerProjectionResult.Projected -> result.projection
-        SourceCompilerProjectionResult.Rejected -> return declaration.localSourceTarget(document)
-    }
-    val file = declaration.sourceFileIdentity(document)
+    val kind = declaration.sourceDeclarationKind()
         ?: return SourceEntityTarget.Unresolved(CompilerUnresolvedReason.UNSUPPORTED_TARGET)
-    val name = declaration.sourceTargetName(projection.kind)
+    val name = declaration.sourceEntityName(kind)
         ?: return SourceEntityTarget.Unresolved(CompilerUnresolvedReason.UNSUPPORTED_TARGET)
-    val evidence = when (
-        val admitted = CompilerGroundedSymbolEvidence.fromBoundary(
-            file,
-            declaration.textRange.startOffset,
-            declaration.textRange.endOffset,
-            name,
-            projection.qualifiedIdentity,
-            projection.kind,
-            projection.signature,
-        )
-    ) {
-        is Refinement.Refined -> admitted.value
-        is Refinement.Rejected ->
-            return SourceEntityTarget.Unresolved(CompilerUnresolvedReason.UNSUPPORTED_TARGET)
-    }
-    return SourceEntityTarget.Symbol(
-        SymbolSelector.issue(document.snapshot.lease, file.sourceTargetScope(), evidence),
-    )
+    val candidate = declaration.candidateSelector(document.snapshot, kind, name)
+        ?: return SourceEntityTarget.Unresolved(CompilerUnresolvedReason.UNSUPPORTED_TARGET)
+    return SourceEntityTarget.Candidate(candidate)
 }
 
 private fun KtNamedDeclaration.localSourceTarget(
@@ -1274,47 +1268,6 @@ private fun KtNamedDeclaration.localSourceTarget(
     val range = document.snapshot.sourceRange(textRange)
         ?: return SourceEntityTarget.Unresolved(CompilerUnresolvedReason.UNSUPPORTED_TARGET)
     return SourceEntityTarget.Local(SourceSelector.issueRoot(range, SourceRegionKind.DECLARATION))
-}
-
-private fun KtNamedDeclaration.sourceFileIdentity(
-    document: LiveSourceDocument,
-): SymbolDiscoveryFileIdentity? {
-    val file = containingFile?.virtualFile ?: return null
-    val nativePath = if (file.fileSystem.protocol == "file") {
-        runCatching { Path.of(file.path).toAbsolutePath().normalize() }.getOrNull()
-    } else {
-        null
-    }
-    return when (
-        val admitted = SymbolDiscoveryFileIdentity.fromBoundary(
-            document.snapshot.lease.workspaceRoot,
-            nativePath,
-            file.url,
-        )
-    ) {
-        is Refinement.Refined -> admitted.value
-        is Refinement.Rejected -> null
-    }
-}
-
-private fun KtNamedDeclaration.sourceTargetName(kind: CompilerSymbolKind): String? =
-    name ?: if (kind == CompilerSymbolKind.CONSTRUCTOR) {
-        (this as? KtConstructor<*>)?.getContainingClassOrObject()?.name
-    } else {
-        null
-    }
-
-private fun SymbolDiscoveryFileIdentity.sourceTargetScope(): SymbolSearchScope = when (this) {
-    is SymbolDiscoveryFileIdentity.Workspace -> SymbolSearchScope.ExactFile(
-        path,
-        SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-        SymbolGeneratedSourcePolicy.INCLUDE,
-    )
-    is SymbolDiscoveryFileIdentity.External -> SymbolSearchScope.Workspace(
-        SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-        SymbolGeneratedSourcePolicy.INCLUDE,
-        SymbolLibraryPolicy.INCLUDE,
-    )
 }
 
 private fun KtNamedDeclaration.compilerEvidence(

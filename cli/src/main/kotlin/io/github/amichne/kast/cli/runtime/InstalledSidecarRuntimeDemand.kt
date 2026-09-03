@@ -194,7 +194,7 @@ internal class ExactSidecarProcessDemander(
  * Root-level installed sidecar admission.
  *
  * Payload, installed IDEA, cache identity, cache state, and launch context are each refined before
- * the next effect can run. Ordinary startup supplies [StartupCacheIntent.ReuseOrFresh], so no
+ * the next effect can run. Ordinary startup supplies [StartupCacheIntent.Reuse], so no
  * source IDEA system path exists in that execution branch.
  */
 class InstalledSidecarRootRuntimeDemander(
@@ -325,8 +325,11 @@ class FilesystemSidecarCachePreparer(
         val root = prepareCacheRoot()
             ?: return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
         val preparation = when (intent) {
-            StartupCacheIntent.ReuseOrFresh -> prepareExistingOrFresh(root, cacheIdentity)
+            StartupCacheIntent.Reuse -> prepareExistingOrFresh(root, cacheIdentity)
             is StartupCacheIntent.Seed -> seed(root, runtime, cacheIdentity, intent)
+            StartupCacheIntent.Rebuild -> return SidecarCachePreparation.Rejected(
+                SidecarCacheFailure.RebuildRequired,
+            )
         }
         val cache = when (preparation) {
             is SidecarCachePreparation.Prepared -> preparation.cache

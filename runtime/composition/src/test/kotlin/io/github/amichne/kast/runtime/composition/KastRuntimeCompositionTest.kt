@@ -1,13 +1,11 @@
 package io.github.amichne.kast.runtime.composition
 
-import io.github.amichne.kast.change.apply.AddDeclarationApplyOperations
 import io.github.amichne.kast.change.apply.SuccessfulApplyIndexSynchronization
 import io.github.amichne.kast.change.apply.AddDeclarationSourceObserver
 import io.github.amichne.kast.change.apply.AddDeclarationSourceRollback
 import io.github.amichne.kast.change.apply.AddDeclarationSourceWriter
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackPort
 import io.github.amichne.kast.change.verify.ChangeVerificationObserver
-import io.github.amichne.kast.change.verify.VerifiedMutationOperations
 import io.github.amichne.kast.change.verify.VerifiedMutationService
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilerPort
 import io.github.amichne.kast.diagnostic.contract.DiagnosticOperations
@@ -37,10 +35,6 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverQualification
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
-import io.github.amichne.kast.protocol.contract.ChangeVerifyQualification
-import io.github.amichne.kast.protocol.contract.ChangeVerifyRejection
-import io.github.amichne.kast.protocol.contract.ChangeVerifyRequest
-import io.github.amichne.kast.protocol.contract.ChangeVerifyResult
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
@@ -57,18 +51,14 @@ import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.RelationReadResult
-import io.github.amichne.kast.protocol.contract.SymbolDescribeQualification
-import io.github.amichne.kast.protocol.contract.SymbolDescribeRejection
-import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
-import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
+import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
-import io.github.amichne.kast.protocol.contract.SymbolResolveQualification
-import io.github.amichne.kast.protocol.contract.SymbolResolveRejection
-import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
-import io.github.amichne.kast.protocol.contract.SymbolResolveResult
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
@@ -81,10 +71,6 @@ import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
 import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
 import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildResult
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
 import io.github.amichne.kast.relation.contract.RelationCompilerPort
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.relation.service.RelationService
@@ -159,31 +145,27 @@ class KastRuntimeCompositionTest {
         ).created()
         val operations = composition.operations
 
-        assertSame(operations.workspaceInspect, handlers.observed.getValue(CanonicalOperation.WORKSPACE_INSPECT))
         assertSame(operations.indexSync, handlers.observed.getValue(CanonicalOperation.INDEX_SYNC))
         assertSame(operations.topologyBuild, handlers.observed.getValue(CanonicalOperation.TOPOLOGY_BUILD))
         assertSame(operations.symbolDiscover, handlers.observed.getValue(CanonicalOperation.SYMBOL_DISCOVER))
-        assertSame(operations.symbolResolve, handlers.observed.getValue(CanonicalOperation.SYMBOL_RESOLVE))
-        assertSame(operations.symbolDescribe, handlers.observed.getValue(CanonicalOperation.SYMBOL_DESCRIBE))
+        assertSame(operations.symbolInspect, handlers.observed.getValue(CanonicalOperation.SYMBOL_INSPECT))
         assertSame(operations.sourceRead, handlers.observed.getValue(CanonicalOperation.SOURCE_READ))
         assertSame(operations.relationRead, handlers.observed.getValue(CanonicalOperation.RELATION_READ))
         assertSame(operations.traversalRun, handlers.observed.getValue(CanonicalOperation.TRAVERSAL_RUN))
         assertSame(operations.diagnosticCheck, handlers.observed.getValue(CanonicalOperation.DIAGNOSTIC_CHECK))
         assertSame(operations.changePlan, handlers.observed.getValue(CanonicalOperation.CHANGE_PLAN))
         assertSame(operations.changeApply, handlers.observed.getValue(CanonicalOperation.CHANGE_APPLY))
-        assertSame(operations.changeVerify, handlers.observed.getValue(CanonicalOperation.CHANGE_VERIFY))
         assertSame(operations.changeRecover, handlers.observed.getValue(CanonicalOperation.CHANGE_RECOVER))
         assertEquals(CanonicalOperation.entries.toSet(), handlers.observed.keys)
-        assertSame(operations.symbolResolve, operations.symbolDescribe)
 
-        assertSame(WorkspacePublicationCoordinator::class.java, operations.workspaceInspect.javaClass)
         assertSame(WorkspaceIndexSynchronizationService::class.java, operations.indexSync.javaClass)
         assertSame(SymbolDiscoveryService::class.java, operations.symbolDiscover.javaClass)
-        assertSame(SymbolExactService::class.java, operations.symbolResolve.javaClass)
+        assertSame(SymbolExactService::class.java, operations.symbolInspect.javaClass)
         assertSame(SourceReadService::class.java, operations.sourceRead.javaClass)
         assertSame(RelationService::class.java, operations.relationRead.javaClass)
-        assertSame(SuccessfulApplyIndexSynchronization::class.java, operations.changeApply.javaClass)
-        assertSame(VerifiedMutationService::class.java, operations.changeVerify.javaClass)
+        assertSame(VerifiedChangeApplyOperations::class.java, operations.changeApply.javaClass)
+        assertSame(SuccessfulApplyIndexSynchronization::class.java, operations.changeApply.apply.javaClass)
+        assertSame(VerifiedMutationService::class.java, operations.changeApply.verify.javaClass)
     }
 
     private fun KastRuntimeCompositionConstruction.created(): KastRuntimeComposition = when (this) {
@@ -193,13 +175,6 @@ class KastRuntimeCompositionTest {
 
     private class RecordingHandlerFactory : KastOperationHandlerFactory {
         val observed = linkedMapOf<CanonicalOperation, Any>()
-
-        override fun workspaceInspect(operations: WorkspaceInspectionOperations) =
-            record<WorkspaceInspectRequest, WorkspaceInspectResult, WorkspaceInspectQualification, WorkspaceInspectRejection>(
-                CanonicalOperation.WORKSPACE_INSPECT,
-                operations,
-                WorkspaceInspectRejection.RUNTIME_BLOCKED,
-            )
 
         override fun indexSync(operations: IndexSynchronizationOperations) =
             record<IndexSyncRequest, IndexSyncResult, IndexSyncQualification, IndexSyncRejection>(
@@ -222,18 +197,11 @@ class KastRuntimeCompositionTest {
                 SymbolDiscoverRejection.WORKSPACE_NOT_READY,
             )
 
-        override fun symbolResolve(operations: SymbolExactOperations) =
-            record<SymbolResolveRequest, SymbolResolveResult, SymbolResolveQualification, SymbolResolveRejection>(
-                CanonicalOperation.SYMBOL_RESOLVE,
+        override fun symbolInspect(operations: SymbolExactOperations) =
+            record<SymbolInspectRequest, SymbolInspectResult, SymbolInspectQualification, SymbolInspectRejection>(
+                CanonicalOperation.SYMBOL_INSPECT,
                 operations,
-                SymbolResolveRejection.WORKSPACE_NOT_READY,
-            )
-
-        override fun symbolDescribe(operations: SymbolExactOperations) =
-            record<SymbolDescribeRequest, SymbolDescribeResult, SymbolDescribeQualification, SymbolDescribeRejection>(
-                CanonicalOperation.SYMBOL_DESCRIBE,
-                operations,
-                SymbolDescribeRejection.WORKSPACE_NOT_READY,
+                SymbolInspectRejection.WORKSPACE_NOT_READY,
             )
 
         override fun sourceRead(operations: SourceReadOperations) =
@@ -271,18 +239,11 @@ class KastRuntimeCompositionTest {
                 ChangePlanRejection.WORKSPACE_NOT_READY,
             )
 
-        override fun changeApply(operations: AddDeclarationApplyOperations) =
+        override fun changeApply(operations: VerifiedChangeApplyOperations) =
             record<ChangeApplyRequest, ChangeApplyResult, ChangeApplyQualification, ChangeApplyRejection>(
                 CanonicalOperation.CHANGE_APPLY,
                 operations,
                 ChangeApplyRejection.PLAN_NOT_FOUND,
-            )
-
-        override fun changeVerify(operations: VerifiedMutationOperations) =
-            record<ChangeVerifyRequest, ChangeVerifyResult, ChangeVerifyQualification, ChangeVerifyRejection>(
-                CanonicalOperation.CHANGE_VERIFY,
-                operations,
-                ChangeVerifyRejection.APPLICATION_NOT_FOUND,
             )
 
         override fun changeRecover(operations: ChangeRecoveryOperations) =

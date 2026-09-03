@@ -16,52 +16,9 @@ import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
 import kotlinx.serialization.Serializable
 
 internal object CanonicalReadCliDocuments {
-    fun projectWorkspace(
-        outcome: OperationOutcome<
-            WorkspaceInspectResult,
-            WorkspaceInspectQualification,
-            WorkspaceInspectRejection,
-            >,
-    ) = projectClosedOutcome(
-        outcome,
-        complete = { result ->
-            workspaceCompleteFactory.create(
-                WorkspaceCompleteCliDocument(
-                    operation = CanonicalOperation.WORKSPACE_INSPECT.id.value,
-                    status = "complete",
-                    canonicalRoot = result.canonicalRoot.value,
-                    state = result.state.cliName(),
-                ),
-            )
-        },
-        qualified = { result, qualification ->
-            workspaceQualifiedFactory.create(
-                WorkspaceQualifiedCliDocument(
-                    operation = CanonicalOperation.WORKSPACE_INSPECT.id.value,
-                    status = "qualified",
-                    canonicalRoot = result.canonicalRoot.value,
-                    state = result.state.cliName(),
-                    qualification = qualification.cliName(),
-                ),
-            )
-        },
-        rejected = { rejection ->
-            canonicalRejectedDocument(
-                CanonicalOperation.WORKSPACE_INSPECT,
-                when (rejection) {
-                    WorkspaceInspectRejection.ROOT_UNAVAILABLE -> "root-unavailable"
-                    WorkspaceInspectRejection.RUNTIME_BLOCKED -> "runtime-blocked"
-                },
-            )
-        },
-    )
-
     fun projectRelation(
         outcome: OperationOutcome<
             RelationReadResult,
@@ -168,23 +125,6 @@ internal object CanonicalReadCliDocuments {
         },
     )
 }
-
-@Serializable
-private data class WorkspaceCompleteCliDocument(
-    val operation: String,
-    val status: String,
-    val canonicalRoot: String,
-    val state: String,
-)
-
-@Serializable
-private data class WorkspaceQualifiedCliDocument(
-    val operation: String,
-    val status: String,
-    val canonicalRoot: String,
-    val state: String,
-    val qualification: String,
-)
 
 @Serializable
 private data class RelationCompleteCliDocument(
@@ -346,10 +286,6 @@ private fun DiagnosticLimitationDocument.toCliDocument() = DiagnosticLimitationC
 private fun io.github.amichne.kast.protocol.contract.SourceRangeDocument.toReadCliDocument() =
     SourceRangeCliDocument(startInclusive.value, endExclusive.value)
 
-private val workspaceCompleteFactory =
-    CliJsonDocument.generated(WorkspaceCompleteCliDocument.serializer())
-private val workspaceQualifiedFactory =
-    CliJsonDocument.generated(WorkspaceQualifiedCliDocument.serializer())
 private val relationCompleteFactory =
     CliJsonDocument.generated(RelationCompleteCliDocument.serializer())
 private val relationQualifiedFactory =

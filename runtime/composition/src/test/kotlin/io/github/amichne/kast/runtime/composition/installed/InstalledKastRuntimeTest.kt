@@ -7,61 +7,43 @@ import io.github.amichne.kast.change.plan.PureAddDeclarationPlanningService
 import io.github.amichne.kast.change.plan.PureAddFilePlanningService
 import io.github.amichne.kast.change.plan.PureRenameSymbolPlanningService
 import io.github.amichne.kast.change.plan.PureReplaceDeclarationPlanningService
-import io.github.amichne.kast.kernel.EvidenceEnvelope
-import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.KastObservability
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
-import io.github.amichne.kast.protocol.contract.ChangeVerifyRejection
-import io.github.amichne.kast.protocol.contract.ChangeVerifyRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
-import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
 import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
-import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
 import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
-import io.github.amichne.kast.protocol.contract.WorkspaceStateDocument
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeApplyHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeAuthority
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangePlanHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeRecoverHandler
-import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeVerifyHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalDiagnosticCheckHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalProtocolAuthority
-import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDescribeHandler
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolInspectHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDiscoverHandler
-import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolResolveHandler
 import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalRelationReadHandler
 import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalTraversalRunHandler
-import io.github.amichne.kast.runtime.composition.protocol.CanonicalWorkspaceInspectHandler
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmission
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionOperations
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
-import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import io.github.amichne.kast.workspace.contract.PublishedWorkspace
-import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
-import io.github.amichne.kast.workspace.contract.WorkspaceCandidate
-import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
-import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
-import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertSame
@@ -183,40 +165,6 @@ class InstalledKastRuntimeTest {
     }
 
     @Test
-    fun `workspace handler projects only exact ready root authority`(@TempDir temporary: Path) {
-        val rawRoot = Files.createDirectories(temporary.resolve("repo")).toRealPath()
-        Files.writeString(rawRoot.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
-        val installedRoot = InstalledWorkspaceRoot.admit(rawRoot).refined()
-        val canonicalRoot = CanonicalWorkspaceRoot.fromCanonicalPath(rawRoot).refined()
-        val generation = EvidenceGeneration.parse(7).refined()
-        val reconciled = ReconciledWorkspace.admit(
-            WorkspaceCandidate(canonicalRoot, WorkspaceStateIdentity.parse("state-7").refined()),
-            WorkspaceEvidenceKind.entries.toSet(),
-        ).refined()
-        val ready = WorkspaceRuntimeState.Ready(PublishedWorkspace.publish(reconciled, generation))
-        val handler = CanonicalWorkspaceInspectHandler.create(
-            installedRoot,
-            WorkspaceInspectionOperations { ready },
-        ).refined()
-
-        val outcome = runImmediate { handler.execute(WorkspaceInspectRequest) }
-
-        assertEquals(
-            OperationOutcome.Complete(
-                EvidenceEnvelope(
-                    CanonicalOperation.WORKSPACE_INSPECT.id,
-                    generation,
-                    WorkspaceInspectResult(
-                        ProtocolText.parse(rawRoot.toString()).refined(),
-                        WorkspaceStateDocument.READY,
-                    ),
-                ),
-            ),
-            outcome,
-        )
-    }
-
-    @Test
     fun `symbol handlers preserve discovery selection and exact selector authority`(
         @TempDir temporary: Path,
     ) {
@@ -224,8 +172,7 @@ class InstalledKastRuntimeTest {
         val fixture = InstalledSymbolProtocolFixture.create(root)
         val authority = CanonicalProtocolAuthority()
         val discover = CanonicalSymbolDiscoverHandler(fixture.workspace, fixture.discovery, authority)
-        val resolve = CanonicalSymbolResolveHandler(fixture.exact, authority)
-        val describe = CanonicalSymbolDescribeHandler(fixture.exact, authority)
+        val inspect = CanonicalSymbolInspectHandler(fixture.exact, authority)
 
         val discovered = runImmediate {
             discover.execute(
@@ -236,10 +183,8 @@ class InstalledKastRuntimeTest {
             discovered.evidence.payload.items.values.single() as
                 SymbolDiscoveryDocument.Declaration
             ).candidateSelector
-        val resolved = runImmediate { resolve.execute(SymbolResolveRequest(candidate)) } as
-            OperationOutcome.Complete
-        val described = runImmediate {
-            describe.execute(SymbolDescribeRequest(resolved.evidence.payload.exactSelector))
+        val inspected = runImmediate {
+            inspect.execute(SymbolInspectRequest(SymbolInspectTarget.Candidate(candidate)))
         } as OperationOutcome.Complete
 
         assertEquals(
@@ -250,14 +195,13 @@ class InstalledKastRuntimeTest {
             fixture.resolutionRequest?.selection?.candidate?.name,
             fixture.descriptionRequest?.selector?.name,
         )
-        assertEquals(11, resolved.evidence.generation.value)
-        assertEquals(11, described.evidence.generation.value)
+        assertEquals(11, inspected.evidence.generation.value)
         assertEquals(
             "sample.Sample.sample",
-            (described.evidence.payload.symbol.qualifiedIdentity as
+            (inspected.evidence.payload.symbol.qualifiedIdentity as
                 SymbolQualifiedIdentityDocument.Available).value.value,
         )
-        val compilerEvidence = described.evidence.payload.symbol.compilerEvidence
+        val compilerEvidence = inspected.evidence.payload.symbol.compilerEvidence
         val signature = compilerEvidence.signature as
             io.github.amichne.kast.protocol.contract.CompilerSignatureDocument.Function
         assertEquals("sample.Sample.sample", signature.qualifiedIdentity.value)
@@ -275,7 +219,7 @@ class InstalledKastRuntimeTest {
         val fixture = InstalledSymbolProtocolFixture.create(root)
         val authority = CanonicalProtocolAuthority()
         val discover = CanonicalSymbolDiscoverHandler(fixture.workspace, fixture.discovery, authority)
-        val resolve = CanonicalSymbolResolveHandler(fixture.exact, authority)
+        val inspect = CanonicalSymbolInspectHandler(fixture.exact, authority)
         val relation = CanonicalRelationReadHandler(fixture.relation, authority)
         val traversal = CanonicalTraversalRunHandler(fixture.traversal, authority)
         val candidate = (
@@ -288,9 +232,11 @@ class InstalledKastRuntimeTest {
                             (item as SymbolDiscoveryDocument.Declaration).candidateSelector
                         }
         val exact = (
-            runImmediate { resolve.execute(SymbolResolveRequest(candidate)) } as
+            runImmediate {
+                inspect.execute(SymbolInspectRequest(SymbolInspectTarget.Candidate(candidate)))
+            } as
                 OperationOutcome.Complete
-                    ).evidence.payload.exactSelector
+                    ).evidence.payload.symbol.selector
 
         val related = runImmediate {
             relation.execute(
@@ -365,11 +311,10 @@ class InstalledKastRuntimeTest {
         val missing = ProtocolText.parse("missing").refined()
         val apply = CanonicalChangeApplyHandler(
             WorkspaceInspectionOperations { error("missing plans must not inspect workspace") },
-            { error("missing plans must not reach apply") },
-            authority,
-        )
-        val verify = CanonicalChangeVerifyHandler(
-            { error("missing applications must not reach verify") },
+            VerifiedChangeApplyOperations(
+                { error("missing plans must not reach apply") },
+                { error("missing plans must not reach verification") },
+            ),
             authority,
         )
         val recover = CanonicalChangeRecoverHandler(
@@ -380,10 +325,6 @@ class InstalledKastRuntimeTest {
         assertEquals(
             OperationOutcome.Rejected(ChangeApplyRejection.PLAN_NOT_FOUND),
             runImmediate { apply.execute(ChangeApplyRequest(missing)) },
-        )
-        assertEquals(
-            OperationOutcome.Rejected(ChangeVerifyRejection.APPLICATION_NOT_FOUND),
-            runImmediate { verify.execute(ChangeVerifyRequest(missing)) },
         )
         assertEquals(
             OperationOutcome.Rejected(ChangeRecoverRejection.PLAN_NOT_FOUND),
@@ -411,12 +352,15 @@ class InstalledKastRuntimeTest {
         var observed: DomainChangeApplyRequest? = null
         val apply = CanonicalChangeApplyHandler(
             fixture.workspace,
-            { request ->
-                observed = request
-                AddDeclarationApplyResult.Rejected(
-                    AddDeclarationApplyFailure.Admission(MutationAdmissionFailure.WRONG_ROOT),
-                )
-            },
+            VerifiedChangeApplyOperations(
+                { request ->
+                    observed = request
+                    AddDeclarationApplyResult.Rejected(
+                        AddDeclarationApplyFailure.Admission(MutationAdmissionFailure.WRONG_ROOT),
+                    )
+                },
+                { error("rejected application must not reach verification") },
+            ),
             authority,
         )
         val planned = runImmediate {

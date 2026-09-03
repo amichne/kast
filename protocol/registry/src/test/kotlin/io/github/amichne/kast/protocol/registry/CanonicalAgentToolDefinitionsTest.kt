@@ -33,14 +33,13 @@ class CanonicalAgentToolDefinitionsTest {
 
     @Test
     fun `agent tools preserve the canonical Kast operation workflows and inputs`() {
-        val symbol = CanonicalAgentToolDefinitions.symbolResolve
+        val symbol = CanonicalAgentToolDefinitions.symbolInspect
         val relation = CanonicalAgentToolDefinitions.relationRead
 
         assertEquals(
             listOf(
                 CanonicalOperation.SYMBOL_DISCOVER,
-                CanonicalOperation.SYMBOL_RESOLVE,
-                CanonicalOperation.SYMBOL_DESCRIBE,
+                CanonicalOperation.SYMBOL_INSPECT,
             ),
             symbol.execution.operations.map { it.operation },
         )
@@ -48,10 +47,10 @@ class CanonicalAgentToolDefinitionsTest {
             listOf(CanonicalOperation.RELATION_READ),
             relation.execution.operations.map { it.operation },
         )
-        assertEquals(CanonicalOperation.SYMBOL_DESCRIBE, symbol.execution.output.operation)
+        assertEquals(CanonicalOperation.SYMBOL_INSPECT, symbol.execution.output.operation)
         assertEquals(CanonicalOperation.RELATION_READ, relation.execution.output.operation)
         assertEquals(
-            listOf("symbol_resolve", "relation_read"),
+            listOf("symbol_inspect", "relation_read"),
             CanonicalAgentToolDefinitions.all.map { it.name.value },
         )
 

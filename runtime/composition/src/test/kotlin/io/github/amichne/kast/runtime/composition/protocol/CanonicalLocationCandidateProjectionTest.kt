@@ -26,7 +26,8 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
 import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
-import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.runtime.composition.InstalledSymbolProtocolFixture
 import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalRelationReadHandler
@@ -55,7 +56,7 @@ class CanonicalLocationCandidateProjectionTest {
         val fixture = InstalledSymbolProtocolFixture.create(root)
         val authority = CanonicalProtocolAuthority()
         val discover = CanonicalSymbolDiscoverHandler(fixture.workspace, fixture.discovery, authority)
-        val resolve = CanonicalSymbolResolveHandler(fixture.exact, authority)
+        val inspect = CanonicalSymbolInspectHandler(fixture.exact, authority)
         val relation = CanonicalRelationReadHandler(fixture.relation, authority)
         val traversal = CanonicalTraversalRunHandler(fixture.traversal, authority)
         val diagnostic = CanonicalDiagnosticCheckHandler(fixture.workspace, fixture.diagnostic, authority)
@@ -64,9 +65,15 @@ class CanonicalLocationCandidateProjectionTest {
             runSuspend { discover.execute(discoverRequest()) } as OperationOutcome.Complete
             ).evidence.payload.items.values.single() as SymbolDiscoveryDocument.Declaration
         val exact = (
-            runSuspend { resolve.execute(SymbolResolveRequest(candidate.candidateSelector)) } as
+            runSuspend {
+                inspect.execute(
+                    SymbolInspectRequest(
+                        SymbolInspectTarget.Candidate(candidate.candidateSelector),
+                    ),
+                )
+            } as
                 OperationOutcome.Complete
-            ).evidence.payload.exactSelector
+            ).evidence.payload.symbol.selector
         val related = runSuspend {
             relation.execute(RelationReadRequest(exact, RelationKindDocument.REFERENCES, count(4)))
         } as OperationOutcome.Complete

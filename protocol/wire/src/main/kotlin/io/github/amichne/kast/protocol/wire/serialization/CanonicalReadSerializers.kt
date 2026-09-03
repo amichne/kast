@@ -7,46 +7,17 @@ import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
-import io.github.amichne.kast.protocol.contract.SymbolDescribeQualification
-import io.github.amichne.kast.protocol.contract.SymbolDescribeRejection
-import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
+import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
-import io.github.amichne.kast.protocol.contract.SymbolResolveQualification
-import io.github.amichne.kast.protocol.contract.SymbolResolveRejection
-import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
-import io.github.amichne.kast.protocol.contract.SymbolResolveResult
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
 
 internal object CanonicalReadSerializers {
     private val factory = GeneratedWireCodecFactory(wireJson)
-
-    val workspaceInspectRequest = factory.create(
-        WorkspaceInspectRequestDocument.serializer(),
-        { WorkspaceInspectRequestDocument },
-        { WireDocumentConversion.Converted(WorkspaceInspectRequest) },
-    )
-    val workspaceInspectResult = factory.create(
-        WorkspaceInspectResultDocument.serializer(),
-        WorkspaceInspectResult::toReadDocument,
-        WorkspaceInspectResultDocument::toContract,
-    )
-    val workspaceInspectQualification = factory.create(
-        WorkspaceInspectQualificationWireDocument.serializer(),
-        WorkspaceInspectQualification::toWireDocument,
-        { document -> WireDocumentConversion.Converted(document.toContract()) },
-    )
-    val workspaceInspectRejection = factory.create(
-        WorkspaceInspectRejectionWireDocument.serializer(),
-        WorkspaceInspectRejection::toWireDocument,
-        { document -> WireDocumentConversion.Converted(document.toContract()) },
-    )
 
     val symbolDiscoverRequest = CanonicalSymbolSerializers.discoverRequest
     val symbolDiscoverResult = CanonicalSymbolSerializers.discoverResult
@@ -61,41 +32,20 @@ internal object CanonicalReadSerializers {
         { document -> WireDocumentConversion.Converted(document.toContract()) },
     )
 
-    val symbolResolveRequest = factory.create(
-        SymbolResolveRequestDocument.serializer(),
-        SymbolResolveRequest::toReadDocument,
-        SymbolResolveRequestDocument::toContract,
+    val symbolInspectRequest = factory.create(
+        SymbolInspectRequestDocument.serializer(),
+        SymbolInspectRequest::toReadDocument,
+        SymbolInspectRequestDocument::toContract,
     )
-    val symbolResolveResult = factory.create(
-        SymbolResolveResultDocument.serializer(),
-        SymbolResolveResult::toReadDocument,
-        SymbolResolveResultDocument::toContract,
-    )
-    val symbolResolveQualification = factory.create(
-        SymbolResolveQualificationWireDocument.serializer(),
-        SymbolResolveQualification::toWireDocument,
+    val symbolInspectResult = CanonicalSymbolSerializers.describeResult
+    val symbolInspectQualification = factory.create(
+        SymbolInspectQualificationWireDocument.serializer(),
+        SymbolInspectQualification::toWireDocument,
         { document -> WireDocumentConversion.Converted(document.toContract()) },
     )
-    val symbolResolveRejection = factory.create(
-        SymbolResolveRejectionWireDocument.serializer(),
-        SymbolResolveRejection::toWireDocument,
-        { document -> WireDocumentConversion.Converted(document.toContract()) },
-    )
-
-    val symbolDescribeRequest = factory.create(
-        SymbolDescribeRequestDocument.serializer(),
-        SymbolDescribeRequest::toReadDocument,
-        SymbolDescribeRequestDocument::toContract,
-    )
-    val symbolDescribeResult = CanonicalSymbolSerializers.describeResult
-    val symbolDescribeQualification = factory.create(
-        SymbolDescribeQualificationWireDocument.serializer(),
-        SymbolDescribeQualification::toWireDocument,
-        { document -> WireDocumentConversion.Converted(document.toContract()) },
-    )
-    val symbolDescribeRejection = factory.create(
-        SymbolDescribeRejectionWireDocument.serializer(),
-        SymbolDescribeRejection::toWireDocument,
+    val symbolInspectRejection = factory.create(
+        SymbolInspectRejectionWireDocument.serializer(),
+        SymbolInspectRejection::toWireDocument,
         { document -> WireDocumentConversion.Converted(document.toContract()) },
     )
 
