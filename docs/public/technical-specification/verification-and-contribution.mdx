@@ -63,11 +63,16 @@ not a replacement for them.
 
 ## Enterprise acceptance
 
-The enterprise fixture supplies a real multi-module Gradle workspace with
-cross-module symbols and relationships. The acceptance runner operates the
-staged product through its public command boundary and checks semantic
-determinism, bounded output, topology and traversal behavior, generation
-transitions, mutation lifecycle, recovery, and measured performance ceilings.
+The enterprise fixture tests the staged product against a real multi-module
+Gradle workspace.
+
+Through the public command boundary, it checks:
+
+- cross-module symbols and relationships;
+- deterministic, bounded semantic output;
+- topology, traversal, and generation transitions;
+- mutation and recovery lifecycles; and
+- measured performance ceilings.
 
 This layer catches errors that an in-process test cannot represent: packaging
 omissions, launcher environment mistakes, incompatible private plugin layout,
