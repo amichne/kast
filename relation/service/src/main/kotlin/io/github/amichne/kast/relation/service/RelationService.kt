@@ -139,6 +139,7 @@ private fun RelationReadResult.traceObservation(): KastSpanObservation = when (t
                 RelationReadRejection.AMBIGUOUS_SUBJECT,
                 RelationReadRejection.UNSUPPORTED_SUBJECT,
                 RelationReadRejection.COMPILER_IDENTITY_UNAVAILABLE,
+                RelationReadRejection.CONTINUATION_CURSOR_MOVED,
                 RelationReadRejection.COMPILER_CONTRACT_VIOLATION,
                     -> KastSpanFailure.RELATION_QUERY_REJECTED
             },
@@ -190,7 +191,11 @@ private enum class RelationCompilerOutputAdmission {
 private fun RelationCompilation.Complete.admitFor(
     request: RelationRequest,
 ): RelationCompilerOutputAdmission {
-    if (batch.request !== request || coverage.exactCount.value != batch.facts.size) {
+    if (
+        batch.request !== request ||
+        coverage.exactCount.value != batch.facts.size ||
+        batch.resultCount.value != batch.facts.size
+    ) {
         return RelationCompilerOutputAdmission.Rejected
     }
     return batch.facts.admitFor(request.subject, request)
@@ -209,13 +214,27 @@ private fun RelationCompilation.Qualified.admitFor(
     if (
         batch.request !== request ||
         coverage.knownMinimum.value != batch.facts.size ||
-        coverage.limitations.isEmpty() ||
-        coverage.continuation.subject != request.subject.fingerprint ||
-        coverage.continuation.meaning != request.meaning ||
-        coverage.continuation.generation != request.subject.lease.generation ||
-        coverage.continuation.nextWorkOffset.value < request.position.workOffset.value
+        batch.resultCount.value != batch.facts.size ||
+        coverage.limitations.isEmpty()
     ) {
         return RelationCompilerOutputAdmission.Rejected
+    }
+    val admittedCoverage = coverage
+    if (
+        admittedCoverage is
+        io.github.amichne.kast.relation.contract.RelationIncompleteCoverage.Resumable
+    ) {
+        val continuation = admittedCoverage.continuation
+        if (
+            continuation.subject != request.subject.fingerprint ||
+            continuation.meaning != request.meaning ||
+            continuation.generation != request.subject.lease.generation ||
+            continuation.nextProviderCursor.provider != request.providerCursor.provider ||
+            continuation.nextProviderCursor.nextPosition.value <
+            request.providerCursor.nextPosition.value
+        ) {
+            return RelationCompilerOutputAdmission.Rejected
+        }
     }
     return batch.facts.admitFor(request.subject, request)
 }
@@ -256,6 +275,8 @@ private fun RelationCompilerRejection.toPublicRejection(): RelationReadRejection
     RelationCompilerRejection.UNSUPPORTED_SUBJECT -> RelationReadRejection.UNSUPPORTED_SUBJECT
     RelationCompilerRejection.COMPILER_IDENTITY_UNAVAILABLE ->
         RelationReadRejection.COMPILER_IDENTITY_UNAVAILABLE
+    RelationCompilerRejection.CONTINUATION_CURSOR_MOVED ->
+        RelationReadRejection.CONTINUATION_CURSOR_MOVED
     RelationCompilerRejection.COMPILER_CONTRACT_VIOLATION ->
         RelationReadRejection.COMPILER_CONTRACT_VIOLATION
 }

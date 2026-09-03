@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.Properties
 
 class SidecarCacheLifecycleTest {
     @TempDir
@@ -153,6 +154,92 @@ class SidecarCacheLifecycleTest {
         )
         assertEquals(StartupIdeHome.Explicit(ideaHome), restart.ideHome)
         assertEquals("source", Files.readString(sourceMarker))
+    }
+
+    @Test
+    fun `project-specific seed requires current identity proof after restart`() {
+        val project = Files.createDirectory(temporary.resolve("verified-project")).toRealPath()
+        val ideaHome = Files.createDirectory(temporary.resolve("verified-idea")).toRealPath()
+        val java = Files.createFile(ideaHome.resolve("java")).toRealPath()
+        val sourceIdea = Files.createDirectory(temporary.resolve("verified-source")).toRealPath()
+        val cacheRoot = Files.createDirectory(temporary.resolve("verified-caches")).toRealPath()
+        val identity = runtimeIdentity()
+        val runtime = InstalledIdeRuntime(ideaHome, java, identity)
+        val cacheIdentity = cacheIdentity(project, runtime)
+        val seededRoot = Files.createDirectory(cacheRoot.resolve(cacheIdentity.key)).toRealPath()
+        val projectIdentity = when (
+            val admission = SeedProjectIdentity.admit(
+                SeedProjectIdentityCandidate(
+                    project,
+                    "8.8",
+                    "sha256:${"a".repeat(64)}",
+                    "sha256:${"b".repeat(64)}",
+                    "sha256:${"c".repeat(64)}",
+                    "sha256:${"d".repeat(64)}",
+                    "sha256:${"e".repeat(64)}",
+                ),
+            )
+        ) {
+            is SeedProjectIdentityAdmission.Admitted -> admission.identity
+            is SeedProjectIdentityAdmission.Rejected -> error(admission.failure)
+        }
+        val receipt = Properties().apply {
+            setProperty("format", INDEX_SEED_RECEIPT_FORMAT)
+            setProperty("cache.key", cacheIdentity.key)
+            setProperty("project.root", project.toString())
+            setProperty("idea.build", identity.supportedPair.ideaBuild)
+            setProperty("kotlin.plugin.build", identity.supportedPair.kotlinPluginBuild)
+            setProperty("jbr.identity", identity.jbrIdentity)
+            setProperty("kast.payload.digest", identity.kastPayloadDigest)
+            setProperty(
+                "categories",
+                IndexSeedCategory.entries.sortedBy(IndexSeedCategory::name)
+                    .joinToString(",", transform = IndexSeedCategory::name),
+            )
+            setProperty("project.proof", "verified")
+            setProperty("project.identity.fingerprint", projectIdentity.fingerprint())
+            setProperty("project.gradle.distribution", projectIdentity.gradleDistribution)
+            setProperty(
+                "project.gradle-jvm.fingerprint",
+                projectIdentity.selectedGradleJvmFingerprint,
+            )
+            setProperty(
+                "project.gradle-inputs.fingerprint",
+                projectIdentity.repositoryGradleInputsFingerprint,
+            )
+            setProperty(
+                "project.jvm-model.fingerprint",
+                projectIdentity.importedProjectJvmModelFingerprint,
+            )
+            setProperty("project.classpath.fingerprint", projectIdentity.classpathFingerprint)
+            setProperty("project.source-generation", projectIdentity.sourceGeneration)
+        }
+        Files.newOutputStream(seededRoot.resolve("seed-receipt.properties")).use { output ->
+            receipt.store(output, null)
+        }
+        assertEquals(
+            CacheStateTransition.Recorded,
+            SidecarCacheStateFile.record(seededRoot, KastCacheState.SEEDED),
+        )
+        val preparer = FilesystemSidecarCachePreparer(
+            cacheRoot,
+            sourceIdea,
+            IndexSeedFilesystemService(
+                SourceIdeQuiescenceProbe {
+                    SourceIdeQuiescence(
+                        SourceIdeProcessState.UNKNOWN,
+                        SourceIdeLockState.UNKNOWN,
+                    )
+                },
+                IndexSeedFilesystemProbe { _, _ -> IndexSeedFilesystem.UNSUPPORTED },
+                IndexSeedCloner { _, _ -> IndexSeedCopyResult.Rejected },
+            ),
+        )
+
+        assertEquals(
+            SidecarCachePreparation.Rejected(SidecarCacheFailure.RebuildRequired),
+            preparer.prepare(runtime, cacheIdentity, StartupCacheIntent.Reuse),
+        )
     }
 
     @Test

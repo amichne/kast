@@ -79,6 +79,68 @@ class TopologyProjectionRegistryCacheTest {
     }
 
     @Test
+    fun `separate enumeration of unchanged evidence has the same epoch key`() {
+        val first = TopologyProjectionRegistryKey.from(candidates("a".repeat(64)))
+        val second = TopologyProjectionRegistryKey.from(candidates("a".repeat(64)))
+
+        assertEquals(first, second)
+    }
+
+    @Test
+    fun `semantic rejection is stable for one source generation`() {
+        val candidates = candidates("a".repeat(64))
+        val key = TopologyProjectionRegistryKey.from(candidates)
+        val file = candidates.files.single()
+        val cache = TopologyReadEpochCache()
+        val builds = AtomicInteger()
+
+        val first = cache.resolve(key, file) {
+            builds.incrementAndGet()
+            io.github.amichne.kast.topology.contract.TopologyFileExtraction.Failed(
+                file,
+                io.github.amichne.kast.topology.contract.TopologyExtractionFailure
+                    .COMPILER_IDENTITY_MISMATCH,
+            )
+        }
+        val second = cache.resolve(
+            TopologyProjectionRegistryKey.from(candidates("a".repeat(64))),
+            file,
+        ) {
+            builds.incrementAndGet()
+            io.github.amichne.kast.topology.contract.TopologyFileExtraction.Failed(
+                file,
+                io.github.amichne.kast.topology.contract.TopologyExtractionFailure
+                    .REFERENCE_TARGET_REJECTED,
+            )
+        }
+
+        assertSame(first, second)
+        assertEquals(1, builds.get())
+    }
+
+    @Test
+    fun `VFS mismatch remains eligible for its bounded refresh retry`() {
+        val candidates = candidates("a".repeat(64))
+        val key = TopologyProjectionRegistryKey.from(candidates)
+        val file = candidates.files.single()
+        val cache = TopologyReadEpochCache()
+        val builds = AtomicInteger()
+
+        repeat(2) {
+            cache.resolve(key, file) {
+                builds.incrementAndGet()
+                io.github.amichne.kast.topology.contract.TopologyFileExtraction.Failed(
+                    file,
+                    io.github.amichne.kast.topology.contract.TopologyExtractionFailure
+                        .VFS_CONTENT_MISMATCH,
+                )
+            }
+        }
+
+        assertEquals(2, builds.get())
+    }
+
+    @Test
     fun `live source bytes must retain enumerated content identity`() {
         val original = "fun original() = Unit".toByteArray()
         val file = candidates(sha256(original)).files.single()

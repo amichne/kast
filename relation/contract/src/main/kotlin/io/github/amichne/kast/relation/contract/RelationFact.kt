@@ -19,8 +19,12 @@ import java.security.MessageDigest
 
 private const val RELATION_ENDPOINT_FINGERPRINT_LENGTH = 64
 
+enum class RelationEndpointFingerprintFailure {
+    INVALID_SHA256,
+}
+
 @JvmInline
-value class RelationEndpointFingerprint internal constructor(
+value class RelationEndpointFingerprint private constructor(
     val value: String,
 ) {
     init {
@@ -28,6 +32,23 @@ value class RelationEndpointFingerprint internal constructor(
             value.length == RELATION_ENDPOINT_FINGERPRINT_LENGTH &&
             value.all { character -> character in '0'..'9' || character in 'a'..'f' },
         )
+    }
+
+    companion object {
+        fun parse(
+            raw: String,
+        ): Refinement<RelationEndpointFingerprint, RelationEndpointFingerprintFailure> =
+            if (
+                raw.length == RELATION_ENDPOINT_FINGERPRINT_LENGTH &&
+                raw.all { character -> character in '0'..'9' || character in 'a'..'f' }
+            ) {
+                Refinement.Refined(RelationEndpointFingerprint(raw))
+            } else {
+                Refinement.Rejected(RelationEndpointFingerprintFailure.INVALID_SHA256)
+            }
+
+        internal fun established(raw: String): RelationEndpointFingerprint =
+            RelationEndpointFingerprint(raw)
     }
 }
 
@@ -63,7 +84,7 @@ sealed interface RelationEndpoint {
         override val compilerIdentity: CompilerSymbolIdentity =
             SymbolDescription.from(selector).compilerIdentity
         override val fingerprint: RelationEndpointFingerprint =
-            RelationEndpointFingerprint(selector.fingerprint.value)
+            RelationEndpointFingerprint.established(selector.fingerprint.value)
     }
 
     @ConsistentCopyVisibility
@@ -325,7 +346,7 @@ private fun relationEndpointFingerprint(
     }
     val digest = MessageDigest.getInstance("SHA-256")
         .digest(canonical.toByteArray(StandardCharsets.UTF_8))
-    return RelationEndpointFingerprint(
+    return RelationEndpointFingerprint.established(
         digest.joinToString(separator = "") { byte ->
             (byte.toInt() and 0xff).toString(16).padStart(2, '0')
         },

@@ -197,8 +197,29 @@ internal enum class TopologyExtractionFailureDocument {
     @SerialName("compiler-unavailable")
     COMPILER_UNAVAILABLE,
 
-    @SerialName("fact-rejected")
-    FACT_REJECTED,
+    @SerialName("declaration-evidence-rejected")
+    DECLARATION_EVIDENCE_REJECTED,
+
+    @SerialName("projection-registry-rejected")
+    PROJECTION_REGISTRY_REJECTED,
+
+    @SerialName("compiler-identity-mismatch")
+    COMPILER_IDENTITY_MISMATCH,
+
+    @SerialName("reference-target-rejected")
+    REFERENCE_TARGET_REJECTED,
+
+    @SerialName("occurrence-rejected")
+    OCCURRENCE_REJECTED,
+
+    @SerialName("edge-rejected")
+    EDGE_REJECTED,
+
+    @SerialName("override-rejected")
+    OVERRIDE_REJECTED,
+
+    @SerialName("file-admission-rejected")
+    FILE_ADMISSION_REJECTED,
 }
 
 @Serializable
@@ -350,8 +371,22 @@ private fun TopologyExtractionRejection.toDocument(): TopologyExtractionFailureD
             TopologyExtractionFailureDocument.NOT_KOTLIN_PSI
         TopologyExtractionRejection.COMPILER_UNAVAILABLE ->
             TopologyExtractionFailureDocument.COMPILER_UNAVAILABLE
-        TopologyExtractionRejection.FACT_REJECTED ->
-            TopologyExtractionFailureDocument.FACT_REJECTED
+        TopologyExtractionRejection.DECLARATION_EVIDENCE_REJECTED ->
+            TopologyExtractionFailureDocument.DECLARATION_EVIDENCE_REJECTED
+        TopologyExtractionRejection.PROJECTION_REGISTRY_REJECTED ->
+            TopologyExtractionFailureDocument.PROJECTION_REGISTRY_REJECTED
+        TopologyExtractionRejection.COMPILER_IDENTITY_MISMATCH ->
+            TopologyExtractionFailureDocument.COMPILER_IDENTITY_MISMATCH
+        TopologyExtractionRejection.REFERENCE_TARGET_REJECTED ->
+            TopologyExtractionFailureDocument.REFERENCE_TARGET_REJECTED
+        TopologyExtractionRejection.OCCURRENCE_REJECTED ->
+            TopologyExtractionFailureDocument.OCCURRENCE_REJECTED
+        TopologyExtractionRejection.EDGE_REJECTED ->
+            TopologyExtractionFailureDocument.EDGE_REJECTED
+        TopologyExtractionRejection.OVERRIDE_REJECTED ->
+            TopologyExtractionFailureDocument.OVERRIDE_REJECTED
+        TopologyExtractionRejection.FILE_ADMISSION_REJECTED ->
+            TopologyExtractionFailureDocument.FILE_ADMISSION_REJECTED
     }
 
 private fun TopologyExtractionFailureDocument.toContract(): TopologyExtractionRejection =
@@ -372,8 +407,22 @@ private fun TopologyExtractionFailureDocument.toContract(): TopologyExtractionRe
             TopologyExtractionRejection.NOT_KOTLIN_PSI
         TopologyExtractionFailureDocument.COMPILER_UNAVAILABLE ->
             TopologyExtractionRejection.COMPILER_UNAVAILABLE
-        TopologyExtractionFailureDocument.FACT_REJECTED ->
-            TopologyExtractionRejection.FACT_REJECTED
+        TopologyExtractionFailureDocument.DECLARATION_EVIDENCE_REJECTED ->
+            TopologyExtractionRejection.DECLARATION_EVIDENCE_REJECTED
+        TopologyExtractionFailureDocument.PROJECTION_REGISTRY_REJECTED ->
+            TopologyExtractionRejection.PROJECTION_REGISTRY_REJECTED
+        TopologyExtractionFailureDocument.COMPILER_IDENTITY_MISMATCH ->
+            TopologyExtractionRejection.COMPILER_IDENTITY_MISMATCH
+        TopologyExtractionFailureDocument.REFERENCE_TARGET_REJECTED ->
+            TopologyExtractionRejection.REFERENCE_TARGET_REJECTED
+        TopologyExtractionFailureDocument.OCCURRENCE_REJECTED ->
+            TopologyExtractionRejection.OCCURRENCE_REJECTED
+        TopologyExtractionFailureDocument.EDGE_REJECTED ->
+            TopologyExtractionRejection.EDGE_REJECTED
+        TopologyExtractionFailureDocument.OVERRIDE_REJECTED ->
+            TopologyExtractionRejection.OVERRIDE_REJECTED
+        TopologyExtractionFailureDocument.FILE_ADMISSION_REJECTED ->
+            TopologyExtractionRejection.FILE_ADMISSION_REJECTED
     }
 
 private fun TopologyPublicationRejection.toDocument(): TopologyPublicationFailureDocument =

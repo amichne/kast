@@ -16,7 +16,6 @@ class InstalledIndexingQuiescenceTest {
             scannerRevision = 7,
             projectRootsRevision = InstalledProjectRootsRevision(0),
             modulesReady = true,
-            projectJvmReady = true,
         )
 
         assertEquals(
@@ -40,7 +39,6 @@ class InstalledIndexingQuiescenceTest {
             scannerRevision = 3,
             projectRootsRevision = InstalledProjectRootsRevision(0),
             modulesReady = true,
-            projectJvmReady = true,
         )
 
         assertEquals(InstalledIndexingStability.WAITING, quiescence.observe(idle, 0))
@@ -69,44 +67,6 @@ class InstalledIndexingQuiescenceTest {
     }
 
     @Test
-    fun `missing project JVM proof prevents quiescence`() {
-        val required = Duration.ofMillis(1_500)
-        val quiescence = InstalledIndexingQuiescence(required)
-        val unavailable = InstalledIndexingObservation(
-            smart = true,
-            scannerRunning = false,
-            scannerQueued = false,
-            scannerRevision = 8,
-            projectRootsRevision = InstalledProjectRootsRevision(0),
-            modulesReady = true,
-            projectJvmReady = false,
-        )
-
-        assertEquals(
-            InstalledIndexingStability.WAITING,
-            quiescence.observe(unavailable, 0),
-        )
-        assertEquals(
-            InstalledIndexingStability.WAITING,
-            quiescence.observe(unavailable, required.toNanos()),
-        )
-        assertEquals(
-            InstalledIndexingStability.WAITING,
-            quiescence.observe(
-                unavailable.copy(projectJvmReady = true),
-                required.toNanos() * 2,
-            ),
-        )
-        assertEquals(
-            InstalledIndexingStability.STABLE,
-            quiescence.observe(
-                unavailable.copy(projectJvmReady = true),
-                required.toNanos() * 3,
-            ),
-        )
-    }
-
-    @Test
     fun `project roots revision restarts quiescence for SDK and language level changes`() {
         val required = Duration.ofMillis(1_500)
         val quiescence = InstalledIndexingQuiescence(required)
@@ -117,7 +77,6 @@ class InstalledIndexingQuiescenceTest {
             scannerRevision = 12,
             projectRootsRevision = InstalledProjectRootsRevision(40),
             modulesReady = true,
-            projectJvmReady = true,
         )
 
         assertEquals(InstalledIndexingStability.WAITING, quiescence.observe(settled, 0))

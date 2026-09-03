@@ -297,16 +297,19 @@ class GeneratedCliProjectionTest {
         assertAll(
             {
                 assertEquals(
-                    "{\"knownMinimum\":0,\"limitations\":[\"result-limit-reached\"," +
-                        "\"provider-incomplete\"],\"continuation\":\"${"a".repeat(64)}\"}",
+                    "{\"type\":\"resumable\",\"knownMinimum\":0," +
+                        "\"limitations\":[\"result-limit-reached\"," +
+                        "\"provider-incomplete\"],\"continuation\":" +
+                        "\"${relationContinuation("cli-projection").value}\"}",
                     relation.qualification().toString(),
                 )
             },
             {
                 assertEquals(
-                    "{\"limitations\":[\"record-limit-reached\",\"one-hop-incomplete\"]," +
+                    "{\"type\":\"resumable\",\"limitations\":[\"record-limit-reached\"," +
+                        "\"one-hop-incomplete\"]," +
                         "\"relationLimitations\":[\"provider-incomplete\"]," +
-                        "\"continuation\":\"${"b".repeat(64)}\"}",
+                        "\"continuation\":\"${traversalContinuation("cli-projection").value}\"}",
                     traversal.qualification().toString(),
                 )
             },
@@ -368,23 +371,23 @@ class GeneratedCliProjectionTest {
     )
 
     private fun relationQualification(): RelationReadQualification =
-        RelationReadQualification.create(
+        RelationReadQualification.resumable(
             RelationKnownMinimumDocument.parse(0).refined(),
             listOf(
                 RelationLimitationDocument.RESULT_LIMIT_REACHED,
                 RelationLimitationDocument.PROVIDER_INCOMPLETE,
             ),
-            RelationContinuationDocument.parse("a".repeat(64)).refined(),
+            relationContinuation("cli-projection"),
         ).refined()
 
     private fun traversalQualification(): TraversalRunQualification =
-        TraversalRunQualification.create(
+        TraversalRunQualification.resumable(
             listOf(
                 TraversalLimitationDocument.RECORD_LIMIT_REACHED,
                 TraversalLimitationDocument.ONE_HOP_INCOMPLETE,
             ),
             listOf(RelationLimitationDocument.PROVIDER_INCOMPLETE),
-            TraversalContinuationDocument.parse("b".repeat(64)).refined(),
+            traversalContinuation("cli-projection"),
         ).refined()
 
     private fun diagnosticCoverageQualification(): DiagnosticCheckQualification =
@@ -410,6 +413,32 @@ class GeneratedCliProjectionTest {
 
     private fun ProjectedCliOutcome.Qualified.qualification() =
         Json.parseToJsonElement(document.value).jsonObject.getValue("qualification")
+
+    private fun relationContinuation(payloadText: String): RelationContinuationDocument {
+        val payload = payloadText.toByteArray()
+        val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(payload)
+            .joinToString("") { byte ->
+                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+            }
+        return RelationContinuationDocument.parse(
+            "relation-continuation:v1:$encoded:$digest",
+        ).refined()
+    }
+
+    private fun traversalContinuation(payloadText: String): TraversalContinuationDocument {
+        val payload = payloadText.toByteArray()
+        val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(payload)
+            .joinToString("") { byte ->
+                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+            }
+        return TraversalContinuationDocument.parse(
+            "traversal-continuation:v1:$encoded:$digest",
+        ).refined()
+    }
 
     private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
         is Refinement.Refined -> value

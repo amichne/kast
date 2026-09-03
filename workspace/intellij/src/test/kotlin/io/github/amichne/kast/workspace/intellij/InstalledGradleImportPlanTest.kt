@@ -2,6 +2,7 @@ package io.github.amichne.kast.workspace.intellij
 
 import com.intellij.openapi.externalSystem.service.execution.ExternalSystemJdkException
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
+import org.gradle.util.GradleVersion
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -12,7 +13,9 @@ import java.util.concurrent.TimeUnit
 class InstalledGradleImportPlanTest {
     @Test
     fun `project open defers configurators until admitted Gradle settings are available`() {
-        val task = installedProjectOpenTask(InstalledProjectOpenPreparation(admittedGradleJvm()))
+        val task = installedProjectOpenTask(
+            InstalledProjectOpenPreparation(BootstrapProjectJvm.from(admittedSidecarJvm())),
+        )
 
         assertFalse(task.runConfigurators)
     }
@@ -22,7 +25,7 @@ class InstalledGradleImportPlanTest {
         val linkedSettings = GradleProjectSettings("/workspace").apply {
             gradleJvm = "prior-jvm"
         }
-        val gradleJvm = admittedGradleJvm()
+        val gradleJvm = selectedGradleJvmFixture()
 
         val application = assertInstanceOf(
             InstalledGradleImportApplication.Applied::class.java,
@@ -40,7 +43,9 @@ class InstalledGradleImportPlanTest {
     fun `unlinked exact workspace is linked`() {
         val application = assertInstanceOf(
             InstalledGradleImportApplication.Applied::class.java,
-            InstalledGradleLinkPresence.Unlinked.applyImportJvm(admittedGradleJvm()),
+            InstalledGradleLinkPresence.Unlinked(
+                GradleProjectSettings("/workspace"),
+            ).applyImportJvm(selectedGradleJvmFixture()),
         )
         assertInstanceOf(InstalledGradleImportOperation.LinkUnlinked::class.java, application.operation)
     }
@@ -58,11 +63,29 @@ class InstalledGradleImportPlanTest {
         )
     }
 
-    private fun admittedGradleJvm(): InstalledGradleJvm {
+    private fun admittedSidecarJvm(): InstalledSidecarJvm {
         val javaHome = System.getProperty("java.home")
-        return when (val admission = InstalledGradleJvm.admit(javaHome, javaHome)) {
-            is InstalledGradleJvmAdmission.Admitted -> admission.jvm
-            is InstalledGradleJvmAdmission.Rejected -> error(admission.failure)
+        return when (val admission = InstalledSidecarJvm.admit(javaHome, javaHome)) {
+            is InstalledSidecarJvmAdmission.Admitted -> admission.jvm
+            is InstalledSidecarJvmAdmission.Rejected -> error(admission.failure)
         }
+    }
+
+    private fun selectedGradleJvmFixture(): SelectedGradleJvm {
+        val selection = assertInstanceOf(
+            GradleJvmCandidateSelection.Selected::class.java,
+            GradleJvmCandidateSelector.select(
+                GradleVersion.version("7.6"),
+                listOf(
+                    GradleJvmCandidate(
+                        home = java.nio.file.Path.of("/fixture/jdk-17"),
+                        feature = JavaFeature.of(17),
+                        runtimeVersion = "fixture-17",
+                        source = GradleJvmSelectionSource.PLATFORM_RESOLVER,
+                    ),
+                ),
+            ),
+        )
+        return SelectedGradleJvm.establish(selection, "fixture-jdk-17")
     }
 }

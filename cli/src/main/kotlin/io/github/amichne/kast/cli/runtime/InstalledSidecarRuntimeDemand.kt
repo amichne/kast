@@ -421,7 +421,14 @@ class FilesystemSidecarCachePreparer(
         val log = createPrivateDirectory(canonicalRoot.resolve("log"))
             ?: return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
         val state = when (val recorded = SidecarCacheStateFile.observe(canonicalRoot)) {
-            is CacheStateObservation.Observed -> recorded.state
+            is CacheStateObservation.Observed -> if (
+                recorded.state == KastCacheState.SEEDED &&
+                admitSeedReceipt(canonicalRoot, cacheIdentity) != SeedReceiptPresence.Valid
+            ) {
+                return SidecarCachePreparation.Rejected(SidecarCacheFailure.RebuildRequired)
+            } else {
+                recorded.state
+            }
             CacheStateObservation.Rejected -> return SidecarCachePreparation.Rejected(
                 SidecarCacheFailure.RebuildRequired,
             )
@@ -481,14 +488,15 @@ private fun admitSeedReceipt(
             Files.newInputStream(receipt).use(::load)
         }
         if (
-            values.getProperty("format") == "kast.index-seed.receipt.v1" &&
+            values.getProperty("format") == INDEX_SEED_RECEIPT_FORMAT &&
             values.getProperty("cache.key") == identity.key &&
             values.getProperty("project.root") == identity.canonicalProjectRoot.toString() &&
             values.getProperty("idea.build") == identity.runtimeIdentity.supportedPair.ideaBuild &&
             values.getProperty("kotlin.plugin.build") ==
             identity.runtimeIdentity.supportedPair.kotlinPluginBuild &&
             values.getProperty("jbr.identity") == identity.runtimeIdentity.jbrIdentity &&
-            values.getProperty("kast.payload.digest") == identity.runtimeIdentity.kastPayloadDigest
+            values.getProperty("kast.payload.digest") == identity.runtimeIdentity.kastPayloadDigest &&
+            validSeedCategoryProof(values)
         ) {
             SeedReceiptPresence.Valid
         } else {
@@ -500,6 +508,30 @@ private fun admitSeedReceipt(
         SeedReceiptPresence.Invalid
     }
 }
+
+private fun validSeedCategoryProof(
+    values: Properties,
+): Boolean {
+    val categories = values.getProperty("categories")
+        ?.split(',')
+        ?.takeIf { names -> names.isNotEmpty() && names.none(String::isBlank) }
+        ?.map { name -> IndexSeedCategory.entries.singleOrNull { it.name == name } ?: return false }
+        ?.takeIf { parsed -> parsed.size == parsed.distinct().size }
+        ?.toSet()
+        ?: return false
+    return when (values.getProperty("project.proof")) {
+        SeedProjectProofState.GlobalOnly.wireName -> categories == GLOBAL_INDEX_SEED_CATEGORIES
+        "retired" -> categories == GLOBAL_INDEX_SEED_CATEGORIES &&
+            values.getProperty("project.expected.fingerprint").isIndexSeedDigest() &&
+            values.getProperty("project.observed.fingerprint").isIndexSeedDigest()
+        // A receipt proves what was copied, not that the current project still has that identity.
+        "verified" -> false
+        else -> false
+    }
+}
+
+private fun String?.isIndexSeedDigest(): Boolean =
+    this != null && Regex("sha256:[0-9a-f]{64}").matches(this)
 
 private fun createPrivateDirectory(path: Path): Path? = try {
     if (Files.isSymbolicLink(path)) return null

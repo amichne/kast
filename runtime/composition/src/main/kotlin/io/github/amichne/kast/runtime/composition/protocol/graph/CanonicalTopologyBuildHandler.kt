@@ -139,7 +139,21 @@ private fun TopologyExtractionFailure.toProtocol(): TopologyExtractionRejection 
     TopologyExtractionFailure.NOT_KOTLIN_PSI -> TopologyExtractionRejection.NOT_KOTLIN_PSI
     TopologyExtractionFailure.COMPILER_UNAVAILABLE ->
         TopologyExtractionRejection.COMPILER_UNAVAILABLE
-    TopologyExtractionFailure.FACT_REJECTED -> TopologyExtractionRejection.FACT_REJECTED
+    TopologyExtractionFailure.DECLARATION_EVIDENCE_REJECTED ->
+        TopologyExtractionRejection.DECLARATION_EVIDENCE_REJECTED
+    TopologyExtractionFailure.PROJECTION_REGISTRY_REJECTED ->
+        TopologyExtractionRejection.PROJECTION_REGISTRY_REJECTED
+    TopologyExtractionFailure.COMPILER_IDENTITY_MISMATCH ->
+        TopologyExtractionRejection.COMPILER_IDENTITY_MISMATCH
+    TopologyExtractionFailure.REFERENCE_TARGET_REJECTED ->
+        TopologyExtractionRejection.REFERENCE_TARGET_REJECTED
+    TopologyExtractionFailure.OCCURRENCE_REJECTED ->
+        TopologyExtractionRejection.OCCURRENCE_REJECTED
+    TopologyExtractionFailure.EDGE_REJECTED -> TopologyExtractionRejection.EDGE_REJECTED
+    TopologyExtractionFailure.OVERRIDE_REJECTED ->
+        TopologyExtractionRejection.OVERRIDE_REJECTED
+    TopologyExtractionFailure.FILE_ADMISSION_REJECTED ->
+        TopologyExtractionRejection.FILE_ADMISSION_REJECTED
 }
 
 private fun TopologyPublicationFailure.toProtocol(): TopologyPublicationRejection = when (this) {

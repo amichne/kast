@@ -42,18 +42,40 @@ class TraversalService internal constructor(
 
         while (true) {
             val work = when (val available = state.peek()) {
-                TraversalWorkAvailability.Exhausted -> return complete(plan, accounting)
+                TraversalWorkAvailability.Exhausted -> return if (
+                    state.terminalRelationLimitations.isEmpty()
+                ) {
+                    complete(plan, accounting)
+                } else {
+                    terminalIncomplete(
+                        plan,
+                        accounting,
+                        setOf(TraversalLimitation.ONE_HOP_INCOMPLETE),
+                        state.terminalRelationLimitations,
+                    )
+                }
                 is TraversalWorkAvailability.Ready -> available
             }
             val readBudget = when (val admission = readAdmission(plan, work.entry, accounting)) {
                 is TraversalReadAdmission.Admitted -> admission.budget
-                is TraversalReadAdmission.Limited -> return qualified(
-                    plan,
-                    state,
-                    accounting,
-                    admission.limitation,
-                    emptySet(),
-                )
+                is TraversalReadAdmission.Limited -> return if (
+                    admission.limitation == TraversalLimitation.DEPTH_LIMIT_REACHED
+                ) {
+                    terminalIncomplete(
+                        plan,
+                        accounting,
+                        state.limitationsWith(admission.limitation),
+                        state.terminalRelationLimitations,
+                    )
+                } else {
+                    resumable(
+                        plan,
+                        state,
+                        accounting,
+                        state.limitationsWith(admission.limitation),
+                        state.terminalRelationLimitations,
+                    )
+                }
                 TraversalReadAdmission.Rejected -> return TraversalResult.Rejected(
                     TraversalRejection.TraversalContractViolation,
                 )
@@ -95,12 +117,11 @@ class TraversalService internal constructor(
             }
             val nextDepth = when (val next = entry.depth.next()) {
                 is Refinement.Refined -> next.value
-                is Refinement.Rejected -> return qualified(
+                is Refinement.Rejected -> return terminalIncomplete(
                     plan,
-                    state,
                     accounting,
-                    TraversalLimitation.DEPTH_LIMIT_REACHED,
-                    emptySet(),
+                    state.limitationsWith(TraversalLimitation.DEPTH_LIMIT_REACHED),
+                    state.terminalRelationLimitations,
                 )
             }
             val records = mutableListOf<TraversalRecord>()
@@ -151,11 +172,24 @@ class TraversalService internal constructor(
             when (relationResult) {
                 is RelationReadResult.Complete -> state.pending = TraversalPendingState.None
                 is RelationReadResult.Qualified -> {
+                    val coverage = relationResult.coverage
+                    if (
+                        coverage is
+                        io.github.amichne.kast.relation.contract.RelationIncompleteCoverage.TerminalIncomplete
+                    ) {
+                        state.pending = TraversalPendingState.None
+                        state.terminalRelationLimitations += coverage.limitations
+                        continue
+                    }
+                    val continuation = (
+                        coverage as
+                            io.github.amichne.kast.relation.contract.RelationIncompleteCoverage.Resumable
+                    ).continuation
                     val pending = when (
                         val pending = TraversalPendingRead.create(
                             plan,
                             entry,
-                            relationResult.coverage.continuation,
+                            continuation,
                         )
                     ) {
                         is Refinement.Refined -> pending.value
@@ -164,12 +198,12 @@ class TraversalService internal constructor(
                         )
                     }
                     state.pending = TraversalPendingState.active(pending)
-                    return qualified(
+                    return resumable(
                         plan,
                         state,
                         accounting,
-                        TraversalLimitation.ONE_HOP_INCOMPLETE,
-                        relationResult.coverage.limitations,
+                        setOf(TraversalLimitation.ONE_HOP_INCOMPLETE),
+                        state.terminalRelationLimitations + relationResult.coverage.limitations,
                     )
                 }
                 is RelationReadResult.Rejected -> return TraversalResult.Rejected(
@@ -198,25 +232,25 @@ class TraversalService internal constructor(
         val remainingWork = plan.budget.workUnits.value - accounting.examinedWorkUnits
         val remainingTime = plan.budget.elapsedTime.value - accounting.elapsedMillis
         return when {
-        next.depth.value >= plan.budget.depth.value ->
-            TraversalReadAdmission.Limited(TraversalLimitation.DEPTH_LIMIT_REACHED)
-        accounting.expandedFrontier >= plan.budget.frontier.value ->
-            TraversalReadAdmission.Limited(TraversalLimitation.FRONTIER_LIMIT_REACHED)
-        remainingRecords <= 0 ->
-            TraversalReadAdmission.Limited(TraversalLimitation.RECORD_LIMIT_REACHED)
-        remainingBytes <= 0L ->
-            TraversalReadAdmission.Limited(TraversalLimitation.BYTE_LIMIT_REACHED)
-        remainingWork <= 0L ->
-            TraversalReadAdmission.Limited(TraversalLimitation.WORK_LIMIT_REACHED)
-        remainingTime <= 0L ->
-            TraversalReadAdmission.Limited(TraversalLimitation.TIME_LIMIT_REACHED)
-        else -> attenuatedBudget(
-            plan.budget.oneHop,
-            remainingRecords,
-            remainingBytes,
-            remainingWork,
-            remainingTime,
-        )
+            next.depth.value >= plan.budget.depth.value ->
+                TraversalReadAdmission.Limited(TraversalLimitation.DEPTH_LIMIT_REACHED)
+            accounting.expandedFrontier >= plan.budget.frontier.value ->
+                TraversalReadAdmission.Limited(TraversalLimitation.FRONTIER_LIMIT_REACHED)
+            remainingRecords <= 0 ->
+                TraversalReadAdmission.Limited(TraversalLimitation.RECORD_LIMIT_REACHED)
+            remainingBytes <= 0L ->
+                TraversalReadAdmission.Limited(TraversalLimitation.BYTE_LIMIT_REACHED)
+            remainingWork <= 0L ->
+                TraversalReadAdmission.Limited(TraversalLimitation.WORK_LIMIT_REACHED)
+            remainingTime <= 0L ->
+                TraversalReadAdmission.Limited(TraversalLimitation.TIME_LIMIT_REACHED)
+            else -> attenuatedBudget(
+                plan.budget.oneHop,
+                remainingRecords,
+                remainingBytes,
+                remainingWork,
+                remainingTime,
+            )
         }
     }
 
@@ -304,11 +338,11 @@ class TraversalService internal constructor(
      * Checkpoint, continuation, page, or qualification rejection closes as
      * [TraversalRejection.TraversalContractViolation].
      */
-    private fun qualified(
+    private fun resumable(
         plan: TraversalPlan,
         state: MutableTraversalState,
         accounting: TraversalAccounting,
-        limitation: TraversalLimitation,
+        limitations: Set<TraversalLimitation>,
         relationLimitations: Set<RelationLimitation>,
     ): TraversalResult {
         val checkpoint = when (val admitted = TraversalCheckpoint.create(
@@ -316,6 +350,7 @@ class TraversalService internal constructor(
             state.frontier.sorted(),
             state.visited,
             state.pending,
+            state.terminalRelationLimitations,
         )) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return TraversalResult.Rejected(
@@ -335,9 +370,9 @@ class TraversalService internal constructor(
             )
         }
         return when (
-            val result = TraversalResult.qualified(
+            val result = TraversalResult.qualifiedResumable(
                 page,
-                setOf(limitation),
+                limitations,
                 relationLimitations,
                 continuation,
             )
@@ -346,6 +381,41 @@ class TraversalService internal constructor(
             is Refinement.Rejected ->
                 TraversalResult.Rejected(TraversalRejection.TraversalContractViolation)
         }
+    }
+
+    /** Terminal one-hop incompleteness is explicit and cannot manufacture resumable work. */
+    private fun terminalIncomplete(
+        plan: TraversalPlan,
+        accounting: TraversalAccounting,
+        limitations: Set<TraversalLimitation>,
+        relationLimitations: Set<RelationLimitation>,
+    ): TraversalResult {
+        val page = when (val admitted = accounting.page(plan)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return TraversalResult.Rejected(
+                TraversalRejection.TraversalContractViolation,
+            )
+        }
+        return when (
+            val result = TraversalResult.qualifiedTerminal(
+                page,
+                limitations,
+                relationLimitations,
+            )
+        ) {
+            is Refinement.Refined -> result.value
+            is Refinement.Rejected ->
+                TraversalResult.Rejected(TraversalRejection.TraversalContractViolation)
+        }
+    }
+}
+
+private fun MutableTraversalState.limitationsWith(
+    limitation: TraversalLimitation,
+): Set<TraversalLimitation> = buildSet {
+    add(limitation)
+    if (terminalRelationLimitations.isNotEmpty()) {
+        add(TraversalLimitation.ONE_HOP_INCOMPLETE)
     }
 }
 

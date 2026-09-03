@@ -19,7 +19,7 @@ private const val INDEX_SEED_PROJECT_STATE = "cache-state.xml"
 private const val INDEX_SEED_RECEIPT = "seed-receipt.properties"
 private const val MAX_PROJECT_STATE_BYTES = 4L * 1024L * 1024L
 private val INDEX_SEED_PROJECT_DIRECTORY = Regex("[A-Za-z0-9._-]{1,160}")
-private val INDEX_SEED_GLOBAL_LAYOUT = mapOf(
+private val INDEX_SEED_CATEGORY_LAYOUT = mapOf(
     IndexSeedCategory.GLOBAL_VFS to listOf(Path.of(".home"), Path.of("caches")),
     IndexSeedCategory.GLOBAL_INDEXES to listOf(Path.of("index")),
     IndexSeedCategory.CLASSPATH_METADATA to listOf(
@@ -35,6 +35,7 @@ data class IndexSeedRequest(
     val runtime: InstalledIdeRuntime,
     val cacheIdentity: KastCacheIdentity,
     val consentRequest: IndexSeedConsentRequest,
+    val projectEvidence: SeedProjectEvidence = SeedProjectEvidence.Absent,
 )
 
 /** One observation of both independent source-quiescence facts. */
@@ -136,11 +137,16 @@ class IndexSeedFilesystemService(
 
         stage = IndexSeedStage.SOURCE_DISCOVERY
         started(stage)
+        val projectProofState = SeedProjectProofState.classify(
+            request.projectEvidence,
+            request.cacheIdentity.canonicalProjectRoot,
+        )
         val layout = when (
             val resolution = Intellij262IndexSeedLayout.resolve(
                 sourceSystem,
                 request.runtime.home,
                 request.cacheIdentity.canonicalProjectRoot,
+                projectProofState.categories,
             )
         ) {
             is IndexSeedLayoutResolution.Resolved -> resolution.layout
@@ -181,7 +187,10 @@ class IndexSeedFilesystemService(
         val consent = when (request.consentRequest) {
             IndexSeedConsentRequest.PREGRANTED -> IndexSeedConsent.GRANTED
             IndexSeedConsentRequest.INTERACTIVE -> consentProvider.request(
-                IndexSeedDisclosure.fixed(sourceCapture.estimatedBytes),
+                IndexSeedDisclosure.fixed(
+                    projectProofState.categories,
+                    sourceCapture.estimatedBytes,
+                ),
             )
         }
         val plan = when (
@@ -190,6 +199,7 @@ class IndexSeedFilesystemService(
                 source,
                 consent,
                 filesystemProbe.observe(sourceSystem, cacheRoot),
+                projectProofState,
             )
         ) {
             is IndexSeedPlanning.Planned -> planning.plan
@@ -475,19 +485,25 @@ private data object Intellij262IndexSeedLayout {
         sourceSystem: Path,
         installedIdeaHome: Path,
         canonicalProjectRoot: Path,
+        categories: Set<IndexSeedCategory>,
     ): IndexSeedLayoutResolution {
         if (!sourceBelongsToRuntime(sourceSystem, installedIdeaHome)) {
             return IndexSeedLayoutResolution.Rejected(IndexSeedFailure.ValidationFailure)
         }
-        val projectCache = when (
-            val resolution = resolveProjectCache(sourceSystem, canonicalProjectRoot)
-        ) {
-            is ProjectCacheResolution.Resolved -> resolution.relativePath
-            is ProjectCacheResolution.Rejected -> {
-                return IndexSeedLayoutResolution.Rejected(resolution.failure)
+        val projectEntries = if (IndexSeedCategory.PROJECT_MODEL in categories) {
+            when (val resolution = resolveProjectCache(sourceSystem, canonicalProjectRoot)) {
+                is ProjectCacheResolution.Resolved -> listOf(resolution.relativePath)
+                is ProjectCacheResolution.Rejected -> {
+                    return IndexSeedLayoutResolution.Rejected(resolution.failure)
+                }
             }
+        } else {
+            emptyList()
         }
-        val relativeEntries = INDEX_SEED_GLOBAL_LAYOUT.values.flatten() + listOf(projectCache)
+        val relativeEntries = IndexSeedCategory.entries
+            .filter(categories::contains)
+            .flatMap { category -> INDEX_SEED_CATEGORY_LAYOUT[category].orEmpty() } +
+            projectEntries
         val entries = mutableListOf<IndexSeedCopyEntry>()
         relativeEntries.forEach { relative ->
             val source = sourceSystem.resolve(relative).normalize()
@@ -691,7 +707,7 @@ private fun digestOf(bytes: ByteArray): String = "sha256:" + HexFormat.of().form
 
 private fun writeReceipt(path: Path, receipt: IndexSeedReceipt): Boolean = try {
     val properties = Properties().apply {
-        setProperty("format", "kast.index-seed.receipt.v1")
+        setProperty("format", INDEX_SEED_RECEIPT_FORMAT)
         setProperty("cache.key", receipt.cacheIdentity.key)
         setProperty("project.root", receipt.cacheIdentity.canonicalProjectRoot.toString())
         setProperty("source.system", receipt.sourceSystem.toString())
@@ -706,6 +722,32 @@ private fun writeReceipt(path: Path, receipt: IndexSeedReceipt): Boolean = try {
             "categories",
             receipt.categories.sortedBy(IndexSeedCategory::name).joinToString(",") { it.name },
         )
+        setProperty("project.proof", receipt.projectProofState.wireName)
+        when (val proof = receipt.projectProofState) {
+            SeedProjectProofState.GlobalOnly -> Unit
+            is SeedProjectProofState.Verified -> {
+                setProperty("project.identity.fingerprint", proof.identity.fingerprint())
+                setProperty("project.gradle.distribution", proof.identity.gradleDistribution)
+                setProperty(
+                    "project.gradle-jvm.fingerprint",
+                    proof.identity.selectedGradleJvmFingerprint,
+                )
+                setProperty(
+                    "project.gradle-inputs.fingerprint",
+                    proof.identity.repositoryGradleInputsFingerprint,
+                )
+                setProperty(
+                    "project.jvm-model.fingerprint",
+                    proof.identity.importedProjectJvmModelFingerprint,
+                )
+                setProperty("project.classpath.fingerprint", proof.identity.classpathFingerprint)
+                setProperty("project.source-generation", proof.identity.sourceGeneration)
+            }
+            is SeedProjectProofState.Retired -> {
+                setProperty("project.expected.fingerprint", proof.expected.fingerprint())
+                setProperty("project.observed.fingerprint", proof.observed.fingerprint())
+            }
+        }
         val manifestMaterial = receipt.contentManifest.entries.entries.joinToString("\n") {
             "${it.key}=${it.value}"
         }

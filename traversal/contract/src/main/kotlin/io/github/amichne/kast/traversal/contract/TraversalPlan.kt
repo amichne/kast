@@ -86,6 +86,10 @@ enum class TraversalPlanFailure {
 }
 
 enum class TraversalResumeFailure {
+    SUBJECT_MISMATCH,
+    MEANING_MISMATCH,
+    SCOPE_MISMATCH,
+    GENERATION_MISMATCH,
     IDENTITY_MISMATCH,
 }
 
@@ -154,9 +158,21 @@ class TraversalPlan private constructor(
             continuation: TraversalContinuation,
         ): Refinement<TraversalPlan, TraversalPlanResumeFailure> {
             val identity = traversalIdentity(selector, meaning)
-            if (identity != continuation.identity) {
+            val resumeFailure = when {
+                selector.lease.generation != continuation.start.lease.generation ->
+                    TraversalResumeFailure.GENERATION_MISMATCH
+                selector.scope != continuation.start.scope ->
+                    TraversalResumeFailure.SCOPE_MISMATCH
+                selector.lease.workspaceRoot != continuation.start.lease.workspaceRoot ||
+                selector.fingerprint != continuation.start.fingerprint ->
+                    TraversalResumeFailure.SUBJECT_MISMATCH
+                meaning != continuation.meaning -> TraversalResumeFailure.MEANING_MISMATCH
+                identity != continuation.identity -> TraversalResumeFailure.IDENTITY_MISMATCH
+                else -> null
+            }
+            if (resumeFailure != null) {
                 return Refinement.Rejected(
-                    TraversalPlanResumeFailure.Resume(TraversalResumeFailure.IDENTITY_MISMATCH),
+                    TraversalPlanResumeFailure.Resume(resumeFailure),
                 )
             }
             return when (val admitted = admit(

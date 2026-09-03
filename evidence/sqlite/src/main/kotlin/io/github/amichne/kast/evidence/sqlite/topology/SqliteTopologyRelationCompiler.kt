@@ -12,9 +12,11 @@ import io.github.amichne.kast.relation.contract.RelationFact
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.RelationProvenance
+import io.github.amichne.kast.relation.contract.RelationProviderCursor
+import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
 import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.relation.contract.RelationResultCount
 import io.github.amichne.kast.relation.contract.RelationWorkCount
-import io.github.amichne.kast.relation.contract.RelationWorkOffset
 import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
@@ -117,10 +119,20 @@ class SqliteTopologyRelationCompiler private constructor(
     }
 
     private fun page(request: RelationRequest, facts: List<RelationFact>): RelationCompilation {
-        val offset = request.position.workOffset.value
+        val requestedCursor = request.providerCursor
+        val offset = requestedCursor.nextPosition.value
         if (offset > facts.size.toLong()) {
             return RelationCompilation.Rejected(
-                RelationCompilerRejection.COMPILER_CONTRACT_VIOLATION,
+                RelationCompilerRejection.CONTINUATION_CURSOR_MOVED,
+            )
+        }
+        var observedPrefix = RelationProviderCursor.start(requestedCursor.provider)
+        facts.take(offset.toInt()).forEach { fact ->
+            observedPrefix = observedPrefix.advance(fact.providerDescriptor())
+        }
+        if (observedPrefix != requestedCursor) {
+            return RelationCompilation.Rejected(
+                RelationCompilerRejection.CONTINUATION_CURSOR_MOVED,
             )
         }
         val resultLimit = request.budget.resources.resultLimit.value
@@ -156,6 +168,7 @@ class SqliteTopologyRelationCompiler private constructor(
             page,
             byteCount,
             workCount,
+            RelationResultCount.parse(page.size).refinedOrNull() ?: return contractRejected(),
         )) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return contractRejected()
@@ -166,11 +179,13 @@ class SqliteTopologyRelationCompiler private constructor(
             RelationPageBoundary.NotReached -> return contractRejected()
             is RelationPageBoundary.Reached -> setOf(reached.limitation)
         }
-        val next = when (val parsed = RelationWorkOffset.parse(nextOffset)) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> return contractRejected()
+        var next = requestedCursor
+        page.forEach { fact ->
+            next = next.advance(fact.providerDescriptor())
         }
-        return when (val qualified = RelationCompilation.qualified(batch, limitations, next)) {
+        return when (
+            val qualified = RelationCompilation.qualifiedResumable(batch, limitations, next)
+        ) {
             is Refinement.Refined -> qualified.value
             is Refinement.Rejected -> contractRejected()
         }
@@ -217,6 +232,15 @@ class SqliteTopologyRelationCompiler private constructor(
     private fun contractRejected(): RelationCompilation = RelationCompilation.Rejected(
         RelationCompilerRejection.COMPILER_CONTRACT_VIOLATION,
     )
+
+    private fun RelationFact.providerDescriptor(): RelationProviderItemDescriptor =
+        RelationProviderItemDescriptor.parse(canonicalProjection()).refinedOrNull()
+            ?: error("A canonical relation fact is never blank")
+
+    private fun <Value, Failure> Refinement<Value, Failure>.refinedOrNull(): Value? = when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> null
+    }
 }
 
 sealed interface SqliteTopologyRelationCompilerOpening {

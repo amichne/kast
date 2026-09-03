@@ -17,6 +17,7 @@ import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 
 internal object CanonicalReadCliDocuments {
     fun projectRelation(
@@ -142,11 +143,22 @@ private data class RelationQualifiedCliDocument(
 )
 
 @Serializable
-private data class RelationQualificationCliDocument(
-    val knownMinimum: Int,
-    val limitations: List<String>,
-    val continuation: String,
-)
+private sealed interface RelationQualificationCliDocument {
+    @Serializable
+    @SerialName("resumable")
+    data class Resumable(
+        val knownMinimum: Int,
+        val limitations: List<String>,
+        val continuation: String,
+    ) : RelationQualificationCliDocument
+
+    @Serializable
+    @SerialName("terminal_incomplete")
+    data class TerminalIncomplete(
+        val knownMinimum: Int,
+        val limitations: List<String>,
+    ) : RelationQualificationCliDocument
+}
 
 @Serializable
 private data class TraversalCompleteCliDocument(
@@ -164,11 +176,22 @@ private data class TraversalQualifiedCliDocument(
 )
 
 @Serializable
-private data class TraversalQualificationCliDocument(
-    val limitations: List<String>,
-    val relationLimitations: List<String>,
-    val continuation: String,
-)
+private sealed interface TraversalQualificationCliDocument {
+    @Serializable
+    @SerialName("resumable")
+    data class Resumable(
+        val limitations: List<String>,
+        val relationLimitations: List<String>,
+        val continuation: String,
+    ) : TraversalQualificationCliDocument
+
+    @Serializable
+    @SerialName("terminal_incomplete")
+    data class TerminalIncomplete(
+        val limitations: List<String>,
+        val relationLimitations: List<String>,
+    ) : TraversalQualificationCliDocument
+}
 
 @Serializable
 private data class DiagnosticCompleteCliDocument(
@@ -259,17 +282,33 @@ private fun DiagnosticDocument.toCliDocument(): DiagnosticCliDocument = Diagnost
     ),
 )
 
-private fun RelationReadQualification.toCliDocument() = RelationQualificationCliDocument(
-    knownMinimum = knownMinimum.value,
-    limitations = limitations.map { it.cliName() },
-    continuation = continuation.value,
-)
+private fun RelationReadQualification.toCliDocument(): RelationQualificationCliDocument =
+    when (this) {
+        is RelationReadQualification.Resumable -> RelationQualificationCliDocument.Resumable(
+            knownMinimum = knownMinimum.value,
+            limitations = limitations.map { it.cliName() },
+            continuation = continuation.value,
+        )
+        is RelationReadQualification.TerminalIncomplete ->
+            RelationQualificationCliDocument.TerminalIncomplete(
+                knownMinimum = knownMinimum.value,
+                limitations = limitations.map { it.cliName() },
+            )
+    }
 
-private fun TraversalRunQualification.toCliDocument() = TraversalQualificationCliDocument(
-    limitations = limitations.map { it.cliName() },
-    relationLimitations = relationLimitations.map { it.cliName() },
-    continuation = continuation.value,
-)
+private fun TraversalRunQualification.toCliDocument(): TraversalQualificationCliDocument =
+    when (this) {
+        is TraversalRunQualification.Resumable -> TraversalQualificationCliDocument.Resumable(
+            limitations = limitations.map { it.cliName() },
+            relationLimitations = relationLimitations.map { it.cliName() },
+            continuation = continuation.value,
+        )
+        is TraversalRunQualification.TerminalIncomplete ->
+            TraversalQualificationCliDocument.TerminalIncomplete(
+                limitations = limitations.map { it.cliName() },
+                relationLimitations = relationLimitations.map { it.cliName() },
+            )
+    }
 
 private fun DiagnosticCheckQualification.toCliDocument() = DiagnosticQualificationCliDocument(
     knownDiagnosticCount = knownDiagnosticCount.value,

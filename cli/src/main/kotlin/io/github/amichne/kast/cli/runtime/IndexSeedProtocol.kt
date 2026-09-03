@@ -12,7 +12,9 @@ import java.util.HexFormat
 
 private val INDEX_SEED_COMPATIBILITY_TOKEN = Regex("[A-Za-z0-9][A-Za-z0-9._+-]{0,127}")
 private val INDEX_SEED_DIGEST = Regex("sha256:[0-9a-f]{64}")
+private val INDEX_SEED_GRADLE_DISTRIBUTION = Regex("[0-9]+(?:\\.[0-9]+)+(?:[-+][A-Za-z0-9._-]+)?")
 private const val MAX_INDEX_SEED_ENTRY_CHARACTERS = 4096
+internal const val INDEX_SEED_RECEIPT_FORMAT = "kast.index-seed.receipt.v2"
 private val IDEA_RUNTIME_BUILD = Regex("([0-9]{3})\\.[0-9]+(?:\\.[0-9]+)*")
 private val KOTLIN_RUNTIME_BUILD = Regex("([0-9]{3})\\.[0-9]+(?:\\.[0-9]+)*-IJ")
 
@@ -475,6 +477,155 @@ enum class IndexSeedCategory {
     CLASSPATH_METADATA,
 }
 
+internal val GLOBAL_INDEX_SEED_CATEGORIES = setOf(
+    IndexSeedCategory.GLOBAL_VFS,
+    IndexSeedCategory.GLOBAL_INDEXES,
+)
+
+/** Raw project-specific compatibility evidence from a seed receipt or current import. */
+data class SeedProjectIdentityCandidate(
+    val projectRoot: Path,
+    val gradleDistribution: String,
+    val selectedGradleJvmFingerprint: String,
+    val repositoryGradleInputsFingerprint: String,
+    val importedProjectJvmModelFingerprint: String,
+    val classpathFingerprint: String,
+    val sourceGeneration: String,
+)
+
+/** Exact identity required before project-model or classpath seed state can be copied. */
+class SeedProjectIdentity private constructor(
+    val canonicalProjectRoot: Path,
+    val gradleDistribution: String,
+    val selectedGradleJvmFingerprint: String,
+    val repositoryGradleInputsFingerprint: String,
+    val importedProjectJvmModelFingerprint: String,
+    val classpathFingerprint: String,
+    val sourceGeneration: String,
+) {
+    override fun equals(other: Any?): Boolean =
+        other is SeedProjectIdentity &&
+            canonicalProjectRoot == other.canonicalProjectRoot &&
+            gradleDistribution == other.gradleDistribution &&
+            selectedGradleJvmFingerprint == other.selectedGradleJvmFingerprint &&
+            repositoryGradleInputsFingerprint == other.repositoryGradleInputsFingerprint &&
+            importedProjectJvmModelFingerprint == other.importedProjectJvmModelFingerprint &&
+            classpathFingerprint == other.classpathFingerprint &&
+            sourceGeneration == other.sourceGeneration
+
+    override fun hashCode(): Int = listOf(
+        canonicalProjectRoot,
+        gradleDistribution,
+        selectedGradleJvmFingerprint,
+        repositoryGradleInputsFingerprint,
+        importedProjectJvmModelFingerprint,
+        classpathFingerprint,
+        sourceGeneration,
+    ).hashCode()
+
+    internal fun fingerprint(): String = sha256(
+        listOf(
+            canonicalProjectRoot.toString(),
+            gradleDistribution,
+            selectedGradleJvmFingerprint,
+            repositoryGradleInputsFingerprint,
+            importedProjectJvmModelFingerprint,
+            classpathFingerprint,
+            sourceGeneration,
+        ).joinToString("\n").toByteArray(StandardCharsets.UTF_8),
+    )
+
+    companion object {
+        /** Refines every project-specific seed compatibility input as one inseparable identity. */
+        fun admit(candidate: SeedProjectIdentityCandidate): SeedProjectIdentityAdmission {
+            val projectRoot = canonicalDirectory(candidate.projectRoot)
+                ?: return SeedProjectIdentityAdmission.Rejected(
+                    IndexSeedFailure.ValidationFailure,
+                )
+            if (!INDEX_SEED_GRADLE_DISTRIBUTION.matches(candidate.gradleDistribution)) {
+                return SeedProjectIdentityAdmission.Rejected(IndexSeedFailure.ValidationFailure)
+            }
+            val fingerprints = listOf(
+                candidate.selectedGradleJvmFingerprint,
+                candidate.repositoryGradleInputsFingerprint,
+                candidate.importedProjectJvmModelFingerprint,
+                candidate.classpathFingerprint,
+                candidate.sourceGeneration,
+            )
+            if (fingerprints.any { fingerprint -> !INDEX_SEED_DIGEST.matches(fingerprint) }) {
+                return SeedProjectIdentityAdmission.Rejected(IndexSeedFailure.ValidationFailure)
+            }
+            return SeedProjectIdentityAdmission.Admitted(
+                SeedProjectIdentity(
+                    projectRoot,
+                    candidate.gradleDistribution,
+                    candidate.selectedGradleJvmFingerprint,
+                    candidate.repositoryGradleInputsFingerprint,
+                    candidate.importedProjectJvmModelFingerprint,
+                    candidate.classpathFingerprint,
+                    candidate.sourceGeneration,
+                ),
+            )
+        }
+    }
+}
+
+sealed interface SeedProjectIdentityAdmission {
+    data class Admitted(val identity: SeedProjectIdentity) : SeedProjectIdentityAdmission
+    data class Rejected(val failure: IndexSeedFailure) : SeedProjectIdentityAdmission
+}
+
+/** Optional source-versus-current identity evidence supplied before the seed copy begins. */
+sealed interface SeedProjectEvidence {
+    data object Absent : SeedProjectEvidence
+
+    data class Comparison(
+        val expected: SeedProjectIdentity,
+        val observed: SeedProjectIdentity,
+    ) : SeedProjectEvidence
+}
+
+/** Closed disposition of project-specific seed state; global categories remain independently safe. */
+sealed interface SeedProjectProofState {
+    val categories: Set<IndexSeedCategory>
+    val wireName: String
+
+    data object GlobalOnly : SeedProjectProofState {
+        override val categories: Set<IndexSeedCategory> = GLOBAL_INDEX_SEED_CATEGORIES
+        override val wireName: String = "global-only"
+    }
+
+    data class Verified(val identity: SeedProjectIdentity) : SeedProjectProofState {
+        override val categories: Set<IndexSeedCategory> = IndexSeedCategory.entries.toSet()
+        override val wireName: String = "verified"
+    }
+
+    data class Retired(
+        val expected: SeedProjectIdentity,
+        val observed: SeedProjectIdentity,
+    ) : SeedProjectProofState {
+        override val categories: Set<IndexSeedCategory> = GLOBAL_INDEX_SEED_CATEGORIES
+        override val wireName: String = "retired"
+    }
+
+    companion object {
+        fun classify(
+            evidence: SeedProjectEvidence,
+            requiredProjectRoot: Path,
+        ): SeedProjectProofState = when (evidence) {
+            SeedProjectEvidence.Absent -> GlobalOnly
+            is SeedProjectEvidence.Comparison -> if (
+                evidence.expected == evidence.observed &&
+                evidence.expected.canonicalProjectRoot == requiredProjectRoot
+            ) {
+                Verified(evidence.expected)
+            } else {
+                Retired(evidence.expected, evidence.observed)
+            }
+        }
+    }
+}
+
 /** Non-negative measured size of the exact allowlisted source entries. */
 @JvmInline
 value class IndexSeedEstimatedBytes private constructor(val value: Long) {
@@ -490,8 +641,10 @@ class IndexSeedDisclosure private constructor(
     val estimatedBytes: IndexSeedEstimatedBytes,
 ) {
     companion object {
-        internal fun fixed(estimatedBytes: IndexSeedEstimatedBytes): IndexSeedDisclosure =
-            IndexSeedDisclosure(IndexSeedCategory.entries.toSet(), estimatedBytes)
+        internal fun fixed(
+            categories: Set<IndexSeedCategory>,
+            estimatedBytes: IndexSeedEstimatedBytes,
+        ): IndexSeedDisclosure = IndexSeedDisclosure(categories, estimatedBytes)
     }
 }
 
@@ -509,6 +662,7 @@ class IndexSeedPlan private constructor(
     val cacheIdentity: KastCacheIdentity,
     val source: QuiescentIdeSystem,
     val categories: Set<IndexSeedCategory>,
+    val projectProofState: SeedProjectProofState,
 ) {
     companion object {
         /**
@@ -522,6 +676,7 @@ class IndexSeedPlan private constructor(
             source: QuiescentIdeSystem,
             consent: IndexSeedConsent,
             filesystem: IndexSeedFilesystem,
+            projectProofState: SeedProjectProofState = SeedProjectProofState.GlobalOnly,
         ): IndexSeedPlanning {
             if (consent != IndexSeedConsent.GRANTED) {
                 return IndexSeedPlanning.Rejected(IndexSeedFailure.ConsentAbsent)
@@ -544,7 +699,8 @@ class IndexSeedPlan private constructor(
                 IndexSeedPlan(
                     cacheIdentity,
                     source,
-                    IndexSeedCategory.entries.toSet(),
+                    projectProofState.categories,
+                    projectProofState,
                 ),
             )
         }
@@ -562,6 +718,7 @@ class IndexSeedReceipt private constructor(
     val runtimeIdentity: IdeRuntimeIdentity,
     val sourceSystem: Path,
     val categories: Set<IndexSeedCategory>,
+    val projectProofState: SeedProjectProofState,
     val contentManifest: IndexContentManifest,
 ) {
     companion object {
@@ -590,6 +747,7 @@ class IndexSeedReceipt private constructor(
                     plan.cacheIdentity.runtimeIdentity,
                     plan.source.sourceSystem,
                     plan.categories,
+                    plan.projectProofState,
                     clonedContent,
                 ),
             )

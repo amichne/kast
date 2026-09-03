@@ -102,6 +102,42 @@ class CliBoundaryContractTest {
         assertTrue(
             factory.parse(listOf("symbol", "discover", "")) is CliCommandParsing.Rejected,
         )
+        assertTrue(
+            factory.parse(
+                listOf(
+                    "traversal",
+                    "run",
+                    "--selector",
+                    "selector",
+                    "--relation",
+                    "callees",
+                    "--maximum-depth",
+                    "2",
+                    "--maximum-results",
+                    "10",
+                    "--continuation",
+                    traversalContinuationToken(),
+                ),
+            ) is CliCommandParsing.Parsed,
+        )
+        assertTrue(
+            factory.parse(
+                listOf(
+                    "traversal",
+                    "run",
+                    "--selector",
+                    "selector",
+                    "--relation",
+                    "callees",
+                    "--maximum-depth",
+                    "2",
+                    "--maximum-results",
+                    "10",
+                    "--continuation",
+                    "bad",
+                ),
+            ) is CliCommandParsing.Rejected,
+        )
     }
 
     @Test
@@ -180,6 +216,15 @@ class CliBoundaryContractTest {
             (byte.toInt() and 0xff).toString(16).padStart(2, '0')
         }
         return "exact:v2:$encoded:$digest"
+    }
+
+    private fun traversalContinuationToken(): String {
+        val payload = "checkpoint".toByteArray(StandardCharsets.UTF_8)
+        val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
+        val digest = MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { byte ->
+            (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+        }
+        return "traversal-continuation:v1:$encoded:$digest"
     }
 }
 

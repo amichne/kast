@@ -418,23 +418,23 @@ class CanonicalOperationWireBindingsTest {
         TraversalRecordDocument(TraversalDepthDocument.parse(depth).refinedValue(), relation)
 
     private fun relationQualification(): RelationReadQualification =
-        RelationReadQualification.create(
+        RelationReadQualification.resumable(
             RelationKnownMinimumDocument.parse(1).refinedValue(),
             listOf(
                 RelationLimitationDocument.RESULT_LIMIT_REACHED,
                 RelationLimitationDocument.PROVIDER_INCOMPLETE,
             ),
-            RelationContinuationDocument.parse("a".repeat(64)).refinedValue(),
+            relationContinuation("binding"),
         ).refinedValue()
 
     private fun traversalQualification(): TraversalRunQualification =
-        TraversalRunQualification.create(
+        TraversalRunQualification.resumable(
             listOf(
-                TraversalLimitationDocument.DEPTH_LIMIT_REACHED,
+                TraversalLimitationDocument.RECORD_LIMIT_REACHED,
                 TraversalLimitationDocument.ONE_HOP_INCOMPLETE,
             ),
             listOf(RelationLimitationDocument.PROVIDER_INCOMPLETE),
-            TraversalContinuationDocument.parse("b".repeat(64)).refinedValue(),
+            traversalContinuation("binding"),
         ).refinedValue()
 
     private fun diagnosticQualification(): DiagnosticCheckQualification =
@@ -455,6 +455,32 @@ class CanonicalOperationWireBindingsTest {
     private fun text(raw: String): ProtocolText = ProtocolText.parse(raw).refinedValue()
 
     private fun count(raw: Int): ProtocolCount = ProtocolCount.parse(raw).refinedValue()
+
+    private fun relationContinuation(payloadText: String): RelationContinuationDocument {
+        val payload = payloadText.toByteArray()
+        val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(payload)
+            .joinToString("") { byte ->
+                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+            }
+        return RelationContinuationDocument.parse(
+            "relation-continuation:v1:$encoded:$digest",
+        ).refinedValue()
+    }
+
+    private fun traversalContinuation(payloadText: String): TraversalContinuationDocument {
+        val payload = payloadText.toByteArray()
+        val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(payload)
+            .joinToString("") { byte ->
+                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+            }
+        return TraversalContinuationDocument.parse(
+            "traversal-continuation:v1:$encoded:$digest",
+        ).refinedValue()
+    }
 
     private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
         is Refinement.Refined -> value

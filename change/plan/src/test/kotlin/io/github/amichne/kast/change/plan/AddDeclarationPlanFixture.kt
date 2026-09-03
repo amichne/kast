@@ -28,10 +28,11 @@ import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationCompilation
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationMeaning
+import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.relation.contract.RelationResultCount
 import io.github.amichne.kast.relation.contract.RelationWorkCount
-import io.github.amichne.kast.relation.contract.RelationWorkOffset
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
@@ -126,10 +127,12 @@ internal class AddDeclarationPlanFixture(
 
     fun qualifiedRelation(): RelationReadResult {
         val batch = relationBatch(RelationMeaning.References)
-        val qualified = RelationCompilation.qualified(
+        val qualified = RelationCompilation.qualifiedResumable(
             batch,
             setOf(RelationLimitation.PROVIDER_INCOMPLETE),
-            RelationWorkOffset.Zero,
+            batch.request.providerCursor.advance(
+                RelationProviderItemDescriptor.parse("filtered-provider-item").refined(),
+            ),
         ).refined()
         return RelationReadResult.Qualified(qualified.batch, qualified.coverage)
     }
@@ -162,6 +165,7 @@ internal class AddDeclarationPlanFixture(
             emptyList(),
             RelationByteCount.parse(0L).refined(),
             RelationWorkCount.parse(0L).refined(),
+            RelationResultCount.parse(0).refined(),
         ).refined()
     }
 
