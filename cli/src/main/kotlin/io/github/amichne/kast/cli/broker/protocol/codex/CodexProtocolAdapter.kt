@@ -56,6 +56,12 @@ internal sealed interface ProtocolCloseFailure {
     data object ThreadBindingRejected : ProtocolCloseFailure
     data object ThreadStoreRejected : ProtocolCloseFailure
     data object ResponseSchemaRejected : ProtocolCloseFailure
+    data class ToolCallProjectionRejected(
+        val failure: CodexToolCallProjectionFailure,
+    ) : ProtocolCloseFailure
+    data class ThreadHistoryProjectionRejected(
+        val failure: CodexThreadHistoryProjectionFailure,
+    ) : ProtocolCloseFailure
 }
 
 internal sealed interface ProtocolRouting {
@@ -73,6 +79,11 @@ private data class PendingThreadOperation(
     val sourceThreadId: String? = null,
 )
 
+private sealed interface PendingResponse {
+    data class Thread(val operation: PendingThreadOperation) : PendingResponse
+    data class ItemContainer(val route: CodexItemResponseRoute) : PendingResponse
+}
+
 private data class ActiveInvocation(
     val threadId: String,
     val turnId: String,
@@ -85,7 +96,7 @@ internal class CodexProtocolAdapter(
     private val threadStore: ThreadCatalogStore,
     private val activitySink: BrokerInvocationActivitySink = BrokerInvocationActivitySink.Disabled,
 ) : AutoCloseable {
-    private val pendingThreadOperations = ConcurrentHashMap<String, PendingThreadOperation>()
+    private val pendingResponses = ConcurrentHashMap<String, PendingResponse>()
     private val activeInvocations = ConcurrentHashMap<String, ActiveInvocation>()
     private val invocationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val invocationCapacity = Semaphore(broker.limits.inFlightCallsPerConnection)
@@ -95,13 +106,16 @@ internal class CodexProtocolAdapter(
         val document = parseObject(message) ?: return ProtocolRouting.Close(
             ProtocolCloseFailure.MalformedDownstream,
         )
-        return when (document.string("method")) {
+        val method = document.string("method")
+        return when (method) {
             "initialize" -> initialize(document)
             "thread/start" -> threadStart(document)
             "thread/resume" -> threadResume(document, message)
             "thread/fork" -> threadFork(document, message)
             "turn/interrupt" -> turnInterrupt(document, message)
-            else -> ProtocolRouting.ForwardUpstream(message)
+            else -> CodexItemResponseRoute.forMethod(method ?: "")
+                ?.let { route -> itemContainerRequest(document, message, route) }
+                ?: ProtocolRouting.ForwardUpstream(message)
         }
     }
 
@@ -111,8 +125,36 @@ internal class CodexProtocolAdapter(
         )
         val envelope = UpstreamEnvelope.classify(document)
         if (envelope is UpstreamEnvelope.Response) {
-            val pending = pendingThreadOperations.remove(envelope.id.key)
-            if (pending != null) return recordThreadOperation(pending, document, message)
+            when (val pending = pendingResponses.remove(envelope.id.key)) {
+                is PendingResponse.Thread -> return recordThreadOperation(
+                    pending.operation,
+                    document,
+                    message,
+                )
+                is PendingResponse.ItemContainer -> return projectItemContainerResponse(
+                    pending.route,
+                    document,
+                    message,
+                )
+                null -> Unit
+            }
+        }
+        if (envelope is UpstreamEnvelope.Request) {
+            when (envelope.method) {
+                "item/started" -> return projectToolLifecycle(
+                    document,
+                    message,
+                    CodexToolCallLifecycle.STARTED,
+                )
+                "item/completed" -> return projectToolLifecycle(
+                    document,
+                    message,
+                    CodexToolCallLifecycle.COMPLETED,
+                )
+            }
+            CodexItemNotificationRoute.forMethod(envelope.method)?.let { route ->
+                return projectItemContainerNotification(document, message, route)
+            }
         }
         if (envelope !is UpstreamEnvelope.Request || envelope.method != "item/tool/call") {
             return ProtocolRouting.ForwardDownstream(message)
@@ -226,10 +268,98 @@ internal class CodexProtocolAdapter(
         return dynamicToolReply(id, presentation)
     }
 
+    private fun projectToolLifecycle(
+        document: JsonObject,
+        message: String,
+        lifecycle: CodexToolCallLifecycle,
+    ): ProtocolRouting {
+        val params = document["params"] as? JsonObject
+            ?: return ProtocolRouting.ForwardDownstream(message)
+        val item = params["item"] as? JsonObject
+            ?: return ProtocolRouting.ForwardDownstream(message)
+        if (item.string("type") != "dynamicToolCall") {
+            return ProtocolRouting.ForwardDownstream(message)
+        }
+        val namespace = item.string("namespace")
+            ?.let { raw -> refined(ProviderNamespace.admit(raw)) }
+            ?: return ProtocolRouting.ForwardDownstream(message)
+        if (namespace !in ownedNamespaces) return ProtocolRouting.ForwardDownstream(message)
+        val admittedParams = when (val admission = contracts.admit(lifecycle.schema, params)) {
+            is Validation.Validated -> admission.value.element as? JsonObject
+                ?: return ProtocolRouting.Close(ProtocolCloseFailure.OwnedFieldsMissing)
+            is Validation.Rejected -> return ProtocolRouting.Close(
+                ProtocolCloseFailure.OwnedSchemaRejected(lifecycle.schema),
+            )
+        }
+        val admittedItem = admittedParams["item"] as? JsonObject
+            ?: return ProtocolRouting.Close(ProtocolCloseFailure.OwnedFieldsMissing)
+        val projectedItem = when (val projection = when (lifecycle) {
+            CodexToolCallLifecycle.STARTED -> CodexToolCallProjector.projectStarted(admittedItem)
+            CodexToolCallLifecycle.COMPLETED -> CodexToolCallProjector.projectCompleted(admittedItem)
+        }) {
+            is CodexToolCallProjection.Projected -> projection.item
+            is CodexToolCallProjection.Rejected -> return ProtocolRouting.Close(
+                ProtocolCloseFailure.ToolCallProjectionRejected(projection.failure),
+            )
+        }
+        val projected = JsonObject(admittedParams + ("item" to projectedItem))
+        if (!contracts.admits(lifecycle.schema, projected)) {
+            return ProtocolRouting.Close(ProtocolCloseFailure.ResponseSchemaRejected)
+        }
+        return ProtocolRouting.ForwardDownstream(
+            JsonObject(document + ("params" to projected)).toString(),
+        )
+    }
+
+    private fun projectItemContainerNotification(
+        document: JsonObject,
+        message: String,
+        route: CodexItemNotificationRoute,
+    ): ProtocolRouting {
+        val params = document["params"] as? JsonObject
+            ?: return ProtocolRouting.ForwardDownstream(message)
+        if (
+            !CodexThreadHistoryProjector.containsOwnedCall(
+                route.shape,
+                params,
+                ownedNamespaces,
+            )
+        ) {
+            return ProtocolRouting.ForwardDownstream(message)
+        }
+        val admittedParams = when (val admission = contracts.admit(route.schema, params)) {
+            is Validation.Validated -> admission.value.element as? JsonObject
+                ?: return ProtocolRouting.Close(ProtocolCloseFailure.OwnedFieldsMissing)
+            is Validation.Rejected -> return ProtocolRouting.Close(
+                ProtocolCloseFailure.OwnedSchemaRejected(route.schema),
+            )
+        }
+        val projected = when (
+            val projection = CodexThreadHistoryProjector.projectContainer(
+                route.shape,
+                admittedParams,
+                ownedNamespaces,
+            )
+        ) {
+            CodexThreadHistoryProjection.Unchanged ->
+                return ProtocolRouting.ForwardDownstream(message)
+            is CodexThreadHistoryProjection.Projected -> projection.result
+            is CodexThreadHistoryProjection.Rejected -> return ProtocolRouting.Close(
+                ProtocolCloseFailure.ThreadHistoryProjectionRejected(projection.failure),
+            )
+        }
+        if (!contracts.admits(route.schema, projected)) {
+            return ProtocolRouting.Close(ProtocolCloseFailure.ResponseSchemaRejected)
+        }
+        return ProtocolRouting.ForwardDownstream(
+            JsonObject(document + ("params" to projected)).toString(),
+        )
+    }
+
     override fun close() {
         invocationScope.cancel()
         activeInvocations.clear()
-        pendingThreadOperations.clear()
+        pendingResponses.clear()
     }
 
     private fun publishActivity(
@@ -290,9 +420,9 @@ internal class CodexProtocolAdapter(
         val id = RpcId.admit(document["id"])
             ?: return ProtocolRouting.Close(ProtocolCloseFailure.OwnedRequestIdMissing)
         if (
-            pendingThreadOperations.putIfAbsent(
+            pendingResponses.putIfAbsent(
                 id.key,
-                PendingThreadOperation(PendingThreadOperationType.START),
+                PendingResponse.Thread(PendingThreadOperation(PendingThreadOperationType.START)),
             ) != null
         ) {
             return ownedRequestFailure(document, "DUPLICATE_REQUEST_ID")
@@ -357,10 +487,28 @@ internal class CodexProtocolAdapter(
         val id = RpcId.admit(document["id"])
             ?: return ProtocolRouting.Close(ProtocolCloseFailure.OwnedRequestIdMissing)
         if (
-            pendingThreadOperations.putIfAbsent(
+            pendingResponses.putIfAbsent(
                 id.key,
-                PendingThreadOperation(operation, threadId),
+                PendingResponse.Thread(PendingThreadOperation(operation, threadId)),
             ) != null
+        ) {
+            return ownedRequestFailure(document, "DUPLICATE_REQUEST_ID")
+        }
+        return ProtocolRouting.ForwardUpstream(message)
+    }
+
+    private fun itemContainerRequest(
+        document: JsonObject,
+        message: String,
+        route: CodexItemResponseRoute,
+    ): ProtocolRouting {
+        val params = document["params"] ?: JsonObject(emptyMap())
+        if (!contracts.admits(route.requestSchema, params)) {
+            return ProtocolRouting.ForwardUpstream(message)
+        }
+        val id = RpcId.admit(document["id"]) ?: return ProtocolRouting.ForwardUpstream(message)
+        if (
+            pendingResponses.putIfAbsent(id.key, PendingResponse.ItemContainer(route)) != null
         ) {
             return ownedRequestFailure(document, "DUPLICATE_REQUEST_ID")
         }
@@ -399,11 +547,29 @@ internal class CodexProtocolAdapter(
             PendingThreadOperationType.RESUME -> CodexOwnedSchema.THREAD_RESUME_RESPONSE
             PendingThreadOperationType.FORK -> CodexOwnedSchema.THREAD_FORK_RESPONSE
         }
-        if (!contracts.admits(responseSchema, result)) {
+        val admittedResult = when (val admission = contracts.admit(responseSchema, result)) {
+            is Validation.Validated -> admission.value.element
+            is Validation.Rejected -> return ProtocolRouting.Close(
+                ProtocolCloseFailure.ResponseSchemaRejected,
+            )
+        }
+        val resultObject = admittedResult as? JsonObject
+            ?: return ProtocolRouting.Close(ProtocolCloseFailure.OwnedFieldsMissing)
+        val historyProjection = when (
+            val projection = CodexThreadHistoryProjector.project(resultObject, ownedNamespaces)
+        ) {
+            CodexThreadHistoryProjection.Unchanged -> projection
+            is CodexThreadHistoryProjection.Projected -> projection
+            is CodexThreadHistoryProjection.Rejected -> return ProtocolRouting.Close(
+                ProtocolCloseFailure.ThreadHistoryProjectionRejected(projection.failure),
+            )
+        }
+        if (
+            historyProjection is CodexThreadHistoryProjection.Projected &&
+            !contracts.admits(responseSchema, historyProjection.result)
+        ) {
             return ProtocolRouting.Close(ProtocolCloseFailure.ResponseSchemaRejected)
         }
-        val resultObject = result as? JsonObject
-            ?: return ProtocolRouting.Close(ProtocolCloseFailure.OwnedFieldsMissing)
         val threadId = (resultObject["thread"] as? JsonObject)?.string("id")
         val cwd = resultObject.string("cwd")
         if (threadId == null || cwd == null) {
@@ -435,7 +601,53 @@ internal class CodexProtocolAdapter(
         if (threadStore.write(binding) != ThreadStoreWrite.WRITTEN) {
             return ProtocolRouting.Close(ProtocolCloseFailure.ThreadStoreRejected)
         }
-        return ProtocolRouting.ForwardDownstream(message)
+        return when (historyProjection) {
+            CodexThreadHistoryProjection.Unchanged -> ProtocolRouting.ForwardDownstream(message)
+            is CodexThreadHistoryProjection.Projected -> ProtocolRouting.ForwardDownstream(
+                JsonObject(document + ("result" to historyProjection.result)).toString(),
+            )
+            is CodexThreadHistoryProjection.Rejected -> ProtocolRouting.Close(
+                ProtocolCloseFailure.ThreadHistoryProjectionRejected(historyProjection.failure),
+            )
+        }
+    }
+
+    private fun projectItemContainerResponse(
+        route: CodexItemResponseRoute,
+        document: JsonObject,
+        message: String,
+    ): ProtocolRouting {
+        if (document.containsKey("error")) return ProtocolRouting.ForwardDownstream(message)
+        val result = document["result"]
+            ?: return ProtocolRouting.Close(ProtocolCloseFailure.OwnedFieldsMissing)
+        val admittedResult = when (
+            val admission = contracts.admit(route.responseSchema, result)
+        ) {
+            is Validation.Validated -> admission.value.element as? JsonObject
+                ?: return ProtocolRouting.Close(ProtocolCloseFailure.OwnedFieldsMissing)
+            is Validation.Rejected -> return ProtocolRouting.Close(
+                ProtocolCloseFailure.ResponseSchemaRejected,
+            )
+        }
+        val projection = when (
+            val projected = CodexThreadHistoryProjector.projectContainer(
+                route.shape,
+                admittedResult,
+                ownedNamespaces,
+            )
+        ) {
+            CodexThreadHistoryProjection.Unchanged -> return ProtocolRouting.ForwardDownstream(message)
+            is CodexThreadHistoryProjection.Projected -> projected.result
+            is CodexThreadHistoryProjection.Rejected -> return ProtocolRouting.Close(
+                ProtocolCloseFailure.ThreadHistoryProjectionRejected(projected.failure),
+            )
+        }
+        if (!contracts.admits(route.responseSchema, projection)) {
+            return ProtocolRouting.Close(ProtocolCloseFailure.ResponseSchemaRejected)
+        }
+        return ProtocolRouting.ForwardDownstream(
+            JsonObject(document + ("result" to projection)).toString(),
+        )
     }
 
     private fun dynamicToolReply(id: RpcId, presentation: ToolPresentation): ProtocolRouting {

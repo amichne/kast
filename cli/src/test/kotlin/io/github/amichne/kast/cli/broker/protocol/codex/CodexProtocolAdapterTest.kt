@@ -30,7 +30,10 @@ import io.github.amichne.kast.kernel.RefinementDefinition
 import io.github.amichne.kast.kernel.Validation
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -82,7 +85,7 @@ class CodexProtocolAdapterTest {
         )
 
         val response =
-            """{"id":2,"result":{"thread":{"id":"thread-1"},"cwd":"$cwd"}}"""
+            """{"id":2,"result":{"thread":{"id":"thread-1","turns":[]},"cwd":"$cwd"}}"""
         assertEquals(
             response,
             (adapter.fromUpstream(response) as ProtocolRouting.ForwardDownstream).message,
@@ -116,6 +119,513 @@ class CodexProtocolAdapterTest {
             result.getValue("contentItems").jsonArray.single().jsonObject
                 .getValue("text").jsonPrimitive.content,
         )
+    }
+
+    @Test
+    fun `owned dynamic lifecycle is projected as structured MCP tool call for downstream observers`() =
+        runBlocking {
+            val adapter = CodexProtocolAdapter(
+                echoBroker(),
+                protocolContracts(),
+                MemoryThreadCatalogStore(),
+            )
+            val arguments =
+                Json.parseToJsonElement(
+                    """{"value":"hello","scope":{"kind":"workspace"}}""",
+                )
+            val structuredResult =
+                Json.parseToJsonElement(
+                    """{"value":"hello","details":{"count":2}}""",
+                )
+            val started =
+                """{"method":"item/started","params":{"threadId":"thread-1","turnId":"turn-1","startedAtMs":10,"item":{"type":"dynamicToolCall","id":"call-1","tool":"say","namespace":"echo","arguments":$arguments,"status":"inProgress"}}}"""
+            val completed =
+                """{"method":"item/completed","params":{"threadId":"thread-1","turnId":"turn-1","completedAtMs":27,"item":{"type":"dynamicToolCall","id":"call-1","tool":"say","namespace":"echo","arguments":$arguments,"status":"completed","contentItems":[{"type":"inputText","text":"{\"value\":\"hello\",\"details\":{\"count\":2}}"}],"success":true,"durationMs":17}}}"""
+
+            val startedDocument = Json.parseToJsonElement(
+                (adapter.fromUpstream(started) as ProtocolRouting.ForwardDownstream).message,
+            ).jsonObject
+            val startedParams = startedDocument.getValue("params").jsonObject
+            val startedItem = startedParams.getValue("item").jsonObject
+            assertEquals("mcpToolCall", startedItem.getValue("type").jsonPrimitive.content)
+            assertEquals("call-1", startedItem.getValue("id").jsonPrimitive.content)
+            assertEquals("echo", startedItem.getValue("server").jsonPrimitive.content)
+            assertEquals("say", startedItem.getValue("tool").jsonPrimitive.content)
+            assertEquals("inProgress", startedItem.getValue("status").jsonPrimitive.content)
+            assertEquals(arguments, startedItem.getValue("arguments"))
+            assertEquals(10, startedParams.getValue("startedAtMs").jsonPrimitive.content.toLong())
+
+            val completedDocument = Json.parseToJsonElement(
+                (adapter.fromUpstream(completed) as ProtocolRouting.ForwardDownstream).message,
+            ).jsonObject
+            val completedParams = completedDocument.getValue("params").jsonObject
+            val completedItem = completedParams.getValue("item").jsonObject
+            assertEquals("mcpToolCall", completedItem.getValue("type").jsonPrimitive.content)
+            assertEquals("call-1", completedItem.getValue("id").jsonPrimitive.content)
+            assertEquals("echo", completedItem.getValue("server").jsonPrimitive.content)
+            assertEquals("say", completedItem.getValue("tool").jsonPrimitive.content)
+            assertEquals("completed", completedItem.getValue("status").jsonPrimitive.content)
+            assertEquals(arguments, completedItem.getValue("arguments"))
+            assertEquals(17, completedItem.getValue("durationMs").jsonPrimitive.content.toLong())
+            val result = completedItem.getValue("result").jsonObject
+            assertEquals(structuredResult, result.getValue("structuredContent"))
+            assertEquals(
+                structuredResult.toString(),
+                result.getValue("content").jsonArray.single().jsonObject
+                    .getValue("text").jsonPrimitive.content,
+            )
+            assertEquals(27, completedParams.getValue("completedAtMs").jsonPrimitive.content.toLong())
+
+            val unowned =
+                " { \"method\":\"item/started\",\"params\":{\"threadId\":\"thread-1\",\"turnId\":\"turn-1\",\"startedAtMs\":10,\"item\":{\"type\":\"dynamicToolCall\",\"id\":\"call-2\",\"tool\":\"say\",\"namespace\":\"external\",\"arguments\":{},\"status\":\"inProgress\"}}} "
+            assertEquals(
+                unowned,
+                (adapter.fromUpstream(unowned) as ProtocolRouting.ForwardDownstream).message,
+            )
+        }
+
+    @Test
+    fun `failed dynamic lifecycle retains the complete broker result`() = runBlocking {
+        val adapter = CodexProtocolAdapter(
+            echoBroker(),
+            protocolContracts(),
+            MemoryThreadCatalogStore(),
+        )
+        val failure = Json.parseToJsonElement("""{"failure":"INVALID_ARGUMENTS"}""")
+        val completed =
+            """{"method":"item/completed","params":{"threadId":"thread-1","turnId":"turn-1","completedAtMs":15,"item":{"type":"dynamicToolCall","id":"call-1","tool":"say","namespace":"echo","arguments":{"value":4},"status":"failed","contentItems":[{"type":"inputText","text":"{\"failure\":\"INVALID_ARGUMENTS\"}"}],"success":false,"durationMs":5}}}"""
+
+        val item = Json.parseToJsonElement(
+            (adapter.fromUpstream(completed) as ProtocolRouting.ForwardDownstream).message,
+        ).jsonObject.getValue("params").jsonObject.getValue("item").jsonObject
+
+        assertEquals("failed", item.getValue("status").jsonPrimitive.content)
+        assertFalse("error" in item)
+        val result = item.getValue("result").jsonObject
+        assertEquals(failure, result.getValue("structuredContent"))
+        assertEquals(
+            failure.toString(),
+            result.getValue("content").jsonArray.single().jsonObject
+                .getValue("text").jsonPrimitive.content,
+        )
+    }
+
+    @Test
+    fun `media dynamic result fails closed rather than emitting invalid MCP content`() =
+        runBlocking {
+            val adapter = CodexProtocolAdapter(
+                echoBroker(),
+                protocolContracts(),
+                MemoryThreadCatalogStore(),
+            )
+            val completed =
+                """{"method":"item/completed","params":{"threadId":"thread-1","turnId":"turn-1","completedAtMs":15,"item":{"type":"dynamicToolCall","id":"call-1","tool":"say","namespace":"echo","arguments":{"value":"image"},"status":"completed","contentItems":[{"type":"inputImage","imageUrl":"data:image/png;base64,AAAA"}],"success":true,"durationMs":5}}}"""
+
+            val closed = assertInstanceOf(
+                ProtocolRouting.Close::class.java,
+                adapter.fromUpstream(completed),
+            )
+
+            assertEquals(
+                ProtocolCloseFailure.ToolCallProjectionRejected(
+                    CodexToolCallProjectionFailure.MEDIA_CONTENT_UNSUPPORTED,
+                ),
+                closed.failure,
+            )
+        }
+
+    @Test
+    fun `non-object JSON result remains exact text without invented structure`() = runBlocking {
+        val adapter = CodexProtocolAdapter(
+            echoBroker(),
+            protocolContracts(),
+            MemoryThreadCatalogStore(),
+        )
+        val completed =
+            """{"method":"item/completed","params":{"threadId":"thread-1","turnId":"turn-1","completedAtMs":15,"item":{"type":"dynamicToolCall","id":"call-1","tool":"say","namespace":"echo","arguments":{"value":"list"},"status":"completed","contentItems":[{"type":"inputText","text":"[1,2,3]"}],"success":true,"durationMs":5}}}"""
+
+        val result = Json.parseToJsonElement(
+            (adapter.fromUpstream(completed) as ProtocolRouting.ForwardDownstream).message,
+        ).jsonObject.getValue("params").jsonObject.getValue("item").jsonObject
+            .getValue("result").jsonObject
+
+        assertFalse("structuredContent" in result)
+        assertEquals(
+            "[1,2,3]",
+            result.getValue("content").jsonArray.single().jsonObject
+                .getValue("text").jsonPrimitive.content,
+        )
+    }
+
+    @Test
+    fun `started dynamic lifecycle rejects completion data`() = runBlocking {
+        val adapter = CodexProtocolAdapter(
+            echoBroker(),
+            protocolContracts(),
+            MemoryThreadCatalogStore(),
+        )
+        val contradictoryStarted =
+            """{"method":"item/started","params":{"threadId":"thread-1","turnId":"turn-1","startedAtMs":10,"item":{"type":"dynamicToolCall","id":"call-1","tool":"say","namespace":"echo","arguments":{"value":"hello"},"status":"inProgress","contentItems":[{"type":"inputText","text":"premature result"}],"success":true}}}"""
+
+        val closed = assertInstanceOf(
+            ProtocolRouting.Close::class.java,
+            adapter.fromUpstream(contradictoryStarted),
+        )
+
+        val failure = assertInstanceOf(
+            ProtocolCloseFailure.ToolCallProjectionRejected::class.java,
+            closed.failure,
+        )
+        assertEquals("STARTED_COMPLETION_PRESENT", failure.failure.name)
+    }
+
+    @Test
+    fun `all item-bearing Codex carriers project owned dynamic calls`() = runBlocking {
+        val adapter = CodexProtocolAdapter(
+            echoBroker(),
+            protocolContracts(),
+            MemoryThreadCatalogStore(),
+        )
+        val arguments = Json.parseToJsonElement(
+            """{"path":"cli/src/main/kotlin","depth":2}""",
+        )
+        val structuredResult = Json.parseToJsonElement(
+            """{"entries":[{"name":"broker","kind":"directory"}]}""",
+        )
+        val ownedItem = Json.parseToJsonElement(
+            """{"type":"dynamicToolCall","id":"call-1","tool":"read","namespace":"echo","arguments":$arguments,"status":"completed","contentItems":[{"type":"inputText","text":"{\"entries\":[{\"name\":\"broker\",\"kind\":\"directory\"}]}"}],"success":true,"durationMs":12}""",
+        ).jsonObject
+        val unownedItem = Json.parseToJsonElement(
+            """{"type":"dynamicToolCall","id":"call-2","tool":"lookup","namespace":"external","arguments":{"query":"value"},"status":"completed","contentItems":[{"type":"inputText","text":"external result"}],"success":true,"durationMs":3}""",
+        ).jsonObject
+        fun turn(): JsonObject = buildJsonObject {
+            put("id", "turn-1")
+            put("status", "completed")
+            put("items", buildJsonArray {
+                add(ownedItem)
+                add(unownedItem)
+            })
+        }
+        fun thread(): JsonObject = buildJsonObject {
+            put("id", "thread-1")
+            put("turns", buildJsonArray { add(turn()) })
+        }
+        val timelineBoundary = buildJsonObject {
+            put("type", "turnStarted")
+            put("position", 0)
+            put("turn_id", "turn-1")
+        }
+        val responseCarriers = listOf(
+            "thread/read" to buildJsonObject { put("thread", thread()) },
+            "thread/rollback" to buildJsonObject { put("thread", thread()) },
+            "thread/revert" to buildJsonObject { put("thread", thread()) },
+            "thread/metadata/update" to buildJsonObject { put("thread", thread()) },
+            "thread/unarchive" to buildJsonObject { put("thread", thread()) },
+            "thread/list" to buildJsonObject {
+                put("data", buildJsonArray { add(thread()) })
+            },
+            "thread/search" to buildJsonObject {
+                put("data", buildJsonArray {
+                    add(buildJsonObject {
+                        put("snippet", "broker result")
+                        put("thread", thread())
+                    })
+                })
+            },
+            "turn/start" to buildJsonObject { put("turn", turn()) },
+            "thread/queue/start" to buildJsonObject { put("turn", turn()) },
+            "review/start" to buildJsonObject {
+                put("reviewThreadId", "review-thread-1")
+                put("turn", turn())
+            },
+            "thread/turns/list" to buildJsonObject {
+                put("data", buildJsonArray { add(turn()) })
+            },
+            "thread/items/list" to buildJsonObject {
+                put("data", buildJsonArray {
+                    add(buildJsonObject {
+                        put("turnId", "turn-1")
+                        put("item", ownedItem)
+                    })
+                    add(buildJsonObject {
+                        put("turnId", "turn-1")
+                        put("item", unownedItem)
+                    })
+                })
+            },
+            "thread/timeline/list" to buildJsonObject {
+                put("data", buildJsonArray {
+                    add(timelineBoundary)
+                    add(buildJsonObject {
+                        put("type", "item")
+                        put("position", 1)
+                        put("turnId", "turn-1")
+                        put("item", ownedItem)
+                    })
+                    add(buildJsonObject {
+                        put("type", "item")
+                        put("position", 2)
+                        put("turnId", "turn-1")
+                        put("item", unownedItem)
+                    })
+                })
+            },
+        )
+
+        responseCarriers.forEachIndexed { index, (method, result) ->
+            val id = 100 + index
+            assertInstanceOf(
+                ProtocolRouting.ForwardUpstream::class.java,
+                adapter.fromDownstream(
+                    buildJsonObject {
+                        put("id", id)
+                        put("method", method)
+                        if (method != "thread/list") {
+                            put("params", buildJsonObject {})
+                        }
+                    }.toString(),
+                ),
+            )
+            val routed = assertInstanceOf(
+                ProtocolRouting.ForwardDownstream::class.java,
+                adapter.fromUpstream(
+                    buildJsonObject {
+                        put("id", id)
+                        put("result", result)
+                    }.toString(),
+                ),
+            )
+            val projectedResult = Json.parseToJsonElement(routed.message).jsonObject
+                .getValue("result")
+            assertProjectedToolCall(
+                projectedResult.objectWithId("call-1"),
+                arguments,
+                structuredResult,
+            )
+            assertEquals(unownedItem, projectedResult.objectWithId("call-2"))
+            if (method == "thread/timeline/list") {
+                assertEquals(
+                    timelineBoundary,
+                    projectedResult.jsonObject.getValue("data").jsonArray.first(),
+                )
+            }
+        }
+
+        val notificationCarriers = listOf(
+            "thread/started" to buildJsonObject { put("thread", thread()) },
+            "turn/started" to buildJsonObject {
+                put("threadId", "thread-1")
+                put("turn", turn())
+            },
+            "turn/completed" to buildJsonObject {
+                put("threadId", "thread-1")
+                put("turn", turn())
+            },
+        )
+        notificationCarriers.forEach { (method, params) ->
+            val projectedNotification = Json.parseToJsonElement(
+                assertInstanceOf(
+                    ProtocolRouting.ForwardDownstream::class.java,
+                    adapter.fromUpstream(
+                        buildJsonObject {
+                            put("method", method)
+                            put("params", params)
+                        }.toString(),
+                    ),
+                ).message,
+            ).jsonObject.getValue("params")
+            assertProjectedToolCall(
+                projectedNotification.objectWithId("call-1"),
+                arguments,
+                structuredResult,
+            )
+            assertEquals(unownedItem, projectedNotification.objectWithId("call-2"))
+        }
+
+        val unownedNotification =
+            " { \"method\":\"turn/completed\",\"params\":{\"threadId\":\"thread-1\",\"turn\":{\"id\":\"turn-1\",\"status\":\"completed\",\"items\":[$unownedItem]}}} "
+        assertEquals(
+            unownedNotification,
+            assertInstanceOf(
+                ProtocolRouting.ForwardDownstream::class.java,
+                adapter.fromUpstream(unownedNotification),
+            ).message,
+        )
+    }
+
+    @Test
+    fun `resumed thread history projects owned dynamic calls for downstream observers`(
+        @TempDir temporary: Path,
+    ) = runBlocking {
+        val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+        val broker = echoBroker()
+        val store = MemoryThreadCatalogStore()
+        store.write(ThreadCatalogBinding.admit("thread-1", broker.catalog.digest, cwd).refinedValue())
+        val adapter = CodexProtocolAdapter(broker, protocolContracts(), store)
+        val arguments = Json.parseToJsonElement(
+            """{"path":"cli/src/main/kotlin","depth":2}""",
+        )
+        val structuredResult = Json.parseToJsonElement(
+            """{"entries":[{"name":"broker","kind":"directory"}]}""",
+        )
+        val ownedItem = Json.parseToJsonElement(
+            """{"type":"dynamicToolCall","id":"call-1","tool":"read","namespace":"echo","arguments":$arguments,"status":"completed","contentItems":[{"type":"inputText","text":"{\"entries\":[{\"name\":\"broker\",\"kind\":\"directory\"}]}"}],"success":true,"durationMs":12}""",
+        )
+        val unownedItem = Json.parseToJsonElement(
+            """{"type":"dynamicToolCall","id":"call-2","tool":"lookup","namespace":"external","arguments":{"query":"value"},"status":"completed","contentItems":[{"type":"inputText","text":"external result"}],"success":true,"durationMs":3}""",
+        )
+        assertInstanceOf(
+            ProtocolRouting.ForwardUpstream::class.java,
+            adapter.fromDownstream(
+                """{"id":12,"method":"thread/resume","params":{"threadId":"thread-1"}}""",
+            ),
+        )
+        val response = buildJsonObject {
+            put("id", 12)
+            put("result", buildJsonObject {
+                put("thread", buildJsonObject {
+                    put("id", "thread-1")
+                    put("turns", buildJsonArray {
+                        add(buildJsonObject {
+                            put("id", "turn-1")
+                            put("items", buildJsonArray {
+                                add(ownedItem)
+                                add(unownedItem)
+                            })
+                        })
+                    })
+                })
+                put("initialTurnsPage", buildJsonObject {
+                    put("data", buildJsonArray {
+                        add(buildJsonObject {
+                            put("id", "turn-page")
+                            put("items", buildJsonArray { add(ownedItem) })
+                        })
+                    })
+                })
+                put("cwd", cwd.toString())
+            })
+        }.toString()
+
+        val forwarded = Json.parseToJsonElement(
+            (adapter.fromUpstream(response) as ProtocolRouting.ForwardDownstream).message,
+        ).jsonObject
+        val items = forwarded.getValue("result").jsonObject
+            .getValue("thread").jsonObject
+            .getValue("turns").jsonArray.single().jsonObject
+            .getValue("items").jsonArray
+        val projected = items.first().jsonObject
+        assertEquals("mcpToolCall", projected.getValue("type").jsonPrimitive.content)
+        assertEquals("call-1", projected.getValue("id").jsonPrimitive.content)
+        assertEquals("echo", projected.getValue("server").jsonPrimitive.content)
+        assertEquals("read", projected.getValue("tool").jsonPrimitive.content)
+        assertEquals(arguments, projected.getValue("arguments"))
+        assertEquals(12, projected.getValue("durationMs").jsonPrimitive.content.toLong())
+        val result = projected.getValue("result").jsonObject
+        assertEquals(structuredResult, result.getValue("structuredContent"))
+        assertEquals(
+            structuredResult.toString(),
+            result.getValue("content").jsonArray.single().jsonObject
+                .getValue("text").jsonPrimitive.content,
+        )
+        assertEquals(unownedItem, items.last())
+        val pagedItem = forwarded.getValue("result").jsonObject
+            .getValue("initialTurnsPage").jsonObject
+            .getValue("data").jsonArray.single().jsonObject
+            .getValue("items").jsonArray.single().jsonObject
+        assertEquals("mcpToolCall", pagedItem.getValue("type").jsonPrimitive.content)
+        assertEquals(arguments, pagedItem.getValue("arguments"))
+        assertEquals(
+            structuredResult,
+            pagedItem.getValue("result").jsonObject.getValue("structuredContent"),
+        )
+    }
+
+    @Test
+    fun `paginated history projects owned dynamic calls for downstream observers`() = runBlocking {
+        val adapter = CodexProtocolAdapter(
+            echoBroker(),
+            protocolContracts(),
+            MemoryThreadCatalogStore(),
+        )
+        val arguments = Json.parseToJsonElement(
+            """{"path":"cli/src/main/kotlin","depth":2}""",
+        )
+        val structuredResult = Json.parseToJsonElement(
+            """{"entries":[{"name":"broker","kind":"directory"}]}""",
+        )
+        val ownedItem = Json.parseToJsonElement(
+            """{"type":"dynamicToolCall","id":"call-1","tool":"read","namespace":"echo","arguments":$arguments,"status":"completed","contentItems":[{"type":"inputText","text":"{\"entries\":[{\"name\":\"broker\",\"kind\":\"directory\"}]}"}],"success":true,"durationMs":12}""",
+        )
+        val unownedItem = Json.parseToJsonElement(
+            """{"type":"dynamicToolCall","id":"call-2","tool":"lookup","namespace":"external","arguments":{"query":"value"},"status":"completed","contentItems":[{"type":"inputText","text":"external result"}],"success":true,"durationMs":3}""",
+        )
+
+        assertInstanceOf(
+            ProtocolRouting.ForwardUpstream::class.java,
+            adapter.fromDownstream(
+                """{"id":31,"method":"thread/turns/list","params":{"threadId":"thread-1","itemsView":"full"}}""",
+            ),
+        )
+        val turnsResponse = buildJsonObject {
+            put("id", 31)
+            put("result", buildJsonObject {
+                put("data", buildJsonArray {
+                    add(buildJsonObject {
+                        put("id", "turn-old")
+                        put("items", buildJsonArray {
+                            add(ownedItem)
+                            add(unownedItem)
+                        })
+                    })
+                })
+                put("nextCursor", "turn-cursor")
+            })
+        }.toString()
+
+        val turnsResult = Json.parseToJsonElement(
+            (adapter.fromUpstream(turnsResponse) as ProtocolRouting.ForwardDownstream).message,
+        ).jsonObject.getValue("result").jsonObject
+        val turnItems = turnsResult.getValue("data").jsonArray.single().jsonObject
+            .getValue("items").jsonArray
+        assertProjectedToolCall(turnItems.first().jsonObject, arguments, structuredResult)
+        assertEquals(unownedItem, turnItems.last())
+        assertEquals("turn-cursor", turnsResult.getValue("nextCursor").jsonPrimitive.content)
+
+        assertInstanceOf(
+            ProtocolRouting.ForwardUpstream::class.java,
+            adapter.fromDownstream(
+                """{"id":32,"method":"thread/items/list","params":{"threadId":"thread-1","turnId":"turn-old"}}""",
+            ),
+        )
+        val itemsResponse = buildJsonObject {
+            put("id", 32)
+            put("result", buildJsonObject {
+                put("data", buildJsonArray {
+                    add(buildJsonObject {
+                        put("turnId", "turn-old")
+                        put("item", ownedItem)
+                    })
+                    add(buildJsonObject {
+                        put("turnId", "turn-old")
+                        put("item", unownedItem)
+                    })
+                })
+                put("nextCursor", "item-cursor")
+            })
+        }.toString()
+
+        val itemsResult = Json.parseToJsonElement(
+            (adapter.fromUpstream(itemsResponse) as ProtocolRouting.ForwardDownstream).message,
+        ).jsonObject.getValue("result").jsonObject
+        val entries = itemsResult.getValue("data").jsonArray
+        assertProjectedToolCall(
+            entries.first().jsonObject.getValue("item").jsonObject,
+            arguments,
+            structuredResult,
+        )
+        assertEquals(unownedItem, entries.last().jsonObject.getValue("item"))
+        assertEquals("item-cursor", itemsResult.getValue("nextCursor").jsonPrimitive.content)
     }
 
     @Test
@@ -250,7 +760,8 @@ class CodexProtocolAdapterTest {
         )
         assertInstanceOf(ProtocolRouting.ReplyUpstream::class.java, call)
 
-        val response = """{"id":9,"result":{"thread":{"id":"thread-2"},"cwd":"$cwd"}}"""
+        val response =
+            """{"id":9,"result":{"thread":{"id":"thread-2","turns":[]},"cwd":"$cwd"}}"""
         assertEquals(
             response,
             (adapter.fromUpstream(response) as ProtocolRouting.ForwardDownstream).message,
@@ -276,7 +787,8 @@ class CodexProtocolAdapterTest {
             ProtocolRouting.ReplyDownstream::class.java,
             adapter.fromDownstream(request),
         )
-        val response = """{"id":7,"result":{"thread":{"id":"thread-first"},"cwd":"$cwd"}}"""
+        val response =
+            """{"id":7,"result":{"thread":{"id":"thread-first","turns":[]},"cwd":"$cwd"}}"""
         assertEquals(
             response,
             (adapter.fromUpstream(response) as ProtocolRouting.ForwardDownstream).message,
@@ -335,6 +847,47 @@ class CodexProtocolAdapterTest {
         ProviderNamespace.admit(raw).refinedValue()
 
     private fun toolName(raw: String): ToolName = ToolName.admit(raw).refinedValue()
+
+    private fun assertProjectedToolCall(
+        item: JsonObject,
+        arguments: kotlinx.serialization.json.JsonElement,
+        structuredResult: kotlinx.serialization.json.JsonElement,
+    ) {
+        assertEquals("mcpToolCall", item.getValue("type").jsonPrimitive.content)
+        assertEquals("call-1", item.getValue("id").jsonPrimitive.content)
+        assertEquals("echo", item.getValue("server").jsonPrimitive.content)
+        assertEquals("read", item.getValue("tool").jsonPrimitive.content)
+        assertEquals(arguments, item.getValue("arguments"))
+        val result = item.getValue("result").jsonObject
+        assertEquals(structuredResult, result.getValue("structuredContent"))
+        assertEquals(
+            structuredResult.toString(),
+            result.getValue("content").jsonArray.single().jsonObject
+                .getValue("text").jsonPrimitive.content,
+        )
+    }
+
+    private fun JsonElement.objectWithId(id: String): JsonObject = when (this) {
+        is JsonObject -> if (this["id"]?.jsonPrimitive?.content == id) {
+            this
+        } else {
+            values.firstNotNullOfOrNull { value -> value.objectWithIdOrNull(id) }
+                ?: throw AssertionError("No object with id=$id in $this")
+        }
+        is JsonArray -> firstNotNullOfOrNull { value -> value.objectWithIdOrNull(id) }
+            ?: throw AssertionError("No object with id=$id in $this")
+        else -> throw AssertionError("No object with id=$id in $this")
+    }
+
+    private fun JsonElement.objectWithIdOrNull(id: String): JsonObject? = when (this) {
+        is JsonObject -> if (this["id"]?.jsonPrimitive?.content == id) {
+            this
+        } else {
+            values.firstNotNullOfOrNull { value -> value.objectWithIdOrNull(id) }
+        }
+        is JsonArray -> firstNotNullOfOrNull { value -> value.objectWithIdOrNull(id) }
+        else -> null
+    }
 
     private fun String.objectValue(name: String): JsonObject =
         Json.parseToJsonElement(this).jsonObject.getValue(name).jsonObject
