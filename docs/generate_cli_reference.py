@@ -272,6 +272,9 @@ resource: "file://docs/public/reference/cli.mdx"
 tags: ["CLI", "operations", "schema", "lifecycle"]
 timestamp: "2026-09-03T00:00:00-04:00"
 code_sources:
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/IndexSeedProtocol.kt"
+    lines: "37-105"
+    symbols: ["SupportedIdeRuntimePair"]
   - path: "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt"
     lines: "7-20"
     symbols: ["CanonicalOperation"]
@@ -324,8 +327,10 @@ operations marked `public` by the generated operation registry:
 ## Runtime lifecycle
 
 Kast owns the isolated sidecar lifecycle. `start` and semantic commands may
-launch the exact supported local IDEA build; `status` and `stop` remain passive
-and never manufacture an endpoint.
+launch a release-line-compatible local IDEA build; `status` and `stop` remain
+passive and never manufacture an endpoint. The release reference IDEA/Kotlin
+pair establishes compatible JetBrains platform lines, not exact patch equality;
+admission retains the exact observed pair in runtime identity.
 
 Sidecar processes launch directly by default. `KAST_ENABLE_LAUNCHD=1` opts into
 launchd-backed process ownership; an absent value or `0` selects direct launch.

@@ -55,16 +55,17 @@ sealed interface InstalledIdeRuntimeDiscoveryResult {
     ) : InstalledIdeRuntimeDiscoveryResult
 }
 
-/** Refines installed filesystem observations into exactly one supported local IDEA runtime. */
+/** Refines installed filesystem observations into exactly one release-line-compatible IDEA runtime. */
 object InstalledIdeRuntimeDiscovery {
     /**
      * Proof transition: `supported pair + payload digest + IdeHomeSelection ->
      * InstalledIdeRuntimeDiscoveryResult`.
      *
-     * Establishes one physical IDEA home with the exact build pair, bundled JBR identity and
-     * executable, Gradle integration, and required bootstrap classes. Explicit selection retains
-     * its exact rejection. Standard selection admits exactly one matching candidate, rejects
-     * multiple matches as [IndexSeedFailure.Ambiguity], and never guesses when none match.
+     * Establishes one physical IDEA home with a compatible platform release line while preserving
+     * the exact observed build pair, bundled JBR identity and executable, Gradle integration, and
+     * required bootstrap classes. Explicit selection retains its exact rejection. Standard
+     * selection admits exactly one matching candidate, rejects multiple matches as
+     * [IndexSeedFailure.Ambiguity], and never guesses when none match.
      */
     fun discover(
         support: SupportedIdeRuntimePair,

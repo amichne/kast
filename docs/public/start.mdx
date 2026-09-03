@@ -14,8 +14,14 @@ code_sources:
   - path: "gradle/libs.versions.toml"
     lines: "14-17"
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledIdeRuntimeDiscovery.kt"
-    lines: "26-207"
+    lines: "26-208"
     symbols: ["InstalledIdeRuntimeDiscovery"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/IndexSeedProtocol.kt"
+    lines: "37-105"
+    symbols: ["SupportedIdeRuntimePair"]
+  - path: "cli/src/test/kotlin/io/github/amichne/kast/cli/runtime/InstalledIdeRuntimeDiscoveryTest.kt"
+    lines: "13-119"
+    symbols: ["InstalledIdeRuntimeDiscoveryTest"]
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/command/lifecycle/LifecycleCommands.kt"
     lines: "22-134"
     symbols: ["lifecycleCommands"]
@@ -38,17 +44,25 @@ headless IntelliJ sidecar and publishes its compiler-backed evidence.
 | --- | --- |
 | Platform | macOS on Apple silicon |
 | Installer JVM | Java 25 or newer, selected from `$JAVA_HOME/bin/java` or `java` on `PATH` |
-| IntelliJ | IntelliJ IDEA build 262.9437.185 with Kotlin plugin build 262.9437.185-IJ |
+| IDE compatibility | IDEA and Kotlin plugin builds on JetBrains platform release line 262 |
 | Repository | An on-disk Kotlin Gradle repository |
 
 The installer JVM and sidecar JVM are different boundaries. Java 25 runs the
 installed `kast` control command. The sidecar runs the bundled JBR from the
-matched IntelliJ installation.
+admitted IntelliJ installation.
+
+Reference pair: IDEA build 262.9437.185 and Kotlin plugin build
+262.9437.185-IJ. Compatible patch builds are accepted when IDEA and Kotlin
+plugin both remain on JetBrains platform release line 262. The reference pair
+is release metadata and a tested baseline, not an exact patch-version mandate.
+After admission, Kast preserves the exact observed patch pair in runtime and
+cache identity.
 
 Standard discovery checks exactly
 `/Applications/IntelliJ IDEA.app/Contents` and
 `$HOME/Applications/IntelliJ IDEA.app/Contents`. If neither path contains one
-unique matching build, pass `kast start --idea-home /absolute/IDEA/home`.
+unique release-line-compatible installation, pass
+`kast start --idea-home /absolute/IDEA/home`.
 
 <Info>
   The installer verifies both release payloads: the `kast` command and its
@@ -117,10 +131,10 @@ unique matching build, pass `kast start --idea-home /absolute/IDEA/home`.
     kast start
     ```
 
-    Kast discovers the supported IDEA installation and starts its JBR with
-    private config, system, plugin, and log paths. It opens the Project, imports
-    the on-disk Gradle model, refreshes its private VFS, waits for smart mode,
-    and only then publishes semantic readiness.
+    Kast discovers a release-line-compatible IDEA installation and starts its
+    JBR with private config, system, plugin, and log paths. It opens the Project,
+    imports the on-disk Gradle model, refreshes its private VFS, waits for smart
+    mode, and only then publishes semantic readiness.
 
     Sidecar processes launch directly by default. Set
     `KAST_ENABLE_LAUNCHD=1` to opt into launchd-backed process ownership; leave

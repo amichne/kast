@@ -19,6 +19,15 @@ README = ROOT / "README.md"
 DOCS_WORKFLOW = ROOT / ".github/workflows/docs.yml"
 VERSION_CATALOG = ROOT / "gradle/libs.versions.toml"
 INSTALLER = ROOT / "install.sh"
+IDE_RUNTIME_COMPATIBILITY_AUTHORITY = ROOT / (
+    "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/IndexSeedProtocol.kt"
+)
+IDE_RUNTIME_DISCOVERY_PROOF = ROOT / (
+    "cli/src/test/kotlin/io/github/amichne/kast/cli/runtime/InstalledIdeRuntimeDiscoveryTest.kt"
+)
+LIFECYCLE_COMMAND_AUTHORITY = ROOT / (
+    "cli/src/main/kotlin/io/github/amichne/kast/cli/command/lifecycle/LifecycleCommands.kt"
+)
 CLI_REFERENCE_GENERATOR = ROOT / "docs/generate_cli_reference.py"
 GENERATED_OPERATION_REGISTRY = ROOT / (
     "protocol/wire/build/generated/operation-registry/operation-registry.json"
@@ -75,7 +84,9 @@ PAGES = {
     "start.mdx": [
         "Host contract",
         "Java 25 or newer",
-        "IntelliJ IDEA build 262.9437.185",
+        "Reference pair:",
+        "Compatible patch builds are accepted",
+        "JetBrains platform release line 262",
         "https://raw.githubusercontent.com/amichne/kast/main/install.sh",
         "rejects unsafe archive paths",
         "does not edit your shell profile",
@@ -135,6 +146,7 @@ PAGES = {
         "| Outcome | What it proves |",
     ],
     "explanation/how-kast-works.mdx": [
+        "release-line-compatible local IDEA installation",
         "exact eleven-operation public capability set",
         "Kotlin control executable",
         "SymbolInspectRequestDocument",
@@ -161,6 +173,7 @@ PAGES = {
     ],
     "technical-specification/runtime-boundary.mdx": [
         "Exact-root admission",
+        "observed patch build identities",
         "Private process and private state",
         "Workspace bootstrap and publication",
         "Request-local compiler state",
@@ -206,6 +219,7 @@ PAGES = {
         "documentation check fails",
         "Sidecar endpoint operations",
         "Kast owns the isolated sidecar lifecycle",
+        "release-line-compatible local IDEA build",
         "relation.read",
         "diagnostic.check",
         "Process-local commands",
@@ -250,6 +264,8 @@ TECHNICAL_SPECIFICATION_AUTHORITIES = {
         "runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/bootstrap/InstalledRuntimeAssembly.kt",
     ],
     "technical-specification/runtime-boundary.mdx": [
+        "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/IndexSeedProtocol.kt",
+        "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledIdeRuntimeDiscovery.kt",
         "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledSidecarRuntimeDemand.kt",
         "indexer/src/main/kotlin/io/github/amichne/kast/indexer/KastIndexerApplicationStarter.kt",
         "workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledIntellijWorkspace.kt",
@@ -727,8 +743,14 @@ def catalog_version(catalog: str, key: str) -> str:
 def check_documented_host_contract() -> None:
     require(VERSION_CATALOG.is_file(), "Gradle version catalog is missing")
     require(INSTALLER.is_file(), "installer authority is missing")
+    require(IDE_RUNTIME_COMPATIBILITY_AUTHORITY.is_file(), "IDE compatibility authority is missing")
+    require(IDE_RUNTIME_DISCOVERY_PROOF.is_file(), "IDE compatibility proof is missing")
+    require(LIFECYCLE_COMMAND_AUTHORITY.is_file(), "lifecycle command authority is missing")
     catalog = VERSION_CATALOG.read_text()
     installer = INSTALLER.read_text()
+    compatibility = IDE_RUNTIME_COMPATIBILITY_AUTHORITY.read_text()
+    discovery_proof = IDE_RUNTIME_DISCOVERY_PROOF.read_text()
+    lifecycle_commands = LIFECYCLE_COMMAND_AUTHORITY.read_text()
     idea_builds = {
         catalog_version(catalog, "idea-indexer"),
         catalog_version(catalog, "idea-platform-build"),
@@ -737,6 +759,25 @@ def check_documented_host_contract() -> None:
     require(len(idea_builds) == 1, f"IDE build authorities disagree: {sorted(idea_builds)}")
     idea_build = next(iter(idea_builds))
     kotlin_build = catalog_version(catalog, "ide-kotlin-plugin-build")
+    idea_release_line = idea_build.partition(".")[0]
+    kotlin_release_line = kotlin_build.partition(".")[0]
+    require(
+        idea_release_line == kotlin_release_line,
+        "documented IDEA and Kotlin reference builds use different platform release lines",
+    )
+    require(
+        "idea.releaseLine == observed.idea.releaseLine" in compatibility
+        and "kotlinPlugin.releaseLine == observed.kotlinPlugin.releaseLine" in compatibility,
+        "IDE compatibility no longer admits by independent platform release line",
+    )
+    require(
+        "compatible patch builds retain their exact installed runtime identity" in discovery_proof,
+        "IDE compatible-patch proof is missing",
+    )
+    require(
+        "Release-line-compatible local IntelliJ IDEA home." in lifecycle_commands,
+        "--idea-home help overstates patch-build specificity",
+    )
     java_match = re.search(r"\(\( java_major >= ([0-9]+) \)\)", installer)
     require(java_match is not None, "installer Java requirement is unreadable")
     assert java_match is not None
@@ -747,8 +788,14 @@ def check_documented_host_contract() -> None:
     expected = (
         "macOS on Apple silicon",
         f"Java {java_major} or newer",
-        f"IntelliJ IDEA build {idea_build}",
-        f"Kotlin plugin build {kotlin_build}",
+        "on-disk Kotlin Gradle repository",
+    )
+    reference_claim = (
+        f"Reference pair: IDEA build {idea_build} and Kotlin plugin build {kotlin_build}."
+    )
+    compatibility_claim = (
+        "Compatible patch builds are accepted when IDEA and Kotlin plugin both remain on "
+        f"JetBrains platform release line {idea_release_line}."
     )
     for relative, text in {
         "README.md": README.read_text(),
@@ -757,6 +804,11 @@ def check_documented_host_contract() -> None:
         normalized = " ".join(text.split())
         for claim in expected:
             require(claim in normalized, f"{relative} does not match host authority: {claim}")
+        require(reference_claim in normalized, f"{relative} does not label the release reference pair")
+        require(
+            compatibility_claim in normalized,
+            f"{relative} does not document release-line-compatible patch builds",
+        )
 
 
 def check_generated_cli_reference() -> None:

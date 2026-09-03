@@ -6,6 +6,12 @@ resource: "file://docs/public/explanation/how-kast-works.mdx"
 tags: ["architecture", "sidecar", "IntelliJ", "wire protocol"]
 timestamp: "2026-09-03T00:00:00-04:00"
 code_sources:
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/IndexSeedProtocol.kt"
+    lines: "37-105"
+    symbols: ["SupportedIdeRuntimePair"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledIdeRuntimeDiscovery.kt"
+    lines: "58-208"
+    symbols: ["InstalledIdeRuntimeDiscovery"]
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledSidecarRuntimeDemand.kt"
     lines: "200-314"
     symbols: ["InstalledSidecarRootRuntimeDemander"]
@@ -23,9 +29,10 @@ keywords: ["architecture", "K2", "IntelliJ", "wire protocol"]
 ---
 
 Kast places a narrow command boundary in front of an isolated headless Project.
-The sidecar uses the exactly supported local IDEA installation, JBR, Kotlin
-plugin, Gradle integration, PSI, and indexes, while all mutable IDE state stays
-under Kast-owned paths.
+The sidecar uses one release-line-compatible local IDEA installation and its
+JBR, Kotlin plugin, Gradle integration, PSI, and indexes. Kast preserves the
+exact observed host identities, while all mutable IDE state stays under
+Kast-owned paths.
 
 ## One request, end to end
 
@@ -59,11 +66,14 @@ documents. PSI and K2 objects never cross the wire.
 
 ## What `kast start` means
 
-`kast start` discovers or admits one exactly supported IDEA home, verifies its
-IDEA build, Kotlin plugin, JBR, bootstrap classes, and Gradle integration, and
-then launches a headless process with private config, system, plugin, and log
-directories. The Project is imported from disk, its VFS is refreshed, and the
-endpoint is published only after smart mode and semantic canaries succeed.
+`kast start` discovers or admits one compatible IDEA home. It verifies that the
+observed IDEA and Kotlin plugin builds remain on the platform release lines
+declared by the installed Kast release, then preserves their exact patch
+identities alongside the JBR and private payload. It also verifies bootstrap
+classes and Gradle integration before launching a headless process with private
+config, system, plugin, and log directories. The Project is imported from disk,
+its VFS is refreshed, and the endpoint is published only after smart mode and
+semantic canaries succeed.
 
 Missing, ambiguous, wrong-build, wrong-root, stale-cache, or unreachable
 evidence fails closed. A missing cache causes a fresh private import; it does not
@@ -85,7 +95,7 @@ outside-workspace, conflicting, or otherwise unproven roots still fail closed.
 | Boundary | Required proof |
 | --- | --- |
 | **Exact root** | The canonical checkout determines the descriptor and socket identity. A focused window cannot substitute another Project. |
-| **Exact product** | CLI version, private-extension version, IDE build, Kotlin plugin build, registry digest, wire digest, protocol identity, and capabilities agree. |
+| **Compatible host, exact observation** | IDEA and Kotlin plugin release lines must be compatible; their observed patch builds, JBR identity, payload digest, protocol identity, and capabilities remain exact. |
 | **Private state** | The sidecar's config, system, plugins, logs, socket, and persistent cache are physically distinct from the user's IDEA state. |
 
 ## Optional index seeding is a validated copy
