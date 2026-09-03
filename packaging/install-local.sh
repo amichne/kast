@@ -14,10 +14,14 @@ require_command() {
 install_prefix="${KAST_LOCAL_PREFIX:-}"
 control_product="${KAST_LOCAL_CONTROL_PRODUCT:-}"
 runtime_archive="${KAST_LOCAL_RUNTIME_ARCHIVE:-}"
+java_executable="${KAST_LOCAL_JAVA_EXECUTABLE:-}"
+java_home="${KAST_LOCAL_JAVA_HOME:-}"
 
 [[ -n "${install_prefix}" ]] || fail "KAST_LOCAL_PREFIX is required"
 [[ -n "${control_product}" ]] || fail "KAST_LOCAL_CONTROL_PRODUCT is required"
 [[ -n "${runtime_archive}" ]] || fail "KAST_LOCAL_RUNTIME_ARCHIVE is required"
+[[ -n "${java_executable}" ]] || fail "KAST_LOCAL_JAVA_EXECUTABLE is required"
+[[ -n "${java_home}" ]] || fail "KAST_LOCAL_JAVA_HOME is required"
 
 case "${install_prefix}" in
   /*) ;;
@@ -32,14 +36,30 @@ esac
   fail "control product has no semantic runtime manifest"
 [[ -f "${runtime_archive}" && ! -L "${runtime_archive}" ]] ||
   fail "semantic runtime archive is not a regular file: ${runtime_archive}"
+case "${java_executable}" in
+  /*) ;;
+  *) fail "Java executable must be absolute: ${java_executable}" ;;
+esac
+case "${java_home}" in
+  /*) ;;
+  *) fail "Java home must be absolute: ${java_home}" ;;
+esac
+[[ -x "${java_executable}" ]] || fail "Java executable is unavailable: ${java_executable}"
+[[ -d "${java_home}" ]] || fail "Java home is unavailable: ${java_home}"
 
 runtime_name="${runtime_archive##*/}"
 [[ "${runtime_name}" =~ ^kast-semantic-runtime-[A-Za-z0-9._-]+-macos-aarch64\.zip$ ]] ||
   fail "semantic runtime archive has an unexpected name: ${runtime_name}"
 
-for command_name in cp chmod mkdir mktemp mv rm; do
+for command_name in cp chmod mkdir mktemp mv rm sed; do
   require_command "${command_name}"
 done
+
+shell_single_quote() {
+  printf "'"
+  printf '%s' "$1" | sed "s/'/'\"'\"'/g"
+  printf "'"
+}
 
 kast_root="${install_prefix}/share/kast"
 local_product="${kast_root}/local"
@@ -82,6 +102,8 @@ cp "${runtime_archive}" "${staged_product}/share/kast/runtime/${runtime_name}"
   printf '%s\n' 'if [ ! -f "${runtime_archive}" ]; then'
   printf '%s\n' '  echo "kast: local sidecar payload is missing: ${runtime_archive}" >&2'
   printf '%s\n' '  exit 1' 'fi' ''
+  printf 'export JAVA=%s\n' "$(shell_single_quote "${java_executable}")"
+  printf 'export JAVA_HOME=%s\n' "$(shell_single_quote "${java_home}")"
   printf '%s\n' 'export KAST_RUNTIME_ARCHIVE="${runtime_archive}"'
   printf '%s\n' 'exec "${control_executable}" "$@"'
 } >"${staged_launcher}"

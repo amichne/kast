@@ -37,7 +37,10 @@ The sidecar runs the supported local IntelliJ distribution headlessly, but its
 mutable state is Kast-owned. Config, system, plugins, logs, indexes, endpoint
 metadata, socket state, persistence, and telemetry live outside the user's IDE
 directories. Kast supplies its private plugin to that process and does not
-install a plugin into the user's IDE.
+install a plugin into the user's IDE. The private plugin payload excludes
+Kotlin standard-library, coroutine, and Kotlin-plugin classes owned by the
+selected IntelliJ platform; distribution verification proves both their
+absence from Kast's payload and their presence in IntelliJ before packaging.
 
 Ordinary startup does not read the user's IDEA cache. Optional index seeding is
 a distinct, consent-bearing boundary: it requires a stopped, compatible IDEA
@@ -56,8 +59,10 @@ readiness proof.
 Inside the sidecar, bootstrap proceeds in a strict order:
 
 1. Admit launch arguments and private state paths.
-2. Open the exact on-disk IntelliJ Project.
-3. Link and import the Gradle model using the admitted project and Gradle JVMs.
+2. Assign Kast's admitted private project SDK and open the exact on-disk
+   IntelliJ Project with project-open configurators deferred.
+3. After project state loads, apply the admitted Gradle JVM and explicitly
+   refresh the linked Gradle project or link an unlinked project.
 4. Refresh the VFS and wait for strengthened indexing quiescence.
 5. Capture a detached module and source-root model.
 6. Reconcile durable workspace publication and issue the current read lease.

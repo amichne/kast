@@ -105,6 +105,31 @@ class IndexSeedProtocolTest {
     }
 
     @Test
+    fun `manifest admits canonical IntelliJ names and rejects path aliases`() {
+        val intellijEntry =
+            "classpath/native-libs/Xerial SQLiteJDBC/3.51.1/sqlite-jdbc.dylib"
+
+        assertTrue(
+            IndexContentManifest.from(mapOf(intellijEntry to digest('c'))) is
+                IndexContentManifestAdmission.Admitted,
+        )
+        listOf(
+            "/index/foo",
+            "../index/foo",
+            "index/../foo",
+            "index/./foo",
+            "index//foo",
+            "index/foo\u0000bar",
+        ).forEach { unsafe ->
+            assertTrue(
+                IndexContentManifest.from(mapOf(unsafe to digest('c'))) is
+                    IndexContentManifestAdmission.Rejected,
+                "unsafe manifest entry was admitted: $unsafe",
+            )
+        }
+    }
+
+    @Test
     fun `seed planning fails closed before any copy can begin`(@TempDir temporary: Path) {
         val root = Files.createDirectory(temporary.resolve("project")).toRealPath()
         val sourcePath = Files.createDirectory(temporary.resolve("system")).toRealPath()

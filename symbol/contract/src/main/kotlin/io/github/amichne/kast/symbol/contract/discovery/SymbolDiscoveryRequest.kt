@@ -86,31 +86,35 @@ data class SymbolDiscoveryBudget(
 
 /** Closed domain meaning for the existing `symbol.discover` operation. */
 sealed interface SymbolDiscoveryTarget {
-    val resultKind: SymbolDiscoveryKind
+    /** Finite result-kind admission owned by the semantic target. */
+    fun admits(candidate: SymbolDiscoveryKind): Boolean
 
     data class Name(
         val kind: SymbolNameDiscoveryKind,
         val pattern: SymbolDiscoveryPattern,
         val match: SymbolDiscoveryMatch,
     ) : SymbolDiscoveryTarget {
-        override val resultKind: SymbolDiscoveryKind = when (kind) {
+        val resultKind: SymbolDiscoveryKind = when (kind) {
             SymbolNameDiscoveryKind.FILE -> SymbolDiscoveryKind.FILE
             SymbolNameDiscoveryKind.CLASS -> SymbolDiscoveryKind.CLASS
             SymbolNameDiscoveryKind.SYMBOL -> SymbolDiscoveryKind.SYMBOL
         }
+
+        override fun admits(candidate: SymbolDiscoveryKind): Boolean = candidate == resultKind
     }
 
     data class Location(
         val file: CanonicalWorkspaceFilePath,
         val offset: SymbolDiscoverySourceOffset,
     ) : SymbolDiscoveryTarget {
-        override val resultKind: SymbolDiscoveryKind = SymbolDiscoveryKind.SYMBOL
+        override fun admits(candidate: SymbolDiscoveryKind): Boolean = candidate.isDeclaration()
     }
 
     data class Text(
         val pattern: SymbolDiscoveryPattern,
     ) : SymbolDiscoveryTarget {
-        override val resultKind: SymbolDiscoveryKind = SymbolDiscoveryKind.TEXT
+        override fun admits(candidate: SymbolDiscoveryKind): Boolean =
+            candidate == SymbolDiscoveryKind.TEXT
     }
 }
 
@@ -118,7 +122,13 @@ data class SymbolDiscoveryRequest(
     val scope: SymbolSearchScopeRequest,
     val target: SymbolDiscoveryTarget,
     val budget: SymbolDiscoveryBudget,
-) {
-    val kind: SymbolDiscoveryKind
-        get() = target.resultKind
+)
+
+private fun SymbolDiscoveryKind.isDeclaration(): Boolean = when (this) {
+    SymbolDiscoveryKind.CLASS,
+    SymbolDiscoveryKind.SYMBOL,
+        -> true
+    SymbolDiscoveryKind.FILE,
+    SymbolDiscoveryKind.TEXT,
+        -> false
 }

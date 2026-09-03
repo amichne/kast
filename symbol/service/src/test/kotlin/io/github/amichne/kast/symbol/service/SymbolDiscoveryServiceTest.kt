@@ -21,7 +21,6 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome

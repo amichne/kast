@@ -25,6 +25,7 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
 
 class PersistentBrokerServiceTest {
     @Test
@@ -50,6 +51,21 @@ class PersistentBrokerServiceTest {
                 BrokerServiceStartupBudgets.retirementTimeoutNanos <
                 BrokerServiceStartupBudgets.lockTimeoutNanos,
         )
+    }
+
+    @Test
+    fun `raw Unix listener is not broker readiness`() {
+        val temporary = Files.createTempDirectory(Path.of("/private/tmp"), "kb-probe.")
+        val socket = temporary.resolve("raw.sock")
+        ServerSocketChannel.open(StandardProtocolFamily.UNIX).use { server ->
+            server.bind(UnixDomainSocketAddress.of(socket))
+            val acceptor = thread(start = true) {
+                server.accept().use { }
+            }
+            assertEquals(BrokerSocketReachability.REJECTED, JdkBrokerSocketProbe.probe(socket))
+            acceptor.join(5_000)
+        }
+        temporary.toFile().deleteRecursively()
     }
 
     @Test
@@ -200,7 +216,35 @@ class PersistentBrokerServiceTest {
         ) as BrokerServiceLaunchCommandResolution.Resolved
 
         assertEquals(tools.resolve("codex").toRealPath(), resolution.command.codex)
-        assertEquals(links.toRealPath(), resolution.command.codexInvocationDirectory.path)
+        assertEquals(
+            links.toRealPath().toString(),
+            resolution.command.executableSearchPath.value.substringBefore(':'),
+        )
+    }
+
+    @Test
+    fun `Codex launcher directory participates in persistent service identity`(
+        @TempDir temporary: Path,
+    ) {
+        val fixture = installedFixture(temporary)
+        val tools = Path.of(fixture.environment.getValue("PATH"))
+        val firstLinks = Files.createDirectory(temporary.resolve("first-links"))
+        val secondLinks = Files.createDirectory(temporary.resolve("second-links"))
+        Files.createSymbolicLink(firstLinks.resolve("codex"), tools.resolve("codex"))
+        Files.createSymbolicLink(secondLinks.resolve("codex"), tools.resolve("codex"))
+
+        val first = BrokerServiceLaunchCommand.resolve(
+            fixture.kast,
+            fixture.userHome,
+            mapOf("PATH" to firstLinks.toString()),
+        ) as BrokerServiceLaunchCommandResolution.Resolved
+        val second = BrokerServiceLaunchCommand.resolve(
+            fixture.kast,
+            fixture.userHome,
+            mapOf("PATH" to secondLinks.toString()),
+        ) as BrokerServiceLaunchCommandResolution.Resolved
+
+        assertNotEquals(first.command.identity, second.command.identity)
     }
 
     @Test
@@ -281,31 +325,24 @@ class PersistentBrokerServiceTest {
         assertTrue(submission.orEmpty().contains("JAVA_HOME=${command.javaHome}"))
         assertTrue(submission.orEmpty().contains("KAST_OPTS=${command.jvmUserHomeOption.value}"))
         assertTrue(
-            submission.orEmpty().contains(
-                "PATH=${command.codexInvocationDirectory.path}:" +
-                    "${command.kast.parent}:/usr/bin:/bin:/usr/sbin:/sbin",
-            ),
+            submission.orEmpty().contains("PATH=${command.executableSearchPath.value}"),
         )
         assertTrue(submission.orEmpty().contains(command.serviceLabel.value))
     }
 
     @Test
-    fun `clean homes submit exactly one service through the real JDK socket probe`() {
-        val temporary = Files.createTempDirectory(Path.of("/tmp"), "kb.")
+    fun `clean homes submit exactly one service through admitted socket proof`() {
+        val temporary = Files.createTempDirectory(Path.of("/private/tmp"), "kb.")
         val fixture = installedFixture(temporary)
         val command = resolvedCommand(fixture)
         var present = false
         var submissions = 0
-        var listener: ServerSocketChannel? = null
         val launchctl = LaunchctlInvoker { arguments, _ ->
             when (arguments[1]) {
                 "list" -> if (present) LaunchctlInvocation.Completed else LaunchctlInvocation.Absent
                 "submit" -> {
                     submissions += 1
                     Files.createDirectories(command.publicSocket.parent)
-                    listener = ServerSocketChannel.open(StandardProtocolFamily.UNIX).also { server ->
-                        server.bind(UnixDomainSocketAddress.of(command.publicSocket))
-                    }
                     writeReadiness(command)
                     present = true
                     LaunchctlInvocation.Completed
@@ -316,6 +353,13 @@ class PersistentBrokerServiceTest {
         try {
             val host = MacOsPersistentBrokerServiceHost(
                 launchctl = launchctl,
+                socketProbe = BrokerSocketProbe {
+                    if (present) {
+                        BrokerSocketReachability.REACHABLE
+                    } else {
+                        BrokerSocketReachability.UNREACHABLE
+                    }
+                },
                 sleeper = BrokerServiceSleeper { BrokerServiceSleep.CONTINUE },
             )
 
@@ -323,7 +367,6 @@ class PersistentBrokerServiceTest {
             assertEquals(PersistentBrokerServiceAdmission.Ready, host.ensure(command))
             assertEquals(1, submissions)
         } finally {
-            listener?.close()
             temporary.toFile().deleteRecursively()
         }
     }

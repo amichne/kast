@@ -79,24 +79,24 @@ internal value class BrokerServiceIdentity private constructor(val value: String
             kastDigest: String,
             codexDigest: String,
             codex: Path,
-            codexInvocationDirectory: BrokerExecutableInvocationDirectory,
             kast: Path,
             userHome: Path,
             javaHome: Path,
             javaExecutable: Path,
             codexHome: Path,
+            executableSearchPath: BrokerExecutableSearchPath,
         ): BrokerServiceIdentity {
             val source = listOf(
                 VENDORED_BROKER_VERSION,
                 kastDigest,
                 codexDigest,
                 codex,
-                codexInvocationDirectory.path,
                 kast,
                 userHome,
                 javaHome,
                 javaExecutable,
                 codexHome,
+                executableSearchPath.value,
             ).joinToString("\n")
             val digest = HexFormat.of().formatHex(
                 MessageDigest.getInstance("SHA-256")
@@ -112,29 +112,44 @@ internal value class BrokerServiceIdentity private constructor(val value: String
     }
 }
 
+/** Exact, bounded executable search path required by the admitted launch commands. */
 @JvmInline
-internal value class BrokerExecutableInvocationDirectory private constructor(val path: Path) {
+internal value class BrokerExecutableSearchPath private constructor(val value: String) {
     companion object {
-        internal fun admit(candidate: Path): BrokerExecutableInvocationDirectory? {
-            if (!candidate.isAbsolute || candidate.normalize() != candidate) return null
-            val canonical = try {
-                candidate.toRealPath()
-            } catch (_: IOException) {
-                return null
-            } catch (_: SecurityException) {
+        internal fun derive(
+            codexLauncherDirectory: Path,
+            codex: Path,
+            kast: Path,
+        ): BrokerExecutableSearchPath? {
+            val directories = listOf(
+                codexLauncherDirectory,
+                codex.parent,
+                kast.parent,
+                Path.of("/usr/bin"),
+                Path.of("/bin"),
+                Path.of("/usr/sbin"),
+                Path.of("/sbin"),
+            ).distinct()
+            if (
+                directories.any { directory ->
+                    val raw = directory.toString()
+                    !directory.isAbsolute || directory.normalize() != directory ||
+                        raw.isBlank() || raw.any(Char::isISOControl) ||
+                        File.pathSeparatorChar in raw
+                }
+            ) {
                 return null
             }
-            return canonical
-                .takeIf { directory -> Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS) }
-                ?.let(::BrokerExecutableInvocationDirectory)
+            val value = directories.joinToString(File.pathSeparator) { directory ->
+                directory.toString()
+            }
+            return value.takeIf { it.length <= MAXIMUM_EXECUTABLE_PATH_CHARACTERS }
+                ?.let(::BrokerExecutableSearchPath)
         }
+
+        private const val MAXIMUM_EXECUTABLE_PATH_CHARACTERS = 32 * 1_024
     }
 }
-
-private data class ResolvedBrokerExecutable(
-    val physicalPath: Path,
-    val invocationDirectory: BrokerExecutableInvocationDirectory,
-)
 
 @JvmInline
 internal value class BrokerJvmUserHomeOption private constructor(val value: String) {
@@ -176,8 +191,8 @@ internal sealed interface BrokerServiceLaunchCommandResolution {
 
 internal class BrokerServiceLaunchCommand private constructor(
     val codex: Path,
-    val codexInvocationDirectory: BrokerExecutableInvocationDirectory,
     val kast: Path,
+    val executableSearchPath: BrokerExecutableSearchPath,
     val userHome: Path,
     val javaHome: Path,
     val javaExecutable: Path,
@@ -211,11 +226,17 @@ internal class BrokerServiceLaunchCommand private constructor(
                 BrokerSymbolicLinkPolicy.CANONICAL_TARGET,
             ) ?: return rejected(PersistentBrokerServiceFailure.JAVA_RUNTIME_UNAVAILABLE)
             val searchPath = environment["PATH"].orEmpty()
-            val codex = if (environment.containsKey("CODEX_EXECUTABLE")) {
-                absoluteExecutable(environment.getValue("CODEX_EXECUTABLE"))
+            val codexSelection = if (environment.containsKey("CODEX_EXECUTABLE")) {
+                absoluteExecutableSelection(environment.getValue("CODEX_EXECUTABLE"))
             } else {
                 resolveExecutable("codex", searchPath)
             } ?: return rejected(PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE)
+            val codex = codexSelection.executable
+            val executableSearchPath = BrokerExecutableSearchPath.derive(
+                codexSelection.launcherDirectory,
+                codex,
+                kast,
+            ) ?: return rejected(PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE)
             val codexHome = if (environment.containsKey("CODEX_HOME")) {
                 absoluteNormalizedPath(environment.getValue("CODEX_HOME"))
             } else {
@@ -224,24 +245,24 @@ internal class BrokerServiceLaunchCommand private constructor(
             val stateDirectory = codexHome.resolve("broker")
             val kastDigest = sha256(kast)
                 ?: return rejected(PersistentBrokerServiceFailure.KAST_EXECUTABLE_UNAVAILABLE)
-            val codexDigest = sha256(codex.physicalPath)
+            val codexDigest = sha256(codex)
                 ?: return rejected(PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE)
             val identity = BrokerServiceIdentity.derive(
                 kastDigest,
                 codexDigest,
-                codex.physicalPath,
-                codex.invocationDirectory,
+                codex,
                 kast,
                 userHome,
                 javaHome,
                 javaExecutable,
                 codexHome,
+                executableSearchPath,
             )
             return BrokerServiceLaunchCommandResolution.Resolved(
                 BrokerServiceLaunchCommand(
-                    codex.physicalPath,
-                    codex.invocationDirectory,
+                    codex,
                     kast,
+                    executableSearchPath,
                     userHome,
                     javaHome,
                     javaExecutable,
@@ -296,28 +317,33 @@ internal class BrokerServiceLaunchCommand private constructor(
             null
         }
 
-        private fun resolveExecutable(name: String, searchPath: String): ResolvedBrokerExecutable? {
+        private fun resolveExecutable(name: String, searchPath: String): BrokerCommandExecutable? {
             val rawDirectories = searchPath.split(File.pathSeparatorChar)
             if (rawDirectories.isEmpty() || rawDirectories.any(String::isBlank)) return null
             return rawDirectories.asSequence()
                 .mapNotNull(::absoluteNormalizedPath)
-                .map { directory -> directory.resolve(name) }
-                .mapNotNull(::resolvedExecutable)
+                .mapNotNull { directory ->
+                    val launcherDirectory = canonicalDirectoryTarget(directory)
+                        ?: return@mapNotNull null
+                    val executable = regularExecutable(
+                        launcherDirectory.resolve(name),
+                        BrokerSymbolicLinkPolicy.CANONICAL_TARGET,
+                    ) ?: return@mapNotNull null
+                    BrokerCommandExecutable(executable, launcherDirectory)
+                }
                 .firstOrNull()
         }
 
-        private fun absoluteExecutable(raw: String): ResolvedBrokerExecutable? =
-            absoluteNormalizedPath(raw)?.let(::resolvedExecutable)
-
-        private fun resolvedExecutable(candidate: Path): ResolvedBrokerExecutable? {
-            val physicalPath = regularExecutable(
-                candidate,
-                BrokerSymbolicLinkPolicy.CANONICAL_TARGET,
-            ) ?: return null
-            val parent = candidate.parent ?: return null
-            val invocationDirectory = BrokerExecutableInvocationDirectory.admit(parent) ?: return null
-            return ResolvedBrokerExecutable(physicalPath, invocationDirectory)
-        }
+        private fun absoluteExecutableSelection(raw: String): BrokerCommandExecutable? =
+            absoluteNormalizedPath(raw)?.let { candidate ->
+                val executable = regularExecutable(
+                    candidate,
+                    BrokerSymbolicLinkPolicy.CANONICAL_TARGET,
+                ) ?: return@let null
+                val launcherDirectory = canonicalDirectoryTarget(candidate.parent)
+                    ?: return@let null
+                BrokerCommandExecutable(executable, launcherDirectory)
+            }
 
         private fun absoluteNormalizedPath(raw: String): Path? = try {
             Path.of(raw).takeIf { path -> path.isAbsolute && path.normalize() == path }
@@ -348,6 +374,11 @@ internal class BrokerServiceLaunchCommand private constructor(
             BrokerServiceLaunchCommandResolution.Rejected(failure)
     }
 }
+
+private data class BrokerCommandExecutable(
+    val executable: Path,
+    val launcherDirectory: Path,
+)
 
 private enum class BrokerSymbolicLinkPolicy { EXACT_PATH, CANONICAL_TARGET }
 

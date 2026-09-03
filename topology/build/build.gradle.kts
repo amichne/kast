@@ -10,6 +10,7 @@ base {
 }
 
 dependencies {
+    implementation(libs.coroutines.core)
     implementation(project(":topology:contract"))
     implementation(project(":workspace:contract"))
 }

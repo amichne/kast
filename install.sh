@@ -340,6 +340,32 @@ java_major_version() {
   printf '%s\n' "$major"
 }
 
+java_runtime_home() {
+  local java_executable="$1"
+  local reported_home physical_home executable_directory
+  reported_home="$("$java_executable" -XshowSettings:properties -version 2>&1 |
+    sed -nE 's/^[[:space:]]*java\.home = (.*)$/\1/p' |
+    awk 'NR == 1 { print; exit }')"
+  if [[ -n "$reported_home" ]]; then
+    require_absolute_path "Java runtime home" "$reported_home"
+    physical_home="$(CDPATH='' cd -- "$reported_home" && pwd -P)" || return 1
+    [[ -x "$physical_home/bin/java" ]] || return 1
+    printf '%s\n' "$physical_home"
+    return 0
+  fi
+  executable_directory="$(CDPATH='' cd -- "$(dirname -- "$java_executable")" && pwd -P)" ||
+    return 1
+  physical_home="$(CDPATH='' cd -- "$executable_directory/.." && pwd -P)" || return 1
+  [[ -x "$physical_home/bin/java" ]] || return 1
+  printf '%s\n' "$physical_home"
+}
+
+shell_single_quote() {
+  printf "'"
+  printf '%s' "$1" | sed "s/'/'\"'\"'/g"
+  printf "'"
+}
+
 resolve_latest_version() {
   local repository="$1"
   local effective_url tag
@@ -487,6 +513,8 @@ install_runtime_archive() {
 
 install_complete_launcher() {
   local root="$1"
+  local java_executable="$2"
+  local java_home="$3"
   local launcher="$root/bin/kast-complete"
   staged_launcher="$(mktemp "$root/bin/.kast-complete.XXXXXX")"
   {
@@ -508,6 +536,8 @@ install_complete_launcher() {
     printf '%s\n' '  echo "kast: installed control or sidecar payload is missing" >&2'
     printf '%s\n' '  exit 1'
     printf '%s\n' 'fi'
+    printf 'export JAVA=%s\n' "$(shell_single_quote "$java_executable")"
+    printf 'export JAVA_HOME=%s\n' "$(shell_single_quote "$java_home")"
     printf '%s\n' 'export KAST_RUNTIME_ARCHIVE="$runtime_archive"'
     printf '%s\n' 'exec "$control_executable" "$@"'
   } > "$staged_launcher"
@@ -683,6 +713,9 @@ else
   require_command java
   java_executable="$(command -v java)"
 fi
+java_home="$(java_runtime_home "$java_executable")" ||
+  fail "unable to identify the Java runtime home used by the Kast launcher"
+java_executable="$java_home/bin/java"
 java_major="$(java_major_version "$java_executable")" ||
   fail "unable to identify the Java version used by the Kast launcher"
 (( java_major >= 25 )) || fail "Java 25 or newer is required; found Java $java_major"
@@ -806,13 +839,13 @@ if [[ -e "$target_root" || -L "$target_root" ]]; then
   [[ "$(< "$target_root/.kast-runtime-sha256")" == "$runtime_digest" ]] ||
     fail "existing version sidecar does not match the immutable release: $target_root"
   install_runtime_archive "$target_root" "$runtime_archive" "$runtime_checksum" "$runtime_digest"
-  install_complete_launcher "$target_root"
+  install_complete_launcher "$target_root" "$java_executable" "$java_home"
 else
   staged_root="$(mktemp -d "$versions_root/.install-${version}.XXXXXX")"
   tar -xzf "$archive" -C "$staged_root"
   verify_control_root "$staged_root" "$version"
   install_runtime_archive "$staged_root" "$runtime_archive" "$runtime_checksum" "$runtime_digest"
-  install_complete_launcher "$staged_root"
+  install_complete_launcher "$staged_root" "$java_executable" "$java_home"
   printf '%s\n' "$control_digest" > "$staged_root/.kast-control-sha256"
   printf '%s\n' "$runtime_digest" > "$staged_root/.kast-runtime-sha256"
   mv "$staged_root" "$target_root"

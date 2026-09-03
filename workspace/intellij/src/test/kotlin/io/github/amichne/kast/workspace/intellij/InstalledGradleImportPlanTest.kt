@@ -1,13 +1,24 @@
 package io.github.amichne.kast.workspace.intellij
 
+import com.intellij.openapi.externalSystem.service.execution.ExternalSystemJdkException
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
 
 class InstalledGradleImportPlanTest {
     @Test
-    fun `linked exact workspace awaits project-open sync without another refresh`() {
+    fun `project open defers configurators until admitted Gradle settings are available`() {
+        val task = installedProjectOpenTask(InstalledProjectOpenPreparation(admittedGradleJvm()))
+
+        assertFalse(task.runConfigurators)
+    }
+
+    @Test
+    fun `linked exact workspace refreshes explicitly after project open`() {
         val linkedSettings = GradleProjectSettings("/workspace").apply {
             gradleJvm = "prior-jvm"
         }
@@ -19,12 +30,10 @@ class InstalledGradleImportPlanTest {
         )
 
         assertInstanceOf(
-            InstalledGradleImportOperation.AwaitLinked::class.java,
+            InstalledGradleImportOperation.RefreshLinked::class.java,
             application.operation,
         )
         assertEquals(gradleJvm.projectSettingsSelector(), linkedSettings.gradleJvm)
-        assertEquals(InstalledGradleImportRollback.RolledBack, application.rollback())
-        assertEquals("prior-jvm", linkedSettings.gradleJvm)
     }
 
     @Test
@@ -34,7 +43,19 @@ class InstalledGradleImportPlanTest {
             InstalledGradleLinkPresence.Unlinked.applyImportJvm(admittedGradleJvm()),
         )
         assertInstanceOf(InstalledGradleImportOperation.LinkUnlinked::class.java, application.operation)
-        assertEquals(InstalledGradleImportRollback.RolledBack, application.rollback())
+    }
+
+    @Test
+    fun `invalid Gradle JVM callback retains its exact terminal cause`() {
+        val callback = CompletableFuture<Void>()
+        callback.completeExceptionally(
+            ExternalSystemJdkException("invalid fixture JDK", null),
+        )
+
+        assertEquals(
+            InstalledGradleImportOutcome.InvalidJvmConfiguration,
+            callback.closedImportOutcome().get(1, TimeUnit.SECONDS),
+        )
     }
 
     private fun admittedGradleJvm(): InstalledGradleJvm {

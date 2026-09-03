@@ -1,6 +1,11 @@
 package io.github.amichne.kast.cli.broker.protocol.codex
 
 import io.github.amichne.kast.cli.broker.core.Broker
+import io.github.amichne.kast.cli.broker.core.BrokerInvocationActivity
+import io.github.amichne.kast.cli.broker.core.BrokerInvocationActivitySink
+import io.github.amichne.kast.cli.broker.core.BrokerInvocationActivityPublication
+import io.github.amichne.kast.cli.broker.core.BrokerInvocationCompletion
+import io.github.amichne.kast.cli.broker.core.BrokerInvocationContext
 import io.github.amichne.kast.cli.broker.core.BrokerLimits
 import io.github.amichne.kast.cli.broker.core.BrokerTool
 import io.github.amichne.kast.cli.broker.core.ProviderCall
@@ -8,6 +13,8 @@ import io.github.amichne.kast.cli.broker.core.ProviderNamespace
 import io.github.amichne.kast.cli.broker.core.ProviderRegistration
 import io.github.amichne.kast.cli.broker.core.ProviderStartup
 import io.github.amichne.kast.cli.broker.core.ProviderVersion
+import io.github.amichne.kast.cli.broker.core.JsonLineBrokerInvocationActivitySink
+import io.github.amichne.kast.cli.broker.core.ToolAddress
 import io.github.amichne.kast.cli.broker.core.ToolDescription
 import io.github.amichne.kast.cli.broker.core.ToolLoading
 import io.github.amichne.kast.cli.broker.core.ToolName
@@ -30,11 +37,14 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
 
 class CodexProtocolAdapterTest {
     @Test
@@ -106,6 +116,117 @@ class CodexProtocolAdapterTest {
             result.getValue("contentItems").jsonArray.single().jsonObject
                 .getValue("text").jsonPrimitive.content,
         )
+    }
+
+    @Test
+    fun `owned dynamic call publishes a bounded activity lifecycle`(
+        @TempDir temporary: Path,
+    ) = runBlocking {
+        val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+        val broker = echoBroker()
+        val store = MemoryThreadCatalogStore()
+        store.write(ThreadCatalogBinding.admit("thread-1", broker.catalog.digest, cwd).refinedValue())
+        val activity = mutableListOf<BrokerInvocationActivity>()
+        val adapter = CodexProtocolAdapter(
+            broker,
+            protocolContracts(),
+            store,
+            BrokerInvocationActivitySink { event ->
+                activity += event
+                BrokerInvocationActivityPublication.PUBLISHED
+            },
+        )
+
+        adapter.fromUpstream(
+            """{"id":9,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"echo","tool":"say","arguments":{"value":"hello"}}}""",
+        )
+
+        val started = assertInstanceOf(
+            BrokerInvocationActivity.Started::class.java,
+            activity.first(),
+        )
+        val finished = assertInstanceOf(
+            BrokerInvocationActivity.Finished::class.java,
+            activity.last(),
+        )
+        assertEquals(2, activity.size)
+        assertEquals(started.context.invocationId, finished.context.invocationId)
+        assertEquals(started.address, finished.address)
+        assertEquals(BrokerInvocationCompletion.COMPLETED, finished.completion)
+    }
+
+    @Test
+    fun `activity sink exceptions become finite broker failures`(
+        @TempDir temporary: Path,
+    ) = runBlocking {
+        val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+        val broker = echoBroker()
+        val store = MemoryThreadCatalogStore()
+        store.write(ThreadCatalogBinding.admit("thread-1", broker.catalog.digest, cwd).refinedValue())
+        val adapter = CodexProtocolAdapter(
+            broker,
+            protocolContracts(),
+            store,
+            BrokerInvocationActivitySink { throw IllegalStateException("fixture sink failure") },
+        )
+
+        val routing = adapter.fromUpstream(
+            """{"id":9,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"echo","tool":"say","arguments":{"value":"hello"}}}""",
+        )
+
+        val result = Json.parseToJsonElement(
+            (routing as ProtocolRouting.ReplyUpstream).message,
+        ).jsonObject.getValue("result").jsonObject
+        assertFalse(result.getValue("success").jsonPrimitive.content.toBoolean())
+        assertEquals(
+            "BROKER_ACTIVITY_UNAVAILABLE",
+            result.getValue("contentItems").jsonArray.single().jsonObject
+                .getValue("text").jsonPrimitive.content,
+        )
+    }
+
+    @Test
+    fun `activity JSON lines omit invocation payloads`(@TempDir temporary: Path) {
+        val context = BrokerInvocationContext.admit(
+            "thread-1",
+            "turn-1",
+            "call-1",
+            Files.createDirectory(temporary.resolve("workspace")).toRealPath(),
+        ).refinedValue()
+        val address = ToolAddress(namespace("echo"), toolName("say"))
+        val bytes = ByteArrayOutputStream()
+        val output = PrintStream(bytes, true, Charsets.UTF_8)
+        val sink = JsonLineBrokerInvocationActivitySink(output)
+
+        assertEquals(
+            BrokerInvocationActivityPublication.PUBLISHED,
+            sink.publish(BrokerInvocationActivity.Started(context, address)),
+        )
+        assertEquals(
+            BrokerInvocationActivityPublication.PUBLISHED,
+            sink.publish(
+                BrokerInvocationActivity.Finished(
+                    context,
+                    address,
+                    BrokerInvocationCompletion.COMPLETED,
+                ),
+            ),
+        )
+
+        val documents = bytes.toString(Charsets.UTF_8).lineSequence()
+            .filter(String::isNotBlank)
+            .map { line -> Json.parseToJsonElement(line).jsonObject }
+            .toList()
+        assertEquals(
+            listOf("tool-call-started", "tool-call-finished"),
+            documents.map { document -> document.getValue("event").jsonPrimitive.content },
+        )
+        assertEquals("completed", documents.last().getValue("completion").jsonPrimitive.content)
+        documents.forEach { document ->
+            assertFalse("arguments" in document)
+            assertFalse("result" in document)
+            assertFalse("workingDirectory" in document)
+        }
     }
 
     @Test

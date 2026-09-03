@@ -120,15 +120,22 @@ class IndexSeedFilesystemService(
     private val filesystemProbe: IndexSeedFilesystemProbe,
     private val cloner: IndexSeedCloner,
     private val consentProvider: IndexSeedConsentProvider = RejectingIndexSeedConsentProvider,
+    private val activitySink: IndexSeedActivitySink = IndexSeedActivitySink.Disabled,
 ) {
     fun seed(request: IndexSeedRequest): IndexSeedExecution {
+        var stage = IndexSeedStage.REQUEST_VALIDATION
+        started(stage)
         if (request.runtime.identity != request.cacheIdentity.runtimeIdentity) {
-            return IndexSeedExecution.Rejected(IndexSeedFailure.ValidationFailure)
+            return rejected(stage, IndexSeedFailure.ValidationFailure)
         }
         val sourceSystem = canonicalDirectoryForSeed(request.sourceSystem)
-            ?: return IndexSeedExecution.Rejected(IndexSeedFailure.ValidationFailure)
+            ?: return rejected(stage, IndexSeedFailure.ValidationFailure)
         val cacheRoot = canonicalDirectoryForSeed(request.cacheRoot)
-            ?: return IndexSeedExecution.Rejected(IndexSeedFailure.ValidationFailure)
+            ?: return rejected(stage, IndexSeedFailure.ValidationFailure)
+        completed(stage)
+
+        stage = IndexSeedStage.SOURCE_DISCOVERY
+        started(stage)
         val layout = when (
             val resolution = Intellij262IndexSeedLayout.resolve(
                 sourceSystem,
@@ -138,16 +145,20 @@ class IndexSeedFilesystemService(
         ) {
             is IndexSeedLayoutResolution.Resolved -> resolution.layout
             is IndexSeedLayoutResolution.Rejected -> {
-                return IndexSeedExecution.Rejected(resolution.failure)
+                return rejected(stage, resolution.failure)
             }
         }
         val sourceCapture = when (val capture = captureManifest(sourceSystem, layout.entries)) {
             is IndexSeedManifestCapture.Captured -> capture
             is IndexSeedManifestCapture.Rejected -> {
-                return IndexSeedExecution.Rejected(capture.failure)
+                return rejected(stage, capture.failure)
             }
         }
         val sourceBefore = sourceCapture.manifest
+        completed(stage)
+
+        stage = IndexSeedStage.SOURCE_QUIESCENCE
+        started(stage)
         val initialQuiescence = quiescenceProbe.observe(sourceSystem)
         val source = when (
             val admission = QuiescentIdeSystem.admit(
@@ -160,9 +171,13 @@ class IndexSeedFilesystemService(
         ) {
             is QuiescentIdeSystemAdmission.Admitted -> admission.system
             is QuiescentIdeSystemAdmission.Rejected -> {
-                return IndexSeedExecution.Rejected(admission.failure)
+                return rejected(stage, admission.failure)
             }
         }
+        completed(stage)
+
+        stage = IndexSeedStage.COPY_ADMISSION
+        started(stage)
         val consent = when (request.consentRequest) {
             IndexSeedConsentRequest.PREGRANTED -> IndexSeedConsent.GRANTED
             IndexSeedConsentRequest.INTERACTIVE -> consentProvider.request(
@@ -178,20 +193,21 @@ class IndexSeedFilesystemService(
             )
         ) {
             is IndexSeedPlanning.Planned -> planning.plan
-            is IndexSeedPlanning.Rejected -> return IndexSeedExecution.Rejected(planning.failure)
+            is IndexSeedPlanning.Rejected -> return rejected(stage, planning.failure)
         }
 
         val targetRoot = cacheRoot.resolve(request.cacheIdentity.key)
         if (Files.exists(targetRoot, LinkOption.NOFOLLOW_LINKS)) {
-            return IndexSeedExecution.Rejected(IndexSeedFailure.ValidationFailure)
+            return rejected(stage, IndexSeedFailure.ValidationFailure)
         }
         val staging = try {
             Files.createTempDirectory(cacheRoot, ".${request.cacheIdentity.key.take(16)}.seed-")
         } catch (_: IOException) {
-            return IndexSeedExecution.Rejected(IndexSeedFailure.CopyFailure)
+            return rejected(stage, IndexSeedFailure.CopyFailure)
         } catch (_: SecurityException) {
-            return IndexSeedExecution.Rejected(IndexSeedFailure.CopyFailure)
+            return rejected(stage, IndexSeedFailure.CopyFailure)
         }
+        completed(stage)
         return seedIntoStaging(plan, layout, sourceSystem, staging, targetRoot)
     }
 
@@ -202,18 +218,24 @@ class IndexSeedFilesystemService(
         staging: Path,
         targetRoot: Path,
     ): IndexSeedExecution {
+        var stage = IndexSeedStage.COPY
+        started(stage)
         try {
             val stagingSystem = Files.createDirectory(staging.resolve("system"))
             when (cloner.clone(layout.entries, stagingSystem)) {
                 IndexSeedCopyResult.Copied -> Unit
                 IndexSeedCopyResult.Rejected -> {
-                    return IndexSeedExecution.Rejected(IndexSeedFailure.CopyFailure)
+                    return rejected(stage, IndexSeedFailure.CopyFailure)
                 }
             }
+            completed(stage)
+
+            stage = IndexSeedStage.SOURCE_STABILITY
+            started(stage)
             val sourceAfter = when (val capture = captureManifest(sourceSystem, layout.entries)) {
                 is IndexSeedManifestCapture.Captured -> capture.manifest
                 is IndexSeedManifestCapture.Rejected -> {
-                    return IndexSeedExecution.Rejected(capture.failure)
+                    return rejected(stage, capture.failure)
                 }
             }
             val afterCopyQuiescence = quiescenceProbe.observe(sourceSystem)
@@ -221,39 +243,59 @@ class IndexSeedFilesystemService(
                 afterCopyQuiescence.processState != SourceIdeProcessState.STOPPED ||
                 afterCopyQuiescence.lockState != SourceIdeLockState.UNLOCKED
             ) {
-                return IndexSeedExecution.Rejected(IndexSeedFailure.RunningSourceIde)
+                return rejected(stage, IndexSeedFailure.RunningSourceIde)
             }
+            if (sourceAfter != plan.source.contentManifest) {
+                return rejected(stage, IndexSeedFailure.SourceMutation)
+            }
+            completed(stage)
+
+            stage = IndexSeedStage.CLONE_VALIDATION
+            started(stage)
             val cloned = when (val capture = captureManifest(stagingSystem, layout.entries)) {
                 is IndexSeedManifestCapture.Captured -> capture.manifest
                 is IndexSeedManifestCapture.Rejected -> {
-                    return IndexSeedExecution.Rejected(capture.failure)
+                    return rejected(stage, capture.failure)
                 }
             }
             val receipt = when (val completion = IndexSeedReceipt.complete(plan, sourceAfter, cloned)) {
                 is IndexSeedCompletion.Completed -> completion.receipt
                 is IndexSeedCompletion.Rejected -> {
-                    return IndexSeedExecution.Rejected(completion.failure)
+                    return rejected(stage, completion.failure)
                 }
             }
+            completed(stage)
+
+            stage = IndexSeedStage.RECEIPT_PUBLICATION
+            started(stage)
             if (!writeReceipt(staging.resolve(INDEX_SEED_RECEIPT), receipt)) {
-                return IndexSeedExecution.Rejected(IndexSeedFailure.ValidationFailure)
+                return rejected(stage, IndexSeedFailure.ValidationFailure)
             }
+            completed(stage)
+
+            stage = IndexSeedStage.PUBLICATION_QUIESCENCE
+            started(stage)
             val publicationQuiescence = quiescenceProbe.observe(sourceSystem)
             if (
                 publicationQuiescence.processState != SourceIdeProcessState.STOPPED ||
                 publicationQuiescence.lockState != SourceIdeLockState.UNLOCKED
             ) {
-                return IndexSeedExecution.Rejected(IndexSeedFailure.RunningSourceIde)
+                return rejected(stage, IndexSeedFailure.RunningSourceIde)
             }
+            completed(stage)
+
+            stage = IndexSeedStage.CACHE_PUBLICATION
+            started(stage)
             try {
                 Files.move(staging, targetRoot, StandardCopyOption.ATOMIC_MOVE)
             } catch (_: AtomicMoveNotSupportedException) {
-                return IndexSeedExecution.Rejected(IndexSeedFailure.CopyFailure)
+                return rejected(stage, IndexSeedFailure.CopyFailure)
             } catch (_: IOException) {
-                return IndexSeedExecution.Rejected(IndexSeedFailure.CopyFailure)
+                return rejected(stage, IndexSeedFailure.CopyFailure)
             } catch (_: SecurityException) {
-                return IndexSeedExecution.Rejected(IndexSeedFailure.CopyFailure)
+                return rejected(stage, IndexSeedFailure.CopyFailure)
             }
+            completed(stage)
             return IndexSeedExecution.Seeded(
                 IndexSeedPublication(
                     targetRoot,
@@ -262,18 +304,42 @@ class IndexSeedFilesystemService(
                 ),
             )
         } catch (_: IOException) {
-            return IndexSeedExecution.Rejected(IndexSeedFailure.CopyFailure)
+            return rejected(stage, IndexSeedFailure.CopyFailure)
         } catch (_: SecurityException) {
-            return IndexSeedExecution.Rejected(IndexSeedFailure.CopyFailure)
+            return rejected(stage, IndexSeedFailure.CopyFailure)
         } finally {
             if (Files.exists(staging, LinkOption.NOFOLLOW_LINKS)) {
                 deleteUnpublishedStaging(staging)
             }
         }
     }
+
+    private fun started(stage: IndexSeedStage) {
+        publishActivity(IndexSeedActivity.Started(stage))
+    }
+
+    private fun completed(stage: IndexSeedStage) {
+        publishActivity(IndexSeedActivity.Completed(stage))
+    }
+
+    private fun rejected(
+        stage: IndexSeedStage,
+        failure: IndexSeedFailure,
+    ): IndexSeedExecution.Rejected {
+        publishActivity(IndexSeedActivity.Rejected(stage, failure))
+        return IndexSeedExecution.Rejected(failure)
+    }
+
+    private fun publishActivity(activity: IndexSeedActivity) {
+        try {
+            activitySink.publish(activity)
+        } catch (_: RuntimeException) {
+            // Telemetry is deliberately unable to alter the seed outcome.
+        }
+    }
 }
 
-/** Production source proof: no matching process plus no live/stale IDEA system markers. */
+/** Production source proof: no matching process plus no live IDEA system marker. */
 data object FilesystemSourceIdeQuiescenceProbe : SourceIdeQuiescenceProbe {
     override fun observe(sourceSystem: Path): SourceIdeQuiescence {
         val canonical = canonicalDirectoryForSeed(sourceSystem)
@@ -284,18 +350,33 @@ data object FilesystemSourceIdeQuiescenceProbe : SourceIdeQuiescenceProbe {
         val pid = canonical.resolve(".pid")
         val port = canonical.resolve(".port")
         val processState = observeProcess(canonical, pid)
-        val lockState = try {
-            when {
-                Files.isSymbolicLink(pid) || Files.isSymbolicLink(port) ->
-                    SourceIdeLockState.UNKNOWN
-                Files.exists(pid, LinkOption.NOFOLLOW_LINKS) ||
-                    Files.exists(port, LinkOption.NOFOLLOW_LINKS) -> SourceIdeLockState.LOCKED
-                else -> SourceIdeLockState.UNLOCKED
-            }
-        } catch (_: SecurityException) {
-            SourceIdeLockState.UNKNOWN
-        }
+        val lockState = observeLock(pid, port, processState)
         return SourceIdeQuiescence(processState, lockState)
+    }
+
+    private fun observeLock(
+        pidFile: Path,
+        portFile: Path,
+        processState: SourceIdeProcessState,
+    ): SourceIdeLockState = try {
+        when {
+            Files.isSymbolicLink(pidFile) || Files.isSymbolicLink(portFile) ->
+                SourceIdeLockState.UNKNOWN
+            Files.exists(portFile, LinkOption.NOFOLLOW_LINKS) ->
+                SourceIdeLockState.LOCKED
+            Files.exists(pidFile, LinkOption.NOFOLLOW_LINKS) &&
+                !Files.isRegularFile(pidFile, LinkOption.NOFOLLOW_LINKS) ->
+                SourceIdeLockState.UNKNOWN
+            Files.exists(pidFile, LinkOption.NOFOLLOW_LINKS) &&
+                processState == SourceIdeProcessState.UNKNOWN ->
+                SourceIdeLockState.UNKNOWN
+            Files.exists(pidFile, LinkOption.NOFOLLOW_LINKS) &&
+                processState == SourceIdeProcessState.RUNNING ->
+                SourceIdeLockState.LOCKED
+            else -> SourceIdeLockState.UNLOCKED
+        }
+    } catch (_: SecurityException) {
+        SourceIdeLockState.UNKNOWN
     }
 
     private fun observeProcess(system: Path, pidFile: Path): SourceIdeProcessState = try {
@@ -482,12 +563,30 @@ private data object Intellij262IndexSeedLayout {
         } else {
             val content = Files.readString(state)
             val root = projectRoot.toString()
-            content.contains("\"$root\"") || content.contains("value=\"$root\"")
+            val escapedRoot = root.escapeXmlAttributeValue()
+            content.contains("\"$root\"") ||
+                content.contains("value=\"$escapedRoot\"") ||
+                content.contains("&quot;$escapedRoot&quot;")
         }
     } catch (_: IOException) {
         false
     } catch (_: SecurityException) {
         false
+    }
+}
+
+private fun String.escapeXmlAttributeValue(): String = buildString(length) {
+    this@escapeXmlAttributeValue.forEach { character ->
+        append(
+            when (character) {
+                '&' -> "&amp;"
+                '<' -> "&lt;"
+                '>' -> "&gt;"
+                '"' -> "&quot;"
+                '\'' -> "&apos;"
+                else -> character
+            },
+        )
     }
 }
 

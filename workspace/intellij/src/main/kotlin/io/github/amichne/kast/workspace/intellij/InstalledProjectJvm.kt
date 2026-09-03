@@ -145,7 +145,6 @@ class AssignedInstalledProjectJvm private constructor(
 
 internal enum class InstalledProjectOpenPreparationFailure {
     PROJECT_JVM_REJECTED,
-    GRADLE_SETTINGS_REJECTED,
 }
 
 internal sealed interface InstalledProjectOpenPreparationState {
@@ -153,7 +152,6 @@ internal sealed interface InstalledProjectOpenPreparationState {
 
     data class Prepared(
         val projectJvm: AssignedInstalledProjectJvm,
-        val importOperation: InstalledGradleImportOperation,
     ) : InstalledProjectOpenPreparationState
 
     data class Rejected(
@@ -161,9 +159,8 @@ internal sealed interface InstalledProjectOpenPreparationState {
     ) : InstalledProjectOpenPreparationState
 }
 
-/** Installs the admitted project and Gradle JVMs before project-open configurators can sync. */
+/** Installs the admitted project JVM before project-open state is loaded without configurators. */
 internal class InstalledProjectOpenPreparation(
-    private val workspaceRoot: Path,
     private val gradleJvm: InstalledGradleJvm,
 ) {
     private var state: InstalledProjectOpenPreparationState =
@@ -172,45 +169,21 @@ internal class InstalledProjectOpenPreparation(
     /**
      * Proof transition: `Project -> InstalledProjectOpenPreparationState`.
      *
-     * [InstalledProjectOpenPreparationState.Prepared] establishes the admitted project SDK and,
-     * for an already-linked exact workspace, the admitted Gradle JVM before project-open
-     * configurators run. [InstalledProjectOpenPreparationFailure] closes platform or settings
-     * rejection. Live project and Gradle settings remain inside this project-open boundary.
+     * [InstalledProjectOpenPreparationState.Prepared] establishes the admitted project SDK before
+     * the project is opened without configurators. Gradle settings are deliberately resolved only
+     * after project state has loaded. [InstalledProjectOpenPreparationFailure] closes platform
+     * rejection. Live project access remains inside this project-open boundary.
      */
     fun prepare(project: Project): InstalledProjectOpenPreparationState {
         if (state !is InstalledProjectOpenPreparationState.Pending) return state
-        val linkPresence = when (val resolution = try {
-            linkedGradleProject(GradleSettings.getInstance(project), workspaceRoot)
-        } catch (_: RuntimeException) {
-            InstalledGradleLinkPresenceResolution.Rejected
-        }) {
-            is InstalledGradleLinkPresenceResolution.Resolved -> resolution.presence
-            InstalledGradleLinkPresenceResolution.Rejected -> return reject(
-                InstalledProjectOpenPreparationFailure.GRADLE_SETTINGS_REJECTED,
-            )
-        }
-        val importApplication = when (val application = linkPresence.applyImportJvm(gradleJvm)) {
-            is InstalledGradleImportApplication.Applied -> application
-            InstalledGradleImportApplication.Rejected -> return reject(
-                InstalledProjectOpenPreparationFailure.GRADLE_SETTINGS_REJECTED,
-            )
-        }
         val assigned = when (val assignment = InstalledProjectJvm.from(gradleJvm).assign(project)) {
             is InstalledProjectJvmAssignment.Assigned -> assignment.projectJvm
-            is InstalledProjectJvmAssignment.Rejected -> {
-                return when (importApplication.rollback()) {
-                    InstalledGradleImportRollback.RolledBack -> reject(
-                        InstalledProjectOpenPreparationFailure.PROJECT_JVM_REJECTED,
-                    )
-                    InstalledGradleImportRollback.Rejected -> reject(
-                        InstalledProjectOpenPreparationFailure.GRADLE_SETTINGS_REJECTED,
-                    )
-                }
-            }
+            is InstalledProjectJvmAssignment.Rejected -> return reject(
+                InstalledProjectOpenPreparationFailure.PROJECT_JVM_REJECTED,
+            )
         }
         return InstalledProjectOpenPreparationState.Prepared(
             assigned,
-            importApplication.operation,
         ).also { prepared -> state = prepared }
     }
 
@@ -240,24 +213,16 @@ internal sealed interface InstalledGradleLinkPresence {
 }
 
 internal sealed interface InstalledGradleImportOperation {
-    data object AwaitLinked : InstalledGradleImportOperation
+    data object RefreshLinked : InstalledGradleImportOperation
     data object LinkUnlinked : InstalledGradleImportOperation
 }
 
 internal sealed interface InstalledGradleImportApplication {
-    class Applied internal constructor(
+    data class Applied internal constructor(
         val operation: InstalledGradleImportOperation,
-        private val rollbackOperation: () -> InstalledGradleImportRollback,
-    ) : InstalledGradleImportApplication {
-        fun rollback(): InstalledGradleImportRollback = rollbackOperation()
-    }
+    ) : InstalledGradleImportApplication
 
     data object Rejected : InstalledGradleImportApplication
-}
-
-internal sealed interface InstalledGradleImportRollback {
-    data object RolledBack : InstalledGradleImportRollback
-    data object Rejected : InstalledGradleImportRollback
 }
 
 /**
@@ -296,9 +261,9 @@ internal fun linkedGradleProject(
  * InstalledGradleImportApplication`.
  *
  * [InstalledGradleImportApplication.Applied] establishes the only valid exact-workspace import
- * operation and a rollback capability until project JVM assignment also succeeds. Rejected closes
- * platform settings mutation failure. Raw selector extraction occurs only at this Gradle
- * project-settings boundary.
+ * operation after the admitted Gradle JVM selector has been applied. Rejected closes platform
+ * settings mutation failure. Raw selector extraction occurs only at this Gradle project-settings
+ * boundary.
  */
 internal fun InstalledGradleLinkPresence.applyImportJvm(
     gradleJvm: InstalledGradleJvm,
@@ -315,20 +280,11 @@ internal fun InstalledGradleLinkPresence.applyImportJvm(
             runCatching { settings.gradleJvm = previous }
             return InstalledGradleImportApplication.Rejected
         }
-        InstalledGradleImportApplication.Applied(
-            InstalledGradleImportOperation.AwaitLinked,
-        ) {
-            try {
-                settings.gradleJvm = previous
-                InstalledGradleImportRollback.RolledBack
-            } catch (_: RuntimeException) {
-                InstalledGradleImportRollback.Rejected
-            }
-        }
+        InstalledGradleImportApplication.Applied(InstalledGradleImportOperation.RefreshLinked)
     }
     InstalledGradleLinkPresence.Unlinked -> InstalledGradleImportApplication.Applied(
         InstalledGradleImportOperation.LinkUnlinked,
-    ) { InstalledGradleImportRollback.RolledBack }
+    )
 }
 
 @JvmInline

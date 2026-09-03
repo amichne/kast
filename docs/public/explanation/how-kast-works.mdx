@@ -98,6 +98,17 @@ manifests plus source quiescence are checked again before an atomic publish.
 The seed is only an acceleration hint: corrupt, changed, or incompatible state
 becomes a typed failure or `rebuild-required`, never semantic success.
 
+The foreground seed coordinator emits payload-free JSON-line activity for its
+bounded validation, discovery, quiescence, copy, clone-validation, receipt, and
+publication stages. Each line records only the component, event, stage, outcome,
+and a finite rejection reason when applicable; it never records paths or cache
+payloads.
+
+The broker service log uses the same bounded shape for startup. It records each
+qualification, catalog, upstream, server, and readiness-publication stage plus
+the payload-free start and finish of every admitted tool call. Failures retain a
+finite reason without recording tool arguments, results, or repository content.
+
 ## Follow one symbol request
 
 Assume inspection already returned an exact selector:

@@ -19,6 +19,9 @@ val indexerPluginRuntime: Configuration by configurations.creating {
     isCanBeConsumed = false
     isCanBeResolved = true
     exclude(group = "org.slf4j", module = "slf4j-api")
+    exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core-jvm")
 }
 
 private val extractedIdeaDistributionDirectory = objects.directoryProperty().apply {
@@ -156,7 +159,9 @@ val indexerPluginRequiredClassEntries = listOf(
     "io/github/amichne/kast/evidence/sqlite/SqliteWorkspacePublicationDatabase.class",
 )
 
-val platformKotlinPluginOwnedClassEntries = listOf(
+val platformOwnedClassEntries = listOf(
+    "kotlin/Unit.class",
+    "kotlinx/coroutines/flow/StateFlow.class",
     "org/jetbrains/kotlin/cli/common/arguments/Freezable.class",
     "org/jetbrains/kotlin/jps/build/KotlinBuilder.class",
 )
@@ -182,21 +187,18 @@ val verifyPortableDistLayout by tasks.registering(VerifyClasspathLayoutTask::cla
     val portableDist = layout.buildDirectory.dir("portable-dist/${project.name}")
     val runtimeLibs = portableDist.map { it.dir("runtime-libs") }
     val pluginLibs = portableDist.map { it.dir("private-plugins/kast-indexer/lib") }
-    val platformKotlinLibs = extractedIdeaDistributionDirectory.map {
-        it.dir("plugins/Kotlin/lib")
-    }
     portableDistDirectory.set(portableDist)
     runtimeLibsDirectory.set(runtimeLibs)
     runtimeClasspathFile.set(runtimeLibs.map { it.file("classpath.txt") })
     pluginLibsDirectory.set(pluginLibs)
-    platformPluginLibsDirectory.set(platformKotlinLibs)
+    platformLibsDirectory.set(extractedIdeaDistributionDirectory)
     forbiddenPortableDistJarSuffixes.set(listOf("-all.jar"))
     forbiddenRuntimeJarPrefixes.set(listOf("composition-", "indexer-${project.version}-plugin"))
-    forbiddenPluginClassEntries.set(platformKotlinPluginOwnedClassEntries)
+    forbiddenPluginClassEntries.set(platformOwnedClassEntries)
     requiredRuntimeClassEntries.set(indexerRuntimeRequiredClassEntries)
     requiredPluginJarPrefixes.set(listOf("composition-", "indexer-"))
     requiredPluginClassEntries.set(indexerPluginRequiredClassEntries)
-    requiredPlatformPluginClassEntries.set(platformKotlinPluginOwnedClassEntries)
+    requiredPlatformClassEntries.set(platformOwnedClassEntries)
     allowedPluginDescriptorJarPrefixes.set(listOf("indexer-"))
     dependsOn(extractIdeaDistribution)
 }

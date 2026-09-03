@@ -11,6 +11,7 @@ private const val MAX_DETACHED_VIRTUAL_FILE_URL_LENGTH = 4096
 private val DETACHED_VIRTUAL_FILE_URL_FORMAT = Regex("[a-zA-Z][a-zA-Z0-9+.-]*://.+")
 
 enum class SymbolDiscoveryCandidateFailure {
+    TARGET_KIND_MISMATCH,
     BLANK_NAME,
     NAME_TOO_LONG,
     NAME_CONTROL_CHARACTER,

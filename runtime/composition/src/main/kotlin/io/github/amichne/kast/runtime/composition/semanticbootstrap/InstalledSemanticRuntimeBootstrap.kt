@@ -145,8 +145,12 @@ private fun InstalledIntellijWorkspaceFailure.bootstrapFailure():
         SemanticRuntimeBootstrapFailure.GRADLE_JVM_UNAVAILABLE
     InstalledIntellijWorkspaceFailure.PROJECT_JVM_UNAVAILABLE ->
         SemanticRuntimeBootstrapFailure.PROJECT_JVM_UNAVAILABLE
+    InstalledIntellijWorkspaceFailure.PLATFORM_LINKAGE_INVALID ->
+        SemanticRuntimeBootstrapFailure.PLATFORM_LINKAGE_INVALID
     InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED ->
         SemanticRuntimeBootstrapFailure.GRADLE_IMPORT_FAILED
+    InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID ->
+        SemanticRuntimeBootstrapFailure.GRADLE_JVM_CONFIGURATION_INVALID
     InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_TIMED_OUT ->
         SemanticRuntimeBootstrapFailure.GRADLE_IMPORT_TIMED_OUT
     InstalledIntellijWorkspaceFailure.INDEXING_INTERRUPTED ->

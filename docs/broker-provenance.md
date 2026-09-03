@@ -8,6 +8,9 @@ The imported behavior is implemented directly in Kast rather than shipping the o
 program. The installed product has no Node runtime requirement. `kast broker serve` owns the Codex
 control socket, qualifies the exact installed Codex and Kast contracts, starts the private Codex
 App Server, and exposes Gradle and Kast tools through proof-carrying Kotlin domain types.
+The public socket accepts Codex's canonical `/rpc` WebSocket route and the legacy `/` route. A
+process-lifetime filesystem lease serializes stale-socket recovery, and service readiness is proven
+by a complete `/rpc` WebSocket `initialize` exchange rather than raw socket connectivity.
 
 Codex protocol authority comes from the installed CLI itself. At startup Kast executes
 `codex app-server generate-json-schema --experimental`, bounds and compiles the generated schemas,
@@ -18,3 +21,8 @@ The retained broker version is `0.5.0`. Its behavioral defaults remain eight in-
 connection, four per provider, a 1 MiB catalog, 64 provider descriptors, 64 KiB tool arguments,
 1 MiB tool results, a 10-second provider startup deadline, and a 30-second provider invocation
 deadline.
+
+Admitted dynamic-tool invocations publish one payload-free start event and one finite terminal
+event to `$CODEX_HOME/broker/service.log`. Each JSON line carries only thread, turn, call,
+namespace, tool, and completion identity; tool arguments, results, and working-directory content
+never enter this activity stream.
