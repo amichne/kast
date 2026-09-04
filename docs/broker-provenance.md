@@ -19,8 +19,20 @@ OpenAI currently provides a TypeScript Codex SDK but no Kotlin/JVM SDK for the A
 
 The retained broker version is `0.5.0`. Its behavioral defaults remain eight in-flight calls per
 connection, four per provider, a 1 MiB catalog, 64 provider descriptors, 64 KiB tool arguments,
-1 MiB tool results, a 10-second provider startup deadline, and a 30-second provider invocation
-deadline.
+1 MiB tool results. Kast execution deadlines now come from canonical operation metadata,
+projected by server projection version 3: 10 seconds per local qualification command, 17 minutes
+for workspace readiness, 60 seconds for a semantic operation, and 240 seconds for topology build.
+Provider qualification admits both local commands; each tool's outer deadline contains its
+readiness and operation deadlines. The 17-minute operational ceiling preserves the existing
+sidecar contract; release acceptance separately requires cold startup within 240 seconds.
+
+Semantic commands and `kast start` demand the sidecar directly. They do not discover Codex,
+read `CODEX_HOME`, or start the broker. `kast broker serve` is an explicit, read-only preview
+integration; a broker rejection cannot remove semantic CLI capability. The broker first runs
+`kast start` with the readiness deadline, then runs the selected semantic command with its own
+deadline. Cancellation terminates only that CLI wrapper. The detached sidecar remains owned by
+its exact bootstrap attempt; passive status exposes that state, and the next call joins that
+attempt or reuses its ready endpoint without launching a duplicate.
 
 Admitted dynamic-tool invocations publish one payload-free start event and one finite terminal
 event to `$CODEX_HOME/broker/service.log`. Each JSON line carries only thread, turn, call,

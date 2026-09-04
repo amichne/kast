@@ -42,6 +42,9 @@ data class OperationDefinition<
     val hostedExposure: HostedExposure,
     val hostedVariants: HostedVariants = HostedVariants.None,
 ) : OperationMetadata {
+    val executionBudget: OperationExecutionBudget
+        get() = OperationExecutionBudget.forOperation(operation)
+
     override val id: OperationId
         get() = operation.id
 

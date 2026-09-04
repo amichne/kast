@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli.broker.provider
 import io.github.amichne.kast.cli.broker.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.cli.broker.core.ProviderFailureCode
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -87,7 +88,7 @@ internal class BrokerProcessRequest private constructor(
         }
 
         private const val MAXIMUM_OUTPUT_BYTES = 64 * 1_024 * 1_024
-        private const val MAXIMUM_TIMEOUT_MILLIS = 5 * 60_000L
+        private val MAXIMUM_TIMEOUT_MILLIS = OperationExecutionBudget.GRAPH_BUILD.invocation.value
     }
 }
 

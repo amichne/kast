@@ -22,6 +22,16 @@ import org.junit.jupiter.api.Test
 
 class InstalledServerProjectionTest {
     @Test
+    fun `server projection publishes separate readiness semantic and graph budgets`() {
+        val tools = projectionTools()
+        val readBudget = tools.tool("source.read").getValue("executionBudget").jsonObject
+        val graphBudget = tools.tool("topology.build").getValue("executionBudget").jsonObject
+        assertEquals("1020000", readBudget.getValue("readinessMillis").jsonPrimitive.content)
+        assertEquals("60000", readBudget.getValue("operationMillis").jsonPrimitive.content)
+        assertEquals("240000", graphBudget.getValue("operationMillis").jsonPrimitive.content)
+    }
+
+    @Test
     fun `installed broker exposes workflow facade names and explicit change approval`() {
         val tools = projectionTools()
 
@@ -111,7 +121,7 @@ class InstalledServerProjectionTest {
         val internalOperations = HostedOperationProjection.internalDefinitions
             .map { it.operation.id.value }
 
-        assertEquals(2, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(3, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
             expectedPublicOperations,

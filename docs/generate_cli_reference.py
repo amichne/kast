@@ -57,8 +57,8 @@ LOCAL_COMMAND_DESCRIPTIONS = {
         "destination evidence without starting or admitting a runtime."
     ),
     "broker serve": (
-        "Host the installed Kotlin/Ktor Codex tool broker. Normal semantic-runtime demand "
-        "keeps this process alive as a version-qualified launchd service."
+        "Host the optional read-only preview Kotlin/Ktor Codex tool broker. Semantic CLI commands "
+        "start the sidecar independently and do not require Codex."
     ),
 }
 

@@ -1,15 +1,7 @@
 package io.github.amichne.kast.cli.broker
 
-import io.github.amichne.kast.cli.CanonicalRoot
-import io.github.amichne.kast.cli.CanonicalRootDiscovery
-import io.github.amichne.kast.cli.FilesystemCanonicalRootDiscovery
-import io.github.amichne.kast.cli.HostedRuntimeDemand
 import io.github.amichne.kast.cli.LaunchctlInvocation
 import io.github.amichne.kast.cli.LaunchctlInvoker
-import io.github.amichne.kast.cli.RootRuntimeDemander
-import io.github.amichne.kast.cli.RuntimeAdmission
-import io.github.amichne.kast.cli.RuntimeAdmissionFailure
-import io.github.amichne.kast.cli.RuntimeStartupRequest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -66,62 +58,6 @@ class PersistentBrokerServiceTest {
             acceptor.join(5_000)
         }
         temporary.toFile().deleteRecursively()
-    }
-
-    @Test
-    fun `active runtime demand proves broker readiness before sidecar demand`(
-        @TempDir temporary: Path,
-    ) {
-        val root = root(temporary)
-        val events = mutableListOf<String>()
-        val expected = RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
-        val delegate = rootRuntimeDemander { _, _, _ ->
-            events += "sidecar"
-            expected
-        }
-        val demander = BrokerEnsuringRootRuntimeDemander(
-            PersistentBrokerService {
-                events += "broker"
-                PersistentBrokerServiceAdmission.Ready
-            },
-            delegate,
-        )
-
-        assertEquals(
-            expected,
-            demander.demand(
-                root,
-                HostedRuntimeDemand.Lifecycle,
-                RuntimeStartupRequest.Default,
-            ),
-        )
-        assertEquals(listOf("broker", "sidecar"), events)
-    }
-
-    @Test
-    fun `broker rejection prevents every sidecar effect and preserves finite cause`(
-        @TempDir temporary: Path,
-    ) {
-        val root = root(temporary)
-        var sidecarInvoked = false
-        val failure = PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE
-        val demander = BrokerEnsuringRootRuntimeDemander(
-            PersistentBrokerService { PersistentBrokerServiceAdmission.Rejected(failure) },
-            rootRuntimeDemander { _, _, _ ->
-                sidecarInvoked = true
-                error("sidecar must remain unreachable")
-            },
-        )
-
-        assertEquals(
-            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.PersistentBroker(failure)),
-            demander.demand(
-                root,
-                HostedRuntimeDemand.Lifecycle,
-                RuntimeStartupRequest.Default,
-            ),
-        )
-        assertEquals(false, sidecarInvoked)
     }
 
     @Test
@@ -561,25 +497,6 @@ class PersistentBrokerServiceTest {
         )
         assertEquals(listOf("list", "list", "remove", "list"), operations)
         assertEquals(false, Files.exists(command.readinessFile))
-    }
-
-    private fun root(temporary: Path): CanonicalRoot {
-        val workspace = Files.createDirectories(temporary.resolve("workspace"))
-        Files.writeString(workspace.resolve("settings.gradle.kts"), "rootProject.name = \"test\"")
-        return when (val discovery = FilesystemCanonicalRootDiscovery.discover(workspace)) {
-            is CanonicalRootDiscovery.Discovered -> discovery.root
-            is CanonicalRootDiscovery.Rejected -> error(discovery.failure)
-        }
-    }
-
-    private fun rootRuntimeDemander(
-        operation: (CanonicalRoot, HostedRuntimeDemand, RuntimeStartupRequest) -> RuntimeAdmission,
-    ): RootRuntimeDemander = object : RootRuntimeDemander {
-        override fun demand(
-            root: CanonicalRoot,
-            demand: HostedRuntimeDemand,
-            startup: RuntimeStartupRequest,
-        ): RuntimeAdmission = operation(root, demand, startup)
     }
 
     private fun installedFixture(temporary: Path): InstalledFixture {

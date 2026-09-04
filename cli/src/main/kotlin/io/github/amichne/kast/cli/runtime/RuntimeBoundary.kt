@@ -1,11 +1,11 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLock
 import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLockExecution
 import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapStateFile
 import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapStateFileFailure
 import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapStateObservation
-import io.github.amichne.kast.cli.broker.PersistentBrokerServiceFailure
 import io.github.amichne.kast.distribution.contract.bootstrap.SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapAttemptId
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapDocumentFailure
@@ -377,9 +377,6 @@ sealed interface RuntimeAdmissionFailure {
     data object BootstrapAttemptUnavailable : RuntimeAdmissionFailure
     data object BootstrapAttemptMismatch : RuntimeAdmissionFailure
     data object BootstrapAttemptLockUnavailable : RuntimeAdmissionFailure
-    data class PersistentBroker(
-        val failure: PersistentBrokerServiceFailure,
-    ) : RuntimeAdmissionFailure
     data class BootstrapProtocolRejected(
         val failure: SemanticRuntimeBootstrapDocumentFailure,
     ) : RuntimeAdmissionFailure
@@ -418,45 +415,6 @@ internal fun RuntimeAdmissionFailure.outputReason(): String = when (this) {
     RuntimeAdmissionFailure.BootstrapAttemptMismatch -> "bootstrap-attempt-mismatch"
     RuntimeAdmissionFailure.BootstrapAttemptLockUnavailable ->
         "bootstrap-attempt-lock-unavailable"
-    is RuntimeAdmissionFailure.PersistentBroker -> when (failure) {
-        PersistentBrokerServiceFailure.UNAVAILABLE -> "broker-unavailable"
-        PersistentBrokerServiceFailure.CONFIGURATION_REJECTED ->
-            "broker-configuration-rejected"
-        PersistentBrokerServiceFailure.KAST_QUALIFICATION_REJECTED ->
-            "broker-kast-qualification-rejected"
-        PersistentBrokerServiceFailure.CATALOG_REJECTED -> "broker-catalog-rejected"
-        PersistentBrokerServiceFailure.CODEX_QUALIFICATION_REJECTED ->
-            "broker-codex-qualification-rejected"
-        PersistentBrokerServiceFailure.THREAD_STORE_REJECTED ->
-            "broker-thread-store-rejected"
-        PersistentBrokerServiceFailure.UPSTREAM_REJECTED -> "broker-upstream-rejected"
-        PersistentBrokerServiceFailure.SERVER_REJECTED -> "broker-server-rejected"
-        PersistentBrokerServiceFailure.KAST_EXECUTABLE_UNAVAILABLE ->
-            "broker-kast-executable-unavailable"
-        PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE ->
-            "broker-codex-executable-unavailable"
-        PersistentBrokerServiceFailure.CODEX_HOME_REJECTED -> "broker-codex-home-rejected"
-        PersistentBrokerServiceFailure.USER_HOME_REJECTED -> "broker-user-home-rejected"
-        PersistentBrokerServiceFailure.JAVA_RUNTIME_UNAVAILABLE ->
-            "broker-java-runtime-unavailable"
-        PersistentBrokerServiceFailure.STATE_DIRECTORY_REJECTED ->
-            "broker-state-directory-rejected"
-        PersistentBrokerServiceFailure.SERVICE_LOCK_REJECTED ->
-            "broker-service-lock-rejected"
-        PersistentBrokerServiceFailure.SERVICE_OBSERVATION_REJECTED ->
-            "broker-service-observation-rejected"
-        PersistentBrokerServiceFailure.SERVICE_RETIREMENT_REJECTED ->
-            "broker-service-retirement-rejected"
-        PersistentBrokerServiceFailure.SERVICE_SUBMISSION_REJECTED ->
-            "broker-service-submission-rejected"
-        PersistentBrokerServiceFailure.READINESS_REJECTED -> "broker-readiness-rejected"
-        PersistentBrokerServiceFailure.PUBLIC_SOCKET_OWNED -> "broker-public-socket-owned"
-        PersistentBrokerServiceFailure.SOCKET_PROBE_REJECTED ->
-            "broker-socket-probe-rejected"
-        PersistentBrokerServiceFailure.LAUNCHCTL_TIMED_OUT -> "broker-launchctl-timed-out"
-        PersistentBrokerServiceFailure.STARTUP_TIMED_OUT -> "broker-startup-timed-out"
-        PersistentBrokerServiceFailure.INTERRUPTED -> "interrupted"
-    }
     is RuntimeAdmissionFailure.BootstrapProtocolRejected -> when (failure) {
         SemanticRuntimeBootstrapDocumentFailure.MALFORMED_DOCUMENT ->
             "bootstrap-document-malformed"
@@ -503,7 +461,7 @@ fun interface RuntimeDemander {
 }
 
 private const val RUNTIME_PROBE_INTERVAL_MILLIS = 100L
-private val RUNTIME_STARTUP_TIMEOUT: Duration = Duration.ofMinutes(17L)
+private val RUNTIME_STARTUP_TIMEOUT: Duration = Duration.ofMillis(OperationExecutionBudget.WORKSPACE_READINESS.value)
 
 internal sealed interface RuntimeBootstrapAttemptGeneration {
     data class Generated(

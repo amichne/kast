@@ -97,13 +97,22 @@ excluded before the server is constructed.
 The CLI command graph and `kast --schema` are derived consumer surfaces. The
 schema includes the operation registry plus a server projection that maps
 canonical operations to agent-facing tool names, JSON Schemas, loading policy,
-approval policy, and CLI field bindings.
+approval policy, execution deadlines, and CLI field bindings.
+
+Projection version 3 carries
+separate readiness and operation budgets from canonical operation metadata. The broker allows
+17 minutes for readiness, then 60 seconds for a semantic read or 240 seconds for topology build;
+local qualification commands each have a separate 10-second budget.
 
 The local Ktor broker consumes the exact installed projection. It does not keep
 a hand-authored table for a particular Kast version. Read façades can therefore
 use task-oriented names while permanent operation IDs and wire outcome
 documents remain stable below them. Mutating tools retain explicit approval in
 the projection.
+
+The Codex integration is a read-only preview: tools requiring explicit approval
+are omitted until an executable user-approval seam exists. Semantic CLI startup is independent
+of Codex and of broker readiness.
 
 ## Primary authorities
 
