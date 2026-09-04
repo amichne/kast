@@ -6,11 +6,12 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
-import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.roots.impl.DirectoryIndexExcludePolicy
 import com.intellij.openapi.util.Key
-import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtilCore
+import io.github.amichne.kast.workspace.intellij.read.IntellijIndexExclusionVerification
+import io.github.amichne.kast.workspace.intellij.read.IntellijIndexExclusionVerificationFailure
+import io.github.amichne.kast.workspace.intellij.read.IntellijIndexExclusionVerifier
 import java.io.IOException
 import java.nio.file.FileVisitResult
 import java.nio.file.Files
@@ -417,65 +418,30 @@ internal class InstalledActiveIndexBootstrap(
      * Proves the persistent policy excludes every planned root after import, never masks a subtree
      * of an imported source root, and admits imported generated source roots below an exclusion.
      */
-    fun verifyImportedModel(project: Project): InstalledIndexExclusionVerification = try {
-        ReadAction.computeBlocking<InstalledIndexExclusionVerification, RuntimeException> {
-            val importedModules = ModuleManager.getInstance(project).modules
-                .filter { candidate -> !candidate.isDisposed && candidate !== module }
-            if (importedModules.isEmpty()) {
-                return@computeBlocking InstalledIndexExclusionVerification.Rejected(
-                    InstalledIndexExclusionVerificationFailure.IMPORTED_MODULES_UNAVAILABLE,
-                )
-            }
-            val index = ProjectFileIndex.getInstance(project)
-            val localFileSystem = LocalFileSystem.getInstance()
-            val excludedRoots = excludedDirectoryPaths.map { path ->
-                localFileSystem.findFileByNioFile(path)
-                    ?: return@computeBlocking InstalledIndexExclusionVerification.Rejected(
-                        InstalledIndexExclusionVerificationFailure.EXCLUSION_ROOT_UNAVAILABLE,
-                    )
-            }
-            if (excludedRoots.any { root -> !index.isExcluded(root) }) {
-                return@computeBlocking InstalledIndexExclusionVerification.Rejected(
-                    InstalledIndexExclusionVerificationFailure.EXCLUSION_NOT_PRESERVED,
-                )
-            }
-            val importedSourceRoots = importedModules
-                .flatMap { importedModule ->
-                    ModuleRootManager.getInstance(importedModule).sourceRoots.asList()
-                }
-                .map { sourceRoot ->
-                    val sourcePath = VfsUtilCore.virtualToIoFile(sourceRoot)
-                        .toPath()
-                        .toAbsolutePath()
-                        .normalize()
-                    sourceRoot to sourcePath
-                }
-            if (
-                importedSourceRoots.any { (_, sourcePath) ->
-                    excludedDirectoryPaths.any { excludedPath -> excludedPath.startsWith(sourcePath) }
-                }
-            ) {
-                return@computeBlocking InstalledIndexExclusionVerification.Rejected(
-                    InstalledIndexExclusionVerificationFailure.SOURCE_ROOT_NOT_ADMITTED,
-                )
-            }
-            val sourceRootsBelowExclusions = importedSourceRoots
-                .filter { (_, sourcePath) -> excludedDirectoryPaths.any(sourcePath::startsWith) }
-                .map { (sourceRoot, _) -> sourceRoot }
-            if (sourceRootsBelowExclusions.any { sourceRoot -> !index.isInSourceContent(sourceRoot) }) {
-                InstalledIndexExclusionVerification.Rejected(
-                    InstalledIndexExclusionVerificationFailure.SOURCE_ROOT_NOT_ADMITTED,
-                )
-            } else {
-                InstalledIndexExclusionVerification.Verified(
-                    generatedSourceRootCount = sourceRootsBelowExclusions.size,
-                )
-            }
-        }
-    } catch (_: RuntimeException) {
-        InstalledIndexExclusionVerification.Rejected(
-            InstalledIndexExclusionVerificationFailure.PLATFORM_OBSERVATION_FAILED,
+    fun verifyImportedModel(project: Project): InstalledIndexExclusionVerification = when (
+        val verification = IntellijIndexExclusionVerifier.verify(
+            project,
+            module,
+            excludedDirectoryPaths,
         )
+    ) {
+        is IntellijIndexExclusionVerification.Verified ->
+            InstalledIndexExclusionVerification.Verified(verification.generatedSourceRootCount)
+        is IntellijIndexExclusionVerification.Rejected ->
+            InstalledIndexExclusionVerification.Rejected(
+                when (verification.failure) {
+                    IntellijIndexExclusionVerificationFailure.IMPORTED_MODULES_UNAVAILABLE ->
+                        InstalledIndexExclusionVerificationFailure.IMPORTED_MODULES_UNAVAILABLE
+                    IntellijIndexExclusionVerificationFailure.EXCLUSION_ROOT_UNAVAILABLE ->
+                        InstalledIndexExclusionVerificationFailure.EXCLUSION_ROOT_UNAVAILABLE
+                    IntellijIndexExclusionVerificationFailure.EXCLUSION_NOT_PRESERVED ->
+                        InstalledIndexExclusionVerificationFailure.EXCLUSION_NOT_PRESERVED
+                    IntellijIndexExclusionVerificationFailure.SOURCE_ROOT_NOT_ADMITTED ->
+                        InstalledIndexExclusionVerificationFailure.SOURCE_ROOT_NOT_ADMITTED
+                    IntellijIndexExclusionVerificationFailure.PLATFORM_OBSERVATION_FAILED ->
+                        InstalledIndexExclusionVerificationFailure.PLATFORM_OBSERVATION_FAILED
+                },
+            )
     }
 }
 

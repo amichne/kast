@@ -105,6 +105,7 @@ class KastCleanSlatePolicyTest {
                     ModuleId.CLI,
                     ModuleId.RUNTIME_TELEMETRY,
                     ModuleId.INDEXER,
+                    ModuleId.WORKSPACE_INTELLIJ,
                 ),
                 ForbiddenEffect.SOURCE_FILESYSTEM_WRITE to emptySet(),
                 ForbiddenEffect.JDBC to setOf(ModuleId.EVIDENCE_SQLITE),
@@ -131,6 +132,28 @@ class KastCleanSlatePolicyTest {
             ),
             owners,
         )
+    }
+
+    @Test
+    fun `workspace bootstrap receives only its exact filesystem write scope`() {
+        val workspace = canonicalArchitecture().modules.getValue(ModuleId.WORKSPACE_INTELLIJ)
+
+        assertEquals(
+            setOf(ForbiddenEffect.FILESYSTEM_WRITE),
+            workspace.allowedScopedEffectCallers.keys,
+        )
+        assertEquals(
+            setOf(
+                JvmClassName(
+                    "io/github/amichne/kast/workspace/intellij/InstalledIndexBootstrap\$Companion",
+                ),
+                JvmClassName(
+                    "io/github/amichne/kast/workspace/intellij/InstalledIndexBootstrapKt",
+                ),
+            ),
+            workspace.allowedScopedEffectCallers.getValue(ForbiddenEffect.FILESYSTEM_WRITE),
+        )
+        assertTrue(ForbiddenEffect.FILESYSTEM_WRITE !in workspace.allowedEffects)
     }
 
     @Test

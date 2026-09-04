@@ -54,6 +54,7 @@ private val javaPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
 
 dependencies {
     implementation(project(":workspace:contract"))
+    implementation(project(":workspace:intellij-read"))
 
     workspaceIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
         isTransitive = false
