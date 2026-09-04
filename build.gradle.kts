@@ -343,9 +343,14 @@ val releaseGateContractTest by tasks.registering(Exec::class) {
     commandLine("python3", "distribution/release/test_release_gate.py")
 }
 
-tasks.register("releaseSourceGate") {
+val releaseSourceGate by tasks.registering {
     group = "verification"
     description = "Authoritative release-source predecessor graph; publication also requires exact-asset installed proof."
     dependsOn("build", "installedProductTest", "verifyKastArchitecture", "enterpriseAcceptance", releaseDocumentationTest, releaseInstallerTest, releaseGateContractTest)
-    dependsOn(subprojects.map { "${it.path}:build" })
+}
+
+subprojects.forEach { owner ->
+    owner.plugins.withId("base") {
+        releaseSourceGate.configure { dependsOn(owner.tasks.named("build")) }
+    }
 }
