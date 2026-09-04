@@ -143,6 +143,32 @@ private fun InstalledIntellijWorkspaceFailure.bootstrapFailure():
         SemanticRuntimeBootstrapFailure.PROJECT_STORE_CREATION_FAILED
     InstalledIntellijWorkspaceFailure.PROJECT_STORE_IDENTITY_REJECTED ->
         SemanticRuntimeBootstrapFailure.PROJECT_STORE_IDENTITY_REJECTED
+    InstalledIntellijWorkspaceFailure.PROJECT_STORE_EXCLUSION_DISCOVERY_FAILED ->
+        SemanticRuntimeBootstrapFailure.PROJECT_STORE_EXCLUSION_DISCOVERY_FAILED
+    InstalledIntellijWorkspaceFailure.PROJECT_STORE_CONFIGURATION_WRITE_FAILED ->
+        SemanticRuntimeBootstrapFailure.PROJECT_STORE_CONFIGURATION_WRITE_FAILED
+    InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_MODULE_UNAVAILABLE ->
+        SemanticRuntimeBootstrapFailure.INDEX_BOOTSTRAP_MODULE_UNAVAILABLE
+    InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_EXCLUSION_POLICY_MISMATCH ->
+        SemanticRuntimeBootstrapFailure.INDEX_BOOTSTRAP_EXCLUSION_POLICY_MISMATCH
+    InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_CONTENT_ROOT_MISMATCH ->
+        SemanticRuntimeBootstrapFailure.INDEX_BOOTSTRAP_CONTENT_ROOT_MISMATCH
+    InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_EXCLUSION_ROOTS_MISMATCH ->
+        SemanticRuntimeBootstrapFailure.INDEX_BOOTSTRAP_EXCLUSION_ROOTS_MISMATCH
+    InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_PLATFORM_OBSERVATION_FAILED ->
+        SemanticRuntimeBootstrapFailure.INDEX_BOOTSTRAP_PLATFORM_OBSERVATION_FAILED
+    InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_RETIREMENT_IDENTITY_LOST ->
+        SemanticRuntimeBootstrapFailure.INDEX_BOOTSTRAP_RETIREMENT_IDENTITY_LOST
+    InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_RETIREMENT_FAILED ->
+        SemanticRuntimeBootstrapFailure.INDEX_BOOTSTRAP_RETIREMENT_FAILED
+    InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_IMPORTED_MODULES_UNAVAILABLE ->
+        SemanticRuntimeBootstrapFailure.INDEX_BOOTSTRAP_IMPORTED_MODULES_UNAVAILABLE
+    InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_EXCLUSION_ROOT_UNAVAILABLE ->
+        SemanticRuntimeBootstrapFailure.INDEX_BOOTSTRAP_EXCLUSION_ROOT_UNAVAILABLE
+    InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_EXCLUSION_NOT_PRESERVED ->
+        SemanticRuntimeBootstrapFailure.INDEX_BOOTSTRAP_EXCLUSION_NOT_PRESERVED
+    InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_SOURCE_ROOT_NOT_ADMITTED ->
+        SemanticRuntimeBootstrapFailure.INDEX_BOOTSTRAP_SOURCE_ROOT_NOT_ADMITTED
     InstalledIntellijWorkspaceFailure.PROJECT_OPEN_FAILED ->
         SemanticRuntimeBootstrapFailure.PROJECT_OPEN_FAILED
     InstalledIntellijWorkspaceFailure.STARTUP_FAILED ->
