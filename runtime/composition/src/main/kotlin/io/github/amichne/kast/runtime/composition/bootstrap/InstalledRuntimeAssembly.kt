@@ -132,6 +132,8 @@ internal fun publishInstalledRuntimeIndexScope(
 
 private fun InstalledIntellijWorkspaceBootstrapPhase.runtimePhase():
     InstalledRuntimeBootstrapPhase = when (this) {
+    InstalledIntellijWorkspaceBootstrapPhase.GRADLE_JVM_SELECTION ->
+        InstalledRuntimeBootstrapPhase.GRADLE_JVM_SELECTION
     InstalledIntellijWorkspaceBootstrapPhase.PROJECT_IMPORT ->
         InstalledRuntimeBootstrapPhase.PROJECT_IMPORT
     InstalledIntellijWorkspaceBootstrapPhase.INDEXING -> InstalledRuntimeBootstrapPhase.INDEXING

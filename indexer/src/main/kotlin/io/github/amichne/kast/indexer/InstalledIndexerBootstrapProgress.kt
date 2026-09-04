@@ -5,6 +5,8 @@ import io.github.amichne.kast.runtime.composition.InstalledRuntimeBootstrapPhase
 
 /** Ordered installed sidecar bootstrap phases that may be observed before endpoint readiness. */
 enum class InstalledIndexerBootstrapPhase {
+    DISCOVERING_RUNTIME,
+    GRADLE_JVM_SELECTION,
     PROJECT_IMPORT,
     INDEXING,
     MODEL_CAPTURE,
@@ -128,7 +130,7 @@ class InstalledIndexerBootstrapProgress private constructor(
 
     companion object {
         fun start(): InstalledIndexerBootstrapProgress = InstalledIndexerBootstrapProgress(
-            InstalledIndexerBootstrapPhase.PROJECT_IMPORT,
+            InstalledIndexerBootstrapPhase.DISCOVERING_RUNTIME,
         )
     }
 }
@@ -269,6 +271,12 @@ class InstalledIndexerBootstrapReporter(
 
 private fun InstalledRuntimeBootstrapPhase.sidecarPhase(): InstalledIndexerBootstrapPhase =
     when (this) {
+        InstalledRuntimeBootstrapPhase.DISCOVERING_RUNTIME ->
+            InstalledIndexerBootstrapPhase.DISCOVERING_RUNTIME
+        InstalledRuntimeBootstrapPhase.GRADLE_JVM_SELECTION ->
+            InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION
+        InstalledRuntimeBootstrapPhase.TRANSPORT_ACTIVATION ->
+            InstalledIndexerBootstrapPhase.TRANSPORT_ACTIVATION
         InstalledRuntimeBootstrapPhase.PROJECT_IMPORT ->
             InstalledIndexerBootstrapPhase.PROJECT_IMPORT
         InstalledRuntimeBootstrapPhase.INDEXING -> InstalledIndexerBootstrapPhase.INDEXING
@@ -279,10 +287,23 @@ private fun InstalledRuntimeBootstrapPhase.sidecarPhase(): InstalledIndexerBoots
     }
 
 private fun InstalledIndexerBootstrapPhase.next(): InstalledIndexerBootstrapPhase? = when (this) {
+    InstalledIndexerBootstrapPhase.DISCOVERING_RUNTIME -> InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION
+    InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION -> InstalledIndexerBootstrapPhase.PROJECT_IMPORT
     InstalledIndexerBootstrapPhase.PROJECT_IMPORT -> InstalledIndexerBootstrapPhase.INDEXING
     InstalledIndexerBootstrapPhase.INDEXING -> InstalledIndexerBootstrapPhase.MODEL_CAPTURE
     InstalledIndexerBootstrapPhase.MODEL_CAPTURE -> InstalledIndexerBootstrapPhase.RUNTIME_ASSEMBLY
     InstalledIndexerBootstrapPhase.RUNTIME_ASSEMBLY ->
         InstalledIndexerBootstrapPhase.TRANSPORT_ACTIVATION
     InstalledIndexerBootstrapPhase.TRANSPORT_ACTIVATION -> null
+}
+
+/** Exhaustive projection into the runtime-owned cross-process bootstrap document facade. */
+internal fun InstalledIndexerBootstrapPhase.runtimePhase(): InstalledRuntimeBootstrapPhase = when (this) {
+    InstalledIndexerBootstrapPhase.DISCOVERING_RUNTIME -> InstalledRuntimeBootstrapPhase.DISCOVERING_RUNTIME
+    InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION -> InstalledRuntimeBootstrapPhase.GRADLE_JVM_SELECTION
+    InstalledIndexerBootstrapPhase.PROJECT_IMPORT -> InstalledRuntimeBootstrapPhase.PROJECT_IMPORT
+    InstalledIndexerBootstrapPhase.INDEXING -> InstalledRuntimeBootstrapPhase.INDEXING
+    InstalledIndexerBootstrapPhase.MODEL_CAPTURE -> InstalledRuntimeBootstrapPhase.MODEL_CAPTURE
+    InstalledIndexerBootstrapPhase.RUNTIME_ASSEMBLY -> InstalledRuntimeBootstrapPhase.RUNTIME_ASSEMBLY
+    InstalledIndexerBootstrapPhase.TRANSPORT_ACTIVATION -> InstalledRuntimeBootstrapPhase.TRANSPORT_ACTIVATION
 }

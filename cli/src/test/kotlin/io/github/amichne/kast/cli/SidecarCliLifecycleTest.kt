@@ -129,9 +129,40 @@ class SidecarCliLifecycleTest {
                 "\"identity\":\"$cacheIdentity\",\"ideaHome\":\"${temporary.resolve("IntelliJ IDEA.app")}\"," +
                 "\"ideaBuild\":\"262.9437.185\",\"kotlinPluginBuild\":\"262.9437.185-IJ\"," +
                 "\"jbrIdentity\":\"25.0.3+9-b508.16-aarch64\"," +
-                "\"kastPayloadDigest\":\"sha256:${"a".repeat(64)}\"}}",
+                "\"kastPayloadDigest\":\"sha256:${"a".repeat(64)}\"},\"bootstrap\":{\"state\":\"unavailable\"}}",
             exit.document.value,
         )
+    }
+
+    @Test
+    fun `passive status preserves recorded indexing phase without runtime demand or repair`(@TempDir temporary: Path) {
+        val fixture = fixture(temporary)
+        val attempt = (io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapAttemptId.admit(
+            "123e4567-e89b-42d3-a456-426614174000",
+        ) as Refinement.Refined).value
+        val recorded = (observedCache(temporary, "sha256:${"c".repeat(64)}") as RootSidecarCacheObservation.Observed).status.copy(
+            bootstrap = RuntimeBootstrapObservation.Observed(
+                io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapState.Starting(
+                    attempt, io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapPhase.INDEXING,
+                ),
+            ),
+        )
+        val cli = fixture.cli(
+            runtimeDemander = RootRuntimeDemander { _, _, _ -> error("status must not demand a runtime") },
+            lifecycle = observedLifecycle(RuntimeLifecycleState.STALE),
+            cacheLifecycle = object : RootSidecarCacheLifecycle {
+                override fun observe(root: Path) = RootSidecarCacheObservation.Observed(recorded)
+                override fun quarantine(root: Path): RootSidecarCacheQuarantine = error("status must not repair")
+            },
+        )
+        val exit = cli.execute(listOf("status"), fixture.root.path)
+        assertTrue(exit is CliExit.Complete)
+        val document = kotlinx.serialization.json.Json.parseToJsonElement(exit.document.value)
+            .let { it as kotlinx.serialization.json.JsonObject }
+        val bootstrap = document.getValue("bootstrap") as kotlinx.serialization.json.JsonObject
+        assertEquals(kotlinx.serialization.json.JsonPrimitive("indexing"), bootstrap["phase"])
+        assertEquals(kotlinx.serialization.json.JsonPrimitive(attempt.value), bootstrap["attemptId"])
+        assertEquals(kotlinx.serialization.json.JsonPrimitive(3), bootstrap["completedPhases"])
     }
 
     private fun observedLifecycle(state: RuntimeLifecycleState): RuntimeLifecycleController =

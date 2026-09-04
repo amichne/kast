@@ -1,6 +1,9 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentIdentity
+import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapStateFile
+import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapStateObservation
+import io.github.amichne.kast.distribution.contract.bootstrap.SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
@@ -92,6 +95,7 @@ data class RootSidecarCacheStatus(
     val kotlinPluginBuild: String,
     val jbrIdentity: String,
     val kastPayloadDigest: String,
+    val bootstrap: RuntimeBootstrapObservation = RuntimeBootstrapObservation.Unavailable,
 )
 
 enum class SidecarCacheLifecycleFailure {
@@ -184,10 +188,10 @@ class FilesystemRootSidecarCacheLifecycle(
         )
         is CacheStateObservation.Observed -> when (freshness) {
             CacheIdentityFreshness.CURRENT -> RootSidecarCacheObservation.Observed(
-                record.status(state.state),
+                record.status(state.state).copy(bootstrap = observeBootstrap(record.cacheRoot)),
             )
             CacheIdentityFreshness.STALE -> RootSidecarCacheObservation.Stale(
-                record.status(state.state),
+                record.status(state.state).copy(bootstrap = observeBootstrap(record.cacheRoot)),
             )
         }
     }
@@ -540,5 +544,15 @@ private fun physicalSidecarDirectory(path: Path): Path? {
         null
     } catch (_: SecurityException) {
         null
+    }
+}
+
+/** Read-only projection; no process demand, cache repair, or environment resolution occurs here. */
+private fun observeBootstrap(cacheRoot: Path): RuntimeBootstrapObservation {
+    val path = cacheRoot.resolve(SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME)
+    if (Files.notExists(path, LinkOption.NOFOLLOW_LINKS)) return RuntimeBootstrapObservation.Unavailable
+    return when (val observed = SidecarBootstrapStateFile.observe(path)) {
+        is SidecarBootstrapStateObservation.Observed -> RuntimeBootstrapObservation.Observed(observed.state)
+        is SidecarBootstrapStateObservation.Rejected -> RuntimeBootstrapObservation.Invalid
     }
 }

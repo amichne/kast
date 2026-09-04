@@ -11,7 +11,6 @@ import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapStateObserva
 import io.github.amichne.kast.distribution.contract.bootstrap.SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapAttemptId
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapDocumentFailure
-import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapFailure
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapState
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifest
@@ -386,7 +385,7 @@ sealed interface RuntimeAdmissionFailure {
         val failure: SemanticRuntimeBootstrapDocumentFailure,
     ) : RuntimeAdmissionFailure
     data class IntellijBootstrap(
-        val failure: SemanticRuntimeBootstrapFailure,
+        val state: SemanticRuntimeBootstrapState.Rejected,
     ) : RuntimeAdmissionFailure
     data object ProcessObservationFailed : RuntimeAdmissionFailure
     data object EndpointUnavailable : RuntimeAdmissionFailure
@@ -428,7 +427,7 @@ internal fun RuntimeAdmissionFailure.outputReason(): String = when (this) {
         SemanticRuntimeBootstrapDocumentFailure.UNSUPPORTED_SCHEMA ->
             "bootstrap-schema-unsupported"
     }
-    is RuntimeAdmissionFailure.IntellijBootstrap -> failure.wireName
+    is RuntimeAdmissionFailure.IntellijBootstrap -> state.failure.wireName
     RuntimeAdmissionFailure.ProcessObservationFailed -> "process-observation-failed"
     RuntimeAdmissionFailure.EndpointUnavailable -> "endpoint-unavailable"
     RuntimeAdmissionFailure.RuntimeIdentityMismatch -> "runtime-identity-mismatch"
@@ -543,11 +542,13 @@ internal class ExactRootProcessRuntimeDemander(
         JdkRuntimeBootstrapAttemptGenerator,
     private val bootstrapProcessAuthority: RuntimeBootstrapProcessAuthority =
         JdkRuntimeBootstrapProcessAuthority,
+    private val progress: RuntimeStartupProgressSink = TerminalRuntimeStartupProgress.create(),
 ) : RuntimeDemander {
     override fun demand(
         root: CanonicalRoot,
         endpoint: RuntimeEndpoint,
     ): RuntimeAdmission {
+        progress.discoveringRuntime()
         if (endpoint.root != root) {
             return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
         }
@@ -712,13 +713,16 @@ internal class ExactRootProcessRuntimeDemander(
                             is SemanticRuntimeBootstrapState.Ready -> if (
                                 reachability is RuntimeEndpointReachability.Reachable
                             ) {
+                                progress.publish(state)
                                 return RuntimeAdmission.Ready(endpoint)
                             }
-                            is SemanticRuntimeBootstrapState.Rejected ->
+                            is SemanticRuntimeBootstrapState.Rejected -> {
+                                progress.publish(state)
                                 return RuntimeAdmission.Rejected(
-                                    RuntimeAdmissionFailure.IntellijBootstrap(state.failure),
+                                    RuntimeAdmissionFailure.IntellijBootstrap(state),
                                 )
-                            is SemanticRuntimeBootstrapState.Starting -> Unit
+                            }
+                            is SemanticRuntimeBootstrapState.Starting -> progress.publish(state)
                         }
                     }
                 }
@@ -793,7 +797,7 @@ private fun SidecarBootstrapStateObservation.sessionEndedBeforeReadyFailure(
     is SidecarBootstrapStateObservation.Observed -> {
         when (val state = state) {
             is SemanticRuntimeBootstrapState.Rejected -> if (state.attemptId == startedAttempt) {
-                RuntimeAdmissionFailure.IntellijBootstrap(state.failure)
+                RuntimeAdmissionFailure.IntellijBootstrap(state)
             } else {
                 RuntimeAdmissionFailure.SessionEndedBeforeReady
             }

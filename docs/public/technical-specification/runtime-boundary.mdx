@@ -120,6 +120,38 @@ reconciling, blocked, ready, and stopping states cannot be confused. A ready
 workspace carries the exact canonical root and current semantic generation
 needed to construct a `SemanticReadLease`.
 
+## Bootstrap observation contract
+
+The child atomically publishes schema version 2 of `bootstrap-state` for its
+launcher-owned attempt UUID. Starting and rejection documents preserve the
+closed phase: runtime discovery, Gradle JVM selection, Gradle model import,
+indexing, workspace-model capture, runtime assembly, or transport activation.
+
+The publisher rejects skipped phases, regressions, early readiness, and any
+attempt to resurrect a terminal state.
+
+The observed Gradle JVM report is retained across phase changes, readiness, and
+rejection. It records only bounded version and candidate identities, finite
+selection outcomes, and corrective guidance. A conflicting report cannot
+replace an already observed report.
+
+Rejections outside workspace import,
+including transport activation, publish a terminal cause as well.
+
+CLI startup accepts progress only from the attempt correlated with its accepted
+process session. Terminal updates go to stderr with elapsed time and stage
+counts; machine output remains one final canonical document.
+
+Passive status
+reads the last bootstrap document from the already identified cache and keeps
+recorded progress distinct from endpoint liveness.
+
+Document reads reject
+non-regular paths, symlinks, malformed or unsupported schemas, and documents
+over 16 KiB. Version 1 documents cannot prove the added phase and are rejected;
+stop the old runtime and start the matching installed product to obtain current
+evidence.
+
 ## Request-local compiler state
 
 Live IntelliJ and compiler objects never become durable evidence. This includes

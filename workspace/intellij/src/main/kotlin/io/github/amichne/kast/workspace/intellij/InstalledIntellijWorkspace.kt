@@ -74,6 +74,7 @@ enum class InstalledIntellijWorkspaceFailure {
 
 /** Ordered installed workspace bootstrap boundaries visible to the owning runtime. */
 enum class InstalledIntellijWorkspaceBootstrapPhase {
+    GRADLE_JVM_SELECTION,
     PROJECT_IMPORT,
     INDEXING,
     MODEL_CAPTURE,
@@ -200,7 +201,6 @@ object InstalledIntellijWorkspace {
         observer: InstalledIntellijWorkspaceBootstrapObserver =
             InstalledIntellijWorkspaceBootstrapObserver {},
     ): InstalledIntellijWorkspaceOpening {
-        observer.observe(InstalledIntellijWorkspaceBootstrapPhase.PROJECT_IMPORT)
         val workspacePath = Path.of(workspaceRoot.value)
         val importEnvironment = when (val admission = GradleImportEnvironment.admit(
             System.getenv(GradleImportEnvironment.VARIABLES_SETTING).orEmpty(),
@@ -318,6 +318,7 @@ object InstalledIntellijWorkspace {
             is InstalledGradleLinkPresence.Linked -> linkPresence.settings
             is InstalledGradleLinkPresence.Unlinked -> linkPresence.settings
         }
+        observer.observe(InstalledIntellijWorkspaceBootstrapPhase.GRADLE_JVM_SELECTION)
         val selection = selectInstalledGradleJvm(project, linkedProjectSettings, sidecarJvm, projectJvmAuthority)
         observer.observeGradleJvm(selection.report)
         val selectedGradleJvm = when (selection) {
@@ -335,6 +336,7 @@ object InstalledIntellijWorkspace {
             )
         }
 
+        observer.observe(InstalledIntellijWorkspaceBootstrapPhase.PROJECT_IMPORT)
         val imported = CompletableFuture<Void>()
         val closedImported = imported.closedImportOutcome()
         val specification = ImportSpecBuilder(project, GradleConstants.SYSTEM_ID)

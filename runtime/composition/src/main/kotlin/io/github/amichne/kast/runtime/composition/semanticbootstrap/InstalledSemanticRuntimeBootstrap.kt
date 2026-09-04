@@ -4,7 +4,11 @@ import io.github.amichne.kast.distribution.contract.bootstrap.SEMANTIC_RUNTIME_B
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapAttemptId
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapCodec
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapFailure
+import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapPhase
+import io.github.amichne.kast.runtime.composition.InstalledRuntimeBootstrapPhase
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapState
+import io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionObservation
+import io.github.amichne.kast.runtime.composition.InstalledGradleJvmSelectionReport
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.runtime.composition.InstalledKastRuntimeFailure
 import io.github.amichne.kast.runtime.composition.InstalledRuntimeAssemblyFailure
@@ -28,6 +32,12 @@ class InstalledSemanticRuntimeBootstrapDocument private constructor(
 
 enum class InstalledSemanticRuntimeBootstrapAttemptFailure { INVALID_IDENTITY }
 
+enum class InstalledSemanticRuntimeBootstrapTerminalFailure {
+    RUNTIME_ASSEMBLY,
+    TRANSPORT_ACTIVATION,
+    CACHE_STATE_PUBLICATION,
+}
+
 sealed interface InstalledSemanticRuntimeBootstrapAttemptAdmission {
     data class Admitted(
         val attempt: InstalledSemanticRuntimeBootstrapAttempt,
@@ -47,21 +57,43 @@ sealed interface InstalledSemanticRuntimeBootstrapRejection {
     data object Ambiguous : InstalledSemanticRuntimeBootstrapRejection
 }
 
+sealed interface InstalledSemanticRuntimeGradleJvmRefinement {
+    data class Refined(val attempt: InstalledSemanticRuntimeBootstrapAttempt) : InstalledSemanticRuntimeGradleJvmRefinement
+    data object ConflictingEvidence : InstalledSemanticRuntimeGradleJvmRefinement
+}
+
 /** One admitted identity produces only canonical state documents for one Indexer process. */
 class InstalledSemanticRuntimeBootstrapAttempt private constructor(
     private val attemptId: SemanticRuntimeBootstrapAttemptId,
+    private val gradleJvm: GradleJvmSelectionObservation = GradleJvmSelectionObservation.Unobserved,
 ) {
-    fun startingDocument(): InstalledSemanticRuntimeBootstrapDocument = document(
-        SemanticRuntimeBootstrapState.Starting(attemptId),
+    /** Refines absent JVM evidence once; an existing proof can only be observed identically. */
+    fun withGradleJvm(report: InstalledGradleJvmSelectionReport): InstalledSemanticRuntimeGradleJvmRefinement =
+        when (gradleJvm) {
+            GradleJvmSelectionObservation.Unobserved -> InstalledSemanticRuntimeGradleJvmRefinement.Refined(
+                InstalledSemanticRuntimeBootstrapAttempt(attemptId, GradleJvmSelectionObservation.Observed(report.report)),
+            )
+            is GradleJvmSelectionObservation.Observed -> if (gradleJvm.report == report.report) {
+                InstalledSemanticRuntimeGradleJvmRefinement.Refined(this)
+            } else {
+                InstalledSemanticRuntimeGradleJvmRefinement.ConflictingEvidence
+            }
+        }
+
+    fun startingDocument(
+        phase: InstalledRuntimeBootstrapPhase = InstalledRuntimeBootstrapPhase.DISCOVERING_RUNTIME,
+    ): InstalledSemanticRuntimeBootstrapDocument = document(
+        SemanticRuntimeBootstrapState.Starting(attemptId, phase.contractPhase(), gradleJvm),
     )
 
     fun readyDocument(): InstalledSemanticRuntimeBootstrapDocument = document(
-        SemanticRuntimeBootstrapState.Ready(attemptId),
+        SemanticRuntimeBootstrapState.Ready(attemptId, gradleJvm),
     )
 
     /** Projects one unambiguous installed-workspace rejection into the shared wire contract. */
     fun rejectionDocument(
         failures: Set<InstalledKastRuntimeFailure>,
+        phase: InstalledRuntimeBootstrapPhase = InstalledRuntimeBootstrapPhase.DISCOVERING_RUNTIME,
     ): InstalledSemanticRuntimeBootstrapRejection {
         val projections = failures.map(InstalledKastRuntimeFailure::intellijBootstrapFailure)
         val projected = projections
@@ -72,11 +104,30 @@ class InstalledSemanticRuntimeBootstrapAttempt private constructor(
             projected.isEmpty() -> InstalledSemanticRuntimeBootstrapRejection.Unavailable
             projections.all { it is IntellijBootstrapFailureProjection.Projected } &&
                 projected.size == 1 -> InstalledSemanticRuntimeBootstrapRejection.Projected(
-                document(SemanticRuntimeBootstrapState.Rejected(attemptId, projected.single())),
+                document(SemanticRuntimeBootstrapState.Rejected(attemptId, projected.single(), phase.contractPhase(), gradleJvm)),
             )
             else -> InstalledSemanticRuntimeBootstrapRejection.Ambiguous
         }
     }
+
+    fun terminalFailureDocument(
+        phase: InstalledRuntimeBootstrapPhase,
+        failure: InstalledSemanticRuntimeBootstrapTerminalFailure,
+    ): InstalledSemanticRuntimeBootstrapDocument = document(
+        SemanticRuntimeBootstrapState.Rejected(
+            attemptId,
+            when (failure) {
+                InstalledSemanticRuntimeBootstrapTerminalFailure.TRANSPORT_ACTIVATION ->
+                    SemanticRuntimeBootstrapFailure.TRANSPORT_ACTIVATION_FAILED
+                InstalledSemanticRuntimeBootstrapTerminalFailure.RUNTIME_ASSEMBLY ->
+                    SemanticRuntimeBootstrapFailure.RUNTIME_ASSEMBLY_FAILED
+                InstalledSemanticRuntimeBootstrapTerminalFailure.CACHE_STATE_PUBLICATION ->
+                    SemanticRuntimeBootstrapFailure.CACHE_STATE_PUBLICATION_FAILED
+            },
+            phase.contractPhase(),
+            gradleJvm,
+        ),
+    )
 
     private fun document(
         state: SemanticRuntimeBootstrapState,
@@ -211,4 +262,14 @@ private fun InstalledIntellijWorkspaceFailure.bootstrapFailure():
         SemanticRuntimeBootstrapFailure.MODEL_SEMANTIC_MODULE_INVALID
     InstalledIntellijWorkspaceFailure.MODEL_STATE_IDENTITY_REJECTED ->
         SemanticRuntimeBootstrapFailure.MODEL_STATE_IDENTITY_REJECTED
+}
+
+private fun InstalledRuntimeBootstrapPhase.contractPhase(): SemanticRuntimeBootstrapPhase = when (this) {
+    InstalledRuntimeBootstrapPhase.DISCOVERING_RUNTIME -> SemanticRuntimeBootstrapPhase.DISCOVERING_RUNTIME
+    InstalledRuntimeBootstrapPhase.GRADLE_JVM_SELECTION -> SemanticRuntimeBootstrapPhase.GRADLE_JVM_SELECTION
+    InstalledRuntimeBootstrapPhase.PROJECT_IMPORT -> SemanticRuntimeBootstrapPhase.PROJECT_IMPORT
+    InstalledRuntimeBootstrapPhase.INDEXING -> SemanticRuntimeBootstrapPhase.INDEXING
+    InstalledRuntimeBootstrapPhase.MODEL_CAPTURE -> SemanticRuntimeBootstrapPhase.MODEL_CAPTURE
+    InstalledRuntimeBootstrapPhase.RUNTIME_ASSEMBLY -> SemanticRuntimeBootstrapPhase.RUNTIME_ASSEMBLY
+    InstalledRuntimeBootstrapPhase.TRANSPORT_ACTIVATION -> SemanticRuntimeBootstrapPhase.TRANSPORT_ACTIVATION
 }

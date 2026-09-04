@@ -52,15 +52,28 @@ class CliBoundaryDocumentsTest {
                 textDocument("invalid option"),
             ).value,
         )
-        assertEquals(
-            "{\"status\":\"rejected\",\"boundary\":\"runtime\"," +
-                "\"reason\":\"project-jvm-unavailable\"}",
-            CliBoundaryDocuments.runtimeRejected(
-                RuntimeAdmissionFailure.IntellijBootstrap(
-                    SemanticRuntimeBootstrapFailure.PROJECT_JVM_UNAVAILABLE,
-                ),
-            ).value,
+
+    }
+
+    @Test
+    fun `runtime rejection preserves phase attempt and fixed corrective action in one JSON document`() {
+        val attempt = (io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapAttemptId.admit(
+            "123e4567-e89b-42d3-a456-426614174000",
+        ) as Refinement.Refined).value
+        val rejected = io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapState.Rejected(
+            attempt,
+            SemanticRuntimeBootstrapFailure.GRADLE_JVM_UNAVAILABLE,
+            io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapPhase.GRADLE_JVM_SELECTION,
         )
+        val raw = CliBoundaryDocuments.runtimeRejected(
+            RuntimeAdmissionFailure.IntellijBootstrap(rejected),
+        ).value
+        val document = kotlinx.serialization.json.Json.parseToJsonElement(raw) as kotlinx.serialization.json.JsonObject
+        val bootstrap = document.getValue("bootstrap") as kotlinx.serialization.json.JsonObject
+        assertEquals(kotlinx.serialization.json.JsonPrimitive("selecting-gradle-jvm"), bootstrap["phase"])
+        assertEquals(kotlinx.serialization.json.JsonPrimitive(attempt.value), bootstrap["attemptId"])
+        assertEquals(kotlinx.serialization.json.JsonPrimitive("Select a Gradle-compatible project JVM, then run kast start again."), bootstrap["correctiveAction"])
+        assertEquals(1, raw.lines().size)
     }
 
     private fun textDocument(raw: String): CliTextDocument = when (

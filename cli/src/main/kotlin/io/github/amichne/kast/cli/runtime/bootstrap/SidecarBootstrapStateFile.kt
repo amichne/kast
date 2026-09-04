@@ -30,13 +30,21 @@ internal sealed interface SidecarBootstrapStateObservation {
 
 /** Read-only exact-cache adapter for the child-owned typed bootstrap document. */
 internal object SidecarBootstrapStateFile {
+    private const val MAXIMUM_DOCUMENT_BYTES = 16 * 1024
     fun observe(path: Path): SidecarBootstrapStateObservation {
         path.admittedParent()
             ?: return SidecarBootstrapStateObservation.Rejected(
                 SidecarBootstrapStateFileFailure.PathRejected,
             )
         val document = try {
-            Files.readString(path)
+            if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
+                return SidecarBootstrapStateObservation.Rejected(SidecarBootstrapStateFileFailure.PathRejected)
+            }
+            val bytes = Files.newInputStream(path).use { it.readNBytes(MAXIMUM_DOCUMENT_BYTES + 1) }
+            if (bytes.size > MAXIMUM_DOCUMENT_BYTES) {
+                return SidecarBootstrapStateObservation.Rejected(SidecarBootstrapStateFileFailure.PathRejected)
+            }
+            bytes.toString(Charsets.UTF_8)
         } catch (_: IOException) {
             return SidecarBootstrapStateObservation.Rejected(
                 SidecarBootstrapStateFileFailure.FilesystemRejected,

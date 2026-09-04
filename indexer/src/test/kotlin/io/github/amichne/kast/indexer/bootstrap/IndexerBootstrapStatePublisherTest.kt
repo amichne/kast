@@ -58,6 +58,42 @@ class IndexerBootstrapStatePublisherTest {
     }
 
     @Test
+    fun `publisher persists each ordered phase and rejects skipped phases and early readiness`() {
+        val document = temporary.toRealPath().resolve("bootstrap-state")
+        withProperties(document, ATTEMPT) {
+            val logged = mutableListOf<String>()
+            val publisher = (IndexerBootstrapStatePublisher.admit(
+                IndexerBootstrapDocumentSink { logged.add(it.boundaryValue()) },
+            ) as IndexerBootstrapStatePublisherAdmission.Admitted).publisher
+            assertEquals(IndexerBootstrapStatePublication.PUBLISHED, publisher.publishStarting())
+            assertEquals(IndexerBootstrapStatePublication.REJECTED, publisher.publishReady())
+            assertEquals(IndexerBootstrapStatePublication.REJECTED, publisher.publishProgress(
+                io.github.amichne.kast.runtime.composition.InstalledRuntimeBootstrapPhase.INDEXING,
+            ))
+            io.github.amichne.kast.runtime.composition.InstalledRuntimeBootstrapPhase.entries.forEach { phase ->
+                assertEquals(IndexerBootstrapStatePublication.PUBLISHED, publisher.publishProgress(phase))
+                val state = (SemanticRuntimeBootstrapCodec.decode(Files.readString(document)) as Refinement.Refined).value
+                    as SemanticRuntimeBootstrapState.Starting
+                assertEquals(phase.name, state.phase.name)
+                assertEquals(attemptId(ATTEMPT), state.attemptId)
+            }
+            assertEquals(IndexerBootstrapStatePublication.PUBLISHED, publisher.publishTerminalFailure(
+                io.github.amichne.kast.runtime.composition.semanticbootstrap.InstalledSemanticRuntimeBootstrapTerminalFailure.TRANSPORT_ACTIVATION,
+            ))
+            val rejection = (SemanticRuntimeBootstrapCodec.decode(Files.readString(document)) as Refinement.Refined).value
+                as SemanticRuntimeBootstrapState.Rejected
+            assertEquals(SemanticRuntimeBootstrapFailure.TRANSPORT_ACTIVATION_FAILED, rejection.failure)
+            assertEquals(io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapPhase.TRANSPORT_ACTIVATION, rejection.phase)
+            assertEquals(IndexerBootstrapStatePublication.REJECTED, publisher.publishReady())
+            assertEquals(8, logged.size)
+            val loggedStates = logged.map { (SemanticRuntimeBootstrapCodec.decode(it) as Refinement.Refined).value }
+            assertEquals(7, loggedStates.filterIsInstance<SemanticRuntimeBootstrapState.Starting>().size)
+            assertEquals(rejection, loggedStates.last())
+            assertEquals(true, logged.all { it.length < 16 * 1024 })
+        }
+    }
+
+    @Test
     fun `root path is a finite path rejection`() {
         withProperties(Path.of("/"), ATTEMPT) {
             assertEquals(
