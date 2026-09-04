@@ -2,9 +2,13 @@ package io.github.amichne.kast.topology.intellij
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import io.github.amichne.kast.symbol.contract.ExactDeclarationRuntimeType
 import io.github.amichne.kast.topology.contract.TopologyCandidateSet
-import io.github.amichne.kast.topology.contract.TopologyExtractionFailure
+import io.github.amichne.kast.topology.contract.TopologyCompilerProjectionEvidence
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
+import io.github.amichne.kast.topology.contract.TopologyFileExtractionFailure
+import io.github.amichne.kast.topology.contract.TopologyIdentityMismatchEvidence
+import io.github.amichne.kast.topology.contract.TopologyIdentityStage
 import io.github.amichne.kast.topology.contract.TopologySourceFile
 import io.github.amichne.kast.topology.contract.TopologySymbol
 import io.github.amichne.kast.topology.contract.TopologyWorkspaceIdentity
@@ -56,6 +60,42 @@ internal class TopologyProjectionRegistry private constructor(
         val symbol = symbolsByLocation[TopologyDeclarationLocation(file, range)]
         return if (symbol == null) TopologyRegistrySymbolLookup.Unavailable
         else TopologyRegistrySymbolLookup.Found(symbol)
+    }
+
+    /**
+     * Proof transition: exact source and target evidence plus one live compiler projection to
+     * [TopologyIdentityResolution].
+     *
+     * Matched preserves the registry-owned topology symbol. Mismatched preserves both structured
+     * projections and all location/runtime evidence. Unsupported and Rejected remain closed
+     * outcomes; no raw PSI or K2 value crosses this detached comparison boundary.
+     */
+    fun resolveIdentity(
+        source: TopologyIdentitySource,
+        targetFile: TopologySourceFile,
+        targetDeclarationRange: ExactDeclarationTextRange,
+        liveProjection: TopologyCompilerProjectionEvidence,
+        liveSymbolRuntimeType: ExactDeclarationRuntimeType,
+        psiDeclarationRuntimeType: ExactDeclarationRuntimeType,
+    ): TopologyIdentityResolution {
+        val registrySymbol = symbolsByLocation[
+            TopologyDeclarationLocation(targetFile, targetDeclarationRange)
+        ] ?: return TopologyIdentityResolution.Unsupported
+        val registryProjection = TopologyCompilerProjectionEvidence.from(registrySymbol.evidence)
+        return when (val mismatch = TopologyIdentityMismatchEvidence.admit(
+            stage = source.stage,
+            sourceFile = source.file,
+            sourceOccurrence = source.occurrence,
+            targetFile = targetFile,
+            targetDeclarationRange = targetDeclarationRange,
+            registryProjection = registryProjection,
+            liveProjection = liveProjection,
+            liveSymbolRuntimeType = liveSymbolRuntimeType,
+            psiDeclarationRuntimeType = psiDeclarationRuntimeType,
+        )) {
+            is Refinement.Refined -> TopologyIdentityResolution.Mismatched(mismatch.value)
+            is Refinement.Rejected -> TopologyIdentityResolution.Matched(registrySymbol)
+        }
     }
 
     /**
@@ -128,6 +168,23 @@ internal sealed interface TopologyRegistryFileLookup {
     data object Unavailable : TopologyRegistryFileLookup
 }
 
+/** Exact source-side context retained while one target identity is resolved. */
+internal data class TopologyIdentitySource(
+    val stage: TopologyIdentityStage,
+    val file: TopologySourceFile,
+    val occurrence: ExactDeclarationTextRange,
+)
+
+/** Closed detached result of comparing one live K2 target with its registry projection. */
+internal sealed interface TopologyIdentityResolution {
+    data class Matched(val symbol: TopologySymbol) : TopologyIdentityResolution
+    data class Mismatched(
+        val evidence: TopologyIdentityMismatchEvidence,
+    ) : TopologyIdentityResolution
+    data object Unsupported : TopologyIdentityResolution
+    data object Rejected : TopologyIdentityResolution
+}
+
 internal sealed interface TopologyProjectionRegistryResolution {
     data class Ready(
         val registry: TopologyProjectionRegistry,
@@ -135,7 +192,7 @@ internal sealed interface TopologyProjectionRegistryResolution {
 
     data class Rejected(
         val file: TopologySourceFile,
-        val failure: TopologyExtractionFailure,
+        val failure: TopologyFileExtractionFailure,
     ) : TopologyProjectionRegistryResolution
 }
 
@@ -148,7 +205,7 @@ internal class TopologyProjectionRegistryCache {
      * TopologyProjectionRegistryResolution`.
      *
      * Ready establishes that one exact candidate generation shares one detached registry.
-     * Rejected preserves the exact failing candidate and closed [TopologyExtractionFailure]. A
+     * Rejected preserves the exact failing candidate and closed [TopologyFileExtractionFailure]. A
      * changed key cannot consume prior evidence, and no live Project, PSI, or K2 value is retained.
      */
     @Synchronized
@@ -187,7 +244,7 @@ internal class TopologyReadEpochCache {
         key: TopologyProjectionRegistryKey,
         file: TopologySourceFile,
         build: () -> TopologyFileExtraction,
-    ): TopologyFileExtraction {
+    ): TopologyReadEpochResolution {
         val epoch = when (val current = state) {
             is TopologyReadEpochState.Active -> if (current.key == key) {
                 current
@@ -196,16 +253,29 @@ internal class TopologyReadEpochCache {
             }
             TopologyReadEpochState.Empty -> TopologyReadEpochState.Active(key).also { state = it }
         }
-        epoch.outcomes[file]?.let { return it }
+        epoch.outcomes[file]?.let { return TopologyReadEpochResolution.Reused(it) }
         val outcome = build()
         if (
             outcome !is TopologyFileExtraction.Failed ||
-            outcome.failure != TopologyExtractionFailure.VFS_CONTENT_MISMATCH
+            outcome.failure != TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH
         ) {
             epoch.outcomes[file] = outcome
         }
-        return outcome
+        return TopologyReadEpochResolution.Computed(outcome)
     }
+}
+
+/** Whether one read-epoch extraction ran now or came from unchanged generation evidence. */
+internal sealed interface TopologyReadEpochResolution {
+    val extraction: TopologyFileExtraction
+
+    data class Computed(
+        override val extraction: TopologyFileExtraction,
+    ) : TopologyReadEpochResolution
+
+    data class Reused(
+        override val extraction: TopologyFileExtraction,
+    ) : TopologyReadEpochResolution
 }
 
 private data class TopologyDeclarationLocation(

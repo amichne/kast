@@ -28,4 +28,16 @@ class TopologyExtractionFailureTest {
             TopologyExtractionFailure.entries.mapTo(linkedSetOf(), Enum<*>::name),
         )
     }
+
+    @Test
+    fun `ordinary file failures cannot erase compiler identity mismatch evidence`() {
+        assertEquals(
+            TopologyExtractionFailure.entries.toSet() - setOf(
+                TopologyExtractionFailure.COMPILER_IDENTITY_MISMATCH,
+                TopologyExtractionFailure.SOURCE_CONTENT_CHANGED_DURING_BUILD,
+            ),
+            TopologyFileExtractionFailure.entries
+                .mapTo(linkedSetOf(), TopologyFileExtractionFailure::toTopologyExtractionFailure),
+        )
+    }
 }

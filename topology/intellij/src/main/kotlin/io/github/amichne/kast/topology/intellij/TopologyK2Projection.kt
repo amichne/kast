@@ -11,7 +11,10 @@ import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignatureFailure
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.ExactDeclarationRuntimeType
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
+import io.github.amichne.kast.topology.contract.TopologyCompilerProjectionEvidence
+import io.github.amichne.kast.topology.contract.TopologyIdentityMismatchEvidence
 import io.github.amichne.kast.topology.contract.TopologySourceFile
 import io.github.amichne.kast.topology.contract.TopologySymbol
 import io.github.amichne.kast.symbol.contract.fromCanonicalSignature
@@ -39,19 +42,14 @@ internal sealed interface TopologySymbolProjection {
     data object Rejected : TopologySymbolProjection
 }
 
-internal sealed interface TopologyK2IdentityProjection {
-    data class Projected(val symbol: TopologySymbol) : TopologyK2IdentityProjection
-    data object Unsupported : TopologyK2IdentityProjection
-    data object CompilerIdentityMismatch : TopologyK2IdentityProjection
-    data object Rejected : TopologyK2IdentityProjection
-}
-
 internal sealed interface TopologyOverrideProjection {
     data class Projected(
         val symbols: List<TopologySymbol>,
     ) : TopologyOverrideProjection
 
-    data object CompilerIdentityMismatch : TopologyOverrideProjection
+    data class Mismatched(
+        val evidence: TopologyIdentityMismatchEvidence,
+    ) : TopologyOverrideProjection
     data object Rejected : TopologyOverrideProjection
 }
 
@@ -76,6 +74,14 @@ internal fun projectTopologySymbol(
         is TopologyCompilerProjectionResult.Projected -> result.projection
         TopologyCompilerProjectionResult.Unsupported -> return TopologySymbolProjection.Unsupported
     }
+    return detachTopologySymbol(file, declaration, projection)
+}
+
+private fun detachTopologySymbol(
+    file: TopologySourceFile,
+    declaration: KtNamedDeclaration,
+    projection: TopologyCompilerProjection,
+): TopologySymbolProjection {
     val absolute = Path.of(file.workspace.lease.workspaceRoot.value).resolve(file.path.value)
     val fileIdentity = when (val detached = SymbolDiscoveryFileIdentity.fromBoundary(
         file.workspace.lease.workspaceRoot,
@@ -104,47 +110,56 @@ internal fun projectTopologySymbol(
 }
 
 /**
- * Proof transition: `KaSymbol -> TopologyK2IdentityProjection`.
+ * Proof transition: `(KaSymbol, TopologyProjectionRegistry, TopologyIdentitySource) ->
+ * TopologyIdentityResolution`.
  *
  * Projected establishes one exact location-bearing topology symbol with canonical compiler
  * identity. Unsupported closes compiler-generated, unaddressable, and outside-generation
- * symbols; Rejected closes mismatched explicit-source compiler evidence. Raw K2 and PSI
- * extraction remains inside the current analysis session.
+ * symbols; Mismatched retains detached diagnostic evidence and Rejected closes invalid
+ * explicit-source compiler evidence. Raw K2 and PSI extraction remains inside the current
+ * analysis session.
  */
 internal fun KaSymbol.topologyIdentityProjection(
     registry: TopologyProjectionRegistry,
-): TopologyK2IdentityProjection {
+    source: TopologyIdentitySource,
+): TopologyIdentityResolution {
     if (origin != KaSymbolOrigin.SOURCE) {
-        return TopologyK2IdentityProjection.Unsupported
+        return TopologyIdentityResolution.Unsupported
     }
-    val source = when (val located = topologySourceFile(registry)) {
+    val targetFile = when (val located = topologySourceFile(registry)) {
         is TopologyK2SourceFileProjection.Found -> located.file
         TopologyK2SourceFileProjection.Unsupported ->
-            return TopologyK2IdentityProjection.Unsupported
+            return TopologyIdentityResolution.Unsupported
     }
     val declaration = psi as? KtNamedDeclaration
-                      ?: return TopologyK2IdentityProjection.Unsupported
+                      ?: return TopologyIdentityResolution.Unsupported
     val projection = when (val result = topologyProjection()) {
         is TopologyCompilerProjectionResult.Projected -> result.projection
-        TopologyCompilerProjectionResult.Unsupported -> return TopologyK2IdentityProjection.Unsupported
+        TopologyCompilerProjectionResult.Unsupported -> return TopologyIdentityResolution.Unsupported
     }
-    return when (
-        val symbol = registry.symbolAt(
-            source,
-            declaration.textRange.startOffset,
-            declaration.textRange.endOffset,
-        )
+    val live = when (val detached = detachTopologySymbol(targetFile, declaration, projection)) {
+        is TopologySymbolProjection.Projected -> detached.symbol
+        TopologySymbolProjection.Unsupported -> return TopologyIdentityResolution.Unsupported
+        TopologySymbolProjection.Rejected -> return TopologyIdentityResolution.Rejected
+    }
+    val liveRuntimeType = when (val parsed = ExactDeclarationRuntimeType.parse(javaClass.name)) {
+        is Refinement.Refined -> parsed.value
+        is Refinement.Rejected -> return TopologyIdentityResolution.Rejected
+    }
+    val psiRuntimeType = when (
+        val parsed = ExactDeclarationRuntimeType.parse(declaration.javaClass.name)
     ) {
-        is TopologyRegistrySymbolLookup.Found -> if (
-            symbol.symbol.evidence.compilerIdentity == projection.identity
-        ) {
-            TopologyK2IdentityProjection.Projected(symbol.symbol)
-        } else {
-            TopologyK2IdentityProjection.CompilerIdentityMismatch
-        }
-        TopologyRegistrySymbolLookup.Unavailable -> TopologyK2IdentityProjection.Unsupported
-        TopologyRegistrySymbolLookup.Rejected -> TopologyK2IdentityProjection.Rejected
+        is Refinement.Refined -> parsed.value
+        is Refinement.Rejected -> return TopologyIdentityResolution.Rejected
     }
+    return registry.resolveIdentity(
+        source = source,
+        targetFile = targetFile,
+        targetDeclarationRange = live.evidence.range,
+        liveProjection = TopologyCompilerProjectionEvidence.from(live.evidence),
+        liveSymbolRuntimeType = liveRuntimeType,
+        psiDeclarationRuntimeType = psiRuntimeType,
+    )
 }
 
 /**
@@ -157,16 +172,17 @@ internal fun KaSymbol.topologyIdentityProjection(
  */
 internal fun KtNamedDeclaration.directOverrideTopologyIdentities(
     registry: TopologyProjectionRegistry,
+    source: TopologyIdentitySource,
 ): TopologyOverrideProjection =
     analyze(this) {
         val symbols = linkedSetOf<TopologySymbol>()
         for (overridden in (symbol as? KaCallableSymbol)?.directlyOverriddenSymbols.orEmpty()) {
-            when (val projection = overridden.topologyIdentityProjection(registry)) {
-                is TopologyK2IdentityProjection.Projected -> symbols += projection.symbol
-                TopologyK2IdentityProjection.Unsupported -> Unit
-                TopologyK2IdentityProjection.CompilerIdentityMismatch ->
-                    return@analyze TopologyOverrideProjection.CompilerIdentityMismatch
-                TopologyK2IdentityProjection.Rejected ->
+            when (val projection = overridden.topologyIdentityProjection(registry, source)) {
+                is TopologyIdentityResolution.Matched -> symbols += projection.symbol
+                TopologyIdentityResolution.Unsupported -> Unit
+                is TopologyIdentityResolution.Mismatched ->
+                    return@analyze TopologyOverrideProjection.Mismatched(projection.evidence)
+                TopologyIdentityResolution.Rejected ->
                     return@analyze TopologyOverrideProjection.Rejected
             }
         }

@@ -5,7 +5,7 @@ import com.intellij.openapi.vfs.VfsUtil
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumeration
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumerationFailure
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumerator
-import io.github.amichne.kast.topology.contract.TopologyExtractionFailure
+import io.github.amichne.kast.topology.contract.TopologyFileExtractionFailure
 import io.github.amichne.kast.topology.contract.TopologyExtractionRequest
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
@@ -230,7 +230,7 @@ internal class TopologyVfsMismatchRetrier(
         val first = attempt()
         if (
             first !is TopologyFileExtraction.Failed ||
-            first.failure != TopologyExtractionFailure.VFS_CONTENT_MISMATCH ||
+            first.failure != TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH ||
             first.file !in request.candidates.files
         ) {
             return first

@@ -69,6 +69,96 @@ sealed interface KastSpanMeasurement {
     data class WorkUnitCount(val count: KastSpanCount) : KastSpanMeasurement
 }
 
+/** Closed topology stage names projected into the host-neutral trace boundary. */
+enum class KastTopologyIdentityStage {
+    REFERENCE_TARGET,
+    DIRECT_OVERRIDE,
+}
+
+/** Closed read-epoch cache outcomes projected into the host-neutral trace boundary. */
+enum class KastTopologyCacheDisposition {
+    COMPUTED,
+    REUSED,
+}
+
+/** Closed compiler symbol families projected into topology diagnostic traces. */
+enum class KastTopologyCompilerSymbolKind {
+    CLASSLIKE,
+    CONSTRUCTOR,
+    FUNCTION,
+    PROPERTY,
+    TYPE_ALIAS,
+}
+
+/** Exact structured fields that can differ across one topology identity comparison. */
+enum class KastTopologyCompilerProjectionComponent {
+    KIND,
+    QUALIFIED_IDENTITY,
+    SIGNATURE_KIND,
+    RECEIVER,
+    CONTEXT_RECEIVERS,
+    VALUE_PARAMETERS,
+    TYPE_PARAMETER_COUNT,
+    RETURN_TYPE,
+    IDENTITY,
+}
+
+/** Detached non-empty source range carried only by a topology diagnostic event. */
+data class KastTopologySourceRange(
+    val startInclusive: Int,
+    val endExclusive: Int,
+) {
+    init {
+        require(startInclusive in 0 until endExclusive)
+    }
+}
+
+/** One detached compiler projection suitable for a bounded topology diagnostic event. */
+data class KastTopologyCompilerProjection(
+    val kind: KastTopologyCompilerSymbolKind,
+    val qualifiedIdentity: String,
+    val canonicalSignature: String,
+    val compilerIdentity: String,
+) {
+    init {
+        require(qualifiedIdentity.isNotBlank())
+        require(canonicalSignature.isNotBlank())
+        require(compilerIdentity.isNotBlank())
+    }
+}
+
+/** Bounded, typed span events; values remain trace data and never become metric dimensions. */
+sealed interface KastSpanEvent {
+    /** One complete detached record for a failed topology compiler-identity comparison. */
+    data class TopologyIdentityMismatch(
+        val stage: KastTopologyIdentityStage,
+        val cacheDisposition: KastTopologyCacheDisposition,
+        val sourceFile: String,
+        val sourceOccurrence: KastTopologySourceRange,
+        val targetFile: String,
+        val targetDeclaration: KastTopologySourceRange,
+        val registryProjection: KastTopologyCompilerProjection,
+        val liveProjection: KastTopologyCompilerProjection,
+        val liveSymbolRuntimeType: String,
+        val psiDeclarationRuntimeType: String,
+        val delta: Set<KastTopologyCompilerProjectionComponent>,
+    ) : KastSpanEvent {
+        init {
+            require(sourceFile.isNotBlank())
+            require(targetFile.isNotBlank())
+            require(liveSymbolRuntimeType.isNotBlank())
+            require(psiDeclarationRuntimeType.isNotBlank())
+            require(delta.isNotEmpty())
+        }
+
+        val qualifiedIdentitySame: Boolean
+            get() = registryProjection.qualifiedIdentity == liveProjection.qualifiedIdentity
+
+        val signatureSame: Boolean
+            get() = registryProjection.canonicalSignature == liveProjection.canonicalSignature
+    }
+}
+
 /** Expected terminal classification. Rejection remains ordinary span data, not an exception. */
 sealed interface KastSpanCompletion {
     data object Complete : KastSpanCompletion
@@ -80,6 +170,7 @@ sealed interface KastSpanCompletion {
 data class KastSpanObservation(
     val completion: KastSpanCompletion,
     val measurements: Set<KastSpanMeasurement> = emptySet(),
+    val events: Set<KastSpanEvent> = emptySet(),
 )
 
 /** One active trace span whose children retain explicit parentage across coroutine suspension. */

@@ -24,6 +24,7 @@ import io.github.amichne.kast.runtime.composition.protocol.CanonicalKastOperatio
 import io.github.amichne.kast.symbol.intellij.InstalledIntellijSymbolPorts
 import io.github.amichne.kast.symbol.intellij.InstalledSymbolScopeOperations
 import io.github.amichne.kast.source.intellij.InstalledIntellijSourceReadPort
+import io.github.amichne.kast.workspace.contract.CanonicalSemanticProjectRoot
 import io.github.amichne.kast.workspace.contract.WorkspacePublicationRun
 import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspace
 import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceBootstrapObserver
@@ -72,7 +73,8 @@ private fun interface InstalledRuntimePortFactory {
 internal fun productionInstalledRuntimeAssembler(): InstalledRuntimeAssembler =
     InstalledRuntimeAssembler { request ->
         val workspaceModel = when (val opened = InstalledIntellijWorkspace.open(
-            request.workspaceRoot.path,
+            request.workspaceRoot.canonicalRoot,
+            request.stateDirectory.path,
             InstalledIntellijWorkspaceBootstrapObserver { phase ->
                 request.bootstrapObserver.observe(phase.runtimePhase())
             },
@@ -104,9 +106,9 @@ internal fun productionInstalledRuntimeAssembler(): InstalledRuntimeAssembler =
             RefreshingInstalledGradleModelReads(initial, workspaceModel),
             { workspace, model ->
                 productionPlatformPorts(
-                    request,
                     workspace,
                     model,
+                    workspaceModel.semanticProjectRoot,
                     workspaceModel.awaitIndexReadinessAfter(intellijSourceRootIndexRefresh()),
                 )
             },
@@ -296,32 +298,31 @@ private fun assembleInstalledRuntime(
 }
 
 private fun productionPlatformPorts(
-    request: InstalledKastRuntimeRequest,
     workspace: WorkspacePublicationCoordinator,
     model: InstalledWorkspaceModelAdapter,
+    semanticProjectRoot: CanonicalSemanticProjectRoot,
     indexRefresh: WorkspaceIndexRefreshOperations,
 ): InstalledRuntimePlatformPorts {
-    val root = request.workspaceRoot.canonicalRoot
     val symbols = InstalledIntellijSymbolPorts.create(
-        root,
+        semanticProjectRoot,
         workspace,
         InstalledSymbolScopeOperations(model::searchScope),
     )
     val relation = installedIntellijRelationCompiler(
-        root,
+        semanticProjectRoot,
         workspace,
         InstalledRelationScopeOperations(model::searchScope),
     )
-    val change = InstalledIntellijChangePorts.create(root)
+    val change = InstalledIntellijChangePorts.create(semanticProjectRoot)
     return InstalledRuntimePlatformPorts(
         SemanticRuntimePorts(
             symbols.discovery,
             symbols.exact,
-            InstalledIntellijSourceReadPort.create(root),
+            InstalledIntellijSourceReadPort.create(semanticProjectRoot),
             relation,
-            installedIntellijDiagnosticCompiler(root, workspace),
+            installedIntellijDiagnosticCompiler(semanticProjectRoot, workspace),
         ),
-        installedIntellijTopologyExtractor(root, workspace),
+        installedIntellijTopologyExtractor(semanticProjectRoot, workspace),
         indexRefresh,
         InstalledChangePhysicalPorts(
             change.sourceObserver,

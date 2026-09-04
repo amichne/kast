@@ -6,11 +6,27 @@ import org.gradle.util.GradleVersion
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
 class InstalledGradleImportPlanTest {
+    @Test
+    fun `project open cannot inherit ambient project configuration`() {
+        val task = installedProjectOpenTask(
+            InstalledProjectOpenPreparation(BootstrapProjectJvm.from(admittedSidecarJvm())),
+        )
+
+        assertTrue(task.isNewProject)
+        assertFalse(task.useDefaultProjectAsTemplate)
+        assertTrue(task.preventIprLookup)
+        assertFalse(task.runConfigurators)
+        assertFalse(task.runConversionBeforeOpen)
+        assertTrue(task.preloadServices)
+        assertFalse(task.createModule)
+    }
+
     @Test
     fun `project open defers configurators until admitted Gradle settings are available`() {
         val task = installedProjectOpenTask(

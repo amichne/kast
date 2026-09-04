@@ -2,6 +2,7 @@ package io.github.amichne.kast.workspace.intellij
 
 import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.externalSystem.autoimport.ExternalSystemProjectTrackerSettings
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
@@ -9,6 +10,8 @@ import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ex.ProjectManagerEx
 import com.intellij.openapi.startup.StartupManager
+import io.github.amichne.kast.workspace.contract.CanonicalSemanticProjectRoot
+import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefresh
 import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefreshFailure
 import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefreshOperations
@@ -26,12 +29,16 @@ private const val GRADLE_IMPORT_TIMEOUT_MINUTES = 5L
 private const val STARTUP_POLL_MILLIS = 100L
 
 enum class InstalledIntellijWorkspaceFailure {
+    PROJECT_STORE_OVERLAPS_WORKSPACE,
+    PROJECT_STORE_CREATION_FAILED,
+    PROJECT_STORE_IDENTITY_REJECTED,
     PROJECT_OPEN_FAILED,
     STARTUP_FAILED,
     GRADLE_JVM_UNAVAILABLE,
     PROJECT_JVM_UNAVAILABLE,
     PLATFORM_LINKAGE_INVALID,
     GRADLE_IMPORT_FAILED,
+    GRADLE_PROJECT_POLICY_INVALID,
     GRADLE_JVM_CONFIGURATION_INVALID,
     GRADLE_IMPORT_TIMED_OUT,
     INDEXING_INTERRUPTED,
@@ -63,6 +70,7 @@ fun interface InstalledIntellijWorkspaceBootstrapObserver {
 /** Detached complete model proof from one exact IntelliJ-opened Gradle workspace. */
 class InstalledIntellijWorkspaceModel internal constructor(
     val capture: InstalledGradleModelCapture,
+    val semanticProjectRoot: CanonicalSemanticProjectRoot,
     private val project: Project,
     private val moduleRematerializer: InstalledModuleRematerializer,
 ) {
@@ -159,20 +167,34 @@ internal fun InstalledIndexingReadiness.workspaceOpeningAdmission():
 /** Sole installed IntelliJ project-open, Gradle-import, and model-capture boundary. */
 object InstalledIntellijWorkspace {
     /**
-     * Proof transition: `Path -> InstalledIntellijWorkspaceOpening`.
+     * Proof transition: `(CanonicalWorkspaceRoot, Path) -> InstalledIntellijWorkspaceOpening`.
      *
-     * [InstalledIntellijWorkspaceOpening.Opened] establishes that IntelliJ opened the exact path,
-     * completed one explicit Gradle refresh or link, reached smart mode, and
-     * detached one complete Gradle model. [InstalledIntellijWorkspaceFailure] closes every expected
-     * bootstrap failure. The live project and Gradle objects remain inside this adapter and the
-     * IntelliJ project lifecycle.
+     * [InstalledIntellijWorkspaceOpening.Opened] establishes that IntelliJ opened a fresh project
+     * store beneath [runtimeStateDirectory], disjoint from [workspaceRoot], applied the installed
+     * Gradle policy, completed one explicit Gradle link, reached smart mode, and detached one
+     * complete Gradle model. Workspace `.idea` state is neither opened nor reused.
+     * [InstalledIntellijWorkspaceFailure] closes every expected bootstrap failure. The live project
+     * and Gradle objects remain inside this adapter and the IntelliJ project lifecycle.
      */
     fun open(
-        workspaceRoot: Path,
+        workspaceRoot: CanonicalWorkspaceRoot,
+        runtimeStateDirectory: Path,
         observer: InstalledIntellijWorkspaceBootstrapObserver =
             InstalledIntellijWorkspaceBootstrapObserver {},
     ): InstalledIntellijWorkspaceOpening {
         observer.observe(InstalledIntellijWorkspaceBootstrapPhase.PROJECT_IMPORT)
+        val workspacePath = Path.of(workspaceRoot.value)
+        val projectStore = when (
+            val prepared = InstalledSemanticProjectStore.prepare(
+                workspaceRoot,
+                runtimeStateDirectory,
+            )
+        ) {
+            is InstalledSemanticProjectStorePreparation.Prepared -> prepared.store
+            is InstalledSemanticProjectStorePreparation.Rejected -> return rejected(
+                prepared.failure.workspaceFailure(),
+            )
+        }
         GradleSystemSettings.getInstance().isDownloadSources = false
         val sidecarJvm = when (val admission = InstalledSidecarJvm.admit(
             System.getProperty("java.home")
@@ -184,18 +206,19 @@ object InstalledIntellijWorkspace {
                 InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE,
             )
         }
-        return openObserved(workspaceRoot, sidecarJvm, observer)
+        return openObserved(workspacePath, projectStore, sidecarJvm, observer)
     }
 
     private fun openObserved(
         workspaceRoot: Path,
+        projectStore: InstalledSemanticProjectStore,
         sidecarJvm: InstalledSidecarJvm,
         observer: InstalledIntellijWorkspaceBootstrapObserver,
     ): InstalledIntellijWorkspaceOpening {
         val preparation = InstalledProjectOpenPreparation(BootstrapProjectJvm.from(sidecarJvm))
         val project = try {
             ProjectManagerEx.getInstanceEx().openProject(
-                workspaceRoot,
+                projectStore.path,
                 installedProjectOpenTask(preparation),
             )
         } catch (_: RuntimeException) {
@@ -227,8 +250,14 @@ object InstalledIntellijWorkspace {
             FutureCompletion.FAILED,
                 -> return rejected(InstalledIntellijWorkspaceFailure.STARTUP_FAILED)
         }
+        val gradleSettings = when (val policy = applyInstalledGradleProjectPolicy(project)) {
+            is InstalledGradleProjectPolicyApplication.Applied -> policy.settings
+            InstalledGradleProjectPolicyApplication.Rejected -> return rejected(
+                InstalledIntellijWorkspaceFailure.GRADLE_PROJECT_POLICY_INVALID,
+            )
+        }
         val linkPresence = when (val resolution = try {
-            linkedGradleProject(GradleSettings.getInstance(project), workspaceRoot)
+            linkedGradleProject(gradleSettings, workspaceRoot)
         } catch (_: RuntimeException) {
             InstalledGradleLinkPresenceResolution.Rejected
         }) {
@@ -237,12 +266,12 @@ object InstalledIntellijWorkspace {
                 InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED,
             )
         }
-        val gradleSettings = when (linkPresence) {
+        val linkedProjectSettings = when (linkPresence) {
             is InstalledGradleLinkPresence.Linked -> linkPresence.settings
             is InstalledGradleLinkPresence.Unlinked -> linkPresence.settings
         }
         val selectedGradleJvm = when (
-            val selection = selectInstalledGradleJvm(project, gradleSettings, sidecarJvm)
+            val selection = selectInstalledGradleJvm(project, linkedProjectSettings, sidecarJvm)
         ) {
             is InstalledGradleJvmSelection.Selected -> selection.jvm
             is InstalledGradleJvmSelection.Rejected -> return rejected(
@@ -294,6 +323,12 @@ object InstalledIntellijWorkspace {
                 InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED,
             )
         }
+        when (applyInstalledGradleProjectPolicy(project)) {
+            is InstalledGradleProjectPolicyApplication.Applied -> Unit
+            InstalledGradleProjectPolicyApplication.Rejected -> return rejected(
+                InstalledIntellijWorkspaceFailure.GRADLE_PROJECT_POLICY_INVALID,
+            )
+        }
         when (materializeImportedModules(project, workspaceRoot)) {
             InstalledModuleMaterialization.AVAILABLE,
             InstalledModuleMaterialization.IMPORTED,
@@ -325,6 +360,7 @@ object InstalledIntellijWorkspace {
         return InstalledIntellijWorkspaceOpening.Opened(
             InstalledIntellijWorkspaceModel(
                 capture,
+                projectStore.root,
                 project,
                 moduleRematerializer,
             ),
@@ -424,18 +460,61 @@ object InstalledIntellijWorkspace {
     }
 }
 
-/** Project-open policy that prevents cached External System state from racing JVM admission. */
+/** Project-open policy that admits no persisted project or default-template configuration. */
 internal fun installedProjectOpenTask(
     preparation: InstalledProjectOpenPreparation,
 ): OpenProjectTask = OpenProjectTask.build().copy(
+    isNewProject = true,
+    useDefaultProjectAsTemplate = false,
     isRefreshVfsNeeded = true,
     runConfigurators = false,
     runConversionBeforeOpen = false,
     preloadServices = true,
+    preventIprLookup = true,
+    createModule = false,
     beforeOpen = { project ->
         preparation.prepare(project) is InstalledProjectOpenPreparationState.Prepared
     },
 )
+
+/** Closed result of replacing every persisted project-level Gradle policy with runtime policy. */
+internal sealed interface InstalledGradleProjectPolicyApplication {
+    data class Applied(
+        val settings: GradleSettings,
+    ) : InstalledGradleProjectPolicyApplication
+
+    data object Rejected : InstalledGradleProjectPolicyApplication
+}
+
+/**
+ * Proof transition: `Project -> InstalledGradleProjectPolicyApplication`.
+ *
+ * Applied establishes online Gradle operation, project-file storage beneath the isolated project
+ * store, and automatic reload for every external build change. The boundary applies and reads back
+ * this policy both before and after the exact Gradle root import. Rejected closes platform
+ * persistence failure.
+ */
+private fun applyInstalledGradleProjectPolicy(
+    project: Project,
+): InstalledGradleProjectPolicyApplication = try {
+    val settings = GradleSettings.getInstance(project)
+    settings.isOfflineWork = false
+    settings.storeProjectFilesExternally = false
+    val tracker = ExternalSystemProjectTrackerSettings.getInstance(project)
+    tracker.autoReloadType =
+        ExternalSystemProjectTrackerSettings.AutoReloadType.ALL
+    if (
+        settings.isOfflineWork ||
+        settings.storeProjectFilesExternally ||
+        tracker.autoReloadType != ExternalSystemProjectTrackerSettings.AutoReloadType.ALL
+    ) {
+        InstalledGradleProjectPolicyApplication.Rejected
+    } else {
+        InstalledGradleProjectPolicyApplication.Applied(settings)
+    }
+} catch (_: RuntimeException) {
+    InstalledGradleProjectPolicyApplication.Rejected
+}
 
 private fun InstalledGradleModelCaptureFailure.workspaceFailure(): InstalledIntellijWorkspaceFailure =
     when (this) {
@@ -483,6 +562,16 @@ private fun InstalledProjectOpenPreparationFailure.workspaceFailure():
     InstalledIntellijWorkspaceFailure = when (this) {
         InstalledProjectOpenPreparationFailure.PROJECT_JVM_REJECTED ->
             InstalledIntellijWorkspaceFailure.PROJECT_JVM_UNAVAILABLE
+    }
+
+private fun InstalledSemanticProjectStoreFailure.workspaceFailure():
+    InstalledIntellijWorkspaceFailure = when (this) {
+        InstalledSemanticProjectStoreFailure.OVERLAPS_WORKSPACE ->
+            InstalledIntellijWorkspaceFailure.PROJECT_STORE_OVERLAPS_WORKSPACE
+        InstalledSemanticProjectStoreFailure.CREATION_FAILED ->
+            InstalledIntellijWorkspaceFailure.PROJECT_STORE_CREATION_FAILED
+        InstalledSemanticProjectStoreFailure.IDENTITY_REJECTED ->
+            InstalledIntellijWorkspaceFailure.PROJECT_STORE_IDENTITY_REJECTED
     }
 
 private fun rejected(

@@ -251,6 +251,40 @@ val enterpriseAcceptanceIdeaHome = providers.gradleProperty("kastAcceptanceIdeaH
         },
     )
 
+val topologyIdentityDiagnosticReport = layout.buildDirectory.file(
+    "reports/topology-identity-diagnostic/topology-identity-diagnostic.json",
+)
+
+tasks.register<Exec>("topologyIdentityDiagnostic") {
+    group = "verification"
+    description =
+        "Runs cold K2 identity probes while proving workspace .idea configuration is isolated."
+    dependsOn(stageInstalledProduct, semanticRuntimeArchive)
+    inputs.dir(installedProductDirectory)
+    inputs.file(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
+    inputs.file(layout.projectDirectory.file("integration-tests/topology_identity_diagnostic.py"))
+    inputs.file(layout.projectDirectory.file("integration-tests/enterprise_acceptance.py"))
+    inputs.file(layout.projectDirectory.file("gradle/wrapper/gradle-wrapper.jar"))
+    inputs.dir(layout.projectDirectory.dir("fixtures/topology-identity-workspace"))
+    inputs.dir(enterpriseAcceptanceIdeaHome)
+    outputs.dir(layout.buildDirectory.dir("reports/topology-identity-diagnostic"))
+    outputs.upToDateWhen { false }
+    commandLine(
+        "python3",
+        layout.projectDirectory.file("integration-tests/topology_identity_diagnostic.py"),
+        "--product-root",
+        installedProductDirectory.get().asFile.absolutePath,
+        "--fixture",
+        layout.projectDirectory.dir("fixtures/topology-identity-workspace").asFile.absolutePath,
+        "--runtime-archive",
+        semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
+        "--idea-home",
+        enterpriseAcceptanceIdeaHome.get(),
+        "--report",
+        topologyIdentityDiagnosticReport.get().asFile.absolutePath,
+    )
+}
+
 tasks.register<Exec>("enterpriseAcceptance") {
     group = "verification"
     description = "Runs the installed sidecar enterprise fixture."

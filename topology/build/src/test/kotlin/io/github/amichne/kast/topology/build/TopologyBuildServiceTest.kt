@@ -13,6 +13,7 @@ import io.github.amichne.kast.topology.contract.TopologyCandidateSet
 import io.github.amichne.kast.topology.contract.TopologyExtractionFailure
 import io.github.amichne.kast.topology.contract.TopologyExtractionRequest
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
+import io.github.amichne.kast.topology.contract.TopologyFileExtractionFailure
 import io.github.amichne.kast.topology.contract.TopologyFileExtractor
 import io.github.amichne.kast.topology.contract.TopologyPublicationResult
 import io.github.amichne.kast.topology.contract.TopologySnapshotContent
@@ -156,7 +157,7 @@ class TopologyBuildServiceTest {
                 extractionCalls.incrementAndGet()
                 TopologyFileExtraction.Failed(
                     currentFile,
-                    TopologyExtractionFailure.COMPILER_UNAVAILABLE,
+                    TopologyFileExtractionFailure.COMPILER_UNAVAILABLE,
                 )
             },
             snapshots,
@@ -216,7 +217,7 @@ class TopologyBuildServiceTest {
                 } else {
                     TopologyFileExtraction.Failed(
                         request.file,
-                        TopologyExtractionFailure.COMPILER_UNAVAILABLE,
+                        TopologyFileExtractionFailure.COMPILER_UNAVAILABLE,
                     )
                 }
             },
@@ -256,7 +257,7 @@ class TopologyBuildServiceTest {
                 extractionCalls.incrementAndGet()
                 TopologyFileExtraction.Failed(
                     registryFailure,
-                    TopologyExtractionFailure.DOCUMENT_DIRTY,
+                    TopologyFileExtractionFailure.DOCUMENT_DIRTY,
                 )
             },
             FixedSnapshots(
@@ -294,7 +295,7 @@ class TopologyBuildServiceTest {
             TopologyFileExtractor {
                 TopologyFileExtraction.Failed(
                     foreign,
-                    TopologyExtractionFailure.VFS_CONTENT_MISMATCH,
+                    TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH,
                 )
             },
             FixedSnapshots(

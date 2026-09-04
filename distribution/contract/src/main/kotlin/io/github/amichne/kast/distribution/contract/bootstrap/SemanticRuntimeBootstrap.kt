@@ -20,6 +20,12 @@ import kotlinx.serialization.json.jsonPrimitive
 enum class SemanticRuntimeBootstrapFailure(
     val wireName: String,
 ) {
+    PROJECT_STORE_OVERLAPS_WORKSPACE("project-store-overlaps-workspace"),
+
+    PROJECT_STORE_CREATION_FAILED("project-store-creation-failed"),
+
+    PROJECT_STORE_IDENTITY_REJECTED("project-store-identity-rejected"),
+
     PROJECT_OPEN_FAILED("project-open-failed"),
 
     STARTUP_FAILED("startup-failed"),
@@ -31,6 +37,8 @@ enum class SemanticRuntimeBootstrapFailure(
     PLATFORM_LINKAGE_INVALID("platform-linkage-invalid"),
 
     GRADLE_IMPORT_FAILED("gradle-import-failed"),
+
+    GRADLE_PROJECT_POLICY_INVALID("gradle-project-policy-invalid"),
 
     GRADLE_JVM_CONFIGURATION_INVALID("gradle-jvm-configuration-invalid"),
 

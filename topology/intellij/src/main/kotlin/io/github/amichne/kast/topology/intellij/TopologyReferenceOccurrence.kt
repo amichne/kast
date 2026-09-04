@@ -1,6 +1,8 @@
 package io.github.amichne.kast.topology.intellij
 
 import com.intellij.openapi.util.TextRange
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 
 /** Optional non-empty source anchor supplied by an enclosing super-type constructor call. */
 internal sealed interface EnclosingSuperTypeCallRange {
@@ -14,7 +16,7 @@ internal sealed interface EnclosingSuperTypeCallRange {
 /** Non-empty source occurrence for one compiler-resolved topology reference. */
 internal sealed interface TopologyReferenceOccurrence {
     data class Admitted internal constructor(
-        val range: TextRange,
+        val range: ExactDeclarationTextRange,
     ) : TopologyReferenceOccurrence
 
     data object Rejected : TopologyReferenceOccurrence
@@ -41,7 +43,16 @@ internal sealed interface TopologyReferenceOccurrence {
                     EnclosingSuperTypeCallRange.Unavailable -> return Rejected
                 }
             }
-            return if (candidate.isEmpty) Rejected else Admitted(candidate)
+            if (candidate.isEmpty) return Rejected
+            return when (
+                val range = ExactDeclarationTextRange.parse(
+                    candidate.startOffset,
+                    candidate.endOffset,
+                )
+            ) {
+                is Refinement.Refined -> Admitted(range.value)
+                is Refinement.Rejected -> Rejected
+            }
         }
     }
 }

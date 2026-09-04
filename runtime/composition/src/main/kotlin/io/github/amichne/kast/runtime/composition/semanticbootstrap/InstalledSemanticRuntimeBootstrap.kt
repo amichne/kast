@@ -137,6 +137,12 @@ private fun InstalledRuntimeWorkspaceFailure.intellijBootstrapFailure():
 
 private fun InstalledIntellijWorkspaceFailure.bootstrapFailure():
     SemanticRuntimeBootstrapFailure = when (this) {
+    InstalledIntellijWorkspaceFailure.PROJECT_STORE_OVERLAPS_WORKSPACE ->
+        SemanticRuntimeBootstrapFailure.PROJECT_STORE_OVERLAPS_WORKSPACE
+    InstalledIntellijWorkspaceFailure.PROJECT_STORE_CREATION_FAILED ->
+        SemanticRuntimeBootstrapFailure.PROJECT_STORE_CREATION_FAILED
+    InstalledIntellijWorkspaceFailure.PROJECT_STORE_IDENTITY_REJECTED ->
+        SemanticRuntimeBootstrapFailure.PROJECT_STORE_IDENTITY_REJECTED
     InstalledIntellijWorkspaceFailure.PROJECT_OPEN_FAILED ->
         SemanticRuntimeBootstrapFailure.PROJECT_OPEN_FAILED
     InstalledIntellijWorkspaceFailure.STARTUP_FAILED ->
@@ -149,6 +155,8 @@ private fun InstalledIntellijWorkspaceFailure.bootstrapFailure():
         SemanticRuntimeBootstrapFailure.PLATFORM_LINKAGE_INVALID
     InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED ->
         SemanticRuntimeBootstrapFailure.GRADLE_IMPORT_FAILED
+    InstalledIntellijWorkspaceFailure.GRADLE_PROJECT_POLICY_INVALID ->
+        SemanticRuntimeBootstrapFailure.GRADLE_PROJECT_POLICY_INVALID
     InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID ->
         SemanticRuntimeBootstrapFailure.GRADLE_JVM_CONFIGURATION_INVALID
     InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_TIMED_OUT ->
