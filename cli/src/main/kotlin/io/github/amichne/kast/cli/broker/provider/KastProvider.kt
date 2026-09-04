@@ -288,9 +288,15 @@ internal object KastProviderQualifier {
             invoke = { runtime, input, context -> runtime.invoke(this, input, context) },
             encode = KastInvocationOutput::document,
             present = { output ->
+                val observerPresentation = try {
+                    KastObserverProjector.project(operation, output)
+                } catch (_: RuntimeException) {
+                    io.github.amichne.kast.cli.broker.core.ObserverPresentation.None
+                }
                 ToolPresentation.text(
                     canonicalJson(output.document),
                     success = output.success,
+                    observer = observerPresentation,
                 )
             },
         )
@@ -308,7 +314,7 @@ internal object KastProviderQualifier {
         projectionVersion: Int,
         tool: KastServerToolBoundary,
     ): QualifiedKastTool? {
-        if (!OPERATION_ID.matches(tool.operationId)) return null
+        val operation = KastOperationId.admit(tool.operationId) ?: return null
         val name = refined(ToolName.admit(tool.name)) ?: return null
         val description = refined(ToolDescription.admit(tool.description)) ?: return null
         if (tool.cliUsage.isBlank() || tool.cliUsage.length > 16_384) return null
@@ -339,6 +345,7 @@ internal object KastProviderQualifier {
         val inputSchema = refined(NetworkntJsonSchemaCompiler.compile(inputDocument)) ?: return null
         val outputSchema = refined(NetworkntJsonSchemaCompiler.compile(outputDocument)) ?: return null
         return QualifiedKastTool(
+            operation,
             name,
             description,
             tool.deferLoading,
@@ -415,7 +422,6 @@ internal object KastProviderQualifier {
 
     private const val MAXIMUM_VERSION_BYTES = 4 * 1_024
     private const val MAXIMUM_SCHEMA_BYTES = 512 * 1_024
-    private val OPERATION_ID = Regex("[a-z][a-z0-9]*(?:\\.[a-z][a-z0-9]*)+")
     private val INPUT_FIELD = Regex("[a-z][A-Za-z0-9]{0,63}")
     private val CLI_OPTION = Regex("--[a-z][a-z0-9-]{0,125}")
     private val boundaryJson = Json { ignoreUnknownKeys = true }
@@ -507,7 +513,11 @@ internal class KastRuntime(
             }
         }
         return ProviderCall.Completed(
-            KastInvocationOutput(document, success = completed.exitCode == 0),
+            KastInvocationOutput(
+                document,
+                success = completed.exitCode == 0,
+                observerDirectory = context.workingDirectory,
+            ),
         )
     }
 
@@ -528,6 +538,7 @@ private sealed interface KastContractQualification {
 }
 
 internal data class QualifiedKastTool(
+    val operation: KastOperationId,
     val name: ToolName,
     val description: ToolDescription,
     val deferLoading: Boolean,
@@ -538,6 +549,17 @@ internal data class QualifiedKastTool(
     val bindings: List<QualifiedKastBinding>,
 )
 
+@JvmInline
+internal value class KastOperationId private constructor(val value: String) {
+    companion object {
+        internal fun admit(raw: String): KastOperationId? = raw
+            .takeIf { value -> OPERATION_ID.matches(value) }
+            ?.let(::KastOperationId)
+
+        private val OPERATION_ID = Regex("[a-z][a-z0-9]*(?:\\.[a-z][a-z0-9]*)+")
+    }
+}
+
 internal data class QualifiedKastBinding(
     val type: KastBindingType,
     val inputField: String,
@@ -545,7 +567,11 @@ internal data class QualifiedKastBinding(
 )
 
 internal data class KastInvocationInput(val arguments: JsonObject)
-internal data class KastInvocationOutput(val document: JsonObject, val success: Boolean)
+internal data class KastInvocationOutput(
+    val document: JsonObject,
+    val success: Boolean,
+    val observerDirectory: CanonicalBrokerDirectory,
+)
 internal enum class KastToolInputFailure { NOT_OBJECT }
 
 @Serializable

@@ -27,13 +27,28 @@ internal data class ToolContent(
     val text: String,
 )
 
+internal sealed interface ObserverPresentation {
+    data object None : ObserverPresentation
+
+    data class Markdown(
+        val source: ObserverMarkdown,
+    ) : ObserverPresentation
+}
+
+@JvmInline
+internal value class ObserverMarkdown(val value: String)
+
 internal data class ToolPresentation private constructor(
     val content: List<ToolContent>,
     val success: Boolean,
+    val observer: ObserverPresentation,
 ) {
     companion object {
-        internal fun text(text: String, success: Boolean): ToolPresentation =
-            ToolPresentation(listOf(ToolContent(text)), success)
+        internal fun text(
+            text: String,
+            success: Boolean,
+            observer: ObserverPresentation = ObserverPresentation.None,
+        ): ToolPresentation = ToolPresentation(listOf(ToolContent(text)), success, observer)
     }
 }
 
