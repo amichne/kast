@@ -3,9 +3,9 @@ package io.github.amichne.kast.topology.intellij
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityCandidate
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
-import io.github.amichne.kast.topology.contract.TopologyExtractionFailure
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumerator
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
+import io.github.amichne.kast.topology.contract.TopologyFileExtractionFailure
 import io.github.amichne.kast.topology.contract.TopologyFileExtractor
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
@@ -73,5 +73,5 @@ private fun topologyUnavailable(
     file: io.github.amichne.kast.topology.contract.TopologySourceFile,
 ): TopologyFileExtraction = TopologyFileExtraction.Failed(
     file,
-    TopologyExtractionFailure.PROJECT_UNAVAILABLE,
+    TopologyFileExtractionFailure.PROJECT_UNAVAILABLE,
 )

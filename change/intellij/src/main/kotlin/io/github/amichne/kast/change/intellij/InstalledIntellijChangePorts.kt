@@ -26,6 +26,7 @@ import io.github.amichne.kast.change.recovery.AddDeclarationRollbackResult
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.workspace.contract.CanonicalSemanticProjectRoot
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtDeclaration
@@ -48,16 +49,17 @@ class InstalledIntellijChangePorts private constructor(
 ) {
     companion object {
         /**
-         * Proof transition: `CanonicalWorkspaceRoot -> InstalledIntellijChangePorts`.
+         * Proof transition: `CanonicalSemanticProjectRoot -> InstalledIntellijChangePorts`.
          *
          * Establishes request-local physical and compiler ports that locate only the live exact
          * root. Normal writes retain their [MutationAuthority] solely so a matching durable
          * applied-write record can invoke recovery. Missing or moved projects remain closed port
          * failures; no live IntelliJ object escapes a call.
          */
-        fun create(root: CanonicalWorkspaceRoot): InstalledIntellijChangePorts {
+        fun create(projectRoot: CanonicalSemanticProjectRoot): InstalledIntellijChangePorts {
+            val root = projectRoot.workspaceRoot
             val authorities = ConcurrentHashMap<String, MutationAuthority>()
-            fun adapter(): IntellijChangeSourceAdapter? = exactProject(root)
+            fun adapter(): IntellijChangeSourceAdapter? = exactProject(projectRoot)
                 ?.let(::IntellijChangeSourceAdapter)
             return InstalledIntellijChangePorts(
                 sourceObserver = { source ->
@@ -76,7 +78,7 @@ class InstalledIntellijChangePorts private constructor(
                     adapter()?.rollback(authority, record) ?: unavailableRollback()
                 },
                 intentCompiler = { selector, raw ->
-                    compileIntent(root, selector, raw)
+                    compileIntent(projectRoot, root, selector, raw)
                 },
             )
         }
@@ -84,11 +86,12 @@ class InstalledIntellijChangePorts private constructor(
 }
 
 private fun compileIntent(
+    projectRoot: CanonicalSemanticProjectRoot,
     root: CanonicalWorkspaceRoot,
     selector: SymbolSelector,
     rawDeclaration: String,
 ): InstalledAddDeclarationIntentCompilation {
-    val project = exactProject(root) ?: return rejected(
+    val project = exactProject(projectRoot) ?: return rejected(
         InstalledAddDeclarationIntentFailure.PROJECT_UNAVAILABLE,
     )
     return compileIntent(project, root, selector, rawDeclaration)
@@ -183,7 +186,7 @@ private fun KtDeclaration.addDeclarationKind(): AddDeclarationKind? = when (this
     else -> null
 }
 
-private fun exactProject(root: CanonicalWorkspaceRoot): Project? =
+private fun exactProject(root: CanonicalSemanticProjectRoot): Project? =
     ProjectManager.getInstance().openProjects.singleOrNull { project ->
         !project.isDisposed && project.basePath?.let(Path::of)?.toAbsolutePath()?.normalize()
             ?.toString() == root.value

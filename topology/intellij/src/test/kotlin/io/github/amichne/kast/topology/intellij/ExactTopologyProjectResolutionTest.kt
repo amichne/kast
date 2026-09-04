@@ -2,7 +2,8 @@ package io.github.amichne.kast.topology.intellij
 
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.topology.contract.TopologyExtractionFailure
+import io.github.amichne.kast.topology.contract.TopologyFileExtractionFailure
+import io.github.amichne.kast.workspace.contract.CanonicalSemanticProjectRoot
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -24,7 +25,7 @@ class ExactTopologyProjectResolutionTest {
             ExactTopologyProjectResolution.Rejected::class.java,
             resolution,
         )
-        assertEquals(TopologyExtractionFailure.PROJECT_UNAVAILABLE, rejected.failure)
+        assertEquals(TopologyFileExtractionFailure.PROJECT_UNAVAILABLE, rejected.failure)
     }
 
     @Test
@@ -40,8 +41,18 @@ class ExactTopologyProjectResolutionTest {
         assertSame(project, found.project)
     }
 
-    private fun canonicalRoot(path: Path): CanonicalWorkspaceRoot = when (
-        val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(path.toRealPath())
+    private fun canonicalRoot(path: Path): CanonicalSemanticProjectRoot = when (
+        val admitted = CanonicalSemanticProjectRoot.fromCanonicalPath(
+            workspaceRoot(),
+            path.toRealPath(),
+        )
+    ) {
+        is Refinement.Refined -> admitted.value
+        is Refinement.Rejected -> error(admitted.failure)
+    }
+
+    private fun workspaceRoot(): CanonicalWorkspaceRoot = when (
+        val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace"))
     ) {
         is Refinement.Refined -> admitted.value
         is Refinement.Rejected -> error(admitted.failure)

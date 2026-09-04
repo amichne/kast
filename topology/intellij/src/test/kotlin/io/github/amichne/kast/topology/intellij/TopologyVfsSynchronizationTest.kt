@@ -5,7 +5,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.topology.contract.CompleteTopologyFile
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumeration
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumerator
-import io.github.amichne.kast.topology.contract.TopologyExtractionFailure
+import io.github.amichne.kast.topology.contract.TopologyFileExtractionFailure
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.GradleSourceRootEvidence
@@ -146,7 +146,7 @@ class TopologyVfsSynchronizationTest {
             if (attempts.incrementAndGet() == 1) {
                 TopologyFileExtraction.Failed(
                     failing,
-                    TopologyExtractionFailure.VFS_CONTENT_MISMATCH,
+                    TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH,
                 )
             } else {
                 TopologyFileExtraction.Complete(complete)
@@ -168,8 +168,8 @@ class TopologyVfsSynchronizationTest {
         val request = candidates.extractionRequest(candidates.files.single()).refined()
 
         listOf(
-            TopologyExtractionFailure.DOCUMENT_DIRTY,
-            TopologyExtractionFailure.PSI_DOCUMENT_UNCOMMITTED,
+            TopologyFileExtractionFailure.DOCUMENT_DIRTY,
+            TopologyFileExtractionFailure.PSI_DOCUMENT_UNCOMMITTED,
         ).forEach { failure ->
             val attempts = AtomicInteger()
             val synchronizations = AtomicInteger()
@@ -204,7 +204,7 @@ class TopologyVfsSynchronizationTest {
         val synchronizations = AtomicInteger()
         val mismatch = TopologyFileExtraction.Failed(
             request.file,
-            TopologyExtractionFailure.VFS_CONTENT_MISMATCH,
+            TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH,
         )
         val retrier = TopologyVfsMismatchRetrier(
             TopologySourceRootVfsSynchronizer { _, _ ->

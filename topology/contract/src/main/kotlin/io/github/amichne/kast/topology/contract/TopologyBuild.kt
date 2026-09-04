@@ -121,6 +121,56 @@ enum class TopologyExtractionFailure {
     FILE_ADMISSION_REJECTED,
 }
 
+/** Closed file-extractor failures that do not require richer evidence. */
+enum class TopologyFileExtractionFailure {
+    PROJECT_UNAVAILABLE,
+    FILE_UNAVAILABLE,
+    DOCUMENT_DIRTY,
+    PSI_DOCUMENT_UNCOMMITTED,
+    VFS_CONTENT_MISMATCH,
+    NOT_KOTLIN_PSI,
+    COMPILER_UNAVAILABLE,
+    DECLARATION_EVIDENCE_REJECTED,
+    PROJECTION_REGISTRY_REJECTED,
+    REFERENCE_TARGET_REJECTED,
+    OCCURRENCE_REJECTED,
+    EDGE_REJECTED,
+    OVERRIDE_REJECTED,
+    FILE_ADMISSION_REJECTED,
+}
+
+/** Total public projection for one ordinary file-extractor failure. */
+fun TopologyFileExtractionFailure.toTopologyExtractionFailure(): TopologyExtractionFailure =
+    when (this) {
+        TopologyFileExtractionFailure.PROJECT_UNAVAILABLE ->
+            TopologyExtractionFailure.PROJECT_UNAVAILABLE
+        TopologyFileExtractionFailure.FILE_UNAVAILABLE ->
+            TopologyExtractionFailure.FILE_UNAVAILABLE
+        TopologyFileExtractionFailure.DOCUMENT_DIRTY -> TopologyExtractionFailure.DOCUMENT_DIRTY
+        TopologyFileExtractionFailure.PSI_DOCUMENT_UNCOMMITTED ->
+            TopologyExtractionFailure.PSI_DOCUMENT_UNCOMMITTED
+        TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH ->
+            TopologyExtractionFailure.VFS_CONTENT_MISMATCH
+        TopologyFileExtractionFailure.NOT_KOTLIN_PSI ->
+            TopologyExtractionFailure.NOT_KOTLIN_PSI
+        TopologyFileExtractionFailure.COMPILER_UNAVAILABLE ->
+            TopologyExtractionFailure.COMPILER_UNAVAILABLE
+        TopologyFileExtractionFailure.DECLARATION_EVIDENCE_REJECTED ->
+            TopologyExtractionFailure.DECLARATION_EVIDENCE_REJECTED
+        TopologyFileExtractionFailure.PROJECTION_REGISTRY_REJECTED ->
+            TopologyExtractionFailure.PROJECTION_REGISTRY_REJECTED
+        TopologyFileExtractionFailure.REFERENCE_TARGET_REJECTED ->
+            TopologyExtractionFailure.REFERENCE_TARGET_REJECTED
+        TopologyFileExtractionFailure.OCCURRENCE_REJECTED ->
+            TopologyExtractionFailure.OCCURRENCE_REJECTED
+        TopologyFileExtractionFailure.EDGE_REJECTED ->
+            TopologyExtractionFailure.EDGE_REJECTED
+        TopologyFileExtractionFailure.OVERRIDE_REJECTED ->
+            TopologyExtractionFailure.OVERRIDE_REJECTED
+        TopologyFileExtractionFailure.FILE_ADMISSION_REJECTED ->
+            TopologyExtractionFailure.FILE_ADMISSION_REJECTED
+    }
+
 sealed interface TopologyFileExtraction {
     data class Complete(
         val file: CompleteTopologyFile,
@@ -128,8 +178,19 @@ sealed interface TopologyFileExtraction {
 
     data class Failed(
         val file: TopologySourceFile,
-        val failure: TopologyExtractionFailure,
+        val failure: TopologyFileExtractionFailure,
     ) : TopologyFileExtraction
+
+    /**
+     * Fail-closed compiler-identity rejection retaining the exact detached comparison evidence.
+     * Public protocol projection continues to expose [TopologyExtractionFailure.COMPILER_IDENTITY_MISMATCH].
+     */
+    data class IdentityMismatch(
+        val evidence: TopologyIdentityMismatchEvidence,
+        val cacheDisposition: TopologyCacheDisposition,
+    ) : TopologyFileExtraction {
+        val file: TopologySourceFile = evidence.sourceFile
+    }
 }
 
 /** Explicit request-local K2 extraction boundary. */
@@ -138,8 +199,9 @@ fun interface TopologyFileExtractor {
      * Proof transition: `TopologyExtractionRequest -> TopologyFileExtraction`.
      *
      * Complete output establishes terminal detached K2 facts for the exact admitted file.
-     * [TopologyExtractionFailure] is the closed expected failure. Live project, PSI, and K2 values
-     * remain inside the adapter and cancellation propagates.
+     * [TopologyFileExtractionFailure] and evidence-bearing [TopologyFileExtraction.IdentityMismatch]
+     * are the closed expected failures. Live project, PSI, and K2 values remain inside the adapter
+     * and cancellation propagates.
      */
     suspend fun extract(request: TopologyExtractionRequest): TopologyFileExtraction
 }

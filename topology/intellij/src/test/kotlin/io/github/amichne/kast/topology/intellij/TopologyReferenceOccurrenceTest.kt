@@ -16,7 +16,8 @@ class TopologyReferenceOccurrenceTest {
             ),
         )
 
-        assertEquals(TextRange(781, 792), occurrence.range)
+        assertEquals(781, occurrence.range.startInclusive)
+        assertEquals(792, occurrence.range.endExclusive)
     }
 
     @Test
@@ -29,7 +30,8 @@ class TopologyReferenceOccurrenceTest {
             ),
         )
 
-        assertEquals(TextRange(10, 16), occurrence.range)
+        assertEquals(10, occurrence.range.startInclusive)
+        assertEquals(16, occurrence.range.endExclusive)
     }
 
     @Test

@@ -5,7 +5,7 @@ import com.intellij.openapi.project.ProjectManager
 import io.github.amichne.kast.relation.contract.RelationCompilation
 import io.github.amichne.kast.relation.contract.RelationCompilerPort
 import io.github.amichne.kast.relation.contract.RelationCompilerRejection
-import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.CanonicalSemanticProjectRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
@@ -23,7 +23,7 @@ fun interface InstalledRelationScopeOperations {
 }
 
 /**
- * Proof transition: `(CanonicalWorkspaceRoot, WorkspaceInspectionOperations,
+ * Proof transition: `(CanonicalSemanticProjectRoot, WorkspaceInspectionOperations,
  * InstalledRelationScopeOperations) -> RelationCompilerPort`.
  *
  * Establishes one request-local K2 relation port for the exact installed root. Missing projects,
@@ -31,13 +31,13 @@ fun interface InstalledRelationScopeOperations {
  * project, PSI, scope, native search, and K2 values are obtained and consumed within each call.
  */
 fun installedIntellijRelationCompiler(
-    root: CanonicalWorkspaceRoot,
+    projectRoot: CanonicalSemanticProjectRoot,
     workspaces: WorkspaceInspectionOperations,
     scopes: InstalledRelationScopeOperations,
 ): RelationCompilerPort {
     val adapter = IntellijRelationCompilerAdapter()
     return RelationCompilerPort { request ->
-        val project = exactProject(root) ?: return@RelationCompilerPort unavailable()
+        val project = exactProject(projectRoot) ?: return@RelationCompilerPort unavailable()
         val current = (workspaces.inspect() as? WorkspaceRuntimeState.Ready)
                           ?.workspace
                           ?.readLease
@@ -46,7 +46,7 @@ fun installedIntellijRelationCompiler(
     }
 }
 
-private fun exactProject(root: CanonicalWorkspaceRoot): Project? =
+private fun exactProject(root: CanonicalSemanticProjectRoot): Project? =
     ProjectManager.getInstance().openProjects.singleOrNull { project ->
         !project.isDisposed && project.basePath?.let(Path::of)?.toAbsolutePath()?.normalize()
             ?.toString() == root.value

@@ -61,7 +61,7 @@ import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
-import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.CanonicalSemanticProjectRoot
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
 import org.jetbrains.kotlin.analysis.api.analyze
@@ -102,7 +102,7 @@ class InstalledIntellijSourceReadPort private constructor(
     private val delegate: SourceReadPort,
 ) : SourceReadPort by delegate {
     companion object {
-        fun create(root: CanonicalWorkspaceRoot): InstalledIntellijSourceReadPort =
+        fun create(root: CanonicalSemanticProjectRoot): InstalledIntellijSourceReadPort =
             InstalledIntellijSourceReadPort(
                 IntellijSourceReadPort(
                     IntellijSourceRegionAccess { context, request, cursor ->
@@ -1372,7 +1372,7 @@ private fun projected(
     is Refinement.Rejected -> SourceCompilerProjectionResult.Rejected
 }
 
-private fun exactProject(root: CanonicalWorkspaceRoot): Project? =
+private fun exactProject(root: CanonicalSemanticProjectRoot): Project? =
     ProjectManager.getInstance().openProjects.singleOrNull { project ->
         !project.isDisposed && project.basePath?.let(Path::of)?.toAbsolutePath()?.normalize()
             ?.toString() == root.value

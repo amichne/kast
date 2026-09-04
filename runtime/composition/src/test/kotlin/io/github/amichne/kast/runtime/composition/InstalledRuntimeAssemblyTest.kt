@@ -21,8 +21,8 @@ import io.github.amichne.kast.runtime.composition.platform.projectInstalledGradl
 import io.github.amichne.kast.symbol.contract.SymbolCompilerPort
 import io.github.amichne.kast.symbol.contract.SymbolExactCompilerPort
 import io.github.amichne.kast.source.contract.SourceReadPort
-import io.github.amichne.kast.topology.contract.TopologyExtractionFailure
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
+import io.github.amichne.kast.topology.contract.TopologyFileExtractionFailure
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
@@ -70,7 +70,7 @@ class InstalledRuntimeAssemblyTest {
                 topologyExtractor = { request ->
                     TopologyFileExtraction.Failed(
                         request.file,
-                        TopologyExtractionFailure.COMPILER_UNAVAILABLE,
+                        TopologyFileExtractionFailure.COMPILER_UNAVAILABLE,
                     )
                 },
                 indexRefresh = { io.github.amichne.kast.workspace.contract.WorkspaceIndexRefresh.Refreshed },
@@ -106,7 +106,7 @@ class InstalledRuntimeAssemblyTest {
                 topologyExtractor = { request ->
                     TopologyFileExtraction.Failed(
                         request.file,
-                        TopologyExtractionFailure.COMPILER_UNAVAILABLE,
+                        TopologyFileExtractionFailure.COMPILER_UNAVAILABLE,
                     )
                 },
                 indexRefresh = { io.github.amichne.kast.workspace.contract.WorkspaceIndexRefresh.Refreshed },

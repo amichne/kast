@@ -10,12 +10,16 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import io.github.amichne.kast.topology.contract.TopologyCacheDisposition
 import io.github.amichne.kast.topology.contract.CompleteTopologyFile
 import io.github.amichne.kast.topology.contract.TopologyEdge
 import io.github.amichne.kast.topology.contract.TopologyEdgeKind
-import io.github.amichne.kast.topology.contract.TopologyExtractionFailure
 import io.github.amichne.kast.topology.contract.TopologyExtractionRequest
+import io.github.amichne.kast.topology.contract.TopologyFileExtractionFailure
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
+import io.github.amichne.kast.topology.contract.TopologyIdentityMismatchEvidence
+import io.github.amichne.kast.topology.contract.TopologyIdentityStage
 import io.github.amichne.kast.topology.contract.TopologySourceFile
 import io.github.amichne.kast.topology.contract.TopologySymbol
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
@@ -48,9 +52,9 @@ class IntellijTopologyFileExtractor internal constructor(
      *
      * Complete output establishes detached compiler symbols and repository-internal edges for the
      * exact admitted file. Candidate PSI is projected once per exact content generation; only the
-     * requested file is reloaded and receives terminal output. [TopologyExtractionFailure] is the
-     * closed expected failure. Cancellation propagates and live Project, VFS, PSI, and K2 values
-     * never leave the read action.
+     * requested file is reloaded and receives terminal output.
+     * [TopologyFileExtractionFailure] is the ordinary closed expected failure. Cancellation
+     * propagates and live Project, VFS, PSI, and K2 values never leave the read action.
      */
     suspend fun extract(
         project: Project,
@@ -65,9 +69,9 @@ class IntellijTopologyFileExtractor internal constructor(
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (_: RuntimeException) {
-        failed(request.file, TopologyExtractionFailure.COMPILER_UNAVAILABLE)
+        failed(request.file, TopologyFileExtractionFailure.COMPILER_UNAVAILABLE)
     } catch (_: LinkageError) {
-        failed(request.file, TopologyExtractionFailure.COMPILER_UNAVAILABLE)
+        failed(request.file, TopologyFileExtractionFailure.COMPILER_UNAVAILABLE)
     }
 
     /** One short read-action attempt; a retry always enters a fresh read action. */
@@ -80,13 +84,13 @@ class IntellijTopologyFileExtractor internal constructor(
             project.isDisposed || current.readLease != request.candidates.workspace.lease ||
             current.sourceState != request.candidates.workspace.sourceState
         ) {
-            return failed(request.file, TopologyExtractionFailure.PROJECT_UNAVAILABLE)
+            return failed(request.file, TopologyFileExtractionFailure.PROJECT_UNAVAILABLE)
         }
         return readAction {
             if (DumbService.isDumb(project)) {
                 return@readAction failed(
                     request.file,
-                    TopologyExtractionFailure.COMPILER_UNAVAILABLE,
+                    TopologyFileExtractionFailure.COMPILER_UNAVAILABLE,
                 )
             }
             extractInReadAction(project, request)
@@ -98,8 +102,14 @@ class IntellijTopologyFileExtractor internal constructor(
         request: TopologyExtractionRequest,
     ): TopologyFileExtraction {
         val registryKey = TopologyProjectionRegistryKey.from(request.candidates)
-        return readEpochs.resolve(registryKey, request.file) {
+        val resolution = readEpochs.resolve(registryKey, request.file) {
             extractUncached(project, request, registryKey)
+        }
+        return when (resolution) {
+            is TopologyReadEpochResolution.Computed ->
+                resolution.extraction.withCacheDisposition(TopologyCacheDisposition.COMPUTED)
+            is TopologyReadEpochResolution.Reused ->
+                resolution.extraction.withCacheDisposition(TopologyCacheDisposition.REUSED)
         }
     }
 
@@ -122,18 +132,18 @@ class IntellijTopologyFileExtractor internal constructor(
         val requested = when (val lookup = load(project, request.file)) {
             is TopologyFileLoad.Loaded -> lookup.file
             TopologyFileLoad.Unavailable ->
-                return failed(request.file, TopologyExtractionFailure.FILE_UNAVAILABLE)
+                return failed(request.file, TopologyFileExtractionFailure.FILE_UNAVAILABLE)
             TopologyFileLoad.DocumentDirty ->
-                return failed(request.file, TopologyExtractionFailure.DOCUMENT_DIRTY)
+                return failed(request.file, TopologyFileExtractionFailure.DOCUMENT_DIRTY)
             TopologyFileLoad.PsiDocumentUncommitted ->
                 return failed(
                     request.file,
-                    TopologyExtractionFailure.PSI_DOCUMENT_UNCOMMITTED,
+                    TopologyFileExtractionFailure.PSI_DOCUMENT_UNCOMMITTED,
                 )
             TopologyFileLoad.VfsContentMismatch ->
-                return failed(request.file, TopologyExtractionFailure.VFS_CONTENT_MISMATCH)
+                return failed(request.file, TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH)
             TopologyFileLoad.NotKotlinPsi ->
-                return failed(request.file, TopologyExtractionFailure.NOT_KOTLIN_PSI)
+                return failed(request.file, TopologyFileExtractionFailure.NOT_KOTLIN_PSI)
         }
         val symbolByDeclaration = buildMap {
             requested.declarations.forEach { declaration ->
@@ -149,7 +159,7 @@ class IntellijTopologyFileExtractor internal constructor(
                     TopologyRegistrySymbolLookup.Rejected ->
                         return failed(
                             request.file,
-                            TopologyExtractionFailure.DECLARATION_EVIDENCE_REJECTED,
+                            TopologyFileExtractionFailure.DECLARATION_EVIDENCE_REJECTED,
                         )
                 }
             }
@@ -165,52 +175,80 @@ class IntellijTopologyFileExtractor internal constructor(
                     is OwningTopologySymbol.Found -> owner.symbol
                     OwningTopologySymbol.Unresolved -> return@forEach
                 }
-                val target = when (val resolved = reference.topologyTarget(registry)) {
-                    is TopologyReferenceTarget.Found -> resolved.symbol
-                    TopologyReferenceTarget.Unresolved -> return@forEach
-                    TopologyReferenceTarget.CompilerIdentityMismatch ->
+                val occurrence = when (val refined = reference.topologyOccurrence()) {
+                    is TopologyReferenceOccurrence.Admitted -> refined.range
+                    TopologyReferenceOccurrence.Rejected ->
                         return failed(
                             request.file,
-                            TopologyExtractionFailure.COMPILER_IDENTITY_MISMATCH,
+                            TopologyFileExtractionFailure.OCCURRENCE_REJECTED,
+                        )
+                }
+                val identitySource = TopologyIdentitySource(
+                    TopologyIdentityStage.REFERENCE_TARGET,
+                    request.file,
+                    occurrence,
+                )
+                val target = when (
+                    val resolved = reference.topologyTarget(registry, identitySource)
+                ) {
+                    is TopologyReferenceTarget.Found -> resolved.symbol
+                    TopologyReferenceTarget.Unresolved -> return@forEach
+                    is TopologyReferenceTarget.Mismatched ->
+                        return identityMismatch(
+                            resolved.evidence,
+                            TopologyCacheDisposition.COMPUTED,
                         )
                     TopologyReferenceTarget.Rejected ->
                         return failed(
                             request.file,
-                            TopologyExtractionFailure.REFERENCE_TARGET_REJECTED,
+                            TopologyFileExtractionFailure.REFERENCE_TARGET_REJECTED,
                         )
                 }
                 val kind = reference.edgeKind()
-                val occurrence = when (val refined = reference.topologyOccurrence()) {
-                    is TopologyReferenceOccurrence.Admitted -> refined.range
-                    TopologyReferenceOccurrence.Rejected ->
-                        return failed(request.file, TopologyExtractionFailure.OCCURRENCE_REJECTED)
-                }
                 val edge = TopologyEdge.fromBoundary(
                     kind,
                     source,
                     target,
-                    occurrence.startOffset,
-                    occurrence.endOffset,
+                    occurrence.startInclusive,
+                    occurrence.endExclusive,
                 )
                 when (edge) {
                     is Refinement.Refined -> edges += edge.value
                     is Refinement.Rejected ->
-                        return failed(request.file, TopologyExtractionFailure.EDGE_REJECTED)
+                        return failed(request.file, TopologyFileExtractionFailure.EDGE_REJECTED)
                 }
             }
         requested.declarations.forEach { declaration ->
             val source = symbolByDeclaration[declaration] ?: return@forEach
+            val rawRange = declaration.nameIdentifier?.textRange ?: declaration.textRange
+            val occurrence = when (
+                val parsed = ExactDeclarationTextRange.parse(
+                    rawRange.startOffset,
+                    rawRange.endOffset,
+                )
+            ) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected ->
+                    return failed(request.file, TopologyFileExtractionFailure.OVERRIDE_REJECTED)
+            }
             val overrides = when (val projectedOverrides =
-                declaration.directOverrideTopologyIdentities(registry)
+                declaration.directOverrideTopologyIdentities(
+                    registry,
+                    TopologyIdentitySource(
+                        TopologyIdentityStage.DIRECT_OVERRIDE,
+                        request.file,
+                        occurrence,
+                    ),
+                )
             ) {
                 is TopologyOverrideProjection.Projected -> projectedOverrides.symbols
-                TopologyOverrideProjection.CompilerIdentityMismatch ->
-                    return failed(
-                        request.file,
-                        TopologyExtractionFailure.COMPILER_IDENTITY_MISMATCH,
+                is TopologyOverrideProjection.Mismatched ->
+                    return identityMismatch(
+                        projectedOverrides.evidence,
+                        TopologyCacheDisposition.COMPUTED,
                     )
                 TopologyOverrideProjection.Rejected ->
-                    return failed(request.file, TopologyExtractionFailure.OVERRIDE_REJECTED)
+                    return failed(request.file, TopologyFileExtractionFailure.OVERRIDE_REJECTED)
             }
             overrides.forEach { target ->
                 val range = declaration.nameIdentifier?.textRange ?: declaration.textRange
@@ -223,7 +261,7 @@ class IntellijTopologyFileExtractor internal constructor(
                 )) {
                     is Refinement.Refined -> edges += edge.value
                     is Refinement.Rejected ->
-                        return failed(request.file, TopologyExtractionFailure.EDGE_REJECTED)
+                        return failed(request.file, TopologyFileExtractionFailure.EDGE_REJECTED)
                 }
             }
         }
@@ -237,7 +275,7 @@ class IntellijTopologyFileExtractor internal constructor(
             is Refinement.Refined -> TopologyFileExtraction.Complete(complete.value)
             is Refinement.Rejected -> failed(
                 request.file,
-                TopologyExtractionFailure.FILE_ADMISSION_REJECTED,
+                TopologyFileExtractionFailure.FILE_ADMISSION_REJECTED,
             )
         }
     }
@@ -247,9 +285,9 @@ class IntellijTopologyFileExtractor internal constructor(
      * TopologyProjectionRegistryKey) -> TopologyProjectionRegistryResolution`.
      *
      * Ready establishes one detached symbol registry covering the exact content-identified
-     * candidate generation. Rejected preserves [TopologyExtractionFailure] for unavailable PSI or
-     * an inadmissible detached fact. Live Project, PSI, and K2 values remain inside this read
-     * action; only detached symbols enter the registry cache.
+     * candidate generation. Rejected preserves [TopologyFileExtractionFailure] for unavailable
+     * PSI or an inadmissible detached fact. Live Project, PSI, and K2 values remain inside this
+     * read action; only detached symbols enter the registry cache.
      */
     private fun buildRegistry(
         project: Project,
@@ -262,27 +300,27 @@ class IntellijTopologyFileExtractor internal constructor(
                 is TopologyFileLoad.Loaded -> lookup.file
                 TopologyFileLoad.Unavailable -> return TopologyProjectionRegistryResolution.Rejected(
                     file,
-                    TopologyExtractionFailure.FILE_UNAVAILABLE,
+                    TopologyFileExtractionFailure.FILE_UNAVAILABLE,
                 )
                 TopologyFileLoad.DocumentDirty ->
                     return TopologyProjectionRegistryResolution.Rejected(
                         file,
-                        TopologyExtractionFailure.DOCUMENT_DIRTY,
+                        TopologyFileExtractionFailure.DOCUMENT_DIRTY,
                     )
                 TopologyFileLoad.PsiDocumentUncommitted ->
                     return TopologyProjectionRegistryResolution.Rejected(
                         file,
-                        TopologyExtractionFailure.PSI_DOCUMENT_UNCOMMITTED,
+                        TopologyFileExtractionFailure.PSI_DOCUMENT_UNCOMMITTED,
                     )
                 TopologyFileLoad.VfsContentMismatch ->
                     return TopologyProjectionRegistryResolution.Rejected(
                         file,
-                        TopologyExtractionFailure.VFS_CONTENT_MISMATCH,
+                        TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH,
                     )
                 TopologyFileLoad.NotKotlinPsi ->
                     return TopologyProjectionRegistryResolution.Rejected(
                         file,
-                        TopologyExtractionFailure.NOT_KOTLIN_PSI,
+                        TopologyFileExtractionFailure.NOT_KOTLIN_PSI,
                     )
             }
             loaded.declarations.forEach { declaration ->
@@ -292,7 +330,7 @@ class IntellijTopologyFileExtractor internal constructor(
                     TopologySymbolProjection.Rejected ->
                         return TopologyProjectionRegistryResolution.Rejected(
                             file,
-                            TopologyExtractionFailure.DECLARATION_EVIDENCE_REJECTED,
+                            TopologyFileExtractionFailure.DECLARATION_EVIDENCE_REJECTED,
                         )
                 }
             }
@@ -301,7 +339,7 @@ class IntellijTopologyFileExtractor internal constructor(
             is Refinement.Refined -> TopologyProjectionRegistryResolution.Ready(registry.value)
             is Refinement.Rejected -> TopologyProjectionRegistryResolution.Rejected(
                 request.file,
-                TopologyExtractionFailure.PROJECTION_REGISTRY_REJECTED,
+                TopologyFileExtractionFailure.PROJECTION_REGISTRY_REJECTED,
             )
         }
     }
@@ -365,7 +403,9 @@ private sealed interface TopologyReferenceTarget {
     ) : TopologyReferenceTarget
 
     data object Unresolved : TopologyReferenceTarget
-    data object CompilerIdentityMismatch : TopologyReferenceTarget
+    data class Mismatched(
+        val evidence: TopologyIdentityMismatchEvidence,
+    ) : TopologyReferenceTarget
     data object Rejected : TopologyReferenceTarget
 }
 
@@ -379,19 +419,20 @@ private sealed interface TopologyReferenceTarget {
  */
 private fun KtReferenceExpression.topologyTarget(
     registry: TopologyProjectionRegistry,
+    source: TopologyIdentitySource,
 ): TopologyReferenceTarget {
     for (native in references.filterIsInstance<KtReference>()) {
         when (val projection = analyze(native.element) {
             val symbol = native.resolveToSymbol()
-                         ?: return@analyze TopologyK2IdentityProjection.Unsupported
-            symbol.topologyIdentityProjection(registry)
+                         ?: return@analyze TopologyIdentityResolution.Unsupported
+            symbol.topologyIdentityProjection(registry, source)
         }) {
-            is TopologyK2IdentityProjection.Projected ->
+            is TopologyIdentityResolution.Matched ->
                 return TopologyReferenceTarget.Found(projection.symbol)
-            TopologyK2IdentityProjection.Unsupported -> Unit
-            TopologyK2IdentityProjection.CompilerIdentityMismatch ->
-                return TopologyReferenceTarget.CompilerIdentityMismatch
-            TopologyK2IdentityProjection.Rejected -> return TopologyReferenceTarget.Rejected
+            TopologyIdentityResolution.Unsupported -> Unit
+            is TopologyIdentityResolution.Mismatched ->
+                return TopologyReferenceTarget.Mismatched(projection.evidence)
+            TopologyIdentityResolution.Rejected -> return TopologyReferenceTarget.Rejected
         }
     }
     return TopologyReferenceTarget.Unresolved
@@ -462,5 +503,20 @@ private fun KtReferenceExpression.topologyOccurrence(): TopologyReferenceOccurre
 
 private fun failed(
     file: TopologySourceFile,
-    failure: TopologyExtractionFailure,
+    failure: TopologyFileExtractionFailure,
 ): TopologyFileExtraction.Failed = TopologyFileExtraction.Failed(file, failure)
+
+private fun identityMismatch(
+    evidence: TopologyIdentityMismatchEvidence,
+    cacheDisposition: TopologyCacheDisposition,
+): TopologyFileExtraction.IdentityMismatch =
+    TopologyFileExtraction.IdentityMismatch(evidence, cacheDisposition)
+
+private fun TopologyFileExtraction.withCacheDisposition(
+    disposition: TopologyCacheDisposition,
+): TopologyFileExtraction = when (this) {
+    is TopologyFileExtraction.Complete,
+    is TopologyFileExtraction.Failed,
+        -> this
+    is TopologyFileExtraction.IdentityMismatch -> copy(cacheDisposition = disposition)
+}

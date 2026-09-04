@@ -2,17 +2,17 @@ package io.github.amichne.kast.topology.intellij
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
-import io.github.amichne.kast.topology.contract.TopologyExtractionFailure
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
+import io.github.amichne.kast.topology.contract.TopologyFileExtractionFailure
 import io.github.amichne.kast.topology.contract.TopologyFileExtractor
-import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.CanonicalSemanticProjectRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 
 /**
- * Proof transition: `(CanonicalWorkspaceRoot, WorkspaceInspectionOperations) ->
+ * Proof transition: `(CanonicalSemanticProjectRoot, WorkspaceInspectionOperations) ->
  * TopologyFileExtractor`.
  *
  * Establishes one exact-root installed K2 boundary. Project lookup and current workspace
@@ -20,12 +20,12 @@ import java.nio.file.Path
  * performed and no live platform value is retained.
  */
 fun installedIntellijTopologyExtractor(
-    root: CanonicalWorkspaceRoot,
+    projectRoot: CanonicalSemanticProjectRoot,
     workspaces: WorkspaceInspectionOperations,
 ): TopologyFileExtractor {
     val adapter = IntellijTopologyFileExtractor()
     return TopologyFileExtractor { request ->
-        val project = when (val lookup = exactProject(root)) {
+        val project = when (val lookup = exactProject(projectRoot)) {
             is ExactTopologyProjectResolution.Found -> lookup.project
             is ExactTopologyProjectResolution.Rejected -> return@TopologyFileExtractor failed(
                 request.file,
@@ -50,32 +50,32 @@ internal sealed interface ExactTopologyProjectResolution {
     data class Found(val project: Project) : ExactTopologyProjectResolution
 
     data class Rejected(
-        val failure: TopologyExtractionFailure,
+        val failure: TopologyFileExtractionFailure,
     ) : ExactTopologyProjectResolution
 }
 
 /**
- * Proof transition: `CanonicalWorkspaceRoot -> ExactTopologyProjectResolution`.
+ * Proof transition: `CanonicalSemanticProjectRoot -> ExactTopologyProjectResolution`.
  *
  * Found establishes the only live IntelliJ project for the canonical root. Rejected closes absent,
  * ambiguous, and malformed platform project metadata. Raw platform projects are observed only at
  * this adapter.
  */
-private fun exactProject(root: CanonicalWorkspaceRoot): ExactTopologyProjectResolution =
+private fun exactProject(root: CanonicalSemanticProjectRoot): ExactTopologyProjectResolution =
     resolveExactTopologyProject(root, ProjectManager.getInstance().openProjects.asIterable())
 
 /**
- * Proof transition: `(CanonicalWorkspaceRoot, Iterable<Project>) ->
+ * Proof transition: `(CanonicalSemanticProjectRoot, Iterable<Project>) ->
  * ExactTopologyProjectResolution`.
  *
  * [ExactTopologyProjectResolution.Found] establishes exactly one live IntelliJ project whose
- * well-formed normalized absolute base path equals the canonical workspace root.
+ * well-formed normalized absolute base path equals the canonical semantic-project root.
  * [ExactTopologyProjectResolution.Rejected] closes missing, ambiguous, malformed, and inaccessible
- * platform paths as [TopologyExtractionFailure.PROJECT_UNAVAILABLE]. Raw `Project.basePath` text
- * may enter only from installed IntelliJ project discovery.
+ * platform paths as [TopologyFileExtractionFailure.PROJECT_UNAVAILABLE]. Raw `Project.basePath`
+ * text may enter only from installed IntelliJ project discovery.
  */
 internal fun resolveExactTopologyProject(
-    root: CanonicalWorkspaceRoot,
+    root: CanonicalSemanticProjectRoot,
     projects: Iterable<Project>,
 ): ExactTopologyProjectResolution {
     val matches = mutableListOf<Project>()
@@ -96,16 +96,16 @@ internal fun resolveExactTopologyProject(
 }
 
 private fun projectUnavailable(): ExactTopologyProjectResolution.Rejected =
-    ExactTopologyProjectResolution.Rejected(TopologyExtractionFailure.PROJECT_UNAVAILABLE)
+    ExactTopologyProjectResolution.Rejected(TopologyFileExtractionFailure.PROJECT_UNAVAILABLE)
 
 private fun unavailable(
     file: io.github.amichne.kast.topology.contract.TopologySourceFile,
 ): TopologyFileExtraction = TopologyFileExtraction.Failed(
     file,
-    TopologyExtractionFailure.PROJECT_UNAVAILABLE,
+    TopologyFileExtractionFailure.PROJECT_UNAVAILABLE,
 )
 
 private fun failed(
     file: io.github.amichne.kast.topology.contract.TopologySourceFile,
-    failure: TopologyExtractionFailure,
+    failure: TopologyFileExtractionFailure,
 ): TopologyFileExtraction = TopologyFileExtraction.Failed(file, failure)

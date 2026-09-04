@@ -11,7 +11,7 @@ import io.github.amichne.kast.symbol.contract.SymbolExactCompilerPort
 import io.github.amichne.kast.symbol.contract.SymbolExactCompilerRejection
 import io.github.amichne.kast.symbol.contract.SymbolResolutionCompilation
 import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
-import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.CanonicalSemanticProjectRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
@@ -35,7 +35,7 @@ class InstalledIntellijSymbolPorts private constructor(
 ) {
     companion object {
         /**
-         * Proof transition: `(CanonicalWorkspaceRoot, WorkspaceInspectionOperations,
+         * Proof transition: `(CanonicalSemanticProjectRoot, WorkspaceInspectionOperations,
          * InstalledSymbolScopeOperations) -> InstalledIntellijSymbolPorts`.
          *
          * Establishes ports that admit only the current exact-root publication before locating a
@@ -43,7 +43,7 @@ class InstalledIntellijSymbolPorts private constructor(
          * every live IntelliJ value is obtained and consumed within one request call.
          */
         fun create(
-            root: CanonicalWorkspaceRoot,
+            projectRoot: CanonicalSemanticProjectRoot,
             workspaces: WorkspaceInspectionOperations,
             scopes: InstalledSymbolScopeOperations,
         ): InstalledIntellijSymbolPorts {
@@ -51,7 +51,8 @@ class InstalledIntellijSymbolPorts private constructor(
             val exactAdapter = IntellijSymbolExactCompilerAdapter()
             return InstalledIntellijSymbolPorts(
                 discovery = SymbolCompilerPort { request ->
-                    val project = exactProject(root) ?: return@SymbolCompilerPort SymbolCompilation.Rejected(
+                    val project = exactProject(projectRoot)
+                                  ?: return@SymbolCompilerPort SymbolCompilation.Rejected(
                         SymbolCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE,
                     )
                     val current = workspaces.currentLease()
@@ -69,7 +70,7 @@ class InstalledIntellijSymbolPorts private constructor(
                     override suspend fun resolve(
                         request: SymbolResolutionRequest,
                     ): SymbolResolutionCompilation {
-                        val project = exactProject(root) ?: return unavailableResolution()
+                        val project = exactProject(projectRoot) ?: return unavailableResolution()
                         val current = workspaces.currentLease() ?: return unavailableResolution()
                         return exactAdapter.resolve(project, current, request, scopes.compile(current))
                     }
@@ -77,7 +78,7 @@ class InstalledIntellijSymbolPorts private constructor(
                     override suspend fun describe(
                         request: ExactSymbolRequest,
                     ): SymbolDescriptionCompilation {
-                        val project = exactProject(root) ?: return unavailableDescription()
+                        val project = exactProject(projectRoot) ?: return unavailableDescription()
                         val current = workspaces.currentLease() ?: return unavailableDescription()
                         return exactAdapter.describe(project, current, request, scopes.compile(current))
                     }
@@ -90,7 +91,7 @@ class InstalledIntellijSymbolPorts private constructor(
 private fun WorkspaceInspectionOperations.currentLease(): SemanticReadLease? =
     (inspect() as? WorkspaceRuntimeState.Ready)?.workspace?.readLease
 
-private fun exactProject(root: CanonicalWorkspaceRoot): Project? =
+private fun exactProject(root: CanonicalSemanticProjectRoot): Project? =
     ProjectManager.getInstance().openProjects.singleOrNull { project ->
         !project.isDisposed && project.basePath?.let(Path::of)?.toAbsolutePath()?.normalize()
             ?.toString() == root.value

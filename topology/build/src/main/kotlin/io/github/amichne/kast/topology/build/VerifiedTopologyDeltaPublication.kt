@@ -122,7 +122,9 @@ class VerifiedTopologyDeltaPublicationService(
         }
         val extracted = when (val extraction = extractor.extract(request)) {
             is TopologyFileExtraction.Complete -> extraction.file
-            is TopologyFileExtraction.Failed -> return rejected(
+            is TopologyFileExtraction.Failed,
+            is TopologyFileExtraction.IdentityMismatch,
+                -> return rejected(
                 VerifiedTopologyDeltaPublicationFailure.CHANGED_SOURCE_EXTRACTION_REJECTED,
             )
         }
