@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli.broker.protocol.codex
 
 import io.github.amichne.kast.cli.broker.core.Broker
+import io.github.amichne.kast.cli.broker.core.BrokerCallId
 import io.github.amichne.kast.cli.broker.core.BrokerInvocationActivity
 import io.github.amichne.kast.cli.broker.core.BrokerInvocationActivitySink
 import io.github.amichne.kast.cli.broker.core.BrokerInvocationActivityPublication
@@ -8,6 +9,8 @@ import io.github.amichne.kast.cli.broker.core.BrokerInvocationCompletion
 import io.github.amichne.kast.cli.broker.core.BrokerInvocationContext
 import io.github.amichne.kast.cli.broker.core.BrokerLimits
 import io.github.amichne.kast.cli.broker.core.BrokerTool
+import io.github.amichne.kast.cli.broker.core.ObserverMarkdown
+import io.github.amichne.kast.cli.broker.core.ObserverPresentation
 import io.github.amichne.kast.cli.broker.core.ProviderCall
 import io.github.amichne.kast.cli.broker.core.ProviderNamespace
 import io.github.amichne.kast.cli.broker.core.ProviderRegistration
@@ -42,12 +45,15 @@ import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
+import java.util.concurrent.atomic.AtomicInteger
 
 class CodexProtocolAdapterTest {
     @Test
@@ -183,6 +189,239 @@ class CodexProtocolAdapterTest {
                 (adapter.fromUpstream(unowned) as ProtocolRouting.ForwardDownstream).message,
             )
         }
+
+    @Test
+    fun `Kast observer projection preserves model authority and emits commentary after sanitized MCP completion`(
+        @TempDir temporary: Path,
+    ) = runBlocking {
+        val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+        val invocations = AtomicInteger()
+        val executedArguments = mutableListOf<JsonElement>()
+        val broker = observerBroker(invocations, executedArguments)
+        val store = MemoryThreadCatalogStore()
+        store.write(ThreadCatalogBinding.admit("thread-1", broker.catalog.digest, cwd).refinedValue())
+        val adapter = CodexProtocolAdapter(broker, protocolContracts(), store)
+        val arguments = Json.parseToJsonElement(
+            """
+            {
+              "query": "EventConsumer",
+              "match": "exact_name",
+              "limit": 10,
+              "candidate": "candidate:v2:opaque",
+              "selector": "exact:v2:opaque",
+              "anchor": "source-selector-v1:opaque",
+              "continuation": "continuation:opaque",
+              "plan": "sha256:plan",
+              "target": "exact:v2:target"
+            }
+            """.trimIndent(),
+        )
+        val canonicalResult =
+            "{\"fingerprint\":\"sha256:model-only\",\"selector\":\"exact:v2:model-only\"}"
+        val call = buildJsonObject {
+            put("id", 9)
+            put("method", "item/tool/call")
+            put("params", buildJsonObject {
+                put("threadId", "thread-1")
+                put("turnId", "turn-1")
+                put("callId", "call-1")
+                put("namespace", "kast")
+                put("tool", "symbol_inspect")
+                put("arguments", arguments)
+            })
+        }.toString()
+
+        val reply = Json.parseToJsonElement(
+            (adapter.fromUpstream(call) as ProtocolRouting.ReplyUpstream).message,
+        ).jsonObject
+
+        assertEquals(1, invocations.get())
+        assertEquals(listOf(arguments), executedArguments)
+        assertEquals(
+            canonicalResult,
+            reply.getValue("result").jsonObject.getValue("contentItems").jsonArray
+                .single().jsonObject.getValue("text").jsonPrimitive.content,
+        )
+        assertFalse(reply.toString().contains("Human observer projection"))
+
+        val started = buildJsonObject {
+            put("method", "item/started")
+            put("params", buildJsonObject {
+                put("threadId", "thread-1")
+                put("turnId", "turn-1")
+                put("startedAtMs", 10)
+                put("item", dynamicKastItem(arguments, canonicalResult, completed = false))
+            })
+        }.toString()
+        val startedItem = Json.parseToJsonElement(
+            (adapter.fromUpstream(started) as ProtocolRouting.ForwardDownstream).message,
+        ).jsonObject.getValue("params").jsonObject.getValue("item").jsonObject
+        assertSanitizedKastArguments(startedItem.getValue("arguments").jsonObject)
+
+        val completed = buildJsonObject {
+            put("method", "item/completed")
+            put("params", buildJsonObject {
+                put("threadId", "thread-1")
+                put("turnId", "turn-1")
+                put("completedAtMs", 27)
+                put("item", dynamicKastItem(arguments, canonicalResult, completed = true))
+            })
+        }.toString()
+        val batch = assertInstanceOf(
+            ProtocolRouting.ForwardDownstreamBatch::class.java,
+            adapter.fromUpstream(completed),
+        )
+        val downstream = batch.messages.inOrder().map { message ->
+            Json.parseToJsonElement(message).jsonObject
+        }
+        val toolParams = downstream[0].getValue("params").jsonObject
+        val toolItem = toolParams.getValue("item").jsonObject
+        val commentaryParams = downstream[1].getValue("params").jsonObject
+        val commentaryItem = commentaryParams.getValue("item").jsonObject
+
+        assertEquals("mcpToolCall", toolItem.getValue("type").jsonPrimitive.content)
+        assertEquals("call-1", toolItem.getValue("id").jsonPrimitive.content)
+        assertSanitizedKastArguments(toolItem.getValue("arguments").jsonObject)
+        assertEquals(JsonArray(emptyList()), toolItem.getValue("result").jsonObject.getValue("content"))
+        assertFalse("structuredContent" in toolItem.getValue("result").jsonObject)
+        assertFalse(downstream[0].toString().contains("sha256:"))
+        assertFalse(downstream[0].toString().contains("exact:v"))
+
+        assertEquals("agentMessage", commentaryItem.getValue("type").jsonPrimitive.content)
+        assertEquals("commentary", commentaryItem.getValue("phase").jsonPrimitive.content)
+        assertFalse(downstream[1].toString().contains("final_answer"))
+        assertEquals(
+            "**Kast · symbol**\n\nHuman observer projection",
+            commentaryItem.getValue("text").jsonPrimitive.content,
+        )
+        assertTrue(
+            commentaryItem.getValue("id").jsonPrimitive.content.startsWith("kast-observer-"),
+        )
+        listOf(toolParams, commentaryParams).forEach { params ->
+            assertEquals("thread-1", params.getValue("threadId").jsonPrimitive.content)
+            assertEquals("turn-1", params.getValue("turnId").jsonPrimitive.content)
+            assertEquals(27, params.getValue("completedAtMs").jsonPrimitive.content.toLong())
+        }
+
+        val replayedCompletion = adapter.fromUpstream(completed)
+        assertInstanceOf(ProtocolRouting.ForwardDownstream::class.java, replayedCompletion)
+
+        val finalAnswer =
+            " { \"method\":\"item/completed\",\"params\":{\"threadId\":\"thread-1\",\"turnId\":\"turn-1\",\"completedAtMs\":30,\"item\":{\"type\":\"agentMessage\",\"id\":\"answer-1\",\"text\":\"Done.\",\"phase\":\"final_answer\"}}} "
+        assertEquals(
+            finalAnswer,
+            (adapter.fromUpstream(finalAnswer) as ProtocolRouting.ForwardDownstream).message,
+        )
+        assertEquals(1, invocations.get())
+    }
+
+    @Test
+    fun `observer state is bounded take-only and cleared on adapter close`() {
+        val pending = PendingObserverPresentations.withCapacity(1)
+        val first = checkNotNull(BrokerCallId.admit("call-1"))
+        val second = checkNotNull(BrokerCallId.admit("call-2"))
+        val markdown = ObserverPresentation.Markdown(ObserverMarkdown("observer"))
+
+        assertEquals(PendingObserverPresentationWrite.STORED, pending.put(first, markdown))
+        assertEquals(
+            PendingObserverPresentationWrite.DISCARDED_CAPACITY,
+            pending.put(second, markdown),
+        )
+        assertEquals(
+            PendingObserverPresentationTake.Found(markdown),
+            pending.take(first),
+        )
+        assertEquals(PendingObserverPresentationTake.Missing, pending.take(first))
+
+        assertEquals(PendingObserverPresentationWrite.STORED, pending.put(first, markdown))
+        val adapter = CodexProtocolAdapter(
+            echoBroker(),
+            protocolContracts(),
+            MemoryThreadCatalogStore(),
+            pendingObserverPresentations = pending,
+        )
+        adapter.close()
+
+        assertEquals(PendingObserverPresentationTake.Missing, pending.take(first))
+    }
+
+    @Test
+    fun `commentary contract rejection suppresses companion without weakening the tool call`(
+        @TempDir temporary: Path,
+    ) = runBlocking {
+        val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+        val broker = observerBroker(AtomicInteger(), mutableListOf())
+        val store = MemoryThreadCatalogStore()
+        store.write(ThreadCatalogBinding.admit("thread-1", broker.catalog.digest, cwd).refinedValue())
+        val adapter = CodexProtocolAdapter(broker, protocolContractsWithoutAgentMessages(), store)
+        val arguments = Json.parseToJsonElement("""{"selector":"exact:v2:opaque"}""")
+        adapter.fromUpstream(
+            """{"id":9,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"kast","tool":"symbol_inspect","arguments":$arguments}}""",
+        )
+        val completed = buildJsonObject {
+            put("method", "item/completed")
+            put("params", buildJsonObject {
+                put("threadId", "thread-1")
+                put("turnId", "turn-1")
+                put("completedAtMs", 27)
+                put("item", dynamicKastItem(arguments, "model result", completed = true))
+            })
+        }.toString()
+
+        val projected = assertInstanceOf(
+            ProtocolRouting.ForwardDownstream::class.java,
+            adapter.fromUpstream(completed),
+        )
+        val item = Json.parseToJsonElement(projected.message).jsonObject
+            .getValue("params").jsonObject.getValue("item").jsonObject
+
+        assertEquals("mcpToolCall", item.getValue("type").jsonPrimitive.content)
+        assertEquals(JsonArray(emptyList()), item.getValue("result").jsonObject.getValue("content"))
+    }
+
+    @Test
+    fun `observer capacity exhaustion discards only presentation`(
+        @TempDir temporary: Path,
+    ) = runBlocking {
+        val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+        val invocations = AtomicInteger()
+        val broker = observerBroker(invocations, mutableListOf())
+        val store = MemoryThreadCatalogStore()
+        store.write(ThreadCatalogBinding.admit("thread-1", broker.catalog.digest, cwd).refinedValue())
+        val pending = PendingObserverPresentations.withCapacity(1)
+        pending.put(
+            checkNotNull(BrokerCallId.admit("unrelated-call")),
+            ObserverPresentation.Markdown(ObserverMarkdown("unrelated")),
+        )
+        val adapter = CodexProtocolAdapter(
+            broker,
+            protocolContracts(),
+            store,
+            pendingObserverPresentations = pending,
+        )
+        val arguments = Json.parseToJsonElement("""{"selector":"exact:v2:opaque"}""")
+
+        val reply = adapter.fromUpstream(
+            """{"id":9,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"kast","tool":"symbol_inspect","arguments":$arguments}}""",
+        )
+        val completed = buildJsonObject {
+            put("method", "item/completed")
+            put("params", buildJsonObject {
+                put("threadId", "thread-1")
+                put("turnId", "turn-1")
+                put("completedAtMs", 27)
+                put("item", dynamicKastItem(arguments, "model result", completed = true))
+            })
+        }.toString()
+
+        assertInstanceOf(ProtocolRouting.ReplyUpstream::class.java, reply)
+        assertEquals(1, invocations.get())
+        assertInstanceOf(
+            ProtocolRouting.ForwardDownstream::class.java,
+            adapter.fromUpstream(completed),
+        )
+        Unit
+    }
 
     @Test
     fun `failed dynamic lifecycle retains the complete broker result`() = runBlocking {
@@ -833,10 +1072,88 @@ class CodexProtocolAdapterTest {
         return Broker.create(listOf(provider), BrokerLimits.defaults()).validatedValue()
     }
 
+    private fun observerBroker(
+        invocations: AtomicInteger,
+        executedArguments: MutableList<JsonElement>,
+    ): Broker {
+        val openObjectSchema = schema("""{"type":"object"}""")
+        val input = JsonDomainDefinition(
+            openObjectSchema,
+            RefinementDefinition<io.github.amichne.kast.cli.broker.schema.ValidatedJsonValue, ObserverInput, Nothing> { admitted ->
+                Validation.validated(ObserverInput(admitted.element))
+            },
+        )
+        val tool: BrokerTool<Unit, ObserverInput, ObserverOutput, Nothing> = BrokerTool(
+            toolName("symbol_inspect"),
+            ToolDescription.admit("Inspect one symbol.").refinedValue(),
+            ToolLoading.DEFERRED,
+            input,
+            openObjectSchema,
+            invoke = { _, inputValue, _ ->
+                invocations.incrementAndGet()
+                executedArguments += inputValue.arguments
+                ProviderCall.Completed(
+                    ObserverOutput(
+                        buildJsonObject {
+                            put("fingerprint", "sha256:model-only")
+                            put("selector", "exact:v2:model-only")
+                        },
+                    ),
+                )
+            },
+            encode = ObserverOutput::document,
+            present = { output ->
+                ToolPresentation.text(
+                    output.document.toString(),
+                    success = true,
+                    observer = ObserverPresentation.Markdown(
+                        ObserverMarkdown("**Kast · symbol**\n\nHuman observer projection"),
+                    ),
+                )
+            },
+        )
+        val provider = ProviderRegistration.define(
+            namespace("kast"),
+            ProviderVersion.admit("1.0.0").refinedValue(),
+            listOf(tool),
+            start = { ProviderStartup.Started(Unit) },
+        ).validatedValue()
+        return Broker.create(listOf(provider), BrokerLimits.defaults()).validatedValue()
+    }
+
     private fun protocolContracts(): CodexProtocolContracts {
         val objectSchema = Json.parseToJsonElement("""{"type":"object"}""").jsonObject
         return CodexProtocolContracts.define(
             CodexOwnedSchema.entries.associateWith { objectSchema },
+        ).validatedValue()
+    }
+
+    private fun protocolContractsWithoutAgentMessages(): CodexProtocolContracts {
+        val objectSchema = Json.parseToJsonElement("""{"type":"object"}""").jsonObject
+        val completedSchema = Json.parseToJsonElement(
+            """
+            {
+              "type": "object",
+              "required": ["threadId", "turnId", "item"],
+              "properties": {
+                "threadId": {"type": "string"},
+                "turnId": {"type": "string"},
+                "item": {
+                  "type": "object",
+                  "required": ["type"],
+                  "properties": {
+                    "type": {"enum": ["dynamicToolCall", "mcpToolCall"]}
+                  }
+                }
+              }
+            }
+            """.trimIndent(),
+        ).jsonObject
+        return CodexProtocolContracts.define(
+            CodexOwnedSchema.entries.associateWith { schema ->
+                if (schema == CodexOwnedSchema.ITEM_COMPLETED_NOTIFICATION) completedSchema
+                else objectSchema
+            },
         ).validatedValue()
     }
 
@@ -865,6 +1182,43 @@ class CodexProtocolAdapterTest {
             result.getValue("content").jsonArray.single().jsonObject
                 .getValue("text").jsonPrimitive.content,
         )
+    }
+
+    private fun dynamicKastItem(
+        arguments: JsonElement,
+        result: String,
+        completed: Boolean,
+    ): JsonObject = buildJsonObject {
+        put("type", "dynamicToolCall")
+        put("id", "call-1")
+        put("tool", "symbol_inspect")
+        put("namespace", "kast")
+        put("arguments", arguments)
+        if (completed) {
+            put("status", "completed")
+            put("contentItems", buildJsonArray {
+                add(buildJsonObject {
+                    put("type", "inputText")
+                    put("text", result)
+                })
+            })
+            put("success", true)
+            put("durationMs", 17)
+        } else {
+            put("status", "inProgress")
+        }
+    }
+
+    private fun assertSanitizedKastArguments(arguments: JsonObject) {
+        assertEquals("EventConsumer", arguments.getValue("query").jsonPrimitive.content)
+        assertEquals("exact_name", arguments.getValue("match").jsonPrimitive.content)
+        assertEquals(10, arguments.getValue("limit").jsonPrimitive.content.toInt())
+        assertEquals("<candidate>", arguments.getValue("candidate").jsonPrimitive.content)
+        assertEquals("<symbol>", arguments.getValue("selector").jsonPrimitive.content)
+        assertEquals("<source>", arguments.getValue("anchor").jsonPrimitive.content)
+        assertEquals("<continuation>", arguments.getValue("continuation").jsonPrimitive.content)
+        assertEquals("<plan>", arguments.getValue("plan").jsonPrimitive.content)
+        assertEquals("<symbol>", arguments.getValue("target").jsonPrimitive.content)
     }
 
     private fun JsonElement.objectWithId(id: String): JsonObject = when (this) {
@@ -904,4 +1258,6 @@ class CodexProtocolAdapterTest {
 
     private data class EchoInput(val value: String)
     private data class EchoOutput(val value: String)
+    private data class ObserverInput(val arguments: JsonElement)
+    private data class ObserverOutput(val document: JsonObject)
 }

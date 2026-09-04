@@ -14,6 +14,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -21,6 +22,29 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 class BrokerCatalogTest {
+    @Test
+    fun `observer markdown is disjoint from model-facing tool content`() {
+        val presentation = ToolPresentation.text(
+            text = "{\"selector\":\"exact:v2:model-authority\"}",
+            success = true,
+            observer = ObserverPresentation.Markdown(
+                ObserverMarkdown("**Kast · symbol**\n\nHuman observer projection"),
+            ),
+        )
+
+        assertEquals(
+            listOf(ToolContent("{\"selector\":\"exact:v2:model-authority\"}")),
+            presentation.content,
+        )
+        assertFalse(presentation.content.any { it.text.contains("Human observer projection") })
+        assertEquals(
+            ObserverPresentation.Markdown(
+                ObserverMarkdown("**Kast · symbol**\n\nHuman observer projection"),
+            ),
+            presentation.observer,
+        )
+    }
+
     @Test
     fun `catalog identity is deterministic across provider definition order`() {
         val alpha = echoProvider("alpha")

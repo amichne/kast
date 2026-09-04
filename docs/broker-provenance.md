@@ -29,11 +29,35 @@ never enter this activity stream.
 
 The active WebSocket session has a separate, user-facing presentation boundary. For namespaces
 owned by Kast, dynamic-tool lifecycle items are projected one-for-one to Codex's `mcpToolCall`
-shape before they reach the downstream CLI. The projection preserves the complete arguments and
-result content, adds parsed JSON as `structuredContent` when the result is a single JSON object,
-and retains call identity, status, and duration. Codex renders that as its native `Called
-namespace.tool(arguments)` card with a nested, compactly formatted result. Live notifications,
-final turn snapshots, thread start/resume/fork and read/mutation responses, thread list/search,
-review and queued-turn responses, and turns/items/timeline pages use the same projection. Startup
-qualification proves both the dynamic source shape and the rendered MCP shape against every
+shape before they reach the downstream CLI. This observer projection retains call identity,
+status, and duration while replacing semantic capability arguments such as selectors,
+continuations, and change plans with typed display placeholders. The exact arguments still reach
+Kast unchanged, and Kast's canonical result still returns unchanged to the App Server and model.
+
+For successful live `symbol.discover`, `symbol.inspect`, `source.read`, `relation.read`, and
+`traversal.run` calls, the broker may
+consume a bounded, process-local presentation at the corresponding completed lifecycle event. It
+then emits the sanitized MCP completion followed by a schema-admitted `agentMessage` whose phase
+is `commentary` and whose text is Markdown. When that companion is available, the MCP result is an
+empty accepted result rather than a duplicate of the canonical model document. Presentation
+capacity exhaustion, projection failure, or rejection by the installed Codex contract suppresses
+the companion without changing tool execution or its model-facing reply. No presentation state is
+persisted, and historical companions are not reconstructed after restart or resume.
+
+Representative observer screenshots are generated without a Codex session or model request:
+
+```bash
+./gradlew :cli:renderKastObserverScreenshots
+```
+
+The task runs the real Kotlin observer projector over deterministic, schema-shaped fixtures, then
+uses Pandoc and a local headless Chrome/Chromium executable to render the resulting Markdown. It
+updates `docs/public/images/kast-observer-symbol-source.png` and
+`docs/public/images/kast-observer-semantic-impact.png`. Set `KAST_OBSERVER_PANDOC` or
+`KAST_OBSERVER_CHROME` when those executables are not on their usual paths. The renderer rejects
+opaque selectors, fingerprints, workspace roots, and source selectors before capturing any image.
+
+Final turn snapshots, thread start/resume/fork and read/mutation responses, thread list/search,
+review and queued-turn responses, and turns/items/timeline pages continue to use the MCP
+projection. Startup qualification proves the dynamic source and rendered MCP shapes against every
 installed item-bearing schema. Other namespaces remain byte-exact pass-through.

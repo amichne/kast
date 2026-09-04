@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli.broker.protocol.codex
 
 import io.github.amichne.kast.cli.broker.core.Broker
+import io.github.amichne.kast.cli.broker.core.BrokerCallId
 import io.github.amichne.kast.cli.broker.core.BrokerDispatch
 import io.github.amichne.kast.cli.broker.core.BrokerDispatchRequest
 import io.github.amichne.kast.cli.broker.core.BrokerFailure
@@ -11,6 +12,7 @@ import io.github.amichne.kast.cli.broker.core.BrokerInvocationActivitySink
 import io.github.amichne.kast.cli.broker.core.BrokerInvocationCompletion
 import io.github.amichne.kast.cli.broker.core.BrokerLimit
 import io.github.amichne.kast.cli.broker.core.ProviderNamespace
+import io.github.amichne.kast.cli.broker.core.ObserverPresentation
 import io.github.amichne.kast.cli.broker.core.ToolAddress
 import io.github.amichne.kast.cli.broker.core.ToolName
 import io.github.amichne.kast.cli.broker.core.ToolPresentation
@@ -67,9 +69,24 @@ internal sealed interface ProtocolCloseFailure {
 internal sealed interface ProtocolRouting {
     data class ForwardUpstream(val message: String) : ProtocolRouting
     data class ForwardDownstream(val message: String) : ProtocolRouting
+    data class ForwardDownstreamBatch(
+        val messages: NonEmptyProtocolMessages,
+    ) : ProtocolRouting
     data class ReplyUpstream(val message: String) : ProtocolRouting
     data class ReplyDownstream(val message: String) : ProtocolRouting
     data class Close(val failure: ProtocolCloseFailure) : ProtocolRouting
+}
+
+internal class NonEmptyProtocolMessages private constructor(
+    private val first: String,
+    private val second: String,
+) {
+    internal fun inOrder(): List<String> = listOf(first, second)
+
+    companion object {
+        internal fun pair(first: String, second: String): NonEmptyProtocolMessages =
+            NonEmptyProtocolMessages(first, second)
+    }
 }
 
 private enum class PendingThreadOperationType { START, RESUME, FORK }
@@ -95,6 +112,8 @@ internal class CodexProtocolAdapter(
     private val contracts: CodexProtocolContracts,
     private val threadStore: ThreadCatalogStore,
     private val activitySink: BrokerInvocationActivitySink = BrokerInvocationActivitySink.Disabled,
+    private val pendingObserverPresentations: PendingObserverPresentations =
+        PendingObserverPresentations.withCapacity(broker.limits.inFlightCallsPerConnection),
 ) : AutoCloseable {
     private val pendingResponses = ConcurrentHashMap<String, PendingResponse>()
     private val activeInvocations = ConcurrentHashMap<String, ActiveInvocation>()
@@ -265,7 +284,14 @@ internal class CodexProtocolAdapter(
             is BrokerDispatch.Rejected -> failurePresentation(dispatch.failure)
             null -> ToolPresentation.text("Invocation cancelled.", success = false)
         }
-        return dynamicToolReply(id, presentation)
+        val reply = dynamicToolReply(id, presentation)
+        if (
+            dispatch is BrokerDispatch.Completed && presentation.success &&
+            reply is ProtocolRouting.ReplyUpstream
+        ) {
+            rememberObserver(context.callId, presentation.observer)
+        }
+        return reply
     }
 
     private fun projectToolLifecycle(
@@ -306,8 +332,43 @@ internal class CodexProtocolAdapter(
         if (!contracts.admits(lifecycle.schema, projected)) {
             return ProtocolRouting.Close(ProtocolCloseFailure.ResponseSchemaRejected)
         }
-        return ProtocolRouting.ForwardDownstream(
-            JsonObject(document + ("params" to projected)).toString(),
+        val ordinaryMessage = JsonObject(document + ("params" to projected)).toString()
+        if (lifecycle != CodexToolCallLifecycle.COMPLETED) {
+            return ProtocolRouting.ForwardDownstream(ordinaryMessage)
+        }
+        val callId = admittedItem.string("id")?.let(BrokerCallId::admit)
+            ?: return ProtocolRouting.ForwardDownstream(ordinaryMessage)
+        val observer = when (val pending = takeObserver(callId)) {
+            is PendingObserverPresentationTake.Found -> pending.presentation
+            PendingObserverPresentationTake.Missing ->
+                return ProtocolRouting.ForwardDownstream(ordinaryMessage)
+        }
+        val compactItem = when (
+            val compact = CodexToolCallProjector.projectCompleted(
+                admittedItem,
+                CodexToolCallResultProjection.COMPACT_FOR_OBSERVER_COMPANION,
+            )
+        ) {
+            is CodexToolCallProjection.Projected -> compact.item
+            is CodexToolCallProjection.Rejected ->
+                return ProtocolRouting.ForwardDownstream(ordinaryMessage)
+        }
+        val compactParams = JsonObject(admittedParams + ("item" to compactItem))
+        if (!contracts.admits(lifecycle.schema, compactParams)) {
+            return ProtocolRouting.ForwardDownstream(ordinaryMessage)
+        }
+        val compactMessage = JsonObject(document + ("params" to compactParams)).toString()
+        val commentaryParams = CodexObserverMessageProjector.projectCompleted(
+            admittedParams,
+            callId,
+            observer,
+        )
+        if (!contracts.admits(CodexOwnedSchema.ITEM_COMPLETED_NOTIFICATION, commentaryParams)) {
+            return ProtocolRouting.ForwardDownstream(compactMessage)
+        }
+        val commentaryMessage = JsonObject(document + ("params" to commentaryParams)).toString()
+        return ProtocolRouting.ForwardDownstreamBatch(
+            NonEmptyProtocolMessages.pair(compactMessage, commentaryMessage),
         )
     }
 
@@ -360,6 +421,26 @@ internal class CodexProtocolAdapter(
         invocationScope.cancel()
         activeInvocations.clear()
         pendingResponses.clear()
+        try {
+            pendingObserverPresentations.clear()
+        } catch (_: RuntimeException) {
+            // Ephemeral observer state must never affect protocol shutdown.
+        }
+    }
+
+    private fun rememberObserver(callId: BrokerCallId, observer: ObserverPresentation) {
+        val markdown = observer as? ObserverPresentation.Markdown ?: return
+        try {
+            pendingObserverPresentations.put(callId, markdown)
+        } catch (_: RuntimeException) {
+            // Observer presentation is explicitly best-effort.
+        }
+    }
+
+    private fun takeObserver(callId: BrokerCallId): PendingObserverPresentationTake = try {
+        pendingObserverPresentations.take(callId)
+    } catch (_: RuntimeException) {
+        PendingObserverPresentationTake.Missing
     }
 
     private fun publishActivity(

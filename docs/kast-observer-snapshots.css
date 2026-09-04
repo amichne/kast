@@ -1,0 +1,132 @@
+:root {
+  color-scheme: dark;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+  font-size: 18px;
+  line-height: 1.5;
+  background: #0b0d10;
+  color: #e7e9ec;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 1180px;
+  margin: 0 auto;
+  padding: 56px 64px 80px;
+  background:
+    radial-gradient(circle at top right, rgba(48, 113, 104, 0.14), transparent 34rem),
+    #0b0d10;
+}
+
+.snapshot-heading {
+  margin-bottom: 36px;
+  color: #858b93;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+
+.snapshot-heading h1 {
+  margin: 8px 0 4px;
+  color: #f5f7f8;
+  font-size: 1.45rem;
+  letter-spacing: -0.025em;
+}
+
+.snapshot-heading p {
+  margin: 0;
+}
+
+.prompt-mark {
+  color: #53d6b6;
+}
+
+.observer-message {
+  position: relative;
+  margin: 0 0 28px;
+  padding: 0 0 4px 38px;
+}
+
+.observer-message::before {
+  position: absolute;
+  left: 4px;
+  top: -1px;
+  content: "•";
+  color: #d4d7db;
+  font-size: 1.25rem;
+}
+
+.observer-message > p:first-child {
+  margin-top: 0;
+  color: #f4f5f6;
+}
+
+p {
+  margin: 0.7rem 0;
+}
+
+strong {
+  color: #fbfcfd;
+  font-weight: 700;
+}
+
+a {
+  color: #66d9c3;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+code {
+  color: #f2d17d;
+  font-family: inherit;
+}
+
+pre {
+  overflow: hidden;
+  margin: 0.9rem 0 0;
+  padding: 18px 20px;
+  border: 1px solid #2a3037;
+  border-radius: 8px;
+  background: #12161b;
+  color: #e9eaec;
+  line-height: 1.48;
+}
+
+pre code {
+  color: inherit;
+}
+
+table {
+  width: 100%;
+  margin: 0.8rem 0 0.45rem;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th,
+td {
+  padding: 9px 14px;
+  border-bottom: 1px solid #292e35;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: #aeb4bb;
+  font-weight: 600;
+}
+
+blockquote {
+  margin: 0.7rem 0;
+  padding-left: 14px;
+  border-left: 3px solid #d9aa5b;
+  color: #e4bf7c;
+}
+
+em {
+  color: #9299a2;
+}

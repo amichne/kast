@@ -6,16 +6,21 @@ import io.github.amichne.kast.cli.broker.core.BrokerDispatchRequest
 import io.github.amichne.kast.cli.broker.core.BrokerFailure
 import io.github.amichne.kast.cli.broker.core.BrokerInvocationContext
 import io.github.amichne.kast.cli.broker.core.BrokerLimits
+import io.github.amichne.kast.cli.broker.core.CanonicalBrokerDirectory
+import io.github.amichne.kast.cli.broker.core.ObserverPresentation
 import io.github.amichne.kast.cli.broker.core.ProviderFailureCode
 import io.github.amichne.kast.cli.broker.core.ProviderNamespace
 import io.github.amichne.kast.cli.broker.core.ToolAddress
+import io.github.amichne.kast.cli.broker.core.ToolContent
 import io.github.amichne.kast.cli.broker.core.ToolName
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -64,12 +69,290 @@ class KastProviderTest {
 
         assertEquals(true, (completed as BrokerDispatch.Completed).presentation.success)
         assertEquals(
+            listOf(
+                ToolContent(
+                    "{\"document\":{\"items\":[],\"operation\":\"symbol.discover\"," +
+                        "\"status\":\"complete\"},\"status\":\"completed\"}",
+                ),
+            ),
+            completed.presentation.content,
+        )
+        assertEquals(
+            "**Kast · symbol**\n\n_No matching symbols._",
+            (completed.presentation.observer as ObserverPresentation.Markdown).source.value,
+        )
+        assertEquals(
             listOf("symbol", "discover", "--query", "Thing"),
             executor.requests.last().arguments,
         )
         assertInstanceOf(BrokerFailure.UnknownTool::class.java, (explicit as BrokerDispatch.Rejected).failure)
         assertEquals(2, executor.requests.count { it.arguments == listOf("--version") })
         assertEquals(2, executor.requests.count { it.arguments == listOf("--schema") })
+    }
+
+    @Test
+    fun `supported Kast operations produce selector-free observer Markdown`() {
+        val discover = observer(
+            "symbol.discover",
+            """
+            {
+              "status": "completed",
+              "document": {
+                "operation": "symbol.discover",
+                "status": "complete",
+                "items": [{
+                  "type": "declaration",
+                  "candidateSelector": "candidate:v2:opaque",
+                  "kind": "class",
+                  "name": "EventConsumer",
+                  "file": "events/core/src/main/kotlin/sample/EventConsumer.kt",
+                  "offset": 17
+                }]
+              }
+            }
+            """.trimIndent(),
+        )
+        val inspect = observer(
+            "symbol.inspect",
+            """
+            {
+              "status": "completed",
+              "document": {
+                "operation": "symbol.inspect",
+                "status": "complete",
+                "symbol": {
+                  "selector": "exact:v2:opaque",
+                  "kind": "classlike",
+                  "name": "EventConsumer",
+                  "qualifiedIdentity": "com.aexp.mobile.one.streaming.events.core.EventConsumer",
+                  "file": "events/core/src/main/kotlin/sample/EventConsumer.kt",
+                  "range": {"startInclusive": 17, "endExclusive": 140},
+                  "compilerEvidence": {
+                    "identity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "signature": {
+                      "type": "class-like",
+                      "qualifiedIdentity": "com.aexp.mobile.one.streaming.events.core.EventConsumer"
+                    }
+                  }
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        val source = observer(
+            "source.read",
+            """
+            {
+              "status": "completed",
+              "document": {
+                "operation": "source.read",
+                "status": "complete",
+                "snapshot": {
+                  "canonicalRoot": "/workspace",
+                  "generation": 17,
+                  "sourceState": "sha256:hidden",
+                  "file": "events/core/src/main/kotlin/sample/EventConsumer.kt",
+                  "textIdentity": "sha256:hidden",
+                  "coordinateUnit": "utf16-code-unit",
+                  "length": 42
+                },
+                "region": {
+                  "kind": "declaration",
+                  "selection": {
+                    "selector": "source-selector-v1:opaque",
+                    "range": {"startInclusive": 17, "endExclusive": 59}
+                  }
+                },
+                "entities": [],
+                "text": {
+                  "type": "returned",
+                  "selection": {
+                    "selector": "source-selector-v1:opaque",
+                    "range": {"startInclusive": 17, "endExclusive": 59}
+                  },
+                  "text": "class EventConsumer(\n    private val source: EventSource,\n)"
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(
+            """
+            **Kast · symbol**
+
+            `EventConsumer` · class
+
+            [EventConsumer.kt](<events/core/src/main/kotlin/sample/EventConsumer.kt>)
+            """.trimIndent(),
+            discover,
+        )
+        assertEquals(
+            """
+            **Kast · symbol**
+
+            `EventConsumer` · class-like · compiler-confirmed
+
+            [EventConsumer.kt](<events/core/src/main/kotlin/sample/EventConsumer.kt>)
+
+            `com.aexp.mobile.one.streaming.events.core.EventConsumer`
+            """.trimIndent(),
+            inspect,
+        )
+        assertEquals(
+            """
+            **Kast · source**
+
+            [EventConsumer.kt](<events/core/src/main/kotlin/sample/EventConsumer.kt>)
+
+            ```kotlin
+            class EventConsumer(
+                private val source: EventSource,
+            )
+            ```
+            """.trimIndent(),
+            source,
+        )
+        listOf(discover, inspect, source).forEach { markdown ->
+            FORBIDDEN_OBSERVER_TOKENS.forEach { forbidden ->
+                check(!markdown.contains(forbidden)) { "Observer Markdown leaked $forbidden" }
+            }
+            check(!markdown.contains("/workspace")) { "Observer Markdown leaked workspace root" }
+        }
+    }
+
+    @Test
+    fun `qualified Kast observations remain visibly incomplete`() {
+        val discover = observer(
+            "symbol.discover",
+            """{"status":"completed","document":{"operation":"symbol.discover","status":"qualified","items":[{"type":"declaration","candidateSelector":"candidate:v2:opaque","kind":"class","name":"EventConsumer","file":"src/EventConsumer.kt","offset":3}],"qualification":"[result-limit-reached]"}}""",
+        )
+        val inspect = observer(
+            "symbol.inspect",
+            """{"status":"completed","document":{"operation":"symbol.inspect","status":"qualified","symbol":{"selector":"exact:v2:opaque","kind":"classlike","name":"EventConsumer","qualifiedIdentity":"sample.EventConsumer","file":"src/EventConsumer.kt","range":{"startInclusive":3,"endExclusive":20},"compilerEvidence":{"identity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","signature":{"type":"class-like","qualifiedIdentity":"sample.EventConsumer"}}},"qualification":"compiler-evidence-incomplete"}}""",
+        )
+        val source = observer(
+            "source.read",
+            """{"status":"completed","document":{"operation":"source.read","status":"qualified","snapshot":{"canonicalRoot":"/workspace","generation":17,"sourceState":"state","file":"src/EventConsumer.kt","textIdentity":"identity","coordinateUnit":"utf16-code-unit","length":20},"region":{"kind":"declaration","selection":{"selector":"source-selector-v1:opaque","range":{"startInclusive":3,"endExclusive":20}}},"entities":[],"text":{"type":"withheld","reason":"byte-limit-reached"},"qualification":{"knownMinimumEntityCount":0,"limitations":["text-byte-limit-reached"],"continuation":{"type":"available","continuation":"continuation:opaque"}}}}""",
+        )
+        val semantic = observer(
+            "relation.read",
+            KastObserverFixtures.semanticQuery.replaceFirst(
+                "\"status\": \"complete\",",
+                "\"status\": \"qualified\", \"qualification\": {\"type\": \"terminal_incomplete\", \"knownMinimum\": 2, \"limitations\": [\"result-limit-reached\"]},",
+            ),
+        )
+        val impact = observer(
+            "traversal.run",
+            KastObserverFixtures.impactAnalysis.replaceFirst(
+                "\"status\": \"complete\",",
+                "\"status\": \"qualified\", \"qualification\": {\"type\": \"terminal_incomplete\", \"limitations\": [\"depth-limit-reached\"], \"relationLimitations\": []},",
+            ),
+        )
+
+        listOf(discover, inspect, source, semantic, impact).forEach { markdown ->
+            check(markdown.contains("> Qualified — evidence incomplete"))
+            check(!markdown.contains("compiler-confirmed"))
+            FORBIDDEN_OBSERVER_TOKENS.forEach { forbidden -> check(!markdown.contains(forbidden)) }
+        }
+    }
+
+    @Test
+    fun `semantic query leads with related symbols and hides protocol evidence`() {
+        val semanticQuery = observer("relation.read", KastObserverFixtures.semanticQuery)
+
+        assertEquals(
+            """
+            **Kast · semantic query**
+
+            **2 compiler-confirmed callers**
+
+            | Symbol | Kind | File |
+            |---|---|---|
+            | `CheckoutService` | class-like | [CheckoutService.kt](<checkout/core/src/main/kotlin/sample/CheckoutService.kt>) |
+            | `recordEvent` | function | [AuditSink.kt](<audit/src/main/kotlin/sample/AuditSink.kt>) |
+            """.trimIndent(),
+            semanticQuery,
+        )
+        FORBIDDEN_OBSERVER_TOKENS.forEach { forbidden ->
+            check(!semanticQuery.contains(forbidden)) { "Observer Markdown leaked $forbidden" }
+        }
+    }
+
+    @Test
+    fun `impact analysis leads with unique affected symbols and keeps snapshot secondary`() {
+        val impact = observer("traversal.run", KastObserverFixtures.impactAnalysis)
+
+        assertEquals(
+            """
+            **Kast · impact analysis**
+
+            **2 affected symbols** · 2 hops
+
+            | Depth | Symbol | Kind | File |
+            |---:|---|---|---|
+            | 1 | `CheckoutService` | class-like | [CheckoutService.kt](<checkout/core/src/main/kotlin/sample/CheckoutService.kt>) |
+            | 2 | `recordEvent` | function | [AuditSink.kt](<audit/src/main/kotlin/sample/AuditSink.kt>) |
+
+            _Callers · generation 42 · 2 compiler-confirmed relationships_
+            """.trimIndent(),
+            impact,
+        )
+        FORBIDDEN_OBSERVER_TOKENS.forEach { forbidden ->
+            check(!impact.contains(forbidden)) { "Observer Markdown leaked $forbidden" }
+        }
+        check(!impact.contains("/workspace")) { "Observer Markdown leaked workspace root" }
+    }
+
+    @Test
+    fun `semantic and impact observations fail closed on contradictory graph structure`() {
+        val mixedRelations = observerPresentation(
+            "relation.read",
+            KastObserverFixtures.semanticQuery.replaceFirst("\"callers\"", "\"callees\""),
+        )
+        val danglingImpact = observerPresentation(
+            "traversal.run",
+            KastObserverFixtures.impactAnalysis.replaceFirst("\"source\": 1", "\"source\": 99"),
+        )
+
+        assertEquals(ObserverPresentation.None, mixedRelations)
+        assertEquals(ObserverPresentation.None, danglingImpact)
+    }
+
+    @Test
+    fun `absolute Kast file paths are relative to the admitted invocation directory`(
+        @TempDir temporary: Path,
+    ) {
+        val workspace = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+        val file = workspace.resolve("src/main/kotlin/sample/EventConsumer.kt")
+        val rendered = observer(
+            "symbol.discover",
+            """{"status":"completed","document":{"operation":"symbol.discover","status":"complete","items":[{"type":"declaration","candidateSelector":"candidate:v2:opaque","kind":"symbol","name":"EventConsumer","file":"$file","offset":3}]}}""",
+            workspace,
+        )
+
+        check(rendered.contains("[EventConsumer.kt](<src/main/kotlin/sample/EventConsumer.kt>)"))
+        check(!rendered.contains(workspace.toString()))
+    }
+
+    @Test
+    fun `unsupported malformed and contradictory observations fail closed`() {
+        val malformed = observerPresentation(
+            "symbol.inspect",
+            """{"status":"completed","document":{"operation":"symbol.inspect","status":"complete","symbol":{"name":"EventConsumer"}}}""",
+        )
+        val mismatched = observerPresentation(
+            "symbol.discover",
+            """{"status":"completed","document":{"operation":"source.read","status":"complete","items":[]}}""",
+        )
+        val unsupported = observerPresentation(
+            "diagnostic.check",
+            """{"status":"completed","document":{"operation":"diagnostic.check","status":"complete"}}""",
+        )
+
+        assertEquals(ObserverPresentation.None, malformed)
+        assertEquals(ObserverPresentation.None, mismatched)
+        assertEquals(ObserverPresentation.None, unsupported)
     }
 
     @Test
@@ -166,7 +449,7 @@ class KastProviderTest {
                 }
                 else -> BrokerProcessExecution.Completed(
                     0,
-                    """{"operation":"symbol.discover","outcome":"complete","items":[]}""",
+                    """{"operation":"symbol.discover","status":"complete","items":[]}""",
                     "",
                 )
             }
@@ -264,6 +547,26 @@ class KastProviderTest {
 
     private fun toolName(value: String): ToolName = ToolName.admit(value).refinedValue()
 
+    private fun observer(
+        operation: String,
+        document: String,
+        observerDirectory: Path = Path.of(".").toRealPath(),
+    ): String = (observerPresentation(operation, document, observerDirectory) as
+        ObserverPresentation.Markdown).source.value
+
+    private fun observerPresentation(
+        operation: String,
+        document: String,
+        observerDirectory: Path = Path.of(".").toRealPath(),
+    ): ObserverPresentation = KastObserverProjector.project(
+        checkNotNull(KastOperationId.admit(operation)),
+        KastInvocationOutput(
+            Json.parseToJsonElement(document).jsonObject,
+            success = true,
+            observerDirectory = checkNotNull(CanonicalBrokerDirectory.admit(observerDirectory)),
+        ),
+    )
+
     private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
         is Refinement.Refined -> value
         is Refinement.Rejected -> throw AssertionError("Expected refinement, received $failure")
@@ -272,5 +575,16 @@ class KastProviderTest {
     private fun <Strong, Failure> Validation<Strong, Failure>.validatedValue(): Strong = when (this) {
         is Validation.Validated -> value
         is Validation.Rejected -> throw AssertionError("Expected validation, received $failures")
+    }
+
+    private companion object {
+        val FORBIDDEN_OBSERVER_TOKENS = listOf(
+            "candidate:v",
+            "exact:v",
+            "sha256:",
+            "canonical-signature-sha256",
+            "source-selector-v",
+            "continuation:opaque",
+        )
     }
 }
