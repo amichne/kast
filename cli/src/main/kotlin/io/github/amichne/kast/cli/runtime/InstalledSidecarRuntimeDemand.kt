@@ -240,8 +240,14 @@ class InstalledSidecarRootRuntimeDemander(
                 RuntimeAdmissionFailure.InstalledIdeRejected(resolution.failure),
             )
         }
+        val importEnvironment = when (val admission = currentGradleImportEnvironment()) {
+            is Refinement.Refined -> admission.value
+            is Refinement.Rejected -> return RuntimeAdmission.Rejected(
+                RuntimeAdmissionFailure.GradleImportEnvironmentRejected(admission.failure),
+            )
+        }
         val cacheIdentity = when (
-            val derivation = KastCacheIdentity.derive(root.path, runtime, endpoint.runtimeId)
+            val derivation = KastCacheIdentity.derive(root.path, runtime, endpoint.runtimeId, importEnvironment.identity)
         ) {
             is KastCacheIdentityDerivation.Derived -> derivation.identity
             is KastCacheIdentityDerivation.Rejected -> return RuntimeAdmission.Rejected(
@@ -295,6 +301,7 @@ class InstalledSidecarRootRuntimeDemander(
                 cache.configDirectory,
                 cache.logDirectory,
                 payload.privatePluginsDirectory,
+                importEnvironment,
             )
         ) {
             is SidecarLaunchContextAdmission.Admitted -> admission.context

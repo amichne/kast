@@ -1,5 +1,8 @@
 package io.github.amichne.kast.workspace.intellij
 
+import io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionReport
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
+import io.github.amichne.kast.kernel.Refinement
 import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.Logger
@@ -79,6 +82,7 @@ enum class InstalledIntellijWorkspaceBootstrapPhase {
 /** Explicit effect boundary for observing installed workspace bootstrap progress. */
 fun interface InstalledIntellijWorkspaceBootstrapObserver {
     fun observe(phase: InstalledIntellijWorkspaceBootstrapPhase)
+    fun observeGradleJvm(report: GradleJvmSelectionReport) {}
 }
 
 /** Detached complete model proof from one exact IntelliJ-opened Gradle workspace. */
@@ -198,6 +202,21 @@ object InstalledIntellijWorkspace {
     ): InstalledIntellijWorkspaceOpening {
         observer.observe(InstalledIntellijWorkspaceBootstrapPhase.PROJECT_IMPORT)
         val workspacePath = Path.of(workspaceRoot.value)
+        val importEnvironment = when (val admission = GradleImportEnvironment.admit(
+            System.getenv(GradleImportEnvironment.VARIABLES_SETTING).orEmpty(),
+            System.getenv(GradleImportEnvironment.PATH_SETTING).orEmpty(),
+            System.getenv(),
+        )) {
+            is Refinement.Refined -> admission.value
+            is Refinement.Rejected -> return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID)
+        }
+        val projectJvmAuthority = projectGradleJvmAuthority(workspacePath)
+        if (projectJvmAuthority == ProjectGradleJvmAuthority.Rejected) {
+            observer.observeGradleJvm(InstalledGradleJvmSelection.Rejected(
+                InstalledGradleJvmSelectionFailure.REPOSITORY_JAVA_HOME_INVALID,
+            ).report)
+            return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID)
+        }
         val projectStore = when (
             val prepared = InstalledSemanticProjectStore.prepare(
                 workspaceRoot,
@@ -220,13 +239,15 @@ object InstalledIntellijWorkspace {
                 InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE,
             )
         }
-        return openObserved(workspacePath, projectStore, sidecarJvm, observer)
+        return openObserved(workspacePath, projectStore, sidecarJvm, projectJvmAuthority, importEnvironment, observer)
     }
 
     private fun openObserved(
         workspaceRoot: Path,
         projectStore: InstalledSemanticProjectStore,
         sidecarJvm: InstalledSidecarJvm,
+        projectJvmAuthority: ProjectGradleJvmAuthority,
+        importEnvironment: GradleImportEnvironment,
         observer: InstalledIntellijWorkspaceBootstrapObserver,
     ): InstalledIntellijWorkspaceOpening {
         val preparation = InstalledProjectOpenPreparation(BootstrapProjectJvm.from(sidecarJvm))
@@ -297,9 +318,9 @@ object InstalledIntellijWorkspace {
             is InstalledGradleLinkPresence.Linked -> linkPresence.settings
             is InstalledGradleLinkPresence.Unlinked -> linkPresence.settings
         }
-        val selectedGradleJvm = when (
-            val selection = selectInstalledGradleJvm(project, linkedProjectSettings, sidecarJvm)
-        ) {
+        val selection = selectInstalledGradleJvm(project, linkedProjectSettings, sidecarJvm, projectJvmAuthority)
+        observer.observeGradleJvm(selection.report)
+        val selectedGradleJvm = when (selection) {
             is InstalledGradleJvmSelection.Selected -> selection.jvm
             is InstalledGradleJvmSelection.Rejected -> return rejected(
                 InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE,
@@ -412,7 +433,7 @@ object InstalledIntellijWorkspace {
             is InstalledWorkspaceIndexingAdmission.Rejected -> return rejected(admission.failure)
         }
         observer.observe(InstalledIntellijWorkspaceBootstrapPhase.MODEL_CAPTURE)
-        val capture = when (val captured = captureInstalledGradleModel(project, workspaceRoot)) {
+        val capture = when (val captured = captureInstalledGradleModel(project, workspaceRoot, importEnvironment.identity)) {
             is io.github.amichne.kast.kernel.Refinement.Refined -> captured.value
             is io.github.amichne.kast.kernel.Refinement.Rejected -> return rejected(
                 captured.failure.workspaceFailure(),

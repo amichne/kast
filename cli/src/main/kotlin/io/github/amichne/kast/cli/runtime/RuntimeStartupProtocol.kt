@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -59,6 +60,7 @@ enum class SidecarLaunchContextFailure {
  */
 class SidecarLaunchContext private constructor(
     val runtime: InstalledIdeRuntime,
+    val importEnvironment: GradleImportEnvironment,
     val cacheRoot: Path,
     val systemDirectory: Path,
     val configDirectory: Path,
@@ -73,6 +75,7 @@ class SidecarLaunchContext private constructor(
             configDirectory: Path,
             logDirectory: Path,
             privatePluginsDirectory: Path,
+            importEnvironment: GradleImportEnvironment = GradleImportEnvironment.Empty,
         ): SidecarLaunchContextAdmission {
             val root = canonicalDirectory(cacheRoot)
                 ?: return SidecarLaunchContextAdmission.Rejected(
@@ -107,6 +110,7 @@ class SidecarLaunchContext private constructor(
             return SidecarLaunchContextAdmission.Admitted(
                 SidecarLaunchContext(
                     runtime,
+                    importEnvironment,
                     root,
                     paths[0],
                     paths[1],

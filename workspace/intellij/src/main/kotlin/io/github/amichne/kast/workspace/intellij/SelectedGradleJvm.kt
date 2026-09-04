@@ -3,12 +3,7 @@ package io.github.amichne.kast.workspace.intellij
 import org.gradle.util.GradleVersion
 import java.nio.file.Path
 
-internal enum class GradleJvmSelectionSource {
-    DAEMON_JVM_CRITERIA,
-    REPOSITORY_GRADLE_PROPERTY,
-    SIDECAR_COMPATIBLE,
-    PLATFORM_RESOLVER,
-}
+internal typealias GradleJvmSelectionSource = io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionAuthority
 
 /** Detached observation of one physically admitted local Java installation. */
 internal data class GradleJvmCandidate(

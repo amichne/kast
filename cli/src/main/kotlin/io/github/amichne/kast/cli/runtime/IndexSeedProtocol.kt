@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentIdentity
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import java.io.IOException
 import java.nio.charset.StandardCharsets
@@ -270,6 +272,7 @@ class KastCacheIdentity private constructor(
     val javaExecutable: Path,
     val semanticRuntimeId: SemanticRuntimeId,
     val runtimeIdentity: IdeRuntimeIdentity,
+    val importEnvironmentIdentity: GradleImportEnvironmentIdentity,
     val key: String,
 ) {
     override fun equals(other: Any?): Boolean =
@@ -302,6 +305,7 @@ class KastCacheIdentity private constructor(
             projectRoot: Path,
             runtime: InstalledIdeRuntime,
             semanticRuntimeId: SemanticRuntimeId,
+            importEnvironmentIdentity: GradleImportEnvironmentIdentity = GradleImportEnvironment.Empty.identity,
         ): KastCacheIdentityDerivation {
             val canonicalProject = canonicalDirectory(projectRoot)
                 ?: return KastCacheIdentityDerivation.Rejected(
@@ -321,6 +325,7 @@ class KastCacheIdentity private constructor(
                 canonicalJava.toString(),
                 semanticRuntimeId.value,
                 runtime.identity.identityMaterial(),
+                importEnvironmentIdentity.value,
             ).joinToString("\n")
             val key = sha256(material.toByteArray(StandardCharsets.UTF_8))
             return KastCacheIdentityDerivation.Derived(
@@ -330,6 +335,7 @@ class KastCacheIdentity private constructor(
                     canonicalJava,
                     semanticRuntimeId,
                     runtime.identity,
+                    importEnvironmentIdentity,
                     key,
                 ),
             )

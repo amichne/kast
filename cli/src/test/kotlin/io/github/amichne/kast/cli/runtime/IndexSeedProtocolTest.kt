@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentIdentity
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import io.github.amichne.kast.kernel.Refinement
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -30,6 +31,15 @@ class IndexSeedProtocolTest {
         assertEquals(firstRoot, first.canonicalProjectRoot)
         assertEquals(semanticRuntimeId, first.semanticRuntimeId)
         assertEquals(runtimeIdentity, first.runtimeIdentity)
+    }
+
+    @Test
+    fun `import input digest changes require distinct cache identity`(@TempDir temporary: Path) {
+        val root = Files.createDirectory(temporary.resolve("project")).toRealPath()
+        val runtime = installedRuntime(temporary.resolve("idea"), supportedRuntime())
+        val first = KastCacheIdentity.derive(root, runtime, semanticRuntimeId(), GradleImportEnvironmentIdentity.digest("first")).derived()
+        val changed = KastCacheIdentity.derive(root, runtime, semanticRuntimeId(), GradleImportEnvironmentIdentity.digest("changed")).derived()
+        assertNotEquals(first.key, changed.key)
     }
 
     @Test

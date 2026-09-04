@@ -1,5 +1,6 @@
 package io.github.amichne.kast.runtime.composition
 
+import io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionReport
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.KastObservability
 import io.github.amichne.kast.protocol.wire.metadata.SidecarTelemetryOutput
@@ -176,6 +177,7 @@ enum class InstalledRuntimeBootstrapPhase {
 /** Explicit effect boundary for observing production runtime bootstrap progress. */
 fun interface InstalledRuntimeBootstrapObserver {
     fun observe(phase: InstalledRuntimeBootstrapPhase)
+    fun observeGradleJvm(report: InstalledGradleJvmSelectionReport) {}
 
     /** Receives the detached exact-root semantic index authority after model capture. */
     fun observeIndexScope(scope: InstalledRuntimeIndexScope) = Unit
@@ -438,3 +440,6 @@ object InstalledKastRuntime {
         }
     }
 }
+
+/** Import evidence facade keeps distribution serialization out of the indexer module. */
+class InstalledGradleJvmSelectionReport internal constructor(internal val report: GradleJvmSelectionReport)

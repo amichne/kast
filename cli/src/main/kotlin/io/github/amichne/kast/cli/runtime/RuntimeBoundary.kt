@@ -1,6 +1,8 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentFailure
 import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLock
 import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLockExecution
 import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapStateFile
@@ -236,6 +238,7 @@ class IndexerExecutable private constructor(
 class IndexerLaunchCommand private constructor(
     internal val arguments: List<String>,
     internal val runtime: InstalledIdeRuntime,
+    internal val importEnvironment: GradleImportEnvironment,
     internal val startupLog: Path,
     internal val bootstrapState: Path,
     internal val bootstrapAttemptId: SemanticRuntimeBootstrapAttemptId,
@@ -278,6 +281,7 @@ class IndexerLaunchCommand private constructor(
                         "--bootstrap-attempt-id=${bootstrapAttemptId.value}",
                     ),
                     runtime = context.runtime,
+                    importEnvironment = context.importEnvironment,
                     startupLog = context.logDirectory.resolve("startup.log"),
                     bootstrapState = context.cacheRoot.resolve(
                         SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME,
@@ -362,6 +366,7 @@ sealed interface RuntimeAdmission {
 }
 
 sealed interface RuntimeAdmissionFailure {
+    data class GradleImportEnvironmentRejected(val failure: GradleImportEnvironmentFailure) : RuntimeAdmissionFailure
     data object ManifestInvalid : RuntimeAdmissionFailure
     data object SourceInvalid : RuntimeAdmissionFailure
     data object ArtifactUnavailable : RuntimeAdmissionFailure
@@ -393,6 +398,7 @@ sealed interface RuntimeAdmissionFailure {
 }
 
 internal fun RuntimeAdmissionFailure.outputReason(): String = when (this) {
+    is RuntimeAdmissionFailure.GradleImportEnvironmentRejected -> "gradle-import-environment-${failure.name.lowercase().replace('_', '-')}"
     RuntimeAdmissionFailure.ManifestInvalid -> "manifest-invalid"
     RuntimeAdmissionFailure.SourceInvalid -> "source-invalid"
     RuntimeAdmissionFailure.ArtifactUnavailable -> "artifact-unavailable"
@@ -401,6 +407,7 @@ internal fun RuntimeAdmissionFailure.outputReason(): String = when (this) {
     RuntimeAdmissionFailure.LayoutInvalid -> "layout-invalid"
     RuntimeAdmissionFailure.RuntimeIncompatible -> "runtime-incompatible"
     is RuntimeAdmissionFailure.ProcessStartFailed -> when (failure) {
+        RuntimeProcessStartFailure.GradleImportEnvironmentRejected -> "gradle-import-environment-rejected"
         RuntimeProcessStartFailure.IdeaJbrUnavailable -> "idea-jbr-unavailable"
         RuntimeProcessStartFailure.UserHomeUnavailable -> "user-home-unavailable"
         RuntimeProcessStartFailure.SessionObservationRejected,

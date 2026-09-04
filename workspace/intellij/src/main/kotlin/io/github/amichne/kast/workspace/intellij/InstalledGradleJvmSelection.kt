@@ -1,5 +1,9 @@
 package io.github.amichne.kast.workspace.intellij
 
+import io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionReport
+import io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionFailure
+import io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionOutcome
+import io.github.amichne.kast.distribution.contract.gradle.GradleDistributionEvidence
 import com.intellij.openapi.externalSystem.service.execution.ExternalSystemJdkUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.projectRoots.ProjectJdkTable
@@ -11,22 +15,21 @@ import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.util.Properties
 
-internal enum class InstalledGradleJvmSelectionFailure {
-    GRADLE_DISTRIBUTION_UNAVAILABLE,
-    DAEMON_JVM_CRITERIA_UNSUPPORTED,
-    REPOSITORY_JAVA_HOME_INVALID,
-    LOCAL_JVM_DISCOVERY_FAILED,
-    NO_COMPATIBLE_RUNTIME,
-    SDK_REGISTRATION_FAILED,
-}
+internal typealias InstalledGradleJvmSelectionFailure = GradleJvmSelectionFailure
 
 internal sealed interface InstalledGradleJvmSelection {
+    val report: GradleJvmSelectionReport
     data class Selected(
         val jvm: SelectedGradleJvm,
+        override val report: GradleJvmSelectionReport,
     ) : InstalledGradleJvmSelection
 
     data class Rejected(
         val failure: InstalledGradleJvmSelectionFailure,
+        override val report: GradleJvmSelectionReport = GradleJvmSelectionReport(
+            GradleDistributionEvidence.Unavailable, emptyList(), emptyList(),
+            GradleJvmSelectionOutcome.Rejected(failure),
+        ),
     ) : InstalledGradleJvmSelection
 }
 
@@ -41,6 +44,7 @@ internal fun selectInstalledGradleJvm(
     project: Project,
     settings: GradleProjectSettings,
     sidecar: InstalledSidecarJvm,
+    projectJvmAuthority: ProjectGradleJvmAuthority,
 ): InstalledGradleJvmSelection {
     val distribution = try {
         GradleInstallationManager.guessGradleVersion(settings)
@@ -52,39 +56,47 @@ internal fun selectInstalledGradleJvm(
         InstalledGradleJvmSelectionFailure.GRADLE_DISTRIBUTION_UNAVAILABLE,
     )
 
+    fun reject(
+        failure: InstalledGradleJvmSelectionFailure,
+        candidates: List<GradleJvmCandidate> = emptyList(),
+    ) = InstalledGradleJvmSelection.Rejected(
+        failure,
+        gradleJvmRejectionReport(distribution, candidates, failure),
+    )
+
     val root = try {
         Path.of(settings.externalProjectPath).toRealPath()
     } catch (_: IOException) {
-        return InstalledGradleJvmSelection.Rejected(
+        return reject(
             InstalledGradleJvmSelectionFailure.GRADLE_DISTRIBUTION_UNAVAILABLE,
         )
     } catch (_: InvalidPathException) {
-        return InstalledGradleJvmSelection.Rejected(
+        return reject(
             InstalledGradleJvmSelectionFailure.GRADLE_DISTRIBUTION_UNAVAILABLE,
         )
     } catch (_: SecurityException) {
-        return InstalledGradleJvmSelection.Rejected(
+        return reject(
             InstalledGradleJvmSelectionFailure.GRADLE_DISTRIBUTION_UNAVAILABLE,
         )
     }
 
-    val repositoryHome = when (val configured = repositoryGradleJavaHome(root)) {
-        RepositoryGradleJavaHome.Absent -> null
-        is RepositoryGradleJavaHome.Present -> configured.home
-        RepositoryGradleJavaHome.Rejected -> return InstalledGradleJvmSelection.Rejected(
+    val repositoryHome = when (val configured = projectJvmAuthority) {
+        ProjectGradleJvmAuthority.Absent -> null
+        is ProjectGradleJvmAuthority.Present -> configured.home
+        ProjectGradleJvmAuthority.Rejected -> return reject(
             InstalledGradleJvmSelectionFailure.REPOSITORY_JAVA_HOME_INVALID,
         )
     }
     val repositoryCandidate = repositoryHome?.let { home ->
         observeGradleJvmCandidate(home, GradleJvmSelectionSource.REPOSITORY_GRADLE_PROPERTY)
-            ?: return InstalledGradleJvmSelection.Rejected(
+            ?: return reject(
                 InstalledGradleJvmSelectionFailure.REPOSITORY_JAVA_HOME_INVALID,
             )
     }
     val sidecarCandidate = observeGradleJvmCandidate(
         sidecar.home,
         GradleJvmSelectionSource.SIDECAR_COMPATIBLE,
-    ) ?: return InstalledGradleJvmSelection.Rejected(
+    ) ?: return reject(
         InstalledGradleJvmSelectionFailure.LOCAL_JVM_DISCOVERY_FAILED,
     )
 
@@ -97,7 +109,7 @@ internal fun selectInstalledGradleJvm(
             addAll(ExternalSystemJdkUtil.suggestJdkHomePaths(project))
         }
     } catch (_: RuntimeException) {
-        return InstalledGradleJvmSelection.Rejected(
+        return reject(
             InstalledGradleJvmSelectionFailure.LOCAL_JVM_DISCOVERY_FAILED,
         )
     }
@@ -125,7 +137,7 @@ internal fun selectInstalledGradleJvm(
             .map { candidate ->
                 candidate.copy(source = GradleJvmSelectionSource.DAEMON_JVM_CRITERIA)
             }
-        RepositoryDaemonJvmCriteria.Rejected -> return InstalledGradleJvmSelection.Rejected(
+        RepositoryDaemonJvmCriteria.Rejected -> return reject(
             InstalledGradleJvmSelectionFailure.DAEMON_JVM_CRITERIA_UNSUPPORTED,
         )
     }
@@ -133,8 +145,9 @@ internal fun selectInstalledGradleJvm(
         val selection = GradleJvmCandidateSelector.select(distribution, selectionCandidates)
     ) {
         is GradleJvmCandidateSelection.Selected -> selection
-        is GradleJvmCandidateSelection.Rejected -> return InstalledGradleJvmSelection.Rejected(
+        is GradleJvmCandidateSelection.Rejected -> return reject(
             InstalledGradleJvmSelectionFailure.NO_COMPATIBLE_RUNTIME,
+            candidates,
         )
     }
     val selector = if (proof.candidate.source == GradleJvmSelectionSource.SIDECAR_COMPATIBLE) {
@@ -148,13 +161,15 @@ internal fun selectInstalledGradleJvm(
             }
             (existing ?: ExternalSystemJdkUtil.addJdk(proof.candidate.home.toString())).name
         } catch (_: RuntimeException) {
-            return InstalledGradleJvmSelection.Rejected(
+            return reject(
                 InstalledGradleJvmSelectionFailure.SDK_REGISTRATION_FAILED,
+                candidates,
             )
         }
     }
     return InstalledGradleJvmSelection.Selected(
         SelectedGradleJvm.establish(proof, selector),
+        gradleJvmSelectedReport(proof, candidates),
     )
 }
 
@@ -244,54 +259,6 @@ private fun observeGradleJvmCandidate(
         runtimeVersion = version.toString(),
         source = source,
     )
-}
-
-private sealed interface RepositoryGradleJavaHome {
-    data object Absent : RepositoryGradleJavaHome
-
-    data class Present(
-        val home: Path,
-    ) : RepositoryGradleJavaHome
-
-    data object Rejected : RepositoryGradleJavaHome
-}
-
-/** Reads only the repository-owned property; user and installation Gradle properties stay out. */
-private fun repositoryGradleJavaHome(root: Path): RepositoryGradleJavaHome {
-    val propertiesFile = root.resolve("gradle.properties")
-    if (Files.notExists(propertiesFile)) return RepositoryGradleJavaHome.Absent
-    if (!Files.isRegularFile(propertiesFile) || Files.isSymbolicLink(propertiesFile)) {
-        return RepositoryGradleJavaHome.Rejected
-    }
-    val properties = Properties()
-    try {
-        Files.newBufferedReader(propertiesFile).use(properties::load)
-    } catch (_: IOException) {
-        return RepositoryGradleJavaHome.Rejected
-    } catch (_: SecurityException) {
-        return RepositoryGradleJavaHome.Rejected
-    } catch (_: IllegalArgumentException) {
-        return RepositoryGradleJavaHome.Rejected
-    }
-    val raw = properties.getProperty("org.gradle.java.home")
-        ?.takeIf(String::isNotBlank)
-        ?: return RepositoryGradleJavaHome.Absent
-    val candidate = try {
-        Path.of(raw)
-    } catch (_: InvalidPathException) {
-        return RepositoryGradleJavaHome.Rejected
-    }
-    if (!candidate.isAbsolute || candidate.normalize() != candidate) {
-        return RepositoryGradleJavaHome.Rejected
-    }
-    val canonical = try {
-        candidate.toRealPath()
-    } catch (_: IOException) {
-        return RepositoryGradleJavaHome.Rejected
-    } catch (_: SecurityException) {
-        return RepositoryGradleJavaHome.Rejected
-    }
-    return RepositoryGradleJavaHome.Present(canonical)
 }
 
 private val DAEMON_JVM_CRITERIA_MINIMUM_GRADLE =

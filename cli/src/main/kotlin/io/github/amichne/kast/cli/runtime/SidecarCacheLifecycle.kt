@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentIdentity
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
@@ -13,7 +14,7 @@ import java.util.UUID
 
 private const val SIDECAR_CACHE_IDENTITY_FILE = "cache-identity.properties"
 private const val SIDECAR_CACHE_STATE_FILE = "cache-state"
-private const val SIDECAR_CACHE_IDENTITY_FORMAT = "kast.sidecar-cache.identity.v2"
+private const val SIDECAR_CACHE_IDENTITY_FORMAT = "kast.sidecar-cache.identity.v3"
 private const val SIDECAR_CACHE_IDENTITY_LEGACY_FORMAT = "kast.sidecar-cache.identity.v1"
 
 sealed interface CacheStateObservation {
@@ -144,6 +145,8 @@ class FilesystemRootSidecarCacheLifecycle(
     private val cacheRoot: Path,
     private val releaseIdentity: SidecarCacheReleaseIdentity,
     private val installedRuntimeResolver: SidecarIdeRuntimeResolver,
+    private val importEnvironment: () -> Refinement<io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment,
+        io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentFailure> = { currentGradleImportEnvironment() },
 ) : RootSidecarCacheLifecycle {
     override fun observe(root: Path): RootSidecarCacheObservation =
         when (val match = matching(root)) {
@@ -230,7 +233,12 @@ class FilesystemRootSidecarCacheLifecycle(
         val releasedRecords = records.filter { record ->
             releaseIdentity.admits(record.identity)
         }
+        val currentImport = when (val admitted = importEnvironment()) {
+            is Refinement.Refined -> admitted.value.identity
+            is Refinement.Rejected -> return CacheIdentityMatch.Rejected(SidecarCacheLifecycleFailure.INVALID_IDENTITY)
+        }
         val currentRecords = releasedRecords.filter { record ->
+            record.identity.importEnvironmentIdentity == currentImport &&
             when (
                 val discovery = releaseIdentity.discoverCurrentRuntime(
                     record.ideaHome,
@@ -328,6 +336,7 @@ internal object SidecarCacheIdentityFile {
         val properties = Properties().apply {
             setProperty("format", SIDECAR_CACHE_IDENTITY_FORMAT)
             setProperty("cache.key", identity.key)
+            setProperty("gradle.import.identity", identity.importEnvironmentIdentity.value)
             setProperty("semantic.runtime.id", identity.semanticRuntimeId.value)
             setProperty("project.root", identity.canonicalProjectRoot.toString())
             setProperty("idea.home", identity.ideaHome.toString())
@@ -428,7 +437,7 @@ private fun readIdentity(
     }
     when (values.getProperty("format")) {
         SIDECAR_CACHE_IDENTITY_FORMAT -> Unit
-        SIDECAR_CACHE_IDENTITY_LEGACY_FORMAT -> return CacheIdentityRead.Unrelated
+        SIDECAR_CACHE_IDENTITY_LEGACY_FORMAT, "kast.sidecar-cache.identity.v2" -> return CacheIdentityRead.Unrelated
         else -> return CacheIdentityRead.Rejected
     }
     val rawProject = values.getProperty("project.root") ?: return CacheIdentityRead.Rejected
@@ -494,6 +503,12 @@ private fun readIdentity(
             project,
             installedRuntime,
             semanticRuntimeId,
+            when (val parsed = GradleImportEnvironmentIdentity.parse(
+                values.getProperty("gradle.import.identity") ?: return CacheIdentityRead.Rejected,
+            )) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return CacheIdentityRead.Rejected
+            },
         )
     ) {
         is KastCacheIdentityDerivation.Derived -> derivation.identity
