@@ -2,6 +2,7 @@ package io.github.amichne.kast.workspace.intellij
 
 import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.externalSystem.autoimport.ExternalSystemProjectTrackerSettings
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
@@ -32,6 +33,19 @@ enum class InstalledIntellijWorkspaceFailure {
     PROJECT_STORE_OVERLAPS_WORKSPACE,
     PROJECT_STORE_CREATION_FAILED,
     PROJECT_STORE_IDENTITY_REJECTED,
+    PROJECT_STORE_EXCLUSION_DISCOVERY_FAILED,
+    PROJECT_STORE_CONFIGURATION_WRITE_FAILED,
+    INDEX_BOOTSTRAP_MODULE_UNAVAILABLE,
+    INDEX_BOOTSTRAP_EXCLUSION_POLICY_MISMATCH,
+    INDEX_BOOTSTRAP_CONTENT_ROOT_MISMATCH,
+    INDEX_BOOTSTRAP_EXCLUSION_ROOTS_MISMATCH,
+    INDEX_BOOTSTRAP_PLATFORM_OBSERVATION_FAILED,
+    INDEX_BOOTSTRAP_RETIREMENT_IDENTITY_LOST,
+    INDEX_BOOTSTRAP_RETIREMENT_FAILED,
+    INDEX_BOOTSTRAP_IMPORTED_MODULES_UNAVAILABLE,
+    INDEX_BOOTSTRAP_EXCLUSION_ROOT_UNAVAILABLE,
+    INDEX_BOOTSTRAP_EXCLUSION_NOT_PRESERVED,
+    INDEX_BOOTSTRAP_SOURCE_ROOT_NOT_ADMITTED,
     PROJECT_OPEN_FAILED,
     STARTUP_FAILED,
     GRADLE_JVM_UNAVAILABLE,
@@ -219,7 +233,7 @@ object InstalledIntellijWorkspace {
         val project = try {
             ProjectManagerEx.getInstanceEx().openProject(
                 projectStore.path,
-                installedProjectOpenTask(preparation),
+                installedProjectOpenTask(preparation, projectStore.indexBootstrap),
             )
         } catch (_: RuntimeException) {
             null
@@ -240,6 +254,19 @@ object InstalledIntellijWorkspace {
                 InstalledIntellijWorkspaceFailure.PROJECT_OPEN_FAILED,
             )
         }
+
+        val activeIndexBootstrap = when (
+            val activation = projectStore.indexBootstrap.activate(project)
+        ) {
+            is InstalledIndexBootstrapActivation.Active -> activation.bootstrap
+            is InstalledIndexBootstrapActivation.Rejected -> return rejected(
+                activation.failure.workspaceFailure(),
+            )
+        }
+        INDEX_BOOTSTRAP_LOG.info(
+            "event=activated excludedDirectoryCount=" +
+                projectStore.indexBootstrap.excludedDirectoryCount,
+        )
 
         when (awaitStartup(project)) {
             FutureCompletion.COMPLETED -> Unit
@@ -321,6 +348,19 @@ object InstalledIntellijWorkspace {
             InstalledGradleImportWait.FAILED,
                 -> return rejected(
                 InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED,
+                )
+        }
+        when (val retirement = activeIndexBootstrap.retire(project)) {
+            is InstalledIndexBootstrapRetirement.Retired -> INDEX_BOOTSTRAP_LOG.info(
+                "event=retired authority=${retirement.authority.name.lowercase()}",
+            )
+            is InstalledIndexBootstrapRetirement.Rejected -> return rejected(
+                when (retirement.failure) {
+                    InstalledIndexBootstrapRetirementFailure.MODULE_IDENTITY_LOST ->
+                        InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_RETIREMENT_IDENTITY_LOST
+                    InstalledIndexBootstrapRetirementFailure.PLATFORM_MUTATION_FAILED ->
+                        InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_RETIREMENT_FAILED
+                },
             )
         }
         when (applyInstalledGradleProjectPolicy(project)) {
@@ -336,6 +376,27 @@ object InstalledIntellijWorkspace {
             InstalledModuleMaterialization.UNAVAILABLE,
             InstalledModuleMaterialization.FAILED,
                 -> return rejected(InstalledIntellijWorkspaceFailure.MODEL_UNAVAILABLE)
+        }
+        when (val verification = activeIndexBootstrap.verifyImportedModel(project)) {
+            is InstalledIndexExclusionVerification.Verified -> INDEX_BOOTSTRAP_LOG.info(
+                "event=verified generatedSourceRootCount=${verification.generatedSourceRootCount}",
+            )
+            is InstalledIndexExclusionVerification.Rejected -> return rejected(
+                when (verification.failure) {
+                    InstalledIndexExclusionVerificationFailure.IMPORTED_MODULES_UNAVAILABLE ->
+                        InstalledIntellijWorkspaceFailure
+                            .INDEX_BOOTSTRAP_IMPORTED_MODULES_UNAVAILABLE
+                    InstalledIndexExclusionVerificationFailure.EXCLUSION_ROOT_UNAVAILABLE ->
+                        InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_EXCLUSION_ROOT_UNAVAILABLE
+                    InstalledIndexExclusionVerificationFailure.EXCLUSION_NOT_PRESERVED ->
+                        InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_EXCLUSION_NOT_PRESERVED
+                    InstalledIndexExclusionVerificationFailure.SOURCE_ROOT_NOT_ADMITTED ->
+                        InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_SOURCE_ROOT_NOT_ADMITTED
+                    InstalledIndexExclusionVerificationFailure.PLATFORM_OBSERVATION_FAILED ->
+                        InstalledIntellijWorkspaceFailure
+                            .INDEX_BOOTSTRAP_PLATFORM_OBSERVATION_FAILED
+                },
+            )
         }
         val moduleRematerializer = InstalledModuleRematerializer {
             materializeImportedModules(project, workspaceRoot)
@@ -460,11 +521,12 @@ object InstalledIntellijWorkspace {
     }
 }
 
-/** Project-open policy that admits no persisted project or default-template configuration. */
+/** Project-open policy that admits only runtime-generated project configuration. */
 internal fun installedProjectOpenTask(
     preparation: InstalledProjectOpenPreparation,
+    indexBootstrap: InstalledIndexBootstrapBinder,
 ): OpenProjectTask = OpenProjectTask.build().copy(
-    isNewProject = true,
+    isNewProject = false,
     useDefaultProjectAsTemplate = false,
     isRefreshVfsNeeded = true,
     runConfigurators = false,
@@ -473,7 +535,8 @@ internal fun installedProjectOpenTask(
     preventIprLookup = true,
     createModule = false,
     beforeOpen = { project ->
-        preparation.prepare(project) is InstalledProjectOpenPreparationState.Prepared
+        indexBootstrap.bind(project) &&
+            preparation.prepare(project) is InstalledProjectOpenPreparationState.Prepared
     },
 )
 
@@ -572,7 +635,27 @@ private fun InstalledSemanticProjectStoreFailure.workspaceFailure():
             InstalledIntellijWorkspaceFailure.PROJECT_STORE_CREATION_FAILED
         InstalledSemanticProjectStoreFailure.IDENTITY_REJECTED ->
             InstalledIntellijWorkspaceFailure.PROJECT_STORE_IDENTITY_REJECTED
+        InstalledSemanticProjectStoreFailure.EXCLUSION_DISCOVERY_FAILED ->
+            InstalledIntellijWorkspaceFailure.PROJECT_STORE_EXCLUSION_DISCOVERY_FAILED
+        InstalledSemanticProjectStoreFailure.CONFIGURATION_WRITE_FAILED ->
+            InstalledIntellijWorkspaceFailure.PROJECT_STORE_CONFIGURATION_WRITE_FAILED
     }
+
+private fun InstalledIndexBootstrapActivationFailure.workspaceFailure():
+    InstalledIntellijWorkspaceFailure = when (this) {
+        InstalledIndexBootstrapActivationFailure.MODULE_UNAVAILABLE ->
+            InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_MODULE_UNAVAILABLE
+        InstalledIndexBootstrapActivationFailure.EXCLUSION_POLICY_MISMATCH ->
+            InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_EXCLUSION_POLICY_MISMATCH
+        InstalledIndexBootstrapActivationFailure.CONTENT_ROOT_MISMATCH ->
+            InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_CONTENT_ROOT_MISMATCH
+        InstalledIndexBootstrapActivationFailure.EXCLUSION_ROOTS_MISMATCH ->
+            InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_EXCLUSION_ROOTS_MISMATCH
+        InstalledIndexBootstrapActivationFailure.PLATFORM_OBSERVATION_FAILED ->
+            InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_PLATFORM_OBSERVATION_FAILED
+    }
+
+private val INDEX_BOOTSTRAP_LOG = Logger.getInstance("io.github.amichne.kast.indexBootstrap")
 
 private fun rejected(
     failure: InstalledIntellijWorkspaceFailure,

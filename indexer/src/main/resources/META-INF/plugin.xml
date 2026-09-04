@@ -17,6 +17,8 @@
         <appStarter
             id="kast-indexer"
             implementation="io.github.amichne.kast.indexer.KastIndexerApplicationStarter"/>
+        <directoryIndexExcludePolicy
+            implementation="io.github.amichne.kast.workspace.intellij.InstalledIndexExclusionPolicy"/>
     </extensions>
     <extensions defaultExtensionNs="org.jetbrains.plugins.gradle">
         <projectResolve

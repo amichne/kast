@@ -26,6 +26,34 @@ enum class SemanticRuntimeBootstrapFailure(
 
     PROJECT_STORE_IDENTITY_REJECTED("project-store-identity-rejected"),
 
+    PROJECT_STORE_EXCLUSION_DISCOVERY_FAILED("project-store-exclusion-discovery-failed"),
+
+    PROJECT_STORE_CONFIGURATION_WRITE_FAILED("project-store-configuration-write-failed"),
+
+    INDEX_BOOTSTRAP_MODULE_UNAVAILABLE("index-bootstrap-module-unavailable"),
+
+    INDEX_BOOTSTRAP_EXCLUSION_POLICY_MISMATCH("index-bootstrap-exclusion-policy-mismatch"),
+
+    INDEX_BOOTSTRAP_CONTENT_ROOT_MISMATCH("index-bootstrap-content-root-mismatch"),
+
+    INDEX_BOOTSTRAP_EXCLUSION_ROOTS_MISMATCH("index-bootstrap-exclusion-roots-mismatch"),
+
+    INDEX_BOOTSTRAP_PLATFORM_OBSERVATION_FAILED("index-bootstrap-platform-observation-failed"),
+
+    INDEX_BOOTSTRAP_RETIREMENT_IDENTITY_LOST("index-bootstrap-retirement-identity-lost"),
+
+    INDEX_BOOTSTRAP_RETIREMENT_FAILED("index-bootstrap-retirement-failed"),
+
+    INDEX_BOOTSTRAP_IMPORTED_MODULES_UNAVAILABLE(
+        "index-bootstrap-imported-modules-unavailable",
+    ),
+
+    INDEX_BOOTSTRAP_EXCLUSION_ROOT_UNAVAILABLE("index-bootstrap-exclusion-root-unavailable"),
+
+    INDEX_BOOTSTRAP_EXCLUSION_NOT_PRESERVED("index-bootstrap-exclusion-not-preserved"),
+
+    INDEX_BOOTSTRAP_SOURCE_ROOT_NOT_ADMITTED("index-bootstrap-source-root-not-admitted"),
+
     PROJECT_OPEN_FAILED("project-open-failed"),
 
     STARTUP_FAILED("startup-failed"),

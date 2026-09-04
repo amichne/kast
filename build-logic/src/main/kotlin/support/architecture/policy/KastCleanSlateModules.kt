@@ -98,11 +98,22 @@ internal object KastCleanSlateModules {
             ModuleId.WORKSPACE_INTELLIJ,
             ModuleRole.WORKSPACE_ADAPTER,
             ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.WORKSPACE_INTELLIJ_READ,
             effects = setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,
                 ForbiddenEffect.GRADLE_PLATFORM,
                 ForbiddenEffect.GRADLE_IMPORT,
                 ForbiddenEffect.GRAPH_BUILD,
+            ),
+            scopedEffects = mapOf(
+                ForbiddenEffect.FILESYSTEM_WRITE to setOf(
+                    JvmClassName(
+                        "io/github/amichne/kast/workspace/intellij/InstalledIndexBootstrap\$Companion",
+                    ),
+                    JvmClassName(
+                        "io/github/amichne/kast/workspace/intellij/InstalledIndexBootstrapKt",
+                    ),
+                ),
             ),
         ),
         target(

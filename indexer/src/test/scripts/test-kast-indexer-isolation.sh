@@ -65,6 +65,11 @@ printf '%s\n' 'plugin' >"${private_plugins}/kast-indexer/lib/indexer-plugin.jar"
 cat >"${java_executable}" <<'FAKE_JAVA'
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ -n "${JAVA_OPTS+x}" || -n "${_JAVA_OPTIONS+x}" || \
+  -n "${JAVA_TOOL_OPTIONS+x}" || -n "${JDK_JAVA_OPTIONS+x}" ]]; then
+  echo "indexer-launcher-isolation-test: ambient JVM options reached the JBR" >&2
+  exit 1
+fi
 printf '%s\0' "$@" >"${CAPTURE_FILE:?CAPTURE_FILE is required}"
 FAKE_JAVA
 chmod 755 "${java_executable}"
@@ -97,6 +102,9 @@ run_launcher() {
   local capture="$3"
   CAPTURE_FILE="${capture}" \
   JAVA_OPTS="-Dkast.untrusted.java-opts=true" \
+  _JAVA_OPTIONS="-Didea.load.plugins.id=attacker" \
+  JAVA_TOOL_OPTIONS="-Didea.plugins.path=/untrusted" \
+  JDK_JAVA_OPTIONS="-javaagent:/untrusted/agent.jar" \
     "${installed}/kast-indexer" \
       --workspace-root="${workspace}" \
       --socket-path="${socket}" \
@@ -174,6 +182,7 @@ for capture, cache, socket in zip(captures, caches, sockets, strict=True):
     required = (
         "-Xms256m",
         "-Xmx1536m",
+        "-Didea.load.plugins.id=io.github.amichne.kast.indexer",
         f"-Didea.plugins.path={private_plugins}",
         f"-Didea.home.path={idea_home}",
         f"--socket-path={socket}",

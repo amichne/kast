@@ -14,12 +14,15 @@ internal enum class InstalledSemanticProjectStoreFailure {
     OVERLAPS_WORKSPACE,
     CREATION_FAILED,
     IDENTITY_REJECTED,
+    EXCLUSION_DISCOVERY_FAILED,
+    CONFIGURATION_WRITE_FAILED,
 }
 
-/** One empty, fresh, runtime-owned location permitted to contain generated IntelliJ state. */
+/** One fresh, runtime-owned location permitted to contain generated IntelliJ state. */
 internal class InstalledSemanticProjectStore private constructor(
     val path: Path,
     val root: CanonicalSemanticProjectRoot,
+    val indexBootstrap: InstalledIndexBootstrap,
 ) {
     companion object {
         /**
@@ -27,8 +30,9 @@ internal class InstalledSemanticProjectStore private constructor(
          * `(CanonicalWorkspaceRoot, Path) -> InstalledSemanticProjectStorePreparation`.
          *
          * Prepared proves a newly created physical directory under runtime state that is disjoint
-         * from the Gradle workspace. Rejected closes overlap, filesystem, and identity failures.
-         * No existing project configuration is admitted.
+         * from the Gradle workspace and contains only runtime-generated pre-open index exclusions.
+         * Rejected closes overlap, filesystem, exclusion-discovery, configuration, and identity
+         * failures. No existing project configuration is admitted.
          */
         fun prepare(
             workspaceRoot: CanonicalWorkspaceRoot,
@@ -49,6 +53,28 @@ internal class InstalledSemanticProjectStore private constructor(
             if (created.startsWith(workspacePath) || workspacePath.startsWith(created)) {
                 return rejected(InstalledSemanticProjectStoreFailure.OVERLAPS_WORKSPACE)
             }
+            val exclusionPlan = when (
+                val discovery = InstalledIndexExclusionPlan.discover(workspacePath)
+            ) {
+                is InstalledIndexExclusionPlanDiscovery.Discovered -> discovery.plan
+                is InstalledIndexExclusionPlanDiscovery.Rejected -> return rejected(
+                    when (discovery.failure) {
+                        InstalledIndexExclusionPlanFailure.DISCOVERY_FAILED ->
+                            InstalledSemanticProjectStoreFailure.EXCLUSION_DISCOVERY_FAILED
+                    },
+                )
+            }
+            val indexBootstrap = when (
+                val preparation = InstalledIndexBootstrap.prepare(created, exclusionPlan)
+            ) {
+                is InstalledIndexBootstrapPreparation.Prepared -> preparation.bootstrap
+                is InstalledIndexBootstrapPreparation.Rejected -> return rejected(
+                    when (preparation.failure) {
+                        InstalledIndexBootstrapFailure.CONFIGURATION_WRITE_FAILED ->
+                            InstalledSemanticProjectStoreFailure.CONFIGURATION_WRITE_FAILED
+                    },
+                )
+            }
             val root = when (
                 val admitted = CanonicalSemanticProjectRoot.fromCanonicalPath(
                     workspaceRoot,
@@ -61,7 +87,7 @@ internal class InstalledSemanticProjectStore private constructor(
                 )
             }
             return InstalledSemanticProjectStorePreparation.Prepared(
-                InstalledSemanticProjectStore(created, root),
+                InstalledSemanticProjectStore(created, root, indexBootstrap),
             )
         }
     }

@@ -174,6 +174,7 @@ internal object KastCleanSlateCrossRoleDependencies {
         ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_RECOVERY),
         ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_VERIFY),
         ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
+        ProjectDependencyObservation(ModuleId.WORKSPACE_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
         ProjectDependencyObservation(ModuleId.EVIDENCE_SQLITE, ModuleId.CHANGE_APPLY),
         ProjectDependencyObservation(ModuleId.EVIDENCE_SQLITE, ModuleId.CHANGE_VERIFY),
         ProjectDependencyObservation(ModuleId.RELATION_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
@@ -324,6 +325,7 @@ private object ModuleRoleBoundaries {
                 ForbiddenEffect.GRADLE_IMPORT,
                 ForbiddenEffect.GRAPH_BUILD,
             ),
+            allowedScopedEffects = setOf(ForbiddenEffect.FILESYSTEM_WRITE),
         )
         ModuleRole.TRANSPORT -> boundary(
             role,

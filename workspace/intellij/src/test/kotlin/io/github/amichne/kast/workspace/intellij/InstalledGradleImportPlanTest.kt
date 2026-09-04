@@ -16,9 +16,10 @@ class InstalledGradleImportPlanTest {
     fun `project open cannot inherit ambient project configuration`() {
         val task = installedProjectOpenTask(
             InstalledProjectOpenPreparation(BootstrapProjectJvm.from(admittedSidecarJvm())),
+            InstalledIndexBootstrapBinder { true },
         )
 
-        assertTrue(task.isNewProject)
+        assertFalse(task.isNewProject)
         assertFalse(task.useDefaultProjectAsTemplate)
         assertTrue(task.preventIprLookup)
         assertFalse(task.runConfigurators)
@@ -31,6 +32,7 @@ class InstalledGradleImportPlanTest {
     fun `project open defers configurators until admitted Gradle settings are available`() {
         val task = installedProjectOpenTask(
             InstalledProjectOpenPreparation(BootstrapProjectJvm.from(admittedSidecarJvm())),
+            InstalledIndexBootstrapBinder { true },
         )
 
         assertFalse(task.runConfigurators)

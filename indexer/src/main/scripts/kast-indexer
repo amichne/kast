@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+unset JAVA_OPTS _JAVA_OPTIONS JAVA_TOOL_OPTIONS JDK_JAVA_OPTIONS
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
 main_class="io.github.amichne.kast.indexer.KastIndexerMainKt"
@@ -218,6 +219,7 @@ idea_jvm_args=(
   "-Didea.config.path=${idea_config_path}"
   "-Didea.system.path=${idea_system_path}"
   "-Didea.plugins.path=${private_plugins_path}"
+  "-Didea.load.plugins.id=io.github.amichne.kast.indexer"
   "-Didea.log.path=${idea_log_path}"
   "-Dkast.cache.state.path=${cache_state_path}"
   "-Dkast.bootstrap.state.path=${bootstrap_state_path}"
