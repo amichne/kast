@@ -877,6 +877,19 @@ def git(workspace: Path, *arguments: str) -> str:
 
 
 def prepare_workspace_fixture(workspace: Path) -> None:
+    source_root = Path(__file__).resolve().parents[1]
+    for relative in (
+        "gradlew", "gradlew.bat", "gradle/wrapper/gradle-wrapper.jar",
+        "gradle/wrapper/gradle-wrapper.properties",
+    ):
+        authority = source_root / relative
+        target = workspace / relative
+        if target.exists():
+            if target.read_bytes() != authority.read_bytes():
+                fail(f"fixture wrapper differs from pinned authority: {relative}")
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(authority, target)
     git(workspace, "init", "--quiet")
     git(workspace, "config", "user.name", "Kast Acceptance")
     git(workspace, "config", "user.email", "acceptance@kast.invalid")

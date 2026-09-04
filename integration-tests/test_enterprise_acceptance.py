@@ -19,6 +19,17 @@ SPEC.loader.exec_module(enterprise_acceptance)
 
 
 class IsolatedAcceptanceHostTest(unittest.TestCase):
+    def test_fixture_preparation_admits_the_pinned_wrapper_before_baseline(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            workspace = Path(raw)
+            (workspace / "settings.gradle.kts").write_text('rootProject.name = "wrapper-proof"\n')
+            enterprise_acceptance.prepare_workspace_fixture(workspace)
+            root = MODULE_PATH.parents[1]
+            for relative in ("gradlew", "gradlew.bat", "gradle/wrapper/gradle-wrapper.jar", "gradle/wrapper/gradle-wrapper.properties"):
+                self.assertTrue((workspace / relative).is_file(), f"fixture omitted pinned wrapper authority: {relative}")
+                self.assertEqual((root / relative).read_bytes(), (workspace / relative).read_bytes())
+            self.assertEqual("", enterprise_acceptance.git(workspace, "status", "--porcelain"))
+
     def test_child_environment_replaces_ambient_state_with_isolated_authorities(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             outer = Path(raw)
