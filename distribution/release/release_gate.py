@@ -136,9 +136,12 @@ def validate_receipt(receipt: dict, directory: Path, version: str, sha: str) -> 
     if dependencies["source"]["receipt"].get("command") != source_command(version, sha):
         raise GateRejected("source predecessor did not run the required Gradle graph")
     installed = dependencies["installed"]["receipt"]
-    required = {"cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall"}
+    required = {"cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker"}
     if set(installed.get("journeys", [])) != required:
         raise GateRejected("installed predecessor omits a required journey")
+    broker = installed.get("broker", {})
+    if broker.get("status") != "passed" or not all(broker.get(key) is True for key in ("readOnlyCatalog", "cliEquivalent", "selectorReused")):
+        raise GateRejected("installed predecessor has no passing cold broker evidence")
     if receipt["environment"].get("system") != "Darwin" or receipt["environment"].get("architecture") not in {"arm64", "aarch64"}:
         raise GateRejected("receipt does not prove the supported host")
     if dependencies["source"]["receipt"].get("environment") != receipt["environment"] or installed.get("environment") != receipt["environment"]:

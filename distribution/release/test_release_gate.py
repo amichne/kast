@@ -31,7 +31,7 @@ class ReceiptIdentityTest(unittest.TestCase):
         assets = gate.asset_identities(self.directory, self.version)
         environment = {"system": "Darwin", "architecture": "arm64", "ideaBuild": "262.1", "javaReleaseDigest": "sha256:" + "a" * 64}
         source = {"status": "passed", "sourceRevision": self.sha, "command": gate.source_command(self.version, self.sha), "environment": environment}
-        installed = {"status": "passed", "sourceRevision": self.sha, "environment": environment, "assets": assets, "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall"]}
+        installed = {"status": "passed", "sourceRevision": self.sha, "environment": environment, "assets": assets, "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker"], "broker": {"status": "passed", "readOnlyCatalog": True, "cliEquivalent": True, "selectorReused": True}}
         archive = {"status": "passed", "sourceRevision": self.sha, "observations": {"outcome": "COMPLETE", "release": "v1.0.0", "assets": [{"name": name, "sha256": assets[name].removeprefix("sha256:")} for name in gate.asset_names(self.version)]}}
         self.receipt = {"schemaVersion": 1, "status": "passed", "sourceRevision": self.sha, "productVersion": self.version, "commandDigest": gate.identity(gate.source_command(self.version, self.sha)), "environment": environment, "assets": assets, "dependencies": {key: {"receipt": value, "digest": gate.identity(value)} for key, value in {"source": source, "assets": archive, "installed": installed}.items()}}
 

@@ -91,11 +91,22 @@ def main():
         version = subprocess.check_output([str(acceptance.executable), "--version"], cwd=host.workspace, env=acceptance.environment, text=True).strip()
         if version != f"kast {args.version} (IntelliJ sidecar)":
             raise gate.GateRejected("reinstall selected a different product")
+        applications = host.home / "Applications/IntelliJ IDEA.app"
+        applications.mkdir(parents=True)
+        (applications / "Contents").symlink_to(idea)
+        request = host.root / "cold-broker-request.json"
+        broker_report = host.root / "cold-broker-evidence.json"
+        gate.write(request, {"kast": str(acceptance.executable), "workspace": str(host.workspace), "query": "enterpriseRootOperation"})
+        broker_environment = {**acceptance.environment, "GRADLE_USER_HOME": str(Path(os.environ.get("GRADLE_USER_HOME", str(Path.home() / ".gradle"))).resolve()), "JAVA_HOME": str((idea / "jbr/Contents/Home").resolve())}
+        gate.run(["./gradlew", "--no-daemon", "--max-workers=2", f"-Pversion={args.version}", f"-PkastSourceRevision={args.source_revision}", f"-PkastBrokerAcceptanceRequest={request}", f"-PkastBrokerAcceptanceEvidence={broker_report}", ":cli:installedColdBrokerAcceptance"], ROOT, broker_environment)
+        broker = gate.read(broker_report)
+        if broker.get("status") != "passed" or not all(broker.get(key) is True for key in ("readOnlyCatalog", "cliEquivalent", "selectorReused")):
+            raise gate.GateRejected("cold installed broker did not preserve canonical evidence")
         gate.run(["/bin/bash", str(ROOT / "install.sh"), "uninstall", "--installation-only"], host.workspace, installed_environment)
         ambient.assert_unchanged()
         if gate.asset_identities(assets, args.version) != identities:
             raise gate.GateRejected("candidate assets changed during installed acceptance")
-        gate.write(ROOT / "build/reports/release-gate/installed.json", {"schemaVersion": 1, "status": "passed", "sourceRevision": args.source_revision, "assets": identities, "environment": gate.environment_identity(idea), "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall"], "observations": acceptance.observations, "elapsedMilliseconds": round((time.monotonic() - started) * 1000)})
+        gate.write(ROOT / "build/reports/release-gate/installed.json", {"schemaVersion": 1, "status": "passed", "sourceRevision": args.source_revision, "assets": identities, "environment": gate.environment_identity(idea), "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker"], "broker": broker, "observations": acceptance.observations, "elapsedMilliseconds": round((time.monotonic() - started) * 1000)})
 
 
 if __name__ == "__main__":
