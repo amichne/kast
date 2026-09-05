@@ -353,6 +353,7 @@ val releaseSourceGate by tasks.registering {
     group = "verification"
     description = "Authoritative release-source predecessor graph; publication also requires exact-asset installed proof."
     dependsOn("build", "installedProductTest", "verifyKastArchitecture", "enterpriseAcceptance", releaseDocumentationTest, releaseInstallerTest, releaseGateContractTest, releaseAcceptanceContractTest)
+    dependsOn(gradle.includedBuild("build-logic").task(":check"))
 }
 
 subprojects.forEach { owner ->
