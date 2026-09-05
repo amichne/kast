@@ -53,6 +53,9 @@ class ReceiptIdentityTest(unittest.TestCase):
              "apparentStateBytes": 1, "stateEntryCount": 1, "symlinkCount": 0, "selectedStateRootCount": 2,
              **({"cause": "pid-marker-absent"} if stage == "after-stop" else {"rssBytes": 1, "processCount": 1})}
             for stage in ("after-start", "after-read", "after-restart", "after-stop")]
+        installed["workspacePreservation"] = [{"schemaVersion": 1, "stage": stage, "status": "passed",
+            "expectedDigest": "sha256:" + "f" * 64, "observedDigest": "sha256:" + "f" * 64}
+            for stage in ("first-uninstall", "reinstall", "final-uninstall")]
         installed["semanticCorruption"] = {"schemaVersion": 1, "status": "passed",
             "workspaceDigestBefore": "sha256:" + "a" * 64, "workspaceDigestAfter": "sha256:" + "a" * 64,
             "continuations": [{"family": family, "case": case, "status": "rejected", "exitCode": 2,
@@ -82,6 +85,32 @@ class ReceiptIdentityTest(unittest.TestCase):
 
     def test_complete_receipt_binds_all_predecessors_and_installed_bytes(self):
         self.validate(self.receipt)
+
+    def test_installation_transitions_require_exact_source_preservation(self):
+        for damage in ("absent", "missing-stage", "duplicate-stage", "rejected", "changed", "new-baseline", "malformed", "unbounded"):
+            with self.subTest(damage=damage):
+                candidate = copy.deepcopy(self.receipt)
+                installed = candidate["dependencies"]["installed"]["receipt"]
+                proofs = installed["workspacePreservation"]
+                if damage == "absent":
+                    del installed["workspacePreservation"]
+                elif damage == "missing-stage":
+                    proofs.pop()
+                elif damage == "duplicate-stage":
+                    proofs[-1] = proofs[0]
+                elif damage == "rejected":
+                    proofs[-1]["status"] = "rejected"
+                elif damage == "changed":
+                    proofs[-1]["observedDigest"] = "sha256:" + "e" * 64
+                elif damage == "new-baseline":
+                    proofs[-1].update(expectedDigest="sha256:" + "e" * 64, observedDigest="sha256:" + "e" * 64)
+                elif damage == "malformed":
+                    proofs[-1].update(expectedDigest="unproven", observedDigest="unproven")
+                else:
+                    proofs[-1]["source"] = "private source payload"
+                candidate["dependencies"]["installed"]["digest"] = gate.identity(installed)
+                with self.assertRaisesRegex(gate.GateRejected, "repository source"):
+                    self.validate(candidate)
 
     def test_asset_change_after_acceptance_rejects_publication(self):
         (self.directory / gate.asset_names(self.version)[0]).write_bytes(b"changed")

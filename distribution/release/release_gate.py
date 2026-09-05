@@ -161,6 +161,17 @@ def validate_resources(samples: list) -> None:
             raise GateRejected("installed resource proof has no live RSS sample")
 
 
+def validate_workspace_preservation(proofs: list) -> None:
+    stages = ("first-uninstall", "reinstall", "final-uninstall")
+    if not isinstance(proofs, list) or len(proofs) != len(stages) or not all(isinstance(proof, dict) for proof in proofs):
+        raise GateRejected("installed repository source proof omits an installation transition")
+    for proof, stage in zip(proofs, stages):
+        if set(proof) != {"schemaVersion", "stage", "status", "expectedDigest", "observedDigest"} or proof.get("schemaVersion") != 1 or proof.get("stage") != stage or proof.get("status") != "passed":
+            raise GateRejected("installed repository source proof has no closed successful observation")
+        if not re.fullmatch(r"sha256:[0-9a-f]{64}", str(proof.get("expectedDigest"))) or proof["expectedDigest"] != proof["observedDigest"] or proof["expectedDigest"] != proofs[0]["expectedDigest"]:
+            raise GateRejected("installed repository source proof does not preserve one exact source identity")
+
+
 def validate_upgrade(proof: dict, assets: dict, version: str) -> None:
     names = product_asset_names(version)[:2]
     expected = {name: assets[name] for asset in names for name in (asset, asset + ".sha256")}
@@ -230,6 +241,7 @@ def validate_receipt(receipt: dict, directory: Path, version: str, sha: str) -> 
         raise GateRejected("cold broker proof has no verified source line presentation")
     validate_gradle_matrix(installed.get("gradleImport", {}))
     validate_resources(installed.get("resourceSamples", []))
+    validate_workspace_preservation(installed.get("workspacePreservation", []))
     validate_semantic_corruption(installed.get("semanticCorruption", {}))
     if receipt["environment"].get("system") != "Darwin" or receipt["environment"].get("architecture") not in {"arm64", "aarch64"}:
         raise GateRejected("receipt does not prove the supported host")

@@ -25,6 +25,11 @@ This record separates implemented checks from observed installed acceptance.
 - Uninstall previously scanned machine-wide indexer processes even under an
   isolated `HOME`. `--installation-only` now confines removal to selected paths,
   requires selected workspaces to be stopped, and preserves unrelated processes.
+- Installed acceptance now compares tracked and untracked source bytes, modes,
+  links and Git index state across uninstall, reinstall and final removal. The
+  prior `git diff` comparison could miss untracked deletion and staged changes.
+  Three finite digest observations must retain one source identity; rejected
+  observations persist before failure. Exact-archive observation remains pending.
 - The release installer now admits exact local archive/checksum files with
   `--assets-directory`, retaining normal release URL and manifest identity checks.
 - The aggregate graph includes the separate `build-logic` build's `check` task;

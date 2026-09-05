@@ -32,6 +32,14 @@ class ObservationFailure(str, Enum):
     COMMAND_UNAVAILABLE = "command-unavailable"
     OBSERVATION_LIMIT = "observation-limit"
     RESOURCE_UNPROVEN = "resource-unproven"
+    SOURCE_CHANGED = "repository-source-changed"
+    SOURCE_UNPROVEN = "repository-source-unproven"
+
+
+class WorkspacePreservationStage(str, Enum):
+    FIRST_UNINSTALL = "first-uninstall"
+    REINSTALL = "reinstall"
+    FINAL_UNINSTALL = "final-uninstall"
 
 
 class ObservedAcceptance(enterprise.Acceptance):
@@ -39,6 +47,7 @@ class ObservedAcceptance(enterprise.Acceptance):
         super().__init__(executable, host, bounds)
         self.observations = []
         self.resource_samples = []
+        self.workspace_preservation = []
         self.report = report
         self.source_revision = source_revision
         self.host = host
@@ -57,7 +66,37 @@ class ObservedAcceptance(enterprise.Acceptance):
         gate.write(self.report, {"schemaVersion": 1, "status": "rejected" if self.failure else "running",
                                 "sourceRevision": self.source_revision,
                                 "failure": self.failure.value if self.failure else None,
-                                "observations": self.observations, "resourceSamples": self.resource_samples})
+                                "observations": self.observations, "resourceSamples": self.resource_samples,
+                                "workspacePreservation": self.workspace_preservation})
+
+    def workspace_identity(self):
+        try:
+            return "sha256:" + enterprise.workspace_source_identity(self.host.workspace)
+        except (SystemExit, OSError, subprocess.SubprocessError):
+            self.failure = ObservationFailure.SOURCE_UNPROVEN
+            self.persist()
+            raise gate.GateRejected("repository source identity could not be observed") from None
+
+    def prove_workspace_preservation(self, stage: WorkspacePreservationStage, expected: str):
+        if len(self.workspace_preservation) >= len(WorkspacePreservationStage):
+            self.failure = ObservationFailure.OBSERVATION_LIMIT
+            self.persist()
+            raise gate.GateRejected("repository source observation limit exceeded")
+        proof = {"schemaVersion": 1, "stage": stage.value, "expectedDigest": expected}
+        try:
+            observed = self.workspace_identity()
+        except gate.GateRejected:
+            self.workspace_preservation.append({**proof, "status": "rejected", "cause": ObservationFailure.SOURCE_UNPROVEN.value})
+            self.persist()
+            raise
+        proof["observedDigest"] = observed
+        if expected != observed:
+            self.failure = ObservationFailure.SOURCE_CHANGED
+            self.workspace_preservation.append({**proof, "status": "rejected", "cause": self.failure.value})
+            self.persist()
+            raise gate.GateRejected("installation transition changed repository source identity")
+        self.workspace_preservation.append({**proof, "status": "passed"})
+        self.persist()
 
     def sample(self, stage):
         sample = resources.observe(stage, owner_root=self.host.root.resolve(),
@@ -153,14 +192,14 @@ def main():
         finally:
             enterprise.stop_indexer(acceptance)
         assert_broker_absent(host)
-        workspace_before = enterprise.git(host.workspace, "diff")
+        workspace_before = acceptance.workspace_identity()
         gate.run(["/bin/bash", str(ROOT / "install.sh"), "uninstall", "--installation-only"], host.workspace, installed_environment)
+        acceptance.prove_workspace_preservation(WorkspacePreservationStage.FIRST_UNINSTALL, workspace_before)
         for path in (host.root / "bin/kast", host.root / "installation", host.runtime / "store", host.runtime / "intellij-caches", host.runtime / "endpoints"):
             if path.exists() or path.is_symlink():
                 raise gate.GateRejected("uninstall retained selected product state")
-        if enterprise.git(host.workspace, "diff") != workspace_before:
-            raise gate.GateRejected("uninstall changed repository contents")
         install(host, assets, args.version, idea, acceptance.environment)
+        acceptance.prove_workspace_preservation(WorkspacePreservationStage.REINSTALL, workspace_before)
         version = subprocess.check_output([str(acceptance.executable), "--version"], cwd=host.workspace, env=acceptance.environment, text=True).strip()
         if version != f"kast {args.version} (IntelliJ sidecar)":
             raise gate.GateRejected("reinstall selected a different product")
@@ -188,10 +227,11 @@ def main():
         matrix = gate.read(matrix_root / "gradle-import-receipt.json")
         gate.validate_gradle_matrix(matrix)
         gate.run(["/bin/bash", str(ROOT / "install.sh"), "uninstall", "--installation-only"], host.workspace, installed_environment)
+        acceptance.prove_workspace_preservation(WorkspacePreservationStage.FINAL_UNINSTALL, workspace_before)
         ambient.assert_unchanged()
         if gate.asset_identities(assets, args.version) != identities:
             raise gate.GateRejected("candidate assets changed during installed acceptance")
-        gate.write(ROOT / "build/reports/release-gate/installed.json", {"schemaVersion": 1, "status": "passed", "sourceRevision": args.source_revision, "assets": identities, "environment": gate.environment_identity(idea), "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import", "upgrade", "corruption"], "broker": broker, "gradleImport": matrix, "upgrade": upgrade, "semanticCorruption": corruption, "observations": acceptance.observations, "resourceSamples": acceptance.resource_samples, "elapsedMilliseconds": round((time.monotonic() - started) * 1000)})
+        gate.write(ROOT / "build/reports/release-gate/installed.json", {"schemaVersion": 1, "status": "passed", "sourceRevision": args.source_revision, "assets": identities, "environment": gate.environment_identity(idea), "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import", "upgrade", "corruption"], "broker": broker, "gradleImport": matrix, "upgrade": upgrade, "semanticCorruption": corruption, "observations": acceptance.observations, "resourceSamples": acceptance.resource_samples, "workspacePreservation": acceptance.workspace_preservation, "elapsedMilliseconds": round((time.monotonic() - started) * 1000)})
 
 
 if __name__ == "__main__":
