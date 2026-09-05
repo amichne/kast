@@ -45,7 +45,7 @@ fun verifyNativeFixture(file: KtFile, epoch: Epoch): List<String> {
         val expected = declaration(case.owner, case.member)
         val ref = reference(case.use, case.member)
         // The expected declaration is selected independently, before resolving the use-site.
-        val entry = RegistryEntry(epoch, DeclarationId.parse("fixture:${case.owner}.${case.member}"))
+        val entry = RegistryEntry(epoch, DeclarationId.parse("fixture:${case.owner}.${case.member}"), RegistrySlot.fromOrdinal(expected.textRange.startOffset))
         val result = analyze(ref.element) {
             val target = ref.resolveToSymbol() ?: error("unresolved fixture reference: ${case.use}")
             bindRegisteredSource(entry, epoch, target, RegisteredSourceLookup { candidate ->
@@ -62,7 +62,7 @@ fun verifyNativeFixture(file: KtFile, epoch: Epoch): List<String> {
     val wrong = declaration("Feed", "state")
     val wrongResult = analyze(ref.element) {
         val target = ref.resolveToSymbol() ?: error("unresolved negative fixture reference")
-        bindRegisteredSource(RegistryEntry(epoch, DeclarationId.parse("fixture:Feed.state")), epoch, target,
+        bindRegisteredSource(RegistryEntry(epoch, DeclarationId.parse("fixture:Feed.state"), RegistrySlot.fromOrdinal(wrong.textRange.startOffset)), epoch, target,
             RegisteredSourceLookup { RegisteredSourceLookupResult.Found(wrong) })
     }
     check(wrongResult is BindingResult.Rejected) { "explicit override collapsed into its base" }
