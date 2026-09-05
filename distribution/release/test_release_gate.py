@@ -53,6 +53,15 @@ class ReceiptIdentityTest(unittest.TestCase):
              "apparentStateBytes": 1, "stateEntryCount": 1, "symlinkCount": 0, "selectedStateRootCount": 2,
              **({"cause": "pid-marker-absent"} if stage == "after-stop" else {"rssBytes": 1, "processCount": 1})}
             for stage in ("after-start", "after-read", "after-restart", "after-stop")]
+        installed["semanticCorruption"] = {"schemaVersion": 1, "status": "passed",
+            "workspaceDigestBefore": "sha256:" + "a" * 64, "workspaceDigestAfter": "sha256:" + "a" * 64,
+            "continuations": [{"family": family, "case": case, "status": "rejected", "exitCode": 2,
+                "boundary": "usage", "reason": "arguments-rejected", "documentDigest": "sha256:" + "b" * 64,
+                "originalContinuationDigest": "sha256:" + "c" * 64, "validResumeDigest": "sha256:" + "d" * 64}
+                for family in ("relation", "traversal") for case in ("malformed", "digest-tampered")],
+            "stateReceipt": {"kind": "cache-identity-v3", "status": "rejected-and-restored", "exitCode": 4,
+                "boundary": "runtime", "reason": "status-cache-invalid-identity",
+                **{key: "sha256:" + "e" * 64 for key in ("documentDigest", "originalReceiptDigest", "restoredReceiptDigest", "recoveredStatusDigest", "recoveredReadDigest")}}}
         preserved = {"activeInstallationDigest": "sha256:" + "c" * 64, "workspaceDigest": "sha256:" + "d" * 64}
         installed["journeys"].extend(["upgrade", "corruption"])
         installed["upgrade"] = {"status": "passed", "candidateVersion": self.version,
@@ -115,6 +124,23 @@ class ReceiptIdentityTest(unittest.TestCase):
                 samples[0]["status"] = "rejected"
             dependency["digest"] = gate.identity(dependency["receipt"])
             with self.subTest(change=change), self.assertRaisesRegex(gate.GateRejected, "resource proof"):
+                self.validate(receipt)
+
+    def test_semantic_corruption_requires_real_continuations_and_exact_restoration(self):
+        for change in ("missing-case", "missing-valid-resume", "different-restoration", "changed-repository"):
+            receipt = copy.deepcopy(self.receipt)
+            dependency = receipt["dependencies"]["installed"]
+            proof = dependency["receipt"]["semanticCorruption"]
+            if change == "missing-case":
+                proof["continuations"].pop()
+            elif change == "missing-valid-resume":
+                proof["continuations"][0].pop("validResumeDigest")
+            elif change == "different-restoration":
+                proof["stateReceipt"]["restoredReceiptDigest"] = "sha256:" + "f" * 64
+            else:
+                proof["workspaceDigestAfter"] = "sha256:" + "f" * 64
+            dependency["digest"] = gate.identity(dependency["receipt"])
+            with self.subTest(change=change), self.assertRaisesRegex(gate.GateRejected, "semantic corruption proof"):
                 self.validate(receipt)
 
     def test_inventory_of_different_archives_cannot_authorize_publication(self):

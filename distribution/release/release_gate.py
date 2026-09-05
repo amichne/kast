@@ -179,6 +179,25 @@ def validate_upgrade(proof: dict, assets: dict, version: str) -> None:
             raise GateRejected("corrupted installation did not preserve the active product and repository")
 
 
+def validate_semantic_corruption(proof: dict) -> None:
+    def proven_digest(value):
+        return re.fullmatch(r"sha256:[0-9a-f]{64}", str(value)) is not None
+    if proof.get("schemaVersion") != 1 or proof.get("status") != "passed" or not proven_digest(proof.get("workspaceDigestBefore")) or proof.get("workspaceDigestBefore") != proof.get("workspaceDigestAfter"):
+        raise GateRejected("semantic corruption proof did not preserve the repository")
+    continuations = proof.get("continuations", [])
+    if len(continuations) != 4 or {(case.get("family"), case.get("case")) for case in continuations} != {
+            (family, case) for family in ("relation", "traversal") for case in ("malformed", "digest-tampered")}:
+        raise GateRejected("semantic corruption proof omits a continuation case")
+    for case in continuations:
+        if case.get("status") != "rejected" or case.get("exitCode") != 2 or case.get("boundary") != "usage" or case.get("reason") != "arguments-rejected" or not all(proven_digest(case.get(key)) for key in ("documentDigest", "originalContinuationDigest", "validResumeDigest")):
+            raise GateRejected("semantic corruption proof has no finite continuation rejection")
+    state = proof.get("stateReceipt", {})
+    if state.get("kind") != "cache-identity-v3" or state.get("status") != "rejected-and-restored" or state.get("exitCode") != 4 or state.get("boundary") != "runtime" or state.get("reason") != "status-cache-invalid-identity":
+        raise GateRejected("semantic corruption proof has no rejected state receipt")
+    if not all(proven_digest(state.get(key)) for key in ("documentDigest", "originalReceiptDigest", "restoredReceiptDigest", "recoveredStatusDigest", "recoveredReadDigest")) or state["originalReceiptDigest"] != state["restoredReceiptDigest"]:
+        raise GateRejected("semantic corruption proof did not restore the exact state receipt")
+
+
 def validate_receipt(receipt: dict, directory: Path, version: str, sha: str) -> None:
     if set(receipt) != {"schemaVersion", "status", "sourceRevision", "productVersion", "commandDigest", "dependencies", "environment", "assets"}:
         raise GateRejected("release receipt has an unsupported closed shape")
@@ -211,6 +230,7 @@ def validate_receipt(receipt: dict, directory: Path, version: str, sha: str) -> 
         raise GateRejected("cold broker proof has no verified source line presentation")
     validate_gradle_matrix(installed.get("gradleImport", {}))
     validate_resources(installed.get("resourceSamples", []))
+    validate_semantic_corruption(installed.get("semanticCorruption", {}))
     if receipt["environment"].get("system") != "Darwin" or receipt["environment"].get("architecture") not in {"arm64", "aarch64"}:
         raise GateRejected("receipt does not prove the supported host")
     if dependencies["source"]["receipt"].get("environment") != receipt["environment"] or installed.get("environment") != receipt["environment"]:

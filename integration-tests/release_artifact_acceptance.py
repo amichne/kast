@@ -17,6 +17,7 @@ import time
 import enterprise_acceptance as enterprise
 import release_upgrade_acceptance as upgrade_acceptance
 import release_resource_observations as resources
+import release_semantic_corruption as semantic_corruption
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("release_gate", ROOT / "distribution/release/release_gate.py")
@@ -147,6 +148,8 @@ def main():
         try:
             acceptance.prove_installed_surface(bounds)
             acceptance.prove_workspace_write_scope()
+            corruption = semantic_corruption.prove_semantic_corruption(acceptance, host)
+            gate.validate_semantic_corruption(corruption)
         finally:
             enterprise.stop_indexer(acceptance)
         assert_broker_absent(host)
@@ -188,7 +191,7 @@ def main():
         ambient.assert_unchanged()
         if gate.asset_identities(assets, args.version) != identities:
             raise gate.GateRejected("candidate assets changed during installed acceptance")
-        gate.write(ROOT / "build/reports/release-gate/installed.json", {"schemaVersion": 1, "status": "passed", "sourceRevision": args.source_revision, "assets": identities, "environment": gate.environment_identity(idea), "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import", "upgrade", "corruption"], "broker": broker, "gradleImport": matrix, "upgrade": upgrade, "observations": acceptance.observations, "resourceSamples": acceptance.resource_samples, "elapsedMilliseconds": round((time.monotonic() - started) * 1000)})
+        gate.write(ROOT / "build/reports/release-gate/installed.json", {"schemaVersion": 1, "status": "passed", "sourceRevision": args.source_revision, "assets": identities, "environment": gate.environment_identity(idea), "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import", "upgrade", "corruption"], "broker": broker, "gradleImport": matrix, "upgrade": upgrade, "semanticCorruption": corruption, "observations": acceptance.observations, "resourceSamples": acceptance.resource_samples, "elapsedMilliseconds": round((time.monotonic() - started) * 1000)})
 
 
 if __name__ == "__main__":

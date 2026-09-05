@@ -108,6 +108,11 @@ upgrades the same selected root to the candidate. Corrupted candidate checksums
 and a rechecksummed unsafe control archive must both reject while preserving
 the active product and repository bytes.
 
+Real relation and traversal continuations must resume successfully before
+malformed and digest-tampered copies are rejected. Corrupting the selected cache
+identity receipt must make passive status reject. Exact receipt restoration must
+recover status and a semantic read while preserving the repository.
+
 The installed Gradle matrix requires explicit Java 17, 21, and 25 homes through
 `KAST_RELEASE_JDK_17`, `KAST_RELEASE_JDK_21`, and `KAST_RELEASE_JDK_25`. It proves
 admitted environment inputs, explicit executable lookup, exclusion of an
