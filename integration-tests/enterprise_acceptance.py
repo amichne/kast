@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Collection, Mapping
 from dataclasses import dataclass
+from enum import Enum
 import hashlib
 import json
 import os
@@ -21,6 +22,45 @@ from typing import Any
 
 def fail(message: str) -> None:
     raise SystemExit(f"enterprise-acceptance: {message}")
+
+
+class MutationProofStage(str, Enum):
+    DISCOVERY = "marker-discovery"
+    INSPECTION = "marker-inspection"
+    STALE_PLAN = "stale-plan"
+
+
+class MutationProofMismatch(str, Enum):
+    OPERATION = "operation"
+    STATUS = "status"
+    CANDIDATES = "candidates"
+    SYMBOL = "symbol"
+    KIND = "kind"
+    NAME = "name"
+    PLACEMENT = "placement"
+    FILE = "file"
+    SELECTOR = "selector"
+    REASON = "reason"
+    REPOSITORY_STATE = "repository-state"
+
+
+class MutationMarkerPlacement(str, Enum):
+    EXPECTED_MEMBER = "expected-member"
+    TOP_LEVEL = "top-level"
+    OTHER = "other"
+    UNAVAILABLE = "unavailable"
+
+
+def mutation_proof(stage: MutationProofStage, mismatches: list[MutationProofMismatch],
+                   placement: MutationMarkerPlacement | None = None) -> None:
+    """Emit finite field comparisons only; never declaration values, selectors, or paths."""
+    evidence = {"schemaVersion": 1, "stage": stage.value,
+                "status": "rejected" if mismatches else "passed",
+                "mismatches": [mismatch.value for mismatch in mismatches]}
+    if placement is not None:
+        evidence["placement"] = placement.value
+    prefix = "enterprise-stale-plan" if stage is MutationProofStage.STALE_PLAN else "enterprise-mutation-marker"
+    print(prefix + ": " + json.dumps(evidence, sort_keys=True), flush=True)
 
 
 def arguments() -> argparse.Namespace:
@@ -811,9 +851,19 @@ class Acceptance:
         self.prove_mutation_marker()
         before = workspace_source_identity(self.workspace)
         rejected = self.command("change", "apply", "--plan", pending_identity)
+        mismatches = []
         if workspace_source_identity(self.workspace) != before:
+            mismatches.append(MutationProofMismatch.REPOSITORY_STATE)
+        if rejected.get("operation") != "change.apply":
+            mismatches.append(MutationProofMismatch.OPERATION)
+        if rejected.get("status") != "rejected":
+            mismatches.append(MutationProofMismatch.STATUS)
+        if rejected.get("reason") != "generation-stale":
+            mismatches.append(MutationProofMismatch.REASON)
+        mutation_proof(MutationProofStage.STALE_PLAN, mismatches)
+        if MutationProofMismatch.REPOSITORY_STATE in mismatches:
             fail("stale mutation plan changed repository contents")
-        if rejected.get("operation") != "change.apply" or rejected.get("status") != "rejected" or rejected.get("reason") != "generation-stale":
+        if mismatches:
             fail("prior-generation mutation plan was not rejected as generation-stale")
 
     def prove_mutation_marker(self) -> None:
@@ -822,19 +872,53 @@ class Acceptance:
             "symbol", "discover", "--query", "enterpriseMutationMarker",
             "--match", "exact-name", "--limit", "2",
         )
-        candidates = declaration_candidates(discovery)
-        if discovery.get("operation") != "symbol.discover" or discovery.get("status") != "complete" or len(candidates) != 1:
+        mismatches = []
+        if discovery.get("operation") != "symbol.discover":
+            mismatches.append(MutationProofMismatch.OPERATION)
+        if discovery.get("status") != "complete":
+            mismatches.append(MutationProofMismatch.STATUS)
+        items = discovery.get("items")
+        if (not isinstance(items, list) or len(items) != 1 or not isinstance(items[0], dict)
+                or items[0].get("type") != "declaration" or not isinstance(items[0].get("candidateSelector"), str)
+                or not items[0]["candidateSelector"]):
+            mismatches.append(MutationProofMismatch.CANDIDATES)
+        mutation_proof(MutationProofStage.DISCOVERY, mismatches)
+        if mismatches:
             fail("enterprise mutation requires one complete mutation marker discovery")
-        inspection = self.command("symbol", "inspect", "--candidate", candidates[0])
+        inspection = self.command("symbol", "inspect", "--candidate", items[0]["candidateSelector"])
         symbol = inspection.get("symbol")
-        expected = {
-            "kind": "function", "name": "enterpriseMutationMarker",
-            "qualifiedIdentity": "enterprise.alpha.one.EnterpriseRouter.enterpriseMutationMarker",
-            "file": "domains/alpha/one/src/main/kotlin/enterprise/alpha/one/Enterprise.kt",
-        }
-        if (inspection.get("operation") != "symbol.inspect" or inspection.get("status") != "complete"
-                or not isinstance(symbol, dict) or any(symbol.get(key) != value for key, value in expected.items())
-                or not isinstance(symbol.get("selector"), str) or not symbol["selector"]):
+        mismatches = []
+        if inspection.get("operation") != "symbol.inspect":
+            mismatches.append(MutationProofMismatch.OPERATION)
+        if inspection.get("status") != "complete":
+            mismatches.append(MutationProofMismatch.STATUS)
+        placement = MutationMarkerPlacement.UNAVAILABLE
+        if not isinstance(symbol, dict):
+            mismatches.append(MutationProofMismatch.SYMBOL)
+        else:
+            # CLASSLIKE targets select InsertIntoClassBody in AddDeclarationChangePlan;
+            # the writer inserts before the closing brace. SymbolDocument.file retains
+            # CanonicalWorkspaceFilePath's absolute identity through CLI projection.
+            expected_file = self.workspace.resolve(strict=True) / "domains/alpha/one/src/main/kotlin/enterprise/alpha/one/Enterprise.kt"
+            if symbol.get("kind") != "function":
+                mismatches.append(MutationProofMismatch.KIND)
+            if symbol.get("name") != "enterpriseMutationMarker":
+                mismatches.append(MutationProofMismatch.NAME)
+            qualified = symbol.get("qualifiedIdentity")
+            if qualified == "enterprise.alpha.one.EnterpriseRouter.enterpriseMutationMarker":
+                placement = MutationMarkerPlacement.EXPECTED_MEMBER
+            elif qualified == "enterprise.alpha.one.enterpriseMutationMarker":
+                placement = MutationMarkerPlacement.TOP_LEVEL
+            elif isinstance(qualified, str) and qualified:
+                placement = MutationMarkerPlacement.OTHER
+            if placement is not MutationMarkerPlacement.EXPECTED_MEMBER:
+                mismatches.append(MutationProofMismatch.PLACEMENT)
+            if symbol.get("file") != str(expected_file):
+                mismatches.append(MutationProofMismatch.FILE)
+            if not isinstance(symbol.get("selector"), str) or not symbol["selector"]:
+                mismatches.append(MutationProofMismatch.SELECTOR)
+        mutation_proof(MutationProofStage.INSPECTION, mismatches, placement)
+        if mismatches:
             fail("enterprise mutation did not inspect its exact mutation marker")
 
     def prove_workspace_write_scope(self) -> None:

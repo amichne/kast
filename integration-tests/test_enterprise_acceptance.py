@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 from contextlib import redirect_stdout
 import io
+import json
 import os
 from pathlib import Path
 import sys
@@ -25,7 +26,7 @@ class MutationAcceptanceTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
-        self.cache = Path(self.temporary.name)
+        self.cache = Path(self.temporary.name).resolve(strict=True)
         self.workspace = self.cache / "workspace"
         self.workspace.mkdir()
         (self.workspace / "target.kt").write_text("class Target\n")
@@ -40,7 +41,7 @@ class MutationAcceptanceTest(unittest.TestCase):
         self.marker = {
             "selector": "fresh-marker-selector", "kind": "function", "name": "enterpriseMutationMarker",
             "qualifiedIdentity": "enterprise.alpha.one.EnterpriseRouter.enterpriseMutationMarker",
-            "file": "domains/alpha/one/src/main/kotlin/enterprise/alpha/one/Enterprise.kt",
+            "file": str(self.workspace / "domains/alpha/one/src/main/kotlin/enterprise/alpha/one/Enterprise.kt"),
         }
         self.diagnostics = {"operation": "diagnostic.check", "status": "complete", "diagnostics": []}
         self.discovery = {"operation": "symbol.discover", "status": "complete", "items": [
@@ -70,7 +71,8 @@ class MutationAcceptanceTest(unittest.TestCase):
                 self.stale_effect()
             return next(responses)
         acceptance.command = mock.Mock(side_effect=command)
-        with redirect_stdout(io.StringIO()):
+        self.output = io.StringIO()
+        with redirect_stdout(self.output):
             acceptance.prove_generation_transition("router-selector", "old-selector")
         return acceptance.command
 
@@ -80,6 +82,33 @@ class MutationAcceptanceTest(unittest.TestCase):
                                 "--match", "exact-name", "--limit", "2"), command.call_args_list)
         self.assertIn(mock.call("symbol", "inspect", "--candidate", "marker-candidate"), command.call_args_list)
         self.assertEqual(mock.call("change", "apply", "--plan", "pending-plan"), command.call_args_list[-1])
+        marker = [json.loads(line.split(": ", 1)[1]) for line in self.output.getvalue().splitlines()
+                  if line.startswith("enterprise-mutation-marker: ")][-1]
+        self.assertEqual("passed", marker["status"])
+        self.assertEqual("expected-member", marker["placement"])
+        self.assertEqual([], marker["mismatches"])
+
+    def test_relative_file_text_cannot_substitute_the_canonical_workspace_file(self) -> None:
+        self.marker["file"] = "domains/alpha/one/src/main/kotlin/enterprise/alpha/one/Enterprise.kt"
+        with self.assertRaisesRegex(SystemExit, "exact mutation marker"):
+            self.exercise()
+        self.assertIn('"mismatches": ["file"]', self.output.getvalue())
+
+    def test_top_level_placement_rejects_with_finite_source_free_evidence(self) -> None:
+        self.marker["qualifiedIdentity"] = "enterprise.alpha.one.enterpriseMutationMarker"
+        with self.assertRaisesRegex(SystemExit, "exact mutation marker"):
+            self.exercise()
+        self.assertIn('"placement": "top-level"', self.output.getvalue())
+        self.assertNotIn(str(self.workspace), self.output.getvalue())
+        self.assertNotIn(self.marker["qualifiedIdentity"], self.output.getvalue())
+
+    def test_unknown_marker_values_are_projected_to_finite_mismatches(self) -> None:
+        self.marker.update(name="private-source-payload", qualifiedIdentity="private-source-payload",
+                           selector="", file="private-source-payload")
+        with self.assertRaisesRegex(SystemExit, "exact mutation marker"):
+            self.exercise()
+        self.assertNotIn("private-source-payload", self.output.getvalue())
+        self.assertIn('"placement": "other"', self.output.getvalue())
 
     def test_reported_post_mutation_errors_cannot_be_accepted(self) -> None:
         for severity in ("error", "ERROR"):
@@ -126,6 +155,8 @@ class MutationAcceptanceTest(unittest.TestCase):
             with self.subTest(result=result), self.assertRaisesRegex(SystemExit, "generation-stale"):
                 self.stale = result
                 self.exercise()
+            self.assertIn('"stage": "stale-plan"', self.output.getvalue())
+            self.assertIn('"status": "rejected"', self.output.getvalue())
 
     def test_stale_plan_rejection_cannot_hide_a_repository_write(self) -> None:
         self.stale_effect = lambda: (self.workspace / "target.kt").write_text("class ChangedByStalePlan\n")
