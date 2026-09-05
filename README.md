@@ -43,10 +43,12 @@ Reference pair: IDEA build 262.9437.185 and Kotlin plugin build 262.9437.185-IJ.
 Compatible patch builds are accepted when IDEA and Kotlin plugin both remain on
 JetBrains platform release line 262.
 
-Install the pinned stable release, 0.32.2:
+Resolve the latest published release and install that exact version:
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/amichne/kast/v0.32.2/install.sh | bash -s -- --version 0.32.2
+release_url="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/amichne/kast/releases/latest)"
+release_tag="${release_url##*/}"
+curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh" | bash -s -- --version "$release_tag"
 ```
 
 If discovery finds zero or multiple eligible IDEA installations, pass

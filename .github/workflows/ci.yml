@@ -88,17 +88,7 @@ jobs:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           git checkout --detach "$CANDIDATE_SHA"
-          candidate_version="$(cat distribution/release/candidate-version.txt)"
-          bash .github/scripts/release/build-assets.sh \
-            --version "${candidate_version#v}" --source-revision "$CANDIDATE_SHA"
-
-      - name: Verify release and acceptance isolation contracts
-        run: |
-          bash .github/scripts/release/test-admit-source.sh
-          bash .github/scripts/release/test-module-knowledge-authority.sh
-          python3 distribution/release/test_verify_assets_authority.py
-          python3 distribution/release/verify_assets.py --self-test
-          python3 integration-tests/test_enterprise_acceptance.py
+          bash .github/scripts/ci/verify.sh
 
       - name: Retain candidate assets and verification evidence
         if: always()

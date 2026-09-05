@@ -31,8 +31,8 @@ icon: "shield-check"
 keywords: ["1.x", "stable", "preview", "upgrade", "rollback"]
 ---
 
-This policy defines the candidate 1.x stability contract. The pinned published
-installer remains 0.32.2 until a 1.0.0 release exists. Publication requires the
+This policy defines the candidate 1.x stability contract. The install commands resolve
+the latest published release at execution time. Publication requires the
 same compatibility and migration checks used for release candidates.
 
 ## Stable in 1.x
@@ -164,7 +164,9 @@ proof retains digests and finite outcomes without source payloads.
 The current published command is:
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/amichne/kast/v0.32.2/install.sh | bash -s -- --version 0.32.2
+release_url="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/amichne/kast/releases/latest)"
+release_tag="${release_url##*/}"
+curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh" | bash -s -- --version "$release_tag"
 ```
 
 When 1.0.0 is published, change both the URL tag to `v1.0.0` and the version

@@ -99,7 +99,8 @@ def required(arguments, **options) -> str:
     return result.stdout
 
 
-def select_prior_release(releases: list[dict]) -> dict:
+def select_prior_release(releases: list[dict], candidate_version: str) -> dict:
+    candidate = version_tuple(candidate_version)
     candidates = []
     for release in releases:
         if not isinstance(release, dict):
@@ -109,7 +110,9 @@ def select_prior_release(releases: list[dict]) -> dict:
         tag = release.get("tag_name")
         if not isinstance(tag, str) or not re.fullmatch(r"v0\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)", tag):
             continue
-        candidates.append((version_tuple(tag[1:]), release))
+        prior = version_tuple(tag[1:])
+        if prior < candidate:
+            candidates.append((prior, release))
     if not candidates:
         raise UpgradeFailure(Cause.PRIOR_RELEASE_UNAVAILABLE)
     version, selected = max(candidates, key=lambda candidate: candidate[0])
@@ -120,7 +123,7 @@ def select_prior_release(releases: list[dict]) -> dict:
     return selected
 
 
-def download_prior_assets(destination: Path) -> dict:
+def observe_prior_release(candidate_version: str) -> tuple[dict, str]:
     try:
         pages = json.loads(required(["gh", "api", "--paginate", "--slurp", f"repos/{REPOSITORY}/releases"]))
     except (ValueError, UnicodeError) as failure:
@@ -128,8 +131,20 @@ def download_prior_assets(destination: Path) -> dict:
     if not isinstance(pages, list) or not all(isinstance(page, list) for page in pages):
         raise UpgradeFailure(Cause.PRIOR_RELEASE_UNAVAILABLE)
     releases = [release for page in pages for release in page]
-    release = select_prior_release(releases)
+    try:
+        release = select_prior_release(releases, candidate_version)
+    except UpgradeFailure as failure:
+        print(json.dumps({"stage": "upgrade-baseline", "outcome": "rejected",
+                          "candidateVersion": candidate_version, "cause": failure.cause.value}))
+        raise
+    return release, identity(releases)
+
+
+def download_prior_assets(destination: Path, candidate_version: str) -> dict:
+    release, catalog_digest = observe_prior_release(candidate_version)
     tag = release["tag_name"]
+    print(json.dumps({"stage": "upgrade-baseline", "outcome": "admitted",
+                      "candidateVersion": candidate_version, "priorRelease": tag}))
     version = tag[1:]
     assets = release.get("assets")
     if not isinstance(assets, list) or not all(isinstance(asset, dict) for asset in assets):
@@ -151,7 +166,7 @@ def download_prior_assets(destination: Path) -> dict:
             raise UpgradeFailure(Cause.PRIOR_ASSET_IDENTITY_MISMATCH)
         identities[name] = expected
     return {"tag": tag, "version": version, "immutable": True, "assets": identities,
-            "releaseCatalogDigest": identity(releases)}
+            "releaseCatalogDigest": catalog_digest}
 
 
 def workspace_identity(workspace: Path) -> str:
@@ -269,7 +284,7 @@ def install_candidate_with_upgrade_proof(host, assets: Path, version: str, idea:
     with tempfile.TemporaryDirectory(prefix="upgrade-proof-", dir=host.root) as raw:
         scratch = Path(raw)
         prior_assets = scratch / "prior"
-        prior = download_prior_assets(prior_assets)
+        prior = download_prior_assets(prior_assets, version)
         if version_tuple(version) <= version_tuple(prior["version"]):
             raise UpgradeFailure(Cause.INPUT_INVALID)
         prior_environment = install(host, prior_assets, prior["version"], idea, product_environment)
@@ -301,3 +316,17 @@ def install_candidate_with_upgrade_proof(host, assets: Path, version: str, idea:
                                    "candidateAssets": candidate, "priorRelease": prior,
                                    "activeInstallationDigest": installed_identity,
                                    "workspaceDigest": before_workspace, "corruptionCases": rejected}
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Check the live upgrade baseline without building or installing.")
+    parser.add_argument("--candidate-version", required=True)
+    arguments = parser.parse_args()
+    try:
+        release, catalog_digest = observe_prior_release(arguments.candidate_version)
+        print(json.dumps({"stage": "upgrade-baseline", "outcome": "admitted",
+                          "candidateVersion": arguments.candidate_version,
+                          "priorRelease": release["tag_name"], "releaseCatalogDigest": catalog_digest}))
+    except UpgradeFailure as failure:
+        raise SystemExit(f"upgrade-baseline: {failure.cause.value}") from None

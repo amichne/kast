@@ -108,7 +108,7 @@ before failure. Reports retain finite rejection IDs, byte counts, and digests;
 source payloads, selectors, paths, and arbitrary error text are excluded.
 Cleanup cannot replace the original failure or turn a rejected receipt into success.
 
-That installation starts with the latest immutable published 0.x archives and
+That installation starts with the latest immutable published 0.x archives older than the candidate and
 upgrades the same selected root to the candidate. Corrupted candidate checksums
 and a rechecksummed unsafe control archive must both reject while preserving
 the active product and repository bytes.
@@ -181,7 +181,7 @@ Run the same entry point from an isolated detached worktree:
 
 ```shell
 bash .github/scripts/release/build-assets.sh \
-  --version 1.0.0 --source-revision "$(git rev-parse HEAD)"
+  --version "$(cat distribution/release/candidate-version.txt)" --source-revision "$(git rev-parse HEAD)"
 ```
 
 This command verifies a candidate; it does not publish a release. The version
@@ -191,6 +191,35 @@ must be the intended candidate version. Reports live under
 CI reads its proposed version from `distribution/release/candidate-version.txt`.
 Advance that reviewed version after a stable release; the compatibility gate
 requires candidates to move forward from the published baseline.
+
+## Reproduce CI locally
+
+Use macOS arm64, Python 3.12, Node 24, and Mintlify CLI 4.2.841.
+Authenticate `gh`, then provide explicit JDK homes for the same Java matrix:
+
+```shell
+export KAST_RELEASE_JDK_17="/path/to/jdk17"
+export KAST_RELEASE_JDK_21="/path/to/jdk21"
+export KAST_RELEASE_JDK_25="/path/to/jdk25"
+bash .github/scripts/ci/reproduce.sh HEAD
+```
+
+The command creates a detached worktree for the committed revision and runs
+`.github/scripts/ci/verify.sh`, the same product gate used by GitHub Actions.
+It retains the worktree, log, candidate archives, and reports for inspection.
+Uncommitted edits are not included. Dependency caches remain reusable.
+
+The default IDEA runtime comes from the repository's pinned distribution, so
+an IDE installed on the developer's machine cannot silently change the test.
+To check the live upgrade baseline before building:
+
+```shell
+python3 integration-tests/release_upgrade_acceptance.py \
+  --candidate-version "$(cat distribution/release/candidate-version.txt)"
+```
+
+The baseline is the newest immutable published 0.x release strictly older than
+the candidate. Publishing the candidate itself does not invalidate its CI run.
 
 ## Release integrity
 
