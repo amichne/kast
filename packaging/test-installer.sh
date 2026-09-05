@@ -343,6 +343,45 @@ grep -Fxq "file://$fixture_root/assets/v9.8.7/$control_name" "$curl_log" ||
   fail "control asset URL was not requested"
 grep -Fxq "$runtime_url" "$curl_log" || fail "sidecar asset URL was not requested"
 
+offline_output="$fixture_root/offline-install.out"
+curl_before="$(shasum -a 256 "$curl_log")"
+env -i "${installer_environment[@]}" bash "$repository_root/install.sh" install \
+  --version 9.8.7 --release-base-url "file://$fixture_root/assets" \
+  --assets-directory "$assets" >"$offline_output" 2>&1 || {
+  cat "$offline_output" >&2
+  fail "verified local release assets could not be installed before publication"
+}
+[[ "$(shasum -a 256 "$curl_log")" == "$curl_before" ]] ||
+  fail "local asset installation used the download boundary"
+[[ "$("$custom_bin/kast" --version)" == "kast 9.8.7 (IntelliJ sidecar)" ]] ||
+  fail "local asset installation changed the selected product identity"
+for bad_assets in "$fixture_root/missing-assets" relative-assets; do
+  if env -i "${installer_environment[@]}" bash "$repository_root/install.sh" install \
+    --version 9.8.7 --assets-directory "$bad_assets" \
+    >"$fixture_root/rejected-local-assets.out" 2>&1; then
+    fail "installer admitted an unavailable or relative local asset directory"
+  fi
+done
+[[ "$("$custom_bin/kast" --version)" == "kast 9.8.7 (IntelliJ sidecar)" ]] ||
+  fail "rejected local assets replaced the working product"
+
+printf 'unrelated running indexer\n' >"$process_state"
+process_before="$(shasum -a 256 "$process_log")"
+env -i "${installer_environment[@]}" bash "$repository_root/install.sh" uninstall \
+  --installation-only >"$fixture_root/scoped-uninstall.out" 2>&1 || {
+  cat "$fixture_root/scoped-uninstall.out" >&2
+  fail "scoped uninstall did not remove the selected installation"
+}
+assert_absent "$custom_install"
+assert_absent "$custom_bin/kast"
+assert_present "$process_state"
+[[ "$(shasum -a 256 "$process_log")" == "$process_before" ]] ||
+  fail "scoped uninstall signalled an unrelated indexer"
+env -i "${installer_environment[@]}" bash "$repository_root/install.sh" install \
+  --version 9.8.7 --release-base-url "file://$fixture_root/assets" \
+  --assets-directory "$assets" >"$fixture_root/scoped-reinstall.out" 2>&1 ||
+  fail "reinstall failed after scoped uninstall"
+
 second_idea_app="$home/Applications/IntelliJ IDEA EAP.app"
 cp -R "${idea_home%/Contents}" "$second_idea_app"
 ambiguous_output="$fixture_root/ambiguous-idea.out"
