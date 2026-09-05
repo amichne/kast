@@ -21,6 +21,9 @@ code_sources:
   - path: "integration-tests/release_upgrade_acceptance.py"
     lines: "260-303"
     symbols: ["install_candidate_with_upgrade_proof"]
+  - path: "integration-tests/release_semantic_corruption.py"
+    lines: "178-229"
+    symbols: ["prove_state_receipt", "prove_semantic_corruption"]
 icon: "shield-check"
 keywords: ["1.x", "stable", "preview", "upgrade", "rollback"]
 ---
@@ -127,6 +130,16 @@ Corrupted copies of those candidate assets must reject with the expected
 checksum-mismatch or unsafe-archive-path diagnostic. The unsafe-path case has a
 valid replacement checksum. Both cases preserve active candidate bytes, managed
 links, configuration, and repository contents; a generic failure is insufficient.
+
+Semantic corruption acceptance obtains and resumes real relation and traversal
+continuations before rejecting malformed and digest-tampered copies. It also
+selects the cache identity receipt from public status, corrupts its format, and
+requires the finite `status-cache-invalid-identity` rejection.
+
+The receipt's original bytes and mode are restored even when the check fails.
+Successful recovery requires passive status, the same runtime identity, and a
+semantic source read. Repository identities must remain equal throughout; the
+proof retains digests and finite outcomes without source payloads.
 
 ## Pin installer content and product together
 
