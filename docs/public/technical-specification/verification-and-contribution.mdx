@@ -131,6 +131,10 @@ This command verifies a candidate; it does not publish a release. The version
 must be the intended candidate version. Reports live under
 `build/reports/release-gate/`, with the receipt beside the release archives.
 
+CI reads its proposed version from `distribution/release/candidate-version.txt`.
+Advance that reviewed version after a stable release; the compatibility gate
+requires candidates to move forward from the published baseline.
+
 ## Release integrity
 
 The wrapper distribution has a SHA-256 pin and URL validation. Gradle verifies

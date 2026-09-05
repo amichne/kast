@@ -88,7 +88,7 @@ jobs:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           git checkout --detach "$CANDIDATE_SHA"
-          candidate_version="1.0.0"
+          candidate_version="$(cat distribution/release/candidate-version.txt)"
           bash .github/scripts/release/build-assets.sh \
             --version "${candidate_version#v}" --source-revision "$CANDIDATE_SHA"
 
