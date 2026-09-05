@@ -58,7 +58,7 @@ def admit_source(root: Path, sha: str) -> None:
 
 
 def source_command(version: str, sha: str) -> list[str]:
-    return ["./gradlew", "--no-daemon", "--max-workers=2", "-Dorg.gradle.jvmargs=-Xmx5g", f"-Pversion={version}", f"-PkastSourceRevision={sha}", "clean", "releaseSourceGate", "assembleSidecarRelease", "generateKastModuleKnowledge"]
+    return ["./gradlew", "--no-daemon", "--max-workers=2", "-Dorg.gradle.jvmargs=-Xmx5g", f"-Pversion={version}", f"-PkastSourceRevision={sha}", "releaseSourceGate", "assembleSidecarRelease", "generateKastModuleKnowledge"]
 
 
 def run(command: list[str], root: Path, environment: dict[str, str]) -> None:

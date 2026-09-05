@@ -63,7 +63,7 @@ class WorkspaceSourceSnapshotTest(unittest.TestCase):
             enterprise_acceptance.prepare_workspace_fixture(workspace)
             before = enterprise_acceptance.workspace_source_identity(workspace)
             cache = workspace / ".gradle/9.4.1/fileHashes/fileHashes.bin"
-            cache.parent.mkdir(parents=True)
+            cache.parent.mkdir(parents=True, exist_ok=True)
             cache.write_bytes(b"observed runtime cache")
             self.assertEqual(before, enterprise_acceptance.workspace_source_identity(workspace))
             cache.write_bytes(b"updated runtime cache")

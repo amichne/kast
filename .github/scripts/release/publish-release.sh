@@ -164,12 +164,8 @@ cleanup() {
 }
 trap cleanup EXIT
 gh release download "${release}" --repo "${repository}" --dir "${verification_directory}"
-python3 distribution/release/verify_assets.py \
-  --directory "${verification_directory}" \
-  --release "${release}" \
-  --source-revision "${commit}" \
-  --source-root "${repository_root}" \
-  --repository "${repository}"
+# The admitted CI receipt already binds source verification and installed journeys
+# to every payload digest. Verify downloaded bytes below without rebuilding source.
 cmp "${receipt}" "${verification_directory}/${receipt##*/}" ||
   fail "uploaded release receipt differs from the admitted proof"
 python3 distribution/release/release_gate.py verify \

@@ -13,6 +13,8 @@ from pathlib import Path, PurePosixPath
 import re
 import shutil
 import subprocess
+import sys
+import time
 import tarfile
 import tempfile
 import zipfile
@@ -219,14 +221,18 @@ def regenerate_module_knowledge(
     )
     if knowledge.is_symlink() or architecture_report.is_symlink():
         reject("canonical module-knowledge outputs must not be symbolic links")
+    started = time.monotonic()
+    print(json.dumps({"stage": "module-knowledge-regeneration", "outcome": "started"}), file=sys.stderr)
     generated = subprocess.run(
         [
             str(gradlew),
             "-Dorg.gradle.jvmargs=-Xmx5g",
             f"-Pversion={version}",
             f"-PkastSourceRevision={source_revision}",
-            "--rerun-tasks",
+            "verifyKastArchitecture",
+            "--rerun",
             "generateKastModuleKnowledge",
+            "--rerun",
         ],
         cwd=source_root,
         check=False,
@@ -234,6 +240,9 @@ def regenerate_module_knowledge(
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
+    print(json.dumps({"stage": "module-knowledge-regeneration",
+                      "outcome": "passed" if generated.returncode == 0 else "rejected",
+                      "elapsedMilliseconds": round((time.monotonic() - started) * 1000)}), file=sys.stderr)
     if generated.returncode != 0:
         reject(
             "canonical module knowledge regeneration failed: "

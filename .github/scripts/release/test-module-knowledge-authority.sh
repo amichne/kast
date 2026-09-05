@@ -29,8 +29,10 @@ gradle_command=(
   -Dorg.gradle.jvmargs=-Xmx5g
   -Pversion=0.0.0
   -PkastSourceRevision="${source_revision}"
-  --rerun-tasks
+  verifyKastArchitecture
+  --rerun
   generateKastModuleKnowledge
+  --rerun
   --console=plain
 )
 

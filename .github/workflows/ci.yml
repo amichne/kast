@@ -92,16 +92,6 @@ jobs:
           bash .github/scripts/release/build-assets.sh \
             --version "${candidate_version#v}" --source-revision "$CANDIDATE_SHA"
 
-      - name: Retain exact-head release evidence
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: release-gate-${{ github.event.pull_request.head.sha || github.sha }}
-          path: |
-            build/reports/release-gate/
-            build/release/*/kast-release-receipt-*.json*
-          if-no-files-found: warn
-
       - name: Verify release and acceptance isolation contracts
         run: |
           bash .github/scripts/release/test-admit-source.sh
@@ -109,3 +99,15 @@ jobs:
           python3 distribution/release/test_verify_assets_authority.py
           python3 distribution/release/verify_assets.py --self-test
           python3 integration-tests/test_enterprise_acceptance.py
+
+      - name: Retain candidate assets and verification evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-candidate-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            build/reports/
+            build/release/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
