@@ -2,9 +2,7 @@ package io.github.amichne.kast.topology.intellij
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
-import io.github.amichne.kast.symbol.contract.ExactDeclarationRuntimeType
 import io.github.amichne.kast.topology.contract.TopologyCandidateSet
-import io.github.amichne.kast.topology.contract.TopologyCompilerProjectionEvidence
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
 import io.github.amichne.kast.topology.contract.TopologyFileExtractionFailure
 import io.github.amichne.kast.topology.contract.TopologyIdentityMismatchEvidence
@@ -40,62 +38,24 @@ internal class TopologyProjectionRegistry private constructor(
     private val filesByAbsolutePath: Map<Path, TopologySourceFile>,
 ) {
     /**
-     * Proof transition: `(TopologySourceFile, Int, Int) -> TopologyRegistrySymbolLookup`.
+     * Proof transition: `(TopologySourceFile, Int, Int) -> TopologyRegistryCandidateLookup`.
      *
-     * Found establishes the detached symbol for the exact admitted declaration range;
+     * Found provides an unproven registry candidate for the exact admitted declaration range;
      * Unavailable closes unsupported declarations and Rejected closes an invalid range.
      * Raw PSI offsets may enter only from the request-local IntelliJ extraction boundary.
      */
-    fun symbolAt(
+    fun candidateAt(
         file: TopologySourceFile,
         rawStartInclusive: Int,
         rawEndExclusive: Int,
-    ): TopologyRegistrySymbolLookup {
+    ): TopologyRegistryCandidateLookup {
         val range = when (
             val parsed = ExactDeclarationTextRange.parse(rawStartInclusive, rawEndExclusive)
         ) {
             is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> return TopologyRegistrySymbolLookup.Rejected
+            is Refinement.Rejected -> return TopologyRegistryCandidateLookup.Rejected
         }
-        val symbol = symbolsByLocation[TopologyDeclarationLocation(file, range)]
-        return if (symbol == null) TopologyRegistrySymbolLookup.Unavailable
-        else TopologyRegistrySymbolLookup.Found(symbol)
-    }
-
-    /**
-     * Proof transition: exact source and target evidence plus one live compiler projection to
-     * [TopologyIdentityResolution].
-     *
-     * Matched preserves the registry-owned topology symbol. Mismatched preserves both structured
-     * projections and all location/runtime evidence. Unsupported and Rejected remain closed
-     * outcomes; no raw PSI or K2 value crosses this detached comparison boundary.
-     */
-    fun resolveIdentity(
-        source: TopologyIdentitySource,
-        targetFile: TopologySourceFile,
-        targetDeclarationRange: ExactDeclarationTextRange,
-        liveProjection: TopologyCompilerProjectionEvidence,
-        liveSymbolRuntimeType: ExactDeclarationRuntimeType,
-        psiDeclarationRuntimeType: ExactDeclarationRuntimeType,
-    ): TopologyIdentityResolution {
-        val registrySymbol = symbolsByLocation[
-            TopologyDeclarationLocation(targetFile, targetDeclarationRange)
-        ] ?: return TopologyIdentityResolution.Unsupported
-        val registryProjection = TopologyCompilerProjectionEvidence.from(registrySymbol.evidence)
-        return when (val mismatch = TopologyIdentityMismatchEvidence.admit(
-            stage = source.stage,
-            sourceFile = source.file,
-            sourceOccurrence = source.occurrence,
-            targetFile = targetFile,
-            targetDeclarationRange = targetDeclarationRange,
-            registryProjection = registryProjection,
-            liveProjection = liveProjection,
-            liveSymbolRuntimeType = liveSymbolRuntimeType,
-            psiDeclarationRuntimeType = psiDeclarationRuntimeType,
-        )) {
-            is Refinement.Refined -> TopologyIdentityResolution.Mismatched(mismatch.value)
-            is Refinement.Rejected -> TopologyIdentityResolution.Matched(registrySymbol)
-        }
+        return Candidate.at(this, file, range)
     }
 
     /**
@@ -109,6 +69,24 @@ internal class TopologyProjectionRegistry private constructor(
         val file = filesByAbsolutePath[path.toAbsolutePath().normalize()]
         return if (file == null) TopologyRegistryFileLookup.Unavailable
         else TopologyRegistryFileLookup.Found(file)
+    }
+
+    /** A registry-owned location to reload, not proof that a live target denotes it. */
+    class Candidate private constructor(
+        val key: TopologyProjectionRegistryKey,
+        val symbol: TopologySymbol,
+    ) {
+        companion object {
+            internal fun at(
+                registry: TopologyProjectionRegistry,
+                file: TopologySourceFile,
+                range: ExactDeclarationTextRange,
+            ): TopologyRegistryCandidateLookup {
+                val symbol = registry.symbolsByLocation[TopologyDeclarationLocation(file, range)]
+                    ?: return TopologyRegistryCandidateLookup.Unavailable
+                return TopologyRegistryCandidateLookup.Found(Candidate(registry.key, symbol))
+            }
+        }
     }
 
     companion object {
@@ -157,10 +135,10 @@ internal enum class TopologyProjectionRegistryFailure {
     DUPLICATE_DECLARATION_LOCATION,
 }
 
-internal sealed interface TopologyRegistrySymbolLookup {
-    data class Found(val symbol: TopologySymbol) : TopologyRegistrySymbolLookup
-    data object Unavailable : TopologyRegistrySymbolLookup
-    data object Rejected : TopologyRegistrySymbolLookup
+internal sealed interface TopologyRegistryCandidateLookup {
+    data class Found(val candidate: TopologyProjectionRegistry.Candidate) : TopologyRegistryCandidateLookup
+    data object Unavailable : TopologyRegistryCandidateLookup
+    data object Rejected : TopologyRegistryCandidateLookup
 }
 
 internal sealed interface TopologyRegistryFileLookup {
@@ -175,11 +153,15 @@ internal data class TopologyIdentitySource(
     val occurrence: ExactDeclarationTextRange,
 )
 
-/** Closed detached result of comparing one live K2 target with its registry projection. */
+/** Closed result of independently binding one live K2 target to a registry declaration. */
 internal sealed interface TopologyIdentityResolution {
-    data class Matched(val symbol: TopologySymbol) : TopologyIdentityResolution
+    data class Matched(val binding: ProvenTopologyBinding) : TopologyIdentityResolution
     data class Mismatched(
         val evidence: TopologyIdentityMismatchEvidence,
+    ) : TopologyIdentityResolution
+    data class LoadFailed(
+        val file: TopologySourceFile,
+        val failure: TopologyFileExtractionFailure,
     ) : TopologyIdentityResolution
     data object Unsupported : TopologyIdentityResolution
     data object Rejected : TopologyIdentityResolution
@@ -232,9 +214,8 @@ internal class TopologyProjectionRegistryCache {
 /**
  * Retains detached per-file outcomes for the last exact content generation.
  *
- * Semantic failures are stable evidence for that generation and are never recomputed after an
- * unrelated unchanged index synchronization. VFS content mismatch remains outside the cache so
- * the one explicitly authorized refresh/retry can observe repaired physical state.
+ * Native binding failures are stable evidence for that generation. VFS mismatch and document
+ * readiness failures remain outside the cache so a refresh or document recovery can be observed.
  */
 internal class TopologyReadEpochCache {
     private var state: TopologyReadEpochState = TopologyReadEpochState.Empty
@@ -257,7 +238,11 @@ internal class TopologyReadEpochCache {
         val outcome = build()
         if (
             outcome !is TopologyFileExtraction.Failed ||
-            outcome.failure != TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH
+            outcome.failure !in setOf(
+                TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH,
+                TopologyFileExtractionFailure.DOCUMENT_DIRTY,
+                TopologyFileExtractionFailure.PSI_DOCUMENT_UNCOMMITTED,
+            )
         ) {
             epoch.outcomes[file] = outcome
         }

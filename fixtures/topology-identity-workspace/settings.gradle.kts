@@ -6,3 +6,5 @@ pluginManagement {
 }
 
 rootProject.name = "kast-topology-identity-diagnostic"
+
+include(":shadow")

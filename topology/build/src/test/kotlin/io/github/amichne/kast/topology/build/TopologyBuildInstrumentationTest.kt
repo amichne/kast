@@ -8,17 +8,15 @@ import io.github.amichne.kast.kernel.KastSpanFailure
 import io.github.amichne.kast.kernel.KastSpanName
 import io.github.amichne.kast.kernel.KastSpanObservation
 import io.github.amichne.kast.kernel.KastTopologyCacheDisposition
-import io.github.amichne.kast.kernel.KastTopologyCompilerProjection
-import io.github.amichne.kast.kernel.KastTopologyCompilerProjectionComponent
-import io.github.amichne.kast.kernel.KastTopologyCompilerSymbolKind
 import io.github.amichne.kast.kernel.KastTopologyIdentityStage
 import io.github.amichne.kast.kernel.KastTopologySourceRange
 import io.github.amichne.kast.kernel.KastTraceSpan
+import io.github.amichne.kast.topology.contract.TopologyBindingFailure
+import io.github.amichne.kast.kernel.KastTopologyBindingFailure
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
-import io.github.amichne.kast.symbol.contract.ExactDeclarationRuntimeType
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.topology.contract.TopologyBuildFailure
 import io.github.amichne.kast.topology.contract.TopologyBuildResult
@@ -26,7 +24,6 @@ import io.github.amichne.kast.topology.contract.TopologyCacheDisposition
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumeration
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumerationFailure
 import io.github.amichne.kast.topology.contract.TopologyCandidateSet
-import io.github.amichne.kast.topology.contract.TopologyCompilerProjectionEvidence
 import io.github.amichne.kast.topology.contract.TopologyExtractionFailure
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
 import io.github.amichne.kast.topology.contract.TopologyFileExtractionFailure
@@ -95,14 +92,7 @@ class TopologyBuildInstrumentationTest {
                 sourceOccurrence = KastTopologySourceRange(0, 7),
                 targetFile = fixture.file.path.value,
                 targetDeclaration = KastTopologySourceRange(0, 7),
-                registryProjection = evidence.registryProjection.traceProjection(),
-                liveProjection = evidence.liveProjection.traceProjection(),
-                liveSymbolRuntimeType = evidence.liveSymbolRuntimeType.value,
-                psiDeclarationRuntimeType = evidence.psiDeclarationRuntimeType.value,
-                delta = setOf(
-                    KastTopologyCompilerProjectionComponent.VALUE_PARAMETERS,
-                    KastTopologyCompilerProjectionComponent.IDENTITY,
-                ),
+                reason = KastTopologyBindingFailure.DECLARATION_MISMATCH,
             ),
             observation.events.single(),
         )
@@ -218,22 +208,13 @@ private fun instrumentationFixture(): InstrumentationFixture {
 }
 
 private fun mismatchEvidence(file: TopologySourceFile): TopologyIdentityMismatchEvidence {
-    val registryEvidence = compilerEvidence(file, listOf("kotlin.String"))
-    val liveEvidence = compilerEvidence(file, listOf("kotlin.Int"))
-    val registry = TopologyCompilerProjectionEvidence.from(registryEvidence)
-    val live = TopologyCompilerProjectionEvidence.from(liveEvidence)
-    return TopologyIdentityMismatchEvidence.admit(
-        stage = TopologyIdentityStage.REFERENCE_TARGET,
-        sourceFile = file,
-        sourceOccurrence = registryEvidence.range,
-        targetFile = file,
-        targetDeclarationRange = registryEvidence.range,
-        registryProjection = registry,
-        liveProjection = live,
-        liveSymbolRuntimeType = ExactDeclarationRuntimeType.parse("KaNamedFunctionSymbol").refined(),
-        psiDeclarationRuntimeType = ExactDeclarationRuntimeType.parse("KtNamedFunction").refined(),
-    ).refined()
+    val evidence = compilerEvidence(file, listOf("kotlin.String"))
+    return TopologyIdentityMismatchEvidence(
+        TopologyIdentityStage.REFERENCE_TARGET, file, evidence.range,
+        file, evidence.range, TopologyBindingFailure.DECLARATION_MISMATCH,
+    )
 }
+
 
 private fun compilerEvidence(
     file: TopologySourceFile,
@@ -262,14 +243,6 @@ private fun compilerEvidence(
         signature,
     ).refined()
 }
-
-private fun TopologyCompilerProjectionEvidence.traceProjection(): KastTopologyCompilerProjection =
-    KastTopologyCompilerProjection(
-        kind = KastTopologyCompilerSymbolKind.FUNCTION,
-        qualifiedIdentity = qualifiedIdentity.value,
-        canonicalSignature = signature.canonicalEncoding().value,
-        compilerIdentity = identity.value,
-    )
 
 private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
     is Refinement.Refined -> value

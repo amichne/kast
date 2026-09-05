@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Cold staged-runtime diagnostic for topology compiler-identity round trips."""
+"""Cold installed-runtime diagnostic and acceptance for native topology declaration binding."""
 
 from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+from enum import StrEnum
 import hashlib
 import importlib.util
 import json
@@ -136,25 +137,13 @@ class WorkspaceIdeaIsolationEvidence:
         }
 
 
-@dataclass(frozen=True)
-class CompilerProjection:
-    kind: str
-    qualified_identity: str
-    signature: str
-    identity: str
-
-    def document(self) -> dict[str, object]:
-        signature = canonical_signature_document(self.signature)
-        if signature["qualifiedIdentity"] != self.qualified_identity:
-            raise DiagnosticEvidenceError(
-                "canonical signature contradicts projection qualified identity"
-            )
-        return {
-            "kind": self.kind,
-            "qualifiedIdentity": self.qualified_identity,
-            "canonicalSignature": signature,
-            "compilerIdentity": self.identity,
-        }
+class BindingFailure(StrEnum):
+    EPOCH_CHANGED = "epoch_changed"
+    DECLARATION_UNAVAILABLE = "declaration_unavailable"
+    ORIGIN_NOT_ADMITTED = "origin_not_admitted"
+    ROLE_MISMATCH = "role_mismatch"
+    MODULE_MISMATCH = "module_mismatch"
+    DECLARATION_MISMATCH = "declaration_mismatch"
 
 
 @dataclass(frozen=True)
@@ -165,33 +154,15 @@ class IdentityMismatch:
     source_occurrence: tuple[int, int]
     target_file: str
     target_declaration: tuple[int, int]
-    registry: CompilerProjection
-    live: CompilerProjection
-    qualified_identity_same: bool
-    signature_same: bool
-    live_symbol_runtime_kind: str
-    psi_declaration_runtime_kind: str
-    delta: list[str]
+    reason: BindingFailure
 
     def document(self) -> dict[str, Any]:
         return {
             "stage": self.stage,
             "cacheDisposition": self.cache_disposition,
-            "source": {
-                "file": self.source_file,
-                "occurrence": range_document(self.source_occurrence),
-            },
-            "target": {
-                "file": self.target_file,
-                "declaration": range_document(self.target_declaration),
-            },
-            "registryProjection": self.registry.document(),
-            "liveProjection": self.live.document(),
-            "qualifiedIdentitySame": self.qualified_identity_same,
-            "signatureSame": self.signature_same,
-            "liveSymbolRuntimeKind": self.live_symbol_runtime_kind,
-            "psiDeclarationRuntimeKind": self.psi_declaration_runtime_kind,
-            "delta": self.delta,
+            "source": {"file": self.source_file, "occurrence": range_document(self.source_occurrence)},
+            "target": {"file": self.target_file, "declaration": range_document(self.target_declaration)},
+            "reason": self.reason.value,
         }
 
 
@@ -277,114 +248,6 @@ def range_document(value: tuple[int, int]) -> dict[str, int]:
     return {"start": value[0], "end": value[1]}
 
 
-def canonical_signature_document(raw: str) -> dict[str, object]:
-    fields = decode_canonical_fields(raw)
-    cursor = CanonicalFieldCursor(fields)
-    version = cursor.next()
-    if version != "canonical-signature-v1":
-        raise DiagnosticEvidenceError("unsupported canonical signature version")
-    kind = cursor.next()
-    qualified_identity = cursor.next_non_empty("qualified identity")
-    document: dict[str, object] = {
-        "encoding": raw,
-        "version": version,
-        "kind": kind,
-        "qualifiedIdentity": qualified_identity,
-    }
-    if kind == "function":
-        document.update(
-            {
-                "receiver": cursor.receiver(),
-                "contextReceivers": cursor.values("context receivers"),
-                "valueParameters": cursor.values("value parameters"),
-                "typeParameterCount": cursor.non_negative_integer("type parameter count"),
-            }
-        )
-    elif kind == "property-v2":
-        document.update(
-            {
-                "receiver": cursor.receiver(),
-                "contextReceivers": cursor.values("context receivers"),
-                "returnType": cursor.next_non_empty("return type"),
-            }
-        )
-    elif kind not in {"type-alias", "class-like"}:
-        raise DiagnosticEvidenceError("unsupported canonical signature kind")
-    cursor.require_exhausted()
-    return document
-
-
-def decode_canonical_fields(raw: str) -> list[str]:
-    encoded = raw.encode("utf-8")
-    fields: list[str] = []
-    offset = 0
-    while offset < len(encoded):
-        separator = encoded.find(b":", offset)
-        if separator < 0:
-            raise DiagnosticEvidenceError("canonical signature field has no length separator")
-        length_bytes = encoded[offset:separator]
-        if not length_bytes or any(value < ord("0") or value > ord("9") for value in length_bytes):
-            raise DiagnosticEvidenceError("canonical signature field length is invalid")
-        length = int(length_bytes.decode("ascii"))
-        if length_bytes != str(length).encode("ascii"):
-            raise DiagnosticEvidenceError("canonical signature field length is not canonical")
-        offset = separator + 1
-        end = offset + length
-        if end > len(encoded):
-            raise DiagnosticEvidenceError("canonical signature field is truncated")
-        try:
-            field = encoded[offset:end].decode("utf-8")
-        except UnicodeDecodeError as error:
-            raise DiagnosticEvidenceError("canonical signature field is not UTF-8") from error
-        fields.append(field)
-        offset = end
-    return fields
-
-
-class CanonicalFieldCursor:
-    def __init__(self, fields: Sequence[str]) -> None:
-        self._fields = fields
-        self._index = 0
-
-    def next(self) -> str | None:
-        if self._index == len(self._fields):
-            return None
-        value = self._fields[self._index]
-        self._index += 1
-        return value
-
-    def next_non_empty(self, name: str) -> str:
-        value = self.next()
-        if value is None or not value:
-            raise DiagnosticEvidenceError(f"canonical signature {name} is missing")
-        return value
-
-    def non_negative_integer(self, name: str) -> int:
-        raw = self.next()
-        if raw is None or not raw.isascii() or not raw.isdecimal():
-            raise DiagnosticEvidenceError(f"canonical signature {name} is invalid")
-        value = int(raw)
-        if raw != str(value):
-            raise DiagnosticEvidenceError(f"canonical signature {name} is not canonical")
-        return value
-
-    def values(self, name: str) -> list[str]:
-        count = self.non_negative_integer(f"{name} count")
-        return [self.next_non_empty(name) for _ in range(count)]
-
-    def receiver(self) -> dict[str, str]:
-        state = self.next()
-        if state == "receiver-absent":
-            return {"state": "absent"}
-        if state == "receiver-present":
-            return {"state": "present", "type": self.next_non_empty("receiver type")}
-        raise DiagnosticEvidenceError("canonical signature receiver state is invalid")
-
-    def require_exhausted(self) -> None:
-        if self._index != len(self._fields):
-            raise DiagnosticEvidenceError("canonical signature has trailing fields")
-
-
 def decode_any_value(document: object) -> object:
     if not isinstance(document, dict):
         raise DiagnosticEvidenceError("OTLP attribute value must be an object")
@@ -451,27 +314,6 @@ def required_integer(attributes: Mapping[str, object], suffix: str) -> int:
     return value
 
 
-def required_boolean(attributes: Mapping[str, object], suffix: str) -> bool:
-    key = ATTRIBUTE_PREFIX + suffix
-    value = attributes.get(key)
-    if not isinstance(value, bool):
-        raise DiagnosticEvidenceError(f"missing Boolean attribute: {key}")
-    return value
-
-
-def required_delta(attributes: Mapping[str, object]) -> list[str]:
-    key = ATTRIBUTE_PREFIX + "projection.delta"
-    value = attributes.get(key)
-    if (
-        not isinstance(value, list)
-        or not value
-        or any(not isinstance(item, str) or not item for item in value)
-        or len(set(value)) != len(value)
-    ):
-        raise DiagnosticEvidenceError(f"missing non-empty unique delta attribute: {key}")
-    return list(value)
-
-
 def exact_range(
     attributes: Mapping[str, object],
     start_suffix: str,
@@ -484,145 +326,24 @@ def exact_range(
     return start, end
 
 
-def projection(attributes: Mapping[str, object], side: str) -> CompilerProjection:
-    return CompilerProjection(
-        kind=required_text(attributes, f"{side}.symbol.kind"),
-        qualified_identity=required_text(attributes, f"{side}.qualified.identity"),
-        signature=required_text(attributes, f"{side}.signature"),
-        identity=required_text(attributes, f"{side}.identity"),
-    )
-
-
 def mismatch_from_attributes(attributes: Mapping[str, object]) -> IdentityMismatch:
     stage = required_text(attributes, "topology.identity.stage")
     if stage not in {"reference_target", "direct_override"}:
         raise DiagnosticEvidenceError(f"unsupported mismatch stage: {stage}")
-    cache_disposition = required_text(attributes, "topology.cache.disposition")
-    if cache_disposition not in {"computed", "reused"}:
-        raise DiagnosticEvidenceError(
-            f"unsupported topology cache disposition: {cache_disposition}"
-        )
-    registry = projection(attributes, "registry")
-    live = projection(attributes, "live")
-    qualified_identity_same = required_boolean(attributes, "qualified.identity.same")
-    signature_same = required_boolean(attributes, "signature.same")
-    if qualified_identity_same != (
-        registry.qualified_identity == live.qualified_identity
-    ):
-        raise DiagnosticEvidenceError("qualified-identity equality flag contradicts projections")
-    if signature_same != (registry.signature == live.signature):
-        raise DiagnosticEvidenceError("signature equality flag contradicts projections")
-    mismatch = IdentityMismatch(
-        stage=stage,
-        cache_disposition=cache_disposition,
-        source_file=required_text(attributes, "source.file"),
-        source_occurrence=exact_range(
-            attributes,
-            "source.occurrence.start",
-            "source.occurrence.end",
-        ),
-        target_file=required_text(attributes, "target.file"),
-        target_declaration=exact_range(
-            attributes,
-            "target.declaration.start",
-            "target.declaration.end",
-        ),
-        registry=registry,
-        live=live,
-        qualified_identity_same=qualified_identity_same,
-        signature_same=signature_same,
-        live_symbol_runtime_kind=required_text(attributes, "live.symbol.runtime.kind"),
-        psi_declaration_runtime_kind=required_text(
-            attributes,
-            "psi.declaration.runtime.kind",
-        ),
-        delta=required_delta(attributes),
+    disposition = required_text(attributes, "topology.cache.disposition")
+    if disposition not in {"computed", "reused"}:
+        raise DiagnosticEvidenceError(f"unsupported topology cache disposition: {disposition}")
+    try:
+        reason = BindingFailure(required_text(attributes, "topology.binding.reason"))
+    except ValueError as error:
+        raise DiagnosticEvidenceError("unsupported native binding reason") from error
+    return IdentityMismatch(
+        stage, disposition, required_text(attributes, "source.file"),
+        exact_range(attributes, "source.occurrence.start", "source.occurrence.end"),
+        required_text(attributes, "target.file"),
+        exact_range(attributes, "target.declaration.start", "target.declaration.end"),
+        reason,
     )
-    expected_delta = projection_delta(registry, live)
-    if mismatch.delta != expected_delta:
-        raise DiagnosticEvidenceError(
-            "projection delta contradicts retained compiler projections"
-        )
-    return mismatch
-
-
-def projection_delta(
-    registry: CompilerProjection,
-    live: CompilerProjection,
-) -> list[str]:
-    if registry.identity == live.identity:
-        raise DiagnosticEvidenceError("mismatch event contains matching compiler identities")
-    components: list[str] = []
-    if registry.kind != live.kind:
-        components.append("kind")
-    if registry.qualified_identity != live.qualified_identity:
-        components.append("qualified_identity")
-    registry_signature = canonical_signature_document(registry.signature)
-    live_signature = canonical_signature_document(live.signature)
-    if (
-        registry_signature["qualifiedIdentity"] != registry.qualified_identity
-        or live_signature["qualifiedIdentity"] != live.qualified_identity
-    ):
-        raise DiagnosticEvidenceError(
-            "canonical signature contradicts projection qualified identity"
-        )
-    if registry_signature["kind"] != live_signature["kind"]:
-        components.append("signature_kind")
-    elif registry_signature["kind"] == "function":
-        compare_signature_field(components, registry_signature, live_signature, "receiver")
-        compare_signature_field(
-            components,
-            registry_signature,
-            live_signature,
-            "contextReceivers",
-            "context_receivers",
-        )
-        compare_signature_field(
-            components,
-            registry_signature,
-            live_signature,
-            "valueParameters",
-            "value_parameters",
-        )
-        compare_signature_field(
-            components,
-            registry_signature,
-            live_signature,
-            "typeParameterCount",
-            "type_parameter_count",
-        )
-    elif registry_signature["kind"] == "property-v2":
-        compare_signature_field(components, registry_signature, live_signature, "receiver")
-        compare_signature_field(
-            components,
-            registry_signature,
-            live_signature,
-            "contextReceivers",
-            "context_receivers",
-        )
-        compare_signature_field(
-            components,
-            registry_signature,
-            live_signature,
-            "returnType",
-            "return_type",
-        )
-    if registry.identity != live.identity:
-        components.append("identity")
-    if not components:
-        raise DiagnosticEvidenceError("mismatch event contains equivalent compiler projections")
-    return components
-
-
-def compare_signature_field(
-    components: list[str],
-    registry: Mapping[str, object],
-    live: Mapping[str, object],
-    field: str,
-    component: str | None = None,
-) -> None:
-    if registry[field] != live[field]:
-        components.append(component or field)
 
 
 def object_sequence(document: object, name: str) -> Sequence[object]:
@@ -681,15 +402,7 @@ def read_diagnostic_trace(path: Path) -> DiagnosticTrace:
 
 
 def classify_mismatch(mismatch: IdentityMismatch) -> str:
-    if mismatch.registry.kind != mismatch.live.kind:
-        return "semantic-location-key-collision"
-    if mismatch.registry.qualified_identity != mismatch.live.qualified_identity:
-        return "target-mapping-or-qualified-identity-projection-defect"
-    if mismatch.registry.signature != mismatch.live.signature:
-        return "canonical-signature-projection-defect"
-    if mismatch.registry.identity != mismatch.live.identity:
-        return "compiler-identity-encoding-defect"
-    raise DiagnosticEvidenceError("mismatch event contains no classifiable projection difference")
+    return mismatch.reason.value
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -699,6 +412,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--runtime-archive", type=Path, required=True)
     parser.add_argument("--idea-home", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--require-binding", action="store_true")
     parser.add_argument("--maximum-startup-seconds", type=int, default=240)
     parser.add_argument("--maximum-operation-seconds", type=int, default=60)
     return parser.parse_args()
@@ -946,7 +660,12 @@ def prove_probe_edges(acceptance, timeout: int) -> list[str]:
 
 def run_cold_diagnostic(args: argparse.Namespace) -> dict[str, Any]:
     executable, fixture, runtime_archive, idea_home = validate_inputs(args)
-    expected_candidate_count = len(list(fixture.glob("src/main/kotlin/**/*.kt")))
+    repository = Path(__file__).resolve().parents[1]
+    source_revision = enterprise_acceptance.git(repository, "rev-parse", "HEAD")
+    source_dirty = bool(enterprise_acceptance.git(repository, "status", "--porcelain", "--untracked-files=no"))
+    with runtime_archive.open("rb") as archive:
+        runtime_digest = hashlib.file_digest(archive, "sha256").hexdigest()
+    expected_candidate_count = len(list(fixture.glob("**/src/main/kotlin/**/*.kt")))
     if expected_candidate_count < 1:
         raise DiagnosticEvidenceError("topology identity fixture has no Kotlin candidates")
     bounds = {
@@ -1039,6 +758,8 @@ def run_cold_diagnostic(args: argparse.Namespace) -> dict[str, Any]:
                 timeout=args.maximum_startup_seconds,
             )
             topology_complete = topology.get("status") == "complete"
+            if args.require_binding and not topology_complete:
+                raise DiagnosticEvidenceError(f"declaration binding did not publish: {topology}")
             topology_mismatch = (
                 topology.get("status") == "rejected"
                 and topology.get("reason") == "extraction-failed"
@@ -1076,9 +797,29 @@ def run_cold_diagnostic(args: argparse.Namespace) -> dict[str, Any]:
                     "runtimeInstance": "new-isolated",
                     "candidateCount": trace.candidate_count,
                     "topologyOutcome": "published",
-                    "diagnosis": "all-probe-projections-matched",
+                    "diagnosis": "all-probe-declarations-bound",
                     "matchedProbes": matched_probes,
                 }
+                if args.require_binding:
+                    from topology_binding_acceptance import prove_binding_edges
+                    result["bindingCases"] = prove_binding_edges(acceptance, args.maximum_operation_seconds)
+                    old_selector = exact_probe_selector(acceptance, ProbeExpectation(
+                        "binding-generation", "genericRead", "kast.identity.fixture.genericRead", "callees",
+                    ), args.maximum_operation_seconds)
+                    changed = acceptance.workspace / "src/main/kotlin/IdentityFixture.kt"
+                    changed.write_text("// New source generation shifts every declaration.\n" + changed.read_text())
+                    refreshed = acceptance_command(acceptance, "index", "sync", timeout=args.maximum_operation_seconds)
+                    if refreshed.get("status") != "complete":
+                        raise DiagnosticEvidenceError("binding source change was not admitted")
+                    stale = acceptance_command(acceptance, "symbol", "inspect", "--selector", old_selector,
+                                               timeout=args.maximum_operation_seconds)
+                    if stale.get("status") != "rejected" or stale.get("reason") != "exact-selector-stale":
+                        raise DiagnosticEvidenceError("a previous-generation selector was accepted")
+                    rebuilt = acceptance_command(acceptance, "topology", "build", timeout=args.maximum_startup_seconds)
+                    if rebuilt.get("status") != "complete":
+                        raise DiagnosticEvidenceError(f"changed binding generation did not publish: {rebuilt}")
+                    result["replayedBindingCases"] = prove_binding_edges(acceptance, args.maximum_operation_seconds)
+                    result["staleSelector"] = "rejected"
                 idea_isolation.assert_unchanged()
             else:
                 mismatch = trace.mismatch
@@ -1098,6 +839,14 @@ def run_cold_diagnostic(args: argparse.Namespace) -> dict[str, Any]:
                 runtime_socket_directory,
                 host.workspace,
             )
+            with runtime_archive.open("rb") as archive:
+                if hashlib.file_digest(archive, "sha256").hexdigest() != runtime_digest:
+                    raise DiagnosticEvidenceError("runtime archive changed during acceptance")
+            if (enterprise_acceptance.git(repository, "rev-parse", "HEAD") != source_revision
+                    or bool(enterprise_acceptance.git(repository, "status", "--porcelain", "--untracked-files=no")) != source_dirty):
+                raise DiagnosticEvidenceError("source revision or tracked status changed during acceptance")
+            result["source"] = {"revision": source_revision, "trackedChanges": source_dirty}
+            result["runtimeArchiveSha256"] = runtime_digest
             result["workspaceIdeaIsolation"] = idea_isolation.document()
             result["semanticProjectStore"] = semantic_project_store
         finally:
@@ -1150,4 +899,6 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    # The oracle imports this harness; preserve one exception class under direct execution.
+    sys.modules["topology_identity_diagnostic"] = sys.modules[__name__]
     raise SystemExit(main())

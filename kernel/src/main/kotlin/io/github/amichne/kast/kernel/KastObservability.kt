@@ -81,26 +81,10 @@ enum class KastTopologyCacheDisposition {
     REUSED,
 }
 
-/** Closed compiler symbol families projected into topology diagnostic traces. */
-enum class KastTopologyCompilerSymbolKind {
-    CLASSLIKE,
-    CONSTRUCTOR,
-    FUNCTION,
-    PROPERTY,
-    TYPE_ALIAS,
-}
-
-/** Exact structured fields that can differ across one topology identity comparison. */
-enum class KastTopologyCompilerProjectionComponent {
-    KIND,
-    QUALIFIED_IDENTITY,
-    SIGNATURE_KIND,
-    RECEIVER,
-    CONTEXT_RECEIVERS,
-    VALUE_PARAMETERS,
-    TYPE_PARAMETER_COUNT,
-    RETURN_TYPE,
-    IDENTITY,
+/** Closed native declaration-binding failures, with no compiler renderings. */
+enum class KastTopologyBindingFailure {
+    EPOCH_CHANGED, DECLARATION_UNAVAILABLE, ORIGIN_NOT_ADMITTED,
+    ROLE_MISMATCH, MODULE_MISMATCH, DECLARATION_MISMATCH,
 }
 
 /** Detached non-empty source range carried only by a topology diagnostic event. */
@@ -110,20 +94,6 @@ data class KastTopologySourceRange(
 ) {
     init {
         require(startInclusive in 0 until endExclusive)
-    }
-}
-
-/** One detached compiler projection suitable for a bounded topology diagnostic event. */
-data class KastTopologyCompilerProjection(
-    val kind: KastTopologyCompilerSymbolKind,
-    val qualifiedIdentity: String,
-    val canonicalSignature: String,
-    val compilerIdentity: String,
-) {
-    init {
-        require(qualifiedIdentity.isNotBlank())
-        require(canonicalSignature.isNotBlank())
-        require(compilerIdentity.isNotBlank())
     }
 }
 
@@ -137,25 +107,12 @@ sealed interface KastSpanEvent {
         val sourceOccurrence: KastTopologySourceRange,
         val targetFile: String,
         val targetDeclaration: KastTopologySourceRange,
-        val registryProjection: KastTopologyCompilerProjection,
-        val liveProjection: KastTopologyCompilerProjection,
-        val liveSymbolRuntimeType: String,
-        val psiDeclarationRuntimeType: String,
-        val delta: Set<KastTopologyCompilerProjectionComponent>,
+        val reason: KastTopologyBindingFailure,
     ) : KastSpanEvent {
         init {
             require(sourceFile.isNotBlank())
             require(targetFile.isNotBlank())
-            require(liveSymbolRuntimeType.isNotBlank())
-            require(psiDeclarationRuntimeType.isNotBlank())
-            require(delta.isNotEmpty())
         }
-
-        val qualifiedIdentitySame: Boolean
-            get() = registryProjection.qualifiedIdentity == liveProjection.qualifiedIdentity
-
-        val signatureSame: Boolean
-            get() = registryProjection.canonicalSignature == liveProjection.canonicalSignature
     }
 }
 
