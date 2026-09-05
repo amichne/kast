@@ -4,7 +4,18 @@
     "workspace-and-change-storage": ["evidence/sqlite/src/main/kotlin/**/*.kt"],
     "bootstrap": ["distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/bootstrap/*.kt"],
     "cache-identity": ["cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/SidecarCacheLifecycle.kt"],
-    "selectors-and-continuations": ["source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/*Token*.kt", "source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadRequest.kt", "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalReadOperationModels.kt"],
+    "selectors-and-continuations": [
+      "source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/*Token*.kt",
+      "source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadRequest.kt",
+      "source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceSelector.kt",
+      "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalReadOperationModels.kt",
+      "runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/protocol/graph/Canonical*ContinuationCodec.kt",
+      "runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/protocol/symbol/CanonicalSelector*.kt",
+      "symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt",
+      "symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt",
+      "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationRequest.kt",
+      "traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalState.kt"
+    ],
     "lifecycle-json": ["cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CliBoundaryDocuments.kt"],
     "process-exit-and-output": ["cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt"]
   },

@@ -1,11 +1,27 @@
 #!/usr/bin/env python3
 import copy
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from compatibility import Cause, Rejected, Version, canonical, compare, digest, latest_stable, snapshot, verify_release, write
+from compatibility import Cause, Rejected, Version, canonical, capture, compare, digest, latest_stable, snapshot, verify_release, write
+
+
+ROOT = Path(__file__).resolve().parents[2]
+TOKEN_OWNERS = (
+    "runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/protocol/graph/CanonicalRelationContinuationCodec.kt",
+    "runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/protocol/graph/CanonicalTraversalContinuationCodec.kt",
+    "runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/protocol/symbol/CanonicalSelectorCodec.kt",
+    "runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/protocol/symbol/CanonicalSelectorDocuments.kt",
+    "runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/protocol/symbol/CanonicalSelectorDocumentAdmission.kt",
+    "source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceSelector.kt",
+    "symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt",
+    "symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt",
+    "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationRequest.kt",
+    "traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalState.kt",
+)
 
 
 def contract(version="1.0.0"):
@@ -39,6 +55,73 @@ class CompatibilityTest(unittest.TestCase):
         candidate["contract"]["schema"]["serverProjection"]["tools"][0]["description"] = "Readable source"
         self.assertEqual("compatible", compare(prior, candidate)["status"])
         self.assertEqual(canonical(compare(prior, candidate)), canonical(compare(prior, candidate)))
+
+    def test_capture_fingerprints_actual_token_codecs_and_rejects_same_major_changes(self):
+        manifest_path = Path("distribution/release/state-contract.json")
+        manifest = json.loads((ROOT / manifest_path).read_bytes())
+        selected = {ROOT / path for path in (*TOKEN_OWNERS, *manifest["configurationSources"])}
+        selected.update({ROOT / manifest_path, ROOT / "cli/src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt"})
+        for patterns in manifest["owners"].values():
+            for pattern in patterns:
+                selected.update(ROOT.glob(pattern))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for source in selected:
+                target = root / source.relative_to(ROOT)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source, target)
+            schema = copy.deepcopy(contract()["contract"]["schema"])
+            schema["serverProjection"]["tools"][0]["invocation"] = {"command": ["source", "read"]}
+            schema["cliProjection"]["localCommands"] = []
+            schema_path = root / "schema.json"
+            write(schema_path, schema)
+            kast = root / "kast"
+
+            def observe(version):
+                def boundary(command, **_options):
+                    if command == ["git", "rev-parse", "HEAD"]:
+                        return "a" * 40
+                    if command == ["git", "status", "--porcelain", "--untracked-files=normal"]:
+                        return ""
+                    if command == [str(kast), "--version"]:
+                        return f"kast {version} (IntelliJ sidecar)"
+                    if command == [str(kast), "--schema"]:
+                        return json.dumps(schema)
+                    if command[0] == str(kast) and command[-1] == "--help":
+                        return "  --help  Show help\n"
+                    self.fail(f"unexpected capture boundary: {command}")
+                with patch("compatibility.run", side_effect=boundary):
+                    return capture(root, kast, schema_path, version)
+
+            previous = observe("1.0.0")
+            replacements = {
+                "CanonicalRelationContinuationCodec.kt": (b"relation-continuation:v1:", b"relation-continuation:v9:"),
+                "CanonicalTraversalContinuationCodec.kt": (b"traversal-continuation:v1:", b"traversal-continuation:v9:"),
+                "CanonicalSelectorCodec.kt": (b'EXACT_TOKEN_VERSION = "v2"', b'EXACT_TOKEN_VERSION = "v9"'),
+                "CanonicalSelectorDocuments.kt": (b'@SerialName("declaration")', b'@SerialName("declaration-v9")'),
+                "CanonicalSelectorDocumentAdmission.kt": (b'WORKSPACE_FILE = "workspace"', b'WORKSPACE_FILE = "workspace-v9"'),
+                "CanonicalCompilerSignature.kt": (b'"canonical-signature-v1"', b'"canonical-signature-v9"'),
+            }
+            for relative in TOKEN_OWNERS:
+                with self.subTest(owner=relative):
+                    source = root / relative
+                    original = source.read_bytes()
+                    try:
+                        # Change actual framing, payload tags, admission, or fingerprint
+                        # semantics while leaving the public token's string schema unchanged.
+                        before_bytes, after_bytes = replacements.get(source.name,
+                            (b'MessageDigest.getInstance("SHA-256")', b'MessageDigest.getInstance("SHA-512")'))
+                        self.assertIn(before_bytes, original)
+                        source.write_bytes(original.replace(before_bytes, after_bytes))
+                        candidate = observe("1.1.0")
+                        before = previous["contract"]["persistedState"]["selectors-and-continuations"]
+                        after = candidate["contract"]["persistedState"]["selectors-and-continuations"]
+                        self.assertIn(relative, before)
+                        self.assertEqual(digest(source.read_bytes()), after[relative])
+                        self.assertNotEqual(before[relative], after[relative])
+                        self.assert_rejected(Cause.BREAKING_CHANGE, lambda: compare(previous, candidate))
+                    finally:
+                        source.write_bytes(original)
 
     def test_every_promised_surface_fails_closed_on_removal_or_change(self):
         changes = [
