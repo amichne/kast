@@ -109,12 +109,29 @@ def environment_identity(idea: Path) -> dict:
     return {"system": platform.system(), "architecture": platform.machine(), "osRelease": platform.release(), "ideaBuild": build.read_text().strip(), "javaReleaseDigest": digest(java)}
 
 
-def asset_names(version: str) -> tuple[str, ...]:
+def product_asset_names(version: str) -> tuple[str, ...]:
     return (f"kast-control-v{version}-macos-aarch64.tar.gz", f"kast-semantic-runtime-{version}-macos-aarch64.zip", f"kast-cli-schema-v{version}.json", f"kast-module-knowledge-v{version}.json")
+
+
+def asset_names(version: str) -> tuple[str, ...]:
+    return (*product_asset_names(version), f"kast-sbom-v{version}.cdx.json")
 
 
 def asset_identities(directory: Path, version: str) -> dict[str, str]:
     return {name: digest(directory / name) for asset in asset_names(version) for name in (asset, asset + ".sha256")}
+
+
+def validate_gradle_matrix(matrix: dict) -> None:
+    expected = {("7.6.4", 17, False), ("8.14.3", 21, False), ("9.4.1", 25, False), ("7.6.4", 25, True)}
+    cases = matrix.get("cases", [])
+    if matrix.get("status") != "passed" or len(cases) != len(expected) or {
+        (case.get("gradle"), case.get("java"), case.get("expectedRejection")) for case in cases
+    } != expected:
+        raise GateRejected("installed Gradle matrix omits a required compatibility case")
+    for case in cases:
+        if not case["expectedRejection"] and not all(case.get(key) is True for key in
+                ("explicitInputAdmitted", "ambientSecretAbsent", "explicitExecutableAdmitted")):
+            raise GateRejected("installed Gradle matrix has no import isolation proof")
 
 
 def validate_receipt(receipt: dict, directory: Path, version: str, sha: str) -> None:
@@ -125,7 +142,7 @@ def validate_receipt(receipt: dict, directory: Path, version: str, sha: str) -> 
     if receipt["commandDigest"] != identity(source_command(version, sha)):
         raise GateRejected("release receipt does not prove the canonical gate command")
     dependencies = receipt["dependencies"]
-    if not isinstance(dependencies, dict) or set(dependencies) != {"source", "assets", "installed"}:
+    if not isinstance(dependencies, dict) or set(dependencies) != {"source", "assets", "installed", "sbom"}:
         raise GateRejected("release receipt omits a required predecessor")
     for name, dependency in dependencies.items():
         if not isinstance(dependency, dict) or set(dependency) != {"digest", "receipt"} or identity(dependency["receipt"]) != dependency["digest"]:
@@ -136,12 +153,13 @@ def validate_receipt(receipt: dict, directory: Path, version: str, sha: str) -> 
     if dependencies["source"]["receipt"].get("command") != source_command(version, sha):
         raise GateRejected("source predecessor did not run the required Gradle graph")
     installed = dependencies["installed"]["receipt"]
-    required = {"cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker"}
+    required = {"cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import"}
     if set(installed.get("journeys", [])) != required:
         raise GateRejected("installed predecessor omits a required journey")
     broker = installed.get("broker", {})
     if broker.get("status") != "passed" or not all(broker.get(key) is True for key in ("readOnlyCatalog", "cliEquivalent", "selectorReused")):
         raise GateRejected("installed predecessor has no passing cold broker evidence")
+    validate_gradle_matrix(installed.get("gradleImport", {}))
     if receipt["environment"].get("system") != "Darwin" or receipt["environment"].get("architecture") not in {"arm64", "aarch64"}:
         raise GateRejected("receipt does not prove the supported host")
     if dependencies["source"]["receipt"].get("environment") != receipt["environment"] or installed.get("environment") != receipt["environment"]:
@@ -149,11 +167,16 @@ def validate_receipt(receipt: dict, directory: Path, version: str, sha: str) -> 
     assets = asset_identities(directory, version)
     if receipt["assets"] != assets or installed.get("assets") != assets:
         raise GateRejected("release assets differ from installed proof")
+    sbom = dependencies["sbom"]["receipt"]
+    if sbom.get("sbomDigest") != assets[f"kast-sbom-v{version}.cdx.json"] or sbom.get("archives") != {name: assets[name] for name in product_asset_names(version)[:2]}:
+        raise GateRejected("SBOM predecessor did not inventory these product archives")
+    if not isinstance(sbom.get("componentCount"), int) or sbom["componentCount"] < 1:
+        raise GateRejected("SBOM predecessor has no component inventory")
     archive_proof = dependencies["assets"]["receipt"].get("observations", {})
     if archive_proof.get("outcome") != "COMPLETE" or archive_proof.get("release") != f"v{version}":
         raise GateRejected("archive predecessor has no complete verification")
     observed_assets = {item["name"]: "sha256:" + item["sha256"] for item in archive_proof.get("assets", [])}
-    if observed_assets != {name: assets[name] for name in asset_names(version)}:
+    if observed_assets != {name: assets[name] for name in product_asset_names(version)}:
         raise GateRejected("archive predecessor did not verify these assets")
 
 
@@ -177,7 +200,8 @@ def execute(mode: str, root: Path, directory: Path, version: str, sha: str) -> N
         # Keep the archive verifier's complete observations as one dependency.
         asset_receipt = {"status": "passed", "sourceRevision": sha, "observations": assets}
         installed = read(reports / "installed.json")
-        dependencies = {key: {"digest": identity(value), "receipt": value} for key, value in {"source": source, "assets": asset_receipt, "installed": installed}.items()}
+        sbom = read(reports / "sbom.json")
+        dependencies = {key: {"digest": identity(value), "receipt": value} for key, value in {"source": source, "assets": asset_receipt, "installed": installed, "sbom": sbom}.items()}
         receipt = {"schemaVersion": 1, "status": "passed", "sourceRevision": sha, "productVersion": version, "commandDigest": identity(source_command(version, sha)), "dependencies": dependencies, "environment": source["environment"], "assets": asset_identities(directory, version)}
         validate_receipt(receipt, directory, version, sha)
         write(receipt_path, receipt)

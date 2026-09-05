@@ -274,10 +274,10 @@ def verify(
         knowledge_name + ".sha256",
     }
     observed = {path.name for path in directory.iterdir() if path.is_file()}
-    receipt_name = f"kast-release-receipt-v{version}.json"
-    if receipt_name in observed or receipt_name + ".sha256" in observed:
-        expected.update({receipt_name, receipt_name + ".sha256"})
-        verify_checksum(directory / receipt_name)
+    for additional_name in (f"kast-release-receipt-v{version}.json", f"kast-sbom-v{version}.cdx.json"):
+        if additional_name in observed or additional_name + ".sha256" in observed:
+            expected.update({additional_name, additional_name + ".sha256"})
+            verify_checksum(directory / additional_name)
     if observed != expected:
         reject(f"asset set mismatch: expected {sorted(expected)}, observed {sorted(observed)}")
     control = directory / control_name

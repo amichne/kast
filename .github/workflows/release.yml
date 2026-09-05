@@ -37,7 +37,22 @@ jobs:
       - name: Detach exact release source
         run: git checkout --detach "$GITHUB_SHA"
 
+      - name: Set up Java 17
+        id: jdk17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Java 21
+        id: jdk21
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: 21
+
       - name: Set up Java 25
+        id: jdk25
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
@@ -50,6 +65,8 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+        with:
+          validate-wrappers: true
 
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
@@ -61,6 +78,10 @@ jobs:
         run: npm install --global mint@4.2.841
 
       - name: Build and verify release assets
+        env:
+          KAST_RELEASE_JDK_17: ${{ steps.jdk17.outputs.path }}
+          KAST_RELEASE_JDK_21: ${{ steps.jdk21.outputs.path }}
+          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
         run: >-
           bash .github/scripts/release/build-assets.sh
           --version "$RELEASE_VERSION"

@@ -39,7 +39,22 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
+      - name: Set up Java 17
+        id: jdk17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Java 21
+        id: jdk21
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: 21
+
       - name: Set up Java 25
+        id: jdk25
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
@@ -52,6 +67,8 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+        with:
+          validate-wrappers: true
 
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
@@ -64,10 +81,14 @@ jobs:
 
       - name: Verify exact source and installed release assets
         env:
+          KAST_RELEASE_JDK_17: ${{ steps.jdk17.outputs.path }}
+          KAST_RELEASE_JDK_21: ${{ steps.jdk21.outputs.path }}
+          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
+          GH_TOKEN: ${{ github.token }}
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           git checkout --detach "$CANDIDATE_SHA"
-          candidate_version="$(git describe --tags --abbrev=0 --match 'v[0-9]*')"
+          candidate_version="1.0.0"
           bash .github/scripts/release/build-assets.sh \
             --version "${candidate_version#v}" --source-revision "$CANDIDATE_SHA"
 

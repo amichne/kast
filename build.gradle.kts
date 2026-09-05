@@ -340,13 +340,19 @@ val releaseInstallerTest by tasks.registering(Exec::class) {
 val releaseGateContractTest by tasks.registering(Exec::class) {
     group = "verification"
     description = "Proves release publication fails closed without semantic evidence."
-    commandLine("python3", "distribution/release/test_release_gate.py")
+    commandLine("python3", "-m", "unittest", "discover", "-s", "distribution/release", "-p", "test_*.py")
+}
+
+val releaseAcceptanceContractTest by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Verifies that installed acceptance rejects incomplete semantic and import evidence."
+    commandLine("python3", "-m", "unittest", "discover", "-s", "integration-tests", "-p", "test_*.py")
 }
 
 val releaseSourceGate by tasks.registering {
     group = "verification"
     description = "Authoritative release-source predecessor graph; publication also requires exact-asset installed proof."
-    dependsOn("build", "installedProductTest", "verifyKastArchitecture", "enterpriseAcceptance", releaseDocumentationTest, releaseInstallerTest, releaseGateContractTest)
+    dependsOn("build", "installedProductTest", "verifyKastArchitecture", "enterpriseAcceptance", releaseDocumentationTest, releaseInstallerTest, releaseGateContractTest, releaseAcceptanceContractTest)
 }
 
 subprojects.forEach { owner ->

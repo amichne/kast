@@ -86,6 +86,7 @@ sidecar="${assets_directory}/kast-semantic-runtime-${version}-macos-aarch64.zip"
 schema="${assets_directory}/kast-cli-schema-v${version}.json"
 knowledge="${assets_directory}/kast-module-knowledge-v${version}.json"
 receipt="${assets_directory}/kast-release-receipt-v${version}.json"
+sbom="${assets_directory}/kast-sbom-v${version}.cdx.json"
 assets=(
   "${control}"
   "${control}.sha256"
@@ -97,6 +98,8 @@ assets=(
   "${knowledge}.sha256"
   "${receipt}"
   "${receipt}.sha256"
+  "${sbom}"
+  "${sbom}.sha256"
 )
 for asset in "${assets[@]}"; do
   [[ -f "${asset}" ]] || fail "missing release asset: ${asset}"
@@ -113,6 +116,8 @@ upload_assets=(
   "${knowledge}.sha256"
   "${receipt}"
   "${receipt}.sha256"
+  "${sbom}"
+  "${sbom}.sha256"
 )
 release_notes="$(
   printf '%s\n' \

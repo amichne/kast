@@ -14,7 +14,13 @@ code_sources:
     lines: "1-900"
     symbols: ["check_pages"]
   - path: ".github/workflows/docs.yml"
-    lines: "1-78"
+    lines: "1-64"
+  - path: "distribution/release/release_gate.py"
+    lines: "1-230"
+    symbols: ["validate_receipt", "source_command"]
+  - path: "distribution/release/generate_sbom.py"
+    lines: "1-80"
+    symbols: ["generate", "scanner"]
 icon: "badge-check"
 keywords: ["testing", "CI", "distribution", "contributors"]
 ---
@@ -91,11 +97,18 @@ archive-path, and manifest checks while avoiding a dependency on publication.
 
 The installed journey runs with no Codex executable or `CODEX_HOME`, checks
 semantic reads, restart continuity, verified mutation, and scoped uninstall
-followed by reinstall.
+followed by reinstall. A separate cold read-only broker journey checks canonical
+CLI equivalence, selector reuse, and the source companion presentation.
+
+The installed Gradle matrix requires explicit Java 17, 21, and 25 homes through
+`KAST_RELEASE_JDK_17`, `KAST_RELEASE_JDK_21`, and `KAST_RELEASE_JDK_25`. It proves
+admitted environment inputs, explicit executable lookup, exclusion of an
+unselected secret-like variable, and actionable JVM rejection.
 
 The resulting `kast-release-receipt-v<version>.json` binds the source revision,
 canonical command digest, predecessor receipts, observed IDEA/JVM environment,
-and archive digests.
+and archive digests. A checksum-pinned Syft scan inventories the two packaged
+archives in `kast-sbom-v<version>.cdx.json`; its digest is a required predecessor.
 
 Publication requires both that receipt and a successful
 `Release gate` check for the exact release SHA. A failed predecessor produces no
@@ -112,6 +125,22 @@ bash .github/scripts/release/build-assets.sh \
 This command verifies a candidate; it does not publish a release. The version
 must be the intended candidate version. Reports live under
 `build/reports/release-gate/`, with the receipt beside the release archives.
+
+## Release integrity
+
+The wrapper distribution has a SHA-256 pin and URL validation. Gradle verifies
+dependency artifacts and metadata against `gradle/verification-metadata.xml` in
+strict mode. Release builds never regenerate those checksums automatically.
+
+When changing dependencies, review the resolved coordinates and new checksums
+against the expected repositories before committing the updated metadata. The
+initial checksum set records reviewed downloaded bytes; it does not claim
+upstream signature verification.
+
+Actions are pinned to full commit identities. The release workflow attests the
+verified candidate files before publication. The SBOM describes bundled
+components; the user-supplied IntelliJ distribution and JBR remain external host
+dependencies. Security-reporting instructions are in the repository's `SECURITY.md`.
 
 ## Keep this specification authenticated
 

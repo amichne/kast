@@ -2,31 +2,9 @@ name: Documentation
 
 on:
   pull_request:
-    paths:
-      - ".python-version"
-      - ".github/workflows/docs.yml"
-      - "README.md"
-      - "docs/**"
-      - "cli/**"
-      - "install.sh"
-      - "gradle/libs.versions.toml"
-      - "protocol/contract/**"
-      - "protocol/registry/**"
-      - "protocol/wire/**"
   push:
     branches:
       - main
-    paths:
-      - ".python-version"
-      - ".github/workflows/docs.yml"
-      - "README.md"
-      - "docs/**"
-      - "cli/**"
-      - "install.sh"
-      - "gradle/libs.versions.toml"
-      - "protocol/contract/**"
-      - "protocol/registry/**"
-      - "protocol/wire/**"
   workflow_dispatch:
 
 permissions:

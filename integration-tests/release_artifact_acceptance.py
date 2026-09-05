@@ -102,11 +102,23 @@ def main():
         broker = gate.read(broker_report)
         if broker.get("status") != "passed" or not all(broker.get(key) is True for key in ("readOnlyCatalog", "cliEquivalent", "selectorReused")):
             raise gate.GateRejected("cold installed broker did not preserve canonical evidence")
+        matrix_root = ROOT / "build/reports/release-gate/gradle-import"
+        matrix_command = [sys.executable, str(ROOT / "integration-tests/gradle_import_acceptance.py"),
+                          "--kast", str(acceptance.executable), "--fixture", str(ROOT / "fixtures/topology-identity-workspace"),
+                          "--idea-home", str(idea), "--state-root", str(matrix_root)]
+        for feature in (17, 21, 25):
+            java_home = os.environ.get(f"KAST_RELEASE_JDK_{feature}")
+            if not java_home:
+                raise gate.GateRejected(f"release matrix requires explicit KAST_RELEASE_JDK_{feature}")
+            matrix_command.extend(["--jdk", f"{feature}:{java_home}"])
+        gate.run(matrix_command, ROOT, os.environ.copy())
+        matrix = gate.read(matrix_root / "gradle-import-receipt.json")
+        gate.validate_gradle_matrix(matrix)
         gate.run(["/bin/bash", str(ROOT / "install.sh"), "uninstall", "--installation-only"], host.workspace, installed_environment)
         ambient.assert_unchanged()
         if gate.asset_identities(assets, args.version) != identities:
             raise gate.GateRejected("candidate assets changed during installed acceptance")
-        gate.write(ROOT / "build/reports/release-gate/installed.json", {"schemaVersion": 1, "status": "passed", "sourceRevision": args.source_revision, "assets": identities, "environment": gate.environment_identity(idea), "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker"], "broker": broker, "observations": acceptance.observations, "elapsedMilliseconds": round((time.monotonic() - started) * 1000)})
+        gate.write(ROOT / "build/reports/release-gate/installed.json", {"schemaVersion": 1, "status": "passed", "sourceRevision": args.source_revision, "assets": identities, "environment": gate.environment_identity(idea), "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import"], "broker": broker, "gradleImport": matrix, "observations": acceptance.observations, "elapsedMilliseconds": round((time.monotonic() - started) * 1000)})
 
 
 if __name__ == "__main__":

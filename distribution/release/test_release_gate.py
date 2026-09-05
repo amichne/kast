@@ -31,9 +31,16 @@ class ReceiptIdentityTest(unittest.TestCase):
         assets = gate.asset_identities(self.directory, self.version)
         environment = {"system": "Darwin", "architecture": "arm64", "ideaBuild": "262.1", "javaReleaseDigest": "sha256:" + "a" * 64}
         source = {"status": "passed", "sourceRevision": self.sha, "command": gate.source_command(self.version, self.sha), "environment": environment}
-        installed = {"status": "passed", "sourceRevision": self.sha, "environment": environment, "assets": assets, "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker"], "broker": {"status": "passed", "readOnlyCatalog": True, "cliEquivalent": True, "selectorReused": True}}
-        archive = {"status": "passed", "sourceRevision": self.sha, "observations": {"outcome": "COMPLETE", "release": "v1.0.0", "assets": [{"name": name, "sha256": assets[name].removeprefix("sha256:")} for name in gate.asset_names(self.version)]}}
-        self.receipt = {"schemaVersion": 1, "status": "passed", "sourceRevision": self.sha, "productVersion": self.version, "commandDigest": gate.identity(gate.source_command(self.version, self.sha)), "environment": environment, "assets": assets, "dependencies": {key: {"receipt": value, "digest": gate.identity(value)} for key, value in {"source": source, "assets": archive, "installed": installed}.items()}}
+        matrix = {"status": "passed", "cases": [
+            {"gradle": gradle, "java": java, "expectedRejection": rejected,
+             "explicitInputAdmitted": not rejected, "ambientSecretAbsent": not rejected,
+             "explicitExecutableAdmitted": not rejected}
+            for gradle, java, rejected in [("7.6.4", 17, False), ("8.14.3", 21, False), ("9.4.1", 25, False), ("7.6.4", 25, True)]
+        ]}
+        installed = {"status": "passed", "sourceRevision": self.sha, "environment": environment, "assets": assets, "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import"], "broker": {"status": "passed", "readOnlyCatalog": True, "cliEquivalent": True, "selectorReused": True}, "gradleImport": matrix}
+        archive = {"status": "passed", "sourceRevision": self.sha, "observations": {"outcome": "COMPLETE", "release": "v1.0.0", "assets": [{"name": name, "sha256": assets[name].removeprefix("sha256:")} for name in gate.product_asset_names(self.version)]}}
+        sbom = {"status": "passed", "sourceRevision": self.sha, "archives": {name: assets[name] for name in gate.product_asset_names(self.version)[:2]}, "sbomDigest": assets[f"kast-sbom-v{self.version}.cdx.json"], "componentCount": 1}
+        self.receipt = {"schemaVersion": 1, "status": "passed", "sourceRevision": self.sha, "productVersion": self.version, "commandDigest": gate.identity(gate.source_command(self.version, self.sha)), "environment": environment, "assets": assets, "dependencies": {key: {"receipt": value, "digest": gate.identity(value)} for key, value in {"source": source, "assets": archive, "installed": installed, "sbom": sbom}.items()}}
 
     def validate(self, receipt):
         gate.validate_receipt(receipt, self.directory, self.version, self.sha)
@@ -45,6 +52,27 @@ class ReceiptIdentityTest(unittest.TestCase):
         (self.directory / gate.asset_names(self.version)[0]).write_bytes(b"changed")
         with self.assertRaisesRegex(gate.GateRejected, "assets differ"):
             self.validate(self.receipt)
+
+    def test_matrix_cannot_replace_rejection_or_omit_isolation_proof(self):
+        for change in ("no-rejection", "secret-unproven"):
+            receipt = copy.deepcopy(self.receipt)
+            dependency = receipt["dependencies"]["installed"]
+            cases = dependency["receipt"]["gradleImport"]["cases"]
+            if change == "no-rejection":
+                cases[-1] = cases[0]
+            else:
+                cases[0]["ambientSecretAbsent"] = False
+            dependency["digest"] = gate.identity(dependency["receipt"])
+            with self.subTest(change=change), self.assertRaisesRegex(gate.GateRejected, "Gradle matrix"):
+                self.validate(receipt)
+
+    def test_inventory_of_different_archives_cannot_authorize_publication(self):
+        receipt = copy.deepcopy(self.receipt)
+        dependency = receipt["dependencies"]["sbom"]
+        dependency["receipt"]["archives"] = {}
+        dependency["digest"] = gate.identity(dependency["receipt"])
+        with self.assertRaisesRegex(gate.GateRejected, "SBOM predecessor"):
+            self.validate(receipt)
 
     def test_missing_foreign_failed_or_tampered_proof_rejects(self):
         cases = []

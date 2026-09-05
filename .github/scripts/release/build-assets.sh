@@ -100,6 +100,10 @@ python3 distribution/release/verify_assets.py \
   --repository "${GITHUB_REPOSITORY:-amichne/kast}" \
   --report "${repository_root}/build/reports/sidecar/release-assets.json"
 
+python3 distribution/release/generate_sbom.py \
+  --source-root "${repository_root}" --assets-directory "${output_directory}" \
+  --version "${version}" --source-revision "${source_revision}"
+
 python3 integration-tests/release_artifact_acceptance.py \
   --assets-directory "${output_directory}" \
   --version "${version}" --source-revision "${source_revision}"
