@@ -285,6 +285,39 @@ tasks.register<Exec>("topologyIdentityDiagnostic") {
     )
 }
 
+tasks.register<Exec>("topologyDeclarationBindingAcceptance") {
+    group = "verification"
+    description =
+        "Proves exact installed declaration bindings, module separation, and source-generation replay."
+    dependsOn(stageInstalledProduct, semanticRuntimeArchive)
+    mustRunAfter("enterpriseAcceptance")
+    inputs.dir(installedProductDirectory)
+    inputs.file(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
+    inputs.file(layout.projectDirectory.file("integration-tests/topology_identity_diagnostic.py"))
+    inputs.file(layout.projectDirectory.file("integration-tests/topology_binding_acceptance.py"))
+    inputs.file(layout.projectDirectory.file("integration-tests/enterprise_acceptance.py"))
+    inputs.file(layout.projectDirectory.file("gradle/wrapper/gradle-wrapper.jar"))
+    inputs.dir(layout.projectDirectory.dir("fixtures/topology-identity-workspace"))
+    inputs.dir(enterpriseAcceptanceIdeaHome)
+    outputs.dir(layout.buildDirectory.dir("reports/topology-binding"))
+    outputs.upToDateWhen { false }
+    commandLine(
+        "python3",
+        layout.projectDirectory.file("integration-tests/topology_identity_diagnostic.py"),
+        "--product-root",
+        installedProductDirectory.get().asFile.absolutePath,
+        "--fixture",
+        layout.projectDirectory.dir("fixtures/topology-identity-workspace").asFile.absolutePath,
+        "--runtime-archive",
+        semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
+        "--idea-home",
+        enterpriseAcceptanceIdeaHome.get(),
+        "--report",
+        layout.buildDirectory.file("reports/topology-binding/acceptance.json").get().asFile.absolutePath,
+        "--require-binding",
+    )
+}
+
 tasks.register<Exec>("enterpriseAcceptance") {
     group = "verification"
     description = "Runs the installed sidecar enterprise fixture."
@@ -352,7 +385,7 @@ val releaseAcceptanceContractTest by tasks.registering(Exec::class) {
 val releaseSourceGate by tasks.registering {
     group = "verification"
     description = "Authoritative release-source predecessor graph; publication also requires exact-asset installed proof."
-    dependsOn("build", "installedProductTest", "verifyKastArchitecture", "enterpriseAcceptance", releaseDocumentationTest, releaseInstallerTest, releaseGateContractTest, releaseAcceptanceContractTest)
+    dependsOn("build", "installedProductTest", "verifyKastArchitecture", "enterpriseAcceptance", "topologyDeclarationBindingAcceptance", releaseDocumentationTest, releaseInstallerTest, releaseGateContractTest, releaseAcceptanceContractTest)
     dependsOn(gradle.includedBuild("build-logic").task(":check"))
 }
 

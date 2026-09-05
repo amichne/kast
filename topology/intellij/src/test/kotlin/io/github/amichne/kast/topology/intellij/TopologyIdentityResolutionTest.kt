@@ -1,16 +1,13 @@
 package io.github.amichne.kast.topology.intellij
 
+import io.github.amichne.kast.topology.contract.TopologyBindingFailure
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
-import io.github.amichne.kast.symbol.contract.ExactDeclarationRuntimeType
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.topology.contract.TopologyCandidateSet
-import io.github.amichne.kast.topology.contract.TopologyCompilerProjectionComponent
-import io.github.amichne.kast.topology.contract.TopologyCompilerProjectionEvidence
-import io.github.amichne.kast.topology.contract.TopologyIdentityStage
 import io.github.amichne.kast.topology.contract.TopologySourceFile
 import io.github.amichne.kast.topology.contract.TopologySymbol
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
@@ -36,128 +33,49 @@ class TopologyIdentityResolutionTest {
     lateinit var tempDir: Path
 
     @Test
-    fun `mismatch preserves exact comparison evidence and structural delta`() {
-        val candidates = candidates()
-        val file = candidates.files.single()
-        val registrySymbol = symbol(file, listOf("kotlin.String"))
-        val liveSymbol = symbol(file, listOf("kotlin.Int"))
-        val registry = TopologyProjectionRegistry.from(
-            TopologyProjectionRegistryKey.from(candidates),
-            listOf(registrySymbol),
-        ).refined()
-        val source = TopologyIdentitySource(
-            TopologyIdentityStage.REFERENCE_TARGET,
-            file,
-            registrySymbol.evidence.range,
-        )
-
-        val mismatch = assertInstanceOf(
-            TopologyIdentityResolution.Mismatched::class.java,
-            registry.resolveIdentity(
-                source = source,
-                targetFile = file,
-                targetDeclarationRange = registrySymbol.evidence.range,
-                liveProjection = TopologyCompilerProjectionEvidence.from(liveSymbol.evidence),
-                liveSymbolRuntimeType = runtimeType("org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol"),
-                psiDeclarationRuntimeType = runtimeType("org.jetbrains.kotlin.psi.KtNamedFunction"),
-            ),
-        )
-
-        assertEquals(TopologyIdentityStage.REFERENCE_TARGET, mismatch.evidence.stage)
-        assertEquals(file, mismatch.evidence.sourceFile)
-        assertEquals(registrySymbol.evidence.range, mismatch.evidence.sourceOccurrence)
-        assertEquals(file, mismatch.evidence.targetFile)
-        assertEquals(registrySymbol.evidence.range, mismatch.evidence.targetDeclarationRange)
-        assertEquals(
-            TopologyCompilerProjectionEvidence.from(registrySymbol.evidence),
-            mismatch.evidence.registryProjection,
-        )
-        assertEquals(
-            TopologyCompilerProjectionEvidence.from(liveSymbol.evidence),
-            mismatch.evidence.liveProjection,
-        )
-        assertEquals(
-            setOf(
-                TopologyCompilerProjectionComponent.VALUE_PARAMETERS,
-                TopologyCompilerProjectionComponent.IDENTITY,
-            ),
-            mismatch.evidence.delta.components,
-        )
-        assertEquals(
-            "org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol",
-            mismatch.evidence.liveSymbolRuntimeType.value,
-        )
-        assertEquals(
-            "org.jetbrains.kotlin.psi.KtNamedFunction",
-            mismatch.evidence.psiDeclarationRuntimeType.value,
-        )
+    fun `matching compiler renderings cannot admit a wrong source role`() {
+        val file = candidates().files.single()
+        val registry = symbol(file, listOf("kotlin.String"))
+        val wrong = symbol(file, listOf("kotlin.String"), CompilerSymbolKind.CONSTRUCTOR)
+        assertEquals(registry.evidence.compilerIdentity, wrong.evidence.compilerIdentity)
+        val result = assertInstanceOf(Refinement.Rejected::class.java, TopologyBindingRole.admit(
+            registry.evidence.kind,
+            TopologySourceRole.from(registry.evidence.kind),
+            TopologySourceRole.from(wrong.evidence.kind),
+        ))
+        assertEquals(TopologyBindingFailure.ROLE_MISMATCH, result.failure)
     }
 
     @Test
-    fun `equivalent projection returns the registry owned symbol`() {
-        val candidates = candidates()
-        val file = candidates.files.single()
-        val registrySymbol = symbol(file, listOf("kotlin.String"))
-        val registry = TopologyProjectionRegistry.from(
-            TopologyProjectionRegistryKey.from(candidates),
-            listOf(registrySymbol),
-        ).refined()
-
-        val matched = assertInstanceOf(
-            TopologyIdentityResolution.Matched::class.java,
-            registry.resolveIdentity(
-                source = TopologyIdentitySource(
-                    TopologyIdentityStage.REFERENCE_TARGET,
-                    file,
-                    registrySymbol.evidence.range,
-                ),
-                targetFile = file,
-                targetDeclarationRange = registrySymbol.evidence.range,
-                liveProjection = TopologyCompilerProjectionEvidence.from(
-                    registrySymbol.evidence,
-                ),
-                liveSymbolRuntimeType = runtimeType("KaNamedFunctionSymbol"),
-                psiDeclarationRuntimeType = runtimeType("KtNamedFunction"),
-            ),
-        )
-
-        assertSame(registrySymbol, matched.symbol)
+    fun `every supported matching native role is admitted`() {
+        CompilerSymbolKind.entries.forEach { kind ->
+            assertInstanceOf(Refinement.Refined::class.java, TopologyBindingRole.admit(
+                kind, TopologySourceRole.from(kind), TopologySourceRole.from(kind),
+            ))
+        }
     }
 
     @Test
-    fun `structural difference cannot widen the compiler identity rejection rule`() {
+    fun `unsupported native roles never establish binding`() {
+        val result = assertInstanceOf(Refinement.Rejected::class.java, TopologyBindingRole.admit(
+            CompilerSymbolKind.FUNCTION, TopologySourceRole.FUNCTION, TopologySourceRole.UNSUPPORTED,
+        ))
+        assertEquals(TopologyBindingFailure.ORIGIN_NOT_ADMITTED, result.failure)
+    }
+
+    @Test
+    fun `location lookup returns only the exact registry candidate`() {
         val candidates = candidates()
         val file = candidates.files.single()
-        val registrySymbol = symbol(file, listOf("kotlin.String"))
-        val sameIdentityDifferentKind = symbol(
-            file,
-            listOf("kotlin.String"),
-            CompilerSymbolKind.CONSTRUCTOR,
-        )
-        val registry = TopologyProjectionRegistry.from(
-            TopologyProjectionRegistryKey.from(candidates),
-            listOf(registrySymbol),
-        ).refined()
-
-        val matched = assertInstanceOf(
-            TopologyIdentityResolution.Matched::class.java,
-            registry.resolveIdentity(
-                source = TopologyIdentitySource(
-                    TopologyIdentityStage.REFERENCE_TARGET,
-                    file,
-                    registrySymbol.evidence.range,
-                ),
-                targetFile = file,
-                targetDeclarationRange = registrySymbol.evidence.range,
-                liveProjection = TopologyCompilerProjectionEvidence.from(
-                    sameIdentityDifferentKind.evidence,
-                ),
-                liveSymbolRuntimeType = runtimeType("KaConstructorSymbol"),
-                psiDeclarationRuntimeType = runtimeType("KtNamedFunction"),
-            ),
-        )
-
-        assertSame(registrySymbol, matched.symbol)
+        val symbol = symbol(file, listOf("T"))
+        val key = TopologyProjectionRegistryKey.from(candidates)
+        val registry = TopologyProjectionRegistry.from(key, listOf(symbol)).refined()
+        val found = assertInstanceOf(TopologyRegistryCandidateLookup.Found::class.java,
+            registry.candidateAt(file, 0, 7))
+        assertSame(symbol, found.candidate.symbol)
+        assertEquals(key, found.candidate.key)
+        assertEquals(TopologyRegistryCandidateLookup.Unavailable, registry.candidateAt(file, 1, 7))
+        assertEquals(TopologyRegistryCandidateLookup.Rejected, registry.candidateAt(file, -1, 7))
     }
 
     private fun candidates(): TopologyCandidateSet {
@@ -224,9 +142,6 @@ class TopologyIdentityResolutionTest {
         ).refined()
         return PublishedWorkspace.publish(reconciled, EvidenceGeneration.parse(1).refined())
     }
-
-    private fun runtimeType(raw: String): ExactDeclarationRuntimeType =
-        ExactDeclarationRuntimeType.parse(raw).refined()
 
     private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
         is Refinement.Refined -> value

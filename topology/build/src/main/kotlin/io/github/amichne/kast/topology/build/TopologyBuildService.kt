@@ -1,5 +1,7 @@
 package io.github.amichne.kast.topology.build
 
+import io.github.amichne.kast.kernel.KastTopologyBindingFailure
+import io.github.amichne.kast.topology.contract.TopologyBindingFailure
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.KastObservability
 import io.github.amichne.kast.kernel.KastSpanCompletion
@@ -10,13 +12,9 @@ import io.github.amichne.kast.kernel.KastSpanMeasurement
 import io.github.amichne.kast.kernel.KastSpanName
 import io.github.amichne.kast.kernel.KastSpanObservation
 import io.github.amichne.kast.kernel.KastTopologyCacheDisposition
-import io.github.amichne.kast.kernel.KastTopologyCompilerProjection
-import io.github.amichne.kast.kernel.KastTopologyCompilerProjectionComponent
-import io.github.amichne.kast.kernel.KastTopologyCompilerSymbolKind
 import io.github.amichne.kast.kernel.KastTopologyIdentityStage
 import io.github.amichne.kast.kernel.KastTopologySourceRange
 import io.github.amichne.kast.kernel.KastTraceSpan
-import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.topology.contract.CompleteTopologyFile
 import io.github.amichne.kast.topology.contract.CompleteTopologyGeneration
@@ -28,8 +26,6 @@ import io.github.amichne.kast.topology.contract.TopologyCacheDisposition
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumeration
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumerator
 import io.github.amichne.kast.topology.contract.TopologyCandidateSet
-import io.github.amichne.kast.topology.contract.TopologyCompilerProjectionComponent
-import io.github.amichne.kast.topology.contract.TopologyCompilerProjectionEvidence
 import io.github.amichne.kast.topology.contract.TopologyExtractionFailure
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
 import io.github.amichne.kast.topology.contract.TopologyFileExtractor
@@ -534,13 +530,7 @@ private fun TopologyFileExtraction.IdentityMismatch.traceEvent(): KastSpanEvent 
         sourceOccurrence = evidence.sourceOccurrence.traceRange(),
         targetFile = evidence.targetFile.path.value,
         targetDeclaration = evidence.targetDeclarationRange.traceRange(),
-        registryProjection = evidence.registryProjection.traceProjection(),
-        liveProjection = evidence.liveProjection.traceProjection(),
-        liveSymbolRuntimeType = evidence.liveSymbolRuntimeType.value,
-        psiDeclarationRuntimeType = evidence.psiDeclarationRuntimeType.value,
-        delta = evidence.delta.components.mapTo(linkedSetOf()) { component ->
-            component.traceComponent()
-        },
+        reason = evidence.reason.traceReason(),
     )
 
 private fun TopologyIdentityStage.traceStage(): KastTopologyIdentityStage = when (this) {
@@ -554,41 +544,13 @@ private fun TopologyCacheDisposition.traceDisposition(): KastTopologyCacheDispos
         TopologyCacheDisposition.REUSED -> KastTopologyCacheDisposition.REUSED
     }
 
-private fun TopologyCompilerProjectionEvidence.traceProjection(): KastTopologyCompilerProjection =
-    KastTopologyCompilerProjection(
-        kind = kind.traceKind(),
-        qualifiedIdentity = qualifiedIdentity.value,
-        canonicalSignature = signature.canonicalEncoding().value,
-        compilerIdentity = identity.value,
-    )
-
-private fun CompilerSymbolKind.traceKind(): KastTopologyCompilerSymbolKind = when (this) {
-    CompilerSymbolKind.CLASSLIKE -> KastTopologyCompilerSymbolKind.CLASSLIKE
-    CompilerSymbolKind.CONSTRUCTOR -> KastTopologyCompilerSymbolKind.CONSTRUCTOR
-    CompilerSymbolKind.FUNCTION -> KastTopologyCompilerSymbolKind.FUNCTION
-    CompilerSymbolKind.PROPERTY -> KastTopologyCompilerSymbolKind.PROPERTY
-    CompilerSymbolKind.TYPE_ALIAS -> KastTopologyCompilerSymbolKind.TYPE_ALIAS
-}
-
-private fun TopologyCompilerProjectionComponent.traceComponent():
-    KastTopologyCompilerProjectionComponent = when (this) {
-    TopologyCompilerProjectionComponent.KIND -> KastTopologyCompilerProjectionComponent.KIND
-    TopologyCompilerProjectionComponent.QUALIFIED_IDENTITY ->
-        KastTopologyCompilerProjectionComponent.QUALIFIED_IDENTITY
-    TopologyCompilerProjectionComponent.SIGNATURE_KIND ->
-        KastTopologyCompilerProjectionComponent.SIGNATURE_KIND
-    TopologyCompilerProjectionComponent.RECEIVER ->
-        KastTopologyCompilerProjectionComponent.RECEIVER
-    TopologyCompilerProjectionComponent.CONTEXT_RECEIVERS ->
-        KastTopologyCompilerProjectionComponent.CONTEXT_RECEIVERS
-    TopologyCompilerProjectionComponent.VALUE_PARAMETERS ->
-        KastTopologyCompilerProjectionComponent.VALUE_PARAMETERS
-    TopologyCompilerProjectionComponent.TYPE_PARAMETER_COUNT ->
-        KastTopologyCompilerProjectionComponent.TYPE_PARAMETER_COUNT
-    TopologyCompilerProjectionComponent.RETURN_TYPE ->
-        KastTopologyCompilerProjectionComponent.RETURN_TYPE
-    TopologyCompilerProjectionComponent.IDENTITY ->
-        KastTopologyCompilerProjectionComponent.IDENTITY
+private fun TopologyBindingFailure.traceReason(): KastTopologyBindingFailure = when (this) {
+    TopologyBindingFailure.EPOCH_CHANGED -> KastTopologyBindingFailure.EPOCH_CHANGED
+    TopologyBindingFailure.DECLARATION_UNAVAILABLE -> KastTopologyBindingFailure.DECLARATION_UNAVAILABLE
+    TopologyBindingFailure.ORIGIN_NOT_ADMITTED -> KastTopologyBindingFailure.ORIGIN_NOT_ADMITTED
+    TopologyBindingFailure.ROLE_MISMATCH -> KastTopologyBindingFailure.ROLE_MISMATCH
+    TopologyBindingFailure.MODULE_MISMATCH -> KastTopologyBindingFailure.MODULE_MISMATCH
+    TopologyBindingFailure.DECLARATION_MISMATCH -> KastTopologyBindingFailure.DECLARATION_MISMATCH
 }
 
 private fun ExactDeclarationTextRange.traceRange(): KastTopologySourceRange =

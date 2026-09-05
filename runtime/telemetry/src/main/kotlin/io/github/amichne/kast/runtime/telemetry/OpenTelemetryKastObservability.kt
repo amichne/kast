@@ -117,29 +117,13 @@ private fun KastSpanEvent.TopologyIdentityMismatch.attributes(): Attributes =
         .put(TARGET_FILE, targetFile)
         .put(TARGET_DECLARATION_START, targetDeclaration.startInclusive.toLong())
         .put(TARGET_DECLARATION_END, targetDeclaration.endExclusive.toLong())
-        .put(REGISTRY_SYMBOL_KIND, registryProjection.kind.name.lowercase())
-        .put(LIVE_SYMBOL_KIND, liveProjection.kind.name.lowercase())
-        .put(REGISTRY_QUALIFIED_IDENTITY, registryProjection.qualifiedIdentity)
-        .put(LIVE_QUALIFIED_IDENTITY, liveProjection.qualifiedIdentity)
-        .put(REGISTRY_IDENTITY, registryProjection.compilerIdentity)
-        .put(LIVE_IDENTITY, liveProjection.compilerIdentity)
-        .put(QUALIFIED_IDENTITY_SAME, qualifiedIdentitySame)
-        .put(SIGNATURE_SAME, signatureSame)
-        .put(REGISTRY_SIGNATURE, registryProjection.canonicalSignature)
-        .put(LIVE_SIGNATURE, liveProjection.canonicalSignature)
-        .put(
-            PROJECTION_DELTA,
-            delta.sortedBy { component -> component.ordinal }
-                .map { component -> component.name.lowercase() },
-        )
-        .put(LIVE_SYMBOL_RUNTIME_KIND, liveSymbolRuntimeType)
-        .put(PSI_DECLARATION_RUNTIME_KIND, psiDeclarationRuntimeType)
+        .put(BINDING_FAILURE_REASON, reason.name.lowercase())
         .build()
 
 /*
  * Custom attribute ownership: Kast. Ordinary span values are closed enums or exact non-negative
  * counts. The one topology mismatch event additionally carries admitted workspace-relative paths,
- * detached compiler projections, and exact ranges; it never carries source text. These event-only
+ * a closed native binding reason and exact ranges; it never carries source text. These event-only
  * values are prohibited as metric dimensions. There is no applicable stable semantic convention
  * for compiler-identity comparison outcomes.
  */
@@ -164,28 +148,9 @@ private val TARGET_DECLARATION_START =
     AttributeKey.longKey("io.github.amichne.kast.target.declaration.start")
 private val TARGET_DECLARATION_END =
     AttributeKey.longKey("io.github.amichne.kast.target.declaration.end")
-private val REGISTRY_SYMBOL_KIND =
-    AttributeKey.stringKey("io.github.amichne.kast.registry.symbol.kind")
-private val LIVE_SYMBOL_KIND = AttributeKey.stringKey("io.github.amichne.kast.live.symbol.kind")
-private val REGISTRY_QUALIFIED_IDENTITY =
-    AttributeKey.stringKey("io.github.amichne.kast.registry.qualified.identity")
-private val LIVE_QUALIFIED_IDENTITY =
-    AttributeKey.stringKey("io.github.amichne.kast.live.qualified.identity")
-private val REGISTRY_IDENTITY = AttributeKey.stringKey("io.github.amichne.kast.registry.identity")
-private val LIVE_IDENTITY = AttributeKey.stringKey("io.github.amichne.kast.live.identity")
-private val QUALIFIED_IDENTITY_SAME =
-    AttributeKey.booleanKey("io.github.amichne.kast.qualified.identity.same")
-private val SIGNATURE_SAME = AttributeKey.booleanKey("io.github.amichne.kast.signature.same")
-private val REGISTRY_SIGNATURE = AttributeKey.stringKey("io.github.amichne.kast.registry.signature")
-private val LIVE_SIGNATURE = AttributeKey.stringKey("io.github.amichne.kast.live.signature")
-private val PROJECTION_DELTA = AttributeKey.stringArrayKey("io.github.amichne.kast.projection.delta")
-private val LIVE_SYMBOL_RUNTIME_KIND =
-    AttributeKey.stringKey("io.github.amichne.kast.live.symbol.runtime.kind")
-private val PSI_DECLARATION_RUNTIME_KIND =
-    AttributeKey.stringKey("io.github.amichne.kast.psi.declaration.runtime.kind")
+private val BINDING_FAILURE_REASON =
+    AttributeKey.stringKey("io.github.amichne.kast.topology.binding.reason")
 
-/** Stable OpenTelemetry registry attribute used only for escaped unexpected failures. */
+/** Stable attributes for unexpected exceptions, without messages or stack traces. */
 private val ERROR_TYPE = AttributeKey.stringKey("error.type")
-
-/** Stable exception-event type; exception messages and stack traces are excluded by policy. */
 private val EXCEPTION_TYPE = AttributeKey.stringKey("exception.type")

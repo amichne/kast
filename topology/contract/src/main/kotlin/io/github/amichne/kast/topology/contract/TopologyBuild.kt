@@ -182,7 +182,7 @@ sealed interface TopologyFileExtraction {
     ) : TopologyFileExtraction
 
     /**
-     * Fail-closed compiler-identity rejection retaining the exact detached comparison evidence.
+     * Fail-closed native declaration-binding rejection retaining exact detached failure evidence.
      * Public protocol projection continues to expose [TopologyExtractionFailure.COMPILER_IDENTITY_MISMATCH].
      */
     data class IdentityMismatch(
