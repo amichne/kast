@@ -171,9 +171,18 @@ def run_case(args: argparse.Namespace, version: str, jdk: Jdk, rejected: bool = 
     if args.runtime_archive:
         environment["KAST_RUNTIME_ARCHIVE"] = str(args.runtime_archive)
     stopped = False
+    completed = False
     try:
         exit_code, started = command(args.kast, workspace, environment,
                                      ["start", f"--idea-home={args.idea_home}"], START_TIMEOUT_SECONDS)
+        # Preserve the bounded lifecycle projection before retiring a failed case.
+        # Command output has already passed the size and secret-leak checks.
+        observation = {"gradle": version, "java": jdk.feature, "expectedRejection": rejected,
+                       "exitCode": exit_code,
+                       "lifecycle": {key: started[key] for key in
+                                     ("status", "reason", "bootstrap", "runtime") if key in started}}
+        observation_path = args.state_root / f"gradle-{version}-java-{jdk.feature}.json"
+        observation_path.write_text(json.dumps(observation, indent=2, sort_keys=True) + "\n")
         if (exit_code != 0) != rejected:
             raise AcceptanceFailure("installed startup did not match the matrix expectation")
         # Passive status must retain the same report after either startup outcome.
@@ -190,6 +199,7 @@ def run_case(args: argparse.Namespace, version: str, jdk: Jdk, rejected: bool = 
                 OPERATION_TIMEOUT_SECONDS)
             if code != 0 or not any(item.get("name") == "GradleImportProbe" for item in symbols.get("items", [])):
                 raise AcceptanceFailure("installed semantic discovery did not observe the imported fixture")
+        completed = True
         return {"gradle": version, "java": jdk.feature, "expectedRejection": rejected,
                 "selection": report, "explicitInputAdmitted": not rejected,
                 "ambientSecretAbsent": not rejected, "explicitExecutableAdmitted": not rejected}
@@ -198,8 +208,12 @@ def run_case(args: argparse.Namespace, version: str, jdk: Jdk, rejected: bool = 
             code, _ = command(args.kast, workspace, environment, ["stop"], OPERATION_TIMEOUT_SECONDS)
             stopped = code == 0
         finally:
-            if stopped:
+            if stopped and completed:
                 shutil.rmtree(host)
+            elif stopped:
+                # Retire the process but retain this isolated fixture's diagnostic
+                # files locally. They are never copied into the published receipt.
+                print(f"gradle-import-acceptance: retired failed case; diagnostic state retained at {host}")
             else:
                 raise AcceptanceFailure(f"runtime retirement unproven; retained owned state at {host}")
 
