@@ -1,5 +1,6 @@
 package io.github.amichne.kast.topology.intellij
 
+import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.DumbService
@@ -148,15 +149,15 @@ class IntellijTopologyFileExtractor internal constructor(
         val symbolByDeclaration = buildMap {
             requested.declarations.forEach { declaration ->
                 when (
-                    val lookup = registry.symbolAt(
+                    val lookup = registry.candidateAt(
                         requested.file,
                         declaration.textRange.startOffset,
                         declaration.textRange.endOffset,
                     )
                 ) {
-                    is TopologyRegistrySymbolLookup.Found -> put(declaration, lookup.symbol)
-                    TopologyRegistrySymbolLookup.Unavailable -> Unit
-                    TopologyRegistrySymbolLookup.Rejected ->
+                    is TopologyRegistryCandidateLookup.Found -> put(declaration, lookup.candidate.symbol)
+                    TopologyRegistryCandidateLookup.Unavailable -> Unit
+                    TopologyRegistryCandidateLookup.Rejected ->
                         return failed(
                             request.file,
                             TopologyFileExtractionFailure.DECLARATION_EVIDENCE_REJECTED,
@@ -167,6 +168,8 @@ class IntellijTopologyFileExtractor internal constructor(
         val requestedSymbols = requested.declarations.mapNotNull(symbolByDeclaration::get)
             .distinct()
             .sorted()
+        // PSI stays confined to this uninterrupted read action. The detached registry never owns it.
+        val sourceLookup = RegisteredSources(project, requested)
         val edges = mutableListOf<TopologyEdge>()
         PsiTreeUtil.collectElementsOfType(requested.psi, KtReferenceExpression::class.java)
             .sortedBy { it.textRange.startOffset }
@@ -189,15 +192,17 @@ class IntellijTopologyFileExtractor internal constructor(
                     occurrence,
                 )
                 val target = when (
-                    val resolved = reference.topologyTarget(registry, identitySource)
+                    val resolved = reference.topologyTarget(registry, identitySource, sourceLookup)
                 ) {
-                    is TopologyReferenceTarget.Found -> resolved.symbol
+                    is TopologyReferenceTarget.Found -> resolved.binding.symbol
                     TopologyReferenceTarget.Unresolved -> return@forEach
                     is TopologyReferenceTarget.Mismatched ->
                         return identityMismatch(
                             resolved.evidence,
                             TopologyCacheDisposition.COMPUTED,
                         )
+                    is TopologyReferenceTarget.LoadFailed ->
+                        return failed(resolved.failure.file, resolved.failure.failure)
                     TopologyReferenceTarget.Rejected ->
                         return failed(
                             request.file,
@@ -239,18 +244,22 @@ class IntellijTopologyFileExtractor internal constructor(
                         request.file,
                         occurrence,
                     ),
+                    sourceLookup,
                 )
             ) {
-                is TopologyOverrideProjection.Projected -> projectedOverrides.symbols
+                is TopologyOverrideProjection.Projected -> projectedOverrides.bindings
                 is TopologyOverrideProjection.Mismatched ->
                     return identityMismatch(
                         projectedOverrides.evidence,
                         TopologyCacheDisposition.COMPUTED,
                     )
+                is TopologyOverrideProjection.LoadFailed ->
+                    return failed(projectedOverrides.failure.file, projectedOverrides.failure.failure)
                 TopologyOverrideProjection.Rejected ->
                     return failed(request.file, TopologyFileExtractionFailure.OVERRIDE_REJECTED)
             }
-            overrides.forEach { target ->
+            overrides.forEach { binding ->
+                val target = binding.symbol
                 val range = declaration.nameIdentifier?.textRange ?: declaration.textRange
                 when (val edge = TopologyEdge.fromBoundary(
                     TopologyEdgeKind.OVERRIDE,
@@ -344,6 +353,48 @@ class IntellijTopologyFileExtractor internal constructor(
         }
     }
 
+    /** Sole implementation of the sealed source-loading capability accepted by the binder. */
+    private inner class RegisteredSources(
+        private val project: Project,
+        requested: LoadedTopologyFile,
+    ) : TopologyRegisteredSourceLookup {
+        private val admittedSources = mutableMapOf(requested.file to requested)
+
+        override fun load(candidate: TopologyProjectionRegistry.Candidate): TopologyRegisteredSource =
+            loadRegistered(project, candidate, admittedSources)
+    }
+
+    /** Reloads by registry location, independently of the resolved target's PSI. */
+    private fun loadRegistered(
+        project: Project,
+        candidate: TopologyProjectionRegistry.Candidate,
+        admittedSources: MutableMap<TopologySourceFile, LoadedTopologyFile>,
+    ): TopologyRegisteredSource {
+        val loaded = admittedSources[candidate.symbol.file] ?: when (val result = load(project, candidate.symbol.file)) {
+            is TopologyFileLoad.Loaded -> result.file
+            TopologyFileLoad.Unavailable -> return TopologyRegisteredSource.LoadFailed(
+                TopologyFileExtractionFailure.FILE_UNAVAILABLE,
+            )
+            TopologyFileLoad.DocumentDirty -> return TopologyRegisteredSource.LoadFailed(
+                TopologyFileExtractionFailure.DOCUMENT_DIRTY,
+            )
+            TopologyFileLoad.PsiDocumentUncommitted -> return TopologyRegisteredSource.LoadFailed(
+                TopologyFileExtractionFailure.PSI_DOCUMENT_UNCOMMITTED,
+            )
+            TopologyFileLoad.VfsContentMismatch -> return TopologyRegisteredSource.LoadFailed(
+                TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH,
+            )
+            TopologyFileLoad.NotKotlinPsi -> return TopologyRegisteredSource.LoadFailed(
+                TopologyFileExtractionFailure.NOT_KOTLIN_PSI,
+            )
+        }
+        admittedSources[candidate.symbol.file] = loaded
+        val range = candidate.symbol.evidence.range
+        val declaration = loaded.declarationsByRange[TextRange(range.startInclusive, range.endExclusive)]
+            ?.singleOrNull() ?: return TopologyRegisteredSource.DeclarationUnavailable
+        return TopologyRegisteredSource.Loaded(declaration)
+    }
+
     /**
      * Proof transition: `(Project, TopologySourceFile) -> TopologyFileLoad`.
      *
@@ -399,13 +450,14 @@ private sealed interface TopologyFileLoad {
 
 private sealed interface TopologyReferenceTarget {
     data class Found(
-        val symbol: TopologySymbol,
+        val binding: ProvenTopologyBinding,
     ) : TopologyReferenceTarget
 
     data object Unresolved : TopologyReferenceTarget
     data class Mismatched(
         val evidence: TopologyIdentityMismatchEvidence,
     ) : TopologyReferenceTarget
+    data class LoadFailed(val failure: TopologyIdentityResolution.LoadFailed) : TopologyReferenceTarget
     data object Rejected : TopologyReferenceTarget
 }
 
@@ -420,15 +472,17 @@ private sealed interface TopologyReferenceTarget {
 private fun KtReferenceExpression.topologyTarget(
     registry: TopologyProjectionRegistry,
     source: TopologyIdentitySource,
+    lookup: TopologyRegisteredSourceLookup,
 ): TopologyReferenceTarget {
     for (native in references.filterIsInstance<KtReference>()) {
         when (val projection = analyze(native.element) {
             val symbol = native.resolveToSymbol()
                          ?: return@analyze TopologyIdentityResolution.Unsupported
-            symbol.topologyIdentityProjection(registry, source)
+            topologyIdentityProjection(symbol, registry, source, lookup)
         }) {
             is TopologyIdentityResolution.Matched ->
-                return TopologyReferenceTarget.Found(projection.symbol)
+                return TopologyReferenceTarget.Found(projection.binding)
+            is TopologyIdentityResolution.LoadFailed -> return TopologyReferenceTarget.LoadFailed(projection)
             TopologyIdentityResolution.Unsupported -> Unit
             is TopologyIdentityResolution.Mismatched ->
                 return TopologyReferenceTarget.Mismatched(projection.evidence)
@@ -444,6 +498,7 @@ private data class LoadedTopologyFile(
     val declarations: List<KtNamedDeclaration>,
 ) {
     val file: TopologySourceFile = content.file
+    val declarationsByRange: Map<TextRange, List<KtNamedDeclaration>> = declarations.groupBy { it.textRange }
 }
 
 private sealed interface OwningTopologySymbol {

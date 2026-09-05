@@ -1,15 +1,16 @@
 package io.github.amichne.kast.topology.intellij
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.topology.contract.TopologyBindingFailure
+import io.github.amichne.kast.kernel.KastTopologyBindingFailure
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
-import io.github.amichne.kast.symbol.contract.ExactDeclarationRuntimeType
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
+import io.github.amichne.kast.topology.contract.CompleteTopologyFile
 import io.github.amichne.kast.topology.contract.TopologyCacheDisposition
 import io.github.amichne.kast.topology.contract.TopologyCandidateSet
-import io.github.amichne.kast.topology.contract.TopologyCompilerProjectionEvidence
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
 import io.github.amichne.kast.topology.contract.TopologyFileExtractionFailure
 import io.github.amichne.kast.topology.contract.TopologyIdentityMismatchEvidence
@@ -156,6 +157,26 @@ class TopologyProjectionRegistryCacheTest {
     }
 
     @Test
+    fun `document readiness recovery is observed within the same content generation`() {
+        for (failure in listOf(
+            TopologyFileExtractionFailure.DOCUMENT_DIRTY,
+            TopologyFileExtractionFailure.PSI_DOCUMENT_UNCOMMITTED,
+        )) {
+            val candidates = candidates("a".repeat(64))
+            val key = TopologyProjectionRegistryKey.from(candidates)
+            val file = candidates.files.single()
+            val cache = TopologyReadEpochCache()
+            cache.resolve(key, file) { TopologyFileExtraction.Failed(file, failure) }
+            val ready = TopologyFileExtraction.Complete(
+                CompleteTopologyFile.admit(file, emptyList(), emptyList()).refined(),
+            )
+            val recovered = assertInstanceOf(TopologyReadEpochResolution.Computed::class.java,
+                cache.resolve(key, file) { ready })
+            assertSame(ready, recovered.extraction)
+        }
+    }
+
+    @Test
     fun `live source bytes must retain enumerated content identity`() {
         val original = "fun original() = Unit".toByteArray()
         val file = candidates(sha256(original)).files.single()
@@ -244,25 +265,12 @@ class TopologyProjectionRegistryCacheTest {
     }
 
     private fun mismatchEvidence(file: TopologySourceFile): TopologyIdentityMismatchEvidence {
-        val registrySymbol = symbol(file, "kotlin.String")
-        val liveSymbol = symbol(file, "kotlin.Int")
-        val registry = TopologyCompilerProjectionEvidence.from(registrySymbol.evidence)
-        val live = TopologyCompilerProjectionEvidence.from(liveSymbol.evidence)
-        return TopologyIdentityMismatchEvidence.admit(
-            stage = TopologyIdentityStage.REFERENCE_TARGET,
-            sourceFile = file,
-            sourceOccurrence = registrySymbol.evidence.range,
-            targetFile = file,
-            targetDeclarationRange = registrySymbol.evidence.range,
-            registryProjection = registry,
-            liveProjection = live,
-            liveSymbolRuntimeType = runtimeType("KaNamedFunctionSymbol"),
-            psiDeclarationRuntimeType = runtimeType("KtNamedFunction"),
-        ).refined()
+        val evidence = symbol(file, "kotlin.String").evidence
+        return TopologyIdentityMismatchEvidence(
+            TopologyIdentityStage.REFERENCE_TARGET, file, evidence.range,
+            file, evidence.range, TopologyBindingFailure.DECLARATION_MISMATCH,
+        )
     }
-
-    private fun runtimeType(raw: String): ExactDeclarationRuntimeType =
-        ExactDeclarationRuntimeType.parse(raw).refined()
 
     private fun workspace(root: SourceRoot): PublishedWorkspace {
         val canonical = CanonicalWorkspaceRoot.fromCanonicalPath(tempDir.toRealPath()).refined()

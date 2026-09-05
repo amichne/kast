@@ -81,3 +81,16 @@ fun main() {
     check(recursiveBound("value") == "value")
     println("PASS: public fixture compilation and runtime checks")
 }
+
+interface OverrideFeed<T> : Feed<T> { override val state: StateFlow<T> }
+interface InheritedOverrideFeed : OverrideFeed<String>
+fun inheritedOverrideRead(feed: InheritedOverrideFeed): String = feed.state.value
+
+interface GenericLeft<T> { fun consume(value: T) }
+interface GenericRight<T> { fun consume(value: T) }
+interface GenericBoth<T> : GenericLeft<T>, GenericRight<T>
+fun substitutedIntersection(value: GenericBoth<String>) = value.consume("value")
+
+open class GenericDelegating<T>(delegate: Feed<T>) : Feed<T> by delegate
+class StringDelegating(delegate: Feed<String>) : GenericDelegating<String>(delegate)
+fun substitutedDelegation(feed: StringDelegating): String = feed.state.value

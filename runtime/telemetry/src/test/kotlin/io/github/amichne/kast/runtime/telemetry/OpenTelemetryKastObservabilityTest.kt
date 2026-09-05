@@ -1,5 +1,6 @@
 package io.github.amichne.kast.runtime.telemetry
 
+import io.github.amichne.kast.kernel.KastTopologyBindingFailure
 import io.github.amichne.kast.kernel.KastObservability
 import io.github.amichne.kast.kernel.KastSpanCompletion
 import io.github.amichne.kast.kernel.KastSpanCount
@@ -9,9 +10,6 @@ import io.github.amichne.kast.kernel.KastSpanName
 import io.github.amichne.kast.kernel.KastSpanObservation
 import io.github.amichne.kast.kernel.KastSpanEvent
 import io.github.amichne.kast.kernel.KastTopologyCacheDisposition
-import io.github.amichne.kast.kernel.KastTopologyCompilerProjection
-import io.github.amichne.kast.kernel.KastTopologyCompilerProjectionComponent
-import io.github.amichne.kast.kernel.KastTopologyCompilerSymbolKind
 import io.github.amichne.kast.kernel.KastTopologyIdentityStage
 import io.github.amichne.kast.kernel.KastTopologySourceRange
 import io.opentelemetry.api.OpenTelemetry
@@ -42,24 +40,7 @@ class OpenTelemetryKastObservabilityTest {
             sourceOccurrence = KastTopologySourceRange(41, 54),
             targetFile = "events/Event.kt",
             targetDeclaration = KastTopologySourceRange(8, 31),
-            registryProjection = KastTopologyCompilerProjection(
-                kind = KastTopologyCompilerSymbolKind.FUNCTION,
-                qualifiedIdentity = "sample.consume",
-                canonicalSignature = "registry-signature",
-                compilerIdentity = "registry-identity",
-            ),
-            liveProjection = KastTopologyCompilerProjection(
-                kind = KastTopologyCompilerSymbolKind.FUNCTION,
-                qualifiedIdentity = "sample.consume",
-                canonicalSignature = "live-signature",
-                compilerIdentity = "live-identity",
-            ),
-            liveSymbolRuntimeType = "KaNamedFunctionSymbol",
-            psiDeclarationRuntimeType = "KtNamedFunction",
-            delta = setOf(
-                KastTopologyCompilerProjectionComponent.VALUE_PARAMETERS,
-                KastTopologyCompilerProjectionComponent.IDENTITY,
-            ),
+            reason = KastTopologyBindingFailure.DECLARATION_MISMATCH,
         )
 
         telemetry.inSpan(KastSpanName.TOPOLOGY_EXTRACTION) { span ->
@@ -125,83 +106,12 @@ class OpenTelemetryKastObservabilityTest {
             ),
         )
         assertEquals(
-            "function",
+            "declaration_mismatch",
             mismatch.attributes.get(
-                AttributeKey.stringKey("io.github.amichne.kast.registry.symbol.kind"),
+                AttributeKey.stringKey("io.github.amichne.kast.topology.binding.reason"),
             ),
         )
-        assertEquals(
-            "function",
-            mismatch.attributes.get(
-                AttributeKey.stringKey("io.github.amichne.kast.live.symbol.kind"),
-            ),
-        )
-        assertEquals(
-            "sample.consume",
-            mismatch.attributes.get(
-                AttributeKey.stringKey("io.github.amichne.kast.registry.qualified.identity"),
-            ),
-        )
-        assertEquals(
-            "sample.consume",
-            mismatch.attributes.get(
-                AttributeKey.stringKey("io.github.amichne.kast.live.qualified.identity"),
-            ),
-        )
-        assertEquals(
-            "registry-identity",
-            mismatch.attributes.get(
-                AttributeKey.stringKey("io.github.amichne.kast.registry.identity"),
-            ),
-        )
-        assertEquals(
-            "live-identity",
-            mismatch.attributes.get(
-                AttributeKey.stringKey("io.github.amichne.kast.live.identity"),
-            ),
-        )
-        assertEquals(
-            true,
-            mismatch.attributes.get(
-                AttributeKey.booleanKey("io.github.amichne.kast.qualified.identity.same"),
-            ),
-        )
-        assertEquals(
-            false,
-            mismatch.attributes.get(
-                AttributeKey.booleanKey("io.github.amichne.kast.signature.same"),
-            ),
-        )
-        assertEquals(
-            "registry-signature",
-            mismatch.attributes.get(
-                AttributeKey.stringKey("io.github.amichne.kast.registry.signature"),
-            ),
-        )
-        assertEquals(
-            "live-signature",
-            mismatch.attributes.get(
-                AttributeKey.stringKey("io.github.amichne.kast.live.signature"),
-            ),
-        )
-        assertEquals(
-            listOf("value_parameters", "identity"),
-            mismatch.attributes.get(
-                AttributeKey.stringArrayKey("io.github.amichne.kast.projection.delta"),
-            ),
-        )
-        assertEquals(
-            "KaNamedFunctionSymbol",
-            mismatch.attributes.get(
-                AttributeKey.stringKey("io.github.amichne.kast.live.symbol.runtime.kind"),
-            ),
-        )
-        assertEquals(
-            "KtNamedFunction",
-            mismatch.attributes.get(
-                AttributeKey.stringKey("io.github.amichne.kast.psi.declaration.runtime.kind"),
-            ),
-        )
+        assertEquals(9, mismatch.attributes.size())
         assertEquals(StatusCode.UNSET, span.status.statusCode)
         assertFalse(span.toString().contains("fun leaked"))
     }

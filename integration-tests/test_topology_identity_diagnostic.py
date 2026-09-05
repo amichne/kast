@@ -139,124 +139,20 @@ class TopologyIdentityDiagnosticTest(unittest.TestCase):
         self.assertEqual("probes/ImplicitPrimaryConstructor.kt", evidence.mismatch.source_file)
         self.assertEqual((42, 63), evidence.mismatch.source_occurrence)
         self.assertEqual((0, 39), evidence.mismatch.target_declaration)
-        self.assertEqual("classlike", evidence.mismatch.registry.kind)
-        self.assertEqual("constructor", evidence.mismatch.live.kind)
-        self.assertEqual("diagnostic.ImplicitPrimaryTarget", evidence.mismatch.registry.qualified_identity)
-        self.assertEqual(
-            ["kind", "qualified_identity", "signature_kind", "identity"],
-            evidence.mismatch.delta,
-        )
-        artifact = evidence.mismatch.document()
-        self.assertEqual(
-            "class-like",
-            artifact["registryProjection"]["canonicalSignature"]["kind"],
-        )
-        self.assertEqual(
-            "function",
-            artifact["liveProjection"]["canonicalSignature"]["kind"],
-        )
+        self.assertEqual("role_mismatch", evidence.mismatch.reason)
+        self.assertEqual("role_mismatch", evidence.mismatch.document()["reason"])
+        self.assertNotIn("registryProjection", evidence.mismatch.document())
 
-    def test_diagnostic_artifact_decodes_structured_canonical_signature(self) -> None:
-        encoding = canonical_encoding(
-            "canonical-signature-v1",
-            "function",
-            "diagnostic.sample",
-            "receiver-present",
-            "kotlin.String",
-            "1",
-            "diagnostic.Context",
-            "2",
-            "kotlin.Int",
-            "kotlin.Long",
-            "1",
-        )
-
-        signature = topology_identity_diagnostic.canonical_signature_document(encoding)
-
-        self.assertEqual("function", signature["kind"])
-        self.assertEqual(
-            {"state": "present", "type": "kotlin.String"},
-            signature["receiver"],
-        )
-        self.assertEqual(["diagnostic.Context"], signature["contextReceivers"])
-        self.assertEqual(["kotlin.Int", "kotlin.Long"], signature["valueParameters"])
-        self.assertEqual(1, signature["typeParameterCount"])
-        self.assertEqual(encoding, signature["encoding"])
-
-    def test_location_shared_by_different_symbol_kinds_is_classified_mechanically(self) -> None:
-        mismatch = topology_identity_diagnostic.mismatch_from_attributes(
-            topology_identity_diagnostic.decode_attributes(mismatch_attributes())
-        )
-
-        self.assertEqual(
-            "semantic-location-key-collision",
-            topology_identity_diagnostic.classify_mismatch(mismatch),
-        )
-
-    def test_projection_decision_table_is_total_for_retained_evidence(self) -> None:
-        cases = (
-            (
-                {
-                    "io.github.amichne.kast.live.symbol.kind": "classlike",
-                    "io.github.amichne.kast.live.qualified.identity": "diagnostic.Other",
-                    "io.github.amichne.kast.live.signature": classlike_signature(
-                        "diagnostic.Other"
-                    ),
-                    "io.github.amichne.kast.qualified.identity.same": False,
-                    "io.github.amichne.kast.projection.delta": [
-                        "qualified_identity",
-                        "identity",
-                    ],
-                },
-                "target-mapping-or-qualified-identity-projection-defect",
-            ),
-            (
-                {
-                    "io.github.amichne.kast.registry.symbol.kind": "function",
-                    "io.github.amichne.kast.live.symbol.kind": "function",
-                    "io.github.amichne.kast.live.qualified.identity": "diagnostic.ImplicitPrimaryTarget",
-                    "io.github.amichne.kast.registry.signature": function_signature(
-                        "diagnostic.ImplicitPrimaryTarget",
-                        "kotlin.String",
-                    ),
-                    "io.github.amichne.kast.live.signature": function_signature(
-                        "diagnostic.ImplicitPrimaryTarget",
-                        "kotlin.Int",
-                    ),
-                    "io.github.amichne.kast.qualified.identity.same": True,
-                    "io.github.amichne.kast.projection.delta": [
-                        "value_parameters",
-                        "identity",
-                    ],
-                },
-                "canonical-signature-projection-defect",
-            ),
-            (
-                {
-                    "io.github.amichne.kast.live.symbol.kind": "classlike",
-                    "io.github.amichne.kast.live.qualified.identity": "diagnostic.ImplicitPrimaryTarget",
-                    "io.github.amichne.kast.live.signature": classlike_signature(
-                        "diagnostic.ImplicitPrimaryTarget"
-                    ),
-                    "io.github.amichne.kast.qualified.identity.same": True,
-                    "io.github.amichne.kast.signature.same": True,
-                    "io.github.amichne.kast.projection.delta": ["identity"],
-                },
-                "compiler-identity-encoding-defect",
-            ),
-        )
-        for replacements, expected in cases:
-            with self.subTest(expected=expected):
-                attributes = mismatch_attributes()
-                for key, value in replacements.items():
-                    replace_attribute(attributes, key, value)
-                mismatch = topology_identity_diagnostic.mismatch_from_attributes(
-                    topology_identity_diagnostic.decode_attributes(attributes)
-                )
-                self.assertEqual(
-                    expected,
-                    topology_identity_diagnostic.classify_mismatch(mismatch),
-                )
+    def test_binding_reason_is_closed_and_independent_of_rendering(self) -> None:
+        for reason in topology_identity_diagnostic.BindingFailure:
+            attrs = topology_identity_diagnostic.decode_attributes(mismatch_attributes())
+            attrs["io.github.amichne.kast.topology.binding.reason"] = reason.value
+            evidence = topology_identity_diagnostic.mismatch_from_attributes(attrs)
+            self.assertEqual(reason.value, topology_identity_diagnostic.classify_mismatch(evidence))
+        for invalid in ("", "invented-reason", True, 3):
+            attrs["io.github.amichne.kast.topology.binding.reason"] = invalid
+            with self.assertRaises(topology_identity_diagnostic.DiagnosticEvidenceError):
+                topology_identity_diagnostic.mismatch_from_attributes(attrs)
 
     def test_cold_run_rejects_reused_or_duplicate_mismatch_evidence(self) -> None:
         reused = mismatch_attributes()
@@ -371,66 +267,15 @@ def mismatch_attributes() -> list[dict[str, object]]:
         "io.github.amichne.kast.target.file": "probes/ImplicitPrimaryConstructor.kt",
         "io.github.amichne.kast.target.declaration.start": 0,
         "io.github.amichne.kast.target.declaration.end": 39,
-        "io.github.amichne.kast.registry.symbol.kind": "classlike",
-        "io.github.amichne.kast.live.symbol.kind": "constructor",
-        "io.github.amichne.kast.registry.qualified.identity": "diagnostic.ImplicitPrimaryTarget",
-        "io.github.amichne.kast.live.qualified.identity": "diagnostic.ImplicitPrimaryTarget.<init>",
-        "io.github.amichne.kast.registry.identity": "registry-identity",
-        "io.github.amichne.kast.live.identity": "live-identity",
-        "io.github.amichne.kast.qualified.identity.same": False,
-        "io.github.amichne.kast.signature.same": False,
-        "io.github.amichne.kast.registry.signature": classlike_signature(
-            "diagnostic.ImplicitPrimaryTarget"
-        ),
-        "io.github.amichne.kast.live.signature": function_signature(
-            "diagnostic.ImplicitPrimaryTarget.<init>"
-        ),
-        "io.github.amichne.kast.projection.delta": [
-            "kind",
-            "qualified_identity",
-            "signature_kind",
-            "identity",
-        ],
-        "io.github.amichne.kast.live.symbol.runtime.kind": "KaConstructorSymbol",
-        "io.github.amichne.kast.psi.declaration.runtime.kind": "KtClass",
+        "io.github.amichne.kast.topology.binding.reason": "role_mismatch",
     }
     return [attribute(key, value) for key, value in values.items()]
 
 
-def canonical_encoding(*fields: str) -> str:
-    return "".join(f"{len(field.encode('utf-8'))}:{field}" for field in fields)
-
-
-def classlike_signature(qualified_identity: str) -> str:
-    return canonical_encoding(
-        "canonical-signature-v1",
-        "class-like",
-        qualified_identity,
-    )
-
-
-def function_signature(
-    qualified_identity: str,
-    value_parameter: str | None = None,
-) -> str:
-    value_parameters = () if value_parameter is None else (value_parameter,)
-    return canonical_encoding(
-        "canonical-signature-v1",
-        "function",
-        qualified_identity,
-        "receiver-absent",
-        "0",
-        str(len(value_parameters)),
-        *value_parameters,
-        "0",
-    )
-
-
 def replace_attribute(values: list[dict[str, object]], key: str, value: object) -> None:
-    replacement = attribute(key, value)
     for index, candidate in enumerate(values):
         if candidate.get("key") == key:
-            values[index] = replacement
+            values[index] = attribute(key, value)
             return
     raise AssertionError(f"attribute not found: {key}")
 
