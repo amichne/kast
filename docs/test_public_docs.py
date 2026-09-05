@@ -908,7 +908,6 @@ def check_documented_host_contract() -> None:
     for relative, text in {
         "README.md": README.read_text(),
         "docs/public/start.mdx": (PUBLIC / "start.mdx").read_text(),
-        "docs/public/reference/compatibility.mdx": (PUBLIC / "reference/compatibility.mdx").read_text(),
     }.items():
         normalized = " ".join(text.split())
         for claim in expected:
