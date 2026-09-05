@@ -136,7 +136,7 @@ def running_status(document, host):
     runtime = document.get("runtimeId")
     if not isinstance(runtime, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", runtime):
         raise SemanticCorruptionFailure(Cause.RUNTIME_UNPROVEN)
-    if not isinstance(key, str) or not re.fullmatch(r"[0-9a-f]{64}", key):
+    if not isinstance(key, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", key):
         raise SemanticCorruptionFailure(Cause.STATE_AUTHORITY_REJECTED)
     return key
 
@@ -145,7 +145,7 @@ def selected_receipt(acceptance, host, key):
     cache_root = host.runtime / "intellij-caches"
     if acceptance.workspace != host.workspace or acceptance.environment.get("KAST_CACHE_ROOT") != str(cache_root):
         raise SemanticCorruptionFailure(Cause.STATE_AUTHORITY_REJECTED)
-    if not re.fullmatch(r"[0-9a-f]{64}", key):
+    if not re.fullmatch(r"sha256:[0-9a-f]{64}", key):
         raise SemanticCorruptionFailure(Cause.STATE_AUTHORITY_REJECTED)
     path = cache_root / key / "cache-identity.properties"
     try:

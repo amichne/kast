@@ -14,6 +14,12 @@ import release_semantic_corruption as corruption
 
 
 class SemanticCorruptionTest(unittest.TestCase):
+    def test_public_cache_identity_preserves_its_sha256_prefix(self):
+        host = SimpleNamespace(workspace=Path("/workspace"))
+        document = {"command": "status", "status": "complete", "runtime": "running", "root": "/workspace",
+                    "runtimeId": "sha256:" + "b" * 64, "cache": {"identity": "sha256:" + "a" * 64}}
+        self.assertEqual("sha256:" + "a" * 64, corruption.running_status(document, host))
+
     def test_generic_failure_cannot_prove_finite_corruption_rejection(self):
         result = subprocess.CompletedProcess([], 1, "", "unrelated failure")
         with self.assertRaises(corruption.SemanticCorruptionFailure):
@@ -89,14 +95,14 @@ class SemanticCorruptionTest(unittest.TestCase):
         with Fixture() as fixture:
             fixture.environment["KAST_CACHE_ROOT"] = "/foreign"
             with self.assertRaises(corruption.SemanticCorruptionFailure):
-                corruption.selected_receipt(fixture, fixture.host, "a" * 64)
+                corruption.selected_receipt(fixture, fixture.host, "sha256:" + "a" * 64)
             fixture.environment["KAST_CACHE_ROOT"] = str(fixture.host.runtime / "intellij-caches")
             target = fixture.path.with_name("unselected.properties")
             fixture.path.rename(target)
             fixture.path.symlink_to(target)
             before = target.read_bytes()
             with self.assertRaises(corruption.SemanticCorruptionFailure):
-                corruption.selected_receipt(fixture, fixture.host, "a" * 64)
+                corruption.selected_receipt(fixture, fixture.host, "sha256:" + "a" * 64)
             self.assertEqual(before, target.read_bytes())
 
 
@@ -116,7 +122,7 @@ class Fixture:
             subprocess.run(["git", *arguments], cwd=self.host.workspace, check=True, capture_output=True)
         self.workspace = self.host.workspace
         self.environment = {"KAST_CACHE_ROOT": str(self.host.runtime / "intellij-caches")}
-        self.path = self.host.runtime / "intellij-caches" / ("a" * 64) / "cache-identity.properties"
+        self.path = self.host.runtime / "intellij-caches" / ("sha256:" + "a" * 64) / "cache-identity.properties"
         self.path.parent.mkdir(parents=True)
         self.path.write_text("format=kast.sidecar-cache.identity.v3\nproject.root=" + str(self.workspace) + "\n")
         self.path.chmod(0o640)
@@ -137,7 +143,7 @@ class Fixture:
         if arguments[0] == "status":
             assert b"format=kast.sidecar-cache.identity.v3" in self.path.read_bytes(), "status observed a receipt that was not restored"
             return {"command": "status", "status": "complete", "runtime": "running", "runtimeId": "sha256:" + "b" * 64,
-                    "root": str(self.workspace), "cache": {"identity": "a" * 64, "state": "warm"}}
+                    "root": str(self.workspace), "cache": {"identity": "sha256:" + "a" * 64, "state": "warm"}}
         if arguments[0] == "source":
             return {"operation": "source.read", "status": "complete", "text": "private source payload"}
         if arguments[0] == "topology":
