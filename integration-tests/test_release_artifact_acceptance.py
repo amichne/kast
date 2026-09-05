@@ -131,9 +131,9 @@ class DurableObservationTest(unittest.TestCase):
                 child_environment=lambda: {"KAST_ACCEPTANCE_IDEA_HOME": str(root)})
             bounds = {key: 1 for key in ("maximumOutputBytes", "maximumOperationSeconds", "maximumStartupSeconds", "maximumReconciliationSeconds")}
             observed = acceptance.ObservedAcceptance(root / "kast", host, bounds, root / "observations.json", "a" * 40)
-            with mock.patch.object(acceptance.enterprise, "workspace_source_identity", side_effect=SystemExit("private source/path error")):
+            with mock.patch.object(acceptance.enterprise, "workspace_source_snapshot", side_effect=SystemExit("private source/path error")):
                 with self.assertRaisesRegex(acceptance.gate.GateRejected, "repository source identity"):
-                    observed.prove_workspace_preservation(acceptance.WorkspacePreservationStage.FIRST_UNINSTALL, "sha256:" + "a" * 64)
+                    observed.prove_workspace_preservation(acceptance.WorkspacePreservationStage.FIRST_UNINSTALL, acceptance.enterprise.WorkspaceSourceSnapshot((), ""))
             serialized = (root / "observations.json").read_text()
             document = json.loads(serialized)
             self.assertEqual("repository-source-unproven", document["failure"])
@@ -197,6 +197,10 @@ class WorkspacePreservationTest(unittest.TestCase):
                 uninstalls += 1
                 executable.unlink()
                 change("first-uninstall" if uninstalls == 1 else "final-uninstall")
+            elif ":cli:installedColdBrokerAcceptance" in command:
+                change("after-cold-broker")
+            elif any(str(value).endswith("gradle_import_acceptance.py") for value in command):
+                change("before-final-uninstall")
         def install(*_):
             write_executable()
             change("reinstall")
@@ -237,7 +241,7 @@ class WorkspacePreservationTest(unittest.TestCase):
             acceptance.main()
 
     def test_each_installation_transition_rejects_untracked_and_staged_source_damage(self):
-        for stage in ("first-uninstall", "reinstall", "final-uninstall"):
+        for stage in ("first-uninstall", "reinstall", "after-cold-broker", "before-final-uninstall", "final-uninstall"):
             for damage in ("untracked", "staged"):
                 with self.subTest(stage=stage, damage=damage), tempfile.TemporaryDirectory() as raw:
                     root = Path(raw).resolve()
@@ -252,6 +256,8 @@ class WorkspacePreservationTest(unittest.TestCase):
                     self.assertEqual("rejected", observation["status"])
                     self.assertEqual("repository-source-changed", observation["cause"])
                     self.assertNotEqual(observation["expectedDigest"], observation["observedDigest"])
+                    self.assertIn("changes", observation)
+                    self.assertEqual(1, observation["changes"]["changeKindCounts"]["removed" if damage == "untracked" else "content-changed"])
                     self.assertNotIn("PrivateUntracked", report)
                     self.assertNotIn("Tracked.kt", report)
                     self.assertFalse((root / "build/reports/release-gate/installed.json").exists())
@@ -261,7 +267,7 @@ class WorkspacePreservationTest(unittest.TestCase):
             root = Path(raw).resolve()
             self.journey(root)
             proof = json.loads((root / "build/reports/release-gate/installed.json").read_text())["workspacePreservation"]
-            self.assertEqual(["first-uninstall", "reinstall", "final-uninstall"], [item["stage"] for item in proof])
+            self.assertEqual(["first-uninstall", "reinstall", "before-cold-broker", "after-cold-broker", "before-final-uninstall", "final-uninstall"], [item["stage"] for item in proof])
             self.assertTrue(all(item["status"] == "passed" and item["expectedDigest"] == item["observedDigest"] for item in proof))
             self.assertEqual(1, len({item["expectedDigest"] for item in proof}))
 
@@ -273,6 +279,8 @@ class WorkspacePreservationTest(unittest.TestCase):
             report = root / "build/reports/release-gate/cold-broker.json"
             self.assertTrue(report.is_file(), "cold broker evidence must survive temporary-host cleanup")
             self.assertEqual("rejected", json.loads(report.read_text())["status"])
+            observations = json.loads((root / "build/reports/release-gate/installed-observations.json").read_text())
+            self.assertEqual("after-cold-broker", observations["workspacePreservation"][-1]["stage"])
 
     def test_cold_broker_uses_a_canonical_standard_idea_directory(self):
         with tempfile.TemporaryDirectory() as raw:

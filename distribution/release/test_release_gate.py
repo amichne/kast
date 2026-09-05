@@ -53,9 +53,11 @@ class ReceiptIdentityTest(unittest.TestCase):
              "apparentStateBytes": 1, "stateEntryCount": 1, "symlinkCount": 0, "selectedStateRootCount": 2,
              **({"cause": "pid-marker-absent"} if stage == "after-stop" else {"rssBytes": 1, "processCount": 1})}
             for stage in ("after-start", "after-read", "after-restart", "after-stop")]
-        installed["workspacePreservation"] = [{"schemaVersion": 1, "stage": stage, "status": "passed",
-            "expectedDigest": "sha256:" + "f" * 64, "observedDigest": "sha256:" + "f" * 64}
-            for stage in ("first-uninstall", "reinstall", "final-uninstall")]
+        installed["workspacePreservation"] = [{"schemaVersion": 2, "stage": stage, "status": "passed",
+            "expectedDigest": "sha256:" + "f" * 64, "observedDigest": "sha256:" + "f" * 64,
+            **{key: {"filesDigest": "sha256:" + "f" * 64, "indexDigest": "sha256:" + "f" * 64, "fileCount": 30}
+               for key in ("expectedComponents", "observedComponents")}}
+            for stage in ("first-uninstall", "reinstall", "before-cold-broker", "after-cold-broker", "before-final-uninstall", "final-uninstall")]
         installed["semanticCorruption"] = {"schemaVersion": 1, "status": "passed",
             "workspaceDigestBefore": "sha256:" + "a" * 64, "workspaceDigestAfter": "sha256:" + "a" * 64,
             "continuations": [{"family": family, "case": case, "status": "rejected", "exitCode": 2,
@@ -87,7 +89,7 @@ class ReceiptIdentityTest(unittest.TestCase):
         self.validate(self.receipt)
 
     def test_installation_transitions_require_exact_source_preservation(self):
-        for damage in ("absent", "missing-stage", "duplicate-stage", "rejected", "changed", "new-baseline", "malformed", "unbounded"):
+        for damage in ("absent", "missing-stage", "duplicate-stage", "rejected", "changed", "new-baseline", "malformed", "unbounded", "component-missing", "component-change", "component-unbounded", "old-schema"):
             with self.subTest(damage=damage):
                 candidate = copy.deepcopy(self.receipt)
                 installed = candidate["dependencies"]["installed"]["receipt"]
@@ -106,6 +108,14 @@ class ReceiptIdentityTest(unittest.TestCase):
                     proofs[-1].update(expectedDigest="sha256:" + "e" * 64, observedDigest="sha256:" + "e" * 64)
                 elif damage == "malformed":
                     proofs[-1].update(expectedDigest="unproven", observedDigest="unproven")
+                elif damage == "component-missing":
+                    del proofs[-1]["expectedComponents"]["indexDigest"]
+                elif damage == "component-change":
+                    proofs[-1]["observedComponents"]["fileCount"] += 1
+                elif damage == "component-unbounded":
+                    proofs[-1]["expectedComponents"]["fileCount"] = 10_001
+                elif damage == "old-schema":
+                    proofs[-1]["schemaVersion"] = 1
                 else:
                     proofs[-1]["source"] = "private source payload"
                 candidate["dependencies"]["installed"]["digest"] = gate.identity(installed)

@@ -162,14 +162,19 @@ def validate_resources(samples: list) -> None:
 
 
 def validate_workspace_preservation(proofs: list) -> None:
-    stages = ("first-uninstall", "reinstall", "final-uninstall")
+    stages = ("first-uninstall", "reinstall", "before-cold-broker", "after-cold-broker", "before-final-uninstall", "final-uninstall")
     if not isinstance(proofs, list) or len(proofs) != len(stages) or not all(isinstance(proof, dict) for proof in proofs):
         raise GateRejected("installed repository source proof omits an installation transition")
     for proof, stage in zip(proofs, stages):
-        if set(proof) != {"schemaVersion", "stage", "status", "expectedDigest", "observedDigest"} or proof.get("schemaVersion") != 1 or proof.get("stage") != stage or proof.get("status") != "passed":
+        if set(proof) != {"schemaVersion", "stage", "status", "expectedDigest", "observedDigest", "expectedComponents", "observedComponents"} or proof.get("schemaVersion") != 2 or proof.get("stage") != stage or proof.get("status") != "passed":
             raise GateRejected("installed repository source proof has no closed successful observation")
         if not re.fullmatch(r"sha256:[0-9a-f]{64}", str(proof.get("expectedDigest"))) or proof["expectedDigest"] != proof["observedDigest"] or proof["expectedDigest"] != proofs[0]["expectedDigest"]:
             raise GateRejected("installed repository source proof does not preserve one exact source identity")
+        components = proof["expectedComponents"]
+        if not isinstance(components, dict) or set(components) != {"filesDigest", "indexDigest", "fileCount"} or not all(re.fullmatch(r"sha256:[0-9a-f]{64}", str(components.get(key))) for key in ("filesDigest", "indexDigest")) or type(components.get("fileCount")) is not int or not 0 <= components["fileCount"] <= 10_000:
+            raise GateRejected("installed repository source components are unproven")
+        if components != proof["observedComponents"] or components != proofs[0]["expectedComponents"]:
+            raise GateRejected("installed repository source components changed")
 
 
 def validate_upgrade(proof: dict, assets: dict, version: str) -> None:

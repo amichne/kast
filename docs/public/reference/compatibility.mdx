@@ -23,7 +23,7 @@ code_sources:
     symbols: ["install_candidate_with_upgrade_proof"]
   - path: "integration-tests/release_artifact_acceptance.py"
     lines: "72-101"
-    symbols: ["workspace_identity", "prove_workspace_preservation"]
+    symbols: ["workspace_snapshot", "prove_workspace_preservation"]
   - path: "integration-tests/release_semantic_corruption.py"
     lines: "178-229"
     symbols: ["prove_state_receipt", "prove_semantic_corruption"]
@@ -125,13 +125,19 @@ payloads prove installer state transitions; installed semantic acceptance
 separately proves the built release's behavior.
 
 The exact-archive journey observes one repository source identity across the
-first uninstall, reinstall, and final uninstall. It includes tracked and untracked
+first uninstall, reinstall, cold broker read, and final uninstall. It includes tracked and untracked
 files, their bytes, modes and link identities, and Git index state. Git-ignored
 runtime caches remain outside this source observation.
 
-Every transition must
-retain that identity; unavailable or changed observations reject with a finite
-cause recorded before failure. The receipt contains digests, never source text.
+Six checkpoints bracket those transitions and retain separate file and index
+digests. Unavailable or changed observations reject with a finite cause recorded
+before failure. Mismatches report change-kind counts and at most 64 path digests;
+neither paths nor source text appear in the report.
+
+The enterprise fixture tracks `/.gradle/` as its sole cache ignore. This matches
+its existing Gradle import write scope. A retained archive reproduction showed
+that reimport changes the root Gradle file-hash cache. Other untracked files,
+nested `.gradle` directories, and Git index changes remain in the source identity.
 
 Installed release acceptance also downloads the latest immutable published 0.x
 pair, verifies all four GitHub asset digests, and checks its version and passive

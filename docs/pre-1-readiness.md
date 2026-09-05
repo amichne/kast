@@ -28,7 +28,7 @@ This record separates implemented checks from observed installed acceptance.
 - Installed acceptance now compares tracked and untracked source bytes, modes,
   links and Git index state across uninstall, reinstall and final removal. The
   prior `git diff` comparison could miss untracked deletion and staged changes.
-  Three finite digest observations must retain one source identity; rejected
+  Six finite digest observations must retain one source identity; rejected
   observations persist before failure. Exact-archive observation remains pending.
 - The release installer now admits exact local archive/checksum files with
   `--assets-directory`, retaining normal release URL and manifest identity checks.
@@ -89,6 +89,18 @@ This record separates implemented checks from observed installed acceptance.
   child to its resolved admitted IDEA authority. The unchanged archives passed
   the corrected cold probe in 66,653 milliseconds. This fixes test setup without
   weakening product admission; the final combined receipt is still pending.
+- A later matched-archive run reached final uninstall but rejected changed
+  repository identity. Its deleted host could not identify the changed item.
+  Retained reproduction with the same archives isolated changes to
+  `.gradle/9.4.1/fileHashes/fileHashes.bin` and `fileHashes.lock`, with no other
+  file or index change. The fixture had no ignore file despite already admitting
+  root `.gradle/` writes. It now tracks only `/.gradle/`; source identity filtering
+  remains unchanged, and nested cache directories or arbitrary source stay visible.
+- Workspace proof now captures schema-2 file/index components before and after
+  the cold broker and before final uninstall, in addition to installation
+  checkpoints. Rejection retains finite change-kind counts and at most 64 path
+  digests. This strengthens the failed-boundary evidence without emitting paths
+  or source payloads; a new final combined receipt is still required.
 - Stronger mutation acceptance now requires complete zero diagnostics after the
   edit, discovery and inspection of the inserted class member at its canonical
   file, and rejection of a previously prepared same-file plan with

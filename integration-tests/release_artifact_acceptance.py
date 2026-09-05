@@ -40,6 +40,9 @@ class ObservationFailure(str, Enum):
 class WorkspacePreservationStage(str, Enum):
     FIRST_UNINSTALL = "first-uninstall"
     REINSTALL = "reinstall"
+    BEFORE_COLD_BROKER = "before-cold-broker"
+    AFTER_COLD_BROKER = "after-cold-broker"
+    BEFORE_FINAL_UNINSTALL = "before-final-uninstall"
     FINAL_UNINSTALL = "final-uninstall"
 
 
@@ -70,30 +73,33 @@ class ObservedAcceptance(enterprise.Acceptance):
                                 "observations": self.observations, "resourceSamples": self.resource_samples,
                                 "workspacePreservation": self.workspace_preservation})
 
-    def workspace_identity(self):
+    def workspace_snapshot(self):
         try:
-            return "sha256:" + enterprise.workspace_source_identity(self.host.workspace)
+            return enterprise.workspace_source_snapshot(self.host.workspace)
         except (SystemExit, OSError, subprocess.SubprocessError):
             self.failure = ObservationFailure.SOURCE_UNPROVEN
             self.persist()
             raise gate.GateRejected("repository source identity could not be observed") from None
 
-    def prove_workspace_preservation(self, stage: WorkspacePreservationStage, expected: str):
+    def prove_workspace_preservation(self, stage: WorkspacePreservationStage, expected: enterprise.WorkspaceSourceSnapshot):
         if len(self.workspace_preservation) >= len(WorkspacePreservationStage):
             self.failure = ObservationFailure.OBSERVATION_LIMIT
             self.persist()
             raise gate.GateRejected("repository source observation limit exceeded")
-        proof = {"schemaVersion": 1, "stage": stage.value, "expectedDigest": expected}
+        proof = {"schemaVersion": 2, "stage": stage.value, "expectedDigest": "sha256:" + expected.identity,
+                 "expectedComponents": expected.component_evidence()}
         try:
-            observed = self.workspace_identity()
+            observed = self.workspace_snapshot()
         except gate.GateRejected:
             self.workspace_preservation.append({**proof, "status": "rejected", "cause": ObservationFailure.SOURCE_UNPROVEN.value})
             self.persist()
             raise
-        proof["observedDigest"] = observed
-        if expected != observed:
+        proof["observedDigest"] = "sha256:" + observed.identity
+        proof["observedComponents"] = observed.component_evidence()
+        if expected.identity != observed.identity:
             self.failure = ObservationFailure.SOURCE_CHANGED
-            self.workspace_preservation.append({**proof, "status": "rejected", "cause": self.failure.value})
+            self.workspace_preservation.append({**proof, "status": "rejected", "cause": self.failure.value,
+                                                "changes": observed.changes_since(expected)})
             self.persist()
             raise gate.GateRejected("installation transition changed repository source identity")
         self.workspace_preservation.append({**proof, "status": "passed"})
@@ -226,7 +232,7 @@ def main():
         finally:
             enterprise.stop_indexer(acceptance)
         assert_broker_absent(host)
-        workspace_before = acceptance.workspace_identity()
+        workspace_before = acceptance.workspace_snapshot()
         gate.run(["/bin/bash", str(ROOT / "install.sh"), "uninstall", "--installation-only"], host.workspace, installed_environment)
         acceptance.prove_workspace_preservation(WorkspacePreservationStage.FIRST_UNINSTALL, workspace_before)
         for path in (host.root / "bin/kast", host.root / "installation", host.runtime / "store", host.runtime / "intellij-caches", host.runtime / "endpoints"):
@@ -242,7 +248,11 @@ def main():
         broker_report = ROOT / "build/reports/release-gate/cold-broker.json"
         gate.write(request, {"kast": str(acceptance.executable), "workspace": str(host.workspace), "query": "enterpriseRootOperation"})
         broker_environment = {**acceptance.environment, "GRADLE_USER_HOME": str(Path(os.environ.get("GRADLE_USER_HOME", str(Path.home() / ".gradle"))).resolve()), "JAVA_HOME": str((idea / "jbr/Contents/Home").resolve())}
-        gate.run(["./gradlew", "--no-daemon", "--max-workers=2", f"-Pversion={args.version}", f"-PkastSourceRevision={args.source_revision}", f"-PkastBrokerAcceptanceRequest={request}", f"-PkastBrokerAcceptanceEvidence={broker_report}", ":cli:installedColdBrokerAcceptance"], ROOT, broker_environment)
+        acceptance.prove_workspace_preservation(WorkspacePreservationStage.BEFORE_COLD_BROKER, workspace_before)
+        try:
+            gate.run(["./gradlew", "--no-daemon", "--max-workers=2", f"-Pversion={args.version}", f"-PkastSourceRevision={args.source_revision}", f"-PkastBrokerAcceptanceRequest={request}", f"-PkastBrokerAcceptanceEvidence={broker_report}", ":cli:installedColdBrokerAcceptance"], ROOT, broker_environment)
+        finally:
+            acceptance.prove_workspace_preservation(WorkspacePreservationStage.AFTER_COLD_BROKER, workspace_before)
         broker = gate.read(broker_report)
         if broker.get("status") != "passed" or not all(broker.get(key) is True for key in ("readOnlyCatalog", "cliEquivalent", "selectorReused")):
             raise gate.GateRejected("cold installed broker did not preserve canonical evidence")
@@ -258,6 +268,7 @@ def main():
         gate.run(matrix_command, ROOT, os.environ.copy())
         matrix = gate.read(matrix_root / "gradle-import-receipt.json")
         gate.validate_gradle_matrix(matrix)
+        acceptance.prove_workspace_preservation(WorkspacePreservationStage.BEFORE_FINAL_UNINSTALL, workspace_before)
         gate.run(["/bin/bash", str(ROOT / "install.sh"), "uninstall", "--installation-only"], host.workspace, installed_environment)
         acceptance.prove_workspace_preservation(WorkspacePreservationStage.FINAL_UNINSTALL, workspace_before)
         ambient.assert_unchanged()
