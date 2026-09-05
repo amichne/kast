@@ -103,6 +103,11 @@ semantic reads, restart continuity, verified mutation, and scoped uninstall
 followed by reinstall. A separate cold read-only broker journey checks canonical
 CLI equivalence, selector reuse, and the source companion presentation.
 
+The cold harness persists bounded stage, process, and dispatcher observations
+before failure. Reports retain finite rejection IDs, byte counts, and digests;
+source payloads, selectors, paths, and arbitrary error text are excluded.
+Cleanup cannot replace the original failure or turn a rejected receipt into success.
+
 That installation starts with the latest immutable published 0.x archives and
 upgrades the same selected root to the candidate. Corrupted candidate checksums
 and a rechecksummed unsafe control archive must both reject while preserving
