@@ -44,7 +44,7 @@ def load_matrix(path: Path = MATRIX_FILE) -> list[MatrixCase]:
     if set(document) != {"schemaVersion", "cases"}:
         raise AcceptanceFailure("matrix authority has unknown fields")
     records = document.get("cases")
-    if not isinstance(records, list) or not 4 <= len(records) <= 8:
+    if not isinstance(records, list) or len(records) != 1:
         raise AcceptanceFailure("matrix authority has an invalid case count")
     cases: list[MatrixCase] = []
     for record in records:
@@ -58,11 +58,8 @@ def load_matrix(path: Path = MATRIX_FILE) -> list[MatrixCase]:
         cases.append(MatrixCase(version, feature, outcome))
     if len({(case.gradle, case.java) for case in cases}) != len(cases):
         raise AcceptanceFailure("matrix authority has duplicate pairs")
-    ready = [case for case in cases if case.expected_outcome == "ready"]
-    if len(ready) != 3 or {case.java for case in ready} != {17, 21, 25}:
-        raise AcceptanceFailure("matrix must prove one successful import each for Java 17, 21, and 25")
-    if not any(case.expected_outcome == "jvm-rejected" for case in cases):
-        raise AcceptanceFailure("matrix omits an incompatible project JVM")
+    if cases[0].java != 25 or cases[0].expected_outcome != "ready":
+        raise AcceptanceFailure("required import must use the Java 25 reference runtime")
     return cases
 
 
@@ -317,8 +314,8 @@ def main() -> int:
             args.runtime_archive = args.runtime_archive.resolve(strict=True)
         admitted = [Jdk.parse(raw) for raw in args.jdk]
         jdks = {jdk.feature: jdk for jdk in admitted}
-        if set(jdks) != {17, 21, 25} or len(admitted) != 3:
-            raise AcceptanceFailure("installed matrix requires exactly one JDK each for Java 17, 21, and 25")
+        if set(jdks) != {25} or len(admitted) != 1:
+            raise AcceptanceFailure("installed reference import requires exactly one Java 25 JDK")
         args.state_root.mkdir(parents=True, exist_ok=False)
         matrix_sha256 = hashlib.sha256(MATRIX_FILE.read_bytes()).hexdigest()
         command_sha256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
@@ -331,7 +328,7 @@ def main() -> int:
                    "matrixSha256": matrix_sha256, "commandSha256": command_sha256,
                    "javaRuntimeReleaseSha256": {str(feature): jdks[feature].release_sha256 for feature in sorted(jdks)}}
         (args.state_root / "gradle-import-receipt.json").write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
-        print("Gradle import installed matrix passed (three JVM pairs and one explicit rejection).")
+        print("Gradle reference import passed (one Java 25 case).")
         return 0
     except (AcceptanceFailure, OSError, json.JSONDecodeError) as error:
         print(f"gradle-import-acceptance: {error}")

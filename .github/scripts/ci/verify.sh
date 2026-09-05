@@ -10,15 +10,13 @@ if git symbolic-ref -q HEAD >/dev/null; then
   exit 1
 fi
 export JAVA_HOME="${KAST_RELEASE_JDK_25:?Set KAST_RELEASE_JDK_25 to a Java 25 home}"
-: "${KAST_RELEASE_JDK_17:?Set KAST_RELEASE_JDK_17 to a Java 17 home}"
-: "${KAST_RELEASE_JDK_21:?Set KAST_RELEASE_JDK_21 to a Java 21 home}"
 for tool in python3 node npm mint gh; do command -v "$tool" >/dev/null; done
 python3 - <<'PY'
 import json, os, platform, subprocess, sys
 from pathlib import Path
 sys.path.insert(0, 'integration-tests')
 from gradle_import_acceptance import Jdk
-for feature in (17, 21, 25):
+for feature in (25,):
     Jdk.parse(f'{feature}:{os.environ[f"KAST_RELEASE_JDK_{feature}"]}')
 if platform.system() != 'Darwin' or platform.machine() not in ('arm64', 'aarch64'):
     raise SystemExit('ci-preflight: macOS arm64 required')

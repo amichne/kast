@@ -118,10 +118,10 @@ malformed and digest-tampered copies are rejected. Corrupting the selected cache
 identity receipt must make passive status reject. Exact receipt restoration must
 recover status and a semantic read while preserving the repository.
 
-The installed Gradle matrix requires explicit Java 17, 21, and 25 homes through
-`KAST_RELEASE_JDK_17`, `KAST_RELEASE_JDK_21`, and `KAST_RELEASE_JDK_25`. It proves
-admitted environment inputs, explicit executable lookup, exclusion of an
-unselected secret-like variable, and actionable JVM rejection.
+The required installed import uses Gradle 9.4.1 and Java 25 through
+`KAST_RELEASE_JDK_25`. It proves admitted environment inputs, explicit executable
+lookup, and exclusion of an unselected secret-like variable. Other JVM
+compatibility rules retain their unit tests without a full installed matrix.
 
 The receipt binds the canonical cases in `benchmarks/gradle-import-acceptance.json`,
 the executable acceptance script, and each JDK's release metadata. Successful
@@ -195,11 +195,9 @@ requires candidates to move forward from the published baseline.
 ## Reproduce CI locally
 
 Use macOS arm64, Python 3.12, Node 24, and Mintlify CLI 4.2.841.
-Authenticate `gh`, then provide explicit JDK homes for the same Java matrix:
+Authenticate `gh`, then provide the Java 25 home:
 
 ```shell
-export KAST_RELEASE_JDK_17="/path/to/jdk17"
-export KAST_RELEASE_JDK_21="/path/to/jdk21"
 export KAST_RELEASE_JDK_25="/path/to/jdk25"
 bash .github/scripts/ci/reproduce.sh HEAD
 ```

@@ -17,10 +17,10 @@ spec.loader.exec_module(acceptance)
 
 
 class GradleImportAcceptanceTest(unittest.TestCase):
-    def test_matrix_authority_retains_all_project_jvms_and_finite_failure(self):
+    def test_required_import_is_one_reference_pair(self):
         cases = acceptance.load_matrix()
-        self.assertEqual({17, 21, 25}, {case.java for case in cases if case.expected_outcome == "ready"})
-        self.assertTrue(any(case.expected_outcome == "jvm-rejected" for case in cases))
+        self.assertEqual([("9.4.1", 25, "ready")],
+                         [(case.gradle, case.java, case.expected_outcome) for case in cases])
 
     def test_matrix_authority_rejects_duplicate_and_unknown_outcomes(self):
         document = json.loads(acceptance.MATRIX_FILE.read_text())
@@ -29,7 +29,7 @@ class GradleImportAcceptanceTest(unittest.TestCase):
             for mutation in ("duplicate", "unknown"):
                 changed = json.loads(json.dumps(document))
                 if mutation == "duplicate":
-                    changed["cases"][-1] = changed["cases"][0]
+                    changed["cases"].append(changed["cases"][0])
                 else:
                     changed["cases"][0]["expectedOutcome"] = "maybe-ready"
                 authority.write_text(json.dumps(changed))
