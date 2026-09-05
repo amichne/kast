@@ -1,0 +1,110 @@
+---
+type: "Reference"
+title: "Gradle import inputs"
+description: "Select repository import variables, executable directories, and an explicit Gradle JVM without inheriting the caller environment."
+resource: "file://docs/public/reference/gradle-import.mdx"
+tags: ["Gradle", "environment", "JVM", "identity"]
+timestamp: "2026-09-04T00:00:00-04:00"
+code_sources:
+  - path: "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/gradle/GradleImportEnvironment.kt"
+    lines: "1-149"
+    symbols: ["GradleImportEnvironment", "GradleImportEnvironmentIdentity"]
+  - path: "workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/ProjectGradleJvmAuthority.kt"
+    lines: "1-64"
+    symbols: ["ProjectGradleJvmAuthority", "projectGradleJvmAuthority"]
+  - path: "workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/GradleRuntimeCompatibilityPolicy.kt"
+    lines: "1-90"
+    symbols: ["GradleRuntimeCompatibilityPolicy"]
+icon: "terminal"
+keywords: ["Gradle", "JDK", "environment variables", "PATH"]
+---
+
+Kast starts its sidecar with its admitted Java 25 JBR, a canonical user home,
+and a deterministic system executable path. A repository can explicitly admit
+additional import inputs. Unselected caller variables do not reach the sidecar.
+
+## Permit repository variables
+
+`KAST_GRADLE_IMPORT_VARIABLES` is a comma-separated list of exact environment
+variable names. Set each named variable in the invoking shell before starting
+Kast. A named variable that is missing rejects startup.
+
+```shell
+export ANDROID_HOME=/absolute/android/sdk
+export ORG_GRADLE_PROJECT_repositoryUser=developer
+export KAST_GRADLE_IMPORT_VARIABLES=ANDROID_HOME,ORG_GRADLE_PROJECT_repositoryUser
+kast start
+```
+
+Credential-bearing inputs can be selected through the same explicit boundary.
+Kast retains their names and SHA-256 value digests in its import evidence; it does
+not log their values. Do not commit credential values into project files.
+
+Names must use the POSIX variable syntax, without spaces. Kast reserves `HOME`,
+`JAVA_HOME`, `PATH`, every `KAST_` name, Java process injection controls, dynamic
+loader controls, and shell startup controls. Selecting a reserved name rejects
+startup instead of replacing Kast's launch authority. The allowlist admits at
+most 64 names.
+
+## Add executable directories
+
+`KAST_GRADLE_IMPORT_PATH` is a colon-separated list of absolute directories.
+Kast admits their physical directories and keeps their explicit order after the
+sidecar JBR's `bin` directory and before `/usr/bin:/bin:/usr/sbin:/sbin`.
+The caller's ambient `PATH` is never copied.
+
+```shell
+export KAST_GRADLE_IMPORT_PATH=/opt/homebrew/bin:/absolute/project-tools/bin
+kast start
+```
+
+Relative paths, missing directories, empty path entries, and paths containing
+newlines are rejected. At most 32 directories can be selected. Both direct
+startup and launchd use the same admitted environment.
+
+## Select the project JVM
+
+The sidecar JBR and the JVM that executes Gradle have separate authorities.
+For an explicit project JVM, set the repository-owned `gradle.properties` entry:
+
+```properties
+org.gradle.java.home=/canonical/absolute/jdk/Contents/Home
+```
+
+Kast reads and physically admits this path before opening the IntelliJ project.
+The directory must contain an executable `bin/java`; a relative, empty, missing,
+or incompatible configured home rejects selection. Kast does not fall back to
+another JDK when an explicit repository JVM is incompatible.
+
+Gradle's supported version-only `gradle/gradle-daemon-jvm.properties` criteria
+take precedence where supported. Otherwise the explicit repository JVM precedes
+a compatible sidecar JBR and IntelliJ's observed local JDK candidates. Toolchain
+and bytecode target selection remain part of the imported repository model.
+
+Representative installed acceptance pairs are Gradle 7.6.4 with Java 17,
+Gradle 8.14.3 with Java 21, and Gradle 9.4.1 with Java 25.
+
+The complete policy is
+implemented by `GradleRuntimeCompatibilityPolicy` and tested at its version
+boundaries. Gradle documents its runtime rules in the
+[compatibility matrix](https://docs.gradle.org/current/userguide/compatibility.html).
+
+## Understand selection evidence
+
+Bootstrap evidence includes the observed wrapper version, the Java features
+admitted by that distribution, bounded candidate decisions, and the selected
+JVM authority and home identity digest. Rejected selection retains a finite
+cause and a corrective action. It never includes environment values.
+
+Stop Kast before changing an import configuration. Changing a selected value,
+selected name, or executable directory changes both private cache identity and
+semantic workspace identity. Unselected ambient changes do not invalidate the
+import.
+
+Version 3 cache receipts record the import identity; earlier cache
+receipts are treated as legacy and require a fresh import.
+
+The installed matrix also imports a fixture that requires a permitted variable
+and a permitted executable, proves an unrelated secret-like variable absent,
+and verifies that an incompatible explicit JVM reports its wrapper, required
+Java range, available candidates, and corrective action.

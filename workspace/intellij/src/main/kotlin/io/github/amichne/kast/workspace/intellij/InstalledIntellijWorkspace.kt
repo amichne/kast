@@ -210,12 +210,14 @@ object InstalledIntellijWorkspace {
             is Refinement.Refined -> admission.value
             is Refinement.Rejected -> return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID)
         }
-        val projectJvmAuthority = projectGradleJvmAuthority(workspacePath)
-        if (projectJvmAuthority == ProjectGradleJvmAuthority.Rejected) {
-            observer.observeGradleJvm(InstalledGradleJvmSelection.Rejected(
-                InstalledGradleJvmSelectionFailure.REPOSITORY_JAVA_HOME_INVALID,
-            ).report)
-            return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID)
+        val projectJvmAuthority = when (val admitted = projectGradleJvmAuthority(workspacePath)) {
+            is ProjectGradleJvmAuthority.Admitted -> admitted
+            ProjectGradleJvmAuthority.Rejected -> {
+                observer.observeGradleJvm(InstalledGradleJvmSelection.Rejected(
+                    InstalledGradleJvmSelectionFailure.REPOSITORY_JAVA_HOME_INVALID,
+                ).report)
+                return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID)
+            }
         }
         val projectStore = when (
             val prepared = InstalledSemanticProjectStore.prepare(
@@ -246,7 +248,7 @@ object InstalledIntellijWorkspace {
         workspaceRoot: Path,
         projectStore: InstalledSemanticProjectStore,
         sidecarJvm: InstalledSidecarJvm,
-        projectJvmAuthority: ProjectGradleJvmAuthority,
+        projectJvmAuthority: ProjectGradleJvmAuthority.Admitted,
         importEnvironment: GradleImportEnvironment,
         observer: InstalledIntellijWorkspaceBootstrapObserver,
     ): InstalledIntellijWorkspaceOpening {

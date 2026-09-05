@@ -77,7 +77,8 @@
             "group": "Command surface",
             "icon": "terminal",
             "pages": [
-              "reference/cli"
+              "reference/cli",
+              "reference/gradle-import"
             ]
           },
           {

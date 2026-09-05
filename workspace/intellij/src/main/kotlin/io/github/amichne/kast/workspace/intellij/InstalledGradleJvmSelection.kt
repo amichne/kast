@@ -44,7 +44,7 @@ internal fun selectInstalledGradleJvm(
     project: Project,
     settings: GradleProjectSettings,
     sidecar: InstalledSidecarJvm,
-    projectJvmAuthority: ProjectGradleJvmAuthority,
+    projectJvmAuthority: ProjectGradleJvmAuthority.Admitted,
 ): InstalledGradleJvmSelection {
     val distribution = try {
         GradleInstallationManager.guessGradleVersion(settings)
@@ -83,9 +83,6 @@ internal fun selectInstalledGradleJvm(
     val repositoryHome = when (val configured = projectJvmAuthority) {
         ProjectGradleJvmAuthority.Absent -> null
         is ProjectGradleJvmAuthority.Present -> configured.home
-        ProjectGradleJvmAuthority.Rejected -> return reject(
-            InstalledGradleJvmSelectionFailure.REPOSITORY_JAVA_HOME_INVALID,
-        )
     }
     val repositoryCandidate = repositoryHome?.let { home ->
         observeGradleJvmCandidate(home, GradleJvmSelectionSource.REPOSITORY_GRADLE_PROPERTY)

@@ -7,9 +7,11 @@ import java.nio.file.Path
 import java.util.Properties
 
 internal sealed interface ProjectGradleJvmAuthority {
-    data object Absent : ProjectGradleJvmAuthority
+    sealed interface Admitted : ProjectGradleJvmAuthority
 
-    class Present private constructor(val home: Path) : ProjectGradleJvmAuthority {
+    data object Absent : Admitted
+
+    class Present private constructor(val home: Path) : Admitted {
         companion object {
             /** Establishes physical executable JDK-home authority before IntelliJ is entered. */
             fun admit(home: Path): ProjectGradleJvmAuthority =
