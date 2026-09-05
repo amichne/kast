@@ -28,6 +28,7 @@ internal sealed interface RuntimeProcessStart {
 }
 
 sealed interface RuntimeProcessStartFailure {
+    data object GradleImportEnvironmentRejected : RuntimeProcessStartFailure
     data object IdeaJbrUnavailable : RuntimeProcessStartFailure
     data object UserHomeUnavailable : RuntimeProcessStartFailure
     data object SessionObservationRejected : RuntimeProcessStartFailure
@@ -124,7 +125,7 @@ internal class MacOsRuntimeProcessSession private constructor(
      */
     private fun launchctlSubmission(command: IndexerLaunchCommand): MacOsLaunchctlSubmission {
         val environment = when (
-            val resolution = MacOsRuntimeProcessEnvironment.resolve(command.runtime)
+            val resolution = MacOsRuntimeProcessEnvironment.resolve(command.runtime, command.importEnvironment)
         ) {
             is MacOsRuntimeProcessEnvironmentResolution.Resolved -> resolution.environment
             is MacOsRuntimeProcessEnvironmentResolution.Rejected ->
@@ -240,6 +241,8 @@ private fun MacOsRuntimeProcessEnvironmentFailure.toProcessStartFailure(): Runti
     when (this) {
         MacOsRuntimeProcessEnvironmentFailure.JAVA_HOME_UNAVAILABLE ->
             RuntimeProcessStartFailure.IdeaJbrUnavailable
+        MacOsRuntimeProcessEnvironmentFailure.GRADLE_IMPORT_ENVIRONMENT_REJECTED ->
+            RuntimeProcessStartFailure.GradleImportEnvironmentRejected
         MacOsRuntimeProcessEnvironmentFailure.USER_HOME_UNAVAILABLE ->
             RuntimeProcessStartFailure.UserHomeUnavailable
     }

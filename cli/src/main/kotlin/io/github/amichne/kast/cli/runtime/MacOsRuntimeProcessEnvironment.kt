@@ -1,5 +1,8 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentFailure
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
@@ -9,6 +12,7 @@ import java.nio.file.Path
 internal enum class MacOsRuntimeProcessEnvironmentFailure {
     JAVA_HOME_UNAVAILABLE,
     USER_HOME_UNAVAILABLE,
+    GRADLE_IMPORT_ENVIRONMENT_REJECTED,
 }
 
 internal sealed interface MacOsRuntimeProcessEnvironmentResolution {
@@ -40,6 +44,16 @@ internal class MacOsRuntimeProcessEnvironment private constructor(
          */
         fun resolve(
             runtime: InstalledIdeRuntime,
+        ): MacOsRuntimeProcessEnvironmentResolution = when (val admission = currentGradleImportEnvironment()) {
+            is Refinement.Refined -> resolve(runtime, admission.value)
+            is Refinement.Rejected -> MacOsRuntimeProcessEnvironmentResolution.Rejected(
+                MacOsRuntimeProcessEnvironmentFailure.GRADLE_IMPORT_ENVIRONMENT_REJECTED,
+            )
+        }
+
+        fun resolve(
+            runtime: InstalledIdeRuntime,
+            admittedImport: GradleImportEnvironment,
         ): MacOsRuntimeProcessEnvironmentResolution {
             val javaHome = when (
                 val admission = canonicalJavaHome(runtime)
@@ -65,8 +79,18 @@ internal class MacOsRuntimeProcessEnvironment private constructor(
                     linkedMapOf(
                         "JAVA_HOME" to javaHome.toString(),
                         "HOME" to userHome.toString(),
-                        "PATH" to "${javaHome.resolve("bin")}:$SYSTEM_EXECUTABLE_PATH",
-                    ),
+                        "PATH" to (listOf(javaHome.resolve("bin").toString()) +
+                            admittedImport.executableDirectories.map { it.path.toString() } +
+                            SYSTEM_EXECUTABLE_PATH).joinToString(":"),
+                    ).apply {
+                        putAll(admittedImport.processVariables())
+                        if (admittedImport.evidence.isNotEmpty() || admittedImport.executableDirectories.isNotEmpty()) {
+                            put(GradleImportEnvironment.VARIABLES_SETTING,
+                                admittedImport.evidence.joinToString(",") { it.name.value })
+                            put(GradleImportEnvironment.PATH_SETTING,
+                                admittedImport.executableDirectories.joinToString(":") { it.path.toString() })
+                        }
+                    },
                 ),
             )
         }
@@ -154,3 +178,29 @@ private fun canonicalDirectory(raw: String): CanonicalEnvironmentDirectory = try
 }
 
 private const val SYSTEM_EXECUTABLE_PATH = "/usr/bin:/bin:/usr/sbin:/sbin"
+
+/** Environment IO stays at the launcher boundary, before any cache or runtime can be admitted. */
+internal fun currentGradleImportEnvironment(
+    ambient: Map<String, String> = System.getenv(),
+): Refinement<GradleImportEnvironment, GradleImportEnvironmentFailure> {
+    val admitted = when (val result = GradleImportEnvironment.admit(
+        ambient[GradleImportEnvironment.VARIABLES_SETTING].orEmpty(),
+        ambient[GradleImportEnvironment.PATH_SETTING].orEmpty(),
+        ambient,
+    )) {
+        is Refinement.Refined -> result.value
+        is Refinement.Rejected -> return result
+    }
+    val physicalPaths = mutableListOf<Path>()
+    for (directory in admitted.executableDirectories) {
+        when (val physical = canonicalDirectory(directory.path.toString())) {
+            is CanonicalEnvironmentDirectory.Admitted -> physicalPaths.add(physical.path)
+            CanonicalEnvironmentDirectory.Rejected -> return Refinement.Rejected(GradleImportEnvironmentFailure.INVALID_EXECUTABLE_PATH)
+        }
+    }
+    return GradleImportEnvironment.admit(
+        admitted.evidence.joinToString(",") { it.name.value },
+        physicalPaths.joinToString(":"),
+        admitted.processVariables(),
+    )
+}

@@ -2,18 +2,7 @@ package io.github.amichne.kast.workspace.intellij
 
 import org.gradle.util.GradleVersion
 
-/** Java runtime feature admitted at the Gradle execution boundary. */
-@JvmInline
-internal value class JavaFeature private constructor(
-    val value: Int,
-) {
-    companion object {
-        fun of(value: Int): JavaFeature {
-            require(value > 0)
-            return JavaFeature(value)
-        }
-    }
-}
+internal typealias JavaFeature = io.github.amichne.kast.distribution.contract.gradle.GradleJavaFeature
 
 internal enum class GradleRuntimeIncompatibility {
     JAVA_FEATURE_UNSUPPORTED,
@@ -39,6 +28,10 @@ internal sealed interface GradleRuntimeCompatibility {
  * remain part of the imported project model and do not participate in this decision.
  */
 internal object GradleRuntimeCompatibilityPolicy {
+    fun requiredJava(gradle: GradleVersion): List<JavaFeature> = (8..26)
+        .map(JavaFeature::of)
+        .filter { classify(gradle, it) is GradleRuntimeCompatibility.Compatible }
+
     fun classify(
         gradle: GradleVersion,
         java: JavaFeature,

@@ -78,6 +78,40 @@ lifecycle-boundary rejections rather than semantic-operation results.
   reuse|seed|rebuild` for admission and cache policy.
 </Note>
 
+## Observe cold startup
+
+On a terminal, `kast start` writes bounded progress to stderr as it discovers
+runtime, selects the Gradle JVM, imports the Gradle model, indexes, captures the
+workspace model, assembles runtime, and activates transport. Each update names
+the phase, elapsed seconds, and completed phases.
+
+Counts represent completed
+phases; they do not estimate the percentage of Gradle or indexing work remaining.
+An unchanged phase emits a heartbeat at most once every five seconds, with at
+most 256 progress lines per invocation.
+
+Machine output keeps the existing channel contract: a successful start emits
+one final JSON document on stdout; boundary rejection emits one JSON document
+on stderr. Progress is disabled when no terminal is attached.
+
+Run `kast status` from another terminal during startup. Its `bootstrap` field
+reports the last recorded phase and exact `attemptId` from the identified cache,
+without starting, repairing, or waiting for the sidecar.
+
+The separate `runtime`
+field reports endpoint liveness; recorded bootstrap evidence alone does not
+prove that its process is still alive. Missing or invalid bootstrap evidence is
+reported as `unavailable` or `invalid`.
+
+A child-reported startup rejection retains its attempt identity, failed phase,
+finite cause, and one corrective action in `bootstrap`. For example, JVM
+selection failures retain the wrapper version, required Java range, candidate
+identities, selection authority, and the observed correction when available.
+
+Startup logs
+retain bounded phase and outcome events, never source text, credentials, or
+unbounded exception messages.
+
 ## Carry the generation forward
 
 Candidates and exact selectors are issued against a semantic generation. If

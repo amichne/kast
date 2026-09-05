@@ -24,6 +24,10 @@ import io.github.amichne.kast.cli.command.traversal.traversalCommandGroup
 import io.github.amichne.kast.cli.command.workspace.indexCommandGroup
 import io.github.amichne.kast.cli.command.workspace.topologyCommandGroup
 import io.github.amichne.kast.cli.projection.CanonicalCliRequestPreparers
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
+import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 
 private const val MAX_CLI_TOKEN_LENGTH = 4_096
@@ -109,7 +113,7 @@ class CliCommandGraphFactory private constructor(
             is CliArgvAdmission.Admitted -> admission.argv
             is CliArgvAdmission.Rejected -> return CliCommandParsing.Rejected(
                 admission.failure.commandFailure(),
-                graph.root.helpDiagnostic(),
+                graph.root.argvDiagnostic(admission.failure),
             )
         }
         return graph.parse(admitted)
@@ -138,25 +142,109 @@ class CliCommandGraphFactory private constructor(
 }
 
 private class CliArgv private constructor(
-    private val tokens: List<String>,
+    private val tokens: List<CliArgvToken>,
 ) {
-    fun cliktTokens(): List<String> = tokens
+    fun cliktTokens(): List<String> = tokens.map(CliArgvToken::cliktToken)
 
     companion object {
         /**
          * Proof transition: `List<String> -> CliArgvAdmission`.
          *
-         * Establishes a bounded sequence of non-blank argv tokens. [CliArgvFailure] is the closed
-         * expected failure. Raw strings may leave only at the Clikt parser boundary.
+         * Establishes a bounded sequence of non-blank ordinary arguments or canonical, bounded
+         * continuations for their owning command. [CliArgvFailure] closes expected failures.
+         * Family-specific continuation proof survives until extraction at the Clikt boundary.
+         * The host OS separately limits the combined process argument/environment envelope.
          */
-        fun admit(raw: List<String>): CliArgvAdmission = when {
-            raw.size > MAX_CLI_TOKEN_COUNT ->
-                CliArgvAdmission.Rejected(CliArgvFailure.TOO_MANY_TOKENS)
-            raw.any(String::isBlank) ->
-                CliArgvAdmission.Rejected(CliArgvFailure.MISSING_OR_BLANK_TOKEN)
-            raw.any { it.length > MAX_CLI_TOKEN_LENGTH } ->
-                CliArgvAdmission.Rejected(CliArgvFailure.TOKEN_TOO_LONG)
-            else -> CliArgvAdmission.Admitted(CliArgv(raw.toList()))
+        fun admit(raw: List<String>): CliArgvAdmission {
+            if (raw.size > MAX_CLI_TOKEN_COUNT) {
+                return CliArgvAdmission.Rejected(CliArgvFailure.TOO_MANY_TOKENS)
+            }
+            if (raw.any(String::isBlank)) {
+                return CliArgvAdmission.Rejected(CliArgvFailure.MISSING_OR_BLANK_TOKEN)
+            }
+            val admitted = raw.mapIndexed { index, token ->
+                if (token.length <= MAX_CLI_TOKEN_LENGTH) {
+                    CliArgvToken.Ordinary(token)
+                } else {
+                    when (val continuation = CliArgvToken.admitContinuation(raw, index)) {
+                        is Refinement.Refined -> continuation.value
+                        is Refinement.Rejected -> return CliArgvAdmission.Rejected(continuation.failure)
+                    }
+                }
+            }
+            return CliArgvAdmission.Admitted(CliArgv(admitted))
+        }
+    }
+}
+
+/** Argv keeps the canonical envelope proof until the private Clikt transport extraction. */
+private sealed interface CliArgvToken {
+    fun cliktToken(): String
+
+    class Ordinary(private val value: String) : CliArgvToken {
+        override fun cliktToken(): String = value
+    }
+
+    class Relation(
+        private val document: RelationContinuationDocument,
+        private val option: ContinuationOption,
+    ) : CliArgvToken {
+        override fun cliktToken(): String = option.cliktToken(document.value)
+    }
+
+    class Traversal(
+        private val document: TraversalContinuationDocument,
+        private val option: ContinuationOption,
+    ) : CliArgvToken {
+        override fun cliktToken(): String = option.cliktToken(document.value)
+    }
+
+    enum class ContinuationOption {
+        SEPARATE,
+        ATTACHED;
+
+        fun cliktToken(value: String): String = when (this) {
+            SEPARATE -> value
+            ATTACHED -> "--continuation=$value"
+        }
+    }
+
+    companion object {
+        /**
+         * Proof transition: one long argv option -> `Refinement<CliArgvToken, CliArgvFailure>`.
+         *
+         * Establishes the owning relation/traversal command, canonical public text bound, and
+         * intact family-specific envelope. Corruption retains its finite family-specific usage
+         * failure; ordinary or over-bound arguments fail with [CliArgvFailure.TOKEN_TOO_LONG].
+         * ProtocolText is extracted only here into its domain-specific envelope parser; the
+         * resulting document is retained until [cliktToken].
+         */
+        fun admitContinuation(argv: List<String>, index: Int): Refinement<CliArgvToken, CliArgvFailure> {
+            if (argv.take(index).contains("--")) return Refinement.Rejected(CliArgvFailure.TOKEN_TOO_LONG)
+            val option = when {
+                argv[index].startsWith("--continuation=") -> ContinuationOption.ATTACHED
+                argv.getOrNull(index - 1) == "--continuation" -> ContinuationOption.SEPARATE
+                else -> return Refinement.Rejected(CliArgvFailure.TOKEN_TOO_LONG)
+            }
+            val supplied = when (option) {
+                ContinuationOption.SEPARATE -> argv[index]
+                ContinuationOption.ATTACHED -> argv[index].removePrefix("--continuation=")
+            }
+            val bounded = when (val text = ProtocolText.parse(supplied)) {
+                is Refinement.Refined -> text.value
+                is Refinement.Rejected -> return Refinement.Rejected(CliArgvFailure.TOKEN_TOO_LONG)
+            }
+            return when (argv.take(2)) {
+                listOf("relation", "read") -> when (val document = RelationContinuationDocument.parse(bounded.value)) {
+                    is Refinement.Refined -> Refinement.Refined(Relation(document.value, option))
+                    is Refinement.Rejected -> Refinement.Rejected(CliArgvFailure.RELATION_CONTINUATION_REJECTED)
+                }
+                listOf("traversal", "run") -> when (val document = TraversalContinuationDocument.parse(bounded.value)) {
+                    is Refinement.Refined -> Refinement.Refined(Traversal(document.value, option))
+                    is Refinement.Rejected -> Refinement.Rejected(CliArgvFailure.TRAVERSAL_CONTINUATION_REJECTED)
+                }
+                else -> Refinement.Rejected(CliArgvFailure.TOKEN_TOO_LONG)
+            }
         }
     }
 }
@@ -165,6 +253,8 @@ private enum class CliArgvFailure {
     MISSING_OR_BLANK_TOKEN,
     TOKEN_TOO_LONG,
     TOO_MANY_TOKENS,
+    RELATION_CONTINUATION_REJECTED,
+    TRAVERSAL_CONTINUATION_REJECTED,
 }
 
 private sealed interface CliArgvAdmission {
@@ -176,6 +266,18 @@ private fun CliArgvFailure.commandFailure(): CliCommandFailure = when (this) {
     CliArgvFailure.MISSING_OR_BLANK_TOKEN -> CliCommandFailure.MISSING_OR_BLANK_ARGUMENT
     CliArgvFailure.TOKEN_TOO_LONG -> CliCommandFailure.ARGUMENT_TOO_LONG
     CliArgvFailure.TOO_MANY_TOKENS -> CliCommandFailure.TOO_MANY_ARGUMENTS
+    CliArgvFailure.RELATION_CONTINUATION_REJECTED,
+    CliArgvFailure.TRAVERSAL_CONTINUATION_REJECTED -> CliCommandFailure.ARGUMENTS_REJECTED
+}
+
+private fun KastCommand.argvDiagnostic(failure: CliArgvFailure): CliTextDocument = when (failure) {
+    CliArgvFailure.MISSING_OR_BLANK_TOKEN,
+    CliArgvFailure.TOKEN_TOO_LONG,
+    CliArgvFailure.TOO_MANY_TOKENS -> helpDiagnostic()
+    CliArgvFailure.RELATION_CONTINUATION_REJECTED ->
+        formatted(UsageError(CliUsageFailure.RelationRead.CONTINUATION_REJECTED.message()))
+    CliArgvFailure.TRAVERSAL_CONTINUATION_REJECTED ->
+        formatted(UsageError(CliUsageFailure.TraversalRun.CONTINUATION_REJECTED.message()))
 }
 
 private class CliCommandGraph(

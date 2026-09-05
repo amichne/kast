@@ -1,5 +1,7 @@
 package io.github.amichne.kast.workspace.intellij
 
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentIdentity
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
@@ -17,6 +19,7 @@ internal data class InstalledGradleSemanticIdentityBoundary(
     val sourceContents: List<InstalledSourceContentIdentity>,
     val externalProjectPaths: List<Path>,
     val modules: List<InstalledModuleSemanticIdentity>,
+    val importEnvironmentIdentity: GradleImportEnvironmentIdentity = GradleImportEnvironment.Empty.identity,
 )
 
 internal enum class InstalledSourceRootState {
@@ -128,6 +131,7 @@ internal fun deriveInstalledGradleSemanticIdentity(
     val canonical = buildString {
         appendField(IDENTITY_VERSION)
         appendField(boundary.root.value)
+        appendRecord("gradle-import-environment", boundary.importEnvironmentIdentity.value)
         boundary.sourceRoots.map { sourceRoot -> sourceRoot.canonicalIdentity(root) }
             .distinct()
             .sorted()
@@ -224,4 +228,4 @@ private fun StringBuilder.appendField(value: String) {
     append(value)
 }
 
-private const val IDENTITY_VERSION = "kast-workspace-semantic-identity-v1"
+private const val IDENTITY_VERSION = "kast-workspace-semantic-identity-v2"

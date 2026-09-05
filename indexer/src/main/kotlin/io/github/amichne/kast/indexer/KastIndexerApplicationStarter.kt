@@ -5,9 +5,11 @@ import io.github.amichne.kast.indexer.bootstrap.IndexerBootstrapRejectionPublica
 import io.github.amichne.kast.indexer.bootstrap.IndexerBootstrapStatePublication
 import io.github.amichne.kast.indexer.bootstrap.IndexerBootstrapStatePublisher
 import io.github.amichne.kast.indexer.bootstrap.IndexerBootstrapStatePublisherAdmission
+import io.github.amichne.kast.runtime.composition.semanticbootstrap.InstalledSemanticRuntimeBootstrapTerminalFailure
 import io.github.amichne.kast.runtime.composition.InstalledKastRuntime
 import io.github.amichne.kast.runtime.composition.InstalledKastRuntimeConstruction
 import io.github.amichne.kast.runtime.composition.InstalledKastRuntimeFailure
+import io.github.amichne.kast.runtime.composition.InstalledGradleJvmSelectionReport
 import io.github.amichne.kast.runtime.composition.InstalledRuntimeBootstrapObserver
 import io.github.amichne.kast.runtime.composition.InstalledRuntimeBootstrapPhase
 import io.github.amichne.kast.runtime.composition.InstalledRuntimeIndexScope
@@ -72,16 +74,42 @@ class KastIndexerApplicationStarter : ApplicationStarter {
             IndexerCacheStatePublisher.publish(IndexerCacheState.REFRESHING) !=
             IndexerCacheStatePublication.Published
         ) {
+            bootstrapState.publishTerminalFailure(InstalledSemanticRuntimeBootstrapTerminalFailure.CACHE_STATE_PUBLICATION)
             reject(InstalledIndexerStartupFailure.CacheState)
         }
         val endpoint = when (val preparation = PreparedIndexerEndpoint.prepare(options)) {
             is IndexerEndpointPreparation.Prepared -> preparation.endpoint
-            is IndexerEndpointPreparation.Rejected -> reject(
-                InstalledIndexerStartupFailure.Transport(preparation.failure),
-            )
+            is IndexerEndpointPreparation.Rejected -> {
+                bootstrapState.publishTerminalFailure(InstalledSemanticRuntimeBootstrapTerminalFailure.TRANSPORT_ACTIVATION)
+                reject(InstalledIndexerStartupFailure.Transport(preparation.failure))
+            }
         }
         val bootstrap = InstalledIndexerBootstrapReporter(
-            InstalledIndexerBootstrapStateSink(::reportBootstrapState),
+            InstalledIndexerBootstrapStateSink { state ->
+                reportBootstrapState(state)
+                val publication = when (state) {
+                    is InstalledIndexerBootstrapState.Starting ->
+                        bootstrapState.publishProgress(state.phase.runtimePhase())
+                    is InstalledIndexerBootstrapState.Ready -> bootstrapState.publishReady()
+                    is InstalledIndexerBootstrapState.Rejected -> when (val failure = state.failure) {
+                        is InstalledIndexerBootstrapTerminalFailure.Runtime -> when (
+                            bootstrapState.publishRejection(failure.failures)
+                        ) {
+                            IndexerBootstrapRejectionPublication.PUBLISHED -> IndexerBootstrapStatePublication.PUBLISHED
+                            else -> IndexerBootstrapStatePublication.REJECTED
+                        }
+                        is InstalledIndexerBootstrapTerminalFailure.Transport -> bootstrapState.publishTerminalFailure(
+                            InstalledSemanticRuntimeBootstrapTerminalFailure.TRANSPORT_ACTIVATION,
+                        )
+                    }
+                    is InstalledIndexerBootstrapState.TransitionRejected -> bootstrapState.publishTerminalFailure(
+                        InstalledSemanticRuntimeBootstrapTerminalFailure.RUNTIME_ASSEMBLY,
+                    )
+                }
+                if (publication != IndexerBootstrapStatePublication.PUBLISHED) {
+                    reject(InstalledIndexerStartupFailure.BootstrapState)
+                }
+            },
         )
         val dispatch = when (val runtime = InstalledKastRuntime.create(
             options.workspaceRoot,
@@ -92,6 +120,12 @@ class KastIndexerApplicationStarter : ApplicationStarter {
                     bootstrap.observe(phase)
                 }
 
+                override fun observeGradleJvm(report: InstalledGradleJvmSelectionReport) {
+                    if (bootstrapState.observeGradleJvm(report) != IndexerBootstrapStatePublication.PUBLISHED) {
+                        reject(InstalledIndexerStartupFailure.BootstrapState)
+                    }
+                }
+
                 override fun observeIndexScope(scope: InstalledRuntimeIndexScope) {
                     reportIndexScope(scope)
                 }
@@ -99,14 +133,6 @@ class KastIndexerApplicationStarter : ApplicationStarter {
         )) {
             is InstalledKastRuntimeConstruction.Created -> runtime.dispatch
             is InstalledKastRuntimeConstruction.Rejected -> {
-                when (bootstrapState.publishRejection(runtime.failures)) {
-                    IndexerBootstrapRejectionPublication.PUBLISHED,
-                    IndexerBootstrapRejectionPublication.AMBIGUOUS,
-                    IndexerBootstrapRejectionPublication.UNAVAILABLE,
-                        -> Unit
-                    IndexerBootstrapRejectionPublication.REJECTED ->
-                        reject(InstalledIndexerStartupFailure.BootstrapState)
-                }
                 bootstrap.rejectRuntime(runtime.failures)
                 reject(InstalledIndexerStartupFailure.Runtime(runtime.failures))
             }
@@ -128,12 +154,10 @@ class KastIndexerApplicationStarter : ApplicationStarter {
             IndexerCacheStatePublisher.publish(IndexerCacheState.SMART) !=
             IndexerCacheStatePublication.Published
         ) {
+            bootstrapState.publishTerminalFailure(InstalledSemanticRuntimeBootstrapTerminalFailure.CACHE_STATE_PUBLICATION)
             reject(InstalledIndexerStartupFailure.CacheState)
         }
         bootstrap.ready()
-        if (bootstrapState.publishReady() != IndexerBootstrapStatePublication.PUBLISHED) {
-            reject(InstalledIndexerStartupFailure.BootstrapState)
-        }
         transport.use { installedTransport ->
             when (
                 DetachedIndexerTransportExecutor.execute {
@@ -161,7 +185,22 @@ class KastIndexerApplicationStarter : ApplicationStarter {
 }
 
 private fun reportBootstrapState(state: InstalledIndexerBootstrapState) {
-    System.err.println("kast-indexer: bootstrap: $state")
+    val phase = when (state) {
+        is InstalledIndexerBootstrapState.Starting -> state.phase.name
+        is InstalledIndexerBootstrapState.Rejected -> state.phase.name
+        is InstalledIndexerBootstrapState.TransitionRejected -> state.phase.name
+        is InstalledIndexerBootstrapState.Ready -> "READY"
+    }
+    val outcome = when (state) {
+        is InstalledIndexerBootstrapState.Starting -> "starting"
+        is InstalledIndexerBootstrapState.Ready -> "ready"
+        is InstalledIndexerBootstrapState.Rejected -> "rejected"
+        is InstalledIndexerBootstrapState.TransitionRejected -> "transition-rejected"
+    }
+    System.err.println(
+        "kast-indexer: bootstrap: phase=$phase outcome=$outcome " +
+            "completed=${state.completedPhases.value} total=${state.totalPhases.value}",
+    )
 }
 
 private fun reportIndexScope(scope: InstalledRuntimeIndexScope) {
@@ -172,6 +211,14 @@ private fun reject(failure: InstalledIndexerStartupFailure): Nothing {
     if (failure != InstalledIndexerStartupFailure.CacheState) {
         IndexerCacheStatePublisher.publish(IndexerCacheState.REBUILD_REQUIRED)
     }
-    System.err.println("kast-indexer: startup rejected: $failure")
+    val cause = when (failure) {
+        is InstalledIndexerStartupFailure.Launch -> "launch"
+        is InstalledIndexerStartupFailure.Transport -> "transport-${failure.failure.name.lowercase()}"
+        is InstalledIndexerStartupFailure.Runtime -> "runtime"
+        is InstalledIndexerStartupFailure.TransportExecution -> "transport-execution-${failure.failure.name.lowercase()}"
+        InstalledIndexerStartupFailure.CacheState -> "cache-state"
+        InstalledIndexerStartupFailure.BootstrapState -> "bootstrap-state"
+    }
+    System.err.println("kast-indexer: startup rejected: cause=$cause")
     exitProcess(70)
 }

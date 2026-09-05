@@ -1,6 +1,8 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentFailure
 import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLock
 import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLockExecution
 import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapStateFile
@@ -9,7 +11,6 @@ import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapStateObserva
 import io.github.amichne.kast.distribution.contract.bootstrap.SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapAttemptId
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapDocumentFailure
-import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapFailure
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapState
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifest
@@ -236,6 +237,7 @@ class IndexerExecutable private constructor(
 class IndexerLaunchCommand private constructor(
     internal val arguments: List<String>,
     internal val runtime: InstalledIdeRuntime,
+    internal val importEnvironment: GradleImportEnvironment,
     internal val startupLog: Path,
     internal val bootstrapState: Path,
     internal val bootstrapAttemptId: SemanticRuntimeBootstrapAttemptId,
@@ -278,6 +280,7 @@ class IndexerLaunchCommand private constructor(
                         "--bootstrap-attempt-id=${bootstrapAttemptId.value}",
                     ),
                     runtime = context.runtime,
+                    importEnvironment = context.importEnvironment,
                     startupLog = context.logDirectory.resolve("startup.log"),
                     bootstrapState = context.cacheRoot.resolve(
                         SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME,
@@ -362,6 +365,7 @@ sealed interface RuntimeAdmission {
 }
 
 sealed interface RuntimeAdmissionFailure {
+    data class GradleImportEnvironmentRejected(val failure: GradleImportEnvironmentFailure) : RuntimeAdmissionFailure
     data object ManifestInvalid : RuntimeAdmissionFailure
     data object SourceInvalid : RuntimeAdmissionFailure
     data object ArtifactUnavailable : RuntimeAdmissionFailure
@@ -381,7 +385,7 @@ sealed interface RuntimeAdmissionFailure {
         val failure: SemanticRuntimeBootstrapDocumentFailure,
     ) : RuntimeAdmissionFailure
     data class IntellijBootstrap(
-        val failure: SemanticRuntimeBootstrapFailure,
+        val state: SemanticRuntimeBootstrapState.Rejected,
     ) : RuntimeAdmissionFailure
     data object ProcessObservationFailed : RuntimeAdmissionFailure
     data object EndpointUnavailable : RuntimeAdmissionFailure
@@ -393,6 +397,7 @@ sealed interface RuntimeAdmissionFailure {
 }
 
 internal fun RuntimeAdmissionFailure.outputReason(): String = when (this) {
+    is RuntimeAdmissionFailure.GradleImportEnvironmentRejected -> "gradle-import-environment-${failure.name.lowercase().replace('_', '-')}"
     RuntimeAdmissionFailure.ManifestInvalid -> "manifest-invalid"
     RuntimeAdmissionFailure.SourceInvalid -> "source-invalid"
     RuntimeAdmissionFailure.ArtifactUnavailable -> "artifact-unavailable"
@@ -401,6 +406,7 @@ internal fun RuntimeAdmissionFailure.outputReason(): String = when (this) {
     RuntimeAdmissionFailure.LayoutInvalid -> "layout-invalid"
     RuntimeAdmissionFailure.RuntimeIncompatible -> "runtime-incompatible"
     is RuntimeAdmissionFailure.ProcessStartFailed -> when (failure) {
+        RuntimeProcessStartFailure.GradleImportEnvironmentRejected -> "gradle-import-environment-rejected"
         RuntimeProcessStartFailure.IdeaJbrUnavailable -> "idea-jbr-unavailable"
         RuntimeProcessStartFailure.UserHomeUnavailable -> "user-home-unavailable"
         RuntimeProcessStartFailure.SessionObservationRejected,
@@ -421,7 +427,7 @@ internal fun RuntimeAdmissionFailure.outputReason(): String = when (this) {
         SemanticRuntimeBootstrapDocumentFailure.UNSUPPORTED_SCHEMA ->
             "bootstrap-schema-unsupported"
     }
-    is RuntimeAdmissionFailure.IntellijBootstrap -> failure.wireName
+    is RuntimeAdmissionFailure.IntellijBootstrap -> state.failure.wireName
     RuntimeAdmissionFailure.ProcessObservationFailed -> "process-observation-failed"
     RuntimeAdmissionFailure.EndpointUnavailable -> "endpoint-unavailable"
     RuntimeAdmissionFailure.RuntimeIdentityMismatch -> "runtime-identity-mismatch"
@@ -536,11 +542,13 @@ internal class ExactRootProcessRuntimeDemander(
         JdkRuntimeBootstrapAttemptGenerator,
     private val bootstrapProcessAuthority: RuntimeBootstrapProcessAuthority =
         JdkRuntimeBootstrapProcessAuthority,
+    private val progress: RuntimeStartupProgressSink = TerminalRuntimeStartupProgress.create(),
 ) : RuntimeDemander {
     override fun demand(
         root: CanonicalRoot,
         endpoint: RuntimeEndpoint,
     ): RuntimeAdmission {
+        progress.discoveringRuntime()
         if (endpoint.root != root) {
             return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
         }
@@ -705,13 +713,16 @@ internal class ExactRootProcessRuntimeDemander(
                             is SemanticRuntimeBootstrapState.Ready -> if (
                                 reachability is RuntimeEndpointReachability.Reachable
                             ) {
+                                progress.publish(state)
                                 return RuntimeAdmission.Ready(endpoint)
                             }
-                            is SemanticRuntimeBootstrapState.Rejected ->
+                            is SemanticRuntimeBootstrapState.Rejected -> {
+                                progress.publish(state)
                                 return RuntimeAdmission.Rejected(
-                                    RuntimeAdmissionFailure.IntellijBootstrap(state.failure),
+                                    RuntimeAdmissionFailure.IntellijBootstrap(state),
                                 )
-                            is SemanticRuntimeBootstrapState.Starting -> Unit
+                            }
+                            is SemanticRuntimeBootstrapState.Starting -> progress.publish(state)
                         }
                     }
                 }
@@ -786,7 +797,7 @@ private fun SidecarBootstrapStateObservation.sessionEndedBeforeReadyFailure(
     is SidecarBootstrapStateObservation.Observed -> {
         when (val state = state) {
             is SemanticRuntimeBootstrapState.Rejected -> if (state.attemptId == startedAttempt) {
-                RuntimeAdmissionFailure.IntellijBootstrap(state.failure)
+                RuntimeAdmissionFailure.IntellijBootstrap(state)
             } else {
                 RuntimeAdmissionFailure.SessionEndedBeforeReady
             }

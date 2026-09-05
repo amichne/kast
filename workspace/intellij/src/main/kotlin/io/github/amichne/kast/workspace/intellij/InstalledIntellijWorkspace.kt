@@ -1,5 +1,8 @@
 package io.github.amichne.kast.workspace.intellij
 
+import io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionReport
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
+import io.github.amichne.kast.kernel.Refinement
 import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.Logger
@@ -52,6 +55,8 @@ enum class InstalledIntellijWorkspaceFailure {
     PROJECT_JVM_UNAVAILABLE,
     PLATFORM_LINKAGE_INVALID,
     GRADLE_IMPORT_FAILED,
+    GRADLE_TOOLING_PAYLOAD_INCOMPATIBLE,
+    GRADLE_INIT_SCRIPT_UNAVAILABLE,
     GRADLE_PROJECT_POLICY_INVALID,
     GRADLE_JVM_CONFIGURATION_INVALID,
     GRADLE_IMPORT_TIMED_OUT,
@@ -71,6 +76,7 @@ enum class InstalledIntellijWorkspaceFailure {
 
 /** Ordered installed workspace bootstrap boundaries visible to the owning runtime. */
 enum class InstalledIntellijWorkspaceBootstrapPhase {
+    GRADLE_JVM_SELECTION,
     PROJECT_IMPORT,
     INDEXING,
     MODEL_CAPTURE,
@@ -79,6 +85,7 @@ enum class InstalledIntellijWorkspaceBootstrapPhase {
 /** Explicit effect boundary for observing installed workspace bootstrap progress. */
 fun interface InstalledIntellijWorkspaceBootstrapObserver {
     fun observe(phase: InstalledIntellijWorkspaceBootstrapPhase)
+    fun observeGradleJvm(report: GradleJvmSelectionReport) {}
 }
 
 /** Detached complete model proof from one exact IntelliJ-opened Gradle workspace. */
@@ -196,8 +203,24 @@ object InstalledIntellijWorkspace {
         observer: InstalledIntellijWorkspaceBootstrapObserver =
             InstalledIntellijWorkspaceBootstrapObserver {},
     ): InstalledIntellijWorkspaceOpening {
-        observer.observe(InstalledIntellijWorkspaceBootstrapPhase.PROJECT_IMPORT)
         val workspacePath = Path.of(workspaceRoot.value)
+        val importEnvironment = when (val admission = GradleImportEnvironment.admit(
+            System.getenv(GradleImportEnvironment.VARIABLES_SETTING).orEmpty(),
+            System.getenv(GradleImportEnvironment.PATH_SETTING).orEmpty(),
+            System.getenv(),
+        )) {
+            is Refinement.Refined -> admission.value
+            is Refinement.Rejected -> return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID)
+        }
+        val projectJvmAuthority = when (val admitted = projectGradleJvmAuthority(workspacePath)) {
+            is ProjectGradleJvmAuthority.Admitted -> admitted
+            ProjectGradleJvmAuthority.Rejected -> {
+                observer.observeGradleJvm(InstalledGradleJvmSelection.Rejected(
+                    InstalledGradleJvmSelectionFailure.REPOSITORY_JAVA_HOME_INVALID,
+                ).report)
+                return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID)
+            }
+        }
         val projectStore = when (
             val prepared = InstalledSemanticProjectStore.prepare(
                 workspaceRoot,
@@ -220,13 +243,15 @@ object InstalledIntellijWorkspace {
                 InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE,
             )
         }
-        return openObserved(workspacePath, projectStore, sidecarJvm, observer)
+        return openObserved(workspacePath, projectStore, sidecarJvm, projectJvmAuthority, importEnvironment, observer)
     }
 
     private fun openObserved(
         workspaceRoot: Path,
         projectStore: InstalledSemanticProjectStore,
         sidecarJvm: InstalledSidecarJvm,
+        projectJvmAuthority: ProjectGradleJvmAuthority.Admitted,
+        importEnvironment: GradleImportEnvironment,
         observer: InstalledIntellijWorkspaceBootstrapObserver,
     ): InstalledIntellijWorkspaceOpening {
         val preparation = InstalledProjectOpenPreparation(BootstrapProjectJvm.from(sidecarJvm))
@@ -297,9 +322,10 @@ object InstalledIntellijWorkspace {
             is InstalledGradleLinkPresence.Linked -> linkPresence.settings
             is InstalledGradleLinkPresence.Unlinked -> linkPresence.settings
         }
-        val selectedGradleJvm = when (
-            val selection = selectInstalledGradleJvm(project, linkedProjectSettings, sidecarJvm)
-        ) {
+        observer.observe(InstalledIntellijWorkspaceBootstrapPhase.GRADLE_JVM_SELECTION)
+        val selection = selectInstalledGradleJvm(project, linkedProjectSettings, sidecarJvm, projectJvmAuthority)
+        observer.observeGradleJvm(selection.report)
+        val selectedGradleJvm = when (selection) {
             is InstalledGradleJvmSelection.Selected -> selection.jvm
             is InstalledGradleJvmSelection.Rejected -> return rejected(
                 InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE,
@@ -314,8 +340,9 @@ object InstalledIntellijWorkspace {
             )
         }
 
+        observer.observe(InstalledIntellijWorkspaceBootstrapPhase.PROJECT_IMPORT)
         val imported = CompletableFuture<Void>()
-        val closedImported = imported.closedImportOutcome()
+        val closedImported = imported.closedImportOutcome(installedGradleImportDiagnosticObserver(sidecarJvm, selectedGradleJvm))
         val specification = ImportSpecBuilder(project, GradleConstants.SYSTEM_ID)
             .withCallback(imported)
         val importCompletion = try {
@@ -343,6 +370,12 @@ object InstalledIntellijWorkspace {
             )
             InstalledGradleImportWait.INVALID_JVM_CONFIGURATION -> return rejected(
                 InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID,
+            )
+            InstalledGradleImportWait.INCOMPATIBLE_PAYLOAD -> return rejected(
+                InstalledIntellijWorkspaceFailure.GRADLE_TOOLING_PAYLOAD_INCOMPATIBLE,
+            )
+            InstalledGradleImportWait.INITIALIZATION_SCRIPT_UNAVAILABLE -> return rejected(
+                InstalledIntellijWorkspaceFailure.GRADLE_INIT_SCRIPT_UNAVAILABLE,
             )
             InstalledGradleImportWait.CANCELLED,
             InstalledGradleImportWait.FAILED,
@@ -412,7 +445,7 @@ object InstalledIntellijWorkspace {
             is InstalledWorkspaceIndexingAdmission.Rejected -> return rejected(admission.failure)
         }
         observer.observe(InstalledIntellijWorkspaceBootstrapPhase.MODEL_CAPTURE)
-        val capture = when (val captured = captureInstalledGradleModel(project, workspaceRoot)) {
+        val capture = when (val captured = captureInstalledGradleModel(project, workspaceRoot, importEnvironment.identity)) {
             is io.github.amichne.kast.kernel.Refinement.Refined -> captured.value
             is io.github.amichne.kast.kernel.Refinement.Rejected -> return rejected(
                 captured.failure.workspaceFailure(),
@@ -461,6 +494,8 @@ object InstalledIntellijWorkspace {
         when (future.get(GRADLE_IMPORT_TIMEOUT_MINUTES, TimeUnit.MINUTES)) {
             InstalledGradleImportOutcome.Completed -> InstalledGradleImportWait.COMPLETED
             InstalledGradleImportOutcome.Failed -> InstalledGradleImportWait.FAILED
+            is InstalledGradleImportOutcome.IncompatiblePayload -> InstalledGradleImportWait.INCOMPATIBLE_PAYLOAD
+            InstalledGradleImportOutcome.InitializationScriptUnavailable -> InstalledGradleImportWait.INITIALIZATION_SCRIPT_UNAVAILABLE
             InstalledGradleImportOutcome.Cancelled -> InstalledGradleImportWait.CANCELLED
             InstalledGradleImportOutcome.InvalidJvmConfiguration ->
                 InstalledGradleImportWait.INVALID_JVM_CONFIGURATION
@@ -535,7 +570,9 @@ internal fun installedProjectOpenTask(
     preventIprLookup = true,
     createModule = false,
     beforeOpen = { project ->
-        indexBootstrap.bind(project) &&
+        val synchronized = synchronizeInstalledGlobalSdkModel().also { it.observe() }
+        synchronized == InstalledGlobalSdkSynchronization.SYNCHRONIZED &&
+            indexBootstrap.bind(project) &&
             preparation.prepare(project) is InstalledProjectOpenPreparationState.Prepared
     },
 )
@@ -613,6 +650,8 @@ private enum class FutureCompletion {
 }
 
 private enum class InstalledGradleImportWait {
+    INITIALIZATION_SCRIPT_UNAVAILABLE,
+    INCOMPATIBLE_PAYLOAD,
     COMPLETED,
     FAILED,
     CANCELLED,

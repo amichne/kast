@@ -6,9 +6,11 @@ from __future__ import annotations
 import argparse
 from collections.abc import Collection, Mapping
 from dataclasses import dataclass
+from enum import Enum
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import stat
@@ -22,13 +24,122 @@ def fail(message: str) -> None:
     raise SystemExit(f"enterprise-acceptance: {message}")
 
 
+class MutationProofStage(str, Enum):
+    DISCOVERY = "marker-discovery"
+    INSPECTION = "marker-inspection"
+    STALE_PLAN = "stale-plan"
+
+
+class MutationProofMismatch(str, Enum):
+    OPERATION = "operation"
+    STATUS = "status"
+    CANDIDATES = "candidates"
+    SYMBOL = "symbol"
+    KIND = "kind"
+    NAME = "name"
+    PLACEMENT = "placement"
+    FILE = "file"
+    SELECTOR = "selector"
+    REASON = "reason"
+    REPOSITORY_STATE = "repository-state"
+
+
+class MutationMarkerPlacement(str, Enum):
+    EXPECTED_MEMBER = "expected-member"
+    TOP_LEVEL = "top-level"
+    OTHER = "other"
+    UNAVAILABLE = "unavailable"
+
+
+class StalePlanReason(str, Enum):
+    CONTENT_CHANGED = "content-changed"
+    GENERATION_STALE = "generation-stale"
+    OTHER = "other"
+
+
+def mutation_proof(stage: MutationProofStage, mismatches: list[MutationProofMismatch],
+                   placement: MutationMarkerPlacement | None = None,
+                   reason: StalePlanReason | None = None) -> None:
+    """Emit finite field comparisons only; never declaration values, selectors, or paths."""
+    evidence = {"schemaVersion": 1, "stage": stage.value,
+                "status": "rejected" if mismatches else "passed",
+                "mismatches": [mismatch.value for mismatch in mismatches]}
+    if placement is not None:
+        evidence["placement"] = placement.value
+    if reason is not None:
+        evidence["reason"] = reason.value
+    prefix = "enterprise-stale-plan" if stage is MutationProofStage.STALE_PLAN else "enterprise-mutation-marker"
+    print(prefix + ": " + json.dumps(evidence, sort_keys=True), flush=True)
+
+
 def arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--product-root", type=Path, required=True)
     parser.add_argument("--fixture", type=Path, required=True)
     parser.add_argument("--thresholds", type=Path, required=True)
     parser.add_argument("--runtime-archive", type=Path, required=True)
+    parser.add_argument("--retain-failed-host", action="store_true")
     return parser.parse_args()
+
+
+def diagnostic_summary(stage: str, document: dict[str, Any]) -> dict[str, Any]:
+    """Retain compiler status/count/codes without messages, locations, or source values."""
+    facts = document.get("diagnostics")
+    if not isinstance(facts, list):
+        fail("diagnostic summary has no bounded diagnostic list")
+    if any(not isinstance(fact, dict) or fact.get("severity") not in
+           {"error", "warning", "info", "ERROR", "WARNING", "INFO"} for fact in facts):
+        fail("diagnostic summary has an unsupported severity")
+    errors = [fact for fact in facts if isinstance(fact, dict) and fact.get("severity") == "error"]
+    # Wire enum values are lowercase; tolerate the generated uppercase projection explicitly.
+    errors += [fact for fact in facts if isinstance(fact, dict) and fact.get("severity") == "ERROR"]
+    codes = sorted({fact.get("code", "") for fact in errors
+                    if isinstance(fact.get("code"), str) and re.fullmatch(r"[A-Z][A-Z0-9_]{0,95}", fact["code"])})[:16]
+    summary = {"stage": stage, "status": document.get("status"), "errorCount": len(errors), "factoryCodes": codes}
+    print("enterprise-diagnostics: " + json.dumps(summary, sort_keys=True), flush=True)
+    return summary
+
+
+def compiler_log_evidence(cache_root: Path) -> list[dict[str, Any]]:
+    """Project only the bounded diagnostic event schema from owned IntelliJ logs."""
+    evidence: list[dict[str, Any]] = []
+    logs = sorted(cache_root.glob("*/log/idea.log"))
+    if len(logs) > 16:
+        fail("diagnostic compiler log cohort exceeds its bound")
+    for log in logs:
+        with log.open("rb") as stream:
+            stream.seek(max(0, log.stat().st_size - 262144))
+            lines = stream.read(262144).decode(errors="replace").splitlines()
+        for line in lines:
+            marker = "Kast diagnostic compilation: "
+            if marker not in line:
+                continue
+            try:
+                event = json.loads(line.split(marker, 1)[1])
+            except json.JSONDecodeError:
+                fail("diagnostic compiler event is malformed")
+            if not isinstance(event, dict):
+                fail("diagnostic compiler event is not an object")
+            status = event.get("status")
+            if event.get("stage") != "exact-scope" or status not in {"complete", "qualified", "rejected", "cancelled"}:
+                fail("diagnostic compiler event has an unsupported terminal state")
+            record: dict[str, Any] = {"stage": "exact-scope", "status": status}
+            if status in {"complete", "qualified"}:
+                errors = event.get("errors")
+                if not isinstance(errors, dict):
+                    fail("diagnostic compiler event omitted error evidence")
+                for key in ("count", "withheldFactCount"):
+                    value = errors.get(key)
+                    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                        fail("diagnostic compiler event has an invalid count")
+                codes = errors.get("factoryCodes")
+                if not isinstance(codes, list) or len(codes) > 16 or any(
+                    not isinstance(code, str) or re.fullmatch(r"[A-Z][A-Z0-9_]{0,95}", code) is None for code in codes
+                ):
+                    fail("diagnostic compiler event has invalid factory codes")
+                record.update(errorCount=errors["count"], factoryCodes=codes, withheldFactCount=errors["withheldFactCount"])
+            evidence.append(record)
+    return evidence[-16:]
 
 
 def positive_integer(document: dict[str, Any], name: str, minimum: int = 1) -> int:
@@ -330,6 +441,31 @@ def snapshot_paths(
     return tuple(observations)
 
 
+def workspace_source_identity(workspace: Path) -> str:
+    """Hash tracked/untracked source bytes and staged identities; emit no source payload.
+
+    Git-ignored runtime caches are outside this repository-write proof. Deletions,
+    modes, links, new files, and index changes remain part of the observation.
+    """
+    names = sorted(set(git(workspace, "ls-files", "-z", "--cached", "--others", "--exclude-standard").split("\0")) - {""})
+    if len(names) > 10_000:
+        fail("repository source observation exceeded its file bound")
+    for name in names:
+        relative = Path(name)
+        if relative.is_absolute() or ".." in relative.parts:
+            fail("repository source observation has an invalid owned path")
+        cursor = workspace
+        for part in relative.parts[:-1]:
+            cursor /= part
+            if cursor.is_symlink():
+                fail("repository source observation cannot follow directory links")
+    evidence = {
+        "files": snapshot_paths(workspace, tuple(names)),
+        "index": git(workspace, "ls-files", "--stage", "-z"),
+    }
+    return hashlib.sha256(json.dumps(evidence, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
 class Acceptance:
     def __init__(
         self,
@@ -546,6 +682,13 @@ class Acceptance:
         ):
             fail(f"diagnostic.check returned no scoped evidence: {diagnostics}")
 
+        baseline = diagnostic_summary("baseline", diagnostics)
+        print("enterprise-compiler-evidence: " + json.dumps(
+            compiler_log_evidence(Path(self.environment["KAST_CACHE_ROOT"])), sort_keys=True,
+        ), flush=True)
+        if baseline["status"] != "complete" or baseline["errorCount"] != 0:
+            fail("enterprise mutation requires complete error-free baseline diagnostics")
+
         relation_limit = positive_integer(bounds, "relationResultLimit")
         relation = self.command(
             "relation",
@@ -662,6 +805,14 @@ class Acceptance:
         ):
             fail(f"enterprise recovery did not restore known state: {recovered}")
 
+        pending = self.command(
+            "change", "plan", "--intent", "add-declaration", "--target", target,
+            "--declaration", "fun enterpriseStalePlanProbe(): Int = 2",
+        )
+        pending_identity = pending.get("planIdentity")
+        if pending.get("status") != "complete" or not isinstance(pending_identity, str) or not pending_identity:
+            fail("enterprise stale-plan probe requires a complete distinct pending plan")
+
         plan = self.command(
             "change",
             "plan",
@@ -675,10 +826,23 @@ class Acceptance:
         plan_identity = plan.get("planIdentity")
         if plan.get("status") != "complete" or not isinstance(plan_identity, str):
             fail(f"enterprise mutation plan was not complete: {plan}")
+        if pending_identity in {recovery_plan_identity, plan_identity}:
+            fail("enterprise stale-plan probe requires a complete distinct pending plan")
         applied = self.command(
             "change", "apply", "--plan", plan_identity,
             timeout=self.maximum_reconciliation_seconds,
         )
+        after_diagnostics = self.command(
+            "diagnostic", "check", "--scope",
+            "domains/alpha/one/src/main/kotlin/enterprise/alpha/one/Enterprise.kt", "--limit", "1000",
+        )
+        after = diagnostic_summary("after-mutation", after_diagnostics)
+        compiler_evidence = compiler_log_evidence(Path(self.environment["KAST_CACHE_ROOT"]))
+        if not compiler_evidence:
+            fail("installed diagnostic compiler omitted durable terminal evidence")
+        print("enterprise-compiler-evidence: " + json.dumps(compiler_evidence, sort_keys=True), flush=True)
+        if after_diagnostics.get("operation") != "diagnostic.check" or after["status"] != "complete" or after["errorCount"] != 0:
+            fail("enterprise mutation requires complete error-free post-mutation diagnostics")
         if applied.get("status") != "complete" or not applied.get("receiptIdentity"):
             fail(f"enterprise mutation did not return a verified receipt: {applied}")
         stale = self.command(
@@ -692,6 +856,82 @@ class Acceptance:
             or stale.get("reason") != "exact-selector-stale"
         ):
             fail(f"prior-generation selector was not rejected: {stale}")
+
+        self.prove_mutation_marker()
+        before = workspace_source_identity(self.workspace)
+        rejected = self.command("change", "apply", "--plan", pending_identity)
+        mismatches = []
+        if workspace_source_identity(self.workspace) != before:
+            mismatches.append(MutationProofMismatch.REPOSITORY_STATE)
+        if rejected.get("operation") != "change.apply":
+            mismatches.append(MutationProofMismatch.OPERATION)
+        if rejected.get("status") != "rejected":
+            mismatches.append(MutationProofMismatch.STATUS)
+        reason = next((value for value in StalePlanReason if value.value == rejected.get("reason")), StalePlanReason.OTHER)
+        # MutationAdmission checks the observed source preimage before generation
+        # publication. This probe changes that same source, requiring CONTENT_CHANGED.
+        if reason is not StalePlanReason.CONTENT_CHANGED:
+            mismatches.append(MutationProofMismatch.REASON)
+        mutation_proof(MutationProofStage.STALE_PLAN, mismatches, reason=reason)
+        if MutationProofMismatch.REPOSITORY_STATE in mismatches:
+            fail("stale mutation plan changed repository contents")
+        if mismatches:
+            fail("stale mutation plan was not rejected as content-changed")
+
+    def prove_mutation_marker(self) -> None:
+        """Prove the requested member through refreshed discovery and compiler inspection."""
+        discovery = self.command(
+            "symbol", "discover", "--query", "enterpriseMutationMarker",
+            "--match", "exact-name", "--limit", "2",
+        )
+        mismatches = []
+        if discovery.get("operation") != "symbol.discover":
+            mismatches.append(MutationProofMismatch.OPERATION)
+        if discovery.get("status") != "complete":
+            mismatches.append(MutationProofMismatch.STATUS)
+        items = discovery.get("items")
+        if (not isinstance(items, list) or len(items) != 1 or not isinstance(items[0], dict)
+                or items[0].get("type") != "declaration" or not isinstance(items[0].get("candidateSelector"), str)
+                or not items[0]["candidateSelector"]):
+            mismatches.append(MutationProofMismatch.CANDIDATES)
+        mutation_proof(MutationProofStage.DISCOVERY, mismatches)
+        if mismatches:
+            fail("enterprise mutation requires one complete mutation marker discovery")
+        inspection = self.command("symbol", "inspect", "--candidate", items[0]["candidateSelector"])
+        symbol = inspection.get("symbol")
+        mismatches = []
+        if inspection.get("operation") != "symbol.inspect":
+            mismatches.append(MutationProofMismatch.OPERATION)
+        if inspection.get("status") != "complete":
+            mismatches.append(MutationProofMismatch.STATUS)
+        placement = MutationMarkerPlacement.UNAVAILABLE
+        if not isinstance(symbol, dict):
+            mismatches.append(MutationProofMismatch.SYMBOL)
+        else:
+            # CLASSLIKE targets select InsertIntoClassBody in AddDeclarationChangePlan;
+            # the writer inserts before the closing brace. SymbolDocument.file retains
+            # CanonicalWorkspaceFilePath's absolute identity through CLI projection.
+            expected_file = self.workspace.resolve(strict=True) / "domains/alpha/one/src/main/kotlin/enterprise/alpha/one/Enterprise.kt"
+            if symbol.get("kind") != "function":
+                mismatches.append(MutationProofMismatch.KIND)
+            if symbol.get("name") != "enterpriseMutationMarker":
+                mismatches.append(MutationProofMismatch.NAME)
+            qualified = symbol.get("qualifiedIdentity")
+            if qualified == "enterprise.alpha.one.EnterpriseRouter.enterpriseMutationMarker":
+                placement = MutationMarkerPlacement.EXPECTED_MEMBER
+            elif qualified == "enterprise.alpha.one.enterpriseMutationMarker":
+                placement = MutationMarkerPlacement.TOP_LEVEL
+            elif isinstance(qualified, str) and qualified:
+                placement = MutationMarkerPlacement.OTHER
+            if placement is not MutationMarkerPlacement.EXPECTED_MEMBER:
+                mismatches.append(MutationProofMismatch.PLACEMENT)
+            if symbol.get("file") != str(expected_file):
+                mismatches.append(MutationProofMismatch.FILE)
+            if not isinstance(symbol.get("selector"), str) or not symbol["selector"]:
+                mismatches.append(MutationProofMismatch.SELECTOR)
+        mutation_proof(MutationProofStage.INSPECTION, mismatches, placement)
+        if mismatches:
+            fail("enterprise mutation did not inspect its exact mutation marker")
 
     def prove_workspace_write_scope(self) -> None:
         tracked = git(self.workspace, "diff", "--name-only").splitlines()
@@ -877,6 +1117,19 @@ def git(workspace: Path, *arguments: str) -> str:
 
 
 def prepare_workspace_fixture(workspace: Path) -> None:
+    source_root = Path(__file__).resolve().parents[1]
+    for relative in (
+        "gradlew", "gradlew.bat", "gradle/wrapper/gradle-wrapper.jar",
+        "gradle/wrapper/gradle-wrapper.properties",
+    ):
+        authority = source_root / relative
+        target = workspace / relative
+        if target.exists():
+            if target.read_bytes() != authority.read_bytes():
+                fail(f"fixture wrapper differs from pinned authority: {relative}")
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(authority, target)
     git(workspace, "init", "--quiet")
     git(workspace, "config", "user.name", "Kast Acceptance")
     git(workspace, "config", "user.email", "acceptance@kast.invalid")
@@ -941,7 +1194,9 @@ def main() -> None:
     maximum_acceptance_seconds = positive_integer(bounds, "maximumAcceptanceSeconds")
     started_at = time.monotonic()
     ambient = AmbientBrokerSnapshot.capture()
-    with tempfile.TemporaryDirectory(prefix="ka.", dir="/tmp") as host_text:
+    host_text = tempfile.mkdtemp(prefix="ka.", dir="/tmp")
+    succeeded = False
+    try:
         host = IsolatedAcceptanceHost.create(Path(host_text), args.runtime_archive)
         shutil.copytree(
             args.fixture,
@@ -958,6 +1213,12 @@ def main() -> None:
             ambient,
             maximum_acceptance_seconds,
         )
+        succeeded = True
+    finally:
+        if succeeded or not args.retain_failed_host:
+            shutil.rmtree(host_text)
+        else:
+            print("enterprise-acceptance: retained retired failed host at " + host_text, flush=True)
     elapsed = time.monotonic() - started_at
     if elapsed > maximum_acceptance_seconds:
         fail(

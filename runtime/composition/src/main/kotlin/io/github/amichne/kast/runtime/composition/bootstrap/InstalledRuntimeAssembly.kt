@@ -1,5 +1,6 @@
 package io.github.amichne.kast.runtime.composition
 
+import io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionReport
 import io.github.amichne.kast.change.intellij.InstalledIntellijChangePorts
 import io.github.amichne.kast.diagnostic.intellij.installedIntellijDiagnosticCompiler
 import io.github.amichne.kast.evidence.sqlite.SqliteCanonicalWorkspacePublicationTransaction
@@ -75,8 +76,13 @@ internal fun productionInstalledRuntimeAssembler(): InstalledRuntimeAssembler =
         val workspaceModel = when (val opened = InstalledIntellijWorkspace.open(
             request.workspaceRoot.canonicalRoot,
             request.stateDirectory.path,
-            InstalledIntellijWorkspaceBootstrapObserver { phase ->
-                request.bootstrapObserver.observe(phase.runtimePhase())
+            object : InstalledIntellijWorkspaceBootstrapObserver {
+                override fun observe(phase: InstalledIntellijWorkspaceBootstrapPhase) {
+                    request.bootstrapObserver.observe(phase.runtimePhase())
+                }
+                override fun observeGradleJvm(report: GradleJvmSelectionReport) {
+                    request.bootstrapObserver.observeGradleJvm(InstalledGradleJvmSelectionReport(report))
+                }
             },
         )) {
             is InstalledIntellijWorkspaceOpening.Opened -> opened.model
@@ -126,6 +132,8 @@ internal fun publishInstalledRuntimeIndexScope(
 
 private fun InstalledIntellijWorkspaceBootstrapPhase.runtimePhase():
     InstalledRuntimeBootstrapPhase = when (this) {
+    InstalledIntellijWorkspaceBootstrapPhase.GRADLE_JVM_SELECTION ->
+        InstalledRuntimeBootstrapPhase.GRADLE_JVM_SELECTION
     InstalledIntellijWorkspaceBootstrapPhase.PROJECT_IMPORT ->
         InstalledRuntimeBootstrapPhase.PROJECT_IMPORT
     InstalledIntellijWorkspaceBootstrapPhase.INDEXING -> InstalledRuntimeBootstrapPhase.INDEXING

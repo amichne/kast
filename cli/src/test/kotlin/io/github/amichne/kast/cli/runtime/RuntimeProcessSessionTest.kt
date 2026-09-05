@@ -22,6 +22,29 @@ import java.time.Duration
 
 class RuntimeProcessSessionTest {
     @Test
+    fun `ready progress requires endpoint reachability as well as owned ready document`(@TempDir temporary: Path) {
+        val endpoint = endpoint(temporary)
+        val observed = mutableListOf<SemanticRuntimeBootstrapState>()
+        val demander = ExactRootProcessRuntimeDemander(
+            executable = executable(temporary),
+            launchContext = launchContext(temporary),
+            processStarter = RuntimeProcessStarter { command ->
+                writeBootstrap(command.bootstrapState, SemanticRuntimeBootstrapState.Ready(command.bootstrapAttemptId))
+                RuntimeProcessStart.Started(
+                    AcceptedRuntimeStartupSession { RuntimeSessionObservation.Absent }, command.bootstrapAttemptId,
+                )
+            },
+            endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Unreachable },
+            progress = RuntimeStartupProgressSink(observed::add),
+        )
+        assertEquals(
+            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.SessionEndedBeforeReady),
+            demander.demand(endpoint.root, endpoint),
+        )
+        assertEquals(emptyList<SemanticRuntimeBootstrapState>(), observed)
+    }
+
+    @Test
     fun `reachable starting attempt waits without launching a duplicate child`(
         @TempDir temporary: Path,
     ) {
@@ -201,10 +224,8 @@ class RuntimeProcessSessionTest {
 
         val admission = demander.demand(endpoint.root, endpoint)
 
-        assertEquals(
-            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.IntellijBootstrap(expected)),
-            admission,
-        )
+        val rejected = (admission as RuntimeAdmission.Rejected).failure as RuntimeAdmissionFailure.IntellijBootstrap
+        assertEquals(expected, rejected.state.failure)
         assertEquals(
             "project-jvm-unavailable",
             (admission as RuntimeAdmission.Rejected).failure.outputReason(),

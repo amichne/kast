@@ -14,7 +14,7 @@ internal object JdkRuntimeProcessStarter : RuntimeProcessStarter {
      */
     override fun start(command: IndexerLaunchCommand): RuntimeProcessStart {
         val environment = when (
-            val resolution = MacOsRuntimeProcessEnvironment.resolve(command.runtime)
+            val resolution = MacOsRuntimeProcessEnvironment.resolve(command.runtime, command.importEnvironment)
         ) {
             is MacOsRuntimeProcessEnvironmentResolution.Resolved -> resolution.environment
             is MacOsRuntimeProcessEnvironmentResolution.Rejected ->
@@ -22,6 +22,8 @@ internal object JdkRuntimeProcessStarter : RuntimeProcessStarter {
                     when (resolution.failure) {
                         MacOsRuntimeProcessEnvironmentFailure.JAVA_HOME_UNAVAILABLE ->
                             RuntimeProcessStartFailure.IdeaJbrUnavailable
+                        MacOsRuntimeProcessEnvironmentFailure.GRADLE_IMPORT_ENVIRONMENT_REJECTED ->
+                            RuntimeProcessStartFailure.GradleImportEnvironmentRejected
                         MacOsRuntimeProcessEnvironmentFailure.USER_HOME_UNAVAILABLE ->
                             RuntimeProcessStartFailure.UserHomeUnavailable
                     },

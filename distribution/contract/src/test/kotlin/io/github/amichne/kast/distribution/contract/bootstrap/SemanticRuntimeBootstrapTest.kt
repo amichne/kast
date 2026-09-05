@@ -29,9 +29,9 @@ class SemanticRuntimeBootstrapTest {
     }
 
     @Test
-    fun `version one starting document has a stable wire representation`() {
+    fun `starting document exposes runtime discovery phase`() {
         assertEquals(
-            """{"schemaVersion":1,"bootstrap":{"state":"starting","attemptId":"123e4567-e89b-42d3-a456-426614174000"}}""",
+            """{"schemaVersion":2,"bootstrap":{"state":"starting","attemptId":"123e4567-e89b-42d3-a456-426614174000","phase":"discovering-runtime","gradleJvm":{"state":"io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionObservation.Unobserved"}}}""",
             SemanticRuntimeBootstrapCodec.encode(SemanticRuntimeBootstrapState.Starting(attempt)),
         )
     }
@@ -43,7 +43,7 @@ class SemanticRuntimeBootstrapTest {
                 SemanticRuntimeBootstrapDocumentFailure.MALFORMED_DOCUMENT,
             ),
             SemanticRuntimeBootstrapCodec.decode(
-                """{"schemaVersion":1,"bootstrap":{"state":"unknown","attemptId":"123e4567-e89b-42d3-a456-426614174000"}}""",
+                """{"schemaVersion":2,"bootstrap":{"state":"unknown","attemptId":"123e4567-e89b-42d3-a456-426614174000"}}""",
             ),
         )
     }
@@ -55,7 +55,7 @@ class SemanticRuntimeBootstrapTest {
                 SemanticRuntimeBootstrapDocumentFailure.UNSUPPORTED_SCHEMA,
             ),
             SemanticRuntimeBootstrapCodec.decode(
-                """{"schemaVersion":2,"bootstrap":{"state":"future","newField":true}}""",
+                """{"schemaVersion":3,"bootstrap":{"state":"future","newField":true}}""",
             ),
         )
     }
@@ -67,7 +67,41 @@ class SemanticRuntimeBootstrapTest {
                 SemanticRuntimeBootstrapDocumentFailure.MALFORMED_DOCUMENT,
             ),
             SemanticRuntimeBootstrapCodec.decode(
-                """{"schemaVersion":1,"bootstrap":{"state":"starting","attemptId":"not-a-uuid"}}""",
+                """{"schemaVersion":2,"bootstrap":{"state":"starting","attemptId":"not-a-uuid"}}""",
+            ),
+        )
+    }
+
+    @Test
+    fun `every phase is retained and unknown phases cannot be admitted`() {
+        SemanticRuntimeBootstrapPhase.entries.forEach { phase ->
+            val state = SemanticRuntimeBootstrapState.Starting(attempt, phase)
+            assertEquals(Refinement.Refined(state), SemanticRuntimeBootstrapCodec.decode(SemanticRuntimeBootstrapCodec.encode(state)))
+        }
+        assertEquals(
+            Refinement.Rejected(SemanticRuntimeBootstrapDocumentFailure.MALFORMED_DOCUMENT),
+            SemanticRuntimeBootstrapCodec.decode(
+                """{"schemaVersion":2,"bootstrap":{"state":"starting","attemptId":"123e4567-e89b-42d3-a456-426614174000","phase":"unproven-phase"}}""",
+            ),
+        )
+    }
+
+    @Test
+    fun `missing phase in schema two is incomplete evidence`() {
+        assertEquals(
+            Refinement.Rejected(SemanticRuntimeBootstrapDocumentFailure.MALFORMED_DOCUMENT),
+            SemanticRuntimeBootstrapCodec.decode(
+                """{"schemaVersion":2,"bootstrap":{"state":"starting","attemptId":"123e4567-e89b-42d3-a456-426614174000"}}""",
+            ),
+        )
+    }
+
+    @Test
+    fun `legacy bootstrap document cannot prove phase and is rejected as unsupported`() {
+        assertEquals(
+            Refinement.Rejected(SemanticRuntimeBootstrapDocumentFailure.UNSUPPORTED_SCHEMA),
+            SemanticRuntimeBootstrapCodec.decode(
+                """{"schemaVersion":1,"bootstrap":{"state":"starting","attemptId":"123e4567-e89b-42d3-a456-426614174000"}}""",
             ),
         )
     }

@@ -1,6 +1,8 @@
 package io.github.amichne.kast.cli.broker.provider
 
 import io.github.amichne.kast.cli.broker.core.CanonicalBrokerDirectory
+import io.github.amichne.kast.cli.emittedTraversalContinuation
+import io.github.amichne.kast.cli.traversalArguments
 import io.github.amichne.kast.kernel.Refinement
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -19,6 +21,23 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
 class BrokerProcessTest {
+    @Test
+    fun `broker process arguments preserve emitted continuations above four KiB`(
+        @TempDir temporary: Path,
+    ) {
+        val token = emittedTraversalContinuation()
+        assertTrue(token.length > 4_096)
+        val arguments = traversalArguments() + listOf("--continuation", token)
+        val request = BrokerProcessRequest.admit(
+            BrokerExecutable.admit(Path.of("/bin/sh")).refinedValue(),
+            arguments,
+            checkNotNull(CanonicalBrokerDirectory.admit(temporary.toRealPath())),
+            maximumOutputBytes = 1_024,
+            timeoutMillis = 1_000,
+        ).refinedValue()
+        assertEquals(arguments, request.arguments)
+    }
+
     @Test
     fun `cancellation retires the wrapper and allows a subsequent execution`(
         @TempDir temporary: Path,

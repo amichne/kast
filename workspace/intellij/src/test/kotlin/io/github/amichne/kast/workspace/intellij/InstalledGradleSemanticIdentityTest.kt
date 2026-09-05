@@ -1,5 +1,6 @@
 package io.github.amichne.kast.workspace.intellij
 
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
@@ -53,6 +54,15 @@ class InstalledGradleSemanticIdentityTest {
         )
 
         assertEquals(identity(first), identity(reordered))
+    }
+
+    @Test
+    fun `admitted import input changes invalidate semantic identity`(@TempDir temporary: Path) {
+        val rootPath = Files.createDirectories(temporary.resolve("workspace")).toRealPath()
+        val root = canonicalRoot(rootPath)
+        val original = boundary(root, rootPath, sourceRoot(rootPath), contentHash('a'))
+        val changed = (GradleImportEnvironment.admit("IMPORT_PROPERTY", "", mapOf("IMPORT_PROPERTY" to "new")) as Refinement.Refined).value
+        assertNotEquals(identity(original), identity(original.copy(importEnvironmentIdentity = changed.identity)))
     }
 
     @Test

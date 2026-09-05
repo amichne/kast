@@ -3,6 +3,11 @@ package io.github.amichne.kast.cli.projection
 import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.CliJsonDocument
 import io.github.amichne.kast.cli.CliTextDocument
+import io.github.amichne.kast.cli.RuntimeBootstrapObservation
+import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapState
+import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapPhase
+import io.github.amichne.kast.distribution.contract.bootstrap.correctiveAction
+import io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionObservation
 import io.github.amichne.kast.cli.RuntimeEndpoint
 import io.github.amichne.kast.cli.RuntimeEndpointArtifact
 import io.github.amichne.kast.cli.RuntimeEndpointMarker
@@ -15,6 +20,8 @@ import io.github.amichne.kast.cli.command.CliLifecycleCommand
 import io.github.amichne.kast.cli.command.outputReason
 import io.github.amichne.kast.cli.outputReason
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.json.JsonClassDiscriminator
 
 /** Generated closed documents emitted by lifecycle and boundary orchestration. */
 internal object CliBoundaryDocuments {
@@ -69,6 +76,7 @@ internal object CliBoundaryDocuments {
             root = endpoint.root.path.toString(),
             runtimeId = endpoint.runtimeId.value,
             removed = emptyList(),
+            bootstrap = cache.status.bootstrap.document(),
             cache = CliObservedCacheDocument(
                 state = cache.status.state.wireName,
                 identity = cache.status.cacheIdentity,
@@ -92,8 +100,17 @@ internal object CliBoundaryDocuments {
         ),
     )
 
-    fun runtimeRejected(failure: RuntimeAdmissionFailure): CliJsonDocument =
-        boundaryRejected(CliBoundaryExitStatus.RUNTIME, failure.outputReason())
+    fun runtimeRejected(failure: RuntimeAdmissionFailure): CliJsonDocument = when (failure) {
+        is RuntimeAdmissionFailure.IntellijBootstrap -> bootstrapRejectionFactory.create(
+            CliBootstrapRejectedDocument(
+                status = "rejected",
+                boundary = "runtime",
+                reason = failure.outputReason(),
+                bootstrap = failure.state.document(),
+            ),
+        )
+        else -> boundaryRejected(CliBoundaryExitStatus.RUNTIME, failure.outputReason())
+    }
 
     fun usageRejected(
         failure: CliCommandFailure,
@@ -145,6 +162,7 @@ private data class CliStatusWithCacheDocument(
     val runtimeId: String,
     val removed: List<String>,
     val cache: CliObservedCacheDocument,
+    val bootstrap: CliBootstrapDocument,
 )
 
 @Serializable
@@ -195,3 +213,60 @@ private val boundaryFactory =
     CliJsonDocument.generated(CliBoundaryRejectedDocument.serializer())
 private val usageFactory =
     CliJsonDocument.generated(CliUsageRejectedDocument.serializer())
+
+@Serializable
+@JsonClassDiscriminator("state")
+private sealed interface CliBootstrapDocument {
+    @Serializable @SerialName("unavailable") data object Unavailable : CliBootstrapDocument
+    @Serializable @SerialName("invalid") data object Invalid : CliBootstrapDocument
+    @Serializable @SerialName("starting") data class Starting(
+        val attemptId: String,
+        val phase: String,
+        val completedPhases: Int,
+        val totalPhases: Int,
+        val gradleJvm: GradleJvmSelectionObservation,
+    ) : CliBootstrapDocument
+    @Serializable @SerialName("ready") data class Ready(
+        val attemptId: String,
+        val gradleJvm: GradleJvmSelectionObservation,
+        val phase: String = "ready",
+        val completedPhases: Int = SemanticRuntimeBootstrapPhase.entries.size,
+        val totalPhases: Int = SemanticRuntimeBootstrapPhase.entries.size,
+    ) : CliBootstrapDocument
+    @Serializable @SerialName("rejected") data class Rejected(
+        val attemptId: String,
+        val phase: String,
+        val completedPhases: Int,
+        val totalPhases: Int,
+        val cause: String,
+        val correctiveAction: String,
+        val gradleJvm: GradleJvmSelectionObservation,
+    ) : CliBootstrapDocument
+}
+
+@Serializable
+private data class CliBootstrapRejectedDocument(
+    val status: String,
+    val boundary: String,
+    val reason: String,
+    val bootstrap: CliBootstrapDocument,
+)
+
+private fun RuntimeBootstrapObservation.document(): CliBootstrapDocument = when (this) {
+    RuntimeBootstrapObservation.Unavailable -> CliBootstrapDocument.Unavailable
+    RuntimeBootstrapObservation.Invalid -> CliBootstrapDocument.Invalid
+    is RuntimeBootstrapObservation.Observed -> state.document()
+}
+
+private fun SemanticRuntimeBootstrapState.document(): CliBootstrapDocument = when (this) {
+    is SemanticRuntimeBootstrapState.Starting -> CliBootstrapDocument.Starting(
+        attemptId.value, phase.wireName, phase.completedPhases, phase.totalPhases, gradleJvm,
+    )
+    is SemanticRuntimeBootstrapState.Ready -> CliBootstrapDocument.Ready(attemptId.value, gradleJvm)
+    is SemanticRuntimeBootstrapState.Rejected -> CliBootstrapDocument.Rejected(
+        attemptId.value, phase.wireName, phase.completedPhases, phase.totalPhases,
+        failure.wireName, correctiveAction().instruction, gradleJvm,
+    )
+}
+
+private val bootstrapRejectionFactory = CliJsonDocument.generated(CliBootstrapRejectedDocument.serializer())

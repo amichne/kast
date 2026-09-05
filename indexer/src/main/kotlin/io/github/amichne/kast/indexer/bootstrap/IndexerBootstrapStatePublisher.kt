@@ -1,6 +1,10 @@
 package io.github.amichne.kast.indexer.bootstrap
 
+import io.github.amichne.kast.runtime.composition.InstalledGradleJvmSelectionReport
+import io.github.amichne.kast.runtime.composition.semanticbootstrap.InstalledSemanticRuntimeGradleJvmRefinement
+import io.github.amichne.kast.runtime.composition.InstalledRuntimeBootstrapPhase
 import io.github.amichne.kast.runtime.composition.InstalledKastRuntimeFailure
+import io.github.amichne.kast.runtime.composition.semanticbootstrap.InstalledSemanticRuntimeBootstrapTerminalFailure
 import io.github.amichne.kast.runtime.composition.semanticbootstrap.InstalledSemanticRuntimeBootstrapAttempt
 import io.github.amichne.kast.runtime.composition.semanticbootstrap.InstalledSemanticRuntimeBootstrapAttemptAdmission
 import io.github.amichne.kast.runtime.composition.semanticbootstrap.InstalledSemanticRuntimeBootstrapDocument
@@ -41,14 +45,25 @@ internal sealed interface IndexerBootstrapStatePublisherAdmission {
     ) : IndexerBootstrapStatePublisherAdmission
 }
 
+/** Detailed log projection receives only the bounded, typed bootstrap document. */
+internal fun interface IndexerBootstrapDocumentSink {
+    fun published(document: InstalledSemanticRuntimeBootstrapDocument)
+}
+
+private val bootstrapDocumentLog = IndexerBootstrapDocumentSink { document ->
+    System.err.println("kast-indexer: bootstrap-document: ${document.boundaryValue()}")
+}
+
 private enum class IndexerBootstrapPublicationPhase { ADMITTED, ACTIVE, TERMINAL }
 
 /** Once-admitted exact-path publisher for one monotonic semantic-runtime bootstrap attempt. */
 internal class AdmittedIndexerBootstrapStatePublisher private constructor(
     private val path: Path,
-    private val attempt: InstalledSemanticRuntimeBootstrapAttempt,
+    private var attempt: InstalledSemanticRuntimeBootstrapAttempt,
+    private val documentSink: IndexerBootstrapDocumentSink,
 ) {
     private var phase = IndexerBootstrapPublicationPhase.ADMITTED
+    private var bootstrapPhase = InstalledRuntimeBootstrapPhase.DISCOVERING_RUNTIME
 
     fun publishStarting(): IndexerBootstrapStatePublication {
         if (phase != IndexerBootstrapPublicationPhase.ADMITTED) {
@@ -62,9 +77,50 @@ internal class AdmittedIndexerBootstrapStatePublisher private constructor(
         return publication
     }
 
-    fun publishReady(): IndexerBootstrapStatePublication = publishTerminal(
-        attempt.readyDocument(),
+    /** Advances only the next canonical phase; repeated observations are idempotent. */
+    fun publishProgress(next: InstalledRuntimeBootstrapPhase): IndexerBootstrapStatePublication {
+        if (phase != IndexerBootstrapPublicationPhase.ACTIVE ||
+            next.ordinal !in bootstrapPhase.ordinal..bootstrapPhase.ordinal + 1
+        ) return IndexerBootstrapStatePublication.REJECTED
+        if (next == bootstrapPhase) return IndexerBootstrapStatePublication.PUBLISHED
+        val publication = publish(attempt.startingDocument(next))
+        when (publication) {
+            IndexerBootstrapStatePublication.PUBLISHED -> bootstrapPhase = next
+            IndexerBootstrapStatePublication.REJECTED -> phase = IndexerBootstrapPublicationPhase.TERMINAL
+        }
+        return publication
+    }
+
+    /** JVM observations only refine the selecting phase and preserve their exact attempt. */
+    fun observeGradleJvm(report: InstalledGradleJvmSelectionReport): IndexerBootstrapStatePublication {
+        if (phase != IndexerBootstrapPublicationPhase.ACTIVE ||
+            bootstrapPhase != InstalledRuntimeBootstrapPhase.GRADLE_JVM_SELECTION
+        ) return IndexerBootstrapStatePublication.REJECTED
+        val refined = when (val refinement = attempt.withGradleJvm(report)) {
+            is InstalledSemanticRuntimeGradleJvmRefinement.Refined -> refinement.attempt
+            InstalledSemanticRuntimeGradleJvmRefinement.ConflictingEvidence ->
+                return IndexerBootstrapStatePublication.REJECTED
+        }
+        val publication = publish(refined.startingDocument(bootstrapPhase))
+        when (publication) {
+            IndexerBootstrapStatePublication.PUBLISHED -> attempt = refined
+            IndexerBootstrapStatePublication.REJECTED -> phase = IndexerBootstrapPublicationPhase.TERMINAL
+        }
+        return publication
+    }
+
+    fun publishTerminalFailure(
+        failure: InstalledSemanticRuntimeBootstrapTerminalFailure,
+    ): IndexerBootstrapStatePublication = publishTerminal(
+        attempt.terminalFailureDocument(bootstrapPhase, failure),
     )
+
+    fun publishReady(): IndexerBootstrapStatePublication =
+        if (bootstrapPhase == InstalledRuntimeBootstrapPhase.TRANSPORT_ACTIVATION) {
+            publishTerminal(attempt.readyDocument())
+        } else {
+            IndexerBootstrapStatePublication.REJECTED
+        }
 
     fun publishRejection(
         failures: Set<InstalledKastRuntimeFailure>,
@@ -73,7 +129,7 @@ internal class AdmittedIndexerBootstrapStatePublisher private constructor(
             return IndexerBootstrapRejectionPublication.REJECTED
         }
         phase = IndexerBootstrapPublicationPhase.TERMINAL
-        return when (val projection = attempt.rejectionDocument(failures)) {
+        return when (val projection = attempt.rejectionDocument(failures, bootstrapPhase)) {
         is InstalledSemanticRuntimeBootstrapRejection.Projected -> when (
             publish(projection.document)
         ) {
@@ -82,10 +138,13 @@ internal class AdmittedIndexerBootstrapStatePublisher private constructor(
             IndexerBootstrapStatePublication.REJECTED ->
                 IndexerBootstrapRejectionPublication.REJECTED
         }
-        InstalledSemanticRuntimeBootstrapRejection.Unavailable ->
-            IndexerBootstrapRejectionPublication.UNAVAILABLE
-        InstalledSemanticRuntimeBootstrapRejection.Ambiguous ->
-            IndexerBootstrapRejectionPublication.AMBIGUOUS
+        InstalledSemanticRuntimeBootstrapRejection.Unavailable,
+        InstalledSemanticRuntimeBootstrapRejection.Ambiguous -> when (
+            publish(attempt.terminalFailureDocument(bootstrapPhase, InstalledSemanticRuntimeBootstrapTerminalFailure.RUNTIME_ASSEMBLY))
+        ) {
+            IndexerBootstrapStatePublication.PUBLISHED -> IndexerBootstrapRejectionPublication.PUBLISHED
+            IndexerBootstrapStatePublication.REJECTED -> IndexerBootstrapRejectionPublication.REJECTED
+        }
         }
     }
 
@@ -117,6 +176,7 @@ internal class AdmittedIndexerBootstrapStatePublisher private constructor(
                 StandardCopyOption.ATOMIC_MOVE,
                 StandardCopyOption.REPLACE_EXISTING,
             )
+            documentSink.published(document)
             IndexerBootstrapStatePublication.PUBLISHED
         } catch (_: AtomicMoveNotSupportedException) {
             IndexerBootstrapStatePublication.REJECTED
@@ -138,7 +198,7 @@ internal class AdmittedIndexerBootstrapStatePublisher private constructor(
         private const val ATTEMPT_PROPERTY = "kast.bootstrap.attempt.id"
 
         /** Parses the launcher-owned path and attempt properties exactly once. */
-        internal fun admit(): IndexerBootstrapStatePublisherAdmission {
+        internal fun admit(documentSink: IndexerBootstrapDocumentSink): IndexerBootstrapStatePublisherAdmission {
             val rawPath = System.getProperty(PATH_PROPERTY)
                 ?: return rejected(IndexerBootstrapStatePublisherFailure.PATH_UNAVAILABLE)
             val path = try {
@@ -178,7 +238,7 @@ internal class AdmittedIndexerBootstrapStatePublisher private constructor(
                 )
             }
             return IndexerBootstrapStatePublisherAdmission.Admitted(
-                AdmittedIndexerBootstrapStatePublisher(path, attempt),
+                AdmittedIndexerBootstrapStatePublisher(path, attempt, documentSink),
             )
         }
 
@@ -191,6 +251,6 @@ internal class AdmittedIndexerBootstrapStatePublisher private constructor(
 
 /** Stable application-facing admission surface for the single publisher implementation. */
 internal object IndexerBootstrapStatePublisher {
-    fun admit(): IndexerBootstrapStatePublisherAdmission =
-        AdmittedIndexerBootstrapStatePublisher.admit()
+    fun admit(documentSink: IndexerBootstrapDocumentSink = bootstrapDocumentLog): IndexerBootstrapStatePublisherAdmission =
+        AdmittedIndexerBootstrapStatePublisher.admit(documentSink)
 }

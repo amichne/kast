@@ -98,6 +98,7 @@ internal object KastCleanSlateModules {
             ModuleId.WORKSPACE_INTELLIJ,
             ModuleRole.WORKSPACE_ADAPTER,
             ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.DISTRIBUTION_CONTRACT,
             ModuleId.WORKSPACE_INTELLIJ_READ,
             effects = setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,

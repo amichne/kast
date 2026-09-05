@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotEquals
@@ -65,6 +67,23 @@ class RuntimeProcessModeTest {
         val launchd = RuntimeProcessMode.Launchd.capabilities()
         assertSame(LaunchdRuntimeProcessStarter, launchd.starter)
         assertSame(LaunchdRuntimeProcessAuthority, launchd.authority)
+    }
+
+    @Test
+    fun `explicit import input is admitted without an ambient secret`(
+        @TempDir temporary: Path,
+    ) {
+        val resolved = assertInstanceOf(
+            MacOsRuntimeProcessEnvironmentResolution.Resolved::class.java,
+            MacOsRuntimeProcessEnvironment.resolve(
+                installedRuntime(temporary),
+                (GradleImportEnvironment.admit("TEST_IMPORT_INPUT", "", mapOf(
+                    "TEST_IMPORT_INPUT" to "required", "AMBIENT_SECRET_TOKEN" to "never-forward",
+                )) as Refinement.Refined).value,
+            ),
+        )
+        assertEquals("required", resolved.environment.variables["TEST_IMPORT_INPUT"])
+        assertEquals(null, resolved.environment.variables["AMBIENT_SECRET_TOKEN"])
     }
 
     @Test

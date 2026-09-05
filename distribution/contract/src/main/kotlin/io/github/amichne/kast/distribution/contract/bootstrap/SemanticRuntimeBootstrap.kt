@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.contract.bootstrap
 
+import io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionObservation
 import io.github.amichne.kast.kernel.Refinement
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -58,6 +59,12 @@ enum class SemanticRuntimeBootstrapFailure(
 
     STARTUP_FAILED("startup-failed"),
 
+    TRANSPORT_ACTIVATION_FAILED("transport-activation-failed"),
+
+    RUNTIME_ASSEMBLY_FAILED("runtime-assembly-failed"),
+
+    CACHE_STATE_PUBLICATION_FAILED("cache-state-publication-failed"),
+
     GRADLE_JVM_UNAVAILABLE("gradle-jvm-unavailable"),
 
     PROJECT_JVM_UNAVAILABLE("project-jvm-unavailable"),
@@ -65,6 +72,12 @@ enum class SemanticRuntimeBootstrapFailure(
     PLATFORM_LINKAGE_INVALID("platform-linkage-invalid"),
 
     GRADLE_IMPORT_FAILED("gradle-import-failed"),
+
+    @SerialName("gradle-tooling-payload-incompatible")
+    GRADLE_TOOLING_PAYLOAD_INCOMPATIBLE("gradle-tooling-payload-incompatible"),
+
+    @SerialName("gradle-initialization-script-unavailable")
+    GRADLE_INIT_SCRIPT_UNAVAILABLE("gradle-initialization-script-unavailable"),
 
     GRADLE_PROJECT_POLICY_INVALID("gradle-project-policy-invalid"),
 
@@ -152,12 +165,18 @@ sealed interface SemanticRuntimeBootstrapState {
     @SerialName("starting")
     data class Starting(
         override val attemptId: SemanticRuntimeBootstrapAttemptId,
-    ) : SemanticRuntimeBootstrapState
+        val phase: SemanticRuntimeBootstrapPhase,
+        val gradleJvm: GradleJvmSelectionObservation = GradleJvmSelectionObservation.Unobserved,
+    ) : SemanticRuntimeBootstrapState {
+        constructor(attemptId: SemanticRuntimeBootstrapAttemptId) :
+            this(attemptId, SemanticRuntimeBootstrapPhase.DISCOVERING_RUNTIME)
+    }
 
     @Serializable
     @SerialName("ready")
     data class Ready(
         override val attemptId: SemanticRuntimeBootstrapAttemptId,
+        val gradleJvm: GradleJvmSelectionObservation = GradleJvmSelectionObservation.Unobserved,
     ) : SemanticRuntimeBootstrapState
 
     @Serializable
@@ -165,7 +184,12 @@ sealed interface SemanticRuntimeBootstrapState {
     data class Rejected(
         override val attemptId: SemanticRuntimeBootstrapAttemptId,
         val failure: SemanticRuntimeBootstrapFailure,
-    ) : SemanticRuntimeBootstrapState
+        val phase: SemanticRuntimeBootstrapPhase,
+        val gradleJvm: GradleJvmSelectionObservation = GradleJvmSelectionObservation.Unobserved,
+    ) : SemanticRuntimeBootstrapState {
+        constructor(attemptId: SemanticRuntimeBootstrapAttemptId, failure: SemanticRuntimeBootstrapFailure) :
+            this(attemptId, failure, SemanticRuntimeBootstrapPhase.DISCOVERING_RUNTIME)
+    }
 }
 
 enum class SemanticRuntimeBootstrapDocumentFailure {
@@ -235,7 +259,7 @@ object SemanticRuntimeBootstrapCodec {
         SemanticRuntimeBootstrapDocumentFailure,
         > = Refinement.Rejected(SemanticRuntimeBootstrapDocumentFailure.MALFORMED_DOCUMENT)
 
-    private const val BOOTSTRAP_SCHEMA_VERSION = 1
+    private const val BOOTSTRAP_SCHEMA_VERSION = 2
 }
 
 const val SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME = "bootstrap-state"

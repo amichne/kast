@@ -1,5 +1,6 @@
 package io.github.amichne.kast.workspace.intellij
 
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentIdentity
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.externalSystem.model.ExternalProjectInfo
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
@@ -86,6 +87,7 @@ enum class InstalledGradleModelCaptureFailure {
 internal fun captureInstalledGradleModel(
     project: Project,
     workspaceRoot: Path,
+    importEnvironmentIdentity: GradleImportEnvironmentIdentity,
 ): Refinement<InstalledGradleModelCapture, InstalledGradleModelCaptureFailure> =
     ReadAction.nonBlocking<Refinement<InstalledGradleModelCapture, InstalledGradleModelCaptureFailure>> model@{
         val root = when (val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(workspaceRoot)) {
@@ -139,6 +141,7 @@ internal fun captureInstalledGradleModel(
             root = root,
             sourceRoots = boundaries,
             sourceContents = sourceIdentities,
+            importEnvironmentIdentity = importEnvironmentIdentity,
             externalProjectPaths = projects.map { info ->
                 Path.of(info.externalProjectPath).toAbsolutePath().normalize()
             },
