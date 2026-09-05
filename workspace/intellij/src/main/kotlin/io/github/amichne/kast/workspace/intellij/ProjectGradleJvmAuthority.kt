@@ -63,4 +63,3 @@ internal fun projectGradleJvmAuthority(root: Path): ProjectGradleJvmAuthority {
     }
     return ProjectGradleJvmAuthority.Present.admit(canonical)
 }
-
