@@ -21,8 +21,19 @@ value class DeclarationId private constructor(val value: String) {
     }
 }
 
-/** An existing registry identity, not a new identity computed from the live target. */
-data class RegistryEntry(val epoch: Epoch, val identity: DeclarationId)
+/** An epoch-local registry handle, distinct from the possibly repeated compiler identity. */
+@JvmInline
+value class RegistrySlot private constructor(val value: Int) {
+    companion object {
+        fun fromOrdinal(raw: Int): RegistrySlot {
+            require(raw >= 0) { "invalid registry slot" }
+            return RegistrySlot(raw)
+        }
+    }
+}
+
+/** Slot is private to one admitted registry epoch; identity alone is not a lookup key. */
+data class RegistryEntry(val epoch: Epoch, val identity: DeclarationId, val slot: RegistrySlot)
 
 enum class Difference {
     STALE_EPOCH, DIFFERENT_MODULE, DIFFERENT_ROLE, DIFFERENT_DECLARATION,

@@ -6,9 +6,9 @@ private class TestSymbol(val declaration: Int, val module: Int, val role: Int) {
 }
 
 private val testCompiler = CompilerAuthority<TestSymbol> { entry, target ->
-    val registered = when (entry.identity.value) {
-        "existing-registry-identity" -> TestSymbol(1, 1, 1)
-        "different-registry-identity" -> TestSymbol(2, 1, 1)
+    val registered = when (entry.slot.value) {
+        0 -> TestSymbol(1, 1, 1)
+        1 -> TestSymbol(2, 1, 1)
         else -> null
     }
     if (registered == null) CompilerComparison.Rejected(Difference.SOURCE_UNAVAILABLE)
@@ -25,7 +25,7 @@ fun referenceChecks(): List<String> {
     val passed = mutableListOf<String>()
     fun test(name: String, body: () -> Unit) { body(); passed += name }
     val epoch = Epoch.parse("a".repeat(64))
-    val entry = RegistryEntry(epoch, DeclarationId.parse("existing-registry-identity"))
+    val entry = RegistryEntry(epoch, DeclarationId.parse("existing-registry-identity"), RegistrySlot.fromOrdinal(0))
     val registered = TestSymbol(1, 1, 1)
     fun bind(target: TestSymbol, current: Epoch = epoch): BindingResult =
         ProvenBinding.bind(entry, current, target, testCompiler)
@@ -61,7 +61,7 @@ fun referenceChecks(): List<String> {
         check(result == BindingResult.Rejected(Difference.MULTIPLE_DECLARATIONS))
     }
     test("registry-entry-controls-independent-lookup") {
-        val wrongEntry = RegistryEntry(epoch, DeclarationId.parse("different-registry-identity"))
+        val wrongEntry = RegistryEntry(epoch, entry.identity, RegistrySlot.fromOrdinal(1))
         val result = ProvenBinding.bind(wrongEntry, epoch, registered, testCompiler)
         check(result == BindingResult.Rejected(Difference.DIFFERENT_DECLARATION))
     }
