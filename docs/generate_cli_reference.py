@@ -340,6 +340,19 @@ Run semantic commands from the repository root.
 {hosted_rows}
 {deferred_section}
 
+## Continuation argument limits
+
+Pass a relation or traversal continuation intact with `--continuation <token>`
+or `--continuation=<token>`. The CLI admits these family-specific envelopes
+under the canonical public text bound (1,048,576 characters).
+
+Ordinary arguments remain limited to 4,096 characters and an invocation to 66 arguments. Corrupt,
+wrong-family, and over-bound continuations reject before runtime dispatch.
+
+The operating system also limits the combined argument and environment size;
+the canonical parser bound does not promise that every host can launch a process
+with a one-megabyte argument.
+
 ## Runtime lifecycle
 
 Kast owns the isolated sidecar lifecycle.
