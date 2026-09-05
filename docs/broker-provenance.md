@@ -20,7 +20,7 @@ OpenAI currently provides a TypeScript Codex SDK but no Kotlin/JVM SDK for the A
 The retained broker version is `0.5.0`. Its behavioral defaults remain eight in-flight calls per
 connection, four per provider, a 1 MiB catalog, 64 provider descriptors, 64 KiB tool arguments,
 1 MiB tool results. Kast execution deadlines now come from canonical operation metadata,
-projected by server projection version 3: 10 seconds per local qualification command, 17 minutes
+projected by server projection version 4: 10 seconds per local qualification command, 17 minutes
 for workspace readiness, 60 seconds for a semantic operation, and 240 seconds for topology build.
 Provider qualification admits both local commands; each tool's outer deadline contains its
 readiness and operation deadlines. The 17-minute operational ceiling preserves the existing
@@ -46,8 +46,8 @@ status, and duration while replacing semantic capability arguments such as selec
 continuations, and change plans with typed display placeholders. The exact arguments still reach
 Kast unchanged, and Kast's canonical result still returns unchanged to the App Server and model.
 
-For successful live `symbol.discover`, `symbol.inspect`, `source.read`, `relation.read`, and
-`traversal.run` calls, the broker may
+For successful live `symbol.discover`, `symbol.inspect`, `source.read`, `relation.read`,
+`traversal.run`, and `diagnostic.check` calls, the broker may
 consume a bounded, process-local presentation at the corresponding completed lifecycle event. It
 then emits the sanitized MCP completion followed by a schema-admitted `agentMessage` whose phase
 is `commentary` and whose text is Markdown. When that companion is available, the MCP result is an
@@ -76,3 +76,11 @@ Final turn snapshots, thread start/resume/fork and read/mutation responses, thre
 review and queued-turn responses, and turns/items/timeline pages continue to use the MCP
 projection. Startup qualification proves the dynamic source and rendered MCP shapes against every
 installed item-bearing schema. Other namespaces remain byte-exact pass-through.
+
+Source outcome schema `kast.source.read.v3` includes inclusive one-based `text.lines` coordinates
+when text is returned. They are derived from the full normalized committed document only after
+its length and digest match the selected snapshot. The source companion shows those lines beside
+the repository-relative file and bounded Kotlin block. Diagnostic companions show severity,
+location, exact UTF-16 offsets, and message; selector and generation evidence stays in the
+canonical model result. Older source outcomes without line evidence retain their file and code
+presentation without invented coordinates.

@@ -2,6 +2,8 @@ package io.github.amichne.kast.cli.broker.provider
 
 import io.github.amichne.kast.cli.broker.core.ObserverMarkdown
 import io.github.amichne.kast.cli.broker.core.ObserverPresentation
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.SourceLineRangeDocument
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -52,6 +54,7 @@ internal object KastObserverProjector {
             SOURCE_READ -> projectSource(document, evidence, directory)
             RELATION_READ -> projectRelations(document, evidence, directory)
             TRAVERSAL_RUN -> projectTraversal(document, evidence, directory)
+            DIAGNOSTIC_CHECK -> projectDiagnostics(document, evidence, directory)
             else -> null
         } ?: return ObserverPresentation.None
         return ObserverPresentation.Markdown(ObserverMarkdown(markdown))
@@ -176,12 +179,50 @@ internal object KastObserverProjector {
         }
         val body = buildString {
             append(file.link())
+            val lines = when (val candidate = text["lines"]) {
+                null -> null
+                is JsonObject -> candidate
+                else -> return null
+            }
+            if (lines != null) {
+                val range = when (val admitted = SourceLineRangeDocument.parse(
+                    lines.strictLong("startInclusive") ?: return null,
+                    lines.strictLong("endInclusive") ?: return null,
+                )) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return null
+                }
+                append(" · lines ${range.startInclusive.value}–${range.endInclusive.value}")
+            }
             source?.let { returned ->
                 append("\n\n")
                 append(fencedKotlin(returned))
             }
         }
         return observerDocument("source", evidence, body)
+    }
+
+    private fun projectDiagnostics(
+        document: JsonObject,
+        evidence: ObserverEvidence,
+        directory: ObserverWorkingDirectory,
+    ): String? {
+        val diagnostics = document["diagnostics"] as? JsonArray ?: return null
+        if (diagnostics.isEmpty()) return observerDocument("diagnostics", evidence, "_No diagnostics._")
+        val rows = diagnostics.map { entry ->
+            val diagnostic = entry as? JsonObject ?: return null
+            val severity = diagnostic.strictString("severity")
+                ?.takeIf { it in setOf("error", "warning", "info") } ?: return null
+            val message = diagnostic.strictLabel("message") ?: return null
+            val location = diagnostic["location"] as? JsonObject ?: return null
+            val file = location.strictString("file")
+                ?.let { ObserverFilePath.admit(it, directory.path) } ?: return null
+            val range = location["range"] as? JsonObject ?: return null
+            val start = range.strictInt("startInclusive")?.takeIf { it >= 0 } ?: return null
+            val end = range.strictInt("endExclusive")?.takeIf { it >= start } ?: return null
+            "- **$severity** · ${file.link()} · UTF-16 offsets $start–$end: ${inlineCode(message)}"
+        }
+        return observerDocument("diagnostics", evidence, rows.joinToString("\n"))
     }
 
     private fun projectRelations(
@@ -640,6 +681,7 @@ internal object KastObserverProjector {
     private const val SOURCE_READ = "source.read"
     private const val RELATION_READ = "relation.read"
     private const val TRAVERSAL_RUN = "traversal.run"
+    private const val DIAGNOSTIC_CHECK = "diagnostic.check"
     private const val MAXIMUM_LABEL_LENGTH = 16_384
     private const val MAXIMUM_FILE_LENGTH = 16_384
     private val BACKTICK_RUN = Regex("`+")

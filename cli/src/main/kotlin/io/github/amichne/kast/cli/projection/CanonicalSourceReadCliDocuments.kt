@@ -180,6 +180,7 @@ private sealed interface SourceTextProjectionCliDocument {
     data class Returned(
         val selection: SourceSelectionCliDocument,
         val text: String,
+        val lines: SourceLineRangeCliDocument,
     ) : SourceTextProjectionCliDocument
 
     @Serializable
@@ -277,6 +278,7 @@ private fun SourceTextProjectionDocument.toCliDocument(): SourceTextProjectionCl
         is SourceTextProjectionDocument.Returned -> SourceTextProjectionCliDocument.Returned(
             selection.toCliDocument(),
             text.value,
+            SourceLineRangeCliDocument(lines.startInclusive.value, lines.endInclusive.value),
         )
         is SourceTextProjectionDocument.Withheld ->
             SourceTextProjectionCliDocument.Withheld(reason.cliName())
@@ -295,3 +297,6 @@ private fun SourceReadQualification.toCliDocument() = SourceReadQualificationCli
 
 private val completeFactory = CliJsonDocument.generated(SourceReadCompleteCliDocument.serializer())
 private val qualifiedFactory = CliJsonDocument.generated(SourceReadQualifiedCliDocument.serializer())
+
+@Serializable
+private data class SourceLineRangeCliDocument(val startInclusive: Long, val endInclusive: Long)

@@ -29,7 +29,10 @@ class CanonicalOperationDefinitionsTest {
         assertEquals(11, definitions.map { it.qualificationType }.toSet().size)
         assertEquals(11, definitions.map { it.rejectionType }.toSet().size)
         assertEquals(11, definitions.map { it.schema }.toSet().size)
-        assertEquals(true, definitions.all { it.schema.value.endsWith(".v2") })
+        definitions.forEach { definition ->
+            val version = if (definition.operation == CanonicalOperation.SOURCE_READ) 3 else 2
+            assertEquals("kast.${definition.operation.id.value}.v$version", definition.schema.value)
+        }
         assertEquals(definitions, CanonicalOperationDefinitions.registry.definitions)
         assertEquals(OperationLane.REGISTERED_LONG_WORK, CanonicalOperationDefinitions.topologyBuild.lane)
         assertEquals(

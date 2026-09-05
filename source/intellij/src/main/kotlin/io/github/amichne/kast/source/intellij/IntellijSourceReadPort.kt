@@ -416,10 +416,7 @@ internal class IntellijSourceReadPort(
             TextProjection.Complete -> when (
                 val admitted = SourceTextProjection.returned(
                     capture.regionSelector,
-                    capture.normalizedDocumentText.substring(
-                        capture.regionSelector.range.startInclusive.value,
-                        capture.regionSelector.range.endExclusive.value,
-                    ),
+                    capture.normalizedDocumentText,
                 )
             ) {
                 is Refinement.Refined -> admitted.value
@@ -442,10 +439,7 @@ internal class IntellijSourceReadPort(
                 when (
                     val admitted = SourceTextProjection.returned(
                         windowSelector,
-                        capture.normalizedDocumentText.substring(
-                            windowRange.startInclusive.value,
-                            windowRange.endExclusive.value,
-                        ),
+                        capture.normalizedDocumentText,
                     )
                 ) {
                     is Refinement.Refined -> admitted.value

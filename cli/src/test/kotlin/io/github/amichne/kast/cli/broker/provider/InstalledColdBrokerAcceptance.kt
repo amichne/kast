@@ -91,18 +91,25 @@ object InstalledColdBrokerAcceptance {
             val markdown = source.observer
             check(markdown is ObserverPresentation.Markdown && "```kotlin" in markdown.source.value)
             check(selector !in markdown.source.value && "sha256:" !in markdown.source.value)
+            val sourceDocument = source.document()
+            check(sourceDocument == cli("source", "read", "--anchor", selector, "--text", "complete"))
+            val lines = sourceDocument.getValue("text").jsonObject.getValue("lines").jsonObject
+            val firstLine = lines.getValue("startInclusive").jsonPrimitive.content.toLong()
+            val lastLine = lines.getValue("endInclusive").jsonPrimitive.content.toLong()
+            check("lines $firstLine–$lastLine" in markdown.source.value)
             val relation = tool("semantic_query", buildJsonObject {
                 put("selector", selector); put("relation", "references"); put("limit", 10)
             }).document()
             check(relation == cli("relation", "read", "--selector", selector, "--relation", "references", "--limit", "10"))
             cli("stop")
             val evidence = buildJsonObject {
-                put("schemaVersion", 1); put("status", "passed")
+                put("schemaVersion", 2); put("status", "passed")
                 put("cliVersion", qualification.evidence.cliVersion.value)
                 put("contractDigest", qualification.evidence.contractDigest.value)
                 put("coldInvocationMillis", coldMillis)
                 put("discoveryDigest", digest(canonicalJson(discovery)))
-                put("sourceDigest", digest(canonicalJson(source.document())))
+                put("sourceDigest", digest(canonicalJson(sourceDocument)))
+                put("sourceFirstLine", firstLine); put("sourceLastLine", lastLine)
                 put("selectorDigest", digest(selector))
                 put("relationDigest", digest(canonicalJson(relation)))
                 put("observerDigest", digest(markdown.source.value))

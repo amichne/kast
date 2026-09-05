@@ -306,7 +306,7 @@ internal object KastProviderQualifier {
     }
 
     private fun admitProjection(projection: KastServerProjectionBoundary): List<QualifiedKastTool>? {
-        if (projection.schemaVersion !in setOf(1, 2, 3) || projection.namespace != "kast") return null
+        if (projection.schemaVersion !in setOf(1, 2, 3, 4) || projection.namespace != "kast") return null
         if (projection.tools.isEmpty() || projection.tools.size > 64) return null
         if (projection.tools.map(KastServerToolBoundary::name).hasDuplicates()) return null
         if (projection.tools.map(KastServerToolBoundary::operationId).hasDuplicates()) return null
@@ -322,7 +322,7 @@ internal object KastProviderQualifier {
             it.id.value == operation.value
         } ?: return null
         val executionBudget = OperationExecutionBudget.forOperation(canonicalOperation)
-        if (projectionVersion == 3) {
+        if (projectionVersion >= 3) {
             val declared = tool.executionBudget ?: return null
             if (declared.readinessMillis != OperationExecutionBudget.WORKSPACE_READINESS.value ||
                 declared.operationMillis != executionBudget.operation.value
@@ -333,7 +333,7 @@ internal object KastProviderQualifier {
         if (tool.cliUsage.isBlank() || tool.cliUsage.length > 16_384) return null
         val approval = when (projectionVersion) {
             1 -> tool.approvalPolicy ?: KastApprovalPolicy.NONE
-            2, 3 -> tool.approvalPolicy ?: return null
+            2, 3, 4 -> tool.approvalPolicy ?: return null
             else -> return null
         }
         if (tool.invocation.command.isEmpty() || tool.invocation.command.size > 16) return null

@@ -99,10 +99,14 @@ schema includes the operation registry plus a server projection that maps
 canonical operations to agent-facing tool names, JSON Schemas, loading policy,
 approval policy, execution deadlines, and CLI field bindings.
 
-Projection version 3 carries
+Projection version 4 carries
 separate readiness and operation budgets from canonical operation metadata. The broker allows
 17 minutes for readiness, then 60 seconds for a semantic read or 240 seconds for topology build;
 local qualification commands each have a separate 10-second budget.
+
+Source outcome schema `kast.source.read.v3` carries inclusive one-based line coordinates for
+returned text. The source adapter derives them from the full committed document after verifying
+snapshot length and digest. UTF-16 ranges and reusable selectors retain their existing meaning.
 
 The local Ktor broker consumes the exact installed projection. It does not keep
 a hand-authored table for a particular Kast version. Read façades can therefore

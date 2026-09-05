@@ -410,6 +410,7 @@ sealed interface SourceTextProjectionDocument {
     data class Returned(
         val selection: SourceSelectionDocument,
         val text: ProtocolSourceText,
+        val lines: SourceLineRangeDocument,
     ) : SourceTextProjectionDocument
     data class Withheld(
         val reason: SourceTextWithheldReasonDocument,

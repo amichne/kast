@@ -14,6 +14,34 @@ import kotlin.test.assertIs
 
 class SourceReadContractTest {
     @Test
+    fun `line evidence handles empty files terminal newlines and supplementary characters`() {
+        for ((text, expectedEndLine) in listOf("" to 1L, "a\n" to 1L, "a\n🍀\nb" to 3L)) {
+            val selector = rootSelector(text)
+            val returned = SourceTextProjection.returned(selector, text).refined()
+            assertEquals(1L, returned.lines.startInclusive.value)
+            assertEquals(expectedEndLine, returned.lines.endInclusive.value)
+        }
+    }
+
+    @Test
+    fun `partial source text is derived from the exact full committed document`() {
+        val document = "package sample\n\nfun subject() = \"🍀\"\n"
+        val root = rootSelector(document)
+        val start = document.indexOf("fun")
+        val selector = SourceSelector.issueNested(
+            root, range(root.snapshot, start, document.length), SourceRegionKind.WINDOW,
+        ).refined()
+        val returned = SourceTextProjection.returned(selector, document).refined()
+        assertEquals(document.substring(start), returned.text)
+        assertEquals(3L, returned.lines.startInclusive.value)
+        assertEquals(3L, returned.lines.endInclusive.value)
+        assertEquals(
+            SourceTextProjectionFailure.DOCUMENT_IDENTITY_MISMATCH,
+            SourceTextProjection.returned(selector, " ".repeat(document.length)).rejected(),
+        )
+    }
+
+    @Test
     fun `request retains orthogonal region entity text and bound decisions`() {
         val root = rootSelector("fun subject() = dependency()\n")
         val declarations = DeclarationKindSelection.from(

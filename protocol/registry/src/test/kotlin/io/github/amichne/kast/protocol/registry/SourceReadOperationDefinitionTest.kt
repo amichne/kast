@@ -17,7 +17,7 @@ class SourceReadOperationDefinitionTest {
         assertEquals(OperationScope.SOURCE, definition.scope)
         assertEquals(CompletenessPolicy.QUALIFIED_ALLOWED, definition.completeness)
         assertEquals(HostedExposure.PUBLIC, definition.hostedExposure)
-        assertEquals("kast.source.read.v2", definition.schema.value)
+        assertEquals("kast.source.read.v3", definition.schema.value)
         assertTrue(definition in CanonicalOperationDefinitions.all)
     }
 }

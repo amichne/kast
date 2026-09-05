@@ -15,7 +15,7 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 
-private const val SERVER_PROJECTION_SCHEMA_VERSION = 3
+private const val SERVER_PROJECTION_SCHEMA_VERSION = 4
 private const val MAXIMUM_PROTOCOL_TEXT_LENGTH = 1_048_576
 private const val MAXIMUM_WORKSPACE_FILE_LENGTH = 4_096
 private const val MAXIMUM_PROTOCOL_COUNT = 1_000
@@ -777,6 +777,10 @@ private fun sourceTextProjectionSchema(): JsonObject = unionSchema(
         ServerSchemaProperty("type", constantSchema("returned", "Text projection state.")),
         ServerSchemaProperty("selection", sourceSelectionSchema()),
         ServerSchemaProperty("text", sourceTextSchema()),
+        ServerSchemaProperty("lines", objectSchema(
+            ServerSchemaProperty("startInclusive", integerSchema(1, description = "First one-based line.")),
+            ServerSchemaProperty("endInclusive", integerSchema(1, description = "Last one-based line.")),
+        )),
     ),
     objectSchema(
         ServerSchemaProperty("type", constantSchema("withheld", "Text projection state.")),

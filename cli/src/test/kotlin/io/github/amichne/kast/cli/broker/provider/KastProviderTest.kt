@@ -25,6 +25,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -33,6 +34,33 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 
 class KastProviderTest {
+    @Test
+    fun `source observer preserves snapshot proven one-based line coordinates`() {
+        val source = KastObserverFixtures.sourceRead.replace(
+            "\"type\": \"returned\",",
+            "\"type\": \"returned\", \"lines\": {\"startInclusive\": 4, \"endInclusive\": 8},",
+        )
+        assertTrue("lines 4–8" in observer("source.read", source))
+        assertEquals(ObserverPresentation.None,
+            observerPresentation("source.read", source.replace("\"endInclusive\": 8", "\"endInclusive\": 0")))
+        assertEquals(ObserverPresentation.None, observerPresentation("source.read",
+            source.replace("{\"startInclusive\": 4, \"endInclusive\": 8}", "false")))
+    }
+
+    @Test
+    fun `diagnostic observer shows severity location and message without selectors`() {
+        val presentation = observer("diagnostic.check", """
+            {"status":"completed","document":{"operation":"diagnostic.check","status":"complete",
+             "diagnostics":[{"severity":"error","code":"UNRESOLVED_REFERENCE","message":"Unresolved reference: Missing",
+             "location":{"candidateSelector":"candidate:v2:hidden","file":"src/Example.kt",
+             "range":{"startInclusive":17,"endExclusive":24}}}]}}
+        """.trimIndent())
+        assertTrue("error" in presentation)
+        assertTrue("Example.kt" in presentation)
+        assertTrue("Unresolved reference: Missing" in presentation)
+        assertTrue("candidate:v2:" !in presentation)
+    }
+
     @Test
     fun `projection rejects missing or weakened canonical execution budgets`(
         @TempDir temporary: Path,
