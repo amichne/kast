@@ -164,11 +164,14 @@ CI retains the candidate archives, checksums, receipts, SBOM, compatibility
 snapshot, and reports for 90 days. Release admission requires the latest successful
 `CI` push run on `main` for the exact SHA and the reviewed candidate version.
 Missing or expired artifacts reject publication before toolchain setup.
+
 The release workflow downloads that run's `release-candidate-<sha>` artifact,
 verifies the receipt and all payload digests, attests the retained bytes, and
 publishes them without rebuilding or repeating installed acceptance. Uploaded
-draft bytes must still match the admitted receipt. Advance the candidate version
-in source before CI if a different release version is needed.
+draft bytes must still match the admitted receipt.
+
+Advance the candidate version in source before CI if a different release version
+is needed.
 
 Knowledge-authority checks rerun only `verifyKastArchitecture` and
 `generateKastModuleKnowledge`; compilation prerequisites remain incremental.
