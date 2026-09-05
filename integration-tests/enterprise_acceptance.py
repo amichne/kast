@@ -35,9 +35,12 @@ def arguments() -> argparse.Namespace:
 
 def diagnostic_summary(stage: str, document: dict[str, Any]) -> dict[str, Any]:
     """Retain compiler status/count/codes without messages, locations, or source values."""
-    facts = document.get("diagnostics", [])
+    facts = document.get("diagnostics")
     if not isinstance(facts, list):
         fail("diagnostic summary has no bounded diagnostic list")
+    if any(not isinstance(fact, dict) or fact.get("severity") not in
+           {"error", "warning", "info", "ERROR", "WARNING", "INFO"} for fact in facts):
+        fail("diagnostic summary has an unsupported severity")
     errors = [fact for fact in facts if isinstance(fact, dict) and fact.get("severity") == "error"]
     # Wire enum values are lowercase; tolerate the generated uppercase projection explicitly.
     errors += [fact for fact in facts if isinstance(fact, dict) and fact.get("severity") == "ERROR"]
@@ -389,6 +392,31 @@ def snapshot_paths(
     return tuple(observations)
 
 
+def workspace_source_identity(workspace: Path) -> str:
+    """Hash tracked/untracked source bytes and staged identities; emit no source payload.
+
+    Git-ignored runtime caches are outside this repository-write proof. Deletions,
+    modes, links, new files, and index changes remain part of the observation.
+    """
+    names = sorted(set(git(workspace, "ls-files", "-z", "--cached", "--others", "--exclude-standard").split("\0")) - {""})
+    if len(names) > 10_000:
+        fail("repository source observation exceeded its file bound")
+    for name in names:
+        relative = Path(name)
+        if relative.is_absolute() or ".." in relative.parts:
+            fail("repository source observation has an invalid owned path")
+        cursor = workspace
+        for part in relative.parts[:-1]:
+            cursor /= part
+            if cursor.is_symlink():
+                fail("repository source observation cannot follow directory links")
+    evidence = {
+        "files": snapshot_paths(workspace, tuple(names)),
+        "index": git(workspace, "ls-files", "--stage", "-z"),
+    }
+    return hashlib.sha256(json.dumps(evidence, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
 class Acceptance:
     def __init__(
         self,
@@ -728,6 +756,14 @@ class Acceptance:
         ):
             fail(f"enterprise recovery did not restore known state: {recovered}")
 
+        pending = self.command(
+            "change", "plan", "--intent", "add-declaration", "--target", target,
+            "--declaration", "fun enterpriseStalePlanProbe(): Int = 2",
+        )
+        pending_identity = pending.get("planIdentity")
+        if pending.get("status") != "complete" or not isinstance(pending_identity, str) or not pending_identity:
+            fail("enterprise stale-plan probe requires a complete distinct pending plan")
+
         plan = self.command(
             "change",
             "plan",
@@ -741,6 +777,8 @@ class Acceptance:
         plan_identity = plan.get("planIdentity")
         if plan.get("status") != "complete" or not isinstance(plan_identity, str):
             fail(f"enterprise mutation plan was not complete: {plan}")
+        if pending_identity in {recovery_plan_identity, plan_identity}:
+            fail("enterprise stale-plan probe requires a complete distinct pending plan")
         applied = self.command(
             "change", "apply", "--plan", plan_identity,
             timeout=self.maximum_reconciliation_seconds,
@@ -749,11 +787,13 @@ class Acceptance:
             "diagnostic", "check", "--scope",
             "domains/alpha/one/src/main/kotlin/enterprise/alpha/one/Enterprise.kt", "--limit", "1000",
         )
-        diagnostic_summary("after-mutation", after_diagnostics)
+        after = diagnostic_summary("after-mutation", after_diagnostics)
         compiler_evidence = compiler_log_evidence(Path(self.environment["KAST_CACHE_ROOT"]))
         if not compiler_evidence:
             fail("installed diagnostic compiler omitted durable terminal evidence")
         print("enterprise-compiler-evidence: " + json.dumps(compiler_evidence, sort_keys=True), flush=True)
+        if after_diagnostics.get("operation") != "diagnostic.check" or after["status"] != "complete" or after["errorCount"] != 0:
+            fail("enterprise mutation requires complete error-free post-mutation diagnostics")
         if applied.get("status") != "complete" or not applied.get("receiptIdentity"):
             fail(f"enterprise mutation did not return a verified receipt: {applied}")
         stale = self.command(
@@ -767,6 +807,35 @@ class Acceptance:
             or stale.get("reason") != "exact-selector-stale"
         ):
             fail(f"prior-generation selector was not rejected: {stale}")
+
+        self.prove_mutation_marker()
+        before = workspace_source_identity(self.workspace)
+        rejected = self.command("change", "apply", "--plan", pending_identity)
+        if workspace_source_identity(self.workspace) != before:
+            fail("stale mutation plan changed repository contents")
+        if rejected.get("operation") != "change.apply" or rejected.get("status") != "rejected" or rejected.get("reason") != "generation-stale":
+            fail("prior-generation mutation plan was not rejected as generation-stale")
+
+    def prove_mutation_marker(self) -> None:
+        """Prove the requested member through refreshed discovery and compiler inspection."""
+        discovery = self.command(
+            "symbol", "discover", "--query", "enterpriseMutationMarker",
+            "--match", "exact-name", "--limit", "2",
+        )
+        candidates = declaration_candidates(discovery)
+        if discovery.get("operation") != "symbol.discover" or discovery.get("status") != "complete" or len(candidates) != 1:
+            fail("enterprise mutation requires one complete mutation marker discovery")
+        inspection = self.command("symbol", "inspect", "--candidate", candidates[0])
+        symbol = inspection.get("symbol")
+        expected = {
+            "kind": "function", "name": "enterpriseMutationMarker",
+            "qualifiedIdentity": "enterprise.alpha.one.EnterpriseRouter.enterpriseMutationMarker",
+            "file": "domains/alpha/one/src/main/kotlin/enterprise/alpha/one/Enterprise.kt",
+        }
+        if (inspection.get("operation") != "symbol.inspect" or inspection.get("status") != "complete"
+                or not isinstance(symbol, dict) or any(symbol.get(key) != value for key, value in expected.items())
+                or not isinstance(symbol.get("selector"), str) or not symbol["selector"]):
+            fail("enterprise mutation did not inspect its exact mutation marker")
 
     def prove_workspace_write_scope(self) -> None:
         tracked = git(self.workspace, "diff", "--name-only").splitlines()

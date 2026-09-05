@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import importlib.util
+from contextlib import redirect_stdout
+import io
 import os
 from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 MODULE_PATH = Path(__file__).with_name("enterprise_acceptance.py")
@@ -16,6 +19,129 @@ assert SPEC is not None and SPEC.loader is not None
 enterprise_acceptance = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = enterprise_acceptance
 SPEC.loader.exec_module(enterprise_acceptance)
+
+
+class MutationAcceptanceTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.cache = Path(self.temporary.name)
+        self.workspace = self.cache / "workspace"
+        self.workspace.mkdir()
+        (self.workspace / "target.kt").write_text("class Target\n")
+        enterprise_acceptance.git(self.workspace, "init", "--quiet")
+        enterprise_acceptance.git(self.workspace, "config", "user.name", "Acceptance Test")
+        enterprise_acceptance.git(self.workspace, "config", "user.email", "acceptance@kast.invalid")
+        enterprise_acceptance.git(self.workspace, "add", ".")
+        enterprise_acceptance.git(self.workspace, "commit", "--quiet", "-m", "baseline")
+        log = self.cache / "identity/log/idea.log"
+        log.parent.mkdir(parents=True)
+        log.write_text('Kast diagnostic compilation: {"stage":"exact-scope","status":"complete","errors":{"count":0,"factoryCodes":[],"withheldFactCount":0}}\n')
+        self.marker = {
+            "selector": "fresh-marker-selector", "kind": "function", "name": "enterpriseMutationMarker",
+            "qualifiedIdentity": "enterprise.alpha.one.EnterpriseRouter.enterpriseMutationMarker",
+            "file": "domains/alpha/one/src/main/kotlin/enterprise/alpha/one/Enterprise.kt",
+        }
+        self.diagnostics = {"operation": "diagnostic.check", "status": "complete", "diagnostics": []}
+        self.discovery = {"operation": "symbol.discover", "status": "complete", "items": [
+            {"type": "declaration", "candidateSelector": "marker-candidate"},
+        ]}
+        self.inspection = {"operation": "symbol.inspect", "status": "complete", "symbol": self.marker}
+        self.stale = {"operation": "change.apply", "status": "rejected", "reason": "generation-stale"}
+        self.stale_effect = lambda: None
+
+    def exercise(self):
+        acceptance = object.__new__(enterprise_acceptance.Acceptance)
+        acceptance.maximum_reconciliation_seconds = 1
+        acceptance.environment = {"KAST_CACHE_ROOT": str(self.cache)}
+        acceptance.workspace = self.workspace
+        responses = iter([
+            {"status": "complete", "planIdentity": "recovery-plan"},
+            {"operation": "change.recover", "status": "complete", "state": "restored"},
+            {"status": "complete", "planIdentity": "pending-plan"},
+            {"status": "complete", "planIdentity": "mutation-plan"},
+            {"status": "complete", "receiptIdentity": "receipt"},
+            self.diagnostics,
+            {"status": "rejected", "reason": "exact-selector-stale"},
+            self.discovery, self.inspection, self.stale,
+        ])
+        def command(*arguments, **_options):
+            if arguments == ("change", "apply", "--plan", "pending-plan"):
+                self.stale_effect()
+            return next(responses)
+        acceptance.command = mock.Mock(side_effect=command)
+        with redirect_stdout(io.StringIO()):
+            acceptance.prove_generation_transition("router-selector", "old-selector")
+        return acceptance.command
+
+    def test_complete_error_free_mutation_proves_the_refreshed_exact_declaration(self) -> None:
+        command = self.exercise()
+        self.assertIn(mock.call("symbol", "discover", "--query", "enterpriseMutationMarker",
+                                "--match", "exact-name", "--limit", "2"), command.call_args_list)
+        self.assertIn(mock.call("symbol", "inspect", "--candidate", "marker-candidate"), command.call_args_list)
+        self.assertEqual(mock.call("change", "apply", "--plan", "pending-plan"), command.call_args_list[-1])
+
+    def test_reported_post_mutation_errors_cannot_be_accepted(self) -> None:
+        for severity in ("error", "ERROR"):
+            with self.subTest(severity=severity):
+                self.diagnostics["diagnostics"] = [{"severity": severity, "code": "UNRESOLVED_REFERENCE"}]
+                with self.assertRaisesRegex(SystemExit, "complete error-free post-mutation diagnostics"):
+                    self.exercise()
+
+    def test_incomplete_or_malformed_post_mutation_diagnostics_cannot_be_accepted(self) -> None:
+        for diagnostics in (
+            {"operation": "diagnostic.check", "status": "qualified", "diagnostics": []},
+            {"operation": "diagnostic.check", "status": "rejected", "diagnostics": []},
+            {"operation": "diagnostic.check", "status": "complete"},
+            {"operation": "diagnostic.check", "status": "complete", "diagnostics": [{}]},
+            {"operation": "other", "status": "complete", "diagnostics": []},
+        ):
+            with self.subTest(diagnostics=diagnostics), self.assertRaises(SystemExit):
+                self.diagnostics = diagnostics
+                self.exercise()
+
+    def test_marker_must_be_one_complete_discovery(self) -> None:
+        for discovery in (
+            {"operation": "symbol.discover", "status": "complete", "items": []},
+            {"operation": "symbol.discover", "status": "qualified", "items": self.discovery["items"]},
+            {"operation": "symbol.discover", "status": "complete", "items": self.discovery["items"] * 2},
+        ):
+            with self.subTest(discovery=discovery), self.assertRaisesRegex(SystemExit, "one complete mutation marker"):
+                self.discovery = discovery
+                self.exercise()
+
+    def test_marker_inspection_cannot_substitute_another_declaration(self) -> None:
+        for key, value in (("name", "wrongName"), ("qualifiedIdentity", "other.enterpriseMutationMarker"),
+                           ("file", "other.kt"), ("kind", "classlike"), ("selector", "")):
+            with self.subTest(key=key), self.assertRaisesRegex(SystemExit, "exact mutation marker"):
+                self.inspection["symbol"] = {**self.marker, key: value}
+                self.exercise()
+        self.inspection = {"operation": "symbol.inspect", "status": "qualified", "symbol": self.marker}
+        with self.assertRaisesRegex(SystemExit, "exact mutation marker"):
+            self.exercise()
+
+    def test_stale_plan_requires_its_specific_finite_rejection(self) -> None:
+        for result in ({"operation": "change.apply", "status": "complete"},
+                       {"operation": "change.apply", "status": "rejected", "reason": "plan-not-found"}):
+            with self.subTest(result=result), self.assertRaisesRegex(SystemExit, "generation-stale"):
+                self.stale = result
+                self.exercise()
+
+    def test_stale_plan_rejection_cannot_hide_a_repository_write(self) -> None:
+        self.stale_effect = lambda: (self.workspace / "target.kt").write_text("class ChangedByStalePlan\n")
+        with self.assertRaisesRegex(SystemExit, "stale mutation plan changed repository contents"):
+            self.exercise()
+
+    def test_stale_plan_rejection_cannot_hide_a_new_untracked_file(self) -> None:
+        self.stale_effect = lambda: (self.workspace / "unexpected.kt").write_text("class Unexpected\n")
+        with self.assertRaisesRegex(SystemExit, "stale mutation plan changed repository contents"):
+            self.exercise()
+
+    def test_stale_plan_rejection_cannot_change_only_the_index(self) -> None:
+        (self.workspace / "target.kt").write_text("class AlreadyUnstaged\n")
+        self.stale_effect = lambda: enterprise_acceptance.git(self.workspace, "add", "target.kt")
+        with self.assertRaisesRegex(SystemExit, "stale mutation plan changed repository contents"):
+            self.exercise()
 
 
 class IsolatedAcceptanceHostTest(unittest.TestCase):
