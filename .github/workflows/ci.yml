@@ -30,9 +30,9 @@ jobs:
         run: bash packaging/test-installer.sh
 
   kotlin:
-    name: Kotlin product
+    name: Release gate
     runs-on: macos-15
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v5
         with:
@@ -53,13 +53,33 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Verify Kotlin product and runtime delivery
-        run: >-
-          ./gradlew
-          -Dorg.gradle.jvmargs=-Xmx5g
-          build
-          installedProductTest
-          verifyKastArchitecture
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: docs/tooling/likec4/package-lock.json
+
+      - name: Install documentation validator
+        run: npm install --global mint@4.2.841
+
+      - name: Verify exact source and installed release assets
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          git checkout --detach "$CANDIDATE_SHA"
+          candidate_version="$(git describe --tags --abbrev=0 --match 'v[0-9]*')"
+          bash .github/scripts/release/build-assets.sh \
+            --version "${candidate_version#v}" --source-revision "$CANDIDATE_SHA"
+
+      - name: Retain exact-head release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-gate-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            build/reports/release-gate/
+            build/release/*/kast-release-receipt-*.json*
+          if-no-files-found: warn
 
       - name: Verify release and acceptance isolation contracts
         run: |

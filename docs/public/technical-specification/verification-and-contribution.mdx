@@ -78,6 +78,41 @@ This layer catches errors that an in-process test cannot represent: packaging
 omissions, launcher environment mistakes, incompatible private plugin layout,
 socket isolation, and failure to preserve identity across process boundaries.
 
+## Release admission
+
+The `Release gate` CI check starts from a detached clean checkout of the exact
+candidate commit. Its `releaseSourceGate` Gradle graph runs every module build,
+architecture verification, installed-product checks, enterprise acceptance,
+installer recovery tests, and documentation validation.
+
+After that graph passes, the gate builds and installs the exact candidate
+archives through `install.sh --assets-directory`. This uses the normal checksum,
+archive-path, and manifest checks while avoiding a dependency on publication.
+
+The installed journey runs with no Codex executable or `CODEX_HOME`, checks
+semantic reads, restart continuity, verified mutation, and scoped uninstall
+followed by reinstall.
+
+The resulting `kast-release-receipt-v<version>.json` binds the source revision,
+canonical command digest, predecessor receipts, observed IDEA/JVM environment,
+and archive digests.
+
+Publication requires both that receipt and a successful
+`Release gate` check for the exact release SHA. A failed predecessor produces no
+publishable receipt. Draft upload verification must preserve the admitted bytes
+before the release can become public.
+
+Run the same entry point from an isolated detached worktree:
+
+```shell
+bash .github/scripts/release/build-assets.sh \
+  --version 1.0.0 --source-revision "$(git rev-parse HEAD)"
+```
+
+This command verifies a candidate; it does not publish a release. The version
+must be the intended candidate version. Reports live under
+`build/reports/release-gate/`, with the receipt beside the release archives.
+
 ## Keep this specification authenticated
 
 The documentation workflow forms its own proof chain:

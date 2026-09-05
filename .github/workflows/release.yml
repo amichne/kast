@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   release:
-    name: Build, publish, and smoke-test
+    name: Prove exact assets, then publish
     runs-on: macos-15
     timeout-minutes: 120
     env:
@@ -30,6 +30,10 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - name: Detach exact release source
+        run: git checkout --detach "$GITHUB_SHA"
 
       - name: Set up Java 25
         uses: actions/setup-java@v5
@@ -45,8 +49,14 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Verify installer recovery flow
-        run: bash packaging/test-installer.sh
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: docs/tooling/likec4/package-lock.json
+
+      - name: Install documentation validator
+        run: npm install --global mint@4.2.841
 
       - name: Build and verify release assets
         run: >-
@@ -54,31 +64,9 @@ jobs:
           --version "$RELEASE_VERSION"
           --source-revision "$GITHUB_SHA"
 
-      - name: Admit release smoke runtime
-        run: |
-          idea_version="$(
-            sed -nE 's/^idea-indexer = "([0-9]+(\.[0-9]+)+)"$/\1/p' \
-              gradle/libs.versions.toml
-          )"
-          [[ -n "$idea_version" ]]
-          idea_platform_home="$GRADLE_USER_HOME/kast/indexer-idea-distributions/$idea_version"
-          [[ -f "$idea_platform_home/build.txt" ]]
-          [[ -d "$idea_platform_home/plugins/Kotlin" ]]
-          [[ -x "$JAVA_HOME/bin/java" ]]
-          [[ -f "$JAVA_HOME/release" ]]
-          printf 'KAST_RELEASE_IDEA_PLATFORM_HOME=%s\n' "$idea_platform_home" >> "$GITHUB_ENV"
-
       - name: Publish immutable GitHub release
         run: >-
           bash .github/scripts/release/publish-release.sh
           --release "v${RELEASE_VERSION}"
           --commit "$GITHUB_SHA"
           --assets-directory "build/release/v${RELEASE_VERSION}"
-
-      - name: Verify fresh published sidecar installation
-        run: >-
-          bash packaging/verification/verify-published-sidecar-delivery.sh
-          --release "v${RELEASE_VERSION}"
-          --repository "$GITHUB_REPOSITORY"
-          --idea-platform-home "$KAST_RELEASE_IDEA_PLATFORM_HOME"
-          --java-home "$JAVA_HOME"

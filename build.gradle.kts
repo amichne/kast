@@ -323,3 +323,29 @@ tasks.register<Exec>("enterpriseAcceptance") {
         semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
     )
 }
+
+val releaseDocumentationTest by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Verifies source-backed public docs and the rendered documentation site."
+    dependsOn(":protocol:wire:generateOperationRegistry")
+    commandLine("bash", ".github/scripts/release/verify-documentation.sh")
+}
+
+val releaseInstallerTest by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Proves installer replacement, corruption, and recovery contracts."
+    commandLine("bash", "packaging/test-installer.sh")
+}
+
+val releaseGateContractTest by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Proves release publication fails closed without semantic evidence."
+    commandLine("python3", "distribution/release/test_release_gate.py")
+}
+
+tasks.register("releaseSourceGate") {
+    group = "verification"
+    description = "Authoritative release-source predecessor graph; publication also requires exact-asset installed proof."
+    dependsOn("build", "installedProductTest", "verifyKastArchitecture", "enterpriseAcceptance", releaseDocumentationTest, releaseInstallerTest, releaseGateContractTest)
+    dependsOn(subprojects.map { "${it.path}:build" })
+}

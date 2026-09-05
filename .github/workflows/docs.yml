@@ -7,6 +7,10 @@ on:
       - ".github/workflows/docs.yml"
       - "README.md"
       - "docs/**"
+      - "cli/**"
+      - "install.sh"
+      - "gradle/libs.versions.toml"
+      - "protocol/contract/**"
       - "protocol/registry/**"
       - "protocol/wire/**"
   push:
@@ -17,6 +21,10 @@ on:
       - ".github/workflows/docs.yml"
       - "README.md"
       - "docs/**"
+      - "cli/**"
+      - "install.sh"
+      - "gradle/libs.versions.toml"
+      - "protocol/contract/**"
       - "protocol/registry/**"
       - "protocol/wire/**"
   workflow_dispatch:

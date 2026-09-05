@@ -37,12 +37,10 @@ source_revision="$(
     --expected-source-revision "${expected_source_revision}"
 )"
 
-./gradlew \
-  -Dorg.gradle.jvmargs=-Xmx5g \
-  -Pversion="${version}" \
-  -PkastSourceRevision="${source_revision}" \
-  assembleSidecarRelease \
-  generateKastModuleKnowledge
+python3 distribution/release/release_gate.py source \
+  --source-root "${repository_root}" \
+  --assets-directory "${repository_root}/build/release/v${version}" \
+  --version "${version}" --source-revision "${source_revision}"
 post_build_source_revision="$(
   "${repository_root}/.github/scripts/release/admit-source.sh" \
     --repository-root "${repository_root}" \
@@ -101,3 +99,11 @@ python3 distribution/release/verify_assets.py \
   --source-root "${repository_root}" \
   --repository "${GITHUB_REPOSITORY:-amichne/kast}" \
   --report "${repository_root}/build/reports/sidecar/release-assets.json"
+
+python3 integration-tests/release_artifact_acceptance.py \
+  --assets-directory "${output_directory}" \
+  --version "${version}" --source-revision "${source_revision}"
+
+python3 distribution/release/release_gate.py finish \
+  --source-root "${repository_root}" --assets-directory "${output_directory}" \
+  --version "${version}" --source-revision "${source_revision}"
