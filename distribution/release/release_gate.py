@@ -136,6 +136,24 @@ def validate_gradle_matrix(matrix: dict) -> None:
             raise GateRejected("installed Gradle matrix has no import isolation proof")
 
 
+def validate_upgrade(proof: dict, assets: dict, version: str) -> None:
+    names = product_asset_names(version)[:2]
+    expected = {name: assets[name] for asset in names for name in (asset, asset + ".sha256")}
+    if proof.get("status") != "passed" or proof.get("candidateVersion") != version or proof.get("candidateAssets") != expected:
+        raise GateRejected("installed upgrade did not prove these candidate archives")
+    prior = proof.get("priorRelease", {})
+    if prior.get("immutable") is not True or not re.fullmatch(r"0\.[0-9]+\.[0-9]+", str(prior.get("version", ""))) or prior.get("tag") != "v" + prior["version"] or prior.get("passiveStatus", {}).get("status") != "stopped":
+        raise GateRejected("installed upgrade has no immutable prior-release proof")
+    cases = proof.get("corruptionCases", [])
+    if len(cases) != 2 or {case.get("case") for case in cases} != {"checksum-mismatch", "unsafe-archive-path"}:
+        raise GateRejected("installed upgrade omits exact-archive corruption proof")
+    for case in cases:
+        if case.get("status") != "rejected" or case.get("exitCode") != 1 or any(
+                case.get(key) != proof.get(key) or not re.fullmatch(r"sha256:[0-9a-f]{64}", str(proof.get(key, "")))
+                for key in ("activeInstallationDigest", "workspaceDigest")):
+            raise GateRejected("corrupted installation did not preserve the active product and repository")
+
+
 def validate_receipt(receipt: dict, directory: Path, version: str, sha: str) -> None:
     if set(receipt) != {"schemaVersion", "status", "sourceRevision", "productVersion", "commandDigest", "dependencies", "environment", "assets"}:
         raise GateRejected("release receipt has an unsupported closed shape")
@@ -155,7 +173,7 @@ def validate_receipt(receipt: dict, directory: Path, version: str, sha: str) -> 
     if dependencies["source"]["receipt"].get("command") != source_command(version, sha):
         raise GateRejected("source predecessor did not run the required Gradle graph")
     installed = dependencies["installed"]["receipt"]
-    required = {"cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import"}
+    required = {"cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import", "upgrade", "corruption"}
     if set(installed.get("journeys", [])) != required:
         raise GateRejected("installed predecessor omits a required journey")
     broker = installed.get("broker", {})
@@ -169,6 +187,7 @@ def validate_receipt(receipt: dict, directory: Path, version: str, sha: str) -> 
     assets = asset_identities(directory, version)
     if receipt["assets"] != assets or installed.get("assets") != assets:
         raise GateRejected("release assets differ from installed proof")
+    validate_upgrade(installed.get("upgrade", {}), assets, version)
     compatibility = dependencies["compatibility"]["receipt"]
     if compatibility.get("candidateDigest") != assets[f"kast-compatibility-v{version}.json"] or compatibility.get("productVersion") != version:
         raise GateRejected("compatibility predecessor did not compare this candidate snapshot")

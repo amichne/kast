@@ -14,6 +14,7 @@ import tempfile
 import time
 
 import enterprise_acceptance as enterprise
+import release_upgrade_acceptance as upgrade_acceptance
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("release_gate", ROOT / "distribution/release/release_gate.py")
@@ -67,7 +68,9 @@ def main():
         shutil.copytree(ROOT / "fixtures/enterprise-workspace", host.workspace, dirs_exist_ok=True, ignore=shutil.ignore_patterns(".gradle", ".idea", "build"))
         enterprise.prepare_workspace_fixture(host.workspace)
         acceptance = ObservedAcceptance(host.root / "bin/kast", host, bounds)
-        installed_environment = install(host, assets, args.version, idea, acceptance.environment)
+        installed_environment, upgrade = upgrade_acceptance.install_candidate_with_upgrade_proof(
+            host, assets, args.version, idea, acceptance.environment, install)
+        gate.validate_upgrade(upgrade, identities, args.version)
         # The launcher must use its retained installed archive, not a test override.
         acceptance.environment.pop("KAST_RUNTIME_ARCHIVE", None)
         retained = host.root / f"installation/versions/{args.version}/share/kast/runtime/{runtime.name}"
@@ -118,7 +121,7 @@ def main():
         ambient.assert_unchanged()
         if gate.asset_identities(assets, args.version) != identities:
             raise gate.GateRejected("candidate assets changed during installed acceptance")
-        gate.write(ROOT / "build/reports/release-gate/installed.json", {"schemaVersion": 1, "status": "passed", "sourceRevision": args.source_revision, "assets": identities, "environment": gate.environment_identity(idea), "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import"], "broker": broker, "gradleImport": matrix, "observations": acceptance.observations, "elapsedMilliseconds": round((time.monotonic() - started) * 1000)})
+        gate.write(ROOT / "build/reports/release-gate/installed.json", {"schemaVersion": 1, "status": "passed", "sourceRevision": args.source_revision, "assets": identities, "environment": gate.environment_identity(idea), "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import", "upgrade", "corruption"], "broker": broker, "gradleImport": matrix, "upgrade": upgrade, "observations": acceptance.observations, "elapsedMilliseconds": round((time.monotonic() - started) * 1000)})
 
 
 if __name__ == "__main__":

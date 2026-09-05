@@ -4019,6 +4019,9 @@
          </artifact>
       </component>
       <component group="org.jetbrains.kotlinx" name="kotlinx-serialization-protobuf-jvm" version="1.11.0">
+         <artifact name="kotlinx-serialization-protobuf-jvm-1.11.0.jar">
+            <sha256 value="3a48b3959b6ddf54d9674bd4b4e3302694a24d24141b38ca98b6ac4fc657675f" origin="Verified against Maven Central SHA-256"/>
+         </artifact>
          <artifact name="kotlinx-serialization-protobuf-jvm-1.11.0.module">
             <sha256 value="f7ebbbd1373829b5e7e6efbd3a2a796a032d09f9dd6ed3aade4e2166fe18d7cc" origin="Verified against Maven Central SHA-256"/>
          </artifact>
