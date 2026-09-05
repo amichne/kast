@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from enum import Enum
 import importlib.util
 import os
 from pathlib import Path
@@ -15,6 +16,7 @@ import time
 
 import enterprise_acceptance as enterprise
 import release_upgrade_acceptance as upgrade_acceptance
+import release_resource_observations as resources
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("release_gate", ROOT / "distribution/release/release_gate.py")
@@ -23,21 +25,80 @@ gate = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(gate)
 
 
+class ObservationFailure(str, Enum):
+    COMMAND_REJECTED = "command-rejected"
+    COMMAND_TIMEOUT = "command-timeout"
+    COMMAND_UNAVAILABLE = "command-unavailable"
+    OBSERVATION_LIMIT = "observation-limit"
+    RESOURCE_UNPROVEN = "resource-unproven"
+
+
 class ObservedAcceptance(enterprise.Acceptance):
-    def __init__(self, executable, host, bounds):
+    def __init__(self, executable, host, bounds, report, source_revision):
         super().__init__(executable, host, bounds)
         self.observations = []
+        self.resource_samples = []
+        self.report = report
+        self.source_revision = source_revision
+        self.host = host
+        self.failure = None
+        self.starts = 0
+        self.read_sampled = False
         self.environment.pop("CODEX_HOME", None)
         self.environment.pop("CODEX_EXECUTABLE", None)
         self.environment["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin"
         self.environment["KAST_ENABLE_LAUNCHD"] = "0"
         if shutil.which("codex", path=self.environment["PATH"]) is not None:
             raise gate.GateRejected("CLI-only acceptance environment contains Codex")
+        self.persist()
+
+    def persist(self):
+        gate.write(self.report, {"schemaVersion": 1, "status": "rejected" if self.failure else "running",
+                                "sourceRevision": self.source_revision,
+                                "failure": self.failure.value if self.failure else None,
+                                "observations": self.observations, "resourceSamples": self.resource_samples})
+
+    def sample(self, stage):
+        sample = resources.observe(stage, owner_root=self.host.root.resolve(),
+            cache_root=self.host.runtime / "intellij-caches",
+            state_roots=(self.host.root / "installation", self.host.runtime))
+        self.resource_samples.append(sample)
+        self.persist()
+        expected = "not-running" if stage is resources.ResourceStage.AFTER_STOP else "observed"
+        if sample["status"] != expected:
+            self.failure = ObservationFailure.RESOURCE_UNPROVEN
+            self.persist()
+            raise gate.GateRejected("installed resource observation did not prove the expected owned runtime state")
 
     def command(self, *argv, **options):
+        if len(self.observations) >= 256:
+            self.failure = ObservationFailure.OBSERVATION_LIMIT
+            self.persist()
+            raise gate.GateRejected("installed command observation limit exceeded")
         started = time.monotonic()
-        document = super().command(*argv, **options)
-        self.observations.append({"command": " ".join(argv[:2]), "status": document.get("status"), "elapsedMilliseconds": round((time.monotonic() - started) * 1000), "evidenceDigest": gate.identity(document)})
+        # Record grammar words only; no option values, paths, source, or error text.
+        command = " ".join(argv[:2]) if argv[0] in {"symbol", "source", "relation", "traversal", "diagnostic", "index", "topology", "change"} else argv[0]
+        try:
+            document = super().command(*argv, **options)
+        except (SystemExit, subprocess.TimeoutExpired, OSError) as error:
+            self.failure = (ObservationFailure.COMMAND_TIMEOUT if isinstance(error, subprocess.TimeoutExpired)
+                            else ObservationFailure.COMMAND_UNAVAILABLE if isinstance(error, OSError)
+                            else ObservationFailure.COMMAND_REJECTED)
+            self.observations.append({"command": command, "status": "rejected", "cause": self.failure.value,
+                                      "elapsedMilliseconds": round((time.monotonic() - started) * 1000)})
+            self.persist()
+            raise
+        self.observations.append({"command": command, "status": "observed", "elapsedMilliseconds": round((time.monotonic() - started) * 1000), "evidenceDigest": gate.identity(document)})
+        self.persist()
+        if argv[0] == "start" and document.get("runtime") == "running":
+            self.sample(resources.ResourceStage.AFTER_START if self.starts == 0 else resources.ResourceStage.AFTER_RESTART)
+            self.starts += 1
+            self.read_sampled = False
+        elif argv[0] == "stop" and document.get("runtime") == "stopped":
+            self.sample(resources.ResourceStage.AFTER_STOP)
+        elif argv[0] in {"symbol", "source", "relation", "traversal", "diagnostic"} and not self.read_sampled:
+            self.sample(resources.ResourceStage.AFTER_READ)
+            self.read_sampled = True
         return document
 
 
@@ -45,6 +106,12 @@ def install(host, assets, version, idea, environment):
     install_environment = {**environment, "KAST_INSTALL_ROOT": str(host.root / "installation"), "KAST_BIN_DIR": str(host.root / "bin"), "XDG_CONFIG_HOME": str(host.home / ".config"), "XDG_DATA_HOME": str(host.home / ".local/share"), "KAST_INSTALL_IDEA_HOME": str(idea)}
     gate.run(["/bin/bash", str(ROOT / "install.sh"), "install", "--version", version, "--assets-directory", str(assets)], host.workspace, install_environment)
     return install_environment
+
+
+def assert_broker_absent(host):
+    for path in (host.readiness_file, host.broker_socket, host.home / ".codex"):
+        if path.exists() or path.is_symlink():
+            raise gate.GateRejected("CLI-only semantic journey created optional broker state")
 
 
 def main():
@@ -67,7 +134,8 @@ def main():
         host = enterprise.IsolatedAcceptanceHost.create(Path(raw), runtime)
         shutil.copytree(ROOT / "fixtures/enterprise-workspace", host.workspace, dirs_exist_ok=True, ignore=shutil.ignore_patterns(".gradle", ".idea", "build"))
         enterprise.prepare_workspace_fixture(host.workspace)
-        acceptance = ObservedAcceptance(host.root / "bin/kast", host, bounds)
+        acceptance = ObservedAcceptance(host.root / "bin/kast", host, bounds,
+            ROOT / "build/reports/release-gate/installed-observations.json", args.source_revision)
         installed_environment, upgrade = upgrade_acceptance.install_candidate_with_upgrade_proof(
             host, assets, args.version, idea, acceptance.environment, install)
         gate.validate_upgrade(upgrade, identities, args.version)
@@ -81,8 +149,7 @@ def main():
             acceptance.prove_workspace_write_scope()
         finally:
             enterprise.stop_indexer(acceptance)
-        if host.readiness_file.exists() or host.broker_socket.exists():
-            raise gate.GateRejected("CLI-only semantic journey started the optional broker")
+        assert_broker_absent(host)
         workspace_before = enterprise.git(host.workspace, "diff")
         gate.run(["/bin/bash", str(ROOT / "install.sh"), "uninstall", "--installation-only"], host.workspace, installed_environment)
         for path in (host.root / "bin/kast", host.root / "installation", host.runtime / "store", host.runtime / "intellij-caches", host.runtime / "endpoints"):
@@ -121,7 +188,7 @@ def main():
         ambient.assert_unchanged()
         if gate.asset_identities(assets, args.version) != identities:
             raise gate.GateRejected("candidate assets changed during installed acceptance")
-        gate.write(ROOT / "build/reports/release-gate/installed.json", {"schemaVersion": 1, "status": "passed", "sourceRevision": args.source_revision, "assets": identities, "environment": gate.environment_identity(idea), "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import", "upgrade", "corruption"], "broker": broker, "gradleImport": matrix, "upgrade": upgrade, "observations": acceptance.observations, "elapsedMilliseconds": round((time.monotonic() - started) * 1000)})
+        gate.write(ROOT / "build/reports/release-gate/installed.json", {"schemaVersion": 1, "status": "passed", "sourceRevision": args.source_revision, "assets": identities, "environment": gate.environment_identity(idea), "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import", "upgrade", "corruption"], "broker": broker, "gradleImport": matrix, "upgrade": upgrade, "observations": acceptance.observations, "resourceSamples": acceptance.resource_samples, "elapsedMilliseconds": round((time.monotonic() - started) * 1000)})
 
 
 if __name__ == "__main__":

@@ -124,7 +124,15 @@ def asset_identities(directory: Path, version: str) -> dict[str, str]:
 
 
 def validate_gradle_matrix(matrix: dict) -> None:
-    expected = {("7.6.4", 17, False), ("8.14.3", 21, False), ("9.4.1", 25, False), ("7.6.4", 25, True)}
+    root = Path(__file__).resolve().parents[2]
+    authority_path = root / "benchmarks/gradle-import-acceptance.json"
+    authority = read(authority_path)
+    expected = {(case["gradle"], case["java"], case["expectedOutcome"] == "jvm-rejected") for case in authority["cases"]}
+    if matrix.get("schemaVersion") != 1 or matrix.get("matrixSha256") != digest(authority_path).removeprefix("sha256:") or matrix.get("commandSha256") != digest(root / "integration-tests/gradle_import_acceptance.py").removeprefix("sha256:"):
+        raise GateRejected("installed Gradle matrix does not bind the canonical cases and command")
+    runtimes = matrix.get("javaRuntimeReleaseSha256", {})
+    if set(runtimes) != {str(case[1]) for case in expected} or not all(re.fullmatch(r"[0-9a-f]{64}", str(value)) for value in runtimes.values()):
+        raise GateRejected("installed Gradle matrix omits admitted JVM identities")
     cases = matrix.get("cases", [])
     if matrix.get("status") != "passed" or len(cases) != len(expected) or {
         (case.get("gradle"), case.get("java"), case.get("expectedRejection")) for case in cases
@@ -132,8 +140,25 @@ def validate_gradle_matrix(matrix: dict) -> None:
         raise GateRejected("installed Gradle matrix omits a required compatibility case")
     for case in cases:
         if not case["expectedRejection"] and not all(case.get(key) is True for key in
-                ("explicitInputAdmitted", "ambientSecretAbsent", "explicitExecutableAdmitted")):
+                ("explicitInputAdmitted", "ambientSecretAbsent", "explicitExecutableAdmitted", "gradleUserHomeIsolated")):
             raise GateRejected("installed Gradle matrix has no import isolation proof")
+
+
+def validate_resources(samples: list) -> None:
+    stages = {"after-start", "after-read", "after-restart", "after-stop"}
+    if not isinstance(samples, list) or not 4 <= len(samples) <= 256 or {sample.get("stage") for sample in samples} != stages:
+        raise GateRejected("installed resource proof omits a lifecycle stage")
+    for sample in samples:
+        stopped = sample["stage"] == "after-stop"
+        if sample.get("schemaVersion") != 1 or sample.get("status") != ("not-running" if stopped else "observed"):
+            raise GateRejected("installed resource proof has no observed owned state")
+        if not all(type(sample.get(key)) is int and sample[key] >= 0 for key in ("apparentStateBytes", "stateEntryCount", "symlinkCount")) or sample.get("selectedStateRootCount") != 2:
+            raise GateRejected("installed resource proof has no bounded disk observation")
+        if stopped:
+            if "rssBytes" in sample or sample.get("cause") not in {"pid-marker-absent", "process-not-listed"}:
+                raise GateRejected("installed resource proof manufactures stopped RSS")
+        elif not all(type(sample.get(key)) is int and sample[key] > 0 for key in ("rssBytes", "processCount")):
+            raise GateRejected("installed resource proof has no live RSS sample")
 
 
 def validate_upgrade(proof: dict, assets: dict, version: str) -> None:
@@ -179,7 +204,13 @@ def validate_receipt(receipt: dict, directory: Path, version: str, sha: str) -> 
     broker = installed.get("broker", {})
     if broker.get("status") != "passed" or not all(broker.get(key) is True for key in ("readOnlyCatalog", "cliEquivalent", "selectorReused")):
         raise GateRejected("installed predecessor has no passing cold broker evidence")
+    cold_limit = read(Path(__file__).resolve().parents[2] / "benchmarks/enterprise-acceptance.json")["maximumStartupSeconds"] * 1000
+    if broker.get("schemaVersion") != 2 or broker.get("cliVersion") != f"kast {version} (IntelliJ sidecar)" or type(broker.get("coldInvocationMillis")) is not int or not 0 < broker["coldInvocationMillis"] <= cold_limit:
+        raise GateRejected("cold broker proof does not identify this candidate within its declared bound")
+    if type(broker.get("sourceFirstLine")) is not int or type(broker.get("sourceLastLine")) is not int or not 0 < broker["sourceFirstLine"] <= broker["sourceLastLine"]:
+        raise GateRejected("cold broker proof has no verified source line presentation")
     validate_gradle_matrix(installed.get("gradleImport", {}))
+    validate_resources(installed.get("resourceSamples", []))
     if receipt["environment"].get("system") != "Darwin" or receipt["environment"].get("architecture") not in {"arm64", "aarch64"}:
         raise GateRejected("receipt does not prove the supported host")
     if dependencies["source"]["receipt"].get("environment") != receipt["environment"] or installed.get("environment") != receipt["environment"]:
@@ -187,6 +218,8 @@ def validate_receipt(receipt: dict, directory: Path, version: str, sha: str) -> 
     assets = asset_identities(directory, version)
     if receipt["assets"] != assets or installed.get("assets") != assets:
         raise GateRejected("release assets differ from installed proof")
+    if dependencies["source"]["receipt"].get("archives") != {name: assets[name] for name in product_asset_names(version)[:2]}:
+        raise GateRejected("release assets differ from the successful source build outputs")
     validate_upgrade(installed.get("upgrade", {}), assets, version)
     compatibility = dependencies["compatibility"]["receipt"]
     if compatibility.get("candidateDigest") != assets[f"kast-compatibility-v{version}.json"] or compatibility.get("productVersion") != version:
@@ -218,17 +251,20 @@ def execute(mode: str, root: Path, directory: Path, version: str, sha: str) -> N
         # fail. Gradle's later clean task cannot protect failures before it runs.
         receipt_path.unlink(missing_ok=True)
         receipt_path.with_suffix(".json.sha256").unlink(missing_ok=True)
-        for name in ("source", "installed", "sbom", "compatibility"):
+        for name in ("source", "installed", "sbom", "compatibility", "installed-observations"):
             (reports / f"{name}.json").unlink(missing_ok=True)
         (root / "build/reports/sidecar/release-assets.json").unlink(missing_ok=True)
     admit_source(root, sha)
     if mode == "source":
         environment = os.environ.copy()
         idea = prepare_idea(root, environment)
+        # Use the admitted runtime for the Gradle launcher as well as the sidecar.
+        environment["JAVA_HOME"] = str((idea / "jbr/Contents/Home").resolve(strict=True))
         command = source_command(version, sha)
         run(command, root, environment)
         admit_source(root, sha)
-        write(reports / "source.json", {"schemaVersion": 1, "status": "passed", "sourceRevision": sha, "command": command, "commandDigest": identity(command), "environment": environment_identity(idea)})
+        archives = {name: digest(root / "build/distributions" / name) for name in product_asset_names(version)[:2]}
+        write(reports / "source.json", {"schemaVersion": 1, "status": "passed", "sourceRevision": sha, "command": command, "commandDigest": identity(command), "environment": environment_identity(idea), "archives": archives})
     elif mode == "finish":
         source = read(reports / "source.json")
         assets = read(root / "build/reports/sidecar/release-assets.json")

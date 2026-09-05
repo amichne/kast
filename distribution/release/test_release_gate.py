@@ -35,13 +35,24 @@ class ReceiptIdentityTest(unittest.TestCase):
         assets = gate.asset_identities(self.directory, self.version)
         environment = {"system": "Darwin", "architecture": "arm64", "ideaBuild": "262.1", "javaReleaseDigest": "sha256:" + "a" * 64}
         source = {"status": "passed", "sourceRevision": self.sha, "command": gate.source_command(self.version, self.sha), "environment": environment}
-        matrix = {"status": "passed", "cases": [
+        source["archives"] = {name: assets[name] for name in gate.product_asset_names(self.version)[:2]}
+        matrix = {"schemaVersion": 1, "status": "passed",
+            "matrixSha256": gate.digest(ROOT / "benchmarks/gradle-import-acceptance.json").removeprefix("sha256:"),
+            "commandSha256": gate.digest(ROOT / "integration-tests/gradle_import_acceptance.py").removeprefix("sha256:"),
+            "javaRuntimeReleaseSha256": {str(feature): "a" * 64 for feature in (17, 21, 25)}, "cases": [
             {"gradle": gradle, "java": java, "expectedRejection": rejected,
              "explicitInputAdmitted": not rejected, "ambientSecretAbsent": not rejected,
-             "explicitExecutableAdmitted": not rejected}
+             "explicitExecutableAdmitted": not rejected, "gradleUserHomeIsolated": not rejected}
             for gradle, java, rejected in [("7.6.4", 17, False), ("8.14.3", 21, False), ("9.4.1", 25, False), ("7.6.4", 25, True)]
         ]}
         installed = {"status": "passed", "sourceRevision": self.sha, "environment": environment, "assets": assets, "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import"], "broker": {"status": "passed", "readOnlyCatalog": True, "cliEquivalent": True, "selectorReused": True}, "gradleImport": matrix}
+        installed["broker"].update(schemaVersion=2, cliVersion=f"kast {self.version} (IntelliJ sidecar)",
+                                   coldInvocationMillis=1, sourceFirstLine=1, sourceLastLine=1)
+        installed["resourceSamples"] = [
+            {"schemaVersion": 1, "stage": stage, "status": "not-running" if stage == "after-stop" else "observed",
+             "apparentStateBytes": 1, "stateEntryCount": 1, "symlinkCount": 0, "selectedStateRootCount": 2,
+             **({"cause": "pid-marker-absent"} if stage == "after-stop" else {"rssBytes": 1, "processCount": 1})}
+            for stage in ("after-start", "after-read", "after-restart", "after-stop")]
         preserved = {"activeInstallationDigest": "sha256:" + "c" * 64, "workspaceDigest": "sha256:" + "d" * 64}
         installed["journeys"].extend(["upgrade", "corruption"])
         installed["upgrade"] = {"status": "passed", "candidateVersion": self.version,
@@ -69,16 +80,41 @@ class ReceiptIdentityTest(unittest.TestCase):
             self.validate(self.receipt)
 
     def test_matrix_cannot_replace_rejection_or_omit_isolation_proof(self):
-        for change in ("no-rejection", "secret-unproven"):
+        for change in ("no-rejection", "ambientSecretAbsent", "gradleUserHomeIsolated", "commandSha256", "matrixSha256", "javaRuntimeReleaseSha256"):
             receipt = copy.deepcopy(self.receipt)
             dependency = receipt["dependencies"]["installed"]
             cases = dependency["receipt"]["gradleImport"]["cases"]
             if change == "no-rejection":
                 cases[-1] = cases[0]
+            elif change in {"ambientSecretAbsent", "gradleUserHomeIsolated"}:
+                cases[0][change] = False
             else:
-                cases[0]["ambientSecretAbsent"] = False
+                dependency["receipt"]["gradleImport"].pop(change)
             dependency["digest"] = gate.identity(dependency["receipt"])
             with self.subTest(change=change), self.assertRaisesRegex(gate.GateRejected, "Gradle matrix"):
+                self.validate(receipt)
+
+    def test_installed_archives_cannot_replace_successful_source_build_outputs(self):
+        receipt = copy.deepcopy(self.receipt)
+        dependency = receipt["dependencies"]["source"]
+        dependency["receipt"]["archives"] = {name: "sha256:" + "e" * 64 for name in dependency["receipt"]["archives"]}
+        dependency["digest"] = gate.identity(dependency["receipt"])
+        with self.assertRaisesRegex(gate.GateRejected, "source build outputs"):
+            self.validate(receipt)
+
+    def test_resource_evidence_requires_live_samples_and_observed_teardown(self):
+        for change in ("missing-stage", "invented-zero", "unproven-state"):
+            receipt = copy.deepcopy(self.receipt)
+            dependency = receipt["dependencies"]["installed"]
+            samples = dependency["receipt"]["resourceSamples"]
+            if change == "missing-stage":
+                samples.pop()
+            elif change == "invented-zero":
+                samples[-1]["rssBytes"] = 0
+            else:
+                samples[0]["status"] = "rejected"
+            dependency["digest"] = gate.identity(dependency["receipt"])
+            with self.subTest(change=change), self.assertRaisesRegex(gate.GateRejected, "resource proof"):
                 self.validate(receipt)
 
     def test_inventory_of_different_archives_cannot_authorize_publication(self):
@@ -95,6 +131,14 @@ class ReceiptIdentityTest(unittest.TestCase):
         dependency["receipt"]["upgrade"]["corruptionCases"][0]["activeInstallationDigest"] = "sha256:" + "e" * 64
         dependency["digest"] = gate.identity(dependency["receipt"])
         with self.assertRaisesRegex(gate.GateRejected, "preserve the active product"):
+            self.validate(receipt)
+
+    def test_cold_broker_proof_cannot_exceed_the_declared_startup_bound(self):
+        receipt = copy.deepcopy(self.receipt)
+        dependency = receipt["dependencies"]["installed"]
+        dependency["receipt"]["broker"]["coldInvocationMillis"] = 240_001
+        dependency["digest"] = gate.identity(dependency["receipt"])
+        with self.assertRaisesRegex(gate.GateRejected, "declared bound"):
             self.validate(receipt)
 
     def test_missing_foreign_failed_or_tampered_proof_rejects(self):
