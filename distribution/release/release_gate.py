@@ -283,7 +283,7 @@ def execute(mode: str, root: Path, directory: Path, version: str, sha: str) -> N
         # fail. Gradle's later clean task cannot protect failures before it runs.
         receipt_path.unlink(missing_ok=True)
         receipt_path.with_suffix(".json.sha256").unlink(missing_ok=True)
-        for name in ("source", "installed", "sbom", "compatibility", "installed-observations"):
+        for name in ("source", "installed", "sbom", "compatibility", "installed-observations", "cold-broker"):
             (reports / f"{name}.json").unlink(missing_ok=True)
         (root / "build/reports/sidecar/release-assets.json").unlink(missing_ok=True)
     admit_source(root, sha)

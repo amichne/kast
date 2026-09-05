@@ -222,6 +222,7 @@ class ReceiptIdentityTest(unittest.TestCase):
         receipt = self.directory / "kast-release-receipt-v1.0.0.json"
         receipt.write_text("stale success")
         reports = self.directory / "build/reports/release-gate"
+        gate.write(reports / "cold-broker.json", {"schemaVersion": 2, "status": "passed"})
         for name in ("source", "installed", "sbom", "compatibility"):
             gate.write(reports / f"{name}.json", self.receipt["dependencies"][name]["receipt"])
         gate.write(self.directory / "build/reports/sidecar/release-assets.json",
@@ -231,6 +232,7 @@ class ReceiptIdentityTest(unittest.TestCase):
                 gate.execute("source", self.directory, self.directory, self.version, self.sha)
         self.assertFalse(receipt.exists())
         self.assertFalse((self.directory / "build/reports/release-gate/source.json").exists())
+        self.assertFalse((reports / "cold-broker.json").exists())
         with mock.patch.object(gate, "admit_source"), self.assertRaises(gate.GateRejected):
             gate.execute("finish", self.directory, self.directory, self.version, self.sha)
 

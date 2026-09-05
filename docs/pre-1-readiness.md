@@ -79,6 +79,10 @@ This record separates implemented checks from observed installed acceptance.
   Ordinary arguments retain their existing limits. A rebuilt CLI passed valid
   resume and malformed/digest-tampered rejection for both continuation families;
   the final gate must repeat this with matched archives.
+- The combined archive journey exposed a cold broker rejection. Its report now
+  lives under `build/reports/release-gate/cold-broker.json`, outside the temporary
+  host, so cleanup preserves failure evidence. A fresh source attempt deletes
+  prior broker reports before admission; earlier success cannot survive a rerun.
 - Stronger mutation acceptance now requires complete zero diagnostics after the
   edit, discovery and inspection of the inserted class member at its canonical
   file, and rejection of a previously prepared same-file plan with

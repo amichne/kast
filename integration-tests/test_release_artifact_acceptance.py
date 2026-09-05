@@ -122,6 +122,10 @@ class WorkspacePreservationTest(unittest.TestCase):
         uninstalls = 0
         def run(command, *_):
             nonlocal uninstalls
+            if ":cli:installedColdBrokerAcceptance" in command and damage == "broker-rejected":
+                argument = next(value for value in command if value.startswith("-PkastBrokerAcceptanceEvidence="))
+                acceptance.gate.write(Path(argument.split("=", 1)[1]), {"schemaVersion": 2, "status": "rejected", "stage": "symbol-lookup"})
+                raise acceptance.gate.GateRejected("cold broker rejected")
             if "uninstall" in command:
                 uninstalls += 1
                 executable.unlink()
@@ -193,6 +197,15 @@ class WorkspacePreservationTest(unittest.TestCase):
             self.assertEqual(["first-uninstall", "reinstall", "final-uninstall"], [item["stage"] for item in proof])
             self.assertTrue(all(item["status"] == "passed" and item["expectedDigest"] == item["observedDigest"] for item in proof))
             self.assertEqual(1, len({item["expectedDigest"] for item in proof}))
+
+    def test_cold_broker_failure_report_is_retained_outside_the_temporary_host(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw).resolve()
+            with self.assertRaisesRegex(acceptance.gate.GateRejected, "cold broker rejected"):
+                self.journey(root, damage="broker-rejected")
+            report = root / "build/reports/release-gate/cold-broker.json"
+            self.assertTrue(report.is_file(), "cold broker evidence must survive temporary-host cleanup")
+            self.assertEqual("rejected", json.loads(report.read_text())["status"])
 
 
 if __name__ == "__main__":
