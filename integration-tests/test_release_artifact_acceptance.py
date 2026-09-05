@@ -25,6 +25,68 @@ class OptionalBrokerStateTest(unittest.TestCase):
                 acceptance.assert_broker_absent(host)
 
 
+class ColdIdeaFixtureTest(unittest.TestCase):
+    def fixture(self, root):
+        owner = root / "owned"
+        home = owner / "home"
+        home.mkdir(parents=True)
+        idea = root / "admitted"
+        idea.mkdir()
+        (idea / "lib").mkdir()
+        (idea / "lib/platform.jar").write_bytes(b"exact fixture bytes")
+        shared = root / "exact-resources"
+        shared.mkdir()
+        (shared / "build.txt").write_text("IU-262.9437.185")
+        (idea / "Resources").symlink_to(shared)
+        return SimpleNamespace(root=owner, home=home), idea, shared
+
+    def test_canonical_directory_links_each_child_to_its_exact_admitted_authority(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw).resolve()
+            host, idea, resources = self.fixture(root)
+            contents = acceptance.prepare_cold_broker_idea(host, idea)
+            self.assertEqual(host.home / "Applications/IntelliJ IDEA.app/Contents", contents)
+            self.assertEqual(contents, contents.resolve(strict=True))
+            self.assertFalse(contents.is_symlink())
+            self.assertEqual({"Resources", "lib"}, {child.name for child in contents.iterdir()})
+            self.assertEqual(resources, (contents / "Resources").readlink())
+            self.assertEqual(idea / "lib", (contents / "lib").readlink())
+            self.assertEqual(b"exact fixture bytes", (contents / "lib/platform.jar").read_bytes())
+            self.assertTrue((idea / "Resources").is_symlink())
+
+    def test_preexisting_or_symlinked_destinations_and_foreign_home_reject_without_writes(self):
+        for case in ("existing", "symlink", "applications-symlink", "foreign-home"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as raw:
+                root = Path(raw).resolve()
+                host, idea, _ = self.fixture(root)
+                applications = host.home / "Applications"
+                if case == "foreign-home":
+                    host.home = idea
+                elif case == "applications-symlink":
+                    applications.symlink_to(idea)
+                else:
+                    applications.mkdir()
+                    destination = applications / "IntelliJ IDEA.app"
+                    if case == "existing":
+                        destination.mkdir()
+                    else:
+                        destination.symlink_to(root / "missing")
+                with self.assertRaises(acceptance.gate.GateRejected):
+                    acceptance.prepare_cold_broker_idea(host, idea)
+                self.assertFalse((idea / "IntelliJ IDEA.app").exists())
+                self.assertFalse((idea / "Applications").exists())
+
+    def test_source_listing_is_bounded_before_creating_the_destination(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw).resolve()
+            host, idea, _ = self.fixture(root)
+            for index in range(127):
+                (idea / f"child-{index}").write_bytes(b"")
+            with self.assertRaisesRegex(acceptance.gate.GateRejected, "source-child-bound"):
+                acceptance.prepare_cold_broker_idea(host, idea)
+            self.assertFalse((host.home / "Applications").exists())
+
+
 class DurableObservationTest(unittest.TestCase):
     def test_failed_command_preserves_bounded_failure_after_cleanup(self):
         with tempfile.TemporaryDirectory() as raw:
@@ -101,6 +163,11 @@ class WorkspacePreservationTest(unittest.TestCase):
         home = root / "home"
         home.mkdir()
         runtime = root / "runtime"
+        idea = root / "admitted-idea"
+        idea.mkdir()
+        (idea / "lib").mkdir()
+        (idea / "lib/nio-fs.jar").write_bytes(b"fixture IDEA component")
+        (idea / "jbr/Contents/Home").mkdir(parents=True)
         executable = root / "bin/kast"
         executable.parent.mkdir()
         def write_executable():
@@ -145,7 +212,7 @@ class WorkspacePreservationTest(unittest.TestCase):
              mock.patch.object(acceptance.sys, "argv", ["acceptance", "--assets-directory", str(assets), "--version", "1.0.0", "--source-revision", "a" * 40]),
              mock.patch.dict(os.environ, {f"KAST_RELEASE_JDK_{feature}": str(root) for feature in (17, 21, 25)}),
              mock.patch.object(acceptance.gate, "admit_source"),
-             mock.patch.object(acceptance.gate, "prepare_idea", return_value=root),
+             mock.patch.object(acceptance.gate, "prepare_idea", return_value=idea),
              mock.patch.object(acceptance.gate, "asset_identities", return_value={asset_name: "sha256:" + "a" * 64}),
              mock.patch.object(acceptance.gate, "digest", return_value="sha256:" + "a" * 64),
              mock.patch.object(acceptance.gate, "environment_identity", return_value={}),
@@ -206,6 +273,16 @@ class WorkspacePreservationTest(unittest.TestCase):
             report = root / "build/reports/release-gate/cold-broker.json"
             self.assertTrue(report.is_file(), "cold broker evidence must survive temporary-host cleanup")
             self.assertEqual("rejected", json.loads(report.read_text())["status"])
+
+    def test_cold_broker_uses_a_canonical_standard_idea_directory(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw).resolve()
+            self.journey(root)
+            contents = root / "home/Applications/IntelliJ IDEA.app/Contents"
+            self.assertTrue(contents.is_dir())
+            self.assertFalse(contents.is_symlink(), "installed discovery rejects a symlinked Contents candidate")
+            self.assertEqual(contents, contents.resolve(strict=True))
+            self.assertEqual((root / "admitted-idea/lib").resolve(strict=True), (contents / "lib").resolve(strict=True))
 
 
 if __name__ == "__main__":

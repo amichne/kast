@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 from enum import Enum
 import importlib.util
+from itertools import islice
 import os
 from pathlib import Path
 import shutil
@@ -154,6 +155,39 @@ def assert_broker_absent(host):
             raise gate.GateRejected("CLI-only semantic journey created optional broker state")
 
 
+def prepare_cold_broker_idea(host, idea: Path) -> Path:
+    """Expose the admitted IDEA under a new canonical directory in the owned home."""
+    try:
+        owner = host.root.resolve(strict=True)
+        home = host.home.resolve(strict=True)
+        if host.root != owner or host.home != home or home == owner or not home.is_relative_to(owner):
+            raise gate.GateRejected("cold broker IDEA fixture rejected: home-not-owned")
+        admitted = idea.resolve(strict=True)
+        if idea != admitted or not admitted.is_dir():
+            raise gate.GateRejected("cold broker IDEA fixture rejected: source-not-canonical")
+        children = tuple(islice(admitted.iterdir(), 129))
+        if not children or len(children) > 128:
+            raise gate.GateRejected("cold broker IDEA fixture rejected: source-child-bound")
+        links = [(child.name, child.resolve(strict=True)) for child in children]
+        applications = home / "Applications"
+        if applications.is_symlink() or (applications.exists() and not applications.is_dir()):
+            raise gate.GateRejected("cold broker IDEA fixture rejected: applications-not-owned")
+        destination = applications / "IntelliJ IDEA.app"
+        if destination.exists() or destination.is_symlink():
+            raise gate.GateRejected("cold broker IDEA fixture rejected: destination-exists")
+        applications.mkdir(mode=0o700, exist_ok=True)
+        destination.mkdir(mode=0o700)
+        contents = destination / "Contents"
+        contents.mkdir(mode=0o700)
+        for name, target in links:
+            (contents / name).symlink_to(target)
+        if contents != contents.resolve(strict=True):
+            raise gate.GateRejected("cold broker IDEA fixture rejected: destination-not-canonical")
+        return contents
+    except (OSError, RuntimeError):
+        raise gate.GateRejected("cold broker IDEA fixture rejected: filesystem-unavailable") from None
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--assets-directory", type=Path, required=True)
@@ -203,9 +237,7 @@ def main():
         version = subprocess.check_output([str(acceptance.executable), "--version"], cwd=host.workspace, env=acceptance.environment, text=True).strip()
         if version != f"kast {args.version} (IntelliJ sidecar)":
             raise gate.GateRejected("reinstall selected a different product")
-        applications = host.home / "Applications/IntelliJ IDEA.app"
-        applications.mkdir(parents=True)
-        (applications / "Contents").symlink_to(idea)
+        prepare_cold_broker_idea(host, idea)
         request = host.root / "cold-broker-request.json"
         broker_report = ROOT / "build/reports/release-gate/cold-broker.json"
         gate.write(request, {"kast": str(acceptance.executable), "workspace": str(host.workspace), "query": "enterpriseRootOperation"})

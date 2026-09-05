@@ -83,6 +83,12 @@ This record separates implemented checks from observed installed acceptance.
   lives under `build/reports/release-gate/cold-broker.json`, outside the temporary
   host, so cleanup preserves failure evidence. A fresh source attempt deletes
   prior broker reports before admission; earlier success cannot survive a rerun.
+- That rejection was `idea-installation-missing`: the fixture's standard IDEA
+  `Contents` path was a symlink, which canonical discovery correctly rejected.
+  The isolated fixture now creates a real `Contents` directory and links each
+  child to its resolved admitted IDEA authority. The unchanged archives passed
+  the corrected cold probe in 66,653 milliseconds. This fixes test setup without
+  weakening product admission; the final combined receipt is still pending.
 - Stronger mutation acceptance now requires complete zero diagnostics after the
   edit, discovery and inspection of the inserted class member at its canonical
   file, and rejection of a previously prepared same-file plan with
