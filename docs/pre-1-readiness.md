@@ -174,6 +174,10 @@ failures and fallback evidence belong below as they are observed.
 
 ## Release decision
 
+The requested validation release is 0.33.0, following published 0.32.2. The
+candidate version now selects that minor release so CI and publication prove
+its exact assets. A major release remains deferred until user validation.
+
 No 1.0 release is authorized or produced by this work. All required core journeys
 passed at the exact combined head recorded above. Subsequent stacked PR heads
 require their own passing CI evidence; publication separately requires the exact
