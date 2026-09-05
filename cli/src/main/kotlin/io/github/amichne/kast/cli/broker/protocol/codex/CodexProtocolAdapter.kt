@@ -396,11 +396,7 @@ internal class CodexProtocolAdapter(
             )
         }
         val projected = when (
-            val projection = CodexThreadHistoryProjector.projectContainer(
-                route.shape,
-                admittedParams,
-                ownedNamespaces,
-            )
+            val projection = projectHistory(route.shape, admittedParams, route.schema)
         ) {
             CodexThreadHistoryProjection.Unchanged ->
                 return ProtocolRouting.ForwardDownstream(message)
@@ -637,7 +633,7 @@ internal class CodexProtocolAdapter(
         val resultObject = admittedResult as? JsonObject
             ?: return ProtocolRouting.Close(ProtocolCloseFailure.OwnedFieldsMissing)
         val historyProjection = when (
-            val projection = CodexThreadHistoryProjector.project(resultObject, ownedNamespaces)
+            val projection = projectHistory(CodexItemContainerShape.THREAD, resultObject, responseSchema)
         ) {
             CodexThreadHistoryProjection.Unchanged -> projection
             is CodexThreadHistoryProjection.Projected -> projection
@@ -711,11 +707,7 @@ internal class CodexProtocolAdapter(
             )
         }
         val projection = when (
-            val projected = CodexThreadHistoryProjector.projectContainer(
-                route.shape,
-                admittedResult,
-                ownedNamespaces,
-            )
+            val projected = projectHistory(route.shape, admittedResult, route.responseSchema)
         ) {
             CodexThreadHistoryProjection.Unchanged -> return ProtocolRouting.ForwardDownstream(message)
             is CodexThreadHistoryProjection.Projected -> projected.result
@@ -729,6 +721,22 @@ internal class CodexProtocolAdapter(
         return ProtocolRouting.ForwardDownstream(
             JsonObject(document + ("result" to projection)).toString(),
         )
+    }
+
+    private fun projectHistory(
+        shape: CodexItemContainerShape,
+        candidate: JsonObject,
+        schema: CodexOwnedSchema,
+    ): CodexThreadHistoryProjection {
+        val projection = CodexThreadHistoryProjector.projectContainer(shape, candidate, ownedNamespaces)
+        return if (projection is CodexThreadHistoryProjection.Projected &&
+            !contracts.admits(schema, projection.result)
+        ) {
+            // A derived companion is optional; a schema rejection retains the canonical projection.
+            CodexThreadHistoryProjector.projectContainer(
+                shape, candidate, ownedNamespaces, CodexObserverHistoryMode.SANITIZED_ONLY,
+            )
+        } else projection
     }
 
     private fun dynamicToolReply(id: RpcId, presentation: ToolPresentation): ProtocolRouting {

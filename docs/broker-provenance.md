@@ -53,8 +53,11 @@ then emits the sanitized MCP completion followed by a schema-admitted `agentMess
 is `commentary` and whose text is Markdown. When that companion is available, the MCP result is an
 empty accepted result rather than a duplicate of the canonical model document. Presentation
 capacity exhaustion, projection failure, or rejection by the installed Codex contract suppresses
-the companion without changing tool execution or its model-facing reply. No presentation state is
-persisted, and historical companions are not reconstructed after restart or resume.
+the companion without changing tool execution or its model-facing reply. No presentation state is persisted. Thread reload and resume reconstruct the same deterministic
+companions from the canonical results and the historical working directory. This projection is
+pure: it neither reads current repository files nor starts a runtime. Full thread and turn item
+arrays can carry companions; standalone paginated item and timeline entries retain their ordinary
+sanitized tool result because they do not carry a proven working directory or a companion slot.
 
 Representative observer screenshots are generated without a Codex session or model request:
 
