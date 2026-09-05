@@ -68,6 +68,17 @@ This record separates implemented checks from observed installed acceptance.
   Java `user.home` to the admitted home. After both fixes, fresh isolated homes
   passed the three admitted Gradle/JDK pairs and the explicit 7.6.4 / Java 25
   rejection listed above. These results do not replace the final combined gate.
+- A real traversal continuation exceeded the CLI's ordinary 4,096-character
+  argument limit. Admission now preserves a typed relation or traversal document
+  through the parser boundary and derives its bound from canonical protocol text.
+  Ordinary arguments retain their existing limits. A rebuilt CLI passed valid
+  resume and malformed/digest-tampered rejection for both continuation families;
+  the final gate must repeat this with matched archives.
+- Stronger mutation acceptance now requires complete zero diagnostics after the
+  edit, discovery and inspection of the inserted class member at its canonical
+  file, and rejection of a previously prepared same-file plan with
+  `content-changed`. The actual staged journey passes and verifies that the stale
+  plan changes neither source nor indexed evidence.
 
 ## Observed upgrade and resource evidence
 
@@ -84,11 +95,22 @@ configuration and repository contents retained identical observed identities.
 This proves the staged upgrade/corruption journey; it is not the final release
 receipt for the combined head.
 
-The installed receipt now has bounded observation points after start, a semantic
-read, restart and stop. The upcoming combined run will record owned-process RSS
-samples and apparent state-disk bytes at those points. These are samples, not a
-continuous peak measurement or evidence that a resource threshold passed. A
-stopped observation does not invent an RSS value.
+The semantic corruption journey uses tokens emitted by the running product and
+requires a valid resume before each corruption experiment. All four malformed
+and digest-tampered relation/traversal cases reject with their finite usage
+diagnostic. Corrupting the selected v3 cache identity receipt makes passive status
+reject with `status-cache-invalid-identity`; exact byte and mode restoration
+recovers status and source read without changing repository contents. The staged
+probe passes; the final receipt requires this journey against the exact archives.
+
+The installed receipt has bounded observation points after start, a semantic
+read, restart and stop. Headless IntelliJ does not always write a `.pid` file, so
+the observer can locate the exact owned `idea.system.path` process and separately
+verify its PID and RSS. It serializes neither command lines nor unrelated process
+data. Actual staged live and stopped observations pass. The upcoming combined
+run will bind these samples and apparent state-disk bytes to the archive proof.
+These are samples, not continuous peak measurements or evidence that a resource
+threshold passed. A stopped observation does not invent an RSS value.
 
 ## Semantic tooling observations
 
