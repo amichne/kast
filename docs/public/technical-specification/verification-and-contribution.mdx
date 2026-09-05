@@ -186,6 +186,13 @@ against the expected repositories before committing the updated metadata. The
 initial checksum set records reviewed downloaded bytes; it does not claim
 upstream signature verification.
 
+Check metadata coverage with an empty `GRADLE_USER_HOME` as well. Warm caches can
+omit parent POMs, BOMs and module metadata that a fresh runner must resolve.
+
+For an unlisted artifact, verify its exact coordinates and bytes against the
+publishing repository and available published checksum before adding its SHA-256
+pin. Preserve strict verification throughout this check.
+
 Actions are pinned to full commit identities. The release workflow attests the
 verified candidate files before publication. The SBOM describes bundled
 components; the user-supplied IntelliJ distribution and JBR remain external host

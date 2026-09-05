@@ -160,6 +160,12 @@ threshold passed. A stopped observation does not invent an RSS value.
 
 ## Semantic tooling observations
 
+The first remote documentation and release-gate attempts rejected an unlisted
+Kotlin coroutines BOM before source compilation. An empty Gradle home reproduced
+additional parent-POM, BOM and module-metadata omissions hidden by the local
+cache. Each added pin compares the resolved artifact bytes with Maven Central
+and its available published checksum; strict verification remains enabled.
+
 Native Kast `symbol discover` succeeded on the original checkout. This session
 exposes no callable Kast or IntelliJ-index MCP tools, so native Kast is the
 available semantic authority. A failed `status --root` attempt was a CLI usage
