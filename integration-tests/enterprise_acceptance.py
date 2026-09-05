@@ -51,14 +51,23 @@ class MutationMarkerPlacement(str, Enum):
     UNAVAILABLE = "unavailable"
 
 
+class StalePlanReason(str, Enum):
+    CONTENT_CHANGED = "content-changed"
+    GENERATION_STALE = "generation-stale"
+    OTHER = "other"
+
+
 def mutation_proof(stage: MutationProofStage, mismatches: list[MutationProofMismatch],
-                   placement: MutationMarkerPlacement | None = None) -> None:
+                   placement: MutationMarkerPlacement | None = None,
+                   reason: StalePlanReason | None = None) -> None:
     """Emit finite field comparisons only; never declaration values, selectors, or paths."""
     evidence = {"schemaVersion": 1, "stage": stage.value,
                 "status": "rejected" if mismatches else "passed",
                 "mismatches": [mismatch.value for mismatch in mismatches]}
     if placement is not None:
         evidence["placement"] = placement.value
+    if reason is not None:
+        evidence["reason"] = reason.value
     prefix = "enterprise-stale-plan" if stage is MutationProofStage.STALE_PLAN else "enterprise-mutation-marker"
     print(prefix + ": " + json.dumps(evidence, sort_keys=True), flush=True)
 
@@ -858,13 +867,16 @@ class Acceptance:
             mismatches.append(MutationProofMismatch.OPERATION)
         if rejected.get("status") != "rejected":
             mismatches.append(MutationProofMismatch.STATUS)
-        if rejected.get("reason") != "generation-stale":
+        reason = next((value for value in StalePlanReason if value.value == rejected.get("reason")), StalePlanReason.OTHER)
+        # MutationAdmission checks the observed source preimage before generation
+        # publication. This probe changes that same source, requiring CONTENT_CHANGED.
+        if reason is not StalePlanReason.CONTENT_CHANGED:
             mismatches.append(MutationProofMismatch.REASON)
-        mutation_proof(MutationProofStage.STALE_PLAN, mismatches)
+        mutation_proof(MutationProofStage.STALE_PLAN, mismatches, reason=reason)
         if MutationProofMismatch.REPOSITORY_STATE in mismatches:
             fail("stale mutation plan changed repository contents")
         if mismatches:
-            fail("prior-generation mutation plan was not rejected as generation-stale")
+            fail("stale mutation plan was not rejected as content-changed")
 
     def prove_mutation_marker(self) -> None:
         """Prove the requested member through refreshed discovery and compiler inspection."""

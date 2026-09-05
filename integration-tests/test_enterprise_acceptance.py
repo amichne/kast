@@ -48,7 +48,7 @@ class MutationAcceptanceTest(unittest.TestCase):
             {"type": "declaration", "candidateSelector": "marker-candidate"},
         ]}
         self.inspection = {"operation": "symbol.inspect", "status": "complete", "symbol": self.marker}
-        self.stale = {"operation": "change.apply", "status": "rejected", "reason": "generation-stale"}
+        self.stale = {"operation": "change.apply", "status": "rejected", "reason": "content-changed"}
         self.stale_effect = lambda: None
 
     def exercise(self):
@@ -87,6 +87,10 @@ class MutationAcceptanceTest(unittest.TestCase):
         self.assertEqual("passed", marker["status"])
         self.assertEqual("expected-member", marker["placement"])
         self.assertEqual([], marker["mismatches"])
+        stale = [json.loads(line.split(": ", 1)[1]) for line in self.output.getvalue().splitlines()
+                 if line.startswith("enterprise-stale-plan: ")][-1]
+        self.assertEqual("passed", stale["status"])
+        self.assertEqual("content-changed", stale["reason"])
 
     def test_relative_file_text_cannot_substitute_the_canonical_workspace_file(self) -> None:
         self.marker["file"] = "domains/alpha/one/src/main/kotlin/enterprise/alpha/one/Enterprise.kt"
@@ -151,8 +155,9 @@ class MutationAcceptanceTest(unittest.TestCase):
 
     def test_stale_plan_requires_its_specific_finite_rejection(self) -> None:
         for result in ({"operation": "change.apply", "status": "complete"},
-                       {"operation": "change.apply", "status": "rejected", "reason": "plan-not-found"}):
-            with self.subTest(result=result), self.assertRaisesRegex(SystemExit, "generation-stale"):
+                       {"operation": "change.apply", "status": "rejected", "reason": "plan-not-found"},
+                       {"operation": "change.apply", "status": "rejected", "reason": "generation-stale"}):
+            with self.subTest(result=result), self.assertRaisesRegex(SystemExit, "content-changed"):
                 self.stale = result
                 self.exercise()
             self.assertIn('"stage": "stale-plan"', self.output.getvalue())
