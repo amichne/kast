@@ -125,9 +125,9 @@ for asset in "${assets[@]}"; do
 done
 
 upload_assets=(
-  "${control}#Control - public CLI, lifecycle, schemas, broker, and wire transport"
+  "${control}#kast-control-v${version}"
   "${control}.sha256"
-  "${sidecar}#Private semantic runtime - headless IntelliJ indexer and compiler integration"
+  "${sidecar}#kast-semantic-runtime-v${version}"
   "${sidecar}.sha256"
   "${schema}"
   "${schema}.sha256"
