@@ -53,6 +53,7 @@ private val javaPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
 }
 
 dependencies {
+    implementation(catalog.findLibrary("serialization-json").get())
     implementation(project(":workspace:contract"))
     implementation(project(":distribution:contract"))
     implementation(project(":workspace:intellij-read"))
@@ -68,3 +69,34 @@ dependencies {
     testImplementation(javaPluginLibs)
     testImplementation(catalog.findLibrary("gradle-tooling-api").get())
 }
+
+// These classes execute inside the repository Gradle daemon, independently of the Java 25 IDE.
+val gradleTooling by sourceSets.creating
+configurations[gradleTooling.compileOnlyConfigurationName].extendsFrom(configurations.compileOnly.get())
+sourceSets.main {
+    compileClasspath += gradleTooling.output
+    runtimeClasspath += gradleTooling.output
+}
+sourceSets.test {
+    compileClasspath += gradleTooling.output
+    runtimeClasspath += gradleTooling.output
+}
+tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileGradleToolingKotlin") {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
+        freeCompilerArgs.add("-Xjdk-release=8")
+    }
+}
+tasks.named<JavaCompile>("compileGradleToolingJava") {
+    options.release.set(8)
+}
+val gradleToolingJar by tasks.registering(Jar::class) {
+    archiveClassifier.set("gradle-tooling")
+    from(gradleTooling.output)
+}
+// Gradle instruments every class in a tooling JAR, so Java 25 IDE classes must stay in their own JAR.
+artifacts {
+    add("apiElements", gradleToolingJar)
+    add("runtimeElements", gradleToolingJar)
+}
+tasks.named<Jar>("sourcesJar") { from(gradleTooling.allSource) }

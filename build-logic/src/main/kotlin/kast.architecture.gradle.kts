@@ -58,23 +58,29 @@ tasks.register<GenerateKastModuleKnowledgeTask>("generateKastModuleKnowledge") {
 subprojects {
     val modulePath = path
     pluginManager.withPlugin("java") {
-        val mainSourceSet = extensions.getByType<SourceSetContainer>().named("main")
         verifyKastArchitecture.configure {
             observedProjectPaths.add(modulePath)
-            compiledClassDirectories.from(mainSourceSet.map { it.output.classesDirs })
-            classDirectoryOwners.addAll(
-                mainSourceSet.map { sourceSet ->
-                    sourceSet.output.classesDirs.files.map { directory ->
-                        val relative = rootProject.projectDir.toPath().relativize(
-                            directory.toPath(),
-                        )
-                        "$modulePath${VerifyKastArchitectureTask.CLASS_DIRECTORY_SEPARATOR}" +
-                            relative.joinToString("/")
-                    }
-                },
-            )
-            dependsOn(tasks.named("classes"))
         }
+        // The separate Gradle-daemon payload remains production code owned by its adapter module.
+        extensions.getByType<SourceSetContainer>()
+            .matching { it.name == "main" || it.name == "gradleTooling" }
+            .configureEach {
+                val sourceSet = this
+                val sourceSetProvider = providers.provider { sourceSet }
+                verifyKastArchitecture.configure {
+                    compiledClassDirectories.from(sourceSetProvider.map { it.output.classesDirs })
+                    classDirectoryOwners.addAll(
+                        sourceSetProvider.map { production ->
+                            production.output.classesDirs.files.map { directory ->
+                                val relative = rootProject.projectDir.toPath().relativize(directory.toPath())
+                                "$modulePath${VerifyKastArchitectureTask.CLASS_DIRECTORY_SEPARATOR}" +
+                                    relative.joinToString("/")
+                            }
+                        },
+                    )
+                    dependsOn(tasks.named(sourceSet.classesTaskName))
+                }
+            }
     }
 
     afterEvaluate {

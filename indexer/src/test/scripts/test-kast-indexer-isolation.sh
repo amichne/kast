@@ -43,6 +43,7 @@ installed="${fixture}/installed"
 idea_home="${fixture}/IntelliJ IDEA.app/Contents"
 java_executable="${idea_home}/jbr/Contents/Home/bin/java"
 workspace="${fixture}/workspace"
+admitted_user_home="${fixture}/home"
 private_plugins="${installed}/private-plugins"
 mkdir -p \
   "${installed}/runtime-libs" \
@@ -51,7 +52,8 @@ mkdir -p \
   "${idea_home}/modules" \
   "$(dirname "${java_executable}")" \
   "${private_plugins}/kast-indexer/lib" \
-  "${workspace}"
+  "${workspace}" \
+  "${admitted_user_home}"
 cp "${launcher}" "${installed}/kast-indexer"
 chmod 755 "${installed}/kast-indexer"
 printf '%s\n' 'launcher.jar' >"${installed}/runtime-libs/classpath.txt"
@@ -101,7 +103,8 @@ run_launcher() {
   local cache="$2"
   local capture="$3"
   CAPTURE_FILE="${capture}" \
-  JAVA_OPTS="-Dkast.untrusted.java-opts=true" \
+  HOME="${admitted_user_home}" \
+  JAVA_OPTS="-Dkast.untrusted.java-opts=true -Duser.home=/untrusted" \
   _JAVA_OPTIONS="-Didea.load.plugins.id=attacker" \
   JAVA_TOOL_OPTIONS="-Didea.plugins.path=/untrusted" \
   JDK_JAVA_OPTIONS="-javaagent:/untrusted/agent.jar" \
@@ -147,7 +150,8 @@ python3 - \
   "${cache_b}" \
   "${socket_a}" \
   "${socket_b}" \
-  "${bootstrap_attempt_id}" <<'PY'
+  "${bootstrap_attempt_id}" \
+  "${admitted_user_home}" <<'PY'
 from pathlib import Path
 import sys
 
@@ -158,11 +162,15 @@ private_plugins = sys.argv[6]
 caches = [Path(sys.argv[7]), Path(sys.argv[7]), Path(sys.argv[8])]
 sockets = [sys.argv[9], sys.argv[9], sys.argv[10]]
 bootstrap_attempt_id = sys.argv[11]
+admitted_user_home = sys.argv[12]
 property_names = ("system", "config", "log")
 observed = []
 
 for capture, cache, socket in zip(captures, caches, sockets, strict=True):
     decoded = [item.decode() for item in capture.read_bytes().split(b"\0") if item]
+    home_arguments = [argument for argument in decoded if argument.startswith("-Duser.home=")]
+    if home_arguments != [f"-Duser.home={admitted_user_home}"]:
+        raise SystemExit("indexer-launcher-isolation-test: JVM user.home did not preserve the admitted HOME")
     expected = {
         "system": str(cache / "system"),
         "config": str(cache / "config"),
@@ -255,6 +263,25 @@ launcher_owned=(
   bootstrap-state-path
   bootstrap-attempt-id
 )
+ln -s "${admitted_user_home}" "${fixture}/linked-home"
+for invalid_home in "" "relative-home" "${fixture}/missing-home" "${fixture}/linked-home" "${admitted_user_home}/.."; do
+  rejected_home_capture="${fixture}/rejected-home-capture"
+  set +e
+  rejected_home_output="$(
+    HOME="${invalid_home}" CAPTURE_FILE="${rejected_home_capture}" \
+      "${installed}/kast-indexer" "${launcher_arguments[@]}" 2>&1
+  )"
+  rejected_home_status=$?
+  set -e
+  [[ ${rejected_home_status} -eq 70 && ! -e "${rejected_home_capture}" ]] || {
+    echo "indexer-launcher-isolation-test: invalid HOME reached Java" >&2
+    exit 1
+  }
+  [[ "${rejected_home_output}" == "kast-indexer: admitted HOME is "* ]] || {
+    echo "indexer-launcher-isolation-test: invalid HOME lacked a bounded rejection" >&2
+    exit 1
+  }
+done
 for omitted in "${launcher_owned[@]}"; do
   missing_capture="${fixture}/missing-${omitted}-capture"
   filtered=()

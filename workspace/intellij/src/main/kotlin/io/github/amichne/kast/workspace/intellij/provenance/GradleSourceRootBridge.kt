@@ -10,18 +10,6 @@ import org.jetbrains.plugins.gradle.service.project.AbstractProjectResolverExten
 import java.io.File
 import java.io.Serializable
 
-/** Gradle's producer-owned classification for one exact IDEA source directory. */
-enum class GradleSourceRootProducerProvenance {
-    AUTHORED,
-    GENERATED,
-}
-
-/** Gradle's producer-owned role for one exact source-set directory. */
-enum class GradleSourceRootProducerRole {
-    CODE,
-    RESOURCE,
-}
-
 /** Closed failure to capture Gradle's source-directory producer evidence. */
 internal enum class GradleSourceRootProducerCaptureFailure {
     CONFLICTING_SOURCE_ROOT_EVIDENCE,

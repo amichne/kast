@@ -55,6 +55,7 @@ enum class InstalledIntellijWorkspaceFailure {
     PROJECT_JVM_UNAVAILABLE,
     PLATFORM_LINKAGE_INVALID,
     GRADLE_IMPORT_FAILED,
+    GRADLE_TOOLING_PAYLOAD_INCOMPATIBLE,
     GRADLE_PROJECT_POLICY_INVALID,
     GRADLE_JVM_CONFIGURATION_INVALID,
     GRADLE_IMPORT_TIMED_OUT,
@@ -340,7 +341,7 @@ object InstalledIntellijWorkspace {
 
         observer.observe(InstalledIntellijWorkspaceBootstrapPhase.PROJECT_IMPORT)
         val imported = CompletableFuture<Void>()
-        val closedImported = imported.closedImportOutcome()
+        val closedImported = imported.closedImportOutcome(installedGradleImportDiagnosticObserver(sidecarJvm, selectedGradleJvm))
         val specification = ImportSpecBuilder(project, GradleConstants.SYSTEM_ID)
             .withCallback(imported)
         val importCompletion = try {
@@ -368,6 +369,9 @@ object InstalledIntellijWorkspace {
             )
             InstalledGradleImportWait.INVALID_JVM_CONFIGURATION -> return rejected(
                 InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID,
+            )
+            InstalledGradleImportWait.INCOMPATIBLE_PAYLOAD -> return rejected(
+                InstalledIntellijWorkspaceFailure.GRADLE_TOOLING_PAYLOAD_INCOMPATIBLE,
             )
             InstalledGradleImportWait.CANCELLED,
             InstalledGradleImportWait.FAILED,
@@ -486,6 +490,7 @@ object InstalledIntellijWorkspace {
         when (future.get(GRADLE_IMPORT_TIMEOUT_MINUTES, TimeUnit.MINUTES)) {
             InstalledGradleImportOutcome.Completed -> InstalledGradleImportWait.COMPLETED
             InstalledGradleImportOutcome.Failed -> InstalledGradleImportWait.FAILED
+            is InstalledGradleImportOutcome.IncompatiblePayload -> InstalledGradleImportWait.INCOMPATIBLE_PAYLOAD
             InstalledGradleImportOutcome.Cancelled -> InstalledGradleImportWait.CANCELLED
             InstalledGradleImportOutcome.InvalidJvmConfiguration ->
                 InstalledGradleImportWait.INVALID_JVM_CONFIGURATION
@@ -640,6 +645,7 @@ private enum class FutureCompletion {
 }
 
 private enum class InstalledGradleImportWait {
+    INCOMPATIBLE_PAYLOAD,
     COMPLETED,
     FAILED,
     CANCELLED,

@@ -154,6 +154,7 @@ internal sealed interface InstalledGradleImportOutcome {
     data object Failed : InstalledGradleImportOutcome
     data object Cancelled : InstalledGradleImportOutcome
     data object InvalidJvmConfiguration : InstalledGradleImportOutcome
+    data class IncompatiblePayload(val major: GradlePayloadClassFileMajor) : InstalledGradleImportOutcome
 }
 
 /**
@@ -163,8 +164,9 @@ internal sealed interface InstalledGradleImportOutcome {
  * import data. The platform `Void` future and exceptional completion remain confined to the
  * External System callback boundary.
  */
-internal fun CompletableFuture<Void>.closedImportOutcome():
-    CompletableFuture<InstalledGradleImportOutcome> = handle { _, failure ->
+internal fun CompletableFuture<Void>.closedImportOutcome(
+    observer: InstalledGradleImportDiagnosticObserver = InstalledGradleImportDiagnosticObserver {},
+): CompletableFuture<InstalledGradleImportOutcome> = handle { _, failure ->
         when {
             isCancelled -> InstalledGradleImportOutcome.Cancelled
             failure == null -> InstalledGradleImportOutcome.Completed
@@ -175,12 +177,15 @@ internal fun CompletableFuture<Void>.closedImportOutcome():
                 InstalledGradleImportOutcome.Cancelled
             failure.hasCause<ExternalSystemJdkException>() ->
                 InstalledGradleImportOutcome.InvalidJvmConfiguration
-            else -> InstalledGradleImportOutcome.Failed
-        }
+            else -> when (val payload = GradlePayloadClassFileMajor.observe(failure)) {
+                is GradlePayloadCompatibility.Unsupported -> InstalledGradleImportOutcome.IncompatiblePayload(payload.major)
+                GradlePayloadCompatibility.Unclassified -> InstalledGradleImportOutcome.Failed
+            }
+        }.also(observer::observe)
     }
 
 private inline fun <reified Failure : Throwable> Throwable?.hasCause(): Boolean =
-    generateSequence(this) { current -> current.cause }
+    generateSequence(this) { current -> current.cause }.take(16)
         .any { current -> current is Failure }
 
 private enum class GradleTaskIdentity { EXACT_WORKSPACE, OTHER }

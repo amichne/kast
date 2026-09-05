@@ -73,6 +73,9 @@ enum class SemanticRuntimeBootstrapFailure(
 
     GRADLE_IMPORT_FAILED("gradle-import-failed"),
 
+    @SerialName("gradle-tooling-payload-incompatible")
+    GRADLE_TOOLING_PAYLOAD_INCOMPATIBLE("gradle-tooling-payload-incompatible"),
+
     GRADLE_PROJECT_POLICY_INVALID("gradle-project-policy-invalid"),
 
     GRADLE_JVM_CONFIGURATION_INVALID("gradle-jvm-configuration-invalid"),

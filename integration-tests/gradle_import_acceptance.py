@@ -15,7 +15,7 @@ import tempfile
 import urllib.request
 from typing import Any
 
-MATRIX = (("7.6.4", 17), ("8.14.3", 21), ("9.4.1", 25))
+MATRIX_FILE = Path(__file__).resolve().parents[1] / "benchmarks/gradle-import-acceptance.json"
 INPUT_NAME = "GRADLE_IMPORT_PROOF_INPUT"
 INPUT_VALUE = "explicit-import-proof"
 SECRET_NAME = "AMBIENT_SECRET_LIKE_TOKEN"
@@ -29,9 +29,48 @@ class AcceptanceFailure(Exception):
 
 
 @dataclass(frozen=True)
+class MatrixCase:
+    gradle: str
+    java: int
+    expected_outcome: str
+
+
+def load_matrix(path: Path = MATRIX_FILE) -> list[MatrixCase]:
+    if path.stat().st_size > 8192:
+        raise AcceptanceFailure("matrix authority exceeds its bound")
+    document = json.loads(path.read_text())
+    if not isinstance(document, dict) or type(document.get("schemaVersion")) is not int or document["schemaVersion"] != 1:
+        raise AcceptanceFailure("matrix authority has an unsupported schema")
+    if set(document) != {"schemaVersion", "cases"}:
+        raise AcceptanceFailure("matrix authority has unknown fields")
+    records = document.get("cases")
+    if not isinstance(records, list) or not 4 <= len(records) <= 8:
+        raise AcceptanceFailure("matrix authority has an invalid case count")
+    cases: list[MatrixCase] = []
+    for record in records:
+        if not isinstance(record, dict) or set(record) != {"gradle", "java", "expectedOutcome"}:
+            raise AcceptanceFailure("matrix case has an unsupported shape")
+        version, feature, outcome = record["gradle"], record["java"], record["expectedOutcome"]
+        if not isinstance(version, str) or re.fullmatch(r"[0-9]+(?:\.[0-9]+){1,2}", version) is None or len(version) > 24:
+            raise AcceptanceFailure("matrix wrapper version is invalid")
+        if type(feature) is not int or feature not in {17, 21, 25} or not isinstance(outcome, str) or outcome not in {"ready", "jvm-rejected"}:
+            raise AcceptanceFailure("matrix JVM or expected outcome is unsupported")
+        cases.append(MatrixCase(version, feature, outcome))
+    if len({(case.gradle, case.java) for case in cases}) != len(cases):
+        raise AcceptanceFailure("matrix authority has duplicate pairs")
+    ready = [case for case in cases if case.expected_outcome == "ready"]
+    if len(ready) != 3 or {case.java for case in ready} != {17, 21, 25}:
+        raise AcceptanceFailure("matrix must prove one successful import each for Java 17, 21, and 25")
+    if not any(case.expected_outcome == "jvm-rejected" for case in cases):
+        raise AcceptanceFailure("matrix omits an incompatible project JVM")
+    return cases
+
+
+@dataclass(frozen=True)
 class Jdk:
     feature: int
     home: Path
+    release_sha256: str
 
     @classmethod
     def parse(cls, raw: str) -> Jdk:
@@ -43,7 +82,11 @@ class Jdk:
             raise AcceptanceFailure("JDK home must be absolute")
         try:
             canonical = candidate.resolve(strict=True)
-            release = (canonical / "release").read_text()
+            release_file = canonical / "release"
+            if release_file.stat().st_size > 65536:
+                raise AcceptanceFailure("JDK release identity exceeds its bound")
+            release_bytes = release_file.read_bytes()
+            release = release_bytes.decode()
         except OSError as error:
             raise AcceptanceFailure("JDK release identity is unavailable") from error
         match = re.search(r'^JAVA_VERSION="(\d+)', release, re.MULTILINE)
@@ -51,7 +94,7 @@ class Jdk:
             raise AcceptanceFailure("JDK release does not match its declared Java feature")
         if not os.access(canonical / "bin/java", os.X_OK):
             raise AcceptanceFailure("JDK Java executable is unavailable")
-        return cls(int(feature), canonical)
+        return cls(int(feature), canonical, hashlib.sha256(release_bytes).hexdigest())
 
 
 def wrapper_checksum(version: str) -> str:
@@ -84,9 +127,12 @@ def prepare_fixture(source: Path, repository: Path, destination: Path, version: 
     )
     with (destination / "build.gradle.kts").open("a") as build:
         build.write(f'''
+apply(plugin = "org.jetbrains.kotlin.jvm")
 check(System.getenv("{INPUT_NAME}") == "{INPUT_VALUE}") {{ "explicit import input missing" }}
 check(System.getenv("{SECRET_NAME}") == null) {{ "unselected environment input leaked" }}
 check(System.getProperty("java.specification.version") == "{jdk.feature}") {{ "unexpected Gradle JVM" }}
+val admittedGradleHome = File(System.getenv("GRADLE_USER_HOME") ?: File(System.getenv("HOME"), ".gradle").path).canonicalFile
+check(gradle.gradleUserHomeDir.canonicalFile == admittedGradleHome) {{ "Gradle user home escaped admitted authority" }}
 val importProbe = ProcessBuilder("kast-gradle-import-probe").start()
 check(importProbe.inputStream.bufferedReader().readText().trim() == "admitted") {{ "explicit executable missing" }}
 check(importProbe.waitFor() == 0) {{ "explicit executable failed" }}
@@ -145,6 +191,36 @@ def assert_selection(report: dict[str, Any], version: str, feature: int, rejecte
             raise AcceptanceFailure("explicit project JVM authority was not retained")
 
 
+def completed_import_observation(host: Path, version: str, feature: int) -> dict[str, Any]:
+    logs = list((host / "caches").glob("*/log/startup.log"))
+    if len(logs) != 1:
+        raise AcceptanceFailure("import event has no exact runtime log authority")
+    with logs[0].open("rb") as stream:
+        stream.seek(max(0, logs[0].stat().st_size - 262144))
+        lines = stream.read(262144).decode(errors="replace").splitlines()
+    observed: list[dict[str, Any]] = []
+    prefix = "kast-indexer: Gradle import: "
+    for line in lines:
+        if not line.startswith(prefix):
+            continue
+        event = json.loads(line[len(prefix):])
+        if not isinstance(event, dict) or set(event) != {
+            "stage", "outcome", "distribution", "clientJava", "clientHomeIdentity", "projectJava", "projectHomeIdentity",
+        }:
+            raise AcceptanceFailure("completed import event has an unsupported shape")
+        if event["stage"] != "model-import" or event["outcome"] != "completed" or event["distribution"] != version:
+            raise AcceptanceFailure("completed import event does not match its exact wrapper")
+        if type(event["clientJava"]) is not int or event["clientJava"] != 25 or type(event["projectJava"]) is not int or event["projectJava"] != feature:
+            raise AcceptanceFailure("import event did not retain separate client and project JVM authority")
+        if any(not isinstance(event[key], str) or re.fullmatch(r"[0-9a-f]{64}", event[key]) is None
+               for key in ("clientHomeIdentity", "projectHomeIdentity")):
+            raise AcceptanceFailure("import event has invalid runtime home identities")
+        observed.append(event)
+    if len(observed) != 1:
+        raise AcceptanceFailure("import did not emit exactly one complete terminal event")
+    return observed[0]
+
+
 def run_case(args: argparse.Namespace, version: str, jdk: Jdk, rejected: bool = False) -> dict[str, Any]:
     host = Path(tempfile.mkdtemp(prefix="kg-import-", dir="/tmp")).resolve()
     workspace = host / "workspace"
@@ -199,10 +275,14 @@ def run_case(args: argparse.Namespace, version: str, jdk: Jdk, rejected: bool = 
                 OPERATION_TIMEOUT_SECONDS)
             if code != 0 or not any(item.get("name") == "GradleImportProbe" for item in symbols.get("items", [])):
                 raise AcceptanceFailure("installed semantic discovery did not observe the imported fixture")
+        receipt = {"gradle": version, "java": jdk.feature, "expectedRejection": rejected,
+                   "selection": report, "explicitInputAdmitted": not rejected,
+                   "ambientSecretAbsent": not rejected, "explicitExecutableAdmitted": not rejected}
+        receipt["gradleUserHomeIsolated"] = not rejected
+        if not rejected:
+            receipt["importObservation"] = completed_import_observation(host, version, jdk.feature)
         completed = True
-        return {"gradle": version, "java": jdk.feature, "expectedRejection": rejected,
-                "selection": report, "explicitInputAdmitted": not rejected,
-                "ambientSecretAbsent": not rejected, "explicitExecutableAdmitted": not rejected}
+        return receipt
     finally:
         try:
             code, _ = command(args.kast, workspace, environment, ["stop"], OPERATION_TIMEOUT_SECONDS)
@@ -240,14 +320,20 @@ def main() -> int:
         if set(jdks) != {17, 21, 25} or len(admitted) != 3:
             raise AcceptanceFailure("installed matrix requires exactly one JDK each for Java 17, 21, and 25")
         args.state_root.mkdir(parents=True, exist_ok=False)
-        cases = [run_case(args, version, jdks[feature]) for version, feature in MATRIX]
-        cases.append(run_case(args, "7.6.4", jdks[25], rejected=True))
+        matrix_sha256 = hashlib.sha256(MATRIX_FILE.read_bytes()).hexdigest()
+        command_sha256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+        matrix = load_matrix()
+        cases = [run_case(args, case.gradle, jdks[case.java], rejected=case.expected_outcome == "jvm-rejected")
+                 for case in matrix]
+        if matrix_sha256 != hashlib.sha256(MATRIX_FILE.read_bytes()).hexdigest() or command_sha256 != hashlib.sha256(Path(__file__).read_bytes()).hexdigest():
+            raise AcceptanceFailure("matrix or harness authority changed during installed acceptance")
         receipt = {"schemaVersion": 1, "status": "passed", "cases": cases,
-                   "commandSha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
+                   "matrixSha256": matrix_sha256, "commandSha256": command_sha256,
+                   "javaRuntimeReleaseSha256": {str(feature): jdks[feature].release_sha256 for feature in sorted(jdks)}}
         (args.state_root / "gradle-import-receipt.json").write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
         print("Gradle import installed matrix passed (three JVM pairs and one explicit rejection).")
         return 0
-    except (AcceptanceFailure, OSError) as error:
+    except (AcceptanceFailure, OSError, json.JSONDecodeError) as error:
         print(f"gradle-import-acceptance: {error}")
         return 1
 

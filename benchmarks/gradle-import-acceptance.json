@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {"gradle": "7.6.4", "java": 17, "expectedOutcome": "ready"},
+    {"gradle": "8.14.3", "java": 21, "expectedOutcome": "ready"},
+    {"gradle": "9.4.1", "java": 25, "expectedOutcome": "ready"},
+    {"gradle": "7.6.4", "java": 25, "expectedOutcome": "jvm-rejected"}
+  ]
+}

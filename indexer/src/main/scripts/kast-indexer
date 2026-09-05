@@ -148,6 +148,22 @@ require_argument "cache-state-path" "${cache_state_path}"
 require_argument "bootstrap-state-path" "${bootstrap_state_path}"
 require_argument "bootstrap-attempt-id" "${bootstrap_attempt_id}"
 
+# HOME is the admitted launch authority. Java otherwise obtains user.home from
+# the account database, escaping an isolated caller's Gradle and credential home.
+kast_user_home="${HOME:-}"
+if [[ "${kast_user_home}" != /* || ! -d "${kast_user_home}" || -L "${kast_user_home}" ]]; then
+  echo "kast-indexer: admitted HOME is not a physical absolute directory" >&2
+  exit 70
+fi
+kast_physical_user_home="$(cd -P -- "${kast_user_home}" >/dev/null 2>&1 && pwd -P)" || {
+  echo "kast-indexer: admitted HOME is unavailable" >&2
+  exit 70
+}
+if [[ "${kast_physical_user_home}" != "${kast_user_home}" ]]; then
+  echo "kast-indexer: admitted HOME is not canonical" >&2
+  exit 70
+fi
+
 require_canonical_directory "idea-home" "${idea_home}"
 require_canonical_directory "idea-system-path" "${idea_system_path}"
 require_canonical_directory "idea-config-path" "${idea_config_path}"
@@ -212,6 +228,7 @@ esac
 idea_jvm_args=(
   "-Xms256m"
   "-Xmx1536m"
+  "-Duser.home=${kast_user_home}"
   "-Xbootclasspath/a:${idea_home}/lib/nio-fs.jar"
   "-Djava.system.class.loader=com.intellij.util.lang.PathClassLoader"
   "-Didea.vendor.name=JetBrains"

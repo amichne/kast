@@ -23,6 +23,11 @@ Kast starts its sidecar with its admitted Java 25 JBR, a canonical user home,
 and a deterministic system executable path. A repository can explicitly admit
 additional import inputs. Unselected caller variables do not reach the sidecar.
 
+The launcher also binds Java's `user.home` to that admitted home. Gradle uses
+its `.gradle` directory by default, including dependency caches and user settings.
+An alternative `GRADLE_USER_HOME` is available only when its exact name and value
+are explicitly selected through the import allowlist.
+
 ## Permit repository variables
 
 `KAST_GRADLE_IMPORT_VARIABLES` is a comma-separated list of exact environment
@@ -83,6 +88,16 @@ and bytecode target selection remain part of the imported repository model.
 
 Representative installed acceptance pairs are Gradle 7.6.4 with Java 17,
 Gradle 8.14.3 with Java 21, and Gradle 9.4.1 with Java 25.
+`benchmarks/gradle-import-acceptance.json` is the shared matrix authority; its
+digest and the harness digest are bound into the installed receipt.
+
+The receipt also records the SHA-256 identity of each admitted JDK's `release`
+file, preserving its patch and runtime build identity without exposing home paths.
+
+Kast's producer model and builder execute inside the repository Gradle daemon.
+They compile to Java 8 bytecode in a separate `gradle-tooling` JAR, while the
+IntelliJ adapter remains on Java 25. Keeping separate JARs also prevents Gradle's
+classpath instrumentation from scanning incompatible IDE adapter classes.
 
 The complete policy is
 implemented by `GradleRuntimeCompatibilityPolicy` and tested at its version
@@ -96,6 +111,13 @@ admitted by that distribution, bounded candidate decisions, and the selected
 JVM authority and home identity digest. Rejected selection retains a finite
 cause and a corrective action. It never includes environment values.
 
+The owned startup log records a bounded `Gradle import` terminal event with the
+wrapper version and separate client and project JVM features and home digests.
+
+An incompatible tooling payload records the observed class-file major and
+rejects with `gradle-tooling-payload-incompatible`. Its corrective action is to
+update Kast's tooling payload, preserving the selected project JVM authority.
+
 Stop Kast before changing an import configuration. Changing a selected value,
 selected name, or executable directory changes both private cache identity and
 semantic workspace identity. Unselected ambient changes do not invalidate the
@@ -106,5 +128,7 @@ receipts are treated as legacy and require a fresh import.
 
 The installed matrix also imports a fixture that requires a permitted variable
 and a permitted executable, proves an unrelated secret-like variable absent,
-and verifies that an incompatible explicit JVM reports its wrapper, required
+and checks that Gradle's user home remains inside the admitted isolated home.
+
+It verifies that an incompatible explicit JVM reports its wrapper, required
 Java range, available candidates, and corrective action.
