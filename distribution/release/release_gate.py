@@ -181,11 +181,18 @@ def validate_receipt(receipt: dict, directory: Path, version: str, sha: str) -> 
 
 
 def execute(mode: str, root: Path, directory: Path, version: str, sha: str) -> None:
-    admit_source(root, sha)
     reports = root / "build/reports/release-gate"
     receipt_path = directory / f"kast-release-receipt-v{version}.json"
     if mode == "source":
+        # Invalidate the previous attempt before source or host admission can
+        # fail. Gradle's later clean task cannot protect failures before it runs.
         receipt_path.unlink(missing_ok=True)
+        receipt_path.with_suffix(".json.sha256").unlink(missing_ok=True)
+        for name in ("source", "installed", "sbom", "compatibility"):
+            (reports / f"{name}.json").unlink(missing_ok=True)
+        (root / "build/reports/sidecar/release-assets.json").unlink(missing_ok=True)
+    admit_source(root, sha)
+    if mode == "source":
         environment = os.environ.copy()
         idea = prepare_idea(root, environment)
         command = source_command(version, sha)

@@ -99,11 +99,18 @@ class ReceiptIdentityTest(unittest.TestCase):
     def test_failed_source_gate_removes_old_receipt_and_writes_no_success(self):
         receipt = self.directory / "kast-release-receipt-v1.0.0.json"
         receipt.write_text("stale success")
+        reports = self.directory / "build/reports/release-gate"
+        for name in ("source", "installed", "sbom"):
+            gate.write(reports / f"{name}.json", self.receipt["dependencies"][name]["receipt"])
+        gate.write(self.directory / "build/reports/sidecar/release-assets.json",
+                   self.receipt["dependencies"]["assets"]["receipt"]["observations"])
         with mock.patch.object(gate, "admit_source"), mock.patch.object(gate, "prepare_idea"), mock.patch.object(gate, "run", side_effect=gate.GateRejected("deliberate semantic test failure")):
             with self.assertRaisesRegex(gate.GateRejected, "deliberate semantic"):
                 gate.execute("source", self.directory, self.directory, self.version, self.sha)
         self.assertFalse(receipt.exists())
         self.assertFalse((self.directory / "build/reports/release-gate/source.json").exists())
+        with mock.patch.object(gate, "admit_source"), self.assertRaises(gate.GateRejected):
+            gate.execute("finish", self.directory, self.directory, self.version, self.sha)
 
 
 class PublicationAdmissionTest(unittest.TestCase):
