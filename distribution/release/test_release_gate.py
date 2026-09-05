@@ -155,5 +155,27 @@ class PublicationAdmissionTest(unittest.TestCase):
             self.assertNotIn("release create", calls, "publication created a release without installed semantic proof")
 
 
+class FreshHostIdeaTest(unittest.TestCase):
+    def test_extracted_platform_facade_preserves_launcher_required_metadata(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            (root / "gradle").mkdir()
+            (root / "gradle/libs.versions.toml").write_text('[versions]\nidea-indexer="262.1"\n')
+            platform = root / "cache/kast/indexer-idea-distributions/262.1"
+            for name in ("plugins/Kotlin", "lib", "modules"):
+                (platform / name).mkdir(parents=True)
+            for name in ("build.txt", "product-info.json", "lib/nio-fs.jar", "modules/module-descriptors.dat"):
+                (platform / name).write_text("fixture")
+            java = root / "jdk"
+            (java / "bin").mkdir(parents=True)
+            (java / "bin/java").write_text("fixture")
+            environment = {"GRADLE_USER_HOME": str(root / "cache"), "JAVA_HOME": str(java)}
+            with mock.patch.object(Path, "home", return_value=root / "empty-home"), mock.patch.object(gate, "run"):
+                facade = gate.prepare_idea(root, environment)
+            self.assertEqual((platform / "product-info.json").resolve(), (facade / "Resources/product-info.json").resolve())
+            self.assertEqual(java.resolve(), (facade / "jbr/Contents/Home").resolve())
+            self.assertEqual(str(facade), environment["KAST_ACCEPTANCE_IDEA_HOME"])
+
+
 if __name__ == "__main__":
     unittest.main()

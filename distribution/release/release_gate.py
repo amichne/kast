@@ -80,7 +80,7 @@ def prepare_idea(root: Path, environment: dict[str, str]) -> Path:
             version = tomllib.loads((root / "gradle/libs.versions.toml").read_text())["versions"]["idea-indexer"]
             gradle_home = Path(environment.get("GRADLE_USER_HOME", str(Path.home() / ".gradle")))
             platform_home = (gradle_home / "kast/indexer-idea-distributions" / version).resolve(strict=True)
-            idea = root / ".gradle/release-idea-home"
+            idea = root / ".gradle/release-idea-home" / version
             idea.mkdir(parents=True, exist_ok=True)
             for child in platform_home.iterdir():
                 target = idea / child.name
@@ -88,14 +88,16 @@ def prepare_idea(root: Path, environment: dict[str, str]) -> Path:
                     target.symlink_to(child)
             resources = idea / "Resources"
             resources.mkdir(exist_ok=True)
-            if not (resources / "build.txt").exists():
-                (resources / "build.txt").symlink_to(platform_home / "build.txt")
+            for name in ("build.txt", "product-info.json"):
+                if not (resources / name).exists():
+                    (resources / name).symlink_to(platform_home / name)
             jbr = idea / "jbr/Contents"
             jbr.mkdir(parents=True, exist_ok=True)
             java = Path(environment["JAVA_HOME"]).resolve(strict=True)
             if not (jbr / "Home").exists():
                 (jbr / "Home").symlink_to(java)
-    if not (idea / "plugins/Kotlin").is_dir() or not (idea / "jbr/Contents/Home/bin/java").is_file():
+    required_files = ("jbr/Contents/Home/bin/java", "Resources/product-info.json", "lib/nio-fs.jar", "modules/module-descriptors.dat")
+    if not (idea / "plugins/Kotlin").is_dir() or not all((idea / name).is_file() for name in required_files):
         raise GateRejected("acceptance requires a complete supported IDEA and Java runtime")
     environment["KAST_ACCEPTANCE_IDEA_HOME"] = str(idea)
     return idea
