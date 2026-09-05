@@ -53,6 +53,7 @@ control_name="kast-control-v${version}-macos-aarch64.tar.gz"
 sidecar_name="kast-semantic-runtime-${version}-macos-aarch64.zip"
 schema_name="kast-cli-schema-v${version}.json"
 knowledge_name="kast-module-knowledge-v${version}.json"
+compatibility_name="kast-compatibility-v${version}.json"
 control_source="${repository_root}/build/distributions/${control_name}"
 sidecar_source="${repository_root}/build/distributions/${sidecar_name}"
 knowledge_source="${repository_root}/build/reports/kast-architecture/kast-module-knowledge.json"
@@ -84,12 +85,22 @@ tar -xzf "${control_source}" -C "${schema_control}"
 mkdir -p "${schema_control}/home"
 HOME="${schema_control}/home" JAVA_OPTS="-Duser.home=${schema_control}/home" \
   "${schema_control}/bin/kast" --schema >"${output_directory}/${schema_name}"
+HOME="${schema_control}/home" JAVA_OPTS="-Duser.home=${schema_control}/home" \
+  python3 distribution/release/compatibility.py capture \
+    --root "${repository_root}" --kast "${schema_control}/bin/kast" \
+    --schema "${output_directory}/${schema_name}" --version "${version}" \
+    --output "${output_directory}/${compatibility_name}"
+python3 distribution/release/compatibility.py verify \
+  --candidate "${output_directory}/${compatibility_name}" \
+  --repository "${GITHUB_REPOSITORY:-amichne/kast}" \
+  --receipt "${repository_root}/build/reports/release-gate/compatibility.json"
 (
   cd "${output_directory}"
   shasum -a 256 "${control_name}" >"${control_name}.sha256"
   shasum -a 256 "${sidecar_name}" >"${sidecar_name}.sha256"
   shasum -a 256 "${schema_name}" >"${schema_name}.sha256"
   shasum -a 256 "${knowledge_name}" >"${knowledge_name}.sha256"
+  shasum -a 256 "${compatibility_name}" >"${compatibility_name}.sha256"
 )
 
 python3 distribution/release/verify_assets.py \

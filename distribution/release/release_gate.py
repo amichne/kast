@@ -116,7 +116,7 @@ def product_asset_names(version: str) -> tuple[str, ...]:
 
 
 def asset_names(version: str) -> tuple[str, ...]:
-    return (*product_asset_names(version), f"kast-sbom-v{version}.cdx.json")
+    return (*product_asset_names(version), f"kast-sbom-v{version}.cdx.json", f"kast-compatibility-v{version}.json")
 
 
 def asset_identities(directory: Path, version: str) -> dict[str, str]:
@@ -144,7 +144,7 @@ def validate_receipt(receipt: dict, directory: Path, version: str, sha: str) -> 
     if receipt["commandDigest"] != identity(source_command(version, sha)):
         raise GateRejected("release receipt does not prove the canonical gate command")
     dependencies = receipt["dependencies"]
-    if not isinstance(dependencies, dict) or set(dependencies) != {"source", "assets", "installed", "sbom"}:
+    if not isinstance(dependencies, dict) or set(dependencies) != {"source", "assets", "installed", "sbom", "compatibility"}:
         raise GateRejected("release receipt omits a required predecessor")
     for name, dependency in dependencies.items():
         if not isinstance(dependency, dict) or set(dependency) != {"digest", "receipt"} or identity(dependency["receipt"]) != dependency["digest"]:
@@ -169,6 +169,15 @@ def validate_receipt(receipt: dict, directory: Path, version: str, sha: str) -> 
     assets = asset_identities(directory, version)
     if receipt["assets"] != assets or installed.get("assets") != assets:
         raise GateRejected("release assets differ from installed proof")
+    compatibility = dependencies["compatibility"]["receipt"]
+    if compatibility.get("candidateDigest") != assets[f"kast-compatibility-v{version}.json"] or compatibility.get("productVersion") != version:
+        raise GateRejected("compatibility predecessor did not compare this candidate snapshot")
+    comparison = compatibility.get("comparison", {})
+    if comparison.get("candidateVersion") != version or comparison.get("status") not in {"pre-stable", "first-stable", "compatible", "next-major"}:
+        raise GateRejected("compatibility predecessor has no admitted version transition")
+    snapshot = read(directory / f"kast-compatibility-v{version}.json")
+    if snapshot.get("sourceRevision") != sha or snapshot.get("productVersion") != version or snapshot.get("inputs", {}).get("schemaDigest") != assets[f"kast-cli-schema-v{version}.json"]:
+        raise GateRejected("compatibility snapshot does not bind this source and packaged schema")
     sbom = dependencies["sbom"]["receipt"]
     if sbom.get("sbomDigest") != assets[f"kast-sbom-v{version}.cdx.json"] or sbom.get("archives") != {name: assets[name] for name in product_asset_names(version)[:2]}:
         raise GateRejected("SBOM predecessor did not inventory these product archives")
@@ -210,7 +219,8 @@ def execute(mode: str, root: Path, directory: Path, version: str, sha: str) -> N
         asset_receipt = {"status": "passed", "sourceRevision": sha, "observations": assets}
         installed = read(reports / "installed.json")
         sbom = read(reports / "sbom.json")
-        dependencies = {key: {"digest": identity(value), "receipt": value} for key, value in {"source": source, "assets": asset_receipt, "installed": installed, "sbom": sbom}.items()}
+        compatibility = read(reports / "compatibility.json")
+        dependencies = {key: {"digest": identity(value), "receipt": value} for key, value in {"source": source, "assets": asset_receipt, "installed": installed, "sbom": sbom, "compatibility": compatibility}.items()}
         receipt = {"schemaVersion": 1, "status": "passed", "sourceRevision": sha, "productVersion": version, "commandDigest": identity(source_command(version, sha)), "dependencies": dependencies, "environment": source["environment"], "assets": asset_identities(directory, version)}
         validate_receipt(receipt, directory, version, sha)
         write(receipt_path, receipt)

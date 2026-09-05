@@ -110,6 +110,11 @@ canonical command digest, predecessor receipts, observed IDEA/JVM environment,
 and archive digests. A checksum-pinned Syft scan inventories the two packaged
 archives in `kast-sbom-v<version>.cdx.json`; its digest is a required predecessor.
 
+The packaged schema, command surface and persisted-state owners form
+`kast-compatibility-v<version>.json`. Its comparison with the latest immutable
+stable baseline is another required predecessor. Publication rechecks that
+baseline before uploading a draft.
+
 Publication requires both that receipt and a successful
 `Release gate` check for the exact release SHA. A failed predecessor produces no
 publishable receipt. Draft upload verification must preserve the admitted bytes

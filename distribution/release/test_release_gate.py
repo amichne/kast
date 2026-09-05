@@ -28,6 +28,10 @@ class ReceiptIdentityTest(unittest.TestCase):
         for name in gate.asset_names(self.version):
             (self.directory / name).write_bytes(name.encode())
             (self.directory / (name + ".sha256")).write_text("checksum fixture")
+        gate.write(self.directory / f"kast-compatibility-v{self.version}.json", {
+            "sourceRevision": self.sha, "productVersion": self.version,
+            "inputs": {"schemaDigest": gate.digest(self.directory / f"kast-cli-schema-v{self.version}.json")},
+        })
         assets = gate.asset_identities(self.directory, self.version)
         environment = {"system": "Darwin", "architecture": "arm64", "ideaBuild": "262.1", "javaReleaseDigest": "sha256:" + "a" * 64}
         source = {"status": "passed", "sourceRevision": self.sha, "command": gate.source_command(self.version, self.sha), "environment": environment}
@@ -40,7 +44,11 @@ class ReceiptIdentityTest(unittest.TestCase):
         installed = {"status": "passed", "sourceRevision": self.sha, "environment": environment, "assets": assets, "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import"], "broker": {"status": "passed", "readOnlyCatalog": True, "cliEquivalent": True, "selectorReused": True}, "gradleImport": matrix}
         archive = {"status": "passed", "sourceRevision": self.sha, "observations": {"outcome": "COMPLETE", "release": "v1.0.0", "assets": [{"name": name, "sha256": assets[name].removeprefix("sha256:")} for name in gate.product_asset_names(self.version)]}}
         sbom = {"status": "passed", "sourceRevision": self.sha, "archives": {name: assets[name] for name in gate.product_asset_names(self.version)[:2]}, "sbomDigest": assets[f"kast-sbom-v{self.version}.cdx.json"], "componentCount": 1}
-        self.receipt = {"schemaVersion": 1, "status": "passed", "sourceRevision": self.sha, "productVersion": self.version, "commandDigest": gate.identity(gate.source_command(self.version, self.sha)), "environment": environment, "assets": assets, "dependencies": {key: {"receipt": value, "digest": gate.identity(value)} for key, value in {"source": source, "assets": archive, "installed": installed, "sbom": sbom}.items()}}
+        compatibility = {"status": "passed", "sourceRevision": self.sha, "productVersion": self.version,
+                         "candidateDigest": assets[f"kast-compatibility-v{self.version}.json"],
+                         "baseline": {"state": "absent"},
+                         "comparison": {"status": "first-stable", "candidateVersion": self.version, "changes": []}}
+        self.receipt = {"schemaVersion": 1, "status": "passed", "sourceRevision": self.sha, "productVersion": self.version, "commandDigest": gate.identity(gate.source_command(self.version, self.sha)), "environment": environment, "assets": assets, "dependencies": {key: {"receipt": value, "digest": gate.identity(value)} for key, value in {"source": source, "assets": archive, "installed": installed, "sbom": sbom, "compatibility": compatibility}.items()}}
 
     def validate(self, receipt):
         gate.validate_receipt(receipt, self.directory, self.version, self.sha)
@@ -100,7 +108,7 @@ class ReceiptIdentityTest(unittest.TestCase):
         receipt = self.directory / "kast-release-receipt-v1.0.0.json"
         receipt.write_text("stale success")
         reports = self.directory / "build/reports/release-gate"
-        for name in ("source", "installed", "sbom"):
+        for name in ("source", "installed", "sbom", "compatibility"):
             gate.write(reports / f"{name}.json", self.receipt["dependencies"][name]["receipt"])
         gate.write(self.directory / "build/reports/sidecar/release-assets.json",
                    self.receipt["dependencies"]["assets"]["receipt"]["observations"])

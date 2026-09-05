@@ -51,6 +51,22 @@ python3 distribution/release/release_gate.py verify \
   --source-root "${repository_root}" --assets-directory "${assets_directory}" \
   --version "${version}" --source-revision "${commit}"
 
+# A newly published stable baseline must not appear between capture and publish.
+compatibility_observation="$(mktemp "${TMPDIR:-/tmp}/kast-release-compatibility.XXXXXX")"
+python3 distribution/release/compatibility.py verify \
+  --candidate "${assets_directory}/kast-compatibility-v${version}.json" \
+  --repository "${repository}" --receipt "${compatibility_observation}"
+python3 - "${assets_directory}/kast-release-receipt-v${version}.json" "${compatibility_observation}" <<'PY'
+import json
+import sys
+from pathlib import Path
+recorded = json.loads(Path(sys.argv[1]).read_text())["dependencies"]["compatibility"]["receipt"]
+current = json.loads(Path(sys.argv[2]).read_text())
+if any(recorded.get(key) != current.get(key) for key in ("candidateDigest", "baseline", "comparison")):
+    raise SystemExit("publish-release: compatibility baseline changed after the release proof")
+PY
+rm -f -- "${compatibility_observation}"
+
 git fetch --no-tags origin main
 main_commit="$(git rev-parse origin/main)"
 [[ "${main_commit}" == "${commit}" ]] ||
@@ -87,6 +103,7 @@ schema="${assets_directory}/kast-cli-schema-v${version}.json"
 knowledge="${assets_directory}/kast-module-knowledge-v${version}.json"
 receipt="${assets_directory}/kast-release-receipt-v${version}.json"
 sbom="${assets_directory}/kast-sbom-v${version}.cdx.json"
+compatibility="${assets_directory}/kast-compatibility-v${version}.json"
 assets=(
   "${control}"
   "${control}.sha256"
@@ -100,6 +117,8 @@ assets=(
   "${receipt}.sha256"
   "${sbom}"
   "${sbom}.sha256"
+  "${compatibility}"
+  "${compatibility}.sha256"
 )
 for asset in "${assets[@]}"; do
   [[ -f "${asset}" ]] || fail "missing release asset: ${asset}"
@@ -118,6 +137,8 @@ upload_assets=(
   "${receipt}.sha256"
   "${sbom}"
   "${sbom}.sha256"
+  "${compatibility}"
+  "${compatibility}.sha256"
 )
 release_notes="$(
   printf '%s\n' \
