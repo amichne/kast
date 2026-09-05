@@ -154,6 +154,7 @@ internal sealed interface InstalledGradleImportOutcome {
     data object Failed : InstalledGradleImportOutcome
     data object Cancelled : InstalledGradleImportOutcome
     data object InvalidJvmConfiguration : InstalledGradleImportOutcome
+    data object InitializationScriptUnavailable : InstalledGradleImportOutcome
     data class IncompatiblePayload(val major: GradlePayloadClassFileMajor) : InstalledGradleImportOutcome
 }
 
@@ -177,6 +178,8 @@ internal fun CompletableFuture<Void>.closedImportOutcome(
                 InstalledGradleImportOutcome.Cancelled
             failure.hasCause<ExternalSystemJdkException>() ->
                 InstalledGradleImportOutcome.InvalidJvmConfiguration
+            observeGradleInitializationScript(failure) == GradleInitializationScriptObservation.UNAVAILABLE ->
+                InstalledGradleImportOutcome.InitializationScriptUnavailable
             else -> when (val payload = GradlePayloadClassFileMajor.observe(failure)) {
                 is GradlePayloadCompatibility.Unsupported -> InstalledGradleImportOutcome.IncompatiblePayload(payload.major)
                 GradlePayloadCompatibility.Unclassified -> InstalledGradleImportOutcome.Failed

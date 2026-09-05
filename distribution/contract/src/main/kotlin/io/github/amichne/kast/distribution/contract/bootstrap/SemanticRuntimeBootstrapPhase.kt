@@ -33,6 +33,7 @@ enum class SemanticRuntimeBootstrapCorrectiveAction(val instruction: String) {
     VERIFY_RUNTIME("Verify the installed Kast payload and supported IntelliJ installation, then run kast start again."),
     SELECT_GRADLE_JVM("Select a Gradle-compatible project JVM, then run kast start again."),
     VERIFY_GRADLE_TOOLING_PAYLOAD("Update Kast to a build with Gradle tooling payloads compatible with the project JVM, then run kast start again."),
+    RECREATE_GRADLE_INIT_SCRIPTS("Stop Kast, verify its runtime cache is writable, then start again to recreate Gradle initialization scripts."),
     VERIFY_GRADLE_IMPORT("Run the repository Gradle wrapper successfully with the admitted import inputs, then run kast start again."),
     SELECT_SUPPORTED_IDE("Select the supported IntelliJ installation with kast start --idea-home."),
     CORRECT_WORKSPACE_MODEL("Correct the repository Gradle model and source roots, then run kast stop followed by kast start."),
@@ -71,6 +72,8 @@ private fun SemanticRuntimeBootstrapState.Rejected.defaultCorrectiveAction(): Se
             SemanticRuntimeBootstrapCorrectiveAction.SELECT_GRADLE_JVM
         SemanticRuntimeBootstrapFailure.GRADLE_TOOLING_PAYLOAD_INCOMPATIBLE ->
             SemanticRuntimeBootstrapCorrectiveAction.VERIFY_GRADLE_TOOLING_PAYLOAD
+        SemanticRuntimeBootstrapFailure.GRADLE_INIT_SCRIPT_UNAVAILABLE ->
+            SemanticRuntimeBootstrapCorrectiveAction.RECREATE_GRADLE_INIT_SCRIPTS
         SemanticRuntimeBootstrapFailure.GRADLE_IMPORT_FAILED,
         SemanticRuntimeBootstrapFailure.GRADLE_IMPORT_TIMED_OUT,
         SemanticRuntimeBootstrapFailure.GRADLE_PROJECT_POLICY_INVALID ->

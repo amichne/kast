@@ -28,6 +28,10 @@ its `.gradle` directory by default, including dependency caches and user setting
 An alternative `GRADLE_USER_HOME` is available only when its exact name and value
 are explicitly selected through the import allowlist.
 
+Each bootstrap attempt also receives a private Java temporary directory inside
+its runtime cache. IntelliJ's generated Gradle initialization scripts therefore
+cannot be reused across JVMs that independently delete their files on exit.
+
 ## Permit repository variables
 
 `KAST_GRADLE_IMPORT_VARIABLES` is a comma-separated list of exact environment
@@ -117,6 +121,10 @@ wrapper version and separate client and project JVM features and home digests.
 An incompatible tooling payload records the observed class-file major and
 rejects with `gradle-tooling-payload-incompatible`. Its corrective action is to
 update Kast's tooling payload, preserving the selected project JVM authority.
+
+A missing initialization script records `initialization-script-unavailable`
+and rejects with `gradle-initialization-script-unavailable`. The report retains
+the cause and a corrective action without recording the script path or contents.
 
 Stop Kast before changing an import configuration. Changing a selected value,
 selected name, or executable directory changes both private cache identity and

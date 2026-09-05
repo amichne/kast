@@ -219,6 +219,24 @@ if [[ ! -d "${private_plugins_path}/kast-indexer/lib" ]]; then
   exit 70
 fi
 
+# IntelliJ reuses equal-content Gradle init scripts and deletes created scripts
+# on JVM exit. A private attempt directory excludes ownership by another JVM.
+kast_tmp_root="${idea_system_path}/tmp"
+kast_process_tmp="${kast_tmp_root}/${bootstrap_attempt_id}"
+if [[ -L "${kast_tmp_root}" || -e "${kast_process_tmp}" || -L "${kast_process_tmp}" ]] || \
+  ! (umask 077; mkdir -p -- "${kast_tmp_root}" && mkdir -- "${kast_process_tmp}") >/dev/null 2>&1; then
+  echo "kast-indexer: private temporary directory is unavailable" >&2
+  exit 70
+fi
+kast_physical_tmp="$(cd -P -- "${kast_process_tmp}" >/dev/null 2>&1 && pwd -P)" || {
+  echo "kast-indexer: private temporary directory is unavailable" >&2
+  exit 70
+}
+if [[ "${kast_physical_tmp}" != "${kast_process_tmp}" ]]; then
+  echo "kast-indexer: private temporary directory is not canonical" >&2
+  exit 70
+fi
+
 export JAVA_HOME="${java_executable%/bin/java}"
 jna_arch="amd64"
 case "$(uname -m)" in
@@ -229,6 +247,7 @@ idea_jvm_args=(
   "-Xms256m"
   "-Xmx1536m"
   "-Duser.home=${kast_user_home}"
+  "-Djava.io.tmpdir=${kast_process_tmp}"
   "-Xbootclasspath/a:${idea_home}/lib/nio-fs.jar"
   "-Djava.system.class.loader=com.intellij.util.lang.PathClassLoader"
   "-Didea.vendor.name=JetBrains"

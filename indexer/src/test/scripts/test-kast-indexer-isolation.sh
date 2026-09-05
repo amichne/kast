@@ -90,6 +90,7 @@ idea_before="$(snapshot_tree "${idea_home}")"
 
 runtime_id="sha256:$(printf 'c%.0s' {1..64})"
 bootstrap_attempt_id="123e4567-e89b-42d3-a456-426614174000"
+restart_attempt_id="123e4567-e89b-42d3-a456-426614174001"
 socket_a="${fixture}/runtime/kast-aaaaaaaaaaaaaaaaaaaaaaaa.sock"
 socket_b="${fixture}/runtime/kast-bbbbbbbbbbbbbbbbbbbbbbbb.sock"
 cache_a="${fixture}/cache-a"
@@ -102,6 +103,7 @@ run_launcher() {
   local socket="$1"
   local cache="$2"
   local capture="$3"
+  local attempt="${4:-${bootstrap_attempt_id}}"
   CAPTURE_FILE="${capture}" \
   HOME="${admitted_user_home}" \
   JAVA_OPTS="-Dkast.untrusted.java-opts=true -Duser.home=/untrusted" \
@@ -120,15 +122,31 @@ run_launcher() {
       --private-plugins-path="${private_plugins}" \
       --cache-state-path="${cache}/cache-state" \
       --bootstrap-state-path="${cache}/bootstrap-state" \
-      --bootstrap-attempt-id="${bootstrap_attempt_id}"
+      --bootstrap-attempt-id="${attempt}"
 }
 
 capture_a="${fixture}/capture-a"
 capture_a_restart="${fixture}/capture-a-restart"
 capture_b="${fixture}/capture-b"
 run_launcher "${socket_a}" "${cache_a}" "${capture_a}"
-run_launcher "${socket_a}" "${cache_a}" "${capture_a_restart}"
+run_launcher "${socket_a}" "${cache_a}" "${capture_a_restart}" "${restart_attempt_id}"
 run_launcher "${socket_b}" "${cache_b}" "${capture_b}"
+
+cache_c="${fixture}/cache-c"
+mkdir -p "${cache_c}/system" "${cache_c}/config" "${cache_c}/log"
+ln -s "${fixture}/foreign-temp" "${cache_c}/system/tmp"
+for rejected_cache in "${cache_a}" "${cache_c}"; do
+  rejected_tmp_capture="${fixture}/rejected-tmp-capture"
+  set +e
+  rejected_tmp_output="$(run_launcher "${socket_a}" "${rejected_cache}" "${rejected_tmp_capture}" 2>&1)"
+  rejected_tmp_status=$?
+  set -e
+  [[ ${rejected_tmp_status} -eq 70 && ! -e "${rejected_tmp_capture}" && \
+    "${rejected_tmp_output}" == "kast-indexer: private temporary directory is unavailable" ]] || {
+    echo "indexer-launcher-isolation-test: shared or linked temporary directory reached Java" >&2
+    exit 1
+  }
+done
 
 [[ "$(snapshot_tree "${installed}")" == "${installed_before}" ]] || {
   echo "indexer-launcher-isolation-test: launcher mutated the installed payload" >&2
@@ -151,7 +169,8 @@ python3 - \
   "${socket_a}" \
   "${socket_b}" \
   "${bootstrap_attempt_id}" \
-  "${admitted_user_home}" <<'PY'
+  "${admitted_user_home}" \
+  "${restart_attempt_id}" <<'PY'
 from pathlib import Path
 import sys
 
@@ -163,14 +182,21 @@ caches = [Path(sys.argv[7]), Path(sys.argv[7]), Path(sys.argv[8])]
 sockets = [sys.argv[9], sys.argv[9], sys.argv[10]]
 bootstrap_attempt_id = sys.argv[11]
 admitted_user_home = sys.argv[12]
+attempts = [bootstrap_attempt_id, sys.argv[13], bootstrap_attempt_id]
 property_names = ("system", "config", "log")
 observed = []
 
-for capture, cache, socket in zip(captures, caches, sockets, strict=True):
+for capture, cache, socket, attempt in zip(captures, caches, sockets, attempts, strict=True):
     decoded = [item.decode() for item in capture.read_bytes().split(b"\0") if item]
     home_arguments = [argument for argument in decoded if argument.startswith("-Duser.home=")]
     if home_arguments != [f"-Duser.home={admitted_user_home}"]:
         raise SystemExit("indexer-launcher-isolation-test: JVM user.home did not preserve the admitted HOME")
+    process_tmp = cache / "system/tmp" / attempt
+    tmp_arguments = [argument for argument in decoded if argument.startswith("-Djava.io.tmpdir=")]
+    if tmp_arguments != [f"-Djava.io.tmpdir={process_tmp}"]:
+        raise SystemExit("indexer-launcher-isolation-test: JVM temporary files are not owned by the bootstrap attempt")
+    if not process_tmp.is_dir() or process_tmp.resolve() != process_tmp or process_tmp.stat().st_mode & 0o777 != 0o700:
+        raise SystemExit("indexer-launcher-isolation-test: process temporary directory was not admitted privately")
     expected = {
         "system": str(cache / "system"),
         "config": str(cache / "config"),
@@ -198,7 +224,7 @@ for capture, cache, socket in zip(captures, caches, sockets, strict=True):
         f"--java-executable={java_executable}",
         f"-Dkast.cache.state.path={cache}/cache-state",
         f"-Dkast.bootstrap.state.path={cache}/bootstrap-state",
-        f"-Dkast.bootstrap.attempt.id={bootstrap_attempt_id}",
+        f"-Dkast.bootstrap.attempt.id={attempt}",
         "io.github.amichne.kast.indexer.KastIndexerMainKt",
     )
     if "-Dkast.untrusted.java-opts=true" in decoded:

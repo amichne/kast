@@ -234,6 +234,8 @@ private fun InstalledIntellijWorkspaceFailure.bootstrapFailure():
         SemanticRuntimeBootstrapFailure.GRADLE_IMPORT_FAILED
     InstalledIntellijWorkspaceFailure.GRADLE_TOOLING_PAYLOAD_INCOMPATIBLE ->
         SemanticRuntimeBootstrapFailure.GRADLE_TOOLING_PAYLOAD_INCOMPATIBLE
+    InstalledIntellijWorkspaceFailure.GRADLE_INIT_SCRIPT_UNAVAILABLE ->
+        SemanticRuntimeBootstrapFailure.GRADLE_INIT_SCRIPT_UNAVAILABLE
     InstalledIntellijWorkspaceFailure.GRADLE_PROJECT_POLICY_INVALID ->
         SemanticRuntimeBootstrapFailure.GRADLE_PROJECT_POLICY_INVALID
     InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID ->

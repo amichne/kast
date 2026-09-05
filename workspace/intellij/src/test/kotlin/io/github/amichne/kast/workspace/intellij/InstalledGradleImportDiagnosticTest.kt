@@ -10,6 +10,25 @@ import java.util.concurrent.CompletableFuture
 
 class InstalledGradleImportDiagnosticTest {
     @Test
+    fun `missing initialization script retains a finite cause without its path`() {
+        val future = CompletableFuture<Void>()
+        val result = future.closedImportOutcome()
+        future.completeExceptionally(IllegalArgumentException(
+            "The specified initialization script '/private/sensitive/init.gradle' does not exist.",
+        ))
+        val fields = identity().logFields(result.join())
+        assertEquals("\"initialization-script-unavailable\"", fields["outcome"].toString())
+        assertFalse(fields.toString().contains("sensitive"))
+        assertFalse(fields.toString().contains("init.gradle"))
+        assertEquals(GradleInitializationScriptObservation.UNCLASSIFIED,
+            observeGradleInitializationScript(RuntimeException(
+                "The specified initialization script '/private/sensitive/init.gradle' does not exist.",
+            )))
+        assertEquals(GradleInitializationScriptObservation.UNCLASSIFIED,
+            observeGradleInitializationScript(IllegalArgumentException("x".repeat(4097))))
+    }
+
+    @Test
     fun `callback retains incompatible payload major and never logs exception payload`() {
         val observed = mutableListOf<InstalledGradleImportOutcome>()
         val future = CompletableFuture<Void>()

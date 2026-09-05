@@ -56,6 +56,7 @@ enum class InstalledIntellijWorkspaceFailure {
     PLATFORM_LINKAGE_INVALID,
     GRADLE_IMPORT_FAILED,
     GRADLE_TOOLING_PAYLOAD_INCOMPATIBLE,
+    GRADLE_INIT_SCRIPT_UNAVAILABLE,
     GRADLE_PROJECT_POLICY_INVALID,
     GRADLE_JVM_CONFIGURATION_INVALID,
     GRADLE_IMPORT_TIMED_OUT,
@@ -373,6 +374,9 @@ object InstalledIntellijWorkspace {
             InstalledGradleImportWait.INCOMPATIBLE_PAYLOAD -> return rejected(
                 InstalledIntellijWorkspaceFailure.GRADLE_TOOLING_PAYLOAD_INCOMPATIBLE,
             )
+            InstalledGradleImportWait.INITIALIZATION_SCRIPT_UNAVAILABLE -> return rejected(
+                InstalledIntellijWorkspaceFailure.GRADLE_INIT_SCRIPT_UNAVAILABLE,
+            )
             InstalledGradleImportWait.CANCELLED,
             InstalledGradleImportWait.FAILED,
                 -> return rejected(
@@ -491,6 +495,7 @@ object InstalledIntellijWorkspace {
             InstalledGradleImportOutcome.Completed -> InstalledGradleImportWait.COMPLETED
             InstalledGradleImportOutcome.Failed -> InstalledGradleImportWait.FAILED
             is InstalledGradleImportOutcome.IncompatiblePayload -> InstalledGradleImportWait.INCOMPATIBLE_PAYLOAD
+            InstalledGradleImportOutcome.InitializationScriptUnavailable -> InstalledGradleImportWait.INITIALIZATION_SCRIPT_UNAVAILABLE
             InstalledGradleImportOutcome.Cancelled -> InstalledGradleImportWait.CANCELLED
             InstalledGradleImportOutcome.InvalidJvmConfiguration ->
                 InstalledGradleImportWait.INVALID_JVM_CONFIGURATION
@@ -645,6 +650,7 @@ private enum class FutureCompletion {
 }
 
 private enum class InstalledGradleImportWait {
+    INITIALIZATION_SCRIPT_UNAVAILABLE,
     INCOMPATIBLE_PAYLOAD,
     COMPLETED,
     FAILED,

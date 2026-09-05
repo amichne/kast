@@ -5,6 +5,20 @@ import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironme
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
+internal enum class GradleInitializationScriptObservation { UNAVAILABLE, UNCLASSIFIED }
+
+/** Preserve Gradle's finite missing-script condition without retaining its path or message. */
+internal fun observeGradleInitializationScript(failure: Throwable?): GradleInitializationScriptObservation {
+    for (cause in generateSequence(failure) { it.cause }.take(16)) {
+        if (cause !is IllegalArgumentException) continue
+        val message = cause.message.orEmpty()
+        if (message.length <= 4096 && '\n' !in message &&
+            message.startsWith("The specified initialization script '") && message.endsWith("' does not exist.")
+        ) return GradleInitializationScriptObservation.UNAVAILABLE
+    }
+    return GradleInitializationScriptObservation.UNCLASSIFIED
+}
+
 /** A JVM class-file major observed only in the platform's bounded unsupported-bytecode error. */
 @JvmInline
 internal value class GradlePayloadClassFileMajor private constructor(val value: Int) {
@@ -73,6 +87,7 @@ internal fun InstalledGradleImportExecutionIdentity.logFields(outcome: Installed
         InstalledGradleImportOutcome.Cancelled -> put("outcome", "cancelled")
         InstalledGradleImportOutcome.Failed -> put("outcome", "platform-rejected")
         InstalledGradleImportOutcome.InvalidJvmConfiguration -> put("outcome", "invalid-jvm-configuration")
+        InstalledGradleImportOutcome.InitializationScriptUnavailable -> put("outcome", "initialization-script-unavailable")
         is InstalledGradleImportOutcome.IncompatiblePayload -> {
             put("outcome", "incompatible-tooling-payload")
             put("classFileMajor", outcome.major.value)
