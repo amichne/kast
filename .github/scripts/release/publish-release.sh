@@ -125,9 +125,9 @@ for asset in "${assets[@]}"; do
 done
 
 upload_assets=(
-  "${control}#kast-control-v${version}"
+  "${control}#kast-control-v${version}-macos-aarch64"
   "${control}.sha256"
-  "${sidecar}#kast-semantic-runtime-v${version}"
+  "${sidecar}#kast-semantic-runtime-v${version}-macos-aarch64"
   "${sidecar}.sha256"
   "${schema}"
   "${schema}.sha256"
