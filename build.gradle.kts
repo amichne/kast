@@ -323,3 +323,41 @@ tasks.register<Exec>("enterpriseAcceptance") {
         semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
     )
 }
+
+val releaseDocumentationTest by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Verifies source-backed public docs and the rendered documentation site."
+    dependsOn(":protocol:wire:generateOperationRegistry")
+    commandLine("bash", ".github/scripts/release/verify-documentation.sh")
+}
+
+val releaseInstallerTest by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Proves installer replacement, corruption, and recovery contracts."
+    commandLine("bash", "packaging/test-installer.sh")
+}
+
+val releaseGateContractTest by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Proves release publication fails closed without semantic evidence."
+    commandLine("python3", "-m", "unittest", "discover", "-s", "distribution/release", "-p", "test_*.py")
+}
+
+val releaseAcceptanceContractTest by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Verifies that installed acceptance rejects incomplete semantic and import evidence."
+    commandLine("python3", "-m", "unittest", "discover", "-s", "integration-tests", "-p", "test_*.py")
+}
+
+val releaseSourceGate by tasks.registering {
+    group = "verification"
+    description = "Authoritative release-source predecessor graph; publication also requires exact-asset installed proof."
+    dependsOn("build", "installedProductTest", "verifyKastArchitecture", "enterpriseAcceptance", releaseDocumentationTest, releaseInstallerTest, releaseGateContractTest, releaseAcceptanceContractTest)
+    dependsOn(gradle.includedBuild("build-logic").task(":check"))
+}
+
+subprojects.forEach { owner ->
+    owner.plugins.withId("base") {
+        releaseSourceGate.configure { dependsOn(owner.tasks.named("build")) }
+    }
+}

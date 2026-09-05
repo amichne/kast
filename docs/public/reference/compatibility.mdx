@@ -21,6 +21,12 @@ code_sources:
   - path: "integration-tests/release_upgrade_acceptance.py"
     lines: "260-303"
     symbols: ["install_candidate_with_upgrade_proof"]
+  - path: "integration-tests/release_artifact_acceptance.py"
+    lines: "72-101"
+    symbols: ["workspace_snapshot", "prove_workspace_preservation"]
+  - path: "integration-tests/release_semantic_corruption.py"
+    lines: "178-229"
+    symbols: ["prove_state_receipt", "prove_semantic_corruption"]
 icon: "shield-check"
 keywords: ["1.x", "stable", "preview", "upgrade", "rollback"]
 ---
@@ -118,6 +124,21 @@ failed and interrupted replacement, and uninstall/reinstall. Their isolated
 payloads prove installer state transitions; installed semantic acceptance
 separately proves the built release's behavior.
 
+The exact-archive journey observes one repository source identity across the
+first uninstall, reinstall, cold broker read, and final uninstall. It includes tracked and untracked
+files, their bytes, modes and link identities, and Git index state. Git-ignored
+runtime caches remain outside this source observation.
+
+Six checkpoints bracket those transitions and retain separate file and index
+digests. Unavailable or changed observations reject with a finite cause recorded
+before failure. Mismatches report change-kind counts and at most 64 path digests;
+neither paths nor source text appear in the report.
+
+The enterprise fixture tracks `/.gradle/` as its sole cache ignore. This matches
+its existing Gradle import write scope. A retained archive reproduction showed
+that reimport changes the root Gradle file-hash cache. Other untracked files,
+nested `.gradle` directories, and Git index changes remain in the source identity.
+
 Installed release acceptance also downloads the latest immutable published 0.x
 pair, verifies all four GitHub asset digests, and checks its version and passive
 stopped status. It upgrades the same installation to the exact candidate before
@@ -127,6 +148,16 @@ Corrupted copies of those candidate assets must reject with the expected
 checksum-mismatch or unsafe-archive-path diagnostic. The unsafe-path case has a
 valid replacement checksum. Both cases preserve active candidate bytes, managed
 links, configuration, and repository contents; a generic failure is insufficient.
+
+Semantic corruption acceptance obtains and resumes real relation and traversal
+continuations before rejecting malformed and digest-tampered copies. It also
+selects the cache identity receipt from public status, corrupts its format, and
+requires the finite `status-cache-invalid-identity` rejection.
+
+The receipt's original bytes and mode are restored even when the check fails.
+Successful recovery requires passive status, the same runtime identity, and a
+semantic source read. Repository identities must remain equal throughout; the
+proof retains digests and finite outcomes without source payloads.
 
 ## Pin installer content and product together
 

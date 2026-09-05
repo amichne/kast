@@ -441,7 +441,62 @@ def snapshot_paths(
     return tuple(observations)
 
 
-def workspace_source_identity(workspace: Path) -> str:
+class WorkspaceSourceChangeKind(str, Enum):
+    ADDED = "added"
+    REMOVED = "removed"
+    FILE_TYPE = "file-type-changed"
+    MODE = "mode-changed"
+    CONTENT = "content-changed"
+    LINK = "link-target-changed"
+    INDEX = "index-changed"
+
+
+@dataclass(frozen=True)
+class WorkspaceSourceSnapshot:
+    files: tuple[tuple[str, str, int, str], ...]
+    index: str
+
+    @property
+    def identity(self) -> str:
+        evidence = {"files": self.files, "index": self.index}
+        return hashlib.sha256(json.dumps(evidence, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+    def component_evidence(self) -> dict[str, Any]:
+        return {"filesDigest": "sha256:" + hashlib.sha256(json.dumps(self.files, separators=(",", ":")).encode()).hexdigest(),
+                "indexDigest": "sha256:" + hashlib.sha256(self.index.encode()).hexdigest(),
+                "fileCount": len(self.files)}
+
+    def changes_since(self, before: WorkspaceSourceSnapshot) -> dict[str, Any]:
+        old, new = {item[0]: item[1:] for item in before.files}, {item[0]: item[1:] for item in self.files}
+        changes = []
+        counts = {kind.value: 0 for kind in WorkspaceSourceChangeKind}
+        count = 0
+        for name in sorted(set(old) | set(new)):
+            kinds = []
+            if name not in old:
+                kinds.append(WorkspaceSourceChangeKind.ADDED)
+            elif name not in new:
+                kinds.append(WorkspaceSourceChangeKind.REMOVED)
+            else:
+                if old[name][0] != new[name][0]:
+                    kinds.append(WorkspaceSourceChangeKind.FILE_TYPE)
+                if old[name][1] != new[name][1]:
+                    kinds.append(WorkspaceSourceChangeKind.MODE)
+                if old[name][2] != new[name][2]:
+                    kinds.append(WorkspaceSourceChangeKind.LINK if new[name][0] == "symlink" else WorkspaceSourceChangeKind.CONTENT)
+            if kinds:
+                count += 1
+                for kind in kinds:
+                    counts[kind.value] += 1
+                if len(changes) < 64:
+                    changes.append({"pathDigest": "sha256:" + hashlib.sha256(name.encode()).hexdigest(),
+                                    "kinds": [kind.value for kind in kinds]})
+        if self.index != before.index:
+            counts[WorkspaceSourceChangeKind.INDEX.value] = 1
+        return {"changedPathCount": count, "retainedPathCount": len(changes), "changeKindCounts": counts, "paths": changes}
+
+
+def workspace_source_snapshot(workspace: Path) -> WorkspaceSourceSnapshot:
     """Hash tracked/untracked source bytes and staged identities; emit no source payload.
 
     Git-ignored runtime caches are outside this repository-write proof. Deletions,
@@ -459,11 +514,11 @@ def workspace_source_identity(workspace: Path) -> str:
             cursor /= part
             if cursor.is_symlink():
                 fail("repository source observation cannot follow directory links")
-    evidence = {
-        "files": snapshot_paths(workspace, tuple(names)),
-        "index": git(workspace, "ls-files", "--stage", "-z"),
-    }
-    return hashlib.sha256(json.dumps(evidence, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    return WorkspaceSourceSnapshot(snapshot_paths(workspace, tuple(names)), git(workspace, "ls-files", "--stage", "-z"))
+
+
+def workspace_source_identity(workspace: Path) -> str:
+    return workspace_source_snapshot(workspace).identity
 
 
 class Acceptance:

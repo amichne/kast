@@ -21,7 +21,7 @@ jobs:
     name: Installer
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -30,36 +30,77 @@ jobs:
         run: bash packaging/test-installer.sh
 
   kotlin:
-    name: Kotlin product
+    name: Release gate
     runs-on: macos-15
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
+      - name: Set up Java 17
+        id: jdk17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Java 21
+        id: jdk21
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: 21
+
       - name: Set up Java 25
-        uses: actions/setup-java@v5
+        id: jdk25
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: 25
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version-file: ".python-version"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+        with:
+          validate-wrappers: true
 
-      - name: Verify Kotlin product and runtime delivery
-        run: >-
-          ./gradlew
-          -Dorg.gradle.jvmargs=-Xmx5g
-          build
-          installedProductTest
-          verifyKastArchitecture
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: docs/tooling/likec4/package-lock.json
+
+      - name: Install documentation validator
+        run: npm install --global mint@4.2.841
+
+      - name: Verify exact source and installed release assets
+        env:
+          KAST_RELEASE_JDK_17: ${{ steps.jdk17.outputs.path }}
+          KAST_RELEASE_JDK_21: ${{ steps.jdk21.outputs.path }}
+          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          git checkout --detach "$CANDIDATE_SHA"
+          candidate_version="$(cat distribution/release/candidate-version.txt)"
+          bash .github/scripts/release/build-assets.sh \
+            --version "${candidate_version#v}" --source-revision "$CANDIDATE_SHA"
+
+      - name: Retain exact-head release evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-gate-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            build/reports/release-gate/
+            build/release/*/kast-release-receipt-*.json*
+          if-no-files-found: warn
 
       - name: Verify release and acceptance isolation contracts
         run: |

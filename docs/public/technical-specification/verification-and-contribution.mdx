@@ -4,7 +4,7 @@ title: "Verification and contribution"
 description: "How maintainers widen proof from focused module checks to architecture, distribution, enterprise, and documentation validation."
 resource: "file://docs/public/technical-specification/verification-and-contribution.mdx"
 tags: ["verification", "CI", "distribution", "contributors"]
-timestamp: "2026-09-03T00:00:00-04:00"
+timestamp: "2026-09-04T00:00:00-04:00"
 code_sources:
   - path: "packaging/test-installed-product.sh"
     lines: "1-156"
@@ -14,7 +14,16 @@ code_sources:
     lines: "1-900"
     symbols: ["check_pages"]
   - path: ".github/workflows/docs.yml"
-    lines: "1-78"
+    lines: "1-64"
+  - path: "distribution/release/release_gate.py"
+    lines: "1-230"
+    symbols: ["validate_receipt", "source_command"]
+  - path: "distribution/release/generate_sbom.py"
+    lines: "1-80"
+    symbols: ["generate", "scanner"]
+  - path: "integration-tests/release_resource_observations.py"
+    lines: "1-370"
+    symbols: ["observe"]
 icon: "badge-check"
 keywords: ["testing", "CI", "distribution", "contributors"]
 ---
@@ -77,6 +86,117 @@ Through the public command boundary, it checks:
 This layer catches errors that an in-process test cannot represent: packaging
 omissions, launcher environment mistakes, incompatible private plugin layout,
 socket isolation, and failure to preserve identity across process boundaries.
+
+## Release admission
+
+The `Release gate` CI check starts from a detached clean checkout of the exact
+candidate commit. Its `releaseSourceGate` Gradle graph runs every module build,
+architecture verification, installed-product checks, enterprise acceptance,
+installer recovery tests, and documentation validation.
+
+After that graph passes, the gate builds and installs the exact candidate
+archives through `install.sh --assets-directory`. This uses the normal checksum,
+archive-path, and manifest checks while avoiding a dependency on publication.
+
+The installed journey runs with no Codex executable or `CODEX_HOME`, checks
+semantic reads, restart continuity, verified mutation, and scoped uninstall
+followed by reinstall. A separate cold read-only broker journey checks canonical
+CLI equivalence, selector reuse, and the source companion presentation.
+
+The cold harness persists bounded stage, process, and dispatcher observations
+before failure. Reports retain finite rejection IDs, byte counts, and digests;
+source payloads, selectors, paths, and arbitrary error text are excluded.
+Cleanup cannot replace the original failure or turn a rejected receipt into success.
+
+That installation starts with the latest immutable published 0.x archives and
+upgrades the same selected root to the candidate. Corrupted candidate checksums
+and a rechecksummed unsafe control archive must both reject while preserving
+the active product and repository bytes.
+
+Real relation and traversal continuations must resume successfully before
+malformed and digest-tampered copies are rejected. Corrupting the selected cache
+identity receipt must make passive status reject. Exact receipt restoration must
+recover status and a semantic read while preserving the repository.
+
+The installed Gradle matrix requires explicit Java 17, 21, and 25 homes through
+`KAST_RELEASE_JDK_17`, `KAST_RELEASE_JDK_21`, and `KAST_RELEASE_JDK_25`. It proves
+admitted environment inputs, explicit executable lookup, exclusion of an
+unselected secret-like variable, and actionable JVM rejection.
+
+The receipt binds the canonical cases in `benchmarks/gradle-import-acceptance.json`,
+the executable acceptance script, and each JDK's release metadata. Successful
+imports must use the isolated admitted Gradle home.
+
+Command observations retain durations and evidence digests as the journey runs,
+including finite failure causes if it stops early.
+
+Resource observations sample only processes proven to own the selected IntelliJ
+cache. Headless processes are located by the exact owned system argument and
+checked again by PID; process command lines are never serialized.
+
+They record RSS after
+start, a semantic read and restart, then prove the owned runtime is absent after
+stop. Apparent bytes cover the selected installation and runtime state without
+following links.
+
+The maximum observed RSS is a sampled maximum, not a continuous
+peak. These measurements add no speculative resource threshold.
+
+The resulting `kast-release-receipt-v<version>.json` binds the source revision,
+canonical command digest, predecessor receipts, observed IDEA/JVM environment,
+and archive digests. A checksum-pinned Syft scan inventories the two packaged
+archives in `kast-sbom-v<version>.cdx.json`; its digest is a required predecessor.
+
+The source predecessor records its archive output digests immediately after the
+successful build. Installed and published bytes must match those outputs.
+
+The packaged schema, command surface and persisted-state owners form
+`kast-compatibility-v<version>.json`. Its comparison with the latest immutable
+stable baseline is another required predecessor. Publication rechecks that
+baseline before uploading a draft.
+
+Publication requires both that receipt and a successful
+`Release gate` check for the exact release SHA. A failed predecessor produces no
+publishable receipt. Draft upload verification must preserve the admitted bytes
+before the release can become public.
+
+Run the same entry point from an isolated detached worktree:
+
+```shell
+bash .github/scripts/release/build-assets.sh \
+  --version 1.0.0 --source-revision "$(git rev-parse HEAD)"
+```
+
+This command verifies a candidate; it does not publish a release. The version
+must be the intended candidate version. Reports live under
+`build/reports/release-gate/`, with the receipt beside the release archives.
+
+CI reads its proposed version from `distribution/release/candidate-version.txt`.
+Advance that reviewed version after a stable release; the compatibility gate
+requires candidates to move forward from the published baseline.
+
+## Release integrity
+
+The wrapper distribution has a SHA-256 pin and URL validation. Gradle verifies
+dependency artifacts and metadata against `gradle/verification-metadata.xml` in
+strict mode. Release builds never regenerate those checksums automatically.
+
+When changing dependencies, review the resolved coordinates and new checksums
+against the expected repositories before committing the updated metadata. The
+initial checksum set records reviewed downloaded bytes; it does not claim
+upstream signature verification.
+
+Check metadata coverage with an empty `GRADLE_USER_HOME` as well. Warm caches can
+omit parent POMs, BOMs and module metadata that a fresh runner must resolve.
+
+For an unlisted artifact, verify its exact coordinates and bytes against the
+publishing repository and available published checksum before adding its SHA-256
+pin. Preserve strict verification throughout this check.
+
+Actions are pinned to full commit identities. The release workflow attests the
+verified candidate files before publication. The SBOM describes bundled
+components; the user-supplied IntelliJ distribution and JBR remain external host
+dependencies. Security-reporting instructions are in the repository's `SECURITY.md`.
 
 ## Keep this specification authenticated
 

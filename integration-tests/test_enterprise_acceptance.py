@@ -5,8 +5,10 @@ from __future__ import annotations
 import importlib.util
 from contextlib import redirect_stdout
 import io
+import hashlib
 import json
 import os
+import shutil
 from pathlib import Path
 import sys
 import tempfile
@@ -20,6 +22,62 @@ assert SPEC is not None and SPEC.loader is not None
 enterprise_acceptance = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = enterprise_acceptance
 SPEC.loader.exec_module(enterprise_acceptance)
+
+
+class WorkspaceSourceSnapshotTest(unittest.TestCase):
+    def test_snapshot_identity_preserves_the_existing_files_and_index_material(self):
+        files = (("private.kt", "regular", 0o600, "a" * 64),)
+        snapshot = enterprise_acceptance.WorkspaceSourceSnapshot(files, "100644 staged-identity 0\tprivate.kt\0")
+        expected = hashlib.sha256(json.dumps({"files": files, "index": snapshot.index}, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        self.assertEqual(expected, snapshot.identity)
+
+    def test_change_evidence_is_bounded_and_identifies_only_digests_and_finite_kinds(self):
+        before = enterprise_acceptance.WorkspaceSourceSnapshot((
+            ("private-content.kt", "regular", 0o600, "a" * 64),
+            ("private-mode.kt", "regular", 0o600, "b" * 64),
+            ("private-link", "symlink", 0o700, "private-target-before"),
+            ("private-type", "regular", 0o600, "d" * 64),
+            ("private-removed.kt", "regular", 0o600, "c" * 64),
+        ), "private-index-before")
+        after = enterprise_acceptance.WorkspaceSourceSnapshot((
+            ("private-content.kt", "regular", 0o600, "e" * 64),
+            ("private-mode.kt", "regular", 0o700, "b" * 64),
+            ("private-link", "symlink", 0o700, "private-target-after"),
+            ("private-type", "directory", 0o600, ""),
+            *tuple((f"private-added-{index}.kt", "regular", 0o600, "f" * 64) for index in range(70)),
+        ), "private-index-after")
+        report = after.changes_since(before)
+        self.assertEqual(75, report["changedPathCount"])
+        self.assertEqual(64, report["retainedPathCount"])
+        self.assertEqual(70, report["changeKindCounts"]["added"])
+        for kind in ("removed", "file-type-changed", "mode-changed", "link-target-changed", "index-changed"):
+            self.assertEqual(1, report["changeKindCounts"][kind])
+        self.assertNotIn("private-", json.dumps(report))
+        self.assertNotEqual(before.component_evidence(), after.component_evidence())
+
+    def test_fixture_ignores_only_its_admitted_root_gradle_cache(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw).resolve()
+            workspace = root / "workspace"
+            shutil.copytree(MODULE_PATH.parent.parent / "fixtures/enterprise-workspace", workspace)
+            enterprise_acceptance.prepare_workspace_fixture(workspace)
+            before = enterprise_acceptance.workspace_source_identity(workspace)
+            cache = workspace / ".gradle/9.4.1/fileHashes/fileHashes.bin"
+            cache.parent.mkdir(parents=True)
+            cache.write_bytes(b"observed runtime cache")
+            self.assertEqual(before, enterprise_acceptance.workspace_source_identity(workspace))
+            cache.write_bytes(b"updated runtime cache")
+            self.assertEqual(before, enterprise_acceptance.workspace_source_identity(workspace))
+            for relative in ("Untracked.kt", "nested/.gradle/visible.bin"):
+                path = workspace / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("must remain visible")
+                self.assertNotEqual(before, enterprise_acceptance.workspace_source_identity(workspace))
+                path.unlink()
+            source = workspace / "build.gradle.kts"
+            source.write_text(source.read_text() + "\n// staged source change\n")
+            enterprise_acceptance.git(workspace, "add", "build.gradle.kts")
+            self.assertNotEqual(before, enterprise_acceptance.workspace_source_identity(workspace))
 
 
 class MutationAcceptanceTest(unittest.TestCase):

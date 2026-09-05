@@ -10,6 +10,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -20,53 +22,75 @@ concurrency:
 
 jobs:
   release:
-    name: Build, publish, and smoke-test
+    name: Prove exact assets, then publish
     runs-on: macos-15
     timeout-minutes: 120
     env:
       RELEASE_VERSION: ${{ inputs.version }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - name: Detach exact release source
+        run: git checkout --detach "$GITHUB_SHA"
+
+      - name: Set up Java 17
+        id: jdk17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Java 21
+        id: jdk21
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: 21
 
       - name: Set up Java 25
-        uses: actions/setup-java@v5
+        id: jdk25
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: 25
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version-file: ".python-version"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+        with:
+          validate-wrappers: true
 
-      - name: Verify installer recovery flow
-        run: bash packaging/test-installer.sh
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: docs/tooling/likec4/package-lock.json
+
+      - name: Install documentation validator
+        run: npm install --global mint@4.2.841
 
       - name: Build and verify release assets
+        env:
+          KAST_RELEASE_JDK_17: ${{ steps.jdk17.outputs.path }}
+          KAST_RELEASE_JDK_21: ${{ steps.jdk21.outputs.path }}
+          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
         run: >-
           bash .github/scripts/release/build-assets.sh
           --version "$RELEASE_VERSION"
           --source-revision "$GITHUB_SHA"
 
-      - name: Admit release smoke runtime
-        run: |
-          idea_version="$(
-            sed -nE 's/^idea-indexer = "([0-9]+(\.[0-9]+)+)"$/\1/p' \
-              gradle/libs.versions.toml
-          )"
-          [[ -n "$idea_version" ]]
-          idea_platform_home="$GRADLE_USER_HOME/kast/indexer-idea-distributions/$idea_version"
-          [[ -f "$idea_platform_home/build.txt" ]]
-          [[ -d "$idea_platform_home/plugins/Kotlin" ]]
-          [[ -x "$JAVA_HOME/bin/java" ]]
-          [[ -f "$JAVA_HOME/release" ]]
-          printf 'KAST_RELEASE_IDEA_PLATFORM_HOME=%s\n' "$idea_platform_home" >> "$GITHUB_ENV"
+      - name: Attest verified candidate assets
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        with:
+          subject-path: build/release/v${{ inputs.version }}/*
 
       - name: Publish immutable GitHub release
         run: >-
@@ -74,11 +98,3 @@ jobs:
           --release "v${RELEASE_VERSION}"
           --commit "$GITHUB_SHA"
           --assets-directory "build/release/v${RELEASE_VERSION}"
-
-      - name: Verify fresh published sidecar installation
-        run: >-
-          bash packaging/verification/verify-published-sidecar-delivery.sh
-          --release "v${RELEASE_VERSION}"
-          --repository "$GITHUB_REPOSITORY"
-          --idea-platform-home "$KAST_RELEASE_IDEA_PLATFORM_HOME"
-          --java-home "$JAVA_HOME"
