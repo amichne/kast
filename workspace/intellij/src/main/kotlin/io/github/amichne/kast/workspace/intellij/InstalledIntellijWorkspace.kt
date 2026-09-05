@@ -560,7 +560,9 @@ internal fun installedProjectOpenTask(
     preventIprLookup = true,
     createModule = false,
     beforeOpen = { project ->
-        indexBootstrap.bind(project) &&
+        val synchronized = synchronizeInstalledGlobalSdkModel().also { it.observe() }
+        synchronized == InstalledGlobalSdkSynchronization.SYNCHRONIZED &&
+            indexBootstrap.bind(project) &&
             preparation.prepare(project) is InstalledProjectOpenPreparationState.Prepared
     },
 )

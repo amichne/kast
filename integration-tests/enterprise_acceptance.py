@@ -9,6 +9,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import stat
@@ -28,7 +29,65 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--fixture", type=Path, required=True)
     parser.add_argument("--thresholds", type=Path, required=True)
     parser.add_argument("--runtime-archive", type=Path, required=True)
+    parser.add_argument("--retain-failed-host", action="store_true")
     return parser.parse_args()
+
+
+def diagnostic_summary(stage: str, document: dict[str, Any]) -> dict[str, Any]:
+    """Retain compiler status/count/codes without messages, locations, or source values."""
+    facts = document.get("diagnostics", [])
+    if not isinstance(facts, list):
+        fail("diagnostic summary has no bounded diagnostic list")
+    errors = [fact for fact in facts if isinstance(fact, dict) and fact.get("severity") == "error"]
+    # Wire enum values are lowercase; tolerate the generated uppercase projection explicitly.
+    errors += [fact for fact in facts if isinstance(fact, dict) and fact.get("severity") == "ERROR"]
+    codes = sorted({fact.get("code", "") for fact in errors
+                    if isinstance(fact.get("code"), str) and re.fullmatch(r"[A-Z][A-Z0-9_]{0,95}", fact["code"])})[:16]
+    summary = {"stage": stage, "status": document.get("status"), "errorCount": len(errors), "factoryCodes": codes}
+    print("enterprise-diagnostics: " + json.dumps(summary, sort_keys=True), flush=True)
+    return summary
+
+
+def compiler_log_evidence(cache_root: Path) -> list[dict[str, Any]]:
+    """Project only the bounded diagnostic event schema from owned IntelliJ logs."""
+    evidence: list[dict[str, Any]] = []
+    logs = sorted(cache_root.glob("*/log/idea.log"))
+    if len(logs) > 16:
+        fail("diagnostic compiler log cohort exceeds its bound")
+    for log in logs:
+        with log.open("rb") as stream:
+            stream.seek(max(0, log.stat().st_size - 262144))
+            lines = stream.read(262144).decode(errors="replace").splitlines()
+        for line in lines:
+            marker = "Kast diagnostic compilation: "
+            if marker not in line:
+                continue
+            try:
+                event = json.loads(line.split(marker, 1)[1])
+            except json.JSONDecodeError:
+                fail("diagnostic compiler event is malformed")
+            if not isinstance(event, dict):
+                fail("diagnostic compiler event is not an object")
+            status = event.get("status")
+            if event.get("stage") != "exact-scope" or status not in {"complete", "qualified", "rejected", "cancelled"}:
+                fail("diagnostic compiler event has an unsupported terminal state")
+            record: dict[str, Any] = {"stage": "exact-scope", "status": status}
+            if status in {"complete", "qualified"}:
+                errors = event.get("errors")
+                if not isinstance(errors, dict):
+                    fail("diagnostic compiler event omitted error evidence")
+                for key in ("count", "withheldFactCount"):
+                    value = errors.get(key)
+                    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                        fail("diagnostic compiler event has an invalid count")
+                codes = errors.get("factoryCodes")
+                if not isinstance(codes, list) or len(codes) > 16 or any(
+                    not isinstance(code, str) or re.fullmatch(r"[A-Z][A-Z0-9_]{0,95}", code) is None for code in codes
+                ):
+                    fail("diagnostic compiler event has invalid factory codes")
+                record.update(errorCount=errors["count"], factoryCodes=codes, withheldFactCount=errors["withheldFactCount"])
+            evidence.append(record)
+    return evidence[-16:]
 
 
 def positive_integer(document: dict[str, Any], name: str, minimum: int = 1) -> int:
@@ -546,6 +605,13 @@ class Acceptance:
         ):
             fail(f"diagnostic.check returned no scoped evidence: {diagnostics}")
 
+        baseline = diagnostic_summary("baseline", diagnostics)
+        print("enterprise-compiler-evidence: " + json.dumps(
+            compiler_log_evidence(Path(self.environment["KAST_CACHE_ROOT"])), sort_keys=True,
+        ), flush=True)
+        if baseline["status"] != "complete" or baseline["errorCount"] != 0:
+            fail("enterprise mutation requires complete error-free baseline diagnostics")
+
         relation_limit = positive_integer(bounds, "relationResultLimit")
         relation = self.command(
             "relation",
@@ -679,6 +745,15 @@ class Acceptance:
             "change", "apply", "--plan", plan_identity,
             timeout=self.maximum_reconciliation_seconds,
         )
+        after_diagnostics = self.command(
+            "diagnostic", "check", "--scope",
+            "domains/alpha/one/src/main/kotlin/enterprise/alpha/one/Enterprise.kt", "--limit", "1000",
+        )
+        diagnostic_summary("after-mutation", after_diagnostics)
+        compiler_evidence = compiler_log_evidence(Path(self.environment["KAST_CACHE_ROOT"]))
+        if not compiler_evidence:
+            fail("installed diagnostic compiler omitted durable terminal evidence")
+        print("enterprise-compiler-evidence: " + json.dumps(compiler_evidence, sort_keys=True), flush=True)
         if applied.get("status") != "complete" or not applied.get("receiptIdentity"):
             fail(f"enterprise mutation did not return a verified receipt: {applied}")
         stale = self.command(
@@ -954,7 +1029,9 @@ def main() -> None:
     maximum_acceptance_seconds = positive_integer(bounds, "maximumAcceptanceSeconds")
     started_at = time.monotonic()
     ambient = AmbientBrokerSnapshot.capture()
-    with tempfile.TemporaryDirectory(prefix="ka.", dir="/tmp") as host_text:
+    host_text = tempfile.mkdtemp(prefix="ka.", dir="/tmp")
+    succeeded = False
+    try:
         host = IsolatedAcceptanceHost.create(Path(host_text), args.runtime_archive)
         shutil.copytree(
             args.fixture,
@@ -971,6 +1048,12 @@ def main() -> None:
             ambient,
             maximum_acceptance_seconds,
         )
+        succeeded = True
+    finally:
+        if succeeded or not args.retain_failed_host:
+            shutil.rmtree(host_text)
+        else:
+            print("enterprise-acceptance: retained retired failed host at " + host_text, flush=True)
     elapsed = time.monotonic() - started_at
     if elapsed > maximum_acceptance_seconds:
         fail(

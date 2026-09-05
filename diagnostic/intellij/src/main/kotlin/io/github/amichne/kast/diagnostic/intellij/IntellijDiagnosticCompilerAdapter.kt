@@ -177,8 +177,9 @@ internal class IntellijDiagnosticCompilerQuery {
 /** Public native K2 boundary for exact-scope generation-bound diagnostic compilation. */
 class IntellijDiagnosticCompilerAdapter private constructor(
     private val query: IntellijDiagnosticCompilerQuery,
+    private val observer: IntellijDiagnosticCompilationObserver,
 ) {
-    constructor() : this(IntellijDiagnosticCompilerQuery())
+    constructor() : this(IntellijDiagnosticCompilerQuery(), LoggingIntellijDiagnosticCompilationObserver)
 
     /**
      * Proof transition: `(Project, SemanticReadLease, DiagnosticScope) ->
@@ -192,5 +193,13 @@ class IntellijDiagnosticCompilerAdapter private constructor(
         project: Project,
         currentLease: SemanticReadLease,
         scope: DiagnosticScope,
-    ): DiagnosticCompilation = query.read(project, currentLease, scope)
+    ): DiagnosticCompilation = try {
+        query.read(project, currentLease, scope).also { result -> observer.observe(result.observation()) }
+    } catch (cancelled: ProcessCanceledException) {
+        observer.observe(IntellijDiagnosticCompilationEvidence.Cancelled)
+        throw cancelled
+    } catch (cancelled: CancellationException) {
+        observer.observe(IntellijDiagnosticCompilationEvidence.Cancelled)
+        throw cancelled
+    }
 }

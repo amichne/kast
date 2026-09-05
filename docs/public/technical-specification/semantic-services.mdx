@@ -130,6 +130,30 @@ compiler port runs, then admits provider coverage:
 Compiler output that violates this contract becomes
 `COMPILER_CONTRACT_VIOLATION`; it is not partially trusted.
 
+The IntelliJ compiler adapter records one structured terminal event per exact-scope
+read in its owned `idea.log`, prefixed with `Kast diagnostic compilation:`.
+The event identifies complete, qualified, rejected, or cancelled compilation.
+
+Complete and qualified events retain the analyzed-file count, full error count,
+at most 16 compiler factory codes, and a count of errors whose factory code was
+withheld. Qualified and rejected events retain finite limitation or rejection
+codes. Events exclude source, diagnostic messages, file paths, and ranges.
+
+The installed enterprise acceptance journey requires complete, error-free
+baseline diagnostics before planning its declaration addition. It records safe
+diagnostic summaries before and after mutation and verifies that the installed
+compiler emitted terminal evidence.
+
+Mutation verification still requires complete,
+error-free diagnostics for the resulting exact file scope.
+
+Before assigning the bootstrap SDK, project opening waits up to 30 seconds for
+IntelliJ's global SDK table to synchronize with its persisted JPS model. This
+prevents a warm-start synchronization from removing the SDK after assignment.
+
+The `Kast project SDK initialization:` event retains the finite synchronization
+outcome. A timeout or unavailable platform model rejects project opening.
+
 ## Primary authorities
 
 - [`SymbolDiscoveryService`](https://github.com/amichne/kast/blob/main/symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolDiscoveryService.kt)

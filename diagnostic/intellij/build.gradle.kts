@@ -53,6 +53,7 @@ private val kotlinPluginLibs: ConfigurableFileCollection = files(
 ).builtBy(extractDiagnosticKotlinPlugin)
 
 dependencies {
+    implementation(catalog.findLibrary("serialization-json").get())
     implementation(project(":protocol:contract"))
     implementation(project(":diagnostic:contract"))
     implementation(project(":workspace:contract"))

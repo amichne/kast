@@ -19,6 +19,26 @@ SPEC.loader.exec_module(enterprise_acceptance)
 
 
 class IsolatedAcceptanceHostTest(unittest.TestCase):
+    def test_compiler_log_projection_preserves_counts_without_payloads(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            cache = Path(raw)
+            log = cache / "identity/log/idea.log"
+            log.parent.mkdir(parents=True)
+            log.write_text('prefix Kast diagnostic compilation: {"stage":"exact-scope","status":"complete","errors":{"count":1,"factoryCodes":["UNRESOLVED_REFERENCE"],"withheldFactCount":0},"message":"sensitive payload"}\n')
+            projected = enterprise_acceptance.compiler_log_evidence(cache)
+            self.assertEqual(1, projected[0]["errorCount"])
+            self.assertEqual(["UNRESOLVED_REFERENCE"], projected[0]["factoryCodes"])
+            self.assertNotIn("sensitive payload", str(projected))
+
+    def test_compiler_log_projection_rejects_unbounded_factory_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            cache = Path(raw)
+            log = cache / "identity/log/idea.log"
+            log.parent.mkdir(parents=True)
+            log.write_text('Kast diagnostic compilation: {"stage":"exact-scope","status":"complete","errors":{"count":1,"factoryCodes":["private token"],"withheldFactCount":0}}\n')
+            with self.assertRaises(SystemExit):
+                enterprise_acceptance.compiler_log_evidence(cache)
+
     def test_fixture_preparation_admits_the_pinned_wrapper_before_baseline(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             workspace = Path(raw)
