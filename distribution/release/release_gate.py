@@ -58,7 +58,7 @@ def admit_source(root: Path, sha: str) -> None:
 
 
 def source_command(version: str, sha: str) -> list[str]:
-    return ["./gradlew", "--no-daemon", "--max-workers=2", "-Dorg.gradle.jvmargs=-Xmx5g", f"-Pversion={version}", f"-PkastSourceRevision={sha}", "clean", "releaseSourceGate", "assembleSidecarRelease", "generateKastModuleKnowledge"]
+    return ["./gradlew", "--no-daemon", "--max-workers=2", "-Dorg.gradle.jvmargs=-Xmx5g", f"-Pversion={version}", f"-PkastSourceRevision={sha}", "releaseSourceGate", "assembleSidecarRelease", "generateKastModuleKnowledge"]
 
 
 def run(command: list[str], root: Path, environment: dict[str, str]) -> None:
@@ -72,30 +72,26 @@ def prepare_idea(root: Path, environment: dict[str, str]) -> Path:
     if configured:
         idea = Path(configured).resolve(strict=True)
     else:
-        installed = Path.home() / "Applications/IntelliJ IDEA.app/Contents"
-        if installed.is_dir():
-            idea = installed.resolve(strict=True)
-        else:
-            run(["./gradlew", "--no-daemon", ":indexer:extractIdeaDistribution"], root, environment)
-            version = tomllib.loads((root / "gradle/libs.versions.toml").read_text())["versions"]["idea-indexer"]
-            gradle_home = Path(environment.get("GRADLE_USER_HOME", str(Path.home() / ".gradle")))
-            platform_home = (gradle_home / "kast/indexer-idea-distributions" / version).resolve(strict=True)
-            idea = root / ".gradle/release-idea-home" / version
-            idea.mkdir(parents=True, exist_ok=True)
-            for child in platform_home.iterdir():
-                target = idea / child.name
-                if not target.exists() and not target.is_symlink():
-                    target.symlink_to(child)
-            resources = idea / "Resources"
-            resources.mkdir(exist_ok=True)
-            for name in ("build.txt", "product-info.json"):
-                if not (resources / name).exists():
-                    (resources / name).symlink_to(platform_home / name)
-            jbr = idea / "jbr/Contents"
-            jbr.mkdir(parents=True, exist_ok=True)
-            java = Path(environment["JAVA_HOME"]).resolve(strict=True)
-            if not (jbr / "Home").exists():
-                (jbr / "Home").symlink_to(java)
+        run(["./gradlew", "--no-daemon", ":indexer:extractIdeaDistribution"], root, environment)
+        version = tomllib.loads((root / "gradle/libs.versions.toml").read_text())["versions"]["idea-indexer"]
+        gradle_home = Path(environment.get("GRADLE_USER_HOME", str(Path.home() / ".gradle")))
+        platform_home = (gradle_home / "kast/indexer-idea-distributions" / version).resolve(strict=True)
+        idea = root / ".gradle/release-idea-home" / version
+        idea.mkdir(parents=True, exist_ok=True)
+        for child in platform_home.iterdir():
+            target = idea / child.name
+            if not target.exists() and not target.is_symlink():
+                target.symlink_to(child)
+        resources = idea / "Resources"
+        resources.mkdir(exist_ok=True)
+        for name in ("build.txt", "product-info.json"):
+            if not (resources / name).exists():
+                (resources / name).symlink_to(platform_home / name)
+        jbr = idea / "jbr/Contents"
+        jbr.mkdir(parents=True, exist_ok=True)
+        java = Path(environment["JAVA_HOME"]).resolve(strict=True)
+        if not (jbr / "Home").exists():
+            (jbr / "Home").symlink_to(java)
     required_files = ("jbr/Contents/Home/bin/java", "Resources/product-info.json", "lib/nio-fs.jar", "modules/module-descriptors.dat")
     if not (idea / "plugins/Kotlin").is_dir() or not all((idea / name).is_file() for name in required_files):
         raise GateRejected("acceptance requires a complete supported IDEA and Java runtime")

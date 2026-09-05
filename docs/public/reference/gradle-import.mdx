@@ -90,9 +90,8 @@ take precedence where supported. Otherwise the explicit repository JVM precedes
 a compatible sidecar JBR and IntelliJ's observed local JDK candidates. Toolchain
 and bytecode target selection remain part of the imported repository model.
 
-Representative installed acceptance pairs are Gradle 7.6.4 with Java 17,
-Gradle 8.14.3 with Java 21, and Gradle 9.4.1 with Java 25.
-`benchmarks/gradle-import-acceptance.json` is the shared matrix authority; its
+Required installed acceptance uses Gradle 9.4.1 with Java 25.
+`benchmarks/gradle-import-acceptance.json` defines this reference import; its
 digest and the harness digest are bound into the installed receipt.
 
 The receipt also records the SHA-256 identity of each admitted JDK's `release`
@@ -134,9 +133,8 @@ import.
 Version 3 cache receipts record the import identity; earlier cache
 receipts are treated as legacy and require a fresh import.
 
-The installed matrix also imports a fixture that requires a permitted variable
+The reference check imports a fixture that requires a permitted variable
 and a permitted executable, proves an unrelated secret-like variable absent,
 and checks that Gradle's user home remains inside the admitted isolated home.
 
-It verifies that an incompatible explicit JVM reports its wrapper, required
-Java range, available candidates, and corrective action.
+Unit tests cover incompatible JVM selection and actionable rejection evidence.

@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import copy
+from contextlib import redirect_stderr
+import io
+from unittest import mock
+import subprocess
 import hashlib
 import importlib.util
 import json
@@ -93,6 +97,33 @@ def canonical_document(report: bytes) -> dict[str, object]:
             },
         ],
     }
+
+
+class RegenerationObservationTest(unittest.TestCase):
+    def test_generation_reports_success_and_failure_without_source_payloads(self):
+        for exit_code in (0, 1):
+            with self.subTest(exit_code=exit_code), tempfile.TemporaryDirectory() as raw:
+                root = Path(raw)
+                (root / '.github/scripts/release').mkdir(parents=True)
+                (root / '.github/scripts/release/admit-source.sh').touch()
+                (root / 'gradlew').touch()
+                reports = root / 'build/reports/kast-architecture'
+                reports.mkdir(parents=True)
+                for name in ('kast-module-knowledge.json', 'verifyKastArchitecture.json'):
+                    (reports / name).write_text('{}')
+                observation = io.StringIO()
+                responses = [subprocess.CompletedProcess([], 0, SOURCE_REVISION, ''),
+                             subprocess.CompletedProcess([], exit_code, '', '')]
+                with mock.patch.object(verify_assets.subprocess, 'run', side_effect=responses), redirect_stderr(observation):
+                    if exit_code:
+                        with self.assertRaises(verify_assets.ReleaseRejected):
+                            verify_assets.regenerate_module_knowledge(root, VERSION, SOURCE_REVISION)
+                    else:
+                        verify_assets.regenerate_module_knowledge(root, VERSION, SOURCE_REVISION)
+                events = [json.loads(line) for line in observation.getvalue().splitlines()]
+                self.assertEqual(['started', 'rejected' if exit_code else 'passed'], [event['outcome'] for event in events])
+                self.assertEqual({'stage', 'outcome', 'elapsedMilliseconds'}, set(events[1]))
+                self.assertGreaterEqual(events[1]['elapsedMilliseconds'], 0)
 
 
 class ModuleKnowledgeAuthorityTest(unittest.TestCase):

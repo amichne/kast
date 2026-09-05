@@ -25,17 +25,24 @@ class UpgradeAcceptanceTest(unittest.TestCase):
             return {"tag_name": tag, "draft": False, "prerelease": False, "immutable": True, **extra}
         releases = [release("v0.9.0"), release("v0.32.2"), release("v1.0.0"), release("v0.33.0", prerelease=True), release("v0.34.0", draft=True)]
         try:
-            result = acceptance.select_prior_release(releases)
+            result = acceptance.select_prior_release(releases, "1.0.0")
         except acceptance.UpgradeFailure:
             self.fail("latest immutable 0.x baseline was not admitted")
         self.assertEqual("v0.32.2", result["tag_name"])
 
+    def test_publishing_candidate_or_newer_release_does_not_change_prior(self):
+        prior = {"tag_name": "v0.32.2", "draft": False, "prerelease": False, "immutable": True}
+        releases = [prior, {**prior, "tag_name": "v0.33.0"}, {**prior, "tag_name": "v0.34.0"}]
+        self.assertEqual(prior, acceptance.select_prior_release(releases, "0.33.0"))
+        self.assert_cause(acceptance.Cause.PRIOR_RELEASE_UNAVAILABLE,
+                          lambda: acceptance.select_prior_release(releases[1:], "0.33.0"))
+
     def test_missing_ambiguous_or_mutable_latest_release_cannot_fall_back(self):
         release = {"tag_name": "v0.32.2", "draft": False, "prerelease": False, "immutable": True}
-        self.assert_cause(acceptance.Cause.PRIOR_RELEASE_UNAVAILABLE, lambda: acceptance.select_prior_release([]))
-        self.assert_cause(acceptance.Cause.PRIOR_RELEASE_UNAVAILABLE, lambda: acceptance.select_prior_release([release, release]))
+        self.assert_cause(acceptance.Cause.PRIOR_RELEASE_UNAVAILABLE, lambda: acceptance.select_prior_release([], "1.0.0"))
+        self.assert_cause(acceptance.Cause.PRIOR_RELEASE_UNAVAILABLE, lambda: acceptance.select_prior_release([release, release], "1.0.0"))
         newer = {**release, "tag_name": "v0.33.0", "immutable": False}
-        self.assert_cause(acceptance.Cause.PRIOR_RELEASE_MUTABLE, lambda: acceptance.select_prior_release([release, newer]))
+        self.assert_cause(acceptance.Cause.PRIOR_RELEASE_MUTABLE, lambda: acceptance.select_prior_release([release, newer], "1.0.0"))
 
     def test_prior_download_checks_every_github_digest_and_size(self):
         with tempfile.TemporaryDirectory() as raw:
@@ -59,15 +66,15 @@ class UpgradeAcceptanceTest(unittest.TestCase):
                 return ""
 
             with mock.patch.object(acceptance, "required", side_effect=github):
-                prior = acceptance.download_prior_assets(root / "accepted")
+                prior = acceptance.download_prior_assets(root / "accepted", "1.0.0")
                 self.assertEqual(4, len(prior["assets"]))
                 self.assertEqual(acceptance.identity([release]), prior["releaseCatalogDigest"])
                 release["assets"][1]["digest"] = "sha256:" + "0" * 64
                 self.assert_cause(acceptance.Cause.PRIOR_ASSET_IDENTITY_MISMATCH,
-                                  lambda: acceptance.download_prior_assets(root / "tampered"))
+                                  lambda: acceptance.download_prior_assets(root / "tampered", "1.0.0"))
                 release["assets"] = []
                 self.assert_cause(acceptance.Cause.PRIOR_ASSET_UNAVAILABLE,
-                                  lambda: acceptance.download_prior_assets(root / "missing"))
+                                  lambda: acceptance.download_prior_assets(root / "missing", "1.0.0"))
 
     def test_corruption_derives_from_exact_candidate_without_modifying_original(self):
         with tempfile.TemporaryDirectory() as raw:
@@ -189,7 +196,7 @@ else: sys.exit(64)
         return {**environment, "XDG_CONFIG_HOME": str(host.home / ".config")}
 
     def run(self):
-        def downloaded(destination):
+        def downloaded(destination, candidate_version):
             make_assets(destination, "0.32.2")
             return {"tag": "v0.32.2", "version": "0.32.2", "immutable": True,
                     "assets": {name: acceptance.file_digest(destination / name) for name in acceptance.asset_names("0.32.2")},

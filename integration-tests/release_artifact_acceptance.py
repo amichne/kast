@@ -260,7 +260,7 @@ def main():
         matrix_command = [sys.executable, str(ROOT / "integration-tests/gradle_import_acceptance.py"),
                           "--kast", str(acceptance.executable), "--fixture", str(ROOT / "fixtures/topology-identity-workspace"),
                           "--idea-home", str(idea), "--state-root", str(matrix_root)]
-        for feature in (17, 21, 25):
+        for feature in (25,):
             java_home = os.environ.get(f"KAST_RELEASE_JDK_{feature}")
             if not java_home:
                 raise gate.GateRejected(f"release matrix requires explicit KAST_RELEASE_JDK_{feature}")

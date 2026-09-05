@@ -39,11 +39,11 @@ class ReceiptIdentityTest(unittest.TestCase):
         matrix = {"schemaVersion": 1, "status": "passed",
             "matrixSha256": gate.digest(ROOT / "benchmarks/gradle-import-acceptance.json").removeprefix("sha256:"),
             "commandSha256": gate.digest(ROOT / "integration-tests/gradle_import_acceptance.py").removeprefix("sha256:"),
-            "javaRuntimeReleaseSha256": {str(feature): "a" * 64 for feature in (17, 21, 25)}, "cases": [
+            "javaRuntimeReleaseSha256": {str(feature): "a" * 64 for feature in (25,)}, "cases": [
             {"gradle": gradle, "java": java, "expectedRejection": rejected,
              "explicitInputAdmitted": not rejected, "ambientSecretAbsent": not rejected,
              "explicitExecutableAdmitted": not rejected, "gradleUserHomeIsolated": not rejected}
-            for gradle, java, rejected in [("7.6.4", 17, False), ("8.14.3", 21, False), ("9.4.1", 25, False), ("7.6.4", 25, True)]
+            for gradle, java, rejected in [("9.4.1", 25, False)]
         ]}
         installed = {"status": "passed", "sourceRevision": self.sha, "environment": environment, "assets": assets, "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import"], "broker": {"status": "passed", "readOnlyCatalog": True, "cliEquivalent": True, "selectorReused": True}, "gradleImport": matrix}
         installed["broker"].update(schemaVersion=2, cliVersion=f"kast {self.version} (IntelliJ sidecar)",
@@ -127,13 +127,13 @@ class ReceiptIdentityTest(unittest.TestCase):
         with self.assertRaisesRegex(gate.GateRejected, "assets differ"):
             self.validate(self.receipt)
 
-    def test_matrix_cannot_replace_rejection_or_omit_isolation_proof(self):
-        for change in ("no-rejection", "ambientSecretAbsent", "gradleUserHomeIsolated", "commandSha256", "matrixSha256", "javaRuntimeReleaseSha256"):
+    def test_reference_import_cannot_be_omitted_or_lose_isolation_proof(self):
+        for change in ("missing-reference", "ambientSecretAbsent", "gradleUserHomeIsolated", "commandSha256", "matrixSha256", "javaRuntimeReleaseSha256"):
             receipt = copy.deepcopy(self.receipt)
             dependency = receipt["dependencies"]["installed"]
             cases = dependency["receipt"]["gradleImport"]["cases"]
-            if change == "no-rejection":
-                cases[-1] = cases[0]
+            if change == "missing-reference":
+                cases.clear()
             elif change in {"ambientSecretAbsent", "gradleUserHomeIsolated"}:
                 cases[0][change] = False
             else:

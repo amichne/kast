@@ -39,9 +39,7 @@ CANONICAL_OPERATION_AUTHORITY = ROOT / (
 SIDECAR_LIFECYCLE_AUTHORITY = ROOT / (
     "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/RuntimeLifecycle.kt"
 )
-INSTALL_COMMAND = (
-    "curl -fsSL https://raw.githubusercontent.com/amichne/kast/v0.32.2/install.sh | bash -s -- --version 0.32.2"
-)
+INSTALL_COMMAND = 'release_url="$(curl -fsSL -o /dev/null -w \'%{url_effective}\' https://github.com/amichne/kast/releases/latest)"\nrelease_tag="${release_url##*/}"\ncurl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh" | bash -s -- --version "$release_tag"'
 APPROVED_LUCIDE_ICONS = {
     "activity",
     "badge-check",
@@ -89,7 +87,7 @@ PAGES = {
         "Reference pair:",
         "Compatible patch builds are accepted",
         "JetBrains platform release line 262",
-        "https://raw.githubusercontent.com/amichne/kast/v0.32.2/install.sh",
+        "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh",
         "rejects unsafe archive paths",
         "does not edit your shell profile",
         "kast start --cache seed",
@@ -1023,7 +1021,7 @@ def check_readme() -> None:
     required = [
         "# Kast",
         "https://kast.michne.com/",
-        "https://raw.githubusercontent.com/amichne/kast/v0.32.2/install.sh",
+        "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh",
         "bundled Java 25 JBR",
         "matched private sidecar",
         "kast-control-*.tar.gz",
@@ -1080,9 +1078,11 @@ def check_install_command() -> None:
     sources = {
         "README.md": README.read_text(),
         "docs/public/start.mdx": (PUBLIC / "start.mdx").read_text(),
+        "docs/public/reference/compatibility.mdx": (PUBLIC / "reference/compatibility.mdx").read_text(),
     }
     for path, text in sources.items():
-        require(INSTALL_COMMAND in text, f"{path} is missing the one-command installer")
+        require(not re.search(r"kast/v[0-9]+\.[0-9]+\.[0-9]+/install\.sh", text), f"{path} pins a stale installer release")
+        require(INSTALL_COMMAND in "\n".join(line.lstrip() for line in text.splitlines()), f"{path} is missing the release-resolving installer")
 
 
 def check_installed_capability_contract() -> None:

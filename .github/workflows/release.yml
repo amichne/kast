@@ -9,6 +9,7 @@ on:
         type: string
 
 permissions:
+  actions: read
   contents: write
   id-token: write
   attestations: write
@@ -22,9 +23,9 @@ concurrency:
 
 jobs:
   release:
-    name: Prove exact assets, then publish
+    name: Publish verified CI assets
     runs-on: macos-15
-    timeout-minutes: 120
+    timeout-minutes: 20
     env:
       RELEASE_VERSION: ${{ inputs.version }}
       GH_TOKEN: ${{ github.token }}
@@ -37,55 +38,33 @@ jobs:
       - name: Detach exact release source
         run: git checkout --detach "$GITHUB_SHA"
 
-      - name: Set up Java 17
-        id: jdk17
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Set up Java 21
-        id: jdk21
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Set up Java 25
-        id: jdk25
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
-        with:
-          distribution: temurin
-          java-version: 25
+      - name: Admit successful main CI candidate
+        id: candidate
+        run: >-
+          python3 distribution/release/release_eligibility.py
+          --repository "$GITHUB_REPOSITORY"
+          --source-revision "$GITHUB_SHA"
+          --version "$RELEASE_VERSION"
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version-file: ".python-version"
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
-        with:
-          validate-wrappers: true
-
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: docs/tooling/likec4/package-lock.json
-
-      - name: Install documentation validator
-        run: npm install --global mint@4.2.841
-
-      - name: Build and verify release assets
+      - name: Download retained CI candidate
         env:
-          KAST_RELEASE_JDK_17: ${{ steps.jdk17.outputs.path }}
-          KAST_RELEASE_JDK_21: ${{ steps.jdk21.outputs.path }}
-          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
+          CANDIDATE_RUN_ID: ${{ steps.candidate.outputs.run_id }}
+          CANDIDATE_ARTIFACT: ${{ steps.candidate.outputs.artifact_name }}
         run: >-
-          bash .github/scripts/release/build-assets.sh
-          --version "$RELEASE_VERSION"
-          --source-revision "$GITHUB_SHA"
+          gh run download "$CANDIDATE_RUN_ID" --repo "$GITHUB_REPOSITORY"
+          --name "$CANDIDATE_ARTIFACT" --dir build
+
+      - name: Verify exact retained assets and receipt
+        run: >-
+          python3 distribution/release/release_gate.py verify
+          --source-root "$GITHUB_WORKSPACE"
+          --assets-directory "build/release/v${RELEASE_VERSION}"
+          --version "$RELEASE_VERSION" --source-revision "$GITHUB_SHA"
 
       - name: Attest verified candidate assets
         uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3

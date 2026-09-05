@@ -93,8 +93,8 @@ command:
 Neither payload contains an IDEA distribution or writes to a JetBrains plugin
 directory.
 
-The command below pins both installer content and product assets to published
-release 0.32.2. The [1.x compatibility policy](/reference/compatibility) describes
+The command below resolves the latest published release and pins both installer
+content and product assets to that tag. The [1.x compatibility policy](/reference/compatibility) describes
 the candidate stability contract and upgrade behavior.
 
 <Steps>
@@ -104,17 +104,21 @@ the candidate stability contract and upgrade behavior.
     <Tabs>
       <Tab title="Install directly" icon="terminal">
         ```shell
-        curl -fsSL https://raw.githubusercontent.com/amichne/kast/v0.32.2/install.sh | bash -s -- --version 0.32.2
+        release_url="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/amichne/kast/releases/latest)"
+        release_tag="${release_url##*/}"
+        curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh" | bash -s -- --version "$release_tag"
         ```
       </Tab>
 
       <Tab title="Review first" icon="scan-search">
         ```shell
         installer_file="$(mktemp)"
-        curl -fsSL https://raw.githubusercontent.com/amichne/kast/v0.32.2/install.sh \
+        release_url="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/amichne/kast/releases/latest)"
+        release_tag="${release_url##*/}"
+        curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh" \
           --output "$installer_file"
         less "$installer_file"
-        bash "$installer_file" --version 0.32.2
+        bash "$installer_file" --version "$release_tag"
         rm "$installer_file"
         ```
       </Tab>
@@ -315,7 +319,9 @@ the candidate stability contract and upgrade behavior.
     It preserves repositories and unrelated JetBrains state.
 
     ```shell
-    curl -fsSL https://raw.githubusercontent.com/amichne/kast/v0.32.2/install.sh | bash -s -- uninstall
+    release_url="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/amichne/kast/releases/latest)"
+    release_tag="${release_url##*/}"
+    curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh" | bash -s -- uninstall
     ```
   </Accordion>
 </AccordionGroup>
@@ -328,8 +334,10 @@ flow:
 
 ```shell
 installer_file="$(mktemp)"
-curl -fsSL https://raw.githubusercontent.com/amichne/kast/v0.32.2/install.sh --output "$installer_file"
-bash "$installer_file" install --version 0.32.2 --purge-existing
+release_url="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/amichne/kast/releases/latest)"
+release_tag="${release_url##*/}"
+curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh" --output "$installer_file"
+bash "$installer_file" install --version "$release_tag" --purge-existing
 rm "$installer_file"
 ```
 
