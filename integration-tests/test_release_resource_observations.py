@@ -3,6 +3,8 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import subprocess
+import sys
 import unittest
 from unittest import mock
 
@@ -49,10 +51,22 @@ class ResourceObservationTest(unittest.TestCase):
         self.assertNotIn('secret', json.dumps(observed))
         self.assertNotIn(str(self.system), json.dumps(observed))
 
+    def test_headless_runtime_without_idea_pid_marker_uses_exact_process_authority(self):
+        calls = []
+        def locate(system):
+            calls.append(system)
+            return (1234,)
+        observed = self.sample(lambda pid: resources._PsOutput(0, f'{pid} 42 java -Didea.system.path={self.system}'.encode()),
+                               process_locator=locate)
+        self.assertEqual('observed', observed['status'])
+        self.assertEqual(43008, observed['rssBytes'])
+        self.assertEqual([self.system], calls)
+        self.assertFalse((self.system / '.pid').exists())
+
     def test_stopped_sample_preserves_disk_observation_without_invented_rss(self):
         observed = self.sample(lambda _: self.fail('No PID means no process query'))
         self.assertEqual('not-running', observed['status'])
-        self.assertEqual('pid-marker-absent', observed['cause'])
+        self.assertEqual('process-not-listed', observed['cause'])
         self.assertEqual(10, observed['apparentStateBytes'])
         self.assertNotIn('rssBytes', observed)
 
@@ -114,6 +128,27 @@ class ResourceObservationTest(unittest.TestCase):
         self.assertEqual(0, observed.returncode)
         self.assertLessEqual(len(observed.stdout), resources.MAX_PS_BYTES)
         self.assertEqual(str(os.getpid()).encode(), observed.stdout.split()[0])
+
+    def test_real_pid_lookup_matches_only_the_exact_owned_system_argument(self):
+        processes = [subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(10)',
+                                       '-Didea.system.path=' + str(path)])
+                     for path in (self.system, Path(str(self.system) + '-other'))]
+        try:
+            self.assertEqual((processes[0].pid,), resources._locate_processes(self.system))
+        finally:
+            for process in processes:
+                process.terminate()
+                process.wait(timeout=2)
+
+    def test_pid_lookup_rejects_failed_oversized_and_malformed_candidates(self):
+        for result, cause in [(resources._PsOutput(2, b''), 'process-lookup-failed'),
+                              (resources._PsOutput(0, b'0\n'), 'pid-marker-invalid'),
+                              (resources._PsOutput(0, b'1234\n1234\n'), 'pid-marker-invalid'),
+                              (resources._PsOutput(0, b'1234\n' * 65), 'process-lookup-limit')]:
+            with self.subTest(cause=cause), mock.patch.object(resources, '_run_query', return_value=result):
+                with self.assertRaises(resources.ObservationRejected) as failure:
+                    resources._locate_processes(self.system)
+                self.assertEqual(cause, failure.exception.cause.value)
 
     def test_marker_change_rejects_the_sample_instead_of_reusing_the_pid(self):
         self.mark()

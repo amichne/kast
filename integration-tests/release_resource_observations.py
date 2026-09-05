@@ -30,6 +30,7 @@ from typing import Callable
 MAX_PS_BYTES = 65_536
 PS_TIMEOUT_SECONDS = 2
 MAX_CACHE_IDENTITIES = 64
+MAX_PROCESS_CANDIDATES = 64
 MAX_STATE_ENTRIES = 200_000
 MAX_STATE_DEPTH = 64
 DISK_TIMEOUT_SECONDS = 5
@@ -57,6 +58,9 @@ class Cause(str, Enum):
     PROCESS_NOT_LISTED = "process-not-listed"
     PID_INVALID = "pid-marker-invalid"
     PID_CHANGED = "pid-marker-changed"
+    PID_LOOKUP_FAILED = "process-lookup-failed"
+    PID_LOOKUP_TIMEOUT = "process-lookup-timeout"
+    PID_LOOKUP_LIMIT = "process-lookup-limit"
     PS_FAILED = "ps-failed"
     PS_TIMEOUT = "ps-timeout"
     PS_OUTPUT_LIMIT = "ps-output-limit"
@@ -88,11 +92,11 @@ class _PsOutput:
     stdout: bytes
 
 
-def _run_ps(pid: int) -> _PsOutput:
-    """Read only one requested PID; cap bytes while reading, with no stderr payload."""
+def _run_query(command: list[str]) -> _PsOutput:
+    """Bound a process query while reading; no stderr payload crosses the boundary."""
     try:
         process = subprocess.Popen(
-            ['/bin/ps', '-ww', '-p', str(pid), '-o', 'pid=,rss=,command='],
+            command,
             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
         )
     except OSError:
@@ -123,7 +127,7 @@ def _run_ps(pid: int) -> _PsOutput:
     finally:
         try:
             if process.poll() is None:
-                process.kill()  # Only the ps child created by this boundary.
+                process.kill()  # Only the query child created by this boundary.
             process.wait(timeout=PS_TIMEOUT_SECONDS)
         except subprocess.TimeoutExpired:
             raise ObservationRejected(Cause.PS_TIMEOUT) from None
@@ -132,6 +136,41 @@ def _run_ps(pid: int) -> _PsOutput:
         finally:
             if process.stdout is not None:
                 process.stdout.close()
+
+
+def _run_ps(pid: int) -> _PsOutput:
+    return _run_query(['/bin/ps', '-ww', '-p', str(pid), '-o', 'pid=,rss=,command='])
+
+
+def _locate_processes(system: Path) -> tuple[int, ...]:
+    """Headless sidecars do not publish IDEA's .pid marker.
+
+    Obtain only candidate PIDs for the exact owned system argument. The subsequent
+    per-PID ps snapshot must independently prove ownership before publishing RSS.
+    No unrelated process command lines or lookup output are serialized.
+    """
+    if any(character.isspace() for character in str(system)):
+        raise ObservationRejected(Cause.SYSTEM_PATH_UNREPRESENTABLE)
+    pattern = r'(^|[[:space:]])-Didea\.system\.path=' + re.escape(str(system)) + r'([[:space:]]|$)'
+    try:
+        output = _run_query(['/usr/bin/pgrep', '-f', pattern])
+    except ObservationRejected as failure:
+        cause = {Cause.PS_TIMEOUT: Cause.PID_LOOKUP_TIMEOUT,
+                 Cause.PS_OUTPUT_LIMIT: Cause.PID_LOOKUP_LIMIT}.get(failure.cause, Cause.PID_LOOKUP_FAILED)
+        raise ObservationRejected(cause) from None
+    if output.returncode == 1 and not output.stdout.strip():
+        return ()
+    if output.returncode != 0:
+        raise ObservationRejected(Cause.PID_LOOKUP_FAILED)
+    values = output.stdout.splitlines()
+    if not 1 <= len(values) <= MAX_PROCESS_CANDIDATES:
+        raise ObservationRejected(Cause.PID_LOOKUP_LIMIT)
+    if any(not re.fullmatch(rb'[1-9][0-9]{0,9}', value) or int(value) > 2_147_483_647 for value in values):
+        raise ObservationRejected(Cause.PID_INVALID)
+    pids = tuple(int(value) for value in values)
+    if len(set(pids)) != len(pids):
+        raise ObservationRejected(Cause.PID_INVALID)
+    return pids
 
 
 def _scope(owner: Path, cache: Path, roots: tuple[Path, ...]) -> tuple[Path, Path, tuple[Path, ...]]:
@@ -217,9 +256,9 @@ def _rss(pid: int, system: Path, output: _PsOutput) -> _ResidentBytes | _Process
     return _ResidentBytes(int(parts[1]) * 1024)
 
 
-def _memory(owner: Path, cache: Path, reader: Callable[[int], _PsOutput]) -> dict:
+def _memory(owner: Path, cache: Path, reader: Callable[[int], _PsOutput], locator: Callable[[Path], tuple[int, ...]]) -> dict:
     found = []
-    markers = 0
+    searched_systems = 0
     try:
         cache_descriptor = _directory(owner, cache)
     except FileNotFoundError:
@@ -243,27 +282,34 @@ def _memory(owner: Path, cache: Path, reader: Callable[[int], _PsOutput]) -> dic
             except FileNotFoundError:
                 continue
             try:
+                searched_systems += 1
                 try:
                     pid = _pid(system_descriptor)
+                    has_marker = True
+                    pids = (pid,)
                 except FileNotFoundError:
-                    continue
-                markers += 1
-                rss = _rss(pid, system, reader(pid))
-                try:
-                    unchanged = _pid(system_descriptor) == pid
-                except FileNotFoundError:
-                    unchanged = False
-                if not unchanged:
-                    raise ObservationRejected(Cause.PID_CHANGED)
-                if isinstance(rss, _ResidentBytes):
-                    found.append(rss.value)
+                    has_marker = False
+                    pids = locator(system)
+                if len(pids) > MAX_PROCESS_CANDIDATES or len(set(pids)) != len(pids) or any(type(pid) is not int or not 0 < pid <= 2_147_483_647 for pid in pids):
+                    raise ObservationRejected(Cause.PID_INVALID)
+                for pid in pids:
+                    rss = _rss(pid, system, reader(pid))
+                    if has_marker:
+                        try:
+                            unchanged = _pid(system_descriptor) == pid
+                        except FileNotFoundError:
+                            unchanged = False
+                        if not unchanged:
+                            raise ObservationRejected(Cause.PID_CHANGED)
+                    if isinstance(rss, _ResidentBytes):
+                        found.append(rss.value)
             finally:
                 os.close(system_descriptor)
     finally:
         os.close(cache_descriptor)
     if not found:
         return {'status': ResourceStatus.NOT_RUNNING.value,
-                'cause': (Cause.PROCESS_NOT_LISTED if markers else Cause.PID_ABSENT).value}
+                'cause': (Cause.PROCESS_NOT_LISTED if searched_systems else Cause.PID_ABSENT).value}
     return {'status': ResourceStatus.OBSERVED.value, 'rssBytes': sum(found), 'processCount': len(found)}
 
 
@@ -304,7 +350,8 @@ def _disk(owner: Path, roots: tuple[Path, ...]) -> dict:
 
 def observe(stage: ResourceStage, *, owner_root: Path, cache_root: Path,
             state_roots: tuple[Path, ...],
-            process_reader: Callable[[int], _PsOutput] = _run_ps) -> dict:
+            process_reader: Callable[[int], _PsOutput] = _run_ps,
+            process_locator: Callable[[Path], tuple[int, ...]] = _locate_processes) -> dict:
     """Return observed/not-running/rejected finite data; never serialize process arguments.
 
     A missing marker or unlisted PID leaves rssBytes absent. Rejection never emits
@@ -314,7 +361,7 @@ def observe(stage: ResourceStage, *, owner_root: Path, cache_root: Path,
     document = {'schemaVersion': 1, 'stage': stage.value}
     try:
         owner, cache, roots = _scope(owner_root, cache_root, state_roots)
-        memory = _memory(owner, cache, process_reader)
+        memory = _memory(owner, cache, process_reader, process_locator)
         disk = _disk(owner, roots)
         return {**document, **memory, **disk}
     except ObservationRejected as failure:

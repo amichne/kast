@@ -22,7 +22,7 @@ code_sources:
     lines: "1-80"
     symbols: ["generate", "scanner"]
   - path: "integration-tests/release_resource_observations.py"
-    lines: "1-311"
+    lines: "1-370"
     symbols: ["observe"]
 icon: "badge-check"
 keywords: ["testing", "CI", "distribution", "contributors"]
@@ -126,7 +126,10 @@ Command observations retain durations and evidence digests as the journey runs,
 including finite failure causes if it stops early.
 
 Resource observations sample only processes proven to own the selected IntelliJ
-cache. They record RSS after
+cache. Headless processes are located by the exact owned system argument and
+checked again by PID; process command lines are never serialized.
+
+They record RSS after
 start, a semantic read and restart, then prove the owned runtime is absent after
 stop. Apparent bytes cover the selected installation and runtime state without
 following links.
