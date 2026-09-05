@@ -1,0 +1,128 @@
+---
+type: "Reference"
+title: "Compatibility and upgrades"
+description: "The candidate 1.x contract, immutable release comparison, and installed-state replacement behavior."
+resource: "file://docs/public/reference/compatibility.mdx"
+tags: ["compatibility", "releases", "migration", "installation"]
+timestamp: "2026-09-04T00:00:00-04:00"
+code_sources:
+  - path: "distribution/release/compatibility.py"
+    lines: "140-180"
+    symbols: ["compare", "differences"]
+  - path: "distribution/release/state-contract.json"
+    lines: "1-25"
+    symbols: ["owners", "processContract"]
+  - path: "install.sh"
+    lines: "1180-1230"
+    symbols: ["replace_managed_link", "restore_activation"]
+  - path: "packaging/test-installer.sh"
+    lines: "440-520"
+    symbols: ["make_upgrade_assets", "upgrade_to"]
+icon: "shield-check"
+keywords: ["1.x", "stable", "preview", "upgrade", "rollback"]
+---
+
+This policy defines the candidate 1.x stability contract. The pinned published
+installer remains 0.32.2 until a 1.0.0 release exists. Publication requires the
+same compatibility and migration checks used for release candidates.
+
+## Stable in 1.x
+
+Within one major version, existing supported callers retain:
+
+- Canonical operation IDs and the meaning of complete, qualified, and rejected outcomes.
+- Exact-selector round trips for the same admitted workspace and generation.
+- Documented CLI commands, option spellings, exit codes, and output channels.
+- Supported configuration keys, explicit import inputs, and approval policy.
+- Installed-state upgrade, rollback, and uninstall behavior described below.
+
+Generation changes may invalidate selectors, continuations, and plans. Their
+typed stale or rejected outcomes remain part of the contract; compatibility
+never authorizes reinterpreting an old identity in a different workspace.
+
+Semantic operations emit one final JSON document on stdout, including semantic
+rejection. Boundary rejection uses stderr and its documented nonzero exit code.
+Terminal startup progress is bounded stderr output; redirected callers receive
+the final machine document without progress lines.
+
+## Versioned JSON shapes
+
+Requests, outcomes, selectors, continuations, generations, plans, receipts,
+and private state codecs have explicit schema or identity boundaries. Closed
+JSON shapes cannot receive an unannounced field: strict consumers may reject
+even an additive change.
+
+An incompatible shape requires an explicit version transition and continued
+support for the old contract within 1.x. A transition without that compatibility
+proof requires the next major product version. Changing a version integer alone
+does not pass the release gate.
+
+## Preview and supported hosts
+
+Codex App Server integration is a decoupled, read-only preview while its upstream
+protocol remains experimental. Its availability is not required for semantic
+CLI use. Exact installed schemas and approval policies still fail closed.
+
+Linux, Intel macOS, additional languages, and unsupported IntelliJ platform lines
+are not promised. The supported host remains Apple Silicon macOS with the
+documented IntelliJ release line and admitted JBR.
+
+Hosted mutation supports only `add-declaration`. The command grammar also names
+other intents; those names do not establish hosted implementation support.
+
+## Mechanical release comparison
+
+Each release carries `kast-compatibility-vVERSION.json`, captured from its clean
+source revision and exact installed CLI. The snapshot includes `kast --schema`,
+parser-rendered commands and options, server projection, process exits,
+configuration keys, and persisted state codec ownership.
+
+The gate selects the numerically latest stable release in the candidate major.
+It requires an immutable GitHub release and verifies the baseline asset against
+GitHub's SHA-256 digest. Missing, duplicate, altered, or malformed baseline
+assets reject release admission.
+
+Same-major removal or incompatible change fails. A next-major transition needs
+the explicit `--allow-next-major` gate argument. When no stable 1.x or later
+release exists, release-catalog evidence admits `pre-stable` 0.x candidates or
+exactly `first-stable` 1.0.0; it never fabricates a prior baseline.
+
+State-codec source fingerprints conservatively detect changes to SQLite,
+bootstrap, cache identity, selector, continuation, and lifecycle output owners.
+They can reject a safe refactor. Such a change needs a stronger compatibility
+proof in the comparator; editing a baseline or ignoring failure is not permitted.
+
+## Upgrade and recovery
+
+The installer validates the matched control and runtime assets before replacing
+managed links. Activation atomically replaces each owned link, then verifies the
+public command. Failure or HUP, INT, or TERM restores the previous links and
+literal configuration. An inactive, verified version may remain for retry.
+
+Ordinary upgrades preserve private runtime stores and repository state. Cache
+identities select compatible generations; stale caches can rebuild through
+`kast start --cache rebuild`. A process killed without a catchable signal or a
+host power loss cannot run rollback; rerun the pinned installer to reselect a
+verified version.
+
+`uninstall --installation-only` removes the managed installation and command,
+preserving runtime state for reinstall. Ordinary `uninstall` also removes
+Kast-owned runtime state and configuration. Neither mode removes repositories
+or unrelated JetBrains state.
+
+The installer fixtures exercise latest 0.x to 1.0.0, 1.0.0 to a successor 1.x,
+failed and interrupted replacement, and uninstall/reinstall. Their isolated
+payloads prove installer state transitions; installed semantic acceptance
+separately proves the built release's behavior.
+
+## Pin installer content and product together
+
+The current published command is:
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/amichne/kast/v0.32.2/install.sh | bash -s -- --version 0.32.2
+```
+
+When 1.0.0 is published, change both the URL tag to `v1.0.0` and the version
+argument to `1.0.0`. Candidate documentation does not establish that a future
+release URL exists. Keep both values identical for subsequent upgrades.

@@ -78,7 +78,8 @@
             "icon": "terminal",
             "pages": [
               "reference/cli",
-              "reference/gradle-import"
+              "reference/gradle-import",
+              "reference/compatibility"
             ]
           },
           {

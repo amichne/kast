@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "owners": {
+    "workspace-and-change-storage": ["evidence/sqlite/src/main/kotlin/**/*.kt"],
+    "bootstrap": ["distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/bootstrap/*.kt"],
+    "cache-identity": ["cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/SidecarCacheLifecycle.kt"],
+    "selectors-and-continuations": ["source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/*Token*.kt", "source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadRequest.kt", "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalReadOperationModels.kt"],
+    "lifecycle-json": ["cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CliBoundaryDocuments.kt"],
+    "process-exit-and-output": ["cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt"]
+  },
+  "configurationSources": [
+    "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledKastCliComposition.kt",
+    "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/RuntimeProcessMode.kt",
+    "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/gradle/GradleImportEnvironment.kt"
+  ],
+  "processContract": {
+    "semanticStdout": "one-final-json-document",
+    "boundaryStderr": "one-final-json-document",
+    "terminalProgress": "bounded-stderr-only",
+    "successExit": 0,
+    "qualifiedExit": 0,
+    "semanticRejectedExit": 0,
+    "boundaryExits": {"USAGE": 2, "ROOT": 3, "RUNTIME": 4, "TRANSPORT": 5, "PROTOCOL": 6, "BOOTSTRAP": 9}
+  }
+}

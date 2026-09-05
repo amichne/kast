@@ -93,6 +93,10 @@ command:
 Neither payload contains an IDEA distribution or writes to a JetBrains plugin
 directory.
 
+The command below pins both installer content and product assets to published
+release 0.32.2. The [1.x compatibility policy](/reference/compatibility) describes
+the candidate stability contract and upgrade behavior.
+
 <Steps>
   <Step title="Install Kast">
     Install directly, or review the downloaded script before execution:
@@ -100,17 +104,17 @@ directory.
     <Tabs>
       <Tab title="Install directly" icon="terminal">
         ```shell
-        curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash
+        curl -fsSL https://raw.githubusercontent.com/amichne/kast/v0.32.2/install.sh | bash -s -- --version 0.32.2
         ```
       </Tab>
 
       <Tab title="Review first" icon="scan-search">
         ```shell
         installer_file="$(mktemp)"
-        curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh \
+        curl -fsSL https://raw.githubusercontent.com/amichne/kast/v0.32.2/install.sh \
           --output "$installer_file"
         less "$installer_file"
-        bash "$installer_file"
+        bash "$installer_file" --version 0.32.2
         rm "$installer_file"
         ```
       </Tab>
@@ -311,7 +315,7 @@ directory.
     It preserves repositories and unrelated JetBrains state.
 
     ```shell
-    curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash -s -- uninstall
+    curl -fsSL https://raw.githubusercontent.com/amichne/kast/v0.32.2/install.sh | bash -s -- uninstall
     ```
   </Accordion>
 </AccordionGroup>
@@ -324,8 +328,8 @@ flow:
 
 ```shell
 installer_file="$(mktemp)"
-curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh --output "$installer_file"
-bash "$installer_file" install --purge-existing
+curl -fsSL https://raw.githubusercontent.com/amichne/kast/v0.32.2/install.sh --output "$installer_file"
+bash "$installer_file" install --version 0.32.2 --purge-existing
 rm "$installer_file"
 ```
 

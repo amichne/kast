@@ -1046,7 +1046,7 @@ if [[ "$action" == "uninstall" ]]; then
   if [[ "$installation_only" == true ]]; then
     validate_cleanup_plan
     process_table="$("$process_table_command" -ax -o pid=,command=)"
-    while IFS=$' \t' read -r selected_pid selected_command; do
+    while IFS=$' \t' read -r _selected_pid selected_command; do
       case "$selected_command" in
         *io.github.amichne.kast.indexer.KastIndexerMainKt*)
           case "$selected_command" in
@@ -1171,7 +1171,52 @@ staged_runtime=""
 staged_runtime_checksum=""
 staged_launcher=""
 staged_configuration=""
+activation_state="unstarted"
+prior_current=""
+prior_command=""
+prior_configuration="absent"
+staged_link=""
+
+# The supported host is macOS. BSD mv -h replaces the link itself atomically;
+# the destination must never be followed into the selected version directory.
+replace_managed_link() {
+  local destination="$1"
+  local target="$2"
+  staged_link="$(mktemp "${destination}.XXXXXX")"
+  rm -f "$staged_link"
+  ln -s "$target" "$staged_link"
+  mv -f -h "$staged_link" "$destination"
+  staged_link=""
+}
+
+restore_activation() {
+  if [[ -n "$prior_current" ]]; then
+    replace_managed_link "$current_link" "$prior_current"
+  else
+    rm -f "$current_link"
+  fi
+  if [[ -n "$prior_command" ]]; then
+    replace_managed_link "$command_link" "$prior_command"
+  else
+    rm -f "$command_link"
+  fi
+  if [[ "$prior_configuration" == "present" ]]; then
+    staged_configuration="$(mktemp "$config_root/.environment-restore.XXXXXX")"
+    cp -p "$temporary_root/prior-environment" "$staged_configuration"
+    mv -f "$staged_configuration" "$config_file"
+    staged_configuration=""
+  else
+    rm -f "$config_file"
+  fi
+  warning "activation failed; restored the prior command and configuration"
+}
+
 cleanup() {
+  local status=$?
+  trap - EXIT HUP INT TERM
+  if [[ "$activation_state" == "pending" ]]; then
+    restore_activation
+  fi
   rm -rf "$temporary_root"
   if [[ -n "$staged_root" && -e "$staged_root" ]]; then
     rm -rf "$staged_root"
@@ -1180,8 +1225,13 @@ cleanup() {
   [[ -z "$staged_runtime_checksum" ]] || rm -f "$staged_runtime_checksum"
   [[ -z "$staged_launcher" ]] || rm -f "$staged_launcher"
   [[ -z "$staged_configuration" ]] || rm -f "$staged_configuration"
+  [[ -z "$staged_link" ]] || rm -f "$staged_link"
+  exit "$status"
 }
 trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 archive="$temporary_root/$control_name"
 checksum="$temporary_root/$control_name.sha256"
@@ -1287,15 +1337,21 @@ if [[ -e "$command_link" || -L "$command_link" ]]; then
   esac
 fi
 
-install_runtime_configuration "$config_file"
+if [[ -e "$config_file" || -L "$config_file" ]]; then
+  [[ -f "$config_file" && ! -L "$config_file" ]] ||
+    fail "existing configuration is not a regular file: $config_file"
+  cp -p "$config_file" "$temporary_root/prior-environment"
+  prior_configuration="present"
+fi
 
-# `ln -sfn` replaces only the installer-owned links checked above. It does not
-# follow a `current` symlink to the installed version directory.
-ln -sfn "versions/$version" "$current_link"
-ln -sfn "$install_root/current/bin/kast-complete" "$command_link"
+activation_state="pending"
+install_runtime_configuration "$config_file"
+replace_managed_link "$current_link" "versions/$version"
+replace_managed_link "$command_link" "$install_root/current/bin/kast-complete"
 
 verify_control_root "$target_root" "$version" "$java_executable" "$java_home"
 "$command_link" --version >/dev/null
+activation_state="committed"
 
 note "installed Kast $version"
 note "command: $command_link"
