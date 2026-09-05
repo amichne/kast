@@ -34,6 +34,13 @@ deadline. Cancellation terminates only that CLI wrapper. The detached sidecar re
 its exact bootstrap attempt; passive status exposes that state, and the next call joins that
 attempt or reuses its ready endpoint without launching a duplicate.
 
+`:cli:installedColdBrokerAcceptance` executes the production provider and dispatcher against a
+requested installed executable in a fresh workspace. Its JVM entry point is independently tested,
+and the journey checks cold readiness, direct-CLI result equivalence, exact selector reuse, source
+line presentation, and the read-only catalog without a cloud account. The bounded receipt retains
+digests and elapsed time. A run against a staged product is integration evidence; the release gate
+must additionally bind that journey to the exact verified release archives.
+
 Admitted dynamic-tool invocations publish one payload-free start event and one finite terminal
 event to `$CODEX_HOME/broker/service.log`. Each JSON line carries only thread, turn, call,
 namespace, tool, and completion identity; tool arguments, results, and working-directory content

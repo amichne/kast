@@ -31,7 +31,7 @@ import kotlin.time.TimeSource
 /** Account-independent installed proof: real CLI processes and the production broker dispatcher. */
 object InstalledColdBrokerAcceptance {
     @JvmStatic
-    fun main(arguments: Array<String>) = runBlocking {
+    fun main(arguments: Array<String>) = runBlocking<Unit> {
         require(arguments.size == 2) { "Expected request and evidence paths" }
         val request = Json.decodeFromString<Request>(Files.readString(Path.of(arguments[0])))
         val workspace = Path.of(request.workspace).toRealPath()
