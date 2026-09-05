@@ -100,7 +100,8 @@ Usage:
              [--idea-home <absolute-app-or-contents-path>]
              [--repository <owner/name>]
              [--release-base-url <https-or-file-url>]
-  install.sh uninstall [--install-root <absolute-path>]
+             [--assets-directory <absolute-path>]
+  install.sh uninstall [--installation-only] [--install-root <absolute-path>]
              [--bin-dir <absolute-path>]
              [--runtime-store <absolute-path>]
              [--runtime-directory <absolute-path>]
@@ -136,6 +137,10 @@ KAST_INSTALL_IDEA_HOME bypasses automatic discovery. It may name either the
 IntelliJ IDEA application bundle or its Contents directory. The optional
 KAST_INSTALL_IDEA_SEARCH_ROOT limits automatic traversal to one absolute root.
 
+--assets-directory installs the four exact local archive/checksum files without
+downloading. It requires --version and preserves the release URL, checksums,
+archive validation, and manifest identity used for a downloaded installation.
+
 The installer writes the four runtime settings to the config file as literal
 KEY=value records. Edit that file after installation or override any setting
 in the process environment; process values take precedence.
@@ -144,6 +149,10 @@ uninstall is the destructive recovery operation. It removes current and
 historical Kast commands, installation roots, runtime caches and sockets,
 configuration, launchd services, indexer processes, Homebrew formula, and old
 Kast IDE plugins. It preserves repositories and non-Kast JetBrains state.
+
+--installation-only removes only the selected installation, configuration,
+runtime store, and cache. First stop its workspaces with `kast stop`; this mode
+refuses active selected indexers and never signals another installation.
 
 --purge-existing runs that exact operation after the requested release has
 been downloaded and verified, but before any installation path is changed.
@@ -878,10 +887,12 @@ persisted_enable_launchd_set=false
 load_persisted_runtime_configuration "$config_file"
 
 action="install"
+installation_only=false
 purge_existing=false
 version="${KAST_VERSION:-}"
 repository="${KAST_REPOSITORY:-$DEFAULT_REPOSITORY}"
 release_base_url="${KAST_RELEASE_BASE_URL:-}"
+assets_directory=""
 install_root="${KAST_INSTALL_ROOT:-$default_install_root}"
 bin_dir="${KAST_BIN_DIR:-${HOME}/.local/bin}"
 if [[ ${KAST_RUNTIME_STORE+x} == x ]]; then
@@ -936,6 +947,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --purge-existing)
       purge_existing=true
+      shift
+      ;;
+    --installation-only)
+      installation_only=true
       shift
       ;;
     --version)
@@ -993,6 +1008,14 @@ while [[ $# -gt 0 ]]; do
       release_base_url_option_set=true
       shift 2
       ;;
+    --assets-directory)
+      [[ $# -ge 2 ]] || fail "--assets-directory requires a value"
+      assets_directory="$2"
+      [[ "$assets_directory" == /* && -d "$assets_directory" && ! -L "$assets_directory" ]] ||
+        fail "--assets-directory must name an existing absolute directory, not a symlink"
+      assets_directory="$(CDPATH='' cd -- "$assets_directory" && pwd -P)"
+      shift 2
+      ;;
     *) fail "unknown argument: $1" ;;
   esac
 done
@@ -1003,6 +1026,7 @@ done
 if [[ "$action" == "uninstall" ]]; then
   [[ "$purge_existing" == false ]] ||
     fail "--purge-existing is valid only with install"
+  [[ -z "$assets_directory" ]] || fail "--assets-directory is valid only with install"
   [[ "$version_option_set" == false && "$repository_option_set" == false && \
     "$release_base_url_option_set" == false && "$enable_launchd_option_set" == false && \
     "$idea_home_option_set" == false ]] ||
@@ -1019,12 +1043,40 @@ if [[ "$action" == "uninstall" ]]; then
   default_runtime_socket_directory="$(
     runtime_socket_directory_for "$default_runtime_directory"
   )"
+  if [[ "$installation_only" == true ]]; then
+    validate_cleanup_plan
+    process_table="$("$process_table_command" -ax -o pid=,command=)"
+    while IFS=$' \t' read -r _selected_pid selected_command; do
+      case "$selected_command" in
+        *io.github.amichne.kast.indexer.KastIndexerMainKt*)
+          case "$selected_command" in
+            *"$runtime_directory/"*|*"$runtime_socket_directory/"*)
+              fail "selected installation has an active indexer; run kast stop in its workspace first"
+              ;;
+          esac
+          ;;
+      esac
+    done <<< "$process_table"
+    for selected_path in "$bin_dir/kast" "$install_root" "$runtime_store" \
+      "$cache_root" "$runtime_directory" "$runtime_socket_directory" "$config_root"; do
+      remove_owned_path "$selected_path"
+    done
+    note "uninstalled selected Kast installation"
+    exit 0
+  fi
   purge_kast
   note "uninstalled Kast"
   exit 0
 fi
 
-require_command curl
+[[ "$installation_only" == false ]] || fail "--installation-only is valid only with uninstall"
+
+if [[ -z "$assets_directory" ]]; then
+  require_command curl
+else
+  [[ "$version_option_set" == true && -n "$version" && "$version" != latest ]] ||
+    fail "--assets-directory requires an explicit --version"
+fi
 require_command tar
 require_command unzip
 require_command shasum
@@ -1119,7 +1171,52 @@ staged_runtime=""
 staged_runtime_checksum=""
 staged_launcher=""
 staged_configuration=""
+activation_state="unstarted"
+prior_current=""
+prior_command=""
+prior_configuration="absent"
+staged_link=""
+
+# The supported host is macOS. BSD mv -h replaces the link itself atomically;
+# the destination must never be followed into the selected version directory.
+replace_managed_link() {
+  local destination="$1"
+  local target="$2"
+  staged_link="$(mktemp "${destination}.XXXXXX")"
+  rm -f "$staged_link"
+  ln -s "$target" "$staged_link"
+  mv -f -h "$staged_link" "$destination"
+  staged_link=""
+}
+
+restore_activation() {
+  if [[ -n "$prior_current" ]]; then
+    replace_managed_link "$current_link" "$prior_current"
+  else
+    rm -f "$current_link"
+  fi
+  if [[ -n "$prior_command" ]]; then
+    replace_managed_link "$command_link" "$prior_command"
+  else
+    rm -f "$command_link"
+  fi
+  if [[ "$prior_configuration" == "present" ]]; then
+    staged_configuration="$(mktemp "$config_root/.environment-restore.XXXXXX")"
+    cp -p "$temporary_root/prior-environment" "$staged_configuration"
+    mv -f "$staged_configuration" "$config_file"
+    staged_configuration=""
+  else
+    rm -f "$config_file"
+  fi
+  warning "activation failed; restored the prior command and configuration"
+}
+
 cleanup() {
+  local status=$?
+  trap - EXIT HUP INT TERM
+  if [[ "$activation_state" == "pending" ]]; then
+    restore_activation
+  fi
   rm -rf "$temporary_root"
   if [[ -n "$staged_root" && -e "$staged_root" ]]; then
     rm -rf "$staged_root"
@@ -1128,8 +1225,13 @@ cleanup() {
   [[ -z "$staged_runtime_checksum" ]] || rm -f "$staged_runtime_checksum"
   [[ -z "$staged_launcher" ]] || rm -f "$staged_launcher"
   [[ -z "$staged_configuration" ]] || rm -f "$staged_configuration"
+  [[ -z "$staged_link" ]] || rm -f "$staged_link"
+  exit "$status"
 }
 trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 archive="$temporary_root/$control_name"
 checksum="$temporary_root/$control_name.sha256"
@@ -1144,15 +1246,21 @@ for asset in \
   "$control_name.sha256" \
   "$runtime_name" \
   "$runtime_name.sha256"; do
-  curl \
-    --fail \
-    --location \
-    --silent \
-    --show-error \
-    --retry 5 \
-    --retry-delay 2 \
-    --output "$temporary_root/$asset" \
-    "$release_url/$asset"
+  if [[ -n "$assets_directory" ]]; then
+    [[ -f "$assets_directory/$asset" && ! -L "$assets_directory/$asset" ]] ||
+      fail "local release asset must be a regular file: $asset"
+    cp "$assets_directory/$asset" "$temporary_root/$asset"
+  else
+    curl \
+      --fail \
+      --location \
+      --silent \
+      --show-error \
+      --retry 5 \
+      --retry-delay 2 \
+      --output "$temporary_root/$asset" \
+      "$release_url/$asset"
+  fi
 done
 
 control_digest="$(verify_checksum "$archive" "$checksum" "$control_name")"
@@ -1229,15 +1337,21 @@ if [[ -e "$command_link" || -L "$command_link" ]]; then
   esac
 fi
 
-install_runtime_configuration "$config_file"
+if [[ -e "$config_file" || -L "$config_file" ]]; then
+  [[ -f "$config_file" && ! -L "$config_file" ]] ||
+    fail "existing configuration is not a regular file: $config_file"
+  cp -p "$config_file" "$temporary_root/prior-environment"
+  prior_configuration="present"
+fi
 
-# `ln -sfn` replaces only the installer-owned links checked above. It does not
-# follow a `current` symlink to the installed version directory.
-ln -sfn "versions/$version" "$current_link"
-ln -sfn "$install_root/current/bin/kast-complete" "$command_link"
+activation_state="pending"
+install_runtime_configuration "$config_file"
+replace_managed_link "$current_link" "versions/$version"
+replace_managed_link "$command_link" "$install_root/current/bin/kast-complete"
 
 verify_control_root "$target_root" "$version" "$java_executable" "$java_home"
 "$command_link" --version >/dev/null
+activation_state="committed"
 
 note "installed Kast $version"
 note "command: $command_link"
