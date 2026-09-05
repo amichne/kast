@@ -1,8 +1,9 @@
 package io.github.amichne.kast.cli.broker.provider
 
-import io.github.amichne.kast.cli.broker.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.cli.broker.core.ObserverMarkdown
 import io.github.amichne.kast.cli.broker.core.ObserverPresentation
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.SourceLineRangeDocument
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -18,22 +19,42 @@ internal object KastObserverProjector {
     internal fun project(
         operation: KastOperationId,
         output: KastInvocationOutput,
+    ): ObserverPresentation = if (!output.success) ObserverPresentation.None else projectDocument(
+        operation,
+        output.document,
+        ObserverWorkingDirectory.from(output.observerDirectory),
+    )
+
+    internal fun projectHistorical(
+        envelope: JsonObject,
+        directory: ObserverWorkingDirectory,
     ): ObserverPresentation {
-        if (!output.success || output.document.strictString("status") != "completed") {
+        val operation = (envelope["document"] as? JsonObject)?.strictString("operation")
+            ?.let(KastOperationId::admit) ?: return ObserverPresentation.None
+        return projectDocument(operation, envelope, directory)
+    }
+
+    private fun projectDocument(
+        operation: KastOperationId,
+        envelope: JsonObject,
+        directory: ObserverWorkingDirectory,
+    ): ObserverPresentation {
+        if (envelope.strictString("status") != "completed") {
             return ObserverPresentation.None
         }
-        val document = output.document["document"] as? JsonObject
+        val document = envelope["document"] as? JsonObject
             ?: return ObserverPresentation.None
         if (document.strictString("operation") != operation.value) {
             return ObserverPresentation.None
         }
         val evidence = ObserverEvidence.admit(document) ?: return ObserverPresentation.None
         val markdown = when (operation.value) {
-            SYMBOL_DISCOVER -> projectDiscovery(document, evidence, output.observerDirectory)
-            SYMBOL_INSPECT -> projectInspection(document, evidence, output.observerDirectory)
-            SOURCE_READ -> projectSource(document, evidence, output.observerDirectory)
-            RELATION_READ -> projectRelations(document, evidence, output.observerDirectory)
-            TRAVERSAL_RUN -> projectTraversal(document, evidence, output.observerDirectory)
+            SYMBOL_DISCOVER -> projectDiscovery(document, evidence, directory)
+            SYMBOL_INSPECT -> projectInspection(document, evidence, directory)
+            SOURCE_READ -> projectSource(document, evidence, directory)
+            RELATION_READ -> projectRelations(document, evidence, directory)
+            TRAVERSAL_RUN -> projectTraversal(document, evidence, directory)
+            DIAGNOSTIC_CHECK -> projectDiagnostics(document, evidence, directory)
             else -> null
         } ?: return ObserverPresentation.None
         return ObserverPresentation.Markdown(ObserverMarkdown(markdown))
@@ -42,7 +63,7 @@ internal object KastObserverProjector {
     private fun projectDiscovery(
         document: JsonObject,
         evidence: ObserverEvidence,
-        observerDirectory: CanonicalBrokerDirectory,
+        observerDirectory: ObserverWorkingDirectory,
     ): String? {
         val candidates = (document["items"] as? JsonArray)?.map { candidate ->
             admitDiscovery(candidate as? JsonObject ?: return null, observerDirectory) ?: return null
@@ -69,7 +90,7 @@ internal object KastObserverProjector {
 
     private fun admitDiscovery(
         item: JsonObject,
-        observerDirectory: CanonicalBrokerDirectory,
+        observerDirectory: ObserverWorkingDirectory,
     ): DiscoveredSymbolObservation? {
         val file = item.strictString("file")
             ?.let { raw -> ObserverFilePath.admit(raw, observerDirectory.path) }
@@ -102,7 +123,7 @@ internal object KastObserverProjector {
     private fun projectInspection(
         document: JsonObject,
         evidence: ObserverEvidence,
-        observerDirectory: CanonicalBrokerDirectory,
+        observerDirectory: ObserverWorkingDirectory,
     ): String? {
         val symbol = document["symbol"] as? JsonObject ?: return null
         val name = symbol.strictLabel("name") ?: return null
@@ -142,7 +163,7 @@ internal object KastObserverProjector {
     private fun projectSource(
         document: JsonObject,
         evidence: ObserverEvidence,
-        observerDirectory: CanonicalBrokerDirectory,
+        observerDirectory: ObserverWorkingDirectory,
     ): String? {
         val snapshot = document["snapshot"] as? JsonObject ?: return null
         if (document["region"] !is JsonObject || document["entities"] !is JsonArray) return null
@@ -158,6 +179,21 @@ internal object KastObserverProjector {
         }
         val body = buildString {
             append(file.link())
+            val lines = when (val candidate = text["lines"]) {
+                null -> null
+                is JsonObject -> candidate
+                else -> return null
+            }
+            if (lines != null) {
+                val range = when (val admitted = SourceLineRangeDocument.parse(
+                    lines.strictLong("startInclusive") ?: return null,
+                    lines.strictLong("endInclusive") ?: return null,
+                )) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return null
+                }
+                append(" · lines ${range.startInclusive.value}–${range.endInclusive.value}")
+            }
             source?.let { returned ->
                 append("\n\n")
                 append(fencedKotlin(returned))
@@ -166,10 +202,33 @@ internal object KastObserverProjector {
         return observerDocument("source", evidence, body)
     }
 
+    private fun projectDiagnostics(
+        document: JsonObject,
+        evidence: ObserverEvidence,
+        directory: ObserverWorkingDirectory,
+    ): String? {
+        val diagnostics = document["diagnostics"] as? JsonArray ?: return null
+        if (diagnostics.isEmpty()) return observerDocument("diagnostics", evidence, "_No diagnostics._")
+        val rows = diagnostics.map { entry ->
+            val diagnostic = entry as? JsonObject ?: return null
+            val severity = diagnostic.strictString("severity")
+                ?.takeIf { it in setOf("error", "warning", "info") } ?: return null
+            val message = diagnostic.strictLabel("message") ?: return null
+            val location = diagnostic["location"] as? JsonObject ?: return null
+            val file = location.strictString("file")
+                ?.let { ObserverFilePath.admit(it, directory.path) } ?: return null
+            val range = location["range"] as? JsonObject ?: return null
+            val start = range.strictInt("startInclusive")?.takeIf { it >= 0 } ?: return null
+            val end = range.strictInt("endExclusive")?.takeIf { it >= start } ?: return null
+            "- **$severity** · ${file.link()} · UTF-16 offsets $start–$end: ${inlineCode(message)}"
+        }
+        return observerDocument("diagnostics", evidence, rows.joinToString("\n"))
+    }
+
     private fun projectRelations(
         document: JsonObject,
         evidence: ObserverEvidence,
-        observerDirectory: CanonicalBrokerDirectory,
+        observerDirectory: ObserverWorkingDirectory,
     ): String? {
         val relations = (document["relations"] as? JsonArray)?.map { candidate ->
             admitRelation(candidate as? JsonObject ?: return null, observerDirectory.path)
@@ -210,7 +269,7 @@ internal object KastObserverProjector {
     private fun projectTraversal(
         document: JsonObject,
         evidence: ObserverEvidence,
-        observerDirectory: CanonicalBrokerDirectory,
+        observerDirectory: ObserverWorkingDirectory,
     ): String? {
         val graph = document["graph"] as? JsonObject ?: return null
         val snapshot = graph["snapshot"] as? JsonObject ?: return null
@@ -622,6 +681,7 @@ internal object KastObserverProjector {
     private const val SOURCE_READ = "source.read"
     private const val RELATION_READ = "relation.read"
     private const val TRAVERSAL_RUN = "traversal.run"
+    private const val DIAGNOSTIC_CHECK = "diagnostic.check"
     private const val MAXIMUM_LABEL_LENGTH = 16_384
     private const val MAXIMUM_FILE_LENGTH = 16_384
     private val BACKTICK_RUN = Regex("`+")

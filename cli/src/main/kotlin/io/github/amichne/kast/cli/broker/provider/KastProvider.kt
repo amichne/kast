@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli.broker.provider
 
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import io.github.amichne.kast.cli.broker.core.BrokerTool
 import io.github.amichne.kast.cli.broker.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.cli.broker.core.ProviderCall
@@ -58,7 +60,7 @@ internal class KastProviderOptions private constructor(
             executable: Path,
             qualificationDirectory: Path,
             processExecutor: BrokerProcessExecutor = JdkBrokerProcessExecutor,
-            qualificationTimeoutMillis: Long = 10_000L,
+            qualificationTimeoutMillis: Long = OperationExecutionBudget.LOCAL_QUALIFICATION.value,
         ): Refinement<KastProviderOptions, KastProviderOptionsFailure> {
             val admittedExecutable = when (val admission = BrokerExecutable.admit(executable)) {
                 is Refinement.Refined -> admission.value
@@ -287,6 +289,7 @@ internal object KastProviderQualifier {
             outputSchema,
             invoke = { runtime, input, context -> runtime.invoke(this, input, context) },
             encode = KastInvocationOutput::document,
+            invocationBudget = executionBudget.invocation,
             present = { output ->
                 val observerPresentation = try {
                     KastObserverProjector.project(operation, output)
@@ -303,7 +306,7 @@ internal object KastProviderQualifier {
     }
 
     private fun admitProjection(projection: KastServerProjectionBoundary): List<QualifiedKastTool>? {
-        if (projection.schemaVersion !in setOf(1, 2) || projection.namespace != "kast") return null
+        if (projection.schemaVersion !in setOf(1, 2, 3, 4) || projection.namespace != "kast") return null
         if (projection.tools.isEmpty() || projection.tools.size > 64) return null
         if (projection.tools.map(KastServerToolBoundary::name).hasDuplicates()) return null
         if (projection.tools.map(KastServerToolBoundary::operationId).hasDuplicates()) return null
@@ -315,12 +318,22 @@ internal object KastProviderQualifier {
         tool: KastServerToolBoundary,
     ): QualifiedKastTool? {
         val operation = KastOperationId.admit(tool.operationId) ?: return null
+        val canonicalOperation = CanonicalOperation.entries.singleOrNull {
+            it.id.value == operation.value
+        } ?: return null
+        val executionBudget = OperationExecutionBudget.forOperation(canonicalOperation)
+        if (projectionVersion >= 3) {
+            val declared = tool.executionBudget ?: return null
+            if (declared.readinessMillis != OperationExecutionBudget.WORKSPACE_READINESS.value ||
+                declared.operationMillis != executionBudget.operation.value
+            ) return null
+        }
         val name = refined(ToolName.admit(tool.name)) ?: return null
         val description = refined(ToolDescription.admit(tool.description)) ?: return null
         if (tool.cliUsage.isBlank() || tool.cliUsage.length > 16_384) return null
         val approval = when (projectionVersion) {
             1 -> tool.approvalPolicy ?: KastApprovalPolicy.NONE
-            2 -> tool.approvalPolicy ?: return null
+            2, 3, 4 -> tool.approvalPolicy ?: return null
             else -> return null
         }
         if (tool.invocation.command.isEmpty() || tool.invocation.command.size > 16) return null
@@ -346,6 +359,7 @@ internal object KastProviderQualifier {
         val outputSchema = refined(NetworkntJsonSchemaCompiler.compile(outputDocument)) ?: return null
         return QualifiedKastTool(
             operation,
+            executionBudget,
             name,
             description,
             tool.deferLoading,
@@ -478,7 +492,7 @@ internal class KastRuntime(
                 arguments,
                 context.workingDirectory,
                 MAXIMUM_OUTPUT_BYTES,
-                INVOCATION_TIMEOUT_MILLIS,
+                tool.executionBudget.operation.value,
             )
         ) {
             is Refinement.Refined -> admission.value
@@ -486,7 +500,42 @@ internal class KastRuntime(
                 ProviderFailureCode.UNEXPECTED_FAILURE,
             )
         }
-        val execution = options.processExecutor.execute(request)
+        val readinessRequest = when (val admission = BrokerProcessRequest.admit(
+            options.executable,
+            listOf("start"),
+            context.workingDirectory,
+            MAXIMUM_OUTPUT_BYTES,
+            OperationExecutionBudget.WORKSPACE_READINESS.value,
+        )) {
+            is Refinement.Refined -> admission.value
+            is Refinement.Rejected -> return ProviderCall.Rejected(ProviderFailureCode.UNEXPECTED_FAILURE)
+        }
+        when (val readiness = options.processExecutor.execute(readinessRequest)) {
+            is BrokerProcessExecution.Rejected -> return ProviderCall.Rejected(
+                readiness.failure.providerFailureCode(),
+            )
+            is BrokerProcessExecution.Completed -> {
+                if (readiness.exitCode != 0) return outcome(readiness, context)
+                val ready = try {
+                    Json.parseToJsonElement(readiness.stdout) as? JsonObject
+                } catch (_: SerializationException) {
+                    null
+                } catch (_: IllegalArgumentException) {
+                    null
+                }
+                if (ready?.get("command") != JsonPrimitive("start") ||
+                    ready["status"] != JsonPrimitive("complete") ||
+                    ready["runtime"] != JsonPrimitive("running")
+                ) return ProviderCall.Rejected(ProviderFailureCode.MALFORMED_KAST_OUTPUT)
+            }
+        }
+        return outcome(options.processExecutor.execute(request), context)
+    }
+
+    private fun outcome(
+        execution: BrokerProcessExecution,
+        context: io.github.amichne.kast.cli.broker.core.BrokerInvocationContext,
+    ): ProviderCall<KastInvocationOutput> {
         val completed = execution as? BrokerProcessExecution.Completed
             ?: return ProviderCall.Rejected(
                 (execution as BrokerProcessExecution.Rejected).failure.providerFailureCode(),
@@ -523,7 +572,6 @@ internal class KastRuntime(
 
     private companion object {
         const val MAXIMUM_OUTPUT_BYTES = 512 * 1_024
-        const val INVOCATION_TIMEOUT_MILLIS = 30_000L
     }
 }
 
@@ -539,6 +587,7 @@ private sealed interface KastContractQualification {
 
 internal data class QualifiedKastTool(
     val operation: KastOperationId,
+    val executionBudget: OperationExecutionBudget,
     val name: ToolName,
     val description: ToolDescription,
     val deferLoading: Boolean,
@@ -594,10 +643,17 @@ private data class KastServerToolBoundary(
     val description: String,
     val deferLoading: Boolean,
     val approvalPolicy: KastApprovalPolicy? = null,
+    val executionBudget: KastExecutionBudgetBoundary? = null,
     val cliUsage: String,
     val inputSchema: JsonElement,
     val outputSchema: JsonElement,
     val invocation: KastCliInvocationBoundary,
+)
+
+@Serializable
+private data class KastExecutionBudgetBoundary(
+    val readinessMillis: Long,
+    val operationMillis: Long,
 )
 
 @Serializable

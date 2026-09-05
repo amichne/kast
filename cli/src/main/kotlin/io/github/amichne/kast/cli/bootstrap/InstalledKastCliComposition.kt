@@ -1,7 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.cli.broker.BrokerEnsuringRootRuntimeDemander
-import io.github.amichne.kast.cli.broker.InstalledPersistentBrokerService
 import io.github.amichne.kast.cli.broker.InstalledBrokerServerRunner
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
@@ -283,13 +281,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
                 commandGraphFactory,
                 FilesystemCanonicalRootDiscovery,
                 endpointLocator,
-                BrokerEnsuringRootRuntimeDemander(
-                    InstalledPersistentBrokerService(
-                        installedKastExecutable,
-                        userHome,
-                    ),
-                    sidecarDemander,
-                ),
+                sidecarDemander,
                 UnixDomainWireClient(),
                 localMetadata,
                 ExactRootRuntimeLifecycle(

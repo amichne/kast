@@ -322,7 +322,11 @@ private fun SourceReadResultWireDocument.isCoherent(
         -> true
         is SourceTextProjectionDocument.Returned -> text.selection.isWithinSnapshot() &&
             text.text.value.length ==
-            text.selection.range.endExclusive.value - text.selection.range.startInclusive.value
+            text.selection.range.endExclusive.value - text.selection.range.startInclusive.value &&
+            text.lines.startInclusive.value <= text.selection.range.startInclusive.value.toLong() + 1 &&
+            text.lines.endInclusive.value <= snapshotLength.toLong() + 1 &&
+            text.lines.endInclusive.value - text.lines.startInclusive.value ==
+                text.text.value.dropLast(1).count { it == '\n' }.toLong()
     }
 }
 
@@ -531,6 +535,7 @@ private fun SourceTextProjectionDocument.toWireDocument(): SourceTextProjectionW
         is SourceTextProjectionDocument.Returned -> SourceTextProjectionWireDocument.Returned(
             selection.toWireDocument(),
             text.value,
+            SourceLineRangeWireDocument(lines.startInclusive.value, lines.endInclusive.value),
         )
         is SourceTextProjectionDocument.Withheld -> SourceTextProjectionWireDocument.Withheld(
             reason.toWireDocument(),
@@ -544,6 +549,9 @@ private fun SourceTextProjectionWireDocument.toContract():
     is SourceTextProjectionWireDocument.Returned -> combineConverted(
         selection.toContract(),
         text.protocolSourceText(),
+        io.github.amichne.kast.protocol.contract.SourceLineRangeDocument.parse(
+            lines.startInclusive, lines.endInclusive,
+        ).toWireDocumentConversion(),
         SourceTextProjectionDocument::Returned,
     )
     is SourceTextProjectionWireDocument.Withheld -> WireDocumentConversion.Converted(

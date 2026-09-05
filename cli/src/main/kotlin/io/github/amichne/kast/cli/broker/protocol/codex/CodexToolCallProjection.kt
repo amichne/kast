@@ -498,6 +498,8 @@ internal sealed interface CodexThreadHistoryProjection {
     ) : CodexThreadHistoryProjection
 }
 
+internal enum class CodexObserverHistoryMode { RECONSTRUCT, SANITIZED_ONLY }
+
 /** Projects owned tool items in every installed response or notification carrier shape. */
 internal object CodexThreadHistoryProjector {
     internal fun project(
@@ -513,16 +515,27 @@ internal object CodexThreadHistoryProjector {
         shape: CodexItemContainerShape,
         container: JsonObject,
         ownedNamespaces: Set<ProviderNamespace>,
-    ): CodexThreadHistoryProjection = when (shape) {
-        CodexItemContainerShape.THREAD -> projectThreadContainer(container, ownedNamespaces)
-        CodexItemContainerShape.TURN -> projectTurnContainer(container, ownedNamespaces)
-        CodexItemContainerShape.THREADS_PAGE -> projectThreadsPage(container, ownedNamespaces)
-        CodexItemContainerShape.SEARCH_RESULTS_PAGE ->
-            projectSearchResultsPage(container, ownedNamespaces)
-        CodexItemContainerShape.TURNS_PAGE -> projectTurnsPage(container, ownedNamespaces)
-        CodexItemContainerShape.ITEM_ENTRIES_PAGE ->
-            projectItemEntriesPage(container, ownedNamespaces)
-        CodexItemContainerShape.TIMELINE_PAGE -> projectTimelinePage(container, ownedNamespaces)
+        observerMode: CodexObserverHistoryMode = CodexObserverHistoryMode.RECONSTRUCT,
+    ): CodexThreadHistoryProjection {
+        val projection = when (shape) {
+            CodexItemContainerShape.THREAD -> projectThreadContainer(container, ownedNamespaces)
+            CodexItemContainerShape.TURN -> projectTurnContainer(container, ownedNamespaces)
+            CodexItemContainerShape.THREADS_PAGE -> projectThreadsPage(container, ownedNamespaces)
+            CodexItemContainerShape.SEARCH_RESULTS_PAGE ->
+                projectSearchResultsPage(container, ownedNamespaces)
+            CodexItemContainerShape.TURNS_PAGE -> projectTurnsPage(container, ownedNamespaces)
+            CodexItemContainerShape.ITEM_ENTRIES_PAGE ->
+                projectItemEntriesPage(container, ownedNamespaces)
+            CodexItemContainerShape.TIMELINE_PAGE -> projectTimelinePage(container, ownedNamespaces)
+        }
+        if (observerMode == CodexObserverHistoryMode.SANITIZED_ONLY) return projection
+        return when (projection) {
+            is CodexThreadHistoryProjection.Projected -> CodexThreadHistoryProjection.Projected(
+                CodexHistoricalObserverProjector.project(shape, projection.result),
+            )
+            CodexThreadHistoryProjection.Unchanged,
+            is CodexThreadHistoryProjection.Rejected -> projection
+        }
     }
 
     internal fun containsOwnedCall(

@@ -1,5 +1,8 @@
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.protocol.contract.ProtocolSourceText
+import io.github.amichne.kast.protocol.contract.SourceLineRangeDocument
+
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
@@ -40,6 +43,31 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class CanonicalSourceReadWireBindingTest {
+    @Test
+    fun `returned source line evidence round trips and rejects impossible line spans`() {
+        val binding = CanonicalOperationWireBindings.sourceRead
+        val result = sourceReadResult()
+        val returned = result.copy(text = SourceTextProjectionDocument.Returned(
+            result.region.selection,
+            ProtocolSourceText.parse("x".repeat(80)).refinedValue(),
+            SourceLineRangeDocument.parse(2, 2).refinedValue(),
+        ))
+        val outcome = OperationOutcome.Complete(EvidenceEnvelope(
+            binding.operation.id, EvidenceGeneration.parse(17).refinedValue(), returned,
+        ))
+        val document = binding.encodeOutcome(outcome).encodedDocument()
+        assertEquals(WireDecoding.Decoded(outcome), binding.decodeOutcome(document))
+        for (invalid in listOf(
+            document.replace("\"lines\":{\"startInclusive\":2,\"endInclusive\":2}",
+                "\"lines\":{\"startInclusive\":0,\"endInclusive\":2}"),
+            document.replace("\"lines\":{\"startInclusive\":2,\"endInclusive\":2}",
+                "\"lines\":{\"startInclusive\":2,\"endInclusive\":3}"),
+        )) {
+            assertEquals(WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.RESULT)),
+                binding.decodeOutcome(invalid))
+        }
+    }
+
     @Test
     fun `canonical source read request and all outcome families round trip`() {
         val binding = CanonicalOperationWireBindings.sourceRead

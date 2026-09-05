@@ -147,6 +147,7 @@ object CanonicalOperationDefinitions {
         OperationScope.SOURCE,
         CompletenessPolicy.QUALIFIED_ALLOWED,
         HostedExposure.PUBLIC,
+        schema = schema("kast.source.read.v3"),
     )
 
     val relationRead = definition(

@@ -22,6 +22,16 @@ import org.junit.jupiter.api.Test
 
 class InstalledServerProjectionTest {
     @Test
+    fun `server projection publishes separate readiness semantic and graph budgets`() {
+        val tools = projectionTools()
+        val readBudget = tools.tool("source.read").getValue("executionBudget").jsonObject
+        val graphBudget = tools.tool("topology.build").getValue("executionBudget").jsonObject
+        assertEquals("1020000", readBudget.getValue("readinessMillis").jsonPrimitive.content)
+        assertEquals("60000", readBudget.getValue("operationMillis").jsonPrimitive.content)
+        assertEquals("240000", graphBudget.getValue("operationMillis").jsonPrimitive.content)
+    }
+
+    @Test
     fun `installed broker exposes workflow facade names and explicit change approval`() {
         val tools = projectionTools()
 
@@ -111,7 +121,7 @@ class InstalledServerProjectionTest {
         val internalOperations = HostedOperationProjection.internalDefinitions
             .map { it.operation.id.value }
 
-        assertEquals(2, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(4, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
             expectedPublicOperations,
@@ -334,7 +344,7 @@ class InstalledServerProjectionTest {
         assertEquals("REPEATED_OPTION", bindingTypes.getValue("visibility"))
         assertEquals("FLAG", bindingTypes.getValue("includeCalls"))
 
-        val complete = """{"status":"completed","document":{"operation":"source.read","status":"complete","snapshot":{"canonicalRoot":"/workspace","generation":17,"sourceState":"state","file":"src/Empty.kt","textIdentity":"identity","coordinateUnit":"utf16-code-unit","length":0},"region":{"kind":"file","selection":{"selector":"source-selector-v1:payload:digest","range":{"startInclusive":0,"endExclusive":0}}},"entities":[],"text":{"type":"returned","selection":{"selector":"source-selector-v1:payload:digest","range":{"startInclusive":0,"endExclusive":0}},"text":""}}} """
+        val complete = """{"status":"completed","document":{"operation":"source.read","status":"complete","snapshot":{"canonicalRoot":"/workspace","generation":17,"sourceState":"state","file":"src/Empty.kt","textIdentity":"identity","coordinateUnit":"utf16-code-unit","length":0},"region":{"kind":"file","selection":{"selector":"source-selector-v1:payload:digest","range":{"startInclusive":0,"endExclusive":0}}},"entities":[],"text":{"type":"returned","lines":{"startInclusive":1,"endInclusive":1},"selection":{"selector":"source-selector-v1:payload:digest","range":{"startInclusive":0,"endExclusive":0}},"text":""}}} """
         val qualified = """{"status":"completed","document":{"operation":"source.read","status":"qualified","snapshot":{"canonicalRoot":"/workspace","generation":17,"sourceState":"state","file":"src/Target.kt","textIdentity":"identity","coordinateUnit":"utf16-code-unit","length":10},"region":{"kind":"declaration","selection":{"selector":"source-selector-v1:payload:digest","range":{"startInclusive":0,"endExclusive":10}}},"entities":[],"text":{"type":"withheld","reason":"byte-limit-reached"},"qualification":{"knownMinimumEntityCount":0,"limitations":["text-byte-limit-reached"],"continuation":{"type":"unavailable"}}}}"""
         val missingRegionSelector = complete.replace(
             "\"selection\":{\"selector\":\"source-selector-v1:payload:digest\",\"range\":{\"startInclusive\":0,\"endExclusive\":0}},",

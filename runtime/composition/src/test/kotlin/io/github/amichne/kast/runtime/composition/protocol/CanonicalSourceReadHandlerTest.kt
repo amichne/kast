@@ -63,6 +63,8 @@ class CanonicalSourceReadHandlerTest {
         assertTrue(captured?.anchor is SourceReadAnchor.Source)
         assertEquals(7, complete.evidence.generation.value)
         assertEquals(fixture.text, returned.text.value)
+        assertEquals(1L, returned.lines.startInclusive.value)
+        assertEquals(1L, returned.lines.endInclusive.value)
         assertTrue(
             SourceSelectorTokenCodec.decode(
                 SourceSelectorToken.parse(returned.selection.selector.value).refined(),

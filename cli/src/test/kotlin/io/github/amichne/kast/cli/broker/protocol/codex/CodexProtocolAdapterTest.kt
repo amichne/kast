@@ -693,6 +693,45 @@ class CodexProtocolAdapterTest {
     }
 
     @Test
+    fun `resumed Kast thread admits a reconstructed source companion under the installed contract`(
+        @TempDir temporary: Path,
+    ) = runBlocking {
+        val cwd = temporary.toRealPath()
+        val broker = observerBroker(AtomicInteger(), mutableListOf())
+        val store = MemoryThreadCatalogStore()
+        store.write(ThreadCatalogBinding.admit("thread-1", broker.catalog.digest, cwd).refinedValue())
+        val adapter = CodexProtocolAdapter(broker, protocolContracts(), store)
+        adapter.fromDownstream("""{"id":12,"method":"thread/resume","params":{"threadId":"thread-1"}}""")
+        val result = buildJsonObject {
+            put("cwd", cwd.toString())
+            put("thread", buildJsonObject {
+                put("id", "thread-1")
+                put("turns", buildJsonArray {
+                    add(buildJsonObject {
+                        put("id", "turn-1")
+                        put("items", buildJsonArray {
+                            add(dynamicKastItem(
+                                buildJsonObject {},
+                                io.github.amichne.kast.cli.broker.provider.KastObserverFixtures.sourceRead,
+                                completed = true,
+                            ))
+                        })
+                    })
+                })
+            })
+        }
+        val response = buildJsonObject { put("id", 12); put("result", result) }
+        val route = adapter.fromUpstream(response.toString())
+        assertInstanceOf(ProtocolRouting.ForwardDownstream::class.java, route)
+        val items = Json.parseToJsonElement((route as ProtocolRouting.ForwardDownstream).message)
+            .jsonObject.getValue("result").jsonObject.getValue("thread").jsonObject
+            .getValue("turns").jsonArray.single().jsonObject.getValue("items").jsonArray
+        assertEquals(2, items.size)
+        assertEquals("agentMessage", items.last().jsonObject.getValue("type").jsonPrimitive.content)
+        assertTrue("```kotlin" in items.last().jsonObject.getValue("text").jsonPrimitive.content)
+    }
+
+    @Test
     fun `resumed thread history projects owned dynamic calls for downstream observers`(
         @TempDir temporary: Path,
     ) = runBlocking {

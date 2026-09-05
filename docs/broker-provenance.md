@@ -19,8 +19,27 @@ OpenAI currently provides a TypeScript Codex SDK but no Kotlin/JVM SDK for the A
 
 The retained broker version is `0.5.0`. Its behavioral defaults remain eight in-flight calls per
 connection, four per provider, a 1 MiB catalog, 64 provider descriptors, 64 KiB tool arguments,
-1 MiB tool results, a 10-second provider startup deadline, and a 30-second provider invocation
-deadline.
+1 MiB tool results. Kast execution deadlines now come from canonical operation metadata,
+projected by server projection version 4: 10 seconds per local qualification command, 17 minutes
+for workspace readiness, 60 seconds for a semantic operation, and 240 seconds for topology build.
+Provider qualification admits both local commands; each tool's outer deadline contains its
+readiness and operation deadlines. The 17-minute operational ceiling preserves the existing
+sidecar contract; release acceptance separately requires cold startup within 240 seconds.
+
+Semantic commands and `kast start` demand the sidecar directly. They do not discover Codex,
+read `CODEX_HOME`, or start the broker. `kast broker serve` is an explicit, read-only preview
+integration; a broker rejection cannot remove semantic CLI capability. The broker first runs
+`kast start` with the readiness deadline, then runs the selected semantic command with its own
+deadline. Cancellation terminates only that CLI wrapper. The detached sidecar remains owned by
+its exact bootstrap attempt; passive status exposes that state, and the next call joins that
+attempt or reuses its ready endpoint without launching a duplicate.
+
+`:cli:installedColdBrokerAcceptance` executes the production provider and dispatcher against a
+requested installed executable in a fresh workspace. Its JVM entry point is independently tested,
+and the journey checks cold readiness, direct-CLI result equivalence, exact selector reuse, source
+line presentation, and the read-only catalog without a cloud account. The bounded receipt retains
+digests and elapsed time. A run against a staged product is integration evidence; the release gate
+must additionally bind that journey to the exact verified release archives.
 
 Admitted dynamic-tool invocations publish one payload-free start event and one finite terminal
 event to `$CODEX_HOME/broker/service.log`. Each JSON line carries only thread, turn, call,
@@ -34,15 +53,18 @@ status, and duration while replacing semantic capability arguments such as selec
 continuations, and change plans with typed display placeholders. The exact arguments still reach
 Kast unchanged, and Kast's canonical result still returns unchanged to the App Server and model.
 
-For successful live `symbol.discover`, `symbol.inspect`, `source.read`, `relation.read`, and
-`traversal.run` calls, the broker may
+For successful live `symbol.discover`, `symbol.inspect`, `source.read`, `relation.read`,
+`traversal.run`, and `diagnostic.check` calls, the broker may
 consume a bounded, process-local presentation at the corresponding completed lifecycle event. It
 then emits the sanitized MCP completion followed by a schema-admitted `agentMessage` whose phase
 is `commentary` and whose text is Markdown. When that companion is available, the MCP result is an
 empty accepted result rather than a duplicate of the canonical model document. Presentation
 capacity exhaustion, projection failure, or rejection by the installed Codex contract suppresses
-the companion without changing tool execution or its model-facing reply. No presentation state is
-persisted, and historical companions are not reconstructed after restart or resume.
+the companion without changing tool execution or its model-facing reply. No presentation state is persisted. Thread reload and resume reconstruct the same deterministic
+companions from the canonical results and the historical working directory. This projection is
+pure: it neither reads current repository files nor starts a runtime. Full thread and turn item
+arrays can carry companions; standalone paginated item and timeline entries retain their ordinary
+sanitized tool result because they do not carry a proven working directory or a companion slot.
 
 Representative observer screenshots are generated without a Codex session or model request:
 
@@ -61,3 +83,11 @@ Final turn snapshots, thread start/resume/fork and read/mutation responses, thre
 review and queued-turn responses, and turns/items/timeline pages continue to use the MCP
 projection. Startup qualification proves the dynamic source and rendered MCP shapes against every
 installed item-bearing schema. Other namespaces remain byte-exact pass-through.
+
+Source outcome schema `kast.source.read.v3` includes inclusive one-based `text.lines` coordinates
+when text is returned. They are derived from the full normalized committed document only after
+its length and digest match the selected snapshot. The source companion shows those lines beside
+the repository-relative file and bounded Kotlin block. Diagnostic companions show severity,
+location, exact UTF-16 offsets, and message; selector and generation evidence stays in the
+canonical model result. Older source outcomes without line evidence retain their file and code
+presentation without invented coordinates.

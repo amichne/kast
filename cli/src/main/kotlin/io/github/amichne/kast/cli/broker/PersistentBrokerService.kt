@@ -1,11 +1,5 @@
 package io.github.amichne.kast.cli.broker
 
-import io.github.amichne.kast.cli.CanonicalRoot
-import io.github.amichne.kast.cli.HostedRuntimeDemand
-import io.github.amichne.kast.cli.RootRuntimeDemander
-import io.github.amichne.kast.cli.RuntimeAdmission
-import io.github.amichne.kast.cli.RuntimeAdmissionFailure
-import io.github.amichne.kast.cli.RuntimeStartupRequest
 import java.io.File
 import java.io.IOException
 import java.nio.charset.StandardCharsets
@@ -54,22 +48,6 @@ internal sealed interface PersistentBrokerServiceAdmission {
 
 internal fun interface PersistentBrokerService {
     fun ensure(): PersistentBrokerServiceAdmission
-}
-
-internal class BrokerEnsuringRootRuntimeDemander(
-    private val broker: PersistentBrokerService,
-    private val delegate: RootRuntimeDemander,
-) : RootRuntimeDemander {
-    override fun demand(
-        root: CanonicalRoot,
-        demand: HostedRuntimeDemand,
-        startup: RuntimeStartupRequest,
-    ): RuntimeAdmission = when (val admission = broker.ensure()) {
-        PersistentBrokerServiceAdmission.Ready -> delegate.demand(root, demand, startup)
-        is PersistentBrokerServiceAdmission.Rejected -> RuntimeAdmission.Rejected(
-            RuntimeAdmissionFailure.PersistentBroker(admission.failure),
-        )
-    }
 }
 
 @JvmInline

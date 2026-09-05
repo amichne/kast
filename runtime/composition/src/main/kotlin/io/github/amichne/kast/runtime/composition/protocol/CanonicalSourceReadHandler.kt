@@ -310,6 +310,9 @@ private fun protocolResult(
         is SourceTextProjection.Returned -> SourceTextProjectionDocument.Returned(
             text.selector.protocolSelection() ?: return null,
             ProtocolSourceText.parse(text.text).refinedOrNull() ?: return null,
+            io.github.amichne.kast.protocol.contract.SourceLineRangeDocument.parse(
+                text.lines.startInclusive.value, text.lines.endInclusive.value,
+            ).refinedOrNull() ?: return null,
         )
         is SourceTextProjection.Withheld -> SourceTextProjectionDocument.Withheld(
             when (text.reason) {

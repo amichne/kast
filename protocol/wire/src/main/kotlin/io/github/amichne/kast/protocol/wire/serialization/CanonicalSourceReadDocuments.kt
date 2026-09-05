@@ -302,6 +302,7 @@ internal sealed interface SourceTextProjectionWireDocument {
     data class Returned(
         val selection: SourceSelectionWireDocument,
         val text: String,
+        val lines: SourceLineRangeWireDocument,
     ) : SourceTextProjectionWireDocument
 
     @Serializable
@@ -367,3 +368,6 @@ internal enum class SourceReadRejectionWireDocument {
     @SerialName("compiler-analysis-unavailable") COMPILER_ANALYSIS_UNAVAILABLE,
     @SerialName("contract-violation") CONTRACT_VIOLATION,
 }
+
+@Serializable
+internal data class SourceLineRangeWireDocument(val startInclusive: Long, val endInclusive: Long)

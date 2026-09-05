@@ -15,6 +15,8 @@ import io.github.amichne.kast.cli.broker.core.ToolContent
 import io.github.amichne.kast.cli.broker.core.ToolName
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.withTimeout
@@ -23,6 +25,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -31,6 +34,85 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 
 class KastProviderTest {
+    @Test
+    fun `source observer preserves snapshot proven one-based line coordinates`() {
+        val source = KastObserverFixtures.sourceRead.replace(
+            "\"type\": \"returned\",",
+            "\"type\": \"returned\", \"lines\": {\"startInclusive\": 4, \"endInclusive\": 8},",
+        )
+        assertTrue("lines 4–8" in observer("source.read", source))
+        assertEquals(ObserverPresentation.None,
+            observerPresentation("source.read", source.replace("\"endInclusive\": 8", "\"endInclusive\": 0")))
+        assertEquals(ObserverPresentation.None, observerPresentation("source.read",
+            source.replace("{\"startInclusive\": 4, \"endInclusive\": 8}", "false")))
+    }
+
+    @Test
+    fun `diagnostic observer shows severity location and message without selectors`() {
+        val presentation = observer("diagnostic.check", """
+            {"status":"completed","document":{"operation":"diagnostic.check","status":"complete",
+             "diagnostics":[{"severity":"error","code":"UNRESOLVED_REFERENCE","message":"Unresolved reference: Missing",
+             "location":{"candidateSelector":"candidate:v2:hidden","file":"src/Example.kt",
+             "range":{"startInclusive":17,"endExclusive":24}}}]}}
+        """.trimIndent())
+        assertTrue("error" in presentation)
+        assertTrue("Example.kt" in presentation)
+        assertTrue("Unresolved reference: Missing" in presentation)
+        assertTrue("candidate:v2:" !in presentation)
+    }
+
+    @Test
+    fun `projection rejects missing or weakened canonical execution budgets`(
+        @TempDir temporary: Path,
+    ) = runBlocking {
+        val executable = executable(temporary.resolve("kast"))
+        for (schema in listOf(
+            capabilitySchema().replace("\"operationMillis\": 60000", "\"operationMillis\": 30000"),
+            capabilitySchema().replace("\"executionBudget\": {\"readinessMillis\": 1020000, \"operationMillis\": 60000},", ""),
+        )) {
+            val options = KastProviderOptions.admit(
+                executable,
+                temporary.toRealPath(),
+                RecordingProcessExecutor(schema),
+            ).refinedValue()
+            assertEquals(
+                KastProviderQualification.Rejected(KastQualificationFailure.SCHEMA_INCOMPATIBLE),
+                KastProviderQualifier.qualify(options),
+            )
+        }
+    }
+
+    @Test
+    fun `first cold invocation survives thirty seconds and separates readiness from semantic work`(
+        @TempDir temporary: Path,
+    ) = runTest {
+        val executable = executable(temporary.resolve("kast"))
+        val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+        val executor = RecordingProcessExecutor(capabilitySchema(), invocationDelayMillis = 31_000)
+        val options = KastProviderOptions.admit(executable, cwd, executor).refinedValue()
+        val qualification = assertInstanceOf(
+            KastProviderQualification.Qualified::class.java,
+            KastProviderQualifier.qualify(options),
+        )
+        val broker = Broker.create(listOf(qualification.registration), BrokerLimits.defaults())
+            .validatedValue()
+        val result = broker.dispatch(
+            BrokerDispatchRequest(
+                ToolAddress(namespace("kast"), toolName("symbol_lookup")),
+                buildJsonObject { put("query", "Thing") },
+                context(cwd),
+            ),
+        )
+        assertInstanceOf(BrokerDispatch.Completed::class.java, result)
+        assertEquals(
+            listOf(listOf("start"), listOf("symbol", "discover", "--query", "Thing")),
+            executor.requests.filterNot { it.arguments.first().startsWith("--") }
+                .map(BrokerProcessRequest::arguments),
+        )
+        assertEquals(1_020_000L, executor.requests.first { it.arguments == listOf("start") }.timeoutMillis)
+        assertEquals(60_000L, executor.requests.last().timeoutMillis)
+    }
+
     @Test
     fun `installed contract publishes and invokes only no-approval tools`(
         @TempDir temporary: Path,
@@ -431,6 +513,7 @@ class KastProviderTest {
     private class RecordingProcessExecutor(
         private val schema: String,
         private val replacementSchema: String = schema,
+        private val invocationDelayMillis: Long = 0,
     ) : BrokerProcessExecutor {
         val requests = mutableListOf<BrokerProcessRequest>()
         private var schemaReads = 0
@@ -447,11 +530,18 @@ class KastProviderTest {
                         "",
                     )
                 }
-                else -> BrokerProcessExecution.Completed(
-                    0,
-                    """{"operation":"symbol.discover","status":"complete","items":[]}""",
-                    "",
-                )
+                listOf("start") -> {
+                    delay(invocationDelayMillis)
+                    BrokerProcessExecution.Completed(0, """{"command":"start","status":"complete","runtime":"running"}""", "")
+                }
+                else -> {
+                    delay(invocationDelayMillis)
+                    BrokerProcessExecution.Completed(
+                        0,
+                        """{"operation":"symbol.discover","status":"complete","items":[]}""",
+                        "",
+                    )
+                }
             }
         }
     }
@@ -461,7 +551,7 @@ class KastProviderTest {
         {
           "schemaVersion": 1,
           "serverProjection": {
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "namespace": "kast",
             "tools": [
               {
@@ -470,6 +560,7 @@ class KastProviderTest {
                 "description": "$description",
                 "deferLoading": true,
                 "approvalPolicy": "none",
+                "executionBudget": {"readinessMillis": 1020000, "operationMillis": 60000},
                 "cliUsage": "kast symbol discover --query VALUE",
                 "inputSchema": {
                   "type": "object",
@@ -500,6 +591,7 @@ class KastProviderTest {
                 "description": "Apply an approved plan.",
                 "deferLoading": true,
                 "approvalPolicy": "explicit",
+                "executionBudget": {"readinessMillis": 1020000, "operationMillis": 60000},
                 "cliUsage": "kast change apply --plan VALUE",
                 "inputSchema": {
                   "type": "object",

@@ -20,36 +20,42 @@ sealed interface SourceTextProjection {
     class Returned private constructor(
         val selector: SourceSelector,
         val text: String,
+        val lines: SourceLineRange,
     ) : SourceTextProjection {
         companion object {
-            internal fun create(selector: SourceSelector, text: String): Returned =
-                Returned(selector, text)
+            internal fun create(selector: SourceSelector, text: String, lines: SourceLineRange): Returned =
+                Returned(selector, text, lines)
         }
     }
 
     data class Withheld(val reason: SourceTextWithheldReason) : SourceTextProjection
 
     companion object {
+        /**
+         * Refines the full normalized committed document into exact selected text and one-based
+         * source lines. Length and digest must match the selector snapshot before extraction;
+         * [SourceTextProjectionFailure] closes every expected mismatch.
+         */
         fun returned(
             selector: SourceSelector,
-            text: String,
+            normalizedDocumentText: String,
         ): Refinement<Returned, SourceTextProjectionFailure> {
-            if ('\r' in text) {
+            if ('\r' in normalizedDocumentText) {
                 return Refinement.Rejected(SourceTextProjectionFailure.TEXT_NOT_NORMALIZED)
             }
-            val expectedLength = selector.range.endExclusive.value -
-                selector.range.startInclusive.value
-            if (text.length != expectedLength) {
+            if (normalizedDocumentText.length != selector.snapshot.length.value) {
                 return Refinement.Rejected(SourceTextProjectionFailure.TEXT_LENGTH_MISMATCH)
             }
             if (
-                selector.range.startInclusive.value == 0 &&
-                selector.range.endExclusive.value == selector.snapshot.length.value &&
-                SourceTextIdentity.fromNormalizedCommittedText(text) != selector.snapshot.textIdentity
+                SourceTextIdentity.fromNormalizedCommittedText(normalizedDocumentText) != selector.snapshot.textIdentity
             ) {
                 return Refinement.Rejected(SourceTextProjectionFailure.DOCUMENT_IDENTITY_MISMATCH)
             }
-            return Refinement.Refined(Returned.create(selector, text))
+            return Refinement.Refined(Returned.create(
+                selector,
+                normalizedDocumentText.substring(selector.range.startInclusive.value, selector.range.endExclusive.value),
+                SourceLineRange.fromCommittedText(normalizedDocumentText, selector.range),
+            ))
         }
     }
 }

@@ -4,6 +4,7 @@ import io.github.amichne.kast.cli.command.CliCommandSurface
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.registry.HostedBindingCompleteness
 import io.github.amichne.kast.protocol.registry.HostedOperationProjection
+import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -14,7 +15,7 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 
-private const val SERVER_PROJECTION_SCHEMA_VERSION = 2
+private const val SERVER_PROJECTION_SCHEMA_VERSION = 4
 private const val MAXIMUM_PROTOCOL_TEXT_LENGTH = 1_048_576
 private const val MAXIMUM_WORKSPACE_FILE_LENGTH = 4_096
 private const val MAXIMUM_PROTOCOL_COUNT = 1_000
@@ -34,10 +35,17 @@ internal data class InstalledServerToolDocument(
     val description: String,
     val deferLoading: Boolean,
     val approvalPolicy: InstalledServerApprovalPolicy,
+    val executionBudget: InstalledServerExecutionBudgetDocument,
     val cliUsage: String,
     val inputSchema: JsonElement,
     val outputSchema: JsonElement,
     val invocation: InstalledServerCliInvocationDocument,
+)
+
+@Serializable
+internal data class InstalledServerExecutionBudgetDocument(
+    val readinessMillis: Long,
+    val operationMillis: Long,
 )
 
 @Serializable
@@ -344,6 +352,10 @@ private enum class InstalledServerTool(
         description = toolDescription,
         deferLoading = true,
         approvalPolicy = approvalPolicy,
+        executionBudget = InstalledServerExecutionBudgetDocument(
+            readinessMillis = OperationExecutionBudget.WORKSPACE_READINESS.value,
+            operationMillis = OperationExecutionBudget.forOperation(operation).operation.value,
+        ),
         cliUsage = cliUsage,
         inputSchema = inputSchema,
         outputSchema = installedServerOutputSchema(operation),
@@ -765,6 +777,10 @@ private fun sourceTextProjectionSchema(): JsonObject = unionSchema(
         ServerSchemaProperty("type", constantSchema("returned", "Text projection state.")),
         ServerSchemaProperty("selection", sourceSelectionSchema()),
         ServerSchemaProperty("text", sourceTextSchema()),
+        ServerSchemaProperty("lines", objectSchema(
+            ServerSchemaProperty("startInclusive", integerSchema(1, description = "First one-based line.")),
+            ServerSchemaProperty("endInclusive", integerSchema(1, description = "Last one-based line.")),
+        )),
     ),
     objectSchema(
         ServerSchemaProperty("type", constantSchema("withheld", "Text projection state.")),

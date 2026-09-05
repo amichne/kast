@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli.broker.core
 
+import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import io.github.amichne.kast.cli.broker.schema.CompiledJsonSchema
 import io.github.amichne.kast.cli.broker.schema.JsonDomainDefinition
 import io.github.amichne.kast.cli.broker.schema.canonicalJson
@@ -88,6 +90,7 @@ internal class BrokerTool<Runtime, Input, Output, InputFailure>(
     internal val invoke: suspend (Runtime, Input, BrokerInvocationContext) -> ProviderCall<Output>,
     internal val encode: (Output) -> JsonElement,
     internal val present: (Output) -> ToolPresentation,
+    internal val invocationBudget: ElapsedTimeLimitMillis = OperationExecutionBudget.SEMANTIC_READ.operation,
 )
 
 internal sealed interface ProviderDefinitionFailure {
@@ -192,7 +195,6 @@ internal data class BrokerLimits private constructor(
     val maximumToolArgumentBytes: Int,
     val maximumToolResultBytes: Int,
     val providerStartupTimeoutMillis: Long,
-    val providerInvocationTimeoutMillis: Long,
 ) {
     companion object {
         internal fun defaults(): BrokerLimits = BrokerLimits(
@@ -202,8 +204,7 @@ internal data class BrokerLimits private constructor(
             maximumCatalogBytes = 1_024 * 1_024,
             maximumToolArgumentBytes = 64 * 1_024,
             maximumToolResultBytes = 1_024 * 1_024,
-            providerStartupTimeoutMillis = 10_000,
-            providerInvocationTimeoutMillis = 30_000,
+            providerStartupTimeoutMillis = OperationExecutionBudget.PROVIDER_QUALIFICATION.value,
         )
     }
 }
@@ -368,7 +369,7 @@ private class TypedProviderRoute<Runtime>(
                     )
                 }
                 try {
-                    withTimeout(limits.providerInvocationTimeoutMillis) {
+                    withTimeout(tool.invocationBudget.value) {
                         tool.invoke(runtime, input, request.context)
                     }
                 } catch (_: TimeoutCancellationException) {

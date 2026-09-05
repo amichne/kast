@@ -92,6 +92,20 @@ val codexAppServerEvaluation by tasks.registering(JavaExec::class) {
     )
 }
 
+val installedColdBrokerAcceptance by tasks.registering(JavaExec::class) {
+    description = "Proves a cold installed broker read against real CLI processes without a cloud account."
+    group = "verification"
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass = "io.github.amichne.kast.cli.broker.provider.InstalledColdBrokerAcceptance"
+    workingDir = rootProject.projectDir
+    dependsOn(tasks.named("testClasses"))
+    outputs.upToDateWhen { false }
+    argumentProviders.add(objects.newInstance<CodexAppServerEvaluationArguments>().apply {
+        requestFile.set(layout.file(providers.gradleProperty("kastBrokerAcceptanceRequest").map(::File)))
+        evidenceFile.set(layout.file(providers.gradleProperty("kastBrokerAcceptanceEvidence").map(::File)))
+    })
+}
+
 val kastObserverSnapshotManifest = layout.buildDirectory.file(
     "observer-snapshots/kast-observer-presentations.json",
 )
