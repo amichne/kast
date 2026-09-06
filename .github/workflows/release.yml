@@ -36,8 +36,15 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.sha }}
 
-      - name: Detach exact release source
-        run: git checkout --detach "$GITHUB_SHA"
+      - name: Admit exact main release source
+        run: |
+          git fetch --no-tags origin main
+          main_sha="$(git rev-parse origin/main)"
+          if [[ "$GITHUB_SHA" != "$main_sha" ]]; then
+            echo "release: dispatch SHA $GITHUB_SHA is not current main $main_sha" >&2
+            exit 1
+          fi
+          git checkout --detach "$GITHUB_SHA"
 
       - name: Set up Java 25
         id: jdk25
