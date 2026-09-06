@@ -3,10 +3,15 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: Stable semantic version without the v prefix
+      bump:
+        description: Semantic version component to increment
         required: true
-        type: string
+        type: choice
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
 
 permissions:
   actions: read
@@ -16,7 +21,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 concurrency:
-  group: release-${{ inputs.version }}
+  group: release
   cancel-in-progress: false
 
 jobs:
@@ -25,7 +30,6 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 10
     env:
-      RELEASE_VERSION: ${{ inputs.version }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -36,8 +40,17 @@ jobs:
       - name: Detach exact release source
         run: git checkout --detach "$GITHUB_SHA"
 
+      - name: Resolve release version
+        id: release_version
+        run: >-
+          python3 distribution/release/resolve_version.py
+          --repository "$GITHUB_REPOSITORY"
+          --bump "${{ inputs.bump }}"
+
       - name: Admit successful candidate build on main
         id: candidate
+        env:
+          RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
         run: >-
           python3 distribution/release/release_eligibility.py
           --repository "$GITHUB_REPOSITORY"
@@ -58,6 +71,8 @@ jobs:
           --name "$CANDIDATE_ARTIFACT" --dir build
 
       - name: Publish immutable GitHub release
+        env:
+          RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
         run: >-
           bash .github/scripts/release/publish-release.sh
           --release "v${RELEASE_VERSION}"
