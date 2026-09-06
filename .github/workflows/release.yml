@@ -3,29 +3,32 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: Stable semantic version without the v prefix
+      bump:
+        description: Semantic version component to increment
         required: true
-        type: string
+        type: choice
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
 
 permissions:
-  actions: read
   contents: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 concurrency:
-  group: release-${{ inputs.version }}
+  group: release
   cancel-in-progress: false
 
 jobs:
   release:
-    name: Publish release candidate
+    name: Build and publish release
     runs-on: macos-15
-    timeout-minutes: 10
+    timeout-minutes: 60
     env:
-      RELEASE_VERSION: ${{ inputs.version }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -33,31 +36,53 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.sha }}
 
-      - name: Detach exact release source
-        run: git checkout --detach "$GITHUB_SHA"
+      - name: Admit exact main release source
+        run: |
+          git fetch --no-tags origin main
+          main_sha="$(git rev-parse origin/main)"
+          if [[ "$GITHUB_SHA" != "$main_sha" ]]; then
+            echo "release: dispatch SHA $GITHUB_SHA is not current main $main_sha" >&2
+            exit 1
+          fi
+          git checkout --detach "$GITHUB_SHA"
 
-      - name: Admit successful candidate build on main
-        id: candidate
-        run: >-
-          python3 distribution/release/release_eligibility.py
-          --repository "$GITHUB_REPOSITORY"
-          --source-revision "$GITHUB_SHA"
-          --version "$RELEASE_VERSION"
+      - name: Set up Java 25
+        id: jdk25
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: 25
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version-file: ".python-version"
 
-      - name: Download candidate assets
-        env:
-          CANDIDATE_RUN_ID: ${{ steps.candidate.outputs.run_id }}
-          CANDIDATE_ARTIFACT: ${{ steps.candidate.outputs.artifact_name }}
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+        with:
+          validate-wrappers: true
+          gradle-home-cache-includes: |
+            caches
+            notifications
+            kast/indexer-idea-distributions
+
+      - name: Resolve release version
+        id: release_version
         run: >-
-          gh run download "$CANDIDATE_RUN_ID" --repo "$GITHUB_REPOSITORY"
-          --name "$CANDIDATE_ARTIFACT" --dir build
+          python3 distribution/release/resolve_version.py
+          --repository "$GITHUB_REPOSITORY"
+          --bump "${{ inputs.bump }}"
+
+      - name: Build exact release candidate
+        env:
+          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
+          RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
+        run: bash .github/scripts/ci/verify.sh --version "$RELEASE_VERSION"
 
       - name: Publish immutable GitHub release
+        env:
+          RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
         run: >-
           bash .github/scripts/release/publish-release.sh
           --release "v${RELEASE_VERSION}"

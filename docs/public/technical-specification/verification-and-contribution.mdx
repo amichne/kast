@@ -4,7 +4,7 @@ title: "Verification and contribution"
 description: "How Kast verifies focused behavior, architecture, packaging, documentation, and release artifacts without repository-scale lifecycle rehearsal."
 resource: "file://docs/public/technical-specification/verification-and-contribution.mdx"
 tags: ["verification", "CI", "distribution", "contributors"]
-timestamp: "2026-09-05T00:00:00-04:00"
+timestamp: "2026-09-06T00:00:00-04:00"
 code_sources:
   - path: "build.gradle.kts"
     lines: "1-260"
@@ -15,9 +15,14 @@ code_sources:
     lines: "1-80"
   - path: ".github/scripts/release/build-assets.sh"
     lines: "1-140"
+  - path: "distribution/release/resolve_version.py"
+    lines: "1-130"
+    symbols: ["Bump", "Version", "next_version"]
   - path: "distribution/release/generate_sbom.py"
     lines: "1-150"
     symbols: ["generate", "scanner"]
+  - path: ".github/workflows/release.yml"
+    lines: "1-120"
   - path: ".github/workflows/docs.yml"
     lines: "1-80"
 icon: "badge-check"
@@ -71,40 +76,44 @@ one only when a concrete invariant cannot be proven at a narrower boundary.
 
 ## CI admission
 
-Pull-request and main CI detach the exact candidate SHA and run
+Pull-request, push, and manual CI detach the exact candidate SHA and run
 `.github/scripts/ci/verify-checks.py`. The script admits the clean source and
-executes `productBuildGate` under Java 25.
+executes the focused release-version contract test plus `productBuildGate` under
+Java 25.
 
-The required CI path deliberately avoids repository-scale IntelliJ acceptance,
-end-to-end lifecycle drivers, timing/resource observation, corruption rehearsal,
-compatibility replay, and publish verification. Those mechanisms added cost and
-failure surface without establishing distinct release invariants.
+CI has no release-version responsibility. Release numbering belongs exclusively
+to the Release workflow.
 
 ## Release admission
 
-A manually dispatched candidate build on `main` uses
-`.github/scripts/release/build-assets.sh` from the exact detached source revision.
-It runs `productBuildGate`, builds the release archives, emits the CLI schema and
-module knowledge, generates the SBOM, and records SHA-256 files for each
-published asset.
+The Release workflow accepts one closed choice: `patch`, `minor`, or `major`.
+`distribution/release/resolve_version.py` reads the published GitHub release
+catalog, ignores drafts, prereleases, and non-semver tags, selects the numerically
+greatest stable `vMAJOR.MINOR.PATCH`, and applies exactly that bump. There is no
+checked-in candidate-version file to synchronize.
 
-The release workflow only admits a successful candidate run for the exact
-current `main` SHA and reviewed candidate version. It downloads those retained
-artifacts and publishes the same bytes. It does not rebuild the product or run a
-second behavioral qualification pass.
+The workflow first proves that its dispatch SHA is the exact current `main` SHA.
+It then resolves the version, runs the same product gate and release-asset build
+for that exact detached source, and publishes those exact files. No second
+workflow, retained-candidate lookup, or duplicate bump selection exists.
+
+All release jobs share one non-cancelling concurrency group. This serializes the
+read-modify-publish sequence around the release catalog so two jobs cannot both
+legitimately derive the same next semantic version from one predecessor release.
 
 The release invariant is:
 
 ```text
-exact main revision
+current published stable release catalog + selected bump
+  -> one resolved next semantic version
+  -> exact current main revision
   -> productBuildGate passes
-  -> release artifacts are generated from that revision
-  -> artifact checksums are retained
-  -> those retained artifacts are published
+  -> release artifacts are generated from that revision and version
+  -> those exact artifacts are published
 ```
 
-Publication still refuses an existing tag or release and requires the release
-commit to equal `origin/main`.
+Publication still refuses an existing tag or release and rechecks that the
+release commit equals `origin/main` before creating the GitHub release.
 
 ## Release integrity
 
@@ -117,12 +126,10 @@ product archives, records the source revision and archive digests in the
 CycloneDX document, and fails if either archive changes during the scan.
 
 Repository actions use immutable commit identities where the runner resolves
-them reliably. `actions/upload-artifact` is pinned to the concrete `v4.6.2`
-release tag because the hosted macOS runner currently rejects the equivalent
-commit-SHA form during action resolution. The release workflow does not claim
-that additional attestation, upload/download replay, timing evidence, or
-lifecycle rehearsal strengthens the product; those were removed from release
-authority.
+them reliably. `actions/upload-artifact` remains pinned to the concrete `v4.6.2`
+release tag in CI because the hosted macOS runner rejects the equivalent
+commit-SHA form during action resolution. The Release workflow no longer uses
+artifact upload or download as part of publication.
 
 ## Reproduce CI locally
 
@@ -134,11 +141,13 @@ export KAST_RELEASE_JDK_25="/path/to/jdk25"
 python3 .github/scripts/ci/verify-checks.py
 ```
 
-To build candidate artifacts without publishing:
+Resolve a candidate version from the published catalog, then build it explicitly:
 
 ```shell
+version="$(GH_TOKEN="$GH_TOKEN" python3 distribution/release/resolve_version.py \
+  --repository amichne/kast --bump patch)"
 bash .github/scripts/release/build-assets.sh \
-  --version "$(cat distribution/release/candidate-version.txt)" \
+  --version "$version" \
   --source-revision "$(git rev-parse HEAD)"
 ```
 
@@ -183,9 +192,12 @@ hand.
 
 - The [root Gradle build](https://github.com/amichne/kast/blob/main/build.gradle.kts)
   owns product assembly and the bounded `productBuildGate`.
+- [`resolve_version.py`](https://github.com/amichne/kast/blob/main/distribution/release/resolve_version.py)
+  owns conversion from published stable release catalog plus bump choice to the
+  next semantic version.
+- The [Release workflow](https://github.com/amichne/kast/blob/main/.github/workflows/release.yml)
+  owns serialization of version resolution, exact-source build, and publication.
 - [`test-installed-product.sh`](https://github.com/amichne/kast/blob/main/packaging/test-installed-product.sh)
   verifies the staged product packaging boundary.
 - [`build-assets.sh`](https://github.com/amichne/kast/blob/main/.github/scripts/release/build-assets.sh)
-  builds retained release artifacts from an exact admitted source revision.
-- The [documentation workflow](https://github.com/amichne/kast/blob/main/.github/workflows/docs.yml)
-  checks generated documentation artifacts and validates the Mintlify site.
+  builds release artifacts from an exact admitted source revision and version.
