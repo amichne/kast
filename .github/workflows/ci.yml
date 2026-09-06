@@ -3,6 +3,16 @@ name: CI
 on:
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_bump:
+        description: Semantic version component to increment for this release candidate
+        required: true
+        type: choice
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
   push:
     branches:
       - main
@@ -59,21 +69,32 @@ jobs:
           git checkout --detach "$CANDIDATE_SHA"
           python3 .github/scripts/ci/verify-checks.py
 
+      - name: Resolve release candidate version
+        if: github.event_name == 'workflow_dispatch'
+        id: release_version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python3 distribution/release/resolve_version.py
+          --repository "$GITHUB_REPOSITORY"
+          --bump "${{ inputs.release_bump }}"
+
       - name: Build exact release candidate
         if: github.event_name == 'workflow_dispatch'
         env:
           KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
         run: |
           git checkout --detach "$CANDIDATE_SHA"
-          bash .github/scripts/ci/verify.sh
+          bash .github/scripts/ci/verify.sh --version "$RELEASE_VERSION"
 
       - name: Retain release candidate
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: release-candidate-${{ github.event.pull_request.head.sha || github.sha }}
-          path: build/release/
+          name: release-candidate-${{ github.event.pull_request.head.sha || github.sha }}-v${{ steps.release_version.outputs.version }}
+          path: build/release/v${{ steps.release_version.outputs.version }}/
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
