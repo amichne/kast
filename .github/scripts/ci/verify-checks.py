@@ -22,6 +22,7 @@ def main() -> None:
         "--repository-root", str(ROOT),
         "--expected-source-revision", sha,
     ], environment)
+    run(["python3", "distribution/release/test_resolve_version.py"], environment)
     run([
         "./gradlew", "--max-workers=2", "-Dorg.gradle.jvmargs=-Xmx5g",
         "productBuildGate",
