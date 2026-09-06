@@ -114,9 +114,11 @@ class CodexLifecycleAcceptanceTest(unittest.TestCase):
             kast.touch()
             host = base / 'kast-codex'
             host.touch()
+            codex_home = base / 'codex-home'
+            codex_home.mkdir()
             args = acceptance.argparse.Namespace(kast=kast, kast_codex=host, fixture=fixture,
                                                  evidence=base / 'evidence', timeout=10)
-            with patch.object(acceptance, 'require_no_host', return_value=[]), \
+            with patch.dict(os.environ, {'CODEX_HOME': str(codex_home)}), \
                     patch.object(acceptance, 'command', return_value={'status': 'complete', 'runtime': 'stopped',
                                                                      'cache': {'state': 'absent'}}), \
                     patch.object(acceptance, 'run_client', side_effect=acceptance.EvidenceError('proof failed')), \
