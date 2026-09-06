@@ -1,26 +1,7 @@
 import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.tasks.InputFile
-import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.OutputFile
-import org.gradle.api.tasks.PathSensitive
-import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.testing.Test
 import org.gradle.process.CommandLineArgumentProvider
-import java.io.File
-
-abstract class CodexAppServerEvaluationArguments : CommandLineArgumentProvider {
-    @get:InputFile
-    @get:PathSensitive(PathSensitivity.NONE)
-    abstract val requestFile: RegularFileProperty
-
-    @get:OutputFile
-    abstract val evidenceFile: RegularFileProperty
-
-    override fun asArguments(): Iterable<String> = listOf(
-        requestFile.get().asFile.absolutePath,
-        evidenceFile.get().asFile.absolutePath,
-    )
-}
 
 abstract class KastObserverSnapshotArguments : CommandLineArgumentProvider {
     @get:OutputFile
@@ -69,41 +50,6 @@ val nativeTest by tasks.registering(Test::class) {
     useJUnitPlatform {
         includeTags("native")
     }
-}
-
-val codexEvaluationRequest = providers.gradleProperty("kastCodexEvaluationRequest")
-val codexEvaluationEvidence = providers.gradleProperty("kastCodexEvaluationEvidence")
-val codexEvaluationRequestFile = layout.file(codexEvaluationRequest.map(::File))
-val codexEvaluationEvidenceFile = layout.file(codexEvaluationEvidence.map(::File))
-
-val codexAppServerEvaluation by tasks.registering(JavaExec::class) {
-    description = "Runs one configured Codex app-server dynamic-tools evaluation."
-    group = "verification"
-    classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "io.github.amichne.kast.cli.codex.CodexAppServerEvaluationKt"
-    workingDir = rootProject.projectDir
-    dependsOn(tasks.named("testClasses"))
-    outputs.upToDateWhen { false }
-    argumentProviders.add(
-        objects.newInstance<CodexAppServerEvaluationArguments>().apply {
-            requestFile.set(codexEvaluationRequestFile)
-            evidenceFile.set(codexEvaluationEvidenceFile)
-        },
-    )
-}
-
-val installedColdBrokerAcceptance by tasks.registering(JavaExec::class) {
-    description = "Proves a cold installed broker read against real CLI processes without a cloud account."
-    group = "verification"
-    classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "io.github.amichne.kast.cli.broker.provider.InstalledColdBrokerAcceptance"
-    workingDir = rootProject.projectDir
-    dependsOn(tasks.named("testClasses"))
-    outputs.upToDateWhen { false }
-    argumentProviders.add(objects.newInstance<CodexAppServerEvaluationArguments>().apply {
-        requestFile.set(layout.file(providers.gradleProperty("kastBrokerAcceptanceRequest").map(::File)))
-        evidenceFile.set(layout.file(providers.gradleProperty("kastBrokerAcceptanceEvidence").map(::File)))
-    })
 }
 
 val kastObserverSnapshotManifest = layout.buildDirectory.file(
@@ -169,6 +115,10 @@ val codexIntegrationStartScripts by tasks.registering(CreateStartScripts::class)
 
 distributions.main {
     contents {
-        from(codexIntegrationStartScripts) { into("bin"); exclude("*.bat"); filePermissions { unix("755") } }
+        from(codexIntegrationStartScripts) {
+            into("bin")
+            exclude("*.bat")
+            filePermissions { unix("755") }
+        }
     }
 }

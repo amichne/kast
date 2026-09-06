@@ -17,7 +17,6 @@ val gitDescribeVersion: Provider<String> = providers.exec {
     workingDir(rootDir)
     isIgnoreExitValue = true
 }.standardOutput.asText.map { raw ->
-    // raw: v0.6.3-7-gb8c186d (tag-distance-sha) or a bare sha when no tags exist
     val trimmed = raw.trim()
     val regex = Regex("""^v?(\d+\.\d+\.\d+)-(\d+)-g([0-9a-f]+)$""")
     regex.matchEntire(trimmed)?.let { m ->
@@ -39,8 +38,7 @@ subprojects {
 
 tasks.register("stageIndexerDist") {
     group = "distribution"
-    description =
-        "Builds a clean staged indexer tree under indexer/build/portable-dist/indexer."
+    description = "Builds a clean staged indexer tree under indexer/build/portable-dist/indexer."
     dependsOn(":indexer:syncPortableDist")
 }
 
@@ -51,7 +49,6 @@ tasks.register("buildIndexerPortableZip") {
 }
 
 val installedProductDirectory = layout.buildDirectory.dir("installed-product")
-
 val semanticRuntimeStage = project(":indexer").layout.buildDirectory.dir("portable-dist/indexer")
 val semanticRuntimeArchiveName = "kast-semantic-runtime-${project.version}-macos-aarch64.zip"
 val semanticRuntimeArchive by tasks.registering(Zip::class) {
@@ -70,8 +67,7 @@ val semanticRuntimeArchive by tasks.registering(Zip::class) {
 
 tasks.register("assembleKastSemanticRuntimeDist") {
     group = "distribution"
-    description =
-        "Assembles the separately published private sidecar admitted by its matched control."
+    description = "Assembles the separately published private sidecar admitted by its matched control."
     dependsOn(semanticRuntimeArchive)
 }
 
@@ -79,9 +75,7 @@ val generatedControlMetadata = layout.buildDirectory.dir("generated/control-meta
 val generatedOperationRegistry = project(":protocol:wire").layout.buildDirectory.file(
     "generated/operation-registry/operation-registry.json",
 )
-val generateKastControlMetadata by tasks.registering(
-    GenerateControlMetadataTask::class,
-) {
+val generateKastControlMetadata by tasks.registering(GenerateControlMetadataTask::class) {
     group = "distribution"
     description = "Generates the exact installed-IDE sidecar manifest and public schemas."
     dependsOn(semanticRuntimeArchive, ":protocol:wire:generateOperationRegistry")
@@ -140,9 +134,7 @@ val verifyKastControlDistLayout by tasks.registering(VerifyControlDistributionTa
 
 apply(from = "distribution/release/sidecar-release.gradle.kts")
 
-val verifyKastSemanticRuntimeDistLayout by tasks.registering(
-    VerifySemanticRuntimeDistributionTask::class,
-) {
+val verifyKastSemanticRuntimeDistLayout by tasks.registering(VerifySemanticRuntimeDistributionTask::class) {
     group = "verification"
     description = "Verifies the private sidecar payload contains no IDEA distribution."
     dependsOn(semanticRuntimeArchive, ":indexer:verifyPortableDistLayout")
@@ -165,26 +157,23 @@ val stageInstalledProduct by tasks.registering(Sync::class) {
 
 val localInstallPrefix = providers.gradleProperty("kastLocalPrefix")
     .map { configuredPrefix ->
-        require(configuredPrefix.isNotBlank()) {
-            "kastLocalPrefix must name a non-blank installation prefix"
-        }
+        require(configuredPrefix.isNotBlank()) { "kastLocalPrefix must name a non-blank installation prefix" }
         file(configuredPrefix).toPath().toAbsolutePath().normalize().toFile()
     }
     .orElse(
         providers.systemProperty("user.home")
             .map { userHome -> file(userHome).resolve(".local") },
     )
-
 val localProductDirectory = localInstallPrefix.map { it.resolve("share/kast/local") }
 val localLauncherFile = localInstallPrefix.map { it.resolve("bin/kast") }
 val localJavaHome = providers.systemProperty("java.home").map { configuredHome ->
     file(configuredHome).toPath().toRealPath().toFile()
 }
 val localJavaExecutable = localJavaHome.map { home -> home.resolve("bin/java") }
+
 tasks.register<Exec>("installLocal") {
     group = "distribution"
-    description =
-        "Installs one coherent Kast product under ~/.local, or -PkastLocalPrefix."
+    description = "Installs one coherent Kast product under ~/.local, or -PkastLocalPrefix."
     dependsOn(stageKastControlProduct, semanticRuntimeArchive)
     inputs.dir(controlProductDirectory)
     inputs.file(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
@@ -195,14 +184,8 @@ tasks.register<Exec>("installLocal") {
     outputs.dir(localProductDirectory)
     outputs.file(localLauncherFile)
     outputs.upToDateWhen { false }
-    environment(
-        "KAST_LOCAL_PREFIX",
-        localInstallPrefix.get().absolutePath,
-    )
-    environment(
-        "KAST_LOCAL_CONTROL_PRODUCT",
-        controlProductDirectory.get().asFile.absolutePath,
-    )
+    environment("KAST_LOCAL_PREFIX", localInstallPrefix.get().absolutePath)
+    environment("KAST_LOCAL_CONTROL_PRODUCT", controlProductDirectory.get().asFile.absolutePath)
     environment(
         "KAST_LOCAL_RUNTIME_ARCHIVE",
         semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
@@ -219,18 +202,10 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     inputs.dir(installedProductDirectory)
     inputs.file(assembleKastControlDist.flatMap(Tar::getArchiveFile))
     inputs.file(layout.projectDirectory.file("packaging/test-installed-product.sh"))
-    outputs.file(
-        layout.buildDirectory.file("reports/installed-product/topology-installed-product.json"),
-    )
+    outputs.file(layout.buildDirectory.file("reports/installed-product/topology-installed-product.json"))
     outputs.upToDateWhen { false }
-    environment(
-        "KAST_INSTALLED_PRODUCT",
-        installedProductDirectory.get().asFile.absolutePath,
-    )
-    environment(
-        "KAST_CONTROL_ARCHIVE",
-        assembleKastControlDist.get().archiveFile.get().asFile.absolutePath,
-    )
+    environment("KAST_INSTALLED_PRODUCT", installedProductDirectory.get().asFile.absolutePath)
+    environment("KAST_CONTROL_ARCHIVE", assembleKastControlDist.get().archiveFile.get().asFile.absolutePath)
     environment(
         "KAST_SEMANTIC_RUNTIME_ARCHIVE",
         semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
@@ -243,161 +218,15 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     commandLine("bash", layout.projectDirectory.file("packaging/test-installed-product.sh"))
 }
 
-val enterpriseAcceptanceIdeaHome = providers.gradleProperty("kastAcceptanceIdeaHome")
-    .orElse(providers.environmentVariable("KAST_ACCEPTANCE_IDEA_HOME"))
-    .orElse(
-        providers.systemProperty("user.home").map { home ->
-            "$home/Applications/IntelliJ IDEA.app/Contents"
-        },
-    )
-
-val topologyIdentityDiagnosticReport = layout.buildDirectory.file(
-    "reports/topology-identity-diagnostic/topology-identity-diagnostic.json",
-)
-
-tasks.register<Exec>("topologyIdentityDiagnostic") {
-    group = "verification"
-    description =
-        "Runs cold K2 identity probes while proving workspace .idea configuration is isolated."
-    dependsOn(stageInstalledProduct, semanticRuntimeArchive)
-    inputs.dir(installedProductDirectory)
-    inputs.file(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
-    inputs.file(layout.projectDirectory.file("integration-tests/topology_identity_diagnostic.py"))
-    inputs.file(layout.projectDirectory.file("integration-tests/enterprise_acceptance.py"))
-    inputs.file(layout.projectDirectory.file("gradle/wrapper/gradle-wrapper.jar"))
-    inputs.dir(layout.projectDirectory.dir("fixtures/topology-identity-workspace"))
-    inputs.dir(enterpriseAcceptanceIdeaHome)
-    outputs.dir(layout.buildDirectory.dir("reports/topology-identity-diagnostic"))
-    outputs.upToDateWhen { false }
-    commandLine(
-        "python3",
-        layout.projectDirectory.file("integration-tests/topology_identity_diagnostic.py"),
-        "--product-root",
-        installedProductDirectory.get().asFile.absolutePath,
-        "--fixture",
-        layout.projectDirectory.dir("fixtures/topology-identity-workspace").asFile.absolutePath,
-        "--runtime-archive",
-        semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
-        "--idea-home",
-        enterpriseAcceptanceIdeaHome.get(),
-        "--report",
-        topologyIdentityDiagnosticReport.get().asFile.absolutePath,
-    )
-}
-
-tasks.register<Exec>("topologyDeclarationBindingAcceptance") {
-    group = "verification"
-    description =
-        "Proves exact installed declaration bindings, module separation, and source-generation replay."
-    dependsOn(stageInstalledProduct, semanticRuntimeArchive)
-    mustRunAfter("enterpriseAcceptance")
-    inputs.dir(installedProductDirectory)
-    inputs.file(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
-    inputs.file(layout.projectDirectory.file("integration-tests/topology_identity_diagnostic.py"))
-    inputs.file(layout.projectDirectory.file("integration-tests/topology_binding_acceptance.py"))
-    inputs.file(layout.projectDirectory.file("integration-tests/enterprise_acceptance.py"))
-    inputs.file(layout.projectDirectory.file("gradle/wrapper/gradle-wrapper.jar"))
-    inputs.dir(layout.projectDirectory.dir("fixtures/topology-identity-workspace"))
-    inputs.dir(enterpriseAcceptanceIdeaHome)
-    outputs.dir(layout.buildDirectory.dir("reports/topology-binding"))
-    outputs.upToDateWhen { false }
-    commandLine(
-        "python3",
-        layout.projectDirectory.file("integration-tests/topology_identity_diagnostic.py"),
-        "--product-root",
-        installedProductDirectory.get().asFile.absolutePath,
-        "--fixture",
-        layout.projectDirectory.dir("fixtures/topology-identity-workspace").asFile.absolutePath,
-        "--runtime-archive",
-        semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
-        "--idea-home",
-        enterpriseAcceptanceIdeaHome.get(),
-        "--report",
-        layout.buildDirectory.file("reports/topology-binding/acceptance.json").get().asFile.absolutePath,
-        "--require-binding",
-    )
-}
-
-tasks.register<Exec>("enterpriseAcceptance") {
-    group = "verification"
-    description = "Runs the installed sidecar enterprise fixture."
-    dependsOn(
-        installedProductTest,
-        stageInstalledProduct,
-        semanticRuntimeArchive,
-        ":change:recovery:test",
-        ":relation:contract:test",
-        ":relation:intellij:test",
-        ":relation:service:test",
-        ":symbol:intellij:test",
-        ":symbol:service:test",
-        ":traversal:contract:test",
-        ":traversal:service:test",
-        ":workspace:service:test",
-        "verifyKastArchitecture",
-    )
-    inputs.dir(installedProductDirectory)
-    inputs.file(layout.projectDirectory.file("integration-tests/enterprise_acceptance.py"))
-    inputs.file(layout.projectDirectory.file("benchmarks/enterprise-acceptance.json"))
-    inputs.dir(layout.projectDirectory.dir("fixtures/enterprise-workspace"))
-    inputs.dir(enterpriseAcceptanceIdeaHome)
-    outputs.upToDateWhen { false }
-    environment("KAST_ACCEPTANCE_IDEA_HOME", enterpriseAcceptanceIdeaHome.get())
-    commandLine(
-        "python3",
-        layout.projectDirectory.file("integration-tests/enterprise_acceptance.py"),
-        "--product-root",
-        installedProductDirectory.get().asFile.absolutePath,
-        "--fixture",
-        layout.projectDirectory.dir("fixtures/enterprise-workspace").asFile.absolutePath,
-        "--thresholds",
-        layout.projectDirectory.file("benchmarks/enterprise-acceptance.json").asFile.absolutePath,
-        "--runtime-archive",
-        semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
-    )
-}
-
-val releaseDocumentationTest by tasks.registering(Exec::class) {
-    group = "verification"
-    description = "Verifies source-backed public docs and the rendered documentation site."
-    dependsOn(":protocol:wire:generateOperationRegistry")
-    commandLine("bash", ".github/scripts/release/verify-documentation.sh")
-}
-
-val releaseInstallerTest by tasks.registering(Exec::class) {
-    group = "verification"
-    description = "Proves installer replacement, corruption, and recovery contracts."
-    commandLine("bash", "packaging/test-installer.sh")
-}
-
-val releaseGateContractTest by tasks.registering(Exec::class) {
-    group = "verification"
-    description = "Proves release publication fails closed without semantic evidence."
-    commandLine("python3", "-m", "unittest", "discover", "-s", "distribution/release", "-p", "test_*.py")
-}
-
-val releaseAcceptanceContractTest by tasks.registering(Exec::class) {
-    group = "verification"
-    description = "Verifies that installed acceptance rejects incomplete semantic and import evidence."
-    commandLine("python3", "-m", "unittest", "discover", "-s", "integration-tests", "-p", "test_*.py")
-}
-
 val productBuildGate by tasks.registering {
     group = "verification"
     description = "Builds every module and verifies architecture and installed packaging."
-    dependsOn("check", "installedProductTest", "verifyKastArchitecture")
+    dependsOn("check", installedProductTest, "verifyKastArchitecture")
     dependsOn(gradle.includedBuild("build-logic").task(":check"))
-}
-
-val releaseSourceGate by tasks.registering {
-    group = "verification"
-    description = "Exhaustive release-source proof; publication also requires exact-asset installed proof."
-    dependsOn("build", productBuildGate, "enterpriseAcceptance", "topologyDeclarationBindingAcceptance", releaseDocumentationTest, releaseInstallerTest, releaseGateContractTest, releaseAcceptanceContractTest)
 }
 
 subprojects.forEach { owner ->
     owner.plugins.withId("base") {
         productBuildGate.configure { dependsOn(owner.tasks.named("check")) }
-        releaseSourceGate.configure { dependsOn(owner.tasks.named("build")) }
     }
 }

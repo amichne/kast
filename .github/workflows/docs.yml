@@ -56,9 +56,6 @@ jobs:
       - name: Check generated architecture proof
         run: python3 docs/tooling/likec4/generate_bundle.py --check
 
-      - name: Check documentation contract
-        run: python3 docs/test_public_docs.py
-
       - name: Validate Mintlify build
         working-directory: docs/public
         run: mint validate

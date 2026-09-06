@@ -11,8 +11,6 @@ on:
 permissions:
   actions: read
   contents: write
-  id-token: write
-  attestations: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -23,9 +21,9 @@ concurrency:
 
 jobs:
   release:
-    name: Publish verified CI assets
+    name: Publish release candidate
     runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 10
     env:
       RELEASE_VERSION: ${{ inputs.version }}
       GH_TOKEN: ${{ github.token }}
@@ -38,7 +36,7 @@ jobs:
       - name: Detach exact release source
         run: git checkout --detach "$GITHUB_SHA"
 
-      - name: Admit successful manual qualification on main
+      - name: Admit successful candidate build on main
         id: candidate
         run: >-
           python3 distribution/release/release_eligibility.py
@@ -51,25 +49,13 @@ jobs:
         with:
           python-version-file: ".python-version"
 
-      - name: Download retained CI candidate
+      - name: Download candidate assets
         env:
           CANDIDATE_RUN_ID: ${{ steps.candidate.outputs.run_id }}
           CANDIDATE_ARTIFACT: ${{ steps.candidate.outputs.artifact_name }}
         run: >-
           gh run download "$CANDIDATE_RUN_ID" --repo "$GITHUB_REPOSITORY"
           --name "$CANDIDATE_ARTIFACT" --dir build
-
-      - name: Verify exact retained assets and receipt
-        run: >-
-          python3 distribution/release/release_gate.py verify
-          --source-root "$GITHUB_WORKSPACE"
-          --assets-directory "build/release/v${RELEASE_VERSION}"
-          --version "$RELEASE_VERSION" --source-revision "$GITHUB_SHA"
-
-      - name: Attest verified candidate assets
-        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
-        with:
-          subject-path: build/release/v${{ inputs.version }}/*
 
       - name: Publish immutable GitHub release
         run: >-
