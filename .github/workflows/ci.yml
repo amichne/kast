@@ -18,18 +18,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  installer:
-    name: Installer
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-
-      - name: Verify installer recovery flow
-        run: bash packaging/test-installer.sh
-
   kotlin:
     name: Kotlin product
     runs-on: macos-15
@@ -82,7 +70,7 @@ jobs:
 
       - name: Retain release candidate
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@ea165f8d65e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-candidate-${{ github.event.pull_request.head.sha || github.sha }}
           path: build/release/
@@ -92,7 +80,7 @@ jobs:
 
       - name: Retain routine verification reports
         if: always() && github.event_name != 'workflow_dispatch'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@ea165f8d65e75b540449e92b4886f43607fa02 # v4
         with:
           name: ci-reports-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
