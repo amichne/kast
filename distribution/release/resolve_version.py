@@ -69,7 +69,7 @@ def next_version(releases: list[dict], bump: Bump) -> Version:
 
 def observe_releases(repository: str) -> list[dict]:
     result = subprocess.run(
-        ["gh", "api", "--paginate", f"repos/{repository}/releases?per_page=100"],
+        ["gh", "api", "--paginate", "--slurp", f"repos/{repository}/releases?per_page=100"],
         text=True,
         capture_output=True,
         timeout=60,
@@ -78,13 +78,10 @@ def observe_releases(repository: str) -> list[dict]:
     if result.returncode != 0:
         raise RuntimeError("release-catalog-unavailable")
 
-    releases: list[dict] = []
-    for line in result.stdout.splitlines():
-        page = json.loads(line)
-        if not isinstance(page, list):
-            raise RuntimeError("release-catalog-invalid")
-        releases.extend(item for item in page if isinstance(item, dict))
-    return releases
+    pages = json.loads(result.stdout)
+    if not isinstance(pages, list) or any(not isinstance(page, list) for page in pages):
+        raise RuntimeError("release-catalog-invalid")
+    return [item for page in pages for item in page if isinstance(item, dict)]
 
 
 def emit(version: Version) -> None:
