@@ -312,8 +312,9 @@ class InstalledKastRuntimeTest {
         val apply = CanonicalChangeApplyHandler(
             WorkspaceInspectionOperations { error("missing plans must not inspect workspace") },
             VerifiedChangeApplyOperations(
-                { error("missing plans must not reach apply") },
-                { error("missing plans must not reach verification") },
+                transitions = io.github.amichne.kast.workspace.service.WorkspaceTransitionOwner(),
+                apply = { error("missing plans must not reach apply") },
+                verify = { error("missing plans must not reach verification") },
             ),
             authority,
         )
@@ -353,13 +354,14 @@ class InstalledKastRuntimeTest {
         val apply = CanonicalChangeApplyHandler(
             fixture.workspace,
             VerifiedChangeApplyOperations(
-                { request ->
+                transitions = io.github.amichne.kast.workspace.service.WorkspaceTransitionOwner(),
+                apply = { request ->
                     observed = request
                     AddDeclarationApplyResult.Rejected(
                         AddDeclarationApplyFailure.Admission(MutationAdmissionFailure.WRONG_ROOT),
                     )
                 },
-                { error("rejected application must not reach verification") },
+                verify = { error("rejected application must not reach verification") },
             ),
             authority,
         )

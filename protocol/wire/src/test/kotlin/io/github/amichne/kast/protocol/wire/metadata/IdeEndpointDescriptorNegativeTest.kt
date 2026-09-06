@@ -173,10 +173,18 @@ class IdeEndpointDescriptorNegativeTest {
             candidate.copy(capabilities = candidate.capabilities + candidate.capabilities.first()),
             hostedCapabilityFailure(
                 HostedCapabilitySetFailure.DuplicateOperation(
-                    io.github.amichne.kast.protocol.contract.CanonicalOperation.INDEX_SYNC,
+                    io.github.amichne.kast.protocol.contract.CanonicalOperation.SYMBOL_DISCOVER,
                 ),
             ),
         )
+        listOf("index.sync", "topology.build").forEach { internalOperation ->
+            assertRejected(
+                candidate.copy(
+                    capabilities = candidate.capabilities + HostedCapabilityCandidate(internalOperation, emptyList()),
+                ),
+                hostedCapabilityFailure(HostedCapabilitySetFailure.CanonicalProjectionMismatch),
+            )
+        }
         assertRejected(
             candidate.copy(capabilities = candidate.capabilities.dropLast(1)),
             hostedCapabilityFailure(HostedCapabilitySetFailure.CanonicalProjectionMismatch),

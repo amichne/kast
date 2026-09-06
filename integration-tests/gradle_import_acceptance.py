@@ -258,8 +258,8 @@ def run_case(args: argparse.Namespace, version: str, jdk: Jdk, rejected: bool = 
         observation_path.write_text(json.dumps(observation, indent=2, sort_keys=True) + "\n")
         if (exit_code != 0) != rejected:
             raise AcceptanceFailure("installed startup did not match the matrix expectation")
-        # Passive status must retain the same report after either startup outcome.
-        _, status = command(args.kast, workspace, environment, ["status"], OPERATION_TIMEOUT_SECONDS)
+        # Bare inspection must retain the same report after either startup outcome.
+        _, status = command(args.kast, workspace, environment, [], OPERATION_TIMEOUT_SECONDS)
         report = selection_report(status)
         assert_selection(report, version, jdk.feature, rejected)
         if rejected:

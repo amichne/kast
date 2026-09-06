@@ -50,7 +50,13 @@ internal sealed interface InstalledSdkSemanticIdentity {
 
     data class Present(
         val version: InstalledSdkVersion,
+        val home: InstalledSdkHome = InstalledSdkHome.Unknown,
     ) : InstalledSdkSemanticIdentity
+}
+
+internal sealed interface InstalledSdkHome {
+    data object Unknown : InstalledSdkHome
+    data class Known(val value: String) : InstalledSdkHome
 }
 
 internal sealed interface InstalledSdkVersion {
@@ -77,8 +83,8 @@ internal enum class InstalledGradleSemanticIdentityFailure {
  * Proof transition: `InstalledGradleSemanticIdentityBoundary -> Refinement<
  * WorkspaceStateIdentity, InstalledGradleSemanticIdentityFailure>`.
  *
- * Establishes a versioned, order-independent SHA-256 identity over source content, exact Gradle
- * ownership, compiler SDK state, and dependency entries. Import timestamps and other operational
+ * Establishes a versioned, SHA-256 identity over source content, exact Gradle
+ * ownership, compiler SDK state, and ordered dependency entries. Import timestamps and other operational
  * freshness data are absent from the input type. Raw live-model strings may enter only through
  * [InstalledGradleSemanticIdentityBoundary].
  */
@@ -118,9 +124,16 @@ internal fun deriveInstalledGradleSemanticIdentity(
             module.classpath.any { entry -> entry.url.isBlank() } ||
             when (val sdk = module.sdk) {
                 InstalledSdkSemanticIdentity.Absent -> false
-                is InstalledSdkSemanticIdentity.Present -> when (val version = sdk.version) {
-                    InstalledSdkVersion.Unknown -> false
-                    is InstalledSdkVersion.Known -> version.value.isBlank()
+                is InstalledSdkSemanticIdentity.Present -> {
+                    val invalidVersion = when (val version = sdk.version) {
+                        InstalledSdkVersion.Unknown -> false
+                        is InstalledSdkVersion.Known -> version.value.isBlank()
+                    }
+                    val invalidHome = when (val home = sdk.home) {
+                        InstalledSdkHome.Unknown -> false
+                        is InstalledSdkHome.Known -> home.value.isBlank()
+                    }
+                    invalidVersion || invalidHome
                 }
             }
         }
@@ -198,6 +211,10 @@ private fun InstalledModuleSemanticIdentity.canonicalIdentity(): String = buildS
         InstalledSdkSemanticIdentity.Absent -> appendRecord("sdk-absent")
         is InstalledSdkSemanticIdentity.Present -> {
             appendRecord("sdk-present")
+            when (val home = sdk.home) {
+                InstalledSdkHome.Unknown -> appendRecord("sdk-home-unknown")
+                is InstalledSdkHome.Known -> appendRecord("sdk-home-known", home.value)
+            }
             when (sdk.version) {
                 InstalledSdkVersion.Unknown -> appendRecord("sdk-version-unknown")
                 is InstalledSdkVersion.Known -> {
@@ -210,7 +227,7 @@ private fun InstalledModuleSemanticIdentity.canonicalIdentity(): String = buildS
     classpath.map { entry -> buildString {
         appendRecord("classpath-entry")
         appendField(entry.url)
-    } }.distinct().sorted().forEach { entry -> appendField(entry) }
+    } }.forEach { entry -> appendField(entry) }
 }
 
 private fun StringBuilder.appendRecord(tag: String) {
@@ -228,4 +245,4 @@ private fun StringBuilder.appendField(value: String) {
     append(value)
 }
 
-private const val IDENTITY_VERSION = "kast-workspace-semantic-identity-v2"
+private const val IDENTITY_VERSION = "kast-workspace-semantic-identity-v4"

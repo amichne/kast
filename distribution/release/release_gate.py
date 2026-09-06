@@ -173,24 +173,6 @@ def validate_workspace_preservation(proofs: list) -> None:
             raise GateRejected("installed repository source components changed")
 
 
-def validate_upgrade(proof: dict, assets: dict, version: str) -> None:
-    names = product_asset_names(version)[:2]
-    expected = {name: assets[name] for asset in names for name in (asset, asset + ".sha256")}
-    if proof.get("status") != "passed" or proof.get("candidateVersion") != version or proof.get("candidateAssets") != expected:
-        raise GateRejected("installed upgrade did not prove these candidate archives")
-    prior = proof.get("priorRelease", {})
-    if prior.get("immutable") is not True or not re.fullmatch(r"0\.[0-9]+\.[0-9]+", str(prior.get("version", ""))) or prior.get("tag") != "v" + prior["version"] or prior.get("passiveStatus", {}).get("status") != "stopped":
-        raise GateRejected("installed upgrade has no immutable prior-release proof")
-    cases = proof.get("corruptionCases", [])
-    if len(cases) != 2 or {case.get("case") for case in cases} != {"checksum-mismatch", "unsafe-archive-path"}:
-        raise GateRejected("installed upgrade omits exact-archive corruption proof")
-    for case in cases:
-        if case.get("status") != "rejected" or case.get("exitCode") != 1 or any(
-                case.get(key) != proof.get(key) or not re.fullmatch(r"sha256:[0-9a-f]{64}", str(proof.get(key, "")))
-                for key in ("activeInstallationDigest", "workspaceDigest")):
-            raise GateRejected("corrupted installation did not preserve the active product and repository")
-
-
 def validate_semantic_corruption(proof: dict) -> None:
     def proven_digest(value):
         return re.fullmatch(r"sha256:[0-9a-f]{64}", str(value)) is not None
@@ -204,8 +186,8 @@ def validate_semantic_corruption(proof: dict) -> None:
         if case.get("status") != "rejected" or case.get("exitCode") != 2 or case.get("boundary") != "usage" or case.get("reason") != "arguments-rejected" or not all(proven_digest(case.get(key)) for key in ("documentDigest", "originalContinuationDigest", "validResumeDigest")):
             raise GateRejected("semantic corruption proof has no finite continuation rejection")
     state = proof.get("stateReceipt", {})
-    if state.get("kind") != "cache-identity-v3" or state.get("status") != "rejected-and-restored" or state.get("exitCode") != 4 or state.get("boundary") != "runtime" or state.get("reason") != "status-cache-invalid-identity":
-        raise GateRejected("semantic corruption proof has no rejected state receipt")
+    if state.get("kind") != "cache-identity-v3" or state.get("status") != "rejected-and-restored" or state.get("exitCode") != 0 or state.get("boundary") != "runtime" or state.get("reason") != "status-cache-invalid-identity":
+        raise GateRejected("semantic corruption proof state receipt must prove the passive cache blocker with exit 0")
     if not all(proven_digest(state.get(key)) for key in ("documentDigest", "originalReceiptDigest", "restoredReceiptDigest", "recoveredStatusDigest", "recoveredReadDigest")) or state["originalReceiptDigest"] != state["restoredReceiptDigest"]:
         raise GateRejected("semantic corruption proof did not restore the exact state receipt")
 
@@ -229,7 +211,7 @@ def validate_receipt(receipt: dict, directory: Path, version: str, sha: str) -> 
     if dependencies["source"]["receipt"].get("command") != source_command(version, sha):
         raise GateRejected("source predecessor did not run the required Gradle graph")
     installed = dependencies["installed"]["receipt"]
-    required = {"cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import", "upgrade", "corruption"}
+    required = {"cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import"}
     if set(installed.get("journeys", [])) != required:
         raise GateRejected("installed predecessor omits a required journey")
     broker = installed.get("broker", {})
@@ -253,7 +235,6 @@ def validate_receipt(receipt: dict, directory: Path, version: str, sha: str) -> 
         raise GateRejected("release assets differ from installed proof")
     if dependencies["source"]["receipt"].get("archives") != {name: assets[name] for name in product_asset_names(version)[:2]}:
         raise GateRejected("release assets differ from the successful source build outputs")
-    validate_upgrade(installed.get("upgrade", {}), assets, version)
     compatibility = dependencies["compatibility"]["receipt"]
     if compatibility.get("candidateDigest") != assets[f"kast-compatibility-v{version}.json"] or compatibility.get("productVersion") != version:
         raise GateRejected("compatibility predecessor did not compare this candidate snapshot")

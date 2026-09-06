@@ -10,8 +10,6 @@ class HostedOperationProjectionTest {
     fun `canonical definitions are the sole ordered hosted exposure authority`() {
         assertEquals(
             listOf(
-                CanonicalOperation.INDEX_SYNC,
-                CanonicalOperation.TOPOLOGY_BUILD,
                 CanonicalOperation.SYMBOL_DISCOVER,
                 CanonicalOperation.SYMBOL_INSPECT,
                 CanonicalOperation.SOURCE_READ,
@@ -24,7 +22,8 @@ class HostedOperationProjectionTest {
             ),
             HostedOperationProjection.publicDefinitions.map { it.operation },
         )
-        assertTrue(HostedOperationProjection.internalDefinitions.isEmpty())
+        assertEquals(listOf(CanonicalOperation.INDEX_SYNC, CanonicalOperation.TOPOLOGY_BUILD),
+            HostedOperationProjection.internalDefinitions.map { it.operation })
         assertTrue(HostedOperationProjection.unavailableDefinitions.isEmpty())
     }
 

@@ -158,3 +158,17 @@ tasks.register<Exec>("renderKastObserverScreenshots") {
 tasks.named("check") {
     dependsOn(nativeTest)
 }
+
+val codexIntegrationStartScripts by tasks.registering(CreateStartScripts::class) {
+    applicationName = "kast-codex"
+    mainClass = "io.github.amichne.kast.cli.broker.KastCodexMain"
+    outputDir = layout.buildDirectory.dir("codex-integration-scripts").get().asFile
+    classpath = tasks.named<CreateStartScripts>("startScripts").get().classpath
+    dependsOn(tasks.named("jar"))
+}
+
+distributions.main {
+    contents {
+        from(codexIntegrationStartScripts) { into("bin"); exclude("*.bat"); filePermissions { unix("755") } }
+    }
+}

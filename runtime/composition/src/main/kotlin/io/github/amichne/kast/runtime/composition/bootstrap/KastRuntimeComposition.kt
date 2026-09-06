@@ -1,9 +1,6 @@
 package io.github.amichne.kast.runtime.composition
 
 import io.github.amichne.kast.change.apply.AddDeclarationApplyService
-import io.github.amichne.kast.change.apply.AppliedIndexSynchronizationTask
-import io.github.amichne.kast.change.apply.CoalescingAppliedIndexSynchronizationScheduler
-import io.github.amichne.kast.change.apply.SuccessfulApplyIndexSynchronization
 import io.github.amichne.kast.change.recovery.AddDeclarationRecoveryService
 import io.github.amichne.kast.change.verify.ResultingGenerationPublication
 import io.github.amichne.kast.change.verify.ResultingGenerationPublicationRejection
@@ -12,7 +9,16 @@ import io.github.amichne.kast.change.verify.VerifiedMutationService
 import io.github.amichne.kast.diagnostic.service.DiagnosticService
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.kernel.KastObservability
+import io.github.amichne.kast.kernel.KastWorkspaceRefreshOutcome
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefresh
+import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefreshOperations
+import io.github.amichne.kast.workspace.contract.WorkspacePublicationRun
+import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
+import io.github.amichne.kast.workspace.service.ResultingWorkspacePublication
+import java.util.concurrent.CancellationException
 import io.github.amichne.kast.relation.service.RelationService
+import io.github.amichne.kast.runtime.composition.protocol.graph.TopologyPreparingTraversalOperations
 import io.github.amichne.kast.runtime.composition.protocol.graph.TopologyBackedTraversalOperations
 import io.github.amichne.kast.runtime.server.RuntimeServer
 import io.github.amichne.kast.runtime.telemetry.OpenTelemetryKastObservability
@@ -25,8 +31,6 @@ import io.github.amichne.kast.symbol.service.SymbolExactService
 import io.github.amichne.kast.source.service.SourceReadService
 import io.github.amichne.kast.traversal.service.traversalOperations
 import io.github.amichne.kast.topology.build.TopologyBuildService
-import io.github.amichne.kast.workspace.service.ResultingWorkspacePublicationFailure
-import io.github.amichne.kast.workspace.service.ResultingWorkspacePublicationResult
 import io.github.amichne.kast.workspace.service.WorkspacePublicationCoordinator
 import io.github.amichne.kast.workspace.service.WorkspaceIndexPublicationOperations
 import io.github.amichne.kast.workspace.service.WorkspaceIndexSynchronizationService
@@ -124,51 +128,53 @@ class KastRuntimeComposition private constructor(
             changePorts: ChangeRuntimePorts,
             observability: KastObservability,
         ): DirectKastRuntimeGraph {
-            val symbolDiscovery = SymbolDiscoveryService(
+            val indexSync = WorkspaceIndexSynchronizationService(
                 workspace,
+                indexPorts.refresh,
+                WorkspaceIndexPublicationOperations(workspace::reconcileAfterIndexRefresh),
+                indexPorts.sourceObservation,
+                workspace.transitions,
+                observability,
+                refreshBasis = workspace,
+            )
+            val readyWorkspace = io.github.amichne.kast.workspace.service.ReadyWorkspaceInspection(indexSync)
+            val symbolDiscovery = SymbolDiscoveryService(
+                readyWorkspace,
                 semanticPorts.symbolDiscovery,
                 observability,
             )
-            val symbolExact = SymbolExactService(workspace, semanticPorts.symbolExact)
-            val sourceRead = SourceReadService(workspace, semanticPorts.sourceRead)
-            val relation = RelationService(workspace, semanticPorts.relation, observability)
+            val symbolExact = SymbolExactService(readyWorkspace, semanticPorts.symbolExact)
+            val sourceRead = SourceReadService(readyWorkspace, semanticPorts.sourceRead)
+            val relation = RelationService(readyWorkspace, semanticPorts.relation, observability)
             val topology = TopologyBuildService.create(
-                workspace,
+                readyWorkspace,
                 workspace,
                 topologyPorts.candidates,
                 topologyPorts.extractor,
                 topologyPorts.snapshots,
                 observability,
             )
-            val traversal = TopologyBackedTraversalOperations(
-                workspace,
-                topologyPorts.snapshots,
-                topologyPorts.snapshots,
-                observability,
-            )
-            val diagnostic = DiagnosticService(workspace, semanticPorts.diagnostic)
-            val recovery = AddDeclarationRecoveryService(changePorts.recoveryEvidence)
-            val indexSync = WorkspaceIndexSynchronizationService(
-                workspace,
-                indexPorts.refresh,
-                WorkspaceIndexPublicationOperations(workspace::reconcileAfterIndexRefresh),
-            )
-            val indexScheduler = CoalescingAppliedIndexSynchronizationScheduler(
-                indexPorts.asynchronousExecutor,
-                AppliedIndexSynchronizationTask { indexSync.synchronize() },
-            )
-            val changeApply = SuccessfulApplyIndexSynchronization(
-                AddDeclarationApplyService(
-                    recovery,
-                    changePorts.sourceObserver,
-                    changePorts.sourceWriter,
-                    changePorts.sourceRollback,
+            val traversal = TopologyPreparingTraversalOperations(
+                topology,
+                TopologyBackedTraversalOperations(
+                    readyWorkspace,
+                    topologyPorts.snapshots,
+                    topologyPorts.snapshots,
+                    observability,
                 ),
-                indexScheduler,
+            )
+            val diagnostic = DiagnosticService(readyWorkspace, semanticPorts.diagnostic)
+            val recovery = AddDeclarationRecoveryService(changePorts.recoveryEvidence)
+            val changeApply = AddDeclarationApplyService(
+                recovery,
+                changePorts.sourceObserver,
+                changePorts.sourceWriter,
+                changePorts.sourceRollback,
             )
             val changeVerify = VerifiedMutationService(
-                workspace.resultingGenerationPublisher(),
+                workspace.resultingGenerationPublisher(indexPorts.refresh, observability),
                 changePorts.verificationObserver,
+                observability,
             )
             val operations = DirectKastOperations.assemble(
                 workspace,
@@ -184,10 +190,15 @@ class KastRuntimeComposition private constructor(
                 changeVerify,
                 recovery,
                 changePorts.recoveryRollback,
+                workspace.transitions,
             )
-            return DirectKastRuntimeGraph(workspace, operations)
+            return DirectKastRuntimeGraph(workspace, operations, readyWorkspace)
         }
 
+        /**
+         * Binds the complete available service graph, including internal lifecycle capabilities.
+         * RuntimeServer validates this table against canonical exposure and projects public routes.
+         */
         internal fun bind(
             operations: DirectKastOperations,
             handlers: KastOperationHandlerFactory,
@@ -256,36 +267,69 @@ class KastRuntimeComposition private constructor(
 internal data class DirectKastRuntimeGraph(
     val workspace: WorkspacePublicationCoordinator,
     val operations: DirectKastOperations,
+    val semanticWorkspace: io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations,
 )
 
 /**
- * Proof transition: `WorkspacePublicationCoordinator -> ResultingGenerationPublisher`.
- *
- * Preserves exact-prior publication admission and projects every workspace transition failure to
- * the closed verification publication protocol. Raw workspace effects remain in the coordinator.
+ * Retains the exact prior publication through physical refresh and successor reconciliation.
+ * The shared transition owner excludes readiness, application, and recovery competitors; the
+ * coordinator state lock remains available to compiler callbacks and source invalidation.
  */
-private fun WorkspacePublicationCoordinator.resultingGenerationPublisher(): ResultingGenerationPublisher =
-    ResultingGenerationPublisher { prior ->
-        when (val result = reconcileAfter(prior)) {
-            is ResultingWorkspacePublicationResult.Published ->
-                ResultingGenerationPublication.Published(result.publication.workspace)
-            is ResultingWorkspacePublicationResult.Rejected ->
-                ResultingGenerationPublication.Rejected(
-                    when (result.failure) {
-                        ResultingWorkspacePublicationFailure.CurrentPublicationUnavailable,
-                        is ResultingWorkspacePublicationFailure.PriorPublicationMismatch,
-                        ResultingWorkspacePublicationFailure.NoPublication,
-                            -> ResultingGenerationPublicationRejection.CURRENT_PUBLICATION_UNAVAILABLE
-                        ResultingWorkspacePublicationFailure.Invalidated ->
-                            ResultingGenerationPublicationRejection.RECONCILIATION_INVALIDATED
-                        is ResultingWorkspacePublicationFailure.Blocked ->
-                            ResultingGenerationPublicationRejection.RECONCILIATION_BLOCKED
-                        is ResultingWorkspacePublicationFailure.InvalidResult ->
-                            ResultingGenerationPublicationRejection.PUBLICATION_PROTOCOL_REJECTED
-                    },
+private fun WorkspacePublicationCoordinator.resultingGenerationPublisher(
+    refresh: WorkspaceIndexRefreshOperations,
+    observability: KastObservability,
+): ResultingGenerationPublisher = ResultingGenerationPublisher { prior ->
+    transitions.exclusively {
+        val current = when (val state = inspect()) {
+            is WorkspaceRuntimeState.Ready -> state.workspace
+            else -> return@exclusively ResultingGenerationPublication.Rejected(
+                ResultingGenerationPublicationRejection.CURRENT_PUBLICATION_UNAVAILABLE,
+            )
+        }
+        if (current.readLease != prior) {
+            return@exclusively ResultingGenerationPublication.Rejected(
+                ResultingGenerationPublicationRejection.CURRENT_PUBLICATION_UNAVAILABLE,
+            )
+        }
+        val refreshed = try {
+            refresh.refresh(current)
+        } catch (cancelled: CancellationException) {
+            observability.observeWorkspaceRefresh(KastWorkspaceRefreshOutcome.INTERRUPTED)
+            throw cancelled
+        }
+        when (refreshed) {
+            WorkspaceIndexRefresh.Refreshed ->
+                observability.observeWorkspaceRefresh(KastWorkspaceRefreshOutcome.COMPLETED)
+            is WorkspaceIndexRefresh.Rejected -> {
+                observability.observeWorkspaceRefresh(KastWorkspaceRefreshOutcome.REJECTED)
+                return@exclusively ResultingGenerationPublication.Rejected(
+                    ResultingGenerationPublicationRejection.RECONCILIATION_BLOCKED,
                 )
+            }
+        }
+        // Source events raised by the refresh may withdraw Ready. This entry retains the
+        // publication admitted above and permits only its matching historical refresh basis.
+        val resulting = when (val run = reconcileAfterIndexRefresh(current)) {
+            is WorkspacePublicationRun.Published -> run.workspace
+            is WorkspacePublicationRun.Unchanged -> run.workspace
+            WorkspacePublicationRun.NoWork -> return@exclusively ResultingGenerationPublication.Rejected(
+                ResultingGenerationPublicationRejection.CURRENT_PUBLICATION_UNAVAILABLE,
+            )
+            WorkspacePublicationRun.Invalidated -> return@exclusively ResultingGenerationPublication.Rejected(
+                ResultingGenerationPublicationRejection.RECONCILIATION_INVALIDATED,
+            )
+            is WorkspacePublicationRun.Blocked -> return@exclusively ResultingGenerationPublication.Rejected(
+                ResultingGenerationPublicationRejection.RECONCILIATION_BLOCKED,
+            )
+        }
+        when (val admitted = ResultingWorkspacePublication.admit(prior, resulting)) {
+            is Refinement.Refined -> ResultingGenerationPublication.Published(admitted.value.workspace)
+            is Refinement.Rejected -> ResultingGenerationPublication.Rejected(
+                ResultingGenerationPublicationRejection.PUBLICATION_PROTOCOL_REJECTED,
+            )
         }
     }
+}
 
 /** Narrow composition-owned dispatch capability supplied to the isolated indexer host. */
 fun interface KastRuntimeDispatchOperations {

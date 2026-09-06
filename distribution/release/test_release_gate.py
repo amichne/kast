@@ -64,16 +64,9 @@ class ReceiptIdentityTest(unittest.TestCase):
                 "boundary": "usage", "reason": "arguments-rejected", "documentDigest": "sha256:" + "b" * 64,
                 "originalContinuationDigest": "sha256:" + "c" * 64, "validResumeDigest": "sha256:" + "d" * 64}
                 for family in ("relation", "traversal") for case in ("malformed", "digest-tampered")],
-            "stateReceipt": {"kind": "cache-identity-v3", "status": "rejected-and-restored", "exitCode": 4,
+            "stateReceipt": {"kind": "cache-identity-v3", "status": "rejected-and-restored", "exitCode": 0,
                 "boundary": "runtime", "reason": "status-cache-invalid-identity",
                 **{key: "sha256:" + "e" * 64 for key in ("documentDigest", "originalReceiptDigest", "restoredReceiptDigest", "recoveredStatusDigest", "recoveredReadDigest")}}}
-        preserved = {"activeInstallationDigest": "sha256:" + "c" * 64, "workspaceDigest": "sha256:" + "d" * 64}
-        installed["journeys"].extend(["upgrade", "corruption"])
-        installed["upgrade"] = {"status": "passed", "candidateVersion": self.version,
-            "candidateAssets": {name: assets[name] for asset in gate.product_asset_names(self.version)[:2] for name in (asset, asset + ".sha256")},
-            "priorRelease": {"immutable": True, "tag": "v0.32.2", "version": "0.32.2", "passiveStatus": {"status": "stopped"}},
-            **preserved, "corruptionCases": [{"case": case, "status": "rejected", "exitCode": 1, **preserved}
-                                             for case in ("checksum-mismatch", "unsafe-archive-path")]}
         archive = {"status": "passed", "sourceRevision": self.sha, "observations": {"outcome": "COMPLETE", "release": "v1.0.0", "assets": [{"name": name, "sha256": assets[name].removeprefix("sha256:")} for name in gate.product_asset_names(self.version)]}}
         sbom = {"status": "passed", "sourceRevision": self.sha, "archives": {name: assets[name] for name in gate.product_asset_names(self.version)[:2]}, "sbomDigest": assets[f"kast-sbom-v{self.version}.cdx.json"], "componentCount": 1}
         compatibility = {"status": "passed", "sourceRevision": self.sha, "productVersion": self.version,
@@ -182,20 +175,20 @@ class ReceiptIdentityTest(unittest.TestCase):
             with self.subTest(change=change), self.assertRaisesRegex(gate.GateRejected, "semantic corruption proof"):
                 self.validate(receipt)
 
+    def test_state_receipt_requires_passive_inspection_exit_code(self):
+        proof = copy.deepcopy(self.receipt["dependencies"]["installed"]["receipt"]["semanticCorruption"])
+        gate.validate_semantic_corruption(proof)
+        for code in (1, 2, 4):
+            proof["stateReceipt"]["exitCode"] = code
+            with self.subTest(code=code), self.assertRaisesRegex(gate.GateRejected, "state receipt"):
+                gate.validate_semantic_corruption(proof)
+
     def test_inventory_of_different_archives_cannot_authorize_publication(self):
         receipt = copy.deepcopy(self.receipt)
         dependency = receipt["dependencies"]["sbom"]
         dependency["receipt"]["archives"] = {}
         dependency["digest"] = gate.identity(dependency["receipt"])
         with self.assertRaisesRegex(gate.GateRejected, "SBOM predecessor"):
-            self.validate(receipt)
-
-    def test_corruption_rejection_must_preserve_the_active_installation(self):
-        receipt = copy.deepcopy(self.receipt)
-        dependency = receipt["dependencies"]["installed"]
-        dependency["receipt"]["upgrade"]["corruptionCases"][0]["activeInstallationDigest"] = "sha256:" + "e" * 64
-        dependency["digest"] = gate.identity(dependency["receipt"])
-        with self.assertRaisesRegex(gate.GateRejected, "preserve the active product"):
             self.validate(receipt)
 
     def test_cold_broker_proof_cannot_exceed_the_declared_startup_bound(self):

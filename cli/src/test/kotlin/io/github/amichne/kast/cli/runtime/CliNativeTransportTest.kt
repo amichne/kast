@@ -10,9 +10,14 @@ import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.IndexSyncRequest
-import io.github.amichne.kast.protocol.contract.IndexSyncResult
-import io.github.amichne.kast.protocol.contract.IndexSyncStateDocument
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
+import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
+import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
+import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.ProtocolCount
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireEncoding
@@ -34,7 +39,7 @@ import java.util.concurrent.TimeUnit
 @Tag("native")
 class CliNativeTransportTest {
     @Test
-    fun `stopped runtime returns generated runtime boundary without startup or wire exchange`(
+    fun `semantic runtime admission rejection prevents wire exchange`(
         @TempDir temporary: Path,
     ) {
         val root = Files.createDirectories(temporary.resolve("repo"))
@@ -56,7 +61,7 @@ class CliNativeTransportTest {
             },
             runtimeDemander = RuntimeDemander { _, _ ->
                 runtimeDemanded = true
-                error("semantic dispatch must not demand runtime startup")
+                RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
             },
             wireClient = WireClient { _, _ ->
                 wireInvoked = true
@@ -67,21 +72,21 @@ class CliNativeTransportTest {
             productInspector = ProductInspector { error("product inspection must not run") },
         )
 
-        val exit = cli.execute(listOf("index", "sync"), root)
+        val exit = cli.execute(listOf("symbol", "discover", "--query", "Example", "--limit", "10"), root)
 
         val rejected = assertInstanceOf(CliExit.BoundaryRejected::class.java, exit)
         assertEquals(CliBoundaryExitStatus.RUNTIME, rejected.status)
         assertEquals(
             "{\"status\":\"rejected\",\"boundary\":\"runtime\"," +
-                "\"reason\":\"runtime-not-running\"}",
+                "\"reason\":\"endpoint-unavailable\"}",
             rejected.document.value,
         )
-        assertEquals(false, runtimeDemanded)
+        assertEquals(true, runtimeDemanded)
         assertEquals(false, wireInvoked)
     }
 
     @Test
-    fun `index sync traverses exact root UDS and typed wire`(@TempDir temporary: Path) {
+    fun `symbol discovery traverses exact root UDS and typed wire`(@TempDir temporary: Path) {
         val root = Files.createDirectories(temporary.resolve("repo"))
         Files.writeString(root.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
         val nested = Files.createDirectories(root.resolve("module"))
@@ -97,17 +102,20 @@ class CliNativeTransportTest {
             val served = executor.submit {
                 server.accept().use { channel ->
                     val requestDocument = WireFrameCodec.read(channel).receivedDocument()
-                    val binding = CanonicalOperationWireBindings.indexSync
+                    val binding = CanonicalOperationWireBindings.symbolDiscover
                     val request = WireRequestEnvelope.admit(requestDocument).admittedRequest()
                     assertEquals(
-                        WireDecoding.Decoded(IndexSyncRequest),
+                        WireDecoding.Decoded(SymbolDiscoverRequest(
+                            SymbolDiscoverTargetDocument.Name(ProtocolText.parse("Example").refinedValue(), SymbolNameKindDocument.SYMBOL, SymbolDiscoveryMatchDocument.FUZZY),
+                            ProtocolCount.parse(10).refinedValue(),
+                        )),
                         binding.decodeRequest(request),
                     )
                     val outcome = OperationOutcome.Complete(
                         EvidenceEnvelope(
                             operation = binding.operation.id,
                             generation = EvidenceGeneration.parse(17).refinedValue(),
-                            payload = IndexSyncResult(IndexSyncStateDocument.UNCHANGED),
+                            payload = SymbolDiscoverResult(BoundedProtocolList.create(emptyList<io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument>()).refinedValue()),
                         ),
                     )
                     assertEquals(
@@ -142,13 +150,13 @@ class CliNativeTransportTest {
                 productInspector = ProductInspector { error("product inspection must not run") },
             )
 
-            val exit = cli.execute(listOf("index", "sync"), nested)
+            val exit = cli.execute(listOf("symbol", "discover", "--query", "Example", "--limit", "10"), nested)
 
             val complete = exit as CliExit.Complete
             assertEquals(0, complete.code)
             assertEquals(
-                "{\"operation\":\"index.sync\",\"status\":\"complete\"," +
-                    "\"state\":\"unchanged\"}",
+                "{\"operation\":\"symbol.discover\",\"status\":\"complete\"," +
+                    "\"items\":[]}",
                 complete.document.value,
             )
             served.get(10, TimeUnit.SECONDS)

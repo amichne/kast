@@ -103,10 +103,7 @@ import sys
 
 document = json.loads(sys.argv[1])
 assert document["operationRegistry"] == json.loads(Path(sys.argv[2]).read_text()), document
-assert document["cliProjection"]["localCommands"] == [
-    "product inspect",
-    "broker serve",
-], document
+assert document["cliProjection"]["localCommands"] == [], document
 PY
 
 fixture="${temporary_root}/workspace"
@@ -115,13 +112,15 @@ git init -q "${fixture}"
 printf 'rootProject.name = "published-sidecar"\n' >"${fixture}/settings.gradle.kts"
 inspection="$(cd "${fixture}" && HOME="${home}" XDG_CONFIG_HOME="${xdg_config_home}" \
   XDG_DATA_HOME="${xdg_data_home}" KAST_RUNTIME_DIRECTORY="${runtime_directory}" \
-  KAST_RUNTIME_STORE="${runtime_store}" "${kast}" product inspect)"
+  KAST_RUNTIME_STORE="${runtime_store}" "${kast}")"
 python3 - "${inspection}" <<'PY'
 import json
 import sys
 
 document = json.loads(sys.argv[1])
+assert document["operation"] == "inspect", document
 assert document["status"] == "complete", document
+assert document["runtime"] == "stopped", document
 assert document["control"]["execution"] == "isolated-intellij-sidecar", document
 assert document["workspace"]["cache"]["type"] == "absent", document
 PY
@@ -129,9 +128,9 @@ PY
 before="$(pgrep -f 'io\.github\.amichne\.kast\.indexer\.KastIndexerMainKt' || true)"
 (cd "${fixture}" && HOME="${home}" XDG_CONFIG_HOME="${xdg_config_home}" \
   XDG_DATA_HOME="${xdg_data_home}" KAST_RUNTIME_DIRECTORY="${runtime_directory}" \
-  KAST_RUNTIME_STORE="${runtime_store}" "${kast}" status) >/dev/null
+  KAST_RUNTIME_STORE="${runtime_store}" "${kast}") >/dev/null
 after="$(pgrep -f 'io\.github\.amichne\.kast\.indexer\.KastIndexerMainKt' || true)"
-[[ "${before}" == "${after}" ]] || fail "passive status started a sidecar"
+[[ "${before}" == "${after}" ]] || fail "passive bare inspection started a sidecar"
 [[ ! -e "${home}/Library/Application Support/JetBrains" ]] ||
   fail "published product wrote a JetBrains plugin path"
 

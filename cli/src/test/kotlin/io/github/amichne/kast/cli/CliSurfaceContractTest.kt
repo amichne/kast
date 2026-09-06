@@ -16,10 +16,10 @@ import java.nio.file.Path
 
 class CliSurfaceContractTest {
     @Test
-    fun `public syntax is exact over all eleven canonical operations`() {
+    fun `public syntax follows canonical exposure while retaining internal identities`() {
         val surface = commandGraphFactory().surface
 
-        assertEquals(CanonicalOperation.entries, surface.semanticCommands.map { it.operation })
+        assertEquals(io.github.amichne.kast.protocol.registry.HostedOperationProjection.publicDefinitions.map { it.operation }, surface.semanticCommands.map { it.operation })
         assertEquals(
             setOf("add-file", "add-declaration", "replace-declaration", "rename-symbol"),
             Regex("add-file|add-declaration|replace-declaration|rename-symbol")
@@ -31,8 +31,8 @@ class CliSurfaceContractTest {
                 .map { match -> match.value }
                 .toSet(),
         )
-        assertEquals(CliLifecycleCommand.entries, surface.lifecycleCommands)
-        assertEquals(CliProductCommand.entries, surface.localCommands)
+        assertEquals(listOf(CliLifecycleCommand.START, CliLifecycleCommand.STOP), surface.lifecycleCommands)
+        assertTrue(surface.localCommands.isEmpty())
     }
 
     @Test
@@ -98,14 +98,12 @@ class CliSurfaceContractTest {
         )
         assertTrue(helpText.contains("Start the isolated exact-root IntelliJ sidecar."))
         assertTrue(helpText.contains("Stop only the process proven to own this exact workspace endpoint."))
-        assertTrue(helpText.contains("Report exact-root runtime and private cache identity and state."))
         assertTrue(helpText.contains("sidecar-backed changes"))
-        assertTrue(helpText.contains("durable generation-bound repository topology"))
         assertTrue(helpText.contains("Read bounded compiler-grounded semantic relations"))
         assertTrue(helpText.contains("Read bounded compiler diagnostics"))
         assertTrue(helpText.contains("workspace"))
         assertTrue(helpText.contains("change"))
-        CliLifecycleCommand.entries.forEach { command ->
+        listOf(CliLifecycleCommand.START, CliLifecycleCommand.STOP).forEach { command ->
             assertTrue(helpText.contains(command.command))
         }
         assertFalse(helpText.contains(" setup"))

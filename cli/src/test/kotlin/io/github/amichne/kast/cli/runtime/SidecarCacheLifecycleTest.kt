@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
 import io.github.amichne.kast.kernel.Refinement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -23,6 +24,7 @@ class SidecarCacheLifecycleTest {
             cacheRoot,
             releaseIdentity(runtimeIdentity()),
             missingRuntimeResolver,
+            importEnvironment = { Refinement.Refined(GradleImportEnvironment.Empty) },
         )
 
         assertEquals(RootSidecarCacheObservation.Absent, lifecycle.observe(project))
@@ -78,6 +80,7 @@ class SidecarCacheLifecycleTest {
             alias.resolve("caches"),
             releaseIdentity(identity),
             cacheRuntimeResolver(runtime),
+            importEnvironment = { Refinement.Refined(GradleImportEnvironment.Empty) },
         )
         val observed = assertInstanceOf(
             RootSidecarCacheObservation.Observed::class.java,
@@ -133,6 +136,7 @@ class SidecarCacheLifecycleTest {
             cacheRoot,
             releaseIdentity(identity),
             cacheRuntimeResolver(runtime),
+            importEnvironment = { Refinement.Refined(GradleImportEnvironment.Empty) },
         )
         val smart = assertInstanceOf(
             RootSidecarCacheObservation.Observed::class.java,
@@ -250,6 +254,7 @@ class SidecarCacheLifecycleTest {
             cacheRoot,
             releaseIdentity(runtimeIdentity()),
             missingRuntimeResolver,
+            importEnvironment = { Refinement.Refined(GradleImportEnvironment.Empty) },
         )
         repeat(2) { index ->
             val root = Files.createDirectory(cacheRoot.resolve("invalid-$index"))
@@ -319,6 +324,7 @@ class SidecarCacheLifecycleTest {
             cacheRuntimeResolver(
                 currentRuntime,
             ),
+            importEnvironment = { Refinement.Refined(GradleImportEnvironment.Empty) },
         )
         val observation = assertInstanceOf(
             RootSidecarCacheObservation.Observed::class.java,
@@ -382,6 +388,7 @@ class SidecarCacheLifecycleTest {
             cacheRuntimeResolver(
                 currentRuntime,
             ),
+            importEnvironment = { Refinement.Refined(GradleImportEnvironment.Empty) },
         )
 
         val observation = assertInstanceOf(

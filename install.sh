@@ -340,7 +340,9 @@ purge_kast() {
   remove_kast_children "$HOME/Library/Application Support/Google" "*/plugins/kast"
   remove_kast_children "$HOME/Library/Application Support/Google" "*/plugins/kast-indexer"
   remove_owned_path "$bin_dir/kast"
+  remove_owned_path "$bin_dir/kast-codex"
   remove_owned_path "$HOME/.local/bin/kast"
+  remove_owned_path "$HOME/.local/bin/kast-codex"
   remove_owned_path "$HOME/.local/bin/_kastctl"
   remove_owned_path "$install_root"
   remove_owned_path "$default_install_root"
@@ -748,8 +750,9 @@ install_complete_launcher() {
   local java_executable="$2"
   local java_home="$3"
   local config_file="$4"
-  local launcher="$root/bin/kast-complete"
-  staged_launcher="$(mktemp "$root/bin/.kast-complete.XXXXXX")"
+  local executable_name="${5:-kast}"
+  local launcher="$root/bin/$executable_name-complete"
+  staged_launcher="$(mktemp "$root/bin/.$executable_name-complete.XXXXXX")"
   {
     printf '%s\n' '#!/bin/sh' 'set -eu' ''
     printf '%s\n' 'script_path="$0"' 'link_count=0'
@@ -764,50 +767,77 @@ install_complete_launcher() {
     printf '%s\n' 'done'
     printf '%s\n' 'script_dir="$(CDPATH= cd -- "$(dirname -- "$script_path")" && pwd -P)"'
     printf 'config_file=%s\n' "$(shell_single_quote "$config_file")"
-    printf '%s\n' 'if [ -e "$config_file" ] || [ -L "$config_file" ]; then'
-    printf '%s\n' '  if [ ! -f "$config_file" ] || [ -L "$config_file" ]; then'
-    printf '%s\n' '    echo "kast: runtime configuration is not a regular file: $config_file" >&2'
-    printf '%s\n' '    exit 1'
-    printf '%s\n' '  fi'
-    printf '%s\n' \
-      '  seen_runtime_store=false' \
-      '  seen_runtime_directory=false' \
-      '  seen_cache_root=false' \
-      '  seen_enable_launchd=false'
-    printf '%s\n' '  while IFS= read -r config_line || [ -n "$config_line" ]; do'
-    printf '%s\n' '    case "$config_line" in'
-    printf '%s\n' "      ''|'#'*) ;;"
-    printf '%s\n' '      KAST_RUNTIME_STORE=*)'
-    printf '%s\n' '        [ "$seen_runtime_store" = false ] || { echo "kast: runtime configuration repeats KAST_RUNTIME_STORE" >&2; exit 1; }'
-    printf '%s\n' '        seen_runtime_store=true'
-    printf '%s\n' '        [ "${KAST_RUNTIME_STORE+x}" = x ] || KAST_RUNTIME_STORE=${config_line#*=}'
-    printf '%s\n' '        ;;'
-    printf '%s\n' '      KAST_RUNTIME_DIRECTORY=*)'
-    printf '%s\n' '        [ "$seen_runtime_directory" = false ] || { echo "kast: runtime configuration repeats KAST_RUNTIME_DIRECTORY" >&2; exit 1; }'
-    printf '%s\n' '        seen_runtime_directory=true'
-    printf '%s\n' '        [ "${KAST_RUNTIME_DIRECTORY+x}" = x ] || KAST_RUNTIME_DIRECTORY=${config_line#*=}'
-    printf '%s\n' '        ;;'
-    printf '%s\n' '      KAST_CACHE_ROOT=*)'
-    printf '%s\n' '        [ "$seen_cache_root" = false ] || { echo "kast: runtime configuration repeats KAST_CACHE_ROOT" >&2; exit 1; }'
-    printf '%s\n' '        seen_cache_root=true'
-    printf '%s\n' '        [ "${KAST_CACHE_ROOT+x}" = x ] || KAST_CACHE_ROOT=${config_line#*=}'
-    printf '%s\n' '        ;;'
-    printf '%s\n' '      KAST_ENABLE_LAUNCHD=*)'
-    printf '%s\n' '        [ "$seen_enable_launchd" = false ] || { echo "kast: runtime configuration repeats KAST_ENABLE_LAUNCHD" >&2; exit 1; }'
-    printf '%s\n' '        seen_enable_launchd=true'
-    printf '%s\n' '        [ "${KAST_ENABLE_LAUNCHD+x}" = x ] || KAST_ENABLE_LAUNCHD=${config_line#*=}'
-    printf '%s\n' '        ;;'
-    printf '%s\n' '      *) echo "kast: runtime configuration has an unsupported record: $config_line" >&2; exit 1 ;;'
-    printf '%s\n' '    esac'
-    printf '%s\n' '  done < "$config_file"'
-    printf '%s\n' '  export KAST_RUNTIME_STORE KAST_RUNTIME_DIRECTORY KAST_CACHE_ROOT KAST_ENABLE_LAUNCHD'
-    printf '%s\n' 'fi'
+    cat <<'LAUNCHER_CONFIGURATION'
+saved_configuration_failure() {
+  if [ -z "${KAST_SAVED_CONFIGURATION_FAILURE+x}" ]; then
+    KAST_SAVED_CONFIGURATION_FAILURE=$1
+  fi
+  export KAST_SAVED_CONFIGURATION_FAILURE
+}
+if [ -e "$config_file" ] || [ -L "$config_file" ]; then
+  if [ ! -f "$config_file" ] || [ -L "$config_file" ] || [ ! -r "$config_file" ]; then
+    saved_configuration_failure unreadable
+  else
+    seen_runtime_store=false
+    seen_runtime_directory=false
+    seen_cache_root=false
+    seen_enable_launchd=false
+    while IFS= read -r config_line || [ -n "$config_line" ]; do
+      case "$config_line" in
+        ''|'#'*) ;;
+        KAST_RUNTIME_STORE=*)
+          if [ "$seen_runtime_store" = true ]; then
+            saved_configuration_failure duplicate-record
+            break
+          fi
+          seen_runtime_store=true
+          [ "${KAST_RUNTIME_STORE+x}" = x ] || KAST_RUNTIME_STORE=${config_line#*=}
+          ;;
+        KAST_RUNTIME_DIRECTORY=*)
+          if [ "$seen_runtime_directory" = true ]; then
+            saved_configuration_failure duplicate-record
+            break
+          fi
+          seen_runtime_directory=true
+          [ "${KAST_RUNTIME_DIRECTORY+x}" = x ] || KAST_RUNTIME_DIRECTORY=${config_line#*=}
+          ;;
+        KAST_CACHE_ROOT=*)
+          if [ "$seen_cache_root" = true ]; then
+            saved_configuration_failure duplicate-record
+            break
+          fi
+          seen_cache_root=true
+          [ "${KAST_CACHE_ROOT+x}" = x ] || KAST_CACHE_ROOT=${config_line#*=}
+          ;;
+        KAST_ENABLE_LAUNCHD=*)
+          if [ "$seen_enable_launchd" = true ]; then
+            saved_configuration_failure duplicate-record
+            break
+          fi
+          seen_enable_launchd=true
+          [ "${KAST_ENABLE_LAUNCHD+x}" = x ] || KAST_ENABLE_LAUNCHD=${config_line#*=}
+          ;;
+        *) saved_configuration_failure unsupported-record; break ;;
+      esac
+    done < "$config_file"
+    export KAST_RUNTIME_STORE KAST_RUNTIME_DIRECTORY KAST_CACHE_ROOT KAST_ENABLE_LAUNCHD
+  fi
+fi
+LAUNCHER_CONFIGURATION
+    # Releases before the integration entry point cannot consume typed saved-config failures.
+    # Keep their admission fail-closed instead of forwarding an unknown environment field.
+    if [[ ! -x "$root/bin/kast-codex" ]]; then
+      printf '%s\n' 'if [ -n "${KAST_SAVED_CONFIGURATION_FAILURE+x}" ]; then'
+      printf '%s\n' '  echo "kast: saved runtime configuration rejected" >&2' '  exit 1' 'fi'
+    fi
     printf '%s\n' "runtime_archive=\"\$script_dir/../share/kast/runtime/$runtime_name\""
-    printf '%s\n' 'control_executable="$script_dir/kast"'
+    printf 'control_executable="$script_dir/%s"\n' "$executable_name"
     printf '%s\n' 'if [ ! -x "$control_executable" ] || [ ! -f "$runtime_archive" ]; then'
     printf '%s\n' '  echo "kast: installed control or sidecar payload is missing" >&2'
     printf '%s\n' '  exit 1'
     printf '%s\n' 'fi'
+    printf '%s\n' 'if [ -z "${KAST_TRUST_DONOR_JAVA_HOME+x}" ] && [ -n "${JAVA_HOME:-}" ]; then'
+    printf '%s\n' '  export KAST_TRUST_DONOR_JAVA_HOME="${JAVA_HOME}"' 'fi'
     printf 'export JAVA=%s\n' "$(shell_single_quote "$java_executable")"
     printf 'export JAVA_HOME=%s\n' "$(shell_single_quote "$java_home")"
     printf '%s\n' 'export KAST_RUNTIME_ARCHIVE="$runtime_archive"'
@@ -826,6 +856,10 @@ verify_control_root() {
   local version_output link
 
   [[ -x "$root/bin/kast" ]] || fail "control archive has no executable bin/kast"
+  if [[ -e "$root/bin/kast-codex" || -L "$root/bin/kast-codex" ]]; then
+    [[ -f "$root/bin/kast-codex" && -x "$root/bin/kast-codex" ]] ||
+      fail "control archive has an invalid bin/kast-codex"
+  fi
   [[ -f "$root/share/kast/semantic-runtime.json" ]] ||
     fail "control archive has no semantic-runtime manifest"
   [[ -f "$root/share/kast/operation-registry.json" ]] ||
@@ -1057,7 +1091,7 @@ if [[ "$action" == "uninstall" ]]; then
           ;;
       esac
     done <<< "$process_table"
-    for selected_path in "$bin_dir/kast" "$install_root" "$runtime_store" \
+    for selected_path in "$bin_dir/kast" "$bin_dir/kast-codex" "$install_root" "$runtime_store" \
       "$cache_root" "$runtime_directory" "$runtime_socket_directory" "$config_root"; do
       remove_owned_path "$selected_path"
     done
@@ -1174,6 +1208,7 @@ staged_configuration=""
 activation_state="unstarted"
 prior_current=""
 prior_command=""
+prior_codex_command=""
 prior_configuration="absent"
 staged_link=""
 
@@ -1199,6 +1234,11 @@ restore_activation() {
     replace_managed_link "$command_link" "$prior_command"
   else
     rm -f "$command_link"
+  fi
+  if [[ -n "$prior_codex_command" ]]; then
+    replace_managed_link "$codex_command_link" "$prior_codex_command"
+  else
+    rm -f "$codex_command_link"
   fi
   if [[ "$prior_configuration" == "present" ]]; then
     staged_configuration="$(mktemp "$config_root/.environment-restore.XXXXXX")"
@@ -1287,6 +1327,7 @@ versions_root="$install_root/versions"
 target_root="$versions_root/$version"
 current_link="$install_root/current"
 command_link="$bin_dir/kast"
+codex_command_link="$bin_dir/kast-codex"
 mkdir -p "$versions_root" "$bin_dir"
 
 if [[ -e "$target_root" || -L "$target_root" ]]; then
@@ -1304,6 +1345,9 @@ if [[ -e "$target_root" || -L "$target_root" ]]; then
   install_runtime_archive "$target_root" "$runtime_archive" "$runtime_checksum" "$runtime_digest"
   install_complete_launcher \
     "$target_root" "$java_executable" "$java_home" "$config_file"
+  if [[ -x "$target_root/bin/kast-codex" ]]; then
+    install_complete_launcher "$target_root" "$java_executable" "$java_home" "$config_file" kast-codex
+  fi
 else
   staged_root="$(mktemp -d "$versions_root/.install-${version}.XXXXXX")"
   tar -xzf "$archive" -C "$staged_root"
@@ -1311,6 +1355,9 @@ else
   install_runtime_archive "$staged_root" "$runtime_archive" "$runtime_checksum" "$runtime_digest"
   install_complete_launcher \
     "$staged_root" "$java_executable" "$java_home" "$config_file"
+  if [[ -x "$staged_root/bin/kast-codex" ]]; then
+    install_complete_launcher "$staged_root" "$java_executable" "$java_home" "$config_file" kast-codex
+  fi
   printf '%s\n' "$control_digest" > "$staged_root/.kast-control-sha256"
   printf '%s\n' "$runtime_digest" > "$staged_root/.kast-runtime-sha256"
   mv "$staged_root" "$target_root"
@@ -1337,6 +1384,15 @@ if [[ -e "$command_link" || -L "$command_link" ]]; then
   esac
 fi
 
+if [[ -e "$codex_command_link" || -L "$codex_command_link" ]]; then
+  [[ -L "$codex_command_link" ]] || fail "command path already exists and is not managed: $codex_command_link"
+  prior_codex_command="$(readlink "$codex_command_link")"
+  case "$prior_codex_command" in
+    "$install_root/current/bin/kast-codex-complete"|"$install_root/versions/"*/bin/kast-codex-complete) ;;
+    *) fail "command path is owned by another installation: $codex_command_link" ;;
+  esac
+fi
+
 if [[ -e "$config_file" || -L "$config_file" ]]; then
   [[ -f "$config_file" && ! -L "$config_file" ]] ||
     fail "existing configuration is not a regular file: $config_file"
@@ -1348,6 +1404,11 @@ activation_state="pending"
 install_runtime_configuration "$config_file"
 replace_managed_link "$current_link" "versions/$version"
 replace_managed_link "$command_link" "$install_root/current/bin/kast-complete"
+if [[ -x "$target_root/bin/kast-codex" ]]; then
+  replace_managed_link "$codex_command_link" "$install_root/current/bin/kast-codex-complete"
+else
+  rm -f "$codex_command_link"
+fi
 
 verify_control_root "$target_root" "$version" "$java_executable" "$java_home"
 "$command_link" --version >/dev/null
@@ -1355,6 +1416,9 @@ activation_state="committed"
 
 note "installed Kast $version"
 note "command: $command_link"
+if [[ -x "$target_root/bin/kast-codex" ]]; then
+  note "integration command: $codex_command_link"
+fi
 note "configuration: $config_file"
 note "private sidecar: $target_root/share/kast/runtime/$runtime_name"
 info "runtime knobs: KAST_RUNTIME_STORE, KAST_RUNTIME_DIRECTORY, KAST_CACHE_ROOT, KAST_ENABLE_LAUNCHD"

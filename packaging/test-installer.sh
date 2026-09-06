@@ -248,7 +248,14 @@ printf '%s  %s\n' "$runtime_sha" "$runtime_name" >"$assets/$runtime_name.sha256"
 control_root="$fixture_root/control"
 mkdir -p "$control_root/bin" "$control_root/share/kast"
 printf '%s\n' '#!/usr/bin/env bash' \
+  'if [[ -n "${KAST_SAVED_CONFIGURATION_FAILURE+x}" ]]; then' \
+  '  [[ $# -eq 0 ]] || exit 78' \
+  '  printf "blocked:%s\n" "$KAST_SAVED_CONFIGURATION_FAILURE"; exit 0' \
+  'fi' \
   'case "${1:-}" in' \
+  '  --test-launch-context)' \
+  '    shift; printf "%s\n" "${0##*/}" "${JAVA:?}" "${JAVA_HOME:?}" "${KAST_TRUST_DONOR_JAVA_HOME-unset}" "${KAST_RUNTIME_ARCHIVE:?}" "$@"' \
+  '    ;;' \
   '  --version) printf "kast 9.8.7 (IntelliJ sidecar)\n" ;;' \
   '  --schema) printf "{}\n" ;;' \
   '  --test-runtime-config)' \
@@ -258,6 +265,7 @@ printf '%s\n' '#!/usr/bin/env bash' \
   '  *) exit 64 ;;' \
   'esac' >"$control_root/bin/kast"
 chmod +x "$control_root/bin/kast"
+cp "$control_root/bin/kast" "$control_root/bin/kast-codex"
 printf '{}\n' >"$control_root/share/kast/operation-registry.json"
 printf '{}\n' >"$control_root/share/kast/wire-schema.json"
 runtime_url="file://$fixture_root/assets/v9.8.7/$runtime_name"
@@ -296,6 +304,16 @@ env -i "${installer_environment[@]}" bash "$repository_root/install.sh" install 
 version_root="$custom_install/versions/9.8.7"
 [[ -x "$version_root/bin/kast" ]] || fail "verified control release was not installed"
 [[ -x "$version_root/bin/kast-complete" ]] || fail "complete launcher was not installed"
+[[ -x "$version_root/bin/kast-codex-complete" ]] || fail "integration launcher was not installed"
+[[ -L "$custom_bin/kast-codex" ]] || fail "managed integration command link is absent"
+for command in kast kast-codex; do
+  actual_context="$(env -i JAVA_HOME="$fixture_root/ambient java" "$custom_bin/$command" --test-launch-context 'space argument' 'literal $(false)')"
+  expected_context="$(printf '%s\n' "$command" "$java_home/bin/java" "$java_home" "$fixture_root/ambient java" "$version_root/bin/../share/kast/runtime/$runtime_name" 'space argument' 'literal $(false)')"
+  [[ "$actual_context" == "$expected_context" ]] || fail "$command lost pinned runtime, ambient donor, or literal arguments"
+  explicit_context="$(env -i JAVA_HOME="$fixture_root/ambient java" KAST_TRUST_DONOR_JAVA_HOME='' "$custom_bin/$command" --test-launch-context)"
+  expected_context="$(printf '%s\n' "$command" "$java_home/bin/java" "$java_home" '' "$version_root/bin/../share/kast/runtime/$runtime_name")"
+  [[ "$explicit_context" == "$expected_context" ]] || fail "$command replaced an explicit donor setting"
+done
 grep -Fq "export JAVA='$java_home/bin/java'" "$version_root/bin/kast-complete" ||
   fail "complete launcher did not retain IDEA's installation-proven Java executable"
 grep -Fq "export JAVA_HOME='$java_home'" "$version_root/bin/kast-complete" ||
@@ -323,6 +341,28 @@ expected_override_config="$(printf '%s\n' \
   "$override_store" "$runtime_directory" "$cache_root" '0')"
 [[ "$overridden_runtime_config" == "$expected_override_config" ]] ||
   fail "process environment did not override installed runtime configuration"
+cp "$config_file" "$fixture_root/valid-environment"
+for command in kast kast-codex; do
+  for rejection in duplicate-record unsupported-record unreadable; do
+    cp "$fixture_root/valid-environment" "$config_file"
+    case "$rejection" in
+      duplicate-record) printf 'KAST_RUNTIME_STORE=/duplicate\n' >> "$config_file" ;;
+      unsupported-record) printf 'SECRET_VALUE=do-not-print-this\n' >> "$config_file" ;;
+      unreadable) rm "$config_file"; ln -s "$fixture_root/valid-environment" "$config_file" ;;
+    esac
+    actual_rejection="$(env -i "$custom_bin/$command" 2>"$fixture_root/config-rejection.err")" ||
+      fail "$command rejected saved configuration before passive composition"
+    [[ "$actual_rejection" == "blocked:$rejection" ]] || fail "$command lost closed saved configuration rejection"
+    [[ ! -s "$fixture_root/config-rejection.err" ]] || fail "$command leaked saved configuration diagnostics"
+    if env -i "$custom_bin/$command" --test-runtime-config >/dev/null 2>&1; then
+      fail "$command allowed semantic admission after saved configuration rejection"
+    fi
+    rm "$config_file"
+  done
+done
+cp "$fixture_root/valid-environment" "$config_file"
+[[ "$(env -i KAST_SAVED_CONFIGURATION_FAILURE=unsupported-record "$custom_bin/kast")" == 'blocked:unsupported-record' ]] ||
+  fail "valid saved configuration erased inherited rejection"
 [[ -f "$version_root/share/kast/runtime/$runtime_name" ]] ||
   fail "private sidecar archive was not installed"
 [[ -L "$custom_install/current" && -L "$custom_bin/kast" ]] ||
@@ -343,6 +383,29 @@ grep -Fq "configuration: $config_file" "$install_output" ||
 grep -Fxq "file://$fixture_root/assets/v9.8.7/$control_name" "$curl_log" ||
   fail "control asset URL was not requested"
 grep -Fxq "$runtime_url" "$curl_log" || fail "sidecar asset URL was not requested"
+
+# An unrelated integration command must not be replaced, even if kast is managed.
+rm "$custom_bin/kast-codex"
+for ownership in regular-file foreign-link; do
+  case "$ownership" in
+    regular-file) printf 'preserve integration command\n' > "$custom_bin/kast-codex" ;;
+    foreign-link) ln -s "$custom_bin/keep" "$custom_bin/kast-codex" ;;
+  esac
+  if env -i "${installer_environment[@]}" bash "$repository_root/install.sh" install \
+    --version 9.8.7 --release-base-url "file://$fixture_root/assets" \
+    --assets-directory "$assets" >"$fixture_root/foreign-integration.out" 2>&1; then
+    fail "installer replaced an unrelated integration command: $ownership"
+  fi
+  if [[ "$ownership" == regular-file ]]; then
+    [[ "$(cat "$custom_bin/kast-codex")" == 'preserve integration command' ]] || fail "installer changed unrelated command contents"
+  else
+    [[ "$(readlink "$custom_bin/kast-codex")" == "$custom_bin/keep" ]] || fail "installer changed unrelated command target"
+  fi
+  [[ "$(readlink "$custom_install/current")" == 'versions/9.8.7' ]] || fail "ownership rejection changed selected version"
+  cmp "$fixture_root/valid-environment" "$config_file" || fail "ownership rejection changed saved configuration"
+  rm "$custom_bin/kast-codex"
+done
+ln -s "$custom_install/current/bin/kast-codex-complete" "$custom_bin/kast-codex"
 
 offline_output="$fixture_root/offline-install.out"
 curl_before="$(shasum -a 256 "$curl_log")"
@@ -375,6 +438,7 @@ env -i "${installer_environment[@]}" bash "$repository_root/install.sh" uninstal
 }
 assert_absent "$custom_install"
 assert_absent "$custom_bin/kast"
+assert_absent "$custom_bin/kast-codex"
 assert_present "$process_state"
 [[ "$(shasum -a 256 "$process_log")" == "$process_before" ]] ||
   fail "scoped uninstall signalled an unrelated indexer"
@@ -468,6 +532,10 @@ case "${1:-}" in
 esac
 '''.replace('version="VERSION"', 'version="' + version + '"'))
 launcher.chmod(0o755)
+if not version.startswith('0.'):
+    integration = control / 'bin/kast-codex'
+    integration.write_text(launcher.read_text())
+    integration.chmod(0o755)
 for name in ['operation-registry.json', 'wire-schema.json']:
     (control / 'share/kast' / name).write_text('{}\n')
 (control / 'share/kast/semantic-runtime.json').write_text(json.dumps({'archive': {
@@ -498,13 +566,30 @@ for selected_version in 0.32.2 1.0.0 1.1.0; do
     { cat "$fixture_root/upgrade-$selected_version.out" >&2; fail "versioned upgrade failed: $selected_version"; }
   [[ "$(env -i "${installer_environment[@]}" "$custom_bin/kast" --version)" == "kast $selected_version (IntelliJ sidecar)" ]] ||
     fail "versioned upgrade selected the wrong product: $selected_version"
+  if [[ "$selected_version" == 0.* ]]; then
+    assert_absent "$custom_bin/kast-codex"
+    cp "$xdg_config/environment" "$fixture_root/legacy-environment"
+    printf 'UNKNOWN_RECORD=must-not-be-ignored\n' >> "$xdg_config/environment"
+    if env -i "${installer_environment[@]}" "$custom_bin/kast" --version >"$fixture_root/legacy-rejection.out" 2>&1; then
+      fail "legacy control silently ignored saved configuration rejection"
+    fi
+    cp "$fixture_root/legacy-environment" "$xdg_config/environment"
+  else
+    [[ "$(env -i "${installer_environment[@]}" "$custom_bin/kast-codex" --version)" == "kast $selected_version (IntelliJ sidecar)" ]] ||
+      fail "versioned upgrade selected the wrong integration product: $selected_version"
+  fi
 done
+# A link to a particular managed version must be restored exactly after failure.
+rm "$custom_bin/kast-codex"
+ln -s "$custom_install/versions/1.1.0/bin/kast-codex-complete" "$custom_bin/kast-codex"
+prior_integration="$(readlink "$custom_bin/kast-codex")"
 cp "$xdg_config/environment" "$fixture_root/prior-environment"
 if upgrade_to 1.1.1 KAST_TEST_FAIL_ACTIVE_VERSION=1.1.1 >"$fixture_root/failed-upgrade.out" 2>&1; then
   fail "a failing activated release unexpectedly installed"
 fi
 [[ "$(readlink "$custom_install/current")" == 'versions/1.1.0' ]] ||
   fail "failed activation did not restore the prior current version"
+[[ "$(readlink "$custom_bin/kast-codex")" == "$prior_integration" ]] || fail "failed activation lost prior integration link"
 cmp "$fixture_root/prior-environment" "$xdg_config/environment" ||
   fail "failed activation changed the prior configuration"
 if upgrade_to 1.1.2 KAST_TEST_INTERRUPT_ACTIVE_VERSION=1.1.2 >"$fixture_root/interrupted-upgrade.out" 2>&1; then
@@ -512,8 +597,16 @@ if upgrade_to 1.1.2 KAST_TEST_INTERRUPT_ACTIVE_VERSION=1.1.2 >"$fixture_root/int
 fi
 [[ "$(readlink "$custom_install/current")" == 'versions/1.1.0' ]] ||
   fail "interrupted activation did not restore the prior current version"
+[[ "$(readlink "$custom_bin/kast-codex")" == "$prior_integration" ]] || fail "interrupted activation lost prior integration link"
 [[ "$(env -i "${installer_environment[@]}" "$custom_bin/kast" --version)" == 'kast 1.1.0 (IntelliJ sidecar)' ]] ||
   fail "rollback did not restore a working command"
+if upgrade_to 0.32.2 KAST_TEST_FAIL_ACTIVE_VERSION=0.32.2 >"$fixture_root/failed-downgrade.out" 2>&1; then
+  fail "a failing legacy downgrade unexpectedly installed"
+fi
+[[ "$(readlink "$custom_bin/kast-codex")" == "$prior_integration" ]] || fail "failed legacy downgrade lost prior integration link"
+upgrade_to 0.32.2 >"$fixture_root/legacy-downgrade.out" 2>&1 || fail "legacy downgrade failed"
+assert_absent "$custom_bin/kast-codex"
+upgrade_to 1.1.0 >"$fixture_root/modern-upgrade.out" 2>&1 || fail "modern upgrade after legacy downgrade failed"
 env -i "${installer_environment[@]}" bash "$repository_root/install.sh" uninstall --installation-only \
   >"$fixture_root/versioned-uninstall.out" 2>&1 || fail "versioned uninstall failed"
 upgrade_to 1.1.0 >"$fixture_root/versioned-reinstall.out" 2>&1 || fail "versioned reinstall failed"

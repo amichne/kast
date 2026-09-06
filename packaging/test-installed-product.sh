@@ -78,23 +78,27 @@ document = json.loads(sys.argv[1])
 registry = json.loads(Path(sys.argv[2]).read_text())
 assert document["operationRegistry"] == registry, document
 assert document["cliProjection"]["commands"], document
-assert document["cliProjection"]["localCommands"] == [
-    "product inspect",
-    "broker serve",
-], document
+assert document["cliProjection"]["localCommands"] == [], document
 PY
 
-broker_help="$(env "${command_environment[@]}" "$kast" broker --help)"
-grep -Fq 'serve' <<<"$broker_help" ||
-  fail "installed broker command is absent from help"
+help="$(env "${command_environment[@]}" "$kast" --help)"
+for command in symbol source relation traversal diagnostic change start stop; do
+  grep -Eq "^  ${command}[[:space:]]" <<<"$help" || fail "public command is absent: $command"
+done
+for command in product status index topology broker; do
+  if grep -Eq "^  ${command}[[:space:]]" <<<"$help"; then
+    fail "retired command is public: $command"
+  fi
+done
+[[ -x "$product_root/bin/kast-codex" ]] || fail "installed integration host is missing"
 
-inspection="$(cd "$fixture/repo" && env "${command_environment[@]}" "$kast" product inspect)"
+inspection="$(cd "$fixture/repo" && env "${command_environment[@]}" "$kast")"
 python3 - "$inspection" <<'PY'
 import json
 import sys
 
 document = json.loads(sys.argv[1])
-assert document["operation"] == "product.inspect", document
+assert document["operation"] == "inspect", document
 assert document["status"] == "complete", document
 assert document["control"]["execution"] == "isolated-intellij-sidecar", document
 assert document["control"]["runtimeId"].startswith("sha256:"), document
@@ -109,27 +113,27 @@ passive_state_manifest() {
   done | LC_ALL=C sort
 }
 before_status_state="$(passive_state_manifest)"
-status="$(cd "$fixture/repo" && env "${command_environment[@]}" "$kast" status)"
+status="$(cd "$fixture/repo" && env "${command_environment[@]}" "$kast")"
 after_status_state="$(passive_state_manifest)"
 [[ "$before_status_state" == "$after_status_state" ]] ||
-  fail "status mutated isolated runtime or cache state"
-if ps -axo command= \
-  | grep -F 'io.github.amichne.kast.indexer.KastIndexerMainKt' \
+  fail "bare inspection mutated isolated runtime or cache state"
+if pgrep -fl 'io[.]github[.]amichne[.]kast[.]indexer[.]KastIndexerMainKt' \
   | grep -F -- "$runtime_socket_directory" \
   | grep -q .; then
-  fail "status started its isolated sidecar"
+  fail "bare inspection started its isolated sidecar"
 fi
 python3 - "$status" <<'PY'
 import json
 import sys
 
 document = json.loads(sys.argv[1])
-assert document["command"] == "status", document
+assert document["operation"] == "inspect", document
+assert document["status"] == "complete", document
 assert document["runtime"] == "stopped", document
 assert document["cache"] == {"state": "absent"}, document
 PY
 [[ ! -e "$fixture/home/Library/Application Support/JetBrains" ]] ||
-  fail "metadata or status wrote a JetBrains plugin path"
+  fail "metadata or inspection wrote a JetBrains plugin path"
 
 mkdir -p "$report_directory"
 python3 - "$report_directory/topology-installed-product.json" "$version" <<'PY'
@@ -143,8 +147,7 @@ document = {
     "outcome": "COMPLETE",
     "product": sys.argv[2],
     "semanticRuntimeManifest": "PRESENT",
-    "productInspection": "SIDECAR",
-    "passiveStatus": "STOPPED",
+    "passiveInspection": "SIDECAR_STOPPED",
     "isolatedIndexerProcessDelta": 0,
 }
 path = Path(sys.argv[1])

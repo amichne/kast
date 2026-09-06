@@ -24,6 +24,8 @@ internal sealed interface BrokerStartupRejection {
         val failure: InstalledBrokerServerFailure,
     ) : BrokerStartupRejection
 
+    data class Upstream(val failure: io.github.amichne.kast.cli.broker.runtime.ManagedCodexUpstreamFailure) : BrokerStartupRejection
+
     data class CodexQualification(
         val failure: CodexProtocolQualificationFailure,
     ) : BrokerStartupRejection
@@ -118,6 +120,7 @@ internal class BrokerStartupActivityPublisher(
 private fun BrokerStartupStage.wireName(): String = name.lowercase().replace('_', '-')
 
 private fun BrokerStartupRejection.wireName(): String = when (this) {
+    is BrokerStartupRejection.Upstream -> "upstream-${failure.name.lowercase().replace('_', '-')}"
     is BrokerStartupRejection.Server -> failure.name.lowercase().replace('_', '-')
     is BrokerStartupRejection.CodexQualification ->
         "codex-${failure.name.lowercase().replace('_', '-')}"

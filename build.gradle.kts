@@ -124,7 +124,7 @@ val assembleKastControlDist by tasks.registering(Tar::class) {
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
     eachFile {
-        if (relativePath.pathString == "bin/kast") permissions { unix("755") }
+        if (relativePath.pathString in setOf("bin/kast", "bin/kast-codex")) permissions { unix("755") }
     }
 }
 
@@ -382,15 +382,22 @@ val releaseAcceptanceContractTest by tasks.registering(Exec::class) {
     commandLine("python3", "-m", "unittest", "discover", "-s", "integration-tests", "-p", "test_*.py")
 }
 
+val productBuildGate by tasks.registering {
+    group = "verification"
+    description = "Builds every module and verifies architecture and installed packaging."
+    dependsOn("check", "installedProductTest", "verifyKastArchitecture")
+    dependsOn(gradle.includedBuild("build-logic").task(":check"))
+}
+
 val releaseSourceGate by tasks.registering {
     group = "verification"
-    description = "Authoritative release-source predecessor graph; publication also requires exact-asset installed proof."
-    dependsOn("build", "installedProductTest", "verifyKastArchitecture", "enterpriseAcceptance", "topologyDeclarationBindingAcceptance", releaseDocumentationTest, releaseInstallerTest, releaseGateContractTest, releaseAcceptanceContractTest)
-    dependsOn(gradle.includedBuild("build-logic").task(":check"))
+    description = "Exhaustive release-source proof; publication also requires exact-asset installed proof."
+    dependsOn("build", productBuildGate, "enterpriseAcceptance", "topologyDeclarationBindingAcceptance", releaseDocumentationTest, releaseInstallerTest, releaseGateContractTest, releaseAcceptanceContractTest)
 }
 
 subprojects.forEach { owner ->
     owner.plugins.withId("base") {
+        productBuildGate.configure { dependsOn(owner.tasks.named("check")) }
         releaseSourceGate.configure { dependsOn(owner.tasks.named("build")) }
     }
 }

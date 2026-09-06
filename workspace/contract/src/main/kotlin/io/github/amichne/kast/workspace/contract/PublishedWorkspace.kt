@@ -168,6 +168,10 @@ fun interface WorkspaceInvalidationSink {
 
 /** Finite blockers produced by candidate capture, reconciliation, or publication. */
 sealed interface WorkspacePublicationBlocker {
+    data object ModelInputsChanged : WorkspacePublicationBlocker
+
+    data object ModelInputsUnavailable : WorkspacePublicationBlocker
+
     data object CandidateCaptureUnavailable : WorkspacePublicationBlocker
 
     data object ReconciliationUnavailable : WorkspacePublicationBlocker

@@ -2,7 +2,7 @@
 """Public CLI corruption proof over an explicitly selected isolated runtime.
 
 The state receipt is cache-identity.properties v3, owned by SidecarCacheLifecycle.
-Its exact directory comes from passive status, never a filesystem search.
+Its exact directory comes from bare inspection, never a filesystem search.
 """
 from __future__ import annotations
 
@@ -17,7 +17,16 @@ import subprocess
 import tempfile
 from enum import Enum
 
-from release_upgrade_acceptance import identity, workspace_identity
+from enterprise_acceptance import workspace_source_identity
+
+
+def identity(value) -> str:
+    encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+    return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+
+def workspace_identity(workspace: Path) -> str:
+    return "sha256:" + workspace_source_identity(workspace)
 
 
 class Cause(str, Enum):
@@ -68,6 +77,25 @@ def admit_boundary_rejection(result, boundary, reason, exit_code, diagnostic=Non
     ):
         raise SemanticCorruptionFailure(Cause.REJECTION_UNPROVEN)
     return {"exitCode": exit_code, "boundary": boundary, "reason": reason, "documentDigest": identity(document)}
+
+
+def admit_passive_cache_blocker(result, host):
+    if result.returncode != 0 or result.stderr.strip():
+        raise SemanticCorruptionFailure(Cause.REJECTION_UNPROVEN)
+    try:
+        document = json.loads(result.stdout)
+    except (ValueError, UnicodeError) as failure:
+        raise SemanticCorruptionFailure(Cause.REJECTION_UNPROVEN) from failure
+    if (not isinstance(document, dict)
+            or document.get("operation") != "inspect"
+            or document.get("status") != "complete"
+            or document.get("boundary") != "runtime"
+            or document.get("reason") != "status-cache-invalid-identity"
+            or not isinstance(document.get("workspace"), dict)
+            or document["workspace"].get("canonicalRoot") != str(host.workspace)):
+        raise SemanticCorruptionFailure(Cause.REJECTION_UNPROVEN)
+    return {"exitCode": 0, "boundary": "runtime", "reason": "status-cache-invalid-identity",
+            "documentDigest": identity(document)}
 
 
 def rejected_command(acceptance, arguments):
@@ -130,7 +158,7 @@ def prove_continuations(acceptance, selector):
 
 def running_status(document, host):
     cache = document.get("cache") if isinstance(document, dict) else None
-    if not isinstance(document, dict) or document.get("command") != "status" or document.get("status") != "complete" or document.get("runtime") != "running" or document.get("root") != str(host.workspace) or not isinstance(cache, dict):
+    if not isinstance(document, dict) or document.get("operation") != "inspect" or document.get("status") != "complete" or document.get("runtime") != "running" or document.get("root") != str(host.workspace) or not isinstance(cache, dict):
         raise SemanticCorruptionFailure(Cause.RUNTIME_UNPROVEN)
     key = cache.get("identity")
     runtime = document.get("runtimeId")
@@ -183,8 +211,8 @@ def prove_state_receipt(acceptance, host, selector, status, workspace_digest):
     path, original, mode = selected_receipt(acceptance, host, key)
     try:
         replace_receipt(path, b"format=corrupted-runtime-identity\n", mode)
-        result = rejected_command(acceptance, ["status"])
-        observed = admit_boundary_rejection(result, "runtime", "status-cache-invalid-identity", 4)
+        result = rejected_command(acceptance, [])
+        observed = admit_passive_cache_blocker(result, host)
         if workspace_identity(host.workspace) != workspace_digest:
             raise SemanticCorruptionFailure(Cause.WORKSPACE_CHANGED)
     finally:
@@ -194,7 +222,7 @@ def prove_state_receipt(acceptance, host, selector, status, workspace_digest):
                 raise SemanticCorruptionFailure(Cause.STATE_RESTORATION_FAILED)
         except OSError as failure:
             raise SemanticCorruptionFailure(Cause.STATE_RESTORATION_FAILED) from failure
-    restored = acceptance.command("status")
+    restored = acceptance.command()
     if running_status(restored, host) != key or restored.get("runtimeId") != status.get("runtimeId"):
         raise SemanticCorruptionFailure(Cause.RECOVERY_UNPROVEN)
     read = acceptance.command("source", "read", "--anchor", selector)
@@ -210,11 +238,8 @@ def prove_state_receipt(acceptance, host, selector, status, workspace_digest):
 
 def prove_semantic_corruption(acceptance, host):
     before = workspace_identity(host.workspace)
-    status = acceptance.command("status")
+    status = acceptance.command()
     running_status(status, host)
-    topology = acceptance.command("topology", "build", timeout=acceptance.maximum_startup_seconds)
-    if topology.get("operation") != "topology.build" or topology.get("status") != "complete":
-        raise SemanticCorruptionFailure(Cause.CONTINUATION_UNPROVEN)
     symbols = acceptance.resolve_symbols("enterpriseRootOperation", 16)
     selected = [selector for selector, symbol in symbols.items() if symbol.get("name") == "enterpriseRootOperation"]
     if len(selected) != 1 or not isinstance(selected[0], str) or not selected[0]:

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Collection, Mapping
+from contextlib import closing
 from dataclasses import dataclass
 from enum import Enum
 import hashlib
@@ -14,6 +15,7 @@ import re
 from pathlib import Path
 import shutil
 import stat
+import sqlite3
 import subprocess
 import tempfile
 import time
@@ -70,6 +72,97 @@ def mutation_proof(stage: MutationProofStage, mismatches: list[MutationProofMism
         evidence["reason"] = reason.value
     prefix = "enterprise-stale-plan" if stage is MutationProofStage.STALE_PLAN else "enterprise-mutation-marker"
     print(prefix + ": " + json.dumps(evidence, sort_keys=True), flush=True)
+
+
+class ChangeVerificationOutcome(str, Enum):
+    VERIFIED = "verified"
+    ADMISSION_REJECTED = "admission_rejected"
+    CURRENT_PUBLICATION_UNAVAILABLE = "current_publication_unavailable"
+    RECONCILIATION_INVALIDATED = "reconciliation_invalidated"
+    RECONCILIATION_BLOCKED = "reconciliation_blocked"
+    PUBLICATION_PROTOCOL_REJECTED = "publication_protocol_rejected"
+    RESULTING_PUBLICATION_REJECTED = "resulting_publication_rejected"
+    RESULTING_SEMANTIC_STATE_UNAVAILABLE = "resulting_semantic_state_unavailable"
+    RESULTING_GENERATION_MOVED = "resulting_generation_moved"
+    COMPILER_OBSERVATION_REJECTED = "compiler_observation_rejected"
+    SEMANTIC_PROOF_REJECTED = "semantic_proof_rejected"
+    INTERRUPTED = "interrupted"
+
+
+class ChangeVerificationEvidenceFailure(str, Enum):
+    NOT_EXPORTED = "not-exported"
+    UNAVAILABLE = "unavailable"
+    READ_BOUND_EXCEEDED = "read-bound-exceeded"
+    MALFORMED = "malformed"
+    UNKNOWN_OUTCOME = "unknown-outcome"
+    AMBIGUOUS = "ambiguous"
+
+
+@dataclass(frozen=True)
+class ObservedChangeVerification:
+    outcome: ChangeVerificationOutcome
+
+
+@dataclass(frozen=True)
+class RejectedChangeVerificationEvidence:
+    failure: ChangeVerificationEvidenceFailure
+
+
+def observe_change_verification(
+    trace: Path, started_ns: int, completed_ns: int, timeout_seconds: float,
+    *, maximum_bytes: int = 16 * 1024 * 1024,
+) -> ObservedChangeVerification | RejectedChangeVerificationEvidence:
+    """Read only the exact trace selected by passive inspection and this apply's time interval."""
+    deadline = time.monotonic() + timeout_seconds
+    while True:
+        try:
+            with trace.open("rb") as stream:
+                raw = stream.read(maximum_bytes + 1)
+        except FileNotFoundError:
+            raw = b""
+        except OSError:
+            return RejectedChangeVerificationEvidence(ChangeVerificationEvidenceFailure.UNAVAILABLE)
+        if len(raw) > maximum_bytes:
+            return RejectedChangeVerificationEvidence(ChangeVerificationEvidenceFailure.READ_BOUND_EXCEEDED)
+        observations = []
+        try:
+            for line in raw.splitlines(keepends=True):
+                if not line.endswith(b"\n"):
+                    continue  # A trailing exporter write is not yet a complete observation.
+                document = json.loads(line)
+                for resource in document["resourceSpans"]:
+                    for scope in resource["scopeSpans"]:
+                        for span in scope["spans"]:
+                            if span.get("name") != "kast.change.verification":
+                                continue
+                            start = int(span["startTimeUnixNano"])
+                            end = int(span["endTimeUnixNano"])
+                            if not started_ns <= start <= completed_ns:
+                                continue
+                            if end < start or end > completed_ns:
+                                return RejectedChangeVerificationEvidence(ChangeVerificationEvidenceFailure.MALFORMED)
+                            if (not re.fullmatch(r"[0-9a-f]{32}", span["traceId"])
+                                    or not re.fullmatch(r"[0-9a-f]{16}", span["spanId"])):
+                                return RejectedChangeVerificationEvidence(ChangeVerificationEvidenceFailure.MALFORMED)
+                            outcomes = [attribute["value"]["stringValue"] for attribute in span["attributes"]
+                                        if attribute["key"] == "kast.change.verification.outcome"]
+                            if len(outcomes) != 1:
+                                return RejectedChangeVerificationEvidence(ChangeVerificationEvidenceFailure.MALFORMED)
+                            try:
+                                outcome = ChangeVerificationOutcome(outcomes[0])
+                            except ValueError:
+                                return RejectedChangeVerificationEvidence(ChangeVerificationEvidenceFailure.UNKNOWN_OUTCOME)
+                            observations.append(ObservedChangeVerification(outcome))
+        except (KeyError, TypeError, AttributeError, ValueError, UnicodeError):
+            return RejectedChangeVerificationEvidence(ChangeVerificationEvidenceFailure.MALFORMED)
+        if len(observations) > 1:
+            return RejectedChangeVerificationEvidence(ChangeVerificationEvidenceFailure.AMBIGUOUS)
+        if observations:
+            return observations[0]
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return RejectedChangeVerificationEvidence(ChangeVerificationEvidenceFailure.NOT_EXPORTED)
+        time.sleep(min(0.1, remaining))
 
 
 def arguments() -> argparse.Namespace:
@@ -596,22 +689,13 @@ class Acceptance:
             or started.get("runtime") != "running"
         ):
             fail(f"enterprise workspace did not become ready: {started}")
-        status = self.command("status")
+        status = self.command()
         if (
-            status.get("command") != "status"
+            status.get("operation") != "inspect"
             or status.get("status") != "complete"
             or status.get("runtime") != "running"
         ):
-            fail(f"passive lifecycle status did not observe the runtime: {status}")
-        synchronized = self.command(
-            "index", "sync", timeout=self.maximum_reconciliation_seconds
-        )
-        if (
-            synchronized.get("operation") != "index.sync"
-            or synchronized.get("status") != "complete"
-        ):
-            fail(f"explicit index synchronization did not complete: {synchronized}")
-
+            fail(f"bare inspection did not observe the runtime: {status}")
         discovery_limit = positive_integer(bounds, "symbolDiscoveryLimit")
         discovery_arguments = (
             "symbol",
@@ -670,17 +754,8 @@ class Acceptance:
         if len(initial_exact_routers) != 1:
             fail(f"expected one exact enterprise mutation target: {initial_routers}")
 
-        topology = self.command(
-            "topology", "build", timeout=self.maximum_startup_seconds
-        )
-        if (
-            topology.get("operation") != "topology.build"
-            or topology.get("status") != "complete"
-            or topology.get("snapshotStatus") != "published"
-            or not isinstance(topology.get("digest"), str)
-        ):
-            fail(f"installed K2 topology build did not publish: {topology}")
-        self.prove_topology_snapshot_restart(topology)
+        topology = self.observe_topology_snapshot(initial_exact_roots[0])
+        self.prove_topology_snapshot_restart(topology, discovery_limit)
 
         overloads = self.resolve_symbols("enterpriseRouteOverload", discovery_limit)
         roots = self.resolve_symbols("enterpriseRootOperation", discovery_limit)
@@ -781,7 +856,7 @@ class Acceptance:
 
         self.prove_generation_transition(exact_routers[0], next(iter(route_overloads)))
 
-    def prove_topology_snapshot_restart(self, published: dict[str, Any]) -> None:
+    def prove_topology_snapshot_restart(self, published: dict[str, Any], discovery_limit: int) -> None:
         stopped = self.command("stop")
         if (
             stopped.get("command") != "stop"
@@ -801,20 +876,71 @@ class Acceptance:
             or restarted.get("runtime") != "running"
         ):
             fail(f"public runtime restart did not complete: {restarted}")
-        reused = self.command(
-            "topology", "build", timeout=self.maximum_startup_seconds
+        roots = self.resolve_symbols("enterpriseRootOperation", discovery_limit)
+        selectors = [selector for selector, symbol in roots.items()
+                     if symbol.get("name") == "enterpriseRootOperation"]
+        if len(selectors) != 1:
+            fail("restart did not resolve one fresh enterprise traversal root")
+        reused = self.observe_topology_snapshot(selectors[0])
+        for field in ("file_count", "symbol_count", "edge_count"):
+            if reused[field] != published[field]:
+                fail(f"restarted topology changed its {field}: {published} -> {reused}")
+
+    def observe_topology_snapshot(self, selector: str) -> dict[str, Any]:
+        traversal = self.command(
+            "traversal", "run", "--selector", selector, "--relation", "callees",
+            "--maximum-depth", "2", "--maximum-results", "20",
+            timeout=self.maximum_startup_seconds,
         )
-        if (
-            reused.get("operation") != "topology.build"
-            or reused.get("status") != "complete"
-            or reused.get("snapshotStatus") not in {"published", "reused"}
-            or not isinstance(reused.get("digest"), str)
-            or not isinstance(reused.get("generation"), int)
-        ):
-            fail(
-                "restarted runtime did not publish or rebind the exact SQLite "
-                f"topology facts: {reused}"
-            )
+        self.prove_normalized_traversal_graph(traversal, 20, 2)
+        generation = traversal["graph"]["snapshot"]["generation"]
+        trace = self.observe_workspace_trace()
+        database = Path(trace).parent.parent / "topology.sqlite"
+        try:
+            with closing(sqlite3.connect(database.as_uri() + "?mode=ro", uri=True, timeout=10)) as connection:
+                connection.row_factory = sqlite3.Row
+                rows = [dict(row) for row in connection.execute(
+                    "SELECT snapshot_id, workspace_root, generation, source_state, digest, "
+                    "file_count, symbol_count, edge_count FROM topology_snapshot_v3 "
+                    "WHERE workspace_root = ? AND generation = ?",
+                    (str(self.workspace.resolve()), generation),
+                )]
+        except sqlite3.Error as error:
+            fail(f"could not read the traversal's persisted topology snapshot: {error}")
+        if (len(rows) != 1 or not re.fullmatch(r"[0-9a-f]{64}", rows[0]["digest"])
+                or not rows[0]["source_state"]
+                or any(type(rows[0][key]) is not int or rows[0][key] < 1
+                       for key in ("snapshot_id", "file_count", "symbol_count", "edge_count"))):
+            fail(f"traversal did not select one complete exact SQLite topology snapshot: {rows}")
+        return rows[0]
+
+    def observe_workspace_trace(self) -> Path:
+        inspection = self.command()
+        workspace = inspection.get("workspace", {})
+        telemetry = workspace.get("telemetry", {})
+        trace = telemetry.get("traceFilePath")
+        if (inspection.get("operation") != "inspect" or inspection.get("status") != "complete"
+                or workspace.get("canonicalRoot") != str(self.workspace.resolve())
+                or telemetry.get("state") != "enabled" or not isinstance(trace, str)
+                or not Path(trace).is_absolute()):
+            fail("bare inspection did not identify this workspace's telemetry destination")
+        return Path(trace)
+
+    def report_change_verification(
+        self, started_ns: int, completed_ns: int,
+    ) -> ObservedChangeVerification | RejectedChangeVerificationEvidence:
+        observed = observe_change_verification(
+            self.observe_workspace_trace(), started_ns, completed_ns,
+            min(10, self.maximum_operation_seconds),
+        )
+        evidence = {"stage": "change-verification"}
+        if isinstance(observed, ObservedChangeVerification):
+            evidence.update(status="observed", outcome=observed.outcome.value)
+        else:
+            evidence.update(status="unproven", reason=observed.failure.value)
+        print("enterprise-change-verification: " + json.dumps(evidence, sort_keys=True), flush=True)
+        return observed
+
     @staticmethod
     def prove_restart_semantic_equivalence(
         query: str,
@@ -883,10 +1009,13 @@ class Acceptance:
             fail(f"enterprise mutation plan was not complete: {plan}")
         if pending_identity in {recovery_plan_identity, plan_identity}:
             fail("enterprise stale-plan probe requires a complete distinct pending plan")
+        applied_started_ns = time.time_ns()
         applied = self.command(
             "change", "apply", "--plan", plan_identity,
             timeout=self.maximum_reconciliation_seconds,
         )
+        applied_completed_ns = time.time_ns()
+        verification = self.report_change_verification(applied_started_ns, applied_completed_ns)
         after_diagnostics = self.command(
             "diagnostic", "check", "--scope",
             "domains/alpha/one/src/main/kotlin/enterprise/alpha/one/Enterprise.kt", "--limit", "1000",
@@ -900,6 +1029,9 @@ class Acceptance:
             fail("enterprise mutation requires complete error-free post-mutation diagnostics")
         if applied.get("status") != "complete" or not applied.get("receiptIdentity"):
             fail(f"enterprise mutation did not return a verified receipt: {applied}")
+        if (not isinstance(verification, ObservedChangeVerification)
+                or verification.outcome is not ChangeVerificationOutcome.VERIFIED):
+            fail("enterprise mutation omitted verified terminal telemetry for this application")
         stale = self.command(
             "symbol",
             "inspect",

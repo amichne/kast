@@ -48,19 +48,9 @@ OPERATION_DESCRIPTIONS = {
 LIFECYCLE_DESCRIPTIONS = {
     "start": "Start or reuse the exact-root private sidecar and return workspace readiness.",
     "stop": "Stop only the process proven to own the exact-root sidecar endpoint.",
-    "status": "Passively report exact-root runtime identity and private cache state.",
 }
 
-LOCAL_COMMAND_DESCRIPTIONS = {
-    "product inspect": (
-        "Report installed sidecar identity plus direct root, Kast-cache, and default trace "
-        "destination evidence without starting or admitting a runtime."
-    ),
-    "broker serve": (
-        "Host the optional read-only preview Kotlin/Ktor Codex tool broker. Semantic CLI commands "
-        "start the sidecar independently and do not require Codex."
-    ),
-}
+LOCAL_COMMAND_DESCRIPTIONS = {}
 
 
 def parse_operations(registry_path: Path) -> list[OperationMetadata]:
@@ -119,6 +109,8 @@ def parse_semantic_commands(
 ) -> list[SemanticCommand]:
     command_root = root / "cli/src/main/kotlin/io/github/amichne/kast/cli/command"
     by_enum: dict[str, str] = {}
+    all_enums = {operation.enum_name for operation in operations}
+    public_enums = {operation.enum_name for operation in operations if operation.hosted_exposure == "public"}
     pattern = re.compile(
         r"operation\s*=\s*CanonicalOperation\.(?P<operation>[A-Z_]+),"
         r"\s*schemaUsage\s*=\s*(?P<usage>.*?),\s*preparer\s*=",
@@ -127,11 +119,15 @@ def parse_semantic_commands(
     for source in sorted(command_root.rglob("*Commands.kt")):
         for match in pattern.finditer(source.read_text()):
             operation = match.group("operation")
+            if operation not in all_enums:
+                raise ValueError(f"unknown canonical operation in CLI projection: {operation}")
+            if operation not in public_enums:
+                continue
             if operation in by_enum:
                 raise ValueError(f"duplicate CLI projection for {operation}")
             by_enum[operation] = kotlin_string(match.group("usage"))
 
-    expected_enums = {operation.enum_name for operation in operations}
+    expected_enums = public_enums
     if set(by_enum) != expected_enums:
         missing = sorted(expected_enums - set(by_enum))
         extra = sorted(set(by_enum) - expected_enums)
@@ -145,6 +141,7 @@ def parse_semantic_commands(
             operation.hosted_intents,
         )
         for operation in operations
+        if operation.hosted_exposure == "public"
     ]
 
 
@@ -194,7 +191,7 @@ def parse_local_commands(root: Path) -> list[str]:
     if match is None:
         raise ValueError("CliProductCommand could not be read")
     commands = re.findall(
-        r'^[ ]*[A-Z_]+\("([a-z ]+)"\),$',
+        r'^[ ]*[A-Z_]+\("([a-z ]+)", CliLocalExposure.PUBLIC\),$',
         match.group("body"),
         re.MULTILINE,
     )
@@ -220,6 +217,7 @@ def render(
     lifecycle: list[str],
     local_commands: list[str],
     local_flags: list[str],
+    operations: list[OperationMetadata],
 ) -> str:
     hosted_rows = "\n".join(
         f"| `{command.operation_id}` | `kast {table_cell(command.usage)}` | "
@@ -227,11 +225,14 @@ def render(
         for command in semantic
         if command.hosted_exposure == "public"
     )
+    internal_descriptions = {
+        "internal_only": "Acquired automatically as an internal sidecar service; no public command or endpoint route.",
+        "unavailable": "Unavailable; no implementation binding, public command, or endpoint route.",
+    }
     deferred_rows = "\n".join(
-        f"| `{command.operation_id}` | `kast {table_cell(command.usage)}` | "
-        "Available only as an internal sidecar service; no direct endpoint route. |"
-        for command in semantic
-        if command.hosted_exposure != "public"
+        f"| `{operation.operation_id}` | {internal_descriptions[operation.hosted_exposure]} |"
+        for operation in operations
+        if operation.hosted_exposure != "public"
     )
     deferred_section = ""
     if deferred_rows:
@@ -239,12 +240,13 @@ def render(
 ## Canonical operations without a direct sidecar route
 
 <Warning>
-  These operations remain in the canonical registry and command graph but the
-  installed sidecar endpoint does not publish them as direct routes.
+  These identities remain in the canonical registry. Semantic requests acquire
+  internal services automatically. Unavailable operations have no implementation
+  binding. The CLI and endpoint expose neither category directly.
 </Warning>
 
-| Operation | Command shape | Current availability |
-| --- | --- | --- |
+| Operation | Current availability |
+| --- | --- |
 {deferred_rows}
 """
     public_count = sum(command.hosted_exposure == "public" for command in semantic)
@@ -306,7 +308,7 @@ Use:
 
 ## Installed server projection
 
-**Bottom line:** the installed `serverProjection` is the broker contract. Read
+The installed `serverProjection` is the broker contract. Read
 it from the exact configured `kast` executable; never infer tools from a
 version string or human-readable command text.
 
@@ -315,7 +317,7 @@ The projection defines:
 - Every operation marked `public`, with its canonical ID and evidence document.
 - Tool names, descriptions, and closed input and output JSON Schemas.
 - Field-to-CLI bindings, deferred loading, and approval policy.
-- Read façades such as `workspace_ensure_ready`, `symbol_lookup`,
+- Read façades such as `symbol_lookup`,
   `semantic_query`, `impact_analyze`, and `diagnostic_check`.
 
 Approval is closed:
@@ -358,7 +360,7 @@ with a one-megabyte argument.
 Kast owns the isolated sidecar lifecycle.
 
 - `start` and semantic commands may launch a release-line-compatible local IDEA build.
-- `status` and `stop` stay passive; they never manufacture an endpoint.
+- Bare `kast` observes state; `stop` targets only an already proven endpoint.
 - The release pair defines compatible platform lines, not patch equality.
 - Admission retains the exact observed build pair in runtime identity.
 
@@ -374,19 +376,21 @@ Process ownership is explicit:
 
 ## Process-local commands
 
-These commands stay inside the installed control product; neither is a
-sidecar endpoint operation.
+Bare `kast` reports installed control, IDE/JBR, exact-root runtime, cache,
+bootstrap, and network provenance without starting or repairing anything.
+`kast-codex` owns the optional Codex integration broker and client lifetime.
 
 | Command | Result |
 | --- | --- |
-{local_command_rows}
+| `kast` | Passively inspect local identity and state, including typed blockers. |
+| `kast-codex` | Launch the Codex integration host and its client. |
 
 ## Default local traces
 
 Ready endpoints write topology and traversal spans to a private folder derived
 from the exact socket namespace.
 
-`kast product inspect` reports:
+Bare `kast` reports:
 
 - Format and enabled state.
 - `directoryPath` and `traceFilePath`.
@@ -426,7 +430,7 @@ def main() -> int:
     lifecycle = parse_lifecycle_commands(root)
     local_commands = parse_local_commands(root)
     local_flags = parse_local_flags(root)
-    rendered = render(semantic, lifecycle, local_commands, local_flags)
+    rendered = render(semantic, lifecycle, local_commands, local_flags, operations)
 
     if args.check:
         if not target.is_file() or target.read_text() != rendered:

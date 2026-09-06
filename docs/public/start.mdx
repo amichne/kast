@@ -145,14 +145,14 @@ the candidate stability contract and upgrade behavior.
 
     `kast --schema` is the installed command contract. It lists:
 
-    - all eleven canonical operations and command shapes;
+    - the nine public semantic operations and command shapes;
     - wire and input/output JSON Schemas;
     - the installed `serverProjection`; and
     - deferred-loading, approval, and field-to-CLI bindings.
 
-    Read workflows cover index and topology effects, symbol and source work,
+    Read workflows cover symbol and source work,
     relation reads, traversal, and diagnostics. Every `change_*` tool requires
-    explicit approval. The endpoint publishes eleven operations, with verified
+    explicit approval. The endpoint publishes nine operations, with verified
     application as one atomic completion boundary.
 
     Editable defaults live at
@@ -166,16 +166,17 @@ the candidate stability contract and upgrade behavior.
     A process environment value overrides its saved default.
   </Step>
 
-  <Step title="Start the exact repository">
+  <Step title="Ask the exact repository">
     Run Kast from the repository's canonical root:
 
     ```console
     cd /path/to/kotlin-repository
-    kast product inspect
-    kast start
+    kast
+    kast symbol discover --mode name --query PricePolicy --limit 25
     ```
 
-    `kast start` publishes readiness only after it:
+    The semantic command automatically establishes readiness before execution.
+    Optional `kast start` performs the same readiness work:
 
     1. admits a release-line-compatible IDEA and Kotlin plugin;
     2. starts that installation's JBR with private state paths;
@@ -186,21 +187,22 @@ the candidate stability contract and upgrade behavior.
     `KAST_ENABLE_LAUNCHD=1` to opt into launchd-backed process ownership; leave
     it unset or set it to `0` for direct launch. Every other value is rejected.
 
-    Use `kast index sync` when files changed outside the sidecar and its VFS or
-    semantic evidence may be stale.
+    Later semantic requests observe physical source and model currency. Source
+    changes refresh and publish a successor before the request executes; unchanged
+    sources reuse the current publication without a VFS refresh or import.
   </Step>
 
   <Step title="Inspect the first answer">
     Observe lifecycle state, then ask for compiler-backed evidence:
 
     ```console
-    kast status
+    kast
     kast symbol discover --mode name --query PricePolicy --limit 25
     ```
 
     Read the results separately:
 
-    - `status` reports runtime identity and cache state without starting or
+    - Bare `kast` reports runtime identity and cache state without starting or
       repairing anything.
     - Discovery returns bounded candidates, not an exact declaration claim.
   </Step>
@@ -211,8 +213,8 @@ the candidate stability contract and upgrade behavior.
 | Intent | Command | Contract |
 | --- | --- | --- |
 | Start or reuse | `kast start` | Admits the exact root and returns only after semantic readiness or a typed blocker. |
-| Observe | `kast status` | Reports runtime and cache state without starting or repairing anything. |
-| Reconcile files | `kast index sync` | Refreshes admitted source roots and publishes a successor semantic generation. |
+| Observe | `kast` | Reports runtime and cache state without starting or repairing anything. |
+| Reconcile files | Any semantic command | Detects physical source changes and publishes a successor before execution. |
 | Stop | `kast stop` | Targets only the process proven to own this exact-root endpoint. |
 | Rebuild private state | `kast start --cache rebuild` | Stops the exact sidecar, quarantines only Kast-owned cache state, and starts a fresh import. |
 
@@ -299,7 +301,7 @@ the candidate stability contract and upgrade behavior.
     authoritative destination instead of reconstructing it:
 
     ```console
-    kast product inspect
+    kast
     ```
 
     The product document reports, without starting the sidecar:

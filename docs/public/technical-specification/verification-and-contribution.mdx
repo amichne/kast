@@ -9,7 +9,8 @@ code_sources:
   - path: "packaging/test-installed-product.sh"
     lines: "1-156"
   - path: "integration-tests/enterprise_acceptance.py"
-    lines: "1-969"
+    lines: "963-1066"
+    symbols: ["prove_generation_transition"]
   - path: "docs/test_public_docs.py"
     lines: "1-900"
     symbols: ["check_pages"]
@@ -59,8 +60,8 @@ product. Verification checks metadata and SHA-256 records, archive safety,
 runtime identity, required resources, control-versus-sidecar content
 separation, relocatability, and lifecycle behavior.
 
-Passive commands are tested as passive: status and product inspection must not
-start the sidecar merely to report absence. Start, stop, status, cache reuse,
+Bare inspection is tested as passive: it must not
+start the sidecar merely to report absence. Start, stop, bare inspection, cache reuse,
 cache seeding, cache rebuild, and wrong-root behavior are exercised against a
 staged installation, not inferred from unit tests.
 
@@ -89,10 +90,22 @@ socket isolation, and failure to preserve identity across process boundaries.
 
 ## Release admission
 
-The `Release gate` CI check starts from a detached clean checkout of the exact
-candidate commit. Its `releaseSourceGate` Gradle graph runs every module build,
-architecture verification, installed-product checks, enterprise acceptance,
-installer recovery tests, and documentation validation.
+Routine pull-request and main CI starts from a detached clean checkout of the
+exact commit. Python contract tests run first.
+
+The `productBuildGate` Gradle graph
+then builds every module and verifies architecture and installed packaging;
+`enterpriseAcceptance` runs one installed semantic journey. Installer recovery
+and documentation retain their independent checks.
+
+Routine CI does not build a
+publishable release candidate or run the exhaustive topology and import cases.
+The required check retains the name `Release gate` for branch-rule continuity.
+
+For release qualification, manually dispatch the `CI` workflow on `main`.
+This runs the exhaustive `releaseSourceGate` graph, including topology declaration
+bindings, installer recovery, and documentation, followed by exact-archive
+installation, corruption, cold broker, and Gradle import proofs.
 
 After that graph passes, the gate builds and installs the exact candidate
 archives through `install.sh --assets-directory`. This uses the normal checksum,
@@ -108,15 +121,14 @@ before failure. Reports retain finite rejection IDs, byte counts, and digests;
 source payloads, selectors, paths, and arbitrary error text are excluded.
 Cleanup cannot replace the original failure or turn a rejected receipt into success.
 
-That installation starts with the latest immutable published 0.x archives older than the candidate and
-upgrades the same selected root to the candidate. Corrupted candidate checksums
-and a rechecksummed unsafe control archive must both reject while preserving
-the active product and repository bytes.
+The candidate is installed directly. Installer fixture tests retain replacement,
+corruption, and recovery coverage. This installed journey does not claim coverage
+of upgrades from historical published versions.
 
 Real relation and traversal continuations must resume successfully before
 malformed and digest-tampered copies are rejected. Corrupting the selected cache
-identity receipt must make passive status reject. Exact receipt restoration must
-recover status and a semantic read while preserving the repository.
+identity receipt must appear as a typed blocker in passive inspection. Exact receipt restoration must
+recover inspection and a semantic read while preserving the repository.
 
 The required installed import uses Gradle 9.4.1 and Java 25 through
 `KAST_RELEASE_JDK_25`. It proves admitted environment inputs, explicit executable
@@ -162,7 +174,7 @@ before the release can become public.
 
 CI retains the candidate archives, checksums, receipts, SBOM, compatibility
 snapshot, and reports for 90 days. Release admission requires the latest successful
-`CI` push run on `main` for the exact SHA and the reviewed candidate version.
+`CI` manual-dispatch run on `main` for the exact SHA and the reviewed candidate version.
 Missing or expired artifacts reject publication before toolchain setup.
 
 The release workflow downloads that run's `release-candidate-<sha>` artifact,
@@ -170,7 +182,7 @@ verifies the receipt and all payload digests, attests the retained bytes, and
 publishes them without rebuilding or repeating installed acceptance. Uploaded
 draft bytes must still match the admitted receipt.
 
-Advance the candidate version in source before CI if a different release version
+Advance the candidate version in source before manual qualification if a different release version
 is needed.
 
 Knowledge-authority checks rerun only `verifyKastArchitecture` and
@@ -194,8 +206,16 @@ requires candidates to move forward from the published baseline.
 
 ## Reproduce CI locally
 
-Use macOS arm64, Python 3.12, Node 24, and Mintlify CLI 4.2.841.
-Authenticate `gh`, then provide the Java 25 home:
+Routine CI needs macOS arm64, Python 3.12, and Java 25. From a detached clean
+checkout, run:
+
+```shell
+export KAST_RELEASE_JDK_25="/path/to/jdk25"
+python3 .github/scripts/ci/verify-checks.py
+```
+
+Exhaustive release qualification also needs Node 24, Mintlify CLI 4.2.841,
+and authenticated `gh`. To retain an isolated worktree for that qualification:
 
 ```shell
 export KAST_RELEASE_JDK_25="/path/to/jdk25"
@@ -203,22 +223,12 @@ bash .github/scripts/ci/reproduce.sh HEAD
 ```
 
 The command creates a detached worktree for the committed revision and runs
-`.github/scripts/ci/verify.sh`, the same product gate used by GitHub Actions.
+`.github/scripts/ci/verify.sh`, the exhaustive gate used by manual CI dispatch.
 It retains the worktree, log, candidate archives, and reports for inspection.
 Uncommitted edits are not included. Dependency caches remain reusable.
 
 The default IDEA runtime comes from the repository's pinned distribution, so
 an IDE installed on the developer's machine cannot silently change the test.
-To check the live upgrade baseline before building:
-
-```shell
-python3 integration-tests/release_upgrade_acceptance.py \
-  --candidate-version "$(cat distribution/release/candidate-version.txt)"
-```
-
-The baseline is the newest immutable published 0.x release strictly older than
-the candidate. Publishing the candidate itself does not invalidate its CI run.
-
 ## Release integrity
 
 The wrapper distribution has a SHA-256 pin and URL validation. Gradle verifies

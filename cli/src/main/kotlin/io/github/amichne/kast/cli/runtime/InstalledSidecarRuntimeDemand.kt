@@ -79,6 +79,7 @@ sealed interface SidecarCacheFailure {
     data object FilesystemRejected : SidecarCacheFailure
     data object RebuildRequired : SidecarCacheFailure
     data class SeedRejected(val failure: IndexSeedFailure) : SidecarCacheFailure
+    data class ObservationRejected(val failure: SidecarCacheLifecycleFailure) : SidecarCacheFailure
 }
 
 /** Private cache layout admitted for one exact cache identity. */
@@ -207,6 +208,7 @@ class InstalledSidecarRootRuntimeDemander(
     private val processDemander: SidecarProcessDemander = ExactSidecarProcessDemander(),
     private val legacyEndpointProbe: RuntimeEndpointProbe = JdkUnixDomainEndpointProbe,
     private val legacyProcessAuthority: RuntimeProcessAuthority = JdkRuntimeProcessAuthority,
+    private val cacheLifecycle: RootSidecarCacheLifecycle = NoRootSidecarCacheLifecycle,
 ) : RootRuntimeDemander {
     override fun demand(
         root: CanonicalRoot,
@@ -229,7 +231,16 @@ class InstalledSidecarRootRuntimeDemander(
             return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.RuntimeIdentityMismatch)
         }
         val selection = when (val requested = startup.ideHome) {
-            StartupIdeHome.Standard -> IdeHomeSelection.standard(userHome)
+            StartupIdeHome.Standard -> when (val cached = cacheLifecycle.observe(root.path)) {
+                RootSidecarCacheObservation.Absent -> IdeHomeSelection.standard(userHome)
+                // A record retains installation selection only. The resolver below re-admits
+                // the physical installation against current support and payload; cache identity
+                // is then derived again, including the current import environment.
+                is RootSidecarCacheObservation.Identified -> IdeHomeSelection.Explicit(cached.status.ideaHome)
+                is RootSidecarCacheObservation.Rejected -> return RuntimeAdmission.Rejected(
+                    RuntimeAdmissionFailure.SidecarCacheRejected(SidecarCacheFailure.ObservationRejected(cached.failure)),
+                )
+            }
             is StartupIdeHome.Explicit -> IdeHomeSelection.Explicit(requested.path)
         }
         val runtime = when (

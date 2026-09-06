@@ -5,9 +5,16 @@ at tag `broker-v0.5.0`, commit `f18ab46`, including the typed Kast projection-v2
 commit `9a5fb49`.
 
 The imported behavior is implemented directly in Kast rather than shipping the original Node.js
-program. The installed product has no Node runtime requirement. `kast broker serve` owns the Codex
-control socket, qualifies the exact installed Codex and Kast contracts, starts the private Codex
-App Server, and exposes Gradle and Kast tools through proof-carrying Kotlin domain types.
+program. The installed product has no Node runtime requirement. The control distribution now
+includes `kast-codex`. This integration host qualifies the installed Codex and Kast contracts,
+starts the broker and private Codex App Server, and launches the Codex client with
+`codex --remote unix://<integration-socket>`. Exiting the client closes its integration server.
+
+The host owns `$CODEX_HOME/kast-integration`, defaulting to `~/.codex/kast-integration`.
+Its client socket and upstream state are separate from the legacy broker control socket
+and `$CODEX_HOME/broker` state. Broker startup is no longer a public Kast command. The
+integration host owns its transport; the semantic sidecar retains exact-root lifecycle ownership.
+Both expose Gradle and admitted Kast tools through proof-carrying Kotlin domain types.
 The public socket accepts Codex's canonical `/rpc` WebSocket route and the legacy `/` route. A
 process-lifetime filesystem lease serializes stale-socket recovery, and service readiness is proven
 by a complete `/rpc` WebSocket `initialize` exchange rather than raw socket connectivity.
@@ -21,18 +28,28 @@ The retained broker version is `0.5.0`. Its behavioral defaults remain eight in-
 connection, four per provider, a 1 MiB catalog, 64 provider descriptors, 64 KiB tool arguments,
 1 MiB tool results. Kast execution deadlines now come from canonical operation metadata,
 projected by server projection version 4: 10 seconds per local qualification command, 17 minutes
-for workspace readiness, 60 seconds for a semantic operation, and 240 seconds for topology build.
-Provider qualification admits both local commands; each tool's outer deadline contains its
-readiness and operation deadlines. The 17-minute operational ceiling preserves the existing
+for workspace readiness, 60 seconds for a semantic operation, and 240 seconds for traversal and its lazy topology acquisition.
+Provider qualification admits both local commands; each semantic subprocess receives the
+combined readiness and operation budget from its canonical invocation metadata. The 17-minute operational ceiling preserves the existing
 sidecar contract; release acceptance separately requires cold startup within 240 seconds.
 
 Semantic commands and `kast start` demand the sidecar directly. They do not discover Codex,
-read `CODEX_HOME`, or start the broker. `kast broker serve` is an explicit, read-only preview
-integration; a broker rejection cannot remove semantic CLI capability. The broker first runs
-`kast start` with the readiness deadline, then runs the selected semantic command with its own
-deadline. Cancellation terminates only that CLI wrapper. The detached sidecar remains owned by
-its exact bootstrap attempt; passive status exposes that state, and the next call joins that
-attempt or reuses its ready endpoint without launching a duplicate.
+read `CODEX_HOME`, or start the broker. A broker rejection cannot remove semantic CLI
+capability. The provider runs the selected semantic command directly. It does not issue a
+preceding `kast start`; automatic readiness belongs to the semantic CLI. Cancellation terminates
+only that CLI wrapper. The detached sidecar remains owned by its exact bootstrap attempt;
+bare `kast` exposes that state passively, and the next call joins that attempt or reuses its
+ready endpoint without launching a duplicate.
+
+The provider admits tools only when their canonical approval policy is `NONE`. Mutation tools
+remain excluded while explicit approval routing is unresolved. Direct CLI change operations
+must not be described as available mutation tools in the Codex integration.
+
+The integration host has completed cold `symbol_lookup`, exact `symbol_inspect`, and repeated
+`impact_analyze` requests through the real Codex TUI. The semantic CLI and installed schema
+now exclude lifecycle mechanics from their public projections. Internal synchronization and
+topology identities remain available to runtime composition. The repeatable provider test below
+proves the local boundary; it does not substitute for a real authenticated Codex turn.
 
 `:cli:installedColdBrokerAcceptance` executes the production provider and dispatcher against a
 requested installed executable in a fresh workspace. Its JVM entry point is independently tested,
@@ -42,7 +59,8 @@ digests and elapsed time. A run against a staged product is integration evidence
 must additionally bind that journey to the exact verified release archives.
 
 Admitted dynamic-tool invocations publish one payload-free start event and one finite terminal
-event to `$CODEX_HOME/broker/service.log`. Each JSON line carries only thread, turn, call,
+event to the host-owned `service.log`: `$CODEX_HOME/kast-integration/service.log` for
+`kast-codex`, or `$CODEX_HOME/broker/service.log` for the legacy host. Each JSON line carries only thread, turn, call,
 namespace, tool, and completion identity; tool arguments, results, and working-directory content
 never enter this activity stream.
 
@@ -91,3 +109,11 @@ the repository-relative file and bounded Kotlin block. Diagnostic companions sho
 location, exact UTF-16 offsets, and message; selector and generation evidence stays in the
 canonical model result. Older source outcomes without line evidence retain their file and code
 presentation without invented coordinates.
+
+
+Implementation authorities are [KastCodexMain](../cli/src/main/kotlin/io/github/amichne/kast/cli/broker/KastCodexMain.kt),
+[InstalledBrokerServer](../cli/src/main/kotlin/io/github/amichne/kast/cli/broker/InstalledBrokerServer.kt),
+and [KastProvider](../cli/src/main/kotlin/io/github/amichne/kast/cli/broker/provider/KastProvider.kt).
+The [installed provider acceptance](../cli/src/test/kotlin/io/github/amichne/kast/cli/broker/provider/InstalledColdBrokerAcceptance.kt)
+and [lifecycle acceptance driver](../integration-tests/lifecycle_convergence_acceptance.py)
+retain executable checks for these boundaries.

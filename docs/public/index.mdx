@@ -29,7 +29,7 @@ model, and source-backed reference material.
 | Section | Use it to |
 | --- | --- |
 | **Setup** | Install, admit one repository, and verify the first result. [Set up and start Kast.](/start) |
-| **Guides** | Answer a concrete question about readiness, identity, connections, diagnostics, or change. [Choose an evidence path.](#eleven-sidecar-operations) |
+| **Guides** | Answer a concrete question about readiness, identity, connections, diagnostics, or change. [Choose an evidence path.](#nine-public-semantic-operations) |
 | **Concepts** | Understand what Kast proves and where that proof stops. [Trust the evidence.](/concepts/evidence-boundaries) |
 | **Reference** | Read exact command and implementation contracts. Open the [CLI reference](/reference/cli) or [technical specification](/technical-specification). |
 
@@ -57,20 +57,20 @@ change boundary. Kast makes the strength and limits of that answer visible.
 
 ```console
 cd /path/to/kotlin-repository
-kast start
+kast symbol discover --mode name --query PricePolicy --limit 25
 ```
 
-`kast start` launches or reuses the exact-root private IntelliJ sidecar. It
+A semantic command launches or reuses the exact-root private IntelliJ sidecar. It
 returns when semantic evidence is ready, or returns a typed blocker instead of
 manufacturing readiness.
 
 [Set up and start Kast](/start) to install the matched control and sidecar
 release, admit one repository, and inspect the first compiler-backed result.
 
-## Eleven sidecar operations
+## Nine public semantic operations
 
-The installed sidecar endpoint publishes explicit index synchronization,
-topology build, candidate discovery, compiler-backed symbol inspection, bounded
+The installed sidecar endpoint publishes candidate discovery, compiler-backed
+symbol inspection, bounded
 source reads, one-hop relation reads, bounded traversal, scoped diagnostics,
 and planning, verified application, or recovery for AddDeclaration changes.
 

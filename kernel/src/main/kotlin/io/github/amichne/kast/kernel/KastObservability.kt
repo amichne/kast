@@ -141,7 +141,31 @@ interface KastTraceSpan {
 }
 
 /** Host-neutral trace boundary. OpenTelemetry types are confined to the runtime adapter. */
+enum class KastWorkspaceRefreshOutcome { COMPLETED, REJECTED, INTERRUPTED }
+
+enum class KastWorkspaceReadinessOutcome { REUSED, PUBLISHED, REFRESHED_UNCHANGED, REJECTED, MODEL_INPUTS_CHANGED, MODEL_INPUTS_UNAVAILABLE }
+
+/** Terminal mutation verification stages, without source, selector, or plan payloads. */
+enum class KastChangeVerificationOutcome {
+    VERIFIED,
+    ADMISSION_REJECTED,
+    CURRENT_PUBLICATION_UNAVAILABLE,
+    RECONCILIATION_INVALIDATED,
+    RECONCILIATION_BLOCKED,
+    PUBLICATION_PROTOCOL_REJECTED,
+    RESULTING_PUBLICATION_REJECTED,
+    RESULTING_SEMANTIC_STATE_UNAVAILABLE,
+    RESULTING_GENERATION_MOVED,
+    COMPILER_OBSERVATION_REJECTED,
+    SEMANTIC_PROOF_REJECTED,
+    INTERRUPTED,
+}
+
 interface KastObservability {
+    fun observeWorkspaceReadiness(outcome: KastWorkspaceReadinessOutcome) {}
+    fun observeWorkspaceRefresh(outcome: KastWorkspaceRefreshOutcome) {}
+    fun observeChangeVerification(outcome: KastChangeVerificationOutcome) {}
+
     suspend fun <Value> inSpan(
         name: KastSpanName,
         operation: suspend (KastTraceSpan) -> Value,

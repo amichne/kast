@@ -1,6 +1,9 @@
 package io.github.amichne.kast.runtime.server
 
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.registry.CanonicalOperationDefinitions
+import io.github.amichne.kast.protocol.registry.HostedExposure
+import io.github.amichne.kast.protocol.registry.OperationDefinition
 import io.github.amichne.kast.protocol.wire.WireRequestAdmission
 import io.github.amichne.kast.protocol.wire.WireRequestEnvelope
 
@@ -39,21 +42,30 @@ class RuntimeServer private constructor(
          * Proof transition: `Iterable<TypedOperationBinding<*, *, *, *>> ->
          * RuntimeServerConstruction`.
          *
-         * Establishes exactly one captured typed handler binding for every canonical operation.
+         * Establishes exactly one typed handler binding for every available canonical operation,
+         * including internal services, then retains only public definitions as wire routes.
          * [RuntimeServerConstructionFailure] is the closed expected failure. Binding iteration is
          * permitted only at runtime composition.
          */
         fun create(
             bindings: Iterable<TypedOperationBinding<*, *, *, *>>,
-        ): RuntimeServerConstruction = create(
-            bindings,
-            CanonicalOperation.entries.toSet(),
-        )
+        ): RuntimeServerConstruction = createFromDefinitions(bindings, CanonicalOperationDefinitions.all)
 
-        private fun create(
+        /** Definition-based seam for exercising closed exposure states absent from today's registry. */
+        internal fun createFromDefinitions(
             bindings: Iterable<TypedOperationBinding<*, *, *, *>>,
-            requiredOperations: Set<CanonicalOperation>,
+            definitions: List<OperationDefinition<*, *, *, *, *>>,
         ): RuntimeServerConstruction {
+            val availableDefinitions = definitions.filter { definition ->
+                when (definition.hostedExposure) {
+                    HostedExposure.PUBLIC, HostedExposure.INTERNAL_ONLY -> true
+                    HostedExposure.UNAVAILABLE -> false
+                }
+            }
+            val requiredOperations = availableDefinitions.mapTo(linkedSetOf()) { it.operation }
+            val publicOperations = availableDefinitions
+                .filter { it.hostedExposure == HostedExposure.PUBLIC }
+                .mapTo(linkedSetOf()) { it.operation }
             val materialized = bindings.map(TypedOperationBinding<*, *, *, *>::dispatchBinding)
             val failures = buildSet {
                 materialized
@@ -76,7 +88,10 @@ class RuntimeServer private constructor(
             }
             return if (failures.isEmpty()) {
                 RuntimeServerConstruction.Created(
-                    RuntimeServer(materialized.associateBy(RuntimeDispatchBinding::operation)),
+                    RuntimeServer(
+                        materialized.filter { it.operation in publicOperations }
+                            .associateBy(RuntimeDispatchBinding::operation),
+                    ),
                 )
             } else {
                 RuntimeServerConstruction.Rejected(failures)

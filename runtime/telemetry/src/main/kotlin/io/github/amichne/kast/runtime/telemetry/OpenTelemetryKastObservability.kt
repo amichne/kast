@@ -1,6 +1,7 @@
 package io.github.amichne.kast.runtime.telemetry
 
 import io.github.amichne.kast.kernel.KastObservability
+import io.github.amichne.kast.kernel.KastChangeVerificationOutcome
 import io.github.amichne.kast.kernel.KastSpanCompletion
 import io.github.amichne.kast.kernel.KastSpanEvent
 import io.github.amichne.kast.kernel.KastSpanMeasurement
@@ -21,6 +22,26 @@ import java.util.concurrent.CancellationException
 class OpenTelemetryKastObservability private constructor(
     private val tracer: Tracer,
 ) : KastObservability {
+    override fun observeChangeVerification(outcome: KastChangeVerificationOutcome) {
+        val span = tracer.spanBuilder("kast.change.verification").startSpan()
+        span.setAttribute("kast.change.verification.outcome", outcome.name.lowercase())
+        if (outcome != KastChangeVerificationOutcome.VERIFIED) span.setStatus(StatusCode.ERROR)
+        span.end()
+    }
+
+    override fun observeWorkspaceReadiness(outcome: io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome) {
+        val span = tracer.spanBuilder("kast.workspace.readiness").startSpan()
+        span.setAttribute("kast.workspace.readiness.outcome", outcome.name.lowercase())
+        span.end()
+    }
+
+    override fun observeWorkspaceRefresh(outcome: io.github.amichne.kast.kernel.KastWorkspaceRefreshOutcome) {
+        val span = tracer.spanBuilder("kast.workspace.refresh").startSpan()
+        span.setAttribute("kast.workspace.refresh.outcome", outcome.name.lowercase())
+        if (outcome != io.github.amichne.kast.kernel.KastWorkspaceRefreshOutcome.COMPLETED) span.setStatus(StatusCode.ERROR)
+        span.end()
+    }
+
     override suspend fun <Value> inSpan(
         name: KastSpanName,
         operation: suspend (KastTraceSpan) -> Value,

@@ -38,7 +38,7 @@ jobs:
       - name: Detach exact release source
         run: git checkout --detach "$GITHUB_SHA"
 
-      - name: Admit successful main CI candidate
+      - name: Admit successful manual qualification on main
         id: candidate
         run: >-
           python3 distribution/release/release_eligibility.py

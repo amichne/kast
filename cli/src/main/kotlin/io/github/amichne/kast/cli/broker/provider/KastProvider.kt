@@ -492,42 +492,13 @@ internal class KastRuntime(
                 arguments,
                 context.workingDirectory,
                 MAXIMUM_OUTPUT_BYTES,
-                tool.executionBudget.operation.value,
+                tool.executionBudget.invocation.value,
             )
         ) {
             is Refinement.Refined -> admission.value
             is Refinement.Rejected -> return ProviderCall.Rejected(
                 ProviderFailureCode.UNEXPECTED_FAILURE,
             )
-        }
-        val readinessRequest = when (val admission = BrokerProcessRequest.admit(
-            options.executable,
-            listOf("start"),
-            context.workingDirectory,
-            MAXIMUM_OUTPUT_BYTES,
-            OperationExecutionBudget.WORKSPACE_READINESS.value,
-        )) {
-            is Refinement.Refined -> admission.value
-            is Refinement.Rejected -> return ProviderCall.Rejected(ProviderFailureCode.UNEXPECTED_FAILURE)
-        }
-        when (val readiness = options.processExecutor.execute(readinessRequest)) {
-            is BrokerProcessExecution.Rejected -> return ProviderCall.Rejected(
-                readiness.failure.providerFailureCode(),
-            )
-            is BrokerProcessExecution.Completed -> {
-                if (readiness.exitCode != 0) return outcome(readiness, context)
-                val ready = try {
-                    Json.parseToJsonElement(readiness.stdout) as? JsonObject
-                } catch (_: SerializationException) {
-                    null
-                } catch (_: IllegalArgumentException) {
-                    null
-                }
-                if (ready?.get("command") != JsonPrimitive("start") ||
-                    ready["status"] != JsonPrimitive("complete") ||
-                    ready["runtime"] != JsonPrimitive("running")
-                ) return ProviderCall.Rejected(ProviderFailureCode.MALFORMED_KAST_OUTPUT)
-            }
         }
         return outcome(options.processExecutor.execute(request), context)
     }

@@ -39,7 +39,6 @@ import io.github.amichne.kast.topology.intellij.intellijSynchronizedTopologyCand
 import io.github.amichne.kast.topology.intellij.intellijSourceRootIndexRefresh
 import io.github.amichne.kast.topology.intellij.installedIntellijTopologyExtractor
 import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefreshOperations
-import java.util.concurrent.ForkJoinPool
 
 /** Closed construction inputs whose live platform values remain behind narrow adapter ports. */
 internal data class InstalledRuntimeAssemblyInputs(
@@ -47,6 +46,7 @@ internal data class InstalledRuntimeAssemblyInputs(
     val semantic: SemanticRuntimePorts,
     val topologyExtractor: TopologyFileExtractor,
     val indexRefresh: WorkspaceIndexRefreshOperations,
+    val sourceObservation: io.github.amichne.kast.workspace.contract.WorkspaceSourceObservationOperations,
     val change: InstalledChangePhysicalPorts,
 )
 
@@ -54,6 +54,7 @@ private data class InstalledRuntimePlatformPorts(
     val semantic: SemanticRuntimePorts,
     val topologyExtractor: TopologyFileExtractor,
     val indexRefresh: WorkspaceIndexRefreshOperations,
+    val sourceObservation: io.github.amichne.kast.workspace.contract.WorkspaceSourceObservationOperations,
     val change: InstalledChangePhysicalPorts,
 )
 
@@ -116,6 +117,18 @@ internal fun productionInstalledRuntimeAssembler(): InstalledRuntimeAssembler =
                     model,
                     workspaceModel.semanticProjectRoot,
                     workspaceModel.awaitIndexReadinessAfter(intellijSourceRootIndexRefresh()),
+                    io.github.amichne.kast.workspace.contract.WorkspaceSourceObservationOperations {
+                        when (val observed = workspaceModel.observeCurrentSemanticIdentity()) {
+                            is Refinement.Refined -> io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.Observed(observed.value)
+                            is Refinement.Rejected -> when (observed.failure) {
+                                io.github.amichne.kast.workspace.intellij.InstalledGradleModelCaptureFailure.MODEL_INPUTS_CHANGED ->
+                                    io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.ModelInputsChanged
+                                io.github.amichne.kast.workspace.intellij.InstalledGradleModelCaptureFailure.MODEL_INPUTS_UNAVAILABLE ->
+                                    io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.ModelInputsUnavailable
+                                else -> io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.Unavailable
+                            }
+                        }
+                    },
                 )
             },
         )
@@ -170,14 +183,14 @@ private class RefreshingInstalledGradleModelReads(
 }
 
 private fun InstalledIntellijWorkspaceModel.currentModelRead(): InstalledGradleModelRead = when (
-    val current = captureCurrentSemanticIdentity()
+    val current = captureCurrentModel()
 ) {
     is Refinement.Refined -> projectInstalledGradleModel(
         InstalledGradleModelBoundary(
-            capture.root,
+            current.value.root,
             true,
-            capture.sourceRoots,
-            current.value,
+            current.value.sourceRoots,
+            current.value.identity,
         ),
     )
     is Refinement.Rejected -> InstalledGradleModelRead.Unavailable(
@@ -205,6 +218,7 @@ internal fun productionInstalledRuntimeAssembler(
             inputs.semantic,
             inputs.topologyExtractor,
             inputs.indexRefresh,
+            inputs.sourceObservation,
             inputs.change,
         )
     }
@@ -269,7 +283,7 @@ private fun assembleInstalledRuntime(
             platform.topologyExtractor,
             topologySnapshots,
         ),
-        IndexRuntimePorts(platform.indexRefresh, ForkJoinPool.commonPool()),
+        IndexRuntimePorts(platform.indexRefresh, platform.sourceObservation),
         ChangeRuntimePorts(
             recovery,
             platform.change.sourceObserver,
@@ -285,9 +299,9 @@ private fun assembleInstalledRuntime(
         request.observability,
     )
     val handlers = CanonicalKastOperationHandlerFactory.create(
-        graph.workspace,
+        graph.semanticWorkspace,
         InstalledChangePlanningAdmission(
-            graph.workspace,
+            graph.semanticWorkspace,
             graph.operations.symbolInspect,
             graph.operations.relationRead,
             graph.operations.traversalRun,
@@ -310,6 +324,7 @@ private fun productionPlatformPorts(
     model: InstalledWorkspaceModelAdapter,
     semanticProjectRoot: CanonicalSemanticProjectRoot,
     indexRefresh: WorkspaceIndexRefreshOperations,
+    sourceObservation: io.github.amichne.kast.workspace.contract.WorkspaceSourceObservationOperations,
 ): InstalledRuntimePlatformPorts {
     val symbols = InstalledIntellijSymbolPorts.create(
         semanticProjectRoot,
@@ -332,6 +347,7 @@ private fun productionPlatformPorts(
         ),
         installedIntellijTopologyExtractor(semanticProjectRoot, workspace),
         indexRefresh,
+        sourceObservation,
         InstalledChangePhysicalPorts(
             change.sourceObserver,
             change.sourceWriter,

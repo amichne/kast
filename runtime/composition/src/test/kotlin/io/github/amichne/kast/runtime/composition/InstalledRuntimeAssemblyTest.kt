@@ -7,10 +7,15 @@ import io.github.amichne.kast.change.recovery.AddDeclarationRollbackPort
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilerPort
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
-import io.github.amichne.kast.protocol.contract.IndexSyncQualification
-import io.github.amichne.kast.protocol.contract.IndexSyncRejection
-import io.github.amichne.kast.protocol.contract.IndexSyncRequest
-import io.github.amichne.kast.protocol.contract.IndexSyncResult
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
+import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
+import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
+import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireEncoding
@@ -18,6 +23,13 @@ import io.github.amichne.kast.relation.contract.RelationCompilerPort
 import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelBoundary
 import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelRead
 import io.github.amichne.kast.runtime.composition.platform.projectInstalledGradleModel
+import io.github.amichne.kast.symbol.contract.SymbolCompilation
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
 import io.github.amichne.kast.symbol.contract.SymbolCompilerPort
 import io.github.amichne.kast.symbol.contract.SymbolExactCompilerPort
 import io.github.amichne.kast.source.contract.SourceReadPort
@@ -74,6 +86,7 @@ class InstalledRuntimeAssemblyTest {
                     )
                 },
                 indexRefresh = { io.github.amichne.kast.workspace.contract.WorkspaceIndexRefresh.Refreshed },
+                sourceObservation = { prior -> io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.Observed(prior.sourceState) },
                 change = unusedChangePhysicalPorts(),
             ),
         )
@@ -83,12 +96,12 @@ class InstalledRuntimeAssemblyTest {
         val created = construction as InstalledKastRuntimeConstruction.Created
         assertTrue(Files.isRegularFile(state.resolve("workspace-publication.sqlite")))
         assertTrue(Files.isRegularFile(state.resolve("mutation-recovery.sqlite")))
-        val first = synchronizeIndex(created)
+        val first = discoverSymbols(created)
         assertEquals(1L, first.generation.value)
 
         val restarted = InstalledKastRuntime.create(root, state, assembler) as
             InstalledKastRuntimeConstruction.Created
-        val retained = synchronizeIndex(restarted)
+        val retained = discoverSymbols(restarted)
         assertEquals(first.generation, retained.generation)
 
         val changedRead = projectInstalledGradleModel(
@@ -110,28 +123,32 @@ class InstalledRuntimeAssemblyTest {
                     )
                 },
                 indexRefresh = { io.github.amichne.kast.workspace.contract.WorkspaceIndexRefresh.Refreshed },
+                sourceObservation = { prior -> io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.Observed(prior.sourceState) },
                 change = unusedChangePhysicalPorts(),
             ),
         )
         val changed = InstalledKastRuntime.create(root, state, changedAssembler) as
             InstalledKastRuntimeConstruction.Created
 
-        assertEquals(2L, synchronizeIndex(changed).generation.value)
+        assertEquals(2L, discoverSymbols(changed).generation.value)
     }
 
-    private fun synchronizeIndex(
+    private fun discoverSymbols(
         runtime: InstalledKastRuntimeConstruction.Created,
-    ): EvidenceEnvelope<IndexSyncResult> {
-        val request = CanonicalOperationWireBindings.indexSync
-            .encodeRequest(IndexSyncRequest)
+    ): EvidenceEnvelope<SymbolDiscoverResult> {
+        val request = CanonicalOperationWireBindings.symbolDiscover
+            .encodeRequest(SymbolDiscoverRequest(
+                SymbolDiscoverTargetDocument.Name(refined(ProtocolText.parse("Example")), SymbolNameKindDocument.SYMBOL, SymbolDiscoveryMatchDocument.FUZZY),
+                refined(ProtocolCount.parse(10)),
+            ))
             .encoded()
         val response = runAssemblyImmediate { runtime.dispatch.dispatch(request) } as
             KastRuntimeDispatch.Responded
         val outcome: OperationOutcome<
-            IndexSyncResult,
-            IndexSyncQualification,
-            IndexSyncRejection,
-            > = CanonicalOperationWireBindings.indexSync
+            SymbolDiscoverResult,
+            SymbolDiscoverQualification,
+            SymbolDiscoverRejection,
+            > = CanonicalOperationWireBindings.symbolDiscover
             .decodeOutcome(response.document)
             .decoded()
         return when (outcome) {
@@ -140,8 +157,20 @@ class InstalledRuntimeAssemblyTest {
         }
     }
 
+    private fun <T, F> refined(value: io.github.amichne.kast.kernel.Refinement<T, F>): T = when (value) {
+        is io.github.amichne.kast.kernel.Refinement.Refined -> value.value
+        is io.github.amichne.kast.kernel.Refinement.Rejected -> error(value.failure.toString())
+    }
+
     private fun unusedSemanticPorts(): SemanticRuntimePorts = SemanticRuntimePorts(
-        symbolDiscovery = SymbolCompilerPort { error("not executed") },
+        symbolDiscovery = SymbolCompilerPort { request ->
+            SymbolCompilation.Compiled(SymbolDiscoveryOutcome.Complete(refined(SymbolDiscoveryBatch.create(
+                request, emptyList(), refined(SymbolDiscoveryByteCount.parse(0)),
+                refined(SymbolDiscoveryWorkCount.parse(0)), SymbolDiscoveryTimings(
+                    refined(SymbolDiscoveryElapsedNanoseconds.parse(0)), refined(SymbolDiscoveryElapsedNanoseconds.parse(0)),
+                ),
+            ))))
+        },
         symbolExact = object : SymbolExactCompilerPort {
             override suspend fun resolve(
                 request: io.github.amichne.kast.symbol.contract.SymbolResolutionRequest,

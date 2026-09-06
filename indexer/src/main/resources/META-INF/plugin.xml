@@ -21,6 +21,7 @@
             implementation="io.github.amichne.kast.workspace.intellij.InstalledIndexExclusionPolicy"/>
     </extensions>
     <extensions defaultExtensionNs="org.jetbrains.plugins.gradle">
+        <executionHelperExtension implementation="io.github.amichne.kast.workspace.intellij.network.KastGradleNetworkPolicyExtension"/>
         <projectResolve
             implementation="io.github.amichne.kast.workspace.intellij.provenance.KastGradleSourceRootProvenanceResolver"
             order="first"/>

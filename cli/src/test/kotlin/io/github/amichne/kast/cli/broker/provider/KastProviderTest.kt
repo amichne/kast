@@ -83,7 +83,7 @@ class KastProviderTest {
     }
 
     @Test
-    fun `first cold invocation survives thirty seconds and separates readiness from semantic work`(
+    fun `first cold invocation delegates readiness to the canonical semantic boundary`(
         @TempDir temporary: Path,
     ) = runTest {
         val executable = executable(temporary.resolve("kast"))
@@ -105,12 +105,11 @@ class KastProviderTest {
         )
         assertInstanceOf(BrokerDispatch.Completed::class.java, result)
         assertEquals(
-            listOf(listOf("start"), listOf("symbol", "discover", "--query", "Thing")),
+            listOf(listOf("symbol", "discover", "--query", "Thing")),
             executor.requests.filterNot { it.arguments.first().startsWith("--") }
                 .map(BrokerProcessRequest::arguments),
         )
-        assertEquals(1_020_000L, executor.requests.first { it.arguments == listOf("start") }.timeoutMillis)
-        assertEquals(60_000L, executor.requests.last().timeoutMillis)
+        assertEquals(1_080_000L, executor.requests.last().timeoutMillis)
     }
 
     @Test

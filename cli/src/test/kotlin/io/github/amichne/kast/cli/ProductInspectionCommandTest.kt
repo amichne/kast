@@ -84,13 +84,13 @@ class ProductInspectionCommandTest {
             semanticBoundaryTouched = { semanticBoundaryTouched = true },
         )
 
-        val parsed = commandGraphFactory().parse(listOf("product", "inspect"))
-        val exit = cli.execute(listOf("product", "inspect"), root.path)
+        val parsed = commandGraphFactory().parse(emptyList())
+        val exit = cli.execute(emptyList(), root.path)
 
-        assertEquals(CliAction.Local.ProductInspect, (parsed as CliCommandParsing.Parsed).action)
+        assertEquals(CliAction.Local.Inspect, (parsed as CliCommandParsing.Parsed).action)
         assertFalse(semanticBoundaryTouched)
         val output = Json.parseToJsonElement((exit as CliExit.Complete).document.value).jsonObject
-        assertEquals("product.inspect", output.getValue("operation").jsonPrimitive.content)
+        assertEquals("inspect", output.getValue("operation").jsonPrimitive.content)
         assertEquals(
             "isolated-intellij-sidecar",
             output.getValue("control").jsonObject
@@ -123,13 +123,9 @@ class ProductInspectionCommandTest {
         semanticBoundaryTouched: () -> Unit = {},
     ) = KastCli(
         commandGraphFactory = commandGraphFactory(),
-        rootDiscovery = CanonicalRootDiscoverer {
-            semanticBoundaryTouched()
-            error("semantic root discovery must not run")
-        },
+        rootDiscovery = FilesystemCanonicalRootDiscovery,
         endpointLocator = RuntimeEndpointLocator {
-            semanticBoundaryTouched()
-            error("runtime endpoint lookup must not run")
+            RuntimeEndpointResolution.Rejected(RuntimeEndpointFailure.LAUNCH_CONTEXT_REQUIRED)
         },
         runtimeDemander = RuntimeDemander { _, _ ->
             semanticBoundaryTouched()

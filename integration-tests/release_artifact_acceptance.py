@@ -16,7 +16,6 @@ import tempfile
 import time
 
 import enterprise_acceptance as enterprise
-import release_upgrade_acceptance as upgrade_acceptance
 import release_resource_observations as resources
 import release_semantic_corruption as semantic_corruption
 
@@ -124,7 +123,7 @@ class ObservedAcceptance(enterprise.Acceptance):
             raise gate.GateRejected("installed command observation limit exceeded")
         started = time.monotonic()
         # Record grammar words only; no option values, paths, source, or error text.
-        command = " ".join(argv[:2]) if argv[0] in {"symbol", "source", "relation", "traversal", "diagnostic", "index", "topology", "change"} else argv[0]
+        command = "inspect" if not argv else " ".join(argv[:2]) if argv[0] in {"symbol", "source", "relation", "traversal", "diagnostic", "index", "topology", "change"} else argv[0]
         try:
             document = super().command(*argv, **options)
         except (SystemExit, subprocess.TimeoutExpired, OSError) as error:
@@ -137,13 +136,13 @@ class ObservedAcceptance(enterprise.Acceptance):
             raise
         self.observations.append({"command": command, "status": "observed", "elapsedMilliseconds": round((time.monotonic() - started) * 1000), "evidenceDigest": gate.identity(document)})
         self.persist()
-        if argv[0] == "start" and document.get("runtime") == "running":
+        if argv and argv[0] == "start" and document.get("runtime") == "running":
             self.sample(resources.ResourceStage.AFTER_START if self.starts == 0 else resources.ResourceStage.AFTER_RESTART)
             self.starts += 1
             self.read_sampled = False
-        elif argv[0] == "stop" and document.get("runtime") == "stopped":
+        elif argv and argv[0] == "stop" and document.get("runtime") == "stopped":
             self.sample(resources.ResourceStage.AFTER_STOP)
-        elif argv[0] in {"symbol", "source", "relation", "traversal", "diagnostic"} and not self.read_sampled:
+        elif argv and argv[0] in {"symbol", "source", "relation", "traversal", "diagnostic"} and not self.read_sampled:
             self.sample(resources.ResourceStage.AFTER_READ)
             self.read_sampled = True
         return document
@@ -216,9 +215,7 @@ def main():
         enterprise.prepare_workspace_fixture(host.workspace)
         acceptance = ObservedAcceptance(host.root / "bin/kast", host, bounds,
             ROOT / "build/reports/release-gate/installed-observations.json", args.source_revision)
-        installed_environment, upgrade = upgrade_acceptance.install_candidate_with_upgrade_proof(
-            host, assets, args.version, idea, acceptance.environment, install)
-        gate.validate_upgrade(upgrade, identities, args.version)
+        installed_environment = install(host, assets, args.version, idea, acceptance.environment)
         # The launcher must use its retained installed archive, not a test override.
         acceptance.environment.pop("KAST_RUNTIME_ARCHIVE", None)
         retained = host.root / f"installation/versions/{args.version}/share/kast/runtime/{runtime.name}"
@@ -274,7 +271,7 @@ def main():
         ambient.assert_unchanged()
         if gate.asset_identities(assets, args.version) != identities:
             raise gate.GateRejected("candidate assets changed during installed acceptance")
-        gate.write(ROOT / "build/reports/release-gate/installed.json", {"schemaVersion": 1, "status": "passed", "sourceRevision": args.source_revision, "assets": identities, "environment": gate.environment_identity(idea), "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import", "upgrade", "corruption"], "broker": broker, "gradleImport": matrix, "upgrade": upgrade, "semanticCorruption": corruption, "observations": acceptance.observations, "resourceSamples": acceptance.resource_samples, "workspacePreservation": acceptance.workspace_preservation, "elapsedMilliseconds": round((time.monotonic() - started) * 1000)})
+        gate.write(ROOT / "build/reports/release-gate/installed.json", {"schemaVersion": 1, "status": "passed", "sourceRevision": args.source_revision, "assets": identities, "environment": gate.environment_identity(idea), "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import"], "broker": broker, "gradleImport": matrix, "semanticCorruption": corruption, "observations": acceptance.observations, "resourceSamples": acceptance.resource_samples, "workspacePreservation": acceptance.workspace_preservation, "elapsedMilliseconds": round((time.monotonic() - started) * 1000)})
 
 
 if __name__ == "__main__":

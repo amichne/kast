@@ -13,6 +13,25 @@ import java.nio.file.Path
 
 class RuntimeProcessModeTest {
     @Test
+    fun `Gradle user home is automatic import authority and cannot bypass its proof`(@TempDir temporary: Path) {
+        val first = mapOf("GRADLE_USER_HOME" to temporary.resolve("one").toString())
+        val second = mapOf("GRADLE_USER_HOME" to temporary.resolve("two").toString())
+        val admitted = (currentGradleImportEnvironment(first) as Refinement.Refined).value
+        val changed = (currentGradleImportEnvironment(second) as Refinement.Refined).value
+        assertNotEquals(admitted.identity, changed.identity)
+        assertEquals(first, admitted.processVariables())
+        val launch = MacOsRuntimeProcessEnvironment.resolve(installedRuntime(temporary), admitted, second)
+            as MacOsRuntimeProcessEnvironmentResolution.Resolved
+        assertEquals(first.getValue("GRADLE_USER_HOME"), launch.environment.variables["GRADLE_USER_HOME"])
+    }
+
+    @Test
+    fun `relative Gradle user home rejects before runtime identity or launch`() {
+        assertInstanceOf(Refinement.Rejected::class.java,
+            currentGradleImportEnvironment(mapOf("GRADLE_USER_HOME" to "relative")))
+    }
+
+    @Test
     fun `missing environment flag selects direct process launch`() {
         assertEquals(
             RuntimeProcessModeAdmission.Admitted(RuntimeProcessMode.Direct),
@@ -92,7 +111,7 @@ class RuntimeProcessModeTest {
     ) {
         val resolved = assertInstanceOf(
             MacOsRuntimeProcessEnvironmentResolution.Resolved::class.java,
-            MacOsRuntimeProcessEnvironment.resolve(installedRuntime(temporary)),
+            MacOsRuntimeProcessEnvironment.resolve(installedRuntime(temporary), emptyMap()),
         )
 
         assertEquals(setOf("JAVA_HOME", "HOME", "PATH"), resolved.environment.variables.keys)

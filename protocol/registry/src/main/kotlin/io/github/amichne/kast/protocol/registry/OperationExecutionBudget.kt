@@ -21,13 +21,13 @@ enum class OperationExecutionBudget(operationMillis: Long) {
 
         /** Every public operation has one exhaustive process budget authority. */
         fun forOperation(operation: CanonicalOperation): OperationExecutionBudget = when (operation) {
-            CanonicalOperation.TOPOLOGY_BUILD -> GRAPH_BUILD
+            CanonicalOperation.TOPOLOGY_BUILD,
+            CanonicalOperation.TRAVERSAL_RUN -> GRAPH_BUILD
             CanonicalOperation.INDEX_SYNC,
             CanonicalOperation.SYMBOL_DISCOVER,
             CanonicalOperation.SYMBOL_INSPECT,
             CanonicalOperation.SOURCE_READ,
             CanonicalOperation.RELATION_READ,
-            CanonicalOperation.TRAVERSAL_RUN,
             CanonicalOperation.DIAGNOSTIC_CHECK,
             CanonicalOperation.CHANGE_PLAN,
             CanonicalOperation.CHANGE_APPLY,

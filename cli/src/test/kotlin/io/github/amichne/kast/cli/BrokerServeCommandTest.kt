@@ -15,7 +15,7 @@ import java.nio.file.Path
 
 class BrokerServeCommandTest {
     @Test
-    fun `broker serve is process-local and delegates to the installed runner`() {
+    fun `retired broker serve rejects before any runner or semantic effect`() {
         var boundaryTouched = false
         var runnerCalled = false
         val cli = KastCli(
@@ -56,9 +56,8 @@ class BrokerServeCommandTest {
 
         val exit = cli.execute(listOf("broker", "serve"), Path.of("/missing"))
 
-        assertTrue(exit is CliExit.Complete)
-        assertTrue(exit.document.value.contains("\"command\":\"broker serve\""))
-        assertTrue(runnerCalled)
+        assertTrue(exit is CliExit.BoundaryRejected)
+        assertFalse(runnerCalled)
         assertFalse(boundaryTouched)
     }
 

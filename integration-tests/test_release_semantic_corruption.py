@@ -16,7 +16,7 @@ import release_semantic_corruption as corruption
 class SemanticCorruptionTest(unittest.TestCase):
     def test_public_cache_identity_preserves_its_sha256_prefix(self):
         host = SimpleNamespace(workspace=Path("/workspace"))
-        document = {"command": "status", "status": "complete", "runtime": "running", "root": "/workspace",
+        document = {"operation": "inspect", "status": "complete", "runtime": "running", "root": "/workspace",
                     "runtimeId": "sha256:" + "b" * 64, "cache": {"identity": "sha256:" + "a" * 64}}
         self.assertEqual("sha256:" + "a" * 64, corruption.running_status(document, host))
 
@@ -35,6 +35,20 @@ class SemanticCorruptionTest(unittest.TestCase):
                        subprocess.CompletedProcess([], 4, "", json.dumps({**document, "diagnostic": "foreign"}))]:
             with self.assertRaises(corruption.SemanticCorruptionFailure):
                 corruption.admit_boundary_rejection(result, "runtime", "status-cache-invalid-identity", 4)
+
+    def test_passive_cache_blocker_requires_exact_stdout_contract_and_root(self):
+        host = SimpleNamespace(workspace=Path("/workspace"))
+        good = {"operation": "inspect", "status": "complete", "boundary": "runtime",
+                "reason": "status-cache-invalid-identity", "workspace": {"canonicalRoot": "/workspace"}}
+        accepted = subprocess.CompletedProcess([], 0, json.dumps(good), "")
+        self.assertEqual(0, corruption.admit_passive_cache_blocker(accepted, host)["exitCode"])
+        for result in [subprocess.CompletedProcess([], 4, "", json.dumps(good)),
+                       subprocess.CompletedProcess([], 0, json.dumps(good), "unexpected"),
+                       subprocess.CompletedProcess([], 0, json.dumps({**good, "reason": "unrelated"}), ""),
+                       subprocess.CompletedProcess([], 0, json.dumps({**good, "workspace": {"canonicalRoot": "/foreign"}}), ""),
+                       subprocess.CompletedProcess([], 0, json.dumps({**good, "status": "rejected"}), "")]:
+            with self.assertRaises(corruption.SemanticCorruptionFailure):
+                corruption.admit_passive_cache_blocker(result, host)
 
     def test_usage_rejection_requires_exact_continuation_family(self):
         document = {"status": "rejected", "boundary": "usage", "reason": "arguments-rejected",
@@ -140,14 +154,12 @@ class Fixture:
         return {"exact-selector-fixture": {"name": "enterpriseRootOperation"}}
 
     def command(self, *arguments, **options):
-        if arguments[0] == "status":
+        if not arguments:
             assert b"format=kast.sidecar-cache.identity.v3" in self.path.read_bytes(), "status observed a receipt that was not restored"
-            return {"command": "status", "status": "complete", "runtime": "running", "runtimeId": "sha256:" + "b" * 64,
+            return {"operation": "inspect", "status": "complete", "runtime": "running", "runtimeId": "sha256:" + "b" * 64,
                     "root": str(self.workspace), "cache": {"identity": "sha256:" + "a" * 64, "state": "warm"}}
         if arguments[0] == "source":
             return {"operation": "source.read", "status": "complete", "text": "private source payload"}
-        if arguments[0] == "topology":
-            return {"operation": "topology.build", "status": "complete"}
         operation = "relation.read" if arguments[0] == "relation" else "traversal.run"
         if "--continuation" in arguments:
             assert arguments[-1] == continuation(arguments[0])
@@ -156,12 +168,12 @@ class Fixture:
         return {"operation": operation, "status": "qualified", "qualification": {"type": "resumable", "continuation": continuation(arguments[0])}}
 
     def rejected(self, acceptance, arguments):
-        if arguments == ["status"]:
+        if not arguments:
             assert self.path.read_bytes() == b"format=corrupted-runtime-identity\n"
             if self.damage == "workspace":
                 (self.workspace / "Example.kt").write_text("changed\n")
             reason = "runtime-not-running" if self.damage == "wrong-rejection" else "status-cache-invalid-identity"
-            return subprocess.CompletedProcess([], 4, "", json.dumps({"status": "rejected", "boundary": "runtime", "reason": reason}))
+            return subprocess.CompletedProcess([], 0, json.dumps({"operation": "inspect", "status": "complete", "boundary": "runtime", "reason": reason, "workspace": {"canonicalRoot": str(self.workspace)}}), "")
         family = arguments[0]
         assert arguments[-1] != continuation(family)
         return subprocess.CompletedProcess([], 2, "", json.dumps({"status": "rejected", "boundary": "usage", "reason": "arguments-rejected",

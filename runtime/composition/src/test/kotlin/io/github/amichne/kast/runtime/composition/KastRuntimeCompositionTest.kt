@@ -1,6 +1,6 @@
 package io.github.amichne.kast.runtime.composition
 
-import io.github.amichne.kast.change.apply.SuccessfulApplyIndexSynchronization
+import io.github.amichne.kast.change.apply.AddDeclarationApplyService
 import io.github.amichne.kast.change.apply.AddDeclarationSourceObserver
 import io.github.amichne.kast.change.apply.AddDeclarationSourceRollback
 import io.github.amichne.kast.change.apply.AddDeclarationSourceWriter
@@ -23,6 +23,9 @@ import io.github.amichne.kast.evidence.contract.WorkspacePublicationResult
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationTransaction
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
+import io.github.amichne.kast.protocol.wire.WireEncoding
+import kotlinx.coroutines.test.runTest
 import io.github.amichne.kast.protocol.contract.ChangeApplyQualification
 import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
@@ -139,7 +142,7 @@ class KastRuntimeCompositionTest {
             workspacePorts(),
             semanticPorts(),
             topologyPorts(),
-            IndexRuntimePorts({ WorkspaceIndexRefresh.Refreshed }, { command -> command.run() }),
+            IndexRuntimePorts({ WorkspaceIndexRefresh.Refreshed }, { prior -> io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.Observed(prior.sourceState) }),
             changePorts(),
             handlers,
         ).created()
@@ -164,8 +167,37 @@ class KastRuntimeCompositionTest {
         assertSame(SourceReadService::class.java, operations.sourceRead.javaClass)
         assertSame(RelationService::class.java, operations.relationRead.javaClass)
         assertSame(VerifiedChangeApplyOperations::class.java, operations.changeApply.javaClass)
-        assertSame(SuccessfulApplyIndexSynchronization::class.java, operations.changeApply.apply.javaClass)
+        assertSame(AddDeclarationApplyService::class.java, operations.changeApply.apply.javaClass)
         assertSame(VerifiedMutationService::class.java, operations.changeApply.verify.javaClass)
+    }
+
+    @Test
+    fun `internal services remain constructed but raw lifecycle routes are retired`() = runTest {
+        val handlers = RecordingHandlerFactory()
+        val composition = KastRuntimeComposition.create(
+            workspacePorts(), semanticPorts(), topologyPorts(),
+            IndexRuntimePorts(
+                { WorkspaceIndexRefresh.Refreshed },
+                { prior -> io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.Observed(prior.sourceState) },
+            ),
+            changePorts(), handlers,
+        ).created()
+        assertSame(composition.operations.indexSync, handlers.observed.getValue(CanonicalOperation.INDEX_SYNC))
+        assertSame(composition.operations.topologyBuild, handlers.observed.getValue(CanonicalOperation.TOPOLOGY_BUILD))
+        listOf(
+            CanonicalOperationWireBindings.indexSync.encodeRequest(IndexSyncRequest),
+            CanonicalOperationWireBindings.topologyBuild.encodeRequest(TopologyBuildRequest),
+        ).forEach { encoded ->
+            val document = when (encoded) {
+                is WireEncoding.Encoded -> encoded.document
+                is WireEncoding.Rejected -> error(encoded.failure)
+            }
+            assertEquals(
+                KastRuntimeDispatch.Rejected(KastRuntimeDispatchFailure.UNSUPPORTED_OPERATION),
+                composition.dispatch(document),
+            )
+        }
+        assertEquals(emptyList<CanonicalOperation>(), handlers.invoked)
     }
 
     private fun KastRuntimeCompositionConstruction.created(): KastRuntimeComposition = when (this) {
@@ -175,6 +207,7 @@ class KastRuntimeCompositionTest {
 
     private class RecordingHandlerFactory : KastOperationHandlerFactory {
         val observed = linkedMapOf<CanonicalOperation, Any>()
+        val invoked = mutableListOf<CanonicalOperation>()
 
         override fun indexSync(operations: IndexSynchronizationOperations) =
             record<IndexSyncRequest, IndexSyncResult, IndexSyncQualification, IndexSyncRejection>(
@@ -264,11 +297,14 @@ class KastRuntimeCompositionTest {
             rejection: Rejection,
         ): OperationHandler<Request, Result, Qualification, Rejection> {
             observed[operation] = operations
-            return OperationHandler { OperationOutcome.Rejected(rejection) }
+            return OperationHandler {
+                invoked += operation
+                OperationOutcome.Rejected(rejection)
+            }
         }
     }
 
-    private companion object {
+    companion object {
         fun workspacePorts(): WorkspaceRuntimePorts = WorkspaceRuntimePorts(
             reconciliation = object : WorkspaceReconciliationPort {
                 override fun capture(signals: Set<WorkspaceSignal>): WorkspaceCandidateCapture =

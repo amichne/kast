@@ -2,6 +2,7 @@ package io.github.amichne.kast.runtime.telemetry
 
 import io.github.amichne.kast.kernel.KastTopologyBindingFailure
 import io.github.amichne.kast.kernel.KastObservability
+import io.github.amichne.kast.kernel.KastChangeVerificationOutcome
 import io.github.amichne.kast.kernel.KastSpanCompletion
 import io.github.amichne.kast.kernel.KastSpanCount
 import io.github.amichne.kast.kernel.KastSpanFailure
@@ -29,6 +30,37 @@ import org.junit.jupiter.api.Test
 import java.util.concurrent.CopyOnWriteArrayList
 
 class OpenTelemetryKastObservabilityTest {
+    @Test
+    fun `mutation verification exports bounded stage outcomes and marks rejected stages`() {
+        val capture = CapturingExporter()
+        val telemetry = telemetry(capture)
+        KastChangeVerificationOutcome.entries.forEach(telemetry::observeChangeVerification)
+        assertEquals(KastChangeVerificationOutcome.entries.size, capture.spans.size)
+        capture.spans.zip(KastChangeVerificationOutcome.entries).forEach { (span, outcome) ->
+            assertEquals("kast.change.verification", span.name)
+            assertEquals(outcome.name.lowercase(), span.attributes.get(AttributeKey.stringKey("kast.change.verification.outcome")))
+            assertEquals(1, span.attributes.size())
+            assertEquals(emptyList<io.opentelemetry.sdk.trace.data.EventData>(), span.events)
+            assertEquals(if (outcome == KastChangeVerificationOutcome.VERIFIED) StatusCode.UNSET else StatusCode.ERROR, span.status.statusCode)
+        }
+    }
+
+    @Test
+    fun `workspace observations export finite readiness and refresh outcomes without payloads`() {
+        val capture = CapturingExporter()
+        val telemetry = telemetry(capture)
+        io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.entries.forEach(telemetry::observeWorkspaceReadiness)
+        io.github.amichne.kast.kernel.KastWorkspaceRefreshOutcome.entries.forEach(telemetry::observeWorkspaceRefresh)
+        assertEquals(9, capture.spans.size)
+        capture.spans.forEach { span ->
+            assertEquals(1, span.attributes.size())
+            assertEquals(emptyList<io.opentelemetry.sdk.trace.data.EventData>(), span.events)
+        }
+        val refresh = capture.spans.filter { it.name == "kast.workspace.refresh" }
+        assertEquals(listOf("completed", "rejected", "interrupted"), refresh.map { it.attributes.get(AttributeKey.stringKey("kast.workspace.refresh.outcome")) })
+        assertEquals(listOf(StatusCode.UNSET, StatusCode.ERROR, StatusCode.ERROR), refresh.map { it.status.statusCode })
+    }
+
     @Test
     fun `compiler identity mismatch exports one structured diagnostic event`() = runTest {
         val capture = CapturingExporter()
