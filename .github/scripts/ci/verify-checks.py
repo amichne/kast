@@ -1,26 +1,36 @@
 #!/usr/bin/env python3
 """Routine CI: build, unit/contract tests, architecture, and packaging smoke."""
-import os
 from pathlib import Path
+import os
 import subprocess
-import sys
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT / "distribution/release"))
-import release_gate as gate
 
 
-def main():
+def run(command: list[str], environment: dict[str, str]) -> None:
+    result = subprocess.run(command, cwd=ROOT, env=environment, check=False)
+    if result.returncode:
+        raise SystemExit(result.returncode)
+
+
+def main() -> None:
     environment = os.environ.copy()
     environment["JAVA_HOME"] = environment["KAST_RELEASE_JDK_25"]
     sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-    gate.admit_source(ROOT, sha)
-    gate.run(
-        ["./gradlew", "--max-workers=2", "-Dorg.gradle.jvmargs=-Xmx5g", "productBuildGate"],
-        ROOT,
-        environment,
-    )
-    gate.admit_source(ROOT, sha)
+    run([
+        "bash", ".github/scripts/release/admit-source.sh",
+        "--repository-root", str(ROOT),
+        "--expected-source-revision", sha,
+    ], environment)
+    run([
+        "./gradlew", "--max-workers=2", "-Dorg.gradle.jvmargs=-Xmx5g",
+        "productBuildGate",
+    ], environment)
+    run([
+        "bash", ".github/scripts/release/admit-source.sh",
+        "--repository-root", str(ROOT),
+        "--expected-source-revision", sha,
+    ], environment)
     print("ci-checks: passed", flush=True)
 
 
