@@ -90,10 +90,22 @@ socket isolation, and failure to preserve identity across process boundaries.
 
 ## Release admission
 
-The `Release gate` CI check starts from a detached clean checkout of the exact
-candidate commit. Its `releaseSourceGate` Gradle graph runs every module build,
-architecture verification, installed-product checks, enterprise acceptance,
-installer recovery tests, and documentation validation.
+Routine pull-request and main CI starts from a detached clean checkout of the
+exact commit. Python contract tests run first.
+
+The `productBuildGate` Gradle graph
+then builds every module and verifies architecture and installed packaging;
+`enterpriseAcceptance` runs one installed semantic journey. Installer recovery
+and documentation retain their independent checks.
+
+Routine CI does not build a
+publishable release candidate or run the exhaustive topology and import cases.
+The required check retains the name `Release gate` for branch-rule continuity.
+
+For release qualification, manually dispatch the `CI` workflow on `main`.
+This runs the exhaustive `releaseSourceGate` graph, including topology declaration
+bindings, installer recovery, and documentation, followed by exact-archive
+installation, upgrade, corruption, cold broker, and Gradle import proofs.
 
 After that graph passes, the gate builds and installs the exact candidate
 archives through `install.sh --assets-directory`. This uses the normal checksum,
@@ -163,7 +175,7 @@ before the release can become public.
 
 CI retains the candidate archives, checksums, receipts, SBOM, compatibility
 snapshot, and reports for 90 days. Release admission requires the latest successful
-`CI` push run on `main` for the exact SHA and the reviewed candidate version.
+`CI` manual-dispatch run on `main` for the exact SHA and the reviewed candidate version.
 Missing or expired artifacts reject publication before toolchain setup.
 
 The release workflow downloads that run's `release-candidate-<sha>` artifact,
@@ -171,7 +183,7 @@ verifies the receipt and all payload digests, attests the retained bytes, and
 publishes them without rebuilding or repeating installed acceptance. Uploaded
 draft bytes must still match the admitted receipt.
 
-Advance the candidate version in source before CI if a different release version
+Advance the candidate version in source before manual qualification if a different release version
 is needed.
 
 Knowledge-authority checks rerun only `verifyKastArchitecture` and
@@ -195,8 +207,16 @@ requires candidates to move forward from the published baseline.
 
 ## Reproduce CI locally
 
-Use macOS arm64, Python 3.12, Node 24, and Mintlify CLI 4.2.841.
-Authenticate `gh`, then provide the Java 25 home:
+Routine CI needs macOS arm64, Python 3.12, and Java 25. From a detached clean
+checkout, run:
+
+```shell
+export KAST_RELEASE_JDK_25="/path/to/jdk25"
+python3 .github/scripts/ci/verify-checks.py
+```
+
+Exhaustive release qualification also needs Node 24, Mintlify CLI 4.2.841,
+and authenticated `gh`. To retain an isolated worktree for that qualification:
 
 ```shell
 export KAST_RELEASE_JDK_25="/path/to/jdk25"
@@ -204,7 +224,7 @@ bash .github/scripts/ci/reproduce.sh HEAD
 ```
 
 The command creates a detached worktree for the committed revision and runs
-`.github/scripts/ci/verify.sh`, the same product gate used by GitHub Actions.
+`.github/scripts/ci/verify.sh`, the exhaustive gate used by manual CI dispatch.
 It retains the worktree, log, candidate archives, and reports for inspection.
 Uncommitted edits are not included. Dependency caches remain reusable.
 

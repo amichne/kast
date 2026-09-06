@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Admit a retained candidate from successful main CI before toolchain setup."""
+"""Admit a retained candidate from successful manual qualification on main before toolchain setup."""
 from __future__ import annotations
 
 import argparse
@@ -36,7 +36,7 @@ class Candidate:
 
 def trusted_runs(runs: list[dict], repository: str, sha: str) -> list[dict]:
     return [run for run in runs if run.get('head_sha') == sha
-            and run.get('head_branch') == 'main' and run.get('event') == 'push'
+            and run.get('head_branch') == 'main' and run.get('event') == 'workflow_dispatch'
             and run.get('path') == '.github/workflows/ci.yml'
             and run.get('head_repository', {}).get('full_name') == repository
             and type(run.get('id')) is int and run['id'] > 0]
@@ -84,7 +84,7 @@ def observe(repository: str, sha: str, version: str, root: Path) -> Candidate:
     tags = [tag for page in api(f'{base}/tags?per_page=100') for tag in page]
     if any(release.get('tag_name') == f'v{version}' for release in releases) or any(tag.get('name') == f'v{version}' for tag in tags):
         raise Rejected(Cause.RELEASE_EXISTS)
-    runs = [run for page in api(f'{base}/actions/workflows/ci.yml/runs?branch=main&event=push&head_sha={sha}&per_page=100') for run in page['workflow_runs']]
+    runs = [run for page in api(f'{base}/actions/workflows/ci.yml/runs?branch=main&event=workflow_dispatch&head_sha={sha}&per_page=100') for run in page['workflow_runs']]
     run = latest_run(runs, repository, sha)
     artifacts = [artifact for page in api(f'{base}/actions/runs/{run["id"]}/artifacts?per_page=100') for artifact in page['artifacts']]
     return admit(runs, artifacts, repository, sha)

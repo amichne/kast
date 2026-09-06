@@ -64,7 +64,7 @@ class ReceiptIdentityTest(unittest.TestCase):
                 "boundary": "usage", "reason": "arguments-rejected", "documentDigest": "sha256:" + "b" * 64,
                 "originalContinuationDigest": "sha256:" + "c" * 64, "validResumeDigest": "sha256:" + "d" * 64}
                 for family in ("relation", "traversal") for case in ("malformed", "digest-tampered")],
-            "stateReceipt": {"kind": "cache-identity-v3", "status": "rejected-and-restored", "exitCode": 4,
+            "stateReceipt": {"kind": "cache-identity-v3", "status": "rejected-and-restored", "exitCode": 0,
                 "boundary": "runtime", "reason": "status-cache-invalid-identity",
                 **{key: "sha256:" + "e" * 64 for key in ("documentDigest", "originalReceiptDigest", "restoredReceiptDigest", "recoveredStatusDigest", "recoveredReadDigest")}}}
         preserved = {"activeInstallationDigest": "sha256:" + "c" * 64, "workspaceDigest": "sha256:" + "d" * 64}
@@ -181,6 +181,14 @@ class ReceiptIdentityTest(unittest.TestCase):
             dependency["digest"] = gate.identity(dependency["receipt"])
             with self.subTest(change=change), self.assertRaisesRegex(gate.GateRejected, "semantic corruption proof"):
                 self.validate(receipt)
+
+    def test_state_receipt_requires_passive_inspection_exit_code(self):
+        proof = copy.deepcopy(self.receipt["dependencies"]["installed"]["receipt"]["semanticCorruption"])
+        gate.validate_semantic_corruption(proof)
+        for code in (1, 2, 4):
+            proof["stateReceipt"]["exitCode"] = code
+            with self.subTest(code=code), self.assertRaisesRegex(gate.GateRejected, "state receipt"):
+                gate.validate_semantic_corruption(proof)
 
     def test_inventory_of_different_archives_cannot_authorize_publication(self):
         receipt = copy.deepcopy(self.receipt)

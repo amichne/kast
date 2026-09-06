@@ -2,6 +2,7 @@ name: CI
 
 on:
   pull_request:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -13,7 +14,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -55,17 +56,34 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
         with:
           validate-wrappers: true
+          cache-read-only: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+          gradle-home-cache-includes: |
+            caches
+            notifications
+            kast/indexer-idea-distributions
 
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+      - if: github.event_name == 'workflow_dispatch'
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: docs/tooling/likec4/package-lock.json
 
       - name: Install documentation validator
+        if: github.event_name == 'workflow_dispatch'
         run: npm install --global mint@4.2.841
 
-      - name: Verify exact source and installed release assets
+      - name: Build, test, and verify one installed semantic journey
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          git checkout --detach "$CANDIDATE_SHA"
+          python3 .github/scripts/ci/verify-checks.py
+
+      - name: Qualify exact source and installed release assets
+        if: github.event_name == 'workflow_dispatch'
         env:
           KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
           GH_TOKEN: ${{ github.token }}
@@ -75,7 +93,7 @@ jobs:
           bash .github/scripts/ci/verify.sh
 
       - name: Retain candidate assets and verification evidence
-        if: always()
+        if: always() && github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-candidate-${{ github.event.pull_request.head.sha || github.sha }}
@@ -85,3 +103,14 @@ jobs:
           if-no-files-found: error
           retention-days: 90
           compression-level: 0
+
+      - name: Retain routine verification reports
+        if: always() && github.event_name != 'workflow_dispatch'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ci-reports-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            build/reports/
+            **/build/test-results/
+          if-no-files-found: warn
+          retention-days: 14

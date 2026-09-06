@@ -204,8 +204,8 @@ def validate_semantic_corruption(proof: dict) -> None:
         if case.get("status") != "rejected" or case.get("exitCode") != 2 or case.get("boundary") != "usage" or case.get("reason") != "arguments-rejected" or not all(proven_digest(case.get(key)) for key in ("documentDigest", "originalContinuationDigest", "validResumeDigest")):
             raise GateRejected("semantic corruption proof has no finite continuation rejection")
     state = proof.get("stateReceipt", {})
-    if state.get("kind") != "cache-identity-v3" or state.get("status") != "rejected-and-restored" or state.get("exitCode") != 4 or state.get("boundary") != "runtime" or state.get("reason") != "status-cache-invalid-identity":
-        raise GateRejected("semantic corruption proof has no rejected state receipt")
+    if state.get("kind") != "cache-identity-v3" or state.get("status") != "rejected-and-restored" or state.get("exitCode") != 0 or state.get("boundary") != "runtime" or state.get("reason") != "status-cache-invalid-identity":
+        raise GateRejected("semantic corruption proof state receipt must prove the passive cache blocker with exit 0")
     if not all(proven_digest(state.get(key)) for key in ("documentDigest", "originalReceiptDigest", "restoredReceiptDigest", "recoveredStatusDigest", "recoveredReadDigest")) or state["originalReceiptDigest"] != state["restoredReceiptDigest"]:
         raise GateRejected("semantic corruption proof did not restore the exact state receipt")
 

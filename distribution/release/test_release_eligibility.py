@@ -11,7 +11,7 @@ class ReleaseEligibilityTest(unittest.TestCase):
     repository = 'amichne/kast'
 
     def setUp(self):
-        self.run = dict(id=42, head_sha=self.sha, head_branch='main', event='push',
+        self.run = dict(id=42, head_sha=self.sha, head_branch='main', event='workflow_dispatch',
                         path='.github/workflows/ci.yml', status='completed', conclusion='success',
                         head_repository={'full_name': self.repository})
         self.artifact = dict(id=9, name=f'release-candidate-{self.sha}', expired=False,
@@ -33,7 +33,7 @@ class ReleaseEligibilityTest(unittest.TestCase):
 
     def test_wrong_source_or_untrusted_run_is_rejected(self):
         for field, value in [('head_sha', 'b'*40), ('head_branch', 'feature'),
-                             ('event', 'pull_request'), ('path', '.github/workflows/other.yml'),
+                             ('event', 'pull_request'), ('event', 'push'), ('path', '.github/workflows/other.yml'),
                              ('head_repository', {'full_name': 'someone/kast'}),
                              ('conclusion', 'failure')]:
             with self.subTest(field=field), self.assertRaises(eligibility.Rejected):
