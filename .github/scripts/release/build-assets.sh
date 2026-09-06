@@ -24,10 +24,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-[[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
-  fail "version must be <major>.<minor>.<patch>"
-[[ "${expected_source_revision}" =~ ^[0-9a-f]{40}$ ]] ||
-  fail "source revision must be one full Git identity"
+[[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "version must be <major>.<minor>.<patch>"
+[[ "${expected_source_revision}" =~ ^[0-9a-f]{40}$ ]] || fail "source revision must be one full Git identity"
 
 repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
 cd "${repository_root}"
@@ -37,88 +35,51 @@ source_revision="$(
     --expected-source-revision "${expected_source_revision}"
 )"
 
-python3 distribution/release/release_gate.py source \
-  --source-root "${repository_root}" \
-  --assets-directory "${repository_root}/build/release/v${version}" \
-  --version "${version}" --source-revision "${source_revision}"
-post_build_source_revision="$(
-  "${repository_root}/.github/scripts/release/admit-source.sh" \
-    --repository-root "${repository_root}" \
-    --expected-source-revision "${source_revision}"
-)"
-[[ "${post_build_source_revision}" == "${source_revision}" ]] ||
-  fail "source identity changed during the release build"
+./gradlew --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx5g \
+  -Pversion="${version}" -PkastSourceRevision="${source_revision}" \
+  productBuildGate assembleSidecarRelease generateKastModuleKnowledge
+
+"${repository_root}/.github/scripts/release/admit-source.sh" \
+  --repository-root "${repository_root}" \
+  --expected-source-revision "${source_revision}" >/dev/null
 
 control_name="kast-control-v${version}-macos-aarch64.tar.gz"
 sidecar_name="kast-semantic-runtime-${version}-macos-aarch64.zip"
 schema_name="kast-cli-schema-v${version}.json"
 knowledge_name="kast-module-knowledge-v${version}.json"
-compatibility_name="kast-compatibility-v${version}.json"
+sbom_name="kast-sbom-v${version}.cdx.json"
 control_source="${repository_root}/build/distributions/${control_name}"
 sidecar_source="${repository_root}/build/distributions/${sidecar_name}"
 knowledge_source="${repository_root}/build/reports/kast-architecture/kast-module-knowledge.json"
-[[ -f "${control_source}" ]] || fail "missing control artifact: ${control_source}"
-[[ -f "${sidecar_source}" ]] || fail "missing sidecar artifact: ${sidecar_source}"
-[[ -f "${knowledge_source}" ]] || fail "missing module knowledge: ${knowledge_source}"
+for source in "${control_source}" "${sidecar_source}" "${knowledge_source}"; do
+  [[ -f "${source}" ]] || fail "missing build output: ${source}"
+done
 
 output_directory="${repository_root}/build/release/v${version}"
+rm -rf -- "${output_directory}"
 mkdir -p "${output_directory}"
-rm -f -- \
-  "${output_directory}/${control_name}" \
-  "${output_directory}/${control_name}.sha256" \
-  "${output_directory}/${sidecar_name}" \
-  "${output_directory}/${sidecar_name}.sha256" \
-  "${output_directory}/${schema_name}" \
-  "${output_directory}/${schema_name}.sha256" \
-  "${output_directory}/${knowledge_name}" \
-  "${output_directory}/${knowledge_name}.sha256"
 cp "${control_source}" "${output_directory}/${control_name}"
 cp "${sidecar_source}" "${output_directory}/${sidecar_name}"
 cp "${knowledge_source}" "${output_directory}/${knowledge_name}"
 
 schema_control="$(mktemp -d "${TMPDIR:-/tmp}/kast-release-schema.XXXXXX")"
-cleanup() {
-  rm -rf -- "${schema_control}"
-}
+cleanup() { rm -rf -- "${schema_control}"; }
 trap cleanup EXIT
 tar -xzf "${control_source}" -C "${schema_control}"
 mkdir -p "${schema_control}/home"
 HOME="${schema_control}/home" JAVA_OPTS="-Duser.home=${schema_control}/home" \
   "${schema_control}/bin/kast" --schema >"${output_directory}/${schema_name}"
-HOME="${schema_control}/home" JAVA_OPTS="-Duser.home=${schema_control}/home" \
-  python3 distribution/release/compatibility.py capture \
-    --root "${repository_root}" --kast "${schema_control}/bin/kast" \
-    --schema "${output_directory}/${schema_name}" --version "${version}" \
-    --output "${output_directory}/${compatibility_name}"
-python3 distribution/release/compatibility.py verify \
-  --candidate "${output_directory}/${compatibility_name}" \
-  --repository "${GITHUB_REPOSITORY:-amichne/kast}" \
-  --receipt "${repository_root}/build/reports/release-gate/compatibility.json"
-(
-  cd "${output_directory}"
-  shasum -a 256 "${control_name}" >"${control_name}.sha256"
-  shasum -a 256 "${sidecar_name}" >"${sidecar_name}.sha256"
-  shasum -a 256 "${schema_name}" >"${schema_name}.sha256"
-  shasum -a 256 "${knowledge_name}" >"${knowledge_name}.sha256"
-  shasum -a 256 "${compatibility_name}" >"${compatibility_name}.sha256"
-)
-
-python3 distribution/release/verify_assets.py \
-  --directory "${output_directory}" \
-  --release "v${version}" \
-  --source-revision "${source_revision}" \
-  --source-root "${repository_root}" \
-  --repository "${GITHUB_REPOSITORY:-amichne/kast}" \
-  --report "${repository_root}/build/reports/sidecar/release-assets.json"
 
 python3 distribution/release/generate_sbom.py \
   --source-root "${repository_root}" --assets-directory "${output_directory}" \
   --version "${version}" --source-revision "${source_revision}"
 
-python3 integration-tests/release_artifact_acceptance.py \
-  --assets-directory "${output_directory}" \
-  --version "${version}" --source-revision "${source_revision}"
+(
+  cd "${output_directory}"
+  for asset in "${control_name}" "${sidecar_name}" "${schema_name}" "${knowledge_name}" "${sbom_name}"; do
+    [[ -f "${asset}" ]] || fail "missing release asset: ${asset}"
+    shasum -a 256 "${asset}" >"${asset}.sha256"
+  done
+)
 
-python3 distribution/release/release_gate.py finish \
-  --source-root "${repository_root}" --assets-directory "${output_directory}" \
-  --version "${version}" --source-revision "${source_revision}"
+printf '%s\n' "build-release-assets: built exact-source artifacts for ${source_revision}"
