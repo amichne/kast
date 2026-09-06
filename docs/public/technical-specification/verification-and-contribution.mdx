@@ -116,8 +116,11 @@ The SBOM generator downloads a checksum-pinned Syft archive, scans the two
 product archives, records the source revision and archive digests in the
 CycloneDX document, and fails if either archive changes during the scan.
 
-Actions remain pinned to full commit identities. The release workflow does not
-claim that additional attestation, upload/download replay, timing evidence, or
+Repository actions use immutable commit identities where the runner resolves
+them reliably. `actions/upload-artifact` is pinned to the concrete `v4.6.2`
+release tag because the hosted macOS runner currently rejects the equivalent
+commit-SHA form during action resolution. The release workflow does not claim
+that additional attestation, upload/download replay, timing evidence, or
 lifecycle rehearsal strengthens the product; those were removed from release
 authority.
 
