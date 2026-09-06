@@ -65,6 +65,13 @@ Release assets also include the machine-readable CLI schema and module
 knowledge. Module knowledge binds generated architecture evidence and repository
 guidance for agents; it is not a second semantic authority.
 
+## Enterprise acceptance
+
+There is no standing enterprise-acceptance gate. The previous multi-module
+end-to-end harness, lifecycle replay, performance ceilings, resource sampling,
+and corruption scenarios were removed from CI and release authority. Reintroduce
+one only when a concrete invariant cannot be proven at a narrower boundary.
+
 ## CI admission
 
 Pull-request and main CI detach the exact candidate SHA and run
