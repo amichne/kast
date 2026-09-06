@@ -7,13 +7,10 @@ case "${1:-}" in
     printf 'kast %s (IntelliJ sidecar)\n' "$KAST_TEST_RELEASE_VERSION"
     ;;
   --schema)
-    printf '%s\n' '{"operationRegistry":{},"cliProjection":{"localCommands":["product inspect","broker serve"]}}'
+    printf '%s\n' '{"operationRegistry":{},"cliProjection":{"localCommands":[]}}'
     ;;
-  product)
-    [[ "${2:-}" == "inspect" ]] || exit 64
-    printf '%s\n' '{"status":"complete","control":{"execution":"isolated-intellij-sidecar"},"workspace":{"cache":{"type":"absent"}}}'
-    ;;
-  status)
+  "")
+    printf '%s\n' '{"operation":"inspect","runtime":"stopped","status":"complete","control":{"execution":"isolated-intellij-sidecar"},"workspace":{"cache":{"type":"absent"}}}'
     ;;
   *)
     exit 64
