@@ -106,7 +106,9 @@ internal fun installedServerProjection(
     )
 }
 
-private val installedServerTools: List<InstalledServerTool> = InstalledServerTool.entries.also {
+private val installedServerTools: List<InstalledServerTool> = InstalledServerTool.entries.filter { tool ->
+    HostedOperationProjection.publicDefinitions.any { it.operation == tool.operation }
+}.also {
     val operations = it.map { tool -> tool.operation }
     when (val completeness = HostedOperationProjection.verifyBindings(operations)) {
         HostedBindingCompleteness.Complete -> Unit

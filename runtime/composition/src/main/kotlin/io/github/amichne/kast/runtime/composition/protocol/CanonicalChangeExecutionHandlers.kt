@@ -56,7 +56,11 @@ internal class CanonicalChangeApplyHandler(
         ChangeApplyResult,
         ChangeApplyQualification,
         ChangeApplyRejection,
-        > {
+        > = operations.exclusively { executeExclusively(request) }
+
+    private fun executeExclusively(
+        request: ChangeApplyRequest,
+    ): OperationOutcome<ChangeApplyResult, ChangeApplyQualification, ChangeApplyRejection> {
         val identity = ChangePlanIdentity.parse(request.planIdentity.value)
             ?: return OperationOutcome.Rejected(ChangeApplyRejection.PLAN_NOT_FOUND)
         val plan = when (val lookup = authority.loadPlan(identity)) {

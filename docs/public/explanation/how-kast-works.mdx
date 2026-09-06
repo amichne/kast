@@ -84,7 +84,7 @@ evidence fails closed. A missing cache causes a fresh private import; it does no
 authorize reading the user's IDEA cache. Kast ships no IDEA distribution and
 has no user-IDE plugin fallback.
 
-Before readiness, composition constructs the exact eleven-operation public capability set.
+Before readiness, composition constructs the exact nine-operation public capability set.
 The [CLI reference](/reference/cli#sidecar-endpoint-operations) lists each
 operation and command shape.
 
@@ -197,7 +197,7 @@ diagnostic to standard error for a boundary rejection.
         CLI --> WIRE[Typed wire documents]
         ADMIT --> SIDECAR[Private installed-IDE sidecar]
         WIRE --> TRANSPORT[Private sidecar transport]
-        TRANSPORT --> DISPATCH[Exact eleven-route semantic dispatch]
+        TRANSPORT --> DISPATCH[Exact nine-route semantic dispatch]
         DISPATCH --> ROUTES[Read and change routes]
         ROUTES --> K2[Request-local IntelliJ adapters]
         K2 --> EVIDENCE[Host-neutral evidence]
@@ -248,7 +248,7 @@ serialized or reused after their workspace generation changes.
 
 | Boundary | Current contract |
 | --- | --- |
-| **Sidecar routes** | Index synchronization, topology, symbol discovery and inspection, source and relation reads, traversal, diagnostics, planning, verified application, and recovery are the eleven public installed capabilities. |
+| **Sidecar routes** | Symbol discovery and inspection, source and relation reads, traversal, diagnostics, planning, verified application, and recovery are the nine public installed capabilities. Index synchronization and topology remain internal prerequisites. |
 | **Compiler-grounded reads** | Relation and diagnostic routes use the same typed compiler services as planning and verification while remaining independently callable. |
 | **Kast-owned lifecycle** | `start` owns admission and typed cache policy, `status` is passive, and `stop` targets only the proven sidecar process and its endpoint artifacts. |
 
@@ -256,7 +256,7 @@ serialized or reused after their workspace generation changes.
 
 Before runtime construction, the sidecar proves a private trace destination
 inside the exact socket's durable state directory. Completed topology and
-traversal spans are forwarded asynchronously as OTLP JSON Lines. `kast product inspect`
+traversal spans are forwarded asynchronously as OTLP JSON Lines. `kast`
 exposes the enabled directory, trace file, and format without starting the
 runtime.
 

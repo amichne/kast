@@ -74,7 +74,7 @@ PAGES = {
         "Read exact command and implementation contracts",
         "The compiler sees more than text",
         "Start from the repository root",
-        "Eleven sidecar operations",
+        "Nine public semantic operations",
         "What is Kast ready to inspect?",
         "What declaration is this?",
         "How is this code connected?",
@@ -92,13 +92,13 @@ PAGES = {
         "does not edit your shell profile",
         "kast start --cache seed",
         "kast --schema",
-        "eleven operations",
-        "kast index sync",
+        "nine operations",
+        "Any semantic command",
         "OpenTelemetry traces",
         "relation reads",
         "diagnostics",
         "kast start",
-        "kast status",
+        "kast",
         "kast stop",
         "Operate the lifecycle",
         "<Steps>",
@@ -118,7 +118,7 @@ PAGES = {
         "<Steps>",
     ],
     "questions/code-connections.mdx": [
-        "kast topology build",
+        "acquires an eligible durable snapshot automatically",
         "kast traversal run",
         "kast relation read",
         "generation-bound",
@@ -142,12 +142,12 @@ PAGES = {
         "Qualified",
         "Rejected",
         "generation",
-        "eleven sidecar operations",
+        "nine public semantic operations",
         "| Outcome | What it proves |",
     ],
     "explanation/how-kast-works.mdx": [
         "release-line-compatible local IDEA installation",
-        "exact eleven-operation public capability set",
+        "exact nine-operation public capability set",
         "Kotlin control executable",
         "SymbolInspectRequestDocument",
         "UnixDomainWireClient",
@@ -241,10 +241,9 @@ PAGES = {
         "relation.read",
         "diagnostic.check",
         "Process-local commands",
-        "product inspect",
-        "broker serve",
+        "Bare `kast` reports",
+        "kast-codex",
         "Default local traces",
-        "index.sync",
         "source.read",
         "change.recover",
     ],
@@ -1027,7 +1026,7 @@ def check_readme() -> None:
         "kast-control-*.tar.gz",
         "kast-semantic-runtime-*.zip",
         "KAST_RUNTIME_STORE",
-        "eleven public semantic operations",
+        "nine public semantic operations",
         "kast start",
         "kast symbol inspect",
         "kast --schema",
@@ -1099,8 +1098,6 @@ def check_installed_capability_contract() -> None:
     require(
         hosted
         == [
-            "index.sync",
-            "topology.build",
             "symbol.discover",
             "symbol.inspect",
             "source.read",
@@ -1119,7 +1116,7 @@ def check_installed_capability_contract() -> None:
         if operation.get("hostedExposure") == "internal_only"
     ]
     require(
-        internal == [],
+        internal == ["index.sync", "topology.build"],
         f"internal sidecar service surface changed: {internal}",
     )
 
@@ -1132,10 +1129,11 @@ def check_installed_capability_contract() -> None:
             f"`{operation}`" in reference,
             f"sidecar reference section omits {operation}",
         )
-    require(
-        "## Canonical operations without a direct sidecar route" not in reference,
-        "reference retains a no-sidecar-route section for an all-public registry",
-    )
+    for operation in internal:
+        require(f"`{operation}`" in reference, f"reference omits retained internal operation {operation}")
+
+    for retired in ("kast index sync", "kast topology build", "kast status", "kast product inspect", "kast broker serve"):
+        require(retired not in reference, f"reference advertises retired public command {retired!r}")
 
     lifecycle_source = SIDECAR_LIFECYCLE_AUTHORITY.read_text()
     require(

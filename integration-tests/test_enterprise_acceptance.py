@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import importlib.util
-from contextlib import redirect_stdout
+from contextlib import closing, redirect_stdout
 import io
 import hashlib
 import json
 import os
 import shutil
+import sqlite3
 from pathlib import Path
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -108,10 +110,14 @@ class MutationAcceptanceTest(unittest.TestCase):
         self.inspection = {"operation": "symbol.inspect", "status": "complete", "symbol": self.marker}
         self.stale = {"operation": "change.apply", "status": "rejected", "reason": "content-changed"}
         self.stale_effect = lambda: None
+        self.verification_outcome = "verified"
+        self.applied = {"status": "complete", "receiptIdentity": "receipt"}
+        self.trace = self.cache / "traces.jsonl"
 
     def exercise(self):
         acceptance = object.__new__(enterprise_acceptance.Acceptance)
         acceptance.maximum_reconciliation_seconds = 1
+        acceptance.maximum_operation_seconds = 0
         acceptance.environment = {"KAST_CACHE_ROOT": str(self.cache)}
         acceptance.workspace = self.workspace
         responses = iter([
@@ -119,12 +125,18 @@ class MutationAcceptanceTest(unittest.TestCase):
             {"operation": "change.recover", "status": "complete", "state": "restored"},
             {"status": "complete", "planIdentity": "pending-plan"},
             {"status": "complete", "planIdentity": "mutation-plan"},
-            {"status": "complete", "receiptIdentity": "receipt"},
+            self.applied,
             self.diagnostics,
             {"status": "rejected", "reason": "exact-selector-stale"},
             self.discovery, self.inspection, self.stale,
         ])
         def command(*arguments, **_options):
+            if not arguments:
+                return {"operation": "inspect", "status": "complete", "workspace": {
+                    "canonicalRoot": str(self.workspace), "telemetry": {
+                        "state": "enabled", "traceFilePath": str(self.trace)}}}
+            if arguments == ("change", "apply", "--plan", "mutation-plan"):
+                self.trace.write_text(verification_line(self.verification_outcome, time.time_ns()))
             if arguments == ("change", "apply", "--plan", "pending-plan"):
                 self.stale_effect()
             return next(responses)
@@ -149,6 +161,20 @@ class MutationAcceptanceTest(unittest.TestCase):
                  if line.startswith("enterprise-stale-plan: ")][-1]
         self.assertEqual("passed", stale["status"])
         self.assertEqual("content-changed", stale["reason"])
+
+    def test_failed_application_reports_terminal_stage_before_receipt_failure(self):
+        self.applied = {"status": "rejected", "reason": "verification-failed"}
+        self.verification_outcome = "compiler_observation_rejected"
+        with self.assertRaisesRegex(SystemExit, "verified receipt"):
+            self.exercise()
+        self.assertIn('"outcome": "compiler_observation_rejected"', self.output.getvalue())
+        self.assertLess(self.output.getvalue().index("enterprise-change-verification"),
+                        self.output.getvalue().index("enterprise-compiler-evidence"))
+
+    def test_successful_receipt_cannot_hide_rejected_verification_telemetry(self):
+        self.verification_outcome = "semantic_proof_rejected"
+        with self.assertRaisesRegex(SystemExit, "verified terminal telemetry"):
+            self.exercise()
 
     def test_relative_file_text_cannot_substitute_the_canonical_workspace_file(self) -> None:
         self.marker["file"] = "domains/alpha/one/src/main/kotlin/enterprise/alpha/one/Enterprise.kt"
@@ -382,6 +408,106 @@ class IsolatedAcceptanceHostTest(unittest.TestCase):
                         ],
                         events,
                     )
+
+
+def verification_line(outcome="verified", started=15, span_id="b" * 16):
+    return json.dumps({"resourceSpans": [{"scopeSpans": [{"spans": [{
+        "name": "kast.change.verification", "traceId": "a" * 32, "spanId": span_id,
+        "startTimeUnixNano": str(started), "endTimeUnixNano": str(started + 1),
+        "attributes": [{"key": "kast.change.verification.outcome", "value": {"stringValue": outcome}},
+                       {"key": "private", "value": {"stringValue": "private-source-payload"}}],
+    }]}]}]}) + "\n"
+
+
+class ChangeVerificationTelemetryTest(unittest.TestCase):
+    def observe(self, raw, limit=1024 * 1024):
+        with tempfile.TemporaryDirectory() as temporary:
+            trace = Path(temporary) / "traces.jsonl"
+            trace.write_text(raw)
+            return enterprise_acceptance.observe_change_verification(trace, 10, 20, 0, maximum_bytes=limit)
+
+    def test_only_current_application_interval_can_prove_verified(self):
+        evidence = self.observe(verification_line(started=1) + verification_line())
+        self.assertIsInstance(evidence, enterprise_acceptance.ObservedChangeVerification)
+        self.assertEqual(enterprise_acceptance.ChangeVerificationOutcome.VERIFIED, evidence.outcome)
+        self.assertNotIn("private-source-payload", repr(evidence))
+
+    def test_previous_or_unexported_partial_span_cannot_prove_current_application(self):
+        for raw in (verification_line(started=1), verification_line().rstrip("\n"), ""):
+            with self.subTest(raw=raw):
+                evidence = self.observe(raw)
+                self.assertEqual(enterprise_acceptance.ChangeVerificationEvidenceFailure.NOT_EXPORTED, evidence.failure)
+
+    def test_unknown_duplicate_malformed_and_oversized_evidence_fail_closed(self):
+        cases = [
+            (verification_line("private-source-payload"), 1048576, "UNKNOWN_OUTCOME"),
+            (verification_line() + verification_line(span_id="c" * 16), 1048576, "AMBIGUOUS"),
+            ("{bad}\n", 1048576, "MALFORMED"),
+            (verification_line(), 20, "READ_BOUND_EXCEEDED"),
+        ]
+        for raw, limit, failure in cases:
+            with self.subTest(failure=failure):
+                evidence = self.observe(raw, limit)
+                self.assertEqual(failure, evidence.failure.name)
+                self.assertNotIn("private-source-payload", repr(evidence))
+
+    def test_all_finite_terminal_outcomes_remain_observable(self):
+        for outcome in enterprise_acceptance.ChangeVerificationOutcome:
+            with self.subTest(outcome=outcome):
+                self.assertEqual(outcome, self.observe(verification_line(outcome.value)).outcome)
+
+
+class TraversalSnapshotEvidenceTest(unittest.TestCase):
+    def fixture(self, root, *, row_root=None, row_generation=7, duplicate=False):
+        workspace = root / "workspace"
+        workspace.mkdir()
+        state = root / "state"
+        state.mkdir()
+        database = state / "topology.sqlite"
+        with closing(sqlite3.connect(database)) as connection:
+            connection.execute("CREATE TABLE topology_snapshot_v3 (snapshot_id INTEGER, workspace_root TEXT, "
+                               "generation INTEGER, source_state TEXT, digest TEXT, file_count INTEGER, "
+                               "symbol_count INTEGER, edge_count INTEGER)")
+            row = (1, str(row_root or workspace), row_generation, "source", "a" * 64, 3, 9, 8)
+            connection.execute("INSERT INTO topology_snapshot_v3 VALUES (?, ?, ?, ?, ?, ?, ?, ?)", row)
+            if duplicate:
+                connection.execute("INSERT INTO topology_snapshot_v3 VALUES (?, ?, ?, ?, ?, ?, ?, ?)", row)
+            connection.commit()
+        acceptance = enterprise_acceptance.Acceptance.__new__(enterprise_acceptance.Acceptance)
+        acceptance.workspace = workspace
+        acceptance.maximum_startup_seconds = 60
+        # This test isolates persistence admission; graph shape has its own validator.
+        acceptance.prove_normalized_traversal_graph = mock.Mock()
+        acceptance.command = mock.Mock(side_effect=[
+            {"operation": "traversal.run", "status": "complete",
+             "graph": {"snapshot": {"canonicalRoot": str(workspace), "generation": 7}}},
+            {"operation": "inspect", "status": "complete", "workspace": {
+                "canonicalRoot": str(workspace), "telemetry": {
+                    "state": "enabled", "traceFilePath": str(state / "telemetry" / "trace.jsonl")}}},
+        ])
+        return acceptance, database
+
+    def test_snapshot_uses_traversal_generation_and_passively_observed_database(self):
+        with tempfile.TemporaryDirectory() as raw:
+            acceptance, _ = self.fixture(Path(raw).resolve())
+            row = acceptance.observe_topology_snapshot("exact-current")
+            self.assertEqual(7, row["generation"])
+            self.assertEqual("a" * 64, row["digest"])
+            self.assertEqual(("traversal", "run"), acceptance.command.call_args_list[0].args[:2])
+            self.assertEqual((), acceptance.command.call_args_list[1].args)
+            acceptance.prove_normalized_traversal_graph.assert_called_once()
+
+    def test_foreign_stale_missing_or_ambiguous_rows_cannot_prove_snapshot(self):
+        for options in ({"row_root": Path("/foreign")}, {"row_generation": 6}, {"duplicate": True}, {"missing": True}):
+            with self.subTest(options=options), tempfile.TemporaryDirectory() as raw:
+                missing = options.get("missing", False)
+                acceptance, database = self.fixture(Path(raw).resolve(), **{k: v for k, v in options.items() if k != "missing"})
+                if missing:
+                    database.unlink()
+                with self.assertRaises(SystemExit):
+                    acceptance.observe_topology_snapshot("exact-current")
+                if missing:
+                    self.assertFalse(database.exists(), "read-only inspection must not create a database")
 
 
 if __name__ == "__main__":

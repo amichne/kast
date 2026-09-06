@@ -19,7 +19,9 @@ import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.OperationTypeBinding
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
 import io.github.amichne.kast.protocol.registry.CompletenessPolicy
+import io.github.amichne.kast.protocol.registry.CanonicalOperationDefinitions
 import io.github.amichne.kast.protocol.registry.HostedExposure
+import io.github.amichne.kast.protocol.registry.HostedOperationProjection
 import io.github.amichne.kast.protocol.registry.OperationCost
 import io.github.amichne.kast.protocol.registry.OperationDefinition
 import io.github.amichne.kast.protocol.registry.OperationEffect
@@ -63,11 +65,13 @@ class RuntimeServerContractTest {
     }
 
     @Test
-    fun `fake dispatch proves every outcome for all canonical operations`() = runTest {
+    fun `fake dispatch proves every outcome for every public canonical operation`() = runTest {
         val bindings = canonicalBindings()
         val server = RuntimeServer.create(bindings).createdServer()
 
-        bindings.forEach { binding ->
+        bindings.filter { binding ->
+            HostedOperationProjection.publicDefinitions.any { it.operation == binding.operation }
+        }.forEach { binding ->
             TestOutcomeKind.entries.forEach { outcomeKind ->
                 val request = TestRequest(outcomeKind)
                 val requestDocument = binding.wireBinding.encodeRequest(request).encodedDocument()
@@ -82,7 +86,7 @@ class RuntimeServerContractTest {
     @Test
     fun `dispatch fails closed for unknown operations and mismatched schemas`() = runTest {
         val bindings = canonicalBindings()
-        val binding = bindings.first()
+        val binding = bindings.single { it.operation == HostedOperationProjection.publicDefinitions.first().operation }
         val server = RuntimeServer.create(bindings).createdServer()
         val encoded = binding.wireBinding
             .encodeRequest(TestRequest(TestOutcomeKind.COMPLETE))
@@ -114,7 +118,61 @@ class RuntimeServerContractTest {
         )
     }
 
-    private fun canonicalBindings(): List<
+    @Test
+    fun `internal operations reject raw requests before invoking their handlers`() = runTest {
+        val calls = mutableListOf<CanonicalOperation>()
+        val bindings = canonicalBindings(calls::add)
+        val server = RuntimeServer.create(bindings).createdServer()
+        HostedOperationProjection.internalDefinitions.forEach { definition ->
+            val binding = bindings.single { it.operation == definition.operation }
+            val request = binding.wireBinding.encodeRequest(TestRequest(TestOutcomeKind.COMPLETE)).encodedDocument()
+            assertEquals(
+                ServerDispatch.Rejected(ServerDispatchFailure.UnsupportedOperation(definition.operation)),
+                server.dispatch(request),
+            )
+        }
+        assertEquals(emptyList<CanonicalOperation>(), calls)
+    }
+
+    @Test
+    fun `unavailable definitions reject supplied bindings and cannot dispatch`() = runTest {
+        val unavailable = CanonicalOperation.SOURCE_READ
+        val definitions = CanonicalOperationDefinitions.all.map { definition ->
+            if (definition.operation == unavailable) definition.copy(hostedExposure = HostedExposure.UNAVAILABLE)
+            else definition
+        }
+        val calls = mutableListOf<CanonicalOperation>()
+        val bindings = canonicalBindings(calls::add)
+        assertEquals(
+            RuntimeServerConstruction.Rejected(setOf(RuntimeServerConstructionFailure.UnexpectedBinding(unavailable))),
+            RuntimeServer.createFromDefinitions(bindings, definitions),
+        )
+        val server = RuntimeServer.createFromDefinitions(
+            bindings.filterNot { it.operation == unavailable }, definitions,
+        ).createdServer()
+        val raw = bindings.single { it.operation == unavailable }.wireBinding
+            .encodeRequest(TestRequest(TestOutcomeKind.COMPLETE)).encodedDocument()
+        assertEquals(ServerDispatch.Rejected(ServerDispatchFailure.UnsupportedOperation(unavailable)), server.dispatch(raw))
+        assertEquals(emptyList<CanonicalOperation>(), calls)
+    }
+
+    @Test
+    fun `each available definition requires one implementation including internal services`() {
+        val bindings = canonicalBindings()
+        (HostedOperationProjection.publicDefinitions + HostedOperationProjection.internalDefinitions).forEach { definition ->
+            val binding = bindings.single { it.operation == definition.operation }
+            assertEquals(
+                RuntimeServerConstruction.Rejected(setOf(RuntimeServerConstructionFailure.MissingBinding(definition.operation))),
+                RuntimeServer.create(bindings.filterNot { it.operation == definition.operation }),
+            )
+            assertEquals(
+                RuntimeServerConstruction.Rejected(setOf(RuntimeServerConstructionFailure.DuplicateBinding(definition.operation))),
+                RuntimeServer.create(bindings + binding),
+            )
+        }
+    }
+
+    private fun canonicalBindings(observe: (CanonicalOperation) -> Unit = {}): List<
         TypedOperationBinding<TestRequest, TestResult, TestQualification, TestRejection>,
         > = CanonicalOperation.entries.map { operation ->
         val wireBinding = GeneratedOperationWireBindingFactory.create(
@@ -127,6 +185,7 @@ class RuntimeServerContractTest {
         TypedOperationBinding(
             wireBinding = wireBinding,
             handler = OperationHandler { request ->
+                observe(operation)
                 expectedOutcome(operation, request.outcome)
             },
         )

@@ -214,10 +214,125 @@ class InstalledSidecarRuntimeDemanderTest {
         )
     }
 
+    @Test
+    fun `automatic demand retains the exact cache explicit IDEA selection outside standard discovery`(@TempDir temporary: Path) {
+        val cached = RecordedRootCache()
+        val fixture = demanderFixture(temporary, cacheLifecycle = cached) { runtime, selection ->
+            when (selection) {
+                is IdeHomeSelection.Explicit -> InstalledIdeRuntimeDiscoveryResult.Discovered(runtime)
+                is IdeHomeSelection.Standard -> InstalledIdeRuntimeDiscoveryResult.Rejected(IndexSeedFailure.MissingInstallation)
+            }
+        }
+        val explicit = RuntimeStartupRequest.Requested(
+            StartupIdeHome.Explicit(fixture.ideaRuntime.home), StartupCacheIntent.Reuse,
+        )
+        assertTrue(fixture.demander.demand(fixture.root, HostedRuntimeDemand.Lifecycle, explicit) is RuntimeAdmission.Ready)
+        cached.observation = RootSidecarCacheObservation.Observed(fixture.recordedStatus())
+
+        val admission = fixture.demander.demand(fixture.root, HostedRuntimeDemand.Lifecycle, RuntimeStartupRequest.Default)
+
+        assertTrue(admission is RuntimeAdmission.Ready)
+        assertEquals(listOf(
+            IdeHomeSelection.Explicit(fixture.ideaRuntime.home),
+            IdeHomeSelection.Explicit(fixture.ideaRuntime.home),
+        ), fixture.observedSelection)
+        assertEquals(fixture.observedEndpoint.first(), fixture.observedEndpoint.last())
+        assertEquals(fixture.root.path, cached.observedRoots.single())
+    }
+
+    @Test
+    fun `default demand cannot replace ambiguous or invalid cache authority with standard discovery`(@TempDir temporary: Path) {
+        for (failure in listOf(SidecarCacheLifecycleFailure.AMBIGUOUS_IDENTITY, SidecarCacheLifecycleFailure.INVALID_IDENTITY)) {
+            val cached = RecordedRootCache(RootSidecarCacheObservation.Rejected(failure))
+            val fixture = demanderFixture(Files.createDirectory(temporary.resolve(failure.name)), cacheLifecycle = cached)
+
+            val admission = fixture.demander.demand(fixture.root, HostedRuntimeDemand.Lifecycle, RuntimeStartupRequest.Default)
+
+            assertTrue(admission is RuntimeAdmission.Rejected)
+            assertTrue(fixture.observedSelection.isEmpty(), "rejected cache must not fall back to another installation")
+            assertTrue(fixture.observedIntents.isEmpty())
+            assertTrue(fixture.observedLaunch.isEmpty())
+        }
+    }
+
+    @Test
+    fun `explicit startup selection wins without consulting cached selection`(@TempDir temporary: Path) {
+        val cached = RecordedRootCache(RootSidecarCacheObservation.Rejected(SidecarCacheLifecycleFailure.AMBIGUOUS_IDENTITY))
+        val fixture = demanderFixture(temporary, cacheLifecycle = cached)
+        val explicit = RuntimeStartupRequest.Requested(
+            StartupIdeHome.Explicit(fixture.ideaRuntime.home), StartupCacheIntent.Reuse,
+        )
+
+        assertTrue(fixture.demander.demand(fixture.root, HostedRuntimeDemand.Lifecycle, explicit) is RuntimeAdmission.Ready)
+        assertTrue(cached.observedRoots.isEmpty())
+        assertEquals(listOf(IdeHomeSelection.Explicit(fixture.ideaRuntime.home)), fixture.observedSelection)
+    }
+
+    @Test
+    fun `recorded selection revalidates the installation and never falls back after rejection`(@TempDir temporary: Path) {
+        val cached = RecordedRootCache()
+        var available = true
+        val fixture = demanderFixture(temporary, cacheLifecycle = cached) { runtime, _ ->
+            if (available) InstalledIdeRuntimeDiscoveryResult.Discovered(runtime)
+            else InstalledIdeRuntimeDiscoveryResult.Rejected(IndexSeedFailure.MissingInstallation)
+        }
+        val explicit = RuntimeStartupRequest.Requested(
+            StartupIdeHome.Explicit(fixture.ideaRuntime.home), StartupCacheIntent.Reuse,
+        )
+        fixture.demander.demand(fixture.root, HostedRuntimeDemand.Lifecycle, explicit)
+        cached.observation = RootSidecarCacheObservation.Observed(fixture.recordedStatus())
+        available = false
+
+        assertEquals(
+            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.InstalledIdeRejected(IndexSeedFailure.MissingInstallation)),
+            fixture.demander.demand(fixture.root, HostedRuntimeDemand.Lifecycle, RuntimeStartupRequest.Default),
+        )
+        assertEquals(IdeHomeSelection.Explicit(fixture.ideaRuntime.home), fixture.observedSelection.last())
+        assertEquals(1, fixture.observedIntents.size)
+        assertEquals(1, fixture.observedLaunch.size)
+    }
+
+    @Test
+    fun `stale cache retains only IDEA selection while current payload and cache identity are rederived`(@TempDir temporary: Path) {
+        val cached = RecordedRootCache()
+        val fixture = demanderFixture(temporary, cacheLifecycle = cached)
+        fixture.demander.demand(fixture.root, HostedRuntimeDemand.Lifecycle, RuntimeStartupRequest.Default)
+        cached.observation = RootSidecarCacheObservation.Stale(fixture.recordedStatus().copy(
+            cacheIdentity = "obsolete-cache-identity",
+            kastPayloadDigest = "sha256:${"f".repeat(64)}",
+        ))
+
+        val admission = fixture.demander.demand(fixture.root, HostedRuntimeDemand.Lifecycle, RuntimeStartupRequest.Default)
+
+        assertTrue(admission is RuntimeAdmission.Ready)
+        assertEquals(IdeHomeSelection.Explicit(fixture.ideaRuntime.home), fixture.observedSelection.last())
+        assertNotEquals("obsolete-cache-identity", fixture.observedLaunch.last().cache.identity.key)
+        assertEquals(fixture.ideaRuntime.identity.kastPayloadDigest, fixture.observedLaunch.last().runtime.identity.kastPayloadDigest)
+    }
+
+    private fun DemanderFixture.recordedStatus(): RootSidecarCacheStatus {
+        val launch = observedLaunch.last()
+        return RootSidecarCacheStatus(
+            launch.cache.identity.key,
+            endpoint.runtimeId,
+            launch.cache.root,
+            launch.cacheState,
+            ideaRuntime.home,
+            ideaRuntime.identity.supportedPair.ideaBuild,
+            ideaRuntime.identity.supportedPair.kotlinPluginBuild,
+            ideaRuntime.identity.jbrIdentity,
+            ideaRuntime.identity.kastPayloadDigest,
+        )
+    }
+
     private fun demanderFixture(
         temporary: Path,
         legacyEndpointProbe: RuntimeEndpointProbe = RuntimeEndpointProbe {
             RuntimeEndpointReachability.Unreachable
+        },
+        cacheLifecycle: RootSidecarCacheLifecycle = NoRootSidecarCacheLifecycle,
+        runtimeResolution: (InstalledIdeRuntime, IdeHomeSelection) -> InstalledIdeRuntimeDiscoveryResult = { runtime, _ ->
+            InstalledIdeRuntimeDiscoveryResult.Discovered(runtime)
         },
     ): DemanderFixture {
         val project = Files.createDirectory(temporary.resolve("project")).toRealPath()
@@ -267,7 +382,7 @@ class InstalledSidecarRuntimeDemanderTest {
             },
             ideRuntimeResolver = SidecarIdeRuntimeResolver { _, _, selection ->
                 selections += selection
-                InstalledIdeRuntimeDiscoveryResult.Discovered(ideaRuntime)
+                runtimeResolution(ideaRuntime, selection)
             },
             cachePreparer = SidecarCachePreparer { _, cacheIdentity, intent ->
                 intents += intent
@@ -296,6 +411,7 @@ class InstalledSidecarRuntimeDemanderTest {
                 RuntimeAdmission.Ready(endpoint)
             },
             legacyEndpointProbe = legacyEndpointProbe,
+            cacheLifecycle = cacheLifecycle,
         )
         return DemanderFixture(
             demander,
@@ -340,3 +456,14 @@ private data class DemanderFixture(
     val observedLaunch: List<PreparedSidecarLaunch>,
     val observedEndpoint: List<RuntimeEndpoint>,
 )
+
+private class RecordedRootCache(
+    var observation: RootSidecarCacheObservation = RootSidecarCacheObservation.Absent,
+) : RootSidecarCacheLifecycle {
+    val observedRoots = mutableListOf<Path>()
+    override fun observe(root: Path): RootSidecarCacheObservation {
+        observedRoots.add(root)
+        return observation
+    }
+    override fun quarantine(root: Path): RootSidecarCacheQuarantine = error("demand must not quarantine cached selection")
+}

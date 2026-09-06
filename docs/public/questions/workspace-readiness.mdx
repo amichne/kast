@@ -72,7 +72,7 @@ lifecycle-boundary rejections rather than semantic-operation results.
 </Note>
 
 <Note>
-  `kast status` passively reports whether the exact sidecar is running and
+  `kast` passively reports whether the exact sidecar is running and
   whether its private cache is fresh, seeded, refreshing, smart, or requires a
   rebuild. It never starts or repairs the runtime. Use `kast start --cache
   reuse|seed|rebuild` for admission and cache policy.
@@ -94,7 +94,7 @@ Machine output keeps the existing channel contract: a successful start emits
 one final JSON document on stdout; boundary rejection emits one JSON document
 on stderr. Progress is disabled when no terminal is attached.
 
-Run `kast status` from another terminal during startup. Its `bootstrap` field
+Run `kast` from another terminal during startup. Its `bootstrap` field
 reports the last recorded phase and exact `attemptId` from the identified cache,
 without starting, repairing, or waiting for the sidecar.
 

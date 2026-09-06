@@ -718,21 +718,12 @@ def run_cold_diagnostic(args: argparse.Namespace) -> dict[str, Any]:
                 runtime_socket_directory,
                 host.workspace,
             )
-            synchronized = acceptance_command(
-                acceptance,
-                "index",
-                "sync",
-                timeout=args.maximum_operation_seconds,
+            probe = ProbeExpectation(
+                "initial-topology", "genericRead", "kast.identity.fixture.genericRead", "callees",
             )
-            if synchronized.get("status") != "complete":
-                raise DiagnosticEvidenceError("cold diagnostic index synchronization failed")
+            selector = exact_probe_selector(acceptance, probe, args.maximum_operation_seconds)
             idea_isolation.assert_unchanged()
-            inspection = acceptance_command(
-                acceptance,
-                "product",
-                "inspect",
-                timeout=args.maximum_operation_seconds,
-            )
+            inspection = acceptance_command(acceptance, timeout=args.maximum_operation_seconds)
             workspace_inspection = inspection.get("workspace")
             telemetry = (
                 workspace_inspection.get("telemetry")
@@ -752,22 +743,21 @@ def run_cold_diagnostic(args: argparse.Namespace) -> dict[str, Any]:
                 )
             trace_path = Path(trace_path_text)
             topology = acceptance_command(
-                acceptance,
-                "topology",
-                "build",
+                acceptance, "traversal", "run", "--selector", selector,
+                "--relation", "callees", "--maximum-depth", "2", "--maximum-results", "20",
                 timeout=args.maximum_startup_seconds,
             )
-            topology_complete = topology.get("status") == "complete"
+            topology_complete = topology.get("operation") == "traversal.run" and topology.get("status") == "complete"
             if args.require_binding and not topology_complete:
-                raise DiagnosticEvidenceError(f"declaration binding did not publish: {topology}")
+                raise DiagnosticEvidenceError(f"declaration binding traversal did not complete: {topology}")
             topology_mismatch = (
-                topology.get("status") == "rejected"
-                and topology.get("reason") == "extraction-failed"
-                and topology.get("failure") == "compiler-identity-mismatch"
+                topology.get("operation") == "traversal.run"
+                and topology.get("status") == "rejected"
+                and topology.get("reason") == "topology-build-required"
             )
             if not topology_complete and not topology_mismatch:
                 raise DiagnosticEvidenceError(
-                    f"cold topology build returned an unrelated outcome: {topology}"
+                    f"cold traversal preparation returned an unrelated outcome: {topology}"
                 )
             idea_isolation.assert_unchanged()
             trace = wait_for_trace(
@@ -781,7 +771,7 @@ def run_cold_diagnostic(args: argparse.Namespace) -> dict[str, Any]:
                 )
             if topology_complete and trace.mismatch is not None:
                 raise DiagnosticEvidenceError(
-                    "completed topology build emitted contradictory mismatch evidence"
+                    "completed traversal emitted contradictory mismatch evidence"
                 )
             if topology_mismatch and trace.mismatch is None:
                 raise DiagnosticEvidenceError(
@@ -796,7 +786,7 @@ def run_cold_diagnostic(args: argparse.Namespace) -> dict[str, Any]:
                     "status": "complete",
                     "runtimeInstance": "new-isolated",
                     "candidateCount": trace.candidate_count,
-                    "topologyOutcome": "published",
+                    "topologyOutcome": "traversal-ready",
                     "diagnosis": "all-probe-declarations-bound",
                     "matchedProbes": matched_probes,
                 }
@@ -808,25 +798,29 @@ def run_cold_diagnostic(args: argparse.Namespace) -> dict[str, Any]:
                     ), args.maximum_operation_seconds)
                     changed = acceptance.workspace / "src/main/kotlin/IdentityFixture.kt"
                     changed.write_text("// New source generation shifts every declaration.\n" + changed.read_text())
-                    refreshed = acceptance_command(acceptance, "index", "sync", timeout=args.maximum_operation_seconds)
-                    if refreshed.get("status") != "complete":
-                        raise DiagnosticEvidenceError("binding source change was not admitted")
                     stale = acceptance_command(acceptance, "symbol", "inspect", "--selector", old_selector,
                                                timeout=args.maximum_operation_seconds)
                     if stale.get("status") != "rejected" or stale.get("reason") != "exact-selector-stale":
                         raise DiagnosticEvidenceError("a previous-generation selector was accepted")
-                    rebuilt = acceptance_command(acceptance, "topology", "build", timeout=args.maximum_startup_seconds)
+                    fresh_selector = exact_probe_selector(acceptance, probe, args.maximum_operation_seconds)
+                    rebuilt = acceptance_command(
+                        acceptance, "traversal", "run", "--selector", fresh_selector,
+                        "--relation", "callees", "--maximum-depth", "2", "--maximum-results", "20",
+                        timeout=args.maximum_startup_seconds,
+                    )
                     if rebuilt.get("status") != "complete":
-                        raise DiagnosticEvidenceError(f"changed binding generation did not publish: {rebuilt}")
+                        raise DiagnosticEvidenceError(f"changed binding generation traversal did not complete: {rebuilt}")
+                    before_generation = topology.get("graph", {}).get("snapshot", {}).get("generation")
+                    after_generation = rebuilt.get("graph", {}).get("snapshot", {}).get("generation")
+                    if (type(before_generation) is not int or type(after_generation) is not int
+                            or before_generation < 1 or after_generation <= before_generation):
+                        raise DiagnosticEvidenceError("source movement did not produce a fresh traversal generation")
+                    result["topologyGenerations"] = [before_generation, after_generation]
                     result["replayedBindingCases"] = prove_binding_edges(acceptance, args.maximum_operation_seconds)
                     result["staleSelector"] = "rejected"
                 idea_isolation.assert_unchanged()
             else:
                 mismatch = trace.mismatch
-                if topology.get("file") != mismatch.source_file:
-                    raise DiagnosticEvidenceError(
-                        "public rejection file contradicts mismatch source evidence"
-                    )
                 result = {
                     "status": "complete",
                     "runtimeInstance": "new-isolated",

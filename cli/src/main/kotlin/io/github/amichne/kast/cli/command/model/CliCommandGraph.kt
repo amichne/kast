@@ -29,6 +29,9 @@ import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
 import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.registry.CanonicalOperationDefinitions
+import io.github.amichne.kast.protocol.registry.HostedExposure
+import io.github.amichne.kast.protocol.registry.OperationDefinition
 
 private const val MAX_CLI_TOKEN_LENGTH = 4_096
 private const val MAX_CLI_TOKEN_COUNT = 66
@@ -123,8 +126,8 @@ class CliCommandGraphFactory private constructor(
         /**
          * Proof transition: `CanonicalCliRequestPreparers -> CliCommandGraphConstruction`.
          *
-         * Establishes exactly one semantic leaf for every canonical operation and exactly one leaf
-         * for every product-local and lifecycle command. [CliCommandGraphFailure] closes missing
+         * Establishes exactly one semantic leaf for every publicly exposed canonical operation and
+         * exactly one leaf for every public product-local and lifecycle command. [CliCommandGraphFailure] closes missing
          * and duplicate graph identities. Clikt nodes remain private to this composition boundary.
          */
         internal fun create(preparers: CanonicalCliRequestPreparers): CliCommandGraphConstruction {
@@ -356,7 +359,7 @@ private class CliCommandGraph(
 
     fun failures(): Set<CliCommandGraphFailure> = buildSet {
         val semanticCounts = semantic.groupingBy(SemanticKastCommand<*>::operation).eachCount()
-        CanonicalOperation.entries.forEach { operation ->
+        io.github.amichne.kast.protocol.registry.HostedOperationProjection.publicDefinitions.map { it.operation }.forEach { operation ->
             when (semanticCounts[operation] ?: 0) {
                 0 -> add(CliCommandGraphFailure.MissingOperation(operation))
                 1 -> Unit
@@ -364,7 +367,7 @@ private class CliCommandGraph(
             }
         }
         val localCounts = local.groupingBy(LocalKastCommand::command).eachCount()
-        CliProductCommand.entries.forEach { command ->
+        CliProductCommand.entries.filter { it.exposure == CliLocalExposure.PUBLIC }.forEach { command ->
             when (localCounts[command] ?: 0) {
                 0 -> add(CliCommandGraphFailure.MissingLocal(command))
                 1 -> Unit
@@ -372,7 +375,7 @@ private class CliCommandGraph(
             }
         }
         val lifecycleCounts = lifecycle.groupingBy(LifecycleKastCommand::command).eachCount()
-        CliLifecycleCommand.entries.forEach { command ->
+        CliLifecycleCommand.entries.filter { it.exposure == CliLocalExposure.PUBLIC }.forEach { command ->
             when (lifecycleCounts[command] ?: 0) {
                 0 -> add(CliCommandGraphFailure.MissingLifecycle(command))
                 1 -> Unit
@@ -397,7 +400,8 @@ internal abstract class LifecycleKastCommand(
 ) : KastCommand(name)
 
 private class KastRootCommand : KastCommand("kast") {
-    override val printHelpOnEmptyArgs: Boolean = true
+    override val invokeWithoutSubcommand: Boolean = true
+    override val printHelpOnEmptyArgs: Boolean = false
 
     init {
         configureContext {
@@ -423,7 +427,9 @@ private class KastRootCommand : KastCommand("kast") {
     override fun helpEpilog(context: Context): String =
         "Semantic results are one JSON document on stdout. Diagnostics are one JSON document on stderr."
 
-    override fun resolveAction(): CliNodeResolution = CliNodeResolution.NoAction
+    override fun resolveAction(): CliNodeResolution = if (currentContext.invokedSubcommand == null) {
+        CliActionResolution.Selected(CliAction.Local.Inspect)
+    } else CliNodeResolution.NoAction
 }
 
 private class CliLocalCommandMessage(
@@ -451,39 +457,42 @@ private fun canonicalGraph(preparers: CanonicalCliRequestPreparers): CliCommandG
     val traversal = traversalCommandGroup(preparers)
     val diagnostic = diagnosticCommandGroup(preparers)
     val change = changeCommandGroup(preparers)
-    val lifecycle = lifecycleCommands()
-    val semantic = listOf(
-        index,
-        topology,
-        symbol,
-        source,
-        relation,
-        traversal,
-        diagnostic,
-        change,
-    )
-        .flatMap(CommandFamily::semanticCommands)
+    val lifecycle = lifecycleCommands().filter { it.command.exposure == CliLocalExposure.PUBLIC }
+    val families = listOf(index, topology, symbol, source, relation, traversal, diagnostic, change)
+        .map { it.projectPublicDefinitions(CanonicalOperationDefinitions.all) }
+    val semantic = families.flatMap(CommandFamily::semanticCommands)
+    val localFamilies = listOf(product, broker).map { family ->
+        val commands = family.commands.filter { it.command.exposure == CliLocalExposure.PUBLIC }
+        LocalCommandFamily(ProjectedCommandGroup(family.root).subcommands(commands), commands)
+    }.filter { it.commands.isNotEmpty() }
     val root = KastRootCommand().subcommands(
-        listOf(
-            product.root,
-            broker.root,
-            index.root,
-            topology.root,
-            symbol.root,
-            source.root,
-            relation.root,
-            traversal.root,
-            diagnostic.root,
-            change.root,
-        ) + lifecycle
+        families.filter { it.semanticCommands.isNotEmpty() }.map { it.root } +
+            localFamilies.map { it.root } + lifecycle,
     )
-    return CliCommandGraph(root, semantic, product.commands + broker.commands, lifecycle)
+    return CliCommandGraph(root, semantic, localFamilies.flatMap { it.commands }, lifecycle)
 }
 
 internal class CommandFamily(
-    val root: KastCommand,
+    val root: KastCommandGroup,
     val semanticCommands: List<SemanticKastCommand<*>>,
 )
+
+/** Registers only publicly exposed semantic leaves; internal leaves are absent from the command tree. */
+internal fun CommandFamily.projectPublicDefinitions(
+    definitions: List<OperationDefinition<*, *, *, *, *>>,
+): CommandFamily {
+    val publicOperations = definitions.filter { it.hostedExposure == HostedExposure.PUBLIC }
+        .mapTo(linkedSetOf()) { it.operation }
+    val commands = semanticCommands.filter { it.operation in publicOperations }
+    return CommandFamily(ProjectedCommandGroup(root).subcommands(commands), commands)
+}
+
+/** Rebuilds a plain family group before registration, retaining its name and help description. */
+private class ProjectedCommandGroup(
+    private val source: KastCommand,
+) : KastCommandGroup(source.commandName, "") {
+    override fun help(context: Context): String = source.help(context)
+}
 
 private fun KastCommand.formatted(failure: CliktError): CliTextDocument =
     (getFormattedHelp(failure) ?: "").renderedHelpDocument()

@@ -11,6 +11,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
@@ -94,6 +95,7 @@ class InstalledGradleSemanticIdentityTest {
             listOf(sourceRoot),
             identity(boundary),
             boundary,
+            inputs(rootPath),
         )
         val before = currentIdentity(capture)
 
@@ -101,6 +103,58 @@ class InstalledGradleSemanticIdentityTest {
 
         assertNotEquals(before, currentIdentity(capture))
     }
+
+    @Test
+    fun `detached capture rejects changed Gradle model inputs`(@TempDir temporary: Path) {
+        val rootPath = Files.createDirectories(temporary.resolve("workspace")).toRealPath()
+        val sourceDirectory = Files.createDirectories(rootPath.resolve("src/main/kotlin/example"))
+        Files.writeString(sourceDirectory.resolve("App.kt"), "fun value() = 1")
+        val build = rootPath.resolve("build.gradle.kts")
+        Files.writeString(build, "plugins { kotlin(\"jvm\") }")
+        val root = canonicalRoot(rootPath)
+        val sourceRoot = sourceRoot(rootPath)
+        val boundary = boundary(root, rootPath, sourceRoot, contentHash('a'))
+        val capture = InstalledGradleModelCapture(root, listOf(sourceRoot), identity(boundary), boundary, inputs(rootPath))
+        currentIdentity(capture)
+
+        Files.writeString(build, "plugins { kotlin(\"jvm\") }; dependencies { implementation(\"new:dependency:1\") }")
+
+        assertInstanceOf(Refinement.Rejected::class.java, capture.captureCurrentSemanticIdentity())
+    }
+
+    @Test
+    fun `SDK installations with the same version retain distinct semantic identities`(@TempDir temporary: Path) {
+        val rootPath = Files.createDirectories(temporary.resolve("workspace")).toRealPath()
+        val root = canonicalRoot(rootPath)
+        val original = boundary(root, rootPath, sourceRoot(rootPath), contentHash('a'))
+        fun withSdk(home: String) = original.copy(
+            modules = original.modules.map { module ->
+                module.copy(sdk = InstalledSdkSemanticIdentity.Present(
+                    InstalledSdkVersion.Known("21"), InstalledSdkHome.Known(home),
+                ))
+            },
+        )
+        assertNotEquals(identity(withSdk("/jdks/one")), identity(withSdk("/jdks/two")))
+    }
+
+    @Test
+    fun `classpath lookup order remains part of semantic identity`(@TempDir temporary: Path) {
+        val rootPath = Files.createDirectories(temporary.resolve("workspace")).toRealPath()
+        val root = canonicalRoot(rootPath)
+        val original = boundary(root, rootPath, sourceRoot(rootPath), contentHash('a'))
+        val first = InstalledClasspathEntrySemanticIdentity("file:///dependencies/first.jar")
+        val second = InstalledClasspathEntrySemanticIdentity("file:///dependencies/second.jar")
+        fun ordered(entries: List<InstalledClasspathEntrySemanticIdentity>) = original.copy(
+            modules = original.modules.map { it.copy(classpath = entries) },
+        )
+        assertNotEquals(identity(ordered(listOf(first, second))), identity(ordered(listOf(second, first))))
+    }
+
+    private fun inputs(root: Path): InstalledGradleModelInputs =
+        when (val captured = InstalledGradleModelInputs.capture(root)) {
+            is Refinement.Refined -> captured.value
+            is Refinement.Rejected -> error(captured.failure)
+        }
 
     private fun boundary(
         root: CanonicalWorkspaceRoot,

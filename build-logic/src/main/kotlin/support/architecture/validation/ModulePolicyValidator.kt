@@ -317,8 +317,8 @@ private object ModuleRoleBoundaries {
             role,
             ModuleCost.PHYSICAL_EFFECT,
             ModuleRoleConvention.WORKSPACE,
-            inwardRoles,
-            safeReadCosts,
+            inwardRoles + ModuleRole.FILESYSTEM_WRITE_ADAPTER,
+            safeReadCosts + ModuleCost.PHYSICAL_EFFECT,
             allowedEffects = setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,
                 ForbiddenEffect.GRADLE_PLATFORM,
@@ -357,8 +357,8 @@ private object ModuleRoleBoundaries {
             role,
             ModuleCost.RUNTIME_ORCHESTRATION,
             ModuleRoleConvention.INDEXER_HOST,
-            setOf(ModuleRole.COMPOSITION),
-            setOf(ModuleCost.RUNTIME_ORCHESTRATION),
+            setOf(ModuleRole.COMPOSITION, ModuleRole.FILESYSTEM_WRITE_ADAPTER),
+            setOf(ModuleCost.RUNTIME_ORCHESTRATION, ModuleCost.PHYSICAL_EFFECT),
             allowedEffects = setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,
                 ForbiddenEffect.FILESYSTEM_WRITE,

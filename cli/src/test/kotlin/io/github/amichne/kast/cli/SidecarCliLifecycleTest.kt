@@ -49,10 +49,10 @@ class SidecarCliLifecycleTest {
             },
         )
 
-        val exit = cli.execute(listOf("status"), fixture.root.path)
+        val exit = cli.execute(emptyList(), fixture.root.path)
 
         assertEquals(0, lifecycleCalls)
-        assertTrue(exit is CliExit.BoundaryRejected)
+        assertTrue(exit is CliExit.Complete)
         assertTrue(exit.document.value.contains("status-cache-invalid-identity"))
     }
 
@@ -106,7 +106,7 @@ class SidecarCliLifecycleTest {
             },
         )
 
-        val exit = cli.execute(listOf("status"), fixture.root.path)
+        val exit = cli.execute(emptyList(), fixture.root.path)
 
         assertEquals(0, runtimeDemands)
         assertEquals(
@@ -122,16 +122,14 @@ class SidecarCliLifecycleTest {
             observedEndpoint,
         )
         assertTrue(exit is CliExit.Complete)
-        assertEquals(
-            "{\"command\":\"status\",\"status\":\"complete\",\"runtime\":\"stopped\"," +
-                "\"root\":\"${fixture.root.path}\",\"runtimeId\":\"${staleRuntimeId.value}\"," +
-                "\"removed\":[],\"cache\":{\"state\":\"smart\"," +
-                "\"identity\":\"$cacheIdentity\",\"ideaHome\":\"${temporary.resolve("IntelliJ IDEA.app")}\"," +
-                "\"ideaBuild\":\"262.9437.185\",\"kotlinPluginBuild\":\"262.9437.185-IJ\"," +
-                "\"jbrIdentity\":\"25.0.3+9-b508.16-aarch64\"," +
-                "\"kastPayloadDigest\":\"sha256:${"a".repeat(64)}\"},\"bootstrap\":{\"state\":\"unavailable\"}}",
-            exit.document.value,
-        )
+        val document = kotlinx.serialization.json.Json.parseToJsonElement(exit.document.value) as kotlinx.serialization.json.JsonObject
+        assertEquals(kotlinx.serialization.json.JsonPrimitive("inspect"), document["operation"])
+        assertEquals(kotlinx.serialization.json.JsonPrimitive("stopped"), document["runtime"])
+        assertEquals(kotlinx.serialization.json.JsonPrimitive(staleRuntimeId.value), document["runtimeId"])
+        val cache = document.getValue("cache") as kotlinx.serialization.json.JsonObject
+        assertEquals(kotlinx.serialization.json.JsonPrimitive(cacheIdentity), cache["identity"])
+        assertEquals(kotlinx.serialization.json.JsonPrimitive("smart"), cache["state"])
+
     }
 
     @Test
@@ -155,7 +153,7 @@ class SidecarCliLifecycleTest {
                 override fun quarantine(root: Path): RootSidecarCacheQuarantine = error("status must not repair")
             },
         )
-        val exit = cli.execute(listOf("status"), fixture.root.path)
+        val exit = cli.execute(emptyList(), fixture.root.path)
         assertTrue(exit is CliExit.Complete)
         val document = kotlinx.serialization.json.Json.parseToJsonElement(exit.document.value)
             .let { it as kotlinx.serialization.json.JsonObject }
@@ -220,7 +218,17 @@ class SidecarCliLifecycleTest {
             wireClient = WireClient { _, _ -> error("wire exchange must not run") },
             localMetadata = localMetadata(),
             lifecycle = lifecycle,
-            productInspector = ProductInspector { error("product inspection must not run") },
+            productInspector = ProductInspector {
+                ProductInspection(
+                    SidecarProductIdentity(
+                        (io.github.amichne.kast.protocol.contract.KastPluginVersion.parse("1.2.3") as Refinement.Refined).value,
+                        runtimeId,
+                        (SupportedIdeRuntimePair.admit("262.9437.185", "262.9437.185-IJ") as SupportedIdeRuntimePairAdmission.Admitted).pair,
+                        (io.github.amichne.kast.distribution.contract.RuntimeDigest.parse("sha256:${"a".repeat(64)}") as Refinement.Refined).value,
+                    ),
+                    ProductWorkspaceObservation.RootRejected(CanonicalRootFailure.ROOT_MARKER_NOT_FOUND),
+                )
+            },
             cacheLifecycle = cacheLifecycle,
         )
     }

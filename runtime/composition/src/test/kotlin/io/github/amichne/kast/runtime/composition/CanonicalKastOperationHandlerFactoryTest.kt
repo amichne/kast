@@ -43,6 +43,7 @@ class CanonicalKastOperationHandlerFactoryTest {
         val plan = factory.changePlan(planning)
         val apply = factory.changeApply(
             VerifiedChangeApplyOperations(
+                transitions = io.github.amichne.kast.workspace.service.WorkspaceTransitionOwner(),
                 apply = {
                     AddDeclarationApplyResult.Rejected(
                         AddDeclarationApplyFailure.Admission(MutationAdmissionFailure.WRONG_ROOT),

@@ -9,6 +9,9 @@ code_sources:
   - path: "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/gradle/GradleImportEnvironment.kt"
     lines: "1-149"
     symbols: ["GradleImportEnvironment", "GradleImportEnvironmentIdentity"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/MacOsRuntimeProcessEnvironment.kt"
+    lines: "190-216"
+    symbols: ["currentGradleImportEnvironment"]
   - path: "workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/ProjectGradleJvmAuthority.kt"
     lines: "1-64"
     symbols: ["ProjectGradleJvmAuthority", "projectGradleJvmAuthority"]
@@ -25,8 +28,10 @@ additional import inputs. Unselected caller variables do not reach the sidecar.
 
 The launcher also binds Java's `user.home` to that admitted home. Gradle uses
 its `.gradle` directory by default, including dependency caches and user settings.
-An alternative `GRADLE_USER_HOME` is available only when its exact name and value
-are explicitly selected through the import allowlist.
+
+A configured `GRADLE_USER_HOME` is automatically admitted as an import input and
+participates in cache identity. It must be an absolute normalized path. It does
+not need an entry in `KAST_GRADLE_IMPORT_VARIABLES`.
 
 Each bootstrap attempt also receives a private Java temporary directory inside
 its runtime cache. IntelliJ's generated Gradle initialization scripts therefore
@@ -68,8 +73,8 @@ kast start
 ```
 
 Relative paths, missing directories, empty path entries, and paths containing
-newlines are rejected. At most 32 directories can be selected. Both direct
-startup and launchd use the same admitted environment.
+newlines are rejected. At most 32 directories can be selected. Every runtime
+launch uses the same admitted environment.
 
 ## Select the project JVM
 

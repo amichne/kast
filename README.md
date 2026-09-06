@@ -79,40 +79,47 @@ Process environment values override saved defaults.
 
 ## Start from the repository root
 
-Inspect the product, then start the exact repository:
+Ask the semantic question directly. Kast admits the exact repository, starts or
+joins its runtime, and acquires the evidence required by the operation:
 
 ```console
 cd /path/to/kotlin-repository
-kast product inspect
-kast start
+kast
+kast symbol discover --query Checkout --limit 10
 ```
 
-The lifecycle is explicit:
+Bare `kast` inspects product, runtime, cache, network-policy, and trace state
+without starting the sidecar or synchronizing the workspace. `kast start` remains
+an optional prewarm command; `kast stop` explicitly releases the process.
 
-- `kast product inspect` reports product, runtime, cache, and trace identity
-  without starting anything.
-- `kast start` opens one private exact-root IntelliJ Project and waits for
-  semantic readiness.
-- `kast start --idea-home PATH` resolves missing or ambiguous runtime discovery.
-- `kast index sync` refreshes files changed outside the sidecar.
-- `kast start --cache seed` optionally copies a validated, stopped IDEA cache.
+`kast start --idea-home PATH` resolves runtime discovery, and
+`kast start --cache seed` can copy a validated, stopped IDEA cache.
 
-Kast ships no IDEA home and installs nothing into the user's IDE. See the
-[quickstart](https://kast.michne.com/start/) for lifecycle and recovery paths.
+Source changes are reconciled before semantic work. Unchanged evidence retains
+its generation; changed evidence invalidates old selectors. Traversal acquires
+topology lazily and reuses its published snapshot. Symbol, source, diagnostic,
+and one-hop relation requests do not require a topology build.
+
+The public lifecycle consists of bare `kast`, optional `kast start`, and explicit
+`kast stop`. Synchronization and topology construction remain internal
+capabilities. Kast ships no IDEA home and installs nothing into the user's IDE.
+
+Read [lifecycle and enterprise configuration](docs/lifecycle-convergence.md) for
+freshness limits, trust precedence, and installed acceptance commands.
 
 ## Ask a repository question
 
-`kast --schema` is the machine-readable contract for the eleven public semantic operations.
+`kast --schema` is the machine-readable contract for the nine public semantic operations.
 The generated [CLI reference](https://kast.michne.com/reference/cli/) is its
 readable counterpart.
 
 | Question | Command path |
 | --- | --- |
-| What is Kast ready to inspect? | `kast start`, observed passively with `kast status` |
-| How do I refresh stale files and semantic evidence? | `kast index sync` |
+| What is Kast ready to inspect? | Bare `kast` for passive inspection |
+| How do I use changed source? | Issue the semantic request again; rediscover stale selectors |
 | What declaration is this? | `kast symbol discover ...`, then `kast symbol inspect --candidate ...` |
 | What source content and structure exist here? | `kast source read ...` |
-| How is this code connected? | `kast relation read ...` for one hop, or `kast topology build` then `kast traversal run ...` for bounded depth |
+| How is this code connected? | `kast relation read ...` for one hop, or `kast traversal run ...` for bounded depth |
 | What diagnostics exist in this scope? | `kast diagnostic check ...` |
 | How can I add a declaration safely? | `kast change plan ...`, verified `kast change apply ...`, and `kast change recover ...` |
 
@@ -122,6 +129,18 @@ The intended path is refinement:
 2. `kast symbol inspect` establishes exact compiler identity.
 3. Source, relation, traversal, diagnostic, or change operations reuse that
    evidence without guessing identity from text.
+
+## Use Kast through Codex
+
+The control distribution includes `kast-codex`, which hosts the Kast integration
+and launches the installed Codex client through its supported `--remote`
+transport. Integration state lives under `$CODEX_HOME/kast-integration`, or
+`~/.codex/kast-integration` when `CODEX_HOME` is unset.
+
+The broker invokes semantic commands directly with the full readiness budget.
+Its current approval policy excludes mutation tools; the CLI change commands
+are not exposed as working Codex tools. See [broker provenance](docs/broker-provenance.md)
+for ownership, presentation, and the acceptance boundary.
 
 ## One request, at a high level
 
@@ -145,7 +164,7 @@ concrete `kast symbol inspect` request through the Kotlin implementation.
 
 ## Inspect topology and traversal latency
 
-Run `kast product inspect` to find the authoritative trace location without
+Run bare `kast` to find the authoritative trace location without
 starting the sidecar. It reports:
 
 - enabled state and OTLP JSON Lines format;

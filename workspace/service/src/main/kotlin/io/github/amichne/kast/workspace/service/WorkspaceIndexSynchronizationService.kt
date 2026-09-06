@@ -1,5 +1,8 @@
 package io.github.amichne.kast.workspace.service
 
+import io.github.amichne.kast.workspace.contract.WorkspaceReadinessOperations
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceObservationOperations
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation
 import io.github.amichne.kast.workspace.contract.IndexSynchronizationFailure
 import io.github.amichne.kast.workspace.contract.IndexSynchronizationOperations
 import io.github.amichne.kast.workspace.contract.IndexSynchronizationResult
@@ -20,28 +23,86 @@ class WorkspaceIndexSynchronizationService(
     private val workspaces: WorkspaceInspectionOperations,
     private val refresh: WorkspaceIndexRefreshOperations,
     private val publication: WorkspaceIndexPublicationOperations,
-) : IndexSynchronizationOperations {
-    override fun synchronize(): IndexSynchronizationResult {
+    private val sourceObservation: WorkspaceSourceObservationOperations = WorkspaceSourceObservationOperations {
+        WorkspaceSourceObservation.Unavailable
+    },
+    private val transitions: WorkspaceTransitionOwner = WorkspaceTransitionOwner(),
+    private val observability: io.github.amichne.kast.kernel.KastObservability = io.github.amichne.kast.kernel.KastObservability.Disabled,
+    private val refreshBasis: io.github.amichne.kast.workspace.contract.WorkspaceRefreshBasisOperations =
+        io.github.amichne.kast.workspace.contract.WorkspaceRefreshBasisOperations {
+            when (val state = workspaces.inspect()) {
+                is WorkspaceRuntimeState.Ready -> io.github.amichne.kast.workspace.contract.WorkspaceRefreshBasis.Available(state.workspace)
+                else -> io.github.amichne.kast.workspace.contract.WorkspaceRefreshBasis.Unavailable
+            }
+        },
+) : IndexSynchronizationOperations, WorkspaceReadinessOperations {
+    /** Physical observation gains either current publication evidence or a closed rejection. */
+    override fun ready(): IndexSynchronizationResult = transitions.exclusively {
+        when (val state = workspaces.inspect()) {
+            is WorkspaceRuntimeState.Ready -> when (val observed = sourceObservation.observe(state.workspace)) {
+                is WorkspaceSourceObservation.Observed -> if (observed.identity == state.workspace.sourceState) {
+                    if (workspaces.inspect() == state) {
+                        observability.observeWorkspaceReadiness(io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.REUSED)
+                        IndexSynchronizationResult.Unchanged(state.workspace)
+                    } else rejected(IndexSynchronizationFailure.PublicationInvalidated)
+                } else {
+                    synchronizeExclusively()
+                }
+                WorkspaceSourceObservation.ModelInputsChanged -> rejected(
+                    IndexSynchronizationFailure.PublicationBlocked(io.github.amichne.kast.workspace.contract.WorkspacePublicationBlocker.ModelInputsChanged),
+                    io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.MODEL_INPUTS_CHANGED,
+                )
+                WorkspaceSourceObservation.ModelInputsUnavailable -> rejected(
+                    IndexSynchronizationFailure.PublicationBlocked(io.github.amichne.kast.workspace.contract.WorkspacePublicationBlocker.ModelInputsUnavailable),
+                    io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.MODEL_INPUTS_UNAVAILABLE,
+                )
+                WorkspaceSourceObservation.Unavailable -> rejected(
+                    IndexSynchronizationFailure.PublicationBlocked(
+                        io.github.amichne.kast.workspace.contract.WorkspacePublicationBlocker.CandidateCaptureUnavailable,
+                    ),
+                )
+            }
+            WorkspaceRuntimeState.Reconciling, is WorkspaceRuntimeState.Blocked -> synchronizeExclusively()
+            else -> rejected(IndexSynchronizationFailure.WorkspaceNotReady)
+        }
+    }
+
+    override fun synchronize(): IndexSynchronizationResult = transitions.exclusively {
+        synchronizeExclusively()
+    }
+
+    private fun synchronizeExclusively(): IndexSynchronizationResult {
         val prior = when (val state = workspaces.inspect()) {
             is WorkspaceRuntimeState.Ready -> state.workspace
+            is WorkspaceRuntimeState.Blocked, WorkspaceRuntimeState.Reconciling -> when (val basis = refreshBasis.refreshBasis()) {
+                is io.github.amichne.kast.workspace.contract.WorkspaceRefreshBasis.Available -> basis.publication
+                io.github.amichne.kast.workspace.contract.WorkspaceRefreshBasis.Unavailable ->
+                    return rejected(IndexSynchronizationFailure.WorkspaceNotReady)
+            }
             WorkspaceRuntimeState.Absent,
-            is WorkspaceRuntimeState.Blocked,
-            WorkspaceRuntimeState.Reconciling,
             WorkspaceRuntimeState.Starting,
             WorkspaceRuntimeState.Stopping,
                 -> return rejected(IndexSynchronizationFailure.WorkspaceNotReady)
         }
-        when (val refreshed = refresh.refresh(prior)) {
-            WorkspaceIndexRefresh.Refreshed -> Unit
-            is WorkspaceIndexRefresh.Rejected -> return rejected(
-                IndexSynchronizationFailure.Refresh(refreshed.failure),
-            )
+        val refreshed = try {
+            refresh.refresh(prior)
+        } catch (cancelled: java.util.concurrent.CancellationException) {
+            observability.observeWorkspaceRefresh(io.github.amichne.kast.kernel.KastWorkspaceRefreshOutcome.INTERRUPTED)
+            throw cancelled
+        }
+        when (refreshed) {
+            WorkspaceIndexRefresh.Refreshed -> observability.observeWorkspaceRefresh(io.github.amichne.kast.kernel.KastWorkspaceRefreshOutcome.COMPLETED)
+            is WorkspaceIndexRefresh.Rejected -> {
+                observability.observeWorkspaceRefresh(io.github.amichne.kast.kernel.KastWorkspaceRefreshOutcome.REJECTED)
+                return rejected(IndexSynchronizationFailure.Refresh(refreshed.failure))
+            }
         }
         return when (val published = publication.publishAfterRefresh(prior)) {
             is WorkspacePublicationRun.Published -> if (
                 published.workspace.root == prior.root &&
                 published.workspace.generation.value > prior.generation.value
             ) {
+                observability.observeWorkspaceReadiness(io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.PUBLISHED)
                 IndexSynchronizationResult.Synchronized(published.workspace)
             } else {
                 rejected(IndexSynchronizationFailure.PublicationContractViolation)
@@ -50,6 +111,7 @@ class WorkspaceIndexSynchronizationService(
                 published.workspace.readLease == prior.readLease &&
                 published.workspace.sourceState == prior.sourceState
             ) {
+                observability.observeWorkspaceReadiness(io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.REFRESHED_UNCHANGED)
                 IndexSynchronizationResult.Unchanged(published.workspace)
             } else {
                 rejected(IndexSynchronizationFailure.PublicationContractViolation)
@@ -63,8 +125,12 @@ class WorkspaceIndexSynchronizationService(
                 rejected(IndexSynchronizationFailure.PublicationContractViolation)
         }
     }
-}
 
-private fun rejected(
-    failure: IndexSynchronizationFailure,
-): IndexSynchronizationResult.Rejected = IndexSynchronizationResult.Rejected(failure)
+    private fun rejected(
+        failure: IndexSynchronizationFailure,
+        outcome: io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome = io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.REJECTED,
+    ): IndexSynchronizationResult.Rejected {
+        observability.observeWorkspaceReadiness(outcome)
+        return IndexSynchronizationResult.Rejected(failure)
+    }
+}

@@ -1,0 +1,134 @@
+# Illustrative integration patch; intentionally not applied by this draft.
+# Base: feature/compiler-topology-declaration-binding @ ff1c59e6cdc7aa42b3acdafba7484cc760dc7843
+
+--- a/cli/src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt
++++ b/cli/src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt
+@@
+     private fun executeSemantic(
+         request: PreparedCliRequest,
+         start: Path,
+     ): CliExit {
+-        val boundary = resolvePassiveRuntimeBoundary(start, CliLifecycleCommand.STATUS)
+-        // reject unless already running
+-        ...
++        val root = when (val discovery = rootDiscovery.discover(start)) {
++            is CanonicalRootDiscovery.Discovered -> discovery.root
++            is CanonicalRootDiscovery.Rejected -> return boundaryExit(
++                CliBoundaryExitStatus.ROOT,
++                discovery.failure.name.lowercase(),
++            )
++        }
++        val boundary = when (
++            val resolution = demandRuntimeBoundary(
++                root,
++                request.hostedDemand,
++                RuntimeStartupRequest.Default,
++            )
++        ) {
++            is CliRuntimeBoundaryResolution.Resolved -> resolution
++            is CliRuntimeBoundaryResolution.Rejected -> return resolution.exit
++        }
++        return executeRequest(request, boundary)
+     }
+
+--- a/protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalOperationDefinitions.kt
++++ b/protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalOperationDefinitions.kt
+@@
+-        HostedExposure.PUBLIC,
++        HostedExposure.INTERNAL_ONLY, // index.sync
+@@
+-        HostedExposure.PUBLIC,
++        HostedExposure.INTERNAL_ONLY, // topology.build
+
+--- a/cli/src/main/kotlin/io/github/amichne/kast/cli/command/model/CliCommandGraph.kt
++++ b/cli/src/main/kotlin/io/github/amichne/kast/cli/command/model/CliCommandGraph.kt
+@@
+-private class KastRootCommand : KastCommand("kast") {
+-    override val printHelpOnEmptyArgs: Boolean = true
++private class KastRootCommand : KastCommand("kast") {
++    override val printHelpOnEmptyArgs: Boolean = false
+@@
+-    override fun resolveAction(): CliNodeResolution = CliNodeResolution.NoAction
++    override fun resolveAction(): CliNodeResolution =
++        CliActionResolution.Selected(CliAction.Local.ProductInspect)
+ }
+@@
+-    val product = productCommandGroup()
+-    val broker = brokerCommandGroup()
+-    val index = indexCommandGroup(preparers)
+-    val topology = topologyCommandGroup(preparers)
+     val symbol = symbolCommandGroup(preparers)
+@@
+-        index,
+-        topology,
+         symbol,
+@@
+-            product.root,
+-            broker.root,
+-            index.root,
+-            topology.root,
+             symbol.root,
+@@
+-    return CliCommandGraph(root, semantic, product.commands + broker.commands, lifecycle)
++    return CliCommandGraph(root, semantic, emptyList(), lifecycle)
+
+# The graph completeness check must derive expected semantic operations from hosted PUBLIC exposure,
+# not CanonicalOperation.entries. Expected lifecycle commands become START and STOP only.
+
+--- a/cli/src/main/kotlin/io/github/amichne/kast/cli/command/lifecycle/LifecycleCommands.kt
++++ b/cli/src/main/kotlin/io/github/amichne/kast/cli/command/lifecycle/LifecycleCommands.kt
+@@
+ internal fun lifecycleCommands(): List<LifecycleKastCommand> = listOf(
+     StartCommand,
+     StopCommand,
+-    StatusCommand,
+ )
+
+--- a/cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
++++ b/cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
+@@
+-    INDEX_SYNC(...),
+-    TOPOLOGY_BUILD(...),
+     SYMBOL_DISCOVER(...),
+
+# No lifecycle tool is added to compensate. Broker/agent callers see semantic operations only.
+
+--- a/runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/bootstrap/KastRuntimeComposition.kt
++++ b/runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/bootstrap/KastRuntimeComposition.kt
+@@
+-            traversal = TopologyBackedTraversalOperations(...),
++            traversal = TopologyPreparingTraversalOperations(
++                topology = topology,
++                traversal = TopologyBackedTraversalOperations(...),
++            ),
+
+# TopologyPreparingTraversalOperations is included as production-oriented Kotlin in this branch.
+# Build is synchronous and generation-bound. It reuses an eligible durable snapshot when possible.
+
+--- a/indexer/src/main/kotlin/io/github/amichne/kast/indexer/KastIndexerMain.kt
++++ b/indexer/src/main/kotlin/io/github/amichne/kast/indexer/KastIndexerMain.kt
+@@
++    // Before IntelliJ project/Gradle networking is initialized:
++    // 1. parse effective Gradle TLS/proxy configuration using a closed property set;
++    // 2. discover admitted donor JVM + IntelliJ certificate stores;
++    // 3. materialize a cache-owned certificate-only PKCS12 store;
++    // 4. install resolved JSSE/proxy System properties once;
++    // 5. retain typed provenance for startup diagnostics without secrets.
++    val network = InstalledNetworkBootstrap.prepare(...)
++    when (network) {
++        is InstalledNetworkBootstrap.Prepared -> network.install()
++        is InstalledNetworkBootstrap.Rejected -> rejectBootstrap(network.failure)
++    }
+
+# Gradle Tooling API documents that client system properties are propagated to the build by default.
+# This deliberately uses that channel rather than JAVA_TOOL_OPTIONS/JDK_JAVA_OPTIONS. If effective
+# Gradle configuration explicitly declares a truststore, the resolver uses that authority and does
+# not overwrite it with a derived store.
+
+--- a/cli/src/main/kotlin/io/github/amichne/kast/cli/broker/InstalledBrokerServer.kt
++++ b/cli/src/main/kotlin/io/github/amichne/kast/cli/broker/InstalledBrokerServer.kt
+@@
+-# public user workflow: kast broker serve
++# broker hosting becomes installation/client integration plumbing. The Kast provider still invokes
++# the installed semantic CLI; those semantic invocations now demand runtime readiness themselves.
++# No broker-owned start/status/index/topology tool is projected.

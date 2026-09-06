@@ -56,6 +56,7 @@ dependencies {
     implementation(catalog.findLibrary("serialization-json").get())
     implementation(project(":workspace:contract"))
     implementation(project(":distribution:contract"))
+    implementation(project(":distribution:managed"))
     implementation(project(":workspace:intellij-read"))
 
     workspaceIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {

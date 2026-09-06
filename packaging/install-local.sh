@@ -67,6 +67,7 @@ legacy_control="${kast_root}/control"
 legacy_runtime="${kast_root}/runtime"
 public_bin="${install_prefix}/bin"
 public_launcher="${public_bin}/kast"
+public_codex_launcher="${public_bin}/kast-codex"
 
 mkdir -p -- "${kast_root}" "${public_bin}"
 [[ -d "${kast_root}" && ! -L "${kast_root}" ]] ||
@@ -79,9 +80,11 @@ fi
 
 staged_product="$(mktemp -d "${kast_root}/.local.XXXXXX")"
 staged_launcher="$(mktemp "${public_bin}/.kast.XXXXXX")"
+staged_codex_launcher="$(mktemp "${public_bin}/.kast-codex.XXXXXX")"
 cleanup() {
   [[ -z "${staged_product}" ]] || rm -rf -- "${staged_product}"
   [[ -z "${staged_launcher}" ]] || rm -f -- "${staged_launcher}"
+  [[ -z "${staged_codex_launcher}" ]] || rm -f -- "${staged_codex_launcher}"
 }
 trap cleanup EXIT
 
@@ -89,6 +92,8 @@ cp -R "${control_product}/." "${staged_product}/"
 mkdir -p -- "${staged_product}/share/kast/runtime"
 cp "${runtime_archive}" "${staged_product}/share/kast/runtime/${runtime_name}"
 
+# The generated launcher expands these literals when it runs.
+# shellcheck disable=SC2016
 {
   printf '%s\n' '#!/bin/sh' 'set -eu' ''
   printf '%s\n' 'script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"'
@@ -102,12 +107,17 @@ cp "${runtime_archive}" "${staged_product}/share/kast/runtime/${runtime_name}"
   printf '%s\n' 'if [ ! -f "${runtime_archive}" ]; then'
   printf '%s\n' '  echo "kast: local sidecar payload is missing: ${runtime_archive}" >&2'
   printf '%s\n' '  exit 1' 'fi' ''
+  printf '%s\n' 'if [ -z "${KAST_TRUST_DONOR_JAVA_HOME+x}" ] && [ -n "${JAVA_HOME:-}" ]; then'
+  printf '%s\n' '  export KAST_TRUST_DONOR_JAVA_HOME="${JAVA_HOME}"' 'fi'
   printf 'export JAVA=%s\n' "$(shell_single_quote "${java_executable}")"
   printf 'export JAVA_HOME=%s\n' "$(shell_single_quote "${java_home}")"
   printf '%s\n' 'export KAST_RUNTIME_ARCHIVE="${runtime_archive}"'
   printf '%s\n' 'exec "${control_executable}" "$@"'
 } >"${staged_launcher}"
 chmod 755 "${staged_launcher}"
+# shellcheck disable=SC2016
+sed 's|control_executable="${local_product}/bin/kast"|control_executable="${local_product}/bin/kast-codex"|' "${staged_launcher}" > "${staged_codex_launcher}"
+chmod 755 "${staged_codex_launcher}"
 
 [[ -x "${staged_product}/bin/kast" ]] || fail "staged control executable is missing"
 [[ -f "${staged_product}/share/kast/runtime/${runtime_name}" ]] ||
@@ -120,6 +130,8 @@ mv -- "${staged_product}" "${local_product}"
 staged_product=""
 mv -f -- "${staged_launcher}" "${public_launcher}"
 staged_launcher=""
+mv -f -- "${staged_codex_launcher}" "${public_codex_launcher}"
+staged_codex_launcher=""
 trap - EXIT
 
 printf 'install-local: installed %s\n' "${public_launcher}"

@@ -41,7 +41,10 @@ Every public semantic operation must exist coherently in four runtime surfaces:
 Construction fails with finite missing, duplicate, unexpected, unknown, or
 untyped cases. There is no fallback map keyed by unchecked strings.
 
-The current closed set contains eleven operations:
+The current closed set contains eleven operation identities. Nine are public.
+`index.sync` and `topology.build` retain internal implementation bindings; their
+services are acquired automatically and raw public dispatch rejects them.
+`UNAVAILABLE` definitions must have no runtime implementation binding.
 
 | Domain | Canonical operations |
 | --- | --- |
@@ -101,8 +104,10 @@ approval policy, execution deadlines, and CLI field bindings.
 
 Projection version 4 carries
 separate readiness and operation budgets from canonical operation metadata. The broker allows
-17 minutes for readiness, then 60 seconds for a semantic read or 240 seconds for topology build;
-local qualification commands each have a separate 10-second budget.
+a combined invocation budget of 17 minutes for readiness plus 60 seconds for an ordinary
+semantic operation or 240 seconds for traversal and its lazy topology acquisition.
+
+Local qualification commands each have a separate 10-second budget.
 
 Source outcome schema `kast.source.read.v3` carries inclusive one-based line coordinates for
 returned text. The source adapter derives them from the full committed document after verifying

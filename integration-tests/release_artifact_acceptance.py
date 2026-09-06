@@ -124,7 +124,7 @@ class ObservedAcceptance(enterprise.Acceptance):
             raise gate.GateRejected("installed command observation limit exceeded")
         started = time.monotonic()
         # Record grammar words only; no option values, paths, source, or error text.
-        command = " ".join(argv[:2]) if argv[0] in {"symbol", "source", "relation", "traversal", "diagnostic", "index", "topology", "change"} else argv[0]
+        command = "inspect" if not argv else " ".join(argv[:2]) if argv[0] in {"symbol", "source", "relation", "traversal", "diagnostic", "index", "topology", "change"} else argv[0]
         try:
             document = super().command(*argv, **options)
         except (SystemExit, subprocess.TimeoutExpired, OSError) as error:
@@ -137,13 +137,13 @@ class ObservedAcceptance(enterprise.Acceptance):
             raise
         self.observations.append({"command": command, "status": "observed", "elapsedMilliseconds": round((time.monotonic() - started) * 1000), "evidenceDigest": gate.identity(document)})
         self.persist()
-        if argv[0] == "start" and document.get("runtime") == "running":
+        if argv and argv[0] == "start" and document.get("runtime") == "running":
             self.sample(resources.ResourceStage.AFTER_START if self.starts == 0 else resources.ResourceStage.AFTER_RESTART)
             self.starts += 1
             self.read_sampled = False
-        elif argv[0] == "stop" and document.get("runtime") == "stopped":
+        elif argv and argv[0] == "stop" and document.get("runtime") == "stopped":
             self.sample(resources.ResourceStage.AFTER_STOP)
-        elif argv[0] in {"symbol", "source", "relation", "traversal", "diagnostic"} and not self.read_sampled:
+        elif argv and argv[0] in {"symbol", "source", "relation", "traversal", "diagnostic"} and not self.read_sampled:
             self.sample(resources.ResourceStage.AFTER_READ)
             self.read_sampled = True
         return document

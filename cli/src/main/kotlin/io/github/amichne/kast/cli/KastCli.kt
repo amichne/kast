@@ -68,6 +68,12 @@ class KastCli(
 
     private fun executeAction(action: CliAction, start: Path): CliExit = when (action) {
         is CliAction.Local.Metadata -> CliExit.Complete(localMetadata.output(action.command))
+        CliAction.Local.Inspect -> CliExit.Complete(
+            ProductInspectionDocuments.passive(
+                productInspector.inspect(start),
+                executeLifecycle(CliAction.Lifecycle.Status, start),
+            ),
+        )
         CliAction.Local.ProductInspect -> CliExit.Complete(
             ProductInspectionDocuments.complete(productInspector.inspect(start)),
         )
@@ -86,25 +92,24 @@ class KastCli(
         request: PreparedCliRequest,
         start: Path,
     ): CliExit {
+        val root = when (val discovery = rootDiscovery.discover(start)) {
+            is CanonicalRootDiscovery.Discovered -> discovery.root
+            is CanonicalRootDiscovery.Rejected -> return boundaryExit(
+                CliBoundaryExitStatus.ROOT,
+                discovery.failure.name.lowercase(),
+            )
+        }
         val boundary = when (
-            val resolution = resolvePassiveRuntimeBoundary(start, CliLifecycleCommand.STATUS)
+            val resolution = demandRuntimeBoundary(
+                root,
+                request.hostedDemand,
+                RuntimeStartupRequest.Default,
+            )
         ) {
             is CliRuntimeBoundaryResolution.Resolved -> resolution
             is CliRuntimeBoundaryResolution.Rejected -> return resolution.exit
         }
-        return when (val observation = lifecycle.status(boundary.endpoint)) {
-            is RuntimeStatusResult.Observed -> if (
-                observation.state == RuntimeLifecycleState.RUNNING
-            ) {
-                executeRequest(request, boundary)
-            } else {
-                boundaryExit(CliBoundaryExitStatus.RUNTIME, "runtime-not-running")
-            }
-            is RuntimeStatusResult.Rejected -> boundaryExit(
-                CliBoundaryExitStatus.RUNTIME,
-                "runtime-observation-${observation.failure.name.lowercase().replace('_', '-')}",
-            )
-        }
+        return executeRequest(request, boundary)
     }
 
     private fun executeLifecycle(

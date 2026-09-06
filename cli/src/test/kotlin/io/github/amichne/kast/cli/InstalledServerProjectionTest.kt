@@ -8,6 +8,7 @@ import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.registry.HostedOperationProjection
+import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -22,13 +23,17 @@ import org.junit.jupiter.api.Test
 
 class InstalledServerProjectionTest {
     @Test
-    fun `server projection publishes separate readiness semantic and graph budgets`() {
+    fun `server projection publishes readiness and canonical semantic budgets`() {
         val tools = projectionTools()
         val readBudget = tools.tool("source.read").getValue("executionBudget").jsonObject
-        val graphBudget = tools.tool("topology.build").getValue("executionBudget").jsonObject
+        val traversalBudget = tools.tool("traversal.run").getValue("executionBudget").jsonObject
         assertEquals("1020000", readBudget.getValue("readinessMillis").jsonPrimitive.content)
         assertEquals("60000", readBudget.getValue("operationMillis").jsonPrimitive.content)
-        assertEquals("240000", graphBudget.getValue("operationMillis").jsonPrimitive.content)
+        assertEquals(
+            OperationExecutionBudget.forOperation(CanonicalOperation.TRAVERSAL_RUN).operation.value.toString(),
+            traversalBudget.getValue("operationMillis").jsonPrimitive.content,
+        )
+        assertEquals(240_000L, OperationExecutionBudget.forOperation(CanonicalOperation.TOPOLOGY_BUILD).operation.value)
     }
 
     @Test
@@ -37,8 +42,6 @@ class InstalledServerProjectionTest {
 
         assertEquals(
             listOf(
-                "index_sync",
-                "topology_build",
                 "symbol_lookup",
                 "symbol_inspect",
                 "source_read",
@@ -74,8 +77,6 @@ class InstalledServerProjectionTest {
 
         assertEquals(
             listOf(
-                "index.sync",
-                "topology.build",
                 "symbol.discover",
                 "symbol.inspect",
                 "source.read",
@@ -121,6 +122,7 @@ class InstalledServerProjectionTest {
         val internalOperations = HostedOperationProjection.internalDefinitions
             .map { it.operation.id.value }
 
+        assertEquals(9, tools.size)
         assertEquals(4, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
@@ -129,8 +131,6 @@ class InstalledServerProjectionTest {
         )
         assertEquals(
             listOf(
-                "index_sync",
-                "topology_build",
                 "symbol_lookup",
                 "symbol_inspect",
                 "source_read",
@@ -173,8 +173,6 @@ class InstalledServerProjectionTest {
         )
         assertEquals(
             linkedMapOf(
-                "index.sync" to listOf("index", "sync"),
-                "topology.build" to listOf("topology", "build"),
                 "symbol.discover" to listOf("symbol", "discover"),
                 "symbol.inspect" to listOf("symbol", "inspect"),
                 "source.read" to listOf("source", "read"),
@@ -191,8 +189,6 @@ class InstalledServerProjectionTest {
         )
         assertEquals(
             linkedMapOf(
-                "index.sync" to emptyList(),
-                "topology.build" to emptyList(),
                 "symbol.discover" to
                     listOf("mode", "query", "kind", "match", "file", "offset", "scope", "limit"),
                 "symbol.inspect" to listOf("candidate", "selector"),
@@ -256,14 +252,13 @@ class InstalledServerProjectionTest {
     }
 
     @Test
-    fun `advertised output schemas admit emitted proof rich documents`() {
-        val tools = projectionTools()
+    fun `canonical output schemas retain internal topology and public diagnostic proof`() {
         val coverage = """{"status":"completed","document":{"operation":"topology.build","status":"rejected","reason":"coverage-incomplete","missing":["src/Missing.kt"],"unexpected":[],"duplicateCandidates":[],"duplicateCompletions":[],"workspaceMismatches":[],"candidateEvidenceMismatches":[],"duplicateSymbols":[],"missingEdgeTargets":[],"mismatchedEdgeEndpoints":[]}}"""
         val longMessage = "x".repeat(20_000)
         val diagnostic = """{"status":"completed","document":{"operation":"diagnostic.check","status":"complete","diagnostics":[{"severity":"warning","code":"LONG_MESSAGE","message":"$longMessage","location":{"candidateSelector":"candidate:diagnostic","file":"src/A.kt","range":{"startInclusive":0,"endExclusive":0}}}]}}"""
 
         assertAll(
-            { tools.tool("topology.build").outputSchema().assertAdmits(coverage) },
+            { installedServerOutputSchema(CanonicalOperation.TOPOLOGY_BUILD).assertAdmits(coverage) },
             {
                 installedServerOutputSchema(CanonicalOperation.DIAGNOSTIC_CHECK)
                     .assertAdmits(diagnostic)
@@ -311,7 +306,7 @@ class InstalledServerProjectionTest {
 
     @Test
     fun `topology coverage schema requires compiler proof on mismatched endpoints`() {
-        val schema = projectionTools().tool("topology.build").outputSchema()
+        val schema = installedServerOutputSchema(CanonicalOperation.TOPOLOGY_BUILD)
         val compilerIdentity = "canonical-signature-sha256-v1|${"a".repeat(64)}"
         val fileEvidence = """{"workspace":{"root":"/workspace","generation":3,"sourceState":"state"},"sourceRoot":{"module":"main","buildRoot":".","projectPath":":","sourceSet":"main","location":"src/main/kotlin","provenance":"authored"},"path":"src/Alpha.kt","contentHash":"${"b".repeat(64)}"}"""
         val endpoint = """{"node":{"compilerIdentity":"$compilerIdentity","file":"src/Alpha.kt","range":{"startInclusive":0,"endExclusive":5}},"fileEvidence":$fileEvidence,"name":"Alpha","qualifiedIdentity":{"state":"available","value":"sample.Alpha"},"kind":"classlike","compilerEvidence":{"identity":"$compilerIdentity","signature":{"type":"class-like","qualifiedIdentity":"sample.Alpha"}}}"""

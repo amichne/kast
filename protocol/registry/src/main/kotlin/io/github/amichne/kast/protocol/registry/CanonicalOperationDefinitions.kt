@@ -71,7 +71,7 @@ import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildResult
 import kotlin.reflect.KClass
 
-/** Sole production metadata catalog for the eleven canonical public operations. */
+/** Sole metadata catalog for canonical operations and their explicit publication authority. */
 object CanonicalOperationDefinitions {
     val indexSync = definition(
         CanonicalOperation.INDEX_SYNC,
@@ -85,7 +85,7 @@ object CanonicalOperationDefinitions {
         OperationCost.PHYSICAL_EFFECT,
         OperationScope.WORKSPACE,
         CompletenessPolicy.COMPLETE_REQUIRED,
-        HostedExposure.PUBLIC,
+        HostedExposure.INTERNAL_ONLY,
     )
 
     val topologyBuild = definition(
@@ -100,7 +100,7 @@ object CanonicalOperationDefinitions {
         OperationCost.PHYSICAL_EFFECT,
         OperationScope.WORKSPACE,
         CompletenessPolicy.COMPLETE_REQUIRED,
-        HostedExposure.PUBLIC,
+        HostedExposure.INTERNAL_ONLY,
         schema = schema("kast.topology.build.v2"),
     )
 

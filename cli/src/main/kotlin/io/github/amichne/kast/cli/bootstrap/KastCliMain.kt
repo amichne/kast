@@ -14,6 +14,11 @@ internal fun interface KastCliComposition {
      * Raw installation effects remain owned by the service-loaded provider.
      */
     fun create(): KastCliCompositionConstruction
+
+    fun inspect(start: Path): CliExit = when (val result = create()) {
+        is KastCliCompositionConstruction.Created -> result.cli.execute(emptyList(), start)
+        is KastCliCompositionConstruction.Rejected -> boundaryExit(CliBoundaryExitStatus.BOOTSTRAP, result.failure.outputReason)
+    }
 }
 
 internal sealed interface KastCliCompositionConstruction {
@@ -33,6 +38,8 @@ private sealed interface CliBootstrap {
         val cli: KastCli,
     ) : CliBootstrap
 
+    data class Inspected(val exit: CliExit) : CliBootstrap
+
     data class Rejected(
         val failure: CliBootstrapFailure,
     ) : CliBootstrap
@@ -49,8 +56,9 @@ private sealed interface CliBootstrapFailure {
 
 /** Process entrypoint for the single Kotlin `kast` executable. */
 fun main(args: Array<String>) {
-    val exit = when (val bootstrap = loadComposition()) {
+    val exit = when (val bootstrap = loadComposition(args.isEmpty())) {
         is CliBootstrap.Ready -> bootstrap.cli.execute(args.toList(), Path.of("").toAbsolutePath())
+        is CliBootstrap.Inspected -> bootstrap.exit
         is CliBootstrap.Rejected -> boundaryExit(
             CliBoundaryExitStatus.BOOTSTRAP,
             bootstrap.failure.outputReason(),
@@ -72,7 +80,7 @@ fun main(args: Array<String>) {
  * Establishes exactly one completed CLI composition. [CliBootstrapFailure] is the closed expected
  * failure. Service-provider iteration is permitted only at this installed-product boundary.
  */
-private fun loadComposition(): CliBootstrap {
+private fun loadComposition(passive: Boolean): CliBootstrap {
     val compositions = try {
         ServiceLoader.load(KastCliComposition::class.java).toList()
     } catch (_: ServiceConfigurationError) {
@@ -81,6 +89,7 @@ private fun loadComposition(): CliBootstrap {
     return when (compositions.size) {
         0 -> CliBootstrap.Rejected(CliBootstrapFailure.CompositionMissing)
         1 -> try {
+            if (passive) return CliBootstrap.Inspected(compositions.single().inspect(Path.of("").toAbsolutePath()))
             when (val construction = compositions.single().create()) {
                 is KastCliCompositionConstruction.Created -> CliBootstrap.Ready(construction.cli)
                 is KastCliCompositionConstruction.Rejected -> CliBootstrap.Rejected(

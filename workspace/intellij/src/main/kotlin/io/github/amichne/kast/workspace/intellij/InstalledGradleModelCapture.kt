@@ -6,6 +6,7 @@ import com.intellij.openapi.externalSystem.model.ExternalProjectInfo
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.roots.ModuleRootManager
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
@@ -28,6 +29,7 @@ class InstalledGradleModelCapture internal constructor(
     val sourceRoots: List<WorkspaceSourceRootBoundary>,
     val identity: WorkspaceStateIdentity,
     private val identityBoundary: InstalledGradleSemanticIdentityBoundary,
+    private val modelInputs: InstalledGradleModelInputs,
 ) {
     /**
      * Proof transition: `InstalledGradleModelCapture -> Refinement<WorkspaceStateIdentity,
@@ -41,17 +43,17 @@ class InstalledGradleModelCapture internal constructor(
     fun captureCurrentSemanticIdentity(): Refinement<
         WorkspaceStateIdentity,
         InstalledGradleModelCaptureFailure,
-        > {
+        > = modelInputs.observeCurrent capture@{
         val currentContents = when (val captured = captureSourceContentIdentities(
             Path.of(root.value),
             sourceRoots,
         )) {
             is InstalledSourceContentIdentityCapture.Captured -> captured.contents
-            is InstalledSourceContentIdentityCapture.Rejected -> return Refinement.Rejected(
+            is InstalledSourceContentIdentityCapture.Rejected -> return@capture Refinement.Rejected(
                 InstalledGradleModelCaptureFailure.SOURCE_STATE_UNAVAILABLE,
             )
         }
-        return when (val derived = deriveInstalledGradleSemanticIdentity(
+        when (val derived = deriveInstalledGradleSemanticIdentity(
             identityBoundary.copy(sourceContents = currentContents),
         )) {
             is Refinement.Refined -> derived
@@ -61,6 +63,8 @@ class InstalledGradleModelCapture internal constructor(
 }
 
 enum class InstalledGradleModelCaptureFailure {
+    MODEL_INPUTS_CHANGED,
+    MODEL_INPUTS_UNAVAILABLE,
     ROOT_UNAVAILABLE,
     EXTERNAL_PROJECT_UNAVAILABLE,
     EXTERNAL_PROJECT_INCOMPLETE,
@@ -88,92 +92,100 @@ internal fun captureInstalledGradleModel(
     project: Project,
     workspaceRoot: Path,
     importEnvironmentIdentity: GradleImportEnvironmentIdentity,
+    modelInputs: InstalledGradleModelInputs,
 ): Refinement<InstalledGradleModelCapture, InstalledGradleModelCaptureFailure> =
-    ReadAction.nonBlocking<Refinement<InstalledGradleModelCapture, InstalledGradleModelCaptureFailure>> model@{
-        val root = when (val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(workspaceRoot)) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> return@model Refinement.Rejected(
-                InstalledGradleModelCaptureFailure.ROOT_UNAVAILABLE,
-            )
-        }
-        val projectData = ProjectDataManager.getInstance()
-        val projects = projectData.getExternalProjectsData(project, GradleConstants.SYSTEM_ID)
-            .filter { info -> Path.of(info.externalProjectPath).toAbsolutePath().normalize() == workspaceRoot }
-        projects.forEach { info -> projectData.ensureTheDataIsReadyToUse(info.externalProjectStructure) }
-        if (projects.isEmpty()) {
-            return@model Refinement.Rejected(
-                InstalledGradleModelCaptureFailure.EXTERNAL_PROJECT_UNAVAILABLE,
-            )
-        }
-        if (projects.any { !it.isComplete() }) {
-            return@model Refinement.Rejected(
-                InstalledGradleModelCaptureFailure.EXTERNAL_PROJECT_INCOMPLETE,
-            )
-        }
-        val capturedBoundaries = mutableListOf<WorkspaceSourceRootBoundary>()
-        for (info in projects) {
-            when (val captured = info.sourceRootBoundaries()) {
-                is InstalledGradleSourceRootCapture.Captured ->
-                    capturedBoundaries += captured.boundaries
-                is InstalledGradleSourceRootCapture.Rejected ->
-                    return@model Refinement.Rejected(
-                        InstalledGradleModelCaptureFailure.SOURCE_ROOTS_UNAVAILABLE,
-                    )
+    modelInputs.observeCurrent { currentInputs ->
+        ReadAction.compute<Refinement<InstalledGradleModelCapture, InstalledGradleModelCaptureFailure>, RuntimeException> model@{
+            if (project.isDisposed || DumbService.isDumb(project)) {
+                return@model Refinement.Rejected(InstalledGradleModelCaptureFailure.INDEXING_UNAVAILABLE)
             }
-        }
-        val boundaries = capturedBoundaries.distinct()
-            .sortedWith(compareBy({ it.sourceRoot.toString() }, { it.ideaModuleName }))
-        if (boundaries.isEmpty()) {
-            return@model Refinement.Rejected(
-                InstalledGradleModelCaptureFailure.SOURCE_ROOTS_UNAVAILABLE,
-            )
-        }
-        val sourceIdentities = when (val captured = captureSourceContentIdentities(
-            workspaceRoot,
-            boundaries,
-        )) {
-            is InstalledSourceContentIdentityCapture.Captured -> captured.contents
-            is InstalledSourceContentIdentityCapture.Rejected -> return@model Refinement.Rejected(
-                InstalledGradleModelCaptureFailure.SOURCE_STATE_UNAVAILABLE,
-            )
-        }
-        val identityBoundary = InstalledGradleSemanticIdentityBoundary(
-            root = root,
-            sourceRoots = boundaries,
-            sourceContents = sourceIdentities,
-            importEnvironmentIdentity = importEnvironmentIdentity,
-            externalProjectPaths = projects.map { info ->
-                Path.of(info.externalProjectPath).toAbsolutePath().normalize()
-            },
-            modules = ModuleManager.getInstance(project).modules
-                .filterNot { module -> module.isDisposed }
-                .map { module ->
-                    val roots = ModuleRootManager.getInstance(module)
-                    val sdk = roots.sdk?.let { installed ->
-                        InstalledSdkSemanticIdentity.Present(
-                            installed.versionString?.takeIf(String::isNotBlank)
-                                ?.let(InstalledSdkVersion::Known)
-                                ?: InstalledSdkVersion.Unknown,
+            val root = when (val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(workspaceRoot)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return@model Refinement.Rejected(
+                    InstalledGradleModelCaptureFailure.ROOT_UNAVAILABLE,
+                )
+            }
+            val projectData = ProjectDataManager.getInstance()
+            val projects = projectData.getExternalProjectsData(project, GradleConstants.SYSTEM_ID)
+                .filter { info -> Path.of(info.externalProjectPath).toAbsolutePath().normalize() == workspaceRoot }
+            if (projects.isEmpty()) {
+                return@model Refinement.Rejected(
+                    InstalledGradleModelCaptureFailure.EXTERNAL_PROJECT_UNAVAILABLE,
+                )
+            }
+            if (projects.any { !it.isComplete() }) {
+                return@model Refinement.Rejected(
+                    InstalledGradleModelCaptureFailure.EXTERNAL_PROJECT_INCOMPLETE,
+                )
+            }
+            val capturedBoundaries = mutableListOf<WorkspaceSourceRootBoundary>()
+            for (info in projects) {
+                when (val captured = info.sourceRootBoundaries()) {
+                    is InstalledGradleSourceRootCapture.Captured ->
+                        capturedBoundaries += captured.boundaries
+                    is InstalledGradleSourceRootCapture.Rejected ->
+                        return@model Refinement.Rejected(
+                            InstalledGradleModelCaptureFailure.SOURCE_ROOTS_UNAVAILABLE,
                         )
-                    } ?: InstalledSdkSemanticIdentity.Absent
-                    InstalledModuleSemanticIdentity(
-                        module.name,
-                        sdk,
-                        roots.orderEntries().classes().urls
-                            .map(::InstalledClasspathEntrySemanticIdentity),
-                    )
+                }
+            }
+            val boundaries = capturedBoundaries.distinct()
+                .sortedWith(compareBy({ it.sourceRoot.toString() }, { it.ideaModuleName }))
+            if (boundaries.isEmpty()) {
+                return@model Refinement.Rejected(
+                    InstalledGradleModelCaptureFailure.SOURCE_ROOTS_UNAVAILABLE,
+                )
+            }
+            val sourceIdentities = when (val captured = captureSourceContentIdentities(
+                workspaceRoot,
+                boundaries,
+            )) {
+                is InstalledSourceContentIdentityCapture.Captured -> captured.contents
+                is InstalledSourceContentIdentityCapture.Rejected -> return@model Refinement.Rejected(
+                    InstalledGradleModelCaptureFailure.SOURCE_STATE_UNAVAILABLE,
+                )
+            }
+            val identityBoundary = InstalledGradleSemanticIdentityBoundary(
+                root = root,
+                sourceRoots = boundaries,
+                sourceContents = sourceIdentities,
+                importEnvironmentIdentity = importEnvironmentIdentity,
+                externalProjectPaths = projects.map { info ->
+                    Path.of(info.externalProjectPath).toAbsolutePath().normalize()
                 },
-        )
-        val identity = when (val derived = deriveInstalledGradleSemanticIdentity(identityBoundary)) {
-            is Refinement.Refined -> derived.value
-            is Refinement.Rejected -> return@model Refinement.Rejected(
-                derived.failure.captureFailure(),
+                modules = ModuleManager.getInstance(project).modules
+                    .filterNot { module -> module.isDisposed }
+                    .map { module ->
+                        val roots = ModuleRootManager.getInstance(module)
+                        val sdk = roots.sdk?.let { installed ->
+                            InstalledSdkSemanticIdentity.Present(
+                                installed.versionString?.takeIf(String::isNotBlank)
+                                    ?.let(InstalledSdkVersion::Known)
+                                    ?: InstalledSdkVersion.Unknown,
+                                installed.homePath?.takeIf(String::isNotBlank)
+                                    ?.let(InstalledSdkHome::Known)
+                                    ?: InstalledSdkHome.Unknown,
+                            )
+                        } ?: InstalledSdkSemanticIdentity.Absent
+                        InstalledModuleSemanticIdentity(
+                            module.name,
+                            sdk,
+                            roots.orderEntries().classes().urls
+                                .map(::InstalledClasspathEntrySemanticIdentity),
+                        )
+                    },
+            )
+            val identity = when (val derived = deriveInstalledGradleSemanticIdentity(identityBoundary)) {
+                is Refinement.Refined -> derived.value
+                is Refinement.Rejected -> return@model Refinement.Rejected(
+                    derived.failure.captureFailure(),
+                )
+            }
+            Refinement.Refined(
+                InstalledGradleModelCapture(root, boundaries, identity, identityBoundary, currentInputs),
             )
         }
-        Refinement.Refined(
-            InstalledGradleModelCapture(root, boundaries, identity, identityBoundary),
-        )
-    }.inSmartMode(project).executeSynchronously()
+    }
 
 private fun InstalledGradleSemanticIdentityFailure.captureFailure(): InstalledGradleModelCaptureFailure =
     when (this) {

@@ -23,6 +23,7 @@ import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.topology.contract.TopologyBuildOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.IndexSynchronizationOperations
+import io.github.amichne.kast.workspace.service.WorkspaceTransitionOwner
 
 /** The four closed intent planners consumed by the single public `change.plan` operation. */
 class ChangePlanningOperations internal constructor(
@@ -36,7 +37,12 @@ class ChangePlanningOperations internal constructor(
 class VerifiedChangeApplyOperations internal constructor(
     val apply: AddDeclarationApplyOperations,
     val verify: VerifiedMutationOperations,
-)
+    private val transitions: WorkspaceTransitionOwner,
+) {
+    /** Retains one workspace transition from application admission through resulting proof. */
+    internal fun <Value> exclusively(operation: () -> Value): Value =
+        transitions.exclusively(operation)
+}
 
 /** Direct operation boundary for durable recovery of one admitted mutation binding. */
 fun interface ChangeRecoveryOperations {
@@ -89,6 +95,7 @@ data class DirectKastOperations internal constructor(
             changeVerify: VerifiedMutationOperations,
             changeRecovery: AddDeclarationRecoveryService,
             changeRollback: AddDeclarationRollbackPort,
+            transitions: WorkspaceTransitionOwner,
         ): DirectKastOperations = DirectKastOperations(
             indexSync = indexSync,
             topologyBuild = topology,
@@ -104,9 +111,9 @@ data class DirectKastOperations internal constructor(
                 replaceDeclaration = PureReplaceDeclarationPlanningService(),
                 renameSymbol = PureRenameSymbolPlanningService(),
             ),
-            changeApply = VerifiedChangeApplyOperations(changeApply, changeVerify),
+            changeApply = VerifiedChangeApplyOperations(changeApply, changeVerify, transitions),
             changeRecover = { binding ->
-                changeRecovery.recover(binding, changeRollback)
+                transitions.exclusively { changeRecovery.recover(binding, changeRollback) }
             },
         )
     }

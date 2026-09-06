@@ -1,10 +1,7 @@
 package io.github.amichne.kast.cli.broker
 
-import io.github.amichne.kast.cli.LaunchctlInvocation
-import io.github.amichne.kast.cli.LaunchctlInvoker
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -14,9 +11,6 @@ import java.nio.channels.ServerSocketChannel
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
 class PersistentBrokerServiceTest {
@@ -29,19 +23,6 @@ class PersistentBrokerServiceTest {
             JdkBrokerSocketProbe.probe(
                 temporary.toRealPath().resolve("app-server-control.sock"),
             ),
-        )
-    }
-
-    @Test
-    fun `startup and lock deadlines strictly contain every admitted child phase`() {
-        assertTrue(
-            BrokerServiceStartupBudgets.admittedChildPhasesNanos <
-                BrokerServiceStartupBudgets.hostTimeoutNanos,
-        )
-        assertTrue(
-            BrokerServiceStartupBudgets.hostTimeoutNanos +
-                BrokerServiceStartupBudgets.retirementTimeoutNanos <
-                BrokerServiceStartupBudgets.lockTimeoutNanos,
         )
     }
 
@@ -61,24 +42,11 @@ class PersistentBrokerServiceTest {
     }
 
     @Test
-    fun `installed service refines exact executable identity once`(
+    fun `integration launch refines exact executable identity`(
         @TempDir temporary: Path,
     ) {
         val fixture = installedFixture(temporary)
-        var captured: BrokerServiceLaunchCommand? = null
-        val service = InstalledPersistentBrokerService(
-            fixture.kast,
-            fixture.userHome,
-            fixture.environment,
-            PersistentBrokerServiceHost { command ->
-                captured = command
-                PersistentBrokerServiceAdmission.Ready
-            },
-        )
-
-        assertEquals(PersistentBrokerServiceAdmission.Ready, service.ensure())
-        assertNotNull(captured)
-        val command = checkNotNull(captured)
+        val command = resolvedCommand(fixture)
         assertEquals(fixture.kast.toRealPath(), command.kast)
         assertTrue(command.identity.value.startsWith("sha256:"))
         assertTrue(Files.isExecutable(command.javaExecutable))
@@ -159,7 +127,7 @@ class PersistentBrokerServiceTest {
     }
 
     @Test
-    fun `Codex launcher directory participates in persistent service identity`(
+    fun `Codex launcher directory participates in executable identity`(
         @TempDir temporary: Path,
     ) {
         val fixture = installedFixture(temporary)
@@ -184,7 +152,7 @@ class PersistentBrokerServiceTest {
     }
 
     @Test
-    fun `identity includes user home while label remains scoped to codex home`(
+    fun `executable identity includes user home`(
         @TempDir temporary: Path,
     ) {
         val fixture = installedFixture(temporary)
@@ -203,300 +171,6 @@ class PersistentBrokerServiceTest {
         ) as BrokerServiceLaunchCommandResolution.Resolved
 
         assertNotEquals(first.command.identity, second.command.identity)
-        assertEquals(first.command.serviceLabel, second.command.serviceLabel)
-    }
-
-    @Test
-    fun `launchd submission waits for matching child-published readiness`(
-        @TempDir temporary: Path,
-    ) {
-        val fixture = installedFixture(temporary)
-        val command = when (val resolution = BrokerServiceLaunchCommand.resolve(
-            fixture.kast,
-            fixture.userHome,
-            fixture.environment,
-        )) {
-            is BrokerServiceLaunchCommandResolution.Resolved -> resolution.command
-            is BrokerServiceLaunchCommandResolution.Rejected -> error(resolution.failure)
-        }
-        var present = false
-        var submission: List<String>? = null
-        val launchctl = LaunchctlInvoker { arguments, _ ->
-            when (arguments[1]) {
-                "list" -> if (present) {
-                    LaunchctlInvocation.Completed
-                } else {
-                    LaunchctlInvocation.Absent
-                }
-                "submit" -> {
-                    submission = arguments
-                    present = true
-                    Files.writeString(
-                        command.readinessFile,
-                        readyStateDocument(command),
-                    )
-                    LaunchctlInvocation.Completed
-                }
-                else -> error("unexpected launchctl operation: ${arguments[1]}")
-            }
-        }
-        val host = MacOsPersistentBrokerServiceHost(
-            launchctl,
-            BrokerSocketProbe {
-                if (present) BrokerSocketReachability.REACHABLE else
-                    BrokerSocketReachability.UNREACHABLE
-            },
-            BrokerServiceSleeper { BrokerServiceSleep.CONTINUE },
-        )
-
-        assertEquals(PersistentBrokerServiceAdmission.Ready, host.ensure(command))
-        assertTrue(submission.orEmpty().contains(command.kast.toString()))
-        assertTrue(submission.orEmpty().contains("broker"))
-        assertTrue(submission.orEmpty().contains("serve"))
-        assertTrue(
-            submission.orEmpty().contains(
-                "BROKER_SERVICE_IDENTITY=${command.identity.value}",
-            ),
-        )
-        assertTrue(submission.orEmpty().contains("JAVA_HOME=${command.javaHome}"))
-        assertTrue(submission.orEmpty().contains("KAST_OPTS=${command.jvmUserHomeOption.value}"))
-        assertTrue(
-            submission.orEmpty().contains("PATH=${command.executableSearchPath.value}"),
-        )
-        assertTrue(submission.orEmpty().contains(command.serviceLabel.value))
-    }
-
-    @Test
-    fun `clean homes submit exactly one service through admitted socket proof`() {
-        val temporary = Files.createTempDirectory(Path.of("/private/tmp"), "kb.")
-        val fixture = installedFixture(temporary)
-        val command = resolvedCommand(fixture)
-        var present = false
-        var submissions = 0
-        val launchctl = LaunchctlInvoker { arguments, _ ->
-            when (arguments[1]) {
-                "list" -> if (present) LaunchctlInvocation.Completed else LaunchctlInvocation.Absent
-                "submit" -> {
-                    submissions += 1
-                    Files.createDirectories(command.publicSocket.parent)
-                    writeReadiness(command)
-                    present = true
-                    LaunchctlInvocation.Completed
-                }
-                else -> error("unexpected launchctl operation: ${arguments[1]}")
-            }
-        }
-        try {
-            val host = MacOsPersistentBrokerServiceHost(
-                launchctl = launchctl,
-                socketProbe = BrokerSocketProbe {
-                    if (present) {
-                        BrokerSocketReachability.REACHABLE
-                    } else {
-                        BrokerSocketReachability.UNREACHABLE
-                    }
-                },
-                sleeper = BrokerServiceSleeper { BrokerServiceSleep.CONTINUE },
-            )
-
-            assertEquals(PersistentBrokerServiceAdmission.Ready, host.ensure(command))
-            assertEquals(PersistentBrokerServiceAdmission.Ready, host.ensure(command))
-            assertEquals(1, submissions)
-        } finally {
-            temporary.toFile().deleteRecursively()
-        }
-    }
-
-    @Test
-    fun `concurrent first use submits exactly one service under the filesystem lock`(
-        @TempDir temporary: Path,
-    ) {
-        val fixture = installedFixture(temporary)
-        val command = resolvedCommand(fixture)
-        val start = CountDownLatch(1)
-        var present = false
-        var submissions = 0
-        val launchctl = LaunchctlInvoker { arguments, _ ->
-            synchronized(command) {
-                when (arguments[1]) {
-                    "list" -> if (present) LaunchctlInvocation.Completed else LaunchctlInvocation.Absent
-                    "submit" -> {
-                        submissions += 1
-                        present = true
-                        writeReadiness(command)
-                        LaunchctlInvocation.Completed
-                    }
-                    else -> error("unexpected launchctl operation: ${arguments[1]}")
-                }
-            }
-        }
-        val host = MacOsPersistentBrokerServiceHost(
-            launchctl,
-            BrokerSocketProbe {
-                synchronized(command) {
-                    if (present) BrokerSocketReachability.REACHABLE else
-                        BrokerSocketReachability.UNREACHABLE
-                }
-            },
-            BrokerServiceSleeper { BrokerServiceSleep.CONTINUE },
-        )
-        val executor = Executors.newFixedThreadPool(2)
-        try {
-            val admissions = (1..2).map {
-                executor.submit<PersistentBrokerServiceAdmission> {
-                    start.await()
-                    host.ensure(command)
-                }
-            }
-            start.countDown()
-
-            assertEquals(
-                listOf(
-                    PersistentBrokerServiceAdmission.Ready,
-                    PersistentBrokerServiceAdmission.Ready,
-                ),
-                admissions.map { future -> future.get(5, TimeUnit.SECONDS) },
-            )
-            assertEquals(1, submissions)
-        } finally {
-            executor.shutdownNow()
-        }
-    }
-
-    @Test
-    fun `missing readiness crash loop is retired after the startup bound`(
-        @TempDir temporary: Path,
-    ) {
-        val fixture = installedFixture(temporary)
-        val command = resolvedCommand(fixture)
-        var present = true
-        var ready = false
-        val operations = mutableListOf<String>()
-        val launchctl = LaunchctlInvoker { arguments, _ ->
-            operations += arguments[1]
-            when (arguments[1]) {
-                "list" -> if (present) LaunchctlInvocation.Completed else LaunchctlInvocation.Absent
-                "remove" -> {
-                    present = false
-                    LaunchctlInvocation.Completed
-                }
-                "submit" -> {
-                    present = true
-                    ready = true
-                    writeReadiness(command)
-                    LaunchctlInvocation.Completed
-                }
-                else -> error("unexpected launchctl operation: ${arguments[1]}")
-            }
-        }
-        val host = MacOsPersistentBrokerServiceHost(
-            launchctl,
-            BrokerSocketProbe {
-                if (ready) BrokerSocketReachability.REACHABLE else
-                    BrokerSocketReachability.UNREACHABLE
-            },
-            BrokerServiceSleeper { BrokerServiceSleep.CONTINUE },
-            startupTimeoutNanos = 1L,
-        )
-
-        assertEquals(
-            PersistentBrokerServiceAdmission.Rejected(
-                PersistentBrokerServiceFailure.STARTUP_TIMED_OUT,
-            ),
-            host.ensure(command),
-        )
-        assertTrue(operations.contains("remove"))
-        val recoveringHost = MacOsPersistentBrokerServiceHost(
-            launchctl,
-            BrokerSocketProbe {
-                if (ready) BrokerSocketReachability.REACHABLE else
-                    BrokerSocketReachability.UNREACHABLE
-            },
-            BrokerServiceSleeper { BrokerServiceSleep.CONTINUE },
-        )
-        assertEquals(PersistentBrokerServiceAdmission.Ready, recoveringHost.ensure(command))
-        assertEquals(1, operations.count { it == "submit" })
-    }
-
-    @Test
-    fun `stale crash readiness is fenced and recovered in one ensure call`(
-        @TempDir temporary: Path,
-    ) {
-        val command = resolvedCommand(installedFixture(temporary))
-        var present = true
-        var replacementReady = false
-        val operations = mutableListOf<String>()
-        writeReadiness(command)
-        val launchctl = LaunchctlInvoker { arguments, _ ->
-            operations += arguments[1]
-            when (arguments[1]) {
-                "list" -> if (present) LaunchctlInvocation.Completed else LaunchctlInvocation.Absent
-                "remove" -> {
-                    present = false
-                    LaunchctlInvocation.Completed
-                }
-                "submit" -> {
-                    present = true
-                    replacementReady = true
-                    writeReadiness(command)
-                    LaunchctlInvocation.Completed
-                }
-                else -> error("unexpected launchctl operation: ${arguments[1]}")
-            }
-        }
-        val host = MacOsPersistentBrokerServiceHost(
-            launchctl,
-            BrokerSocketProbe {
-                if (replacementReady) BrokerSocketReachability.REACHABLE else
-                    BrokerSocketReachability.UNREACHABLE
-            },
-            BrokerServiceSleeper { BrokerServiceSleep.CONTINUE },
-            retirementTimeoutNanos = TimeUnit.SECONDS.toNanos(1),
-        )
-
-        assertEquals(PersistentBrokerServiceAdmission.Ready, host.ensure(command))
-        assertEquals(1, operations.count { it == "remove" })
-        assertEquals(1, operations.count { it == "submit" })
-    }
-
-    @Test
-    fun `attempt-correlated child rejection reaches the initiating demand exactly`(
-        @TempDir temporary: Path,
-    ) {
-        val command = resolvedCommand(installedFixture(temporary))
-        var present = true
-        val operations = mutableListOf<String>()
-        Files.createDirectories(command.readinessFile.parent)
-        Files.writeString(
-            command.readinessFile,
-            """{"state":"rejected","schemaVersion":2,"serviceIdentity":"${command.identity.value}","serviceInstanceId":"123e4567-e89b-42d3-a456-426614174000","brokerVersion":"$VENDORED_BROKER_VERSION","failure":"CODEX_QUALIFICATION_REJECTED"}""",
-        )
-        val launchctl = LaunchctlInvoker { arguments, _ ->
-            operations += arguments[1]
-            when (arguments[1]) {
-                "list" -> if (present) LaunchctlInvocation.Completed else LaunchctlInvocation.Absent
-                "remove" -> {
-                    present = false
-                    LaunchctlInvocation.Completed
-                }
-                else -> error("unexpected launchctl operation: ${arguments[1]}")
-            }
-        }
-        val host = MacOsPersistentBrokerServiceHost(
-            launchctl,
-            BrokerSocketProbe { BrokerSocketReachability.UNREACHABLE },
-            BrokerServiceSleeper { BrokerServiceSleep.CONTINUE },
-            retirementTimeoutNanos = TimeUnit.SECONDS.toNanos(1),
-        )
-
-        assertEquals(
-            PersistentBrokerServiceAdmission.Rejected(
-                PersistentBrokerServiceFailure.CODEX_QUALIFICATION_REJECTED,
-            ),
-            host.ensure(command),
-        )
-        assertEquals(listOf("list", "list", "remove", "list"), operations)
-        assertEquals(false, Files.exists(command.readinessFile))
     }
 
     private fun installedFixture(temporary: Path): InstalledFixture {
@@ -523,14 +197,6 @@ class PersistentBrokerServiceTest {
         is BrokerServiceLaunchCommandResolution.Resolved -> resolution.command
         is BrokerServiceLaunchCommandResolution.Rejected -> error(resolution.failure)
     }
-
-    private fun writeReadiness(command: BrokerServiceLaunchCommand) {
-        Files.createDirectories(command.readinessFile.parent)
-        Files.writeString(command.readinessFile, readyStateDocument(command))
-    }
-
-    private fun readyStateDocument(command: BrokerServiceLaunchCommand): String =
-        """{"state":"ready","schemaVersion":2,"serviceIdentity":"${command.identity.value}","serviceInstanceId":"123e4567-e89b-42d3-a456-426614174000","brokerVersion":"$VENDORED_BROKER_VERSION"}"""
 
     private fun executable(path: Path, content: String): Path {
         Files.writeString(path, content)

@@ -22,10 +22,8 @@ import java.util.Base64
 
 class CliBoundaryContractTest {
     @Test
-    fun `exactly eleven public command projections parse to canonical operations`() {
+    fun `exactly nine public command projections parse to canonical operations`() {
         val commands = mapOf(
-            listOf("index", "sync") to CanonicalOperation.INDEX_SYNC,
-            listOf("topology", "build") to CanonicalOperation.TOPOLOGY_BUILD,
             listOf("symbol", "discover", "--query", "Example", "--limit", "10") to
                 CanonicalOperation.SYMBOL_DISCOVER,
             listOf("symbol", "inspect", "--candidate", "candidate") to
@@ -51,7 +49,7 @@ class CliBoundaryContractTest {
         )
 
         val factory = commandGraphFactory()
-        assertEquals(CanonicalOperation.entries.toSet(), commands.values.toSet())
+        assertEquals(io.github.amichne.kast.protocol.registry.HostedOperationProjection.publicDefinitions.map { it.operation }.toSet(), commands.values.toSet())
         commands.forEach { (argv, operation) ->
             val parsed = factory.parse(argv)
             assertTrue(parsed is CliCommandParsing.Parsed)
@@ -59,7 +57,8 @@ class CliBoundaryContractTest {
             assertTrue(action is CliAction.Semantic)
             assertEquals(operation, (action as CliAction.Semantic).request.operation)
         }
-        assertTrue(factory.parse(emptyList()) is CliCommandParsing.Rejected)
+        assertEquals(io.github.amichne.kast.cli.command.CliAction.Local.Inspect,
+            (factory.parse(emptyList()) as CliCommandParsing.Parsed).action)
         assertTrue(factory.parse(listOf("workspace", "inspect")) is CliCommandParsing.Rejected)
         assertTrue(factory.parse(listOf("symbol", "resolve")) is CliCommandParsing.Rejected)
         assertTrue(factory.parse(listOf("symbol", "describe")) is CliCommandParsing.Rejected)
@@ -69,11 +68,10 @@ class CliBoundaryContractTest {
     }
 
     @Test
-    fun `exactly three local lifecycle commands are admitted without semantic arguments`() {
+    fun `exactly two local lifecycle commands are admitted without semantic arguments`() {
         val commands = mapOf(
             "start" to CliLifecycleCommand.START,
             "stop" to CliLifecycleCommand.STOP,
-            "status" to CliLifecycleCommand.STATUS,
         )
 
         val factory = commandGraphFactory()
@@ -84,7 +82,10 @@ class CliBoundaryContractTest {
             assertTrue(action is CliAction.Lifecycle)
             assertEquals(command, (action as CliAction.Lifecycle).command)
         }
-        assertEquals(setOf("start", "status", "stop"), CliLifecycleCommand.entries.map { it.command }.toSet())
+        assertEquals(setOf("start", "stop"), factory.surface.lifecycleCommands.map { it.command }.toSet())
+        listOf(listOf("status"), listOf("product", "inspect"), listOf("broker", "serve"), listOf("index", "sync"), listOf("topology", "build")).forEach {
+            assertTrue(factory.parse(it) is CliCommandParsing.Rejected, it.toString())
+        }
         assertTrue(factory.parse(listOf("clean")) is CliCommandParsing.Rejected)
         assertTrue(factory.parse(listOf("reindex")) is CliCommandParsing.Rejected)
         assertTrue(factory.parse(listOf("start", "unexpected")) is CliCommandParsing.Rejected)
