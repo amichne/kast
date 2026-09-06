@@ -25,4 +25,19 @@ class ProjectGradleJvmAuthorityTest {
             assertEquals(ProjectGradleJvmAuthority.Rejected, projectGradleJvmAuthority(root))
         }
     }
+
+    @Test
+    fun `ambient Java home is optional admitted fallback authority`(@TempDir root: Path) {
+        val home = Files.createDirectories(root.resolve("jdk")).toRealPath()
+        val java = Files.createDirectories(home.resolve("bin")).resolve("java")
+        Files.writeString(java, "test executable")
+        assertTrue(java.toFile().setExecutable(true))
+
+        assertEquals(
+            home,
+            (ambientGradleJvmAuthority(home.toString()) as AmbientGradleJvmAuthority.Present).home,
+        )
+        assertEquals(AmbientGradleJvmAuthority.Absent, ambientGradleJvmAuthority(null))
+        assertEquals(AmbientGradleJvmAuthority.Rejected, ambientGradleJvmAuthority("relative"))
+    }
 }

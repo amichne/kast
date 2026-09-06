@@ -34,6 +34,11 @@ internal enum class IntellijRelationProviderItemAdmission {
     CURSOR_MOVED,
 }
 
+internal enum class IntellijRelationProviderEnumerationAdmission {
+    READY,
+    HALTED,
+}
+
 private enum class IntellijRelationCollectionState {
     COLLECTING,
     HALTED,
@@ -57,6 +62,20 @@ internal class IntellijRelationCollector(
     private var examined = 0L
     private var retainedBytes = 0L
     private var state = IntellijRelationCollectionState.COLLECTING
+
+    /** Bounds native materialization before a canonical provider order can be established. */
+    fun admitProviderEnumeration(): IntellijRelationProviderEnumerationAdmission = when (state) {
+        IntellijRelationCollectionState.COLLECTING -> if (elapsedLimitReached()) {
+            halt(RelationLimitation.TIME_LIMIT_REACHED)
+            IntellijRelationProviderEnumerationAdmission.HALTED
+        } else {
+            IntellijRelationProviderEnumerationAdmission.READY
+        }
+        IntellijRelationCollectionState.HALTED,
+        IntellijRelationCollectionState.CURSOR_MOVED,
+        IntellijRelationCollectionState.CONTRACT_REJECTED,
+            -> IntellijRelationProviderEnumerationAdmission.HALTED
+    }
 
     /**
      * Observes one native item before semantic filtering. Resume pages re-enumerate and verify the

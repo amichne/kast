@@ -6,6 +6,9 @@ import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
+import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapFailure
+import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapPhase
+import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapState
 import io.github.amichne.kast.kernel.Refinement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -15,6 +18,38 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 class SidecarCliLifecycleTest {
+    @Test
+    fun `cold bootstrap rejection is a nonzero runtime exit`(@TempDir temporary: Path) {
+        val fixture = fixture(temporary)
+        val rejectedState = SemanticRuntimeBootstrapState.Rejected(
+            (io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapAttemptId.admit(
+                "123e4567-e89b-42d3-a456-426614174000",
+            ) as Refinement.Refined).value,
+            SemanticRuntimeBootstrapFailure.GRADLE_JVM_UNAVAILABLE,
+            SemanticRuntimeBootstrapPhase.GRADLE_JVM_SELECTION,
+        )
+        val cli = fixture.cli(
+            runtimeDemander = RootRuntimeDemander { _, _, _ ->
+                RuntimeAdmission.Rejected(RuntimeAdmissionFailure.IntellijBootstrap(rejectedState))
+            },
+            lifecycle = object : RuntimeLifecycleController {
+                override fun status(endpoint: RuntimeEndpoint) =
+                    RuntimeStatusResult.Observed(RuntimeLifecycleState.STOPPED)
+
+                override fun stop(endpoint: RuntimeEndpoint) = RuntimeStopResult.Stopped()
+            },
+            cacheLifecycle = NoRootSidecarCacheLifecycle,
+        )
+
+        val exit = cli.execute(listOf("start"), fixture.root.path)
+
+        assertTrue(exit is CliExit.BoundaryRejected)
+        assertEquals(CliBoundaryExitStatus.RUNTIME, (exit as CliExit.BoundaryRejected).status)
+        assertEquals(4, exit.code)
+        assertTrue(exit.document.value.contains("\"bootstrap\""))
+        assertTrue(exit.document.value.contains("\"status\":\"rejected\""))
+    }
+
     @Test
     fun `passive command fails closed before lifecycle effects when cache identity is rejected`(
         @TempDir temporary: Path,

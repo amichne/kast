@@ -38,6 +38,7 @@ sealed interface GradleDistributionEvidence {
 enum class GradleJvmSelectionAuthority {
     DAEMON_JVM_CRITERIA,
     REPOSITORY_GRADLE_PROPERTY,
+    AMBIENT_JAVA_HOME,
     SIDECAR_COMPATIBLE,
     PLATFORM_RESOLVER,
 }

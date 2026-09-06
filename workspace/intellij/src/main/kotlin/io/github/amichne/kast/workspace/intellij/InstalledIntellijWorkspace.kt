@@ -237,6 +237,9 @@ object InstalledIntellijWorkspace {
                 return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID)
             }
         }
+        val ambientJvmAuthority = ambientGradleJvmAuthority(
+            System.getenv(GradleImportEnvironment.INHERITED_JAVA_HOME_SETTING),
+        )
         val projectStore = when (
             val prepared = InstalledSemanticProjectStore.prepare(
                 workspaceRoot,
@@ -259,7 +262,15 @@ object InstalledIntellijWorkspace {
                 InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE,
             )
         }
-        return openObserved(workspacePath, projectStore, sidecarJvm, projectJvmAuthority, importEnvironment, observer)
+        return openObserved(
+            workspacePath,
+            projectStore,
+            sidecarJvm,
+            projectJvmAuthority,
+            ambientJvmAuthority,
+            importEnvironment,
+            observer,
+        )
     }
 
     private fun openObserved(
@@ -267,6 +278,7 @@ object InstalledIntellijWorkspace {
         projectStore: InstalledSemanticProjectStore,
         sidecarJvm: InstalledSidecarJvm,
         projectJvmAuthority: ProjectGradleJvmAuthority.Admitted,
+        ambientJvmAuthority: AmbientGradleJvmAuthority,
         importEnvironment: GradleImportEnvironment,
         observer: InstalledIntellijWorkspaceBootstrapObserver,
     ): InstalledIntellijWorkspaceOpening {
@@ -339,7 +351,13 @@ object InstalledIntellijWorkspace {
             is InstalledGradleLinkPresence.Unlinked -> linkPresence.settings
         }
         observer.observe(InstalledIntellijWorkspaceBootstrapPhase.GRADLE_JVM_SELECTION)
-        val selection = selectInstalledGradleJvm(project, linkedProjectSettings, sidecarJvm, projectJvmAuthority)
+        val selection = selectInstalledGradleJvm(
+            project,
+            linkedProjectSettings,
+            sidecarJvm,
+            projectJvmAuthority,
+            ambientJvmAuthority,
+        )
         observer.observeGradleJvm(selection.report)
         val selectedGradleJvm = when (selection) {
             is InstalledGradleJvmSelection.Selected -> selection.jvm

@@ -191,6 +191,8 @@ private class DirectRuntimeStartupSession(
     } catch (_: SecurityException) {
         RuntimeSessionObservation.Rejected
     }
+
+    override fun terminate(): RuntimeProcessTermination = terminateDirectProcess(process)
 }
 
 private const val SHELL_EXECUTABLE = "/bin/sh"

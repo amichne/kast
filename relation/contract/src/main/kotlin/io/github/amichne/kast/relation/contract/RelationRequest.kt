@@ -93,11 +93,14 @@ value class RelationProviderPosition private constructor(
     }
 }
 
-/** Stable native enumeration family. An implementation-order change requires a new member. */
+/** Stable provider enumeration contract; V2 orders detached descriptors before applying bounds. */
 enum class RelationProviderKind {
     INTELLIJ_REFERENCES_V1,
     INTELLIJ_DEFINITIONS_V1,
     INTELLIJ_CALLEES_V1,
+    INTELLIJ_REFERENCES_V2,
+    INTELLIJ_DEFINITIONS_V2,
+    INTELLIJ_CALLEES_V2,
     ;
 
     companion object {
@@ -105,12 +108,12 @@ enum class RelationProviderKind {
             RelationMeaning.References,
             RelationMeaning.Callers,
             RelationMeaning.TypeUses,
-                -> INTELLIJ_REFERENCES_V1
+                -> INTELLIJ_REFERENCES_V2
             RelationMeaning.Implementations,
             RelationMeaning.Inheritors,
             RelationMeaning.Overrides,
-                -> INTELLIJ_DEFINITIONS_V1
-            RelationMeaning.Callees -> INTELLIJ_CALLEES_V1
+                -> INTELLIJ_DEFINITIONS_V2
+            RelationMeaning.Callees -> INTELLIJ_CALLEES_V2
         }
     }
 }
@@ -119,7 +122,7 @@ enum class RelationProviderItemDescriptorFailure {
     BLANK,
 }
 
-/** Stable detached identity of one item in native provider order. */
+/** Stable detached identity of one provider item. */
 @JvmInline
 value class RelationProviderItemDescriptor private constructor(val value: String) {
     companion object {

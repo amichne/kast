@@ -10,7 +10,9 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.attribute.PosixFilePermissions
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
@@ -21,6 +23,7 @@ enum class IndexerTransportFailure {
     SOCKET_PATH_OCCUPIED,
     SOCKET_BIND_FAILED,
     ENDPOINT_DESCRIPTOR_UNAVAILABLE,
+    SHUTDOWN_HOOK_UNAVAILABLE,
 }
 
 sealed interface IndexerEndpointPreparation {
@@ -55,8 +58,16 @@ class PreparedIndexerEndpoint private constructor(
                 )
             val canonicalStateParent = try {
                 Files.createDirectories(socketParent)
+                Files.setPosixFilePermissions(
+                    socketParent,
+                    PosixFilePermissions.fromString("rwx------"),
+                )
                 socketParent.toRealPath()
             } catch (_: IOException) {
+                return IndexerEndpointPreparation.Rejected(
+                    IndexerTransportFailure.SOCKET_PARENT_UNAVAILABLE,
+                )
+            } catch (_: UnsupportedOperationException) {
                 return IndexerEndpointPreparation.Rejected(
                     IndexerTransportFailure.SOCKET_PARENT_UNAVAILABLE,
                 )
@@ -126,6 +137,10 @@ class InstalledIndexerTransport private constructor(
     private val descriptorPath: Path,
     private val host: KastIndexerHost,
 ) : AutoCloseable {
+    private val closed = AtomicBoolean(false)
+    private val shutdownHookRegistered = AtomicBoolean(false)
+    private val shutdownHook = Thread(::close, "kast-indexer-transport-shutdown")
+
     /**
      * Proof transition: `one accepted socket -> IndexerConnectionHandling`.
      *
@@ -172,12 +187,32 @@ class InstalledIndexerTransport private constructor(
     }
 
     override fun close() {
+        if (!closed.compareAndSet(false, true)) return
+        if (shutdownHookRegistered.compareAndSet(true, false)) {
+            try {
+                Runtime.getRuntime().removeShutdownHook(shutdownHook)
+            } catch (_: IllegalStateException) {
+                // JVM shutdown owns this invocation of the registered hook.
+            } catch (_: SecurityException) {
+                // Closure continues; the idempotent hook may be invoked again.
+            }
+        }
         try {
             server.close()
         } finally {
             deleteEndpointDescriptor(descriptorPath)
             deleteOwnedSocket(socketPath)
         }
+    }
+
+    private fun installShutdownHook(): Boolean = try {
+        Runtime.getRuntime().addShutdownHook(shutdownHook)
+        shutdownHookRegistered.set(true)
+        true
+    } catch (_: IllegalStateException) {
+        false
+    } catch (_: SecurityException) {
+        false
     }
 
     companion object {
@@ -217,6 +252,30 @@ class InstalledIndexerTransport private constructor(
                     IndexerTransportFailure.SOCKET_BIND_FAILED,
                 )
             }
+            try {
+                Files.setPosixFilePermissions(
+                    socketPath,
+                    PosixFilePermissions.fromString("rw-------"),
+                )
+            } catch (_: IOException) {
+                server.close()
+                deleteOwnedSocket(socketPath)
+                return IndexerTransportActivation.Rejected(
+                    IndexerTransportFailure.SOCKET_BIND_FAILED,
+                )
+            } catch (_: UnsupportedOperationException) {
+                server.close()
+                deleteOwnedSocket(socketPath)
+                return IndexerTransportActivation.Rejected(
+                    IndexerTransportFailure.SOCKET_BIND_FAILED,
+                )
+            } catch (_: SecurityException) {
+                server.close()
+                deleteOwnedSocket(socketPath)
+                return IndexerTransportActivation.Rejected(
+                    IndexerTransportFailure.SOCKET_BIND_FAILED,
+                )
+            }
             val descriptor = when (
                 val publication = publishEndpointDescriptor(prepared.options)
             ) {
@@ -232,9 +291,14 @@ class InstalledIndexerTransport private constructor(
                     )
                 }
             }
-            return IndexerTransportActivation.Activated(
-                InstalledIndexerTransport(server, socketPath, descriptor, host),
-            )
+            val transport = InstalledIndexerTransport(server, socketPath, descriptor, host)
+            if (!transport.installShutdownHook()) {
+                transport.close()
+                return IndexerTransportActivation.Rejected(
+                    IndexerTransportFailure.SHUTDOWN_HOOK_UNAVAILABLE,
+                )
+            }
+            return IndexerTransportActivation.Activated(transport)
         }
     }
 }
@@ -253,6 +317,7 @@ private sealed interface StateDirectoryPreparation {
 private fun prepareStateDirectory(path: Path): StateDirectoryPreparation = try {
     if (Files.isSymbolicLink(path)) return StateDirectoryPreparation.Rejected
     Files.createDirectories(path)
+    Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rwx------"))
     val canonical = path.toRealPath()
     if (canonical == path && Files.isDirectory(canonical, LinkOption.NOFOLLOW_LINKS)) {
         StateDirectoryPreparation.Prepared(canonical)
@@ -260,6 +325,8 @@ private fun prepareStateDirectory(path: Path): StateDirectoryPreparation = try {
         StateDirectoryPreparation.Rejected
     }
 } catch (_: IOException) {
+    StateDirectoryPreparation.Rejected
+} catch (_: UnsupportedOperationException) {
     StateDirectoryPreparation.Rejected
 } catch (_: SecurityException) {
     StateDirectoryPreparation.Rejected

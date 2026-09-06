@@ -37,14 +37,16 @@ internal sealed interface InstalledGradleJvmSelection {
  * IntelliJ effect boundary for deterministic Gradle JVM selection.
  *
  * The wrapper distribution is observed first. Repository-owned `org.gradle.java.home`, the
- * compatible sidecar, and IntelliJ's locally suggested/registered JDKs then become detached
- * candidates for [GradleJvmCandidateSelector]. No candidate is tried by launching Gradle.
+ * optional inherited Java home, the compatible sidecar, and IntelliJ's locally
+ * suggested/registered JDKs then become detached candidates for [GradleJvmCandidateSelector].
+ * No candidate is tried by launching Gradle.
  */
 internal fun selectInstalledGradleJvm(
     project: Project,
     settings: GradleProjectSettings,
     sidecar: InstalledSidecarJvm,
     projectJvmAuthority: ProjectGradleJvmAuthority.Admitted,
+    ambientJvmAuthority: AmbientGradleJvmAuthority,
 ): InstalledGradleJvmSelection {
     val distribution = try {
         GradleInstallationManager.guessGradleVersion(settings)
@@ -96,6 +98,15 @@ internal fun selectInstalledGradleJvm(
     ) ?: return reject(
         InstalledGradleJvmSelectionFailure.LOCAL_JVM_DISCOVERY_FAILED,
     )
+    val ambientCandidate = when (ambientJvmAuthority) {
+        AmbientGradleJvmAuthority.Absent,
+        AmbientGradleJvmAuthority.Rejected,
+            -> null
+        is AmbientGradleJvmAuthority.Present -> observeGradleJvmCandidate(
+            ambientJvmAuthority.home,
+            GradleJvmSelectionSource.AMBIENT_JAVA_HOME,
+        )
+    }
 
     val platformHomes: Set<String> = try {
         buildSet<String> {
@@ -122,6 +133,7 @@ internal fun selectInstalledGradleJvm(
         }
     val candidates = buildList {
         if (repositoryCandidate != null) add(repositoryCandidate)
+        if (ambientCandidate != null) add(ambientCandidate)
         add(sidecarCandidate)
         addAll(platformCandidates)
     }

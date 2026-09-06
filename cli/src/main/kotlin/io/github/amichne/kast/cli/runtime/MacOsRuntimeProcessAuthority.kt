@@ -10,6 +10,9 @@ import java.util.concurrent.TimeoutException
 internal fun interface AcceptedRuntimeStartupSession {
     /** Observes whether the selected process authority still owns the identity. */
     fun observe(): RuntimeSessionObservation
+
+    /** Retires a newly started cold-bootstrap process; joined sessions retain no such authority. */
+    fun terminate(): RuntimeProcessTermination = RuntimeProcessTermination.Rejected
 }
 
 /** One already-derived process-session identity and its closed lifecycle effects. */
@@ -321,27 +324,28 @@ private class SessionRuntimeOwnedProcess(
         }
     }
 
-    private fun terminateDirectProcess(process: ProcessHandle): RuntimeProcessTermination = try {
-        if (!process.destroy() && process.isAlive) return RuntimeProcessTermination.Rejected
-        try {
-            process.onExit().get(PROCESS_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        } catch (_: TimeoutException) {
-            if (!process.destroyForcibly() && process.isAlive) {
-                return RuntimeProcessTermination.Rejected
-            }
-            process.onExit().get(PROCESS_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        }
-        RuntimeProcessTermination.Terminated
-    } catch (_: InterruptedException) {
-        Thread.currentThread().interrupt()
-        RuntimeProcessTermination.Interrupted
-    } catch (_: ExecutionException) {
-        RuntimeProcessTermination.Rejected
+}
+
+internal fun terminateDirectProcess(process: ProcessHandle): RuntimeProcessTermination = try {
+    if (!process.destroy() && process.isAlive) return RuntimeProcessTermination.Rejected
+    try {
+        process.onExit().get(PROCESS_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
     } catch (_: TimeoutException) {
-        RuntimeProcessTermination.Rejected
-    } catch (_: SecurityException) {
-        RuntimeProcessTermination.Rejected
+        if (!process.destroyForcibly() && process.isAlive) {
+            return RuntimeProcessTermination.Rejected
+        }
+        process.onExit().get(PROCESS_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
     }
+    RuntimeProcessTermination.Terminated
+} catch (_: InterruptedException) {
+    Thread.currentThread().interrupt()
+    RuntimeProcessTermination.Interrupted
+} catch (_: ExecutionException) {
+    RuntimeProcessTermination.Rejected
+} catch (_: TimeoutException) {
+    RuntimeProcessTermination.Rejected
+} catch (_: SecurityException) {
+    RuntimeProcessTermination.Rejected
 }
 
 private const val PROCESS_STOP_TIMEOUT_SECONDS = 10L

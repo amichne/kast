@@ -836,8 +836,8 @@ LAUNCHER_CONFIGURATION
     printf '%s\n' '  echo "kast: installed control or sidecar payload is missing" >&2'
     printf '%s\n' '  exit 1'
     printf '%s\n' 'fi'
-    printf '%s\n' 'if [ -z "${KAST_TRUST_DONOR_JAVA_HOME+x}" ] && [ -n "${JAVA_HOME:-}" ]; then'
-    printf '%s\n' '  export KAST_TRUST_DONOR_JAVA_HOME="${JAVA_HOME}"' 'fi'
+    printf '%s\n' 'if [ -z "${KAST_GRADLE_JAVA_HOME+x}" ] && [ -n "${JAVA_HOME:-}" ]; then'
+    printf '%s\n' '  export KAST_GRADLE_JAVA_HOME="${JAVA_HOME}"' 'fi'
     printf 'export JAVA=%s\n' "$(shell_single_quote "$java_executable")"
     printf 'export JAVA_HOME=%s\n' "$(shell_single_quote "$java_home")"
     printf '%s\n' 'export KAST_RUNTIME_ARCHIVE="$runtime_archive"'
