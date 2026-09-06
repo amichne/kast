@@ -18,9 +18,6 @@ code_sources:
   - path: "distribution/release/generate_sbom.py"
     lines: "1-150"
     symbols: ["generate", "scanner"]
-  - path: "docs/test_public_docs.py"
-    lines: "1-900"
-    symbols: ["check_pages"]
   - path: ".github/workflows/docs.yml"
     lines: "1-80"
 icon: "badge-check"
@@ -43,7 +40,7 @@ changed boundary requires it:
 | Architecture | `verifyKastArchitecture` | Admitted modules, dependencies, roles, and compiled effects. |
 | Product assembly | `assembleSidecarRelease` and distribution checks | Control and semantic-runtime artifacts are coherent and physically separated. |
 | Installed product | `installedProductTest` | The staged product has the expected package shape and basic executable boundary. |
-| Documentation | Registry generation, LikeC4 check, docs contract, and `mint validate` | Published commands, claims, links, pages, and diagrams match their authorities. |
+| Documentation | Generated registry, generated architecture, and `mint validate` | Published documentation is structurally valid and generated artifacts are current. |
 
 A broader check does not substitute for a missing focused invariant. Runtime,
 performance, resource, corruption, upgrade, and lifecycle scenarios belong in
@@ -96,7 +93,7 @@ current `main` SHA and reviewed candidate version. It downloads those retained
 artifacts and publishes the same bytes. It does not rebuild the product or run a
 second behavioral qualification pass.
 
-The release invariant is therefore:
+The release invariant is:
 
 ```text
 exact main revision
@@ -134,7 +131,7 @@ export KAST_RELEASE_JDK_25="/path/to/jdk25"
 python3 .github/scripts/ci/verify-checks.py
 ```
 
-To build the exact candidate artifacts without publishing:
+To build candidate artifacts without publishing:
 
 ```shell
 bash .github/scripts/release/build-assets.sh \
@@ -144,33 +141,14 @@ bash .github/scripts/release/build-assets.sh \
 
 ## Keep this specification authenticated
 
-The documentation workflow forms its own proof chain:
+The documentation workflow verifies the generated operation registry and
+architecture bundle before running `mint validate`. Those generated artifacts
+remain owned by their source models; the documentation workflow is not a second
+semantic or release authority.
 
-```text
-CanonicalOperation and command graph
-  -> generated operation registry
-  -> generated CLI reference
-
-LikeC4 source and locked generator
-  -> provenance-checked web-component bundle
-  -> embedded technical views
-
-Source authorities and Mintlify navigation
-  -> docs/test_public_docs.py
-  -> mint validate
-```
-
-When mechanics change, update the source contract first. Regenerate derived
-artifacts with their owning task, update only the affected explanation, and add
-or strengthen a docs assertion for any claim whose drift would mislead a
-maintainer. Do not patch generated CLI or LikeC4 output by hand.
-
-Every public page declares bounded `code_sources` in its OKF header. Ask which
-pages cite a changed authority before editing prose:
-
-```shell
-python3 docs/test_public_docs.py --impact path/to/changed-source.kt
-```
+When mechanics change, update the source contract first and regenerate derived
+artifacts with their owning task. Do not patch generated CLI or LikeC4 output by
+hand.
 
 ## Contributor path
 
@@ -206,7 +184,5 @@ python3 docs/test_public_docs.py --impact path/to/changed-source.kt
   verifies the staged product packaging boundary.
 - [`build-assets.sh`](https://github.com/amichne/kast/blob/main/.github/scripts/release/build-assets.sh)
   builds retained release artifacts from an exact admitted source revision.
-- [`test_public_docs.py`](https://github.com/amichne/kast/blob/main/docs/test_public_docs.py)
-  binds public pages, claims, navigation, authorities, and architecture embeds.
 - The [documentation workflow](https://github.com/amichne/kast/blob/main/.github/workflows/docs.yml)
-  regenerates and validates the published documentation surface.
+  checks generated documentation artifacts and validates the Mintlify site.
