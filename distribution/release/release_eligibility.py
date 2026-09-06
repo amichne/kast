@@ -15,7 +15,6 @@ import subprocess
 class Cause(str, Enum):
     INVALID_INPUT = 'invalid-input'
     SOURCE_MOVED = 'source-moved'
-    VERSION_MISMATCH = 'version-mismatch'
     CI_UNPROVEN = 'ci-unproven'
     ARTIFACT_UNAVAILABLE = 'artifact-unavailable'
     RELEASE_EXISTS = 'release-exists'
@@ -52,9 +51,9 @@ def latest_run(runs: list[dict], repository: str, sha: str) -> dict:
     return latest
 
 
-def admit(runs: list[dict], artifacts: list[dict], repository: str, sha: str) -> Candidate:
+def admit(runs: list[dict], artifacts: list[dict], repository: str, sha: str, version: str) -> Candidate:
     latest = latest_run(runs, repository, sha)
-    name = f'release-candidate-{sha}'
+    name = f'release-candidate-{sha}-v{version}'
     matching = [artifact for artifact in artifacts if artifact.get('name') == name]
     if len(matching) != 1:
         raise Rejected(Cause.ARTIFACT_UNAVAILABLE)
@@ -72,11 +71,9 @@ def api(path: str) -> list:
     return json.loads(result.stdout)
 
 
-def observe(repository: str, sha: str, version: str, root: Path) -> Candidate:
+def observe(repository: str, sha: str, version: str) -> Candidate:
     if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repository) or not re.fullmatch(r'[0-9a-f]{40}', sha) or not re.fullmatch(r'\d+\.\d+\.\d+', version):
         raise Rejected(Cause.INVALID_INPUT)
-    if (root / 'distribution/release/candidate-version.txt').read_text().strip() != version:
-        raise Rejected(Cause.VERSION_MISMATCH)
     base = f'repos/{repository}'
     if api(f'{base}/git/ref/heads/main')[0]['object']['sha'] != sha:
         raise Rejected(Cause.SOURCE_MOVED)
@@ -87,7 +84,7 @@ def observe(repository: str, sha: str, version: str, root: Path) -> Candidate:
     runs = [run for page in api(f'{base}/actions/workflows/ci.yml/runs?branch=main&event=workflow_dispatch&head_sha={sha}&per_page=100') for run in page['workflow_runs']]
     run = latest_run(runs, repository, sha)
     artifacts = [artifact for page in api(f'{base}/actions/runs/{run["id"]}/artifacts?per_page=100') for artifact in page['artifacts']]
-    return admit(runs, artifacts, repository, sha)
+    return admit(runs, artifacts, repository, sha, version)
 
 
 def main() -> None:
@@ -97,11 +94,11 @@ def main() -> None:
     parser.add_argument('--version', required=True)
     args = parser.parse_args()
     try:
-        candidate = observe(args.repository, args.source_revision, args.version, Path(__file__).resolve().parents[2])
+        candidate = observe(args.repository, args.source_revision, args.version)
         if 'GITHUB_OUTPUT' in os.environ:
             with Path(os.environ['GITHUB_OUTPUT']).open('a') as output:
                 output.write(f'run_id={candidate.run_id}\nartifact_name={candidate.artifact_name}\n')
-        print(json.dumps({'stage': 'release-eligibility', 'outcome': 'admitted', 'runId': candidate.run_id, 'sourceRevision': args.source_revision}))
+        print(json.dumps({'stage': 'release-eligibility', 'outcome': 'admitted', 'runId': candidate.run_id, 'sourceRevision': args.source_revision, 'version': args.version}))
     except (Rejected, OSError, ValueError, KeyError, TypeError, subprocess.TimeoutExpired) as failure:
         cause = failure.cause if isinstance(failure, Rejected) else Cause.OBSERVATION_FAILED
         print(json.dumps({'stage': 'release-eligibility', 'outcome': 'rejected', 'cause': cause.value}))
