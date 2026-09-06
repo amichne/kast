@@ -9,7 +9,8 @@ code_sources:
   - path: "packaging/test-installed-product.sh"
     lines: "1-156"
   - path: "integration-tests/enterprise_acceptance.py"
-    lines: "1-969"
+    lines: "963-1066"
+    symbols: ["prove_generation_transition"]
   - path: "docs/test_public_docs.py"
     lines: "1-900"
     symbols: ["check_pages"]
@@ -59,8 +60,8 @@ product. Verification checks metadata and SHA-256 records, archive safety,
 runtime identity, required resources, control-versus-sidecar content
 separation, relocatability, and lifecycle behavior.
 
-Passive commands are tested as passive: status and product inspection must not
-start the sidecar merely to report absence. Start, stop, status, cache reuse,
+Bare inspection is tested as passive: it must not
+start the sidecar merely to report absence. Start, stop, bare inspection, cache reuse,
 cache seeding, cache rebuild, and wrong-root behavior are exercised against a
 staged installation, not inferred from unit tests.
 
@@ -115,8 +116,8 @@ the active product and repository bytes.
 
 Real relation and traversal continuations must resume successfully before
 malformed and digest-tampered copies are rejected. Corrupting the selected cache
-identity receipt must make passive status reject. Exact receipt restoration must
-recover status and a semantic read while preserving the repository.
+identity receipt must appear as a typed blocker in passive inspection. Exact receipt restoration must
+recover inspection and a semantic read while preserving the repository.
 
 The required installed import uses Gradle 9.4.1 and Java 25 through
 `KAST_RELEASE_JDK_25`. It proves admitted environment inputs, explicit executable

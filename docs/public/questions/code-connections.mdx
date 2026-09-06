@@ -46,17 +46,6 @@ question.
     qualified results preserve compiler provenance and explicit coverage.
   </Step>
 
-  <Step title="Build complete topology">
-    ```console
-    kast topology build
-    ```
-
-    The endpoint enumerates the admitted source roots, extracts semantic
-    topology through IntelliJ, and publishes a durable snapshot only when the
-    current generation is still valid. An eligible unchanged snapshot is
-    reused instead of extracted again.
-  </Step>
-
   <Step title="Traverse with explicit bounds">
     ```console
     kast traversal run \
@@ -66,8 +55,9 @@ question.
       --maximum-results 50
     ```
 
-    Traversal reads only an eligible durable snapshot; it starts no hidden
-    compiler work.
+    Traversal acquires an eligible durable snapshot automatically. The existing
+    topology owner serializes construction and reuses unchanged eligible snapshots.
+    Discovery, inspection, source, relation, and diagnostic reads do not build topology.
 
     The result retains:
 
@@ -96,8 +86,8 @@ metadata cannot prove closed-Project source stability.
 
 After reopening:
 
-1. Run `kast topology build`.
-2. Kast verifies the current candidates.
+1. Resolve a fresh selector and run `kast traversal run` with explicit bounds.
+2. Kast acquires topology and verifies the current candidates.
 3. An unchanged durable snapshot reports `reused` and binds to the new
    generation.
 
@@ -111,7 +101,7 @@ Selectors from before the restart remain stale.
 
 ## Locate slow phases
 
-`kast product inspect` reports the private OTLP JSON Lines file used by ready
+`kast` reports the private OTLP JSON Lines file used by ready
 endpoints.
 
 Topology and traversal spans identify:

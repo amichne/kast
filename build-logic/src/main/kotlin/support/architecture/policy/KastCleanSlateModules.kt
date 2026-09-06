@@ -99,6 +99,7 @@ internal object KastCleanSlateModules {
             ModuleRole.WORKSPACE_ADAPTER,
             ModuleId.WORKSPACE_CONTRACT,
             ModuleId.DISTRIBUTION_CONTRACT,
+            ModuleId.DISTRIBUTION_MANAGED, // Private network trust materialization before Gradle import.
             ModuleId.WORKSPACE_INTELLIJ_READ,
             effects = setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,
@@ -359,6 +360,7 @@ internal object KastCleanSlateModules {
             ModuleId.INDEXER,
             ModuleRole.INDEXER_HOST,
             ModuleId.RUNTIME_COMPOSITION,
+            ModuleId.DISTRIBUTION_MANAGED, // JSSE bootstrap precedes IntelliJ class loading.
             effects = setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,
                 ForbiddenEffect.FILESYSTEM_WRITE,

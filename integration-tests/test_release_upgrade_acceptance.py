@@ -110,7 +110,7 @@ class UpgradeAcceptanceTest(unittest.TestCase):
             self.assertEqual("passed", proof["status"])
             self.assertEqual(["0.32.2", "1.0.0"], fixture.installed_versions)
             self.assertEqual(["checksum-mismatch", "unsafe-archive-path"], [case["case"] for case in proof["corruptionCases"]])
-            self.assertEqual({"--version", "status"}, set(fixture.commands.read_text().splitlines()))
+            self.assertEqual({"--version", "status", "inspect"}, set(fixture.commands.read_text().splitlines()))
             self.assertNotIn("KAST_RUNTIME_ARCHIVE", environment)
             self.assertEqual(fixture.environment, {"PATH": os.environ["PATH"], "KAST_RUNTIME_ARCHIVE": "caller-archive"})
             self.assertNotIn("candidate-control", json.dumps(proof))
@@ -125,8 +125,8 @@ class UpgradeAcceptanceTest(unittest.TestCase):
     def test_passive_status_rejects_runtime_start_or_wrong_root(self):
         with UpgradeFixture() as fixture:
             fixture.install(fixture.host, fixture.assets, "0.32.2", fixture.root / "idea", fixture.environment)
-            for document in [{"command": "status", "status": "complete", "runtime": "ready", "root": str(fixture.host.workspace)},
-                             {"command": "status", "status": "complete", "runtime": "stopped", "root": "/wrong"}]:
+            for document in [{"operation": "inspect", "status": "complete", "runtime": "ready", "root": str(fixture.host.workspace)},
+                             {"operation": "inspect", "status": "complete", "runtime": "stopped", "root": "/wrong"}]:
                 completed = subprocess.CompletedProcess([], 0, json.dumps(document), "")
                 with mock.patch.object(acceptance, "command", return_value=completed):
                     self.assert_cause(acceptance.Cause.PASSIVE_STATUS_UNPROVEN,
@@ -177,9 +177,10 @@ class UpgradeFixture:
         launcher = target / "bin/kast-complete"
         launcher.write_text(f'''#!{sys.executable}
 import json,os,sys
-with open({str(self.commands)!r},'a') as output: output.write(sys.argv[1]+'\\n')
-if sys.argv[1]=='--version': print('kast {version} (IntelliJ sidecar)')
-elif sys.argv[1]=='status': print(json.dumps({{"command":"status","status":"complete","runtime":"stopped","root":os.getcwd()}}))
+with open({str(self.commands)!r},'a') as output: output.write((sys.argv[1] if len(sys.argv)>1 else 'inspect')+'\\n')
+if len(sys.argv)>1 and sys.argv[1]=='--version': print('kast {version} (IntelliJ sidecar)')
+elif len(sys.argv)>1 and sys.argv[1]=='status' and '{version}'=='0.32.2': print(json.dumps({{"command":"status","status":"complete","runtime":"stopped","root":os.getcwd()}}))
+elif len(sys.argv)==1 and '{version}'!='0.32.2': print(json.dumps({{"operation":"inspect","status":"complete","runtime":"stopped","root":os.getcwd()}}))
 else: sys.exit(64)
 ''')
         launcher.chmod(0o755)

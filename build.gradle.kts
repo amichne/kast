@@ -124,7 +124,7 @@ val assembleKastControlDist by tasks.registering(Tar::class) {
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
     eachFile {
-        if (relativePath.pathString == "bin/kast") permissions { unix("755") }
+        if (relativePath.pathString in setOf("bin/kast", "bin/kast-codex")) permissions { unix("755") }
     }
 }
 

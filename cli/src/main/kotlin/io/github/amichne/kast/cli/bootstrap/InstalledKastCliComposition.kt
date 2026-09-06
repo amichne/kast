@@ -36,7 +36,11 @@ private const val SIDECAR_CACHE_ROOT_ENVIRONMENT = "KAST_CACHE_ROOT"
 internal const val SUPPORTED_IDE_BUILD = "262.9437.185"
 internal const val SUPPORTED_KOTLIN_PLUGIN_BUILD = "262.9437.185-IJ"
 
+internal enum class SavedConfigurationFailure { UNREADABLE, DUPLICATE_RECORD, UNSUPPORTED_RECORD, UNKNOWN }
+
 internal sealed interface InstalledCompositionFailure : KastCliCompositionFailure {
+    data class SavedConfigurationRejected(val failure: SavedConfigurationFailure) : InstalledCompositionFailure
+
     data class ControlProductRejected(
         val failure: InstalledKastControlProductFailure,
     ) : InstalledCompositionFailure
@@ -88,6 +92,15 @@ internal sealed interface InstalledCompositionFailure : KastCliCompositionFailur
 
 /** The sole service-loaded composition for an installed Kotlin `kast` executable. */
 internal class InstalledKastCliComposition : KastCliComposition {
+    override fun inspect(start: Path): CliExit = when (val construction = create()) {
+        is KastCliCompositionConstruction.Created -> construction.cli.execute(emptyList(), start)
+        is KastCliCompositionConstruction.Rejected -> CliExit.Complete(
+            io.github.amichne.kast.cli.projection.ProductInspectionDocuments.blocked(
+                start, construction.failure,
+            ),
+        )
+    }
+
     /**
      * Proof transition: `installed process environment -> KastCliCompositionConstruction`.
      *
@@ -97,6 +110,16 @@ internal class InstalledKastCliComposition : KastCliComposition {
      * extraction remain in this installed composition boundary.
      */
     override fun create(): KastCliCompositionConstruction {
+        System.getenv("KAST_SAVED_CONFIGURATION_FAILURE")?.let { raw ->
+            val failure = when (raw) {
+                "unreadable" -> SavedConfigurationFailure.UNREADABLE
+                "duplicate-record" -> SavedConfigurationFailure.DUPLICATE_RECORD
+                "unsupported-record" -> SavedConfigurationFailure.UNSUPPORTED_RECORD
+                else -> SavedConfigurationFailure.UNKNOWN
+            }
+            return KastCliCompositionConstruction.Rejected(InstalledCompositionFailure.SavedConfigurationRejected(failure))
+        }
+
         val processMode = when (
             val admission = RuntimeProcessModeEnvironment.admit(
                 System.getenv(RUNTIME_PROCESS_MODE_ENVIRONMENT),
@@ -275,6 +298,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
                 },
             ),
             legacyProcessAuthority = processCapabilities.authority,
+            cacheLifecycle = cacheLifecycle,
         )
         return KastCliCompositionConstruction.Created(
             KastCli(
@@ -681,4 +705,38 @@ internal class InstalledSidecarCacheRoot private constructor(val path: Path) {
             InstalledSidecarCacheRootFailure.INVALID_PATH,
         )
     }
+}
+
+/** Installation proof shared by the semantic executable and its integration host. */
+internal fun installedKastExecutable(): Refinement<Path, InstalledKastControlProductFailure> =
+    when (val admission = InstalledKastControlProduct.discover()) {
+        is InstalledKastControlProductAdmission.Admitted -> admission.product.kastExecutable()?.let { Refinement.Refined(it) }
+            ?: Refinement.Rejected(InstalledKastControlProductFailure.KAST_EXECUTABLE_UNAVAILABLE)
+        is InstalledKastControlProductAdmission.Rejected -> Refinement.Rejected(admission.failure)
+    }
+
+/** Passive control identity admission is independent of runtime-directory and process configuration. */
+internal fun inspectInstalledControlIdentity(): Refinement<SidecarProductIdentity, InstalledCompositionFailure> {
+    val installation = when (val admission = InstalledKastControlProduct.discover()) {
+        is InstalledKastControlProductAdmission.Admitted -> admission.product
+        is InstalledKastControlProductAdmission.Rejected -> return Refinement.Rejected(InstalledCompositionFailure.ControlProductRejected(admission.failure))
+    }
+    val version = when (val admission = installation.productVersion()) {
+        is Refinement.Refined -> admission.value
+        is Refinement.Rejected -> return Refinement.Rejected(InstalledCompositionFailure.ProductVersionRejected(admission.failure))
+    }
+    val document = when (val read = installation.readResource(InstalledControlResource.SEMANTIC_RUNTIME)) {
+        is InstalledControlResourceRead.Read -> read.value
+        is InstalledControlResourceRead.Rejected -> return Refinement.Rejected(InstalledCompositionFailure.ResourceUnavailable(read.resource))
+    }
+    val manifest = when (val admission = SemanticRuntimeManifest.admit(document)) {
+        is SemanticRuntimeManifestAdmission.Admitted -> admission.manifest
+        is SemanticRuntimeManifestAdmission.Rejected -> return Refinement.Rejected(InstalledCompositionFailure.RuntimeManifestRejected(admission.failure))
+    }
+    if (manifest.productVersion.value != version.value) return Refinement.Rejected(InstalledCompositionFailure.RuntimeManifestRejected(SemanticRuntimeFailure.MANIFEST_INVALID))
+    val support = when (val admission = SupportedIdeRuntimePair.admit(SUPPORTED_IDE_BUILD, SUPPORTED_KOTLIN_PLUGIN_BUILD)) {
+        is SupportedIdeRuntimePairAdmission.Admitted -> admission.pair
+        is SupportedIdeRuntimePairAdmission.Rejected -> return Refinement.Rejected(InstalledCompositionFailure.SidecarMetadataRejected(admission.failure))
+    }
+    return Refinement.Refined(SidecarProductIdentity(version, manifest.runtimeId, support, manifest.kastPluginDigest))
 }

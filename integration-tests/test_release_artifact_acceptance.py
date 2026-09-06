@@ -118,7 +118,7 @@ class DurableObservationTest(unittest.TestCase):
             def sample(stage, **_):
                 return {"schemaVersion": 1, "stage": stage.value, "status": "not-running" if stage.value == "after-stop" else "observed"}
             with mock.patch.object(acceptance.resources, "observe", side_effect=sample):
-                for argv, result in [(("start",), {"runtime": "running"}), (("symbol", "discover"), {"status": "complete"}),
+                for argv, result in [((), {"operation": "inspect", "runtime": "stopped"}), (("start",), {"runtime": "running"}), (("symbol", "discover"), {"status": "complete"}),
                                      (("stop",), {"runtime": "stopped"}), (("start",), {"runtime": "running"})]:
                     with mock.patch.object(acceptance.enterprise.Acceptance, "command", return_value=result):
                         observed.command(*argv)

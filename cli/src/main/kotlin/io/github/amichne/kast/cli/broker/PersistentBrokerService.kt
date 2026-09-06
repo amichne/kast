@@ -11,43 +11,13 @@ import java.util.HexFormat
 
 internal const val VENDORED_BROKER_VERSION = "0.5.0"
 
+/** Closed admission failures shared by the integration host's executable boundary. */
 enum class PersistentBrokerServiceFailure {
-    UNAVAILABLE,
-    CONFIGURATION_REJECTED,
-    KAST_QUALIFICATION_REJECTED,
-    CATALOG_REJECTED,
-    CODEX_QUALIFICATION_REJECTED,
-    THREAD_STORE_REJECTED,
-    UPSTREAM_REJECTED,
-    SERVER_REJECTED,
     KAST_EXECUTABLE_UNAVAILABLE,
     CODEX_EXECUTABLE_UNAVAILABLE,
     CODEX_HOME_REJECTED,
     USER_HOME_REJECTED,
     JAVA_RUNTIME_UNAVAILABLE,
-    STATE_DIRECTORY_REJECTED,
-    SERVICE_LOCK_REJECTED,
-    SERVICE_OBSERVATION_REJECTED,
-    SERVICE_RETIREMENT_REJECTED,
-    SERVICE_SUBMISSION_REJECTED,
-    READINESS_REJECTED,
-    PUBLIC_SOCKET_OWNED,
-    SOCKET_PROBE_REJECTED,
-    LAUNCHCTL_TIMED_OUT,
-    STARTUP_TIMED_OUT,
-    INTERRUPTED,
-}
-
-internal sealed interface PersistentBrokerServiceAdmission {
-    data object Ready : PersistentBrokerServiceAdmission
-
-    data class Rejected(
-        val failure: PersistentBrokerServiceFailure,
-    ) : PersistentBrokerServiceAdmission
-}
-
-internal fun interface PersistentBrokerService {
-    fun ensure(): PersistentBrokerServiceAdmission
 }
 
 @JvmInline
@@ -143,22 +113,6 @@ internal value class BrokerJvmUserHomeOption private constructor(val value: Stri
     }
 }
 
-@JvmInline
-internal value class BrokerLaunchdServiceLabel private constructor(val value: String) {
-    companion object {
-        internal fun from(codexHome: Path): BrokerLaunchdServiceLabel {
-            val digest = HexFormat.of().formatHex(
-                MessageDigest.getInstance("SHA-256").digest(
-                    codexHome.toString().toByteArray(StandardCharsets.UTF_8),
-                ),
-            )
-            return BrokerLaunchdServiceLabel(
-                "io.github.amichne.kast.broker.${digest.take(32)}",
-            )
-        }
-    }
-}
-
 internal sealed interface BrokerServiceLaunchCommandResolution {
     data class Resolved(val command: BrokerServiceLaunchCommand) :
         BrokerServiceLaunchCommandResolution
@@ -176,13 +130,7 @@ internal class BrokerServiceLaunchCommand private constructor(
     val javaExecutable: Path,
     val jvmUserHomeOption: BrokerJvmUserHomeOption,
     val codexHome: Path,
-    val stateDirectory: Path,
-    val readinessFile: Path,
-    val publicSocket: Path,
-    val serviceLog: Path,
-    val serviceLock: Path,
     val identity: BrokerServiceIdentity,
-    val serviceLabel: BrokerLaunchdServiceLabel,
 ) {
     companion object {
         fun resolve(
@@ -220,7 +168,6 @@ internal class BrokerServiceLaunchCommand private constructor(
             } else {
                 userHome.resolve(".codex")
             } ?: return rejected(PersistentBrokerServiceFailure.CODEX_HOME_REJECTED)
-            val stateDirectory = codexHome.resolve("broker")
             val kastDigest = sha256(kast)
                 ?: return rejected(PersistentBrokerServiceFailure.KAST_EXECUTABLE_UNAVAILABLE)
             val codexDigest = sha256(codex)
@@ -246,13 +193,7 @@ internal class BrokerServiceLaunchCommand private constructor(
                     javaExecutable,
                     jvmUserHomeOption,
                     codexHome,
-                    stateDirectory,
-                    stateDirectory.resolve("service-readiness.json"),
-                    codexHome.resolve("app-server-control/app-server-control.sock"),
-                    stateDirectory.resolve("service.log"),
-                    stateDirectory.resolve("service-start.lock"),
                     identity,
-                    BrokerLaunchdServiceLabel.from(codexHome),
                 ),
             )
         }
@@ -359,22 +300,3 @@ private data class BrokerCommandExecutable(
 )
 
 private enum class BrokerSymbolicLinkPolicy { EXACT_PATH, CANONICAL_TARGET }
-
-internal fun interface PersistentBrokerServiceHost {
-    fun ensure(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission
-}
-
-internal class InstalledPersistentBrokerService(
-    private val kast: Path,
-    private val userHome: Path,
-    private val environment: Map<String, String> = System.getenv(),
-    private val host: PersistentBrokerServiceHost = MacOsPersistentBrokerServiceHost(),
-) : PersistentBrokerService {
-    override fun ensure(): PersistentBrokerServiceAdmission = when (
-        val resolution = BrokerServiceLaunchCommand.resolve(kast, userHome, environment)
-    ) {
-        is BrokerServiceLaunchCommandResolution.Resolved -> host.ensure(resolution.command)
-        is BrokerServiceLaunchCommandResolution.Rejected ->
-            PersistentBrokerServiceAdmission.Rejected(resolution.failure)
-    }
-}

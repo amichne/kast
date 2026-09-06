@@ -40,7 +40,7 @@ Use:
 
 ## Installed server projection
 
-**Bottom line:** the installed `serverProjection` is the broker contract. Read
+The installed `serverProjection` is the broker contract. Read
 it from the exact configured `kast` executable; never infer tools from a
 version string or human-readable command text.
 
@@ -49,7 +49,7 @@ The projection defines:
 - Every operation marked `public`, with its canonical ID and evidence document.
 - Tool names, descriptions, and closed input and output JSON Schemas.
 - Field-to-CLI bindings, deferred loading, and approval policy.
-- Read façades such as `workspace_ensure_ready`, `symbol_lookup`,
+- Read façades such as `symbol_lookup`,
   `semantic_query`, `impact_analyze`, and `diagnostic_check`.
 
 Approval is closed:
@@ -66,13 +66,11 @@ Run semantic commands from the repository root.
 
 - Success emits one JSON document on standard output.
 - Rejection emits one diagnostic document on standard error.
-- The private IntelliJ sidecar publishes 11 operations marked
+- The private IntelliJ sidecar publishes 9 operations marked
   `public` by the generated registry.
 
 | Operation | Command shape | Result role |
 | --- | --- | --- |
-| `index.sync` | `kast index sync` | Refresh admitted source roots, await indexing, and publish current semantic evidence. |
-| `topology.build` | `kast topology build` | Build or reuse the durable graph and return its generation and digest. |
 | `symbol.discover` | `kast symbol discover --mode <name\|location\|text> ... --limit <1..1000>` | Find bounded candidates by name, location, structure, or text. |
 | `symbol.inspect` | `kast symbol inspect <--candidate <candidate-selector>\|--selector <exact-selector>>` | Refine a candidate or inspect an exact selector and return exact compiler evidence. |
 | `source.read` | `kast source read --anchor <selector> [--region <region>] [--declaration-kind <kind>]... [--visibility <visibility>]... [--include-parameters] [--include-calls] [--include-references] [--containment <direct\|descendants>] [--text <complete\|none\|window>] [--before-lines <0..1000>] [--after-lines <0..1000>] [--entity-limit <1..1000>] [--text-byte-limit <positive-count>] [--continuation <continuation>]` | Read bounded source text and structure without establishing compiler identity. |
@@ -82,6 +80,19 @@ Run semantic commands from the repository root.
 | `change.plan` | `kast change plan --intent <add-file\|add-declaration\|replace-declaration\|rename-symbol> <intent-options>` | Sidecar route is available only for `add-declaration`. Derive a typed plan without writing the workspace. |
 | `change.apply` | `kast change apply --plan <plan-identity>` | Apply one admitted plan, publish its successor, verify it, and return a receipt. |
 | `change.recover` | `kast change recover --plan <plan-identity>` | Restore one plan to a known workspace state. |
+
+## Canonical operations without a direct sidecar route
+
+<Warning>
+  These identities remain in the canonical registry. Semantic requests acquire
+  internal services automatically. Unavailable operations have no implementation
+  binding. The CLI and endpoint expose neither category directly.
+</Warning>
+
+| Operation | Current availability |
+| --- | --- |
+| `index.sync` | Acquired automatically as an internal sidecar service; no public command or endpoint route. |
+| `topology.build` | Acquired automatically as an internal sidecar service; no public command or endpoint route. |
 
 
 ## Continuation argument limits
@@ -102,7 +113,7 @@ with a one-megabyte argument.
 Kast owns the isolated sidecar lifecycle.
 
 - `start` and semantic commands may launch a release-line-compatible local IDEA build.
-- `status` and `stop` stay passive; they never manufacture an endpoint.
+- Bare `kast` observes state; `stop` targets only an already proven endpoint.
 - The release pair defines compatible platform lines, not patch equality.
 - Admission retains the exact observed build pair in runtime identity.
 
@@ -116,24 +127,24 @@ Process ownership is explicit:
 | --- | --- |
 | `kast start` | Start or reuse the exact-root private sidecar and return workspace readiness. |
 | `kast stop` | Stop only the process proven to own the exact-root sidecar endpoint. |
-| `kast status` | Passively report exact-root runtime identity and private cache state. |
 
 ## Process-local commands
 
-These commands stay inside the installed control product; neither is a
-sidecar endpoint operation.
+Bare `kast` reports installed control, IDE/JBR, exact-root runtime, cache,
+bootstrap, and network provenance without starting or repairing anything.
+`kast-codex` owns the optional Codex integration broker and client lifetime.
 
 | Command | Result |
 | --- | --- |
-| `kast product inspect` | Report installed sidecar identity plus direct root, Kast-cache, and default trace destination evidence without starting or admitting a runtime. |
-| `kast broker serve` | Host the optional read-only preview Kotlin/Ktor Codex tool broker. Semantic CLI commands start the sidecar independently and do not require Codex. |
+| `kast` | Passively inspect local identity and state, including typed blockers. |
+| `kast-codex` | Launch the Codex integration host and its client. |
 
 ## Default local traces
 
 Ready endpoints write topology and traversal spans to a private folder derived
 from the exact socket namespace.
 
-`kast product inspect` reports:
+Bare `kast` reports:
 
 - Format and enabled state.
 - `directoryPath` and `traceFilePath`.

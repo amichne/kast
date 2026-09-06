@@ -15,6 +15,13 @@ val indexerIdeaDistribution: Configuration by configurations.creating {
     isCanBeResolved = true
 }
 
+val indexerNetworkRuntime: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    exclude(group = "org.jetbrains.kotlin")
+    exclude(group = "org.jetbrains.kotlinx")
+}
+
 val indexerPluginRuntime: Configuration by configurations.creating {
     isCanBeConsumed = false
     isCanBeResolved = true
@@ -62,6 +69,8 @@ application {
 
 dependencies {
     implementation(project(":runtime:composition"))
+    implementation(project(":distribution:managed"))
+    indexerNetworkRuntime(project(":distribution:managed"))
 
     indexerIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
         isTransitive = false
@@ -82,6 +91,7 @@ val launcherClassEntries = listOf(
     "io/github/amichne/kast/indexer/KastIndexerBootstrap.class",
     "io/github/amichne/kast/indexer/IndexerBootstrap*.class",
     "io/github/amichne/kast/indexer/IdeaHomeAdmission*.class",
+    "io/github/amichne/kast/indexer/IndexerNetwork*.class",
 )
 
 val indexerLauncherJar by tasks.registering(Jar::class) {
@@ -136,7 +146,7 @@ val indexerRuntimeRequiredClassEntries = listOf(
 tasks.named<SyncRuntimeLibsTask>("syncRuntimeLibs") {
     dependsOn(indexerLauncherJar)
     appJar.set(indexerLauncherJar.flatMap(Jar::getArchiveFile))
-    runtimeJars.setFrom()
+    runtimeJars.setFrom(indexerNetworkRuntime)
     requiredClassEntries.addAll(indexerRuntimeRequiredClassEntries)
 }
 

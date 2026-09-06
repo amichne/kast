@@ -66,6 +66,8 @@ internal enum class InstalledBrokerServerConfigurationFailure {
     PROTOCOL_CONFIGURATION_REJECTED,
 }
 
+internal enum class BrokerClientTransport { LEGACY_CONTROL, INTEGRATION_OWNED }
+
 internal sealed interface InstalledBrokerServerConfiguration {
     data class Configured(val options: InstalledBrokerServerOptions) :
         InstalledBrokerServerConfiguration
@@ -80,6 +82,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
             environment: Map<String, String>,
             processExecutor: BrokerProcessExecutor = JdkBrokerProcessExecutor,
             launcher: CodexAppServerProcessLauncher? = null,
+            clientTransport: BrokerClientTransport = BrokerClientTransport.LEGACY_CONTROL,
         ): InstalledBrokerServerConfiguration {
             val canonicalUserHome = canonicalDirectory(userHome)
                 ?: return rejected(InstalledBrokerServerConfigurationFailure.USER_HOME_REJECTED)
@@ -108,7 +111,10 @@ internal sealed interface InstalledBrokerServerConfiguration {
             }
             val codexHome = createConfigurationDirectory(codexHomeCandidate)
                 ?: return rejected(InstalledBrokerServerConfigurationFailure.CODEX_HOME_REJECTED)
-            val stateDirectory = createBrokerOwnedDirectory(codexHome.resolve("broker"))
+            val stateDirectory = createBrokerOwnedDirectory(codexHome.resolve(when (clientTransport) {
+                BrokerClientTransport.LEGACY_CONTROL -> "broker"
+                BrokerClientTransport.INTEGRATION_OWNED -> "kast-integration"
+            }))
                 ?: return rejected(
                     InstalledBrokerServerConfigurationFailure.STATE_DIRECTORY_REJECTED,
                 )
@@ -117,7 +123,10 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     InstalledBrokerServerConfigurationFailure.STATE_DIRECTORY_REJECTED,
                 )
             val publicParent = createBrokerOwnedDirectory(
-                codexHome.resolve("app-server-control"),
+                when (clientTransport) {
+                    BrokerClientTransport.LEGACY_CONTROL -> codexHome.resolve("app-server-control")
+                    BrokerClientTransport.INTEGRATION_OWNED -> stateDirectory.resolve("client")
+                },
             )
                 ?: return rejected(
                     InstalledBrokerServerConfigurationFailure.STATE_DIRECTORY_REJECTED,
@@ -442,6 +451,7 @@ internal class InstalledBrokerServer private constructor(
                 is ManagedCodexUpstreamStart.Rejected -> return rejectWithState(
                     stage,
                     InstalledBrokerServerFailure.UPSTREAM_REJECTED,
+                    BrokerStartupRejection.Upstream(started.failure),
                 )
             }
             stage = BrokerStartupStage.PUBLIC_SERVER

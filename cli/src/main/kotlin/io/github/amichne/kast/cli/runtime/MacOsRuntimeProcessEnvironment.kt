@@ -44,8 +44,9 @@ internal class MacOsRuntimeProcessEnvironment private constructor(
          */
         fun resolve(
             runtime: InstalledIdeRuntime,
-        ): MacOsRuntimeProcessEnvironmentResolution = when (val admission = currentGradleImportEnvironment()) {
-            is Refinement.Refined -> resolve(runtime, admission.value)
+            ambient: Map<String, String> = System.getenv(),
+        ): MacOsRuntimeProcessEnvironmentResolution = when (val admission = currentGradleImportEnvironment(ambient)) {
+            is Refinement.Refined -> resolve(runtime, admission.value, ambient)
             is Refinement.Rejected -> MacOsRuntimeProcessEnvironmentResolution.Rejected(
                 MacOsRuntimeProcessEnvironmentFailure.GRADLE_IMPORT_ENVIRONMENT_REJECTED,
             )
@@ -54,6 +55,7 @@ internal class MacOsRuntimeProcessEnvironment private constructor(
         fun resolve(
             runtime: InstalledIdeRuntime,
             admittedImport: GradleImportEnvironment,
+            ambient: Map<String, String> = System.getenv(),
         ): MacOsRuntimeProcessEnvironmentResolution {
             val javaHome = when (
                 val admission = canonicalJavaHome(runtime)
@@ -84,6 +86,12 @@ internal class MacOsRuntimeProcessEnvironment private constructor(
                             SYSTEM_EXECUTABLE_PATH).joinToString(":"),
                     ).apply {
                         putAll(admittedImport.processVariables())
+                        io.github.amichne.kast.distribution.managed.network.InstalledNetworkBootstrap.environmentKeys.filterNot { it == "GRADLE_USER_HOME" }.forEach { key ->
+                            ambient[key]?.let { value -> put(key, value) }
+                        }
+                        if ("KAST_TRUST_DONOR_JAVA_HOME" !in this) {
+                            ambient["JAVA_HOME"]?.let { donor -> put("KAST_TRUST_DONOR_JAVA_HOME", donor) }
+                        }
                         if (admittedImport.evidence.isNotEmpty() || admittedImport.executableDirectories.isNotEmpty()) {
                             put(GradleImportEnvironment.VARIABLES_SETTING,
                                 admittedImport.evidence.joinToString(",") { it.name.value })
@@ -183,8 +191,21 @@ private const val SYSTEM_EXECUTABLE_PATH = "/usr/bin:/bin:/usr/sbin:/sbin"
 internal fun currentGradleImportEnvironment(
     ambient: Map<String, String> = System.getenv(),
 ): Refinement<GradleImportEnvironment, GradleImportEnvironmentFailure> {
+    val requestedNames = ambient[GradleImportEnvironment.VARIABLES_SETTING].orEmpty()
+    val gradleHome = ambient["GRADLE_USER_HOME"]
+    if (gradleHome != null) {
+        val path = try { Path.of(gradleHome) } catch (_: InvalidPathException) {
+            return Refinement.Rejected(GradleImportEnvironmentFailure.INVALID_VALUE)
+        }
+        if (gradleHome.isBlank() || gradleHome.length > 4096 || !path.isAbsolute || path.normalize() != path) {
+            return Refinement.Rejected(GradleImportEnvironmentFailure.INVALID_VALUE)
+        }
+    }
+    // Gradle user-home selection changes import semantics and therefore participates in cache identity.
+    val selectedNames = if (gradleHome == null) requestedNames else
+        listOf(requestedNames, "GRADLE_USER_HOME").filter(String::isNotEmpty).joinToString(",")
     val admitted = when (val result = GradleImportEnvironment.admit(
-        ambient[GradleImportEnvironment.VARIABLES_SETTING].orEmpty(),
+        selectedNames,
         ambient[GradleImportEnvironment.PATH_SETTING].orEmpty(),
         ambient,
     )) {

@@ -11,8 +11,11 @@ import io.github.amichne.kast.protocol.contract.OperationRequest
 
 enum class CliLocalMetadataCommand { VERSION, SCHEMA }
 
+enum class CliLocalExposure { PUBLIC, INTERNAL }
+
 enum class CliProductCommand(
     val usage: String,
+    val exposure: CliLocalExposure = CliLocalExposure.INTERNAL,
 ) {
     INSPECT("product inspect"),
     BROKER_SERVE("broker serve"),
@@ -21,10 +24,11 @@ enum class CliProductCommand(
 /** Process-local operator actions that do not extend the semantic wire protocol. */
 enum class CliLifecycleCommand(
     val command: String,
+    val exposure: CliLocalExposure = CliLocalExposure.PUBLIC,
 ) {
     START("start"),
     STOP("stop"),
-    STATUS("status"),
+    STATUS("status", CliLocalExposure.INTERNAL),
 }
 
 /** One fully refined action selected by the public command graph. */
@@ -33,6 +37,8 @@ sealed interface CliAction {
         data class Metadata(
             val command: CliLocalMetadataCommand,
         ) : Local
+
+        data object Inspect : Local
 
         data object ProductInspect : Local
 

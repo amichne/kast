@@ -55,6 +55,25 @@ import kotlin.coroutines.startCoroutine
 
 class TopologyPrerequisiteAcceptanceTest {
     @Test
+    fun `composition acquires topology prerequisite before traversing`(@TempDir temporary: Path) {
+        val context = resolvedContext(temporary)
+        val ports = KastRuntimeCompositionTest.workspacePorts()
+        val graph = KastRuntimeComposition.constructGraph(
+            ports,
+            KastRuntimeCompositionTest.semanticPorts(),
+            KastRuntimeCompositionTest.topologyPorts(),
+            IndexRuntimePorts({ error("unready workspace cannot refresh") }, {
+                io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.Unavailable
+            }),
+            KastRuntimeCompositionTest.changePorts(),
+        )
+        assertEquals(
+            TraversalResult.Rejected(TraversalRejection.RequiredEvidenceUnavailable),
+            runImmediate { graph.operations.traversalRun.run(context.traversalPlan()) },
+        )
+    }
+
+    @Test
     fun `missing topology rejects public traversal before content read`(@TempDir temporary: Path) {
         val context = resolvedContext(temporary)
         var contentRead = false

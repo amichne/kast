@@ -8,8 +8,11 @@ import io.github.amichne.kast.change.contract.ChangePlanId
 import io.github.amichne.kast.change.contract.RenameSymbolChangePlan
 import io.github.amichne.kast.change.contract.ReplaceDeclarationChangePlan
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.KastObservability
+import io.github.amichne.kast.kernel.KastChangeVerificationOutcome
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import java.util.concurrent.CancellationException
 
 data class VerifiedMutationRequest(
     val plan: ChangePlan,
@@ -145,8 +148,20 @@ fun interface VerifiedMutationOperations {
 class VerifiedMutationService(
     private val publisher: ResultingGenerationPublisher,
     private val observer: ChangeVerificationObserver,
+    private val observability: KastObservability = KastObservability.Disabled,
 ) : VerifiedMutationOperations {
     override fun verify(request: VerifiedMutationRequest): VerifiedMutationResult {
+        val result = try {
+            verifyObserved(request)
+        } catch (cancelled: CancellationException) {
+            observability.observeChangeVerification(KastChangeVerificationOutcome.INTERRUPTED)
+            throw cancelled
+        }
+        observability.observeChangeVerification(result.observation())
+        return result
+    }
+
+    private fun verifyObserved(request: VerifiedMutationRequest): VerifiedMutationResult {
         val admitted = when (val result = AdmittedVerifiedMutationRequest.admit(request)) {
             is Refinement.Refined -> result.value
             is Refinement.Rejected -> return VerifiedMutationResult.RejectedBeforePublication(
@@ -197,6 +212,33 @@ class VerifiedMutationService(
                 proof.failure,
             )
         }
+    }
+
+    private fun VerifiedMutationResult.observation(): KastChangeVerificationOutcome = when (this) {
+        is VerifiedMutationResult.Verified -> KastChangeVerificationOutcome.VERIFIED
+        is VerifiedMutationResult.RejectedBeforePublication -> when (val reason = failure) {
+            is VerifiedMutationBeforePublicationFailure.Admission -> KastChangeVerificationOutcome.ADMISSION_REJECTED
+            is VerifiedMutationBeforePublicationFailure.Publication -> when (reason.rejection) {
+                ResultingGenerationPublicationRejection.CURRENT_PUBLICATION_UNAVAILABLE ->
+                    KastChangeVerificationOutcome.CURRENT_PUBLICATION_UNAVAILABLE
+                ResultingGenerationPublicationRejection.RECONCILIATION_INVALIDATED ->
+                    KastChangeVerificationOutcome.RECONCILIATION_INVALIDATED
+                ResultingGenerationPublicationRejection.RECONCILIATION_BLOCKED ->
+                    KastChangeVerificationOutcome.RECONCILIATION_BLOCKED
+                ResultingGenerationPublicationRejection.PUBLICATION_PROTOCOL_REJECTED ->
+                    KastChangeVerificationOutcome.PUBLICATION_PROTOCOL_REJECTED
+            }
+        }
+        is VerifiedMutationResult.RejectedAfterPublication -> KastChangeVerificationOutcome.RESULTING_PUBLICATION_REJECTED
+        is VerifiedMutationResult.RejectedAfterResultingWorkspace -> when (rejection) {
+            ChangeVerificationObservationRejection.RESULTING_SEMANTIC_STATE_UNAVAILABLE ->
+                KastChangeVerificationOutcome.RESULTING_SEMANTIC_STATE_UNAVAILABLE
+            ChangeVerificationObservationRejection.RESULTING_GENERATION_MOVED ->
+                KastChangeVerificationOutcome.RESULTING_GENERATION_MOVED
+            ChangeVerificationObservationRejection.COMPILER_OBSERVATION_REJECTED ->
+                KastChangeVerificationOutcome.COMPILER_OBSERVATION_REJECTED
+        }
+        is VerifiedMutationResult.RejectedAfterObservation -> KastChangeVerificationOutcome.SEMANTIC_PROOF_REJECTED
     }
 
     private fun complete(

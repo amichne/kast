@@ -40,6 +40,38 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class InstalledBrokerServerTest {
     @Test
+    fun `integration transport owns a distinct socket namespace from legacy broker`(@TempDir temporary: Path) {
+        val home = Path.of("/private/tmp/kast-host-" + UUID.randomUUID().toString().take(8))
+        Files.createDirectory(home)
+        try {
+            val user = temporary.toRealPath()
+            val kast = executable(user.resolve("kast"))
+            val codex = executable(user.resolve("codex"))
+            val environment = mapOf("CODEX_HOME" to home.toString(), "CODEX_EXECUTABLE" to codex.toString())
+            fun options(transport: BrokerClientTransport) = (InstalledBrokerServerConfiguration.admit(
+                kast, user, environment, clientTransport = transport,
+            ) as InstalledBrokerServerConfiguration.Configured).options
+            val legacy = options(BrokerClientTransport.LEGACY_CONTROL)
+            val integration = options(BrokerClientTransport.INTEGRATION_OWNED)
+            assertFalse(legacy.publicSocket == integration.publicSocket)
+            assertFalse(legacy.upstreamOptions.privateSocket == integration.upstreamOptions.privateSocket)
+            assertTrue(integration.publicSocket.path.startsWith(home.resolve("kast-integration")))
+        } finally { retireOwnedTree(home) }
+    }
+
+    @Test
+    fun `upstream rejection retains exact finite reason without process output`() {
+        val output = ByteArrayOutputStream()
+        val activity = BrokerStartupActivityPublisher(JsonLineBrokerStartupActivitySink(PrintStream(output)))
+        activity.started(BrokerStartupStage.UPSTREAM)
+        activity.rejected(BrokerStartupStage.UPSTREAM, BrokerStartupRejection.Upstream(
+            io.github.amichne.kast.cli.broker.runtime.ManagedCodexUpstreamFailure.SOCKET_PATH_OWNED,
+        ))
+        assertTrue(output.toString().contains("\"reason\":\"upstream-socket-path-owned\""))
+        assertEquals(2, output.toString().lineSequence().filter(String::isNotBlank).count())
+    }
+
+    @Test
     fun `managed startup publishes its exact finite rejection instead of timing out`(
         @TempDir temporary: Path,
     ) = runBlocking {

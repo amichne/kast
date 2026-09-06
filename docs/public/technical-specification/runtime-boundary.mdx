@@ -168,11 +168,13 @@ This is why a selector is generation-bound and why a sidecar restart advances
 generation conservatively. The text of a declaration may be unchanged while
 the authority that established its identity has expired.
 
-`index.sync` is the explicit repair boundary for on-disk changes made outside
-the sidecar. It refreshes admitted source roots, waits for indexing, captures
-current source identity, and publishes a successor generation. Startup itself
-does not perform a complete topology build; topology remains an explicit
-operation with its own proof contract.
+Semantic readiness observes physical source and current imported-model evidence.
+On source movement, the internal synchronization owner refreshes admitted roots,
+waits for indexing, and publishes a successor generation. Unchanged observations
+reuse the current publication. Model-input changes reject until a fresh import.
+
+Startup performs no complete topology build: traversal acquires topology through
+its existing serialized owner and reuses eligible snapshots.
 
 ## Primary authorities
 

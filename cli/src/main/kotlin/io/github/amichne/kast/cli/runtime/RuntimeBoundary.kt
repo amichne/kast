@@ -442,6 +442,7 @@ internal fun RuntimeAdmissionFailure.outputReason(): String = when (this) {
     is RuntimeAdmissionFailure.SidecarCacheRejected -> when (failure) {
         SidecarCacheFailure.FilesystemRejected -> "sidecar-cache-rejected"
         SidecarCacheFailure.RebuildRequired -> "sidecar-cache-rebuild-required"
+        is SidecarCacheFailure.ObservationRejected -> "sidecar-cache-${failure.failure.name.lowercase().replace('_', '-')}"
         is SidecarCacheFailure.SeedRejected -> when (failure.failure) {
             IndexSeedFailure.RunningSourceIde -> "index-seed-source-running"
             IndexSeedFailure.ConsentAbsent -> "index-seed-consent-absent"

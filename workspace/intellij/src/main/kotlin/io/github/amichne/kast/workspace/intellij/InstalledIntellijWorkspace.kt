@@ -94,24 +94,40 @@ class InstalledIntellijWorkspaceModel internal constructor(
     val semanticProjectRoot: CanonicalSemanticProjectRoot,
     private val project: Project,
     private val moduleRematerializer: InstalledModuleRematerializer,
+    private val modelInputs: InstalledGradleModelInputs,
+    private val importEnvironmentIdentity: io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentIdentity,
 ) {
-    /**
-     * Proof transition: `InstalledIntellijWorkspaceModel -> Refinement<WorkspaceStateIdentity,
-     * InstalledGradleModelCaptureFailure>`.
-     *
-     * Establishes a continuous smart, scanner-idle interval before capturing current source
-     * content under the same imported Gradle identity. The closed failure retains indexing and
-     * capture rejection. The live IntelliJ project remains inside this capability boundary.
-     */
-    fun captureCurrentSemanticIdentity(): io.github.amichne.kast.kernel.Refinement<
+    /** Observes current live model facts without a Gradle import, VFS refresh, or indexing wait. */
+    fun observeCurrentSemanticIdentity(): io.github.amichne.kast.kernel.Refinement<
         io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity,
         InstalledGradleModelCaptureFailure,
+        > = when (val current = observeCurrentModel()) {
+        is io.github.amichne.kast.kernel.Refinement.Refined ->
+            io.github.amichne.kast.kernel.Refinement.Refined(current.value.identity)
+        is io.github.amichne.kast.kernel.Refinement.Rejected -> current
+    }
+
+    /**
+     * Refines this workspace capability into a newly captured complete model after indexing.
+     * A changed physical Gradle input rejects the old import instead of attributing new source
+     * bytes to its stale roots, modules, SDK, or classpath. Raw platform facts stay in capture.
+     */
+    fun captureCurrentModel(): io.github.amichne.kast.kernel.Refinement<
+        InstalledGradleModelCapture,
+        InstalledGradleModelCaptureFailure,
         > = when (awaitInstalledIndexingQuiescence(project, moduleRematerializer)) {
-        InstalledIndexingReadiness.Ready -> capture.captureCurrentSemanticIdentity()
+        InstalledIndexingReadiness.Ready -> observeCurrentModel()
         is InstalledIndexingReadiness.Rejected -> io.github.amichne.kast.kernel.Refinement.Rejected(
             InstalledGradleModelCaptureFailure.INDEXING_UNAVAILABLE,
         )
     }
+
+    private fun observeCurrentModel() = captureInstalledGradleModel(
+        project,
+        Path.of(capture.root.value),
+        importEnvironmentIdentity,
+        modelInputs,
+    )
 
     /** Refreshes the exact admitted roots, then proves installed indexing has become quiescent. */
     fun awaitIndexReadinessAfter(
@@ -331,12 +347,31 @@ object InstalledIntellijWorkspace {
                 InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE,
             )
         }
+        val networkCache = System.getProperty("kast.network.cache.root")
+            ?: return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED)
+        when (val network = io.github.amichne.kast.distribution.managed.network.InstalledNetworkBootstrap.prepare(
+            workspaceRoot, Path.of(networkCache), selectedGradleJvm.home, System.getenv(),
+            io.github.amichne.kast.distribution.contract.network.NetworkConsumer.GRADLE_DAEMON,
+        )) {
+            is io.github.amichne.kast.distribution.managed.network.NetworkBootstrapResult.Prepared -> network.installDaemon()
+            is io.github.amichne.kast.distribution.managed.network.NetworkBootstrapResult.Rejected -> {
+                System.err.println("kast-network: consumer=gradle-daemon outcome=rejected failure=${network.failure}")
+                return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED)
+            }
+        }
         val importOperation = when (
             val application = linkPresence.applyImportJvm(selectedGradleJvm)
         ) {
             is InstalledGradleImportApplication.Applied -> application.operation
             InstalledGradleImportApplication.Rejected -> return rejected(
                 InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED,
+            )
+        }
+
+        val modelInputs = when (val captured = InstalledGradleModelInputs.capture(workspaceRoot)) {
+            is io.github.amichne.kast.kernel.Refinement.Refined -> captured.value
+            is io.github.amichne.kast.kernel.Refinement.Rejected -> return rejected(
+                captured.failure.workspaceFailure(),
             )
         }
 
@@ -445,7 +480,7 @@ object InstalledIntellijWorkspace {
             is InstalledWorkspaceIndexingAdmission.Rejected -> return rejected(admission.failure)
         }
         observer.observe(InstalledIntellijWorkspaceBootstrapPhase.MODEL_CAPTURE)
-        val capture = when (val captured = captureInstalledGradleModel(project, workspaceRoot, importEnvironment.identity)) {
+        val capture = when (val captured = captureInstalledGradleModel(project, workspaceRoot, importEnvironment.identity, modelInputs)) {
             is io.github.amichne.kast.kernel.Refinement.Refined -> captured.value
             is io.github.amichne.kast.kernel.Refinement.Rejected -> return rejected(
                 captured.failure.workspaceFailure(),
@@ -457,6 +492,8 @@ object InstalledIntellijWorkspace {
                 projectStore.root,
                 project,
                 moduleRematerializer,
+                modelInputs,
+                importEnvironment.identity,
             ),
         )
     }
@@ -618,6 +655,9 @@ private fun applyInstalledGradleProjectPolicy(
 
 private fun InstalledGradleModelCaptureFailure.workspaceFailure(): InstalledIntellijWorkspaceFailure =
     when (this) {
+        InstalledGradleModelCaptureFailure.MODEL_INPUTS_CHANGED,
+        InstalledGradleModelCaptureFailure.MODEL_INPUTS_UNAVAILABLE ->
+            InstalledIntellijWorkspaceFailure.MODEL_UNAVAILABLE
         InstalledGradleModelCaptureFailure.ROOT_UNAVAILABLE ->
             InstalledIntellijWorkspaceFailure.MODEL_ROOT_UNAVAILABLE
         InstalledGradleModelCaptureFailure.EXTERNAL_PROJECT_UNAVAILABLE ->

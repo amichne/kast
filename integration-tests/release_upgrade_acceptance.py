@@ -220,13 +220,15 @@ def assert_version(host, environment, version):
         raise UpgradeFailure(Cause.INSTALLATION_UNPROVEN)
 
 
-def passive_status(host, environment):
-    result = command([str(host.root / "bin/kast"), "status"], cwd=host.workspace, environment=environment)
+def passive_status(host, environment, *, previous_release=False):
+    # The immutable baseline predates bare inspection; only its adapter uses status.
+    arguments = ["status"] if previous_release else []
+    result = command([str(host.root / "bin/kast"), *arguments], cwd=host.workspace, environment=environment)
     try:
         document = json.loads(result.stdout)
     except (ValueError, UnicodeError) as failure:
         raise UpgradeFailure(Cause.PASSIVE_STATUS_UNPROVEN) from failure
-    if result.returncode != 0 or result.stderr.strip() or not isinstance(document, dict) or document.get("command") != "status" or document.get("status") != "complete" or document.get("runtime") != "stopped" or document.get("root") != str(host.workspace):
+    if result.returncode != 0 or result.stderr.strip() or not isinstance(document, dict) or (document.get("command") != "status" if previous_release else document.get("operation") != "inspect") or document.get("status") != "complete" or document.get("runtime") != "stopped" or document.get("root") != str(host.workspace):
         raise UpgradeFailure(Cause.PASSIVE_STATUS_UNPROVEN)
     if host.readiness_file.exists() or host.broker_socket.exists() or any((host.runtime / "endpoints").rglob("*.sock")):
         raise UpgradeFailure(Cause.PASSIVE_STATUS_UNPROVEN)
@@ -289,9 +291,10 @@ def install_candidate_with_upgrade_proof(host, assets: Path, version: str, idea:
             raise UpgradeFailure(Cause.INPUT_INVALID)
         prior_environment = install(host, prior_assets, prior["version"], idea, product_environment)
         assert_version(host, prior_environment, prior["version"])
-        prior["passiveStatus"] = passive_status(host, prior_environment)
+        prior["passiveStatus"] = passive_status(host, prior_environment, previous_release=True)
         installed_environment = install(host, assets, version, idea, product_environment)
         assert_version(host, installed_environment, version)
+        candidate_inspection = passive_status(host, installed_environment)
         installed_identity = installation_identity(host, installed_environment, version)
         if workspace_identity(host.workspace) != before_workspace:
             raise UpgradeFailure(Cause.WORKSPACE_CHANGED)
@@ -313,7 +316,7 @@ def install_candidate_with_upgrade_proof(host, assets: Path, version: str, idea:
         if {name: file_digest(assets / name) for name in asset_names(version)} != candidate:
             raise UpgradeFailure(Cause.CANDIDATE_ASSETS_CHANGED)
     return installed_environment, {"schemaVersion": 1, "status": "passed", "candidateVersion": version,
-                                   "candidateAssets": candidate, "priorRelease": prior,
+                                   "candidateAssets": candidate, "priorRelease": prior, "candidateInspection": candidate_inspection,
                                    "activeInstallationDigest": installed_identity,
                                    "workspaceDigest": before_workspace, "corruptionCases": rejected}
 
