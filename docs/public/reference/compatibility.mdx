@@ -1,67 +1,58 @@
 ---
 type: "Reference"
 title: "Compatibility and upgrades"
-description: "The candidate 1.x contract, immutable release comparison, and installed-state replacement behavior."
+description: "The supported host, public protocol, selector lifetime, and installer replacement contract."
 resource: "file://docs/public/reference/compatibility.mdx"
 tags: ["compatibility", "releases", "migration", "installation"]
-timestamp: "2026-09-04T00:00:00-04:00"
+timestamp: "2026-09-05T00:00:00-04:00"
 code_sources:
-  - path: "distribution/release/compatibility.py"
-    lines: "140-180"
-    symbols: ["compare", "differences"]
-  - path: "distribution/release/state-contract.json"
-    lines: "1-36"
-    symbols: ["owners", "processContract"]
+  - path: "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt"
+    lines: "1-180"
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/IndexSeedProtocol.kt"
+    lines: "1-220"
   - path: "install.sh"
     lines: "1180-1230"
     symbols: ["replace_managed_link", "restore_activation"]
   - path: "packaging/test-installer.sh"
-    lines: "500-575"
-    symbols: ["make_upgrade_assets", "upgrade_to"]
-  - path: "integration-tests/release_artifact_acceptance.py"
-    lines: "72-101"
-    symbols: ["workspace_snapshot", "prove_workspace_preservation"]
-  - path: "integration-tests/release_semantic_corruption.py"
-    lines: "200-245"
-    symbols: ["prove_state_receipt", "prove_semantic_corruption"]
+    lines: "1-650"
 icon: "shield-check"
 keywords: ["1.x", "stable", "preview", "upgrade", "rollback"]
 ---
 
-This policy defines the candidate 1.x stability contract. The install commands resolve
-the latest published release at execution time. Publication requires the
-same compatibility and migration checks used for release candidates.
+This page describes compatibility that Kast itself owns. Release automation does
+not attempt to infer compatibility by replaying previous binaries or comparing a
+separate compatibility snapshot.
 
 ## Stable in 1.x
 
-Within one major version, existing supported callers retain:
+Within one major version, supported callers should be able to rely on:
 
-- Canonical operation IDs and the meaning of complete, qualified, and rejected outcomes.
-- Exact-selector round trips for the same admitted workspace and generation.
-- Documented CLI commands, option spellings, exit codes, and output channels.
-- Supported configuration keys, explicit import inputs, and approval policy.
-- Installed-state upgrade, rollback, and uninstall behavior described below.
+- canonical operation IDs and the meaning of complete, qualified, and rejected outcomes;
+- documented CLI commands, option spellings, exit behavior, and output channels;
+- typed selector, continuation, plan, and generation semantics;
+- supported configuration keys and explicit Gradle import inputs; and
+- installer replacement, rollback, and uninstall behavior described below.
 
-Generation changes may invalidate selectors, continuations, and plans. Their
-typed stale or rejected outcomes remain part of the contract; compatibility
-never authorizes reinterpreting an old identity in a different workspace.
+A source or semantic-generation change may invalidate selectors, continuations,
+and plans. Compatibility does not authorize reinterpretation of stale identity;
+the correct behavior is a typed stale or rejected outcome followed by fresh
+resolution.
 
 Semantic operations emit one final JSON document on stdout, including semantic
-rejection. Boundary rejection uses stderr and its documented nonzero exit code.
-Terminal startup progress is bounded stderr output; redirected callers receive
-the final machine document without progress lines.
+rejection. Boundary rejection uses stderr and a nonzero exit code. Terminal
+startup progress remains stderr output so redirected stdout retains the machine
+document.
 
 ## Versioned JSON shapes
 
-Requests, outcomes, selectors, continuations, generations, plans, receipts,
-and private state codecs have explicit schema or identity boundaries. Closed
-JSON shapes cannot receive an unannounced field: strict consumers may reject
-even an additive change.
+Requests, outcomes, selectors, continuations, generations, plans, receipts, and
+private state codecs have explicit version or identity boundaries. Changes to a
+closed public shape require deliberate versioning; callers are not expected to
+guess whether an unknown field or token is safe.
 
-An incompatible shape requires an explicit version transition and continued
-support for the old contract within 1.x. A transition without that compatibility
-proof requires the next major product version. Changing a version integer alone
-does not pass the release gate.
+The source of truth is the typed protocol and generated CLI schema for the exact
+installed version. There is no independent release-comparison artifact that can
+override those authorities.
 
 ## Preview and supported hosts
 
@@ -73,91 +64,33 @@ Linux, Intel macOS, additional languages, and unsupported IntelliJ platform line
 are not promised. The supported host remains Apple Silicon macOS with the
 documented IntelliJ release line and admitted JBR.
 
-Hosted mutation supports only `add-declaration`. The command grammar also names
-other intents; those names do not establish hosted implementation support.
-
-## Mechanical release comparison
-
-Each release carries `kast-compatibility-vVERSION.json`, captured from its clean
-source revision and exact installed CLI. The snapshot includes `kast --schema`,
-parser-rendered commands and options, server projection, process exits,
-configuration keys, and persisted state codec ownership.
-
-The gate selects the numerically latest stable release in the candidate major.
-It requires an immutable GitHub release and verifies the baseline asset against
-GitHub's SHA-256 digest. Missing, duplicate, altered, or malformed baseline
-assets reject release admission.
-
-Same-major removal or incompatible change fails. A next-major transition needs
-the explicit `--allow-next-major` gate argument. When no stable 1.x or later
-release exists, release-catalog evidence admits `pre-stable` 0.x candidates or
-exactly `first-stable` 1.0.0; it never fabricates a prior baseline.
-
-State-codec source fingerprints conservatively detect changes to SQLite,
-bootstrap, cache identity, selector, continuation, and lifecycle output owners.
-They can reject a safe refactor. Such a change needs a stronger compatibility
-proof in the comparator; editing a baseline or ignoring failure is not permitted.
+Hosted mutation supports only `add-declaration`. Other command grammar names do
+not establish hosted implementation support.
 
 ## Upgrade and recovery
 
-The installer validates the matched control and runtime assets before replacing
-managed links. Activation atomically replaces each owned link, then verifies the
-public command. Failure or HUP, INT, or TERM restores the previous links and
-literal configuration. An inactive, verified version may remain for retry.
+The installer validates the matched control and semantic-runtime assets before
+replacing managed links. Activation replaces installer-owned links and verifies
+the public command. A catchable failure or signal restores the previous
+activation and literal configuration.
 
-Ordinary upgrades preserve private runtime stores and repository state. Cache
-identities select compatible generations; stale caches can rebuild through
-`kast start --cache rebuild`. A process killed without a catchable signal or a
-host power loss cannot run rollback; rerun the pinned installer to reselect a
-verified version.
+Ordinary upgrades preserve repository source and non-owned host state. Kast-owned
+runtime stores and caches may be replaced or rebuilt when their identity is no
+longer admissible. `kast start --cache rebuild` explicitly rebuilds disposable
+cache state.
 
-`uninstall --installation-only` removes the selected installation, command,
-runtime stores, caches, endpoints, and configuration. It preserves repositories
-and unrelated installations. Ordinary `uninstall` also cleans historical
-Kast-owned locations. Neither mode removes unrelated JetBrains state.
+`uninstall --installation-only` removes the selected installation and its owned
+runtime/configuration state. Ordinary `uninstall` also cleans historical
+Kast-owned locations. Neither mode is authority to delete unrelated JetBrains or
+repository state.
 
-The installer fixtures exercise latest 0.x to 1.0.0, 1.0.0 to a successor 1.x,
-failed and interrupted replacement, and uninstall/reinstall. Their isolated
-payloads prove installer state transitions; installed semantic acceptance
-separately proves the built release's behavior.
-
-The exact-archive journey observes one repository source identity across the
-first uninstall, reinstall, cold broker read, and final uninstall. It includes tracked and untracked
-files, their bytes, modes and link identities, and Git index state. Git-ignored
-runtime caches remain outside this source observation.
-
-Six checkpoints bracket those transitions and retain separate file and index
-digests. Unavailable or changed observations reject with a finite cause recorded
-before failure. Mismatches report change-kind counts and at most 64 path digests;
-neither paths nor source text appear in the report.
-
-The enterprise fixture tracks `/.gradle/` as its sole cache ignore. This matches
-its existing Gradle import write scope. A retained archive reproduction showed
-that reimport changes the root Gradle file-hash cache. Other untracked files,
-nested `.gradle` directories, and Git index changes remain in the source identity.
-
-Installed release acceptance installs the exact candidate directly. Historical
-published-version upgrade paths are not covered by this journey. The installer
-fixtures still check replacement, rollback, corruption, and workspace preservation.
-
-Future upgrade coverage should follow persisted-state formats and supported
-transitions: preserve compatible state, rebuild disposable caches, and verify
-rollback at each boundary. Historical binaries are useful where those contracts
-differ, rather than as an exhaustive matrix of release numbers.
-
-Semantic corruption acceptance obtains and resumes real relation and traversal
-continuations before rejecting malformed and digest-tampered copies. It also
-selects the cache identity receipt from public status, corrupts its format, and
-requires the finite `status-cache-invalid-identity` rejection.
-
-The receipt's original bytes and mode are restored even when the check fails.
-Successful recovery requires passive status, the same runtime identity, and a
-semantic source read. Repository identities must remain equal throughout; the
-proof retains digests and finite outcomes without source payloads.
+Installer behavior is exercised by `packaging/test-installer.sh`. Semantic
+correctness, selector lifetime, and persisted-state behavior belong to their
+owning Kotlin tests rather than an end-to-end release rehearsal.
 
 ## Pin installer content and product together
 
-The current published command is:
+Resolve a published release tag, then execute the installer from that same tag:
 
 ```shell
 release_url="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/amichne/kast/releases/latest)"
@@ -165,6 +98,6 @@ release_tag="${release_url##*/}"
 curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh" | bash -s -- --version "$release_tag"
 ```
 
-When 1.0.0 is published, change both the URL tag to `v1.0.0` and the version
-argument to `1.0.0`. Candidate documentation does not establish that a future
-release URL exists. Keep both values identical for subsequent upgrades.
+For a pinned installation, use the same explicit release tag for both installer
+source and `--version`. A candidate document does not establish that a future
+release exists.
