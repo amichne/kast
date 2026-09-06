@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+import sys
 import unittest
 
 
@@ -10,6 +11,7 @@ MODULE_PATH = Path(__file__).with_name("resolve_version.py")
 SPEC = importlib.util.spec_from_file_location("resolve_version", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None
 resolver = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = resolver
 SPEC.loader.exec_module(resolver)
 
 
