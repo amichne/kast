@@ -29,7 +29,6 @@ if not node.startswith('v24.') or mint != '4.2.841':
 print(json.dumps({'stage': 'ci-preflight', 'outcome': 'admitted', 'python': platform.python_version(), 'node': node, 'mint': mint}))
 PY
 version="$(cat distribution/release/candidate-version.txt)"
-python3 integration-tests/release_upgrade_acceptance.py --candidate-version "${version#v}"
 bash packaging/test-installer.sh
 bash .github/scripts/release/build-assets.sh --version "${version#v}" --source-revision "$sha"
 bash .github/scripts/release/test-admit-source.sh

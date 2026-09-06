@@ -105,7 +105,7 @@ The required check retains the name `Release gate` for branch-rule continuity.
 For release qualification, manually dispatch the `CI` workflow on `main`.
 This runs the exhaustive `releaseSourceGate` graph, including topology declaration
 bindings, installer recovery, and documentation, followed by exact-archive
-installation, upgrade, corruption, cold broker, and Gradle import proofs.
+installation, corruption, cold broker, and Gradle import proofs.
 
 After that graph passes, the gate builds and installs the exact candidate
 archives through `install.sh --assets-directory`. This uses the normal checksum,
@@ -121,10 +121,9 @@ before failure. Reports retain finite rejection IDs, byte counts, and digests;
 source payloads, selectors, paths, and arbitrary error text are excluded.
 Cleanup cannot replace the original failure or turn a rejected receipt into success.
 
-That installation starts with the latest immutable published 0.x archives older than the candidate and
-upgrades the same selected root to the candidate. Corrupted candidate checksums
-and a rechecksummed unsafe control archive must both reject while preserving
-the active product and repository bytes.
+The candidate is installed directly. Installer fixture tests retain replacement,
+corruption, and recovery coverage. This installed journey does not claim coverage
+of upgrades from historical published versions.
 
 Real relation and traversal continuations must resume successfully before
 malformed and digest-tampered copies are rejected. Corrupting the selected cache
@@ -230,16 +229,6 @@ Uncommitted edits are not included. Dependency caches remain reusable.
 
 The default IDEA runtime comes from the repository's pinned distribution, so
 an IDE installed on the developer's machine cannot silently change the test.
-To check the live upgrade baseline before building:
-
-```shell
-python3 integration-tests/release_upgrade_acceptance.py \
-  --candidate-version "$(cat distribution/release/candidate-version.txt)"
-```
-
-The baseline is the newest immutable published 0.x release strictly older than
-the candidate. Publishing the candidate itself does not invalidate its CI run.
-
 ## Release integrity
 
 The wrapper distribution has a SHA-256 pin and URL validation. Gradle verifies

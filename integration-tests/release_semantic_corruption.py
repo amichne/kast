@@ -17,7 +17,16 @@ import subprocess
 import tempfile
 from enum import Enum
 
-from release_upgrade_acceptance import identity, workspace_identity
+from enterprise_acceptance import workspace_source_identity
+
+
+def identity(value) -> str:
+    encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+    return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+
+def workspace_identity(workspace: Path) -> str:
+    return "sha256:" + workspace_source_identity(workspace)
 
 
 class Cause(str, Enum):

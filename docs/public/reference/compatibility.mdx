@@ -18,9 +18,6 @@ code_sources:
   - path: "packaging/test-installer.sh"
     lines: "500-575"
     symbols: ["make_upgrade_assets", "upgrade_to"]
-  - path: "integration-tests/release_upgrade_acceptance.py"
-    lines: "274-322"
-    symbols: ["install_candidate_with_upgrade_proof"]
   - path: "integration-tests/release_artifact_acceptance.py"
     lines: "72-101"
     symbols: ["workspace_snapshot", "prove_workspace_preservation"]
@@ -139,15 +136,14 @@ its existing Gradle import write scope. A retained archive reproduction showed
 that reimport changes the root Gradle file-hash cache. Other untracked files,
 nested `.gradle` directories, and Git index changes remain in the source identity.
 
-Installed release acceptance also downloads the latest immutable published 0.x
-pair, verifies all four GitHub asset digests, and checks its version and passive
-stopped status. It upgrades the same installation to the exact candidate before
-running candidate semantic journeys.
+Installed release acceptance installs the exact candidate directly. Historical
+published-version upgrade paths are not covered by this journey. The installer
+fixtures still check replacement, rollback, corruption, and workspace preservation.
 
-Corrupted copies of those candidate assets must reject with the expected
-checksum-mismatch or unsafe-archive-path diagnostic. The unsafe-path case has a
-valid replacement checksum. Both cases preserve active candidate bytes, managed
-links, configuration, and repository contents; a generic failure is insufficient.
+Future upgrade coverage should follow persisted-state formats and supported
+transitions: preserve compatible state, rebuild disposable caches, and verify
+rollback at each boundary. Historical binaries are useful where those contracts
+differ, rather than as an exhaustive matrix of release numbers.
 
 Semantic corruption acceptance obtains and resumes real relation and traversal
 continuations before rejecting malformed and digest-tampered copies. It also

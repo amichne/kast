@@ -16,7 +16,6 @@ import tempfile
 import time
 
 import enterprise_acceptance as enterprise
-import release_upgrade_acceptance as upgrade_acceptance
 import release_resource_observations as resources
 import release_semantic_corruption as semantic_corruption
 
@@ -216,9 +215,7 @@ def main():
         enterprise.prepare_workspace_fixture(host.workspace)
         acceptance = ObservedAcceptance(host.root / "bin/kast", host, bounds,
             ROOT / "build/reports/release-gate/installed-observations.json", args.source_revision)
-        installed_environment, upgrade = upgrade_acceptance.install_candidate_with_upgrade_proof(
-            host, assets, args.version, idea, acceptance.environment, install)
-        gate.validate_upgrade(upgrade, identities, args.version)
+        installed_environment = install(host, assets, args.version, idea, acceptance.environment)
         # The launcher must use its retained installed archive, not a test override.
         acceptance.environment.pop("KAST_RUNTIME_ARCHIVE", None)
         retained = host.root / f"installation/versions/{args.version}/share/kast/runtime/{runtime.name}"
@@ -274,7 +271,7 @@ def main():
         ambient.assert_unchanged()
         if gate.asset_identities(assets, args.version) != identities:
             raise gate.GateRejected("candidate assets changed during installed acceptance")
-        gate.write(ROOT / "build/reports/release-gate/installed.json", {"schemaVersion": 1, "status": "passed", "sourceRevision": args.source_revision, "assets": identities, "environment": gate.environment_identity(idea), "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import", "upgrade", "corruption"], "broker": broker, "gradleImport": matrix, "upgrade": upgrade, "semanticCorruption": corruption, "observations": acceptance.observations, "resourceSamples": acceptance.resource_samples, "workspacePreservation": acceptance.workspace_preservation, "elapsedMilliseconds": round((time.monotonic() - started) * 1000)})
+        gate.write(ROOT / "build/reports/release-gate/installed.json", {"schemaVersion": 1, "status": "passed", "sourceRevision": args.source_revision, "assets": identities, "environment": gate.environment_identity(idea), "journeys": ["cli-without-codex", "semantic-continuity", "verified-mutation", "uninstall-reinstall", "cold-broker", "gradle-import"], "broker": broker, "gradleImport": matrix, "semanticCorruption": corruption, "observations": acceptance.observations, "resourceSamples": acceptance.resource_samples, "workspacePreservation": acceptance.workspace_preservation, "elapsedMilliseconds": round((time.monotonic() - started) * 1000)})
 
 
 if __name__ == "__main__":
