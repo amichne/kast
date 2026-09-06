@@ -4,7 +4,7 @@ title: "Verification and contribution"
 description: "How Kast verifies focused behavior, architecture, packaging, documentation, and release artifacts without repository-scale lifecycle rehearsal."
 resource: "file://docs/public/technical-specification/verification-and-contribution.mdx"
 tags: ["verification", "CI", "distribution", "contributors"]
-timestamp: "2026-09-05T00:00:00-04:00"
+timestamp: "2026-09-06T00:00:00-04:00"
 code_sources:
   - path: "build.gradle.kts"
     lines: "1-260"
@@ -15,6 +15,9 @@ code_sources:
     lines: "1-80"
   - path: ".github/scripts/release/build-assets.sh"
     lines: "1-140"
+  - path: "distribution/release/resolve_version.py"
+    lines: "1-130"
+    symbols: ["Bump", "Version", "next_version"]
   - path: "distribution/release/generate_sbom.py"
     lines: "1-150"
     symbols: ["generate", "scanner"]
@@ -73,7 +76,8 @@ one only when a concrete invariant cannot be proven at a narrower boundary.
 
 Pull-request and main CI detach the exact candidate SHA and run
 `.github/scripts/ci/verify-checks.py`. The script admits the clean source and
-executes `productBuildGate` under Java 25.
+executes the focused release-version contract test plus `productBuildGate` under
+Java 25.
 
 The required CI path deliberately avoids repository-scale IntelliJ acceptance,
 end-to-end lifecycle drivers, timing/resource observation, corruption rehearsal,
@@ -82,24 +86,36 @@ failure surface without establishing distinct release invariants.
 
 ## Release admission
 
-A manually dispatched candidate build on `main` uses
-`.github/scripts/release/build-assets.sh` from the exact detached source revision.
-It runs `productBuildGate`, builds the release archives, emits the CLI schema and
-module knowledge, generates the SBOM, and records SHA-256 files for each
-published asset.
+Manual candidate and release dispatches accept one closed choice: `patch`,
+`minor`, or `major`. `distribution/release/resolve_version.py` reads the published
+GitHub release catalog, ignores drafts, prereleases, and non-semver tags, selects
+the numerically greatest stable `vMAJOR.MINOR.PATCH`, and applies exactly that
+bump. There is no checked-in candidate-version file to synchronize.
 
-The release workflow only admits a successful candidate run for the exact
-current `main` SHA and reviewed candidate version. It downloads those retained
-artifacts and publishes the same bytes. It does not rebuild the product or run a
-second behavioral qualification pass.
+A candidate artifact is named with both its exact source revision and resolved
+version. Release eligibility requires that exact versioned artifact from the
+latest successful manual CI run on the same `main` revision. Choosing a different
+bump at publication therefore rejects rather than reinterpreting another
+candidate.
+
+The release workflow serializes all publication attempts under one concurrency
+group. This matters because “next version” is defined relative to the published
+catalog; two publication jobs must not concurrently derive authority from the
+same predecessor release.
+
+The candidate build runs `productBuildGate`, builds the release archives, emits
+the CLI schema and module knowledge, generates the SBOM, and records SHA-256
+files for each published asset. Publication downloads those retained bytes. It
+does not rebuild the product or run a second behavioral qualification pass.
 
 The release invariant is:
 
 ```text
-exact main revision
-  -> productBuildGate passes
-  -> release artifacts are generated from that revision
-  -> artifact checksums are retained
+published stable release catalog + selected bump
+  -> one resolved next semantic version
+  -> exact main revision passes productBuildGate
+  -> version-bound release artifacts are retained
+  -> release eligibility binds revision + version + candidate run
   -> those retained artifacts are published
 ```
 
@@ -134,11 +150,13 @@ export KAST_RELEASE_JDK_25="/path/to/jdk25"
 python3 .github/scripts/ci/verify-checks.py
 ```
 
-To build candidate artifacts without publishing:
+Resolve a candidate version from the published catalog, then build it explicitly:
 
 ```shell
+version="$(GH_TOKEN="$GH_TOKEN" python3 distribution/release/resolve_version.py \
+  --repository amichne/kast --bump patch)"
 bash .github/scripts/release/build-assets.sh \
-  --version "$(cat distribution/release/candidate-version.txt)" \
+  --version "$version" \
   --source-revision "$(git rev-parse HEAD)"
 ```
 
@@ -183,6 +201,9 @@ hand.
 
 - The [root Gradle build](https://github.com/amichne/kast/blob/main/build.gradle.kts)
   owns product assembly and the bounded `productBuildGate`.
+- [`resolve_version.py`](https://github.com/amichne/kast/blob/main/distribution/release/resolve_version.py)
+  owns conversion from published stable release catalog plus bump choice to the
+  next semantic version.
 - [`test-installed-product.sh`](https://github.com/amichne/kast/blob/main/packaging/test-installed-product.sh)
   verifies the staged product packaging boundary.
 - [`build-assets.sh`](https://github.com/amichne/kast/blob/main/.github/scripts/release/build-assets.sh)
