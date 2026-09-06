@@ -13,8 +13,6 @@ code_sources:
   - path: "install.sh"
     lines: "1180-1230"
     symbols: ["replace_managed_link", "restore_activation"]
-  - path: "packaging/test-installer.sh"
-    lines: "1-650"
 icon: "shield-check"
 keywords: ["1.x", "stable", "preview", "upgrade", "rollback"]
 ---
@@ -84,9 +82,10 @@ runtime/configuration state. Ordinary `uninstall` also cleans historical
 Kast-owned locations. Neither mode is authority to delete unrelated JetBrains or
 repository state.
 
-Installer behavior is exercised by `packaging/test-installer.sh`. Semantic
-correctness, selector lifetime, and persisted-state behavior belong to their
-owning Kotlin tests rather than an end-to-end release rehearsal.
+Installer correctness is owned by the installer implementation and focused
+boundary checks. Semantic correctness, selector lifetime, and persisted-state
+behavior remain with their owning Kotlin tests rather than an end-to-end release
+rehearsal.
 
 ## Pin installer content and product together
 
