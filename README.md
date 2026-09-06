@@ -137,10 +137,12 @@ and launches the installed Codex client through its supported `--remote`
 transport. Integration state lives under `$CODEX_HOME/kast-integration`, or
 `~/.codex/kast-integration` when `CODEX_HOME` is unset.
 
-The broker invokes semantic commands directly with the full readiness budget.
-Its current approval policy excludes mutation tools; the CLI change commands
-are not exposed as working Codex tools. See [broker provenance](docs/broker-provenance.md)
-for ownership, presentation, and the acceptance boundary.
+Before a new thread starts, the broker qualifies the exact installed Kast
+projection and adds its hosted tool catalog plus concise selection policy to the
+Codex session. Semantic commands establish workspace readiness and derived
+evidence internally; users and agents do not start, synchronize, or build Kast
+as a prerequisite. See [broker provenance](docs/broker-provenance.md) for
+ownership, presentation, and the acceptance boundary.
 
 ## One request, at a high level
 

@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.broker.protocol.codex
 
+import io.github.amichne.kast.cli.broker.core.AgentSessionBootstrap
 import io.github.amichne.kast.cli.broker.core.Broker
 import io.github.amichne.kast.cli.broker.core.BrokerCallId
 import io.github.amichne.kast.cli.broker.core.BrokerInvocationActivity
@@ -98,6 +99,40 @@ class CodexProtocolAdapterTest {
         )
         assertInstanceOf(ThreadStoreRead.Found::class.java, store.read("thread-1"))
         Unit
+    }
+
+    @Test
+    fun `thread start installs qualified Kast tools and policy before the first turn`(
+        @TempDir temporary: Path,
+    ) = runBlocking {
+        val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+        val bootstrap = agentSessionBootstrapFixture()
+        val adapter = CodexProtocolAdapter(
+            bootstrapBroker(bootstrap),
+            protocolContracts(),
+            MemoryThreadCatalogStore(),
+            sessionBootstrap = bootstrap,
+        )
+
+        val start = adapter.fromDownstream(
+            """{"id":2,"method":"thread/start","params":{"cwd":"$cwd","developerInstructions":"Existing host policy.","dynamicTools":[]}}""",
+        ) as ProtocolRouting.ForwardUpstream
+
+        val params = start.message.objectValue("params")
+        assertEquals(
+            "Existing host policy.\n\n${bootstrap.policy.text}",
+            params.getValue("developerInstructions").jsonPrimitive.content,
+        )
+        val namespace = params.getValue("dynamicTools").jsonArray.single().jsonObject
+        assertEquals("kast", namespace.getValue("name").jsonPrimitive.content)
+        val tool = namespace.getValue("tools").jsonArray.single().jsonObject
+        val definition = bootstrap.tools.definitions.single()
+        assertEquals(definition.name.value, tool.getValue("name").jsonPrimitive.content)
+        assertEquals(
+            definition.description.value,
+            tool.getValue("description").jsonPrimitive.content,
+        )
+        assertEquals(definition.inputSchema.document, tool.getValue("inputSchema"))
     }
 
     @Test
@@ -1104,6 +1139,33 @@ class CodexProtocolAdapterTest {
         )
         val provider = ProviderRegistration.define(
             namespace("echo"),
+            ProviderVersion.admit("1.0.0").refinedValue(),
+            listOf(tool),
+            start = { ProviderStartup.Started(Unit) },
+        ).validatedValue()
+        return Broker.create(listOf(provider), BrokerLimits.defaults()).validatedValue()
+    }
+
+    private fun bootstrapBroker(bootstrap: AgentSessionBootstrap): Broker {
+        val definition = bootstrap.tools.definitions.single()
+        val input = JsonDomainDefinition(
+            definition.inputSchema,
+            RefinementDefinition { admitted ->
+                Validation.validated(ObserverInput(admitted.element))
+            },
+        )
+        val tool: BrokerTool<Unit, ObserverInput, ObserverOutput, Nothing> = BrokerTool(
+            toolName(definition.name.value),
+            ToolDescription.admit(definition.description.value).refinedValue(),
+            ToolLoading.DEFERRED,
+            input,
+            definition.outputSchema,
+            invoke = { _, _, _ -> ProviderCall.Completed(ObserverOutput(buildJsonObject {})) },
+            encode = ObserverOutput::document,
+            present = { output -> ToolPresentation.text(output.document.toString(), success = true) },
+        )
+        val provider = ProviderRegistration.define(
+            namespace("kast"),
             ProviderVersion.admit("1.0.0").refinedValue(),
             listOf(tool),
             start = { ProviderStartup.Started(Unit) },
