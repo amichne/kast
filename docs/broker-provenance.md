@@ -40,20 +40,28 @@ budget. The CLI binding owns only command and option syntax. Provider
 qualification joins these documents by canonical operation identity and rejects
 missing, duplicate, or contradictory bindings.
 
-Only that qualified projection can construct an `AgentSessionBootstrap`. Its
-catalog must exactly match the provider's executable broker routes. The same
-bootstrap deterministically produces the Codex projection and a provider-neutral
-Copilot fixture projection; neither projection changes semantic operation,
-workspace readiness, topology, or trust authority.
+Only that qualified projection can construct an `AgentSessionBootstrap`. Before
+construction, the provider narrows the qualified tools through the typed launch
+authority. The default admits only tools whose canonical approval policy is
+`NONE`. An explicitly authorized broker launch may set
+`KAST_CODEX_TOOL_EXPOSURE=mutation-enabled` to admit plan, apply, and recovery
+for that process lifetime. Absence remains read-only, and unknown values fail
+closed.
+
+The bootstrap catalog must exactly match the provider's executable broker routes.
+The same bootstrap deterministically produces the Codex projection and a
+provider-neutral Copilot fixture projection; neither projection changes semantic
+operation, workspace readiness, topology, or trust authority.
 
 On `thread/start`, the Codex adapter adds the qualified Kast namespace and the
 short canonical selection policy to the request before forwarding it upstream.
-The normal surface contains symbol lookup and inspection, source read, semantic
-query, impact analysis, diagnostics, and change planning, application, and
-recovery. Lifecycle, index synchronization, topology preparation, status, and
-broker operations are not hosted tools. Approval requirements remain canonical
-hosted metadata and are retained in tool-local descriptions where the Codex
-dynamic-tool protocol has no separate approval field.
+The read-only surface contains symbol lookup and inspection, source read,
+semantic query, impact analysis, and diagnostics. Mutation-enabled launches add
+change planning, application, and recovery. Lifecycle, index synchronization,
+topology preparation, status, and broker operations are not hosted tools.
+Approval requirements remain canonical hosted metadata and are retained in
+tool-local descriptions where the Codex dynamic-tool protocol has no separate
+approval field.
 
 ## Dynamic-tool observation
 
