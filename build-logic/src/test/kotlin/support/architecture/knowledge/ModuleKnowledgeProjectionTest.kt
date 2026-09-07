@@ -69,7 +69,7 @@ class ModuleKnowledgeProjectionTest {
         assertEquals("a".repeat(40), document.sourceRevision)
         assertEquals("ACCEPTED", document.architectureVerification.status)
         assertEquals(2, document.architecturePolicy.schemaVersion)
-        assertEquals(41, document.architecturePolicy.modules.size)
+        assertEquals(architecture.modules.size, document.architecturePolicy.modules.size)
         assertEquals(
             listOf(
                 ObservedProjectDependencyDocument(
