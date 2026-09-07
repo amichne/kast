@@ -87,8 +87,9 @@ internal object GradleJvmCandidateSelector {
     private fun GradleJvmSelectionSource.precedence(): Int = when (this) {
         GradleJvmSelectionSource.DAEMON_JVM_CRITERIA -> 0
         GradleJvmSelectionSource.REPOSITORY_GRADLE_PROPERTY -> 1
-        GradleJvmSelectionSource.SIDECAR_COMPATIBLE -> 2
-        GradleJvmSelectionSource.PLATFORM_RESOLVER -> 3
+        GradleJvmSelectionSource.AMBIENT_JAVA_HOME -> 2
+        GradleJvmSelectionSource.SIDECAR_COMPATIBLE -> 3
+        GradleJvmSelectionSource.PLATFORM_RESOLVER -> 4
     }
 }
 

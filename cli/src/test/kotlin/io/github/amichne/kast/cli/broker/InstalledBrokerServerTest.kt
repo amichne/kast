@@ -4,6 +4,7 @@ import io.github.amichne.kast.cli.broker.protocol.codex.CodexOwnedSchema
 import io.github.amichne.kast.cli.broker.provider.BrokerProcessExecution
 import io.github.amichne.kast.cli.broker.provider.BrokerProcessExecutor
 import io.github.amichne.kast.cli.broker.provider.BrokerProcessRequest
+import io.github.amichne.kast.cli.broker.provider.KastToolExposure
 import io.github.amichne.kast.cli.broker.runtime.CodexAppServerProcess
 import io.github.amichne.kast.cli.broker.runtime.CodexAppServerProcessAdmission
 import io.github.amichne.kast.cli.broker.runtime.CodexAppServerProcessLauncher
@@ -39,6 +40,46 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 
 class InstalledBrokerServerTest {
+    @Test
+    fun `tool exposure configuration defaults read only enables mutation explicitly and rejects unknown values`(
+        @TempDir temporary: Path,
+    ) {
+        val suffix = UUID.randomUUID().toString().take(8)
+        val codexHome = Path.of("/private/tmp/kast-tool-exposure-$suffix")
+        Files.createDirectory(codexHome)
+        val user = temporary.toRealPath()
+        val kast = executable(user.resolve("kast"))
+        val codex = executable(user.resolve("codex"))
+        val base = mapOf(
+            "CODEX_HOME" to codexHome.toString(),
+            "CODEX_EXECUTABLE" to codex.toString(),
+        )
+        try {
+            fun configured(environment: Map<String, String>) =
+                (InstalledBrokerServerConfiguration.admit(kast, user, environment) as
+                    InstalledBrokerServerConfiguration.Configured).options
+
+            assertEquals(KastToolExposure.READ_ONLY, configured(base).kastOptions.toolExposure)
+            assertEquals(
+                KastToolExposure.MUTATION_ENABLED,
+                configured(base + ("KAST_CODEX_TOOL_EXPOSURE" to "mutation-enabled"))
+                    .kastOptions.toolExposure,
+            )
+            assertEquals(
+                InstalledBrokerServerConfiguration.Rejected(
+                    InstalledBrokerServerConfigurationFailure.PROVIDER_CONFIGURATION_REJECTED,
+                ),
+                InstalledBrokerServerConfiguration.admit(
+                    kast,
+                    user,
+                    base + ("KAST_CODEX_TOOL_EXPOSURE" to "everything"),
+                ),
+            )
+        } finally {
+            retireOwnedTree(codexHome)
+        }
+    }
+
     @Test
     fun `integration transport owns a distinct socket namespace from legacy broker`(@TempDir temporary: Path) {
         val home = Path.of("/private/tmp/kast-host-" + UUID.randomUUID().toString().take(8))

@@ -30,6 +30,7 @@ import java.time.Duration
 import java.util.Base64
 import java.util.HexFormat
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** An exact-root UDS endpoint. */
 class RuntimeEndpoint private constructor(
@@ -685,14 +686,38 @@ internal class ExactRootProcessRuntimeDemander(
             )
         }
         if (started.attemptId != command.bootstrapAttemptId) {
+            started.session.terminate()
             return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.BootstrapAttemptMismatch)
         }
-        return awaitBootstrapAttempt(
+        return awaitOwnedBootstrapAttempt(
             endpoint,
             command.bootstrapState,
             command.bootstrapAttemptId,
             started.session,
         )
+    }
+
+    /** A newly started cold bootstrap is owned only until readiness is proven. */
+    private fun awaitOwnedBootstrapAttempt(
+        endpoint: RuntimeEndpoint,
+        bootstrapState: Path,
+        attemptId: SemanticRuntimeBootstrapAttemptId,
+        session: AcceptedRuntimeStartupSession,
+    ): RuntimeAdmission {
+        val lifetime = ColdBootstrapLifetime(session)
+        if (!lifetime.arm()) {
+            lifetime.close()
+            return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.Interrupted)
+        }
+        var ready = false
+        return try {
+            val admission = awaitBootstrapAttempt(endpoint, bootstrapState, attemptId, session)
+            ready = admission is RuntimeAdmission.Ready
+            admission
+        } finally {
+            if (!ready) lifetime.close()
+            lifetime.disarm()
+        }
     }
 
     private fun awaitBootstrapAttempt(
@@ -751,6 +776,48 @@ internal class ExactRootProcessRuntimeDemander(
             }
         }
         return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
+    }
+}
+
+/** Process-shutdown guard for one exact newly started sidecar bootstrap. */
+private class ColdBootstrapLifetime(
+    private val session: AcceptedRuntimeStartupSession,
+) {
+    private val closed = AtomicBoolean(false)
+    private val hook = Thread(::close, "kast-cold-bootstrap-shutdown")
+    private var armed = false
+
+    fun arm(): Boolean = try {
+        Runtime.getRuntime().addShutdownHook(hook)
+        armed = true
+        true
+    } catch (_: IllegalStateException) {
+        false
+    } catch (_: SecurityException) {
+        false
+    }
+
+    fun disarm() {
+        if (!armed) return
+        try {
+            Runtime.getRuntime().removeShutdownHook(hook)
+        } catch (_: IllegalStateException) {
+            // JVM shutdown owns the registered hook.
+        } catch (_: SecurityException) {
+            // The registered hook still owns closure if removal is denied.
+        } finally {
+            armed = false
+        }
+    }
+
+    fun close() {
+        if (!closed.compareAndSet(false, true)) return
+        val interrupted = Thread.interrupted()
+        try {
+            session.terminate()
+        } finally {
+            if (interrupted) Thread.currentThread().interrupt()
+        }
     }
 }
 

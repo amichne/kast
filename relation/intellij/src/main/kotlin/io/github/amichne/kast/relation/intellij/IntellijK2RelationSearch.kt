@@ -4,6 +4,7 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiReference
 import com.intellij.psi.search.searches.DefinitionsScopedSearch
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
@@ -65,85 +66,136 @@ internal class IntellijK2RelationSearch(
         private val limitations = linkedSetOf<RelationLimitation>()
 
         fun references(plan: IntellijRelationPlan.References): IntellijRelationTermination {
-            val terminal = ReferencesSearch.search(subject, scope.nativeScope, false)
+            val references = mutableListOf<PsiReference>()
+            val providerExhausted = ReferencesSearch.search(subject, scope.nativeScope, false)
                 .forEach(Processor { reference ->
                     cancellationCheck()
-                    when (
-                        beginProviderItem(
-                            reference.element,
-                            reference.rangeInElement,
-                            "reference:${reference.javaClass.name}",
-                        )
-                    ) {
-                        ProviderItemDisposition.READY -> Unit
-                        ProviderItemDisposition.SKIPPED -> return@Processor true
-                        ProviderItemDisposition.HALTED -> return@Processor false
-                    }
-                    val kotlinReference = reference as? KtReference
-                    if (kotlinReference == null) {
-                        return@Processor incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
-                    }
-                    val admitted = when (val admission = plan.admit(kotlinReference)) {
-                        IntellijRelationReferenceAdmission.Skipped ->
-                            return@Processor collector.dismissProviderItem()
-                        is IntellijRelationReferenceAdmission.Admitted -> admission
-                    }
-                    when (projection.confirmTarget(admitted)) {
-                        IntellijK2TargetConfirmation.DIFFERENT_SYMBOL -> when (admitted) {
-                            is IntellijRelationReferenceAdmission.Admitted.ClassConstruction ->
-                                return@Processor collector.dismissProviderItem()
-                            is IntellijRelationReferenceAdmission.Admitted.ExactSymbol ->
-                                return@Processor incompleteItem(
-                                    RelationLimitation.UNRESOLVED_TARGET,
-                                )
-                        }
-                        IntellijK2TargetConfirmation.UNRESOLVED ->
-                            return@Processor incompleteItem(RelationLimitation.UNRESOLVED_TARGET)
-                        IntellijK2TargetConfirmation.EXACT_SUBJECT -> Unit
-                    }
-                    val related = when (
-                        val containing = reference.element.nearestSupportedDeclaration(projection)
-                    ) {
-                        is SupportedContainingDeclaration.Found -> containing.projection
-                        SupportedContainingDeclaration.Unsupported ->
-                            return@Processor incompleteItem(
-                                RelationLimitation.UNSUPPORTED_ITEM,
-                            )
-                    }
-                    emit(related, reference.element, reference.rangeInElement)
+                    if (!providerEnumerationReady()) return@Processor false
+                    references += reference
+                    true
                 })
-            return termination(ProviderTermination.from(terminal))
+            if (!providerExhausted || !providerEnumerationReady()) {
+                return termination(ProviderTermination.HALTED)
+            }
+            val ordered = references.canonicalRelationProviderOrder { reference ->
+                providerItemDescriptor(
+                    reference.element,
+                    reference.rangeInElement,
+                    "reference:${reference.javaClass.name}",
+                )
+            }
+            for (item in ordered) {
+                cancellationCheck()
+                val reference = item.value
+                when (beginProviderItem(item.descriptor)) {
+                    ProviderItemDisposition.READY -> Unit
+                    ProviderItemDisposition.SKIPPED -> continue
+                    ProviderItemDisposition.HALTED ->
+                        return termination(ProviderTermination.HALTED)
+                }
+                val kotlinReference = reference as? KtReference
+                if (kotlinReference == null) {
+                    if (!incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)) {
+                        return termination(ProviderTermination.HALTED)
+                    }
+                    continue
+                }
+                val admitted = when (val admission = plan.admit(kotlinReference)) {
+                    IntellijRelationReferenceAdmission.Skipped -> {
+                        if (!collector.dismissProviderItem()) {
+                            return termination(ProviderTermination.HALTED)
+                        }
+                        continue
+                    }
+                    is IntellijRelationReferenceAdmission.Admitted -> admission
+                }
+                when (projection.confirmTarget(admitted)) {
+                    IntellijK2TargetConfirmation.DIFFERENT_SYMBOL -> {
+                        val continued = when (admitted) {
+                            is IntellijRelationReferenceAdmission.Admitted.ClassConstruction ->
+                                collector.dismissProviderItem()
+                            is IntellijRelationReferenceAdmission.Admitted.ExactSymbol ->
+                                incompleteItem(RelationLimitation.UNRESOLVED_TARGET)
+                        }
+                        if (!continued) return termination(ProviderTermination.HALTED)
+                        continue
+                    }
+                    IntellijK2TargetConfirmation.UNRESOLVED -> {
+                        if (!incompleteItem(RelationLimitation.UNRESOLVED_TARGET)) {
+                            return termination(ProviderTermination.HALTED)
+                        }
+                        continue
+                    }
+                    IntellijK2TargetConfirmation.EXACT_SUBJECT -> Unit
+                }
+                val related = when (
+                    val containing = reference.element.nearestSupportedDeclaration(projection)
+                ) {
+                    is SupportedContainingDeclaration.Found -> containing.projection
+                    SupportedContainingDeclaration.Unsupported -> {
+                        if (!incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)) {
+                            return termination(ProviderTermination.HALTED)
+                        }
+                        continue
+                    }
+                }
+                if (!emit(related, reference.element, reference.rangeInElement)) {
+                    return termination(ProviderTermination.HALTED)
+                }
+            }
+            return termination(ProviderTermination.TERMINAL)
         }
 
         fun definitions(relation: IntellijDefinitionRelation): IntellijRelationTermination {
-            val terminal = DefinitionsScopedSearch.search(subject, scope.nativeScope, false)
+            val definitions = mutableListOf<PsiElement>()
+            val providerExhausted = DefinitionsScopedSearch.search(subject, scope.nativeScope, false)
                 .forEach(Processor { definition ->
                     cancellationCheck()
-                    when (
-                        beginProviderItem(
-                            definition,
-                            definition.textRange.shiftLeft(definition.textRange.startOffset),
-                            "definition:${definition.javaClass.name}",
-                        )
-                    ) {
-                        ProviderItemDisposition.READY -> Unit
-                        ProviderItemDisposition.SKIPPED -> return@Processor true
-                        ProviderItemDisposition.HALTED -> return@Processor false
-                    }
-                    val candidate = definition as? KtNamedDeclaration
-                                    ?: return@Processor incompleteItem(
-                                        RelationLimitation.UNSUPPORTED_ITEM,
-                                    )
-                    when (projection.confirmDefinition(subject, candidate, relation)) {
-                        IntellijK2DefinitionConfirmation.DIFFERENT_RELATION ->
-                            collector.dismissProviderItem()
-                        IntellijK2DefinitionConfirmation.UNSUPPORTED ->
-                            incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
-                        IntellijK2DefinitionConfirmation.CONFIRMED ->
-                            emit(candidate, candidate, candidate.textRange.shiftLeft(candidate.textRange.startOffset))
-                    }
+                    if (!providerEnumerationReady()) return@Processor false
+                    definitions += definition
+                    true
                 })
-            return termination(ProviderTermination.from(terminal))
+            if (!providerExhausted || !providerEnumerationReady()) {
+                return termination(ProviderTermination.HALTED)
+            }
+            val ordered = definitions.canonicalRelationProviderOrder { definition ->
+                providerItemDescriptor(
+                    definition,
+                    definition.textRange.shiftLeft(definition.textRange.startOffset),
+                    "definition:${definition.javaClass.name}",
+                )
+            }
+            for (item in ordered) {
+                cancellationCheck()
+                val definition = item.value
+                when (beginProviderItem(item.descriptor)) {
+                    ProviderItemDisposition.READY -> Unit
+                    ProviderItemDisposition.SKIPPED -> continue
+                    ProviderItemDisposition.HALTED ->
+                        return termination(ProviderTermination.HALTED)
+                }
+                val candidate = definition as? KtNamedDeclaration
+                if (candidate == null) {
+                    if (!incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)) {
+                        return termination(ProviderTermination.HALTED)
+                    }
+                    continue
+                }
+                val continued = when (projection.confirmDefinition(subject, candidate, relation)) {
+                    IntellijK2DefinitionConfirmation.DIFFERENT_RELATION ->
+                        collector.dismissProviderItem()
+                    IntellijK2DefinitionConfirmation.UNSUPPORTED ->
+                        incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
+                    IntellijK2DefinitionConfirmation.CONFIRMED ->
+                        emit(
+                            candidate,
+                            candidate,
+                            candidate.textRange.shiftLeft(candidate.textRange.startOffset),
+                        )
+                }
+                if (!continued) return termination(ProviderTermination.HALTED)
+            }
+            return termination(ProviderTermination.TERMINAL)
         }
 
         fun callees(): IntellijRelationTermination {
@@ -154,44 +206,42 @@ internal class IntellijK2RelationSearch(
                         ContainingDeclaration.Unsupported -> false
                     }
                 }
-                .sortedBy { it.textRange.startOffset }
+            val candidates = mutableListOf<CalleeProviderItem>()
             for (call in calls) {
                 cancellationCheck()
-                val references = when (val resolved = call.calleeReferences()) {
-                    is KotlinCallReferences.Found -> resolved.references
-                    KotlinCallReferences.Unresolved -> {
-                        when (
-                            beginProviderItem(
-                                call,
-                                call.textRange.shiftLeft(call.textRange.startOffset),
-                                "unresolved-call",
-                            )
-                        ) {
-                            ProviderItemDisposition.READY -> Unit
-                            ProviderItemDisposition.SKIPPED -> continue
-                            ProviderItemDisposition.HALTED ->
-                                return termination(ProviderTermination.HALTED)
-                        }
+                if (!providerEnumerationReady()) {
+                    return termination(ProviderTermination.HALTED)
+                }
+                when (val resolved = call.calleeReferences()) {
+                    is KotlinCallReferences.Found -> resolved.references.forEach { reference ->
+                        candidates += CalleeProviderItem.Reference(reference)
+                    }
+                    KotlinCallReferences.Unresolved ->
+                        candidates += CalleeProviderItem.Unresolved(call)
+                }
+            }
+            if (!providerEnumerationReady()) {
+                return termination(ProviderTermination.HALTED)
+            }
+            val ordered = candidates.canonicalRelationProviderOrder { candidate ->
+                candidate.descriptor()
+            }
+            for (item in ordered) {
+                cancellationCheck()
+                when (beginProviderItem(item.descriptor)) {
+                    ProviderItemDisposition.READY -> Unit
+                    ProviderItemDisposition.SKIPPED -> continue
+                    ProviderItemDisposition.HALTED ->
+                        return termination(ProviderTermination.HALTED)
+                }
+                when (val candidate = item.value) {
+                    is CalleeProviderItem.Unresolved ->
                         if (!incompleteItem(RelationLimitation.UNRESOLVED_TARGET)) {
                             return termination(ProviderTermination.HALTED)
                         }
-                        continue
-                    }
-                }
-                for (reference in references) {
-                    when (
-                        beginProviderItem(
-                            reference.element,
-                            reference.rangeInElement,
-                            "callee-reference:${reference.javaClass.name}",
-                        )
+                    is CalleeProviderItem.Reference -> when (
+                        val resolved = projection.resolve(candidate.reference)
                     ) {
-                        ProviderItemDisposition.READY -> Unit
-                        ProviderItemDisposition.SKIPPED -> continue
-                        ProviderItemDisposition.HALTED ->
-                            return termination(ProviderTermination.HALTED)
-                    }
-                    when (val resolved = projection.resolve(reference)) {
                         IntellijK2ResolvedDeclaration.Unresolved ->
                             if (!incompleteItem(RelationLimitation.UNRESOLVED_TARGET)) {
                                 return termination(ProviderTermination.HALTED)
@@ -202,7 +252,13 @@ internal class IntellijK2RelationSearch(
                                 if (!incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)) {
                                     return termination(ProviderTermination.HALTED)
                                 }
-                            } else if (!emit(resolved.declaration, reference.element, reference.rangeInElement)) {
+                            } else if (
+                                !emit(
+                                    resolved.declaration,
+                                    candidate.reference.element,
+                                    candidate.reference.rangeInElement,
+                                )
+                            ) {
                                 return termination(ProviderTermination.HALTED)
                             }
                         }
@@ -210,6 +266,24 @@ internal class IntellijK2RelationSearch(
                 }
             }
             return termination(ProviderTermination.TERMINAL)
+        }
+
+        private fun providerEnumerationReady(): Boolean = when (
+            collector.admitProviderEnumeration()
+        ) {
+            IntellijRelationProviderEnumerationAdmission.READY -> true
+            IntellijRelationProviderEnumerationAdmission.HALTED -> false
+        }
+
+        private fun beginProviderItem(
+            descriptor: RelationProviderItemDescriptor,
+        ): ProviderItemDisposition = when (collector.beginProviderItem(descriptor)) {
+            IntellijRelationProviderItemAdmission.READY -> ProviderItemDisposition.READY
+            IntellijRelationProviderItemAdmission.SKIPPED_VERIFIED_PREFIX ->
+                ProviderItemDisposition.SKIPPED
+            IntellijRelationProviderItemAdmission.HALTED,
+            IntellijRelationProviderItemAdmission.CURSOR_MOVED,
+                -> ProviderItemDisposition.HALTED
         }
 
         private fun emit(
@@ -285,22 +359,6 @@ internal class IntellijK2RelationSearch(
             return collector.accept(fact)
         }
 
-        private fun beginProviderItem(
-            element: PsiElement,
-            relativeRange: com.intellij.openapi.util.TextRange,
-            discriminator: String,
-        ): ProviderItemDisposition {
-            val descriptor = providerItemDescriptor(element, relativeRange, discriminator)
-            return when (collector.beginProviderItem(descriptor)) {
-                IntellijRelationProviderItemAdmission.READY -> ProviderItemDisposition.READY
-                IntellijRelationProviderItemAdmission.SKIPPED_VERIFIED_PREFIX ->
-                    ProviderItemDisposition.SKIPPED
-                IntellijRelationProviderItemAdmission.HALTED,
-                IntellijRelationProviderItemAdmission.CURSOR_MOVED,
-                    -> ProviderItemDisposition.HALTED
-            }
-        }
-
         private fun incompleteItem(limitation: RelationLimitation): Boolean {
             limitations += limitation
             return collector.examineIncomplete(limitation)
@@ -356,15 +414,27 @@ private sealed interface KotlinCallReferences {
     data object Unresolved : KotlinCallReferences
 }
 
+private sealed interface CalleeProviderItem {
+    data class Unresolved(val call: KtCallElement) : CalleeProviderItem
+    data class Reference(val reference: KtReference) : CalleeProviderItem
+}
+
+private fun CalleeProviderItem.descriptor(): RelationProviderItemDescriptor = when (this) {
+    is CalleeProviderItem.Unresolved -> providerItemDescriptor(
+        call,
+        call.textRange.shiftLeft(call.textRange.startOffset),
+        "unresolved-call",
+    )
+    is CalleeProviderItem.Reference -> providerItemDescriptor(
+        reference.element,
+        reference.rangeInElement,
+        "callee-reference:${reference.javaClass.name}",
+    )
+}
+
 private enum class ProviderTermination {
     TERMINAL,
     HALTED,
-    ;
-
-    companion object {
-        fun from(terminal: Boolean): ProviderTermination =
-            if (terminal) TERMINAL else HALTED
-    }
 }
 
 private enum class ProviderItemDisposition {

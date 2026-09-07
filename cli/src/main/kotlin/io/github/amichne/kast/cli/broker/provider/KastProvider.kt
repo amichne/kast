@@ -49,11 +49,39 @@ internal enum class KastProviderOptionsFailure {
     QUALIFICATION_TIMEOUT_REJECTED,
 }
 
+/** Qualified tool authority retained from broker configuration through catalog construction. */
+internal enum class KastToolExposure {
+    READ_ONLY,
+    MUTATION_ENABLED,
+    ;
+
+    internal fun admits(policy: KastApprovalPolicy): Boolean = when (this) {
+        READ_ONLY -> policy == KastApprovalPolicy.NONE
+        MUTATION_ENABLED -> true
+    }
+
+    companion object {
+        /**
+         * Refines the optional launch boundary into catalog authority. Absence retains the
+         * least-privileged catalog; only the exact mutation-enabled value broadens it.
+         */
+        internal fun admit(raw: String?): Refinement<KastToolExposure, KastToolExposureFailure> =
+            when (raw) {
+                null, "read-only" -> Refinement.Refined(READ_ONLY)
+                "mutation-enabled" -> Refinement.Refined(MUTATION_ENABLED)
+                else -> Refinement.Rejected(KastToolExposureFailure.UNKNOWN_VALUE)
+            }
+    }
+}
+
+internal enum class KastToolExposureFailure { UNKNOWN_VALUE }
+
 internal class KastProviderOptions private constructor(
     val executable: BrokerExecutable,
     val qualificationDirectory: CanonicalBrokerDirectory,
     val processExecutor: BrokerProcessExecutor,
     val qualificationTimeoutMillis: Long,
+    val toolExposure: KastToolExposure,
 ) {
     companion object {
         internal fun admit(
@@ -61,6 +89,7 @@ internal class KastProviderOptions private constructor(
             qualificationDirectory: Path,
             processExecutor: BrokerProcessExecutor = JdkBrokerProcessExecutor,
             qualificationTimeoutMillis: Long = OperationExecutionBudget.LOCAL_QUALIFICATION.value,
+            toolExposure: KastToolExposure = KastToolExposure.READ_ONLY,
         ): Refinement<KastProviderOptions, KastProviderOptionsFailure> {
             val admittedExecutable = when (val admission = BrokerExecutable.admit(executable)) {
                 is Refinement.Refined -> admission.value
@@ -83,6 +112,7 @@ internal class KastProviderOptions private constructor(
                     admittedDirectory,
                     processExecutor,
                     qualificationTimeoutMillis,
+                    toolExposure,
                 ),
             )
         }
@@ -238,7 +268,7 @@ internal object KastProviderQualifier {
         options: KastProviderOptions,
         contract: KastContractQualification.Qualified,
     ): Validation<ProviderRegistration<KastRuntime>, *> {
-        val tools = contract.tools.filter { tool -> tool.approvalPolicy == KastApprovalPolicy.NONE }
+        val tools = contract.tools.filter { tool -> options.toolExposure.admits(tool.approvalPolicy) }
             .map { tool -> tool.asBrokerTool() }
         return ProviderRegistration.define(
             namespace = staticNamespace(),

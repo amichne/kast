@@ -15,6 +15,7 @@ import java.nio.channels.SocketChannel
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermissions
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -150,6 +151,28 @@ class InstalledIndexerLaunchTest {
         assertTrue(Files.isDirectory(endpoint.stateDirectory))
         assertTrue(Files.notExists(socket))
         assertTrue(Files.notExists(descriptor))
+    }
+
+    @Test
+    fun `runtime endpoint filesystem authority is owner only`() {
+        val workspace = Files.createDirectory(temporaryDirectory.resolve("workspace")).toRealPath()
+        val socket = temporaryDirectory.resolve("runtime/kast.sock").toAbsolutePath()
+        val endpoint = preparedEndpoint(admittedOptions(workspace, socket))
+
+        assertEquals(
+            PosixFilePermissions.fromString("rwx------"),
+            Files.getPosixFilePermissions(socket.parent),
+        )
+        assertEquals(
+            PosixFilePermissions.fromString("rwx------"),
+            Files.getPosixFilePermissions(endpoint.stateDirectory),
+        )
+        activatedTransport(endpoint).use {
+            assertEquals(
+                PosixFilePermissions.fromString("rw-------"),
+                Files.getPosixFilePermissions(socket),
+            )
+        }
     }
 
     @Test

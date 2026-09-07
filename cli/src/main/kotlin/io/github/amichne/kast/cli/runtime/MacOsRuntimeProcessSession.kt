@@ -173,6 +173,18 @@ internal class MacOsRuntimeProcessSession private constructor(
             -> RuntimeSessionObservation.Rejected
     }
 
+    /** Cold-bootstrap ownership is exact to this endpoint-derived launchd service. */
+    override fun terminate(): RuntimeProcessTermination = when (val observation = observe()) {
+        RuntimeSessionObservation.Absent -> RuntimeProcessTermination.Terminated
+        RuntimeSessionObservation.Interrupted -> RuntimeProcessTermination.Interrupted
+        RuntimeSessionObservation.Rejected -> RuntimeProcessTermination.Rejected
+        RuntimeSessionObservation.Present -> when (retire(RuntimeSessionObservation.Present)) {
+            RuntimeSessionRetirement.Retired -> RuntimeProcessTermination.Terminated
+            RuntimeSessionRetirement.Interrupted -> RuntimeProcessTermination.Interrupted
+            RuntimeSessionRetirement.Rejected -> RuntimeProcessTermination.Rejected
+        }
+    }
+
     /**
      * Proof transition: `RuntimeSessionObservation.Present -> RuntimeSessionRetirement`.
      *

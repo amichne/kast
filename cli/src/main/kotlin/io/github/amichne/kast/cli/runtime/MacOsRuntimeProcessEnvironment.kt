@@ -89,8 +89,13 @@ internal class MacOsRuntimeProcessEnvironment private constructor(
                         io.github.amichne.kast.distribution.managed.network.InstalledNetworkBootstrap.environmentKeys.filterNot { it == "GRADLE_USER_HOME" }.forEach { key ->
                             ambient[key]?.let { value -> put(key, value) }
                         }
-                        if ("KAST_TRUST_DONOR_JAVA_HOME" !in this) {
-                            ambient["JAVA_HOME"]?.let { donor -> put("KAST_TRUST_DONOR_JAVA_HOME", donor) }
+                        (ambient[GradleImportEnvironment.INHERITED_JAVA_HOME_SETTING]
+                            ?: ambient["JAVA_HOME"])
+                            ?.let(::canonicalOptionalJavaHome)?.let { inherited ->
+                            put(GradleImportEnvironment.INHERITED_JAVA_HOME_SETTING, inherited.toString())
+                            if ("KAST_TRUST_DONOR_JAVA_HOME" !in this) {
+                                put("KAST_TRUST_DONOR_JAVA_HOME", inherited.toString())
+                            }
                         }
                         if (admittedImport.evidence.isNotEmpty() || admittedImport.executableDirectories.isNotEmpty()) {
                             put(GradleImportEnvironment.VARIABLES_SETTING,
@@ -183,6 +188,17 @@ private fun canonicalDirectory(raw: String): CanonicalEnvironmentDirectory = try
     CanonicalEnvironmentDirectory.Rejected
 } catch (_: SecurityException) {
     CanonicalEnvironmentDirectory.Rejected
+}
+
+/** Invalid inherited Java homes remain optional and therefore are not forwarded. */
+private fun canonicalOptionalJavaHome(raw: String): Path? = when (
+    val directory = canonicalDirectory(raw)
+) {
+    CanonicalEnvironmentDirectory.Rejected -> null
+    is CanonicalEnvironmentDirectory.Admitted -> directory.path.takeIf { home ->
+        val java = home.resolve("bin/java")
+        Files.isRegularFile(java) && Files.isExecutable(java)
+    }
 }
 
 private const val SYSTEM_EXECUTABLE_PATH = "/usr/bin:/bin:/usr/sbin:/sbin"

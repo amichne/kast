@@ -118,6 +118,84 @@ class RuntimeProcessModeTest {
     }
 
     @Test
+    fun `admitted ambient Java home crosses as optional Gradle and trust authority`(
+        @TempDir temporary: Path,
+    ) {
+        val ambientHome = Files.createDirectories(temporary.resolve("ambient/bin")).parent.toRealPath()
+        val java = ambientHome.resolve("bin/java")
+        Files.writeString(java, "#!/bin/sh\nexit 0\n")
+        java.toFile().setExecutable(true)
+
+        val resolved = assertInstanceOf(
+            MacOsRuntimeProcessEnvironmentResolution.Resolved::class.java,
+            MacOsRuntimeProcessEnvironment.resolve(
+                installedRuntime(temporary.resolve("runtime")),
+                mapOf(
+                    "JAVA_HOME" to installedRuntime(temporary.resolve("control-runtime"))
+                        .javaExecutable.parent.parent.toString(),
+                    GradleImportEnvironment.INHERITED_JAVA_HOME_SETTING to ambientHome.toString(),
+                ),
+            ),
+        )
+
+        assertEquals(
+            ambientHome.toString(),
+            resolved.environment.variables["KAST_TRUST_DONOR_JAVA_HOME"],
+        )
+        assertEquals(
+            ambientHome.toString(),
+            resolved.environment.variables[GradleImportEnvironment.INHERITED_JAVA_HOME_SETTING],
+        )
+        assertNotEquals(
+            ambientHome.toString(),
+            resolved.environment.variables["JAVA_HOME"],
+        )
+    }
+
+    @Test
+    fun `invalid ambient Java home is ignored rather than mandated`(@TempDir temporary: Path) {
+        val resolved = assertInstanceOf(
+            MacOsRuntimeProcessEnvironmentResolution.Resolved::class.java,
+            MacOsRuntimeProcessEnvironment.resolve(
+                installedRuntime(temporary),
+                mapOf("JAVA_HOME" to "relative-or-missing"),
+            ),
+        )
+
+        assertEquals(null, resolved.environment.variables["KAST_TRUST_DONOR_JAVA_HOME"])
+        assertEquals(
+            null,
+            resolved.environment.variables[GradleImportEnvironment.INHERITED_JAVA_HOME_SETTING],
+        )
+    }
+
+    @Test
+    fun `explicit trust donor remains authoritative over inherited Java home`(@TempDir temporary: Path) {
+        val inheritedHome = Files.createDirectories(temporary.resolve("inherited/bin")).parent.toRealPath()
+        val java = inheritedHome.resolve("bin/java")
+        Files.writeString(java, "#!/bin/sh\nexit 0\n")
+        java.toFile().setExecutable(true)
+        val explicitDonor = temporary.resolve("explicit-donor").toString()
+
+        val resolved = assertInstanceOf(
+            MacOsRuntimeProcessEnvironmentResolution.Resolved::class.java,
+            MacOsRuntimeProcessEnvironment.resolve(
+                installedRuntime(temporary.resolve("runtime")),
+                mapOf(
+                    GradleImportEnvironment.INHERITED_JAVA_HOME_SETTING to inheritedHome.toString(),
+                    "KAST_TRUST_DONOR_JAVA_HOME" to explicitDonor,
+                ),
+            ),
+        )
+
+        assertEquals(explicitDonor, resolved.environment.variables["KAST_TRUST_DONOR_JAVA_HOME"])
+        assertEquals(
+            inheritedHome.toString(),
+            resolved.environment.variables[GradleImportEnvironment.INHERITED_JAVA_HOME_SETTING],
+        )
+    }
+
+    @Test
     fun `detached process environment uses the admitted IDEA JBR`(
         @TempDir temporary: Path,
     ) {

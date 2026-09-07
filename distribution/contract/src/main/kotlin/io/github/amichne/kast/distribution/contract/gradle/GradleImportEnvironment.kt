@@ -103,6 +103,7 @@ class GradleImportEnvironment private constructor(
     companion object {
         const val VARIABLES_SETTING = "KAST_GRADLE_IMPORT_VARIABLES"
         const val PATH_SETTING = "KAST_GRADLE_IMPORT_PATH"
+        const val INHERITED_JAVA_HOME_SETTING = "KAST_GRADLE_JAVA_HOME"
         val Empty = GradleImportEnvironment(emptyMap(), emptyList())
 
         /**

@@ -16,6 +16,7 @@ import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.RelationProvenance
+import io.github.amichne.kast.relation.contract.RelationProviderKind
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
@@ -176,6 +177,43 @@ class RelationReadTest {
     }
 
     @Test
+    fun `bounded page and continuation ignore native provider enumeration order`() {
+        val request = request(RelationMeaning.References, resultLimit = 1)
+        val items = providerFixtures()
+
+        assertEquals(RelationProviderKind.INTELLIJ_REFERENCES_V2, request.providerCursor.provider)
+
+        val forward = assertInstanceOf(
+            RelationCompilation.Qualified::class.java,
+            compileStableProviderPage(request, items),
+        )
+        val reversed = assertInstanceOf(
+            RelationCompilation.Qualified::class.java,
+            compileStableProviderPage(request, items.reversed()),
+        )
+
+        assertEquals(
+            forward.batch.facts.map(RelationFact::canonicalProjection),
+            reversed.batch.facts.map(RelationFact::canonicalProjection),
+        )
+        val forwardContinuation = assertInstanceOf(
+            io.github.amichne.kast.relation.contract
+                .RelationIncompleteCoverage.Resumable::class.java,
+            forward.coverage,
+        ).continuation
+        val reversedContinuation = assertInstanceOf(
+            io.github.amichne.kast.relation.contract
+                .RelationIncompleteCoverage.Resumable::class.java,
+            reversed.coverage,
+        ).continuation
+        assertEquals(
+            forwardContinuation.nextProviderCursor,
+            reversedContinuation.nextProviderCursor,
+        )
+        assertEquals(forwardContinuation.fingerprint, reversedContinuation.fingerprint)
+    }
+
+    @Test
     fun `provider exhausted incomplete evidence is terminal and has no continuation`() {
         val request = request(RelationMeaning.References)
         val collector = IntellijRelationCollector(request, clockNanoseconds = { 1L })
@@ -306,18 +344,17 @@ class RelationReadTest {
     private fun providerItem(value: String) =
         io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor.parse(value).refined()
 
-    private fun compileStableProviderPage(request: RelationRequest): RelationCompilation {
+    private fun compileStableProviderPage(
+        request: RelationRequest,
+        items: List<ProviderFixture> = providerFixtures(),
+    ): RelationCompilation {
         val collector = IntellijRelationCollector(request, clockNanoseconds = { 1L })
-        val items = listOf(
-            ProviderFixture("filtered-before", null),
-            ProviderFixture("first", FactFixture("sample.Related.first()", 71)),
-            ProviderFixture("filtered-between", null),
-            ProviderFixture("second", FactFixture("sample.Related.second()", 91)),
-        )
-        for (item in items) {
-            when (collector.beginProviderItem(providerItem(item.descriptor))) {
+        for (ordered in items.canonicalRelationProviderOrder { item ->
+            providerItem(item.descriptor)
+        }) {
+            when (collector.beginProviderItem(ordered.descriptor)) {
                 IntellijRelationProviderItemAdmission.SKIPPED_VERIFIED_PREFIX -> continue
-                IntellijRelationProviderItemAdmission.READY -> when (val fixture = item.fact) {
+                IntellijRelationProviderItemAdmission.READY -> when (val fixture = ordered.value.fact) {
                     null -> assertTrue(collector.dismissProviderItem())
                     else -> if (!collector.accept(fact(request, fixture.identity, fixture.offset))) {
                         return collector.finish(IntellijRelationTermination.Resumable(emptySet()))
@@ -330,6 +367,13 @@ class RelationReadTest {
         }
         return collector.finish(IntellijRelationTermination.Terminal)
     }
+
+    private fun providerFixtures(): List<ProviderFixture> = listOf(
+        ProviderFixture("filtered-before", null),
+        ProviderFixture("first", FactFixture("sample.Related.first()", 71)),
+        ProviderFixture("filtered-between", null),
+        ProviderFixture("second", FactFixture("sample.Related.second()", 91)),
+    )
 
     private fun fact(
         request: RelationRequest,

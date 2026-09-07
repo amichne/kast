@@ -36,6 +36,46 @@ class GradleJvmCandidateSelectorTest {
     }
 
     @Test
+    fun `ambient Java home wins automatic selection without becoming project authority`() {
+        val selected = assertInstanceOf(
+            GradleJvmCandidateSelection.Selected::class.java,
+            GradleJvmCandidateSelector.select(
+                GradleVersion.version("8.14.3"),
+                listOf(
+                    installed(17),
+                    installed(21).copy(source = GradleJvmSelectionSource.AMBIENT_JAVA_HOME),
+                    sidecar(25),
+                ),
+            ),
+        )
+
+        assertEquals(JavaFeature.of(21), selected.candidate.feature)
+        assertEquals(GradleJvmSelectionSource.AMBIENT_JAVA_HOME, selected.candidate.source)
+    }
+
+    @Test
+    fun `repository Java home remains authoritative over ambient Java home`() {
+        val selected = assertInstanceOf(
+            GradleJvmCandidateSelection.Selected::class.java,
+            GradleJvmCandidateSelector.select(
+                GradleVersion.version("8.14.3"),
+                listOf(
+                    installed(21).copy(source = GradleJvmSelectionSource.AMBIENT_JAVA_HOME),
+                    installed(17).copy(
+                        source = GradleJvmSelectionSource.REPOSITORY_GRADLE_PROPERTY,
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(JavaFeature.of(17), selected.candidate.feature)
+        assertEquals(
+            GradleJvmSelectionSource.REPOSITORY_GRADLE_PROPERTY,
+            selected.candidate.source,
+        )
+    }
+
+    @Test
     fun `candidate order cannot change selection`() {
         val gradle = GradleVersion.version("7.6")
         val candidates = listOf(installed(21), installed(17), sidecar(25))

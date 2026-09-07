@@ -19,6 +19,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import java.time.Duration
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 class RuntimeProcessSessionTest {
     @Test
@@ -263,6 +266,54 @@ class RuntimeProcessSessionTest {
     }
 
     @Test
+    fun `interrupting a newly owned cold bootstrap retires its sidecar session`(
+        @TempDir temporary: Path,
+    ) {
+        val endpoint = endpoint(temporary)
+        val observed = CountDownLatch(1)
+        val retired = AtomicBoolean(false)
+        val result = AtomicReference<RuntimeAdmission>()
+        val session = MacOsRuntimeProcessSession.from(
+            endpoint,
+            LaunchctlInvoker { arguments, _ ->
+                when (arguments[1]) {
+                    "list" -> {
+                        observed.countDown()
+                        LaunchctlInvocation.Completed
+                    }
+                    "remove" -> {
+                        retired.set(true)
+                        LaunchctlInvocation.Completed
+                    }
+                    else -> error("unexpected launchctl operation: ${arguments[1]}")
+                }
+            },
+        )
+        val demander = ExactRootProcessRuntimeDemander(
+            executable = executable(temporary),
+            launchContext = launchContext(temporary),
+            processStarter = RuntimeProcessStarter { command ->
+                RuntimeProcessStart.Started(session, command.bootstrapAttemptId)
+            },
+            endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Unreachable },
+        )
+        val demandThread = Thread {
+            result.set(demander.demand(endpoint.root, endpoint))
+        }
+
+        demandThread.start()
+        assertTrue(observed.await(5, java.util.concurrent.TimeUnit.SECONDS))
+        demandThread.interrupt()
+        demandThread.join(5_000)
+
+        assertEquals(
+            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.Interrupted),
+            result.get(),
+        )
+        assertTrue(retired.get(), "the newly started session must not outlive cold bootstrap")
+    }
+
+    @Test
     fun `existing exact launchd session is accepted without duplicate submission`(
         @TempDir temporary: Path,
     ) {
@@ -445,7 +496,8 @@ class RuntimeProcessSessionTest {
             assertEquals("", Files.readString(serviceFile).trim())
             assertEquals(RuntimeSessionObservation.Present, accepted.session.observe())
         } finally {
-            retireDirectProcess(process, serviceFile)
+            assertEquals(RuntimeProcessTermination.Terminated, accepted.session.terminate())
+            process.onExit().get(10, java.util.concurrent.TimeUnit.SECONDS)
         }
         assertEquals(RuntimeSessionObservation.Absent, accepted.session.observe())
     }

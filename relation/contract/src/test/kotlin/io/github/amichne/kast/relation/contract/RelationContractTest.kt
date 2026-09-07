@@ -126,7 +126,7 @@ class RelationContractTest {
             batch,
             setOf(RelationLimitation.UNRESOLVED_TARGET),
         ).refined()
-        val cursor = RelationProviderCursor.start(RelationProviderKind.INTELLIJ_REFERENCES_V1)
+        val cursor = request.providerCursor
             .advance(RelationProviderItemDescriptor.parse("first").refined())
         val resumable = RelationCompilation.qualifiedResumable(
             batch,
