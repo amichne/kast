@@ -16,6 +16,8 @@ import io.github.amichne.kast.change.verify.VerifiedMutationOperations
 import io.github.amichne.kast.diagnostic.contract.DiagnosticOperations
 import io.github.amichne.kast.evidence.contract.MutationPlanBinding
 import io.github.amichne.kast.relation.contract.RelationOperations
+import io.github.amichne.kast.query.contract.QueryOperations
+import io.github.amichne.kast.query.service.QueryService
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
 import io.github.amichne.kast.source.contract.SourceReadOperations
@@ -55,7 +57,7 @@ fun interface ChangeRecoveryOperations {
     fun recover(binding: MutationPlanBinding): AddDeclarationRecoveryOutcome
 }
 
-/** Exact nominal target service association for the eleven public operations. */
+/** Exact nominal target service association for the twelve canonical operations. */
 @ConsistentCopyVisibility
 data class DirectKastOperations internal constructor(
     val indexSync: IndexSynchronizationOperations,
@@ -65,6 +67,7 @@ data class DirectKastOperations internal constructor(
     val sourceRead: SourceReadOperations,
     val relationRead: RelationOperations,
     val traversalRun: TraversalOperations,
+    val queryRun: QueryOperations,
     val diagnosticCheck: DiagnosticOperations,
     val changePlan: ChangePlanningOperations,
     val changeApply: VerifiedChangeApplyOperations,
@@ -104,6 +107,7 @@ data class DirectKastOperations internal constructor(
             sourceRead = sourceRead,
             relationRead = relation,
             traversalRun = traversal,
+            queryRun = QueryService(symbolDiscovery, symbolExact, sourceRead, relation),
             diagnosticCheck = diagnostic,
             changePlan = ChangePlanningOperations(
                 addFile = PureAddFilePlanningService(),

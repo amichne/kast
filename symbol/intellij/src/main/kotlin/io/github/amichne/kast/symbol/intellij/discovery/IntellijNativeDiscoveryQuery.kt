@@ -3,9 +3,11 @@ package io.github.amichne.kast.symbol.intellij
 import com.intellij.navigation.ChooseByNameContributor
 import com.intellij.navigation.ChooseByNameContributorEx
 import com.intellij.navigation.NavigationItem
+import com.intellij.navigation.PsiElementNavigationItem
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.IndexNotReadyException
+import com.intellij.psi.PsiElement
 import com.intellij.psi.codeStyle.NameUtil
 import com.intellij.util.Processor
 import com.intellij.util.indexing.FindSymbolParameters
@@ -21,6 +23,10 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualifications
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
+import org.jetbrains.kotlin.psi.KtFile
+import java.nio.file.Path
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
 import java.util.concurrent.CancellationException
@@ -65,6 +71,8 @@ internal class IntellijNativeDiscoveryQuery(
         IntellijPsiDiscoveryCandidateProjector,
     private val itemAdmission: IntellijDiscoveryItemAdmissionPolicy =
         AdmitEveryIntellijDiscoveryItem,
+    private val itemCompilerKind: IntellijDiscoveryItemCompilerKind =
+        IntellijPsiDiscoveryItemCompilerKind,
     private val environmentState: () -> IntellijDiscoveryEnvironmentState,
     private val cancellationCheck: () -> Unit,
     private val clock: IntellijDiscoveryNanoClock = SystemIntellijDiscoveryNanoClock,
@@ -104,31 +112,33 @@ internal class IntellijNativeDiscoveryQuery(
             )
         }
 
-        val target = request.target as? SymbolDiscoveryTarget.Name
-            ?: return IntellijNativeDiscoveryExecution.Rejected(
+        val target = request.target
+        if (target !is SymbolDiscoveryTarget.Name && target !is SymbolDiscoveryTarget.All) {
+            return IntellijNativeDiscoveryExecution.Rejected(
                 IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT,
             )
+        }
         val collector = BoundedNativeDiscoveryCollector(
             compiledScope = compiledScope,
             request = request,
             itemFile = itemFile,
             projector = projector,
             itemAdmission = itemAdmission,
+            itemCompilerKind = itemCompilerKind,
             environmentState = environmentState,
             cancellationCheck = cancellationCheck,
             clock = clock,
         )
-        val fuzzyMatcher = when (target.match) {
-            SymbolDiscoveryMatch.FUZZY -> NameUtil.buildMatcher(
-                "*${target.pattern.value}",
-                MatchingMode.IGNORE_CASE,
-            )
-            SymbolDiscoveryMatch.EXACT_NAME -> null
+        val fuzzyMatcher = when (target) {
+            is SymbolDiscoveryTarget.All -> null
+            is SymbolDiscoveryTarget.Name -> when (target.match) {
+                SymbolDiscoveryMatch.FUZZY -> NameUtil.buildMatcher(
+                    "*${target.pattern.value}",
+                    MatchingMode.IGNORE_CASE,
+                )
+                SymbolDiscoveryMatch.EXACT_NAME -> null
+            }
         }
-        val parameters = FindSymbolParameters.wrap(
-            target.pattern.value,
-            compiledScope.nativeScope,
-        )
 
         contributors.sortedBy { it.javaClass.name }.forEach { contributor ->
             if (collector.halted) {
@@ -145,9 +155,12 @@ internal class IntellijNativeDiscoveryQuery(
                         if (!collector.observe()) {
                             return@Processor false
                         }
-                        val matches = when (target.match) {
-                            SymbolDiscoveryMatch.FUZZY -> checkNotNull(fuzzyMatcher).matches(name)
-                            SymbolDiscoveryMatch.EXACT_NAME -> name == target.pattern.value
+                        val matches = when (target) {
+                            is SymbolDiscoveryTarget.All -> true
+                            is SymbolDiscoveryTarget.Name -> when (target.match) {
+                                SymbolDiscoveryMatch.FUZZY -> checkNotNull(fuzzyMatcher).matches(name)
+                                SymbolDiscoveryMatch.EXACT_NAME -> name == target.pattern.value
+                            }
                         }
                         if (!matches) {
                             return@Processor true
@@ -165,7 +178,7 @@ internal class IntellijNativeDiscoveryQuery(
                     contributor.processElementsWithName(
                         name,
                         Processor { item -> collector.accept(item) },
-                        parameters,
+                        FindSymbolParameters.wrap(name, compiledScope.nativeScope),
                     )
                 }
             } catch (cancelled: ProcessCanceledException) {
@@ -196,6 +209,7 @@ private class BoundedNativeDiscoveryCollector(
     private val itemFile: IntellijDiscoveryItemFile,
     private val projector: IntellijDiscoveryCandidateProjector,
     private val itemAdmission: IntellijDiscoveryItemAdmissionPolicy,
+    private val itemCompilerKind: IntellijDiscoveryItemCompilerKind,
     private val environmentState: () -> IntellijDiscoveryEnvironmentState,
     private val cancellationCheck: () -> Unit,
     private val clock: IntellijDiscoveryNanoClock,
@@ -252,6 +266,21 @@ private class BoundedNativeDiscoveryCollector(
         }
         if (!compiledScope.nativeScope.contains(file)) {
             return true
+        }
+        when (
+            request.constraints.admit(
+                item,
+                file.path,
+                request.scope.lease.workspaceRoot.value,
+                itemCompilerKind,
+            )
+        ) {
+            IntellijDiscoveryItemAdmission.ADMITTED -> Unit
+            IntellijDiscoveryItemAdmission.FILTERED -> return true
+            IntellijDiscoveryItemAdmission.UNSUPPORTED -> {
+                qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
+                return true
+            }
         }
         when (itemAdmission.admit(item)) {
             IntellijDiscoveryItemAdmission.ADMITTED -> Unit
@@ -348,6 +377,54 @@ private class BoundedNativeDiscoveryCollector(
     }
 
     private fun elapsedSince(start: Long): Long = (clock.now() - start).coerceAtLeast(0L)
+}
+
+private fun SymbolDiscoveryConstraints.admit(
+    item: NavigationItem,
+    filePath: String,
+    workspaceRoot: String,
+    itemCompilerKind: IntellijDiscoveryItemCompilerKind,
+): IntellijDiscoveryItemAdmission {
+    directory?.let { restriction ->
+        val root = runCatching { Path.of(workspaceRoot).toAbsolutePath().normalize() }.getOrNull()
+            ?: return IntellijDiscoveryItemAdmission.UNSUPPORTED
+        val file = runCatching { Path.of(filePath).toAbsolutePath().normalize() }.getOrNull()
+            ?: return IntellijDiscoveryItemAdmission.UNSUPPORTED
+        val requested = root.resolve(restriction.directory.value).normalize()
+        val inDirectory = when (restriction.containment) {
+            SymbolDiscoveryContainment.DIRECT -> file.parent == requested
+            SymbolDiscoveryContainment.DESCENDANTS -> file.startsWith(requested)
+        }
+        if (!inDirectory) return IntellijDiscoveryItemAdmission.FILTERED
+    }
+    packageName?.let { restriction ->
+        val packageName = (item.psiElement()?.containingFile as? KtFile)
+            ?.packageFqName
+            ?.asString()
+            ?: return IntellijDiscoveryItemAdmission.UNSUPPORTED
+        val inPackage = when (restriction.containment) {
+            SymbolDiscoveryContainment.DIRECT -> packageName == restriction.packageName.value
+            SymbolDiscoveryContainment.DESCENDANTS ->
+                packageName == restriction.packageName.value ||
+                    packageName.startsWith("${restriction.packageName.value}.")
+        }
+        if (!inPackage) return IntellijDiscoveryItemAdmission.FILTERED
+    }
+    declarationKinds?.let { restriction ->
+        val kind = when (val classified = itemCompilerKind.classify(item)) {
+            is IntellijDiscoveryItemCompilerKindResult.Found -> classified.kind
+            IntellijDiscoveryItemCompilerKindResult.Unsupported ->
+                return IntellijDiscoveryItemAdmission.UNSUPPORTED
+        }
+        if (kind !in restriction.values) return IntellijDiscoveryItemAdmission.FILTERED
+    }
+    return IntellijDiscoveryItemAdmission.ADMITTED
+}
+
+private fun NavigationItem.psiElement(): PsiElement? = when (this) {
+    is PsiElement -> this
+    is PsiElementNavigationItem -> targetElement
+    else -> null
 }
 
 private fun Long.byteMeasure(): SymbolDiscoveryByteCount =

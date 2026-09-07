@@ -5,6 +5,8 @@ import io.github.amichne.kast.symbol.contract.CanonicalCompilerReceiver
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.fromCanonicalSignature
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 enum class ProtocolOffsetFailure {
     NEGATIVE,
@@ -12,6 +14,7 @@ enum class ProtocolOffsetFailure {
 
 /** One non-negative source offset admitted at the public transport boundary. */
 @JvmInline
+@Serializable(with = ProtocolOffsetSerializer::class)
 value class ProtocolOffset private constructor(
     val value: Int,
 ) {
@@ -29,6 +32,15 @@ value class ProtocolOffset private constructor(
                 Refinement.Refined(ProtocolOffset(raw))
             }
     }
+}
+
+internal object ProtocolOffsetSerializer : RefiningIntSerializer<ProtocolOffset>(
+    serialName = "io.github.amichne.kast.protocol.contract.ProtocolOffset",
+    minimum = 0,
+) {
+    override fun raw(value: ProtocolOffset): Int = value.value
+
+    override fun refine(raw: Int): Refinement<ProtocolOffset, *> = ProtocolOffset.parse(raw)
 }
 
 enum class SourceRangeDocumentFailure {
@@ -63,44 +75,64 @@ data class SourceRangeDocument private constructor(
     }
 }
 
+@Serializable
 enum class SymbolNameKindDocument {
+    @SerialName("file")
     FILE,
+    @SerialName("class")
     CLASS,
+    @SerialName("symbol")
     SYMBOL,
 }
 
+@Serializable
 enum class SymbolDiscoveryMatchDocument {
+    @SerialName("fuzzy")
     FUZZY,
+    @SerialName("exact-name")
     EXACT_NAME,
 }
 
+@Serializable
 sealed interface SymbolTextScopeDocument {
+    @Serializable
+    @SerialName("workspace")
     data object Workspace : SymbolTextScopeDocument
 
+    @Serializable
+    @SerialName("file")
     data class File(
         val file: ProtocolText,
     ) : SymbolTextScopeDocument
 }
 
 /** Closed public discovery meaning carried by the existing `symbol.discover` operation. */
+@Serializable
 sealed interface SymbolDiscoverTargetDocument {
+    @Serializable
+    @SerialName("name")
     data class Name(
         val query: ProtocolText,
         val kind: SymbolNameKindDocument,
         val match: SymbolDiscoveryMatchDocument,
     ) : SymbolDiscoverTargetDocument
 
+    @Serializable
+    @SerialName("location")
     data class Location(
         val file: ProtocolText,
         val offset: ProtocolOffset,
     ) : SymbolDiscoverTargetDocument
 
+    @Serializable
+    @SerialName("text")
     data class Text(
         val query: ProtocolText,
         val scope: SymbolTextScopeDocument,
     ) : SymbolDiscoverTargetDocument
 }
 
+@Serializable
 data class SymbolDiscoverRequest(
     val target: SymbolDiscoverTargetDocument,
     val limit: ProtocolCount,
@@ -197,18 +229,24 @@ enum class SymbolDiscoverRejection : OperationRejection {
 }
 
 /** Closed selector authority accepted by `symbol.inspect`. */
+@Serializable
 sealed interface SymbolInspectTarget {
     /** Weaker discovery evidence that must be refined through compiler analysis. */
+    @Serializable
+    @SerialName("candidate")
     data class Candidate(
         val selector: ProtocolText,
     ) : SymbolInspectTarget
 
     /** Already exact compiler selector that must be revalidated before projection. */
+    @Serializable
+    @SerialName("exact")
     data class Exact(
         val selector: ProtocolText,
     ) : SymbolInspectTarget
 }
 
+@Serializable
 data class SymbolInspectRequest(
     val target: SymbolInspectTarget,
 ) : OperationRequest
@@ -484,6 +522,9 @@ enum class SymbolInspectQualification : OperationQualification {
 
 enum class SymbolInspectRejection : OperationRejection {
     WORKSPACE_NOT_READY,
+    SELECTOR_WRONG_KIND,
+    SELECTOR_MALFORMED,
+    SELECTOR_WORKSPACE_MISMATCH,
     CANDIDATE_STALE,
     CANDIDATE_NOT_DECLARATION,
     EXACT_SELECTOR_STALE,

@@ -247,11 +247,7 @@ private fun TopologyCoverageSourceRootProvenanceDocument.sortRank(): Int = when 
 internal object CanonicalTopologySerializers {
     private val factory = GeneratedWireCodecFactory(wireJson)
 
-    val request = factory.create(
-        TopologyBuildRequestDocument.serializer(),
-        { TopologyBuildRequestDocument },
-        { WireDocumentConversion.Converted(TopologyBuildRequest) },
-    )
+    val request = factory.create(TopologyBuildRequest.serializer())
     val result = factory.create(
         TopologyBuildResultDocument.serializer(),
         TopologyBuildResult::toSerializableDocument,

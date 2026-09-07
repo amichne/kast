@@ -16,6 +16,8 @@ interface RelationReadCapability : CapabilityMarker
 
 interface TraversalRunCapability : CapabilityMarker
 
+interface QueryRunCapability : CapabilityMarker
+
 interface DiagnosticCheckCapability : CapabilityMarker
 
 interface ChangePlanCapability : CapabilityMarker

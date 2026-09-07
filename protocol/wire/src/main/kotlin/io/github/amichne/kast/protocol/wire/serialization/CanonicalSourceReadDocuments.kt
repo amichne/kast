@@ -1,169 +1,9 @@
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.protocol.contract.SourceDeclarationKindDocument
+import io.github.amichne.kast.protocol.contract.SourceDeclarationVisibilityDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-
-@Serializable
-internal data class SourceReadRequestWireDocument(
-    val anchor: SourceReadAnchorWireDocument,
-    val region: SourceRegionSelectionWireDocument,
-    val entities: SourceEntitySelectionWireDocument,
-    val text: SourceTextRequestWireDocument,
-    val entityLimit: Int,
-    val textByteLimit: Long,
-    val page: SourceReadPageWireDocument,
-)
-
-@Serializable
-internal sealed interface SourceReadAnchorWireDocument {
-    @Serializable
-    @SerialName("candidate")
-    data class Candidate(val selector: String) : SourceReadAnchorWireDocument
-
-    @Serializable
-    @SerialName("symbol")
-    data class Symbol(val selector: String) : SourceReadAnchorWireDocument
-
-    @Serializable
-    @SerialName("source")
-    data class Source(val selector: String) : SourceReadAnchorWireDocument
-}
-
-@Serializable
-internal sealed interface SourceRegionSelectionWireDocument {
-    @Serializable
-    @SerialName("anchor")
-    data object Anchor : SourceRegionSelectionWireDocument
-
-    @Serializable
-    @SerialName("body")
-    data class Body(val kind: SourceBodyKindWireDocument) : SourceRegionSelectionWireDocument
-
-    @Serializable
-    @SerialName("file")
-    data object File : SourceRegionSelectionWireDocument
-
-    @Serializable
-    @SerialName("enclosing")
-    data class Enclosing(
-        val kind: SourceEnclosingRegionKindWireDocument,
-    ) : SourceRegionSelectionWireDocument
-}
-
-@Serializable
-internal enum class SourceBodyKindWireDocument {
-    @SerialName("callable") CALLABLE,
-    @SerialName("class") CLASS,
-}
-
-@Serializable
-internal enum class SourceEnclosingRegionKindWireDocument {
-    @SerialName("declaration") DECLARATION,
-    @SerialName("callable-body") CALLABLE_BODY,
-    @SerialName("class-body") CLASS_BODY,
-}
-
-@Serializable
-internal sealed interface SourceEntitySelectionWireDocument {
-    @Serializable
-    @SerialName("none")
-    data object None : SourceEntitySelectionWireDocument
-
-    @Serializable
-    @SerialName("matching")
-    data class Matching(
-        val containment: SourceContainmentWireDocument,
-        val filters: List<SourceEntityFilterWireDocument>,
-    ) : SourceEntitySelectionWireDocument
-}
-
-@Serializable
-internal enum class SourceContainmentWireDocument {
-    @SerialName("direct") DIRECT,
-    @SerialName("descendants") DESCENDANTS,
-}
-
-@Serializable
-internal sealed interface SourceEntityFilterWireDocument {
-    @Serializable
-    @SerialName("declaration")
-    data class Declarations(
-        val kinds: List<SourceDeclarationKindWireDocument>,
-        val visibility: SourceVisibilitySelectionWireDocument,
-    ) : SourceEntityFilterWireDocument
-
-    @Serializable
-    @SerialName("parameters")
-    data object Parameters : SourceEntityFilterWireDocument
-
-    @Serializable
-    @SerialName("calls")
-    data object Calls : SourceEntityFilterWireDocument
-
-    @Serializable
-    @SerialName("references")
-    data object References : SourceEntityFilterWireDocument
-}
-
-@Serializable
-internal sealed interface SourceVisibilitySelectionWireDocument {
-    @Serializable
-    @SerialName("any")
-    data object Any : SourceVisibilitySelectionWireDocument
-
-    @Serializable
-    @SerialName("exact")
-    data class Exact(
-        val values: List<SourceDeclarationVisibilityWireDocument>,
-    ) : SourceVisibilitySelectionWireDocument
-}
-
-@Serializable
-internal enum class SourceDeclarationKindWireDocument {
-    @SerialName("classlike") CLASSLIKE,
-    @SerialName("constructor") CONSTRUCTOR,
-    @SerialName("function") FUNCTION,
-    @SerialName("property") PROPERTY,
-    @SerialName("type-alias") TYPE_ALIAS,
-}
-
-@Serializable
-internal enum class SourceDeclarationVisibilityWireDocument {
-    @SerialName("public") PUBLIC,
-    @SerialName("protected") PROTECTED,
-    @SerialName("internal") INTERNAL,
-    @SerialName("private") PRIVATE,
-    @SerialName("local") LOCAL,
-}
-
-@Serializable
-internal sealed interface SourceTextRequestWireDocument {
-    @Serializable
-    @SerialName("complete")
-    data object Complete : SourceTextRequestWireDocument
-
-    @Serializable
-    @SerialName("none")
-    data object None : SourceTextRequestWireDocument
-
-    @Serializable
-    @SerialName("window")
-    data class Window(
-        val beforeLines: Int,
-        val afterLines: Int,
-    ) : SourceTextRequestWireDocument
-}
-
-@Serializable
-internal sealed interface SourceReadPageWireDocument {
-    @Serializable
-    @SerialName("first")
-    data object First : SourceReadPageWireDocument
-
-    @Serializable
-    @SerialName("continue")
-    data class Continue(val continuation: String) : SourceReadPageWireDocument
-}
 
 @Serializable
 internal data class SourceReadResultWireDocument(
@@ -252,9 +92,9 @@ internal sealed interface SourceEntityWireDocument {
     @Serializable
     @SerialName("declaration")
     data class Declaration(
-        val kind: SourceDeclarationKindWireDocument,
+        val kind: SourceDeclarationKindDocument,
         val name: String,
-        val visibility: SourceDeclarationVisibilityWireDocument,
+        val visibility: SourceDeclarationVisibilityDocument,
         val nestingDepth: Int,
         val parentSelector: String,
         val selection: SourceSelectionWireDocument,

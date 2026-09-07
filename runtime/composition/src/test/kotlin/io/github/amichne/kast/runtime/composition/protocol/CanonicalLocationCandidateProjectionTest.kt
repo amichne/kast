@@ -12,6 +12,7 @@ import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceEntitySelectionDocument
@@ -29,6 +30,7 @@ import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
+import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.runtime.composition.InstalledSymbolProtocolFixture
 import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalRelationReadHandler
 import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalTraversalRunHandler
@@ -48,6 +50,53 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class CanonicalLocationCandidateProjectionTest {
+    @Test
+    fun `relation and traversal distinguish wrong selector family from malformed token`(
+        @TempDir temporary: Path,
+    ) {
+        val fixture = InstalledSymbolProtocolFixture.create(
+            Files.createDirectories(temporary.resolve("repo")).toRealPath(),
+        )
+        val authority = CanonicalProtocolAuthority()
+        val relation = CanonicalRelationReadHandler(fixture.relation, authority)
+        val traversal = CanonicalTraversalRunHandler(fixture.traversal, authority)
+        val wrongKind = text("candidate:v2:opaque")
+        val malformed = text("not-a-selector")
+
+        assertEquals(
+            OperationOutcome.Rejected(RelationReadRejection.SELECTOR_WRONG_KIND),
+            runSuspend {
+                relation.execute(
+                    RelationReadRequest(wrongKind, RelationKindDocument.REFERENCES, count(4)),
+                )
+            },
+        )
+        assertEquals(
+            OperationOutcome.Rejected(RelationReadRejection.SELECTOR_MALFORMED),
+            runSuspend {
+                relation.execute(
+                    RelationReadRequest(malformed, RelationKindDocument.REFERENCES, count(4)),
+                )
+            },
+        )
+        assertEquals(
+            OperationOutcome.Rejected(TraversalRunRejection.SELECTOR_WRONG_KIND),
+            runSuspend {
+                traversal.execute(
+                    TraversalRunRequest(wrongKind, RelationKindDocument.REFERENCES, count(1), count(4)),
+                )
+            },
+        )
+        assertEquals(
+            OperationOutcome.Rejected(TraversalRunRejection.SELECTOR_MALFORMED),
+            runSuspend {
+                traversal.execute(
+                    TraversalRunRequest(malformed, RelationKindDocument.REFERENCES, count(1), count(4)),
+                )
+            },
+        )
+    }
+
     @Test
     fun `relation traversal and diagnostics retain exact reusable range candidates`(
         @TempDir temporary: Path,

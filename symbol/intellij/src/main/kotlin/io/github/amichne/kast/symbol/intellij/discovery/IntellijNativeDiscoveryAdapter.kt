@@ -63,14 +63,16 @@ internal class IntellijNativeDiscoveryAdapter(
                 modelCompilation = modelCompilation,
             ) { compiledScope ->
                 when (val target = request.target) {
-                    is SymbolDiscoveryTarget.Name -> IntellijNativeDiscoveryQuery(
+                    is SymbolDiscoveryTarget.All,
+                    is SymbolDiscoveryTarget.Name,
+                        -> IntellijNativeDiscoveryQuery(
                         environmentState = { project.discoveryEnvironmentState() },
                         cancellationCheck = ProgressManager::checkCanceled,
                     ).discover(
                         compiledScope = compiledScope,
                         request = request,
-                        contributors = target.kind.nativeContributors()
-                            .filter(target.kind::isAdmittedContributor),
+                        contributors = target.discoveryKind().nativeContributors()
+                            .filter(target.discoveryKind()::isAdmittedContributor),
                     )
                     is SymbolDiscoveryTarget.Location,
                     is SymbolDiscoveryTarget.Text,
@@ -355,6 +357,14 @@ class IntellijFastSymbolReadAdapter<Definition : NativeDetachedDefinition> priva
 
     private fun SymbolDiscoveryRequest.timeLimitReached(startedAt: Long): Boolean =
         elapsedSince(startedAt) >= elapsedLimitNanoseconds().value
+}
+
+private fun SymbolDiscoveryTarget.discoveryKind(): SymbolNameDiscoveryKind = when (this) {
+    is SymbolDiscoveryTarget.All -> kind
+    is SymbolDiscoveryTarget.Name -> kind
+    is SymbolDiscoveryTarget.Location,
+    is SymbolDiscoveryTarget.Text,
+        -> error("Supplemental discovery targets do not use Choose-by-Name contributors")
 }
 
 private fun SymbolNameDiscoveryKind.isAdmittedContributor(

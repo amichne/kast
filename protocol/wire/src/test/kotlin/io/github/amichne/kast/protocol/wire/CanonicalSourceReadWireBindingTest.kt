@@ -41,6 +41,9 @@ import io.github.amichne.kast.protocol.contract.SourceTextRequestDocument
 import io.github.amichne.kast.protocol.contract.SourceVisibilitySelectionDocument
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+import java.util.Base64
 
 class CanonicalSourceReadWireBindingTest {
     @Test
@@ -118,11 +121,12 @@ class CanonicalSourceReadWireBindingTest {
     fun `strict request decoder rejects unknown unions additional fields and invalid bounds`() {
         val binding = CanonicalOperationWireBindings.sourceRead
         val encoded = binding.encodeRequest(sourceReadRequest()).encodedDocument()
+        val selector = exactSelectorToken()
         val invalidDocuments = listOf(
             encoded.replace("\"type\":\"symbol\"", "\"type\":\"unknown\""),
             encoded.replace(
-                "\"selector\":\"exact:Target\"",
-                "\"selector\":\"exact:Target\",\"unknown\":true",
+                "\"selector\":\"$selector\"",
+                "\"selector\":\"$selector\",\"unknown\":true",
             ),
             encoded.replace("\"entityLimit\":250", "\"entityLimit\":0"),
         )
@@ -136,7 +140,7 @@ class CanonicalSourceReadWireBindingTest {
     }
 
     private fun sourceReadRequest(): SourceReadRequest = SourceReadRequest(
-        anchor = SourceReadAnchorDocument.Symbol(text("exact:Target")),
+        anchor = SourceReadAnchorDocument.Symbol(text(exactSelectorToken())),
         region = SourceRegionSelectionDocument.Body(SourceBodyKindDocument.CLASS),
         entities = SourceEntitySelectionDocument.Matching(
             SourceContainmentDocument.DIRECT,
@@ -176,6 +180,15 @@ class CanonicalSourceReadWireBindingTest {
 
     private fun offset(raw: Int): ProtocolOffset = ProtocolOffset.parse(raw).refinedValue()
     private fun text(raw: String): ProtocolText = ProtocolText.parse(raw).refinedValue()
+
+    private fun exactSelectorToken(): String {
+        val payload = "{}".toByteArray(StandardCharsets.UTF_8)
+        val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
+        val digest = MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { byte ->
+            (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+        }
+        return "exact:v2:$encoded:$digest"
+    }
 
     private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
         is Refinement.Refined -> value

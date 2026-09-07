@@ -1,6 +1,15 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.KeepGeneratedSerializer
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import java.nio.charset.CharacterCodingException
 import java.security.MessageDigest
 import java.util.Base64
@@ -16,9 +25,16 @@ enum class SourceReadAnchorDocumentFailure {
     PAYLOAD_DIGEST_MISMATCH,
 }
 
+@Serializable
 sealed interface SourceReadAnchorDocument {
+    @Serializable
+    @SerialName("candidate")
     data class Candidate(val selector: ProtocolText) : SourceReadAnchorDocument
+    @Serializable
+    @SerialName("symbol")
     data class Symbol(val selector: ProtocolText) : SourceReadAnchorDocument
+    @Serializable
+    @SerialName("source")
     data class Source(val selector: ProtocolText) : SourceReadAnchorDocument
 
     companion object {
@@ -89,68 +105,123 @@ private fun sourceReadSha256(bytes: ByteArray): String =
         (byte.toInt() and 0xff).toString(16).padStart(2, '0')
     }
 
+@Serializable
 enum class SourceBodyKindDocument {
+    @SerialName("callable")
     CALLABLE,
+    @SerialName("class")
     CLASS,
 }
 
+@Serializable
 enum class SourceEnclosingRegionKindDocument {
+    @SerialName("declaration")
     DECLARATION,
+    @SerialName("callable-body")
     CALLABLE_BODY,
+    @SerialName("class-body")
     CLASS_BODY,
 }
 
+@Serializable
 sealed interface SourceRegionSelectionDocument {
+    @Serializable
+    @SerialName("anchor")
     data object Anchor : SourceRegionSelectionDocument
+    @Serializable
+    @SerialName("body")
     data class Body(val kind: SourceBodyKindDocument) : SourceRegionSelectionDocument
+    @Serializable
+    @SerialName("file")
     data object File : SourceRegionSelectionDocument
+    @Serializable
+    @SerialName("enclosing")
     data class Enclosing(
         val kind: SourceEnclosingRegionKindDocument,
     ) : SourceRegionSelectionDocument
 }
 
+@Serializable
 enum class SourceDeclarationKindDocument {
+    @SerialName("classlike")
     CLASSLIKE,
+    @SerialName("constructor")
     CONSTRUCTOR,
+    @SerialName("function")
     FUNCTION,
+    @SerialName("property")
     PROPERTY,
+    @SerialName("type-alias")
     TYPE_ALIAS,
 }
 
+@Serializable
 enum class SourceDeclarationVisibilityDocument {
+    @SerialName("public")
     PUBLIC,
+    @SerialName("protected")
     PROTECTED,
+    @SerialName("internal")
     INTERNAL,
+    @SerialName("private")
     PRIVATE,
+    @SerialName("local")
     LOCAL,
 }
 
+@Serializable
 enum class SourceContainmentDocument {
+    @SerialName("direct")
     DIRECT,
+    @SerialName("descendants")
     DESCENDANTS,
 }
 
+@Serializable
 sealed interface SourceVisibilitySelectionDocument {
+    @Serializable
+    @SerialName("any")
     data object Any : SourceVisibilitySelectionDocument
-    data class Exact(val values: List<SourceDeclarationVisibilityDocument>) :
+    @Serializable
+    @SerialName("exact")
+    data class Exact(
+        @ProtocolCollectionConstraint(minimumItems = 1, uniqueItems = true)
+        val values: List<SourceDeclarationVisibilityDocument>,
+    ) :
         SourceVisibilitySelectionDocument
 }
 
+@Serializable
 sealed interface SourceEntityFilterDocument {
+    @Serializable
+    @SerialName("declaration")
     data class Declarations(
+        @ProtocolCollectionConstraint(minimumItems = 1, uniqueItems = true)
         val kinds: List<SourceDeclarationKindDocument>,
         val visibility: SourceVisibilitySelectionDocument,
     ) : SourceEntityFilterDocument
 
+    @Serializable
+    @SerialName("parameters")
     data object Parameters : SourceEntityFilterDocument
+    @Serializable
+    @SerialName("calls")
     data object Calls : SourceEntityFilterDocument
+    @Serializable
+    @SerialName("references")
     data object References : SourceEntityFilterDocument
 }
 
+@Serializable
 sealed interface SourceEntitySelectionDocument {
+    @Serializable
+    @SerialName("none")
     data object None : SourceEntitySelectionDocument
+    @Serializable
+    @SerialName("matching")
     data class Matching(
         val containment: SourceContainmentDocument,
+        @ProtocolCollectionConstraint(minimumItems = 1, uniqueItems = true)
         val filters: List<SourceEntityFilterDocument>,
     ) : SourceEntitySelectionDocument
 }
@@ -161,6 +232,7 @@ enum class SourceLineCountDocumentFailure {
 }
 
 @JvmInline
+@Serializable(with = SourceLineCountDocumentSerializer::class)
 value class SourceLineCountDocument private constructor(val value: Int) {
     companion object {
         fun parse(
@@ -174,9 +246,27 @@ value class SourceLineCountDocument private constructor(val value: Int) {
     }
 }
 
+internal object SourceLineCountDocumentSerializer : RefiningIntSerializer<SourceLineCountDocument>(
+    serialName = "io.github.amichne.kast.protocol.contract.SourceLineCountDocument",
+    minimum = 0,
+    maximum = MAX_SOURCE_READ_LINE_COUNT.toLong(),
+) {
+    override fun raw(value: SourceLineCountDocument): Int = value.value
+
+    override fun refine(raw: Int): Refinement<SourceLineCountDocument, *> =
+        SourceLineCountDocument.parse(raw)
+}
+
+@Serializable
 sealed interface SourceTextRequestDocument {
+    @Serializable
+    @SerialName("complete")
     data object Complete : SourceTextRequestDocument
+    @Serializable
+    @SerialName("none")
     data object None : SourceTextRequestDocument
+    @Serializable
+    @SerialName("window")
     data class Window(
         val beforeLines: SourceLineCountDocument,
         val afterLines: SourceLineCountDocument,
@@ -189,6 +279,7 @@ enum class SourceEntityLimitDocumentFailure {
 }
 
 @JvmInline
+@Serializable(with = SourceEntityLimitDocumentSerializer::class)
 value class SourceEntityLimitDocument private constructor(val value: Int) {
     companion object {
         fun parse(
@@ -202,11 +293,23 @@ value class SourceEntityLimitDocument private constructor(val value: Int) {
     }
 }
 
+internal object SourceEntityLimitDocumentSerializer : RefiningIntSerializer<SourceEntityLimitDocument>(
+    serialName = "io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument",
+    minimum = 1,
+    maximum = MAX_SOURCE_READ_ENTITY_LIMIT.toLong(),
+) {
+    override fun raw(value: SourceEntityLimitDocument): Int = value.value
+
+    override fun refine(raw: Int): Refinement<SourceEntityLimitDocument, *> =
+        SourceEntityLimitDocument.parse(raw)
+}
+
 enum class SourceTextByteLimitDocumentFailure {
     NOT_POSITIVE,
 }
 
 @JvmInline
+@Serializable(with = SourceTextByteLimitDocumentSerializer::class)
 value class SourceTextByteLimitDocument private constructor(val value: Long) {
     companion object {
         fun parse(
@@ -220,11 +323,28 @@ value class SourceTextByteLimitDocument private constructor(val value: Long) {
     }
 }
 
+internal object SourceTextByteLimitDocumentSerializer : RefiningLongSerializer<SourceTextByteLimitDocument>(
+    serialName = "io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument",
+    minimum = 1,
+) {
+    override fun raw(value: SourceTextByteLimitDocument): Long = value.value
+
+    override fun refine(raw: Long): Refinement<SourceTextByteLimitDocument, *> =
+        SourceTextByteLimitDocument.parse(raw)
+}
+
+@Serializable
 sealed interface SourceReadPageDocument {
+    @Serializable
+    @SerialName("first")
     data object First : SourceReadPageDocument
+    @Serializable
+    @SerialName("continue")
     data class Continue(val continuation: ProtocolText) : SourceReadPageDocument
 }
 
+@Serializable(with = SourceReadRequestSerializer::class)
+@KeepGeneratedSerializer
 data class SourceReadRequest(
     val anchor: SourceReadAnchorDocument,
     val region: SourceRegionSelectionDocument,
@@ -234,6 +354,66 @@ data class SourceReadRequest(
     val textByteLimit: SourceTextByteLimitDocument,
     val page: SourceReadPageDocument,
 ) : OperationRequest
+
+internal object SourceReadRequestSerializer : KSerializer<SourceReadRequest> {
+    private val delegate = SourceReadRequest.generatedSerializer()
+
+    override val descriptor = delegate.descriptor
+
+    override fun serialize(encoder: Encoder, value: SourceReadRequest) {
+        delegate.serialize(encoder, value.requireCanonicalSyntax())
+    }
+
+    override fun deserialize(decoder: Decoder): SourceReadRequest =
+        delegate.deserialize(decoder).requireCanonicalSyntax()
+}
+
+private fun SourceReadRequest.requireCanonicalSyntax(): SourceReadRequest =
+    if (anchor.hasCanonicalSyntax() && entities.hasCanonicalSyntax()) this
+    else throw SerializationException("SourceReadRequest rejected non-canonical request syntax")
+
+private fun SourceReadAnchorDocument.hasCanonicalSyntax(): Boolean {
+    val selector = when (this) {
+        is SourceReadAnchorDocument.Candidate -> selector
+        is SourceReadAnchorDocument.Symbol -> selector
+        is SourceReadAnchorDocument.Source -> selector
+    }
+    return when (val admitted = SourceReadAnchorDocument.admit(selector)) {
+        is Refinement.Refined -> admitted.value::class == this::class
+        is Refinement.Rejected -> false
+    }
+}
+
+private fun SourceEntitySelectionDocument.hasCanonicalSyntax(): Boolean = when (this) {
+    SourceEntitySelectionDocument.None -> true
+    is SourceEntitySelectionDocument.Matching -> filters.hasCanonicalSyntax()
+}
+
+private fun List<SourceEntityFilterDocument>.hasCanonicalSyntax(): Boolean {
+    if (isEmpty()) return false
+    val keys = map { filter ->
+        when (filter) {
+            is SourceEntityFilterDocument.Declarations -> {
+                if (!filter.hasCanonicalSyntax()) return false
+                0
+            }
+            SourceEntityFilterDocument.Parameters -> 1
+            SourceEntityFilterDocument.Calls -> 2
+            SourceEntityFilterDocument.References -> 3
+        }
+    }
+    return keys == keys.distinct().sorted()
+}
+
+private fun SourceEntityFilterDocument.Declarations.hasCanonicalSyntax(): Boolean =
+    kinds.isNotEmpty() && kinds == kinds.distinct().sortedBy { it.ordinal } &&
+        visibility.hasCanonicalSyntax()
+
+private fun SourceVisibilitySelectionDocument.hasCanonicalSyntax(): Boolean = when (this) {
+    SourceVisibilitySelectionDocument.Any -> true
+    is SourceVisibilitySelectionDocument.Exact ->
+        values.isNotEmpty() && values == values.distinct().sortedBy { it.ordinal }
+}
 
 enum class SourceCoordinateUnitDocument {
     UTF16_CODE_UNIT,

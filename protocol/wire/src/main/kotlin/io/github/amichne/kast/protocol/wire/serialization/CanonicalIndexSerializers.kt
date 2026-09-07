@@ -9,11 +9,7 @@ import io.github.amichne.kast.protocol.contract.IndexSyncStateDocument
 internal object CanonicalIndexSerializers {
     private val factory = GeneratedWireCodecFactory(wireJson)
 
-    val request = factory.create(
-        IndexSyncRequestDocument.serializer(),
-        { IndexSyncRequestDocument },
-        { WireDocumentConversion.Converted(IndexSyncRequest) },
-    )
+    val request = factory.create(IndexSyncRequest.serializer())
     val result = factory.create(
         IndexSyncResultDocument.serializer(),
         { result -> IndexSyncResultDocument(result.state.toWire()) },

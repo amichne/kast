@@ -85,7 +85,7 @@ joins its runtime, and acquires the evidence required by the operation:
 ```console
 cd /path/to/kotlin-repository
 kast
-kast symbol discover --query Checkout --limit 10
+kast query run < request.json
 ```
 
 Bare `kast` inspects product, runtime, cache, network-policy, and trace state
@@ -109,7 +109,7 @@ freshness limits, trust precedence, and installed acceptance commands.
 
 ## Ask a repository question
 
-`kast --schema` is the machine-readable contract for the nine public semantic operations.
+`kast --schema` is the machine-readable contract for the ten public semantic operations.
 The generated [CLI reference](https://kast.michne.com/reference/cli/) is its
 readable counterpart.
 
@@ -117,16 +117,16 @@ readable counterpart.
 | --- | --- |
 | What is Kast ready to inspect? | Bare `kast` for passive inspection |
 | How do I use changed source? | Issue the semantic request again; rediscover stale selectors |
-| What declaration is this? | `kast symbol discover ...`, then `kast symbol inspect --candidate ...` |
-| What source content and structure exist here? | `kast source read ...` |
-| How is this code connected? | `kast relation read ...` for one hop, or `kast traversal run ...` for bounded depth |
-| What diagnostics exist in this scope? | `kast diagnostic check ...` |
-| How can I add a declaration safely? | `kast change plan ...`, verified `kast change apply ...`, and `kast change recover ...` |
+| What declarations and relationships match? | `kast query run < request.json`; the `symbols` source establishes exact identities inside Kast. |
+| What source content and structure exist here? | `kast source read < request.json` |
+| How is this code connected? | `kast relation read < request.json` for one hop, or `kast traversal run < request.json` for bounded depth |
+| What diagnostics exist in this scope? | `kast diagnostic check < request.json` |
+| How can I add a declaration safely? | `change plan`, `change apply`, and `change recover` each read one canonical request document. |
 
-The intended path is refinement:
+Kast owns the normal refinement path:
 
 1. Discovery returns bounded candidates.
-2. `kast symbol inspect` establishes exact compiler identity.
+2. The `symbols` query source, or an explicit `inspect` step, establishes exact compiler identity.
 3. Source, relation, traversal, diagnostic, or change operations reuse that
    evidence without guessing identity from text.
 

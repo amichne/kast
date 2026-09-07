@@ -54,6 +54,12 @@ import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.RelationReadResult
+import io.github.amichne.kast.protocol.contract.QueryRunQualification
+import io.github.amichne.kast.protocol.contract.QueryRunRejection
+import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.QueryRunResult
+import io.github.amichne.kast.query.contract.QueryOperations
+import io.github.amichne.kast.query.service.QueryService
 import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
 import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
@@ -155,6 +161,7 @@ class KastRuntimeCompositionTest {
         assertSame(operations.sourceRead, handlers.observed.getValue(CanonicalOperation.SOURCE_READ))
         assertSame(operations.relationRead, handlers.observed.getValue(CanonicalOperation.RELATION_READ))
         assertSame(operations.traversalRun, handlers.observed.getValue(CanonicalOperation.TRAVERSAL_RUN))
+        assertSame(operations.queryRun, handlers.observed.getValue(CanonicalOperation.QUERY_RUN))
         assertSame(operations.diagnosticCheck, handlers.observed.getValue(CanonicalOperation.DIAGNOSTIC_CHECK))
         assertSame(operations.changePlan, handlers.observed.getValue(CanonicalOperation.CHANGE_PLAN))
         assertSame(operations.changeApply, handlers.observed.getValue(CanonicalOperation.CHANGE_APPLY))
@@ -166,6 +173,7 @@ class KastRuntimeCompositionTest {
         assertSame(SymbolExactService::class.java, operations.symbolInspect.javaClass)
         assertSame(SourceReadService::class.java, operations.sourceRead.javaClass)
         assertSame(RelationService::class.java, operations.relationRead.javaClass)
+        assertSame(QueryService::class.java, operations.queryRun.javaClass)
         assertSame(VerifiedChangeApplyOperations::class.java, operations.changeApply.javaClass)
         assertSame(AddDeclarationApplyService::class.java, operations.changeApply.apply.javaClass)
         assertSame(VerifiedMutationService::class.java, operations.changeApply.verify.javaClass)
@@ -256,6 +264,13 @@ class KastRuntimeCompositionTest {
                 CanonicalOperation.TRAVERSAL_RUN,
                 operations,
                 TraversalRunRejection.WORKSPACE_NOT_READY,
+            )
+
+        override fun queryRun(operations: QueryOperations) =
+            record<QueryRunRequest, QueryRunResult, QueryRunQualification, QueryRunRejection>(
+                CanonicalOperation.QUERY_RUN,
+                operations,
+                QueryRunRejection.WorkspaceNotReady,
             )
 
         override fun diagnosticCheck(operations: DiagnosticOperations, scopes: io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolver) =

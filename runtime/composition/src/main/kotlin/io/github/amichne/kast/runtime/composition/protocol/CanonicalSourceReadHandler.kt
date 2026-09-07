@@ -133,12 +133,12 @@ private fun SourceReadRequest.admit(authority: CanonicalProtocolAuthority): Sour
         is SourceReadAnchorDocument.Candidate -> when (val lookup = authority.candidate(requested.selector)) {
             is CandidateSelectorLookup.Found ->
                 DomainSourceReadAnchor.Candidate(lookup.selector)
-            CandidateSelectorLookup.Missing ->
+            is CandidateSelectorLookup.Rejected ->
                 return SourceRequestAdmission.Rejected(SourceReadRejection.CANDIDATE_STALE)
         }
         is SourceReadAnchorDocument.Symbol -> when (val lookup = authority.exact(requested.selector)) {
             is ExactSelectorLookup.Found -> DomainSourceReadAnchor.Symbol(lookup.selector)
-            ExactSelectorLookup.Missing ->
+            is ExactSelectorLookup.Rejected ->
                 return SourceRequestAdmission.Rejected(SourceReadRejection.STALE_GENERATION)
         }
         is SourceReadAnchorDocument.Source -> {

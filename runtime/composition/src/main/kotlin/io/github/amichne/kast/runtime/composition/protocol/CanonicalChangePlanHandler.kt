@@ -161,7 +161,7 @@ internal class CanonicalChangePlanHandler(
         is ExactSelectorLookup.Found -> ChangeIntentAuthorization.Authorized(
             authorized(lookup.selector),
         )
-        ExactSelectorLookup.Missing -> ChangeIntentAuthorization.MissingTarget
+        is ExactSelectorLookup.Rejected -> ChangeIntentAuthorization.MissingTarget
     }
 
     private fun planned(

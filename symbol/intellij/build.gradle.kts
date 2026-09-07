@@ -40,6 +40,14 @@ private val kotlinPluginLibs: ConfigurableFileCollection = files(
     },
 ).builtBy(extractSymbolIdeaDistribution)
 
+private val javaPluginLibs: ConfigurableFileCollection = files(
+    extractedIdeaDistributionDirectory.map { directory ->
+        fileTree(directory) {
+            include("**/plugins/java/lib/**/*.jar")
+        }
+    },
+).builtBy(extractSymbolIdeaDistribution)
+
 dependencies {
     implementation(project(":symbol:contract"))
     implementation(project(":workspace:contract"))
@@ -49,6 +57,7 @@ dependencies {
     }
 
     compileOnly("com.jetbrains.intellij.platform:core:$ideaPlatformBuild")
+    compileOnly("com.jetbrains.intellij.platform:core-impl:$ideaPlatformBuild")
     compileOnly("com.jetbrains.intellij.platform:analysis:$ideaPlatformBuild")
     compileOnly("com.jetbrains.intellij.platform:indexing:$ideaPlatformBuild")
     compileOnly("com.jetbrains.intellij.platform:lang:$ideaPlatformBuild")
@@ -57,8 +66,10 @@ dependencies {
     compileOnly("com.jetbrains.intellij.platform:util:$ideaPlatformBuild")
     compileOnly("com.jetbrains.intellij.platform:util-text-matching:$ideaPlatformBuild")
     compileOnly(kotlinPluginLibs)
+    compileOnly(javaPluginLibs)
 
     testImplementation("com.jetbrains.intellij.platform:core:$ideaPlatformBuild")
+    testImplementation("com.jetbrains.intellij.platform:core-impl:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:analysis:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:indexing:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:lang:$ideaPlatformBuild")
@@ -66,4 +77,5 @@ dependencies {
     testImplementation("com.jetbrains.intellij.platform:project-model:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:util:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:util-text-matching:$ideaPlatformBuild")
+    testImplementation(javaPluginLibs)
 }

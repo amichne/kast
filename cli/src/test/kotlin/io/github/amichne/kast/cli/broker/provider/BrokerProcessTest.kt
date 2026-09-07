@@ -22,20 +22,28 @@ import kotlin.time.TimeSource
 
 class BrokerProcessTest {
     @Test
-    fun `broker process arguments preserve emitted continuations above four KiB`(
+    fun `broker process standard input preserves canonical documents above four KiB`(
         @TempDir temporary: Path,
-    ) {
+    ) = runBlocking {
         val token = emittedTraversalContinuation()
         assertTrue(token.length > 4_096)
-        val arguments = traversalArguments() + listOf("--continuation", token)
+        val document = """{"continuation":"$token"}"""
+        val executable = temporary.resolve("read-request")
+        Files.writeString(executable, "#!/bin/sh\ncat\n")
+        Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwx------"))
         val request = BrokerProcessRequest.admit(
-            BrokerExecutable.admit(Path.of("/bin/sh")).refinedValue(),
-            arguments,
+            BrokerExecutable.admit(executable).refinedValue(),
+            traversalArguments(),
             checkNotNull(CanonicalBrokerDirectory.admit(temporary.toRealPath())),
-            maximumOutputBytes = 1_024,
+            maximumOutputBytes = 16_384,
             timeoutMillis = 1_000,
+            input = BrokerProcessInput.Document.admit(document).refinedValue(),
         ).refinedValue()
-        assertEquals(arguments, request.arguments)
+
+        assertEquals(
+            BrokerProcessExecution.Completed(0, document, ""),
+            JdkBrokerProcessExecutor.execute(request),
+        )
     }
 
     @Test

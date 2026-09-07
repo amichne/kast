@@ -6,7 +6,7 @@ run the command in the Kotlin Gradle repository you want to inspect:
 ```shell
 cd /path/to/repository
 kast
-kast symbol discover --query Checkout --match exact-name --limit 10
+kast query run < request.json
 ```
 
 Bare `kast` is passive inspection. A semantic request starts or joins the

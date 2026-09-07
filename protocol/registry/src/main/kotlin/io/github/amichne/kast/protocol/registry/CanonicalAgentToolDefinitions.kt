@@ -44,12 +44,16 @@ value class AgentToolInputName private constructor(val value: String) {
 /** Closed approval requirement retained by every provider projection. */
 enum class HostedApprovalPolicy { NONE, EXPLICIT }
 
+/** Canonical initial-availability policy retained by every hosted projection. */
+enum class HostedToolLoading { EAGER, DEFERRED }
+
 /** Canonical semantic metadata for one hosted tool, independent of invocation transport. */
 data class AgentToolDefinition(
     val operation: OperationDefinition<*, *, *, *, *>,
     val name: AgentToolName,
     val description: ProtocolText,
     val approval: HostedApprovalPolicy,
+    val loading: HostedToolLoading,
 )
 
 enum class AgentToolPolicyFailure { BLANK, TOO_LONG }
@@ -71,6 +75,14 @@ value class AgentToolPolicy private constructor(val text: String) {
 
 /** Sole canonical hosted-agent metadata and policy authority. */
 object CanonicalAgentToolDefinitions {
+    val query = tool(
+        CanonicalOperationDefinitions.queryRun,
+        "query",
+        "Search, filter, and expand Kotlin declaration relations in one typed query. The symbols " +
+            "source returns exact compiler identities. Kast manages intermediate selectors and " +
+            "bounded work. Exhaustive intent is qualified when the shared budget is exhausted.",
+        loading = HostedToolLoading.EAGER,
+    )
     val symbolLookup = tool(
         CanonicalOperationDefinitions.symbolDiscover,
         "symbol_lookup",
@@ -134,6 +146,7 @@ object CanonicalAgentToolDefinitions {
     )
 
     val all: List<AgentToolDefinition> = listOf(
+        query,
         symbolLookup,
         symbolInspect,
         sourceRead,
@@ -150,11 +163,11 @@ object CanonicalAgentToolDefinitions {
             """
             Kast provides compiler-grounded Kotlin source intelligence for the current repository.
 
-            Prefer Kast over direct filesystem search or read when the question requires symbol
-            identity, bounded source context, semantic relations, traversal, diagnostics, or change
-            planning. Use discovery to obtain candidates and inspection to establish exact symbol
-            identity. Preserve returned selectors rather than reconstructing identities from source
-            text.
+            Prefer kast.query for read-only symbol discovery, filtering, and semantic expansion.
+            Its symbols source establishes exact compiler identity and Kast owns candidate
+            refinement, intermediate references, and bounded iteration. Use specialized read tools
+            only when their narrower contract is specifically required. Preserve returned refs
+            rather than reconstructing identities from source text.
 
             Kast operations establish their own runtime, workspace, and required derived evidence.
             Do not invoke lifecycle, index synchronization, or topology preparation as prerequisites.
@@ -167,11 +180,13 @@ object CanonicalAgentToolDefinitions {
         name: String,
         description: String,
         approval: HostedApprovalPolicy = HostedApprovalPolicy.NONE,
+        loading: HostedToolLoading = HostedToolLoading.DEFERRED,
     ): AgentToolDefinition = AgentToolDefinition(
         operation,
         refined(AgentToolName.parse(name)),
         refined(ProtocolText.parse(description)),
         approval,
+        loading,
     )
 
     private fun <Value, Failure> refined(value: Refinement<Value, Failure>): Value = when (value) {

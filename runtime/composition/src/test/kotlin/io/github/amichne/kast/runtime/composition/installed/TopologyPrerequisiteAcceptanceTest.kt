@@ -151,14 +151,14 @@ class TopologyPrerequisiteAcceptanceTest {
     }
 
     @Test
-    fun `stale selector rejects public traversal without running traversal`(
+    fun `malformed selector rejects public traversal without running traversal`(
         @TempDir temporary: Path,
     ) {
         val context = resolvedContext(temporary)
         var traversalRun = false
         val operations = TraversalOperations {
             traversalRun = true
-            error("stale selector must not reach traversal")
+            error("malformed selector must not reach traversal")
         }
 
         val outcome = runImmediate {
@@ -168,7 +168,7 @@ class TopologyPrerequisiteAcceptanceTest {
         }
 
         assertEquals(
-            OperationOutcome.Rejected(TraversalRunRejection.SELECTOR_STALE),
+            OperationOutcome.Rejected(TraversalRunRejection.SELECTOR_MALFORMED),
             outcome,
         )
         assertFalse(traversalRun)
@@ -277,7 +277,7 @@ private fun resolvedContext(temporary: Path): ResolvedTopologyContext {
     val exact = inspected.evidence.payload.symbol.selector
     val selector = when (val lookup = authority.exact(exact)) {
         is ExactSelectorLookup.Found -> lookup.selector
-        ExactSelectorLookup.Missing -> error("resolved selector authority is required")
+        is ExactSelectorLookup.Rejected -> error("resolved selector authority is required")
     }
     return ResolvedTopologyContext(
         fixture,

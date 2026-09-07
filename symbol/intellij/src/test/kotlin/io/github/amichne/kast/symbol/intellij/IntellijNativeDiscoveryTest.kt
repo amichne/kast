@@ -21,6 +21,11 @@ import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDeclarationKinds
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectory
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectoryConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
@@ -34,6 +39,7 @@ import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -76,6 +82,42 @@ class SymbolDiscoveryTest {
 
         assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
         assertEquals(listOf("AItem", "ZItem"), outcome.batch().candidates.map { it.name.value })
+    }
+
+    @Test
+    fun `explicit all applies directory scope before consuming work budget`() {
+        val outcome = fixture(
+            all = true,
+            workLimit = 2L,
+            directory = "services/payments",
+            itemPaths = mapOf(
+                "ZItem" to "/workspace/services/payments/ZItem.kt",
+                "NoMatch" to "/workspace/services/other/NoMatch.kt",
+                "AItem" to "/workspace/services/payments/AItem.kt",
+            ),
+        ).execute().outcome()
+
+        assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
+        assertEquals(listOf("AItem", "ZItem"), outcome.batch().candidates.map { it.name.value })
+        assertEquals(2L, outcome.batch().examinedWorkUnits.value)
+    }
+
+    @Test
+    fun `explicit all applies declaration kind before consuming work budget`() {
+        val outcome = fixture(
+            all = true,
+            workLimit = 1L,
+            declarationKinds = setOf(CompilerSymbolKind.FUNCTION),
+            itemKinds = mapOf(
+                "ZItem" to CompilerSymbolKind.PROPERTY,
+                "NoMatch" to CompilerSymbolKind.PROPERTY,
+                "AItem" to CompilerSymbolKind.FUNCTION,
+            ),
+        ).execute().outcome()
+
+        assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
+        assertEquals(listOf("AItem"), outcome.batch().candidates.map { it.name.value })
+        assertEquals(1L, outcome.batch().examinedWorkUnits.value)
     }
 
     @Test
@@ -180,6 +222,11 @@ class SymbolDiscoveryTest {
         providerFails: Boolean = false,
         collidingNames: Boolean = false,
         leadingUnrelatedNames: Int = 0,
+        all: Boolean = false,
+        directory: String? = null,
+        itemPaths: Map<String, String> = emptyMap(),
+        declarationKinds: Set<CompilerSymbolKind>? = null,
+        itemKinds: Map<String, CompilerSymbolKind> = emptyMap(),
     ): Fixture {
         val request = request(
             kind = kind,
@@ -187,6 +234,9 @@ class SymbolDiscoveryTest {
             returnedBytes = returnedBytes,
             workLimit = workLimit,
             elapsedMillis = elapsedMillis,
+            all = all,
+            directory = directory,
+            declarationKinds = declarationKinds,
         )
         val zed = FakeItem("ZItem")
         val noMatch = FakeItem("NoMatch")
@@ -200,7 +250,9 @@ class SymbolDiscoveryTest {
         } else {
             listOf(zed, noMatch, alpha, outside)
         }
-        val files = items.associateWith { LightVirtualFile("${it.identity}.kt") }
+        val files = items.associateWith {
+            LightVirtualFile(itemPaths[it.candidateName] ?: "/workspace/src/${it.identity}.kt")
+        }
         val inScopeItems = if (collidingNames) items.toSet() else setOf(zed, noMatch, alpha)
         val inScopeFiles = inScopeItems.mapTo(linkedSetOf(), files::getValue)
         val scope = object : GlobalSearchScope() {
@@ -231,15 +283,17 @@ class SymbolDiscoveryTest {
             },
             projector = { discoveryRequest, item, file ->
                 val fake = item as FakeItem
-                val resultKind = (
-                    discoveryRequest.target as SymbolDiscoveryTarget.Name
-                ).resultKind
+                val resultKind = when (val target = discoveryRequest.target) {
+                    is SymbolDiscoveryTarget.Name -> target.resultKind
+                    is SymbolDiscoveryTarget.All -> target.resultKind
+                    else -> error("native name discovery received ${target::class.simpleName}")
+                }
                 projectedNames += fake.candidateName
                 SymbolDiscoveryCandidate.fromBoundary(
                     kind = resultKind,
                     rawName = fake.candidateName,
                     lease = discoveryRequest.scope.lease,
-                    nativePath = Path.of("/workspace/src/${file.name}"),
+                    nativePath = Path.of(file.path),
                     virtualFileUrl = file.url,
                     rawOffset = if (resultKind == SymbolDiscoveryKind.FILE) {
                         null
@@ -247,6 +301,14 @@ class SymbolDiscoveryTest {
                         fake.candidateName.length
                     },
                 )
+            },
+            itemCompilerKind = { item ->
+                val kind = itemKinds[(item as FakeItem).candidateName]
+                if (kind == null) {
+                    IntellijDiscoveryItemCompilerKindResult.Unsupported
+                } else {
+                    IntellijDiscoveryItemCompilerKindResult.Found(kind)
+                }
             },
             environmentState = environmentState,
             cancellationCheck = cancellationCheck,
@@ -268,6 +330,9 @@ class SymbolDiscoveryTest {
         returnedBytes: Long,
         workLimit: Long,
         elapsedMillis: Long,
+        all: Boolean,
+        directory: String?,
+        declarationKinds: Set<CompilerSymbolKind>?,
     ): SymbolDiscoveryRequest {
         val workspaceRoot =
             CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
@@ -284,11 +349,15 @@ class SymbolDiscoveryTest {
                     libraries = SymbolLibraryPolicy.EXCLUDE,
                 ),
             ),
-            target = SymbolDiscoveryTarget.Name(
-                kind = kind,
-                pattern = SymbolDiscoveryPattern.parse("Item").refined(),
-                match = SymbolDiscoveryMatch.FUZZY,
-            ),
+            target = if (all) {
+                SymbolDiscoveryTarget.All(kind)
+            } else {
+                SymbolDiscoveryTarget.Name(
+                    kind = kind,
+                    pattern = SymbolDiscoveryPattern.parse("Item").refined(),
+                    match = SymbolDiscoveryMatch.FUZZY,
+                )
+            },
             budget = SymbolDiscoveryBudget(
                 resources = ResourceBudget(
                     resultLimit = ResultLimit.parse(resultLimit).refined(),
@@ -296,6 +365,18 @@ class SymbolDiscoveryTest {
                     elapsedTimeLimit = ElapsedTimeLimitMillis.parse(elapsedMillis).refined(),
                 ),
                 returnedBytes = SymbolDiscoveryByteLimit.parse(returnedBytes).refined(),
+            ),
+            constraints = SymbolDiscoveryConstraints(
+                directory = directory?.let {
+                    SymbolDiscoveryDirectoryConstraint(
+                        SymbolDiscoveryDirectory.parse(it).refined(),
+                        SymbolDiscoveryContainment.DESCENDANTS,
+                    )
+                },
+                packageName = null,
+                declarationKinds = declarationKinds?.let {
+                    SymbolDiscoveryDeclarationKinds.from(it).refined()
+                },
             ),
         )
     }

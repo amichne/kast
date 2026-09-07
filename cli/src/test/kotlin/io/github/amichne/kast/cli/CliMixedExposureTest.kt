@@ -24,7 +24,7 @@ class CliMixedExposureTest {
             assertEquals(listOf("discover"), family.root.registeredSubcommandNames())
             assertEquals(listOf(CanonicalOperation.SYMBOL_DISCOVER), family.semanticCommands.map { it.operation })
             assertThrows(UsageError::class.java) {
-                val parsed = CommandLineParser.parse(family.root, listOf("inspect", "--candidate", "candidate"))
+                val parsed = CommandLineParser.parse(family.root, listOf("inspect"))
                 CommandLineParser.run(parsed.invocation) { command -> command.resolveAction() }
             }
         }

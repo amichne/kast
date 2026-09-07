@@ -228,7 +228,7 @@ internal fun SymbolDocument.toCliDocument(): SymbolCliDocument = SymbolCliDocume
 internal fun CompilerSymbolEvidenceDocument.toCliDocument(): CompilerSymbolEvidenceCliDocument =
     CompilerSymbolEvidenceCliDocument(identity.value, signature.toCliDocument())
 
-private fun CompilerSignatureDocument.toCliDocument(): CompilerSignatureCliDocument = when (this) {
+internal fun CompilerSignatureDocument.toCliDocument(): CompilerSignatureCliDocument = when (this) {
     is CompilerSignatureDocument.Function -> CompilerSignatureCliDocument.Function(
         qualifiedIdentity.value,
         receiver.toCliDocument(),

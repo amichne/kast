@@ -1,5 +1,11 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.cli.command.CliRequestDocumentInput
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.charset.CodingErrorAction
+import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.util.ServiceConfigurationError
 import java.util.ServiceLoader
@@ -57,7 +63,11 @@ private sealed interface CliBootstrapFailure {
 /** Process entrypoint for the single Kotlin `kast` executable. */
 fun main(args: Array<String>) {
     val exit = when (val bootstrap = loadComposition(args.isEmpty())) {
-        is CliBootstrap.Ready -> bootstrap.cli.execute(args.toList(), Path.of("").toAbsolutePath())
+        is CliBootstrap.Ready -> bootstrap.cli.execute(
+            args.toList(),
+            Path.of("").toAbsolutePath(),
+            CliRequestDocumentInput.Deferred(::readCanonicalRequestInput),
+        )
         is CliBootstrap.Inspected -> bootstrap.exit
         is CliBootstrap.Rejected -> boundaryExit(
             CliBoundaryExitStatus.BOOTSTRAP,
@@ -73,6 +83,37 @@ fun main(args: Array<String>) {
     }
     exitProcess(exit.code)
 }
+
+private fun readCanonicalRequestInput(): CliRequestDocumentInput {
+    val bytes = ByteArrayOutputStream()
+    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+    try {
+        while (true) {
+            val count = System.`in`.read(buffer)
+            if (count < 0) break
+            if (bytes.size() + count > MAXIMUM_REQUEST_DOCUMENT_BYTES) {
+                return CliRequestDocumentInput.Rejected
+            }
+            bytes.write(buffer, 0, count)
+        }
+    } catch (_: IOException) {
+        return CliRequestDocumentInput.Rejected
+    }
+    if (bytes.size() == 0) return CliRequestDocumentInput.Absent
+    val document = try {
+        StandardCharsets.UTF_8.newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT)
+            .decode(ByteBuffer.wrap(bytes.toByteArray()))
+            .toString()
+    } catch (_: java.nio.charset.CharacterCodingException) {
+        return CliRequestDocumentInput.Rejected
+    }
+    return if (document.isBlank()) CliRequestDocumentInput.Rejected
+    else CliRequestDocumentInput.Provided(document)
+}
+
+private const val MAXIMUM_REQUEST_DOCUMENT_BYTES = 4 * 1_024 * 1_024
 
 /**
  * Proof transition: installed service providers -> `CliBootstrap`.

@@ -12,6 +12,7 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
 
@@ -36,6 +37,26 @@ class SymbolDiscoveryContractTest {
         )
         assertEquals("Service", SymbolDiscoveryPattern.parse("Service").refined().value)
         assertEquals(4096L, SymbolDiscoveryByteLimit.parse(4096L).refined().value)
+    }
+
+    @Test
+    fun `directory restriction rejects control characters`() {
+        assertEquals(
+            SymbolDiscoveryDirectoryFailure.CONTROL_CHARACTER,
+            SymbolDiscoveryDirectory.parse("src/\nmain").rejected(),
+        )
+    }
+
+    @Test
+    fun `supplemental target construction fixes constraints to none`() {
+        val indexed = request(resultLimit = 1)
+        val supplemental = SymbolDiscoveryRequest(
+            indexed.scope,
+            SymbolDiscoveryTarget.Text(SymbolDiscoveryPattern.parse("needle").refined()),
+            indexed.budget,
+        )
+
+        assertSame(SymbolDiscoveryConstraints.None, supplemental.constraints)
     }
 
     @Test

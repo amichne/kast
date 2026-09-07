@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli.broker.protocol.codex
 
 import io.github.amichne.kast.cli.broker.core.AgentSessionBootstrap
+import io.github.amichne.kast.protocol.registry.HostedToolLoading
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -26,7 +27,7 @@ internal fun AgentSessionBootstrap.toCodexSessionProjection(): CodexSessionProje
                         put("name", tool.name.value)
                         put("description", tool.description.value)
                         put("inputSchema", tool.inputSchema.document)
-                        put("deferLoading", true)
+                        put("deferLoading", tool.loading == HostedToolLoading.DEFERRED)
                     })
                 }
             })

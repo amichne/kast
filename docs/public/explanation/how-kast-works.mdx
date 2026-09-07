@@ -48,11 +48,11 @@ sequenceDiagram
     participant Dispatch as Semantic dispatch
     participant K2 as IntelliJ adapter
 
-    Caller->>CLI: kast symbol inspect --selector ...
+    Caller->>CLI: symbol.inspect JSON on standard input
     CLI->>Admission: canonical repository root
     Admission->>Endpoint: descriptor, process, socket, compatibility
     Endpoint-->>Admission: admitted exact-root capability
-    CLI->>Endpoint: bounded SymbolInspectRequestDocument
+    CLI->>Endpoint: bounded SymbolInspectRequest
     Endpoint->>Dispatch: admit and decode request
     Dispatch->>K2: inspect exact selector
     K2-->>Dispatch: detached host-neutral evidence
@@ -140,13 +140,14 @@ finite reason without recording tool arguments, results, or repository content.
 
 Assume inspection already returned an exact selector:
 
-```console
-kast symbol inspect --selector '<exact-selector>'
+```json
+{"target":{"type":"exact","selector":"<exact-selector>"}}
 ```
 
-The Kotlin control executable parses `symbol.inspect` and constructs a
-`SymbolInspectRequestDocument`. `UnixDomainWireClient` sends that document as
-one bounded frame to the admitted socket.
+The Kotlin control executable selects `symbol.inspect`, then the canonical
+`SymbolInspectRequest` serializer parses the standard-input document.
+`UnixDomainWireClient` sends that same model as one bounded frame to the
+admitted socket.
 
 The request follows four owners:
 
@@ -248,7 +249,7 @@ serialized or reused after their workspace generation changes.
 
 | Boundary | Current contract |
 | --- | --- |
-| **Sidecar routes** | Symbol discovery and inspection, source and relation reads, traversal, diagnostics, planning, verified application, and recovery are the nine public installed capabilities. Index synchronization and topology remain internal prerequisites. |
+| **Sidecar routes** | Typed query execution, symbol discovery and inspection, source and relation reads, traversal, diagnostics, planning, verified application, and recovery are the ten public installed capabilities. Index synchronization and topology remain internal prerequisites. |
 | **Compiler-grounded reads** | Relation and diagnostic routes use the same typed compiler services as planning and verification while remaining independently callable. |
 | **Kast-owned lifecycle** | `start` owns admission and typed cache policy, `status` is passive, and `stop` targets only the proven sidecar process and its endpoint artifacts. |
 

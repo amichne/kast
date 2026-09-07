@@ -1,5 +1,8 @@
 package io.github.amichne.kast.protocol.contract
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data object IndexSyncRequest : OperationRequest
 
 data class IndexSyncResult(

@@ -28,6 +28,7 @@ enum class OperationExecutionBudget(operationMillis: Long) {
             CanonicalOperation.SYMBOL_INSPECT,
             CanonicalOperation.SOURCE_READ,
             CanonicalOperation.RELATION_READ,
+            CanonicalOperation.QUERY_RUN,
             CanonicalOperation.DIAGNOSTIC_CHECK,
             CanonicalOperation.CHANGE_PLAN,
             CanonicalOperation.CHANGE_APPLY,

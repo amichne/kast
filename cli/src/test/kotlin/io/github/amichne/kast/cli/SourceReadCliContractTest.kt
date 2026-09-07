@@ -4,6 +4,7 @@ import io.github.amichne.kast.cli.command.CliAction
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandParsing
+import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.SourceContainmentDocument
@@ -25,6 +26,7 @@ import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireRequestAdmission
 import io.github.amichne.kast.protocol.wire.WireRequestEnvelope
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -36,10 +38,7 @@ class SourceReadCliContractTest {
     @Test
     fun `minimal source read resolves every canonical default before wire encoding`() {
         val token = selectorToken("exact", "v2")
-        val parsed = commandGraphFactory().parse(listOf("source", "read", "--anchor", token))
-
-        assertEquals(
-            SourceReadRequest(
+        val expected = SourceReadRequest(
                 SourceReadAnchorDocument.Symbol(protocolText(token)),
                 SourceRegionSelectionDocument.Anchor,
                 SourceEntitySelectionDocument.None,
@@ -47,37 +46,15 @@ class SourceReadCliContractTest {
                 SourceEntityLimitDocument.parse(250).refinedValue(),
                 SourceTextByteLimitDocument.parse(65_536).refinedValue(),
                 SourceReadPageDocument.First,
-            ),
-            parsed.sourceRequest(),
         )
+
+        assertEquals(expected, sourceRequest(expected))
     }
 
     @Test
     fun `source read composes structural filters window bounds and continuation`() {
         val token = selectorToken("source-selector-v1", null)
-        val parsed = commandGraphFactory().parse(
-            listOf(
-                "source", "read", "--anchor", token,
-                "--region", "enclosing-callable-body",
-                "--declaration-kind", "function",
-                "--declaration-kind", "property",
-                "--visibility", "public",
-                "--visibility", "private",
-                "--include-parameters",
-                "--include-calls",
-                "--include-references",
-                "--containment", "descendants",
-                "--text", "window",
-                "--before-lines", "3",
-                "--after-lines", "5",
-                "--entity-limit", "10",
-                "--text-byte-limit", "4096",
-                "--continuation", "source-read-continuation-v1|${"a".repeat(64)}",
-            ),
-        )
-
-        assertEquals(
-            SourceReadRequest(
+        val expected = SourceReadRequest(
                 SourceReadAnchorDocument.Source(protocolText(token)),
                 SourceRegionSelectionDocument.Enclosing(
                     SourceEnclosingRegionKindDocument.CALLABLE_BODY,
@@ -111,33 +88,45 @@ class SourceReadCliContractTest {
                 SourceReadPageDocument.Continue(
                     protocolText("source-read-continuation-v1|${"a".repeat(64)}"),
                 ),
-            ),
-            parsed.sourceRequest(),
         )
+
+        assertEquals(expected, sourceRequest(expected))
     }
 
     @Test
     fun `source read invalid combinations fail at usage refinement`() {
-        val token = selectorToken("candidate", "v1")
+        val token = selectorToken("candidate", "v2")
         val invalid = listOf(
-            listOf("--visibility", "public"),
-            listOf("--containment", "direct"),
-            listOf("--before-lines", "1"),
-            listOf("--declaration-kind", "function", "--declaration-kind", "function"),
+            """{"anchor":{"type":"candidate","selector":"$token"},"region":{"type":"anchor"},"entities":{"type":"matching","containment":"direct","filters":[]},"text":{"type":"complete"},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}""",
+            """{"anchor":{"type":"candidate","selector":"$token"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"window","beforeLines":-1,"afterLines":0},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}""",
+            """{"anchor":{"type":"candidate","selector":"$token"},"region":{"type":"anchor"},"entities":{"type":"matching","containment":"direct","filters":[{"type":"declaration","kinds":["function","function"],"visibility":{"type":"any"}}]},"text":{"type":"complete"},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}""",
         )
 
-        invalid.forEach { options ->
+        invalid.forEach { document ->
             assertTrue(
                 commandGraphFactory().parse(
-                    listOf("source", "read", "--anchor", token) + options,
+                    listOf("source", "read"),
+                    CliRequestDocumentInput.Provided(document),
                 ) is CliCommandParsing.Rejected,
             )
         }
         assertTrue(
             commandGraphFactory().parse(
-                listOf("source", "read", "--anchor", "unknown:selector"),
+                listOf("source", "read"),
+                CliRequestDocumentInput.Provided(
+                    """{"anchor":{"type":"candidate","selector":"unknown:selector"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"complete"},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}""",
+                ),
             ) is CliCommandParsing.Rejected,
         )
+    }
+
+    private fun sourceRequest(request: SourceReadRequest): SourceReadRequest {
+        val document = Json { encodeDefaults = true; classDiscriminator = "type" }
+            .encodeToString(SourceReadRequest.serializer(), request)
+        return commandGraphFactory().parse(
+            listOf("source", "read"),
+            CliRequestDocumentInput.Provided(document),
+        ).sourceRequest()
     }
 
     private fun CliCommandParsing.sourceRequest(): SourceReadRequest {

@@ -216,6 +216,10 @@ class KastRuntimeComposition private constructor(
                     handlers.topologyBuild(operations.topologyBuild),
                 ),
                 TypedOperationBinding(
+                    CanonicalOperationWireBindings.queryRun,
+                    handlers.queryRun(operations.queryRun),
+                ),
+                TypedOperationBinding(
                     CanonicalOperationWireBindings.symbolDiscover,
                     handlers.symbolDiscover(operations.symbolDiscover),
                 ),

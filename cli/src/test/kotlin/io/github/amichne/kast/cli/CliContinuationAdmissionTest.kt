@@ -5,6 +5,7 @@ import io.github.amichne.kast.cli.command.CliCommandFailure
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandParsing
+import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.cli.projection.traversalRunCliProjector
 import io.github.amichne.kast.kernel.EvidenceEnvelope
@@ -30,7 +31,7 @@ import java.util.Base64
 
 class CliContinuationAdmissionTest {
     @Test
-    fun `emitted traversal continuation above ordinary argv bound resumes in both option forms`() {
+    fun `emitted traversal continuation above ordinary argv bound resumes through request document`() {
         val token = emittedTraversalContinuation()
         assertTrue(token.length > 4_096)
         assertResumed(traversalArguments(), token)
@@ -41,25 +42,19 @@ class CliContinuationAdmissionTest {
         for (payloadSize in listOf(4_200, 70_000, 780_000)) {
             assertResumed(traversalArguments(), continuationEnvelope("traversal", payloadSize))
             assertResumed(
-                listOf("relation", "read", "--selector=exact:fixture", "--relation=callees", "--limit=1"),
+                listOf("relation", "read"),
                 continuationEnvelope("relation", payloadSize),
             )
         }
     }
 
     @Test
-    fun `ordinary wrong family tampered and over canonical limit arguments stay rejected`() {
+    fun `ordinary argv remains bounded independently of request documents`() {
         val token = emittedTraversalContinuation()
-        val invalid = listOf(
-            listOf("symbol", "discover", "--query", token, "--limit=1"),
-            traversalArguments() + listOf("--selector", token),
-            traversalArguments() + listOf("--continuation", continuationEnvelope("traversal", 800_000)),
-            listOf("relation", "read", "--continuation", continuationEnvelope("relation", 800_000)),
-            traversalArguments() + listOf("--", "--continuation", token),
+        assertEquals(
+            CliCommandFailure.ARGUMENT_TOO_LONG,
+            rejected(listOf("symbol", "discover", token)).failure,
         )
-        for (arguments in invalid) {
-            assertEquals(CliCommandFailure.ARGUMENT_TOO_LONG, rejected(arguments).failure)
-        }
         assertEquals(
             CliCommandFailure.TOO_MANY_ARGUMENTS,
             rejected(List(67) { "word" }).failure,
@@ -69,32 +64,45 @@ class CliContinuationAdmissionTest {
     @Test
     fun `long corrupted continuations preserve the finite family rejection diagnostic`() {
         val token = emittedTraversalContinuation()
-        for ((command, supplied, family) in listOf(
-            Triple(traversalArguments(), "x".repeat(4_097), "traversal"),
-            Triple(traversalArguments(), token.dropLast(1) + "z", "traversal"),
-            Triple(listOf("relation", "read"), token, "relation"),
+        for ((command, supplied) in listOf(
+            traversalArguments() to "x".repeat(4_097),
+            traversalArguments() to (token.dropLast(1) + "z"),
+            listOf("relation", "read") to token,
+            traversalArguments() to continuationEnvelope("traversal", 800_000),
         )) {
-            for (option in listOf(listOf("--continuation", supplied), listOf("--continuation=$supplied"))) {
-                val rejection = rejected(command + option)
-                assertEquals(CliCommandFailure.ARGUMENTS_REJECTED, rejection.failure)
-                assertTrue(rejection.diagnostic.value.trimEnd().endsWith(
-                    "Error: --continuation must be one intact $family continuation token",
-                ))
-            }
+            val rejection = rejected(command, requestDocument(command, supplied))
+            assertEquals(CliCommandFailure.ARGUMENTS_REJECTED, rejection.failure)
+            assertTrue(rejection.diagnostic.value.contains("canonical, bounded request document"))
         }
     }
 
     private fun assertResumed(command: List<String>, token: String) {
-        for (option in listOf(listOf("--continuation", token), listOf("--continuation=$token"))) {
-            val parsed = assertInstanceOf(CliCommandParsing.Parsed::class.java, factory().parse(command + option))
-            val action = assertInstanceOf(CliAction.Semantic::class.java, parsed.action)
-            // Inspect the actual prepared wire request, preserving the emitted opaque value exactly.
-            assertTrue(action.request.document.contains(token))
-        }
+        val parsed = assertInstanceOf(
+            CliCommandParsing.Parsed::class.java,
+            factory().parse(
+                command,
+                CliRequestDocumentInput.Provided(requestDocument(command, token)),
+            ),
+        )
+        val action = assertInstanceOf(CliAction.Semantic::class.java, parsed.action)
+        assertTrue(action.request.document.contains(token))
     }
 
     private fun rejected(arguments: List<String>): CliCommandParsing.Rejected =
         assertInstanceOf(CliCommandParsing.Rejected::class.java, factory().parse(arguments))
+
+    private fun rejected(arguments: List<String>, document: String): CliCommandParsing.Rejected =
+        assertInstanceOf(
+            CliCommandParsing.Rejected::class.java,
+            factory().parse(arguments, CliRequestDocumentInput.Provided(document)),
+        )
+
+    private fun requestDocument(command: List<String>, continuation: String): String =
+        if (command.first() == "relation") {
+            """{"exactSelector":"exact:fixture","relation":"callees","limit":1,"position":{"type":"resume","continuation":"$continuation"}}"""
+        } else {
+            """{"exactSelector":"exact:fixture","relation":"callees","maximumDepth":3,"maximumResults":1,"position":{"type":"resume","continuation":"$continuation"}}"""
+        }
 
     private fun factory(): CliCommandGraphFactory = when (
         val result = CliCommandGraphFactory.create(canonicalCliRequestPreparers())
@@ -105,8 +113,7 @@ class CliContinuationAdmissionTest {
 }
 
 internal fun traversalArguments(): List<String> = listOf(
-    "traversal", "run", "--selector=exact:fixture", "--relation=callees",
-    "--maximum-depth=3", "--maximum-results=1",
+    "traversal", "run",
 )
 
 /** A public projection emits the complete envelope; no repository source or machine paths enter it. */

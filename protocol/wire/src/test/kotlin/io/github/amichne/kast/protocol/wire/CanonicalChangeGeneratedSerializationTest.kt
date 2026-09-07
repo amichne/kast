@@ -38,16 +38,16 @@ class CanonicalChangeGeneratedSerializationTest {
     @Test
     fun `generated documents own every change payload serializer`() {
         val serializers = listOf<KSerializer<*>>(
-            ChangePlanRequestDocument.serializer(),
-            ChangeIntentWireDocument.serializer(),
+            ChangePlanRequest.serializer(),
+            ChangeIntentDocument.serializer(),
             ChangePlanResultDocument.serializer(),
             ChangePlanQualificationDocument.serializer(),
             ChangePlanRejectionDocument.serializer(),
-            ChangeApplyRequestDocument.serializer(),
+            ChangeApplyRequest.serializer(),
             ChangeApplyResultDocument.serializer(),
             ChangeApplyQualificationDocument.serializer(),
             ChangeApplyRejectionDocument.serializer(),
-            ChangeRecoverRequestDocument.serializer(),
+            ChangeRecoverRequest.serializer(),
             ChangeRecoverResultDocument.serializer(),
             ChangeRecoveryStateDocument.serializer(),
             ChangeRecoverQualificationDocument.serializer(),

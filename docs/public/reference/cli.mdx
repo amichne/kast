@@ -36,7 +36,7 @@ graph used by `kast --schema`. The documentation check fails when they differ.
 Use:
 
 - `kast --schema` for the machine-readable contract.
-- `kast <command> --help` for every option and valid combination.
+- `kast <command> --help` for command selection and standard-input requirements.
 
 ## Installed server projection
 
@@ -48,7 +48,7 @@ The projection defines:
 
 - Every operation marked `public`, with its canonical ID and evidence document.
 - Tool names, descriptions, and closed input and output JSON Schemas.
-- Field-to-CLI bindings, deferred loading, and approval policy.
+- Whole-document CLI invocation paths, deferred loading, and approval policy.
 - Read façades such as `symbol_lookup`,
   `semantic_query`, `impact_analyze`, and `diagnostic_check`.
 
@@ -62,24 +62,28 @@ and [broker admission](https://github.com/amichne/kast/blob/main/cli/src/main/ko
 
 ## Sidecar endpoint operations
 
-Run semantic commands from the repository root.
+Semantic command paths are machine-facing. Run them from the repository root and
+provide exactly one canonical JSON request document on standard input. The request
+shape and constraints in `kast --schema` are generated from the same Kotlin
+serializer that decodes the document.
 
 - Success emits one JSON document on standard output.
 - Rejection emits one diagnostic document on standard error.
-- The private IntelliJ sidecar publishes 9 operations marked
+- The private IntelliJ sidecar publishes 10 operations marked
   `public` by the generated registry.
 
 | Operation | Command shape | Result role |
 | --- | --- | --- |
-| `symbol.discover` | `kast symbol discover --mode <name\|location\|text> ... --limit <1..1000>` | Find bounded candidates by name, location, structure, or text. |
-| `symbol.inspect` | `kast symbol inspect <--candidate <candidate-selector>\|--selector <exact-selector>>` | Refine a candidate or inspect an exact selector and return exact compiler evidence. |
-| `source.read` | `kast source read --anchor <selector> [--region <region>] [--declaration-kind <kind>]... [--visibility <visibility>]... [--include-parameters] [--include-calls] [--include-references] [--containment <direct\|descendants>] [--text <complete\|none\|window>] [--before-lines <0..1000>] [--after-lines <0..1000>] [--entity-limit <1..1000>] [--text-byte-limit <positive-count>] [--continuation <continuation>]` | Read bounded source text and structure without establishing compiler identity. |
-| `relation.read` | `kast relation read --selector <exact-selector> --relation <kind> --limit <1..1000>` | Read one bounded semantic relation from an exact symbol. |
-| `traversal.run` | `kast traversal run --selector <exact-selector> --relation <kind> --maximum-depth <1..1000> --maximum-results <1..1000>` | Read one exact-root semantic generation as normalized node, edge, and proof tables with explicit depth and result limits. |
-| `diagnostic.check` | `kast diagnostic check --scope <scope> --limit <1..1000>` | Read compiler diagnostics for one explicit scope. |
-| `change.plan` | `kast change plan --intent <add-file\|add-declaration\|replace-declaration\|rename-symbol> <intent-options>` | Sidecar route is available only for `add-declaration`. Derive a typed plan without writing the workspace. |
-| `change.apply` | `kast change apply --plan <plan-identity>` | Apply one admitted plan, publish its successor, verify it, and return a receipt. |
-| `change.recover` | `kast change recover --plan <plan-identity>` | Restore one plan to a known workspace state. |
+| `query.run` | `kast query run < request.json` | Search, refine, filter, and expand exact-symbol sets inside Kast. This is the default read surface. |
+| `symbol.discover` | `kast symbol discover < request.json` | Find bounded candidates by name, location, structure, or text. |
+| `symbol.inspect` | `kast symbol inspect < request.json` | Refine a candidate or inspect an exact selector and return exact compiler evidence. |
+| `source.read` | `kast source read < request.json` | Read bounded source text and structure without establishing compiler identity. |
+| `relation.read` | `kast relation read < request.json` | Read one bounded semantic relation from an exact symbol. |
+| `traversal.run` | `kast traversal run < request.json` | Read one exact-root semantic generation as normalized node, edge, and proof tables with explicit depth and result limits. |
+| `diagnostic.check` | `kast diagnostic check < request.json` | Read compiler diagnostics for one explicit scope. |
+| `change.plan` | `kast change plan < request.json` | Sidecar route is available only for `add-declaration`. Derive a typed plan without writing the workspace. |
+| `change.apply` | `kast change apply < request.json` | Apply one admitted plan, publish its successor, verify it, and return a receipt. |
+| `change.recover` | `kast change recover < request.json` | Restore one plan to a known workspace state. |
 
 ## Canonical operations without a direct sidecar route
 
@@ -95,18 +99,13 @@ Run semantic commands from the repository root.
 | `topology.build` | Acquired automatically as an internal sidecar service; no public command or endpoint route. |
 
 
-## Continuation argument limits
+## Request document limits
 
-Pass a relation or traversal continuation intact with `--continuation <token>`
-or `--continuation=<token>`. The CLI admits these family-specific envelopes
-under the canonical public text bound (1,048,576 characters).
-
-Ordinary arguments remain limited to 4,096 characters and an invocation to 66 arguments. Corrupt,
-wrong-family, and over-bound continuations reject before runtime dispatch.
-
-The operating system also limits the combined argument and environment size;
-the canonical parser bound does not promise that every host can launch a process
-with a one-megabyte argument.
+Kast accepts one UTF-8 request document of at most 4 MiB on standard input.
+Constrained values, including continuations, retain their smaller serializer-owned
+bounds. Malformed, wrong-family, non-canonical, and over-bound values reject before
+runtime dispatch. Ordinary command-selection arguments remain limited to 4,096
+characters and an invocation to 66 arguments.
 
 ## Runtime lifecycle
 

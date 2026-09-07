@@ -29,6 +29,7 @@ class OperationMetadata:
 
 
 OPERATION_DESCRIPTIONS = {
+    "query.run": "Search, refine, filter, and expand exact-symbol sets inside Kast. This is the default read surface.",
     "index.sync": "Refresh admitted source roots, await indexing, and publish current semantic evidence.",
     "topology.build": "Build or reuse the durable graph and return its generation and digest.",
     "symbol.discover": "Find bounded candidates by name, location, structure, or text.",
@@ -113,7 +114,7 @@ def parse_semantic_commands(
     public_enums = {operation.enum_name for operation in operations if operation.hosted_exposure == "public"}
     pattern = re.compile(
         r"operation\s*=\s*CanonicalOperation\.(?P<operation>[A-Z_]+),"
-        r"\s*schemaUsage\s*=\s*(?P<usage>.*?),\s*preparer\s*=",
+        r'\s*schemaUsage\s*=\s*(?P<usage>"(?:[^"\\]|\\.)*")\s*,',
         re.DOTALL,
     )
     for source in sorted(command_root.rglob("*Commands.kt")):
@@ -304,7 +305,7 @@ graph used by `kast --schema`. The documentation check fails when they differ.
 Use:
 
 - `kast --schema` for the machine-readable contract.
-- `kast <command> --help` for every option and valid combination.
+- `kast <command> --help` for command selection and standard-input requirements.
 
 ## Installed server projection
 
@@ -316,7 +317,7 @@ The projection defines:
 
 - Every operation marked `public`, with its canonical ID and evidence document.
 - Tool names, descriptions, and closed input and output JSON Schemas.
-- Field-to-CLI bindings, deferred loading, and approval policy.
+- Whole-document CLI invocation paths, deferred loading, and approval policy.
 - Read façades such as `symbol_lookup`,
   `semantic_query`, `impact_analyze`, and `diagnostic_check`.
 
@@ -330,7 +331,10 @@ and [broker admission](https://github.com/amichne/kast/blob/main/cli/src/main/ko
 
 ## Sidecar endpoint operations
 
-Run semantic commands from the repository root.
+Semantic command paths are machine-facing. Run them from the repository root and
+provide exactly one canonical JSON request document on standard input. The request
+shape and constraints in `kast --schema` are generated from the same Kotlin
+serializer that decodes the document.
 
 - Success emits one JSON document on standard output.
 - Rejection emits one diagnostic document on standard error.
@@ -342,18 +346,13 @@ Run semantic commands from the repository root.
 {hosted_rows}
 {deferred_section}
 
-## Continuation argument limits
+## Request document limits
 
-Pass a relation or traversal continuation intact with `--continuation <token>`
-or `--continuation=<token>`. The CLI admits these family-specific envelopes
-under the canonical public text bound (1,048,576 characters).
-
-Ordinary arguments remain limited to 4,096 characters and an invocation to 66 arguments. Corrupt,
-wrong-family, and over-bound continuations reject before runtime dispatch.
-
-The operating system also limits the combined argument and environment size;
-the canonical parser bound does not promise that every host can launch a process
-with a one-megabyte argument.
+Kast accepts one UTF-8 request document of at most 4 MiB on standard input.
+Constrained values, including continuations, retain their smaller serializer-owned
+bounds. Malformed, wrong-family, non-canonical, and over-bound values reject before
+runtime dispatch. Ordinary command-selection arguments remain limited to 4,096
+characters and an invocation to 66 arguments.
 
 ## Runtime lifecycle
 

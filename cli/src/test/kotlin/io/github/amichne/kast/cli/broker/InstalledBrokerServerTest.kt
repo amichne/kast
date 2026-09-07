@@ -278,6 +278,7 @@ class InstalledBrokerServerTest {
                     .single { it.getValue("name").jsonPrimitive.content == "kast" }
                 assertEquals(
                     listOf(
+                        "query",
                         "symbol_lookup",
                         "symbol_inspect",
                         "source_read",

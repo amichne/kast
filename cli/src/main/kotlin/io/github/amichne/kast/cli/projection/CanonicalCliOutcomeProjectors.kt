@@ -23,6 +23,9 @@ import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadResult
+import io.github.amichne.kast.protocol.contract.QueryRunQualification
+import io.github.amichne.kast.protocol.contract.QueryRunRejection
+import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
 import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
 import io.github.amichne.kast.protocol.contract.SymbolInspectResult
@@ -75,6 +78,12 @@ internal val traversalRunCliProjector = CliOutcomeProjector<
     TraversalRunQualification,
     TraversalRunRejection,
     > { outcome -> CanonicalReadCliDocuments.projectTraversal(outcome) }
+
+internal val queryRunCliProjector = CliOutcomeProjector<
+    QueryRunResult,
+    QueryRunQualification,
+    QueryRunRejection,
+    > { outcome -> CanonicalQueryCliDocuments.project(outcome) }
 
 internal val diagnosticCheckCliProjector = CliOutcomeProjector<
     DiagnosticCheckResult,

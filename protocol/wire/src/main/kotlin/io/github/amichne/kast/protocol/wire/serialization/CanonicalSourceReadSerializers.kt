@@ -44,11 +44,7 @@ import io.github.amichne.kast.protocol.contract.SourceVisibilitySelectionDocumen
 internal object CanonicalSourceReadSerializers {
     private val factory = GeneratedWireCodecFactory(wireJson)
 
-    val request = factory.create(
-        SourceReadRequestWireDocument.serializer(),
-        SourceReadRequest::toWireDocument,
-        SourceReadRequestWireDocument::toContract,
-    )
+    val request = factory.create(SourceReadRequest.serializer())
     val result = factory.create(
         SourceReadResultWireDocument.serializer(),
         SourceReadResult::toWireDocument,
@@ -64,211 +60,6 @@ internal object CanonicalSourceReadSerializers {
         SourceReadRejection::toWireDocument,
         { WireDocumentConversion.Converted(it.toContract()) },
     )
-}
-
-private fun SourceReadRequest.toWireDocument(): SourceReadRequestWireDocument =
-    SourceReadRequestWireDocument(
-        anchor = anchor.toWireDocument(),
-        region = region.toWireDocument(),
-        entities = entities.toWireDocument(),
-        text = text.toWireDocument(),
-        entityLimit = entityLimit.value,
-        textByteLimit = textByteLimit.value,
-        page = page.toWireDocument(),
-    )
-
-private fun SourceReadRequestWireDocument.toContract(): WireDocumentConversion<SourceReadRequest> =
-    anchor.toContract().flatMapConverted { admittedAnchor ->
-        region.toContract().flatMapConverted { admittedRegion ->
-            entities.toContract().flatMapConverted { admittedEntities ->
-                text.toContract().flatMapConverted { admittedText ->
-                    entityLimit.sourceEntityLimit().flatMapConverted { admittedEntityLimit ->
-                        textByteLimit.sourceTextByteLimit().flatMapConverted { admittedTextLimit ->
-                            page.toContract().mapConverted { admittedPage ->
-                                SourceReadRequest(
-                                    admittedAnchor,
-                                    admittedRegion,
-                                    admittedEntities,
-                                    admittedText,
-                                    admittedEntityLimit,
-                                    admittedTextLimit,
-                                    admittedPage,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-private fun SourceReadAnchorDocument.toWireDocument(): SourceReadAnchorWireDocument = when (this) {
-    is SourceReadAnchorDocument.Candidate -> SourceReadAnchorWireDocument.Candidate(selector.value)
-    is SourceReadAnchorDocument.Symbol -> SourceReadAnchorWireDocument.Symbol(selector.value)
-    is SourceReadAnchorDocument.Source -> SourceReadAnchorWireDocument.Source(selector.value)
-}
-
-private fun SourceReadAnchorWireDocument.toContract():
-    WireDocumentConversion<SourceReadAnchorDocument> = when (this) {
-    is SourceReadAnchorWireDocument.Candidate -> selector.protocolText()
-        .mapConverted(SourceReadAnchorDocument::Candidate)
-    is SourceReadAnchorWireDocument.Symbol -> selector.protocolText()
-        .mapConverted(SourceReadAnchorDocument::Symbol)
-    is SourceReadAnchorWireDocument.Source -> selector.protocolText()
-        .mapConverted(SourceReadAnchorDocument::Source)
-}
-
-private fun SourceRegionSelectionDocument.toWireDocument():
-    SourceRegionSelectionWireDocument = when (this) {
-    SourceRegionSelectionDocument.Anchor -> SourceRegionSelectionWireDocument.Anchor
-    is SourceRegionSelectionDocument.Body ->
-        SourceRegionSelectionWireDocument.Body(kind.toWireDocument())
-    SourceRegionSelectionDocument.File -> SourceRegionSelectionWireDocument.File
-    is SourceRegionSelectionDocument.Enclosing ->
-        SourceRegionSelectionWireDocument.Enclosing(kind.toWireDocument())
-}
-
-private fun SourceRegionSelectionWireDocument.toContract():
-    WireDocumentConversion<SourceRegionSelectionDocument> = WireDocumentConversion.Converted(
-    when (this) {
-        SourceRegionSelectionWireDocument.Anchor -> SourceRegionSelectionDocument.Anchor
-        is SourceRegionSelectionWireDocument.Body ->
-            SourceRegionSelectionDocument.Body(kind.toContract())
-        SourceRegionSelectionWireDocument.File -> SourceRegionSelectionDocument.File
-        is SourceRegionSelectionWireDocument.Enclosing ->
-            SourceRegionSelectionDocument.Enclosing(kind.toContract())
-    },
-)
-
-private fun SourceEntitySelectionDocument.toWireDocument():
-    SourceEntitySelectionWireDocument = when (this) {
-    SourceEntitySelectionDocument.None -> SourceEntitySelectionWireDocument.None
-    is SourceEntitySelectionDocument.Matching -> SourceEntitySelectionWireDocument.Matching(
-        containment.toWireDocument(),
-        filters.map(SourceEntityFilterDocument::toWireDocument),
-    )
-}
-
-private fun SourceEntitySelectionWireDocument.toContract():
-    WireDocumentConversion<SourceEntitySelectionDocument> = when (this) {
-    SourceEntitySelectionWireDocument.None ->
-        WireDocumentConversion.Converted(SourceEntitySelectionDocument.None)
-    is SourceEntitySelectionWireDocument.Matching -> filters
-        .convertEach(SourceEntityFilterWireDocument::toContract)
-        .flatMapConverted { admittedFilters ->
-            if (!admittedFilters.isCanonicalEntityFilters()) {
-                WireDocumentConversion.Rejected
-            } else {
-                WireDocumentConversion.Converted(
-                    SourceEntitySelectionDocument.Matching(
-                        containment.toContract(),
-                        admittedFilters,
-                    ),
-                )
-            }
-        }
-}
-
-private fun List<SourceEntityFilterDocument>.isCanonicalEntityFilters(): Boolean {
-    if (isEmpty()) return false
-    val keys = map { filter ->
-        when (filter) {
-            is SourceEntityFilterDocument.Declarations -> 0
-            SourceEntityFilterDocument.Parameters -> 1
-            SourceEntityFilterDocument.Calls -> 2
-            SourceEntityFilterDocument.References -> 3
-        }
-    }
-    return keys == keys.distinct().sorted()
-}
-
-private fun SourceEntityFilterDocument.toWireDocument(): SourceEntityFilterWireDocument =
-    when (this) {
-        is SourceEntityFilterDocument.Declarations ->
-            SourceEntityFilterWireDocument.Declarations(
-                kinds.map(SourceDeclarationKindDocument::toWireDocument),
-                visibility.toWireDocument(),
-            )
-        SourceEntityFilterDocument.Parameters -> SourceEntityFilterWireDocument.Parameters
-        SourceEntityFilterDocument.Calls -> SourceEntityFilterWireDocument.Calls
-        SourceEntityFilterDocument.References -> SourceEntityFilterWireDocument.References
-    }
-
-private fun SourceEntityFilterWireDocument.toContract():
-    WireDocumentConversion<SourceEntityFilterDocument> = when (this) {
-    is SourceEntityFilterWireDocument.Declarations -> {
-        val admittedKinds = kinds.map(SourceDeclarationKindWireDocument::toContract)
-        if (admittedKinds.isEmpty() || admittedKinds != admittedKinds.distinct().sortedBy { it.ordinal }) {
-            WireDocumentConversion.Rejected
-        } else {
-            visibility.toContract().mapConverted { admittedVisibility ->
-                SourceEntityFilterDocument.Declarations(admittedKinds, admittedVisibility)
-            }
-        }
-    }
-    SourceEntityFilterWireDocument.Parameters ->
-        WireDocumentConversion.Converted(SourceEntityFilterDocument.Parameters)
-    SourceEntityFilterWireDocument.Calls ->
-        WireDocumentConversion.Converted(SourceEntityFilterDocument.Calls)
-    SourceEntityFilterWireDocument.References ->
-        WireDocumentConversion.Converted(SourceEntityFilterDocument.References)
-}
-
-private fun SourceVisibilitySelectionDocument.toWireDocument():
-    SourceVisibilitySelectionWireDocument = when (this) {
-    SourceVisibilitySelectionDocument.Any -> SourceVisibilitySelectionWireDocument.Any
-    is SourceVisibilitySelectionDocument.Exact -> SourceVisibilitySelectionWireDocument.Exact(
-        values.map(SourceDeclarationVisibilityDocument::toWireDocument),
-    )
-}
-
-private fun SourceVisibilitySelectionWireDocument.toContract():
-    WireDocumentConversion<SourceVisibilitySelectionDocument> = when (this) {
-    SourceVisibilitySelectionWireDocument.Any ->
-        WireDocumentConversion.Converted(SourceVisibilitySelectionDocument.Any)
-    is SourceVisibilitySelectionWireDocument.Exact -> {
-        val admitted = values.map(SourceDeclarationVisibilityWireDocument::toContract)
-        if (admitted.isEmpty() || admitted != admitted.distinct().sortedBy { it.ordinal }) {
-            WireDocumentConversion.Rejected
-        } else {
-            WireDocumentConversion.Converted(SourceVisibilitySelectionDocument.Exact(admitted))
-        }
-    }
-}
-
-private fun SourceTextRequestDocument.toWireDocument(): SourceTextRequestWireDocument = when (this) {
-    SourceTextRequestDocument.Complete -> SourceTextRequestWireDocument.Complete
-    SourceTextRequestDocument.None -> SourceTextRequestWireDocument.None
-    is SourceTextRequestDocument.Window -> SourceTextRequestWireDocument.Window(
-        beforeLines.value,
-        afterLines.value,
-    )
-}
-
-private fun SourceTextRequestWireDocument.toContract():
-    WireDocumentConversion<SourceTextRequestDocument> = when (this) {
-    SourceTextRequestWireDocument.Complete ->
-        WireDocumentConversion.Converted(SourceTextRequestDocument.Complete)
-    SourceTextRequestWireDocument.None ->
-        WireDocumentConversion.Converted(SourceTextRequestDocument.None)
-    is SourceTextRequestWireDocument.Window -> combineConverted(
-        beforeLines.sourceLineCount(),
-        afterLines.sourceLineCount(),
-    ) { before, after -> SourceTextRequestDocument.Window(before, after) }
-}
-
-private fun SourceReadPageDocument.toWireDocument(): SourceReadPageWireDocument = when (this) {
-    SourceReadPageDocument.First -> SourceReadPageWireDocument.First
-    is SourceReadPageDocument.Continue ->
-        SourceReadPageWireDocument.Continue(continuation.value)
-}
-
-private fun SourceReadPageWireDocument.toContract():
-    WireDocumentConversion<SourceReadPageDocument> = when (this) {
-    SourceReadPageWireDocument.First ->
-        WireDocumentConversion.Converted(SourceReadPageDocument.First)
-    is SourceReadPageWireDocument.Continue -> continuation.protocolText()
-        .mapConverted(SourceReadPageDocument::Continue)
 }
 
 private fun SourceReadResult.toWireDocument(): SourceReadResultWireDocument =
@@ -392,9 +183,9 @@ private fun SourceRegionWireDocument.toContract(): WireDocumentConversion<Source
 
 private fun SourceEntityDocument.toWireDocument(): SourceEntityWireDocument = when (this) {
     is SourceEntityDocument.Declaration -> SourceEntityWireDocument.Declaration(
-        kind.toWireDocument(),
+        kind,
         name.value,
-        visibility.toWireDocument(),
+        visibility,
         nestingDepth.value,
         parentSelector.value,
         selection.toWireDocument(),
@@ -431,9 +222,9 @@ private fun SourceEntityWireDocument.toContract(): WireDocumentConversion<Source
                     selection.toContract().flatMapConverted { admittedSelection ->
                         semanticIdentity.toContract().mapConverted { admittedIdentity ->
                             SourceEntityDocument.Declaration(
-                                kind.toContract(),
+                                kind,
                                 admittedName,
-                                visibility.toContract(),
+                                visibility,
                                 admittedDepth,
                                 admittedParent,
                                 admittedSelection,
@@ -650,84 +441,6 @@ private fun SourceReadRejectionWireDocument.toContract(): SourceReadRejection = 
     SourceReadRejectionWireDocument.COMPILER_ANALYSIS_UNAVAILABLE ->
         SourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE
     SourceReadRejectionWireDocument.CONTRACT_VIOLATION -> SourceReadRejection.CONTRACT_VIOLATION
-}
-
-private fun SourceBodyKindDocument.toWireDocument(): SourceBodyKindWireDocument = when (this) {
-    SourceBodyKindDocument.CALLABLE -> SourceBodyKindWireDocument.CALLABLE
-    SourceBodyKindDocument.CLASS -> SourceBodyKindWireDocument.CLASS
-}
-
-private fun SourceBodyKindWireDocument.toContract(): SourceBodyKindDocument = when (this) {
-    SourceBodyKindWireDocument.CALLABLE -> SourceBodyKindDocument.CALLABLE
-    SourceBodyKindWireDocument.CLASS -> SourceBodyKindDocument.CLASS
-}
-
-private fun SourceEnclosingRegionKindDocument.toWireDocument():
-    SourceEnclosingRegionKindWireDocument = when (this) {
-    SourceEnclosingRegionKindDocument.DECLARATION ->
-        SourceEnclosingRegionKindWireDocument.DECLARATION
-    SourceEnclosingRegionKindDocument.CALLABLE_BODY ->
-        SourceEnclosingRegionKindWireDocument.CALLABLE_BODY
-    SourceEnclosingRegionKindDocument.CLASS_BODY ->
-        SourceEnclosingRegionKindWireDocument.CLASS_BODY
-}
-
-private fun SourceEnclosingRegionKindWireDocument.toContract():
-    SourceEnclosingRegionKindDocument = when (this) {
-    SourceEnclosingRegionKindWireDocument.DECLARATION ->
-        SourceEnclosingRegionKindDocument.DECLARATION
-    SourceEnclosingRegionKindWireDocument.CALLABLE_BODY ->
-        SourceEnclosingRegionKindDocument.CALLABLE_BODY
-    SourceEnclosingRegionKindWireDocument.CLASS_BODY ->
-        SourceEnclosingRegionKindDocument.CLASS_BODY
-}
-
-private fun SourceContainmentDocument.toWireDocument(): SourceContainmentWireDocument = when (this) {
-    SourceContainmentDocument.DIRECT -> SourceContainmentWireDocument.DIRECT
-    SourceContainmentDocument.DESCENDANTS -> SourceContainmentWireDocument.DESCENDANTS
-}
-
-private fun SourceContainmentWireDocument.toContract(): SourceContainmentDocument = when (this) {
-    SourceContainmentWireDocument.DIRECT -> SourceContainmentDocument.DIRECT
-    SourceContainmentWireDocument.DESCENDANTS -> SourceContainmentDocument.DESCENDANTS
-}
-
-private fun SourceDeclarationKindDocument.toWireDocument():
-    SourceDeclarationKindWireDocument = when (this) {
-    SourceDeclarationKindDocument.CLASSLIKE -> SourceDeclarationKindWireDocument.CLASSLIKE
-    SourceDeclarationKindDocument.CONSTRUCTOR -> SourceDeclarationKindWireDocument.CONSTRUCTOR
-    SourceDeclarationKindDocument.FUNCTION -> SourceDeclarationKindWireDocument.FUNCTION
-    SourceDeclarationKindDocument.PROPERTY -> SourceDeclarationKindWireDocument.PROPERTY
-    SourceDeclarationKindDocument.TYPE_ALIAS -> SourceDeclarationKindWireDocument.TYPE_ALIAS
-}
-
-private fun SourceDeclarationKindWireDocument.toContract():
-    SourceDeclarationKindDocument = when (this) {
-    SourceDeclarationKindWireDocument.CLASSLIKE -> SourceDeclarationKindDocument.CLASSLIKE
-    SourceDeclarationKindWireDocument.CONSTRUCTOR -> SourceDeclarationKindDocument.CONSTRUCTOR
-    SourceDeclarationKindWireDocument.FUNCTION -> SourceDeclarationKindDocument.FUNCTION
-    SourceDeclarationKindWireDocument.PROPERTY -> SourceDeclarationKindDocument.PROPERTY
-    SourceDeclarationKindWireDocument.TYPE_ALIAS -> SourceDeclarationKindDocument.TYPE_ALIAS
-}
-
-private fun SourceDeclarationVisibilityDocument.toWireDocument():
-    SourceDeclarationVisibilityWireDocument = when (this) {
-    SourceDeclarationVisibilityDocument.PUBLIC -> SourceDeclarationVisibilityWireDocument.PUBLIC
-    SourceDeclarationVisibilityDocument.PROTECTED ->
-        SourceDeclarationVisibilityWireDocument.PROTECTED
-    SourceDeclarationVisibilityDocument.INTERNAL -> SourceDeclarationVisibilityWireDocument.INTERNAL
-    SourceDeclarationVisibilityDocument.PRIVATE -> SourceDeclarationVisibilityWireDocument.PRIVATE
-    SourceDeclarationVisibilityDocument.LOCAL -> SourceDeclarationVisibilityWireDocument.LOCAL
-}
-
-private fun SourceDeclarationVisibilityWireDocument.toContract():
-    SourceDeclarationVisibilityDocument = when (this) {
-    SourceDeclarationVisibilityWireDocument.PUBLIC -> SourceDeclarationVisibilityDocument.PUBLIC
-    SourceDeclarationVisibilityWireDocument.PROTECTED ->
-        SourceDeclarationVisibilityDocument.PROTECTED
-    SourceDeclarationVisibilityWireDocument.INTERNAL -> SourceDeclarationVisibilityDocument.INTERNAL
-    SourceDeclarationVisibilityWireDocument.PRIVATE -> SourceDeclarationVisibilityDocument.PRIVATE
-    SourceDeclarationVisibilityWireDocument.LOCAL -> SourceDeclarationVisibilityDocument.LOCAL
 }
 
 private fun SourceCoordinateUnitDocument.toWireDocument(): SourceCoordinateUnitWireDocument =

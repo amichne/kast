@@ -34,39 +34,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-internal data class SymbolDiscoverRequestWireDocument(
-    val target: SymbolDiscoverTargetWireDocument,
-    val limit: Int,
-)
-@Serializable
-internal sealed interface SymbolDiscoverTargetWireDocument {
-    @Serializable
-    @SerialName("name")
-    data class Name(
-        val query: String,
-        val kind: SymbolCategoryWireDocument,
-        val match: SymbolDiscoveryMatchWireDocument,
-    ) : SymbolDiscoverTargetWireDocument
-    @Serializable
-    @SerialName("location")
-    data class Location(val file: String, val offset: Int) : SymbolDiscoverTargetWireDocument
-    @Serializable
-    @SerialName("text")
-    data class Text(
-        val query: String,
-        val scope: SymbolTextScopeWireDocument,
-    ) : SymbolDiscoverTargetWireDocument
-}
-@Serializable
-internal sealed interface SymbolTextScopeWireDocument {
-    @Serializable
-    @SerialName("workspace")
-    data object Workspace : SymbolTextScopeWireDocument
-    @Serializable
-    @SerialName("file")
-    data class File(val file: String) : SymbolTextScopeWireDocument
-}
-@Serializable
 internal data class SymbolDiscoverResultWireDocument(val items: List<SymbolDiscoveryWireDocument>)
 @Serializable
 internal sealed interface SymbolDiscoveryWireDocument {
@@ -225,72 +192,6 @@ internal enum class SymbolKindWireDocument {
     @SerialName("property") PROPERTY,
     @SerialName("type-alias") TYPE_ALIAS,
 }
-internal fun SymbolDiscoverRequest.toSymbolWireDocument() = SymbolDiscoverRequestWireDocument(
-    target.toWireDocument(),
-    limit.value,
-)
-/**
- * Proof transition: `SymbolDiscoverRequestWireDocument ->
- * WireDocumentConversion<SymbolDiscoverRequest>`. Establishes a closed target and bounded limit;
- * raw primitives are extracted only at this wire boundary.
- */
-internal fun SymbolDiscoverRequestWireDocument.toContract():
-    WireDocumentConversion<SymbolDiscoverRequest> = combineConverted(
-    target.toContract(),
-    limit.toProtocolCount(),
-    ::SymbolDiscoverRequest,
-)
-private fun SymbolDiscoverTargetDocument.toWireDocument(): SymbolDiscoverTargetWireDocument =
-    when (this) {
-        is SymbolDiscoverTargetDocument.Name -> SymbolDiscoverTargetWireDocument.Name(
-            query.value,
-            kind.toWireDocument(),
-            match.toWireDocument(),
-        )
-        is SymbolDiscoverTargetDocument.Location ->
-            SymbolDiscoverTargetWireDocument.Location(file.value, offset.value)
-        is SymbolDiscoverTargetDocument.Text ->
-            SymbolDiscoverTargetWireDocument.Text(query.value, scope.toWireDocument())
-    }
-/**
- * Proof transition: `SymbolDiscoverTargetWireDocument ->
- * WireDocumentConversion<SymbolDiscoverTargetDocument>`. Establishes the selected closed variant
- * and its refined fields; raw target primitives exist only at this wire boundary.
- */
-private fun SymbolDiscoverTargetWireDocument.toContract():
-    WireDocumentConversion<SymbolDiscoverTargetDocument> = when (this) {
-    is SymbolDiscoverTargetWireDocument.Name -> query.toProtocolText().mapConverted { query ->
-        SymbolDiscoverTargetDocument.Name(query, kind.toNameKind(), match.toContract())
-    }
-    is SymbolDiscoverTargetWireDocument.Location -> combineConverted(
-        file.toProtocolText(),
-        offset.toProtocolOffset(),
-    ) { file, offset ->
-        SymbolDiscoverTargetDocument.Location(file, offset)
-    }
-    is SymbolDiscoverTargetWireDocument.Text -> combineConverted(
-        query.toProtocolText(),
-        scope.toContract(),
-    ) { query, scope ->
-        SymbolDiscoverTargetDocument.Text(query, scope)
-    }
-}
-private fun SymbolTextScopeDocument.toWireDocument(): SymbolTextScopeWireDocument = when (this) {
-    SymbolTextScopeDocument.Workspace -> SymbolTextScopeWireDocument.Workspace
-    is SymbolTextScopeDocument.File -> SymbolTextScopeWireDocument.File(file.value)
-}
-/**
- * Proof transition: `SymbolTextScopeWireDocument ->
- * WireDocumentConversion<SymbolTextScopeDocument>`. Establishes a closed scope and refined file
- * when present; raw scope primitives exist only at this wire boundary.
- */
-private fun SymbolTextScopeWireDocument.toContract(): WireDocumentConversion<SymbolTextScopeDocument> =
-    when (this) {
-    SymbolTextScopeWireDocument.Workspace ->
-        WireDocumentConversion.Converted(SymbolTextScopeDocument.Workspace)
-    is SymbolTextScopeWireDocument.File ->
-        file.toProtocolText().mapConverted { value -> SymbolTextScopeDocument.File(value) }
-}
 internal fun SymbolDiscoverResult.toSymbolWireDocument() =
     SymbolDiscoverResultWireDocument(items.values.map { it.toWireDocument() })
 
@@ -394,7 +295,7 @@ internal fun TraversalRunResultWireDocument.toContract(): WireDocumentConversion
         ::TraversalRunResult,
     )
 
-private fun RelationFactDocument.toWireDocument(): RelationFactWireDocument =
+internal fun RelationFactDocument.toWireDocument(): RelationFactWireDocument =
     RelationFactWireDocument(
         meaning = meaning.toRelationWireDocument(),
         source = source.toWireDocument(),
@@ -408,7 +309,7 @@ private fun RelationFactDocument.toWireDocument(): RelationFactWireDocument =
         coverage = coverage.toWireDocument(),
     )
 
-private fun RelationFactWireDocument.toContract(): WireDocumentConversion<RelationFactDocument> =
+internal fun RelationFactWireDocument.toContract(): WireDocumentConversion<RelationFactDocument> =
     combineConverted(
         source.toContract(),
         target.toContract(),
@@ -502,7 +403,7 @@ internal fun CompilerSymbolEvidenceWireDocument.toContract():
         CompilerSymbolEvidenceDocument.restore(identity, signature).toWireDocumentConversion()
     }
 
-private fun CompilerSignatureDocument.toWireDocument(): CompilerSignatureWireDocument = when (this) {
+internal fun CompilerSignatureDocument.toWireDocument(): CompilerSignatureWireDocument = when (this) {
     is CompilerSignatureDocument.Function -> CompilerSignatureWireDocument.Function(
         qualifiedIdentity.value,
         receiver.toWireDocument(),
@@ -522,7 +423,7 @@ private fun CompilerSignatureDocument.toWireDocument(): CompilerSignatureWireDoc
         CompilerSignatureWireDocument.ClassLike(qualifiedIdentity.value)
 }
 
-private fun CompilerSignatureWireDocument.toContract():
+internal fun CompilerSignatureWireDocument.toContract():
     WireDocumentConversion<CompilerSignatureDocument> = when (this) {
     is CompilerSignatureWireDocument.Function -> combineConverted(
         qualifiedIdentity.toProtocolText(),
@@ -591,14 +492,14 @@ private fun String?.toQualifiedIdentity(): WireDocumentConversion<SymbolQualifie
         }
     }
 
-private fun SourceRangeDocument.toWireDocument() =
+internal fun SourceRangeDocument.toWireDocument() =
     SourceRangeWireDocument(startInclusive.value, endExclusive.value)
 /**
  * Proof transition: `SourceRangeWireDocument -> WireDocumentConversion<SourceRangeDocument>`.
  * Establishes non-negative, ordered offsets; [WireDocumentConversion.Rejected] is the closed
  * expected failure and raw offsets exist only at this wire boundary.
  */
-private fun SourceRangeWireDocument.toContract(): WireDocumentConversion<SourceRangeDocument> =
+internal fun SourceRangeWireDocument.toContract(): WireDocumentConversion<SourceRangeDocument> =
     combineConverted(startInclusive.toProtocolOffset(), endExclusive.toProtocolOffset()) { start, end ->
         start to end
     }.flatMapConverted { (start, end) ->
@@ -668,29 +569,29 @@ private fun SymbolCategoryWireDocument.toNameKind() = when (this) {
     SymbolCategoryWireDocument.SYMBOL -> SymbolNameKindDocument.SYMBOL
 }
 
-private fun SymbolDiscoveryKindDocument.toWireDocument() = when (this) {
+internal fun SymbolDiscoveryKindDocument.toWireDocument() = when (this) {
     SymbolDiscoveryKindDocument.FILE -> SymbolCategoryWireDocument.FILE
     SymbolDiscoveryKindDocument.CLASS -> SymbolCategoryWireDocument.CLASS
     SymbolDiscoveryKindDocument.SYMBOL -> SymbolCategoryWireDocument.SYMBOL
 }
 
-private fun SymbolCategoryWireDocument.toDiscoveryKind() = when (this) {
+internal fun SymbolCategoryWireDocument.toDiscoveryKind() = when (this) {
     SymbolCategoryWireDocument.FILE -> SymbolDiscoveryKindDocument.FILE
     SymbolCategoryWireDocument.CLASS -> SymbolDiscoveryKindDocument.CLASS
     SymbolCategoryWireDocument.SYMBOL -> SymbolDiscoveryKindDocument.SYMBOL
 }
 
-private fun SymbolDiscoveryMatchDocument.toWireDocument() = when (this) {
+internal fun SymbolDiscoveryMatchDocument.toWireDocument() = when (this) {
     SymbolDiscoveryMatchDocument.FUZZY -> SymbolDiscoveryMatchWireDocument.FUZZY
     SymbolDiscoveryMatchDocument.EXACT_NAME -> SymbolDiscoveryMatchWireDocument.EXACT_NAME
 }
 
-private fun SymbolDiscoveryMatchWireDocument.toContract() = when (this) {
+internal fun SymbolDiscoveryMatchWireDocument.toContract() = when (this) {
     SymbolDiscoveryMatchWireDocument.FUZZY -> SymbolDiscoveryMatchDocument.FUZZY
     SymbolDiscoveryMatchWireDocument.EXACT_NAME -> SymbolDiscoveryMatchDocument.EXACT_NAME
 }
 
-private fun SymbolKindDocument.toWireDocument() = when (this) {
+internal fun SymbolKindDocument.toWireDocument() = when (this) {
     SymbolKindDocument.CLASSLIKE -> SymbolKindWireDocument.CLASSLIKE
     SymbolKindDocument.CONSTRUCTOR -> SymbolKindWireDocument.CONSTRUCTOR
     SymbolKindDocument.FUNCTION -> SymbolKindWireDocument.FUNCTION
@@ -698,7 +599,7 @@ private fun SymbolKindDocument.toWireDocument() = when (this) {
     SymbolKindDocument.TYPE_ALIAS -> SymbolKindWireDocument.TYPE_ALIAS
 }
 
-private fun SymbolKindWireDocument.toContract() = when (this) {
+internal fun SymbolKindWireDocument.toContract() = when (this) {
     SymbolKindWireDocument.CLASSLIKE -> SymbolKindDocument.CLASSLIKE
     SymbolKindWireDocument.CONSTRUCTOR -> SymbolKindDocument.CONSTRUCTOR
     SymbolKindWireDocument.FUNCTION -> SymbolKindDocument.FUNCTION

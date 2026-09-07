@@ -146,6 +146,51 @@ class CanonicalCandidateSelectorCompositionTest {
         assertFalse(executed)
     }
 
+    @Test
+    fun `symbol inspect distinguishes wrong selector family from malformed token`() {
+        var executed = false
+        val handler = CanonicalSymbolInspectHandler(
+            object : SymbolExactOperations {
+                override suspend fun resolve(
+                    request: io.github.amichne.kast.symbol.contract.SymbolResolutionRequest,
+                ): io.github.amichne.kast.symbol.contract.SymbolResolutionResult {
+                    executed = true
+                    error("Invalid selector reached resolution")
+                }
+
+                override suspend fun describe(
+                    request: io.github.amichne.kast.symbol.contract.ExactSymbolRequest,
+                ): io.github.amichne.kast.symbol.contract.SymbolDescriptionResult {
+                    executed = true
+                    error("Invalid selector reached description")
+                }
+            },
+            CanonicalProtocolAuthority(),
+        )
+
+        assertEquals(
+            OperationOutcome.Rejected(SymbolInspectRejection.SELECTOR_WRONG_KIND),
+            runSuspend {
+                handler.execute(
+                    SymbolInspectRequest(
+                        SymbolInspectTarget.Candidate(ProtocolText.parse("exact:v2:opaque").refined()),
+                    ),
+                )
+            },
+        )
+        assertEquals(
+            OperationOutcome.Rejected(SymbolInspectRejection.SELECTOR_MALFORMED),
+            runSuspend {
+                handler.execute(
+                    SymbolInspectRequest(
+                        SymbolInspectTarget.Exact(ProtocolText.parse("not-a-selector").refined()),
+                    ),
+                )
+            },
+        )
+        assertFalse(executed)
+    }
+
     private fun sourceRequest(token: ProtocolText): SourceReadRequest = SourceReadRequest(
         SourceReadAnchorDocument.Candidate(token),
         SourceRegionSelectionDocument.Anchor,

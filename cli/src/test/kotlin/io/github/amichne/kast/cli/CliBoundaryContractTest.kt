@@ -7,6 +7,7 @@ import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandParsing
 import io.github.amichne.kast.cli.command.CliLifecycleCommand
+import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import kotlinx.serialization.Serializable
@@ -22,36 +23,65 @@ import java.util.Base64
 
 class CliBoundaryContractTest {
     @Test
-    fun `exactly nine public command projections parse to canonical operations`() {
-        val commands = mapOf(
-            listOf("symbol", "discover", "--query", "Example", "--limit", "10") to
+    fun `every public command projection parses to its canonical operation`() {
+        val selector = exactSelectorToken()
+        val commands = listOf(
+            SemanticCase(
+                listOf("query", "run"),
+                """{"from":{"type":"symbols","match":{"type":"all"},"scope":{"sourceSets":["main"],"directory":null,"packageName":null},"declarationKinds":["class"]},"steps":[],"output":{"type":"symbols","fields":["name","location"]},"execution":{"kind":"exhaustive","budget":"interactive"}}""",
+                CanonicalOperation.QUERY_RUN,
+            ),
+            SemanticCase(
+                listOf("symbol", "discover"),
+                """{"target":{"type":"name","query":"Example","kind":"symbol","match":"fuzzy"},"limit":10}""",
                 CanonicalOperation.SYMBOL_DISCOVER,
-            listOf("symbol", "inspect", "--candidate", "candidate") to
+            ),
+            SemanticCase(
+                listOf("symbol", "inspect"),
+                """{"target":{"type":"candidate","selector":"candidate"}}""",
                 CanonicalOperation.SYMBOL_INSPECT,
-            listOf("source", "read", "--anchor", exactSelectorToken()) to
+            ),
+            SemanticCase(
+                listOf("source", "read"),
+                """{"anchor":{"type":"symbol","selector":"$selector"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"complete"},"entityLimit":250,"textByteLimit":65536,"page":{"type":"first"}}""",
                 CanonicalOperation.SOURCE_READ,
-            listOf(
-                "relation", "read", "--selector", "selector", "--relation", "references",
-                "--limit", "10",
-            ) to CanonicalOperation.RELATION_READ,
-            listOf(
-                "traversal", "run", "--selector", "selector", "--relation", "callers",
-                "--maximum-depth", "2", "--maximum-results", "10",
-            ) to CanonicalOperation.TRAVERSAL_RUN,
-            listOf("diagnostic", "check", "--scope", ".", "--limit", "10") to
+            ),
+            SemanticCase(
+                listOf("relation", "read"),
+                """{"exactSelector":"selector","relation":"references","limit":10,"position":{"type":"start"}}""",
+                CanonicalOperation.RELATION_READ,
+            ),
+            SemanticCase(
+                listOf("traversal", "run"),
+                """{"exactSelector":"selector","relation":"callers","maximumDepth":2,"maximumResults":10,"position":{"type":"start"}}""",
+                CanonicalOperation.TRAVERSAL_RUN,
+            ),
+            SemanticCase(
+                listOf("diagnostic", "check"),
+                """{"scope":".","limit":10}""",
                 CanonicalOperation.DIAGNOSTIC_CHECK,
-            listOf(
-                "change", "plan", "--intent", "add-file", "--path", "A.kt", "--content",
-                "class A",
-            ) to CanonicalOperation.CHANGE_PLAN,
-            listOf("change", "apply", "--plan", "plan") to CanonicalOperation.CHANGE_APPLY,
-            listOf("change", "recover", "--plan", "plan") to CanonicalOperation.CHANGE_RECOVER,
+            ),
+            SemanticCase(
+                listOf("change", "plan"),
+                """{"intent":{"kind":"add-file","relativePath":"A.kt","content":"class A"}}""",
+                CanonicalOperation.CHANGE_PLAN,
+            ),
+            SemanticCase(
+                listOf("change", "apply"),
+                """{"planIdentity":"plan"}""",
+                CanonicalOperation.CHANGE_APPLY,
+            ),
+            SemanticCase(
+                listOf("change", "recover"),
+                """{"planIdentity":"plan"}""",
+                CanonicalOperation.CHANGE_RECOVER,
+            ),
         )
 
         val factory = commandGraphFactory()
-        assertEquals(io.github.amichne.kast.protocol.registry.HostedOperationProjection.publicDefinitions.map { it.operation }.toSet(), commands.values.toSet())
-        commands.forEach { (argv, operation) ->
-            val parsed = factory.parse(argv)
+        assertEquals(io.github.amichne.kast.protocol.registry.HostedOperationProjection.publicDefinitions.map { it.operation }.toSet(), commands.map { it.operation }.toSet())
+        commands.forEach { (argv, document, operation) ->
+            val parsed = factory.parse(argv, CliRequestDocumentInput.Provided(document))
             assertTrue(parsed is CliCommandParsing.Parsed)
             val action = (parsed as CliCommandParsing.Parsed).action
             assertTrue(action is CliAction.Semantic)
@@ -97,7 +127,10 @@ class CliBoundaryContractTest {
 
         assertTrue(
             factory.parse(
-                listOf("symbol", "discover", "--query=Example", "--limit=10"),
+                listOf("symbol", "discover"),
+                CliRequestDocumentInput.Provided(
+                    """{"target":{"type":"name","query":"Example","kind":"symbol","match":"fuzzy"},"limit":10}""",
+                ),
             ) is CliCommandParsing.Parsed,
         )
         assertTrue(
@@ -105,37 +138,17 @@ class CliBoundaryContractTest {
         )
         assertTrue(
             factory.parse(
-                listOf(
-                    "traversal",
-                    "run",
-                    "--selector",
-                    "selector",
-                    "--relation",
-                    "callees",
-                    "--maximum-depth",
-                    "2",
-                    "--maximum-results",
-                    "10",
-                    "--continuation",
-                    traversalContinuationToken(),
+                listOf("traversal", "run"),
+                CliRequestDocumentInput.Provided(
+                    """{"exactSelector":"selector","relation":"callees","maximumDepth":2,"maximumResults":10,"position":{"type":"resume","continuation":"${traversalContinuationToken()}"}}""",
                 ),
             ) is CliCommandParsing.Parsed,
         )
         assertTrue(
             factory.parse(
-                listOf(
-                    "traversal",
-                    "run",
-                    "--selector",
-                    "selector",
-                    "--relation",
-                    "callees",
-                    "--maximum-depth",
-                    "2",
-                    "--maximum-results",
-                    "10",
-                    "--continuation",
-                    "bad",
+                listOf("traversal", "run"),
+                CliRequestDocumentInput.Provided(
+                    """{"exactSelector":"selector","relation":"callees","maximumDepth":2,"maximumResults":10,"position":{"type":"resume","continuation":"bad"}}""",
                 ),
             ) is CliCommandParsing.Rejected,
         )
@@ -227,6 +240,12 @@ class CliBoundaryContractTest {
         }
         return "traversal-continuation:v1:$encoded:$digest"
     }
+
+    private data class SemanticCase(
+        val argv: List<String>,
+        val document: String,
+        val operation: CanonicalOperation,
+    )
 }
 
 @Serializable

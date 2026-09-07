@@ -91,7 +91,10 @@ class CanonicalProtocolAuthorityDurabilityTest {
     @Test
     fun `manufactured selector documents fail closed`() {
         val manufactured = ProtocolText.parse("exact:v1:not-valid").refined()
-        assertEquals(ExactSelectorLookup.Missing, CanonicalProtocolAuthority().exact(manufactured))
+        assertEquals(
+            ExactSelectorLookup.Rejected(SelectorLookupRejection.MALFORMED),
+            CanonicalProtocolAuthority().exact(manufactured),
+        )
     }
 
     private fun fixture(): Fixture {

@@ -33,6 +33,8 @@ class KastCleanSlatePolicyTest {
                 ":relation:intellij",
                 ":traversal:contract",
                 ":traversal:service",
+                ":query:contract",
+                ":query:service",
                 ":topology:contract",
                 ":topology:build",
                 ":topology:service",
@@ -65,6 +67,42 @@ class KastCleanSlatePolicyTest {
                 .getValue(ModuleId.PROTOCOL_CONTRACT)
                 .allowedProjectDependencies,
         )
+    }
+
+    @Test
+    fun `query family retains only read contracts and composition owns construction`() {
+        val architecture = canonicalArchitecture()
+        val contract = architecture.modules.getValue(ModuleId.QUERY_CONTRACT)
+        val service = architecture.modules.getValue(ModuleId.QUERY_SERVICE)
+        val composition = architecture.modules.getValue(ModuleId.RUNTIME_COMPOSITION)
+
+        assertEquals(ModuleRole.CONTRACT, contract.role)
+        assertEquals(
+            setOf(
+                ModuleId.KERNEL,
+                ModuleId.RELATION_CONTRACT,
+                ModuleId.SOURCE_CONTRACT,
+                ModuleId.SYMBOL_CONTRACT,
+                ModuleId.WORKSPACE_CONTRACT,
+            ),
+            contract.allowedProjectDependencies,
+        )
+        assertTrue(contract.allowedEffects.isEmpty())
+
+        assertEquals(ModuleRole.SERVICE, service.role)
+        assertEquals(
+            setOf(
+                ModuleId.KERNEL,
+                ModuleId.QUERY_CONTRACT,
+                ModuleId.RELATION_CONTRACT,
+                ModuleId.SOURCE_CONTRACT,
+                ModuleId.SYMBOL_CONTRACT,
+            ),
+            service.allowedProjectDependencies,
+        )
+        assertTrue(service.allowedEffects.isEmpty())
+        assertTrue(ModuleId.QUERY_CONTRACT in composition.allowedProjectDependencies)
+        assertTrue(ModuleId.QUERY_SERVICE in composition.allowedProjectDependencies)
     }
 
     @Test

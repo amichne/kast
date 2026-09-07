@@ -213,7 +213,7 @@ private fun TraversalFrontierPayload.restore(
 
 private fun ExactSelectorLookup.selectorOrNull() = when (this) {
     is ExactSelectorLookup.Found -> selector
-    ExactSelectorLookup.Missing -> null
+    is ExactSelectorLookup.Rejected -> null
 }
 
 private fun String.protocolTextOrNull(): ProtocolText? = ProtocolText.parse(this).refinedOrNull()

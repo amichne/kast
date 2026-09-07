@@ -72,14 +72,22 @@ internal fun admitDiscoveryRequest(
                 SymbolDiscoveryMatchDocument.FUZZY -> SymbolDiscoveryMatch.FUZZY
                 SymbolDiscoveryMatchDocument.EXACT_NAME -> SymbolDiscoveryMatch.EXACT_NAME
             }
-            workspaceScope to SymbolDiscoveryTarget.Name(kind, pattern, match)
+            io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest(
+                SymbolSearchScopeRequest(workspace.readLease, workspaceScope),
+                SymbolDiscoveryTarget.Name(kind, pattern, match),
+                budget,
+            )
         }
         is SymbolDiscoverTargetDocument.Location -> {
             val file = workspaceFile(workspace, target.file.value)
                 ?: return DiscoveryRequestAdmission.Rejected
             val offset = SymbolDiscoverySourceOffset.parse(target.offset.value).refinedOrNull()
                 ?: return DiscoveryRequestAdmission.Rejected
-            exactFileScope(file) to SymbolDiscoveryTarget.Location(file, offset)
+            io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest(
+                SymbolSearchScopeRequest(workspace.readLease, exactFileScope(file)),
+                SymbolDiscoveryTarget.Location(file, offset),
+                budget,
+            )
         }
         is SymbolDiscoverTargetDocument.Text -> {
             val pattern = SymbolDiscoveryPattern.parse(target.query.value).refinedOrNull()
@@ -92,16 +100,14 @@ internal fun admitDiscoveryRequest(
                     exactFileScope(file)
                 }
             }
-            scope to SymbolDiscoveryTarget.Text(pattern)
+            io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest(
+                SymbolSearchScopeRequest(workspace.readLease, scope),
+                SymbolDiscoveryTarget.Text(pattern),
+                budget,
+            )
         }
     }
-    return DiscoveryRequestAdmission.Admitted(
-        io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest(
-            SymbolSearchScopeRequest(workspace.readLease, admitted.first),
-            admitted.second,
-            budget,
-        ),
-    )
+    return DiscoveryRequestAdmission.Admitted(admitted)
 }
 
 private fun exactFileScope(file: CanonicalWorkspaceFilePath): SymbolSearchScope.ExactFile =

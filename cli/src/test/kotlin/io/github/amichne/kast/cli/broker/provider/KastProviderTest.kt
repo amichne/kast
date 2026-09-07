@@ -134,9 +134,13 @@ class KastProviderTest {
         )
         assertInstanceOf(BrokerDispatch.Completed::class.java, result)
         assertEquals(
-            listOf(listOf("symbol", "discover", "--query", "Thing")),
+            listOf(listOf("symbol", "discover")),
             executor.requests.filterNot { it.arguments.first().startsWith("--") }
                 .map(BrokerProcessRequest::arguments),
+        )
+        assertEquals(
+            """{"query":"Thing"}""",
+            (executor.requests.last().input as BrokerProcessInput.Document).value,
         )
         assertEquals(1_080_000L, executor.requests.last().timeoutMillis)
     }
@@ -196,7 +200,7 @@ class KastProviderTest {
             (completed.presentation.observer as ObserverPresentation.Markdown).source.value,
         )
         assertEquals(
-            listOf(listOf("symbol", "discover", "--query", "Thing")),
+            listOf(listOf("symbol", "discover")),
             executor.requests.filterNot { it.arguments.first().startsWith("--") }
                 .map(BrokerProcessRequest::arguments),
         )
@@ -625,7 +629,7 @@ class KastProviderTest {
         {
           "schemaVersion": 1,
           "serverProjection": {
-            "schemaVersion": 5,
+            "schemaVersion": 6,
             "namespace": "kast",
             "hostedBootstrap": {
               "schemaVersion": 1,
@@ -681,29 +685,23 @@ class KastProviderTest {
               }
               ]
             },
-            "cliInvocationBindings": {
-              "schemaVersion": 1,
-              "bindings": [
+            "cliInvocations": {
+              "schemaVersion": 2,
+              "operations": [
                 {
                   "operationId": "symbol.discover",
-                  "cliUsage": "kast symbol discover --query VALUE",
+                  "cliUsage": "symbol discover < request.json",
                   "invocation": {
                     "type": "CLI",
-                    "command": ["symbol", "discover"],
-                    "bindings": [
-                      { "type": "OPTION", "inputField": "query", "option": "--query" }
-                    ]
+                    "command": ["symbol", "discover"]
                   }
                 },
                 {
                   "operationId": "change.apply",
-                  "cliUsage": "kast change apply --plan VALUE",
+                  "cliUsage": "change apply < request.json",
                   "invocation": {
                     "type": "CLI",
-                    "command": ["change", "apply"],
-                    "bindings": [
-                      { "type": "OPTION", "inputField": "plan", "option": "--plan" }
-                    ]
+                    "command": ["change", "apply"]
                   }
                 }
               ]

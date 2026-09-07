@@ -21,18 +21,6 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
 import io.github.amichne.kast.protocol.contract.ChangeRecoveryDocumentState
 import io.github.amichne.kast.protocol.contract.ProtocolText
 
-internal fun ChangeApplyRequest.toSerializableDocument(): ChangeApplyRequestDocument =
-    ChangeApplyRequestDocument(planIdentity.value)
-
-/**
- * Proof transition: `ChangeApplyRequestDocument -> ChangeApplyRequest`.
- *
- * Establishes a refined plan identity. [WireDocumentConversion.Rejected] is the closed
- * expected failure. Raw request text may be extracted only in this wire adapter.
- */
-internal fun ChangeApplyRequestDocument.toContract(): WireDocumentConversion<ChangeApplyRequest> =
-    planIdentity.refineChangeProtocolText().mapConverted(::ChangeApplyRequest)
-
 internal fun ChangeApplyResult.toSerializableDocument(): ChangeApplyResultDocument =
     ChangeApplyResultDocument(
         receiptIdentity.value,
@@ -107,18 +95,6 @@ internal fun ChangeApplyRejectionDocument.toContract(): WireDocumentConversion<C
         },
     )
 
-internal fun ChangeRecoverRequest.toSerializableDocument(): ChangeRecoverRequestDocument =
-    ChangeRecoverRequestDocument(planIdentity.value)
-
-/**
- * Proof transition: `ChangeRecoverRequestDocument -> ChangeRecoverRequest`.
- *
- * Establishes a refined plan identity. [WireDocumentConversion.Rejected] is the closed
- * expected failure. Raw request text may be extracted only in this wire adapter.
- */
-internal fun ChangeRecoverRequestDocument.toContract(): WireDocumentConversion<ChangeRecoverRequest> =
-    planIdentity.refineChangeProtocolText().mapConverted(::ChangeRecoverRequest)
-
 internal fun ChangeRecoverResult.toSerializableDocument(): ChangeRecoverResultDocument =
     ChangeRecoverResultDocument(state.toSerializableDocument())
 
@@ -178,65 +154,6 @@ internal fun ChangeRecoverRejectionDocument.toContract(): WireDocumentConversion
                 ChangeRecoverRejection.RECOVERY_FAILED
         },
     )
-
-internal fun ChangePlanRequest.toSerializableDocument(): ChangePlanRequestDocument =
-    ChangePlanRequestDocument(intent.toSerializableDocument())
-
-/**
- * Proof transition: `ChangePlanRequestDocument -> ChangePlanRequest`.
- *
- * Establishes one closed change intent whose primitive fields are refined to [ProtocolText].
- * [WireDocumentConversion.Rejected] is the closed expected failure. Raw request fields
- * may be extracted only in this wire adapter.
- */
-internal fun ChangePlanRequestDocument.toContract(): WireDocumentConversion<ChangePlanRequest> =
-    intent.toContract().mapConverted(::ChangePlanRequest)
-
-private fun ChangeIntentDocument.toSerializableDocument(): ChangeIntentWireDocument = when (this) {
-    is ChangeIntentDocument.AddFile -> ChangeIntentWireDocument.AddFile(
-        relativePath.value,
-        content.value,
-    )
-    is ChangeIntentDocument.AddDeclaration -> ChangeIntentWireDocument.AddDeclaration(
-        exactTarget.value,
-        declaration.value,
-    )
-    is ChangeIntentDocument.ReplaceDeclaration -> ChangeIntentWireDocument.ReplaceDeclaration(
-        exactTarget.value,
-        replacement.value,
-    )
-    is ChangeIntentDocument.RenameSymbol -> ChangeIntentWireDocument.RenameSymbol(
-        exactTarget.value,
-        newName.value,
-    )
-}
-
-/**
- * Proof transition: `ChangeIntentWireDocument -> ChangeIntentDocument`.
- *
- * Establishes exactly one of the four closed intent variants and refines every text field to
- * [ProtocolText]. [WireDocumentConversion.Rejected] is the closed expected failure. Raw
- * intent fields may be extracted only in this wire adapter.
- */
-private fun ChangeIntentWireDocument.toContract(): WireDocumentConversion<ChangeIntentDocument> =
-    when (this) {
-        is ChangeIntentWireDocument.AddFile -> combineConverted(
-            relativePath.refineChangeProtocolText(),
-            content.refineChangeProtocolText(),
-        ) { path, content -> ChangeIntentDocument.AddFile(path, content) }
-        is ChangeIntentWireDocument.AddDeclaration -> combineConverted(
-            exactTarget.refineChangeProtocolText(),
-            declaration.refineChangeProtocolText(),
-        ) { target, declaration -> ChangeIntentDocument.AddDeclaration(target, declaration) }
-        is ChangeIntentWireDocument.ReplaceDeclaration -> combineConverted(
-            exactTarget.refineChangeProtocolText(),
-            replacement.refineChangeProtocolText(),
-        ) { target, replacement -> ChangeIntentDocument.ReplaceDeclaration(target, replacement) }
-        is ChangeIntentWireDocument.RenameSymbol -> combineConverted(
-            exactTarget.refineChangeProtocolText(),
-            newName.refineChangeProtocolText(),
-        ) { target, name -> ChangeIntentDocument.RenameSymbol(target, name) }
-    }
 
 internal fun ChangePlanResult.toSerializableDocument(): ChangePlanResultDocument =
     ChangePlanResultDocument(

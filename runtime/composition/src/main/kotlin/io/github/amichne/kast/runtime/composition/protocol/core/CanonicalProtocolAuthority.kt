@@ -46,7 +46,12 @@ internal sealed interface CandidateSelectorLookup {
         val selector: CandidateSelector,
     ) : CandidateSelectorLookup
 
-    data object Missing : CandidateSelectorLookup
+    data class Rejected(val reason: SelectorLookupRejection) : CandidateSelectorLookup
+}
+
+internal enum class SelectorLookupRejection {
+    WRONG_KIND,
+    MALFORMED,
 }
 
 internal enum class ExactSelectorIssuanceFailure {
@@ -68,7 +73,7 @@ internal sealed interface ExactSelectorLookup {
         val selector: SymbolSelector,
     ) : ExactSelectorLookup
 
-    data object Missing : ExactSelectorLookup
+    data class Rejected(val reason: SelectorLookupRejection) : ExactSelectorLookup
 }
 
 internal enum class RelationEndpointIssuanceFailure {
@@ -90,7 +95,7 @@ internal sealed interface RelationSubjectLookup {
         val selector: SymbolSelector,
     ) : RelationSubjectLookup
 
-    data object Missing : RelationSubjectLookup
+    data class Rejected(val reason: SelectorLookupRejection) : RelationSubjectLookup
 }
 
 /** Stateless protocol authority over self-describing, generation-bound selector documents. */
@@ -149,6 +154,16 @@ internal class CanonicalProtocolAuthority {
         return CandidateSelectorIssuance.Issued(issued)
     }
 
+    /** Issues the declaration-candidate family for one already selected query item. */
+    fun issueDeclarationCandidate(
+        selection: SymbolDiscoverySelection,
+    ): CandidateSelectorTokenIssuance = when (val selector = CandidateSelector.declaration(selection)) {
+        is Refinement.Refined -> issueCandidate(selector.value)
+        is Refinement.Rejected -> CandidateSelectorTokenIssuance.Rejected(
+            CandidateSelectorTokenIssuanceFailure.CANDIDATE_REJECTED,
+        )
+    }
+
     /**
      * Refines retained semantic location evidence into the same candidate token family used by
      * discovery. Empty ranges remain valid because compiler diagnostics may identify insertion
@@ -185,7 +200,9 @@ internal class CanonicalProtocolAuthority {
         val decoded = CanonicalSelectorCodec.decodeCandidate(selector)
     ) {
         is CanonicalSelectorDecoding.Decoded -> CandidateSelectorLookup.Found(decoded.value)
-        is CanonicalSelectorDecoding.Rejected -> CandidateSelectorLookup.Missing
+        is CanonicalSelectorDecoding.Rejected -> CandidateSelectorLookup.Rejected(
+            selector.lookupRejection(expectedExact = false),
+        )
     }
 
     private fun issueCandidate(selector: CandidateSelector): CandidateSelectorTokenIssuance = when (
@@ -212,7 +229,9 @@ internal class CanonicalProtocolAuthority {
         val decoded = CanonicalSelectorCodec.decodeExact(selector)
     ) {
         is CanonicalSelectorDecoding.Decoded -> ExactSelectorLookup.Found(decoded.value)
-        is CanonicalSelectorDecoding.Rejected -> ExactSelectorLookup.Missing
+        is CanonicalSelectorDecoding.Rejected -> ExactSelectorLookup.Rejected(
+            selector.lookupRejection(expectedExact = true),
+        )
     }
 
     /**
@@ -235,6 +254,19 @@ internal class CanonicalProtocolAuthority {
     /** Exact relation subjects use the canonical exact selector family; no third handle exists. */
     fun relationSubject(selector: ProtocolText): RelationSubjectLookup = when (val exact = exact(selector)) {
         is ExactSelectorLookup.Found -> RelationSubjectLookup.Selector(exact.selector)
-        ExactSelectorLookup.Missing -> RelationSubjectLookup.Missing
+        is ExactSelectorLookup.Rejected -> RelationSubjectLookup.Rejected(exact.reason)
+    }
+}
+
+private fun ProtocolText.lookupRejection(expectedExact: Boolean): SelectorLookupRejection {
+    val belongsToAnotherFamily = if (expectedExact) {
+        value.startsWith("candidate:v2:") || value.startsWith("source-selector-v1:")
+    } else {
+        value.startsWith("exact:v2:") || value.startsWith("source-selector-v1:")
+    }
+    return if (belongsToAnotherFamily) {
+        SelectorLookupRejection.WRONG_KIND
+    } else {
+        SelectorLookupRejection.MALFORMED
     }
 }

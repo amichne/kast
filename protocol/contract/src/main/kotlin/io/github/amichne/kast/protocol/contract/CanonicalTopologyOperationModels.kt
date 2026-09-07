@@ -1,8 +1,11 @@
 package io.github.amichne.kast.protocol.contract
 
+import kotlinx.serialization.Serializable
+
 import io.github.amichne.kast.kernel.EvidenceGeneration
 
 /** Explicit request for the one generation-bound repository-topology build. */
+@Serializable
 data object TopologyBuildRequest : OperationRequest
 
 enum class TopologyBuildStatus {
