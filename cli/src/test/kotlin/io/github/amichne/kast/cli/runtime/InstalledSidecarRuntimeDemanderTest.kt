@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import io.github.amichne.kast.kernel.Refinement
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -14,6 +15,89 @@ import java.security.MessageDigest
 import java.util.Base64
 
 class InstalledSidecarRuntimeDemanderTest {
+    @Test
+    fun `default startup derives current identity when multiple historical caches retain one installation`(@TempDir temporary: Path) {
+        val home = temporary.resolve("idea-home")
+        val caches = object : RootSidecarCacheLifecycle {
+            override fun observe(root: Path): RootSidecarCacheObservation = error("default startup must not select an historical cache")
+            override fun inventory(root: Path): Refinement<RootSidecarCacheInventory, SidecarCacheLifecycleFailure> =
+                Refinement.Refined(RootSidecarCacheInventory(root, listOf('1', '2').map { character ->
+                    RootSidecarCacheReference(
+                        "sha256:${character.toString().repeat(64)}",
+                        (SemanticRuntimeId.parse("sha256:${character.toString().repeat(64)}") as Refinement.Refined).value,
+                        temporary.resolve("history-$character"),
+                        home.toRealPath(),
+                    )
+                }))
+            override fun quarantine(stopped: StoppedSidecarCaches): RootSidecarCacheQuarantine = error("reuse must not quarantine")
+        }
+        val fixture = demanderFixture(temporary, cacheLifecycle = caches)
+
+        val result = fixture.demander.demand(fixture.root, HostedRuntimeDemand.Lifecycle, RuntimeStartupRequest.Default)
+
+        assertTrue(result is RuntimeAdmission.Ready)
+        assertEquals(IdeHomeSelection.Explicit(home.toRealPath()), fixture.observedSelection.single())
+        assertEquals(fixture.endpoint.runtimeId, fixture.observedLaunch.single().cache.identity.semanticRuntimeId)
+        assertEquals(listOf(StartupCacheIntent.Reuse), fixture.observedIntents)
+    }
+
+    @Test
+    fun `rebuild stops every historical owner under the root lock before preparing a fresh cache`(@TempDir temporary: Path) {
+        lateinit var fixture: DemanderFixture
+        var locked = false
+        var quarantined = false
+        val stopped = mutableListOf<RuntimeEndpoint>()
+        val caches = object : RootSidecarCacheLifecycle {
+            override fun observe(root: Path): RootSidecarCacheObservation = error("rebuild must not select one cache")
+
+            override fun inventory(root: Path): Refinement<RootSidecarCacheInventory, SidecarCacheLifecycleFailure> {
+                assertTrue(locked)
+                return Refinement.Refined(RootSidecarCacheInventory(root, listOf('1', '2').map { digit ->
+                    val identity = "sha256:${digit.toString().repeat(64)}"
+                    RootSidecarCacheReference(
+                        identity,
+                        (SemanticRuntimeId.parse(identity) as Refinement.Refined).value,
+                        fixture.cacheRoot.resolve(identity),
+                        fixture.ideaRuntime.home,
+                    )
+                }))
+            }
+
+            override fun withStartupLock(root: Path, operation: () -> RuntimeAdmission): RuntimeAdmission {
+                assertEquals(fixture.root.path, root)
+                locked = true
+                return try { operation() } finally { locked = false }
+            }
+
+            override fun quarantine(stoppedCaches: StoppedSidecarCaches): RootSidecarCacheQuarantine {
+                assertTrue(locked)
+                assertEquals(2, stoppedCaches.inventory.caches.size)
+                assertEquals(3, stopped.size)
+                assertTrue(fixture.observedIntents.isEmpty(), "preparation must follow quarantine")
+                quarantined = true
+                return RootSidecarCacheQuarantine.Quarantined(emptyList())
+            }
+        }
+        fixture = demanderFixture(temporary, cacheLifecycle = caches, lifecycle = object : RuntimeLifecycleController {
+            override fun status(endpoint: RuntimeEndpoint) = RuntimeStatusResult.Observed(RuntimeLifecycleState.STOPPED)
+            override fun stop(endpoint: RuntimeEndpoint): RuntimeStopResult {
+                assertTrue(locked)
+                assertFalse(quarantined)
+                stopped += endpoint
+                return RuntimeStopResult.Stopped()
+            }
+        })
+
+        val result = fixture.demander.demand(fixture.root, HostedRuntimeDemand.Lifecycle,
+            RuntimeStartupRequest.Requested(StartupIdeHome.Standard, StartupCacheIntent.Rebuild))
+
+        assertTrue(result is RuntimeAdmission.Ready)
+        assertTrue(quarantined)
+        assertFalse(locked)
+        assertEquals(listOf(StartupCacheIntent.Reuse), fixture.observedIntents)
+        assertEquals(KastCacheState.FRESH, fixture.observedLaunch.single().cacheState)
+    }
+
     @Test
     fun `default demand discovers local IDEA and prepares only private fresh cache`(
         @TempDir temporary: Path,
@@ -331,6 +415,7 @@ class InstalledSidecarRuntimeDemanderTest {
             RuntimeEndpointReachability.Unreachable
         },
         cacheLifecycle: RootSidecarCacheLifecycle = NoRootSidecarCacheLifecycle,
+        lifecycle: RuntimeLifecycleController = ExactRootRuntimeLifecycle(),
         runtimeResolution: (InstalledIdeRuntime, IdeHomeSelection) -> InstalledIdeRuntimeDiscoveryResult = { runtime, _ ->
             InstalledIdeRuntimeDiscoveryResult.Discovered(runtime)
         },
@@ -412,6 +497,7 @@ class InstalledSidecarRuntimeDemanderTest {
             },
             legacyEndpointProbe = legacyEndpointProbe,
             cacheLifecycle = cacheLifecycle,
+            lifecycle = lifecycle,
         )
         return DemanderFixture(
             demander,
@@ -465,5 +551,5 @@ private class RecordedRootCache(
         observedRoots.add(root)
         return observation
     }
-    override fun quarantine(root: Path): RootSidecarCacheQuarantine = error("demand must not quarantine cached selection")
+    override fun quarantine(stopped: StoppedSidecarCaches): RootSidecarCacheQuarantine = error("demand must not quarantine cached selection")
 }

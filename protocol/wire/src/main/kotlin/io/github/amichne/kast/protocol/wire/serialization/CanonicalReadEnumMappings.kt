@@ -481,6 +481,12 @@ internal fun DiagnosticCheckRejection.toWireDocument(): DiagnosticCheckRejection
             DiagnosticCheckRejectionWireDocument.WORKSPACE_NOT_READY
         DiagnosticCheckRejection.SCOPE_REJECTED ->
             DiagnosticCheckRejectionWireDocument.SCOPE_REJECTED
+        DiagnosticCheckRejection.SCOPE_EMPTY ->
+            DiagnosticCheckRejectionWireDocument.SCOPE_EMPTY
+        DiagnosticCheckRejection.SCOPE_LIMIT_EXCEEDED ->
+            DiagnosticCheckRejectionWireDocument.SCOPE_LIMIT_EXCEEDED
+        DiagnosticCheckRejection.SCOPE_UNAVAILABLE ->
+            DiagnosticCheckRejectionWireDocument.SCOPE_UNAVAILABLE
     }
 
 internal fun DiagnosticCheckRejectionWireDocument.toContract(): DiagnosticCheckRejection =
@@ -489,4 +495,10 @@ internal fun DiagnosticCheckRejectionWireDocument.toContract(): DiagnosticCheckR
             DiagnosticCheckRejection.WORKSPACE_NOT_READY
         DiagnosticCheckRejectionWireDocument.SCOPE_REJECTED ->
             DiagnosticCheckRejection.SCOPE_REJECTED
+        DiagnosticCheckRejectionWireDocument.SCOPE_EMPTY ->
+            DiagnosticCheckRejection.SCOPE_EMPTY
+        DiagnosticCheckRejectionWireDocument.SCOPE_LIMIT_EXCEEDED ->
+            DiagnosticCheckRejection.SCOPE_LIMIT_EXCEEDED
+        DiagnosticCheckRejectionWireDocument.SCOPE_UNAVAILABLE ->
+            DiagnosticCheckRejection.SCOPE_UNAVAILABLE
     }

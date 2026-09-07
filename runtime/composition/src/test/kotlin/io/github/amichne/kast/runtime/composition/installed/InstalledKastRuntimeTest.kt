@@ -284,6 +284,7 @@ class InstalledKastRuntimeTest {
             fixture.workspace,
             fixture.diagnostic,
             CanonicalProtocolAuthority(),
+            io.github.amichne.kast.runtime.composition.protocol.singleFileDiagnosticScopes,
         )
 
         val outcome = runImmediate {

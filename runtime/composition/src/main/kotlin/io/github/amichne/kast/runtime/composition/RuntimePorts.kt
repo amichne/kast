@@ -32,6 +32,7 @@ data class SemanticRuntimePorts(
     val sourceRead: SourceReadPort,
     val relation: RelationCompilerPort,
     val diagnostic: DiagnosticCompilerPort,
+    val diagnosticScopes: io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolver,
 )
 
 /** Explicit topology build and durable read effects owned by runtime composition. */

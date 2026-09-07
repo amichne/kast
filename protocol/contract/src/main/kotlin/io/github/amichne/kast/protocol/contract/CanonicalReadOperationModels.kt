@@ -821,4 +821,7 @@ data class DiagnosticCheckQualification private constructor(
 enum class DiagnosticCheckRejection : OperationRejection {
     WORKSPACE_NOT_READY,
     SCOPE_REJECTED,
+    SCOPE_EMPTY,
+    SCOPE_LIMIT_EXCEEDED,
+    SCOPE_UNAVAILABLE,
 }
