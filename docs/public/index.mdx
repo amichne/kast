@@ -1,42 +1,65 @@
 ---
 type: "Documentation Index"
 title: "Kast"
-description: "Compiler-grounded evidence for exact Kotlin repositories."
+description: "Compiler-grounded Kotlin search for coding agents."
 resource: "file://docs/public/index.mdx"
-tags: ["Kotlin", "compiler", "operations", "evidence"]
-timestamp: "2026-09-03T00:00:00-04:00"
+tags: ["Kotlin", "compiler", "agents", "search"]
+timestamp: "2026-09-07T00:00:00-04:00"
 code_sources:
-  - path: "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt"
-    lines: "7-20"
-    symbols: ["CanonicalOperation"]
-  - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalOperationDefinitions.kt"
-    lines: "75-260"
-    symbols: ["CanonicalOperationDefinitions"]
+  - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt"
+    symbols: ["CanonicalAgentToolDefinitions"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/provider/KastProvider.kt"
+    symbols: ["KastProviderQualifier", "KastRuntime"]
 mode: "wide"
-icon: "braces"
-keywords: ["Kotlin", "compiler", "semantic analysis", "coding agents"]
+icon: "scan-search"
+keywords: ["Kotlin", "compiler", "coding agents", "semantic search"]
 ---
 
-Kast is a repo-local semantic runtime for Kotlin repositories. It answers code
-questions through IntelliJ and the Kotlin compiler, then returns the root,
-generation, scope, limits, and identities needed to judge each result.
+Kast gives coding agents compiler-grounded search over one exact Kotlin
+repository. Developers install it and connect a harness; the agent asks the
+questions and Kast manages the runtime and intermediate evidence.
 
-## Choose the depth that matches the question
+## Start with the agent
 
-The navigation above separates first-run work from task guides, the evidence
-model, and source-backed reference material.
+<CardGroup cols={2}>
+  <Card title="Search with Kast" icon="scan-search" href="/search">
+    See how the agent discovers exact Kotlin declarations and relationships.
+  </Card>
+  <Card title="Install and connect" icon="rocket" href="/start">
+    Install the matched release and connect the included Codex integration.
+  </Card>
+  <Card title="Integrate another harness" icon="bot" href="/agent-harnesses">
+    Consume the exact installed tool projection without copying Kast's CLI contract.
+  </Card>
+  <Card title="Troubleshoot a failure" icon="life-buoy" href="/troubleshooting">
+    Read the reported boundary, collect passive status, and choose a bounded recovery.
+  </Card>
+  <Card title="Judge an answer" icon="shield-check" href="/concepts/evidence-boundaries">
+    Understand complete, qualified, and rejected semantic outcomes.
+  </Card>
+</CardGroup>
 
-| Section | Use it to |
-| --- | --- |
-| **Setup** | Install, admit one repository, and verify the first result. [Set up and start Kast.](/start) |
-| **Guides** | Answer a concrete question about readiness, identity, connections, diagnostics, or change. [Choose an evidence path.](#nine-public-semantic-operations) |
-| **Concepts** | Understand what Kast proves and where that proof stops. [Trust the evidence.](/concepts/evidence-boundaries) |
-| **Reference** | Read exact command and implementation contracts. Open the [CLI reference](/reference/cli) or [technical specification](/technical-specification). |
+## Search is the main surface
 
-## The compiler sees more than text
+The agent-facing `kast.query` tool searches declarations, filters results, and
+expands semantic relationships in one typed request. Its `symbols` source
+establishes exact compiler identity, so the agent does not need to coordinate a
+manual discovery-and-inspection sequence.
 
-Consider a checkout service that imports one of several declarations named
-`PricePolicy`:
+Specialist tools remain available for narrower contracts, but they are deferred.
+The harness-provided selection policy tells the agent to start with search and
+preserve returned references instead of reconstructing identities from text.
+
+## Kast owns readiness
+
+An agent does not need to start Kast, synchronize the repository, or build a
+topology before asking a semantic question. Every operation starts or joins the
+exact-root runtime and acquires its own prerequisites.
+
+Kast returns a typed limitation or rejection when it cannot establish current
+evidence. It does not manufacture readiness or silently weaken a result.
+
+## The compiler resolves what text cannot
 
 ```kotlin
 import billing.PricePolicy as BillingPricePolicy
@@ -46,53 +69,13 @@ class Checkout(private val policy: BillingPricePolicy) {
 }
 ```
 
-| Text can suggest | Compiler evidence can establish |
-| --- | --- |
-| A search can find `PricePolicy`, `policy`, and `price`; it cannot establish which declaration the alias names or which overload receives `order`. | The property and call each have an exact compiler identity. Their source locations and semantic relationship remain part of the result. |
-
-The distinction becomes important when an answer crosses files, modules, or a
-change boundary. Kast makes the strength and limits of that answer visible.
-
-## Start from the repository root
-
-```console
-cd /path/to/kotlin-repository
-kast query run < request.json
-```
-
-A semantic command launches or reuses the exact-root private IntelliJ sidecar. It
-returns when semantic evidence is ready, or returns a typed blocker instead of
-manufacturing readiness.
-
-[Set up and start Kast](/start) to install the matched control and sidecar
-release, admit one repository, and inspect the first compiler-backed result.
-
-## Ten public semantic operations
-
-The installed sidecar endpoint publishes candidate discovery, compiler-backed
-symbol inspection, bounded
-source reads, one-hop relation reads, bounded traversal, scoped diagnostics,
-and planning, verified application, or recovery for AddDeclaration changes.
-
-| Question | Evidence path |
-| --- | --- |
-| [What is Kast ready to inspect?](/questions/workspace-readiness) | Check the exact root, semantic generation, and readiness limits before relying on later answers. |
-| [What declaration is this?](/questions/declaration-identity) | Refine a bounded candidate or inspect an exact selector and receive exact compiler evidence in one operation. |
-| [How is this code connected?](/questions/code-connections) | Read a live compiler relation directly, or publish exact-generation topology and traverse it with explicit bounds. |
-| [How can I add a declaration safely?](/questions/safe-change) | Plan, apply with successor publication and verification, or recover one admitted AddDeclaration mutation without restarting the endpoint. |
-
-## Evidence keeps its boundary
+Text search can find `PricePolicy`, `policy`, and `price`. Compiler evidence can
+establish which declaration the alias names and which overload receives
+`order`, while retaining the repository root, semantic generation, scope, and
+limits behind the answer.
 
 <Info>
-  **Complete** means the operation met its declared scope and completeness
-  contract. **Qualified** keeps usable evidence and names its limits.
-  **Rejected** returns no evidence as success.
+  The human-facing contract is intentionally small. Harness authors can read the
+  exact installed schemas and invocation bindings from `serverProjection` when
+  they need to integrate Kast.
 </Info>
-
-Every CLI outcome names its operation and status. Generation-sensitive
-authority remains in the selectors, snapshots, plans, receipts, and evidence
-documents that need it. A moved generation, unsupported scope, exhausted
-bound, or missing capability stays visible at the relevant boundary.
-
-[Learn how to judge an answer](/concepts/evidence-boundaries) or
-[see how Kast works](/explanation/how-kast-works).

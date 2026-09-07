@@ -1,288 +1,105 @@
 # Kast
 
-Kast gives engineers and coding agents compiler-grounded evidence about one
-exact Kotlin repository.
+Kast gives coding agents compiler-grounded search over one exact Kotlin
+repository. It resolves declarations and relationships that text search can only
+approximate, while retaining the scope and limits behind each answer.
 
-It resolves questions that text alone cannot settle while retaining the root,
-generation, scope, bounds, and identity behind every result.
+Developers install Kast and connect it to an agent harness. Kast owns runtime
+readiness, workspace synchronization, and intermediate semantic operations.
 
-[Read the documentation](https://kast.michne.com/) ·
-[Install Kast](https://kast.michne.com/start/) ·
-[Browse the CLI reference](https://kast.michne.com/reference/cli/) ·
-[See how Kast works](https://kast.michne.com/explanation/how-kast-works/)
-
-## The compiler sees more than text
-
-Aliases, overloads, generated declarations, and repeated names make text
-matches ambiguous:
-
-```kotlin
-import billing.PricePolicy as BillingPricePolicy
-
-class Checkout(private val policy: BillingPricePolicy) {
-	fun total(order: Order): Money = policy.price(order)
-}
-```
-
-A search can find `PricePolicy`, `policy`, and `price`. Kast can establish which
-declaration the alias names and which overload receives `order`.
+[Install and connect Kast](https://kast.michne.com/start/) ·
+[Search with Kast](https://kast.michne.com/search/) ·
+[Integrate an agent harness](https://kast.michne.com/agent-harnesses/) ·
+[Troubleshoot Kast](https://kast.michne.com/troubleshooting/)
 
 ## Install
 
-You need:
+Kast currently requires:
 
 - macOS on Apple silicon;
 - an on-disk Kotlin Gradle repository; and
-- IntelliJ IDEA with a bundled Java 25 JBR.
+- IntelliJ IDEA on JetBrains platform release line 262 with its bundled Java 25
+  JBR.
 
-The installer uses IDEA's JBR, so a separate `JAVA_HOME` is not required.
-Semantic compatibility is enforced by JetBrains platform release line, not one
-exact patch build.
-
-Reference pair: IDEA build 262.9437.185 and Kotlin plugin build 262.9437.185-IJ.
-Compatible patch builds are accepted when IDEA and Kotlin plugin both remain on
-JetBrains platform release line 262.
-
-Resolve the latest published release and install that exact version:
+Install the latest published release:
 
 ```shell
-release_url="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/amichne/kast/releases/latest)"
-release_tag="${release_url##*/}"
-curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh" | bash -s -- --version "$release_tag"
+curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash
 ```
 
-If discovery finds zero or multiple eligible IDEA installations, pass
-`--idea-home "/path/to/IntelliJ IDEA.app"` or set `KAST_INSTALL_IDEA_HOME`.
+The installer discovers the supported IntelliJ runtime, verifies the matched
+Kast payloads, and installs the integration entrypoints. If discovery is
+ambiguous, select IDEA explicitly:
 
-Read the [full host contract](https://kast.michne.com/start/) or review the
-[installer source](install.sh) before running it.
+```shell
+curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | \
+  bash -s -- --idea-home "/Applications/IntelliJ IDEA.app"
+```
 
-One public `kast` command is backed by two matched release payloads:
+See [Install and connect Kast](https://kast.michne.com/start/) for the complete
+host contract and uninstall path.
 
-| Release payload | Responsibility |
-| --- | --- |
-| `kast-control-*.tar.gz` | CLI parsing, lifecycle, schemas, broker, and typed wire transport; contains no IntelliJ semantic implementation. |
-| `kast-semantic-runtime-*.zip` | Private headless indexer and compiler integration loaded with the supported local IDEA; contains no IDEA distribution. |
+## Connect an agent
 
-The control manifest binds the semantic payload's URL, size, and SHA-256 digest.
-Neither archive is installed or selected independently.
-
-Installer-owned defaults live in
-`${XDG_CONFIG_HOME:-$HOME/.config}/kast/environment`:
-
-- `KAST_RUNTIME_STORE`
-- `KAST_RUNTIME_DIRECTORY`
-- `KAST_CACHE_ROOT`
-- `KAST_ENABLE_LAUNCHD`
-
-Process environment values override saved defaults.
-
-## Start from the repository root
-
-Ask the semantic question directly. Kast admits the exact repository, starts or
-joins its runtime, and acquires the evidence required by the operation:
+Kast includes a Codex integration. Start it from the Kotlin repository the agent
+will inspect:
 
 ```console
 cd /path/to/kotlin-repository
-kast
-kast query run < request.json
+kast-codex
 ```
 
-Bare `kast` inspects product, runtime, cache, network-policy, and trace state
-without starting the sidecar or synchronizing the workspace. `kast start` remains
-an optional prewarm command; `kast stop` explicitly releases the process.
+To launch Codex Desktop through the same qualified integration, run
+`kast codex desktop` instead. Kast sets `CODEX_CLI_PATH` only for the launched
+Desktop process and keeps the real Codex executable distinct from its
+`kast-codex` façade, preventing recursive façade launch.
 
-`kast start --idea-home PATH` resolves runtime discovery, and
-`kast start --cache seed` can copy a validated, stopped IDEA cache.
+Kast qualifies the installed tool contract before a thread starts. Read access
+is the default. The agent receives one eager `kast.query` tool for search and a
+small set of deferred specialist tools for narrower work.
 
-Source changes are reconciled before semantic work. Unchanged evidence retains
-its generation; changed evidence invalidates old selectors. Traversal acquires
-topology lazily and reuses its published snapshot. Symbol, source, diagnostic,
-and one-hop relation requests do not require a topology build.
+Other harnesses should consume the exact installed `serverProjection`; they
+should not copy command names, schemas, or selection policy into another
+configuration. See [Integrate an agent harness](https://kast.michne.com/agent-harnesses/).
 
-The public lifecycle consists of bare `kast`, optional `kast start`, and explicit
-`kast stop`. Synchronization and topology construction remain internal
-capabilities. Kast ships no IDEA home and installs nothing into the user's IDE.
+## Search first
 
-Read [lifecycle and enterprise configuration](docs/lifecycle-convergence.md) for
-freshness limits, trust precedence, and installed acceptance commands.
+The primary read surface is `kast.query`. It can search declarations, filter
+results, and expand semantic relationships while Kast preserves exact compiler
+identity between stages.
 
-## Ask a repository question
+Agents should use specialist reads only when their narrower contract is needed.
+They should not start the runtime, synchronize the workspace, or build topology
+as prerequisites. Each semantic request acquires the evidence it needs.
 
-`kast --schema` is the machine-readable contract for the ten public semantic operations.
-The generated [CLI reference](https://kast.michne.com/reference/cli/) is its
-readable counterpart.
+## Know when something went wrong
 
-| Question | Command path |
-| --- | --- |
-| What is Kast ready to inspect? | Bare `kast` for passive inspection |
-| How do I use changed source? | Issue the semantic request again; rediscover stale selectors |
-| What declarations and relationships match? | `kast query run < request.json`; the `symbols` source establishes exact identities inside Kast. |
-| What source content and structure exist here? | `kast source read < request.json` |
-| How is this code connected? | `kast relation read < request.json` for one hop, or `kast traversal run < request.json` for bounded depth |
-| What diagnostics exist in this scope? | `kast diagnostic check < request.json` |
-| How can I add a declaration safely? | `change plan`, `change apply`, and `change recover` each read one canonical request document. |
+Kast never turns partial or unknown state into an unqualified answer:
 
-Kast owns the normal refinement path:
+- **Complete** means the request met its declared scope and limits.
+- **Qualified** means the returned evidence is useful only with the attached
+  limitation.
+- **Rejected** means Kast established no successful semantic payload.
 
-1. Discovery returns bounded candidates.
-2. The `symbols` query source, or an explicit `inspect` step, establishes exact compiler identity.
-3. Source, relation, traversal, diagnostic, or change operations reuse that
-   evidence without guessing identity from text.
-
-## Use Kast through Codex
-
-The control distribution includes one Kast integration with two Codex host
-adapters. `kast codex` preserves the terminal experience: `kast-codex` owns the
-broker lifetime and launches the installed Codex client through `--remote`.
-`kast codex desktop` launches Codex Desktop with a process-local
-`CODEX_CLI_PATH` pointing to the installed `kast-codex` façade. When Desktop
-invokes `kast-codex app-server`, the façade presents JSONL App Server stdio and
-proxies to the authoritative installed `codex app-server` through the same
-broker and protocol adapter. It does not implement a Desktop-specific tool
-surface.
-
-The Desktop launcher also passes the independently resolved real Codex
-executable as `KAST_REAL_CODEX_EXECUTABLE`; the façade and upstream executable
-are distinct admitted types, so recursive façade launch fails closed. Neither
-launcher permanently modifies the user's environment. Integration state lives
-under `$CODEX_HOME/kast-integration`, or `~/.codex/kast-integration` when
-`CODEX_HOME` is unset.
-
-Before a new thread starts, the broker qualifies the exact installed Kast
-projection and adds its authorized hosted tool catalog plus concise selection
-policy to the Codex session. Semantic commands establish workspace readiness and
-derived evidence internally; users and agents do not start, synchronize, or
-build Kast as a prerequisite.
-
-The hosted catalog exposes only read operations by default. An explicitly
-authorized launch may set `KAST_CODEX_TOOL_EXPOSURE=mutation-enabled` to include
-the plan, apply, and recovery tools for that broker lifetime. The other accepted
-value is `read-only`; absence also means read-only, and unknown values are
-rejected. See [broker provenance](docs/broker-provenance.md) for ownership,
-presentation, and the acceptance boundary.
-
-## One request, at a high level
-
-```mermaid
-flowchart LR
-	CLI["Kotlin control executable"] -->|typed JSON| RPC["Local wire RPC"]
-	RPC --> IDE["Private exact-root IntelliJ sidecar"]
-	IDE --> LOCAL["Exact installed IDEA, JBR, Kotlin, and Gradle"]
-	LOCAL --> K2["Private indexes, PSI, and K2"]
-	K2 --> RESULT["Complete, qualified, or rejected JSON"]
-```
-
-In Codex, successful reads occupy one compact native tool row that expands in
-place, and completed changes carry native file-diff presentation data. To opt in
-to those mutation tools for one broker lifetime:
-
-```bash
-KAST_CODEX_TOOL_EXPOSURE=mutation-enabled kast codex
-# or
-KAST_CODEX_TOOL_EXPOSURE=mutation-enabled kast codex desktop
-```
-
-The control executable parses the CLI command into a typed request document and
-sends one bounded frame over an exact-root Unix-domain socket. The private
-sidecar extension admits the operation before IntelliJ semantic APIs can run.
-PSI and K2 objects stay inside that process. The request and response cross the
-wire as host-neutral documents.
-
-[How Kast works](https://kast.michne.com/explanation/how-kast-works/) traces a
-concrete `kast symbol inspect` request through the Kotlin implementation.
-
-## Inspect topology and traversal latency
-
-Run bare `kast` to find the authoritative trace location without
-starting the sidecar. It reports:
-
-- enabled state and OTLP JSON Lines format;
-- the private `directoryPath` with mode `0700`; and
-- the `traceFilePath` with mode `0600`.
-
-Traces cover topology and traversal phases with bounded outcome and count
-attributes. They exclude paths, selectors, source, exception messages, and
-stacks. Apply the host's retention policy to persistent trace files.
-
-## Know what the result proves
-
-Transport success does not imply semantic success. Every operation returns one
-closed outcome:
-
-| Outcome | Meaning |
-| --- | --- |
-| Complete | The result met the admitted scope, bounds, and completeness policy. |
-| Qualified | The returned evidence remains usable within a named limitation. |
-| Rejected | Kast established no successful payload and returned a typed reason. |
-
-Read outcomes by authority:
-
-- Complete is required for synchronization, topology publication, exact symbol
-  work, planning, application, and verification.
-- Qualified evidence is allowed only for operations with an explicit limitation.
-- Unknown, stale, unsupported, or inadmissible input is rejected.
-- An undurable write withdraws change authority until recovery proves a clean
-  state.
-
-[Trust the evidence](https://kast.michne.com/concepts/evidence-boundaries/)
-explains how root, operation, generation, scope, bounds, and qualification
-constrain each claim.
+The harness should keep these outcomes visible. If the integration cannot start
+or a request rejects, follow [Troubleshoot Kast](https://kast.michne.com/troubleshooting/).
+Bare `kast`, run from the repository root, is a passive support command that
+reports local runtime and bootstrap state without starting or repairing it.
 
 ## Develop Kast
 
-Development requires Java 25 or newer and Python 3.12 or newer. The checked-in
-`.python-version` is the Python version authority used by local version managers
-and every Python-consuming GitHub workflow.
-
-Build the current checkout and its small private sidecar archive with Gradle:
+Development requires Java 25 or newer and the Python version in
+[`.python-version`](.python-version).
 
 ```shell
 ./gradlew build
 ./gradlew assembleSidecarRelease
-./gradlew installLocal
-kast --version
 ```
 
-`installLocal` installs the control launcher and matched private sidecar under
-`~/.local/share/kast/local`. It publishes one relocatable command at
-`~/.local/bin/kast` and never writes a JetBrains plugin directory.
+Validate the public documentation with `mint validate` from `docs/public`.
 
-To dogfood one locally packaged, matched product through that same verified
-installer boundary, assign an unreleased semantic version and select the local
-release directory explicitly:
+## Security and license
 
-```shell
-release_version="${KAST_RELEASE_VERSION:?set KAST_RELEASE_VERSION to an unreleased semantic version}"
-./gradlew -Pversion="$release_version" assembleSidecarRelease
-bash install.sh install --purge-existing \
-  --version "$release_version" \
-  --release-base-url "file://$PWD/build/release"
-```
-
-The installer still checks both SHA-256 records, archive paths, product
-metadata, and matched sidecar identity before it removes an older installation.
-An explicit version is required for a custom HTTPS mirror or absolute `file://`
-release base.
-
-Published releases also include CLI schema and module-knowledge JSON with
-SHA-256 records. Module knowledge preserves:
-
-- the release version and Git revision;
-- accepted architecture evidence and module policy;
-- the admitted dependency graph; and
-- repository guidance with content digests.
-
-These assets can be downloaded without installing Kast.
-
-Validate and preview the Mintlify documentation with:
-
-```shell
-cd docs/public
-mint validate
-mint dev
-```
-
-## License
-
-Kast is available under the [MIT License](LICENSE).
+Report vulnerabilities through [GitHub private vulnerability
+reporting](https://github.com/amichne/kast/security/advisories/new). Kast is
+available under the [MIT License](LICENSE).

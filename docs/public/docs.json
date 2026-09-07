@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "maple",
   "name": "Kast",
-  "description": "Compiler-grounded evidence for exact Kotlin repositories.",
+  "description": "Compiler-grounded Kotlin search for coding agents.",
   "colors": {
     "primary": "#3154C7",
     "light": "#27439F",
@@ -29,7 +29,7 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Setup",
+        "tab": "Use Kast",
         "groups": [
           {
             "group": "Start here",
@@ -38,61 +38,28 @@
               "index",
               "start"
             ]
-          }
-        ]
-      },
-      {
-        "tab": "Guides",
-        "groups": [
+          },
           {
-            "group": "Answer a code question",
-            "icon": "compass",
+            "group": "Search",
+            "icon": "scan-search",
             "pages": [
-              "questions/workspace-readiness",
-              "questions/declaration-identity",
-              "questions/code-connections",
-              "questions/semantic-validity",
-              "questions/safe-change"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Concepts",
-        "groups": [
-          {
-            "group": "Evidence model",
-            "icon": "shield-check",
-            "pages": [
-              "concepts/evidence-boundaries",
-              "explanation/how-kast-works"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Reference",
-        "groups": [
-          {
-            "group": "Command surface",
-            "icon": "terminal",
-            "pages": [
-              "reference/cli",
-              "reference/gradle-import",
-              "reference/compatibility"
+              "search"
             ]
           },
           {
-            "group": "Technical specification",
-            "icon": "network",
+            "group": "Integrate",
+            "icon": "bot",
             "pages": [
-              "technical-specification/index",
-              "technical-specification/runtime-boundary",
-              "technical-specification/protocol-and-dispatch",
-              "technical-specification/semantic-services",
-              "technical-specification/change-and-evidence",
-              "technical-specification/module-architecture",
-              "technical-specification/verification-and-contribution"
+              "agent-harnesses"
+            ]
+          },
+          {
+            "group": "Support",
+            "icon": "life-buoy",
+            "pages": [
+              "troubleshooting",
+              "concepts/evidence-boundaries",
+              "reference/compatibility"
             ]
           }
         ]
@@ -121,25 +88,25 @@
         "header": "Use Kast",
         "items": [
           {
-            "label": "Quickstart",
+            "label": "Install and connect",
             "href": "/start"
           },
           {
-            "label": "CLI reference",
-            "href": "/reference/cli"
+            "label": "Agent harnesses",
+            "href": "/agent-harnesses"
           }
         ]
       },
       {
-        "header": "Understand Kast",
+        "header": "Support",
         "items": [
           {
-            "label": "Trust the evidence",
-            "href": "/concepts/evidence-boundaries"
+            "label": "Troubleshooting",
+            "href": "/troubleshooting"
           },
           {
-            "label": "Technical specification",
-            "href": "/technical-specification"
+            "label": "Evidence outcomes",
+            "href": "/concepts/evidence-boundaries"
           }
         ]
       },
@@ -151,8 +118,8 @@
             "href": "https://github.com/amichne/kast"
           },
           {
-            "label": "MIT license",
-            "href": "https://github.com/amichne/kast/blob/main/LICENSE"
+            "label": "Security",
+            "href": "https://github.com/amichne/kast/security"
           }
         ]
       }
@@ -170,15 +137,12 @@
   "contextual": {
     "options": [
       "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "cursor"
+      "view"
     ],
     "display": "header"
   },
   "search": {
-    "prompt": "Search Kast documentation"
+    "prompt": "Search setup, harnesses, and errors"
   },
   "errors": {
     "404": {

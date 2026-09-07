@@ -12,7 +12,8 @@ observed behavior. Remove credentials and proprietary source from attachments.
 Security fixes target the latest supported release. Before 1.0, older 0.x
 versions may require an upgrade. The 1.x contract covers macOS on Apple silicon,
 Kotlin Gradle repositories, and the documented IntelliJ platform line. The Codex
-broker is a read-only preview and has a separate upstream protocol boundary.
+integration is read-only by default; mutation requires an explicit process-level
+opt-in. Its upstream protocol remains a separate preview boundary.
 
 The release gate admits exact archive digests before publication. GitHub build
 provenance binds uploaded assets to the publishing workflow and source revision.
