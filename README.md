@@ -138,11 +138,17 @@ transport. Integration state lives under `$CODEX_HOME/kast-integration`, or
 `~/.codex/kast-integration` when `CODEX_HOME` is unset.
 
 Before a new thread starts, the broker qualifies the exact installed Kast
-projection and adds its hosted tool catalog plus concise selection policy to the
-Codex session. Semantic commands establish workspace readiness and derived
-evidence internally; users and agents do not start, synchronize, or build Kast
-as a prerequisite. See [broker provenance](docs/broker-provenance.md) for
-ownership, presentation, and the acceptance boundary.
+projection and adds its authorized hosted tool catalog plus concise selection
+policy to the Codex session. Semantic commands establish workspace readiness and
+derived evidence internally; users and agents do not start, synchronize, or
+build Kast as a prerequisite.
+
+The hosted catalog exposes only read operations by default. An explicitly
+authorized launch may set `KAST_CODEX_TOOL_EXPOSURE=mutation-enabled` to include
+the plan, apply, and recovery tools for that broker lifetime. The other accepted
+value is `read-only`; absence also means read-only, and unknown values are
+rejected. See [broker provenance](docs/broker-provenance.md) for ownership,
+presentation, and the acceptance boundary.
 
 ## One request, at a high level
 

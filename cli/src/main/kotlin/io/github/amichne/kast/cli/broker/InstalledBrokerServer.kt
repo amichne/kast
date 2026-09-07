@@ -16,6 +16,7 @@ import io.github.amichne.kast.cli.broker.provider.JdkBrokerProcessExecutor
 import io.github.amichne.kast.cli.broker.provider.KastProviderOptions
 import io.github.amichne.kast.cli.broker.provider.KastProviderQualification
 import io.github.amichne.kast.cli.broker.provider.KastProviderQualifier
+import io.github.amichne.kast.cli.broker.provider.KastToolExposure
 import io.github.amichne.kast.cli.broker.runtime.BrokerSocketPath
 import io.github.amichne.kast.cli.broker.runtime.CodexAppServerProcessLauncher
 import io.github.amichne.kast.cli.broker.runtime.KtorBrokerServer
@@ -160,11 +161,20 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     InstalledBrokerServerConfigurationFailure.READINESS_REJECTED,
                 )
             }
+            val toolExposure = when (
+                val admitted = KastToolExposure.admit(environment["KAST_CODEX_TOOL_EXPOSURE"])
+            ) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return rejected(
+                    InstalledBrokerServerConfigurationFailure.PROVIDER_CONFIGURATION_REJECTED,
+                )
+            }
             val kastOptions = when (
                 val admission = KastProviderOptions.admit(
                     kast.path,
                     canonicalUserHome,
                     processExecutor,
+                    toolExposure = toolExposure,
                 )
             ) {
                 is Refinement.Refined -> admission.value

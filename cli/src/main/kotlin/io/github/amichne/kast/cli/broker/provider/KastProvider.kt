@@ -55,11 +55,39 @@ internal enum class KastProviderOptionsFailure {
     QUALIFICATION_TIMEOUT_REJECTED,
 }
 
+/** Qualified tool authority retained from broker configuration through catalog construction. */
+internal enum class KastToolExposure {
+    READ_ONLY,
+    MUTATION_ENABLED,
+    ;
+
+    internal fun admits(policy: HostedApprovalPolicy): Boolean = when (this) {
+        READ_ONLY -> policy == HostedApprovalPolicy.NONE
+        MUTATION_ENABLED -> true
+    }
+
+    companion object {
+        /**
+         * Refines the optional launch boundary into catalog authority. Absence retains the
+         * least-privileged catalog; only the exact mutation-enabled value broadens it.
+         */
+        internal fun admit(raw: String?): Refinement<KastToolExposure, KastToolExposureFailure> =
+            when (raw) {
+                null, "read-only" -> Refinement.Refined(READ_ONLY)
+                "mutation-enabled" -> Refinement.Refined(MUTATION_ENABLED)
+                else -> Refinement.Rejected(KastToolExposureFailure.UNKNOWN_VALUE)
+            }
+    }
+}
+
+internal enum class KastToolExposureFailure { UNKNOWN_VALUE }
+
 internal class KastProviderOptions private constructor(
     val executable: BrokerExecutable,
     val qualificationDirectory: CanonicalBrokerDirectory,
     val processExecutor: BrokerProcessExecutor,
     val qualificationTimeoutMillis: Long,
+    val toolExposure: KastToolExposure,
 ) {
     companion object {
         internal fun admit(
@@ -67,6 +95,7 @@ internal class KastProviderOptions private constructor(
             qualificationDirectory: Path,
             processExecutor: BrokerProcessExecutor = JdkBrokerProcessExecutor,
             qualificationTimeoutMillis: Long = OperationExecutionBudget.LOCAL_QUALIFICATION.value,
+            toolExposure: KastToolExposure = KastToolExposure.READ_ONLY,
         ): Refinement<KastProviderOptions, KastProviderOptionsFailure> {
             val admittedExecutable = when (val admission = BrokerExecutable.admit(executable)) {
                 is Refinement.Refined -> admission.value
@@ -89,6 +118,7 @@ internal class KastProviderOptions private constructor(
                     admittedDirectory,
                     processExecutor,
                     qualificationTimeoutMillis,
+                    toolExposure,
                 ),
             )
         }
@@ -152,11 +182,12 @@ internal object KastProviderQualifier {
                 KastProviderQualification.Rejected(contract.failure)
 
             is KastContractQualification.Qualified -> {
-                val registration = buildRegistration(options, contract)
+                val exposedTools = ExposedKastTools.select(options.toolExposure, contract.tools)
+                val registration = buildRegistration(options, contract, exposedTools)
                 when (registration) {
                     is Validation.Validated -> when (
                         val bootstrap = AgentSessionBootstrap.qualify(
-                            definitions = contract.tools.map(QualifiedKastTool::hostedDefinition),
+                            definitions = exposedTools.values.map(QualifiedKastTool::hostedDefinition),
                             policy = contract.policy,
                             executableRoutes = registration.value.tools.mapTo(linkedSetOf()) {
                                 tool -> tool.name
@@ -261,14 +292,14 @@ internal object KastProviderQualifier {
     private fun buildRegistration(
         options: KastProviderOptions,
         contract: KastContractQualification.Qualified,
+        exposedTools: ExposedKastTools,
     ): Validation<ProviderRegistration<KastRuntime>, *> {
-        val tools = contract.tools.map { tool -> tool.asBrokerTool() }
         return ProviderRegistration.define(
             namespace = staticNamespace(),
             version = staticVersion(
                 "${contract.evidence.cliVersion.value}+server${contract.evidence.projectionVersion}",
             ),
-            tools = tools,
+            tools = exposedTools.values.map { tool -> tool.asBrokerTool() },
             start = {
                 when (val current = qualifyContract(options)) {
                     is KastContractQualification.Rejected -> ProviderStartup.Rejected(
@@ -614,6 +645,22 @@ private data class QualifiedKastProjection(
     val policy: AgentToolPolicy,
     val tools: List<QualifiedKastTool>,
 )
+
+/** Qualified tools narrowed to the authority granted for this broker lifetime. */
+private class ExposedKastTools private constructor(
+    val values: List<QualifiedKastTool>,
+) {
+    companion object {
+        internal fun select(
+            exposure: KastToolExposure,
+            qualifiedTools: List<QualifiedKastTool>,
+        ): ExposedKastTools = ExposedKastTools(
+            qualifiedTools.filter { tool ->
+                exposure.admits(tool.hostedDefinition.approval)
+            },
+        )
+    }
+}
 
 internal data class QualifiedKastTool(
     val operation: KastOperationId,

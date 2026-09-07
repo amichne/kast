@@ -117,7 +117,7 @@ class KastProviderTest {
     }
 
     @Test
-    fun `qualified bootstrap advertises exactly the installed executable routes`(
+    fun `qualified read-only bootstrap advertises exactly the installed executable routes`(
         @TempDir temporary: Path,
     ) = runBlocking {
         val executable = executable(temporary.resolve("kast"))
@@ -134,11 +134,11 @@ class KastProviderTest {
         ).validatedValue()
 
         assertEquals(
-            listOf("change_apply", "symbol_lookup"),
+            listOf("symbol_lookup"),
             broker.catalog.namespaces.single().tools.map { tool -> tool.name.value },
         )
         assertEquals(
-            setOf("change_apply", "symbol_lookup"),
+            setOf("symbol_lookup"),
             qualification.bootstrap.tools.definitions.mapTo(linkedSetOf()) { it.name.value },
         )
         val completed = broker.dispatch(
@@ -171,16 +171,47 @@ class KastProviderTest {
             (completed.presentation.observer as ObserverPresentation.Markdown).source.value,
         )
         assertEquals(
-            listOf(
-                listOf("symbol", "discover", "--query", "Thing"),
-                listOf("change", "apply", "--plan", "plan-1"),
-            ),
+            listOf(listOf("symbol", "discover", "--query", "Thing")),
             executor.requests.filterNot { it.arguments.first().startsWith("--") }
                 .map(BrokerProcessRequest::arguments),
         )
-        assertEquals(true, (explicit as BrokerDispatch.Completed).presentation.success)
+        assertInstanceOf(
+            BrokerFailure.UnknownTool::class.java,
+            (explicit as BrokerDispatch.Rejected).failure,
+        )
         assertEquals(2, executor.requests.count { it.arguments == listOf("--version") })
         assertEquals(2, executor.requests.count { it.arguments == listOf("--schema") })
+    }
+
+    @Test
+    fun `explicit mutation opt in publishes all qualified tools`(
+        @TempDir temporary: Path,
+    ) = runBlocking {
+        val executable = executable(temporary.resolve("kast"))
+        val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+        val options = KastProviderOptions.admit(
+            executable,
+            cwd,
+            RecordingProcessExecutor(schema = capabilitySchema()),
+            toolExposure = KastToolExposure.MUTATION_ENABLED,
+        ).refinedValue()
+        val qualification = assertInstanceOf(
+            KastProviderQualification.Qualified::class.java,
+            KastProviderQualifier.qualify(options),
+        )
+        val broker = Broker.create(
+            listOf(qualification.registration),
+            BrokerLimits.defaults(),
+        ).validatedValue()
+
+        assertEquals(
+            listOf("change_apply", "symbol_lookup"),
+            broker.catalog.namespaces.single().tools.map { tool -> tool.name.value },
+        )
+        assertEquals(
+            setOf("change_apply", "symbol_lookup"),
+            qualification.bootstrap.tools.definitions.mapTo(linkedSetOf()) { it.name.value },
+        )
     }
 
     @Test
