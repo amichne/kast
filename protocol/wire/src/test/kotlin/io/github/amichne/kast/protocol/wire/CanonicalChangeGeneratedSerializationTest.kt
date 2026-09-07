@@ -8,6 +8,11 @@ import io.github.amichne.kast.protocol.contract.ChangeApplyQualification
 import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangeApplyResult
+import io.github.amichne.kast.protocol.contract.ChangeFilePreview
+import io.github.amichne.kast.protocol.contract.ChangeFilePreviewKind
+import io.github.amichne.kast.protocol.contract.ChangeFilePreviewSet
+import io.github.amichne.kast.protocol.contract.ChangePreviewDiff
+import io.github.amichne.kast.protocol.contract.ChangePreviewPath
 import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
 import io.github.amichne.kast.protocol.contract.ChangePlanQualification
 import io.github.amichne.kast.protocol.contract.ChangePlanRejection
@@ -76,17 +81,23 @@ class CanonicalChangeGeneratedSerializationTest {
     @Test
     fun `generated documents preserve exact change scalar payload shapes`() {
         assertEquals(
-            wireJson.parseToJsonElement("""{"planIdentity":"plan:1"}"""),
-            CanonicalOperationWireBindings.changePlan.resultPayload(ChangePlanResult(text("plan:1"))),
+            wireJson.parseToJsonElement(
+                """{"planIdentity":"plan:1","changes":[{"path":"src/Target.kt","kind":"update","diff":"-old\n+new"}]}""",
+            ),
+            CanonicalOperationWireBindings.changePlan.resultPayload(
+                ChangePlanResult(text("plan:1"), preview()),
+            ),
         )
         assertEquals(
             wireJson.parseToJsonElement("""{"planIdentity":"plan:1"}"""),
             CanonicalOperationWireBindings.changeApply.requestPayload(ChangeApplyRequest(text("plan:1"))),
         )
         assertEquals(
-            wireJson.parseToJsonElement("""{"receiptIdentity":"receipt:1"}"""),
+            wireJson.parseToJsonElement(
+                """{"receiptIdentity":"receipt:1","changes":[{"path":"src/Target.kt","kind":"update","diff":"-old\n+new"}]}""",
+            ),
             CanonicalOperationWireBindings.changeApply.resultPayload(
-                ChangeApplyResult(text("receipt:1")),
+                ChangeApplyResult(text("receipt:1"), preview()),
             ),
         )
         assertEquals(
@@ -108,7 +119,7 @@ class CanonicalChangeGeneratedSerializationTest {
         assertEquals(
             JsonPrimitive("optional_evidence_incomplete"),
             CanonicalOperationWireBindings.changePlan.qualificationPayload(
-                ChangePlanResult(text("plan:1")),
+                ChangePlanResult(text("plan:1"), preview()),
                 ChangePlanQualification.OPTIONAL_EVIDENCE_INCOMPLETE,
             ),
         )
@@ -121,7 +132,7 @@ class CanonicalChangeGeneratedSerializationTest {
         assertEquals(
             JsonPrimitive("recovery_required"),
             CanonicalOperationWireBindings.changeApply.qualificationPayload(
-                ChangeApplyResult(text("receipt:1")),
+                ChangeApplyResult(text("receipt:1"), preview()),
                 ChangeApplyQualification.RECOVERY_REQUIRED,
             ),
         )
@@ -257,6 +268,16 @@ class CanonicalChangeGeneratedSerializationTest {
     }
 
     private fun text(raw: String): ProtocolText = ProtocolText.parse(raw).refinedValue()
+
+    private fun preview(): ChangeFilePreviewSet = ChangeFilePreviewSet.admit(
+        listOf(
+            ChangeFilePreview(
+                ChangePreviewPath.parse("src/Target.kt").refinedValue(),
+                ChangeFilePreviewKind.UPDATE,
+                ChangePreviewDiff.parse("-old\n+new").refinedValue(),
+            ),
+        ),
+    ).refinedValue()
 
     private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
         is Refinement.Refined -> value

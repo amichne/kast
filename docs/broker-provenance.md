@@ -50,16 +50,27 @@ arguments such as selectors and continuations with typed display placeholders.
 The exact arguments still reach Kast unchanged, and the canonical model-facing
 result remains unchanged.
 
-Successful semantic operations may also produce a bounded commentary companion.
-Presentation failure or capacity exhaustion suppresses that companion without
-changing tool execution. Presentation state is process-local and is reconstructed
-from canonical results where the protocol provides enough context.
+Successful semantic reads replace the native tool result with bounded human-facing
+Markdown. This keeps the collapsed transcript to one useful tool row; expanding
+that row reveals source, symbol, relation, traversal, or diagnostic detail without
+adding a synthetic assistant message. Presentation failure or capacity exhaustion
+retains the canonical tool result without changing execution. Presentation state
+is process-local and is reconstructed from canonical results where the protocol
+provides enough context.
 
-Source companions use inclusive one-based line coordinates only when those
+Source presentations use inclusive one-based line coordinates only when those
 coordinates were derived from the normalized source document whose length and
-digest matched the selected snapshot. Diagnostic companions retain severity and
+digest matched the selected snapshot. Diagnostic presentations retain severity and
 location while selector and generation evidence stays in the canonical model
 result.
+
+Change plan and apply results carry a non-empty typed set of workspace-relative
+paths, closed change kinds, and bounded semantic diff fragments. A completed
+`change.apply` observation projects that proof to Codex's native `fileChange` item,
+so the compact row expands into the host diff visualization. Malformed, escaped,
+duplicate, empty, or oversized observer data fails closed to the canonical tool
+result. The broker still excludes mutation tools until explicit approval routing is
+available; this presentation path does not weaken that boundary.
 
 ## Observer fixtures
 

@@ -1,5 +1,8 @@
 package io.github.amichne.kast.cli.broker.provider
 
+import io.github.amichne.kast.cli.broker.core.ObserverFileChange
+import io.github.amichne.kast.cli.broker.core.ObserverFileChangeKind
+import io.github.amichne.kast.cli.broker.core.ObserverFileChangeSet
 import io.github.amichne.kast.cli.broker.core.ObserverMarkdown
 import io.github.amichne.kast.cli.broker.core.ObserverPresentation
 import io.github.amichne.kast.kernel.Refinement
@@ -48,6 +51,9 @@ internal object KastObserverProjector {
             return ObserverPresentation.None
         }
         val evidence = ObserverEvidence.admit(document) ?: return ObserverPresentation.None
+        if (operation.value == CHANGE_APPLY) {
+            return projectAppliedChange(document)
+        }
         val markdown = when (operation.value) {
             SYMBOL_DISCOVER -> projectDiscovery(document, evidence, directory)
             SYMBOL_INSPECT -> projectInspection(document, evidence, directory)
@@ -58,6 +64,31 @@ internal object KastObserverProjector {
             else -> null
         } ?: return ObserverPresentation.None
         return ObserverPresentation.Markdown(ObserverMarkdown(markdown))
+    }
+
+    private fun projectAppliedChange(document: JsonObject): ObserverPresentation {
+        val candidates = document["changes"] as? JsonArray ?: return ObserverPresentation.None
+        val files = candidates.map { candidate ->
+            val change = candidate as? JsonObject ?: return ObserverPresentation.None
+            val kind = when (change.strictString("kind")) {
+                "add" -> ObserverFileChangeKind.ADD
+                "delete" -> ObserverFileChangeKind.DELETE
+                "update" -> ObserverFileChangeKind.UPDATE
+                else -> return ObserverPresentation.None
+            }
+            when (val admitted = ObserverFileChange.admit(
+                change.strictString("path") ?: return ObserverPresentation.None,
+                kind,
+                change.strictString("diff") ?: return ObserverPresentation.None,
+            )) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return ObserverPresentation.None
+            }
+        }
+        return when (val admitted = ObserverFileChangeSet.admit(files)) {
+            is Refinement.Refined -> ObserverPresentation.FileChanges(admitted.value)
+            is Refinement.Rejected -> ObserverPresentation.None
+        }
     }
 
     private fun projectDiscovery(
@@ -678,6 +709,7 @@ internal object KastObserverProjector {
 
     private const val SYMBOL_DISCOVER = "symbol.discover"
     private const val SYMBOL_INSPECT = "symbol.inspect"
+    private const val CHANGE_APPLY = "change.apply"
     private const val SOURCE_READ = "source.read"
     private const val RELATION_READ = "relation.read"
     private const val TRAVERSAL_RUN = "traversal.run"

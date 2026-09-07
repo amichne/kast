@@ -99,7 +99,7 @@ internal class CanonicalChangeApplyHandler(
             is ChangeApplicationIssuance.Issued -> when (
                 val verification = operations.verify.verify(VerifiedMutationRequest(plan, result))
             ) {
-                is VerifiedMutationResult.Verified -> complete(verification)
+                is VerifiedMutationResult.Verified -> complete(verification, plan)
                 is VerifiedMutationResult.RejectedBeforePublication -> OperationOutcome.Rejected(
                     when (verification.failure) {
                         is VerifiedMutationBeforePublicationFailure.Admission ->
@@ -122,13 +122,14 @@ internal class CanonicalChangeApplyHandler(
 
     private fun complete(
         result: VerifiedMutationResult.Verified,
+        plan: io.github.amichne.kast.change.contract.ChangePlan,
     ): OperationOutcome<ChangeApplyResult, ChangeApplyQualification, ChangeApplyRejection> =
         when (val issued = authority.issueReceipt(result.receipt)) {
             is ChangeReceiptIssuance.Issued -> OperationOutcome.Complete(
                 EvidenceEnvelope(
                     CanonicalOperation.CHANGE_APPLY.id,
                     result.receipt.resultingWorkspace.generation,
-                    ChangeApplyResult(issued.identity.protocolText()),
+                    ChangeApplyResult(issued.identity.protocolText(), plan.protocolPreview()),
                 ),
             )
             is ChangeReceiptIssuance.Rejected ->

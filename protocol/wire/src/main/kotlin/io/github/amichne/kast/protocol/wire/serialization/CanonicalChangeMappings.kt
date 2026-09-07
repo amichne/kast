@@ -4,6 +4,11 @@ import io.github.amichne.kast.protocol.contract.ChangeApplyQualification
 import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangeApplyResult
+import io.github.amichne.kast.protocol.contract.ChangeFilePreview
+import io.github.amichne.kast.protocol.contract.ChangeFilePreviewKind
+import io.github.amichne.kast.protocol.contract.ChangeFilePreviewSet
+import io.github.amichne.kast.protocol.contract.ChangePreviewDiff
+import io.github.amichne.kast.protocol.contract.ChangePreviewPath
 import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
 import io.github.amichne.kast.protocol.contract.ChangePlanQualification
 import io.github.amichne.kast.protocol.contract.ChangePlanRejection
@@ -29,7 +34,10 @@ internal fun ChangeApplyRequestDocument.toContract(): WireDocumentConversion<Cha
     planIdentity.refineChangeProtocolText().mapConverted(::ChangeApplyRequest)
 
 internal fun ChangeApplyResult.toSerializableDocument(): ChangeApplyResultDocument =
-    ChangeApplyResultDocument(receiptIdentity.value)
+    ChangeApplyResultDocument(
+        receiptIdentity.value,
+        changes.entries.map(ChangeFilePreview::toSerializableDocument),
+    )
 
 /**
  * Proof transition: `ChangeApplyResultDocument -> ChangeApplyResult`.
@@ -38,7 +46,11 @@ internal fun ChangeApplyResult.toSerializableDocument(): ChangeApplyResultDocume
  * closed expected failure. Raw result text may be extracted only here.
  */
 internal fun ChangeApplyResultDocument.toContract(): WireDocumentConversion<ChangeApplyResult> =
-    receiptIdentity.refineChangeProtocolText().mapConverted(::ChangeApplyResult)
+    combineConverted(
+        receiptIdentity.refineChangeProtocolText(),
+        changes.toContract(),
+        ::ChangeApplyResult,
+    )
 
 internal fun ChangeApplyQualification.toSerializableDocument():
     ChangeApplyQualificationDocument = when (this) {
@@ -227,7 +239,10 @@ private fun ChangeIntentWireDocument.toContract(): WireDocumentConversion<Change
     }
 
 internal fun ChangePlanResult.toSerializableDocument(): ChangePlanResultDocument =
-    ChangePlanResultDocument(planIdentity.value)
+    ChangePlanResultDocument(
+        planIdentity.value,
+        changes.entries.map(ChangeFilePreview::toSerializableDocument),
+    )
 
 /**
  * Proof transition: `ChangePlanResultDocument -> ChangePlanResult`.
@@ -236,7 +251,41 @@ internal fun ChangePlanResult.toSerializableDocument(): ChangePlanResultDocument
  * expected failure. Raw result text may be extracted only in this wire adapter.
  */
 internal fun ChangePlanResultDocument.toContract(): WireDocumentConversion<ChangePlanResult> =
-    planIdentity.refineChangeProtocolText().mapConverted(::ChangePlanResult)
+    combineConverted(
+        planIdentity.refineChangeProtocolText(),
+        changes.toContract(),
+        ::ChangePlanResult,
+    )
+
+private fun ChangeFilePreview.toSerializableDocument(): ChangeFilePreviewDocument =
+    ChangeFilePreviewDocument(path.value, kind.toSerializableDocument(), diff.value)
+
+private fun ChangeFilePreviewKind.toSerializableDocument(): ChangeFilePreviewKindDocument =
+    when (this) {
+        ChangeFilePreviewKind.ADD -> ChangeFilePreviewKindDocument.ADD
+        ChangeFilePreviewKind.DELETE -> ChangeFilePreviewKindDocument.DELETE
+        ChangeFilePreviewKind.UPDATE -> ChangeFilePreviewKindDocument.UPDATE
+    }
+
+private fun ChangeFilePreviewDocument.toContract(): WireDocumentConversion<ChangeFilePreview> =
+    combineConverted(
+        ChangePreviewPath.parse(path).toWireDocumentConversion(),
+        ChangePreviewDiff.parse(diff).toWireDocumentConversion(),
+    ) { admittedPath, admittedDiff ->
+        ChangeFilePreview(admittedPath, kind.toContract(), admittedDiff)
+    }
+
+private fun ChangeFilePreviewKindDocument.toContract(): ChangeFilePreviewKind = when (this) {
+    ChangeFilePreviewKindDocument.ADD -> ChangeFilePreviewKind.ADD
+    ChangeFilePreviewKindDocument.DELETE -> ChangeFilePreviewKind.DELETE
+    ChangeFilePreviewKindDocument.UPDATE -> ChangeFilePreviewKind.UPDATE
+}
+
+private fun List<ChangeFilePreviewDocument>.toContract():
+    WireDocumentConversion<ChangeFilePreviewSet> = convertEach(ChangeFilePreviewDocument::toContract)
+    .flatMapConverted { changes ->
+        ChangeFilePreviewSet.admit(changes).toWireDocumentConversion()
+    }
 
 internal fun ChangePlanQualification.toSerializableDocument():
     ChangePlanQualificationDocument = when (this) {

@@ -24,7 +24,70 @@ import java.nio.file.Path
 
 class CodexObserverReplayTest {
     @Test
-    fun `thread reload derives the same companion from canonical history without pending state`(
+    fun `applied Kast change replays as one native file change item`(
+        @TempDir temporary: Path,
+    ) {
+        val namespace = when (val admitted = ProviderNamespace.admit("kast")) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> error("Static namespace rejected")
+        }
+        val fixture = KastObserverFixtures.changeApply
+        val history = buildJsonObject {
+            put("cwd", temporary.toRealPath().toString())
+            put("thread", buildJsonObject {
+                put("id", "thread-1")
+                put("turns", buildJsonArray {
+                    add(buildJsonObject {
+                        put("id", "turn-1")
+                        put("items", buildJsonArray {
+                            add(buildJsonObject {
+                                put("type", "dynamicToolCall"); put("id", "call-1")
+                                put("namespace", "kast"); put("tool", "change_apply")
+                                put("arguments", buildJsonObject {})
+                                put("status", "completed"); put("success", true)
+                                put("contentItems", buildJsonArray {
+                                    add(buildJsonObject { put("type", "inputText"); put("text", fixture) })
+                                })
+                            })
+                        })
+                    })
+                })
+            })
+        }
+
+        val projected = CodexThreadHistoryProjector.project(history, setOf(namespace))
+        check(projected is CodexThreadHistoryProjection.Projected)
+        val item = projected.result.getValue("thread").jsonObject.getValue("turns")
+            .jsonArray.single().jsonObject.getValue("items").jsonArray.single().jsonObject
+        assertEquals("fileChange", item.getValue("type").jsonPrimitive.content)
+        assertEquals("call-1", item.getValue("id").jsonPrimitive.content)
+        assertEquals("completed", item.getValue("status").jsonPrimitive.content)
+        val change = item.getValue("changes").jsonArray.single().jsonObject
+        assertEquals(
+            "cli/src/main/kotlin/sample/EventConsumer.kt",
+            change.getValue("path").jsonPrimitive.content,
+        )
+        assertEquals("update", change.getValue("kind").jsonObject.getValue("type").jsonPrimitive.content)
+        assertEquals(
+            "@@ class EventConsumer @@\n-    fun consume() = old()\n+    fun consume() = new()",
+            change.getValue("diff").jsonPrimitive.content,
+        )
+
+        val escaped = Json.parseToJsonElement(
+            history.toString().replace(
+                "cli/src/main/kotlin/sample/EventConsumer.kt",
+                "../outside.kt",
+            ),
+        ).jsonObject
+        val rejected = CodexThreadHistoryProjector.project(escaped, setOf(namespace))
+        check(rejected is CodexThreadHistoryProjection.Projected)
+        val fallback = rejected.result.getValue("thread").jsonObject.getValue("turns")
+            .jsonArray.single().jsonObject.getValue("items").jsonArray.single().jsonObject
+        assertEquals("mcpToolCall", fallback.getValue("type").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `thread reload derives the same expandable native result without pending state`(
         @TempDir temporary: Path,
     ) {
         val namespace = when (val admitted = ProviderNamespace.admit("kast")) {
@@ -67,11 +130,12 @@ class CodexObserverReplayTest {
             check(projected is CodexThreadHistoryProjection.Projected)
             val items = projected.result.getValue("thread").jsonObject.getValue("turns")
                 .jsonArray.single().jsonObject.getValue("items").jsonArray
-            assertEquals(2, items.size)
-            val companion = items.last().jsonObject
-            assertEquals("agentMessage", companion.getValue("type").jsonPrimitive.content)
-            assertEquals(live.source.value, companion.getValue("text").jsonPrimitive.content)
-            assertTrue("sha256:" !in companion.getValue("text").jsonPrimitive.content)
+            assertEquals(1, items.size)
+            val native = items.single().jsonObject
+            assertEquals("mcpToolCall", native.getValue("type").jsonPrimitive.content)
+            val content = native.getValue("result").jsonObject.getValue("content").jsonArray
+            assertEquals(live.source.value, content.single().jsonObject.getValue("text").jsonPrimitive.content)
+            assertTrue("sha256:" !in native.toString())
             assertEquals(history, Json.parseToJsonElement(history.toString()))
             assertEquals(projected, CodexThreadHistoryProjector.project(history, setOf(namespace)))
             assertEquals(CodexThreadHistoryProjection.Unchanged,

@@ -112,6 +112,11 @@ internal class CodexProtocolContracts private constructor(
                     }
                 }
             }
+            if (failures.isEmpty() && !fileChangeProjectionIsAdmitted(compiled)) {
+                failures += CodexProtocolContractFailure.ToolCallProjectionIncompatible(
+                    CodexOwnedSchema.ITEM_COMPLETED_NOTIFICATION,
+                )
+            }
             if (failures.isEmpty()) {
                 ITEM_CONTAINER_PROJECTION_WITNESSES.forEach { witness ->
                     if (!containerProjectionIsAdmitted(compiled, witness)) {
@@ -246,6 +251,30 @@ internal class CodexProtocolContracts private constructor(
                 ?: return false
             val projectedParams = JsonObject(admittedParams + ("item" to projectedItem))
             return contract.admit(projectedParams) is Validation.Validated
+        }
+
+        private fun fileChangeProjectionIsAdmitted(
+            contracts: Map<CodexOwnedSchema, CompiledJsonSchema>,
+        ): Boolean {
+            val contract = contracts[CodexOwnedSchema.ITEM_COMPLETED_NOTIFICATION] ?: return false
+            val params = buildJsonObject {
+                put("threadId", "thread-contract-probe")
+                put("turnId", "turn-contract-probe")
+                put("completedAtMs", 4)
+                put("item", buildJsonObject {
+                    put("type", "fileChange")
+                    put("id", "call-file-change-probe")
+                    put("status", "completed")
+                    put("changes", buildJsonArray {
+                        add(buildJsonObject {
+                            put("path", "src/ContractProbe.kt")
+                            put("diff", "-old\n+new")
+                            put("kind", buildJsonObject { put("type", "update") })
+                        })
+                    })
+                })
+            }
+            return contract.admit(params) is Validation.Validated
         }
 
         private fun containerProjectionIsAdmitted(

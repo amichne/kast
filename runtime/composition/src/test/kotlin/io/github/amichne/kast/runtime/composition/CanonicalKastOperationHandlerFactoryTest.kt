@@ -11,6 +11,7 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
+import io.github.amichne.kast.protocol.contract.ChangeFilePreviewKind
 import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ProtocolText
@@ -62,6 +63,11 @@ class CanonicalKastOperationHandlerFactoryTest {
                 ),
             )
         } as OperationOutcome.Complete
+
+        val preview = planned.evidence.payload.changes.entries.single()
+        assertEquals("src/main/kotlin/sample/Added.kt", preview.path.value)
+        assertEquals(ChangeFilePreviewKind.ADD, preview.kind)
+        assertEquals("+package sample\n+\n+class Added", preview.diff.value)
 
         assertEquals(
             OperationOutcome.Rejected(ChangeApplyRejection.ROOT_MISMATCH),

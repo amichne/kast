@@ -11,6 +11,11 @@ import io.github.amichne.kast.protocol.contract.ChangeApplyQualification
 import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangeApplyResult
+import io.github.amichne.kast.protocol.contract.ChangeFilePreview
+import io.github.amichne.kast.protocol.contract.ChangeFilePreviewKind
+import io.github.amichne.kast.protocol.contract.ChangeFilePreviewSet
+import io.github.amichne.kast.protocol.contract.ChangePreviewDiff
+import io.github.amichne.kast.protocol.contract.ChangePreviewPath
 import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
 import io.github.amichne.kast.protocol.contract.ChangePlanQualification
 import io.github.amichne.kast.protocol.contract.ChangePlanRejection
@@ -256,14 +261,14 @@ class CanonicalOperationWireBindingsTest {
                     text("fun added() = Unit"),
                 ),
             ),
-            ChangePlanResult(text("plan:1")),
+            ChangePlanResult(text("plan:1"), preview()),
             ChangePlanQualification.OPTIONAL_EVIDENCE_INCOMPLETE,
             ChangePlanRejection.RELATION_READ_REQUIRED,
         )
         assertRoundTrips(
             CanonicalOperationWireBindings.changeApply,
             ChangeApplyRequest(text("plan:1")),
-            ChangeApplyResult(text("receipt:1")),
+            ChangeApplyResult(text("receipt:1"), preview()),
             ChangeApplyQualification.RECOVERY_REQUIRED,
             ChangeApplyRejection.CONTENT_CHANGED,
         )
@@ -481,6 +486,16 @@ class CanonicalOperationWireBindingsTest {
             "traversal-continuation:v1:$encoded:$digest",
         ).refinedValue()
     }
+
+    private fun preview(): ChangeFilePreviewSet = ChangeFilePreviewSet.admit(
+        listOf(
+            ChangeFilePreview(
+                ChangePreviewPath.parse("src/Target.kt").refinedValue(),
+                ChangeFilePreviewKind.UPDATE,
+                ChangePreviewDiff.parse("-old\n+new").refinedValue(),
+            ),
+        ),
+    ).refinedValue()
 
     private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
         is Refinement.Refined -> value

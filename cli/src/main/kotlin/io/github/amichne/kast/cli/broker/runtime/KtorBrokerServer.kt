@@ -424,10 +424,6 @@ internal class KtorBrokerServer private constructor(
                     downstream.send(routing.message())
                     true
                 }
-            is ProtocolRouting.ForwardDownstreamBatch -> {
-                routing.messages.inOrder().forEach { message -> downstream.send(message) }
-                true
-            }
             is ProtocolRouting.Close -> {
                 closeBoth(downstream, upstream, "protocol rejected")
                 false
@@ -439,8 +435,6 @@ internal class KtorBrokerServer private constructor(
             is ProtocolRouting.ForwardDownstream -> message
             is ProtocolRouting.ReplyUpstream -> message
             is ProtocolRouting.ReplyDownstream -> message
-            is ProtocolRouting.ForwardDownstreamBatch ->
-                error("Downstream batch has no singular message")
             is ProtocolRouting.Close -> error("Closed routing has no message")
         }
 

@@ -32,9 +32,15 @@ internal data class ToolContent(
 internal sealed interface ObserverPresentation {
     data object None : ObserverPresentation
 
+    sealed interface Available : ObserverPresentation
+
     data class Markdown(
         val source: ObserverMarkdown,
-    ) : ObserverPresentation
+    ) : Available
+
+    data class FileChanges(
+        val files: ObserverFileChangeSet,
+    ) : Available
 }
 
 @JvmInline

@@ -138,6 +138,8 @@ transport. Integration state lives under `$CODEX_HOME/kast-integration`, or
 `~/.codex/kast-integration` when `CODEX_HOME` is unset.
 
 The broker invokes semantic commands directly with the full readiness budget.
+Successful reads occupy one compact native tool row that expands in place, and
+completed changes carry native file-diff presentation data.
 Its current approval policy excludes mutation tools; the CLI change commands
 are not exposed as working Codex tools. See [broker provenance](docs/broker-provenance.md)
 for ownership, presentation, and the acceptance boundary.
