@@ -104,6 +104,7 @@ enum class SidecarCacheLifecycleFailure {
     AMBIGUOUS_IDENTITY,
     INVALID_STATE,
     QUARANTINE_FAILED,
+    INVENTORY_CHANGED,
 }
 
 sealed interface RootSidecarCacheObservation {
@@ -119,29 +120,46 @@ sealed interface RootSidecarCacheObservation {
 }
 
 sealed interface RootSidecarCacheQuarantine {
-    data class Quarantined(
-        val quarantinedRoot: Path,
-        val restart: RuntimeStartupRequest,
+    data class Quarantined(val roots: List<Path>) : RootSidecarCacheQuarantine
+
+    /** Earlier atomic moves remain quarantined; retry inventories only the remaining caches. */
+    data class Rejected(
+        val failure: SidecarCacheLifecycleFailure,
+        val quarantinedRoots: List<Path> = emptyList(),
     ) : RootSidecarCacheQuarantine
-
-    data class NoCache(val restart: RuntimeStartupRequest = RuntimeStartupRequest.Default) :
-        RootSidecarCacheQuarantine
-
-    data class Rejected(val failure: SidecarCacheLifecycleFailure) :
-        RootSidecarCacheQuarantine
 }
 
 interface RootSidecarCacheLifecycle {
     fun observe(root: Path): RootSidecarCacheObservation
-    fun quarantine(root: Path): RootSidecarCacheQuarantine
+
+    fun inventory(root: Path): Refinement<RootSidecarCacheInventory, SidecarCacheLifecycleFailure> =
+        when (val observed = observe(root)) {
+            RootSidecarCacheObservation.Absent ->
+                Refinement.Refined(RootSidecarCacheInventory(root, emptyList()))
+            is RootSidecarCacheObservation.Identified -> Refinement.Refined(
+                RootSidecarCacheInventory(root, listOf(RootSidecarCacheReference(
+                    observed.status.cacheIdentity,
+                    observed.status.semanticRuntimeId,
+                    observed.status.cacheRoot,
+                    observed.status.ideaHome,
+                ))),
+            )
+            is RootSidecarCacheObservation.Rejected -> Refinement.Rejected(observed.failure)
+        }
+
+    fun quarantine(stopped: StoppedSidecarCaches): RootSidecarCacheQuarantine
+
+    /** Implementations without physical cache state need no filesystem lock. */
+    fun withStartupLock(root: Path, operation: () -> RuntimeAdmission): RuntimeAdmission = operation()
 }
 
 data object NoRootSidecarCacheLifecycle : RootSidecarCacheLifecycle {
     override fun observe(root: Path): RootSidecarCacheObservation =
         RootSidecarCacheObservation.Absent
 
-    override fun quarantine(root: Path): RootSidecarCacheQuarantine =
-        RootSidecarCacheQuarantine.NoCache()
+    override fun quarantine(stopped: StoppedSidecarCaches): RootSidecarCacheQuarantine =
+        if (stopped.inventory.caches.isEmpty()) RootSidecarCacheQuarantine.Quarantined(emptyList())
+        else RootSidecarCacheQuarantine.Rejected(SidecarCacheLifecycleFailure.INVALID_IDENTITY)
 }
 
 /** Filesystem registry for exact cache identities; no source IDEA path is ever accepted here. */
@@ -166,13 +184,76 @@ class FilesystemRootSidecarCacheLifecycle(
             )
         }
 
-    override fun quarantine(root: Path): RootSidecarCacheQuarantine =
-        when (val match = matching(root)) {
-            CacheIdentityMatch.Absent -> RootSidecarCacheQuarantine.NoCache()
-            is CacheIdentityMatch.Rejected -> RootSidecarCacheQuarantine.Rejected(match.failure)
-            is CacheIdentityMatch.Current -> quarantine(match.record)
-            is CacheIdentityMatch.Stale -> quarantine(match.record)
+    override fun inventory(root: Path): Refinement<RootSidecarCacheInventory, SidecarCacheLifecycleFailure> =
+        when (val records = records(root)) {
+            is Refinement.Refined -> Refinement.Refined(
+                RootSidecarCacheInventory(root, records.value.map(CacheIdentityRecord::reference)),
+            )
+            is Refinement.Rejected -> records
         }
+
+    override fun withStartupLock(root: Path, operation: () -> RuntimeAdmission): RuntimeAdmission {
+        val lockDirectory = try {
+            if (Files.isSymbolicLink(cacheRoot) || canonicalSidecarDirectory(root) != root) {
+                return cacheRejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
+            }
+            Files.createDirectories(cacheRoot)
+            val physical = physicalSidecarDirectory(cacheRoot)
+                ?: return cacheRejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
+            val locks = physical.resolve("root-locks")
+            if (Files.isSymbolicLink(locks)) {
+                return cacheRejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
+            }
+            Files.createDirectories(locks)
+            val digest = java.util.HexFormat.of().formatHex(
+                java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(root.toString().toByteArray(Charsets.UTF_8)),
+            )
+            val directory = locks.resolve(digest)
+            if (Files.isSymbolicLink(directory)) {
+                return cacheRejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
+            }
+            Files.createDirectories(directory)
+            directory
+        } catch (_: IOException) {
+            return cacheRejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
+        } catch (_: SecurityException) {
+            return cacheRejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
+        }
+        return when (val execution = io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLock.withAcquired(
+            lockDirectory, java.time.Duration.ofMinutes(10), operation,
+        )) {
+            is io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLockExecution.Executed -> execution.value
+            io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLockExecution.Interrupted ->
+                RuntimeAdmission.Rejected(RuntimeAdmissionFailure.Interrupted)
+            io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLockExecution.Rejected,
+            io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLockExecution.TimedOut,
+                -> RuntimeAdmission.Rejected(RuntimeAdmissionFailure.BootstrapAttemptLockUnavailable)
+        }
+    }
+
+    override fun quarantine(stopped: StoppedSidecarCaches): RootSidecarCacheQuarantine {
+        val current = when (val observed = records(stopped.inventory.root)) {
+            is Refinement.Refined -> observed.value.sortedBy { it.cacheRoot.toString() }
+            is Refinement.Rejected -> return RootSidecarCacheQuarantine.Rejected(observed.failure)
+        }
+        if (current.map(CacheIdentityRecord::reference) != stopped.inventory.caches) {
+            return RootSidecarCacheQuarantine.Rejected(SidecarCacheLifecycleFailure.INVENTORY_CHANGED)
+        }
+        val moved = mutableListOf<Path>()
+        for (record in current) {
+            when (val result = quarantine(record)) {
+                is RootSidecarCacheQuarantine.Quarantined -> moved += result.roots
+                is RootSidecarCacheQuarantine.Rejected -> return result.copy(quarantinedRoots = moved.toList())
+            }
+        }
+        return RootSidecarCacheQuarantine.Quarantined(moved.toList())
+    }
+
+    private fun cacheRejected(failure: SidecarCacheLifecycleFailure): RuntimeAdmission =
+        RuntimeAdmission.Rejected(RuntimeAdmissionFailure.SidecarCacheRejected(
+            SidecarCacheFailure.ObservationRejected(failure),
+        ))
 
     private fun observe(
         record: CacheIdentityRecord,
@@ -196,16 +277,16 @@ class FilesystemRootSidecarCacheLifecycle(
         }
     }
 
-    private fun matching(root: Path): CacheIdentityMatch {
+    private fun records(root: Path): Refinement<List<CacheIdentityRecord>, SidecarCacheLifecycleFailure> {
         if (Files.notExists(cacheRoot, LinkOption.NOFOLLOW_LINKS)) {
-            return CacheIdentityMatch.Absent
+            return Refinement.Refined(emptyList())
         }
         val canonicalCacheRoot = physicalSidecarDirectory(cacheRoot)
-            ?: return CacheIdentityMatch.Rejected(
+            ?: return Refinement.Rejected(
                 SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED,
             )
         val canonicalProject = canonicalSidecarDirectory(root)
-            ?: return CacheIdentityMatch.Rejected(
+            ?: return Refinement.Rejected(
                 SidecarCacheLifecycleFailure.INVALID_IDENTITY,
             )
         val records = mutableListOf<CacheIdentityRecord>()
@@ -220,19 +301,27 @@ class FilesystemRootSidecarCacheLifecycle(
                 when (val read = readIdentity(child, canonicalProject)) {
                     CacheIdentityRead.Unrelated -> Unit
                     is CacheIdentityRead.Read -> records += read.record
-                    CacheIdentityRead.Rejected -> return CacheIdentityMatch.Rejected(
+                    CacheIdentityRead.Rejected -> return Refinement.Rejected(
                         SidecarCacheLifecycleFailure.INVALID_IDENTITY,
                     )
                 }
             }
         } catch (_: IOException) {
-            return CacheIdentityMatch.Rejected(
+            return Refinement.Rejected(
                 SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED,
             )
         } catch (_: SecurityException) {
-            return CacheIdentityMatch.Rejected(
+            return Refinement.Rejected(
                 SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED,
             )
+        }
+        return Refinement.Refined(records)
+    }
+
+    private fun matching(root: Path): CacheIdentityMatch {
+        val records = when (val observed = records(root)) {
+            is Refinement.Refined -> observed.value
+            is Refinement.Rejected -> return CacheIdentityMatch.Rejected(observed.failure)
         }
         val releasedRecords = records.filter { record ->
             releaseIdentity.admits(record.identity)
@@ -310,13 +399,7 @@ class FilesystemRootSidecarCacheLifecycle(
                 SidecarCacheLifecycleFailure.QUARANTINE_FAILED,
             )
         }
-        return RootSidecarCacheQuarantine.Quarantined(
-            target,
-            RuntimeStartupRequest.Requested(
-                StartupIdeHome.Explicit(record.ideaHome),
-                StartupCacheIntent.Reuse,
-            ),
-        )
+        return RootSidecarCacheQuarantine.Quarantined(listOf(target))
     }
 }
 
@@ -392,6 +475,10 @@ private data class CacheIdentityRecord(
     val ideaHome: Path,
     val identity: KastCacheIdentity,
 ) {
+    fun reference(): RootSidecarCacheReference = RootSidecarCacheReference(
+        identity.key, identity.semanticRuntimeId, cacheRoot, ideaHome,
+    )
+
     fun status(state: KastCacheState): RootSidecarCacheStatus = RootSidecarCacheStatus(
         identity.key,
         identity.semanticRuntimeId,

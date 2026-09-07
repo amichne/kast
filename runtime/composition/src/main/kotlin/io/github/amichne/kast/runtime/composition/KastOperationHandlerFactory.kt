@@ -123,6 +123,7 @@ interface KastOperationHandlerFactory {
 
     fun diagnosticCheck(
         operations: DiagnosticOperations,
+        scopes: io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolver,
     ): OperationHandler<
         DiagnosticCheckRequest,
         DiagnosticCheckResult,

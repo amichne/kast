@@ -73,6 +73,20 @@ enum class SemanticRuntimeBootstrapFailure(
 
     GRADLE_IMPORT_FAILED("gradle-import-failed"),
 
+    NETWORK_CONFIGURATION_REJECTED("network-configuration-rejected"),
+
+    NETWORK_BOUNDARY_UNAVAILABLE("network-boundary-unavailable"),
+
+    NETWORK_TRUST_TARGET_REJECTED("network-trust-target-rejected"),
+
+    NETWORK_TRUST_DONOR_UNAVAILABLE("network-trust-donor-unavailable"),
+
+    NETWORK_TRUST_DONOR_UNREADABLE("network-trust-donor-unreadable"),
+
+    NETWORK_TRUST_EMPTY_CERTIFICATES("network-trust-empty-certificates"),
+
+    NETWORK_TRUST_PUBLICATION_REJECTED("network-trust-publication-rejected"),
+
     @SerialName("gradle-tooling-payload-incompatible")
     GRADLE_TOOLING_PAYLOAD_INCOMPATIBLE("gradle-tooling-payload-incompatible"),
 

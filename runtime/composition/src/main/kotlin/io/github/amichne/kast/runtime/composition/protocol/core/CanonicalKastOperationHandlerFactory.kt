@@ -54,7 +54,8 @@ internal class CanonicalKastOperationHandlerFactory private constructor(
 
     override fun diagnosticCheck(
         operations: DiagnosticOperations,
-    ) = CanonicalDiagnosticCheckHandler(workspace, operations, protocolAuthority)
+        scopes: io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolver,
+    ) = CanonicalDiagnosticCheckHandler(workspace, operations, protocolAuthority, scopes)
 
     override fun changePlan(
         operations: ChangePlanningOperations,

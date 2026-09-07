@@ -234,7 +234,7 @@ class KastRuntimeComposition private constructor(
                 ),
                 TypedOperationBinding(
                     CanonicalOperationWireBindings.diagnosticCheck,
-                    handlers.diagnosticCheck(operations.diagnosticCheck),
+                    handlers.diagnosticCheck(operations.diagnosticCheck, semanticPorts.diagnosticScopes),
                 ),
                 TypedOperationBinding(
                     CanonicalOperationWireBindings.changePlan,

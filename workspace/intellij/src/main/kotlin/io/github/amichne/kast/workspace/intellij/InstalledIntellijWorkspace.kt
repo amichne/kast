@@ -55,6 +55,14 @@ enum class InstalledIntellijWorkspaceFailure {
     PROJECT_JVM_UNAVAILABLE,
     PLATFORM_LINKAGE_INVALID,
     GRADLE_IMPORT_FAILED,
+    NETWORK_CONFIGURATION_REJECTED,
+    NETWORK_BOUNDARY_UNAVAILABLE,
+    NETWORK_TRUST_TARGET_REJECTED,
+    NETWORK_TRUST_DONOR_UNAVAILABLE,
+    NETWORK_TRUST_DONOR_UNREADABLE,
+    NETWORK_TRUST_EMPTY_CERTIFICATES,
+    NETWORK_TRUST_PUBLICATION_REJECTED,
+
     GRADLE_TOOLING_PAYLOAD_INCOMPATIBLE,
     GRADLE_INIT_SCRIPT_UNAVAILABLE,
     GRADLE_PROJECT_POLICY_INVALID,
@@ -366,7 +374,7 @@ object InstalledIntellijWorkspace {
             )
         }
         val networkCache = System.getProperty("kast.network.cache.root")
-            ?: return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED)
+            ?: return rejected(InstalledIntellijWorkspaceFailure.NETWORK_BOUNDARY_UNAVAILABLE)
         when (val network = io.github.amichne.kast.distribution.managed.network.InstalledNetworkBootstrap.prepare(
             workspaceRoot, Path.of(networkCache), selectedGradleJvm.home, System.getenv(),
             io.github.amichne.kast.distribution.contract.network.NetworkConsumer.GRADLE_DAEMON,
@@ -374,7 +382,7 @@ object InstalledIntellijWorkspace {
             is io.github.amichne.kast.distribution.managed.network.NetworkBootstrapResult.Prepared -> network.installDaemon()
             is io.github.amichne.kast.distribution.managed.network.NetworkBootstrapResult.Rejected -> {
                 System.err.println("kast-network: consumer=gradle-daemon outcome=rejected failure=${network.failure}")
-                return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED)
+                return rejected(network.failure.workspaceFailure())
             }
         }
         val importOperation = when (

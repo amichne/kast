@@ -258,7 +258,7 @@ class KastRuntimeCompositionTest {
                 TraversalRunRejection.WORKSPACE_NOT_READY,
             )
 
-        override fun diagnosticCheck(operations: DiagnosticOperations) =
+        override fun diagnosticCheck(operations: DiagnosticOperations, scopes: io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolver) =
             record<DiagnosticCheckRequest, DiagnosticCheckResult, DiagnosticCheckQualification, DiagnosticCheckRejection>(
                 CanonicalOperation.DIAGNOSTIC_CHECK,
                 operations,
@@ -349,6 +349,7 @@ class KastRuntimeCompositionTest {
             sourceRead = SourceReadPort { _, _ -> error("not executed") },
             relation = RelationCompilerPort { error("not executed") },
             diagnostic = DiagnosticCompilerPort { error("not executed") },
+            diagnosticScopes = io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolver { error("not executed") },
         )
 
         fun topologyPorts(): TopologyRuntimePorts = TopologyRuntimePorts(

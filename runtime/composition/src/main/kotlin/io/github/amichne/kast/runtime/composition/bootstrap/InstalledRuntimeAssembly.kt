@@ -344,6 +344,7 @@ private fun productionPlatformPorts(
             InstalledIntellijSourceReadPort.create(semanticProjectRoot),
             relation,
             installedIntellijDiagnosticCompiler(semanticProjectRoot, workspace),
+            io.github.amichne.kast.diagnostic.intellij.installedIntellijDiagnosticScopes(semanticProjectRoot, workspace),
         ),
         installedIntellijTopologyExtractor(semanticProjectRoot, workspace),
         indexRefresh,

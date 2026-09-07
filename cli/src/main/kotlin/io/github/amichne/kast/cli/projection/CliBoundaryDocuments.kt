@@ -109,6 +109,14 @@ internal object CliBoundaryDocuments {
                 bootstrap = failure.state.document(),
             ),
         )
+        is RuntimeAdmissionFailure.CacheQuarantineRejected -> quarantineRejectionFactory.create(
+            CliQuarantineRejectedDocument(
+                status = "rejected",
+                boundary = "runtime",
+                reason = failure.outputReason(),
+                quarantinedRoots = failure.rejection.quarantinedRoots.map { it.toString() },
+            ),
+        )
         else -> boundaryRejected(CliBoundaryExitStatus.RUNTIME, failure.outputReason())
     }
 
@@ -270,3 +278,14 @@ private fun SemanticRuntimeBootstrapState.document(): CliBootstrapDocument = whe
 }
 
 private val bootstrapRejectionFactory = CliJsonDocument.generated(CliBootstrapRejectedDocument.serializer())
+
+@Serializable
+private data class CliQuarantineRejectedDocument(
+    val status: String,
+    val boundary: String,
+    val reason: String,
+    val quarantinedRoots: List<String>,
+)
+
+private val quarantineRejectionFactory =
+    CliJsonDocument.generated(CliQuarantineRejectedDocument.serializer())

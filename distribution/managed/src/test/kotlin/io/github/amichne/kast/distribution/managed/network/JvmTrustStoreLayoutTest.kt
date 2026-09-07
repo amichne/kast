@@ -59,9 +59,21 @@ class JvmTrustStoreLayoutTest {
         )
     }
 
+    @Test
+    fun `an unreadable Java 8 jssecacerts does not silently fall back to cacerts`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        writeStore(root.resolve("donor/jre/lib/security/cacerts"))
+        Files.writeString(root.resolve("donor/jre/lib/security/jssecacerts"), "invalid key store")
+        writeStore(root.resolve("target/lib/security/cacerts"))
+        assertEquals(
+            NetworkBootstrapResult.Rejected(NetworkBootstrapFailure.Trust(DerivedTrustStoreFailure.DONOR_UNREADABLE)),
+            prepare(root),
+        )
+    }
+
     private fun prepare(root: Path): NetworkBootstrapResult = InstalledNetworkBootstrap.prepare(
         root = Files.createDirectories(root.resolve("workspace")),
-        cache = root.resolve("cache"),
+        cache = Files.createDirectories(root.resolve("cache")),
         targetJavaHome = root.resolve("target"),
         environment = mapOf(
             "GRADLE_USER_HOME" to root.resolve("gradle-user-home").toString(),

@@ -7,6 +7,9 @@ import io.github.amichne.kast.diagnostic.contract.DiagnosticLimitationReason
 import io.github.amichne.kast.diagnostic.contract.DiagnosticOperations
 import io.github.amichne.kast.diagnostic.contract.DiagnosticReadRejection
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScope
+import io.github.amichne.kast.diagnostic.contract.DiagnosticScopeQuery
+import io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolver
+import io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolutionFailure
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
@@ -28,10 +31,8 @@ import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
-import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
-import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckRequest as DomainDiagnosticRequest
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult as DomainDiagnosticResult
@@ -40,6 +41,7 @@ internal class CanonicalDiagnosticCheckHandler(
     private val workspace: WorkspaceInspectionOperations,
     private val operations: DiagnosticOperations,
     private val authority: CanonicalProtocolAuthority,
+    private val scopes: DiagnosticScopeResolver,
 ) : OperationHandler<
     DiagnosticCheckRequest,
     DiagnosticCheckResult,
@@ -55,10 +57,16 @@ internal class CanonicalDiagnosticCheckHandler(
             is WorkspaceRuntimeState.Ready -> state.workspace
             else -> return OperationOutcome.Rejected(DiagnosticCheckRejection.WORKSPACE_NOT_READY)
         }
-        val scope = when (val admitted = admitDiagnosticScope(ready, request.scope)) {
-            is DiagnosticScopeAdmission.Admitted -> admitted.scope
-            DiagnosticScopeAdmission.Rejected ->
-                return OperationOutcome.Rejected(DiagnosticCheckRejection.SCOPE_REJECTED)
+        val query = when (val parsed = DiagnosticScopeQuery.parse(ready.readLease, request.scope.value)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> return OperationOutcome.Rejected(parsed.failure.protocol())
+        }
+        val scope = when (val resolved = scopes.resolve(query)) {
+            is Refinement.Refined -> resolved.value
+            is Refinement.Rejected -> return OperationOutcome.Rejected(resolved.failure.protocol())
+        }
+        if (scope.lease != query.lease || scope.files.any { !Path.of(it.value).startsWith(query.path) }) {
+            return OperationOutcome.Rejected(DiagnosticCheckRejection.SCOPE_REJECTED)
         }
         return when (val result = operations.check(DomainDiagnosticRequest(scope))) {
             is DomainDiagnosticResult.Rejected -> OperationOutcome.Rejected(result.reason.protocol())
@@ -148,36 +156,12 @@ private sealed interface DiagnosticProjection {
     }
 }
 
-private sealed interface DiagnosticScopeAdmission {
-    data class Admitted(
-        val scope: DiagnosticScope,
-    ) : DiagnosticScopeAdmission
-
-    data object Rejected : DiagnosticScopeAdmission
-}
-
-/**
- * Proof transition: `(PublishedWorkspace, ProtocolText) -> DiagnosticScopeAdmission`.
- *
- * Admitted establishes one normalized Kotlin path strictly inside the current exact workspace and
- * binds it to the current semantic lease. [DiagnosticScopeAdmission.Rejected] closes invalid,
- * escaped, unsupported, or otherwise unrepresentable scope text. Raw path extraction stays here.
- */
-private fun admitDiagnosticScope(
-    workspace: PublishedWorkspace,
-    document: ProtocolText,
-): DiagnosticScopeAdmission {
-    val raw = try {
-        Path.of(document.value)
-    } catch (_: InvalidPathException) {
-        return DiagnosticScopeAdmission.Rejected
-    }
-    val root = Path.of(workspace.root.value)
-    val canonical = if (raw.isAbsolute) raw else root.resolve(raw).normalize()
-    return when (val admitted = DiagnosticScope.fromCanonicalPaths(workspace.readLease, listOf(canonical))) {
-        is Refinement.Refined -> DiagnosticScopeAdmission.Admitted(admitted.value)
-        is Refinement.Rejected -> DiagnosticScopeAdmission.Rejected
-    }
+private fun DiagnosticScopeResolutionFailure.protocol(): DiagnosticCheckRejection = when (this) {
+    DiagnosticScopeResolutionFailure.INVALID_SCOPE -> DiagnosticCheckRejection.SCOPE_REJECTED
+    DiagnosticScopeResolutionFailure.EMPTY -> DiagnosticCheckRejection.SCOPE_EMPTY
+    DiagnosticScopeResolutionFailure.LIMIT_EXCEEDED -> DiagnosticCheckRejection.SCOPE_LIMIT_EXCEEDED
+    DiagnosticScopeResolutionFailure.UNAVAILABLE -> DiagnosticCheckRejection.SCOPE_UNAVAILABLE
+    DiagnosticScopeResolutionFailure.WORKSPACE_NOT_READY -> DiagnosticCheckRejection.WORKSPACE_NOT_READY
 }
 
 private fun DiagnosticFact.protocolDocument(

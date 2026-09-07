@@ -3,6 +3,7 @@ package io.github.amichne.kast.runtime.composition.semanticbootstrap
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapAttemptId
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapCodec
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapFailure
+import io.github.amichne.kast.distribution.contract.bootstrap.correctiveAction
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapState
 import io.github.amichne.kast.distribution.contract.gradle.GradleDistributionEvidence
 import io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionFailure
@@ -21,6 +22,27 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class InstalledSemanticRuntimeBootstrapTest {
+    @Test
+    fun `trust donor failure retains its public cause and corrective action`() {
+        val attempt = (InstalledSemanticRuntimeBootstrapAttempt.admit("123e4567-e89b-42d3-a456-426614174000")
+            as InstalledSemanticRuntimeBootstrapAttemptAdmission.Admitted).attempt
+        val failure = InstalledKastRuntimeFailure.Assembly(InstalledRuntimeAssemblyFailure.WorkspacePublication(
+            InstalledRuntimeWorkspaceFailure.IntellijBootstrap(InstalledIntellijWorkspaceFailure.NETWORK_TRUST_DONOR_UNAVAILABLE),
+        ))
+        val projected = attempt.rejectionDocument(setOf(failure), InstalledRuntimeBootstrapPhase.GRADLE_JVM_SELECTION)
+            as InstalledSemanticRuntimeBootstrapRejection.Projected
+        val decoded = (SemanticRuntimeBootstrapCodec.decode(projected.document.boundaryValue()) as Refinement.Refined).value
+            as SemanticRuntimeBootstrapState.Rejected
+        assertEquals(SemanticRuntimeBootstrapFailure.NETWORK_TRUST_DONOR_UNAVAILABLE, decoded.failure)
+        assertEquals("network-trust-donor-unavailable", decoded.failure.wireName)
+        assertEquals(
+            io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapRemediation.Bootstrap(
+                io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapCorrectiveAction.VERIFY_TRUST_DONOR,
+            ),
+            decoded.correctiveAction(),
+        )
+    }
+
     @Test
     fun `JVM report survives phase and terminal projections and conflicting evidence is rejected`() {
         val attempt = (InstalledSemanticRuntimeBootstrapAttempt.admit(
