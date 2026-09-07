@@ -173,7 +173,7 @@ internal class CanonicalChangePlanHandler(
             EvidenceEnvelope(
                 CanonicalOperation.CHANGE_PLAN.id,
                 plan.priorLease.generation,
-                ChangePlanResult(issued.identity.protocolText()),
+                ChangePlanResult(issued.identity.protocolText(), plan.protocolPreview()),
             ),
         )
         is ChangePlanIssuance.Rejected ->

@@ -161,6 +161,14 @@ flowchart LR
 	K2 --> RESULT["Complete, qualified, or rejected JSON"]
 ```
 
+In Codex, successful reads occupy one compact native tool row that expands in
+place, and completed changes carry native file-diff presentation data. To opt in
+to those mutation tools for one broker lifetime:
+
+```bash
+KAST_CODEX_TOOL_EXPOSURE=mutation-enabled kast-codex
+```
+
 The control executable parses the CLI command into a typed request document and
 sends one bounded frame over an exact-root Unix-domain socket. The private
 sidecar extension admits the operation before IntelliJ semantic APIs can run.

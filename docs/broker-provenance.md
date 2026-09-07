@@ -77,16 +77,28 @@ arguments such as selectors and continuations with typed display placeholders.
 The exact arguments still reach Kast unchanged, and the canonical model-facing
 result remains unchanged.
 
-Successful semantic operations may also produce a bounded commentary companion.
-Presentation failure or capacity exhaustion suppresses that companion without
-changing tool execution. Presentation state is process-local and is reconstructed
-from canonical results where the protocol provides enough context.
+Successful semantic reads replace the native tool result with bounded human-facing
+Markdown. This keeps the collapsed transcript to one useful tool row; expanding
+that row reveals source, symbol, relation, traversal, or diagnostic detail without
+adding a synthetic assistant message. Presentation failure or capacity exhaustion
+retains the canonical tool result without changing execution. Presentation state
+is process-local and is reconstructed from canonical results where the protocol
+provides enough context.
 
-Source companions use inclusive one-based line coordinates only when those
+Source presentations use inclusive one-based line coordinates only when those
 coordinates were derived from the normalized source document whose length and
-digest matched the selected snapshot. Diagnostic companions retain severity and
+digest matched the selected snapshot. Diagnostic presentations retain severity and
 location while selector and generation evidence stays in the canonical model
 result.
+
+Change plan and apply results carry a non-empty typed set of workspace-relative
+paths, closed change kinds, and bounded semantic diff fragments. A completed
+`change.apply` observation projects that proof to Codex's native `fileChange` item,
+so the compact row expands into the host diff visualization. Malformed, escaped,
+duplicate, empty, or oversized observer data fails closed to the canonical tool
+result. Change planning renders the same admitted preview in the expandable tool
+body without exposing its opaque plan identity, and recovery renders its closed
+outcome. These presentation paths do not broaden the catalog authority.
 
 ## Observer fixtures
 
@@ -97,9 +109,20 @@ or model request:
 ./gradlew :cli:renderKastObserverScreenshots
 ```
 
-The task runs the production observer projector over deterministic fixtures and
-renders the resulting Markdown. The renderer rejects opaque selectors,
-fingerprints, workspace roots, and source selectors before capturing images.
+The task runs the production observer projector over deterministic fixtures for
+all nine canonical operations and renders Markdown plus the native apply diff.
+The renderer rejects opaque selectors, fingerprints, workspace roots, and source
+selectors before capturing images.
+
+A complete terminal recording uses the same generated manifest:
+
+```bash
+./gradlew :cli:generateKastObserverSnapshotManifest
+asciinema record --overwrite --window-size 120x42 \
+  --command "python3 docs/play_kast_observer_demo.py \
+    --manifest cli/build/observer-snapshots/kast-observer-presentations.json" \
+  build/kast-native-tui.cast
+```
 
 ## Verification ownership
 

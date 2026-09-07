@@ -11,6 +11,9 @@ import io.github.amichne.kast.cli.broker.core.BrokerInvocationContext
 import io.github.amichne.kast.cli.broker.core.BrokerLimits
 import io.github.amichne.kast.cli.broker.core.BrokerTool
 import io.github.amichne.kast.cli.broker.core.ObserverMarkdown
+import io.github.amichne.kast.cli.broker.core.ObserverFileChange
+import io.github.amichne.kast.cli.broker.core.ObserverFileChangeKind
+import io.github.amichne.kast.cli.broker.core.ObserverFileChangeSet
 import io.github.amichne.kast.cli.broker.core.ObserverPresentation
 import io.github.amichne.kast.cli.broker.core.ProviderCall
 import io.github.amichne.kast.cli.broker.core.ProviderNamespace
@@ -226,7 +229,7 @@ class CodexProtocolAdapterTest {
         }
 
     @Test
-    fun `Kast observer projection preserves model authority and emits commentary after sanitized MCP completion`(
+    fun `Kast observer projection occupies one expandable native tool item`(
         @TempDir temporary: Path,
     ) = runBlocking {
         val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
@@ -302,41 +305,31 @@ class CodexProtocolAdapterTest {
                 put("item", dynamicKastItem(arguments, canonicalResult, completed = true))
             })
         }.toString()
-        val batch = assertInstanceOf(
-            ProtocolRouting.ForwardDownstreamBatch::class.java,
+        val projected = assertInstanceOf(
+            ProtocolRouting.ForwardDownstream::class.java,
             adapter.fromUpstream(completed),
         )
-        val downstream = batch.messages.inOrder().map { message ->
-            Json.parseToJsonElement(message).jsonObject
-        }
-        val toolParams = downstream[0].getValue("params").jsonObject
+        val downstream = listOf(Json.parseToJsonElement(projected.message).jsonObject)
+        assertEquals(1, downstream.size)
+        val toolParams = downstream.single().getValue("params").jsonObject
         val toolItem = toolParams.getValue("item").jsonObject
-        val commentaryParams = downstream[1].getValue("params").jsonObject
-        val commentaryItem = commentaryParams.getValue("item").jsonObject
 
         assertEquals("mcpToolCall", toolItem.getValue("type").jsonPrimitive.content)
         assertEquals("call-1", toolItem.getValue("id").jsonPrimitive.content)
         assertSanitizedKastArguments(toolItem.getValue("arguments").jsonObject)
-        assertEquals(JsonArray(emptyList()), toolItem.getValue("result").jsonObject.getValue("content"))
-        assertFalse("structuredContent" in toolItem.getValue("result").jsonObject)
-        assertFalse(downstream[0].toString().contains("sha256:"))
-        assertFalse(downstream[0].toString().contains("exact:v"))
-
-        assertEquals("agentMessage", commentaryItem.getValue("type").jsonPrimitive.content)
-        assertEquals("commentary", commentaryItem.getValue("phase").jsonPrimitive.content)
-        assertFalse(downstream[1].toString().contains("final_answer"))
+        assertEquals(true, toolItem.getValue("readOnlyHint").jsonPrimitive.content.toBoolean())
+        val content = toolItem.getValue("result").jsonObject.getValue("content").jsonArray
+        assertEquals(1, content.size)
         assertEquals(
             "**Kast · symbol**\n\nHuman observer projection",
-            commentaryItem.getValue("text").jsonPrimitive.content,
+            content.single().jsonObject.getValue("text").jsonPrimitive.content,
         )
-        assertTrue(
-            commentaryItem.getValue("id").jsonPrimitive.content.startsWith("kast-observer-"),
-        )
-        listOf(toolParams, commentaryParams).forEach { params ->
-            assertEquals("thread-1", params.getValue("threadId").jsonPrimitive.content)
-            assertEquals("turn-1", params.getValue("turnId").jsonPrimitive.content)
-            assertEquals(27, params.getValue("completedAtMs").jsonPrimitive.content.toLong())
-        }
+        assertFalse("structuredContent" in toolItem.getValue("result").jsonObject)
+        assertFalse(downstream.single().toString().contains("sha256:"))
+        assertFalse(downstream.single().toString().contains("exact:v"))
+        assertEquals("thread-1", toolParams.getValue("threadId").jsonPrimitive.content)
+        assertEquals("turn-1", toolParams.getValue("turnId").jsonPrimitive.content)
+        assertEquals(27, toolParams.getValue("completedAtMs").jsonPrimitive.content.toLong())
 
         val replayedCompletion = adapter.fromUpstream(completed)
         assertInstanceOf(ProtocolRouting.ForwardDownstream::class.java, replayedCompletion)
@@ -348,6 +341,65 @@ class CodexProtocolAdapterTest {
             (adapter.fromUpstream(finalAnswer) as ProtocolRouting.ForwardDownstream).message,
         )
         assertEquals(1, invocations.get())
+    }
+
+    @Test
+    fun `Kast change projection occupies one native file change item`(
+        @TempDir temporary: Path,
+    ) = runBlocking {
+        val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+        val file = when (val admitted = ObserverFileChange.admit(
+            "cli/src/main/kotlin/sample/EventConsumer.kt",
+            ObserverFileChangeKind.UPDATE,
+            "@@ consume @@\n-old()\n+new()",
+        )) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> error("Static file change rejected")
+        }
+        val files = when (val admitted = ObserverFileChangeSet.admit(listOf(file))) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> error("Static file set rejected")
+        }
+        val broker = observerBroker(
+            AtomicInteger(),
+            mutableListOf(),
+            ObserverPresentation.FileChanges(files),
+        )
+        val store = MemoryThreadCatalogStore()
+        store.write(ThreadCatalogBinding.admit("thread-1", broker.catalog.digest, cwd).refinedValue())
+        val adapter = CodexProtocolAdapter(broker, protocolContracts(), store)
+        val arguments = buildJsonObject {}
+        adapter.fromUpstream(
+            """{"id":9,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"kast","tool":"symbol_inspect","arguments":{}}}""",
+        )
+        val completed = buildJsonObject {
+            put("method", "item/completed")
+            put("params", buildJsonObject {
+                put("threadId", "thread-1")
+                put("turnId", "turn-1")
+                put("completedAtMs", 27)
+                put("item", dynamicKastItem(arguments, "model result", completed = true))
+            })
+        }.toString()
+
+        val projected = assertInstanceOf(
+            ProtocolRouting.ForwardDownstream::class.java,
+            adapter.fromUpstream(completed),
+        )
+        val item = Json.parseToJsonElement(projected.message).jsonObject
+            .getValue("params").jsonObject.getValue("item").jsonObject
+        assertEquals("fileChange", item.getValue("type").jsonPrimitive.content)
+        assertEquals("call-1", item.getValue("id").jsonPrimitive.content)
+        val change = item.getValue("changes").jsonArray.single().jsonObject
+        assertEquals(
+            "cli/src/main/kotlin/sample/EventConsumer.kt",
+            change.getValue("path").jsonPrimitive.content,
+        )
+        assertEquals("update", change.getValue("kind").jsonObject.getValue("type").jsonPrimitive.content)
+        assertEquals(
+            "@@ consume @@\n-old()\n+new()",
+            change.getValue("diff").jsonPrimitive.content,
+        )
     }
 
     @Test
@@ -381,7 +433,7 @@ class CodexProtocolAdapterTest {
     }
 
     @Test
-    fun `commentary contract rejection suppresses companion without weakening the tool call`(
+    fun `native tool result does not require an agent message contract`(
         @TempDir temporary: Path,
     ) = runBlocking {
         val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
@@ -411,7 +463,11 @@ class CodexProtocolAdapterTest {
             .getValue("params").jsonObject.getValue("item").jsonObject
 
         assertEquals("mcpToolCall", item.getValue("type").jsonPrimitive.content)
-        assertEquals(JsonArray(emptyList()), item.getValue("result").jsonObject.getValue("content"))
+        assertEquals(
+            "**Kast · symbol**\n\nHuman observer projection",
+            item.getValue("result").jsonObject.getValue("content").jsonArray
+                .single().jsonObject.getValue("text").jsonPrimitive.content,
+        )
     }
 
     @Test
@@ -728,7 +784,7 @@ class CodexProtocolAdapterTest {
     }
 
     @Test
-    fun `resumed Kast thread admits a reconstructed source companion under the installed contract`(
+    fun `resumed Kast thread reconstructs an expandable native result under the installed contract`(
         @TempDir temporary: Path,
     ) = runBlocking {
         val cwd = temporary.toRealPath()
@@ -761,9 +817,13 @@ class CodexProtocolAdapterTest {
         val items = Json.parseToJsonElement((route as ProtocolRouting.ForwardDownstream).message)
             .jsonObject.getValue("result").jsonObject.getValue("thread").jsonObject
             .getValue("turns").jsonArray.single().jsonObject.getValue("items").jsonArray
-        assertEquals(2, items.size)
-        assertEquals("agentMessage", items.last().jsonObject.getValue("type").jsonPrimitive.content)
-        assertTrue("```kotlin" in items.last().jsonObject.getValue("text").jsonPrimitive.content)
+        assertEquals(1, items.size)
+        val item = items.single().jsonObject
+        assertEquals("mcpToolCall", item.getValue("type").jsonPrimitive.content)
+        assertTrue(
+            "```kotlin" in item.getValue("result").jsonObject.getValue("content").jsonArray
+                .single().jsonObject.getValue("text").jsonPrimitive.content,
+        )
     }
 
     @Test
@@ -1176,6 +1236,9 @@ class CodexProtocolAdapterTest {
     private fun observerBroker(
         invocations: AtomicInteger,
         executedArguments: MutableList<JsonElement>,
+        observer: ObserverPresentation.Available = ObserverPresentation.Markdown(
+            ObserverMarkdown("**Kast · symbol**\n\nHuman observer projection"),
+        ),
     ): Broker {
         val openObjectSchema = schema("""{"type":"object"}""")
         val input = JsonDomainDefinition(
@@ -1207,9 +1270,7 @@ class CodexProtocolAdapterTest {
                 ToolPresentation.text(
                     output.document.toString(),
                     success = true,
-                    observer = ObserverPresentation.Markdown(
-                        ObserverMarkdown("**Kast · symbol**\n\nHuman observer projection"),
-                    ),
+                    observer = observer,
                 )
             },
         )
@@ -1243,7 +1304,7 @@ class CodexProtocolAdapterTest {
                   "type": "object",
                   "required": ["type"],
                   "properties": {
-                    "type": {"enum": ["dynamicToolCall", "mcpToolCall"]}
+                    "type": {"enum": ["dynamicToolCall", "mcpToolCall", "fileChange"]}
                   }
                 }
               }

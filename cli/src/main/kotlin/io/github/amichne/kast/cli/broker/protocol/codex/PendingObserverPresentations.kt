@@ -11,7 +11,7 @@ internal enum class PendingObserverPresentationWrite {
 
 internal sealed interface PendingObserverPresentationTake {
     data class Found(
-        val presentation: ObserverPresentation.Markdown,
+        val presentation: ObserverPresentation.Available,
     ) : PendingObserverPresentationTake
 
     data object Missing : PendingObserverPresentationTake
@@ -24,11 +24,11 @@ internal sealed interface PendingObserverPresentationTake {
 internal class PendingObserverPresentations private constructor(
     private val capacity: Int,
 ) {
-    private val presentations = linkedMapOf<BrokerCallId, ObserverPresentation.Markdown>()
+    private val presentations = linkedMapOf<BrokerCallId, ObserverPresentation.Available>()
 
     internal fun put(
         callId: BrokerCallId,
-        presentation: ObserverPresentation.Markdown,
+        presentation: ObserverPresentation.Available,
     ): PendingObserverPresentationWrite = synchronized(presentations) {
         when {
             presentations.containsKey(callId) ->

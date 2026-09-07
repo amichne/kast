@@ -9,10 +9,10 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.put
 
-/** Rebuilds observer companions from canonical history; neither pending state nor disk is read. */
+/** Rebuilds expandable native observer results from canonical history; no pending state is read. */
 internal object CodexHistoricalObserverProjector {
     internal fun project(shape: CodexItemContainerShape, container: JsonObject): JsonObject {
         val scope = scope(container)
@@ -43,26 +43,18 @@ internal object CodexHistoricalObserverProjector {
     private fun turn(turn: JsonObject, scope: Scope): JsonObject {
         if (scope !is Scope.Known) return turn
         val items = turn["items"] as? JsonArray ?: return turn
-        val existingIds = items.mapNotNull { (it as? JsonObject)?.get("id") }.toSet()
-        val projected = items.flatMap { candidate ->
-            val item = candidate as? JsonObject ?: return@flatMap listOf(candidate)
-            val companion = companion(item, scope.directory) ?: return@flatMap listOf(item)
-            if (companion["id"] in existingIds) return@flatMap listOf(item)
-            val compact = JsonObject(item + ("result" to buildJsonObject {
-                put("content", JsonArray(emptyList()))
-            }))
-            listOf(compact, companion)
+        val projected = items.map { candidate ->
+            val item = candidate as? JsonObject ?: return@map candidate
+            expandable(item, scope.directory) ?: item
         }
         return JsonObject(turn + ("items" to JsonArray(projected)))
     }
 
-    private fun companion(item: JsonObject, directory: ObserverWorkingDirectory): JsonObject? {
+    private fun expandable(item: JsonObject, directory: ObserverWorkingDirectory): JsonObject? {
         if (item["type"] != JsonPrimitive("mcpToolCall") ||
             item["server"] != JsonPrimitive("kast") ||
             item["status"] != JsonPrimitive("completed")
         ) return null
-        val call = (item["id"] as? JsonPrimitive)?.takeIf(JsonPrimitive::isString)
-            ?.content?.let(BrokerCallId::admit) ?: return null
         val document = (item["result"] as? JsonObject)?.get("structuredContent") as? JsonObject
             ?: return null
         val observer = try {
@@ -70,9 +62,27 @@ internal object CodexHistoricalObserverProjector {
         } catch (_: RuntimeException) {
             return null
         }
-        if (observer !is ObserverPresentation.Markdown) return null
-        return CodexObserverMessageProjector.projectCompleted(buildJsonObject {}, call, observer)
-            .getValue("item") as JsonObject
+        return when (observer) {
+            is ObserverPresentation.Markdown -> {
+                val result = JsonObject(
+                    mapOf(
+                        "content" to buildJsonArray {
+                            add(JsonObject(mapOf(
+                                "type" to JsonPrimitive("text"),
+                                "text" to JsonPrimitive(observer.source.value),
+                            )))
+                        },
+                    ),
+                )
+                JsonObject(item + ("result" to result) + ("readOnlyHint" to JsonPrimitive(true)))
+            }
+            is ObserverPresentation.FileChanges -> {
+                val callId = (item["id"] as? JsonPrimitive)?.content
+                    ?.let(BrokerCallId::admit) ?: return null
+                CodexFileChangeProjector.completed(callId, observer.files)
+            }
+            ObserverPresentation.None -> null
+        }
     }
 
     private fun scope(container: JsonObject): Scope {

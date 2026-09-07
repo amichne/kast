@@ -37,6 +37,31 @@ import java.nio.file.attribute.PosixFilePermissions
 
 class KastProviderTest {
     @Test
+    fun `applied change observer retains a typed native diff and rejects escaped paths`() {
+        val presentation = observerPresentation("change.apply", KastObserverFixtures.changeApply)
+        val changes = (presentation as ObserverPresentation.FileChanges).files.entries
+        assertEquals(1, changes.size)
+        assertEquals(
+            "cli/src/main/kotlin/sample/EventConsumer.kt",
+            changes.single().path.value,
+        )
+        assertEquals(
+            "@@ class EventConsumer @@\n-    fun consume() = old()\n+    fun consume() = new()",
+            changes.single().diff.value,
+        )
+        assertEquals(
+            ObserverPresentation.None,
+            observerPresentation(
+                "change.apply",
+                KastObserverFixtures.changeApply.replace(
+                    "cli/src/main/kotlin/sample/EventConsumer.kt",
+                    "../outside.kt",
+                ),
+            ),
+        )
+    }
+
+    @Test
     fun `source observer preserves snapshot proven one-based line coordinates`() {
         val source = KastObserverFixtures.sourceRead.replace(
             "\"type\": \"returned\",",

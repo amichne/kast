@@ -70,24 +70,9 @@ internal sealed interface ProtocolCloseFailure {
 internal sealed interface ProtocolRouting {
     data class ForwardUpstream(val message: String) : ProtocolRouting
     data class ForwardDownstream(val message: String) : ProtocolRouting
-    data class ForwardDownstreamBatch(
-        val messages: NonEmptyProtocolMessages,
-    ) : ProtocolRouting
     data class ReplyUpstream(val message: String) : ProtocolRouting
     data class ReplyDownstream(val message: String) : ProtocolRouting
     data class Close(val failure: ProtocolCloseFailure) : ProtocolRouting
-}
-
-internal class NonEmptyProtocolMessages private constructor(
-    private val first: String,
-    private val second: String,
-) {
-    internal fun inOrder(): List<String> = listOf(first, second)
-
-    companion object {
-        internal fun pair(first: String, second: String): NonEmptyProtocolMessages =
-            NonEmptyProtocolMessages(first, second)
-    }
 }
 
 private enum class PendingThreadOperationType { START, RESUME, FORK }
@@ -346,32 +331,26 @@ internal class CodexProtocolAdapter(
             PendingObserverPresentationTake.Missing ->
                 return ProtocolRouting.ForwardDownstream(ordinaryMessage)
         }
-        val compactItem = when (
-            val compact = CodexToolCallProjector.projectCompleted(
-                admittedItem,
-                CodexToolCallResultProjection.COMPACT_FOR_OBSERVER_COMPANION,
-            )
-        ) {
-            is CodexToolCallProjection.Projected -> compact.item
-            is CodexToolCallProjection.Rejected ->
-                return ProtocolRouting.ForwardDownstream(ordinaryMessage)
+        val nativeItem = when (observer) {
+            is ObserverPresentation.Markdown -> when (
+                val native = CodexToolCallProjector.projectCompleted(
+                    admittedItem,
+                    CodexToolCallResultProjection.ExpandableObserver(observer.source),
+                )
+            ) {
+                is CodexToolCallProjection.Projected -> native.item
+                is CodexToolCallProjection.Rejected ->
+                    return ProtocolRouting.ForwardDownstream(ordinaryMessage)
+            }
+            is ObserverPresentation.FileChanges ->
+                CodexFileChangeProjector.completed(callId, observer.files)
         }
-        val compactParams = JsonObject(admittedParams + ("item" to compactItem))
-        if (!contracts.admits(lifecycle.schema, compactParams)) {
+        val nativeParams = JsonObject(admittedParams + ("item" to nativeItem))
+        if (!contracts.admits(lifecycle.schema, nativeParams)) {
             return ProtocolRouting.ForwardDownstream(ordinaryMessage)
         }
-        val compactMessage = JsonObject(document + ("params" to compactParams)).toString()
-        val commentaryParams = CodexObserverMessageProjector.projectCompleted(
-            admittedParams,
-            callId,
-            observer,
-        )
-        if (!contracts.admits(CodexOwnedSchema.ITEM_COMPLETED_NOTIFICATION, commentaryParams)) {
-            return ProtocolRouting.ForwardDownstream(compactMessage)
-        }
-        val commentaryMessage = JsonObject(document + ("params" to commentaryParams)).toString()
-        return ProtocolRouting.ForwardDownstreamBatch(
-            NonEmptyProtocolMessages.pair(compactMessage, commentaryMessage),
+        return ProtocolRouting.ForwardDownstream(
+            JsonObject(document + ("params" to nativeParams)).toString(),
         )
     }
 
@@ -428,9 +407,9 @@ internal class CodexProtocolAdapter(
     }
 
     private fun rememberObserver(callId: BrokerCallId, observer: ObserverPresentation) {
-        val markdown = observer as? ObserverPresentation.Markdown ?: return
+        val available = observer as? ObserverPresentation.Available ?: return
         try {
-            pendingObserverPresentations.put(callId, markdown)
+            pendingObserverPresentations.put(callId, available)
         } catch (_: RuntimeException) {
             // Observer presentation is explicitly best-effort.
         }
