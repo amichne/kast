@@ -12,6 +12,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import java.nio.file.Path
+import kotlinx.coroutines.CancellationException
 
 /** The existing project-file-index owner alone expands a source scope. No filesystem walk. */
 object IntellijProjectSourceFiles {
@@ -47,6 +48,8 @@ object IntellijProjectSourceFiles {
             }
             collector.finish()
         } catch (cancelled: ProcessCanceledException) {
+            throw cancelled
+        } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: RuntimeException) {
             Refinement.Rejected(ProjectSourceFileFailure.UNAVAILABLE)

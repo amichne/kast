@@ -310,7 +310,9 @@ private fun assembleInstalledRuntime(
             platform.change.intentCompiler,
         ),
     )
-    return when (val composition = KastRuntimeComposition.bind(graph.operations, handlers)) {
+    return when (val composition = KastRuntimeComposition.bind(
+        graph.operations, handlers, platform.semantic.diagnosticScopes,
+    )) {
         is KastRuntimeCompositionConstruction.Created ->
             InstalledRuntimeAssembly.Assembled(composition.composition)
         is KastRuntimeCompositionConstruction.Rejected -> InstalledRuntimeAssembly.Rejected(
