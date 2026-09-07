@@ -39,6 +39,14 @@ class SymbolDiscoveryContractTest {
     }
 
     @Test
+    fun `directory restriction rejects control characters`() {
+        assertEquals(
+            SymbolDiscoveryDirectoryFailure.CONTROL_CHARACTER,
+            SymbolDiscoveryDirectory.parse("src/\nmain").rejected(),
+        )
+    }
+
+    @Test
     fun `candidate transition distinguishes workspace files external files and declarations`() {
         val workspaceFile = candidate(
             kind = SymbolDiscoveryKind.FILE,

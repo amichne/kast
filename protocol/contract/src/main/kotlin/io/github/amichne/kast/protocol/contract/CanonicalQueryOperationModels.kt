@@ -221,14 +221,14 @@ sealed interface QueryOutputDocument {
     @Serializable
     @SerialName("candidates")
     data class Candidates(
-        @ProtocolCollectionConstraint(minimumItems = 1, uniqueItems = true)
+        @ProtocolCollectionConstraint(uniqueItems = true)
         val fields: BoundedProtocolList<QueryCandidateFieldDocument>,
     ) : QueryOutputDocument
 
     @Serializable
     @SerialName("symbols")
     data class Symbols(
-        @ProtocolCollectionConstraint(minimumItems = 1, uniqueItems = true)
+        @ProtocolCollectionConstraint(uniqueItems = true)
         val fields: BoundedProtocolList<QuerySymbolFieldDocument>,
     ) : QueryOutputDocument
 }
@@ -288,8 +288,8 @@ private fun QueryRunRequest.hasCanonicalRequestSyntax(): Boolean {
     if (!sourceIsCanonical) return false
     if (steps.values.any { !it.hasCanonicalSyntax() }) return false
     return when (val projection = output) {
-        is QueryOutputDocument.Candidates -> projection.fields.values.isUniqueNonEmpty()
-        is QueryOutputDocument.Symbols -> projection.fields.values.isUniqueNonEmpty()
+        is QueryOutputDocument.Candidates -> projection.fields.values.isUnique()
+        is QueryOutputDocument.Symbols -> projection.fields.values.isUnique()
     }
 }
 
@@ -323,7 +323,9 @@ private fun QueryStepDocument.hasCanonicalSyntax(): Boolean = when (this) {
 }
 
 private fun <Value> List<Value>.isUniqueNonEmpty(): Boolean =
-    isNotEmpty() && size == distinct().size
+    isNotEmpty() && isUnique()
+
+private fun <Value> List<Value>.isUnique(): Boolean = size == distinct().size
 
 private val QUERY_PACKAGE_NAME = Regex(
     "[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*",

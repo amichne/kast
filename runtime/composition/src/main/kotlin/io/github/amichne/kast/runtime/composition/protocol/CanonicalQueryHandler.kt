@@ -12,7 +12,12 @@ import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.source.contract.DeclarationVisibility
 import io.github.amichne.kast.symbol.contract.CandidateSelector
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectory
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectoryConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackage
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackageConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolExactRejection
 import io.github.amichne.kast.symbol.contract.SymbolSelector
@@ -347,15 +352,15 @@ private fun QueryDiscoveryDocument.syntax(): QueryDiscoverySyntax? {
         ?.mapTo(linkedSetOf()) { QuerySourceSet.valueOf(it.name) } ?: return null
     val admittedSets = QuerySourceSets.Exact.from(sets).refinedOrNull() ?: return null
     val directory = scope.directory?.let {
-        QueryDirectoryScope(
-            QueryDirectoryPath.parse(it.path.value).refinedOrNull() ?: return null,
-            QueryContainment.valueOf(it.containment.name),
+        SymbolDiscoveryDirectoryConstraint(
+            SymbolDiscoveryDirectory.parse(it.path.value).refinedOrNull() ?: return null,
+            SymbolDiscoveryContainment.valueOf(it.containment.name),
         )
     }
     val packageName = scope.packageName?.let {
-        QueryPackageScope(
-            QueryPackageName.parse(it.name.value).refinedOrNull() ?: return null,
-            QueryContainment.valueOf(it.containment.name),
+        SymbolDiscoveryPackageConstraint(
+            SymbolDiscoveryPackage.parse(it.name.value).refinedOrNull() ?: return null,
+            SymbolDiscoveryContainment.valueOf(it.containment.name),
         )
     }
     val queryMatch = when (val value = match) {

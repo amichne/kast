@@ -2,7 +2,9 @@ package io.github.amichne.kast.query.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectoryConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackageConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
 import io.github.amichne.kast.symbol.contract.SymbolSelector
@@ -70,76 +72,14 @@ sealed interface QuerySourceSets {
     }
 }
 
-enum class QueryContainment {
-    DIRECT,
-    DESCENDANTS,
-}
-
-enum class QueryDirectoryPathFailure {
-    BLANK,
-    ABSOLUTE,
-    NON_CANONICAL,
-    CONTROL_CHARACTER,
-}
-
-/** Canonical slash-separated workspace-relative directory path. */
-@JvmInline
-value class QueryDirectoryPath private constructor(
-    val value: String,
-) {
-    companion object {
-        fun parse(raw: String): Refinement<QueryDirectoryPath, QueryDirectoryPathFailure> = when {
-            raw.isBlank() -> Refinement.Rejected(QueryDirectoryPathFailure.BLANK)
-            raw.startsWith('/') -> Refinement.Rejected(QueryDirectoryPathFailure.ABSOLUTE)
-            raw.any(Char::isISOControl) ->
-                Refinement.Rejected(QueryDirectoryPathFailure.CONTROL_CHARACTER)
-            raw.split('/').any { it.isBlank() || it == "." || it == ".." } ->
-                Refinement.Rejected(QueryDirectoryPathFailure.NON_CANONICAL)
-            else -> Refinement.Refined(QueryDirectoryPath(raw))
-        }
-    }
-}
-
-enum class QueryPackageNameFailure {
-    BLANK,
-    INVALID_SEGMENT,
-}
-
-/** Dotted Kotlin package identity used only as a semantic declaration predicate. */
-@JvmInline
-value class QueryPackageName private constructor(
-    val value: String,
-) {
-    companion object {
-        private val segment = Regex("[A-Za-z_][A-Za-z0-9_]*")
-
-        fun parse(raw: String): Refinement<QueryPackageName, QueryPackageNameFailure> = when {
-            raw.isBlank() -> Refinement.Rejected(QueryPackageNameFailure.BLANK)
-            raw.split('.').any { !segment.matches(it) } ->
-                Refinement.Rejected(QueryPackageNameFailure.INVALID_SEGMENT)
-            else -> Refinement.Refined(QueryPackageName(raw))
-        }
-    }
-}
-
-data class QueryDirectoryScope(
-    val path: QueryDirectoryPath,
-    val containment: QueryContainment,
-)
-
-data class QueryPackageScope(
-    val name: QueryPackageName,
-    val containment: QueryContainment,
-)
-
 /** Intersected semantic discovery domain. */
 sealed interface QueryScope {
     data object Unrestricted : QueryScope
 
     data class Restricted(
         val sourceSets: QuerySourceSets,
-        val directory: QueryDirectoryScope?,
-        val packageName: QueryPackageScope?,
+        val directory: SymbolDiscoveryDirectoryConstraint?,
+        val packageName: SymbolDiscoveryPackageConstraint?,
     ) : QueryScope
 }
 
