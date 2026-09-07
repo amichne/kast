@@ -1,356 +1,111 @@
 ---
 type: "Installation Guide"
-title: "Set up and start Kast"
-sidebarTitle: "Quickstart"
-description: "Install Kast, start an isolated exact-root IntelliJ sidecar, and inspect the first compiler-backed result."
+title: "Install and connect Kast"
+sidebarTitle: "Install and connect"
+description: "Install Kast and make compiler-grounded Kotlin search available to an agent."
 resource: "file://docs/public/start.mdx"
-tags: ["installation", "host contract", "lifecycle", "IntelliJ"]
-timestamp: "2026-09-03T00:00:00-04:00"
+tags: ["installation", "agents", "Codex", "IntelliJ"]
+timestamp: "2026-09-07T00:00:00-04:00"
 code_sources:
   - path: "install.sh"
-    lines: "89-160"
-  - path: "install.sh"
-    lines: "407-551"
-  - path: "install.sh"
-    lines: "704-840"
-  - path: "install.sh"
-    lines: "1047-1246"
+    symbols: ["main"]
   - path: "gradle/libs.versions.toml"
-    lines: "14-17"
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledIdeRuntimeDiscovery.kt"
-    lines: "26-208"
-    symbols: ["InstalledIdeRuntimeDiscovery"]
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/IndexSeedProtocol.kt"
-    lines: "37-105"
-    symbols: ["SupportedIdeRuntimePair"]
-  - path: "cli/src/test/kotlin/io/github/amichne/kast/cli/runtime/InstalledIdeRuntimeDiscoveryTest.kt"
-    lines: "13-119"
-    symbols: ["InstalledIdeRuntimeDiscoveryTest"]
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/command/lifecycle/LifecycleCommands.kt"
-    lines: "22-134"
-    symbols: ["lifecycleCommands"]
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/RuntimeLifecycle.kt"
-    lines: "37-190"
-    symbols: ["ExactRootRuntimeLifecycle"]
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/RuntimeProcessMode.kt"
-    lines: "25-39"
-    symbols: ["RuntimeProcessModeEnvironment"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/KastCodexMain.kt"
+    symbols: ["KastCodexMain"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/InstalledBrokerServer.kt"
+    symbols: ["InstalledBrokerServerConfiguration"]
 icon: "rocket"
-keywords: ["install", "quickstart", "IntelliJ"]
+keywords: ["install", "Codex", "IntelliJ", "agent integration"]
 ---
 
-Use this page to install Kast, prove the host contract, and get one
-compiler-backed answer from an on-disk repository.
+Install Kast once, then start it through the agent integration for the repository
+you want the agent to inspect. Semantic requests manage readiness automatically.
 
-## Host contract
+## Requirements
 
-| Requirement | Exact contract |
+Kast currently supports this host contract:
+
+| Requirement | Supported value |
 | --- | --- |
 | Platform | macOS on Apple silicon |
-| Installer JVM | Java 25 or newer from one discovered IntelliJ IDEA bundled JBR; no separate `JAVA_HOME` |
-| IDE compatibility | IDEA and Kotlin plugin builds on JetBrains platform release line 262 |
 | Repository | An on-disk Kotlin Gradle repository |
+| IntelliJ | IDEA and Kotlin plugin on JetBrains platform release line 262 |
+| Runtime | The Java 25 JBR bundled with the selected IDEA installation |
 
-Two separate checks keep this flexible:
+The tested reference pair is IDEA `262.9437.185` with Kotlin plugin
+`262.9437.185-IJ`. Compatible patch builds on release line 262 are accepted.
+Kast uses the observed patch pair as part of runtime identity.
 
-- The installer finds one Java-25-capable IntelliJ IDEA and uses its bundled
-  JBR for the `kast` command.
-- `kast start` independently admits the selected IDEA and Kotlin plugin before
-  starting semantic work.
+The built-in Codex integration also requires an installed `codex` executable on
+`PATH`, or an absolute `CODEX_EXECUTABLE`.
 
-Reference pair: IDEA build 262.9437.185 and Kotlin plugin build
-262.9437.185-IJ. This is the tested baseline, not an exact patch mandate.
+## Install Kast
 
-Compatible patch builds are accepted when IDEA and Kotlin plugin both remain on
-JetBrains platform release line 262. Kast then preserves the observed patch pair
-in runtime and cache identity.
-
-Installer discovery searches:
-
-- `/Applications`;
-- `$HOME/Applications`; and
-- the legacy JetBrains Toolbox application store.
-
-If discovery finds zero or multiple eligible installations, pass
-`--idea-home "/absolute/IntelliJ IDEA.app"` or set `KAST_INSTALL_IDEA_HOME`.
-
-For semantic startup, use `kast start --idea-home /absolute/IDEA/home` when the
-compatible installation is outside the standard runtime paths.
-
-Sources: [installer discovery](https://github.com/amichne/kast/blob/main/install.sh#L407-L551)
-and the [IDEA/Kotlin compatibility authority](https://github.com/amichne/kast/blob/main/cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/IndexSeedProtocol.kt#L37-L105).
-
-## What gets installed
-
-One release publishes two digest-bound payloads behind one public `kast`
-command:
-
-| Payload | Responsibility |
-| --- | --- |
-| Control archive | CLI parsing, lifecycle, schemas, broker, and wire transport. |
-| Private semantic archive | Headless indexing and compiler integration. |
-
-Neither payload contains an IDEA distribution or writes to a JetBrains plugin
-directory.
-
-The command below resolves the latest published release and pins both installer
-content and product assets to that tag. The [1.x compatibility policy](/reference/compatibility) describes
-the candidate stability contract and upgrade behavior.
-
-<Steps>
-  <Step title="Install Kast">
-    Install directly, or review the downloaded script before execution:
-
-    <Tabs>
-      <Tab title="Install directly" icon="terminal">
-        ```shell
-        release_url="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/amichne/kast/releases/latest)"
-        release_tag="${release_url##*/}"
-        curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh" | bash -s -- --version "$release_tag"
-        ```
-      </Tab>
-
-      <Tab title="Review first" icon="scan-search">
-        ```shell
-        installer_file="$(mktemp)"
-        release_url="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/amichne/kast/releases/latest)"
-        release_tag="${release_url##*/}"
-        curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh" \
-          --output "$installer_file"
-        less "$installer_file"
-        bash "$installer_file" --version "$release_tag"
-        rm "$installer_file"
-        ```
-      </Tab>
-    </Tabs>
-
-    Before writing files, the installer:
-
-    - validates macOS, Apple silicon, IDEA, and its Java 25 JBR;
-    - downloads the matched control and semantic payloads with SHA-256 records;
-    - rejects unsafe archive paths or unexpected contents; and
-    - smoke-tests the installed metadata with the admitted JBR.
-  </Step>
-
-  <Step title="Confirm the local contract">
-    The installer creates `~/.local/bin/kast` but does not edit your shell profile.
-    If it warns that the directory is absent from `PATH`, add it for the current
-    shell before verifying the process-local surface:
-
-    ```shell
-    export PATH="$HOME/.local/bin:$PATH"
-    kast --version
-    kast --schema
-    ```
-
-    `kast --schema` is the installed command contract. It lists:
-
-    - the ten public semantic operations and command shapes;
-    - wire and input/output JSON Schemas;
-    - the installed `serverProjection`; and
-    - deferred-loading, approval, and field-to-CLI bindings.
-
-    Read workflows cover symbol and source work,
-    relation reads, traversal, and diagnostics. Every `change_*` tool requires
-    explicit approval. The endpoint publishes ten operations, with verified
-    application as one atomic completion boundary.
-
-    Editable defaults live at
-    `${XDG_CONFIG_HOME:-$HOME/.config}/kast/environment`:
-
-    - `KAST_RUNTIME_STORE`
-    - `KAST_RUNTIME_DIRECTORY`
-    - `KAST_CACHE_ROOT`
-    - `KAST_ENABLE_LAUNCHD`
-
-    A process environment value overrides its saved default.
-  </Step>
-
-  <Step title="Ask the exact repository">
-    Run Kast from the repository's canonical root:
-
-    ```console
-    cd /path/to/kotlin-repository
-    kast
-    kast query run < request.json
-    ```
-
-    The semantic command automatically establishes readiness before execution.
-    Optional `kast start` performs the same readiness work:
-
-    1. admits a release-line-compatible IDEA and Kotlin plugin;
-    2. starts that installation's JBR with private state paths;
-    3. opens the exact Project and imports its Gradle model; and
-    4. refreshes the private VFS and reaches smart mode.
-
-    Sidecar processes launch directly by default. Set
-    `KAST_ENABLE_LAUNCHD=1` to opt into launchd-backed process ownership; leave
-    it unset or set it to `0` for direct launch. Every other value is rejected.
-
-    Later semantic requests observe physical source and model currency. Source
-    changes refresh and publish a successor before the request executes; unchanged
-    sources reuse the current publication without a VFS refresh or import.
-  </Step>
-
-  <Step title="Inspect the first answer">
-    Observe lifecycle state, then ask for compiler-backed evidence:
-
-    ```console
-    kast
-    kast query run < request.json
-    ```
-
-    Read the results separately:
-
-    - Bare `kast` reports runtime identity and cache state without starting or
-      repairing anything.
-    - Discovery returns bounded candidates, not an exact declaration claim.
-  </Step>
-</Steps>
-
-## Operate the lifecycle
-
-| Intent | Command | Contract |
-| --- | --- | --- |
-| Start or reuse | `kast start` | Admits the exact root and returns only after semantic readiness or a typed blocker. |
-| Observe | `kast` | Reports runtime and cache state without starting or repairing anything. |
-| Reconcile files | Any semantic command | Detects physical source changes and publishes a successor before execution. |
-| Stop | `kast stop` | Targets only the process proven to own this exact-root endpoint. |
-| Rebuild private state | `kast start --cache rebuild` | Stops the exact sidecar, quarantines only Kast-owned cache state, and starts a fresh import. |
-
-## Optional and recovery paths
-
-<AccordionGroup>
-  <Accordion title="Where the installer writes files" icon="folder-tree">
-    - Product: `${XDG_DATA_HOME:-$HOME/.local/share}/kast`
-    - Command: `$HOME/.local/bin/kast`
-    - Defaults: `${XDG_CONFIG_HOME:-$HOME/.config}/kast/environment`
-    - Private IDEA state: `$HOME/.cache/kast`
-
-    No JetBrains path is written.
-  </Accordion>
-
-  <Accordion title="Seed from a stopped IDEA cache" icon="copy-check">
-    Ordinary startup never reads the user's IDEA cache. For an explicit
-    one-time acceleration, close IDEA cleanly and request an APFS copy-on-write
-    clone of the version-specific allowlist:
-
-    ```shell
-    kast start --cache seed
-    ```
-
-    Interactive use discloses copied categories, estimated size, and the global
-    VFS/index caveat before copying. For other cases:
-
-    - use `--source-idea-system /absolute/path` for a non-standard source;
-    - use `--accept-global-index-copy` for non-interactive consent.
-
-    Kast rejects a running, changed, incompatible, wrong-project, non-APFS, or
-    unconsented source.
-
-    It also:
-
-    - validates manifests before publishing the clone;
-    - never mounts or modifies the source; and
-    - emits payload-free stage outcomes with one finite rejection reason.
-  </Accordion>
-
-  <Accordion title="Rebuild only Kast state" icon="rotate-ccw">
-    `kast start --cache rebuild` stops the exact sidecar, atomically
-    quarantines only its private cache, and starts a fresh import. Ordinary
-    `kast start` reconciliation removes stale owned endpoint artifacts while
-    retaining reusable cache state.
-  </Accordion>
-
-  <Accordion title="Install a local matched release" icon="package-check">
-    Build the control archive, private sidecar, and SHA-256 records together, then
-    point the reviewed installer at that local release root. A custom release
-    base requires an explicit semantic version.
-
-    ```shell
-    release_version="${KAST_RELEASE_VERSION:?set KAST_RELEASE_VERSION to an unreleased semantic version}"
-    ./gradlew -Pversion="$release_version" assembleSidecarRelease
-    bash install.sh install --purge-existing \
-      --version "$release_version" \
-      --release-base-url "file://$PWD/build/release"
-    ```
-
-    `--release-base-url` also accepts an HTTPS mirror. It does not bypass
-    checksums, archive validation, product smoke checks, or sidecar matching.
-  </Accordion>
-
-  <Accordion title="Inspect a release's module knowledge" icon="network">
-    Every release includes `kast-module-knowledge-v&lt;version&gt;.json` and its
-    `.sha256` record. It preserves:
-
-    - the release commit and accepted architecture verification;
-    - canonical module policy and the admitted direct dependency graph; and
-    - repository guidance, content digests, and module mappings.
-
-    Download it without installing Kast:
-
-    ```shell
-    gh release download "v${KAST_VERSION:?set KAST_VERSION}" \
-      --pattern "kast-module-knowledge-v${KAST_VERSION}.json*"
-    ```
-  </Accordion>
-
-  <Accordion title="Find the default OpenTelemetry traces" icon="activity">
-    Every ready endpoint asynchronously forwards topology and traversal spans
-    into a private folder derived from its exact socket namespace. Inspect the
-    authoritative destination instead of reconstructing it:
-
-    ```console
-    kast
-    ```
-
-    The product document reports, without starting the sidecar:
-
-    - enabled state and `otlp-json-lines-v1`;
-    - `directoryPath` and `traceFilePath`; and
-    - private directory mode `0700` and file mode `0600`.
-
-    Traces exclude repository paths, selectors, source text, exception messages,
-    and stack traces. The folder persists across ordinary restarts, so apply the
-    host's retention policy.
-  </Accordion>
-
-  <Accordion title="Uninstall Kast" icon="trash-2">
-    The uninstall action removes Kast-managed commands, installed versions,
-    runtime state, configuration, services, and old Kast plugin directories.
-    It preserves repositories and unrelated JetBrains state.
-
-    ```shell
-    release_url="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/amichne/kast/releases/latest)"
-    release_tag="${release_url##*/}"
-    curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh" | bash -s -- uninstall
-    ```
-  </Accordion>
-</AccordionGroup>
-
-## Recover from an older installation
-
-If a prior local, Homebrew, or release-managed installation conflicts with the
-current release, download the reviewed installer and use its opt-in purge-first
-flow:
+Install the latest published release:
 
 ```shell
-installer_file="$(mktemp)"
-release_url="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/amichne/kast/releases/latest)"
-release_tag="${release_url##*/}"
-curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh" --output "$installer_file"
-bash "$installer_file" install --version "$release_tag" --purge-existing
-rm "$installer_file"
+curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash
 ```
 
-The installer verifies the replacement before removing Kast state. It does not
-remove repositories or unrelated JetBrains state.
+The installer verifies the matched control and semantic-runtime payloads before
+activation. It does not install IDEA or write to an IDEA plugin directory.
 
-<Warning>
-  `--purge-existing` removes current and historical Kast commands, services,
-  runtime state, configuration, and old Kast IDE plugins before reinstalling.
-  Use it only when replacing an existing installation.
-</Warning>
+If more than one compatible IDEA installation is available, select it
+explicitly:
 
-[Inspect workspace readiness](/questions/workspace-readiness) or
-[establish declaration identity](/questions/declaration-identity).
+```shell
+curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | \
+  bash -s -- --idea-home "/Applications/IntelliJ IDEA.app"
+```
+
+The installer creates the public commands in `~/.local/bin` by default. Add that
+directory to `PATH` if the installer reports that it is not already available.
+
+## Connect Codex
+
+Start the included integration from the repository root:
+
+```console
+cd /path/to/kotlin-repository
+kast-codex
+```
+
+The integration qualifies the exact installed Kast projection, starts Codex
+through its supported remote transport, and adds the Kast tools and selection
+policy before a thread begins. Read access is the default.
+
+Ask the agent a question about the Kotlin repository. Its first Kast read should
+normally use `kast.query`. A successful tool row can be expanded to inspect the
+compiler-grounded result.
+
+<Info>
+  You do not need to run a separate start, sync, or topology command. The tool
+  invocation owns those prerequisites and either returns current evidence or a
+  typed blocker.
+</Info>
+
+## Connect another harness
+
+Use the installed `serverProjection` as the integration contract for a different
+agent host. It contains the exact tool names, schemas, policy, loading hints,
+approval requirements, execution budgets, and invocation bindings for that
+installation.
+
+[Integrate an agent harness](/agent-harnesses) explains the boundary without
+requiring application developers to learn the underlying CLI operations.
+
+## Uninstall
+
+Run the current installer in uninstall mode:
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | \
+  bash -s -- uninstall
+```
+
+Uninstall removes Kast-owned commands, installations, runtime state,
+configuration, and services. It preserves repositories and unrelated JetBrains
+state.
+
+If installation or the first agent request fails, continue with
+[Troubleshooting](/troubleshooting).

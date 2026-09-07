@@ -1,87 +1,63 @@
 ---
 type: "Concept"
-title: "Trust the evidence"
-description: "Interpret complete, qualified, and rejected Kast outcomes within their exact root, generation, scope, and bounds."
+title: "Understand Kast outcomes"
+sidebarTitle: "Evidence outcomes"
+description: "Interpret complete, qualified, and rejected Kast results without overstating the evidence."
 resource: "file://docs/public/concepts/evidence-boundaries.mdx"
-tags: ["evidence", "outcomes", "generation", "scope"]
-timestamp: "2026-09-03T00:00:00-04:00"
+tags: ["evidence", "outcomes", "limits", "failures"]
+timestamp: "2026-09-07T00:00:00-04:00"
 code_sources:
   - path: "kernel/src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt"
-    lines: "3-22"
-    symbols: ["OperationOutcome", "Complete", "Qualified", "Rejected"]
-  - path: "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt"
-    lines: "7-20"
-    symbols: ["CanonicalOperation"]
+    symbols: ["OperationOutcome"]
+  - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt"
+    symbols: ["QueryExecutionResult", "QueryItemFailure"]
 icon: "shield-check"
-keywords: ["evidence", "complete", "qualified", "rejected", "generation"]
+keywords: ["complete", "qualified", "rejected", "negative answer"]
 ---
 
-A successful transport only proves that one request crossed the local wire.
-The semantic result has its own closed outcome and evidence coordinates.
+A tool call reaching Kast does not by itself prove that the semantic question
+succeeded. Read the outcome carried by the semantic document.
 
-## Three closed outcomes
+## Three semantic outcomes
 
-| Outcome | What it proves |
+| Outcome | How to use it |
 | --- | --- |
-| **Complete** | The operation met its admitted scope, bounds, and completeness policy. The payload can support the full claim described by that operation. |
-| **Qualified** | The payload remains usable within a named limitation. Missing coverage or a reached bound stays attached to the evidence. |
-| **Rejected** | Kast established no successful payload. The response returns one typed reason from the operation's finite failure set. |
+| **Complete** | The operation met its admitted scope, bounds, and completeness contract. The payload can support the claim described by the request. |
+| **Qualified** | The payload remains useful only with its attached limitations. Do not infer facts beyond the reported coverage. |
+| **Rejected** | Kast established no successful semantic payload. Use the typed reason to repair or reformulate the request. |
 
-Outcome support varies by operation:
+Query results may also retain failures for individual items. Those failures do
+not erase successful items, but they prevent a claim that every requested item
+was refined or expanded.
 
-- Discovery, relation, traversal, diagnostics, and manual recovery may return
-  qualified evidence.
-- Index synchronization, topology publication, exact symbol inspection,
-  planning, and verified application require complete evidence for success.
-- Workspace readiness is either complete or rejected on the installed
-  exact-root route; its internal reconciling state is not published as ready.
+## Evidence belongs to coordinates
 
-The [CLI reference](/reference/cli) lists all ten public semantic operations and
-their command shapes.
+Kast retains the coordinates that determine where an answer is valid:
 
-## Evidence is valid at its coordinates
+- the exact canonical repository root;
+- the semantic workspace generation;
+- the requested scope and operation;
+- resource and traversal bounds; and
+- any qualification or per-item failure.
 
-When an operation returns semantic evidence, judge it against the coordinates
-carried by its payload and by the selector, snapshot, plan, or receipt that
-authorized it:
+References returned by Kast carry some of this proof. Agents and harnesses must
+preserve them verbatim rather than rebuilding them from a name or file path.
 
-<Steps>
-  <Step title="Exact root">
-    The canonical repository checkout that owns the admitted sidecar endpoint.
-  </Step>
-  <Step title="Operation">
-    The typed question asked, such as `index.sync` or `symbol.inspect`.
-  </Step>
-  <Step title="Generation">
-    The semantic workspace state against which selectors and evidence were
-    issued.
-  </Step>
-  <Step title="Scope and bounds">
-    The discovery mode, search scope, result limit, and completeness policy
-    admitted for the request.
-  </Step>
-  <Step title="Qualification">
-    Any explicit limitation that prevents the result from supporting a
-    stronger claim.
-  </Step>
-</Steps>
-
-<Info>
-  Unknown, stale, unsupported, incomplete, or unproven coordinates fail closed.
-  Kast does not guess a current symbol or turn partial coverage into complete
-  evidence.
-</Info>
+If source or imported-model evidence changes, an older reference can reject as
+stale. Repeat the `kast.query` search to obtain a reference for the successor
+generation.
 
 ## Judge a negative answer
 
-An empty result is strong evidence only when the result is complete for the
-scope that matters. Before treating "no matches" as a repository fact, check:
+Before concluding that a declaration or relationship does not exist, check the
+outcome:
 
-- the exact root is the intended checkout
-- the generation is still current
-- the selected operation answers the intended question
-- scope and result limits cover the decision
-- the outcome is complete, not qualified or rejected
+- An empty **complete** result is a valid negative answer within the admitted
+  scope.
+- An empty **qualified** result means the search was limited or incomplete.
+- A **rejected** result supports no semantic conclusion.
+- A result with item failures is complete only for the items that succeeded.
 
-[How Kast works](/explanation/how-kast-works) shows where their evidence is
-admitted and projected.
+Transport or harness failures sit outside these semantic outcomes. See
+[Troubleshooting](/troubleshooting) for the outer invocation layer and passive
+status collection.

@@ -1,0 +1,82 @@
+---
+type: "Usage Guide"
+title: "Search with Kast"
+description: "How an agent should use Kast's primary query surface to discover and connect Kotlin declarations."
+resource: "file://docs/public/search.mdx"
+tags: ["search", "query", "agents", "Kotlin"]
+timestamp: "2026-09-07T00:00:00-04:00"
+code_sources:
+  - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt"
+    symbols: ["CanonicalAgentToolDefinitions"]
+  - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySource.kt"
+    symbols: ["QuerySourceSyntax"]
+  - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt"
+    symbols: ["QueryStepSyntax", "AdmittedQueryPlan"]
+  - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt"
+    symbols: ["QueryExecutionResult", "QueryCoverage"]
+icon: "scan-search"
+keywords: ["kast.query", "symbol search", "semantic relationships", "agent use"]
+---
+
+Ask the agent a Kotlin question in ordinary language. The harness policy directs
+it to use `kast.query` first when compiler identity or semantic relationships
+matter.
+
+Useful questions include:
+
+- Where is this declaration defined?
+- Which exact declaration does this alias or call refer to?
+- What declarations match this name or source location?
+- How is this declaration related to the rest of the repository?
+- Does this result cover the full requested scope?
+
+## What the agent does
+
+`kast.query` combines the normal discovery path into one typed operation:
+
+1. Search bounded candidates or search and refine exact symbols.
+2. Filter the current set when visibility or other admitted evidence matters.
+3. Expand a compiler-grounded relationship when the question crosses symbols.
+4. Remove duplicates while retaining the connections that established a result.
+
+The agent can continue from references returned by an earlier query. It should
+preserve those references verbatim so Kast can prove that they belong to the
+same repository generation.
+
+## Search exact symbols by default
+
+The `symbols` source performs bounded discovery and exact compiler refinement
+inside Kast. This is the normal starting point for questions about aliases,
+overloads, declarations, or relationships.
+
+Candidate-only search remains useful when the agent explicitly needs a bounded
+set of possibilities. It does not establish exact declaration identity by
+itself.
+
+## Let Kast coordinate the work
+
+The agent should not run lifecycle, synchronization, or topology preparation
+before a query. Kast starts or joins the exact-root runtime, reconciles the
+workspace, and acquires any derived evidence required by the plan.
+
+Specialist read tools are deferred. The agent should select one only when the
+question requires its narrower contract rather than trying to reproduce the
+query workflow manually.
+
+## Read the coverage
+
+A useful answer includes more than matching names. It retains exact identities,
+connections, coverage, and any limitations or item failures produced during the
+query.
+
+- **Complete** supports the requested claim within its scope and bounds.
+- **Qualified** reports usable evidence plus the limit that prevented complete
+  coverage.
+- **Rejected** supplies no successful semantic result.
+
+An empty complete search can establish that nothing matched within the admitted
+scope. An empty qualified search cannot.
+
+See [Understand Kast outcomes](/concepts/evidence-boundaries) for the evidence
+contract or [Troubleshooting](/troubleshooting) when the harness or runtime
+rejects before semantic search completes.
