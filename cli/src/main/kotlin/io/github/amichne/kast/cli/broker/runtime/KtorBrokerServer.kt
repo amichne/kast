@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.broker.runtime
 
+import io.github.amichne.kast.cli.broker.core.AgentSessionBootstrap
 import io.github.amichne.kast.cli.broker.core.Broker
 import io.github.amichne.kast.cli.broker.core.BrokerInvocationActivitySink
 import io.github.amichne.kast.cli.broker.protocol.ThreadCatalogStore
@@ -98,6 +99,7 @@ internal data class KtorBrokerServerOptions(
     val maximumMessageBytes: Int,
     val connectionInitializationTimeoutMillis: Long = 10_000,
     val activitySink: BrokerInvocationActivitySink = BrokerInvocationActivitySink.Disabled,
+    val sessionBootstrap: AgentSessionBootstrap? = null,
 )
 
 internal enum class KtorBrokerServerFailure {
@@ -254,6 +256,7 @@ internal class KtorBrokerServer private constructor(
                 options.contracts,
                 options.threadStore,
                 options.activitySink,
+                sessionBootstrap = options.sessionBootstrap,
             )
             try {
                 val initializationRouting = adapter.fromDownstream(initialize.message)

@@ -2,6 +2,8 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.command.CliCommandSurface
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.registry.AgentToolDefinition
+import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import io.github.amichne.kast.protocol.registry.HostedBindingCompleteness
 import io.github.amichne.kast.protocol.registry.HostedOperationProjection
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
@@ -15,7 +17,9 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 
-private const val SERVER_PROJECTION_SCHEMA_VERSION = 4
+private const val SERVER_PROJECTION_SCHEMA_VERSION = 5
+private const val HOSTED_BOOTSTRAP_SCHEMA_VERSION = 1
+private const val CLI_INVOCATION_BINDINGS_SCHEMA_VERSION = 1
 private const val MAXIMUM_PROTOCOL_TEXT_LENGTH = 1_048_576
 private const val MAXIMUM_WORKSPACE_FILE_LENGTH = 4_096
 private const val MAXIMUM_PROTOCOL_COUNT = 1_000
@@ -25,21 +29,28 @@ private const val MAXIMUM_PROTOCOL_COUNT = 1_000
 internal data class InstalledServerProjectionDocument(
     val schemaVersion: Int,
     val namespace: String,
-    val tools: List<InstalledServerToolDocument>,
+    val hostedBootstrap: InstalledHostedBootstrapDocument,
+    val cliInvocationBindings: InstalledCliInvocationBindingsDocument,
 )
 
 @Serializable
-internal data class InstalledServerToolDocument(
+internal data class InstalledHostedBootstrapDocument(
+    val schemaVersion: Int,
+    val policy: String,
+    val tools: List<InstalledHostedToolDocument>,
+)
+
+@Serializable
+internal data class InstalledHostedToolDocument(
     val operationId: String,
     val name: String,
     val description: String,
     val deferLoading: Boolean,
-    val approvalPolicy: InstalledServerApprovalPolicy,
+    val effect: String,
+    val approvalPolicy: String,
     val executionBudget: InstalledServerExecutionBudgetDocument,
-    val cliUsage: String,
     val inputSchema: JsonElement,
     val outputSchema: JsonElement,
-    val invocation: InstalledServerCliInvocationDocument,
 )
 
 @Serializable
@@ -49,15 +60,17 @@ internal data class InstalledServerExecutionBudgetDocument(
 )
 
 @Serializable
-internal enum class InstalledServerApprovalPolicy(
-    val serialValue: String,
-) {
-    @kotlinx.serialization.SerialName("none")
-    NONE("none"),
+internal data class InstalledCliInvocationBindingsDocument(
+    val schemaVersion: Int,
+    val bindings: List<InstalledCliOperationBindingDocument>,
+)
 
-    @kotlinx.serialization.SerialName("explicit")
-    EXPLICIT("explicit"),
-}
+@Serializable
+internal data class InstalledCliOperationBindingDocument(
+    val operationId: String,
+    val cliUsage: String,
+    val invocation: InstalledServerCliInvocationDocument,
+)
 
 @Serializable
 internal data class InstalledServerCliInvocationDocument(
@@ -97,12 +110,23 @@ internal fun installedServerProjection(
     commandSurface: CliCommandSurface,
 ): InstalledServerProjectionDocument {
     val commandByOperation = commandSurface.semanticCommands.associateBy { it.operation }
+    val toolsByOperation = installedServerTools.associateBy(InstalledServerTool::operation)
     return InstalledServerProjectionDocument(
         schemaVersion = SERVER_PROJECTION_SCHEMA_VERSION,
         namespace = "kast",
-        tools = installedServerTools.map { tool ->
-            tool.document(commandByOperation.getValue(tool.operation).usage)
-        },
+        hostedBootstrap = InstalledHostedBootstrapDocument(
+            schemaVersion = HOSTED_BOOTSTRAP_SCHEMA_VERSION,
+            policy = CanonicalAgentToolDefinitions.policy.text,
+            tools = CanonicalAgentToolDefinitions.all.map { definition ->
+                toolsByOperation.getValue(definition.operation.operation).hostedDocument(definition)
+            },
+        ),
+        cliInvocationBindings = InstalledCliInvocationBindingsDocument(
+            schemaVersion = CLI_INVOCATION_BINDINGS_SCHEMA_VERSION,
+            bindings = installedServerTools.map { tool ->
+                tool.cliBindingDocument(commandByOperation.getValue(tool.operation).usage)
+            },
+        ),
     )
 }
 
@@ -119,36 +143,24 @@ private val installedServerTools: List<InstalledServerTool> = InstalledServerToo
 
 private enum class InstalledServerTool(
     val operation: CanonicalOperation,
-    private val toolName: String,
-    private val toolDescription: String,
     private val inputSchema: JsonObject,
     private val command: List<String>,
     private val optionFields: List<ServerCliOptionField>,
-    private val approvalPolicy: InstalledServerApprovalPolicy = InstalledServerApprovalPolicy.NONE,
 ) {
     INDEX_SYNC(
         operation = CanonicalOperation.INDEX_SYNC,
-        toolName = "index_sync",
-        toolDescription =
-            "Refresh admitted source roots, wait for indexing, and publish semantic evidence.",
         inputSchema = objectSchema(),
         command = listOf("index", "sync"),
         optionFields = emptyList(),
     ),
     TOPOLOGY_BUILD(
         operation = CanonicalOperation.TOPOLOGY_BUILD,
-        toolName = "topology_build",
-        toolDescription =
-            "Build or reuse the complete durable topology for the current workspace generation.",
         inputSchema = objectSchema(),
         command = listOf("topology", "build"),
         optionFields = emptyList(),
     ),
     SYMBOL_DISCOVER(
         operation = CanonicalOperation.SYMBOL_DISCOVER,
-        toolName = "symbol_lookup",
-        toolDescription =
-            "Look up bounded Kotlin candidates by name or exact file and offset.",
         inputSchema = symbolDiscoverInputSchema(),
         command = listOf("symbol", "discover"),
         optionFields = listOf(
@@ -164,9 +176,6 @@ private enum class InstalledServerTool(
     ),
     SYMBOL_INSPECT(
         operation = CanonicalOperation.SYMBOL_INSPECT,
-        toolName = "symbol_inspect",
-        toolDescription =
-            "Refine a discovery candidate or inspect an exact current-generation Kotlin symbol.",
         inputSchema = unionSchema(
             objectSchema(
                 ServerSchemaProperty(
@@ -186,9 +195,6 @@ private enum class InstalledServerTool(
     ),
     SOURCE_READ(
         operation = CanonicalOperation.SOURCE_READ,
-        toolName = "source_read",
-        toolDescription =
-            "Read one exact bounded Kotlin source region with typed structure and text.",
         inputSchema = sourceReadInputSchema(),
         command = listOf("source", "read"),
         optionFields = listOf(
@@ -230,9 +236,6 @@ private enum class InstalledServerTool(
     ),
     RELATION_READ(
         operation = CanonicalOperation.RELATION_READ,
-        toolName = "semantic_query",
-        toolDescription =
-            "Query one bounded compiler-grounded relation from an exact symbol selector.",
         inputSchema = objectSchemaWithRequired(
             setOf("selector", "relation", "limit"),
             ServerSchemaProperty("selector", textSchema("Exact starting selector.")),
@@ -256,9 +259,6 @@ private enum class InstalledServerTool(
     ),
     TRAVERSAL_RUN(
         operation = CanonicalOperation.TRAVERSAL_RUN,
-        toolName = "impact_analyze",
-        toolDescription =
-            "Analyze bounded transitive impact over one durable semantic relation.",
         inputSchema = objectSchemaWithRequired(
             setOf("selector", "relation", "maximumDepth", "maximumResults"),
             ServerSchemaProperty("selector", textSchema("Exact starting selector.")),
@@ -290,8 +290,6 @@ private enum class InstalledServerTool(
     ),
     DIAGNOSTIC_CHECK(
         operation = CanonicalOperation.DIAGNOSTIC_CHECK,
-        toolName = "diagnostic_check",
-        toolDescription = "Check bounded compiler diagnostics within one explicit scope.",
         inputSchema = objectSchema(
             ServerSchemaProperty("scope", workspaceFileSchema()),
             ServerSchemaProperty("limit", countSchema("Maximum returned diagnostics.")),
@@ -304,9 +302,6 @@ private enum class InstalledServerTool(
     ),
     CHANGE_PLAN(
         operation = CanonicalOperation.CHANGE_PLAN,
-        toolName = "change_plan",
-        toolDescription =
-            "Derive one hosted add-declaration plan without writing the workspace.",
         inputSchema = objectSchema(
             ServerSchemaProperty(
                 "intent",
@@ -321,58 +316,57 @@ private enum class InstalledServerTool(
             ServerCliOptionField("target", "--target"),
             ServerCliOptionField("declaration", "--declaration"),
         ),
-        approvalPolicy = InstalledServerApprovalPolicy.EXPLICIT,
     ),
     CHANGE_APPLY(
         operation = CanonicalOperation.CHANGE_APPLY,
-        toolName = "change_apply",
-        toolDescription =
-            "Apply one admitted hosted change plan and return its verified receipt.",
         inputSchema = objectSchema(
             ServerSchemaProperty("plan", textSchema("Plan identity.")),
         ),
         command = listOf("change", "apply"),
         optionFields = listOf(ServerCliOptionField("plan", "--plan")),
-        approvalPolicy = InstalledServerApprovalPolicy.EXPLICIT,
     ),
     CHANGE_RECOVER(
         operation = CanonicalOperation.CHANGE_RECOVER,
-        toolName = "change_recover",
-        toolDescription = "Recover one hosted change plan to a known workspace state.",
         inputSchema = objectSchema(
             ServerSchemaProperty("plan", textSchema("Plan identity.")),
         ),
         command = listOf("change", "recover"),
         optionFields = listOf(ServerCliOptionField("plan", "--plan")),
-        approvalPolicy = InstalledServerApprovalPolicy.EXPLICIT,
     ),
     ;
 
-    fun document(cliUsage: String): InstalledServerToolDocument = InstalledServerToolDocument(
-        operationId = operation.id.value,
-        name = toolName,
-        description = toolDescription,
-        deferLoading = true,
-        approvalPolicy = approvalPolicy,
-        executionBudget = InstalledServerExecutionBudgetDocument(
-            readinessMillis = OperationExecutionBudget.WORKSPACE_READINESS.value,
-            operationMillis = OperationExecutionBudget.forOperation(operation).operation.value,
-        ),
-        cliUsage = cliUsage,
-        inputSchema = inputSchema,
-        outputSchema = installedServerOutputSchema(operation),
-        invocation = InstalledServerCliInvocationDocument(
-            type = InstalledServerInvocationType.CLI,
-            command = command,
-            bindings = optionFields.map { field ->
-                InstalledServerCliBindingDocument(
-                    type = field.type,
-                    inputField = field.inputField,
-                    option = field.option,
-                )
-            },
-        ),
-    )
+    fun hostedDocument(definition: AgentToolDefinition): InstalledHostedToolDocument =
+        InstalledHostedToolDocument(
+            operationId = definition.operation.id.value,
+            name = definition.name.value,
+            description = definition.description.value,
+            deferLoading = true,
+            effect = definition.operation.effect.name.lowercase(),
+            approvalPolicy = definition.approval.name.lowercase(),
+            executionBudget = InstalledServerExecutionBudgetDocument(
+                readinessMillis = OperationExecutionBudget.WORKSPACE_READINESS.value,
+                operationMillis = OperationExecutionBudget.forOperation(operation).operation.value,
+            ),
+            inputSchema = inputSchema,
+            outputSchema = installedServerOutputSchema(operation),
+        )
+
+    fun cliBindingDocument(cliUsage: String): InstalledCliOperationBindingDocument =
+        InstalledCliOperationBindingDocument(
+            operationId = operation.id.value,
+            cliUsage = cliUsage,
+            invocation = InstalledServerCliInvocationDocument(
+                type = InstalledServerInvocationType.CLI,
+                command = command,
+                bindings = optionFields.map { field ->
+                    InstalledServerCliBindingDocument(
+                        type = field.type,
+                        inputField = field.inputField,
+                        option = field.option,
+                    )
+                },
+            ),
+        )
 }
 
 private data class ServerCliOptionField(
@@ -1293,6 +1287,163 @@ private fun processDiagnosticSchema(): JsonObject = unionSchema(
         ServerSchemaProperty("reason", textSchema("Closed boundary rejection reason.")),
         ServerSchemaProperty("details", ideDescriptorFailureSchema()),
     ),
+    objectSchema(
+        ServerSchemaProperty("status", constantSchema("rejected", "Boundary outcome.")),
+        ServerSchemaProperty("boundary", constantSchema("runtime", "Rejected process boundary.")),
+        ServerSchemaProperty("reason", textSchema("Closed boundary rejection reason.")),
+        ServerSchemaProperty("bootstrap", runtimeBootstrapDiagnosticSchema()),
+    ),
+)
+
+private fun runtimeBootstrapDiagnosticSchema(): JsonObject = unionSchema(
+    objectSchema(ServerSchemaProperty("state", constantSchema("unavailable", "Bootstrap state."))),
+    objectSchema(ServerSchemaProperty("state", constantSchema("invalid", "Bootstrap state."))),
+    objectSchema(
+        ServerSchemaProperty("state", constantSchema("starting", "Bootstrap state.")),
+        ServerSchemaProperty("attemptId", uuidSchema("Bootstrap attempt identity.")),
+        ServerSchemaProperty("phase", textSchema("Current bootstrap phase.")),
+        ServerSchemaProperty("completedPhases", integerSchema(0, 7, "Completed bootstrap phases.")),
+        ServerSchemaProperty("totalPhases", integerSchema(1, 7, "Total bootstrap phases.")),
+        ServerSchemaProperty("gradleJvm", gradleJvmSelectionObservationSchema()),
+    ),
+    objectSchema(
+        ServerSchemaProperty("state", constantSchema("ready", "Bootstrap state.")),
+        ServerSchemaProperty("attemptId", uuidSchema("Bootstrap attempt identity.")),
+        ServerSchemaProperty("gradleJvm", gradleJvmSelectionObservationSchema()),
+        ServerSchemaProperty("phase", constantSchema("ready", "Completed bootstrap phase.")),
+        ServerSchemaProperty("completedPhases", integerSchema(7, 7, "Completed bootstrap phases.")),
+        ServerSchemaProperty("totalPhases", integerSchema(7, 7, "Total bootstrap phases.")),
+    ),
+    objectSchema(
+        ServerSchemaProperty("state", constantSchema("rejected", "Bootstrap state.")),
+        ServerSchemaProperty("attemptId", uuidSchema("Bootstrap attempt identity.")),
+        ServerSchemaProperty("phase", textSchema("Rejected bootstrap phase.")),
+        ServerSchemaProperty("completedPhases", integerSchema(0, 7, "Completed bootstrap phases.")),
+        ServerSchemaProperty("totalPhases", integerSchema(1, 7, "Total bootstrap phases.")),
+        ServerSchemaProperty("cause", textSchema("Closed bootstrap rejection reason.")),
+        ServerSchemaProperty("correctiveAction", textSchema("Bounded corrective action.")),
+        ServerSchemaProperty("gradleJvm", gradleJvmSelectionObservationSchema()),
+    ),
+)
+
+private fun gradleJvmSelectionObservationSchema(): JsonObject = unionSchema(
+    objectSchema(
+        ServerSchemaProperty(
+            "type",
+            constantSchema(
+                "$GRADLE_CONTRACT.GradleJvmSelectionObservation.Unobserved",
+                "Gradle JVM observation variant.",
+            ),
+        ),
+    ),
+    objectSchema(
+        ServerSchemaProperty(
+            "type",
+            constantSchema(
+                "$GRADLE_CONTRACT.GradleJvmSelectionObservation.Observed",
+                "Gradle JVM observation variant.",
+            ),
+        ),
+        ServerSchemaProperty("report", gradleJvmSelectionReportSchema()),
+    ),
+)
+
+private fun gradleJvmSelectionReportSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("distribution", gradleDistributionEvidenceSchema()),
+    ServerSchemaProperty(
+        "requiredJava",
+        finiteArraySchema(integerSchema(1, 99, "Required Java feature.")),
+    ),
+    ServerSchemaProperty("candidates", arraySchema(gradleJvmCandidateSchema())),
+    ServerSchemaProperty("outcome", gradleJvmSelectionOutcomeSchema()),
+)
+
+private fun gradleDistributionEvidenceSchema(): JsonObject = unionSchema(
+    objectSchema(
+        ServerSchemaProperty(
+            "type",
+            constantSchema(
+                "$GRADLE_CONTRACT.GradleDistributionEvidence.Unavailable",
+                "Gradle distribution evidence variant.",
+            ),
+        ),
+    ),
+    objectSchema(
+        ServerSchemaProperty(
+            "type",
+            constantSchema(
+                "$GRADLE_CONTRACT.GradleDistributionEvidence.Observed",
+                "Gradle distribution evidence variant.",
+            ),
+        ),
+        ServerSchemaProperty("version", textSchema("Observed Gradle version.")),
+    ),
+)
+
+private fun gradleJvmCandidateSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("java", integerSchema(1, 99, "Java feature.")),
+    ServerSchemaProperty("homeIdentity", sha256Schema("JDK home identity.")),
+    ServerSchemaProperty(
+        "authority",
+        enumSchema(
+            listOf(
+                "DAEMON_JVM_CRITERIA",
+                "REPOSITORY_GRADLE_PROPERTY",
+                "AMBIENT_JAVA_HOME",
+                "SIDECAR_COMPATIBLE",
+                "PLATFORM_RESOLVER",
+            ),
+            "JDK selection authority.",
+        ),
+    ),
+    ServerSchemaProperty(
+        "decision",
+        enumSchema(
+            listOf(
+                "SELECTED",
+                "INCOMPATIBLE_GRADLE",
+                "SHADOWED_BY_PROJECT_AUTHORITY",
+                "NOT_SELECTED",
+            ),
+            "JDK candidate decision.",
+        ),
+    ),
+)
+
+private fun gradleJvmSelectionOutcomeSchema(): JsonObject = unionSchema(
+    objectSchema(
+        ServerSchemaProperty(
+            "type",
+            constantSchema(
+                "$GRADLE_CONTRACT.GradleJvmSelectionOutcome.Selected",
+                "Gradle JVM outcome variant.",
+            ),
+        ),
+        ServerSchemaProperty("candidate", gradleJvmCandidateSchema()),
+    ),
+    objectSchema(
+        ServerSchemaProperty(
+            "type",
+            constantSchema(
+                "$GRADLE_CONTRACT.GradleJvmSelectionOutcome.Rejected",
+                "Gradle JVM outcome variant.",
+            ),
+        ),
+        ServerSchemaProperty(
+            "failure",
+            enumSchema(
+                listOf(
+                    "GRADLE_DISTRIBUTION_UNAVAILABLE",
+                    "DAEMON_JVM_CRITERIA_UNSUPPORTED",
+                    "REPOSITORY_JAVA_HOME_INVALID",
+                    "LOCAL_JVM_DISCOVERY_FAILED",
+                    "NO_COMPATIBLE_RUNTIME",
+                    "SDK_REGISTRATION_FAILED",
+                ),
+                "Closed Gradle JVM selection failure.",
+            ),
+        ),
+    ),
 )
 
 private fun ideDescriptorFailureSchema(): JsonObject = unionSchema(
@@ -1465,6 +1616,11 @@ private fun sha256Schema(description: String): JsonObject = buildJsonObject {
     put("description", description)
 }
 
+private fun uuidSchema(description: String): JsonObject = patternTextSchema(
+    "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+    description,
+)
+
 private fun countSchema(description: String): JsonObject = integerSchema(
     minimum = 1,
     maximum = MAXIMUM_PROTOCOL_COUNT,
@@ -1493,6 +1649,9 @@ private fun enumSchema(values: List<String>, description: String): JsonObject = 
     put("description", description)
     put("enum", buildJsonArray { values.forEach { add(JsonPrimitive(it)) } })
 }
+
+private const val GRADLE_CONTRACT =
+    "io.github.amichne.kast.distribution.contract.gradle"
 
 private fun relationSchema(): JsonObject = enumSchema(
     values = listOf(

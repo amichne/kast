@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.broker.protocol.codex
 
+import io.github.amichne.kast.cli.broker.core.AgentSessionBootstrap
 import io.github.amichne.kast.cli.broker.core.Broker
 import io.github.amichne.kast.cli.broker.core.BrokerCallId
 import io.github.amichne.kast.cli.broker.core.BrokerDispatch
@@ -99,7 +100,9 @@ internal class CodexProtocolAdapter(
     private val activitySink: BrokerInvocationActivitySink = BrokerInvocationActivitySink.Disabled,
     private val pendingObserverPresentations: PendingObserverPresentations =
         PendingObserverPresentations.withCapacity(broker.limits.inFlightCallsPerConnection),
+    sessionBootstrap: AgentSessionBootstrap? = null,
 ) : AutoCloseable {
+    private val sessionProjection = sessionBootstrap?.toCodexSessionProjection()
     private val pendingResponses = ConcurrentHashMap<String, PendingResponse>()
     private val activeInvocations = ConcurrentHashMap<String, ActiveInvocation>()
     private val invocationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -468,8 +471,30 @@ internal class CodexProtocolAdapter(
             refined(ProviderNamespace.admit(name)) in ownedNamespaces
         }
         if (conflict) return ownedRequestFailure(document, "DYNAMIC_NAMESPACE_CONFLICT")
-        val refinedDynamicTools = JsonArray(existing + broker.catalog.dynamicNamespaceDocuments())
-        val refinedParams = JsonObject(paramsObject + ("dynamicTools" to refinedDynamicTools))
+        val refinedDynamicTools = JsonArray(
+            existing + broker.catalog.dynamicNamespaceDocuments(sessionProjection),
+        )
+        val refinedFields = paramsObject + ("dynamicTools" to refinedDynamicTools)
+        val refinedParams = if (sessionProjection == null) {
+            JsonObject(refinedFields)
+        } else {
+            val currentInstructions = when (val current = paramsObject["developerInstructions"]) {
+                null, JsonNull -> null
+                is JsonPrimitive -> current.takeIf(JsonPrimitive::isString)?.content
+                    ?: return ProtocolRouting.Close(ProtocolCloseFailure.OwnedFieldsMissing)
+                else -> return ProtocolRouting.Close(ProtocolCloseFailure.OwnedFieldsMissing)
+            }
+            JsonObject(
+                refinedFields + (
+                    "developerInstructions" to JsonPrimitive(
+                        mergeDeveloperInstructions(
+                            currentInstructions,
+                            sessionProjection.developerInstructions,
+                        ),
+                    )
+                ),
+            )
+        }
         if (!contracts.admits(CodexOwnedSchema.THREAD_START_PARAMS, refinedParams)) {
             return ProtocolRouting.Close(ProtocolCloseFailure.ResponseSchemaRejected)
         }
@@ -801,8 +826,13 @@ internal class CodexProtocolAdapter(
         value: JsonElement,
     ): Boolean = admit(schema, value) is Validation.Validated
 
-    private fun io.github.amichne.kast.cli.broker.core.BrokerCatalog.dynamicNamespaceDocuments(): List<JsonObject> =
+    private fun io.github.amichne.kast.cli.broker.core.BrokerCatalog.dynamicNamespaceDocuments(
+        sessionProjection: CodexSessionProjection?,
+    ): List<JsonObject> =
         namespaces.map { namespace ->
+            if (namespace.name.value == "kast" && sessionProjection != null) {
+                return@map sessionProjection.namespace
+            }
             buildJsonObject {
                 put("type", "namespace")
                 put("name", namespace.name.value)
@@ -821,6 +851,12 @@ internal class CodexProtocolAdapter(
                 })
             }
         }
+
+    private fun mergeDeveloperInstructions(existing: String?, policy: String): String = when {
+        existing.isNullOrBlank() -> policy
+        existing == policy || existing.endsWith("\n\n$policy") -> existing
+        else -> "${existing.trimEnd()}\n\n$policy"
+    }
 
     private fun parseObject(message: String): JsonObject? = try {
         Json.parseToJsonElement(message) as? JsonObject
