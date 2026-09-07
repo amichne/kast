@@ -1,7 +1,7 @@
 package io.github.amichne.kast.cli.broker.runtime
 
-import io.github.amichne.kast.cli.broker.CodexAppServerArguments
-import io.github.amichne.kast.cli.broker.UpstreamCodexExecutable
+import io.github.amichne.kast.cli.broker.host.admission.CodexAppServerArguments
+import io.github.amichne.kast.cli.broker.host.admission.UpstreamCodexExecutable
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession

@@ -1,7 +1,7 @@
 package io.github.amichne.kast.cli.broker.protocol.codex
 
-import io.github.amichne.kast.cli.broker.DesktopFacadeExecutables
-import io.github.amichne.kast.cli.broker.UpstreamCodexExecutable
+import io.github.amichne.kast.cli.broker.host.admission.DesktopFacadeExecutables
+import io.github.amichne.kast.cli.broker.host.admission.UpstreamCodexExecutable
 import io.github.amichne.kast.cli.broker.provider.BrokerProcessExecution
 import io.github.amichne.kast.cli.broker.provider.BrokerProcessExecutor
 import io.github.amichne.kast.cli.broker.provider.BrokerProcessRequest

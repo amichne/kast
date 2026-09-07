@@ -1,9 +1,9 @@
 package io.github.amichne.kast.cli.broker.host
 
-import io.github.amichne.kast.cli.broker.CodexClientArguments
 import io.github.amichne.kast.cli.broker.CodexIntegrationRun
-import io.github.amichne.kast.cli.broker.UpstreamCodexExecutable
 import io.github.amichne.kast.cli.broker.runOwnedCodexClient
+import io.github.amichne.kast.cli.broker.host.admission.CodexClientArguments
+import io.github.amichne.kast.cli.broker.host.admission.UpstreamCodexExecutable
 import java.nio.file.Path
 
 /** Existing TUI projection: one real Codex client reaches the shared broker through `--remote`. */

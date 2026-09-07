@@ -1,4 +1,4 @@
-package io.github.amichne.kast.cli.broker
+package io.github.amichne.kast.cli.broker.host.admission
 
 import io.github.amichne.kast.kernel.Refinement
 
@@ -68,14 +68,14 @@ internal sealed interface CodexHostInvocation {
                     argument == ARGUMENT_DELIMITER -> return CodexHostRoleSelection.Cli
                     argument == APP_SERVER_ROLE -> return CodexHostRoleSelection.AppServer(index)
                     argument in CLI_ONLY_VARIADIC_OPTIONS -> return CodexHostRoleSelection.Cli
-                    argument in GLOBAL_OPTIONS_WITH_VALUE -> {
+                    argument in CODEX_GLOBAL_OPTIONS_WITH_VALUE -> {
                         if (index + 1 >= arguments.size) return CodexHostRoleSelection.Cli
                         index += 2
                     }
-                    GLOBAL_OPTIONS_WITH_VALUE.any { option ->
+                    CODEX_GLOBAL_OPTIONS_WITH_VALUE.any { option ->
                         argument.startsWith("$option=")
                     } -> index += 1
-                    argument in GLOBAL_FLAG_OPTIONS -> index += 1
+                    argument in CODEX_GLOBAL_FLAG_OPTIONS -> index += 1
                     argument.startsWith('-') -> return if (
                         arguments.drop(index + 1).contains(APP_SERVER_ROLE)
                     ) {
@@ -89,39 +89,6 @@ internal sealed interface CodexHostInvocation {
             return CodexHostRoleSelection.Cli
         }
 
-        private val GLOBAL_OPTIONS_WITH_VALUE = setOf(
-            "-c",
-            "--config",
-            "--enable",
-            "--disable",
-            "--remote",
-            "--remote-auth-token-env",
-            "-m",
-            "--model",
-            "--local-provider",
-            "-p",
-            "--profile",
-            "-s",
-            "--sandbox",
-            "-C",
-            "--cd",
-            "--add-dir",
-            "-a",
-            "--ask-for-approval",
-        )
-        private val GLOBAL_FLAG_OPTIONS = setOf(
-            "--strict-config",
-            "--oss",
-            "--approve-for-me",
-            "--dangerously-bypass-approvals-and-sandbox",
-            "--dangerously-bypass-hook-trust",
-            "--search",
-            "--no-alt-screen",
-            "-h",
-            "--help",
-            "-V",
-            "--version",
-        )
         private val CLI_ONLY_VARIADIC_OPTIONS = setOf("-i", "--image")
         private const val ARGUMENT_DELIMITER = "--"
         private const val APP_SERVER_ROLE = "app-server"
@@ -174,6 +141,9 @@ internal class CodexClientArguments private constructor(
 
 internal enum class CodexAppServerArgumentFailure {
     TRANSPORT_OVERRIDE,
+    REMOTE_OVERRIDE,
+    MISSING_OPTION_VALUE,
+    OPTION_UNSUPPORTED,
     SUBCOMMAND_UNSUPPORTED,
     TOO_MANY_ARGUMENTS,
     TOO_MANY_BYTES,
@@ -215,15 +185,8 @@ internal class CodexAppServerArguments private constructor(
                     },
                 )
             }
-            when (scanRoleArguments(roleArguments)) {
-                CodexAppServerRoleArguments.ADMITTED -> Unit
-                CodexAppServerRoleArguments.TRANSPORT_OVERRIDE -> return Refinement.Rejected(
-                    CodexAppServerArgumentFailure.TRANSPORT_OVERRIDE,
-                )
-                CodexAppServerRoleArguments.SUBCOMMAND_UNSUPPORTED -> return Refinement.Rejected(
-                    CodexAppServerArgumentFailure.SUBCOMMAND_UNSUPPORTED,
-                )
-            }
+            scanGlobalArguments(globalArguments)?.let { return Refinement.Rejected(it) }
+            scanRoleArguments(roleArguments)?.let { return Refinement.Rejected(it) }
             return Refinement.Refined(
                 CodexAppServerArguments(
                     globalArguments.toList(),
@@ -232,34 +195,69 @@ internal class CodexAppServerArguments private constructor(
             )
         }
 
-        private fun scanRoleArguments(arguments: List<String>): CodexAppServerRoleArguments {
+        private fun scanGlobalArguments(
+            arguments: List<String>,
+        ): CodexAppServerArgumentFailure? {
             var index = 0
             while (index < arguments.size) {
                 val argument = arguments[index]
                 when {
-                    argument == ARGUMENT_DELIMITER -> return if (index + 1 < arguments.size) {
-                        CodexAppServerRoleArguments.SUBCOMMAND_UNSUPPORTED
-                    } else {
-                        CodexAppServerRoleArguments.ADMITTED
+                    argument == "--remote" || argument.startsWith("--remote=") ->
+                        return CodexAppServerArgumentFailure.REMOTE_OVERRIDE
+                    argument in CODEX_GLOBAL_OPTIONS_WITH_VALUE -> {
+                        if (index + 1 >= arguments.size) {
+                            return CodexAppServerArgumentFailure.MISSING_OPTION_VALUE
+                        }
+                        index += 2
                     }
+                    CODEX_GLOBAL_OPTIONS_WITH_VALUE.any { option ->
+                        argument.startsWith("$option=")
+                    } -> {
+                        if (argument.substringAfter('=').isEmpty()) {
+                            return CodexAppServerArgumentFailure.MISSING_OPTION_VALUE
+                        }
+                        index += 1
+                    }
+                    argument in CODEX_GLOBAL_FLAG_OPTIONS -> index += 1
+                    else -> return CodexAppServerArgumentFailure.OPTION_UNSUPPORTED
+                }
+            }
+            return null
+        }
+
+        private fun scanRoleArguments(
+            arguments: List<String>,
+        ): CodexAppServerArgumentFailure? {
+            var index = 0
+            while (index < arguments.size) {
+                val argument = arguments[index]
+                when {
+                    argument == ARGUMENT_DELIMITER ->
+                        return CodexAppServerArgumentFailure.SUBCOMMAND_UNSUPPORTED
                     argument in HOST_OWNED_OPTIONS || HOST_OWNED_OPTIONS.any { option ->
                         argument.startsWith("$option=")
-                    } -> return CodexAppServerRoleArguments.TRANSPORT_OVERRIDE
+                    } -> return CodexAppServerArgumentFailure.TRANSPORT_OVERRIDE
                     argument in ROLE_OPTIONS_WITH_VALUE -> {
                         if (index + 1 >= arguments.size) {
-                            return CodexAppServerRoleArguments.ADMITTED
+                            return CodexAppServerArgumentFailure.MISSING_OPTION_VALUE
                         }
                         index += 2
                     }
                     ROLE_OPTIONS_WITH_VALUE.any { option ->
                         argument.startsWith("$option=")
-                    } -> index += 1
+                    } -> {
+                        if (argument.substringAfter('=').isEmpty()) {
+                            return CodexAppServerArgumentFailure.MISSING_OPTION_VALUE
+                        }
+                        index += 1
+                    }
                     argument in ROLE_FLAG_OPTIONS -> index += 1
-                    argument.startsWith('-') -> index += 1
-                    else -> return CodexAppServerRoleArguments.SUBCOMMAND_UNSUPPORTED
+                    argument.startsWith('-') ->
+                        return CodexAppServerArgumentFailure.OPTION_UNSUPPORTED
+                    else -> return CodexAppServerArgumentFailure.SUBCOMMAND_UNSUPPORTED
                 }
             }
-            return CodexAppServerRoleArguments.ADMITTED
+            return null
         }
 
         private val HOST_OWNED_OPTIONS = setOf(
@@ -292,12 +290,6 @@ internal class CodexAppServerArguments private constructor(
     }
 }
 
-private enum class CodexAppServerRoleArguments {
-    ADMITTED,
-    TRANSPORT_OVERRIDE,
-    SUBCOMMAND_UNSUPPORTED,
-}
-
 private fun admitCommonArguments(
     arguments: List<String>,
 ): Refinement<List<String>, CodexArgumentFailure> = when {
@@ -315,3 +307,38 @@ private fun admitCommonArguments(
 
 private const val MAXIMUM_ARGUMENT_COUNT = 256
 private const val MAXIMUM_ARGUMENT_BYTES = 65_536
+
+private val CODEX_GLOBAL_OPTIONS_WITH_VALUE = setOf(
+    "-c",
+    "--config",
+    "--enable",
+    "--disable",
+    "--remote",
+    "--remote-auth-token-env",
+    "-m",
+    "--model",
+    "--local-provider",
+    "-p",
+    "--profile",
+    "-s",
+    "--sandbox",
+    "-C",
+    "--cd",
+    "--add-dir",
+    "-a",
+    "--ask-for-approval",
+)
+
+private val CODEX_GLOBAL_FLAG_OPTIONS = setOf(
+    "--strict-config",
+    "--oss",
+    "--approve-for-me",
+    "--dangerously-bypass-approvals-and-sandbox",
+    "--dangerously-bypass-hook-trust",
+    "--search",
+    "--no-alt-screen",
+    "-h",
+    "--help",
+    "-V",
+    "--version",
+)

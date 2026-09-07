@@ -2,8 +2,8 @@ package io.github.amichne.kast.cli.broker.host
 
 import io.github.amichne.kast.cli.broker.BrokerServiceLaunchCommand
 import io.github.amichne.kast.cli.broker.BrokerServiceLaunchCommandResolution
-import io.github.amichne.kast.cli.broker.DesktopFacadeExecutable
-import io.github.amichne.kast.cli.broker.UpstreamCodexExecutable
+import io.github.amichne.kast.cli.broker.host.admission.DesktopFacadeExecutable
+import io.github.amichne.kast.cli.broker.host.admission.UpstreamCodexExecutable
 import io.github.amichne.kast.cli.broker.provider.BrokerExecutable
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException

@@ -5,7 +5,7 @@ import io.github.amichne.kast.cli.broker.core.AgentSessionBootstrapQualification
 import io.github.amichne.kast.cli.broker.core.HostedToolDefinition
 import io.github.amichne.kast.cli.broker.core.HostedToolCatalogFailure
 import io.github.amichne.kast.cli.broker.core.ToolName
-import io.github.amichne.kast.cli.broker.CodexHostMode
+import io.github.amichne.kast.cli.broker.host.admission.CodexHostMode
 import io.github.amichne.kast.cli.broker.protocol.copilot.toCopilotFixtureProjection
 import io.github.amichne.kast.cli.broker.schema.NetworkntJsonSchemaCompiler
 import io.github.amichne.kast.kernel.Refinement

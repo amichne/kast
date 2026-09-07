@@ -1,5 +1,10 @@
 package io.github.amichne.kast.cli.broker
 
+import io.github.amichne.kast.cli.broker.host.admission.CodexAppServerArgumentFailure
+import io.github.amichne.kast.cli.broker.host.admission.CodexAppServerArguments
+import io.github.amichne.kast.cli.broker.host.admission.CodexHostInvocation
+import io.github.amichne.kast.cli.broker.host.admission.CodexHostInvocationFailure
+import io.github.amichne.kast.cli.broker.host.admission.CodexHostMode
 import io.github.amichne.kast.kernel.Refinement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -87,6 +92,8 @@ class CodexHostInvocationTest {
             listOf("app-server", "proxy"),
             listOf("app-server", "generate-json-schema"),
             listOf("app-server", "app-server"),
+            listOf("app-server", "--"),
+            listOf("app-server", "--future-option"),
         ).forEach { arguments ->
             assertInstanceOf(
                 Refinement.Rejected::class.java,
@@ -94,6 +101,36 @@ class CodexHostInvocationTest {
                 arguments.toString(),
             )
         }
+    }
+
+    @Test
+    fun `global remote override and missing option values fail closed`() {
+        assertEquals(
+            Refinement.Rejected(
+                CodexHostInvocationFailure.AppServerArguments(
+                    CodexAppServerArgumentFailure.REMOTE_OVERRIDE,
+                ),
+            ),
+            CodexHostInvocation.admit(
+                listOf("--remote", "wss://example.invalid", "app-server"),
+            ),
+        )
+        assertEquals(
+            Refinement.Rejected(CodexAppServerArgumentFailure.MISSING_OPTION_VALUE),
+            CodexAppServerArguments.admit(listOf("--model"), emptyList()),
+        )
+        assertEquals(
+            Refinement.Rejected(CodexAppServerArgumentFailure.MISSING_OPTION_VALUE),
+            CodexAppServerArguments.admit(emptyList(), listOf("--ws-auth")),
+        )
+        assertEquals(
+            Refinement.Rejected(CodexAppServerArgumentFailure.MISSING_OPTION_VALUE),
+            CodexAppServerArguments.admit(listOf("--model="), emptyList()),
+        )
+        assertEquals(
+            Refinement.Rejected(CodexAppServerArgumentFailure.MISSING_OPTION_VALUE),
+            CodexAppServerArguments.admit(emptyList(), listOf("--ws-auth=")),
+        )
     }
 
     private fun <T, E> refined(refinement: Refinement<T, E>): T =

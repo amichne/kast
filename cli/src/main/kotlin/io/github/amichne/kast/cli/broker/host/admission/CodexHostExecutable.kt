@@ -1,4 +1,4 @@
-package io.github.amichne.kast.cli.broker
+package io.github.amichne.kast.cli.broker.host.admission
 
 import io.github.amichne.kast.cli.broker.provider.BrokerExecutable
 import io.github.amichne.kast.kernel.Refinement
