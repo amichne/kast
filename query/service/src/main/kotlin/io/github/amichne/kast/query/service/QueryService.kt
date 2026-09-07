@@ -227,8 +227,11 @@ class QueryService(
                 is SymbolDescriptionResult.Rejected -> {
                     state.failure(QueryItemFailure.ExactReference(selector, result.reason))
                     state.limit(QueryLimitation.REFINEMENT_INCOMPLETE)
-                    state.contractViolation = result.reason ==
+                    if (result.reason ==
                         io.github.amichne.kast.symbol.contract.SymbolExactRejection.COMPILER_CONTRACT_VIOLATION
+                    ) {
+                        state.contractViolation = true
+                    }
                 }
             }
             state.observeTime()

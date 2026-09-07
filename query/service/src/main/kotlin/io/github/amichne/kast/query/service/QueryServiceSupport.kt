@@ -2,7 +2,6 @@ package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.QueryCandidate
-import io.github.amichne.kast.query.contract.QueryContainment
 import io.github.amichne.kast.query.contract.QueryCount
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryItemFailure
@@ -30,13 +29,8 @@ import io.github.amichne.kast.source.contract.VisibilitySelection
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDeclarationKinds
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectory
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectoryConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackage
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackageConstraint
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
@@ -91,26 +85,11 @@ internal fun constraints(
             declarationKinds = admittedKinds,
         )
         is QueryScope.Restricted -> SymbolDiscoveryConstraints(
-            directory = scope.directory?.let { restriction ->
-                SymbolDiscoveryDirectoryConstraint(
-                    SymbolDiscoveryDirectory.parse(restriction.path.value).refined(),
-                    restriction.containment.toDiscoveryContainment(),
-                )
-            },
-            packageName = scope.packageName?.let { restriction ->
-                SymbolDiscoveryPackageConstraint(
-                    SymbolDiscoveryPackage.parse(restriction.name.value).refined(),
-                    restriction.containment.toDiscoveryContainment(),
-                )
-            },
+            directory = scope.directory,
+            packageName = scope.packageName,
             declarationKinds = admittedKinds,
         )
     }
-}
-
-private fun QueryContainment.toDiscoveryContainment(): SymbolDiscoveryContainment = when (this) {
-    QueryContainment.DIRECT -> SymbolDiscoveryContainment.DIRECT
-    QueryContainment.DESCENDANTS -> SymbolDiscoveryContainment.DESCENDANTS
 }
 
 internal fun visibilityRequest(

@@ -136,6 +136,7 @@ class InstalledServerProjectionTest {
         val input = query.getValue("inputSchema").jsonObject
         val execution = """{"kind":"exhaustive","budget":"interactive"}"""
         val output = """{"type":"symbols","fields":["name","location","signature"]}"""
+        val refOnlyOutput = """{"type":"symbols","fields":[]}"""
         val scope = """{"sourceSets":["main"],"directory":{"path":"services/payments","containment":"descendants"},"packageName":{"name":"com.acme.payments","containment":"descendants"}}"""
 
         input.assertAdmits(
@@ -146,6 +147,9 @@ class InstalledServerProjectionTest {
         )
         input.assertAdmits(
             """{"from":{"type":"references","values":[{"kind":"declaration-candidate","token":"candidate:v2:opaque"}]},"steps":[],"output":$output,"execution":$execution}""",
+        )
+        input.assertAdmits(
+            """{"from":{"type":"references","values":[{"kind":"exact-symbol","token":"exact:v2:opaque"}]},"steps":[],"output":$refOnlyOutput,"execution":$execution}""",
         )
         input.assertRejects(
             """{"from":{"type":"references","values":[{"kind":"declaration-candidate","token":"candidate:v2:opaque"},{"kind":"exact-symbol","token":"exact:v2:opaque"}]},"steps":[],"output":$output,"execution":$execution}""",

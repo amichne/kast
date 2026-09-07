@@ -139,6 +139,7 @@ enum class SymbolDiscoveryContainment {
 enum class SymbolDiscoveryDirectoryFailure {
     BLANK,
     ABSOLUTE,
+    CONTROL_CHARACTER,
     NON_CANONICAL,
 }
 
@@ -153,6 +154,8 @@ value class SymbolDiscoveryDirectory private constructor(
         ): Refinement<SymbolDiscoveryDirectory, SymbolDiscoveryDirectoryFailure> = when {
             raw.isBlank() -> Refinement.Rejected(SymbolDiscoveryDirectoryFailure.BLANK)
             raw.startsWith('/') -> Refinement.Rejected(SymbolDiscoveryDirectoryFailure.ABSOLUTE)
+            raw.any(Char::isISOControl) ->
+                Refinement.Rejected(SymbolDiscoveryDirectoryFailure.CONTROL_CHARACTER)
             raw.split('/').any { it.isBlank() || it == "." || it == ".." } ->
                 Refinement.Rejected(SymbolDiscoveryDirectoryFailure.NON_CANONICAL)
             else -> Refinement.Refined(SymbolDiscoveryDirectory(raw))

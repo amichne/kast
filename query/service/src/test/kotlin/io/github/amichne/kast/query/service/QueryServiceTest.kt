@@ -194,6 +194,38 @@ class QueryServiceTest {
     }
 
     @Test
+    fun `later exact rejection cannot erase compiler contract violation`() = runTest {
+        val selector = selector(selection())
+        var descriptions = 0
+        val service = service(
+            exact = exactOperations(
+                resolve = { error("Candidate refinement was not expected") },
+                describe = {
+                    descriptions += 1
+                    SymbolDescriptionResult.Rejected(
+                        if (descriptions == 1) {
+                            SymbolExactRejection.COMPILER_CONTRACT_VIOLATION
+                        } else {
+                            SymbolExactRejection.AMBIGUOUS_DECLARATION
+                        },
+                    )
+                },
+            ),
+        )
+
+        val result = service.run(
+            request(exactReferencePlan(List(2) { selector }), workLimit = 8L),
+        )
+
+        assertEquals(
+            QueryExecutionResult.Rejected(
+                io.github.amichne.kast.query.contract.QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION,
+            ),
+            result,
+        )
+    }
+
+    @Test
     fun `time spent inside an exact effect qualifies the result`() = runTest {
         val selector = selector(selection())
         val service = service(
