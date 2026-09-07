@@ -1,0 +1,68 @@
+name: Typed Query Review Patch
+
+on:
+  push:
+    branches:
+      - review/typed-query-algebra-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: review/typed-query-algebra-hardening
+      - name: Apply exact reviewed schema patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt')
+          text = path.read_text()
+
+          replacements = {
+              'ServerSchemaProperty("values", nonEmptyArraySchema(queryExactReferenceSchema()))':
+                  'ServerSchemaProperty("values", nonEmptyArraySchema(queryExactReferenceSchema()))',
+              'ServerSchemaProperty("values", nonEmptyArraySchema(queryCandidateReferenceSchema()))':
+                  'ServerSchemaProperty("values", nonEmptyArraySchema(queryCandidateReferenceSchema()))',
+              '"sourceSets",\n        nonEmptyArraySchema(enumSchema(listOf("main", "test"), "Imported source-set domain.")),':
+                  '"sourceSets",\n        uniqueNonEmptyArraySchema(enumSchema(listOf("main", "test"), "Imported source-set domain.")),',
+              'ServerSchemaProperty("declarationKinds", nonEmptyArraySchema(\n        enumSchema(': 
+                  'ServerSchemaProperty("declarationKinds", uniqueNonEmptyArraySchema(\n        enumSchema(',
+              '"values",\n                    nonEmptyArraySchema(enumSchema(': 
+                  '"values",\n                    uniqueNonEmptyArraySchema(enumSchema(',
+              '"fields",\n            nonEmptyArraySchema(enumSchema(listOf("name", "location", "signature"), "Projected symbol field.")),':
+                  '"fields",\n            uniqueArraySchema(enumSchema(listOf("name", "location", "signature"), "Projected symbol field.")),',
+              '"fields",\n            nonEmptyArraySchema(enumSchema(listOf("name", "location"), "Projected candidate field.")),':
+                  '"fields",\n            uniqueArraySchema(enumSchema(listOf("name", "location"), "Projected candidate field.")),',
+          }
+
+          for old, new in replacements.items():
+              count = text.count(old)
+              if old != new and count != 1:
+                  raise SystemExit(f'expected exactly one occurrence, found {count}: {old[:80]!r}')
+              if old != new:
+                  text = text.replace(old, new)
+
+          marker = '''private fun nonEmptyArraySchema(item: JsonObject): JsonObject = buildJsonObject {\n    put("type", "array")\n    put("items", item)\n    put("minItems", 1)\n    put("maxItems", MAXIMUM_PROTOCOL_COUNT)\n}\n'''
+          if text.count(marker) != 1:
+              raise SystemExit('nonEmptyArraySchema marker changed')
+          helpers = marker + '''\nprivate fun uniqueArraySchema(item: JsonObject): JsonObject = buildJsonObject {\n    put("type", "array")\n    put("items", item)\n    put("uniqueItems", true)\n    put("maxItems", MAXIMUM_PROTOCOL_COUNT)\n}\n\nprivate fun uniqueNonEmptyArraySchema(item: JsonObject): JsonObject = buildJsonObject {\n    put("type", "array")\n    put("items", item)\n    put("uniqueItems", true)\n    put("minItems", 1)\n    put("maxItems", MAXIMUM_PROTOCOL_COUNT)\n}\n'''
+          text = text.replace(marker, helpers)
+          path.write_text(text)
+          PY
+      - name: Commit reviewed patch
+        run: |
+          if git diff --quiet; then
+            echo 'No patch produced' >&2
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
+          git commit -m 'fix(query): align hosted collection schemas'
+          git push origin HEAD:review/typed-query-algebra-hardening
