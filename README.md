@@ -147,6 +147,10 @@ absence also means read-only, and unknown values are rejected. See
 [broker provenance](docs/broker-provenance.md) for ownership, presentation, and
 the acceptance boundary.
 
+```bash
+KAST_CODEX_TOOL_EXPOSURE=mutation-enabled kast-codex
+```
+
 ## One request, at a high level
 
 ```mermaid

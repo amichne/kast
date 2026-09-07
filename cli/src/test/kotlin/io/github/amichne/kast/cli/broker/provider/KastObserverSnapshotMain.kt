@@ -21,7 +21,7 @@ internal object KastObserverSnapshotMain {
                 ObserverSnapshotPage(
                     slug = "kast-observer-symbol-source",
                     title = "Symbol and source rendering",
-                    messages = listOf(
+                    items = listOf(
                         presentation("symbol.discover", KastObserverFixtures.symbolDiscovery, observerDirectory),
                         presentation("symbol.inspect", KastObserverFixtures.symbolInspection, observerDirectory),
                         presentation("source.read", KastObserverFixtures.sourceRead, observerDirectory),
@@ -29,10 +29,20 @@ internal object KastObserverSnapshotMain {
                 ),
                 ObserverSnapshotPage(
                     slug = "kast-observer-semantic-impact",
-                    title = "Semantic query and impact rendering",
-                    messages = listOf(
+                    title = "Semantic evidence rendering",
+                    items = listOf(
                         presentation("relation.read", KastObserverFixtures.semanticQuery, observerDirectory),
                         presentation("traversal.run", KastObserverFixtures.impactAnalysis, observerDirectory),
+                        presentation("diagnostic.check", KastObserverFixtures.diagnosticCheck, observerDirectory),
+                    ),
+                ),
+                ObserverSnapshotPage(
+                    slug = "kast-observer-change-lifecycle",
+                    title = "Mutation and native diff rendering",
+                    items = listOf(
+                        presentation("change.plan", KastObserverFixtures.changePlan, observerDirectory),
+                        presentation("change.apply", KastObserverFixtures.changeApply, observerDirectory),
+                        presentation("change.recover", KastObserverFixtures.changeRecover, observerDirectory),
                     ),
                 ),
             ),
@@ -48,7 +58,7 @@ internal object KastObserverSnapshotMain {
         operation: String,
         document: String,
         observerDirectory: CanonicalBrokerDirectory,
-    ): String {
+    ): ObserverSnapshotItem {
         val projected = KastObserverProjector.project(
             checkNotNull(KastOperationId.admit(operation)),
             KastInvocationOutput(
@@ -57,13 +67,33 @@ internal object KastObserverSnapshotMain {
                 observerDirectory = observerDirectory,
             ),
         )
-        return checkNotNull((projected as? ObserverPresentation.Markdown)?.source?.value) {
-            "Fixture for $operation did not produce observer Markdown."
+        return when (projected) {
+            is ObserverPresentation.Markdown -> ObserverSnapshotItem(
+                operation = operation,
+                presentation = "markdown",
+                markdown = projected.source.value,
+            )
+            is ObserverPresentation.FileChanges -> ObserverSnapshotItem(
+                operation = operation,
+                presentation = "file-changes",
+                changes = projected.files.entries.map { change ->
+                    ObserverSnapshotChange(
+                        path = change.path.value,
+                        kind = change.kind.name.lowercase(),
+                        diff = change.diff.value,
+                    )
+                },
+            )
+            ObserverPresentation.None -> error("Fixture for $operation did not produce an observer presentation.")
         }
     }
 }
 
-private val snapshotJson = Json { prettyPrint = true }
+private val snapshotJson = Json {
+    encodeDefaults = true
+    explicitNulls = true
+    prettyPrint = true
+}
 
 @Serializable
 private data class ObserverSnapshotManifest(
@@ -74,5 +104,20 @@ private data class ObserverSnapshotManifest(
 private data class ObserverSnapshotPage(
     val slug: String,
     val title: String,
-    val messages: List<String>,
+    val items: List<ObserverSnapshotItem>,
+)
+
+@Serializable
+private data class ObserverSnapshotItem(
+    val operation: String,
+    val presentation: String,
+    val markdown: String? = null,
+    val changes: List<ObserverSnapshotChange> = emptyList(),
+)
+
+@Serializable
+private data class ObserverSnapshotChange(
+    val path: String,
+    val kind: String,
+    val diff: String,
 )
