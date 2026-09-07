@@ -75,9 +75,12 @@ internal object KastObserverProjector {
         document: JsonObject,
         evidence: ObserverEvidence,
     ): String? {
-        if (document.strictString("planIdentity") == null) return null
+        val planIdentity = document.strictString("planIdentity") ?: return null
         val files = admitFileChanges(document) ?: return null
         val body = buildString {
+            append("Plan identity: ")
+            appendLine(inlineCode(planIdentity))
+            appendLine()
             append("**")
             append(files.entries.size)
             append(if (files.entries.size == 1) " file planned" else " files planned")
