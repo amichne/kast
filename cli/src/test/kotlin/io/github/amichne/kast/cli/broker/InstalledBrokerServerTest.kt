@@ -9,7 +9,6 @@ import io.github.amichne.kast.cli.broker.protocol.codex.CodexOwnedSchema
 import io.github.amichne.kast.cli.broker.provider.BrokerProcessExecution
 import io.github.amichne.kast.cli.broker.provider.BrokerProcessExecutor
 import io.github.amichne.kast.cli.broker.provider.BrokerProcessRequest
-import io.github.amichne.kast.cli.broker.provider.KastToolExposure
 import io.github.amichne.kast.cli.broker.runtime.CodexAppServerProcess
 import io.github.amichne.kast.cli.broker.runtime.CodexAppServerProcessAdmission
 import io.github.amichne.kast.cli.broker.runtime.CodexAppServerProcessLauncher
@@ -50,7 +49,20 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class InstalledBrokerServerTest {
     @Test
-    fun `tool exposure configuration defaults read only enables mutation explicitly and rejects unknown values`(
+    fun `runner retains the exact configuration rejection`(
+        @TempDir temporary: Path,
+    ) {
+        val user = temporary.toRealPath()
+        val kast = executable(user.resolve("kast"))
+
+        assertEquals(
+            BrokerServerRun.Rejected(BrokerServerFailure.CODEX_EXECUTABLE_REJECTED),
+            InstalledBrokerServerRunner(kast, user, emptyMap()).serve(),
+        )
+    }
+
+    @Test
+    fun `tool selection defaults without symbols and admits one exact configured subset`(
         @TempDir temporary: Path,
     ) {
         val suffix = UUID.randomUUID().toString().take(8)
@@ -68,11 +80,16 @@ class InstalledBrokerServerTest {
                 (InstalledBrokerServerConfiguration.admit(kast, user, environment) as
                     InstalledBrokerServerConfiguration.Configured).options
 
-            assertEquals(KastToolExposure.READ_ONLY, configured(base).kastOptions.toolExposure)
             assertEquals(
-                KastToolExposure.MUTATION_ENABLED,
-                configured(base + ("KAST_CODEX_TOOL_EXPOSURE" to "mutation-enabled"))
-                    .kastOptions.toolExposure,
+                "query,source_read,semantic_query,impact_analyze,diagnostic_check," +
+                    "change_plan,change_apply,change_recover",
+                configured(base).kastOptions.toolSelection.environmentValue,
+            )
+            assertEquals(
+                "query,diagnostic_check,change_apply",
+                configured(
+                    base + ("KAST_APP_SERVER_TOOLS" to "change_apply,query,diagnostic_check"),
+                ).kastOptions.toolSelection.environmentValue,
             )
             assertEquals(
                 InstalledBrokerServerConfiguration.Rejected(
@@ -81,7 +98,17 @@ class InstalledBrokerServerTest {
                 InstalledBrokerServerConfiguration.admit(
                     kast,
                     user,
-                    base + ("KAST_CODEX_TOOL_EXPOSURE" to "everything"),
+                    base + ("KAST_APP_SERVER_TOOLS" to "query,symbol_unknown"),
+                ),
+            )
+            assertEquals(
+                InstalledBrokerServerConfiguration.Rejected(
+                    InstalledBrokerServerConfigurationFailure.APP_SERVER_DISABLED,
+                ),
+                InstalledBrokerServerConfiguration.admit(
+                    kast,
+                    user,
+                    base + ("KAST_ENABLE_APP_SERVER" to "0"),
                 ),
             )
         } finally {
@@ -279,12 +306,13 @@ class InstalledBrokerServerTest {
                 assertEquals(
                     listOf(
                         "query",
-                        "symbol_lookup",
-                        "symbol_inspect",
                         "source_read",
                         "semantic_query",
                         "impact_analyze",
                         "diagnostic_check",
+                        "change_plan",
+                        "change_apply",
+                        "change_recover",
                     ),
                     kastNamespace.getValue("tools").jsonArray.map { tool ->
                         tool.jsonObject.getValue("name").jsonPrimitive.content

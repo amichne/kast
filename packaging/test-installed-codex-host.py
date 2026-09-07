@@ -63,9 +63,17 @@ def installed_catalog_evidence(kast: Path, environment: dict[str, str]) -> dict:
         contract = json.loads(execution.stdout)
         bootstrap = contract["serverProjection"]["hostedBootstrap"]
         policy = bootstrap["policy"]
-        tools = [
-            tool for tool in bootstrap["tools"] if tool["approvalPolicy"] == "none"
-        ]
+        selected_names = environment.get(
+            "KAST_APP_SERVER_TOOLS",
+            "query,source_read,semantic_query,impact_analyze,diagnostic_check,"
+            "change_plan,change_apply,change_recover",
+        ).split(",")
+        if not selected_names or len(selected_names) != len(set(selected_names)):
+            raise AcceptanceFailure("configured Kast tool selection was invalid")
+        selected = set(selected_names)
+        tools = [tool for tool in bootstrap["tools"] if tool["name"] in selected]
+        if {tool["name"] for tool in tools} != selected:
+            raise AcceptanceFailure("configured Kast tool selection was unavailable")
         namespace = {
             "type": "namespace",
             "name": "kast",
@@ -146,6 +154,67 @@ def executable(candidate: str | None, name: str) -> Path:
     return path
 
 
+def exercise_standard_daemon(
+    kast: Path,
+    codex: Path,
+    environment: dict[str, str],
+    home: Path,
+) -> dict:
+    socket = home / ".codex/app-server-control/app-server-control.sock"
+    stderr_path = home / "daemon.stderr"
+    broker_environment = environment.copy()
+    broker_environment.pop("CODEX_CLI_PATH", None)
+    broker_environment.pop("KAST_REAL_CODEX_EXECUTABLE", None)
+    broker_environment["CODEX_EXECUTABLE"] = str(codex)
+    with stderr_path.open("w+", encoding="utf-8") as stderr_log:
+        broker = subprocess.Popen(
+            [str(kast), "broker", "serve"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=stderr_log,
+            env=broker_environment,
+        )
+        try:
+            deadline = time.monotonic() + 45.0
+            while time.monotonic() < deadline and not socket.is_socket():
+                if broker.poll() is not None:
+                    break
+                time.sleep(0.05)
+            if not socket.is_socket():
+                stderr_log.flush()
+                stderr_log.seek(0)
+                raise AcceptanceFailure(
+                    "standard App Server socket was not published; bounded stderr tail: "
+                    + stderr_log.read()[-4096:].strip()
+                )
+            version = subprocess.run(
+                [str(codex), "app-server", "daemon", "version"],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=10,
+                env=broker_environment,
+            )
+            document = json.loads(version.stdout)
+            if document.get("socketPath") != str(socket):
+                raise AcceptanceFailure("Codex did not discover Kast at its standard socket")
+            if document.get("cliVersion") is None:
+                raise AcceptanceFailure("standard App Server did not report Codex authority")
+            return {
+                "socketPath": str(socket),
+                "cliVersion": document["cliVersion"],
+                "appServerVersion": document.get("appServerVersion"),
+            }
+        finally:
+            if broker.poll() is None:
+                broker.terminate()
+                try:
+                    broker.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    broker.kill()
+                    broker.wait(timeout=5)
+
+
 def main() -> int:
     if len(sys.argv) != 4:
         raise AcceptanceFailure(
@@ -178,7 +247,7 @@ def main() -> int:
                 "HOME": str(home),
                 "CODEX_HOME": str(home / ".codex"),
                 "KAST_REAL_CODEX_EXECUTABLE": str(codex),
-                "KAST_CODEX_TOOL_EXPOSURE": "read-only",
+                "KAST_ENABLE_APP_SERVER": "1",
                 "_JAVA_OPTIONS": f"-Duser.home={home}",
             }
         )
@@ -200,6 +269,7 @@ def main() -> int:
             env=environment,
         )
         protocol_digest = codex_protocol_digest(schemas)
+        standard_daemon = exercise_standard_daemon(kast, codex, environment, home)
         stderr_path = home / "facade.stderr"
         with stderr_path.open("w+", encoding="utf-8") as stderr_log:
             process = subprocess.Popen(
@@ -276,6 +346,7 @@ def main() -> int:
         "parentClosure": "CLEAN",
         "stdoutProtocol": "JSONL_ONLY",
         "codexProtocolSha256": protocol_digest,
+        "standardDaemon": standard_daemon,
         "codexExecutableSha256": sha256_file(codex),
         "kastExecutableSha256": sha256_file(kast),
         "kastFacadeSha256": sha256_file(facade),
@@ -287,7 +358,7 @@ def main() -> int:
         json.dumps(document, sort_keys=True, separators=(",", ":")) + "\n"
     )
     temporary_report.replace(report)
-    print("installed-codex-host: real Codex stdio handshake and thread start passed")
+    print("installed-codex-host: standard daemon and real Codex stdio handshake passed")
     return 0
 
 

@@ -220,7 +220,7 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
 
 val installedCodexHostTest = tasks.register<Exec>("installedCodexHostTest") {
     group = "verification"
-    description = "Exercises the staged stdio facade against the authoritative installed Codex."
+    description = "Exercises the staged standard daemon and stdio compatibility host against Codex."
     dependsOn(stageInstalledProduct)
     inputs.dir(installedProductDirectory)
     inputs.file(layout.projectDirectory.file("packaging/test-installed-codex-host.py"))

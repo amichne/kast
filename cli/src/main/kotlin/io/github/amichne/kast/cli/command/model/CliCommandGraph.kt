@@ -120,6 +120,9 @@ class CliCommandGraphFactory private constructor(
                 graph.root.argvDiagnostic(admission.failure),
             )
         }
+        if (admitted.isExact(BROKER_SERVE_ARGUMENTS)) {
+            return CliCommandParsing.Parsed(CliAction.Local.BrokerServe)
+        }
         return graph.parse(admitted)
     }
 
@@ -150,6 +153,8 @@ private class CliArgv private constructor(
 ) {
     fun cliktTokens(): List<String> = tokens
 
+    fun isExact(expected: List<String>): Boolean = tokens == expected
+
     companion object {
         /** Refines raw argv to a bounded immutable command-selection token sequence. */
         fun admit(raw: List<String>): CliArgvAdmission = when {
@@ -163,6 +168,8 @@ private class CliArgv private constructor(
         }
     }
 }
+
+private val BROKER_SERVE_ARGUMENTS = listOf("broker", "serve")
 
 private enum class CliArgvFailure {
     MISSING_OR_BLANK_TOKEN,

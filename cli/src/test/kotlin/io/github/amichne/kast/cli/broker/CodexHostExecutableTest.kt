@@ -47,7 +47,7 @@ class CodexHostExecutableTest {
     }
 
     @Test
-    fun `real Codex override wins without consulting facade substitution`(
+    fun `standard real Codex override wins without consulting facade substitution`(
         @TempDir temporary: Path,
     ) {
         val bin = Files.createDirectory(temporary.resolve("bin"))
@@ -61,7 +61,7 @@ class CodexHostExecutableTest {
             mapOf(
                 "PATH" to "/usr/bin:/bin",
                 "CODEX_CLI_PATH" to facade.toString(),
-                "KAST_REAL_CODEX_EXECUTABLE" to upstream.toString(),
+                "CODEX_EXECUTABLE" to upstream.toString(),
             ),
         )
 
@@ -73,7 +73,7 @@ class CodexHostExecutableTest {
     }
 
     @Test
-    fun `installed sibling remains a recursion guard when configured facade differs`(
+    fun `installed sibling remains a recursion guard for the standard Codex override`(
         @TempDir temporary: Path,
     ) {
         val bin = Files.createDirectory(temporary.resolve("bin"))
@@ -92,7 +92,7 @@ class CodexHostExecutableTest {
                 mapOf(
                     "PATH" to "/usr/bin:/bin",
                     "CODEX_CLI_PATH" to configuredFacade.toString(),
-                    "KAST_REAL_CODEX_EXECUTABLE" to installedFacade.toString(),
+                    "CODEX_EXECUTABLE" to installedFacade.toString(),
                 ),
             ),
         )

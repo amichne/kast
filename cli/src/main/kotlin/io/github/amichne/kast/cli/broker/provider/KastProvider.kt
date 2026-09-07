@@ -15,6 +15,7 @@ import io.github.amichne.kast.cli.broker.core.ToolDescription
 import io.github.amichne.kast.cli.broker.core.ToolLoading
 import io.github.amichne.kast.cli.broker.core.ToolName
 import io.github.amichne.kast.cli.broker.core.ToolPresentation
+import io.github.amichne.kast.cli.broker.KastToolSelection
 import io.github.amichne.kast.cli.broker.schema.CompiledJsonSchema
 import io.github.amichne.kast.cli.broker.schema.JsonDomainDefinition
 import io.github.amichne.kast.cli.broker.schema.NetworkntJsonSchemaCompiler
@@ -52,39 +53,12 @@ internal enum class KastProviderOptionsFailure {
     QUALIFICATION_TIMEOUT_REJECTED,
 }
 
-/** Qualified tool authority retained from broker configuration through catalog construction. */
-internal enum class KastToolExposure {
-    READ_ONLY,
-    MUTATION_ENABLED,
-    ;
-
-    internal fun admits(policy: HostedApprovalPolicy): Boolean = when (this) {
-        READ_ONLY -> policy == HostedApprovalPolicy.NONE
-        MUTATION_ENABLED -> true
-    }
-
-    companion object {
-        /**
-         * Refines the optional launch boundary into catalog authority. Absence retains the
-         * least-privileged catalog; only the exact mutation-enabled value broadens it.
-         */
-        internal fun admit(raw: String?): Refinement<KastToolExposure, KastToolExposureFailure> =
-            when (raw) {
-                null, "read-only" -> Refinement.Refined(READ_ONLY)
-                "mutation-enabled" -> Refinement.Refined(MUTATION_ENABLED)
-                else -> Refinement.Rejected(KastToolExposureFailure.UNKNOWN_VALUE)
-            }
-    }
-}
-
-internal enum class KastToolExposureFailure { UNKNOWN_VALUE }
-
 internal class KastProviderOptions private constructor(
     val executable: BrokerExecutable,
     val qualificationDirectory: CanonicalBrokerDirectory,
     val processExecutor: BrokerProcessExecutor,
     val qualificationTimeoutMillis: Long,
-    val toolExposure: KastToolExposure,
+    val toolSelection: KastToolSelection,
 ) {
     companion object {
         internal fun admit(
@@ -92,7 +66,7 @@ internal class KastProviderOptions private constructor(
             qualificationDirectory: Path,
             processExecutor: BrokerProcessExecutor = JdkBrokerProcessExecutor,
             qualificationTimeoutMillis: Long = OperationExecutionBudget.LOCAL_QUALIFICATION.value,
-            toolExposure: KastToolExposure = KastToolExposure.READ_ONLY,
+            toolSelection: KastToolSelection = KastToolSelection.defaults(),
         ): Refinement<KastProviderOptions, KastProviderOptionsFailure> {
             val admittedExecutable = when (val admission = BrokerExecutable.admit(executable)) {
                 is Refinement.Refined -> admission.value
@@ -115,7 +89,7 @@ internal class KastProviderOptions private constructor(
                     admittedDirectory,
                     processExecutor,
                     qualificationTimeoutMillis,
-                    toolExposure,
+                    toolSelection,
                 ),
             )
         }
@@ -179,7 +153,7 @@ internal object KastProviderQualifier {
                 KastProviderQualification.Rejected(contract.failure)
 
             is KastContractQualification.Qualified -> {
-                val exposedTools = ExposedKastTools.select(options.toolExposure, contract.tools)
+                val exposedTools = ExposedKastTools.select(options.toolSelection, contract.tools)
                 val registration = buildRegistration(options, contract, exposedTools)
                 when (registration) {
                     is Validation.Validated -> when (
@@ -359,7 +333,7 @@ internal object KastProviderQualifier {
     private fun admitProjection(
         projection: KastServerProjectionBoundary,
     ): QualifiedKastProjection? {
-        if (projection.schemaVersion != 6 || projection.namespace != "kast") return null
+        if (projection.schemaVersion != 7 || projection.namespace != "kast") return null
         val bootstrap = projection.hostedBootstrap
         val cli = projection.cliInvocations
         if (bootstrap.schemaVersion != 1 || cli.schemaVersion != 2) return null
@@ -560,11 +534,14 @@ private class ExposedKastTools private constructor(
 ) {
     companion object {
         internal fun select(
-            exposure: KastToolExposure,
+            selection: KastToolSelection,
             qualifiedTools: List<QualifiedKastTool>,
         ): ExposedKastTools = ExposedKastTools(
             qualifiedTools.filter { tool ->
-                exposure.admits(tool.hostedDefinition.approval)
+                val definition = CanonicalAgentToolDefinitions.all.single { definition ->
+                    definition.operation.operation == tool.hostedDefinition.operation
+                }
+                selection.admits(definition)
             },
         )
     }

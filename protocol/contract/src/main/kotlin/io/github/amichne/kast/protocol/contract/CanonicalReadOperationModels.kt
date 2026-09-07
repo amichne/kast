@@ -679,7 +679,7 @@ enum class TraversalRunRejection : OperationRejection {
 
 @Serializable
 data class DiagnosticCheckRequest(
-    val scope: ProtocolText,
+    val path: ProtocolText,
     val limit: ProtocolCount,
 ) : OperationRequest
 

@@ -108,7 +108,7 @@ object CanonicalAgentToolDefinitions {
         CanonicalOperationDefinitions.relationRead,
         "semantic_query",
         "Read one bounded compiler-grounded semantic relation from an exact selector. Use " +
-            "discovery and inspection first when exact identity is not established.",
+            "kast.query first when exact identity is not established.",
     )
     val impactAnalyze = tool(
         CanonicalOperationDefinitions.traversalRun,
@@ -120,8 +120,9 @@ object CanonicalAgentToolDefinitions {
     val diagnosticCheck = tool(
         CanonicalOperationDefinitions.diagnosticCheck,
         "diagnostic_check",
-        "Check bounded compiler diagnostics in the current workspace or an explicit source " +
-            "scope. Prefer this when compiler-grounded diagnostic identity matters.",
+        "Check bounded compiler diagnostics beneath a workspace-relative file or directory path. " +
+            "Use `.` for the workspace root. Prefer this when compiler-grounded diagnostic " +
+            "identity matters.",
     )
     val changePlan = tool(
         CanonicalOperationDefinitions.changePlan,
@@ -157,6 +158,11 @@ object CanonicalAgentToolDefinitions {
         changeApply,
         changeRecover,
     )
+
+    /** Standard App Server surface; direct symbol refinement stays available only by opt-in. */
+    val defaultAppServerTools: List<AgentToolDefinition> = all.filter { definition ->
+        definition !== symbolLookup && definition !== symbolInspect
+    }
 
     val policy: AgentToolPolicy = refined(
         AgentToolPolicy.parse(

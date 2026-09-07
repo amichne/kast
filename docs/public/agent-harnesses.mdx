@@ -14,6 +14,10 @@ code_sources:
     symbols: ["AgentSessionBootstrap", "HostedToolCatalog"]
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/provider/KastProvider.kt"
     symbols: ["KastProviderQualifier", "KastRuntime"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/AppServerToolConfiguration.kt"
+    symbols: ["AppServerToolingMode", "KastToolSelection"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/PersistentBrokerService.kt"
+    symbols: ["BrokerServiceLaunchCommand"]
 icon: "bot"
 keywords: ["agent harness", "serverProjection", "query", "tool schemas"]
 ---
@@ -27,12 +31,13 @@ copied command tables or handwritten tool definitions are not.
 From the Kotlin repository root, run:
 
 ```console
-kast-codex
+kast codex
 ```
 
-The integration qualifies the installed Kast and Codex contracts, registers the
-tools, injects the selection policy, and owns both process lifetimes. This is the
-only turnkey agent integration currently shipped with Kast.
+The integration ensures a launchd-owned App Server at Codex's standard local
+daemon socket, qualifies the installed Kast and Codex contracts, and registers
+the configured tools. `kast codex desktop` launches Desktop against that same
+socket without substituting its Codex executable.
 
 ## Consume the installed projection
 
@@ -69,9 +74,10 @@ reusing stale metadata.
 expands Kotlin declaration relationships while preserving exact compiler
 identity between query stages.
 
-The remaining read tools are deferred specialist surfaces. Expose them as the
-projection declares, but retain the supplied selection policy so the agent uses
-them only when a narrower contract is required.
+The default catalog defers source, semantic, impact, diagnostic, and change
+operations. Direct `symbol_lookup` and `symbol_inspect` routes remain in the
+installed projection for opt-in compatibility, but are not published by
+default. Change tools retain their explicit approval requirements.
 
 The harness must also preserve returned references verbatim. It must not rebuild
 selectors from names, file paths, or source text.
@@ -99,18 +105,23 @@ Inside a completed invocation, the semantic document can still be `complete`,
 proof-carrying references available to the model. Never flatten a qualified or
 rejected semantic outcome into ordinary success.
 
-## Keep mutation explicit
+## Configure the App Server catalog
 
-The default catalog is read-only. The built-in Codex integration admits mutation
-tools only when its process starts with:
+The installer writes App Server settings beside `KAST_ENABLE_LAUNCHD` in
+`${XDG_CONFIG_HOME:-$HOME/.config}/kast/environment`. Disable the integration
+without removing Kast with:
 
 ```shell
-KAST_CODEX_TOOL_EXPOSURE=mutation-enabled kast-codex
+KAST_ENABLE_APP_SERVER=0
 ```
 
-Mutation tools retain explicit approval requirements from the projection. An
-unknown exposure value rejects integration startup. Custom harnesses should
-apply an equally explicit, least-privileged authority boundary.
+Set `KAST_APP_SERVER_TOOLS` to an exact, non-empty comma-separated subset of the
+names in `kast --schema`. Process values override the saved file. Unknown,
+duplicate, or empty names reject startup. The default value is:
+
+```text
+query,source_read,semantic_query,impact_analyze,diagnostic_check,change_plan,change_apply,change_recover
+```
 
 For operational symptoms and safe status collection, see
 [Troubleshooting](/troubleshooting).

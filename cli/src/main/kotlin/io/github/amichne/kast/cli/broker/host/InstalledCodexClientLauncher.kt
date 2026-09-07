@@ -2,7 +2,10 @@ package io.github.amichne.kast.cli.broker.host
 
 import io.github.amichne.kast.cli.broker.BrokerServiceLaunchCommand
 import io.github.amichne.kast.cli.broker.BrokerServiceLaunchCommandResolution
-import io.github.amichne.kast.cli.broker.host.admission.DesktopFacadeExecutable
+import io.github.amichne.kast.cli.broker.MacOsPersistentBrokerServiceHost
+import io.github.amichne.kast.cli.broker.PersistentBrokerServiceAdmission
+import io.github.amichne.kast.cli.broker.PersistentBrokerServiceFailure
+import io.github.amichne.kast.cli.broker.PersistentBrokerServiceHost
 import io.github.amichne.kast.cli.broker.host.admission.UpstreamCodexExecutable
 import io.github.amichne.kast.cli.broker.provider.BrokerExecutable
 import io.github.amichne.kast.kernel.Refinement
@@ -16,8 +19,9 @@ enum class CodexClientLaunch {
 }
 
 enum class CodexClientLaunchFailure {
-    FACADE_UNAVAILABLE,
-    UPSTREAM_UNAVAILABLE,
+    APP_SERVER_DISABLED,
+    APP_SERVER_CONFIGURATION_REJECTED,
+    APP_SERVER_UNAVAILABLE,
     DESKTOP_UNAVAILABLE,
     PROCESS_REJECTED,
     INTERRUPTED,
@@ -55,13 +59,14 @@ internal value class CodexDesktopExecutable private constructor(
 
 internal sealed interface CodexClientProcessRequest {
     data class Cli(
-        val facade: DesktopFacadeExecutable,
+        val upstream: UpstreamCodexExecutable,
+        val publicSocket: Path,
+        val codexHome: Path,
     ) : CodexClientProcessRequest
 
     data class Desktop(
         val executable: CodexDesktopExecutable,
-        val facade: DesktopFacadeExecutable,
-        val upstream: UpstreamCodexExecutable,
+        val codexHome: Path,
     ) : CodexClientProcessRequest
 }
 
@@ -75,55 +80,54 @@ fun interface CodexClientLauncher {
 
 internal object UnavailableCodexClientLauncher : CodexClientLauncher {
     override fun launch(client: CodexClientLaunch): CodexClientLaunchRun =
-        CodexClientLaunchRun.Rejected(CodexClientLaunchFailure.FACADE_UNAVAILABLE)
+        CodexClientLaunchRun.Rejected(CodexClientLaunchFailure.APP_SERVER_UNAVAILABLE)
 }
 
-/** Resolves installed executables for one invocation and never mutates global user state. */
+/** Resolves and starts the persistent App Server before launching one standard Codex client. */
 internal class InstalledCodexClientLauncher(
     private val kastExecutable: Path,
     private val userHome: Path,
     private val environment: Map<String, String> = System.getenv(),
     private val processLauncher: CodexClientProcessLauncher = JdkCodexClientProcessLauncher,
+    private val serviceHost: PersistentBrokerServiceHost = MacOsPersistentBrokerServiceHost(),
 ) : CodexClientLauncher {
     override fun launch(client: CodexClientLaunch): CodexClientLaunchRun {
-        val facade = when (
-            val admission = DesktopFacadeExecutable.admit(
-                kastExecutable.parent.resolve("kast-codex"),
+        val command = when (
+            val resolution = BrokerServiceLaunchCommand.resolve(
+                kastExecutable,
+                userHome,
+                environment,
             )
         ) {
-            is Refinement.Refined -> admission.value
-            is Refinement.Rejected -> return CodexClientLaunchRun.Rejected(
-                CodexClientLaunchFailure.FACADE_UNAVAILABLE,
+            is BrokerServiceLaunchCommandResolution.Resolved -> resolution.command
+            is BrokerServiceLaunchCommandResolution.Rejected -> return CodexClientLaunchRun
+                .Rejected(resolution.failure.launchFailure())
+        }
+        when (val admission = serviceHost.ensure(command)) {
+            PersistentBrokerServiceAdmission.Ready -> Unit
+            is PersistentBrokerServiceAdmission.Rejected -> return CodexClientLaunchRun.Rejected(
+                admission.failure.launchFailure(),
             )
         }
         return when (client) {
             CodexClientLaunch.Cli -> processLauncher.launch(
-                CodexClientProcessRequest.Cli(facade),
+                CodexClientProcessRequest.Cli(
+                    command.codex,
+                    command.publicSocket,
+                    command.codexHome,
+                ),
             )
-            CodexClientLaunch.Desktop -> launchDesktop(facade)
+            CodexClientLaunch.Desktop -> launchDesktop(command.codexHome)
         }
     }
 
-    private fun launchDesktop(
-        facade: DesktopFacadeExecutable,
-    ): CodexClientLaunchRun {
-        val upstream = when (
-            val resolution = BrokerServiceLaunchCommand.resolve(
-                kastExecutable,
-                userHome,
-                environment + ("CODEX_CLI_PATH" to facade.path.toString()),
-            )
-        ) {
-            is BrokerServiceLaunchCommandResolution.Resolved -> resolution.command.codex
-            is BrokerServiceLaunchCommandResolution.Rejected -> return CodexClientLaunchRun
-                .Rejected(CodexClientLaunchFailure.UPSTREAM_UNAVAILABLE)
-        }
+    private fun launchDesktop(codexHome: Path): CodexClientLaunchRun {
         val executable = resolveDesktopExecutable()
             ?: return CodexClientLaunchRun.Rejected(
                 CodexClientLaunchFailure.DESKTOP_UNAVAILABLE,
             )
         return processLauncher.launch(
-            CodexClientProcessRequest.Desktop(executable, facade, upstream),
+            CodexClientProcessRequest.Desktop(executable, codexHome),
         )
     }
 
@@ -162,9 +166,15 @@ private object JdkCodexClientProcessLauncher : CodexClientProcessLauncher {
 
     private fun launchCli(request: CodexClientProcessRequest.Cli): CodexClientLaunchRun {
         val process = try {
-            ProcessBuilder(request.facade.path.toString())
-                .inheritIO()
-                .start()
+            ProcessBuilder(
+                request.upstream.path.toString(),
+                "--remote",
+                "unix://${request.publicSocket}",
+            ).inheritIO().also { builder ->
+                builder.environment().remove("CODEX_CLI_PATH")
+                builder.environment().remove("KAST_REAL_CODEX_EXECUTABLE")
+                builder.environment()["CODEX_HOME"] = request.codexHome.toString()
+            }.start()
         } catch (_: IOException) {
             return CodexClientLaunchRun.Rejected(CodexClientLaunchFailure.PROCESS_REJECTED)
         } catch (_: SecurityException) {
@@ -195,9 +205,10 @@ private object JdkCodexClientProcessLauncher : CodexClientProcessLauncher {
             .redirectOutput(ProcessBuilder.Redirect.to(NULL_DEVICE.toFile()))
             .redirectError(ProcessBuilder.Redirect.to(NULL_DEVICE.toFile()))
             .also { builder ->
-                builder.environment()["CODEX_CLI_PATH"] = request.facade.path.toString()
-                builder.environment()["KAST_REAL_CODEX_EXECUTABLE"] =
-                    request.upstream.path.toString()
+                builder.environment().remove("CODEX_CLI_PATH")
+                builder.environment().remove("KAST_REAL_CODEX_EXECUTABLE")
+                builder.environment()["CODEX_APP_SERVER_USE_LOCAL_DAEMON"] = "1"
+                builder.environment()["CODEX_HOME"] = request.codexHome.toString()
             }
             .start()
         CodexClientLaunchRun.Completed(0)
@@ -208,4 +219,37 @@ private object JdkCodexClientProcessLauncher : CodexClientProcessLauncher {
     }
 
     private val NULL_DEVICE = Path.of("/dev/null")
+}
+
+private fun PersistentBrokerServiceFailure.launchFailure(): CodexClientLaunchFailure = when (this) {
+    PersistentBrokerServiceFailure.DISABLED -> CodexClientLaunchFailure.APP_SERVER_DISABLED
+    PersistentBrokerServiceFailure.CONFIGURATION_REJECTED,
+    PersistentBrokerServiceFailure.KAST_EXECUTABLE_UNAVAILABLE,
+    PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE,
+    PersistentBrokerServiceFailure.CODEX_HOME_REJECTED,
+    PersistentBrokerServiceFailure.USER_HOME_REJECTED,
+    PersistentBrokerServiceFailure.JAVA_RUNTIME_UNAVAILABLE,
+    PersistentBrokerServiceFailure.SOCKET_PATH_REJECTED,
+    PersistentBrokerServiceFailure.PROVIDER_CONFIGURATION_REJECTED,
+    PersistentBrokerServiceFailure.PROTOCOL_CONFIGURATION_REJECTED,
+        -> CodexClientLaunchFailure.APP_SERVER_CONFIGURATION_REJECTED
+    PersistentBrokerServiceFailure.UNAVAILABLE,
+    PersistentBrokerServiceFailure.KAST_QUALIFICATION_REJECTED,
+    PersistentBrokerServiceFailure.CATALOG_REJECTED,
+    PersistentBrokerServiceFailure.CODEX_QUALIFICATION_REJECTED,
+    PersistentBrokerServiceFailure.THREAD_STORE_REJECTED,
+    PersistentBrokerServiceFailure.UPSTREAM_REJECTED,
+    PersistentBrokerServiceFailure.SERVER_REJECTED,
+    PersistentBrokerServiceFailure.STATE_DIRECTORY_REJECTED,
+    PersistentBrokerServiceFailure.SERVICE_LOCK_REJECTED,
+    PersistentBrokerServiceFailure.SERVICE_OBSERVATION_REJECTED,
+    PersistentBrokerServiceFailure.SERVICE_RETIREMENT_REJECTED,
+    PersistentBrokerServiceFailure.SERVICE_SUBMISSION_REJECTED,
+    PersistentBrokerServiceFailure.READINESS_REJECTED,
+    PersistentBrokerServiceFailure.PUBLIC_SOCKET_OWNED,
+    PersistentBrokerServiceFailure.SOCKET_PROBE_REJECTED,
+    PersistentBrokerServiceFailure.LAUNCHCTL_TIMED_OUT,
+    PersistentBrokerServiceFailure.STARTUP_TIMED_OUT,
+        -> CodexClientLaunchFailure.APP_SERVER_UNAVAILABLE
+    PersistentBrokerServiceFailure.INTERRUPTED -> CodexClientLaunchFailure.INTERRUPTED
 }

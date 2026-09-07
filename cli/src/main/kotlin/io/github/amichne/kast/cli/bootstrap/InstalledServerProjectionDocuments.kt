@@ -31,7 +31,7 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 
-private const val SERVER_PROJECTION_SCHEMA_VERSION = 6
+private const val SERVER_PROJECTION_SCHEMA_VERSION = 7
 private const val HOSTED_BOOTSTRAP_SCHEMA_VERSION = 1
 private const val CLI_INVOCATIONS_SCHEMA_VERSION = 2
 private const val MAXIMUM_PROTOCOL_TEXT_LENGTH = 1_048_576
