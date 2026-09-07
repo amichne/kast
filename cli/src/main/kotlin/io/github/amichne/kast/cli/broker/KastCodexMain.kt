@@ -1,6 +1,11 @@
 package io.github.amichne.kast.cli.broker
 
 import io.github.amichne.kast.cli.installedKastExecutable
+import io.github.amichne.kast.cli.broker.host.CliRemoteClientHost
+import io.github.amichne.kast.cli.broker.host.CodexIntegrationHost
+import io.github.amichne.kast.cli.broker.host.DesktopStdioHost
+import io.github.amichne.kast.cli.broker.runtime.BrokerUpstreamConnector
+import io.github.amichne.kast.cli.broker.runtime.connectCodexUnixWebSocket
 import io.github.amichne.kast.kernel.Refinement
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runBlocking
@@ -30,10 +35,21 @@ internal sealed interface CodexIntegrationRun {
     data class Rejected(val failure: CodexIntegrationFailure) : CodexIntegrationRun
 }
 
-internal enum class CodexIntegrationFailure { INSTALLATION_UNAVAILABLE, CONFIGURATION_REJECTED, BROKER_REJECTED, CLIENT_UNAVAILABLE, INTERRUPTED, ARGUMENTS_REJECTED, SHUTDOWN_REJECTED }
+internal enum class CodexIntegrationFailure {
+    INSTALLATION_UNAVAILABLE,
+    CONFIGURATION_REJECTED,
+    BROKER_REJECTED,
+    CLIENT_UNAVAILABLE,
+    HOST_TRANSPORT_REJECTED,
+    UPSTREAM_EXITED,
+    STDIO_REJECTED,
+    INTERRUPTED,
+    ARGUMENTS_REJECTED,
+    SHUTDOWN_REJECTED,
+}
 
 internal suspend fun runInstalledCodex(arguments: List<String>): CodexIntegrationRun {
-    val clientArguments = when (val admitted = CodexClientArguments.admit(arguments)) {
+    val invocation = when (val admitted = CodexHostInvocation.admit(arguments)) {
         is Refinement.Refined -> admitted.value
         is Refinement.Rejected -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.ARGUMENTS_REJECTED)
     }
@@ -50,6 +66,10 @@ internal suspend fun runInstalledCodex(arguments: List<String>): CodexIntegratio
     }
     val configuration = when (val admitted = InstalledBrokerServerConfiguration.admit(
         kast, launch.userHome, System.getenv(), clientTransport = BrokerClientTransport.INTEGRATION_OWNED,
+        appServerArguments = when (invocation) {
+            is CodexHostInvocation.Cli -> CodexAppServerArguments.defaults()
+            is CodexHostInvocation.AppServer -> invocation.arguments
+        },
     )) {
         is InstalledBrokerServerConfiguration.Configured -> admitted.options
         is InstalledBrokerServerConfiguration.Rejected -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.CONFIGURATION_REJECTED)
@@ -58,21 +78,36 @@ internal suspend fun runInstalledCodex(arguments: List<String>): CodexIntegratio
         is InstalledBrokerServerStart.Started -> started.server
         is InstalledBrokerServerStart.Rejected -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.BROKER_REJECTED)
     }
-    return runOwnedCodexClient(
-        closeServer = server::close,
-        startClient = {
-            ProcessBuilder(listOf(launch.codex.toString(), "--remote", "unix://${configuration.publicSocket.path}") + clientArguments.values)
-                .inheritIO().start()
-        },
-    )
+    val host: CodexIntegrationHost = when (invocation) {
+        is CodexHostInvocation.Cli -> CliRemoteClientHost(
+            launch.codex,
+            configuration.publicSocket.path,
+            invocation.arguments,
+        )
+        is CodexHostInvocation.AppServer -> DesktopStdioHost(
+            System.`in`,
+            System.out,
+            BrokerUpstreamConnector {
+                connectCodexUnixWebSocket(
+                    configuration.publicSocket.path,
+                    configuration.maximumMessageBytes,
+                    CONNECTION_TIMEOUT_MILLIS,
+                )
+            },
+            configuration.maximumMessageBytes,
+        )
+    }
+    return host.run(server::close)
 }
+
+private const val CONNECTION_TIMEOUT_MILLIS = 10_000L
 
 internal interface CodexIntegrationShutdownHooks {
     fun register(hook: Thread)
     fun remove(hook: Thread)
 }
 
-private object JvmCodexIntegrationShutdownHooks : CodexIntegrationShutdownHooks {
+internal object JvmCodexIntegrationShutdownHooks : CodexIntegrationShutdownHooks {
     override fun register(hook: Thread) { Runtime.getRuntime().addShutdownHook(hook) }
     override fun remove(hook: Thread) { Runtime.getRuntime().removeShutdownHook(hook) }
 }
@@ -113,25 +148,6 @@ internal suspend fun runOwnedCodexClient(
             lifetime.close()
         } finally {
             try { shutdownHooks.remove(hook) } catch (_: IllegalStateException) { /* Shutdown still owns its registered hook. */ }
-        }
-    }
-}
-
-private enum class CodexArgumentFailure { REMOTE_OVERRIDE, TOO_MANY_ARGUMENTS, TOO_MANY_BYTES, INVALID_CHARACTER }
-
-/** A copied argument vector cannot redirect the client away from the host-owned broker. */
-private class CodexClientArguments private constructor(val values: List<String>) {
-    companion object {
-        fun admit(arguments: List<String>): Refinement<CodexClientArguments, CodexArgumentFailure> {
-            if (arguments.size > 256) return Refinement.Rejected(CodexArgumentFailure.TOO_MANY_ARGUMENTS)
-            if (arguments.any { '\u0000' in it }) return Refinement.Rejected(CodexArgumentFailure.INVALID_CHARACTER)
-            if (arguments.any { it == "--remote" || it.startsWith("--remote=") }) {
-                return Refinement.Rejected(CodexArgumentFailure.REMOTE_OVERRIDE)
-            }
-            if (arguments.sumOf { it.toByteArray(Charsets.UTF_8).size.toLong() } > 65_536) {
-                return Refinement.Rejected(CodexArgumentFailure.TOO_MANY_BYTES)
-            }
-            return Refinement.Refined(CodexClientArguments(arguments.toList()))
         }
     }
 }

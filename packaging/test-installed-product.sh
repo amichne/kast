@@ -78,7 +78,7 @@ document = json.loads(sys.argv[1])
 registry = json.loads(Path(sys.argv[2]).read_text())
 assert document["operationRegistry"] == registry, document
 assert document["cliProjection"]["commands"], document
-assert document["cliProjection"]["localCommands"] == [], document
+assert document["cliProjection"]["localCommands"] == ["codex", "codex desktop"], document
 projection = document["serverProjection"]
 bootstrap = projection["hostedBootstrap"]
 invocations = projection["cliInvocations"]["operations"]
@@ -104,7 +104,7 @@ assert all("invocation" not in tool and "cliUsage" not in tool for tool in boots
 PY
 
 help="$(env "${command_environment[@]}" "$kast" --help)"
-for command in symbol source relation traversal diagnostic change start stop; do
+for command in symbol source relation traversal diagnostic change codex start stop; do
   grep -Eq "^  ${command}[[:space:]]" <<<"$help" || fail "public command is absent: $command"
 done
 for command in product status index topology broker; do

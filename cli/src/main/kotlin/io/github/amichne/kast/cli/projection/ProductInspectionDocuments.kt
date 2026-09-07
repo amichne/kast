@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli.projection
 
 import io.github.amichne.kast.cli.CanonicalRootDiscovery
+import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.CliJsonDocument
 import io.github.amichne.kast.cli.FilesystemCanonicalRootDiscovery
@@ -33,7 +34,17 @@ internal object ProductInspectionDocuments {
     /** Both inputs are generated documents; this final serialization boundary combines passive evidence. */
     fun passive(inspection: ProductInspection, runtime: CliExit): CliJsonDocument {
         val product = Json.parseToJsonElement(complete(inspection).value).jsonObject
-        val status = Json.parseToJsonElement(runtime.document.value).jsonObject
+        val runtimeDocument = when (runtime) {
+            is CliExit.Complete -> runtime.document
+            is CliExit.Qualified -> runtime.document
+            is CliExit.OperationRejected -> runtime.document
+            is CliExit.BoundaryRejected -> runtime.document
+            is CliExit.Delegated -> CliBoundaryDocuments.boundaryRejected(
+                CliBoundaryExitStatus.BOOTSTRAP,
+                "passive-runtime-delegated",
+            )
+        }
+        val status = Json.parseToJsonElement(runtimeDocument.value).jsonObject
         return passiveFactory.create(kotlinx.serialization.json.buildJsonObject {
             status.forEach { (key, value) -> if (key != "command") put(key, value) }
             put("operation", JsonPrimitive("inspect"))

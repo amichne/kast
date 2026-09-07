@@ -84,6 +84,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
             processExecutor: BrokerProcessExecutor = JdkBrokerProcessExecutor,
             launcher: CodexAppServerProcessLauncher? = null,
             clientTransport: BrokerClientTransport = BrokerClientTransport.LEGACY_CONTROL,
+            appServerArguments: CodexAppServerArguments = CodexAppServerArguments.defaults(),
         ): InstalledBrokerServerConfiguration {
             val canonicalUserHome = canonicalDirectory(userHome)
                 ?: return rejected(InstalledBrokerServerConfigurationFailure.USER_HOME_REJECTED)
@@ -93,13 +94,20 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     InstalledBrokerServerConfigurationFailure.KAST_EXECUTABLE_REJECTED,
                 )
             }
-            val codexPath = when (val explicit = environment["CODEX_EXECUTABLE"]) {
-                null -> resolveExecutable("codex", environment["PATH"].orEmpty())
-                else -> absoluteNormalizedPath(explicit)
+            val codexPath = when {
+                environment.containsKey("KAST_REAL_CODEX_EXECUTABLE") ->
+                    absoluteNormalizedPath(environment.getValue("KAST_REAL_CODEX_EXECUTABLE"))
+                environment.containsKey("CODEX_EXECUTABLE") ->
+                    absoluteNormalizedPath(environment.getValue("CODEX_EXECUTABLE"))
+                else -> resolveExecutable("codex", environment["PATH"].orEmpty())
             } ?: return rejected(
                 InstalledBrokerServerConfigurationFailure.CODEX_EXECUTABLE_REJECTED,
             )
-            val codex = when (val admission = BrokerExecutable.admit(codexPath)) {
+            val facades = DesktopFacadeExecutables.resolve(
+                kast.path.parent.resolve("kast-codex"),
+                environment["CODEX_CLI_PATH"],
+            )
+            val codex = when (val admission = UpstreamCodexExecutable.admit(codexPath, facades)) {
                 is Refinement.Refined -> admission.value
                 is Refinement.Rejected -> return rejected(
                     InstalledBrokerServerConfigurationFailure.CODEX_EXECUTABLE_REJECTED,
@@ -184,7 +192,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
             }
             val protocolOptions = when (
                 val admission = CodexProtocolQualificationOptions.admit(
-                    codex.path,
+                    codex,
                     codexHome,
                     protocolTemporary,
                     processExecutor,
@@ -205,6 +213,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     privateSocket,
                     maximumMessageBytes = MAXIMUM_MESSAGE_BYTES,
                     startupTimeoutMillis = UPSTREAM_STARTUP_TIMEOUT_MILLIS,
+                    appServerArguments = appServerArguments,
                 )
             } else {
                 ManagedCodexUpstreamOptions(
@@ -214,6 +223,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     launcher,
                     MAXIMUM_MESSAGE_BYTES,
                     UPSTREAM_STARTUP_TIMEOUT_MILLIS,
+                    appServerArguments,
                 )
             }
             return Configured(
@@ -350,7 +360,10 @@ internal class InstalledBrokerServer private constructor(
     internal suspend fun close() = terminate(InstalledBrokerServerTermination.CLOSED)
 
     private suspend fun terminate(reason: InstalledBrokerServerTermination) {
-        if (!closed.compareAndSet(false, true)) return
+        if (!closed.compareAndSet(false, true)) {
+            termination.await()
+            return
+        }
         try {
             try {
                 publicServer.close()

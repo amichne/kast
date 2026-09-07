@@ -119,7 +119,7 @@ class PersistentBrokerServiceTest {
             mapOf("PATH" to links.toString()),
         ) as BrokerServiceLaunchCommandResolution.Resolved
 
-        assertEquals(tools.resolve("codex").toRealPath(), resolution.command.codex)
+        assertEquals(tools.resolve("codex").toRealPath(), resolution.command.codex.path)
         assertEquals(
             links.toRealPath().toString(),
             resolution.command.executableSearchPath.value.substringBefore(':'),

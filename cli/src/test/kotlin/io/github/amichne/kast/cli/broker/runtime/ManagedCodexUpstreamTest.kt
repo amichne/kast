@@ -1,6 +1,8 @@
 package io.github.amichne.kast.cli.broker.runtime
 
-import io.github.amichne.kast.cli.broker.provider.BrokerExecutable
+import io.github.amichne.kast.cli.broker.CodexAppServerArguments
+import io.github.amichne.kast.cli.broker.DesktopFacadeExecutables
+import io.github.amichne.kast.cli.broker.UpstreamCodexExecutable
 import io.github.amichne.kast.kernel.Refinement
 import io.ktor.server.application.install
 import io.ktor.server.cio.CIO
@@ -40,12 +42,19 @@ class ManagedCodexUpstreamTest {
         val socket = Path.of("/private/tmp/kast-codex-${UUID.randomUUID()}.sock")
         val launcher = EchoCodexLauncher()
         val options = ManagedCodexUpstreamOptions(
-            executable = BrokerExecutable.admit(codex).refinedValue(),
+            executable = UpstreamCodexExecutable.admit(
+                codex,
+                DesktopFacadeExecutables.none(),
+            ).refinedValue(),
             codexHome = codexHome,
             privateSocket = BrokerSocketPath.admit(socket).validatedValue(),
             launcher = launcher,
             maximumMessageBytes = 1024 * 1024,
             startupTimeoutMillis = 5_000,
+            appServerArguments = CodexAppServerArguments.admit(
+                listOf("-c", "features.code_mode_host=true"),
+                listOf("--analytics-default-enabled"),
+            ).refinedValue(),
         )
 
         val started = ManagedCodexUpstream.start(options) as ManagedCodexUpstreamStart.Started
@@ -61,7 +70,14 @@ class ManagedCodexUpstreamTest {
         }
 
         assertEquals(
-            listOf("app-server", "--listen", "unix://$socket"),
+            listOf(
+                "-c",
+                "features.code_mode_host=true",
+                "app-server",
+                "--analytics-default-enabled",
+                "--listen",
+                "unix://$socket",
+            ),
             launcher.request!!.arguments,
         )
         assertEquals(codexHome.toString(), launcher.request!!.environment["CODEX_HOME"])
@@ -81,7 +97,10 @@ class ManagedCodexUpstreamTest {
             val result = withTimeout(2_000) {
                 ManagedCodexUpstream.start(
                     ManagedCodexUpstreamOptions(
-                        executable = BrokerExecutable.admit(codex).refinedValue(),
+                        executable = UpstreamCodexExecutable.admit(
+                            codex,
+                            DesktopFacadeExecutables.none(),
+                        ).refinedValue(),
                         codexHome = codexHome,
                         privateSocket = BrokerSocketPath.admit(socket).validatedValue(),
                         launcher = launcher,

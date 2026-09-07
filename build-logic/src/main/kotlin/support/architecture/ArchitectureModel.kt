@@ -81,6 +81,8 @@ enum class ModuleId(val projectPath: String) {
     RELATION_INTELLIJ(":relation:intellij"),
     TRAVERSAL_CONTRACT(":traversal:contract"),
     TRAVERSAL_SERVICE(":traversal:service"),
+    QUERY_CONTRACT(":query:contract"),
+    QUERY_SERVICE(":query:service"),
     TOPOLOGY_CONTRACT(":topology:contract"),
     TOPOLOGY_BUILD(":topology:build"),
     TOPOLOGY_SERVICE(":topology:service"),

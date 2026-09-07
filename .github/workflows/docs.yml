@@ -53,6 +53,11 @@ jobs:
       - name: Generate canonical operation registry
         run: ./gradlew :protocol:wire:generateOperationRegistry
 
+      - name: Check generated CLI reference
+        run: |
+          python3 -m unittest discover -s docs -p 'test_generate_cli_reference.py'
+          python3 docs/generate_cli_reference.py --check
+
       - name: Check generated architecture proof
         run: python3 docs/tooling/likec4/generate_bundle.py --check
 

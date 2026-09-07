@@ -132,10 +132,22 @@ Kast owns the normal refinement path:
 
 ## Use Kast through Codex
 
-The control distribution includes `kast-codex`, which hosts the Kast integration
-and launches the installed Codex client through its supported `--remote`
-transport. Integration state lives under `$CODEX_HOME/kast-integration`, or
-`~/.codex/kast-integration` when `CODEX_HOME` is unset.
+The control distribution includes one Kast integration with two Codex host
+adapters. `kast codex` preserves the terminal experience: `kast-codex` owns the
+broker lifetime and launches the installed Codex client through `--remote`.
+`kast codex desktop` launches Codex Desktop with a process-local
+`CODEX_CLI_PATH` pointing to the installed `kast-codex` façade. When Desktop
+invokes `kast-codex app-server`, the façade presents JSONL App Server stdio and
+proxies to the authoritative installed `codex app-server` through the same
+broker and protocol adapter. It does not implement a Desktop-specific tool
+surface.
+
+The Desktop launcher also passes the independently resolved real Codex
+executable as `KAST_REAL_CODEX_EXECUTABLE`; the façade and upstream executable
+are distinct admitted types, so recursive façade launch fails closed. Neither
+launcher permanently modifies the user's environment. Integration state lives
+under `$CODEX_HOME/kast-integration`, or `~/.codex/kast-integration` when
+`CODEX_HOME` is unset.
 
 Before a new thread starts, the broker qualifies the exact installed Kast
 projection and adds its authorized hosted tool catalog plus concise selection
@@ -166,7 +178,9 @@ place, and completed changes carry native file-diff presentation data. To opt in
 to those mutation tools for one broker lifetime:
 
 ```bash
-KAST_CODEX_TOOL_EXPOSURE=mutation-enabled kast-codex
+KAST_CODEX_TOOL_EXPOSURE=mutation-enabled kast codex
+# or
+KAST_CODEX_TOOL_EXPOSURE=mutation-enabled kast codex desktop
 ```
 
 The control executable parses the CLI command into a typed request document and

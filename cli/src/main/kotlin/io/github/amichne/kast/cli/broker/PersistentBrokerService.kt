@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.broker
 
+import io.github.amichne.kast.kernel.Refinement
 import java.io.File
 import java.io.IOException
 import java.nio.charset.StandardCharsets
@@ -122,7 +123,7 @@ internal sealed interface BrokerServiceLaunchCommandResolution {
 }
 
 internal class BrokerServiceLaunchCommand private constructor(
-    val codex: Path,
+    val codex: UpstreamCodexExecutable,
     val kast: Path,
     val executableSearchPath: BrokerExecutableSearchPath,
     val userHome: Path,
@@ -152,15 +153,33 @@ internal class BrokerServiceLaunchCommand private constructor(
                 BrokerSymbolicLinkPolicy.CANONICAL_TARGET,
             ) ?: return rejected(PersistentBrokerServiceFailure.JAVA_RUNTIME_UNAVAILABLE)
             val searchPath = environment["PATH"].orEmpty()
-            val codexSelection = if (environment.containsKey("CODEX_EXECUTABLE")) {
-                absoluteExecutableSelection(environment.getValue("CODEX_EXECUTABLE"))
-            } else {
-                resolveExecutable("codex", searchPath)
+            val codexSelection = when {
+                environment.containsKey("KAST_REAL_CODEX_EXECUTABLE") ->
+                    absoluteExecutableSelection(
+                        environment.getValue("KAST_REAL_CODEX_EXECUTABLE"),
+                    )
+                environment.containsKey("CODEX_EXECUTABLE") ->
+                    absoluteExecutableSelection(environment.getValue("CODEX_EXECUTABLE"))
+                else -> resolveExecutable("codex", searchPath)
             } ?: return rejected(PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE)
-            val codex = codexSelection.executable
+            val facades = DesktopFacadeExecutables.resolve(
+                kast.parent.resolve("kast-codex"),
+                environment["CODEX_CLI_PATH"],
+            )
+            val codex = when (
+                val admission = UpstreamCodexExecutable.admit(
+                    codexSelection.executable,
+                    facades,
+                )
+            ) {
+                is Refinement.Refined -> admission.value
+                is Refinement.Rejected -> return rejected(
+                    PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE,
+                )
+            }
             val executableSearchPath = BrokerExecutableSearchPath.derive(
                 codexSelection.launcherDirectory,
-                codex,
+                codex.path,
                 kast,
             ) ?: return rejected(PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE)
             val codexHome = if (environment.containsKey("CODEX_HOME")) {
@@ -170,12 +189,12 @@ internal class BrokerServiceLaunchCommand private constructor(
             } ?: return rejected(PersistentBrokerServiceFailure.CODEX_HOME_REJECTED)
             val kastDigest = sha256(kast)
                 ?: return rejected(PersistentBrokerServiceFailure.KAST_EXECUTABLE_UNAVAILABLE)
-            val codexDigest = sha256(codex)
+            val codexDigest = sha256(codex.path)
                 ?: return rejected(PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE)
             val identity = BrokerServiceIdentity.derive(
                 kastDigest,
                 codexDigest,
-                codex,
+                codex.path,
                 kast,
                 userHome,
                 javaHome,

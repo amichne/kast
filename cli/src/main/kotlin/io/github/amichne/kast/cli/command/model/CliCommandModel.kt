@@ -22,6 +22,8 @@ enum class CliProductCommand(
 ) {
     INSPECT("product inspect"),
     BROKER_SERVE("broker serve"),
+    CODEX_CLI("codex", CliLocalExposure.PUBLIC),
+    CODEX_DESKTOP("codex desktop", CliLocalExposure.PUBLIC),
 }
 
 /** Process-local operator actions that do not extend the semantic wire protocol. */
@@ -46,6 +48,10 @@ sealed interface CliAction {
         data object ProductInspect : Local
 
         data object BrokerServe : Local
+
+        data object CodexCli : Local
+
+        data object CodexDesktop : Local
     }
 
     data class Semantic(

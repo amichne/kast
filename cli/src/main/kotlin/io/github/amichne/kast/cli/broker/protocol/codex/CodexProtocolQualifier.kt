@@ -1,7 +1,7 @@
 package io.github.amichne.kast.cli.broker.protocol.codex
 
 import io.github.amichne.kast.cli.broker.core.CanonicalBrokerDirectory
-import io.github.amichne.kast.cli.broker.provider.BrokerExecutable
+import io.github.amichne.kast.cli.broker.UpstreamCodexExecutable
 import io.github.amichne.kast.cli.broker.provider.BrokerProcessExecution
 import io.github.amichne.kast.cli.broker.provider.BrokerProcessExecutor
 import io.github.amichne.kast.cli.broker.provider.BrokerProcessRequest
@@ -28,14 +28,13 @@ import java.util.HexFormat
 import java.util.UUID
 
 internal enum class CodexProtocolOptionsFailure {
-    CODEX_EXECUTABLE_REJECTED,
     CODEX_HOME_REJECTED,
     TEMPORARY_ROOT_REJECTED,
     INVALID_LIMIT,
 }
 
 internal class CodexProtocolQualificationOptions private constructor(
-    val codexExecutable: BrokerExecutable,
+    val codexExecutable: UpstreamCodexExecutable,
     val codexHome: CanonicalBrokerDirectory,
     val temporaryRoot: CanonicalBrokerDirectory,
     val processExecutor: BrokerProcessExecutor,
@@ -45,7 +44,7 @@ internal class CodexProtocolQualificationOptions private constructor(
 ) {
     companion object {
         internal fun admit(
-            codexExecutable: Path,
+            codexExecutable: UpstreamCodexExecutable,
             codexHome: Path,
             temporaryRoot: Path,
             processExecutor: BrokerProcessExecutor = JdkBrokerProcessExecutor,
@@ -53,12 +52,6 @@ internal class CodexProtocolQualificationOptions private constructor(
             maximumSchemaFiles: Int = 2_048,
             timeoutMillis: Long = 30_000,
         ): Refinement<CodexProtocolQualificationOptions, CodexProtocolOptionsFailure> {
-            val executable = when (val admitted = BrokerExecutable.admit(codexExecutable)) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return Refinement.Rejected(
-                    CodexProtocolOptionsFailure.CODEX_EXECUTABLE_REJECTED,
-                )
-            }
             val home = CanonicalBrokerDirectory.admit(codexHome)
                 ?: return Refinement.Rejected(CodexProtocolOptionsFailure.CODEX_HOME_REJECTED)
             val temporary = CanonicalBrokerDirectory.admit(temporaryRoot)
@@ -68,7 +61,7 @@ internal class CodexProtocolQualificationOptions private constructor(
             }
             return Refinement.Refined(
                 CodexProtocolQualificationOptions(
-                    executable,
+                    codexExecutable,
                     home,
                     temporary,
                     processExecutor,
@@ -210,7 +203,7 @@ internal object CodexProtocolQualifier {
     ): BoundedCodexExecution = try {
         val request = when (
             val admission = BrokerProcessRequest.admit(
-                executable = options.codexExecutable,
+                executable = options.codexExecutable.executable,
                 arguments = arguments,
                 workingDirectory = options.temporaryRoot,
                 maximumOutputBytes = maximumOutputBytes,

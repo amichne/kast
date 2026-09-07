@@ -13,6 +13,10 @@ import io.github.amichne.kast.cli.broker.BrokerServerRun
 import io.github.amichne.kast.cli.broker.BrokerServerRunner
 import io.github.amichne.kast.cli.broker.UnavailableBrokerServerRunner
 import io.github.amichne.kast.cli.broker.outputReason
+import io.github.amichne.kast.cli.broker.host.CodexClientLaunch
+import io.github.amichne.kast.cli.broker.host.CodexClientLaunchRun
+import io.github.amichne.kast.cli.broker.host.CodexClientLauncher
+import io.github.amichne.kast.cli.broker.host.UnavailableCodexClientLauncher
 import java.nio.file.Path
 
 /** Pure orchestration of the closed CLI boundaries and their explicit outer effects. */
@@ -27,6 +31,7 @@ class KastCli(
     private val productInspector: ProductInspector,
     private val cacheLifecycle: RootSidecarCacheLifecycle = NoRootSidecarCacheLifecycle,
     private val brokerServerRunner: BrokerServerRunner = UnavailableBrokerServerRunner,
+    private val codexClientLauncher: CodexClientLauncher = UnavailableCodexClientLauncher,
 ) {
     constructor(
         commandGraphFactory: CliCommandGraphFactory,
@@ -91,8 +96,20 @@ class KastCli(
                 run.failure.outputReason(),
             )
         }
+        CliAction.Local.CodexCli -> launchCodex(CodexClientLaunch.Cli)
+        CliAction.Local.CodexDesktop -> launchCodex(CodexClientLaunch.Desktop)
         is CliAction.Semantic -> executeSemantic(action.request, start)
         is CliAction.Lifecycle -> executeLifecycle(action, start)
+    }
+
+    private fun launchCodex(client: CodexClientLaunch): CliExit = when (
+        val run = codexClientLauncher.launch(client)
+    ) {
+        is CodexClientLaunchRun.Completed -> CliExit.Delegated(run.exitCode)
+        is CodexClientLaunchRun.Rejected -> boundaryExit(
+            CliBoundaryExitStatus.RUNTIME,
+            "codex-${run.failure.name.lowercase().replace('_', '-')}",
+        )
     }
 
     private fun executeSemantic(
@@ -433,10 +450,16 @@ enum class CliBoundaryExitStatus(
     BOOTSTRAP(9),
 }
 
-/** Complete and exhaustive process result; every variant carries one admitted process document. */
+/** Complete and exhaustive process result; every variant carries its explicit output policy. */
 sealed interface CliExit {
     val code: Int
     val document: CliProcessOutput
+
+    data class Delegated(
+        override val code: Int,
+    ) : CliExit {
+        override val document: CliProcessOutput = CliDelegatedProcessOutput
+    }
 
     data class Complete(
         override val document: CliProcessOutput,

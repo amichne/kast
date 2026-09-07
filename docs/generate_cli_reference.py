@@ -51,7 +51,13 @@ LIFECYCLE_DESCRIPTIONS = {
     "stop": "Stop only the process proven to own the exact-root sidecar endpoint.",
 }
 
-LOCAL_COMMAND_DESCRIPTIONS = {}
+LOCAL_COMMAND_DESCRIPTIONS = {
+    "codex": "Launch the existing broker UDS and Codex remote-client host.",
+    "codex desktop": (
+        "Launch Desktop with process-local façade and independently resolved "
+        "upstream Codex identities."
+    ),
+}
 
 
 def parse_operations(registry_path: Path) -> list[OperationMetadata]:
@@ -377,12 +383,16 @@ Process ownership is explicit:
 
 Bare `kast` reports installed control, IDE/JBR, exact-root runtime, cache,
 bootstrap, and network provenance without starting or repairing anything.
-`kast-codex` owns the optional Codex integration broker and client lifetime.
+One qualified Kast tool catalog and execution path serves two Codex host
+projections. `kast codex` preserves the terminal client path, while
+`kast codex desktop` launches Codex Desktop with a process-local façade. Desktop
+then invokes `kast-codex app-server` as its Codex CLI-compatible child process.
 
 | Command | Result |
 | --- | --- |
 | `kast` | Passively inspect local identity and state, including typed blockers. |
-| `kast-codex` | Launch the Codex integration host and its client. |
+{local_command_rows}
+| `kast-codex app-server` | Present JSONL App Server stdio to the parent and proxy through the same qualified Kast integration. |
 
 ## Default local traces
 

@@ -19,6 +19,11 @@ sealed interface CliProcessOutput {
     val value: String
 }
 
+/** Explicit absence selected only when an interactive child owns process output. */
+internal data object CliDelegatedProcessOutput : CliProcessOutput {
+    override val value: String = ""
+}
+
 /** A canonical compact JSON document ready for the process output boundary. */
 class CliJsonDocument private constructor(
     override val value: String,

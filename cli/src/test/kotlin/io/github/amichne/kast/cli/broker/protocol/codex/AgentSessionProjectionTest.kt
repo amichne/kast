@@ -5,6 +5,7 @@ import io.github.amichne.kast.cli.broker.core.AgentSessionBootstrapQualification
 import io.github.amichne.kast.cli.broker.core.HostedToolDefinition
 import io.github.amichne.kast.cli.broker.core.HostedToolCatalogFailure
 import io.github.amichne.kast.cli.broker.core.ToolName
+import io.github.amichne.kast.cli.broker.CodexHostMode
 import io.github.amichne.kast.cli.broker.protocol.copilot.toCopilotFixtureProjection
 import io.github.amichne.kast.cli.broker.schema.NetworkntJsonSchemaCompiler
 import io.github.amichne.kast.kernel.Refinement
@@ -17,6 +18,20 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class AgentSessionProjectionTest {
+    @Test
+    fun `CLI and App Server hosts receive the byte equivalent Codex projection`() {
+        val bootstrap = agentSessionBootstrapFixture()
+
+        val projections = CodexHostMode.entries.map { bootstrap.toCodexSessionProjection() }
+
+        assertEquals(2, projections.size)
+        assertEquals(projections.first(), projections.last())
+        assertEquals(
+            projections.first().namespace.toString().toByteArray().toList(),
+            projections.last().namespace.toString().toByteArray().toList(),
+        )
+    }
+
     @Test
     fun `one exact bootstrap deterministically projects to Codex and Copilot`() {
         val bootstrap = agentSessionBootstrapFixture()

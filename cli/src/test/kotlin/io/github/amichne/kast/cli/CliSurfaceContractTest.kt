@@ -27,7 +27,10 @@ class CliSurfaceContractTest {
             }.usage,
         )
         assertEquals(listOf(CliLifecycleCommand.START, CliLifecycleCommand.STOP), surface.lifecycleCommands)
-        assertTrue(surface.localCommands.isEmpty())
+        assertEquals(
+            listOf(CliProductCommand.CODEX_CLI, CliProductCommand.CODEX_DESKTOP),
+            surface.localCommands,
+        )
     }
 
     @Test

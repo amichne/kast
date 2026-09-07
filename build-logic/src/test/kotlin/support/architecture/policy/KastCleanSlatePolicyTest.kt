@@ -33,6 +33,8 @@ class KastCleanSlatePolicyTest {
                 ":relation:intellij",
                 ":traversal:contract",
                 ":traversal:service",
+                ":query:contract",
+                ":query:service",
                 ":topology:contract",
                 ":topology:build",
                 ":topology:service",

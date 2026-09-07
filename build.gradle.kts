@@ -218,10 +218,34 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     commandLine("bash", layout.projectDirectory.file("packaging/test-installed-product.sh"))
 }
 
+val installedCodexHostTest = tasks.register<Exec>("installedCodexHostTest") {
+    group = "verification"
+    description = "Exercises the staged stdio facade against the authoritative installed Codex."
+    dependsOn(stageInstalledProduct)
+    inputs.dir(installedProductDirectory)
+    inputs.file(layout.projectDirectory.file("packaging/test-installed-codex-host.py"))
+    outputs.file(layout.buildDirectory.file("reports/installed-product/codex-host.json"))
+    outputs.upToDateWhen { false }
+    commandLine(
+        "python3",
+        layout.projectDirectory.file("packaging/test-installed-codex-host.py"),
+        installedProductDirectory.get().asFile.absolutePath,
+        layout.projectDirectory.asFile.absolutePath,
+        layout.buildDirectory.file("reports/installed-product/codex-host.json")
+            .get().asFile.absolutePath,
+    )
+}
+
 val productBuildGate by tasks.registering {
     group = "verification"
     description = "Builds every module and verifies architecture and installed packaging."
-    dependsOn("check", installedProductTest, "verifyKastArchitecture")
+    dependsOn(
+        "check",
+        installedProductTest,
+        installedCodexHostTest,
+        ":cli:generateCodexHostIntegrationManifest",
+        "verifyKastArchitecture",
+    )
     dependsOn(gradle.includedBuild("build-logic").task(":check"))
 }
 

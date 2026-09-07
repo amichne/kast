@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.broker.InstalledBrokerServerRunner
+import io.github.amichne.kast.cli.broker.host.InstalledCodexClientLauncher
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
 import io.github.amichne.kast.cli.projection.CliLocalMetadataFailure
@@ -325,6 +326,10 @@ internal class InstalledKastCliComposition : KastCliComposition {
                 ),
                 cacheLifecycle = cacheLifecycle,
                 brokerServerRunner = InstalledBrokerServerRunner(
+                    installedKastExecutable,
+                    userHome,
+                ),
+                codexClientLauncher = InstalledCodexClientLauncher(
                     installedKastExecutable,
                     userHome,
                 ),
