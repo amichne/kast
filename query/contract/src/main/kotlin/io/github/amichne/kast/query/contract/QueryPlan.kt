@@ -155,22 +155,22 @@ sealed interface ExactQueryStage {
 }
 
 sealed interface AdmittedQueryPlan {
-    data class Candidates(
+    data class Candidates internal constructor(
         val source: QueryDiscoverySyntax,
         val stage: CandidateQueryStage,
     ) : AdmittedQueryPlan
 
-    data class Symbols(
+    data class Symbols internal constructor(
         val source: QueryDiscoverySyntax,
         val stage: ExactQueryStage,
     ) : AdmittedQueryPlan
 
-    data class CandidateReferences(
+    data class CandidateReferences internal constructor(
         val source: QueryCandidateReferences,
         val stage: CandidateQueryStage,
     ) : AdmittedQueryPlan
 
-    data class ExactReferences(
+    data class ExactReferences internal constructor(
         val source: QueryExactReferences,
         val stage: ExactQueryStage,
     ) : AdmittedQueryPlan

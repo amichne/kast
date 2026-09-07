@@ -93,7 +93,7 @@ sealed interface SymbolDiscoveryTarget {
         val kind: SymbolNameDiscoveryKind,
         val pattern: SymbolDiscoveryPattern,
         val match: SymbolDiscoveryMatch,
-    ) : SymbolDiscoveryTarget {
+    ) : ConstrainedSymbolDiscoveryTarget {
         val resultKind: SymbolDiscoveryKind = when (kind) {
             SymbolNameDiscoveryKind.FILE -> SymbolDiscoveryKind.FILE
             SymbolNameDiscoveryKind.CLASS -> SymbolDiscoveryKind.CLASS
@@ -106,7 +106,7 @@ sealed interface SymbolDiscoveryTarget {
     /** Explicit scoped enumeration; unlike [Name], it carries no text query. */
     data class All(
         val kind: SymbolNameDiscoveryKind,
-    ) : SymbolDiscoveryTarget {
+    ) : ConstrainedSymbolDiscoveryTarget {
         val resultKind: SymbolDiscoveryKind = when (kind) {
             SymbolNameDiscoveryKind.FILE -> SymbolDiscoveryKind.FILE
             SymbolNameDiscoveryKind.CLASS -> SymbolDiscoveryKind.CLASS
@@ -119,17 +119,23 @@ sealed interface SymbolDiscoveryTarget {
     data class Location(
         val file: CanonicalWorkspaceFilePath,
         val offset: SymbolDiscoverySourceOffset,
-    ) : SymbolDiscoveryTarget {
+    ) : SupplementalSymbolDiscoveryTarget {
         override fun admits(candidate: SymbolDiscoveryKind): Boolean = candidate.isDeclaration()
     }
 
     data class Text(
         val pattern: SymbolDiscoveryPattern,
-    ) : SymbolDiscoveryTarget {
+    ) : SupplementalSymbolDiscoveryTarget {
         override fun admits(candidate: SymbolDiscoveryKind): Boolean =
             candidate == SymbolDiscoveryKind.TEXT
     }
 }
+
+/** Indexed targets whose adapter executes semantic discovery constraints before budget use. */
+sealed interface ConstrainedSymbolDiscoveryTarget : SymbolDiscoveryTarget
+
+/** Supplemental targets whose exact file/text scope is fully expressed by the target itself. */
+sealed interface SupplementalSymbolDiscoveryTarget : SymbolDiscoveryTarget
 
 enum class SymbolDiscoveryContainment {
     DIRECT,
@@ -231,12 +237,49 @@ data class SymbolDiscoveryConstraints(
     }
 }
 
-data class SymbolDiscoveryRequest(
+class SymbolDiscoveryRequest private constructor(
     val scope: SymbolSearchScopeRequest,
     val target: SymbolDiscoveryTarget,
     val budget: SymbolDiscoveryBudget,
-    val constraints: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints.None,
-)
+    val constraints: SymbolDiscoveryConstraints,
+) {
+    companion object {
+        operator fun invoke(
+            scope: SymbolSearchScopeRequest,
+            target: ConstrainedSymbolDiscoveryTarget,
+            budget: SymbolDiscoveryBudget,
+            constraints: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints.None,
+        ): SymbolDiscoveryRequest = SymbolDiscoveryRequest(scope, target, budget, constraints)
+
+        operator fun invoke(
+            scope: SymbolSearchScopeRequest,
+            target: SupplementalSymbolDiscoveryTarget,
+            budget: SymbolDiscoveryBudget,
+        ): SymbolDiscoveryRequest = SymbolDiscoveryRequest(
+            scope,
+            target,
+            budget,
+            SymbolDiscoveryConstraints.None,
+        )
+    }
+
+    override fun equals(other: Any?): Boolean =
+        other is SymbolDiscoveryRequest &&
+            scope == other.scope &&
+            target == other.target &&
+            budget == other.budget &&
+            constraints == other.constraints
+
+    override fun hashCode(): Int {
+        var result = scope.hashCode()
+        result = 31 * result + target.hashCode()
+        result = 31 * result + budget.hashCode()
+        return 31 * result + constraints.hashCode()
+    }
+
+    override fun toString(): String =
+        "SymbolDiscoveryRequest(scope=$scope, target=$target, budget=$budget, constraints=$constraints)"
+}
 
 private fun SymbolDiscoveryKind.isDeclaration(): Boolean = when (this) {
     SymbolDiscoveryKind.CLASS,

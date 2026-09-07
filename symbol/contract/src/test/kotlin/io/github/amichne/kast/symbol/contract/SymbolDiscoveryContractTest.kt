@@ -12,6 +12,7 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
 
@@ -44,6 +45,18 @@ class SymbolDiscoveryContractTest {
             SymbolDiscoveryDirectoryFailure.CONTROL_CHARACTER,
             SymbolDiscoveryDirectory.parse("src/\nmain").rejected(),
         )
+    }
+
+    @Test
+    fun `supplemental target construction fixes constraints to none`() {
+        val indexed = request(resultLimit = 1)
+        val supplemental = SymbolDiscoveryRequest(
+            indexed.scope,
+            SymbolDiscoveryTarget.Text(SymbolDiscoveryPattern.parse("needle").refined()),
+            indexed.budget,
+        )
+
+        assertSame(SymbolDiscoveryConstraints.None, supplemental.constraints)
     }
 
     @Test
