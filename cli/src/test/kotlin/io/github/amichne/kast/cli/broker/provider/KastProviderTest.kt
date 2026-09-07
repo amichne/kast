@@ -172,6 +172,33 @@ class KastProviderTest {
     }
 
     @Test
+    fun `explicit mutation opt in publishes all qualified tools`(
+        @TempDir temporary: Path,
+    ) = runBlocking {
+        val executable = executable(temporary.resolve("kast"))
+        val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+        val options = KastProviderOptions.admit(
+            executable,
+            cwd,
+            RecordingProcessExecutor(schema = capabilitySchema()),
+            toolExposure = KastToolExposure.MUTATION_ENABLED,
+        ).refinedValue()
+        val qualification = assertInstanceOf(
+            KastProviderQualification.Qualified::class.java,
+            KastProviderQualifier.qualify(options),
+        )
+        val broker = Broker.create(
+            listOf(qualification.registration),
+            BrokerLimits.defaults(),
+        ).validatedValue()
+
+        assertEquals(
+            listOf("change_apply", "symbol_lookup"),
+            broker.catalog.namespaces.single().tools.map { tool -> tool.name.value },
+        )
+    }
+
+    @Test
     fun `supported Kast operations produce selector-free observer Markdown`() {
         val discover = observer(
             "symbol.discover",
