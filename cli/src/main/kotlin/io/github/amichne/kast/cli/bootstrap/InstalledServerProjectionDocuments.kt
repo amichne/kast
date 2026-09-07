@@ -492,7 +492,7 @@ private fun queryDiscoverySourceSchema(type: String, description: String): JsonO
     ServerSchemaProperty("type", constantSchema(type, description)),
     ServerSchemaProperty("match", queryMatchSchema()),
     ServerSchemaProperty("scope", queryScopeSchema()),
-    ServerSchemaProperty("declarationKinds", nonEmptyArraySchema(
+    ServerSchemaProperty("declarationKinds", uniqueNonEmptyArraySchema(
         enumSchema(
             listOf("class", "function", "property", "type-alias"),
             "Compiler declaration families to enumerate.",
@@ -515,7 +515,7 @@ private fun queryMatchSchema(): JsonObject = unionSchema(
 private fun queryScopeSchema(): JsonObject = objectSchema(
     ServerSchemaProperty(
         "sourceSets",
-        nonEmptyArraySchema(enumSchema(listOf("main", "test"), "Imported source-set domain.")),
+        uniqueNonEmptyArraySchema(enumSchema(listOf("main", "test"), "Imported source-set domain.")),
     ),
     ServerSchemaProperty("directory", nullableSchema(
         objectSchema(
@@ -552,7 +552,7 @@ private fun queryStepSchema(): JsonObject = unionSchema(
                 ServerSchemaProperty("type", constantSchema("visibility", "Compiler-established declaration visibility.")),
                 ServerSchemaProperty(
                     "values",
-                    nonEmptyArraySchema(enumSchema(
+                    uniqueNonEmptyArraySchema(enumSchema(
                         listOf("public", "protected", "internal", "private", "local"),
                         "Admitted declaration visibility.",
                     )),
@@ -567,14 +567,14 @@ private fun queryOutputSchema(): JsonObject = unionSchema(
         ServerSchemaProperty("type", constantSchema("symbols", "Return exact symbols.")),
         ServerSchemaProperty(
             "fields",
-            nonEmptyArraySchema(enumSchema(listOf("name", "location", "signature"), "Projected symbol field.")),
+            uniqueArraySchema(enumSchema(listOf("name", "location", "signature"), "Projected symbol field.")),
         ),
     ),
     objectSchema(
         ServerSchemaProperty("type", constantSchema("candidates", "Return declaration candidates.")),
         ServerSchemaProperty(
             "fields",
-            nonEmptyArraySchema(enumSchema(listOf("name", "location"), "Projected candidate field.")),
+            uniqueArraySchema(enumSchema(listOf("name", "location"), "Projected candidate field.")),
         ),
     ),
 )
@@ -1950,6 +1950,21 @@ private fun arraySchema(item: JsonObject): JsonObject = buildJsonObject {
 private fun nonEmptyArraySchema(item: JsonObject): JsonObject = buildJsonObject {
     put("type", "array")
     put("items", item)
+    put("minItems", 1)
+    put("maxItems", MAXIMUM_PROTOCOL_COUNT)
+}
+
+private fun uniqueArraySchema(item: JsonObject): JsonObject = buildJsonObject {
+    put("type", "array")
+    put("items", item)
+    put("uniqueItems", true)
+    put("maxItems", MAXIMUM_PROTOCOL_COUNT)
+}
+
+private fun uniqueNonEmptyArraySchema(item: JsonObject): JsonObject = buildJsonObject {
+    put("type", "array")
+    put("items", item)
+    put("uniqueItems", true)
     put("minItems", 1)
     put("maxItems", MAXIMUM_PROTOCOL_COUNT)
 }
