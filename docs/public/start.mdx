@@ -145,14 +145,14 @@ the candidate stability contract and upgrade behavior.
 
     `kast --schema` is the installed command contract. It lists:
 
-    - the nine public semantic operations and command shapes;
+    - the ten public semantic operations and command shapes;
     - wire and input/output JSON Schemas;
     - the installed `serverProjection`; and
     - deferred-loading, approval, and field-to-CLI bindings.
 
     Read workflows cover symbol and source work,
     relation reads, traversal, and diagnostics. Every `change_*` tool requires
-    explicit approval. The endpoint publishes nine operations, with verified
+    explicit approval. The endpoint publishes ten operations, with verified
     application as one atomic completion boundary.
 
     Editable defaults live at
@@ -172,7 +172,7 @@ the candidate stability contract and upgrade behavior.
     ```console
     cd /path/to/kotlin-repository
     kast
-    kast symbol discover --mode name --query PricePolicy --limit 25
+    kast query run < request.json
     ```
 
     The semantic command automatically establishes readiness before execution.
@@ -197,7 +197,7 @@ the candidate stability contract and upgrade behavior.
 
     ```console
     kast
-    kast symbol discover --mode name --query PricePolicy --limit 25
+    kast query run < request.json
     ```
 
     Read the results separately:

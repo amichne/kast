@@ -81,8 +81,9 @@ assert document["cliProjection"]["commands"], document
 assert document["cliProjection"]["localCommands"] == [], document
 projection = document["serverProjection"]
 bootstrap = projection["hostedBootstrap"]
-bindings = projection["cliInvocationBindings"]["bindings"]
+invocations = projection["cliInvocations"]["operations"]
 expected_tools = [
+    "query",
     "symbol_lookup",
     "symbol_inspect",
     "source_read",
@@ -96,8 +97,9 @@ expected_tools = [
 assert [tool["name"] for tool in bootstrap["tools"]] == expected_tools, bootstrap
 assert "compiler-grounded Kotlin source intelligence" in bootstrap["policy"], bootstrap
 assert {tool["operationId"] for tool in bootstrap["tools"]} == {
-    binding["operationId"] for binding in bindings
+    invocation["operationId"] for invocation in invocations
 }, projection
+assert all("bindings" not in invocation["invocation"] for invocation in invocations), invocations
 assert all("invocation" not in tool and "cliUsage" not in tool for tool in bootstrap["tools"]), bootstrap
 PY
 

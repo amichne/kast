@@ -34,12 +34,11 @@ workspace generation. Then keep the same endpoint open through the mutation:
 
 <Steps>
   <Step title="Plan from complete semantic evidence">
-    ```console
-    kast change plan \
-      --intent add-declaration \
-      --target '<exact-selector>' \
-      --declaration 'fun added(): String = "value"'
+    ```json
+    {"intent":{"kind":"add-declaration","exactTarget":"<exact-selector>","declaration":"fun added(): String = \"value\""}}
     ```
+
+    Send the document to `kast change plan` on standard input.
 
     `change.plan` is pure. It binds the intended declaration, source preimage,
     relation evidence, traversal evidence, diagnostics, and prior semantic
@@ -47,9 +46,11 @@ workspace generation. Then keep the same endpoint open through the mutation:
   </Step>
 
   <Step title="Apply, publish, and verify the successor generation">
-    ```console
-    kast change apply --plan '<plan-identity>'
+    ```json
+    {"planIdentity":"<plan-identity>"}
     ```
+
+    Send the document to `kast change apply` on standard input.
 
     A complete apply means the physical write is durable, the same workspace
     owner has published a proven newer generation, and verification has checked
@@ -65,9 +66,11 @@ If source may have changed but Kast cannot durably issue the application
 identity or verified receipt, the apply request rejects as `recovery-required`.
 The live endpoint immediately withdraws mutation authority.
 
-```console
-kast change recover --plan '<plan-identity>'
+```json
+{"planIdentity":"<plan-identity>"}
 ```
+
+Send the document to `kast change recover` on standard input.
 
 A `PriorState` or `RolledBack` result restores a clean mutation boundary:
 

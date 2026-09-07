@@ -14,7 +14,7 @@ class CliReferenceProjectionTest(unittest.TestCase):
             commands.mkdir(parents=True)
             (commands / 'SymbolCommands.kt').write_text(
                 'operation = CanonicalOperation.SYMBOL_DISCOVER,\n'
-                'schemaUsage = "symbol discover --limit <count>", preparer = preparers.symbolDiscover')
+                'schemaUsage = "symbol discover < request.json", preparer = preparers.symbolDiscover')
             operations = [generator.OperationMetadata('INDEX_SYNC', 'index.sync', 'internal_only', ()),
                           generator.OperationMetadata('SYMBOL_DISCOVER', 'symbol.discover', 'public', ())]
             parsed = generator.parse_semantic_commands(root, operations)

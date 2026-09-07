@@ -6,6 +6,7 @@ import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliAction
 import io.github.amichne.kast.cli.command.CliCommandParsing
+import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
@@ -22,6 +23,8 @@ import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireRequestAdmission
 import io.github.amichne.kast.protocol.wire.WireRequestEnvelope
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -43,16 +46,14 @@ class CliCommandGraphContractTest {
         assertTrue(rootHelp is CliExit.Complete)
         assertTrue(nestedHelp is CliExit.Complete)
         assertTrue(rootHelp.document.value.contains("workspace"))
-        assertTrue(nestedHelp.document.value.contains("--query"))
+        assertTrue(nestedHelp.document.value.contains("standard input"))
         assertFalse(boundaryTouched)
     }
 
     @Test
-    fun `discovery modes accept equals syntax and preserve existing typed requests`() {
+    fun `canonical discovery documents preserve existing typed requests`() {
         val cases = listOf(
-            listOf(
-                "symbol", "discover", "--mode=name", "--query=Example", "--limit=10",
-            ) to SymbolDiscoverRequest(
+            SymbolDiscoverRequest(
                 SymbolDiscoverTargetDocument.Name(
                     text("Example"),
                     SymbolNameKindDocument.SYMBOL,
@@ -60,27 +61,18 @@ class CliCommandGraphContractTest {
                 ),
                 count(10),
             ),
-            listOf(
-                "symbol", "discover", "--mode=location", "--file=A.kt", "--offset=7",
-                "--limit=10",
-            ) to SymbolDiscoverRequest(
+            SymbolDiscoverRequest(
                 SymbolDiscoverTargetDocument.Location(text("A.kt"), offset(7)),
                 count(10),
             ),
-            listOf(
-                "symbol", "discover", "--mode=text", "--query=TODO", "--scope=workspace",
-                "--limit=10",
-            ) to SymbolDiscoverRequest(
+            SymbolDiscoverRequest(
                 SymbolDiscoverTargetDocument.Text(
                     text("TODO"),
                     SymbolTextScopeDocument.Workspace,
                 ),
                 count(10),
             ),
-            listOf(
-                "symbol", "discover", "--mode=text", "--query=TODO", "--scope=file",
-                "--file=A.kt", "--limit=10",
-            ) to SymbolDiscoverRequest(
+            SymbolDiscoverRequest(
                 SymbolDiscoverTargetDocument.Text(
                     text("TODO"),
                     SymbolTextScopeDocument.File(text("A.kt")),
@@ -89,8 +81,12 @@ class CliCommandGraphContractTest {
             ),
         )
 
-        cases.forEach { (argv, expected) ->
-            val request = preparedRequest(argv).admittedWireRequest()
+        cases.forEach { expected ->
+            val request = preparedRequest(
+                listOf("symbol", "discover"),
+                SymbolDiscoverRequest.serializer(),
+                expected,
+            ).admittedWireRequest()
             assertEquals(
                 WireDecoding.Decoded(expected),
                 CanonicalOperationWireBindings.symbolDiscover.decodeRequest(request),
@@ -99,33 +95,26 @@ class CliCommandGraphContractTest {
     }
 
     @Test
-    fun `change intents preserve existing closed request variants`() {
+    fun `canonical change documents preserve existing closed request variants`() {
         val cases = listOf(
-            listOf(
-                "change", "plan", "--intent=add-file", "--path=A.kt", "--content=class A",
-            ) to ChangePlanRequest(ChangeIntentDocument.AddFile(text("A.kt"), text("class A"))),
-            listOf(
-                "change", "plan", "--intent=add-declaration", "--target=target",
-                "--declaration=fun added()",
-            ) to ChangePlanRequest(
+            ChangePlanRequest(ChangeIntentDocument.AddFile(text("A.kt"), text("class A"))),
+            ChangePlanRequest(
                 ChangeIntentDocument.AddDeclaration(text("target"), text("fun added()")),
             ),
-            listOf(
-                "change", "plan", "--intent=replace-declaration", "--target=target",
-                "--replacement=fun replaced()",
-            ) to ChangePlanRequest(
+            ChangePlanRequest(
                 ChangeIntentDocument.ReplaceDeclaration(text("target"), text("fun replaced()")),
             ),
-            listOf(
-                "change", "plan", "--intent=rename-symbol", "--target=target",
-                "--new-name=renamed",
-            ) to ChangePlanRequest(
+            ChangePlanRequest(
                 ChangeIntentDocument.RenameSymbol(text("target"), text("renamed")),
             ),
         )
 
-        cases.forEach { (argv, expected) ->
-            val request = preparedRequest(argv).admittedWireRequest()
+        cases.forEach { expected ->
+            val request = preparedRequest(
+                listOf("change", "plan"),
+                ChangePlanRequest.serializer(),
+                expected,
+            ).admittedWireRequest()
             assertEquals(
                 WireDecoding.Decoded(expected),
                 CanonicalOperationWireBindings.changePlan.decodeRequest(request),
@@ -134,20 +123,24 @@ class CliCommandGraphContractTest {
     }
 
     @Test
-    fun `duplicates and mismatched options become deterministic usage data`() {
+    fun `extra arguments and malformed request documents become deterministic usage data`() {
         val factory = commandGraphFactory()
         val duplicate = factory.parse(
-            listOf(
-                "symbol", "discover", "--query", "Example", "--limit", "10", "--limit", "20",
+            listOf("symbol", "discover", "unexpected"),
+            CliRequestDocumentInput.Provided(
+                """{"target":{"type":"name","query":"Example","kind":"symbol","match":"fuzzy"},"limit":10}""",
             ),
         )
         assertTrue(duplicate is CliCommandParsing.Rejected)
-        assertTrue((duplicate as CliCommandParsing.Rejected).diagnostic.value.contains("exactly once"))
+        assertTrue((duplicate as CliCommandParsing.Rejected).diagnostic.value.contains("unexpected"))
 
         var boundaryTouched = false
         val exit = testCli { boundaryTouched = true }.execute(
-            listOf("symbol", "discover", "--mode", "location", "--query", "Example", "--limit", "10"),
+            listOf("symbol", "discover"),
             Path.of("/missing"),
+            CliRequestDocumentInput.Provided(
+                """{"target":{"type":"name","query":" ","kind":"symbol","match":"fuzzy"},"limit":10}""",
+            ),
         )
         assertTrue(exit is CliExit.BoundaryRejected)
         assertEquals(CliBoundaryExitStatus.USAGE, (exit as CliExit.BoundaryRejected).status)
@@ -199,8 +192,17 @@ class CliCommandGraphContractTest {
         )
     }
 
-    private fun preparedRequest(argv: List<String>): PreparedCliRequest {
-        val parsed = commandGraphFactory().parse(argv)
+    private fun <Request> preparedRequest(
+        argv: List<String>,
+        serializer: KSerializer<Request>,
+        request: Request,
+    ): PreparedCliRequest {
+        val document = Json { encodeDefaults = true; classDiscriminator = "type" }
+            .encodeToString(serializer, request)
+        val parsed = commandGraphFactory().parse(
+            argv,
+            CliRequestDocumentInput.Provided(document),
+        )
         assertTrue(parsed is CliCommandParsing.Parsed, parsed.toString())
         val action = (parsed as CliCommandParsing.Parsed).action
         assertTrue(action is CliAction.Semantic, action.toString())

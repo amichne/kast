@@ -15,11 +15,7 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
 internal object CanonicalChangeSerializers {
     private val factory = GeneratedWireCodecFactory(wireJson)
 
-    val changePlanRequest = factory.create(
-        ChangePlanRequestDocument.serializer(),
-        ChangePlanRequest::toSerializableDocument,
-        ChangePlanRequestDocument::toContract,
-    )
+    val changePlanRequest = factory.create(ChangePlanRequest.serializer())
     val changePlanResult = factory.create(
         ChangePlanResultDocument.serializer(),
         ChangePlanResult::toSerializableDocument,
@@ -36,11 +32,7 @@ internal object CanonicalChangeSerializers {
         ChangePlanRejectionDocument::toContract,
     )
 
-    val changeApplyRequest = factory.create(
-        ChangeApplyRequestDocument.serializer(),
-        ChangeApplyRequest::toSerializableDocument,
-        ChangeApplyRequestDocument::toContract,
-    )
+    val changeApplyRequest = factory.create(ChangeApplyRequest.serializer())
     val changeApplyResult = factory.create(
         ChangeApplyResultDocument.serializer(),
         ChangeApplyResult::toSerializableDocument,
@@ -57,11 +49,7 @@ internal object CanonicalChangeSerializers {
         ChangeApplyRejectionDocument::toContract,
     )
 
-    val changeRecoverRequest = factory.create(
-        ChangeRecoverRequestDocument.serializer(),
-        ChangeRecoverRequest::toSerializableDocument,
-        ChangeRecoverRequestDocument::toContract,
-    )
+    val changeRecoverRequest = factory.create(ChangeRecoverRequest.serializer())
     val changeRecoverResult = factory.create(
         ChangeRecoverResultDocument.serializer(),
         ChangeRecoverResult::toSerializableDocument,

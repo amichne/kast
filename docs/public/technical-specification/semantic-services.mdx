@@ -73,10 +73,10 @@ Symbol work is deliberately split:
     A candidate is evidence for further refinement, not an exact declaration.
   </Step>
   <Step title="Inspect">
-    `symbol.inspect --candidate` refines one candidate and returns exact
-    compiler evidence atomically. `symbol.inspect --selector` starts from an
-    exact selector. Both paths reject ambiguity or staleness rather than pick a
-    plausible match.
+    A `symbol.inspect` request whose target kind is `candidate` refines one
+    candidate and returns exact compiler evidence atomically. Target kind
+    `exact` starts from an exact selector. Both paths reject ambiguity or
+    staleness rather than pick a plausible match.
   </Step>
 </Steps>
 

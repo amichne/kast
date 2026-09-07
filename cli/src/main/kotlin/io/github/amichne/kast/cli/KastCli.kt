@@ -6,6 +6,7 @@ import io.github.amichne.kast.cli.command.CliCommandFailure
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandParsing
 import io.github.amichne.kast.cli.command.CliLifecycleCommand
+import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.cli.projection.CliBoundaryDocuments
 import io.github.amichne.kast.cli.projection.ProductInspectionDocuments
 import io.github.amichne.kast.cli.broker.BrokerServerRun
@@ -57,8 +58,14 @@ class KastCli(
     fun execute(
         argv: List<String>,
         start: Path,
+    ): CliExit = execute(argv, start, CliRequestDocumentInput.Absent)
+
+    internal fun execute(
+        argv: List<String>,
+        start: Path,
+        requestInput: CliRequestDocumentInput,
     ): CliExit {
-        return when (val parsed = commandGraphFactory.parse(argv)) {
+        return when (val parsed = commandGraphFactory.parse(argv, requestInput)) {
             is CliCommandParsing.Parsed -> executeAction(parsed.action, start)
             is CliCommandParsing.Help -> CliExit.Complete(parsed.document)
             is CliCommandParsing.Rejected -> usageExit(parsed.failure, parsed.diagnostic)

@@ -18,9 +18,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
 
 @Serializable
-internal data object TopologyBuildRequestDocument
-
-@Serializable
 internal data class TopologyBuildResultDocument(
     val status: TopologyBuildStatusDocument,
     val generation: Long,

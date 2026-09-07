@@ -28,18 +28,19 @@ question.
 ## Publish before traversing
 
 <Steps>
-  <Step title="Resolve an exact starting symbol">
-    Use `kast symbol discover`, then `kast symbol inspect --candidate`, to
-    obtain an exact, generation-bound selector and compiler evidence.
+  <Step title="Select exact starting symbols">
+    Use `query.run` with the `symbols` source. Kast performs discovery and compiler
+    refinement internally and returns exact, generation-bound references.
   </Step>
 
   <Step title="Read one compiler-confirmed hop">
-    ```console
-    kast relation read \
-      --selector '<exact-selector>' \
-      --relation callers \
-      --limit 50
+    ```json
+    {"exactSelector":"<exact-selector>","relation":"callers","limit":50,"position":{"type":"start"}}
     ```
+
+    Send that document to `kast relation read` on standard input. For the common
+    case, put `{"type":"related","relation":"callers"}` directly in the
+    `query.run` steps instead.
 
     Use the direct read for current-generation references, callers, callees,
     implementations, inheritors, overrides, or type uses. Complete and
@@ -47,13 +48,11 @@ question.
   </Step>
 
   <Step title="Traverse with explicit bounds">
-    ```console
-    kast traversal run \
-      --selector '<exact-selector>' \
-      --relation references \
-      --maximum-depth 3 \
-      --maximum-results 50
+    ```json
+    {"exactSelector":"<exact-selector>","relation":"references","maximumDepth":3,"maximumResults":50,"position":{"type":"start"}}
     ```
+
+    Send that document to `kast traversal run` on standard input.
 
     Traversal acquires an eligible durable snapshot automatically. The existing
     topology owner serializes construction and reuses unchanged eligible snapshots.

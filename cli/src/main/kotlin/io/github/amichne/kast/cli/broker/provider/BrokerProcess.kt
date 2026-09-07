@@ -48,8 +48,30 @@ internal value class BrokerExecutable private constructor(
 }
 
 internal enum class BrokerProcessRequestFailure {
+    INVALID_INPUT,
     INVALID_OUTPUT_BUDGET,
     INVALID_TIMEOUT,
+}
+
+internal sealed interface BrokerProcessInput {
+    data object Empty : BrokerProcessInput
+
+    class Document private constructor(
+        internal val value: String,
+    ) : BrokerProcessInput {
+        companion object {
+            internal fun admit(document: String): Refinement<Document, BrokerProcessRequestFailure> {
+                val bytes = document.toByteArray(Charsets.UTF_8)
+                return if (document.isBlank() || bytes.size > MAXIMUM_INPUT_BYTES) {
+                    Refinement.Rejected(BrokerProcessRequestFailure.INVALID_INPUT)
+                } else {
+                    Refinement.Refined(Document(document))
+                }
+            }
+
+            private const val MAXIMUM_INPUT_BYTES = 4 * 1_024 * 1_024
+        }
+    }
 }
 
 internal class BrokerProcessRequest private constructor(
@@ -58,6 +80,7 @@ internal class BrokerProcessRequest private constructor(
     val workingDirectory: CanonicalBrokerDirectory,
     val maximumOutputBytes: Int,
     val timeoutMillis: Long,
+    val input: BrokerProcessInput = BrokerProcessInput.Empty,
     val environment: Map<String, String> = emptyMap(),
 ) {
     companion object {
@@ -67,6 +90,7 @@ internal class BrokerProcessRequest private constructor(
             workingDirectory: CanonicalBrokerDirectory,
             maximumOutputBytes: Int,
             timeoutMillis: Long,
+            input: BrokerProcessInput = BrokerProcessInput.Empty,
             environment: Map<String, String> = emptyMap(),
         ): Refinement<BrokerProcessRequest, BrokerProcessRequestFailure> = when {
             maximumOutputBytes !in 1..MAXIMUM_OUTPUT_BYTES -> Refinement.Rejected(
@@ -82,6 +106,7 @@ internal class BrokerProcessRequest private constructor(
                     workingDirectory,
                     maximumOutputBytes,
                     timeoutMillis,
+                    input,
                     environment,
                 ),
             )
@@ -133,7 +158,6 @@ internal object JdkBrokerProcessExecutor : BrokerProcessExecutor {
                     listOf(request.executable.path.toString()) + request.arguments,
                 )
                     .directory(request.workingDirectory.path.toFile())
-                    .redirectInput(ProcessBuilder.Redirect.from(NULL_DEVICE.toFile()))
                     .also { builder -> builder.environment().putAll(request.environment) }
                     .start()
             } catch (_: IOException) {
@@ -150,6 +174,16 @@ internal object JdkBrokerProcessExecutor : BrokerProcessExecutor {
             try {
                 withTimeout(request.timeoutMillis) {
                     val observedBytes = AtomicLong(0)
+                    val input = processIo.async {
+                        process.outputStream.use { output ->
+                            when (val value = request.input) {
+                                BrokerProcessInput.Empty -> Unit
+                                is BrokerProcessInput.Document -> output.write(
+                                    value.value.toByteArray(Charsets.UTF_8),
+                                )
+                            }
+                        }
+                    }
                     val stdout = processIo.async {
                         process.inputStream.use { input ->
                             readBounded(input, observedBytes, request.maximumOutputBytes, process)
@@ -163,6 +197,14 @@ internal object JdkBrokerProcessExecutor : BrokerProcessExecutor {
                     val exit = processIo.async { process.waitFor() }
                     val stdoutRead = stdout.await()
                     val stderrRead = stderr.await()
+                    try {
+                        input.await()
+                    } catch (_: IOException) {
+                        terminate(process)
+                        return@withTimeout BrokerProcessExecution.Rejected(
+                            BrokerProcessFailure.IO_REJECTED,
+                        )
+                    }
                     val exitCode = exit.await()
                     if (stdoutRead is BoundedRead.Exceeded || stderrRead is BoundedRead.Exceeded) {
                         BrokerProcessExecution.Rejected(BrokerProcessFailure.OUTPUT_LIMIT)
@@ -258,6 +300,4 @@ internal object JdkBrokerProcessExecutor : BrokerProcessExecutor {
         data object Exceeded : BoundedRead
         data object Rejected : BoundedRead
     }
-
-    private val NULL_DEVICE: Path = Path.of("/dev/null")
 }

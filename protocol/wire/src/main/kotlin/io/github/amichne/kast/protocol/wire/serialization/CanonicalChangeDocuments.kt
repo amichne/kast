@@ -7,43 +7,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
 
 @Serializable
-internal data class ChangePlanRequestDocument(
-    val intent: ChangeIntentWireDocument,
-)
-
-@Serializable
-@JsonClassDiscriminator("kind")
-internal sealed interface ChangeIntentWireDocument {
-    @Serializable
-    @SerialName("add-file")
-    data class AddFile(
-        val relativePath: String,
-        val content: String,
-    ) : ChangeIntentWireDocument
-
-    @Serializable
-    @SerialName("add-declaration")
-    data class AddDeclaration(
-        val exactTarget: String,
-        val declaration: String,
-    ) : ChangeIntentWireDocument
-
-    @Serializable
-    @SerialName("replace-declaration")
-    data class ReplaceDeclaration(
-        val exactTarget: String,
-        val replacement: String,
-    ) : ChangeIntentWireDocument
-
-    @Serializable
-    @SerialName("rename-symbol")
-    data class RenameSymbol(
-        val exactTarget: String,
-        val newName: String,
-    ) : ChangeIntentWireDocument
-}
-
-@Serializable
 internal data class ChangePlanResultDocument(
     val planIdentity: String,
     val changes: List<ChangeFilePreviewDocument>,
@@ -105,11 +68,6 @@ internal enum class ChangePlanRejectionDocument {
 }
 
 @Serializable
-internal data class ChangeApplyRequestDocument(
-    val planIdentity: String,
-)
-
-@Serializable
 internal data class ChangeApplyResultDocument(
     val receiptIdentity: String,
     val changes: List<ChangeFilePreviewDocument>,
@@ -156,11 +114,6 @@ internal enum class ChangeApplyRejectionDocument {
     @SerialName("semantic_delta_rejected")
     SEMANTIC_DELTA_REJECTED,
 }
-
-@Serializable
-internal data class ChangeRecoverRequestDocument(
-    val planIdentity: String,
-)
 
 @Serializable
 internal data class ChangeRecoverResultDocument(

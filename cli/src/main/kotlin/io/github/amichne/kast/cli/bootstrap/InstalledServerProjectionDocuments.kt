@@ -2,12 +2,25 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.command.CliCommandSurface
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
+import io.github.amichne.kast.protocol.contract.ChangePlanRequest
+import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
+import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
+import io.github.amichne.kast.protocol.contract.IndexSyncRequest
+import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.RelationReadRequest
+import io.github.amichne.kast.protocol.contract.SourceReadRequest
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
+import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.registry.AgentToolDefinition
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import io.github.amichne.kast.protocol.registry.HostedBindingCompleteness
 import io.github.amichne.kast.protocol.registry.HostedOperationProjection
 import io.github.amichne.kast.protocol.registry.HostedToolLoading
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -18,9 +31,9 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 
-private const val SERVER_PROJECTION_SCHEMA_VERSION = 5
+private const val SERVER_PROJECTION_SCHEMA_VERSION = 6
 private const val HOSTED_BOOTSTRAP_SCHEMA_VERSION = 1
-private const val CLI_INVOCATION_BINDINGS_SCHEMA_VERSION = 1
+private const val CLI_INVOCATIONS_SCHEMA_VERSION = 2
 private const val MAXIMUM_PROTOCOL_TEXT_LENGTH = 1_048_576
 private const val MAXIMUM_WORKSPACE_FILE_LENGTH = 4_096
 private const val MAXIMUM_PROTOCOL_COUNT = 1_000
@@ -31,7 +44,7 @@ internal data class InstalledServerProjectionDocument(
     val schemaVersion: Int,
     val namespace: String,
     val hostedBootstrap: InstalledHostedBootstrapDocument,
-    val cliInvocationBindings: InstalledCliInvocationBindingsDocument,
+    val cliInvocations: InstalledCliInvocationsDocument,
 )
 
 @Serializable
@@ -61,13 +74,13 @@ internal data class InstalledServerExecutionBudgetDocument(
 )
 
 @Serializable
-internal data class InstalledCliInvocationBindingsDocument(
+internal data class InstalledCliInvocationsDocument(
     val schemaVersion: Int,
-    val bindings: List<InstalledCliOperationBindingDocument>,
+    val operations: List<InstalledCliOperationInvocationDocument>,
 )
 
 @Serializable
-internal data class InstalledCliOperationBindingDocument(
+internal data class InstalledCliOperationInvocationDocument(
     val operationId: String,
     val cliUsage: String,
     val invocation: InstalledServerCliInvocationDocument,
@@ -77,27 +90,11 @@ internal data class InstalledCliOperationBindingDocument(
 internal data class InstalledServerCliInvocationDocument(
     val type: InstalledServerInvocationType,
     val command: List<String>,
-    val bindings: List<InstalledServerCliBindingDocument>,
 )
 
 @Serializable
 internal enum class InstalledServerInvocationType {
     CLI,
-}
-
-@Serializable
-internal data class InstalledServerCliBindingDocument(
-    val type: InstalledServerBindingType,
-    val inputField: String,
-    val option: String,
-)
-
-@Serializable
-internal enum class InstalledServerBindingType {
-    OPTION,
-    REPEATED_OPTION,
-    FLAG,
-    JSON_OPTION,
 }
 
 /**
@@ -123,10 +120,10 @@ internal fun installedServerProjection(
                 toolsByOperation.getValue(definition.operation.operation).hostedDocument(definition)
             },
         ),
-        cliInvocationBindings = InstalledCliInvocationBindingsDocument(
-            schemaVersion = CLI_INVOCATION_BINDINGS_SCHEMA_VERSION,
-            bindings = installedServerTools.map { tool ->
-                tool.cliBindingDocument(commandByOperation.getValue(tool.operation).usage)
+        cliInvocations = InstalledCliInvocationsDocument(
+            schemaVersion = CLI_INVOCATIONS_SCHEMA_VERSION,
+            operations = installedServerTools.map { tool ->
+                tool.cliInvocationDocument(commandByOperation.getValue(tool.operation).usage)
             },
         ),
     )
@@ -145,206 +142,68 @@ private val installedServerTools: List<InstalledServerTool> = InstalledServerToo
 
 private enum class InstalledServerTool(
     val operation: CanonicalOperation,
-    private val inputSchema: JsonObject,
+    private val requestSerializer: KSerializer<*>,
     private val command: List<String>,
-    private val optionFields: List<ServerCliOptionField>,
 ) {
     INDEX_SYNC(
         operation = CanonicalOperation.INDEX_SYNC,
-        inputSchema = objectSchema(),
+        requestSerializer = IndexSyncRequest.serializer(),
         command = listOf("index", "sync"),
-        optionFields = emptyList(),
     ),
     TOPOLOGY_BUILD(
         operation = CanonicalOperation.TOPOLOGY_BUILD,
-        inputSchema = objectSchema(),
+        requestSerializer = TopologyBuildRequest.serializer(),
         command = listOf("topology", "build"),
-        optionFields = emptyList(),
     ),
     SYMBOL_DISCOVER(
         operation = CanonicalOperation.SYMBOL_DISCOVER,
-        inputSchema = symbolDiscoverInputSchema(),
+        requestSerializer = SymbolDiscoverRequest.serializer(),
         command = listOf("symbol", "discover"),
-        optionFields = listOf(
-            ServerCliOptionField("mode", "--mode"),
-            ServerCliOptionField("query", "--query"),
-            ServerCliOptionField("kind", "--kind"),
-            ServerCliOptionField("match", "--match"),
-            ServerCliOptionField("file", "--file"),
-            ServerCliOptionField("offset", "--offset"),
-            ServerCliOptionField("scope", "--scope"),
-            ServerCliOptionField("limit", "--limit"),
-        ),
     ),
     SYMBOL_INSPECT(
         operation = CanonicalOperation.SYMBOL_INSPECT,
-        inputSchema = unionSchema(
-            objectSchema(
-                ServerSchemaProperty(
-                    "candidate",
-                    textSchema("Candidate selector returned by discovery."),
-                ),
-            ),
-            objectSchema(
-                ServerSchemaProperty("selector", textSchema("Exact symbol selector.")),
-            ),
-        ),
+        requestSerializer = SymbolInspectRequest.serializer(),
         command = listOf("symbol", "inspect"),
-        optionFields = listOf(
-            ServerCliOptionField("candidate", "--candidate"),
-            ServerCliOptionField("selector", "--selector"),
-        ),
     ),
     SOURCE_READ(
         operation = CanonicalOperation.SOURCE_READ,
-        inputSchema = sourceReadInputSchema(),
+        requestSerializer = SourceReadRequest.serializer(),
         command = listOf("source", "read"),
-        optionFields = listOf(
-            ServerCliOptionField("anchor", "--anchor"),
-            ServerCliOptionField("region", "--region"),
-            ServerCliOptionField(
-                "declarationKinds",
-                "--declaration-kind",
-                InstalledServerBindingType.REPEATED_OPTION,
-            ),
-            ServerCliOptionField(
-                "visibility",
-                "--visibility",
-                InstalledServerBindingType.REPEATED_OPTION,
-            ),
-            ServerCliOptionField(
-                "includeParameters",
-                "--include-parameters",
-                InstalledServerBindingType.FLAG,
-            ),
-            ServerCliOptionField(
-                "includeCalls",
-                "--include-calls",
-                InstalledServerBindingType.FLAG,
-            ),
-            ServerCliOptionField(
-                "includeReferences",
-                "--include-references",
-                InstalledServerBindingType.FLAG,
-            ),
-            ServerCliOptionField("containment", "--containment"),
-            ServerCliOptionField("text", "--text"),
-            ServerCliOptionField("beforeLines", "--before-lines"),
-            ServerCliOptionField("afterLines", "--after-lines"),
-            ServerCliOptionField("entityLimit", "--entity-limit"),
-            ServerCliOptionField("textByteLimit", "--text-byte-limit"),
-            ServerCliOptionField("continuation", "--continuation"),
-        ),
     ),
     RELATION_READ(
         operation = CanonicalOperation.RELATION_READ,
-        inputSchema = objectSchemaWithRequired(
-            setOf("selector", "relation", "limit"),
-            ServerSchemaProperty("selector", textSchema("Exact starting selector.")),
-            ServerSchemaProperty("relation", relationSchema()),
-            ServerSchemaProperty("limit", countSchema("Maximum returned relations.")),
-            ServerSchemaProperty(
-                "continuation",
-                patternTextSchema(
-                    "^relation-continuation:v1:",
-                    "Continuation from a resumable relation page.",
-                ),
-            ),
-        ),
+        requestSerializer = RelationReadRequest.serializer(),
         command = listOf("relation", "read"),
-        optionFields = listOf(
-            ServerCliOptionField("selector", "--selector"),
-            ServerCliOptionField("relation", "--relation"),
-            ServerCliOptionField("limit", "--limit"),
-            ServerCliOptionField("continuation", "--continuation"),
-        ),
     ),
     TRAVERSAL_RUN(
         operation = CanonicalOperation.TRAVERSAL_RUN,
-        inputSchema = objectSchemaWithRequired(
-            setOf("selector", "relation", "maximumDepth", "maximumResults"),
-            ServerSchemaProperty("selector", textSchema("Exact starting selector.")),
-            ServerSchemaProperty("relation", relationSchema()),
-            ServerSchemaProperty(
-                "maximumDepth",
-                countSchema("Maximum traversal depth."),
-            ),
-            ServerSchemaProperty(
-                "maximumResults",
-                countSchema("Maximum returned symbols."),
-            ),
-            ServerSchemaProperty(
-                "continuation",
-                patternTextSchema(
-                    "^traversal-continuation:v1:",
-                    "Continuation from a resumable traversal page.",
-                ),
-            ),
-        ),
+        requestSerializer = TraversalRunRequest.serializer(),
         command = listOf("traversal", "run"),
-        optionFields = listOf(
-            ServerCliOptionField("selector", "--selector"),
-            ServerCliOptionField("relation", "--relation"),
-            ServerCliOptionField("maximumDepth", "--maximum-depth"),
-            ServerCliOptionField("maximumResults", "--maximum-results"),
-            ServerCliOptionField("continuation", "--continuation"),
-        ),
     ),
     QUERY_RUN(
         operation = CanonicalOperation.QUERY_RUN,
-        inputSchema = queryRunInputSchema(),
+        requestSerializer = QueryRunRequest.serializer(),
         command = listOf("query", "run"),
-        optionFields = listOf(
-            ServerCliOptionField("from", "--from", InstalledServerBindingType.JSON_OPTION),
-            ServerCliOptionField("steps", "--steps", InstalledServerBindingType.JSON_OPTION),
-            ServerCliOptionField("output", "--output", InstalledServerBindingType.JSON_OPTION),
-            ServerCliOptionField("execution", "--execution", InstalledServerBindingType.JSON_OPTION),
-        ),
     ),
     DIAGNOSTIC_CHECK(
         operation = CanonicalOperation.DIAGNOSTIC_CHECK,
-        inputSchema = objectSchema(
-            ServerSchemaProperty("scope", workspaceFileSchema()),
-            ServerSchemaProperty("limit", countSchema("Maximum returned diagnostics.")),
-        ),
+        requestSerializer = DiagnosticCheckRequest.serializer(),
         command = listOf("diagnostic", "check"),
-        optionFields = listOf(
-            ServerCliOptionField("scope", "--scope"),
-            ServerCliOptionField("limit", "--limit"),
-        ),
     ),
     CHANGE_PLAN(
         operation = CanonicalOperation.CHANGE_PLAN,
-        inputSchema = objectSchema(
-            ServerSchemaProperty(
-                "intent",
-                constantSchema("add-declaration", "Hosted change intent."),
-            ),
-            ServerSchemaProperty("target", textSchema("Exact target selector.")),
-            ServerSchemaProperty("declaration", textSchema("Declaration to add.")),
-        ),
+        requestSerializer = ChangePlanRequest.serializer(),
         command = listOf("change", "plan"),
-        optionFields = listOf(
-            ServerCliOptionField("intent", "--intent"),
-            ServerCliOptionField("target", "--target"),
-            ServerCliOptionField("declaration", "--declaration"),
-        ),
     ),
     CHANGE_APPLY(
         operation = CanonicalOperation.CHANGE_APPLY,
-        inputSchema = objectSchema(
-            ServerSchemaProperty("plan", textSchema("Plan identity.")),
-        ),
+        requestSerializer = ChangeApplyRequest.serializer(),
         command = listOf("change", "apply"),
-        optionFields = listOf(ServerCliOptionField("plan", "--plan")),
     ),
     CHANGE_RECOVER(
         operation = CanonicalOperation.CHANGE_RECOVER,
-        inputSchema = objectSchema(
-            ServerSchemaProperty("plan", textSchema("Plan identity.")),
-        ),
+        requestSerializer = ChangeRecoverRequest.serializer(),
         command = listOf("change", "recover"),
-        optionFields = listOf(ServerCliOptionField("plan", "--plan")),
     ),
     ;
 
@@ -360,285 +219,24 @@ private enum class InstalledServerTool(
                 readinessMillis = OperationExecutionBudget.WORKSPACE_READINESS.value,
                 operationMillis = OperationExecutionBudget.forOperation(operation).operation.value,
             ),
-            inputSchema = inputSchema,
+            inputSchema = generatedRequestSchema(requestSerializer),
             outputSchema = installedServerOutputSchema(operation),
         )
 
-    fun cliBindingDocument(cliUsage: String): InstalledCliOperationBindingDocument =
-        InstalledCliOperationBindingDocument(
+    fun cliInvocationDocument(cliUsage: String): InstalledCliOperationInvocationDocument =
+        InstalledCliOperationInvocationDocument(
             operationId = operation.id.value,
             cliUsage = cliUsage,
             invocation = InstalledServerCliInvocationDocument(
                 type = InstalledServerInvocationType.CLI,
                 command = command,
-                bindings = optionFields.map { field ->
-                    InstalledServerCliBindingDocument(
-                        type = field.type,
-                        inputField = field.inputField,
-                        option = field.option,
-                    )
-                },
             ),
         )
 }
 
-private data class ServerCliOptionField(
-    val inputField: String,
-    val option: String,
-    val type: InstalledServerBindingType = InstalledServerBindingType.OPTION,
-)
-
 private data class ServerSchemaProperty(
     val name: String,
     val schema: JsonObject,
-)
-
-private fun sourceReadInputSchema(): JsonObject = objectSchemaWithRequired(
-    setOf("anchor"),
-    ServerSchemaProperty(
-        "anchor",
-        patternTextSchema(
-            "^(candidate:v2|exact:v2|source-selector-v1):",
-            "Candidate, exact-symbol, or source selector token.",
-        ),
-    ),
-    ServerSchemaProperty(
-        "region",
-        enumSchema(
-            listOf(
-                "anchor",
-                "callable-body",
-                "class-body",
-                "file",
-                "enclosing-declaration",
-                "enclosing-callable-body",
-                "enclosing-class-body",
-            ),
-            "Selected structural region.",
-        ),
-    ),
-    ServerSchemaProperty(
-        "declarationKinds",
-        arraySchema(
-            enumSchema(
-                listOf("classlike", "constructor", "function", "property", "type-alias"),
-                "Requested declaration kind.",
-            ),
-        ),
-    ),
-    ServerSchemaProperty(
-        "visibility",
-        arraySchema(
-            enumSchema(
-                listOf("public", "protected", "internal", "private", "local"),
-                "Requested declaration visibility.",
-            ),
-        ),
-    ),
-    ServerSchemaProperty("includeParameters", booleanSchema("Include value parameters.")),
-    ServerSchemaProperty("includeCalls", booleanSchema("Include calls.")),
-    ServerSchemaProperty("includeReferences", booleanSchema("Include references.")),
-    ServerSchemaProperty(
-        "containment",
-        enumSchema(listOf("direct", "descendants"), "Structural containment policy."),
-    ),
-    ServerSchemaProperty(
-        "text",
-        enumSchema(listOf("complete", "none", "window"), "Requested source-text projection."),
-    ),
-    ServerSchemaProperty(
-        "beforeLines",
-        integerSchema(0, 1_000, "Whole lines before the anchor."),
-    ),
-    ServerSchemaProperty(
-        "afterLines",
-        integerSchema(0, 1_000, "Whole lines after the anchor."),
-    ),
-    ServerSchemaProperty("entityLimit", countSchema("Maximum returned entities.")),
-    ServerSchemaProperty(
-        "textByteLimit",
-        integerSchema(1, description = "Maximum UTF-8 bytes for returned text."),
-    ),
-    ServerSchemaProperty("continuation", textSchema("Snapshot-bound source continuation.")),
-)
-
-private fun queryRunInputSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("from", queryFromSchema()),
-    ServerSchemaProperty("steps", arraySchema(queryStepSchema())),
-    ServerSchemaProperty("output", queryOutputSchema()),
-    ServerSchemaProperty(
-        "execution",
-        objectSchema(
-            ServerSchemaProperty("kind", constantSchema("exhaustive", "Exhaust the declared domain when budget permits.")),
-            ServerSchemaProperty("budget", constantSchema("interactive", "One shared bounded interactive budget.")),
-        ),
-    ),
-)
-
-private fun queryFromSchema(): JsonObject = unionSchema(
-    queryDiscoverySourceSchema("symbols", "Discover and establish exact compiler identities."),
-    queryDiscoverySourceSchema("candidates", "Discover declaration candidates without compiler refinement."),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("references", "Continue from returned exact references.")),
-        ServerSchemaProperty("values", nonEmptyArraySchema(queryExactReferenceSchema())),
-    ),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("references", "Continue from returned declaration candidates.")),
-        ServerSchemaProperty("values", nonEmptyArraySchema(queryCandidateReferenceSchema())),
-    ),
-)
-
-private fun queryDiscoverySourceSchema(type: String, description: String): JsonObject = objectSchema(
-    ServerSchemaProperty("type", constantSchema(type, description)),
-    ServerSchemaProperty("match", queryMatchSchema()),
-    ServerSchemaProperty("scope", queryScopeSchema()),
-    ServerSchemaProperty("declarationKinds", nonEmptyArraySchema(
-        enumSchema(
-            listOf("class", "function", "property", "type-alias"),
-            "Compiler declaration families to enumerate.",
-        ),
-    )),
-)
-
-private fun queryMatchSchema(): JsonObject = unionSchema(
-    objectSchema(ServerSchemaProperty("type", constantSchema("all", "Enumerate the admitted scope."))),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("name", "Match a non-blank declaration name.")),
-        ServerSchemaProperty("text", nonBlankQueryTextSchema()),
-        ServerSchemaProperty(
-            "matching",
-            enumSchema(listOf("fuzzy", "exact-name"), "Name matching policy."),
-        ),
-    ),
-)
-
-private fun queryScopeSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty(
-        "sourceSets",
-        nonEmptyArraySchema(enumSchema(listOf("main", "test"), "Imported source-set domain.")),
-    ),
-    ServerSchemaProperty("directory", nullableSchema(
-        objectSchema(
-            ServerSchemaProperty("path", workspaceFileSchema()),
-            ServerSchemaProperty("containment", queryContainmentSchema()),
-        ),
-    )),
-    ServerSchemaProperty("packageName", nullableSchema(
-        objectSchema(
-            ServerSchemaProperty("name", patternTextSchema(
-                "^[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$",
-                "Semantic Kotlin package name.",
-            )),
-            ServerSchemaProperty("containment", queryContainmentSchema()),
-        ),
-    )),
-)
-
-private fun queryContainmentSchema(): JsonObject =
-    enumSchema(listOf("direct", "descendants"), "Direct membership or descendant closure.")
-
-private fun queryStepSchema(): JsonObject = unionSchema(
-    objectSchema(ServerSchemaProperty("type", constantSchema("inspect", "Refine candidates to exact symbols."))),
-    objectSchema(ServerSchemaProperty("type", constantSchema("distinct", "Deduplicate by established identity."))),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("related", "Expand one exact semantic relation.")),
-        ServerSchemaProperty("relation", relationSchema()),
-    ),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("where", "Filter using a closed exact-symbol predicate.")),
-        ServerSchemaProperty(
-            "predicate",
-            objectSchema(
-                ServerSchemaProperty("type", constantSchema("visibility", "Compiler-established declaration visibility.")),
-                ServerSchemaProperty(
-                    "values",
-                    nonEmptyArraySchema(enumSchema(
-                        listOf("public", "protected", "internal", "private", "local"),
-                        "Admitted declaration visibility.",
-                    )),
-                ),
-            ),
-        ),
-    ),
-)
-
-private fun queryOutputSchema(): JsonObject = unionSchema(
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("symbols", "Return exact symbols.")),
-        ServerSchemaProperty(
-            "fields",
-            nonEmptyArraySchema(enumSchema(listOf("name", "location", "signature"), "Projected symbol field.")),
-        ),
-    ),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("candidates", "Return declaration candidates.")),
-        ServerSchemaProperty(
-            "fields",
-            nonEmptyArraySchema(enumSchema(listOf("name", "location"), "Projected candidate field.")),
-        ),
-    ),
-)
-
-private fun queryExactReferenceSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("kind", constantSchema("exact-symbol", "Exact compiler identity.")),
-    ServerSchemaProperty("token", patternTextSchema("^exact:v2:", "Exact symbol token.")),
-)
-
-private fun queryCandidateReferenceSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("kind", constantSchema("declaration-candidate", "Declaration candidate identity.")),
-    ServerSchemaProperty("token", patternTextSchema("^candidate:v2:", "Declaration candidate token.")),
-)
-
-private fun nonBlankQueryTextSchema(): JsonObject = buildJsonObject {
-    put("type", "string")
-    put("minLength", 1)
-    put("maxLength", 256)
-    put("pattern", ".*\\S.*")
-    put("description", "Non-blank name text. Use match.type=all for enumeration.")
-}
-
-private fun symbolDiscoverInputSchema(): JsonObject = unionSchema(
-    objectSchema(
-        ServerSchemaProperty("mode", constantSchema("name", "Discovery mode.")),
-        ServerSchemaProperty("query", textSchema("Exact or fuzzy source-name query.")),
-        ServerSchemaProperty(
-            "kind",
-            enumSchema(
-                values = listOf("file", "class", "symbol"),
-                description = "Name discovery kind.",
-            ),
-        ),
-        ServerSchemaProperty(
-            "match",
-            enumSchema(
-                values = listOf("fuzzy", "exact-name"),
-                description = "Name matching policy.",
-            ),
-        ),
-        ServerSchemaProperty("limit", countSchema("Maximum returned items.")),
-    ),
-    objectSchema(
-        ServerSchemaProperty("mode", constantSchema("location", "Discovery mode.")),
-        ServerSchemaProperty("file", workspaceFileSchema()),
-        ServerSchemaProperty(
-            "offset",
-            integerSchema(minimum = 0, description = "Non-negative source offset."),
-        ),
-        ServerSchemaProperty("limit", countSchema("Maximum returned items.")),
-    ),
-    objectSchema(
-        ServerSchemaProperty("mode", constantSchema("text", "Discovery mode.")),
-        ServerSchemaProperty("query", textSchema("Bounded source-text query.")),
-        ServerSchemaProperty("scope", constantSchema("workspace", "Text discovery scope.")),
-        ServerSchemaProperty("limit", countSchema("Maximum returned items.")),
-    ),
-    objectSchema(
-        ServerSchemaProperty("mode", constantSchema("text", "Discovery mode.")),
-        ServerSchemaProperty("query", textSchema("Bounded source-text query.")),
-        ServerSchemaProperty("scope", constantSchema("file", "Text discovery scope.")),
-        ServerSchemaProperty("file", workspaceFileSchema()),
-        ServerSchemaProperty("limit", countSchema("Maximum returned items.")),
-    ),
 )
 
 internal fun installedServerOutputSchema(operation: CanonicalOperation): JsonObject = unionSchema(

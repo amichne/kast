@@ -16,11 +16,11 @@ keywords: ["diagnostics", "compiler", "availability"]
 
 Run the public diagnostic operation with one explicit scope and result bound:
 
-```console
-kast diagnostic check \
-  --scope app/src/main/kotlin \
-  --limit 100
+```json
+{"scope":"app/src/main/kotlin","limit":100}
 ```
+
+Send the document to `kast diagnostic check` on standard input.
 
 ## Canonical contract
 

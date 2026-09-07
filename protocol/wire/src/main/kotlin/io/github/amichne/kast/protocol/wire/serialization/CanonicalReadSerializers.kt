@@ -32,11 +32,7 @@ internal object CanonicalReadSerializers {
         { document -> WireDocumentConversion.Converted(document.toContract()) },
     )
 
-    val symbolInspectRequest = factory.create(
-        SymbolInspectRequestDocument.serializer(),
-        SymbolInspectRequest::toReadDocument,
-        SymbolInspectRequestDocument::toContract,
-    )
+    val symbolInspectRequest = factory.create(SymbolInspectRequest.serializer())
     val symbolInspectResult = CanonicalSymbolSerializers.describeResult
     val symbolInspectQualification = factory.create(
         SymbolInspectQualificationWireDocument.serializer(),
@@ -49,11 +45,7 @@ internal object CanonicalReadSerializers {
         { document -> WireDocumentConversion.Converted(document.toContract()) },
     )
 
-    val relationReadRequest = factory.create(
-        RelationReadRequestDocument.serializer(),
-        RelationReadRequest::toReadDocument,
-        RelationReadRequestDocument::toContract,
-    )
+    val relationReadRequest = factory.create(RelationReadRequest.serializer())
     val relationReadResult = CanonicalSymbolSerializers.relationResult
     val relationReadQualification = factory.create(
         RelationReadQualificationWireDocument.serializer(),
@@ -66,11 +58,7 @@ internal object CanonicalReadSerializers {
         { document -> WireDocumentConversion.Converted(document.toContract()) },
     )
 
-    val traversalRunRequest = factory.create(
-        TraversalRunRequestDocument.serializer(),
-        TraversalRunRequest::toReadDocument,
-        TraversalRunRequestDocument::toContract,
-    )
+    val traversalRunRequest = factory.create(TraversalRunRequest.serializer())
     val traversalRunResult = CanonicalSymbolSerializers.traversalResult
     val traversalRunQualification = factory.create(
         TraversalRunQualificationWireDocument.serializer(),
@@ -83,11 +71,7 @@ internal object CanonicalReadSerializers {
         { document -> WireDocumentConversion.Converted(document.toContract()) },
     )
 
-    val diagnosticCheckRequest = factory.create(
-        DiagnosticCheckRequestDocument.serializer(),
-        DiagnosticCheckRequest::toReadDocument,
-        DiagnosticCheckRequestDocument::toContract,
-    )
+    val diagnosticCheckRequest = factory.create(DiagnosticCheckRequest.serializer())
     val diagnosticCheckResult = factory.create(
         DiagnosticCheckResultDocument.serializer(),
         DiagnosticCheckResult::toReadDocument,

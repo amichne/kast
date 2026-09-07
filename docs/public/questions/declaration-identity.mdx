@@ -25,9 +25,12 @@ Kast makes identity a visible refinement:
 
 <Steps>
   <Step title="Discover without overclaiming">
-    ```console
-    kast symbol discover --mode name --query PricePolicy --limit 25
+    ```json
+    {"target":{"type":"name","query":"PricePolicy","kind":"symbol","match":"fuzzy"},"limit":25}
     ```
+
+    Send the document to `kast symbol discover` on standard input. Prefer a
+    `query.run` `symbols` source when the next operation needs exact identities.
 
     Discovery can search by name, source location, file structure, or bounded
     text. Its results are candidates because the query may intentionally match
@@ -41,9 +44,11 @@ Kast makes identity a visible refinement:
   <Step title="Inspect one candidate">
     Select the `candidateSelector` from the intended discovery item:
 
-    ```console
-    kast symbol inspect --candidate '<candidate-selector>'
+    ```json
+    {"target":{"type":"candidate","selector":"<candidate-selector>"}}
     ```
+
+    Send the document to `kast symbol inspect` on standard input.
 
     Inspection succeeds only when that candidate still identifies one symbol
     in the same root, scope, and semantic generation. The result carries its
@@ -52,8 +57,8 @@ Kast makes identity a visible refinement:
   </Step>
 
   <Step title="Reuse an exact selector">
-    ```console
-    kast symbol inspect --selector '<exact-selector>'
+    ```json
+    {"target":{"type":"exact","selector":"<exact-selector>"}}
     ```
 
     The evidence is compiler-grounded and tied to the selector that

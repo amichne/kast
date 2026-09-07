@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
+import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
@@ -72,7 +73,11 @@ class CliNativeTransportTest {
             productInspector = ProductInspector { error("product inspection must not run") },
         )
 
-        val exit = cli.execute(listOf("symbol", "discover", "--query", "Example", "--limit", "10"), root)
+        val exit = cli.execute(
+            listOf("symbol", "discover"),
+            root,
+            CliRequestDocumentInput.Provided(symbolDiscoverDocument()),
+        )
 
         val rejected = assertInstanceOf(CliExit.BoundaryRejected::class.java, exit)
         assertEquals(CliBoundaryExitStatus.RUNTIME, rejected.status)
@@ -150,7 +155,11 @@ class CliNativeTransportTest {
                 productInspector = ProductInspector { error("product inspection must not run") },
             )
 
-            val exit = cli.execute(listOf("symbol", "discover", "--query", "Example", "--limit", "10"), nested)
+            val exit = cli.execute(
+                listOf("symbol", "discover"),
+                nested,
+                CliRequestDocumentInput.Provided(symbolDiscoverDocument()),
+            )
 
             val complete = exit as CliExit.Complete
             assertEquals(0, complete.code)
@@ -173,6 +182,9 @@ class CliNativeTransportTest {
         is CliCommandGraphConstruction.Created -> construction.factory
         is CliCommandGraphConstruction.Rejected -> error("command graph: ${construction.failures}")
     }
+
+    private fun symbolDiscoverDocument(): String =
+        """{"target":{"type":"name","query":"Example","kind":"symbol","match":"fuzzy"},"limit":10}"""
 
     private fun observedLifecycle(
         state: RuntimeLifecycleState,

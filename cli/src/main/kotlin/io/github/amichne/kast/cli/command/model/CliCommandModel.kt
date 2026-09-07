@@ -8,6 +8,9 @@ import io.github.amichne.kast.cli.PreparedCliRequest
 import io.github.amichne.kast.cli.RuntimeStartupRequest
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.OperationRequest
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
 
 enum class CliLocalMetadataCommand { VERSION, SCHEMA }
 
@@ -75,73 +78,28 @@ sealed interface CliUsageFailure {
         OPTIONS_REQUIRE_SEED,
     }
 
-    enum class SymbolDiscover : CliUsageFailure {
-        OPTIONS_DO_NOT_MATCH_MODE,
-        TEXT_SCOPE_REQUIRED,
-        TEXT_FILE_REQUIRED,
-        TEXT_FILE_REJECTED,
-    }
-
-    enum class SymbolInspect : CliUsageFailure {
-        EXACTLY_ONE_TARGET_REQUIRED,
-    }
-
-    enum class SourceRead : CliUsageFailure {
-        ANCHOR_REJECTED,
-        VISIBILITY_REQUIRES_DECLARATIONS,
-        CONTAINMENT_REQUIRES_ENTITIES,
-        WINDOW_LINES_REQUIRE_WINDOW_TEXT,
-        DUPLICATE_SELECTION,
-    }
-
-    enum class RelationRead : CliUsageFailure {
-        CONTINUATION_REJECTED,
-    }
-
-    enum class TraversalRun : CliUsageFailure {
-        CONTINUATION_REJECTED,
-    }
-
-    enum class QueryRun : CliUsageFailure {
-        REQUEST_REJECTED,
-    }
-
-    enum class ChangePlan : CliUsageFailure {
-        OPTIONS_DO_NOT_MATCH_INTENT,
+    enum class RequestDocument : CliUsageFailure {
+        REQUIRED,
+        REJECTED,
     }
 }
 
 internal fun CliUsageFailure.message(): String = when (this) {
     CliUsageFailure.Start.OPTIONS_REQUIRE_SEED ->
         "--source-idea-system and --accept-global-index-copy require --cache seed"
-    CliUsageFailure.SymbolDiscover.OPTIONS_DO_NOT_MATCH_MODE ->
-        "options do not match the selected discovery mode"
-    CliUsageFailure.SymbolDiscover.TEXT_SCOPE_REQUIRED ->
-        "text discovery requires --scope workspace or --scope file"
-    CliUsageFailure.SymbolDiscover.TEXT_FILE_REQUIRED ->
-        "text discovery with --scope file requires --file"
-    CliUsageFailure.SymbolDiscover.TEXT_FILE_REJECTED ->
-        "text discovery with --scope workspace does not accept --file"
-    CliUsageFailure.SymbolInspect.EXACTLY_ONE_TARGET_REQUIRED ->
-        "symbol inspect requires exactly one of --candidate or --selector"
-    CliUsageFailure.SourceRead.ANCHOR_REJECTED ->
-        "--anchor must be one valid candidate, exact-symbol, or source selector token"
-    CliUsageFailure.SourceRead.VISIBILITY_REQUIRES_DECLARATIONS ->
-        "--visibility requires at least one --declaration-kind"
-    CliUsageFailure.SourceRead.CONTAINMENT_REQUIRES_ENTITIES ->
-        "--containment requires at least one entity filter"
-    CliUsageFailure.SourceRead.WINDOW_LINES_REQUIRE_WINDOW_TEXT ->
-        "--before-lines and --after-lines require --text window"
-    CliUsageFailure.SourceRead.DUPLICATE_SELECTION ->
-        "declaration kinds and visibility values may each be selected once"
-    CliUsageFailure.RelationRead.CONTINUATION_REJECTED ->
-        "--continuation must be one intact relation continuation token"
-    CliUsageFailure.TraversalRun.CONTINUATION_REJECTED ->
-        "--continuation must be one intact traversal continuation token"
-    CliUsageFailure.QueryRun.REQUEST_REJECTED ->
-        "query fragments must form one closed, bounded query request"
-    CliUsageFailure.ChangePlan.OPTIONS_DO_NOT_MATCH_INTENT ->
-        "options do not match the selected change intent"
+    CliUsageFailure.RequestDocument.REQUIRED ->
+        "semantic commands read one canonical JSON request document from standard input"
+    CliUsageFailure.RequestDocument.REJECTED ->
+        "standard input must be one canonical, bounded request document for this operation"
+}
+
+internal sealed interface CliRequestDocumentInput {
+    data object Absent : CliRequestDocumentInput
+    data object Rejected : CliRequestDocumentInput
+    data class Provided(val document: String) : CliRequestDocumentInput
+    data class Deferred(
+        val read: () -> CliRequestDocumentInput,
+    ) : CliRequestDocumentInput
 }
 
 internal sealed interface CliNodeResolution {
@@ -180,13 +138,58 @@ internal open class KastCommandGroup(
     final override fun resolveAction(): CliNodeResolution = CliNodeResolution.NoAction
 }
 
-internal abstract class SemanticKastCommand<Request : OperationRequest>(
+internal class SemanticKastCommand<Request : OperationRequest>(
     name: String,
     val operation: CanonicalOperation,
     val schemaUsage: String,
+    private val description: String,
+    private val serializer: KSerializer<Request>,
+    private val requestInput: CliRequestDocumentInput,
     private val preparer: CliRequestPreparer<Request>,
 ) : KastCommand(name) {
-    protected fun prepare(request: Request): CliActionResolution =
+    override fun help(context: com.github.ajalt.clikt.core.Context): String = description
+
+    override fun resolveAction(): CliActionResolution = when (requestInput) {
+        CliRequestDocumentInput.Absent -> CliActionResolution.UsageRejected(
+            CliUsageFailure.RequestDocument.REQUIRED,
+        )
+        CliRequestDocumentInput.Rejected -> CliActionResolution.UsageRejected(
+            CliUsageFailure.RequestDocument.REJECTED,
+        )
+        is CliRequestDocumentInput.Provided -> decode(requestInput.document)
+        is CliRequestDocumentInput.Deferred -> when (val supplied = requestInput.read()) {
+            is CliRequestDocumentInput.Deferred -> CliActionResolution.UsageRejected(
+                CliUsageFailure.RequestDocument.REJECTED,
+            )
+            else -> resolve(supplied)
+        }
+    }
+
+    private fun resolve(input: CliRequestDocumentInput): CliActionResolution = when (input) {
+        CliRequestDocumentInput.Absent -> CliActionResolution.UsageRejected(
+            CliUsageFailure.RequestDocument.REQUIRED,
+        )
+        CliRequestDocumentInput.Rejected -> CliActionResolution.UsageRejected(
+            CliUsageFailure.RequestDocument.REJECTED,
+        )
+        is CliRequestDocumentInput.Provided -> decode(input.document)
+        is CliRequestDocumentInput.Deferred -> CliActionResolution.UsageRejected(
+            CliUsageFailure.RequestDocument.REJECTED,
+        )
+    }
+
+    private fun decode(document: String): CliActionResolution {
+        val request = try {
+            requestJson.decodeFromString(serializer, document)
+        } catch (_: SerializationException) {
+            return CliActionResolution.UsageRejected(CliUsageFailure.RequestDocument.REJECTED)
+        } catch (_: IllegalArgumentException) {
+            return CliActionResolution.UsageRejected(CliUsageFailure.RequestDocument.REJECTED)
+        }
+        return prepare(request)
+    }
+
+    private fun prepare(request: Request): CliActionResolution =
         when (val preparation = preparer.prepare(request)) {
             is CliProjectionPreparation.Prepared -> CliActionResolution.Selected(
                 CliAction.Semantic(preparation.request),
@@ -195,7 +198,13 @@ internal abstract class SemanticKastCommand<Request : OperationRequest>(
                 preparation.failure,
             )
         }
+}
 
+private val requestJson = Json {
+    classDiscriminator = "type"
+    encodeDefaults = true
+    explicitNulls = true
+    ignoreUnknownKeys = false
 }
 
 internal abstract class LocalKastCommand(

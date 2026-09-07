@@ -6,73 +6,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonClassDiscriminator
-
-@Serializable
-internal data class QueryRunRequestWireDocument(
-    val from: QueryFromWireDocument,
-    val steps: List<QueryStepWireDocument>,
-    val output: QueryOutputWireDocument,
-    val execution: QueryExecutionWireDocument,
-)
-
-@Serializable
-internal sealed interface QueryFromWireDocument {
-    @Serializable @SerialName("candidates")
-    data class Candidates(
-        val match: QueryMatchWireDocument,
-        val scope: QueryScopeWireDocument,
-        val declarationKinds: List<QueryDeclarationKindWireDocument>,
-    ) : QueryFromWireDocument
-
-    @Serializable @SerialName("symbols")
-    data class Symbols(
-        val match: QueryMatchWireDocument,
-        val scope: QueryScopeWireDocument,
-        val declarationKinds: List<QueryDeclarationKindWireDocument>,
-    ) : QueryFromWireDocument
-
-    @Serializable @SerialName("references")
-    data class References(val values: List<QueryReferenceWireDocument>) : QueryFromWireDocument
-}
-
-@Serializable
-internal data class QueryDiscoveryWireDocument(
-    val match: QueryMatchWireDocument,
-    val scope: QueryScopeWireDocument,
-    val declarationKinds: List<QueryDeclarationKindWireDocument>,
-)
-
-@Serializable
-internal sealed interface QueryMatchWireDocument {
-    @Serializable @SerialName("all") data object All : QueryMatchWireDocument
-
-    @Serializable @SerialName("name")
-    data class Name(
-        val text: String,
-        val matching: SymbolDiscoveryMatchWireDocument,
-    ) : QueryMatchWireDocument
-}
-
-@Serializable
-internal data class QueryScopeWireDocument(
-    val sourceSets: List<QuerySourceSetWireDocument>,
-    val directory: QueryDirectoryScopeWireDocument?,
-    val packageName: QueryPackageScopeWireDocument?,
-)
-
-@Serializable
-internal data class QueryDirectoryScopeWireDocument(
-    val path: String,
-    val containment: QueryContainmentWireDocument,
-)
-
-@Serializable
-internal data class QueryPackageScopeWireDocument(
-    val name: String,
-    val containment: QueryContainmentWireDocument,
-)
 
 @Serializable
 @JsonClassDiscriminator("kind")
@@ -86,34 +20,6 @@ internal sealed interface QueryReferenceWireDocument {
     data class ExactSymbol(override val token: String) : QueryReferenceWireDocument
 }
 
-@Serializable
-internal sealed interface QueryStepWireDocument {
-    @Serializable @SerialName("inspect") data object Inspect : QueryStepWireDocument
-
-    @Serializable @SerialName("where")
-    data class Where(val predicate: QueryPredicateWireDocument) : QueryStepWireDocument
-
-    @Serializable @SerialName("related")
-    data class Related(val relation: RelationKindWireDocument) : QueryStepWireDocument
-
-    @Serializable @SerialName("distinct") data object Distinct : QueryStepWireDocument
-}
-
-@Serializable
-internal sealed interface QueryPredicateWireDocument {
-    @Serializable @SerialName("visibility")
-    data class Visibility(val values: List<QueryVisibilityWireDocument>) : QueryPredicateWireDocument
-}
-
-@Serializable
-internal sealed interface QueryOutputWireDocument {
-    @Serializable @SerialName("candidates")
-    data class Candidates(val fields: List<QueryCandidateFieldWireDocument>) : QueryOutputWireDocument
-
-    @Serializable @SerialName("symbols")
-    data class Symbols(val fields: List<QuerySymbolFieldWireDocument>) : QueryOutputWireDocument
-}
-
 @Serializable internal enum class QueryDeclarationKindWireDocument {
     @SerialName("class") CLASS,
     @SerialName("constructor") CONSTRUCTOR,
@@ -121,38 +27,6 @@ internal sealed interface QueryOutputWireDocument {
     @SerialName("property") PROPERTY,
     @SerialName("type-alias") TYPE_ALIAS,
 }
-@Serializable internal enum class QuerySourceSetWireDocument {
-    @SerialName("main") MAIN, @SerialName("test") TEST,
-}
-@Serializable internal enum class QueryContainmentWireDocument {
-    @SerialName("direct") DIRECT, @SerialName("descendants") DESCENDANTS,
-}
-@Serializable internal enum class QueryVisibilityWireDocument {
-    @SerialName("public") PUBLIC,
-    @SerialName("protected") PROTECTED,
-    @SerialName("internal") INTERNAL,
-    @SerialName("private") PRIVATE,
-    @SerialName("local") LOCAL,
-}
-@Serializable internal enum class QueryCandidateFieldWireDocument {
-    @SerialName("name") NAME, @SerialName("location") LOCATION,
-}
-@Serializable internal enum class QuerySymbolFieldWireDocument {
-    @SerialName("name") NAME,
-    @SerialName("location") LOCATION,
-    @SerialName("signature") SIGNATURE,
-}
-@Serializable internal data class QueryExecutionWireDocument(
-    val kind: QueryExecutionKindWireDocument,
-    val budget: QueryExecutionBudgetWireDocument,
-)
-@Serializable internal enum class QueryExecutionKindWireDocument {
-    @SerialName("exhaustive") EXHAUSTIVE,
-}
-@Serializable internal enum class QueryExecutionBudgetWireDocument {
-    @SerialName("interactive") INTERACTIVE,
-}
-
 @Serializable
 internal data class QueryRunResultWireDocument(
     val items: List<QueryResultItemWireDocument>,
@@ -307,11 +181,7 @@ internal sealed interface QueryRunRejectionWireDocument {
 
 internal object CanonicalQuerySerializers {
     private val factory = GeneratedWireCodecFactory(wireJson)
-    val request = factory.create(
-        QueryRunRequestWireDocument.serializer(),
-        QueryRunRequest::toQueryWireDocument,
-        QueryRunRequestWireDocument::toContract,
-    )
+    val request = factory.create(QueryRunRequest.serializer())
     val result = factory.create(
         QueryRunResultWireDocument.serializer(),
         QueryRunResult::toQueryWireDocument,
@@ -329,134 +199,6 @@ internal object CanonicalQuerySerializers {
     )
 }
 
-sealed interface QueryRequestFragmentAdmission {
-    data class Admitted(val request: QueryRunRequest) : QueryRequestFragmentAdmission
-    data object Rejected : QueryRequestFragmentAdmission
-}
-
-/** Strictly decodes the four object-valued CLI fragments used by the hosted query transport. */
-object CanonicalQueryRequestFragments {
-    fun admit(
-        from: String,
-        steps: String,
-        output: String,
-        execution: String,
-    ): QueryRequestFragmentAdmission {
-        val document = try {
-            QueryRunRequestWireDocument(
-                from = wireJson.decodeFromJsonElement(
-                    QueryFromWireDocument.serializer(),
-                    wireJson.parseToJsonElement(from),
-                ),
-                steps = wireJson.decodeFromJsonElement(
-                    kotlinx.serialization.builtins.ListSerializer(QueryStepWireDocument.serializer()),
-                    wireJson.parseToJsonElement(steps),
-                ),
-                output = wireJson.decodeFromJsonElement(
-                    QueryOutputWireDocument.serializer(),
-                    wireJson.parseToJsonElement(output),
-                ),
-                execution = wireJson.decodeFromJsonElement(
-                    QueryExecutionWireDocument.serializer(),
-                    wireJson.parseToJsonElement(execution),
-                ),
-            )
-        } catch (_: SerializationException) {
-            return QueryRequestFragmentAdmission.Rejected
-        } catch (_: IllegalArgumentException) {
-            return QueryRequestFragmentAdmission.Rejected
-        }
-        return when (val admitted = document.toContract()) {
-            is WireDocumentConversion.Converted -> QueryRequestFragmentAdmission.Admitted(admitted.value)
-            WireDocumentConversion.Rejected -> QueryRequestFragmentAdmission.Rejected
-        }
-    }
-}
-
-private fun QueryRunRequest.toQueryWireDocument() = QueryRunRequestWireDocument(
-    from.toWire(), steps.values.map(QueryStepDocument::toWire), output.toWire(), execution.toWire(),
-)
-
-private fun QueryRunRequestWireDocument.toContract(): WireDocumentConversion<QueryRunRequest> =
-    from.toContract().flatMapConverted { source ->
-        steps.convertEach(QueryStepWireDocument::toContract).flatMapConverted { querySteps ->
-            querySteps.bounded().flatMapConverted { boundedSteps ->
-                output.toContract().mapConverted { queryOutput ->
-                    QueryRunRequest(source, boundedSteps, queryOutput, execution.toContract())
-                }
-            }
-        }
-    }
-
-private fun QueryFromDocument.toWire(): QueryFromWireDocument = when (this) {
-    is QueryFromDocument.Candidates -> discovery.toWire().let {
-        QueryFromWireDocument.Candidates(it.match, it.scope, it.declarationKinds)
-    }
-    is QueryFromDocument.Symbols -> discovery.toWire().let {
-        QueryFromWireDocument.Symbols(it.match, it.scope, it.declarationKinds)
-    }
-    is QueryFromDocument.References -> QueryFromWireDocument.References(values.values.map { it.toWire() })
-}
-
-private fun QueryFromWireDocument.toContract(): WireDocumentConversion<QueryFromDocument> = when (this) {
-    is QueryFromWireDocument.Candidates -> QueryDiscoveryWireDocument(match, scope, declarationKinds)
-        .toContract().mapConverted(QueryFromDocument::Candidates)
-    is QueryFromWireDocument.Symbols -> QueryDiscoveryWireDocument(match, scope, declarationKinds)
-        .toContract().mapConverted(QueryFromDocument::Symbols)
-    is QueryFromWireDocument.References -> values.convertEach(QueryReferenceWireDocument::toContract)
-        .flatMapConverted { it.bounded() }
-        .mapConverted(QueryFromDocument::References)
-}
-
-private fun QueryDiscoveryDocument.toWire() = QueryDiscoveryWireDocument(
-    match.toWire(), scope.toWire(), declarationKinds.values.map(QueryDeclarationKindDocument::toWire),
-)
-
-private fun QueryDiscoveryWireDocument.toContract(): WireDocumentConversion<QueryDiscoveryDocument> =
-    match.toContract().flatMapConverted { queryMatch ->
-        scope.toContract().flatMapConverted { queryScope ->
-            declarationKinds.map(QueryDeclarationKindWireDocument::toContract).bounded()
-                .mapConverted { QueryDiscoveryDocument(queryMatch, queryScope, it) }
-        }
-    }
-
-private fun QueryMatchDocument.toWire(): QueryMatchWireDocument = when (this) {
-    QueryMatchDocument.All -> QueryMatchWireDocument.All
-    is QueryMatchDocument.Name -> QueryMatchWireDocument.Name(text.value, matching.toWireDocument())
-}
-
-private fun QueryMatchWireDocument.toContract(): WireDocumentConversion<QueryMatchDocument> = when (this) {
-    QueryMatchWireDocument.All -> WireDocumentConversion.Converted(QueryMatchDocument.All)
-    is QueryMatchWireDocument.Name -> text.protocolText().mapConverted {
-        QueryMatchDocument.Name(it, matching.toContract())
-    }
-}
-
-private fun QueryScopeDocument.toWire() = QueryScopeWireDocument(
-    sourceSets.values.map(QuerySourceSetDocument::toWire),
-    directory?.let { QueryDirectoryScopeWireDocument(it.path.value, it.containment.toWire()) },
-    packageName?.let { QueryPackageScopeWireDocument(it.name.value, it.containment.toWire()) },
-)
-
-private fun QueryScopeWireDocument.toContract(): WireDocumentConversion<QueryScopeDocument> =
-    sourceSets.map(QuerySourceSetWireDocument::toContract).bounded().flatMapConverted { sets ->
-        directory.toContract().flatMapConverted { directoryScope ->
-            packageName.toContract().mapConverted { packageScope ->
-                QueryScopeDocument(sets, directoryScope, packageScope)
-            }
-        }
-    }
-
-private fun QueryDirectoryScopeWireDocument?.toContract(): WireDocumentConversion<QueryDirectoryScopeDocument?> =
-    if (this == null) WireDocumentConversion.Converted(null) else path.protocolText().mapConverted {
-        QueryDirectoryScopeDocument(it, containment.toContract())
-    }
-
-private fun QueryPackageScopeWireDocument?.toContract(): WireDocumentConversion<QueryPackageScopeDocument?> =
-    if (this == null) WireDocumentConversion.Converted(null) else name.protocolText().mapConverted {
-        QueryPackageScopeDocument(it, containment.toContract())
-    }
-
 private fun QueryReferenceDocument.toWire(): QueryReferenceWireDocument = when (this) {
     is QueryReferenceDocument.DeclarationCandidate -> QueryReferenceWireDocument.DeclarationCandidate(token.value)
     is QueryReferenceDocument.ExactSymbol -> QueryReferenceWireDocument.ExactSymbol(token.value)
@@ -469,41 +211,6 @@ private fun QueryReferenceWireDocument.toContract(): WireDocumentConversion<Quer
             is QueryReferenceWireDocument.ExactSymbol -> QueryReferenceDocument.ExactSymbol(it)
         }
     }
-
-private fun QueryStepDocument.toWire(): QueryStepWireDocument = when (this) {
-    QueryStepDocument.Inspect -> QueryStepWireDocument.Inspect
-    is QueryStepDocument.Where -> QueryStepWireDocument.Where(predicate.toWire())
-    is QueryStepDocument.Related -> QueryStepWireDocument.Related(relation.toWireDocument())
-    QueryStepDocument.Distinct -> QueryStepWireDocument.Distinct
-}
-
-private fun QueryStepWireDocument.toContract(): WireDocumentConversion<QueryStepDocument> = when (this) {
-    QueryStepWireDocument.Inspect -> WireDocumentConversion.Converted(QueryStepDocument.Inspect)
-    is QueryStepWireDocument.Where -> predicate.toContract().mapConverted(QueryStepDocument::Where)
-    is QueryStepWireDocument.Related -> WireDocumentConversion.Converted(QueryStepDocument.Related(relation.toContract()))
-    QueryStepWireDocument.Distinct -> WireDocumentConversion.Converted(QueryStepDocument.Distinct)
-}
-
-private fun QueryPredicateDocument.toWire(): QueryPredicateWireDocument = when (this) {
-    is QueryPredicateDocument.Visibility -> QueryPredicateWireDocument.Visibility(values.values.map(QueryVisibilityDocument::toWire))
-}
-
-private fun QueryPredicateWireDocument.toContract(): WireDocumentConversion<QueryPredicateDocument> = when (this) {
-    is QueryPredicateWireDocument.Visibility -> values.map(QueryVisibilityWireDocument::toContract).bounded()
-        .mapConverted(QueryPredicateDocument::Visibility)
-}
-
-private fun QueryOutputDocument.toWire(): QueryOutputWireDocument = when (this) {
-    is QueryOutputDocument.Candidates -> QueryOutputWireDocument.Candidates(fields.values.map(QueryCandidateFieldDocument::toWire))
-    is QueryOutputDocument.Symbols -> QueryOutputWireDocument.Symbols(fields.values.map(QuerySymbolFieldDocument::toWire))
-}
-
-private fun QueryOutputWireDocument.toContract(): WireDocumentConversion<QueryOutputDocument> = when (this) {
-    is QueryOutputWireDocument.Candidates -> fields.map(QueryCandidateFieldWireDocument::toContract).bounded()
-        .mapConverted(QueryOutputDocument::Candidates)
-    is QueryOutputWireDocument.Symbols -> fields.map(QuerySymbolFieldWireDocument::toContract).bounded()
-        .mapConverted(QueryOutputDocument::Symbols)
-}
 
 private fun QueryRunResult.toQueryWireDocument() = QueryRunResultWireDocument(
     items.values.map(QueryResultItemDocument::toWire), failures.values.map(QueryItemFailureDocument::toWire),
@@ -650,24 +357,6 @@ private fun QueryRunRejectionWireDocument.toContract(): WireDocumentConversion<Q
 
 private fun QueryDeclarationKindDocument.toWire() = QueryDeclarationKindWireDocument.valueOf(name)
 private fun QueryDeclarationKindWireDocument.toContract() = QueryDeclarationKindDocument.valueOf(name)
-private fun QuerySourceSetDocument.toWire() = QuerySourceSetWireDocument.valueOf(name)
-private fun QuerySourceSetWireDocument.toContract() = QuerySourceSetDocument.valueOf(name)
-private fun QueryContainmentDocument.toWire() = QueryContainmentWireDocument.valueOf(name)
-private fun QueryContainmentWireDocument.toContract() = QueryContainmentDocument.valueOf(name)
-private fun QueryVisibilityDocument.toWire() = QueryVisibilityWireDocument.valueOf(name)
-private fun QueryVisibilityWireDocument.toContract() = QueryVisibilityDocument.valueOf(name)
-private fun QueryCandidateFieldDocument.toWire() = QueryCandidateFieldWireDocument.valueOf(name)
-private fun QueryCandidateFieldWireDocument.toContract() = QueryCandidateFieldDocument.valueOf(name)
-private fun QuerySymbolFieldDocument.toWire() = QuerySymbolFieldWireDocument.valueOf(name)
-private fun QuerySymbolFieldWireDocument.toContract() = QuerySymbolFieldDocument.valueOf(name)
-private fun QueryExecutionDocument.toWire() = QueryExecutionWireDocument(
-    QueryExecutionKindWireDocument.valueOf(kind.name),
-    QueryExecutionBudgetWireDocument.valueOf(budget.name),
-)
-private fun QueryExecutionWireDocument.toContract() = QueryExecutionDocument(
-    QueryExecutionKindDocument.valueOf(kind.name),
-    QueryExecutionBudgetDocument.valueOf(budget.name),
-)
 private fun QueryLimitationDocument.toWire() = QueryLimitationWireDocument.valueOf(name)
 private fun QueryLimitationWireDocument.toContract() = QueryLimitationDocument.valueOf(name)
 private fun QueryElementTypeDocument.toWire() = QueryElementTypeWireDocument.valueOf(name)

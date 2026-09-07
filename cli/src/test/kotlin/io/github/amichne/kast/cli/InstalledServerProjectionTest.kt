@@ -24,28 +24,29 @@ import org.junit.jupiter.api.Test
 
 class InstalledServerProjectionTest {
     @Test
-    fun `installed schema separates hosted bootstrap from cli invocation bindings`() {
+    fun `installed schema separates hosted bootstrap from whole document cli invocations`() {
         val projection = installedProjection()
         val bootstrap = projection.getValue("hostedBootstrap").jsonObject
         val tools = bootstrap.getValue("tools").jsonArray.map(JsonElement::jsonObject)
-        val cliBindings = projection.getValue("cliInvocationBindings")
+        val cliInvocations = projection.getValue("cliInvocations")
             .jsonObject
-            .getValue("bindings")
+            .getValue("operations")
             .jsonArray
             .map(JsonElement::jsonObject)
 
-        assertEquals(5, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(6, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertTrue(
             bootstrap.getValue("policy").jsonPrimitive.content
                 .contains("compiler-grounded Kotlin source intelligence"),
         )
         assertEquals(
             tools.map { it.getValue("operationId").jsonPrimitive.content },
-            cliBindings.map { it.getValue("operationId").jsonPrimitive.content },
+            cliInvocations.map { it.getValue("operationId").jsonPrimitive.content },
         )
         assertTrue(tools.none { "cliUsage" in it || "invocation" in it })
-        assertTrue(cliBindings.all { "cliUsage" in it && "invocation" in it })
-        assertTrue(cliBindings.none { "description" in it || "inputSchema" in it })
+        assertTrue(cliInvocations.all { "cliUsage" in it && "invocation" in it })
+        assertTrue(cliInvocations.none { "description" in it || "inputSchema" in it })
+        assertTrue(cliInvocations.all { "bindings" !in it.getValue("invocation").jsonObject })
     }
 
     @Test
@@ -65,7 +66,7 @@ class InstalledServerProjectionTest {
     @Test
     fun `installed broker exposes workflow facade names and explicit change approval`() {
         val tools = projectionTools()
-        val bindings = projectionBindings()
+        val invocations = projectionInvocations()
 
         assertEquals(
             listOf(
@@ -82,7 +83,7 @@ class InstalledServerProjectionTest {
             ),
             tools.map { it.getValue("name").jsonPrimitive.content },
         )
-        assertEquals(listOf("symbol", "inspect"), bindings.binding("symbol.inspect").cliCommand())
+        assertEquals(listOf("symbol", "inspect"), invocations.invocation("symbol.inspect").cliCommand())
         assertTrue(
             tools.filter { it.getValue("name").jsonPrimitive.content.startsWith("change_") }
                 .all {
@@ -102,7 +103,7 @@ class InstalledServerProjectionTest {
     @Test
     fun `installed broker publishes executable read operations`() {
         val tools = projectionTools()
-        val bindings = projectionBindings()
+        val invocations = projectionInvocations()
 
         assertEquals(
             listOf(
@@ -119,14 +120,8 @@ class InstalledServerProjectionTest {
             ),
             tools.map { it.getValue("operationId").jsonPrimitive.content },
         )
-        assertEquals(
-            listOf("selector", "relation", "limit", "continuation"),
-            bindings.binding("relation.read").cliOptionFields(),
-        )
-        assertEquals(
-            listOf("scope", "limit"),
-            bindings.binding("diagnostic.check").cliOptionFields(),
-        )
+        assertEquals(listOf("relation", "read"), invocations.invocation("relation.read").cliCommand())
+        assertEquals(listOf("diagnostic", "check"), invocations.invocation("diagnostic.check").cliCommand())
         tools.tool("relation.read").outputSchema().assertAdmits(
             """{"status":"completed","document":{"operation":"relation.read","status":"complete","relations":[]}}""",
         )
@@ -185,7 +180,7 @@ class InstalledServerProjectionTest {
     }
 
     @Test
-    fun `installed schema owns broker tool shapes and exact cli bindings`() {
+    fun `installed schema owns broker tool shapes and exact whole document cli invocations`() {
         val schema = installedSchema(
             operationRegistry = "{}",
             wireSchema = "{}",
@@ -197,15 +192,15 @@ class InstalledServerProjectionTest {
             .jsonObject
         val bootstrap = projection.getValue("hostedBootstrap").jsonObject
         val tools = bootstrap.getValue("tools").jsonArray.map { it.jsonObject }
-        val bindings = projection.getValue("cliInvocationBindings")
-            .jsonObject.getValue("bindings").jsonArray.map { it.jsonObject }
+        val invocations = projection.getValue("cliInvocations")
+            .jsonObject.getValue("operations").jsonArray.map { it.jsonObject }
         val expectedPublicOperations = HostedOperationProjection.publicDefinitions
             .map { it.operation.id.value }
         val internalOperations = HostedOperationProjection.internalDefinitions
             .map { it.operation.id.value }
 
         assertEquals(10, tools.size)
-        assertEquals(5, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(6, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
             expectedPublicOperations,
@@ -236,27 +231,27 @@ class InstalledServerProjectionTest {
         )
 
         val discover = tools.tool("symbol.discover")
-        val variants = discover.getValue("inputSchema")
+        val targetVariants = discover.getValue("inputSchema")
+            .jsonObject
+            .getValue("properties")
+            .jsonObject
+            .getValue("target")
             .jsonObject
             .getValue("anyOf")
             .jsonArray
             .map { it.jsonObject }
-        assertEquals(4, variants.size)
+        assertEquals(3, targetVariants.size)
         assertEquals(
-            listOf("name", "location", "text", "text"),
-            variants.map { variant ->
+            listOf("location", "name", "text"),
+            targetVariants.map { variant ->
                 variant.getValue("properties")
                     .jsonObject
-                    .getValue("mode")
+                    .getValue("type")
                     .jsonObject
                     .getValue("const")
                     .jsonPrimitive
                     .content
             },
-        )
-        assertEquals(
-            listOf("mode", "query", "kind", "match", "file", "offset", "scope", "limit"),
-            bindings.binding("symbol.discover").cliOptionFields(),
         )
         assertEquals(
             linkedMapOf(
@@ -271,50 +266,11 @@ class InstalledServerProjectionTest {
                 "change.apply" to listOf("change", "apply"),
                 "change.recover" to listOf("change", "recover"),
             ),
-            bindings.associate { binding ->
-                binding.getValue("operationId").jsonPrimitive.content to binding.cliCommand()
+            invocations.associate { invocation ->
+                invocation.getValue("operationId").jsonPrimitive.content to invocation.cliCommand()
             },
         )
-        assertEquals(
-            linkedMapOf(
-                "query.run" to listOf("from", "steps", "output", "execution"),
-                "symbol.discover" to
-                    listOf("mode", "query", "kind", "match", "file", "offset", "scope", "limit"),
-                "symbol.inspect" to listOf("candidate", "selector"),
-                "source.read" to listOf(
-                    "anchor",
-                    "region",
-                    "declarationKinds",
-                    "visibility",
-                    "includeParameters",
-                    "includeCalls",
-                    "includeReferences",
-                    "containment",
-                    "text",
-                    "beforeLines",
-                    "afterLines",
-                    "entityLimit",
-                    "textByteLimit",
-                    "continuation",
-                ),
-                "relation.read" to listOf("selector", "relation", "limit", "continuation"),
-                "traversal.run" to
-                    listOf(
-                        "selector",
-                        "relation",
-                        "maximumDepth",
-                        "maximumResults",
-                        "continuation",
-                    ),
-                "diagnostic.check" to listOf("scope", "limit"),
-                "change.plan" to listOf("intent", "target", "declaration"),
-                "change.apply" to listOf("plan"),
-                "change.recover" to listOf("plan"),
-            ),
-            bindings.associate { binding ->
-                binding.getValue("operationId").jsonPrimitive.content to binding.cliOptionFields()
-            },
-        )
+        assertTrue(invocations.all { "bindings" !in it.getValue("invocation").jsonObject })
         assertEquals(tools.size, tools.map { it.getValue("outputSchema") }.distinct().size)
 
         assertTrue(
@@ -325,19 +281,16 @@ class InstalledServerProjectionTest {
             tools.tool("traversal.run").completedDocumentProperty("graph") != null,
         )
 
-        val changePlanProperties = tools.tool("change.plan")
+        val changeIntentVariants = tools.tool("change.plan")
             .getValue("inputSchema")
             .jsonObject
             .getValue("properties")
             .jsonObject
-        assertEquals(
-            "add-declaration",
-            changePlanProperties.getValue("intent")
-                .jsonObject
-                .getValue("const")
-                .jsonPrimitive
-                .content,
-        )
+            .getValue("intent")
+            .jsonObject
+            .getValue("anyOf")
+            .jsonArray
+        assertEquals(4, changeIntentVariants.size)
     }
 
     @Test
@@ -423,19 +376,12 @@ class InstalledServerProjectionTest {
     }
 
     @Test
-    fun `source read projection binds repeatable filters flags and proof rich outcomes`() {
+    fun `source read projection accepts one canonical request document and proof rich outcomes`() {
         val tool = projectionTools().tool("source.read")
-        val bindingTypes = projectionBindings().binding("source.read").getValue("invocation")
-            .jsonObject
-            .getValue("bindings")
-            .jsonArray
-            .associate { binding ->
-                binding.jsonObject.getValue("inputField").jsonPrimitive.content to
-                    binding.jsonObject.getValue("type").jsonPrimitive.content
-            }
-        assertEquals("REPEATED_OPTION", bindingTypes.getValue("declarationKinds"))
-        assertEquals("REPEATED_OPTION", bindingTypes.getValue("visibility"))
-        assertEquals("FLAG", bindingTypes.getValue("includeCalls"))
+        assertEquals(
+            listOf("source", "read"),
+            projectionInvocations().invocation("source.read").cliCommand(),
+        )
 
         val complete = """{"status":"completed","document":{"operation":"source.read","status":"complete","snapshot":{"canonicalRoot":"/workspace","generation":17,"sourceState":"state","file":"src/Empty.kt","textIdentity":"identity","coordinateUnit":"utf16-code-unit","length":0},"region":{"kind":"file","selection":{"selector":"source-selector-v1:payload:digest","range":{"startInclusive":0,"endExclusive":0}}},"entities":[],"text":{"type":"returned","lines":{"startInclusive":1,"endInclusive":1},"selection":{"selector":"source-selector-v1:payload:digest","range":{"startInclusive":0,"endExclusive":0}},"text":""}}} """
         val qualified = """{"status":"completed","document":{"operation":"source.read","status":"qualified","snapshot":{"canonicalRoot":"/workspace","generation":17,"sourceState":"state","file":"src/Target.kt","textIdentity":"identity","coordinateUnit":"utf16-code-unit","length":10},"region":{"kind":"declaration","selection":{"selector":"source-selector-v1:payload:digest","range":{"startInclusive":0,"endExclusive":10}}},"entities":[],"text":{"type":"withheld","reason":"byte-limit-reached"},"qualification":{"knownMinimumEntityCount":0,"limitations":["text-byte-limit-reached"],"continuation":{"type":"unavailable"}}}}"""
@@ -479,10 +425,10 @@ class InstalledServerProjectionTest {
             .jsonObject
     }
 
-    private fun projectionBindings(): List<JsonObject> = installedProjection()
-        .getValue("cliInvocationBindings")
+    private fun projectionInvocations(): List<JsonObject> = installedProjection()
+        .getValue("cliInvocations")
         .jsonObject
-        .getValue("bindings")
+        .getValue("operations")
         .jsonArray
         .map(JsonElement::jsonObject)
 
@@ -497,15 +443,6 @@ class InstalledServerProjectionTest {
             .getValue("command")
             .jsonArray
             .map { it.jsonPrimitive.content }
-
-    private fun JsonObject.cliOptionFields(): List<String> =
-        getValue("invocation")
-            .jsonObject
-            .getValue("bindings")
-            .jsonArray
-            .map { binding ->
-                binding.jsonObject.getValue("inputField").jsonPrimitive.content
-            }
 
     private fun JsonObject.outputSchema(): JsonObject = getValue("outputSchema").jsonObject
 
@@ -558,7 +495,7 @@ class InstalledServerProjectionTest {
         it.getValue("operationId").jsonPrimitive.content == operationId
     }
 
-    private fun List<JsonObject>.binding(
+    private fun List<JsonObject>.invocation(
         operationId: String,
     ): JsonObject = single {
         it.getValue("operationId").jsonPrimitive.content == operationId

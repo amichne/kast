@@ -4,9 +4,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-internal data object IndexSyncRequestDocument
-
-@Serializable
 internal data class IndexSyncResultDocument(
     val state: IndexSyncStateWireDocument,
 )

@@ -21,15 +21,10 @@ class CliSurfaceContractTest {
 
         assertEquals(io.github.amichne.kast.protocol.registry.HostedOperationProjection.publicDefinitions.map { it.operation }, surface.semanticCommands.map { it.operation })
         assertEquals(
-            setOf("add-file", "add-declaration", "replace-declaration", "rename-symbol"),
-            Regex("add-file|add-declaration|replace-declaration|rename-symbol")
-                .findAll(
-                    surface.semanticCommands.single {
-                        it.operation == CanonicalOperation.CHANGE_PLAN
-                    }.usage,
-                )
-                .map { match -> match.value }
-                .toSet(),
+            "change plan < request.json",
+            surface.semanticCommands.single {
+                it.operation == CanonicalOperation.CHANGE_PLAN
+            }.usage,
         )
         assertEquals(listOf(CliLifecycleCommand.START, CliLifecycleCommand.STOP), surface.lifecycleCommands)
         assertTrue(surface.localCommands.isEmpty())
@@ -87,20 +82,19 @@ class CliSurfaceContractTest {
         assertTrue(helpText.contains("product"))
         assertTrue(
             helpText.contains(
-                "Read bounded compiler-grounded semantic relations from the isolated sidecar.",
+                "Read exact semantic relations.",
             ),
         )
         assertTrue(
             helpText.contains(
-                "Read bounded compiler diagnostics for explicit workspace scopes in the " +
-                    "isolated IntelliJ sidecar.",
+                "Read compiler diagnostics.",
             ),
         )
         assertTrue(helpText.contains("Start the isolated exact-root IntelliJ sidecar."))
         assertTrue(helpText.contains("Stop only the process proven to own this exact workspace endpoint."))
-        assertTrue(helpText.contains("sidecar-backed changes"))
-        assertTrue(helpText.contains("Read bounded compiler-grounded semantic relations"))
-        assertTrue(helpText.contains("Read bounded compiler diagnostics"))
+        assertTrue(helpText.contains("Plan, apply, and recover semantic changes"))
+        assertTrue(helpText.contains("Read exact semantic relations"))
+        assertTrue(helpText.contains("Read compiler diagnostics"))
         assertTrue(helpText.contains("workspace"))
         assertTrue(helpText.contains("change"))
         listOf(CliLifecycleCommand.START, CliLifecycleCommand.STOP).forEach { command ->

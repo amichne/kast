@@ -1,32 +1,48 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonClassDiscriminator
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 
 /** Closed public mutation intent; no generic edit variant exists. */
+@Serializable
+@JsonClassDiscriminator("kind")
 sealed interface ChangeIntentDocument {
+    @Serializable
+    @SerialName("add-file")
     data class AddFile(
         val relativePath: ProtocolText,
         val content: ProtocolText,
     ) : ChangeIntentDocument
 
+    @Serializable
+    @SerialName("add-declaration")
     data class AddDeclaration(
         val exactTarget: ProtocolText,
         val declaration: ProtocolText,
     ) : ChangeIntentDocument
 
+    @Serializable
+    @SerialName("replace-declaration")
     data class ReplaceDeclaration(
         val exactTarget: ProtocolText,
         val replacement: ProtocolText,
     ) : ChangeIntentDocument
 
+    @Serializable
+    @SerialName("rename-symbol")
     data class RenameSymbol(
         val exactTarget: ProtocolText,
         val newName: ProtocolText,
     ) : ChangeIntentDocument
 }
 
+@Serializable
 data class ChangePlanRequest(
     val intent: ChangeIntentDocument,
 ) : OperationRequest
@@ -150,6 +166,7 @@ enum class ChangePlanRejection : OperationRejection {
     INTENT_REJECTED,
 }
 
+@Serializable
 data class ChangeApplyRequest(
     val planIdentity: ProtocolText,
 ) : OperationRequest
@@ -177,6 +194,7 @@ enum class ChangeApplyRejection : OperationRejection {
     SEMANTIC_DELTA_REJECTED,
 }
 
+@Serializable
 data class ChangeRecoverRequest(
     val planIdentity: ProtocolText,
 ) : OperationRequest

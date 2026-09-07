@@ -33,15 +33,11 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
@@ -363,31 +359,31 @@ internal object KastProviderQualifier {
     private fun admitProjection(
         projection: KastServerProjectionBoundary,
     ): QualifiedKastProjection? {
-        if (projection.schemaVersion != 5 || projection.namespace != "kast") return null
+        if (projection.schemaVersion != 6 || projection.namespace != "kast") return null
         val bootstrap = projection.hostedBootstrap
-        val cli = projection.cliInvocationBindings
-        if (bootstrap.schemaVersion != 1 || cli.schemaVersion != 1) return null
+        val cli = projection.cliInvocations
+        if (bootstrap.schemaVersion != 1 || cli.schemaVersion != 2) return null
         val policy = refined(AgentToolPolicy.parse(bootstrap.policy)) ?: return null
         if (policy != CanonicalAgentToolDefinitions.policy) return null
         if (bootstrap.tools.isEmpty() || bootstrap.tools.size > 64) return null
         if (bootstrap.tools.map(KastHostedToolBoundary::name).hasDuplicates()) return null
         if (bootstrap.tools.map(KastHostedToolBoundary::operationId).hasDuplicates()) return null
-        if (cli.bindings.map(KastCliOperationBindingBoundary::operationId).hasDuplicates()) return null
-        val bindingsByOperation = cli.bindings.associateBy { it.operationId }
-        if (bindingsByOperation.keys != bootstrap.tools.mapTo(linkedSetOf()) { it.operationId }) {
+        if (cli.operations.map(KastCliOperationInvocationBoundary::operationId).hasDuplicates()) return null
+        val invocationsByOperation = cli.operations.associateBy { it.operationId }
+        if (invocationsByOperation.keys != bootstrap.tools.mapTo(linkedSetOf()) { it.operationId }) {
             return null
         }
         return QualifiedKastProjection(
             policy,
             bootstrap.tools.map { tool ->
-                admitTool(tool, bindingsByOperation.getValue(tool.operationId)) ?: return null
+                admitTool(tool, invocationsByOperation.getValue(tool.operationId)) ?: return null
             },
         )
     }
 
     private fun admitTool(
         tool: KastHostedToolBoundary,
-        cliBinding: KastCliOperationBindingBoundary,
+        cliInvocation: KastCliOperationInvocationBoundary,
     ): QualifiedKastTool? {
         val operation = KastOperationId.admit(tool.operationId) ?: return null
         val canonicalOperation = CanonicalOperation.entries.singleOrNull {
@@ -412,26 +408,12 @@ internal object KastProviderQualifier {
         if (tool.deferLoading != (canonicalDefinition.loading == HostedToolLoading.DEFERRED)) return null
         val name = refined(ToolName.admit(tool.name)) ?: return null
         val description = refined(ToolDescription.admit(tool.description)) ?: return null
-        if (cliBinding.cliUsage.isBlank() || cliBinding.cliUsage.length > 16_384) return null
-        if (cliBinding.invocation.command.isEmpty() || cliBinding.invocation.command.size > 16) return null
-        if (cliBinding.invocation.command.any { token -> !token.isAdmittedCliToken() }) return null
-        if (cliBinding.invocation.bindings.size > 64) return null
-        if (cliBinding.invocation.bindings.any { binding ->
-                !INPUT_FIELD.matches(binding.inputField) || !CLI_OPTION.matches(binding.option)
-            }
-        ) return null
-        if (cliBinding.invocation.bindings.map(KastCliBindingBoundary::inputField).hasDuplicates()) return null
-        if (cliBinding.invocation.bindings.map(KastCliBindingBoundary::option).hasDuplicates()) return null
+        if (cliInvocation.cliUsage.isBlank() || cliInvocation.cliUsage.length > 16_384) return null
+        if (cliInvocation.invocation.command.isEmpty() || cliInvocation.invocation.command.size > 16) return null
+        if (cliInvocation.invocation.command.any { token -> !token.isAdmittedCliToken() }) return null
         val inputDocument = tool.inputSchema as? JsonObject ?: return null
         val outputDocument = tool.outputSchema as? JsonObject ?: return null
-        val inputProperties = bindableInputProperties(inputDocument) ?: return null
-        if (inputProperties.keys != cliBinding.invocation.bindings.map { it.inputField }.toSet()) return null
-        if (cliBinding.invocation.bindings.any { binding ->
-                inputProperties.getValue(binding.inputField).any { schema ->
-                    !binding.type.accepts(schema)
-                }
-            }
-        ) return null
+        if (inputDocument["additionalProperties"] != JsonPrimitive(false)) return null
         val inputSchema = refined(NetworkntJsonSchemaCompiler.compile(inputDocument)) ?: return null
         val outputSchema = refined(NetworkntJsonSchemaCompiler.compile(outputDocument)) ?: return null
         return QualifiedKastTool(
@@ -453,54 +435,8 @@ internal object KastProviderQualifier {
             ),
             inputSchema,
             outputSchema,
-            cliBinding.invocation.command,
-            cliBinding.invocation.bindings.map { binding ->
-                QualifiedKastBinding(binding.type, binding.inputField, binding.option)
-            },
+            cliInvocation.invocation.command,
         )
-    }
-
-    private fun bindableInputProperties(schema: JsonObject): Map<String, List<JsonElement>>? {
-        val type = schema["type"]?.jsonPrimitive?.contentOrNull
-        val properties = schema["properties"] as? JsonObject
-        if (type == "object" && properties != null) {
-            if (schema["additionalProperties"] != JsonPrimitive(false)) return null
-            return properties.mapValues { (_, property) -> listOf(property) }
-        }
-        val variants = schema["anyOf"] as? JsonArray ?: return null
-        if (variants.isEmpty()) return null
-        return buildMap<String, MutableList<JsonElement>> {
-            variants.forEach { variant ->
-                val fields = bindableInputProperties(variant as? JsonObject ?: return null)
-                    ?: return null
-                fields.forEach { (name, schemas) ->
-                    getOrPut(name, ::mutableListOf).addAll(schemas)
-                }
-            }
-        }
-    }
-
-    private fun isScalarSchema(schema: JsonElement): Boolean {
-        val document = schema as? JsonObject ?: return false
-        val type = document["type"]?.jsonPrimitive?.contentOrNull
-        if (type in setOf("string", "integer", "number", "boolean")) return true
-        val variants = document["anyOf"] as? JsonArray ?: return false
-        return variants.isNotEmpty() && variants.all(::isScalarSchema)
-    }
-
-    private fun KastBindingType.accepts(schema: JsonElement): Boolean = when (this) {
-        KastBindingType.OPTION -> isScalarSchema(schema)
-        KastBindingType.REPEATED_OPTION -> {
-            val document = schema as? JsonObject
-            document != null &&
-                document["type"]?.jsonPrimitive?.contentOrNull == "array" &&
-                document["items"]?.let(::isScalarSchema) == true
-        }
-        KastBindingType.FLAG -> {
-            val document = schema as? JsonObject
-            document != null && document["type"]?.jsonPrimitive?.contentOrNull == "boolean"
-        }
-        KastBindingType.JSON_OPTION -> schema is JsonObject
     }
 
     private fun String.isAdmittedCliToken(): Boolean =
@@ -524,8 +460,6 @@ internal object KastProviderQualifier {
 
     private const val MAXIMUM_VERSION_BYTES = 4 * 1_024
     private const val MAXIMUM_SCHEMA_BYTES = 512 * 1_024
-    private val INPUT_FIELD = Regex("[a-z][A-Za-z0-9]{0,63}")
-    private val CLI_OPTION = Regex("--[a-z][a-z0-9-]{0,125}")
     private val boundaryJson = Json { ignoreUnknownKeys = true }
 }
 
@@ -537,59 +471,20 @@ internal class KastRuntime(
         input: KastInvocationInput,
         context: io.github.amichne.kast.cli.broker.core.BrokerInvocationContext,
     ): ProviderCall<KastInvocationOutput> {
-        val arguments = buildList {
-            addAll(tool.command)
-            tool.bindings.forEach { binding ->
-                val value = input.arguments[binding.inputField] ?: return@forEach
-                when (binding.type) {
-                    KastBindingType.OPTION -> {
-                        val primitive = value as? JsonPrimitive
-                            ?: return ProviderCall.Rejected(
-                                ProviderFailureCode.KAST_ARGUMENT_NOT_SCALAR,
-                            )
-                        add(binding.option)
-                        add(primitive.content)
-                    }
-                    KastBindingType.REPEATED_OPTION -> {
-                        val values = value as? JsonArray
-                            ?: return ProviderCall.Rejected(
-                                ProviderFailureCode.KAST_ARGUMENT_NOT_SCALAR,
-                            )
-                        values.forEach { element ->
-                            val primitive = element as? JsonPrimitive
-                                ?: return ProviderCall.Rejected(
-                                    ProviderFailureCode.KAST_ARGUMENT_NOT_SCALAR,
-                                )
-                            add(binding.option)
-                            add(primitive.content)
-                        }
-                    }
-                    KastBindingType.FLAG -> {
-                        val enabled = (value as? JsonPrimitive)?.contentOrNull?.toBooleanStrictOrNull()
-                            ?: return ProviderCall.Rejected(
-                                ProviderFailureCode.KAST_ARGUMENT_NOT_SCALAR,
-                            )
-                        if (enabled) add(binding.option)
-                    }
-                    KastBindingType.JSON_OPTION -> {
-                        if (value !is JsonObject && value !is JsonArray) {
-                            return ProviderCall.Rejected(
-                                ProviderFailureCode.KAST_ARGUMENT_NOT_SCALAR,
-                            )
-                        }
-                        add(binding.option)
-                        add(value.toString())
-                    }
-                }
-            }
+        val requestInput = when (val admission = BrokerProcessInput.Document.admit(input.arguments.toString())) {
+            is Refinement.Refined -> admission.value
+            is Refinement.Rejected -> return ProviderCall.Rejected(
+                ProviderFailureCode.UNEXPECTED_FAILURE,
+            )
         }
         val request = when (
             val admission = BrokerProcessRequest.admit(
                 options.executable,
-                arguments,
+                tool.command,
                 context.workingDirectory,
                 MAXIMUM_OUTPUT_BYTES,
                 tool.executionBudget.invocation.value,
+                input = requestInput,
             )
         ) {
             is Refinement.Refined -> admission.value
@@ -685,7 +580,6 @@ internal data class QualifiedKastTool(
     val inputSchema: CompiledJsonSchema,
     val outputSchema: CompiledJsonSchema,
     val command: List<String>,
-    val bindings: List<QualifiedKastBinding>,
 )
 
 @JvmInline
@@ -698,12 +592,6 @@ internal value class KastOperationId private constructor(val value: String) {
         private val OPERATION_ID = Regex("[a-z][a-z0-9]*(?:\\.[a-z][a-z0-9]*)+")
     }
 }
-
-internal data class QualifiedKastBinding(
-    val type: KastBindingType,
-    val inputField: String,
-    val option: String,
-)
 
 internal data class KastInvocationInput(val arguments: JsonObject)
 internal data class KastInvocationOutput(
@@ -724,7 +612,7 @@ private data class KastServerProjectionBoundary(
     val schemaVersion: Int,
     val namespace: String,
     val hostedBootstrap: KastHostedBootstrapBoundary,
-    val cliInvocationBindings: KastCliInvocationBindingsBoundary,
+    val cliInvocations: KastCliInvocationsBoundary,
 )
 
 @Serializable
@@ -748,13 +636,13 @@ private data class KastHostedToolBoundary(
 )
 
 @Serializable
-private data class KastCliInvocationBindingsBoundary(
+private data class KastCliInvocationsBoundary(
     val schemaVersion: Int,
-    val bindings: List<KastCliOperationBindingBoundary>,
+    val operations: List<KastCliOperationInvocationBoundary>,
 )
 
 @Serializable
-private data class KastCliOperationBindingBoundary(
+private data class KastCliOperationInvocationBoundary(
     val operationId: String,
     val cliUsage: String,
     val invocation: KastCliInvocationBoundary,
@@ -776,18 +664,7 @@ internal enum class KastApprovalPolicy {
 private data class KastCliInvocationBoundary(
     val type: KastInvocationType,
     val command: List<String>,
-    val bindings: List<KastCliBindingBoundary>,
 )
 
 @Serializable
 private enum class KastInvocationType { CLI }
-
-@Serializable
-private data class KastCliBindingBoundary(
-    val type: KastBindingType,
-    val inputField: String,
-    val option: String,
-)
-
-@Serializable
-internal enum class KastBindingType { OPTION, REPEATED_OPTION, FLAG, JSON_OPTION }

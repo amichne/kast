@@ -45,44 +45,6 @@ class CanonicalQueryWireBindingTest {
         assertEquals(request, (decoded as WireDecoding.Decoded).value)
     }
 
-    @Test
-    fun `query fragments reject blank name but admit all without dummy text`() {
-        val scope = """{"sourceSets":["main"],"directory":null,"packageName":null}"""
-        assertTrue(
-            CanonicalQueryRequestFragments.admit(
-                """{"type":"symbols","match":{"type":"all"},"scope":$scope,"declarationKinds":["class"]}""",
-                "[]",
-                """{"type":"symbols","fields":["name"]}""",
-                """{"kind":"exhaustive","budget":"interactive"}""",
-            ) is QueryRequestFragmentAdmission.Admitted,
-        )
-        assertTrue(
-            CanonicalQueryRequestFragments.admit(
-                """{"type":"references","values":[{"kind":"exact-symbol","token":"exact:v2:opaque"}]}""",
-                "[]",
-                """{"type":"symbols","fields":["name"]}""",
-                """{"kind":"exhaustive","budget":"interactive"}""",
-            ) is QueryRequestFragmentAdmission.Admitted,
-        )
-        assertTrue(
-            CanonicalQueryRequestFragments.admit(
-                """{"type":"references","values":[{"kind":"declaration-candidate","token":"candidate:v2:opaque"}]}""",
-                """[{"type":"inspect"}]""",
-                """{"type":"symbols","fields":["name"]}""",
-                """{"kind":"exhaustive","budget":"interactive"}""",
-            ) is QueryRequestFragmentAdmission.Admitted,
-        )
-        assertEquals(
-            QueryRequestFragmentAdmission.Rejected,
-            CanonicalQueryRequestFragments.admit(
-                """{"type":"symbols","match":{"type":"name","text":"   ","matching":"fuzzy"},"scope":$scope,"declarationKinds":["class"]}""",
-                "[]",
-                """{"type":"symbols","fields":["name"]}""",
-                """{"kind":"exhaustive","budget":"interactive"}""",
-            ),
-        )
-    }
-
     private fun text(raw: String): ProtocolText = when (val value = ProtocolText.parse(raw)) {
         is Refinement.Refined -> value.value
         is Refinement.Rejected -> error(value.failure)

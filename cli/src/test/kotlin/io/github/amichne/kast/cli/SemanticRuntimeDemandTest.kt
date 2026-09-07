@@ -4,6 +4,7 @@ import io.github.amichne.kast.cli.command.CliAction
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandParsing
+import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
@@ -25,8 +26,10 @@ class SemanticRuntimeDemandTest {
         val endpoint = (RuntimeEndpoint.at(root, runtimeId, path.resolve("runtime.sock")) as RuntimeEndpointResolution.Resolved).endpoint
         val graph = (CliCommandGraphFactory.create(canonicalCliRequestPreparers()) as CliCommandGraphConstruction.Created).factory
         val commands = listOf(
-            listOf("symbol", "discover", "--query", "Example", "--limit", "10"),
-            listOf("change", "plan", "--intent", "add-file", "--path", "A.kt", "--content", "class A"),
+            listOf("symbol", "discover") to
+                """{"target":{"type":"name","query":"Example","kind":"symbol","match":"fuzzy"},"limit":10}""",
+            listOf("change", "plan") to
+                """{"intent":{"kind":"add-file","relativePath":"A.kt","content":"class A"}}""",
         )
         val demanded = mutableListOf<HostedRuntimeDemand>()
         var exchanges = 0
@@ -53,9 +56,10 @@ class SemanticRuntimeDemandTest {
             productInspector = ProductInspector { error("inspection is passive only") },
         )
         // Repeat the same invocation to prove admission remains the sole owner on reuse.
-        (commands + listOf(commands.first())).forEach { argv ->
-            val expected = ((graph.parse(argv) as CliCommandParsing.Parsed).action as CliAction.Semantic).request.hostedDemand
-            val exit = assertInstanceOf(CliExit.BoundaryRejected::class.java, cli.execute(argv, path))
+        (commands + listOf(commands.first())).forEach { (argv, document) ->
+            val input = CliRequestDocumentInput.Provided(document)
+            val expected = ((graph.parse(argv, input) as CliCommandParsing.Parsed).action as CliAction.Semantic).request.hostedDemand
+            val exit = assertInstanceOf(CliExit.BoundaryRejected::class.java, cli.execute(argv, path, input))
             assertEquals(CliBoundaryExitStatus.TRANSPORT, exit.status)
             assertEquals(expected, demanded.last())
         }

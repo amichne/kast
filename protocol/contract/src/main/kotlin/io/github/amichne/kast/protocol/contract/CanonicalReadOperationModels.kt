@@ -1,6 +1,14 @@
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import java.nio.charset.CharacterCodingException
 import java.security.MessageDigest
 import java.util.Base64
@@ -16,6 +24,7 @@ enum class ProtocolTextFailure {
 
 /** One non-blank, bounded text atom admitted at the public transport boundary. */
 @JvmInline
+@Serializable(with = ProtocolTextSerializer::class)
 value class ProtocolText private constructor(
     val value: String,
 ) {
@@ -36,6 +45,17 @@ value class ProtocolText private constructor(
     }
 }
 
+internal object ProtocolTextSerializer : RefiningStringSerializer<ProtocolText>(
+    serialName = "io.github.amichne.kast.protocol.contract.ProtocolText",
+    minimumLength = 1,
+    maximumLength = MAX_PROTOCOL_TEXT_LENGTH,
+    pattern = "[\\s\\S]*\\S[\\s\\S]*",
+) {
+    override fun raw(value: ProtocolText): String = value.value
+
+    override fun refine(raw: String): Refinement<ProtocolText, *> = ProtocolText.parse(raw)
+}
+
 enum class ProtocolCountFailure {
     NOT_POSITIVE,
     TOO_LARGE,
@@ -43,6 +63,7 @@ enum class ProtocolCountFailure {
 
 /** One positive, bounded public request count. */
 @JvmInline
+@Serializable(with = ProtocolCountSerializer::class)
 value class ProtocolCount private constructor(
     val value: Int,
 ) {
@@ -62,11 +83,22 @@ value class ProtocolCount private constructor(
     }
 }
 
+internal object ProtocolCountSerializer : RefiningIntSerializer<ProtocolCount>(
+    serialName = "io.github.amichne.kast.protocol.contract.ProtocolCount",
+    minimum = 1,
+    maximum = MAX_PROTOCOL_COUNT.toLong(),
+) {
+    override fun raw(value: ProtocolCount): Int = value.value
+
+    override fun refine(raw: Int): Refinement<ProtocolCount, *> = ProtocolCount.parse(raw)
+}
+
 enum class ProtocolCollectionFailure {
     TOO_LARGE,
 }
 
 /** An immutable public collection proven to remain within the transport result bound. */
+@Serializable(with = BoundedProtocolListSerializer::class)
 class BoundedProtocolList<Value> private constructor(
     val values: List<Value>,
 ) {
@@ -97,24 +129,62 @@ class BoundedProtocolList<Value> private constructor(
     override fun toString(): String = "BoundedProtocolList(values=$values)"
 }
 
+class BoundedProtocolListSerializer<Value>(
+    elementSerializer: KSerializer<Value>,
+) : KSerializer<BoundedProtocolList<Value>> {
+    private val delegate = ListSerializer(elementSerializer)
+
+    override val descriptor: SerialDescriptor = annotatedDescriptor(
+        delegate.descriptor,
+        ProtocolCollectionConstraint(maximumItems = MAX_PROTOCOL_ITEMS),
+    )
+
+    override fun serialize(encoder: Encoder, value: BoundedProtocolList<Value>) {
+        delegate.serialize(encoder, value.values)
+    }
+
+    override fun deserialize(decoder: Decoder): BoundedProtocolList<Value> = when (
+        val refinement = BoundedProtocolList.create(delegate.deserialize(decoder))
+    ) {
+        is Refinement.Refined -> refinement.value
+        is Refinement.Rejected -> throw SerializationException(
+            "${descriptor.serialName} rejected ${refinement.failure}",
+        )
+    }
+}
+
+@Serializable
 enum class RelationKindDocument {
+    @SerialName("references")
     REFERENCES,
+    @SerialName("callers")
     CALLERS,
+    @SerialName("callees")
     CALLEES,
+    @SerialName("implementations")
     IMPLEMENTATIONS,
+    @SerialName("inheritors")
     INHERITORS,
+    @SerialName("overrides")
     OVERRIDES,
+    @SerialName("type_uses")
     TYPE_USES,
 }
 
+@Serializable
 sealed interface RelationReadPositionDocument {
+    @Serializable
+    @SerialName("start")
     data object Start : RelationReadPositionDocument
 
+    @Serializable
+    @SerialName("resume")
     data class Resume(
         val continuation: RelationContinuationDocument,
     ) : RelationReadPositionDocument
 }
 
+@Serializable
 data class RelationReadRequest(
     val exactSelector: ProtocolText,
     val relation: RelationKindDocument,
@@ -190,6 +260,7 @@ enum class RelationContinuationDocumentFailure {
 }
 
 @JvmInline
+@Serializable(with = RelationContinuationDocumentSerializer::class)
 value class RelationContinuationDocument private constructor(val value: String) {
     companion object {
         fun parse(
@@ -239,6 +310,18 @@ value class RelationContinuationDocument private constructor(val value: String) 
             return Refinement.Refined(RelationContinuationDocument(raw))
         }
     }
+}
+
+internal object RelationContinuationDocumentSerializer : RefiningStringSerializer<RelationContinuationDocument>(
+    serialName = "io.github.amichne.kast.protocol.contract.RelationContinuationDocument",
+    minimumLength = 1,
+    maximumLength = MAX_PROTOCOL_TEXT_LENGTH,
+    pattern = "^relation-continuation:v1:",
+) {
+    override fun raw(value: RelationContinuationDocument): String = value.value
+
+    override fun refine(raw: String): Refinement<RelationContinuationDocument, *> =
+        RelationContinuationDocument.parse(raw)
 }
 
 enum class RelationReadQualificationFailure {
@@ -324,14 +407,20 @@ enum class RelationReadRejection : OperationRejection {
     CONTINUATION_CURSOR_MOVED,
 }
 
+@Serializable
 sealed interface TraversalRunPositionDocument {
+    @Serializable
+    @SerialName("start")
     data object Start : TraversalRunPositionDocument
 
+    @Serializable
+    @SerialName("resume")
     data class Resume(
         val continuation: TraversalContinuationDocument,
     ) : TraversalRunPositionDocument
 }
 
+@Serializable
 data class TraversalRunRequest(
     val exactSelector: ProtocolText,
     val relation: RelationKindDocument,
@@ -388,6 +477,7 @@ enum class TraversalContinuationDocumentFailure {
 }
 
 @JvmInline
+@Serializable(with = TraversalContinuationDocumentSerializer::class)
 value class TraversalContinuationDocument private constructor(val value: String) {
     companion object {
         fun parse(
@@ -442,6 +532,18 @@ value class TraversalContinuationDocument private constructor(val value: String)
             return Refinement.Refined(TraversalContinuationDocument(raw))
         }
     }
+}
+
+internal object TraversalContinuationDocumentSerializer : RefiningStringSerializer<TraversalContinuationDocument>(
+    serialName = "io.github.amichne.kast.protocol.contract.TraversalContinuationDocument",
+    minimumLength = 1,
+    maximumLength = MAX_PROTOCOL_TEXT_LENGTH,
+    pattern = "^traversal-continuation:v1:",
+) {
+    override fun raw(value: TraversalContinuationDocument): String = value.value
+
+    override fun refine(raw: String): Refinement<TraversalContinuationDocument, *> =
+        TraversalContinuationDocument.parse(raw)
 }
 
 enum class TraversalRunQualificationFailure {
@@ -575,6 +677,7 @@ enum class TraversalRunRejection : OperationRejection {
     CONTINUATION_GENERATION_MISMATCH,
 }
 
+@Serializable
 data class DiagnosticCheckRequest(
     val scope: ProtocolText,
     val limit: ProtocolCount,
