@@ -46,12 +46,20 @@ will inspect:
 
 ```console
 cd /path/to/kotlin-repository
-kast-codex
+kast codex
 ```
 
-Kast qualifies the installed tool contract before a thread starts. Read access
-is the default. The agent receives one eager `kast.query` tool for search and a
-small set of deferred specialist tools for narrower work.
+To launch Codex Desktop through the same qualified integration, run
+`kast codex desktop` instead. Kast ensures one launchd-owned App Server at
+Codex's standard local-daemon socket. The CLI connects through `--remote`;
+Desktop uses its normal local App Server integration without a substituted
+`CODEX_CLI_PATH`.
+
+Kast qualifies the installed tool contract before a thread starts. The default
+catalog includes one eager `kast.query` tool plus deferred source, semantic,
+impact, diagnostic, and change tools. Direct `symbol_lookup` and
+`symbol_inspect` routes are omitted by default; change tools retain explicit
+approval requirements.
 
 Other harnesses should consume the exact installed `serverProjection`; they
 should not copy command names, schemas, or selection policy into another

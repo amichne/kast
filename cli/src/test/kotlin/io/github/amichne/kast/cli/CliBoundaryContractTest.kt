@@ -7,6 +7,7 @@ import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandParsing
 import io.github.amichne.kast.cli.command.CliLifecycleCommand
+import io.github.amichne.kast.cli.command.CliProductCommand
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
@@ -58,7 +59,7 @@ class CliBoundaryContractTest {
             ),
             SemanticCase(
                 listOf("diagnostic", "check"),
-                """{"scope":".","limit":10}""",
+                """{"path":".","limit":10}""",
                 CanonicalOperation.DIAGNOSTIC_CHECK,
             ),
             SemanticCase(
@@ -113,9 +114,14 @@ class CliBoundaryContractTest {
             assertEquals(command, (action as CliAction.Lifecycle).command)
         }
         assertEquals(setOf("start", "stop"), factory.surface.lifecycleCommands.map { it.command }.toSet())
-        listOf(listOf("status"), listOf("product", "inspect"), listOf("broker", "serve"), listOf("index", "sync"), listOf("topology", "build")).forEach {
+        listOf(listOf("status"), listOf("product", "inspect"), listOf("index", "sync"), listOf("topology", "build")).forEach {
             assertTrue(factory.parse(it) is CliCommandParsing.Rejected, it.toString())
         }
+        assertEquals(
+            CliAction.Local.BrokerServe,
+            (factory.parse(listOf("broker", "serve")) as CliCommandParsing.Parsed).action,
+        )
+        assertTrue(CliProductCommand.BROKER_SERVE !in factory.surface.localCommands)
         assertTrue(factory.parse(listOf("clean")) is CliCommandParsing.Rejected)
         assertTrue(factory.parse(listOf("reindex")) is CliCommandParsing.Rejected)
         assertTrue(factory.parse(listOf("start", "unexpected")) is CliCommandParsing.Rejected)

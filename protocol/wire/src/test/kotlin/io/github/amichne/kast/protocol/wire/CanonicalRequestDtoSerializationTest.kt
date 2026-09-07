@@ -42,13 +42,13 @@ class CanonicalRequestDtoSerializationTest {
         assertThrows(SerializationException::class.java) {
             strictJson.decodeFromString(
                 DiagnosticCheckRequest.serializer(),
-                """{"scope":"   ","limit":1}""",
+                """{"path":"   ","limit":1}""",
             )
         }
         assertThrows(SerializationException::class.java) {
             strictJson.decodeFromString(
                 DiagnosticCheckRequest.serializer(),
-                """{"scope":"src/main","limit":1001}""",
+                """{"path":"src/main","limit":1001}""",
             )
         }
     }

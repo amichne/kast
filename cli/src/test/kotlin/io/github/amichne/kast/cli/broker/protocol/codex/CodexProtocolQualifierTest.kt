@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli.broker.protocol.codex
 
+import io.github.amichne.kast.cli.broker.host.admission.DesktopFacadeExecutables
+import io.github.amichne.kast.cli.broker.host.admission.UpstreamCodexExecutable
 import io.github.amichne.kast.cli.broker.provider.BrokerProcessExecution
 import io.github.amichne.kast.cli.broker.provider.BrokerProcessExecutor
 import io.github.amichne.kast.cli.broker.provider.BrokerProcessRequest
@@ -164,7 +166,10 @@ class CodexProtocolQualifierTest {
         val tempRoot = Files.createDirectory(temporary.resolve("temp")).toRealPath()
         val executor = SchemaGeneratingExecutor()
         val options = CodexProtocolQualificationOptions.admit(
-            codex,
+            UpstreamCodexExecutable.admit(
+                codex,
+                DesktopFacadeExecutables.none(),
+            ).refinedValue(),
             codexHome,
             tempRoot,
             executor,
@@ -200,7 +205,10 @@ class CodexProtocolQualifierTest {
         val tempRoot = Files.createDirectory(temporary.resolve("temp")).toRealPath()
         val executor = SchemaGeneratingExecutor(duplicate = CodexOwnedSchema.INITIALIZE_PARAMS)
         val options = CodexProtocolQualificationOptions.admit(
-            codex,
+            UpstreamCodexExecutable.admit(
+                codex,
+                DesktopFacadeExecutables.none(),
+            ).refinedValue(),
             codexHome,
             tempRoot,
             executor,

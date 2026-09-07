@@ -1,5 +1,8 @@
 package io.github.amichne.kast.cli.broker
 
+import io.github.amichne.kast.cli.broker.host.admission.DesktopFacadeExecutables
+import io.github.amichne.kast.cli.broker.host.admission.UpstreamCodexExecutable
+import io.github.amichne.kast.kernel.Refinement
 import java.io.File
 import java.io.IOException
 import java.nio.charset.StandardCharsets
@@ -9,15 +12,49 @@ import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.HexFormat
 
-internal const val VENDORED_BROKER_VERSION = "0.5.0"
+internal const val VENDORED_BROKER_VERSION = "0.6.0"
 
-/** Closed admission failures shared by the integration host's executable boundary. */
 enum class PersistentBrokerServiceFailure {
+    UNAVAILABLE,
+    CONFIGURATION_REJECTED,
+    KAST_QUALIFICATION_REJECTED,
+    CATALOG_REJECTED,
+    CODEX_QUALIFICATION_REJECTED,
+    THREAD_STORE_REJECTED,
+    UPSTREAM_REJECTED,
+    SERVER_REJECTED,
     KAST_EXECUTABLE_UNAVAILABLE,
     CODEX_EXECUTABLE_UNAVAILABLE,
     CODEX_HOME_REJECTED,
     USER_HOME_REJECTED,
     JAVA_RUNTIME_UNAVAILABLE,
+    STATE_DIRECTORY_REJECTED,
+    SERVICE_LOCK_REJECTED,
+    SERVICE_OBSERVATION_REJECTED,
+    SERVICE_RETIREMENT_REJECTED,
+    SERVICE_SUBMISSION_REJECTED,
+    READINESS_REJECTED,
+    PUBLIC_SOCKET_OWNED,
+    SOCKET_PROBE_REJECTED,
+    SOCKET_PATH_REJECTED,
+    PROVIDER_CONFIGURATION_REJECTED,
+    PROTOCOL_CONFIGURATION_REJECTED,
+    LAUNCHCTL_TIMED_OUT,
+    STARTUP_TIMED_OUT,
+    INTERRUPTED,
+    DISABLED,
+}
+
+internal sealed interface PersistentBrokerServiceAdmission {
+    data object Ready : PersistentBrokerServiceAdmission
+
+    data class Rejected(
+        val failure: PersistentBrokerServiceFailure,
+    ) : PersistentBrokerServiceAdmission
+}
+
+internal fun interface PersistentBrokerService {
+    fun ensure(): PersistentBrokerServiceAdmission
 }
 
 @JvmInline
@@ -33,6 +70,8 @@ internal value class BrokerServiceIdentity private constructor(val value: String
             javaExecutable: Path,
             codexHome: Path,
             executableSearchPath: BrokerExecutableSearchPath,
+            toolSelection: KastToolSelection,
+            childEnvironment: BrokerChildEnvironment,
         ): BrokerServiceIdentity {
             val source = listOf(
                 VENDORED_BROKER_VERSION,
@@ -45,6 +84,8 @@ internal value class BrokerServiceIdentity private constructor(val value: String
                 javaExecutable,
                 codexHome,
                 executableSearchPath.value,
+                toolSelection.environmentValue,
+                childEnvironment.identityValue,
             ).joinToString("\n")
             val digest = HexFormat.of().formatHex(
                 MessageDigest.getInstance("SHA-256")
@@ -113,6 +154,66 @@ internal value class BrokerJvmUserHomeOption private constructor(val value: Stri
     }
 }
 
+internal enum class BrokerChildEnvironmentFailure { INVALID_VALUE }
+
+/** Exact admitted runtime configuration forwarded across launchd's empty environment. */
+internal class BrokerChildEnvironment private constructor(
+    val assignments: List<String>,
+) {
+    val identityValue: String = assignments.joinToString("\n")
+
+    companion object {
+        internal fun admit(
+            environment: Map<String, String>,
+        ): Refinement<BrokerChildEnvironment, BrokerChildEnvironmentFailure> {
+            val assignments = CHILD_ENVIRONMENT_NAMES.mapNotNull { name ->
+                environment[name]?.let { value ->
+                    if (
+                        value.length > MAXIMUM_CHILD_ENVIRONMENT_VALUE_CHARACTERS ||
+                        value.any { character ->
+                            character == '\n' || character == '\r' || character == '\u0000'
+                        }
+                    ) {
+                        return Refinement.Rejected(BrokerChildEnvironmentFailure.INVALID_VALUE)
+                    }
+                    "$name=$value"
+                }
+            }
+            return Refinement.Refined(BrokerChildEnvironment(assignments))
+        }
+
+        private const val MAXIMUM_CHILD_ENVIRONMENT_VALUE_CHARACTERS = 32 * 1_024
+        private val CHILD_ENVIRONMENT_NAMES = listOf(
+            "KAST_RUNTIME_ARCHIVE",
+            "KAST_RUNTIME_STORE",
+            "KAST_RUNTIME_DIRECTORY",
+            "KAST_CACHE_ROOT",
+            "KAST_ENABLE_LAUNCHD",
+            "KAST_GRADLE_JAVA_HOME",
+            "KAST_GRADLE_IMPORT_VARIABLES",
+            "KAST_GRADLE_IMPORT_PATH",
+            "KAST_NETWORK_CONFIG",
+            "KAST_TRUST_DONOR_JAVA_HOME",
+        )
+    }
+}
+
+@JvmInline
+internal value class BrokerLaunchdServiceLabel private constructor(val value: String) {
+    companion object {
+        internal fun from(codexHome: Path): BrokerLaunchdServiceLabel {
+            val digest = HexFormat.of().formatHex(
+                MessageDigest.getInstance("SHA-256").digest(
+                    codexHome.toString().toByteArray(StandardCharsets.UTF_8),
+                ),
+            )
+            return BrokerLaunchdServiceLabel(
+                "io.github.amichne.kast.broker.${digest.take(32)}",
+            )
+        }
+    }
+}
+
 internal sealed interface BrokerServiceLaunchCommandResolution {
     data class Resolved(val command: BrokerServiceLaunchCommand) :
         BrokerServiceLaunchCommandResolution
@@ -122,7 +223,7 @@ internal sealed interface BrokerServiceLaunchCommandResolution {
 }
 
 internal class BrokerServiceLaunchCommand private constructor(
-    val codex: Path,
+    val codex: UpstreamCodexExecutable,
     val kast: Path,
     val executableSearchPath: BrokerExecutableSearchPath,
     val userHome: Path,
@@ -130,7 +231,15 @@ internal class BrokerServiceLaunchCommand private constructor(
     val javaExecutable: Path,
     val jvmUserHomeOption: BrokerJvmUserHomeOption,
     val codexHome: Path,
+    val stateDirectory: Path,
+    val readinessFile: Path,
+    val publicSocket: Path,
+    val serviceLog: Path,
+    val serviceLock: Path,
     val identity: BrokerServiceIdentity,
+    val serviceLabel: BrokerLaunchdServiceLabel,
+    val toolSelection: KastToolSelection,
+    val childEnvironment: BrokerChildEnvironment,
 ) {
     companion object {
         fun resolve(
@@ -145,6 +254,31 @@ internal class BrokerServiceLaunchCommand private constructor(
                 ?: return rejected(PersistentBrokerServiceFailure.USER_HOME_REJECTED)
             val jvmUserHomeOption = BrokerJvmUserHomeOption.from(userHome)
                 ?: return rejected(PersistentBrokerServiceFailure.USER_HOME_REJECTED)
+            val toolingMode = when (
+                val admission = AppServerToolingMode.admit(environment[APP_SERVER_ENABLE_ENVIRONMENT])
+            ) {
+                is Refinement.Refined -> admission.value
+                is Refinement.Rejected -> return rejected(
+                    PersistentBrokerServiceFailure.CONFIGURATION_REJECTED,
+                )
+            }
+            if (toolingMode == AppServerToolingMode.DISABLED) {
+                return rejected(PersistentBrokerServiceFailure.DISABLED)
+            }
+            val toolSelection = when (
+                val admission = KastToolSelection.admit(environment[APP_SERVER_TOOLS_ENVIRONMENT])
+            ) {
+                is Refinement.Refined -> admission.value
+                is Refinement.Rejected -> return rejected(
+                    PersistentBrokerServiceFailure.CONFIGURATION_REJECTED,
+                )
+            }
+            val childEnvironment = when (val admission = BrokerChildEnvironment.admit(environment)) {
+                is Refinement.Refined -> admission.value
+                is Refinement.Rejected -> return rejected(
+                    PersistentBrokerServiceFailure.CONFIGURATION_REJECTED,
+                )
+            }
             val javaHome = canonicalDirectoryTarget(javaHomeCandidate)
                 ?: return rejected(PersistentBrokerServiceFailure.JAVA_RUNTIME_UNAVAILABLE)
             val javaExecutable = regularExecutable(
@@ -157,10 +291,24 @@ internal class BrokerServiceLaunchCommand private constructor(
             } else {
                 resolveExecutable("codex", searchPath)
             } ?: return rejected(PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE)
-            val codex = codexSelection.executable
+            val facades = DesktopFacadeExecutables.resolve(
+                kast.parent.resolve("kast-codex"),
+                null,
+            )
+            val codex = when (
+                val admission = UpstreamCodexExecutable.admit(
+                    codexSelection.executable,
+                    facades,
+                )
+            ) {
+                is Refinement.Refined -> admission.value
+                is Refinement.Rejected -> return rejected(
+                    PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE,
+                )
+            }
             val executableSearchPath = BrokerExecutableSearchPath.derive(
                 codexSelection.launcherDirectory,
-                codex,
+                codex.path,
                 kast,
             ) ?: return rejected(PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE)
             val codexHome = if (environment.containsKey("CODEX_HOME")) {
@@ -168,20 +316,23 @@ internal class BrokerServiceLaunchCommand private constructor(
             } else {
                 userHome.resolve(".codex")
             } ?: return rejected(PersistentBrokerServiceFailure.CODEX_HOME_REJECTED)
+            val stateDirectory = codexHome.resolve("broker")
             val kastDigest = sha256(kast)
                 ?: return rejected(PersistentBrokerServiceFailure.KAST_EXECUTABLE_UNAVAILABLE)
-            val codexDigest = sha256(codex)
+            val codexDigest = sha256(codex.path)
                 ?: return rejected(PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE)
             val identity = BrokerServiceIdentity.derive(
                 kastDigest,
                 codexDigest,
-                codex,
+                codex.path,
                 kast,
                 userHome,
                 javaHome,
                 javaExecutable,
                 codexHome,
                 executableSearchPath,
+                toolSelection,
+                childEnvironment,
             )
             return BrokerServiceLaunchCommandResolution.Resolved(
                 BrokerServiceLaunchCommand(
@@ -193,7 +344,15 @@ internal class BrokerServiceLaunchCommand private constructor(
                     javaExecutable,
                     jvmUserHomeOption,
                     codexHome,
+                    stateDirectory,
+                    stateDirectory.resolve("service-readiness.json"),
+                    codexHome.resolve("app-server-control/app-server-control.sock"),
+                    stateDirectory.resolve("service.log"),
+                    stateDirectory.resolve("service-start.lock"),
                     identity,
+                    BrokerLaunchdServiceLabel.from(codexHome),
+                    toolSelection,
+                    childEnvironment,
                 ),
             )
         }
@@ -300,3 +459,22 @@ private data class BrokerCommandExecutable(
 )
 
 private enum class BrokerSymbolicLinkPolicy { EXACT_PATH, CANONICAL_TARGET }
+
+internal fun interface PersistentBrokerServiceHost {
+    fun ensure(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission
+}
+
+internal class InstalledPersistentBrokerService(
+    private val kast: Path,
+    private val userHome: Path,
+    private val environment: Map<String, String> = System.getenv(),
+    private val host: PersistentBrokerServiceHost = MacOsPersistentBrokerServiceHost(),
+) : PersistentBrokerService {
+    override fun ensure(): PersistentBrokerServiceAdmission = when (
+        val resolution = BrokerServiceLaunchCommand.resolve(kast, userHome, environment)
+    ) {
+        is BrokerServiceLaunchCommandResolution.Resolved -> host.ensure(resolution.command)
+        is BrokerServiceLaunchCommandResolution.Rejected ->
+            PersistentBrokerServiceAdmission.Rejected(resolution.failure)
+    }
+}

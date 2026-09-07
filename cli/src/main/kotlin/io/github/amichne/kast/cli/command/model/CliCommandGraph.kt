@@ -14,6 +14,7 @@ import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.CliTextDocumentAdmission
 import io.github.amichne.kast.cli.command.change.changeCommandGroup
 import io.github.amichne.kast.cli.command.broker.brokerCommandGroup
+import io.github.amichne.kast.cli.command.codex.codexCommandGroup
 import io.github.amichne.kast.cli.command.diagnostic.diagnosticCommandGroup
 import io.github.amichne.kast.cli.command.lifecycle.lifecycleCommands
 import io.github.amichne.kast.cli.command.product.productCommandGroup
@@ -119,6 +120,9 @@ class CliCommandGraphFactory private constructor(
                 graph.root.argvDiagnostic(admission.failure),
             )
         }
+        if (admitted.isExact(BROKER_SERVE_ARGUMENTS)) {
+            return CliCommandParsing.Parsed(CliAction.Local.BrokerServe)
+        }
         return graph.parse(admitted)
     }
 
@@ -149,6 +153,8 @@ private class CliArgv private constructor(
 ) {
     fun cliktTokens(): List<String> = tokens
 
+    fun isExact(expected: List<String>): Boolean = tokens == expected
+
     companion object {
         /** Refines raw argv to a bounded immutable command-selection token sequence. */
         fun admit(raw: List<String>): CliArgvAdmission = when {
@@ -162,6 +168,8 @@ private class CliArgv private constructor(
         }
     }
 }
+
+private val BROKER_SERVE_ARGUMENTS = listOf("broker", "serve")
 
 private enum class CliArgvFailure {
     MISSING_OR_BLANK_TOKEN,
@@ -355,6 +363,7 @@ private fun canonicalGraph(
 ): CliCommandGraph {
     val product = productCommandGroup()
     val broker = brokerCommandGroup()
+    val codex = codexCommandGroup()
     val index = indexCommandGroup(preparers, requestInput)
     val topology = topologyCommandGroup(preparers, requestInput)
     val symbol = symbolCommandGroup(preparers, requestInput)
@@ -368,9 +377,17 @@ private fun canonicalGraph(
     val families = listOf(index, topology, query, symbol, source, relation, traversal, diagnostic, change)
         .map { it.projectPublicDefinitions(CanonicalOperationDefinitions.all) }
     val semantic = families.flatMap(CommandFamily::semanticCommands)
-    val localFamilies = listOf(product, broker).map { family ->
+    val localFamilies = listOf(product, broker, codex).map { family ->
         val commands = family.commands.filter { it.command.exposure == CliLocalExposure.PUBLIC }
-        LocalCommandFamily(ProjectedCommandGroup(family.root).subcommands(commands), commands)
+        val root = when (val candidate = family.root) {
+            is LocalKastCommand -> if (candidate in commands) {
+                candidate
+            } else {
+                ProjectedCommandGroup(candidate).subcommands(commands)
+            }
+            else -> ProjectedCommandGroup(candidate).subcommands(commands)
+        }
+        LocalCommandFamily(root, commands)
     }.filter { it.commands.isNotEmpty() }
     val root = KastRootCommand().subcommands(
         families.filter { it.semanticCommands.isNotEmpty() }.map { it.root } +

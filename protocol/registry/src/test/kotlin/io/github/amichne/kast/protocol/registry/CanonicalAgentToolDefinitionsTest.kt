@@ -63,6 +63,19 @@ class CanonicalAgentToolDefinitionsTest {
             ),
             CanonicalAgentToolDefinitions.all.map { it.name.value },
         )
+        assertEquals(
+            listOf(
+                "query",
+                "source_read",
+                "semantic_query",
+                "impact_analyze",
+                "diagnostic_check",
+                "change_plan",
+                "change_apply",
+                "change_recover",
+            ),
+            CanonicalAgentToolDefinitions.defaultAppServerTools.map { it.name.value },
+        )
         assertEquals(HostedApprovalPolicy.NONE, CanonicalAgentToolDefinitions.symbolLookup.approval)
         assertEquals(HostedToolLoading.EAGER, CanonicalAgentToolDefinitions.query.loading)
         assertTrue(CanonicalAgentToolDefinitions.all.drop(1).all { it.loading == HostedToolLoading.DEFERRED })

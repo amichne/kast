@@ -1,4 +1,5 @@
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.process.CommandLineArgumentProvider
@@ -9,6 +10,19 @@ abstract class KastObserverSnapshotArguments : CommandLineArgumentProvider {
 
     override fun asArguments(): Iterable<String> = listOf(
         manifestFile.get().asFile.absolutePath,
+    )
+}
+
+abstract class CodexHostManifestArguments : CommandLineArgumentProvider {
+    @get:OutputFile
+    abstract val manifestFile: RegularFileProperty
+
+    @get:InputFile
+    abstract val installedAcceptanceFile: RegularFileProperty
+
+    override fun asArguments(): Iterable<String> = listOf(
+        manifestFile.get().asFile.absolutePath,
+        installedAcceptanceFile.get().asFile.absolutePath,
     )
 }
 
@@ -66,6 +80,34 @@ val generateKastObserverSnapshotManifest by tasks.registering(JavaExec::class) {
     argumentProviders.add(
         objects.newInstance<KastObserverSnapshotArguments>().apply {
             manifestFile.set(kastObserverSnapshotManifest)
+        },
+    )
+}
+
+val codexHostIntegrationManifest = layout.buildDirectory.file(
+    "reports/codex-host/codex-host-integration.json",
+)
+val installedCodexHostReceipt = rootProject.layout.buildDirectory.file(
+    "reports/installed-product/codex-host.json",
+)
+
+tasks.register<JavaExec>("generateCodexHostIntegrationManifest") {
+    description = "Binds Codex host modes, catalog projection, installed proof, and source state."
+    group = "verification"
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass = "io.github.amichne.kast.cli.broker.CodexHostIntegrationManifestMain"
+    workingDir = rootProject.projectDir
+    outputs.upToDateWhen { false }
+    dependsOn(
+        tasks.named("test"),
+        rootProject.tasks.named("installedProductTest"),
+        rootProject.tasks.named("installedCodexHostTest"),
+        rootProject.tasks.named("verifyKastArchitecture"),
+    )
+    argumentProviders.add(
+        objects.newInstance<CodexHostManifestArguments>().apply {
+            manifestFile.set(codexHostIntegrationManifest)
+            installedAcceptanceFile.set(installedCodexHostReceipt)
         },
     )
 }

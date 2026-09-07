@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.broker.provider
 
+import io.github.amichne.kast.cli.broker.KastToolSelection
 import io.github.amichne.kast.cli.broker.core.Broker
 import io.github.amichne.kast.cli.broker.core.BrokerDispatch
 import io.github.amichne.kast.cli.broker.core.BrokerDispatchRequest
@@ -118,7 +119,12 @@ class KastProviderTest {
         val executable = executable(temporary.resolve("kast"))
         val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
         val executor = RecordingProcessExecutor(capabilitySchema(), invocationDelayMillis = 31_000)
-        val options = KastProviderOptions.admit(executable, cwd, executor).refinedValue()
+        val options = KastProviderOptions.admit(
+            executable,
+            cwd,
+            executor,
+            toolSelection = KastToolSelection.admit("symbol_lookup").refinedValue(),
+        ).refinedValue()
         val qualification = assertInstanceOf(
             KastProviderQualification.Qualified::class.java,
             KastProviderQualifier.qualify(options),
@@ -146,7 +152,7 @@ class KastProviderTest {
     }
 
     @Test
-    fun `qualified read-only bootstrap advertises exactly the installed executable routes`(
+    fun `default bootstrap removes direct symbol routes and retains selected change routes`(
         @TempDir temporary: Path,
     ) = runBlocking {
         val executable = executable(temporary.resolve("kast"))
@@ -163,24 +169,24 @@ class KastProviderTest {
         ).validatedValue()
 
         assertEquals(
-            listOf("symbol_lookup"),
+            listOf("change_apply"),
             broker.catalog.namespaces.single().tools.map { tool -> tool.name.value },
         )
         assertEquals(
-            setOf("symbol_lookup"),
+            setOf("change_apply"),
             qualification.bootstrap.tools.definitions.mapTo(linkedSetOf()) { it.name.value },
         )
         val completed = broker.dispatch(
             BrokerDispatchRequest(
-                ToolAddress(namespace("kast"), toolName("symbol_lookup")),
-                buildJsonObject { put("query", "Thing") },
+                ToolAddress(namespace("kast"), toolName("change_apply")),
+                buildJsonObject { put("plan", "plan-1") },
                 context(cwd),
             ),
         )
         val explicit = broker.dispatch(
             BrokerDispatchRequest(
-                ToolAddress(namespace("kast"), toolName("change_apply")),
-                buildJsonObject { put("plan", "plan-1") },
+                ToolAddress(namespace("kast"), toolName("symbol_lookup")),
+                buildJsonObject { put("query", "Thing") },
                 context(cwd),
             ),
         )
@@ -189,18 +195,15 @@ class KastProviderTest {
         assertEquals(
             listOf(
                 ToolContent(
-                    "{\"document\":{\"items\":[],\"operation\":\"symbol.discover\"," +
+                    "{\"document\":{\"changes\":[],\"operation\":\"change.apply\"," +
                         "\"status\":\"complete\"},\"status\":\"completed\"}",
                 ),
             ),
             completed.presentation.content,
         )
+        assertEquals(ObserverPresentation.None, completed.presentation.observer)
         assertEquals(
-            "**Kast · symbol**\n\n_No matching symbols._",
-            (completed.presentation.observer as ObserverPresentation.Markdown).source.value,
-        )
-        assertEquals(
-            listOf(listOf("symbol", "discover")),
+            listOf(listOf("change", "apply")),
             executor.requests.filterNot { it.arguments.first().startsWith("--") }
                 .map(BrokerProcessRequest::arguments),
         )
@@ -222,7 +225,7 @@ class KastProviderTest {
             executable,
             cwd,
             RecordingProcessExecutor(schema = capabilitySchema()),
-            toolExposure = KastToolExposure.MUTATION_ENABLED,
+            toolSelection = KastToolSelection.admit("symbol_lookup,change_apply").refinedValue(),
         ).refinedValue()
         val qualification = assertInstanceOf(
             KastProviderQualification.Qualified::class.java,
@@ -518,7 +521,12 @@ class KastProviderTest {
             schema = capabilitySchema(),
             replacementSchema = capabilitySchema().replace("minLength\": 1", "minLength\": 2"),
         )
-        val options = KastProviderOptions.admit(executable, cwd, executor).refinedValue()
+        val options = KastProviderOptions.admit(
+            executable,
+            cwd,
+            executor,
+            toolSelection = KastToolSelection.admit("symbol_lookup").refinedValue(),
+        ).refinedValue()
         val qualification = KastProviderQualifier.qualify(options) as KastProviderQualification.Qualified
         val broker = Broker.create(
             listOf(qualification.registration),
@@ -605,6 +613,14 @@ class KastProviderTest {
                     delay(invocationDelayMillis)
                     BrokerProcessExecution.Completed(0, """{"command":"start","status":"complete","runtime":"running"}""", "")
                 }
+                listOf("change", "apply") -> {
+                    delay(invocationDelayMillis)
+                    BrokerProcessExecution.Completed(
+                        0,
+                        """{"operation":"change.apply","status":"complete","changes":[]}""",
+                        "",
+                    )
+                }
                 else -> {
                     delay(invocationDelayMillis)
                     BrokerProcessExecution.Completed(
@@ -629,7 +645,7 @@ class KastProviderTest {
         {
           "schemaVersion": 1,
           "serverProjection": {
-            "schemaVersion": 6,
+            "schemaVersion": 7,
             "namespace": "kast",
             "hostedBootstrap": {
               "schemaVersion": 1,

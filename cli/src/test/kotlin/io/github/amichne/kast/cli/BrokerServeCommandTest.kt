@@ -4,6 +4,7 @@ import io.github.amichne.kast.cli.broker.BrokerServerRun
 import io.github.amichne.kast.cli.broker.BrokerServerRunner
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
+import io.github.amichne.kast.cli.projection.CliBoundaryDocuments
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
@@ -15,7 +16,7 @@ import java.nio.file.Path
 
 class BrokerServeCommandTest {
     @Test
-    fun `retired broker serve rejects before any runner or semantic effect`() {
+    fun `internal broker serve delegates to its runner without semantic effects`() {
         var boundaryTouched = false
         var runnerCalled = false
         val cli = KastCli(
@@ -56,8 +57,11 @@ class BrokerServeCommandTest {
 
         val exit = cli.execute(listOf("broker", "serve"), Path.of("/missing"))
 
-        assertTrue(exit is CliExit.BoundaryRejected)
-        assertFalse(runnerCalled)
+        assertEquals(
+            CliBoundaryDocuments.brokerStopped().value,
+            (exit as CliExit.Complete).document.value,
+        )
+        assertTrue(runnerCalled)
         assertFalse(boundaryTouched)
     }
 

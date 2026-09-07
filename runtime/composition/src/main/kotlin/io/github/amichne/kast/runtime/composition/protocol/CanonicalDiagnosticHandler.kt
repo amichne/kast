@@ -57,7 +57,7 @@ internal class CanonicalDiagnosticCheckHandler(
             is WorkspaceRuntimeState.Ready -> state.workspace
             else -> return OperationOutcome.Rejected(DiagnosticCheckRejection.WORKSPACE_NOT_READY)
         }
-        val query = when (val parsed = DiagnosticScopeQuery.parse(ready.readLease, request.scope.value)) {
+        val query = when (val parsed = DiagnosticScopeQuery.parse(ready.readLease, request.path.value)) {
             is Refinement.Refined -> parsed.value
             is Refinement.Rejected -> return OperationOutcome.Rejected(parsed.failure.protocol())
         }

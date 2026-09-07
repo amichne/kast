@@ -97,6 +97,8 @@ Usage:
              [--runtime-directory <absolute-path>]
              [--cache-root <absolute-path>]
              [--enable-launchd <0-or-1>]
+             [--enable-app-server <0-or-1>]
+             [--app-server-tools <comma-separated-tool-names>]
              [--idea-home <absolute-app-or-contents-path>]
              [--repository <owner/name>]
              [--release-base-url <https-or-file-url>]
@@ -115,6 +117,8 @@ Defaults:
   runtime-dir   ${TMPDIR:-/tmp}/kast-runtime
   cache-root    $HOME/.cache/kast/intellij-caches
   launchd       0 (direct process ownership)
+  app server    1 (persistent Codex App Server integration enabled)
+  server tools  query, source/semantic/impact, diagnostic, and change tools
   IDEA home     the sole IntelliJ IDEA found in standard macOS locations
   repository    amichne/kast
   release URL   https://github.com/<repository>/releases/download
@@ -128,6 +132,8 @@ Environment equivalents:
   KAST_RUNTIME_DIRECTORY
   KAST_CACHE_ROOT
   KAST_ENABLE_LAUNCHD
+  KAST_ENABLE_APP_SERVER
+  KAST_APP_SERVER_TOOLS
   KAST_INSTALL_IDEA_HOME
   KAST_INSTALL_IDEA_SEARCH_ROOT
   KAST_REPOSITORY
@@ -141,7 +147,7 @@ KAST_INSTALL_IDEA_SEARCH_ROOT limits automatic traversal to one absolute root.
 downloading. It requires --version and preserves the release URL, checksums,
 archive validation, and manifest identity used for a downloaded installation.
 
-The installer writes the four runtime settings to the config file as literal
+The installer writes the six runtime settings to the config file as literal
 KEY=value records. Edit that file after installation or override any setting
 in the process environment; process values take precedence.
 
@@ -196,6 +202,46 @@ validate_enable_launchd() {
     0|1) ;;
     *) fail "enable launchd must be 0 or 1: $1" ;;
   esac
+}
+
+validate_enable_app_server() {
+  case "$1" in
+    0|1) ;;
+    *) fail "enable app server must be 0 or 1: $1" ;;
+  esac
+}
+
+validate_app_server_tools() {
+  local raw="$1"
+  local tool
+  local admitted=","
+  [[ -n "$raw" ]] || fail "app server tools must not be empty"
+  IFS=',' read -r -a configured_tools <<< "$raw"
+  for tool in "${configured_tools[@]}"; do
+    [[ -n "$tool" ]] || fail "app server tools contain an empty name"
+    case "$tool" in
+      query|symbol_lookup|symbol_inspect|source_read|semantic_query|impact_analyze|diagnostic_check|change_plan|change_apply|change_recover) ;;
+      *) fail "app server tools contain an unknown name: $tool" ;;
+    esac
+    case "$admitted" in
+      *",$tool,"*) fail "app server tools repeat a name: $tool" ;;
+    esac
+    admitted+="$tool,"
+  done
+}
+
+canonical_app_server_tools() {
+  local raw=",$1,"
+  local tool
+  local selected=()
+  for tool in query symbol_lookup symbol_inspect source_read semantic_query impact_analyze \
+    diagnostic_check change_plan change_apply change_recover; do
+    case "$raw" in
+      *",$tool,"*) selected+=("$tool") ;;
+    esac
+  done
+  local IFS=','
+  printf '%s\n' "${selected[*]}"
 }
 
 require_safe_cleanup_root() {
@@ -556,6 +602,18 @@ load_persisted_runtime_configuration() {
         persisted_enable_launchd="${line#*=}"
         persisted_enable_launchd_set=true
         ;;
+      KAST_ENABLE_APP_SERVER=*)
+        [[ "$persisted_enable_app_server_set" == false ]] ||
+          fail "runtime configuration repeats KAST_ENABLE_APP_SERVER"
+        persisted_enable_app_server="${line#*=}"
+        persisted_enable_app_server_set=true
+        ;;
+      KAST_APP_SERVER_TOOLS=*)
+        [[ "$persisted_app_server_tools_set" == false ]] ||
+          fail "runtime configuration repeats KAST_APP_SERVER_TOOLS"
+        persisted_app_server_tools="${line#*=}"
+        persisted_app_server_tools_set=true
+        ;;
       *) fail "runtime configuration has an unsupported record: $line" ;;
     esac
   done < "$path"
@@ -739,6 +797,10 @@ install_runtime_configuration() {
     printf 'KAST_CACHE_ROOT=%s\n' "$cache_root"
     printf '%s\n' '# 0 starts detached processes directly; 1 delegates ownership to launchd.'
     printf 'KAST_ENABLE_LAUNCHD=%s\n' "$enable_launchd"
+    printf '%s\n' '# 0 disables the Codex App Server integration; 1 enables it.'
+    printf 'KAST_ENABLE_APP_SERVER=%s\n' "$enable_app_server"
+    printf '%s\n' '# Exact comma-separated App Server tool subset in canonical order.'
+    printf 'KAST_APP_SERVER_TOOLS=%s\n' "$app_server_tools"
   } > "$staged_configuration"
   chmod 600 "$staged_configuration"
   mv -f "$staged_configuration" "$path"
@@ -782,6 +844,8 @@ if [ -e "$config_file" ] || [ -L "$config_file" ]; then
     seen_runtime_directory=false
     seen_cache_root=false
     seen_enable_launchd=false
+    seen_enable_app_server=false
+    seen_app_server_tools=false
     while IFS= read -r config_line || [ -n "$config_line" ]; do
       case "$config_line" in
         ''|'#'*) ;;
@@ -817,10 +881,27 @@ if [ -e "$config_file" ] || [ -L "$config_file" ]; then
           seen_enable_launchd=true
           [ "${KAST_ENABLE_LAUNCHD+x}" = x ] || KAST_ENABLE_LAUNCHD=${config_line#*=}
           ;;
+        KAST_ENABLE_APP_SERVER=*)
+          if [ "$seen_enable_app_server" = true ]; then
+            saved_configuration_failure duplicate-record
+            break
+          fi
+          seen_enable_app_server=true
+          [ "${KAST_ENABLE_APP_SERVER+x}" = x ] || KAST_ENABLE_APP_SERVER=${config_line#*=}
+          ;;
+        KAST_APP_SERVER_TOOLS=*)
+          if [ "$seen_app_server_tools" = true ]; then
+            saved_configuration_failure duplicate-record
+            break
+          fi
+          seen_app_server_tools=true
+          [ "${KAST_APP_SERVER_TOOLS+x}" = x ] || KAST_APP_SERVER_TOOLS=${config_line#*=}
+          ;;
         *) saved_configuration_failure unsupported-record; break ;;
       esac
     done < "$config_file"
     export KAST_RUNTIME_STORE KAST_RUNTIME_DIRECTORY KAST_CACHE_ROOT KAST_ENABLE_LAUNCHD
+    export KAST_ENABLE_APP_SERVER KAST_APP_SERVER_TOOLS
   fi
 fi
 LAUNCHER_CONFIGURATION
@@ -918,6 +999,10 @@ persisted_cache_root=""
 persisted_cache_root_set=false
 persisted_enable_launchd=""
 persisted_enable_launchd_set=false
+persisted_enable_app_server=""
+persisted_enable_app_server_set=false
+persisted_app_server_tools=""
+persisted_app_server_tools_set=false
 load_persisted_runtime_configuration "$config_file"
 
 action="install"
@@ -957,6 +1042,20 @@ elif [[ "$persisted_enable_launchd_set" == true ]]; then
 else
   enable_launchd=0
 fi
+if [[ ${KAST_ENABLE_APP_SERVER+x} == x ]]; then
+  enable_app_server="$KAST_ENABLE_APP_SERVER"
+elif [[ "$persisted_enable_app_server_set" == true ]]; then
+  enable_app_server="$persisted_enable_app_server"
+else
+  enable_app_server=1
+fi
+if [[ ${KAST_APP_SERVER_TOOLS+x} == x ]]; then
+  app_server_tools="$KAST_APP_SERVER_TOOLS"
+elif [[ "$persisted_app_server_tools_set" == true ]]; then
+  app_server_tools="$persisted_app_server_tools"
+else
+  app_server_tools="query,source_read,semantic_query,impact_analyze,diagnostic_check,change_plan,change_apply,change_recover"
+fi
 idea_home="${KAST_INSTALL_IDEA_HOME:-}"
 runtime_socket_directory=""
 default_runtime_socket_directory=""
@@ -966,6 +1065,8 @@ version_option_set=false
 repository_option_set=false
 release_base_url_option_set=false
 enable_launchd_option_set=false
+enable_app_server_option_set=false
+app_server_tools_option_set=false
 idea_home_option_set=false
 
 if [[ ${#} -gt 0 ]]; then
@@ -1024,6 +1125,18 @@ while [[ $# -gt 0 ]]; do
       enable_launchd_option_set=true
       shift 2
       ;;
+    --enable-app-server)
+      [[ $# -ge 2 ]] || fail "--enable-app-server requires a value"
+      enable_app_server="$2"
+      enable_app_server_option_set=true
+      shift 2
+      ;;
+    --app-server-tools)
+      [[ $# -ge 2 ]] || fail "--app-server-tools requires a value"
+      app_server_tools="$2"
+      app_server_tools_option_set=true
+      shift 2
+      ;;
     --idea-home)
       [[ $# -ge 2 ]] || fail "--idea-home requires a value"
       idea_home="$2"
@@ -1063,8 +1176,9 @@ if [[ "$action" == "uninstall" ]]; then
   [[ -z "$assets_directory" ]] || fail "--assets-directory is valid only with install"
   [[ "$version_option_set" == false && "$repository_option_set" == false && \
     "$release_base_url_option_set" == false && "$enable_launchd_option_set" == false && \
+    "$enable_app_server_option_set" == false && "$app_server_tools_option_set" == false && \
     "$idea_home_option_set" == false ]] ||
-    fail "--version, --repository, --release-base-url, --enable-launchd, and --idea-home are valid only with install"
+    fail "install configuration options are valid only with install"
   require_command rm
   require_command find
   require_command shasum
@@ -1169,6 +1283,10 @@ require_literal_configuration_value "runtime store" "$runtime_store"
 require_literal_configuration_value "runtime directory" "$runtime_directory"
 require_literal_configuration_value "sidecar cache root" "$cache_root"
 validate_enable_launchd "$enable_launchd"
+validate_enable_app_server "$enable_app_server"
+require_literal_configuration_value "app server tools" "$app_server_tools"
+validate_app_server_tools "$app_server_tools"
+app_server_tools="$(canonical_app_server_tools "$app_server_tools")"
 runtime_socket_directory="$(runtime_socket_directory_for "$runtime_directory")"
 default_runtime_socket_directory="$(
   runtime_socket_directory_for "$default_runtime_directory"
@@ -1421,7 +1539,7 @@ if [[ -x "$target_root/bin/kast-codex" ]]; then
 fi
 note "configuration: $config_file"
 note "private sidecar: $target_root/share/kast/runtime/$runtime_name"
-info "runtime knobs: KAST_RUNTIME_STORE, KAST_RUNTIME_DIRECTORY, KAST_CACHE_ROOT, KAST_ENABLE_LAUNCHD"
+info "runtime knobs: KAST_RUNTIME_STORE, KAST_RUNTIME_DIRECTORY, KAST_CACHE_ROOT, KAST_ENABLE_LAUNCHD, KAST_ENABLE_APP_SERVER, KAST_APP_SERVER_TOOLS"
 case ":${PATH:-}:" in
   *":$bin_dir:"*) ;;
   *) warning "add $bin_dir to PATH" ;;

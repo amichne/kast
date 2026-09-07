@@ -4,6 +4,9 @@ import io.github.amichne.kast.cli.broker.core.Broker
 import io.github.amichne.kast.cli.broker.core.BrokerLimits
 import io.github.amichne.kast.cli.broker.core.JsonLineBrokerInvocationActivitySink
 import io.github.amichne.kast.cli.broker.core.ProviderDefinition
+import io.github.amichne.kast.cli.broker.host.admission.CodexAppServerArguments
+import io.github.amichne.kast.cli.broker.host.admission.DesktopFacadeExecutables
+import io.github.amichne.kast.cli.broker.host.admission.UpstreamCodexExecutable
 import io.github.amichne.kast.cli.broker.protocol.codex.CodexProtocolQualification
 import io.github.amichne.kast.cli.broker.protocol.codex.CodexProtocolQualificationOptions
 import io.github.amichne.kast.cli.broker.protocol.codex.CodexProtocolQualifier
@@ -16,7 +19,6 @@ import io.github.amichne.kast.cli.broker.provider.JdkBrokerProcessExecutor
 import io.github.amichne.kast.cli.broker.provider.KastProviderOptions
 import io.github.amichne.kast.cli.broker.provider.KastProviderQualification
 import io.github.amichne.kast.cli.broker.provider.KastProviderQualifier
-import io.github.amichne.kast.cli.broker.provider.KastToolExposure
 import io.github.amichne.kast.cli.broker.runtime.BrokerSocketPath
 import io.github.amichne.kast.cli.broker.runtime.CodexAppServerProcessLauncher
 import io.github.amichne.kast.cli.broker.runtime.KtorBrokerServer
@@ -65,6 +67,7 @@ internal enum class InstalledBrokerServerConfigurationFailure {
     READINESS_REJECTED,
     PROVIDER_CONFIGURATION_REJECTED,
     PROTOCOL_CONFIGURATION_REJECTED,
+    APP_SERVER_DISABLED,
 }
 
 internal enum class BrokerClientTransport { LEGACY_CONTROL, INTEGRATION_OWNED }
@@ -84,6 +87,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
             processExecutor: BrokerProcessExecutor = JdkBrokerProcessExecutor,
             launcher: CodexAppServerProcessLauncher? = null,
             clientTransport: BrokerClientTransport = BrokerClientTransport.LEGACY_CONTROL,
+            appServerArguments: CodexAppServerArguments = CodexAppServerArguments.defaults(),
         ): InstalledBrokerServerConfiguration {
             val canonicalUserHome = canonicalDirectory(userHome)
                 ?: return rejected(InstalledBrokerServerConfigurationFailure.USER_HOME_REJECTED)
@@ -93,13 +97,20 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     InstalledBrokerServerConfigurationFailure.KAST_EXECUTABLE_REJECTED,
                 )
             }
-            val codexPath = when (val explicit = environment["CODEX_EXECUTABLE"]) {
-                null -> resolveExecutable("codex", environment["PATH"].orEmpty())
-                else -> absoluteNormalizedPath(explicit)
+            val codexPath = when {
+                environment.containsKey("KAST_REAL_CODEX_EXECUTABLE") ->
+                    absoluteNormalizedPath(environment.getValue("KAST_REAL_CODEX_EXECUTABLE"))
+                environment.containsKey("CODEX_EXECUTABLE") ->
+                    absoluteNormalizedPath(environment.getValue("CODEX_EXECUTABLE"))
+                else -> resolveExecutable("codex", environment["PATH"].orEmpty())
             } ?: return rejected(
                 InstalledBrokerServerConfigurationFailure.CODEX_EXECUTABLE_REJECTED,
             )
-            val codex = when (val admission = BrokerExecutable.admit(codexPath)) {
+            val facades = DesktopFacadeExecutables.resolve(
+                kast.path.parent.resolve("kast-codex"),
+                environment["CODEX_CLI_PATH"],
+            )
+            val codex = when (val admission = UpstreamCodexExecutable.admit(codexPath, facades)) {
                 is Refinement.Refined -> admission.value
                 is Refinement.Rejected -> return rejected(
                     InstalledBrokerServerConfigurationFailure.CODEX_EXECUTABLE_REJECTED,
@@ -161,8 +172,19 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     InstalledBrokerServerConfigurationFailure.READINESS_REJECTED,
                 )
             }
-            val toolExposure = when (
-                val admitted = KastToolExposure.admit(environment["KAST_CODEX_TOOL_EXPOSURE"])
+            val toolingMode = when (
+                val admitted = AppServerToolingMode.admit(environment[APP_SERVER_ENABLE_ENVIRONMENT])
+            ) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return rejected(
+                    InstalledBrokerServerConfigurationFailure.PROVIDER_CONFIGURATION_REJECTED,
+                )
+            }
+            if (toolingMode == AppServerToolingMode.DISABLED) {
+                return rejected(InstalledBrokerServerConfigurationFailure.APP_SERVER_DISABLED)
+            }
+            val toolSelection = when (
+                val admitted = KastToolSelection.admit(environment[APP_SERVER_TOOLS_ENVIRONMENT])
             ) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return rejected(
@@ -174,7 +196,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     kast.path,
                     canonicalUserHome,
                     processExecutor,
-                    toolExposure = toolExposure,
+                    toolSelection = toolSelection,
                 )
             ) {
                 is Refinement.Refined -> admission.value
@@ -184,7 +206,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
             }
             val protocolOptions = when (
                 val admission = CodexProtocolQualificationOptions.admit(
-                    codex.path,
+                    codex,
                     codexHome,
                     protocolTemporary,
                     processExecutor,
@@ -205,6 +227,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     privateSocket,
                     maximumMessageBytes = MAXIMUM_MESSAGE_BYTES,
                     startupTimeoutMillis = UPSTREAM_STARTUP_TIMEOUT_MILLIS,
+                    appServerArguments = appServerArguments,
                 )
             } else {
                 ManagedCodexUpstreamOptions(
@@ -214,6 +237,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     launcher,
                     MAXIMUM_MESSAGE_BYTES,
                     UPSTREAM_STARTUP_TIMEOUT_MILLIS,
+                    appServerArguments,
                 )
             }
             return Configured(
@@ -350,7 +374,10 @@ internal class InstalledBrokerServer private constructor(
     internal suspend fun close() = terminate(InstalledBrokerServerTermination.CLOSED)
 
     private suspend fun terminate(reason: InstalledBrokerServerTermination) {
-        if (!closed.compareAndSet(false, true)) return
+        if (!closed.compareAndSet(false, true)) {
+            termination.await()
+            return
+        }
         try {
             try {
                 publicServer.close()
@@ -539,7 +566,7 @@ internal class InstalledBrokerServerRunner(
         ) {
             is InstalledBrokerServerConfiguration.Configured -> admitted.options
             is InstalledBrokerServerConfiguration.Rejected -> return BrokerServerRun.Rejected(
-                BrokerServerFailure.CONFIGURATION_REJECTED,
+                admitted.failure.serverFailure(),
             )
         }
         return try {
@@ -576,6 +603,30 @@ internal class InstalledBrokerServerRunner(
     }
 
 }
+
+private fun InstalledBrokerServerConfigurationFailure.serverFailure(): BrokerServerFailure =
+    when (this) {
+        InstalledBrokerServerConfigurationFailure.KAST_EXECUTABLE_REJECTED ->
+            BrokerServerFailure.KAST_EXECUTABLE_REJECTED
+        InstalledBrokerServerConfigurationFailure.USER_HOME_REJECTED ->
+            BrokerServerFailure.USER_HOME_REJECTED
+        InstalledBrokerServerConfigurationFailure.CODEX_EXECUTABLE_REJECTED ->
+            BrokerServerFailure.CODEX_EXECUTABLE_REJECTED
+        InstalledBrokerServerConfigurationFailure.CODEX_HOME_REJECTED ->
+            BrokerServerFailure.CODEX_HOME_REJECTED
+        InstalledBrokerServerConfigurationFailure.STATE_DIRECTORY_REJECTED ->
+            BrokerServerFailure.STATE_DIRECTORY_REJECTED
+        InstalledBrokerServerConfigurationFailure.SOCKET_PATH_REJECTED ->
+            BrokerServerFailure.SOCKET_PATH_REJECTED
+        InstalledBrokerServerConfigurationFailure.READINESS_REJECTED ->
+            BrokerServerFailure.READINESS_REJECTED
+        InstalledBrokerServerConfigurationFailure.PROVIDER_CONFIGURATION_REJECTED ->
+            BrokerServerFailure.PROVIDER_CONFIGURATION_REJECTED
+        InstalledBrokerServerConfigurationFailure.PROTOCOL_CONFIGURATION_REJECTED ->
+            BrokerServerFailure.PROTOCOL_CONFIGURATION_REJECTED
+        InstalledBrokerServerConfigurationFailure.APP_SERVER_DISABLED ->
+            BrokerServerFailure.APP_SERVER_DISABLED
+    }
 
 private fun InstalledBrokerServerFailure.serverFailure(): BrokerServerFailure = when (this) {
     InstalledBrokerServerFailure.READINESS_REJECTED -> BrokerServerFailure.READINESS_REJECTED
@@ -901,7 +952,7 @@ private fun admittedServiceStateFileKey(
     return key.takeIf { readServiceState(path) == expected }
 }
 
-internal const val BROKER_SERVICE_STATE_SCHEMA_VERSION = 2
+internal const val BROKER_SERVICE_STATE_SCHEMA_VERSION = 3
 
 internal val BROKER_SERVICE_STATE_JSON = Json {
     ignoreUnknownKeys = false

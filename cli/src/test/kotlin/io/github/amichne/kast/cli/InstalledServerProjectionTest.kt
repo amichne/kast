@@ -34,7 +34,7 @@ class InstalledServerProjectionTest {
             .jsonArray
             .map(JsonElement::jsonObject)
 
-        assertEquals(6, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(7, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertTrue(
             bootstrap.getValue("policy").jsonPrimitive.content
                 .contains("compiler-grounded Kotlin source intelligence"),
@@ -131,6 +131,14 @@ class InstalledServerProjectionTest {
     }
 
     @Test
+    fun `diagnostic input names its filesystem path and rejects the former scope field`() {
+        val input = projectionTools().tool("diagnostic.check").getValue("inputSchema").jsonObject
+
+        input.assertAdmits("""{"path":".","limit":100}""")
+        input.assertRejects("""{"scope":"workspace","limit":100}""")
+    }
+
+    @Test
     fun `query schema exposes scoped enumeration and typed reusable references`() {
         val query = projectionTools().tool("query.run")
         val input = query.getValue("inputSchema").jsonObject
@@ -204,7 +212,7 @@ class InstalledServerProjectionTest {
             .map { it.operation.id.value }
 
         assertEquals(10, tools.size)
-        assertEquals(6, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(7, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
             expectedPublicOperations,

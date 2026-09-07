@@ -6,8 +6,10 @@ resource: "file://docs/public/troubleshooting.mdx"
 tags: ["troubleshooting", "failures", "runtime", "support"]
 timestamp: "2026-09-07T00:00:00-04:00"
 code_sources:
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/KastCodexMain.kt"
-    symbols: ["KastCodexMain", "CodexIntegrationFailure"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/BrokerServerRunner.kt"
+    symbols: ["BrokerServerFailure"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/InstalledBrokerServer.kt"
+    symbols: ["InstalledBrokerServerConfiguration"]
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/core/BrokerInvocationActivity.kt"
     symbols: ["BrokerInvocationActivity", "BrokerInvocationCompletion"]
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/projection/ProductInspectionDocuments.kt"
@@ -26,7 +28,7 @@ by that evidence.
 
 | Symptom | Meaning | Next action |
 | --- | --- | --- |
-| Kast tools are absent from a new thread | The integration did not qualify or publish the installed catalog. | Read the `kast-codex` startup error or the custom harness startup diagnostic. |
+| Kast tools are absent from a new thread | The App Server is disabled or did not qualify and publish the installed catalog. | Check the saved App Server configuration and broker readiness document. |
 | The tool invocation is outer `rejected` | Process, runtime, protocol, timeout, output, or schema admission failed. | Preserve its `diagnostic`, then collect passive status from the same repository root. |
 | The invocation is outer `completed`, but the semantic document is `rejected` | Kast ran the operation but could not establish successful semantic evidence. | Follow the typed semantic reason. Do not restart the runtime by default. |
 | The semantic document is `qualified` | The evidence is usable only within its attached limitations. | Narrow the question, increase an admitted bound, or report the limitation. |
@@ -62,14 +64,15 @@ that your organization treats as sensitive.
 
 ### The integration does not start
 
-`kast-codex` writes one finite reason to standard error. Check these boundaries
+`kast codex` writes one finite reason to standard error. Check these boundaries
 in order:
 
 1. `kast` and `codex` are available to the launching environment.
 2. The command runs from the intended Kotlin Gradle repository.
 3. `CODEX_EXECUTABLE`, when set, is an absolute executable path.
-4. `KAST_CODEX_TOOL_EXPOSURE` is absent, `read-only`, or
-   `mutation-enabled`.
+4. `KAST_ENABLE_APP_SERVER` is `0` or `1`.
+5. `KAST_APP_SERVER_TOOLS` is a non-empty, duplicate-free subset of exact names
+   returned by `kast --schema`.
 
 The broker rejects startup if it cannot prove the installed projection, the
 Codex protocol, the tool catalog, or an executable route. Do not work around

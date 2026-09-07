@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli.broker.runtime
 
-import io.github.amichne.kast.cli.broker.provider.BrokerExecutable
+import io.github.amichne.kast.cli.broker.host.admission.CodexAppServerArguments
+import io.github.amichne.kast.cli.broker.host.admission.UpstreamCodexExecutable
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
@@ -26,16 +27,17 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal data class ManagedCodexUpstreamOptions(
-    val executable: BrokerExecutable,
+    val executable: UpstreamCodexExecutable,
     val codexHome: Path,
     val privateSocket: BrokerSocketPath,
     val launcher: CodexAppServerProcessLauncher = JdkCodexAppServerProcessLauncher,
     val maximumMessageBytes: Int,
     val startupTimeoutMillis: Long,
+    val appServerArguments: CodexAppServerArguments = CodexAppServerArguments.defaults(),
 )
 
 internal data class CodexAppServerProcessRequest(
-    val executable: BrokerExecutable,
+    val executable: UpstreamCodexExecutable,
     val arguments: List<String>,
     val environment: Map<String, String>,
     val socket: Path,
@@ -85,7 +87,7 @@ internal class ManagedCodexUpstream private constructor(
 
     override suspend fun connect(): BrokerUpstreamConnectionAdmission {
         if (closed.get() || !process.isAlive()) return BrokerUpstreamConnectionAdmission.Rejected
-        val connected = connectUnixWebSocket(
+        val connected = connectCodexUnixWebSocket(
             privateSocket.path,
             maximumMessageBytes,
             connectionTimeoutMillis,
@@ -138,9 +140,7 @@ internal class ManagedCodexUpstream private constructor(
             }
             val request = CodexAppServerProcessRequest(
                 executable = options.executable,
-                arguments = listOf(
-                    "app-server",
-                    "--listen",
+                arguments = options.appServerArguments.withOwnedTransport(
                     "unix://${options.privateSocket.path}",
                 ),
                 environment = mapOf("CODEX_HOME" to options.codexHome.toString()),
@@ -163,7 +163,7 @@ internal class ManagedCodexUpstream private constructor(
                         1L,
                         TimeUnit.NANOSECONDS.toMillis(remainingNanos),
                     )
-                    val probe = connectUnixWebSocket(
+                    val probe = connectCodexUnixWebSocket(
                         options.privateSocket.path,
                         options.maximumMessageBytes,
                         remainingMillis,
@@ -239,7 +239,7 @@ private class ManagedUpstreamConnection(
     }
 }
 
-private suspend fun connectUnixWebSocket(
+internal suspend fun connectCodexUnixWebSocket(
     socket: Path,
     maximumMessageBytes: Int,
     timeoutMillis: Long,
@@ -324,7 +324,7 @@ private object JdkCodexAppServerProcessLauncher : CodexAppServerProcessLauncher 
                 listOf(request.executable.path.toString()) + request.arguments,
             )
                 .redirectInput(ProcessBuilder.Redirect.from(NULL_DEVICE.toFile()))
-                .redirectOutput(ProcessBuilder.Redirect.INHERIT)
+                .redirectOutput(ProcessBuilder.Redirect.to(NULL_DEVICE.toFile()))
                 .redirectError(ProcessBuilder.Redirect.INHERIT)
                 .also { builder -> builder.environment().putAll(request.environment) }
                 .start()

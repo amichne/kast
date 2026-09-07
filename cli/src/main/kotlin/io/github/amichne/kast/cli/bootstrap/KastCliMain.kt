@@ -75,10 +75,10 @@ fun main(args: Array<String>) {
         )
     }
     when (exit) {
-        is CliExit.Complete,
-        is CliExit.Qualified,
-        is CliExit.OperationRejected,
-            -> System.out.println(exit.document.value)
+        is CliExit.Delegated -> Unit
+        is CliExit.Complete -> System.out.println(exit.document.value)
+        is CliExit.Qualified -> System.out.println(exit.document.value)
+        is CliExit.OperationRejected -> System.out.println(exit.document.value)
         is CliExit.BoundaryRejected -> System.err.println(exit.document.value)
     }
     exitProcess(exit.code)

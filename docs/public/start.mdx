@@ -14,6 +14,10 @@ code_sources:
     symbols: ["KastCodexMain"]
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/InstalledBrokerServer.kt"
     symbols: ["InstalledBrokerServerConfiguration"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/host/InstalledCodexClientLauncher.kt"
+    symbols: ["InstalledCodexClientLauncher"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/PersistentBrokerService.kt"
+    symbols: ["BrokerServiceLaunchCommand"]
 icon: "rocket"
 keywords: ["install", "Codex", "IntelliJ", "agent integration"]
 ---
@@ -67,12 +71,23 @@ Start the included integration from the repository root:
 
 ```console
 cd /path/to/kotlin-repository
-kast-codex
+kast codex
 ```
 
-The integration qualifies the exact installed Kast projection, starts Codex
-through its supported remote transport, and adds the Kast tools and selection
-policy before a thread begins. Read access is the default.
+The integration ensures a launchd-owned App Server at Codex's standard local
+daemon socket, qualifies the exact installed Kast projection, and starts Codex
+through its supported remote transport. The default catalog omits only direct
+symbol lookup and inspection.
+
+To launch Codex Desktop through the same qualified integration:
+
+```console
+kast codex desktop
+```
+
+Kast launches Desktop with Codex's standard local-daemon integration enabled.
+It does not substitute `CODEX_CLI_PATH`; Desktop and the CLI share the same
+qualified App Server socket and catalog.
 
 Ask the agent a question about the Kotlin repository. Its first Kast read should
 normally use `kast.query`. A successful tool row can be expanded to inspect the
