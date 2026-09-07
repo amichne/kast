@@ -15,12 +15,14 @@ import io.github.amichne.kast.cli.broker.core.ToolContent
 import io.github.amichne.kast.cli.broker.core.ToolName
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
+import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
@@ -34,6 +36,31 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 
 class KastProviderTest {
+    @Test
+    fun `applied change observer retains a typed native diff and rejects escaped paths`() {
+        val presentation = observerPresentation("change.apply", KastObserverFixtures.changeApply)
+        val changes = (presentation as ObserverPresentation.FileChanges).files.entries
+        assertEquals(1, changes.size)
+        assertEquals(
+            "cli/src/main/kotlin/sample/EventConsumer.kt",
+            changes.single().path.value,
+        )
+        assertEquals(
+            "@@ class EventConsumer @@\n-    fun consume() = old()\n+    fun consume() = new()",
+            changes.single().diff.value,
+        )
+        assertEquals(
+            ObserverPresentation.None,
+            observerPresentation(
+                "change.apply",
+                KastObserverFixtures.changeApply.replace(
+                    "cli/src/main/kotlin/sample/EventConsumer.kt",
+                    "../outside.kt",
+                ),
+            ),
+        )
+    }
+
     @Test
     fun `source observer preserves snapshot proven one-based line coordinates`() {
         val source = KastObserverFixtures.sourceRead.replace(
@@ -66,9 +93,11 @@ class KastProviderTest {
         @TempDir temporary: Path,
     ) = runBlocking {
         val executable = executable(temporary.resolve("kast"))
-        for (schema in listOf(
-            capabilitySchema().replace("\"operationMillis\": 60000", "\"operationMillis\": 30000"),
-            capabilitySchema().replace("\"executionBudget\": {\"readinessMillis\": 1020000, \"operationMillis\": 60000},", ""),
+        for ((schema, failure) in listOf(
+            capabilitySchema().replace("\"operationMillis\": 60000", "\"operationMillis\": 30000") to
+                KastQualificationFailure.SCHEMA_INCOMPATIBLE,
+            capabilitySchema().replace("\"executionBudget\": {\"readinessMillis\": 1020000, \"operationMillis\": 60000},", "") to
+                KastQualificationFailure.SCHEMA_INVALID,
         )) {
             val options = KastProviderOptions.admit(
                 executable,
@@ -76,7 +105,7 @@ class KastProviderTest {
                 RecordingProcessExecutor(schema),
             ).refinedValue()
             assertEquals(
-                KastProviderQualification.Rejected(KastQualificationFailure.SCHEMA_INCOMPATIBLE),
+                KastProviderQualification.Rejected(failure),
                 KastProviderQualifier.qualify(options),
             )
         }
@@ -113,7 +142,7 @@ class KastProviderTest {
     }
 
     @Test
-    fun `installed contract publishes and invokes only no-approval tools`(
+    fun `qualified read-only bootstrap advertises exactly the installed executable routes`(
         @TempDir temporary: Path,
     ) = runBlocking {
         val executable = executable(temporary.resolve("kast"))
@@ -132,6 +161,10 @@ class KastProviderTest {
         assertEquals(
             listOf("symbol_lookup"),
             broker.catalog.namespaces.single().tools.map { tool -> tool.name.value },
+        )
+        assertEquals(
+            setOf("symbol_lookup"),
+            qualification.bootstrap.tools.definitions.mapTo(linkedSetOf()) { it.name.value },
         )
         val completed = broker.dispatch(
             BrokerDispatchRequest(
@@ -163,10 +196,14 @@ class KastProviderTest {
             (completed.presentation.observer as ObserverPresentation.Markdown).source.value,
         )
         assertEquals(
-            listOf("symbol", "discover", "--query", "Thing"),
-            executor.requests.last().arguments,
+            listOf(listOf("symbol", "discover", "--query", "Thing")),
+            executor.requests.filterNot { it.arguments.first().startsWith("--") }
+                .map(BrokerProcessRequest::arguments),
         )
-        assertInstanceOf(BrokerFailure.UnknownTool::class.java, (explicit as BrokerDispatch.Rejected).failure)
+        assertInstanceOf(
+            BrokerFailure.UnknownTool::class.java,
+            (explicit as BrokerDispatch.Rejected).failure,
+        )
         assertEquals(2, executor.requests.count { it.arguments == listOf("--version") })
         assertEquals(2, executor.requests.count { it.arguments == listOf("--schema") })
     }
@@ -195,6 +232,10 @@ class KastProviderTest {
         assertEquals(
             listOf("change_apply", "symbol_lookup"),
             broker.catalog.namespaces.single().tools.map { tool -> tool.name.value },
+        )
+        assertEquals(
+            setOf("change_apply", "symbol_lookup"),
+            qualification.bootstrap.tools.definitions.mapTo(linkedSetOf()) { it.name.value },
         )
     }
 
@@ -471,7 +512,7 @@ class KastProviderTest {
         val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
         val executor = RecordingProcessExecutor(
             schema = capabilitySchema(),
-            replacementSchema = capabilitySchema(description = "Changed installed contract."),
+            replacementSchema = capabilitySchema().replace("minLength\": 1", "minLength\": 2"),
         )
         val options = KastProviderOptions.admit(executable, cwd, executor).refinedValue()
         val qualification = KastProviderQualifier.qualify(options) as KastProviderQualification.Qualified
@@ -572,22 +613,32 @@ class KastProviderTest {
         }
     }
 
-    private fun capabilitySchema(description: String = "Find one symbol."): String =
-        """
+    private fun capabilitySchema(): String {
+        val policy = JsonPrimitive(CanonicalAgentToolDefinitions.policy.text)
+        val symbolDescription = JsonPrimitive(
+            CanonicalAgentToolDefinitions.symbolLookup.description.value,
+        )
+        val changeDescription = JsonPrimitive(
+            CanonicalAgentToolDefinitions.changeApply.description.value,
+        )
+        return """
         {
           "schemaVersion": 1,
           "serverProjection": {
-            "schemaVersion": 3,
+            "schemaVersion": 5,
             "namespace": "kast",
-            "tools": [
+            "hostedBootstrap": {
+              "schemaVersion": 1,
+              "policy": $policy,
+              "tools": [
               {
                 "operationId": "symbol.discover",
                 "name": "symbol_lookup",
-                "description": "$description",
+                "description": $symbolDescription,
                 "deferLoading": true,
+                "effect": "intellij_read",
                 "approvalPolicy": "none",
                 "executionBudget": {"readinessMillis": 1020000, "operationMillis": 60000},
-                "cliUsage": "kast symbol discover --query VALUE",
                 "inputSchema": {
                   "type": "object",
                   "additionalProperties": false,
@@ -602,23 +653,16 @@ class KastProviderTest {
                     "status": { "const": "completed" },
                     "document": { "type": "object" }
                   }
-                },
-                "invocation": {
-                  "type": "CLI",
-                  "command": ["symbol", "discover"],
-                  "bindings": [
-                    { "type": "OPTION", "inputField": "query", "option": "--query" }
-                  ]
                 }
               },
               {
                 "operationId": "change.apply",
                 "name": "change_apply",
-                "description": "Apply an approved plan.",
+                "description": $changeDescription,
                 "deferLoading": true,
+                "effect": "intellij_write",
                 "approvalPolicy": "explicit",
                 "executionBudget": {"readinessMillis": 1020000, "operationMillis": 60000},
-                "cliUsage": "kast change apply --plan VALUE",
                 "inputSchema": {
                   "type": "object",
                   "additionalProperties": false,
@@ -633,19 +677,41 @@ class KastProviderTest {
                     "status": { "const": "completed" },
                     "document": { "type": "object" }
                   }
-                },
-                "invocation": {
-                  "type": "CLI",
-                  "command": ["change", "apply"],
-                  "bindings": [
-                    { "type": "OPTION", "inputField": "plan", "option": "--plan" }
-                  ]
                 }
               }
-            ]
+              ]
+            },
+            "cliInvocationBindings": {
+              "schemaVersion": 1,
+              "bindings": [
+                {
+                  "operationId": "symbol.discover",
+                  "cliUsage": "kast symbol discover --query VALUE",
+                  "invocation": {
+                    "type": "CLI",
+                    "command": ["symbol", "discover"],
+                    "bindings": [
+                      { "type": "OPTION", "inputField": "query", "option": "--query" }
+                    ]
+                  }
+                },
+                {
+                  "operationId": "change.apply",
+                  "cliUsage": "kast change apply --plan VALUE",
+                  "invocation": {
+                    "type": "CLI",
+                    "command": ["change", "apply"],
+                    "bindings": [
+                      { "type": "OPTION", "inputField": "plan", "option": "--plan" }
+                    ]
+                  }
+                }
+              ]
+            }
           }
         }
         """.trimIndent()
+    }
 
     private fun executable(path: Path): Path {
         Files.writeString(path, "#!/bin/sh\nexit 0\n")

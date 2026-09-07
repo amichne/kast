@@ -393,8 +393,10 @@ internal class InstalledBrokerServer private constructor(
             }
             stage = BrokerStartupStage.KAST_QUALIFICATION
             activity.started(stage)
-            val kast = when (val qualification = KastProviderQualifier.qualify(options.kastOptions)) {
-                is KastProviderQualification.Qualified -> qualification.registration.also {
+            val kastQualification = when (
+                val qualification = KastProviderQualifier.qualify(options.kastOptions)
+            ) {
+                is KastProviderQualification.Qualified -> qualification.also {
                     activity.completed(stage)
                 }
                 is KastProviderQualification.Rejected -> return rejectWithState(
@@ -402,6 +404,7 @@ internal class InstalledBrokerServer private constructor(
                     InstalledBrokerServerFailure.KAST_QUALIFICATION_REJECTED,
                 )
             }
+            val kast = kastQualification.registration
             stage = BrokerStartupStage.GRADLE_DEFINITION
             activity.started(stage)
             val gradle = when (val definition = GradleProvider.registration()) {
@@ -477,6 +480,7 @@ internal class InstalledBrokerServer private constructor(
                         maximumConnections = options.maximumConnections,
                         maximumMessageBytes = options.maximumMessageBytes,
                         activitySink = JsonLineBrokerInvocationActivitySink(System.err),
+                        sessionBootstrap = kastQualification.bootstrap,
                     ),
                 )
             ) {

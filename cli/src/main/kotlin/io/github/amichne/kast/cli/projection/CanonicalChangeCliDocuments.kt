@@ -6,6 +6,7 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyQualification
 import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
 import io.github.amichne.kast.protocol.contract.ChangeApplyResult
+import io.github.amichne.kast.protocol.contract.ChangeFilePreview
 import io.github.amichne.kast.protocol.contract.ChangePlanQualification
 import io.github.amichne.kast.protocol.contract.ChangePlanRejection
 import io.github.amichne.kast.protocol.contract.ChangePlanResult
@@ -29,6 +30,7 @@ internal object CanonicalChangeCliDocuments {
                     CanonicalOperation.CHANGE_PLAN.id.value,
                     "complete",
                     result.planIdentity.value,
+                    result.changes.entries.map(ChangeFilePreview::cliDocument),
                 ),
             )
         },
@@ -38,6 +40,7 @@ internal object CanonicalChangeCliDocuments {
                     CanonicalOperation.CHANGE_PLAN.id.value,
                     "qualified",
                     result.planIdentity.value,
+                    result.changes.entries.map(ChangeFilePreview::cliDocument),
                     qualification.cliName(),
                 ),
             )
@@ -61,6 +64,7 @@ internal object CanonicalChangeCliDocuments {
                     CanonicalOperation.CHANGE_APPLY.id.value,
                     "complete",
                     result.receiptIdentity.value,
+                    result.changes.entries.map(ChangeFilePreview::cliDocument),
                 ),
             )
         },
@@ -70,6 +74,7 @@ internal object CanonicalChangeCliDocuments {
                     CanonicalOperation.CHANGE_APPLY.id.value,
                     "qualified",
                     result.receiptIdentity.value,
+                    result.changes.entries.map(ChangeFilePreview::cliDocument),
                     qualification.cliName(),
                 ),
             )
@@ -117,6 +122,7 @@ private data class ChangePlanCompleteCliDocument(
     val operation: String,
     val status: String,
     val planIdentity: String,
+    val changes: List<ChangeFilePreviewCliDocument>,
 )
 
 @Serializable
@@ -124,6 +130,7 @@ private data class ChangePlanQualifiedCliDocument(
     val operation: String,
     val status: String,
     val planIdentity: String,
+    val changes: List<ChangeFilePreviewCliDocument>,
     val qualification: String,
 )
 
@@ -132,6 +139,7 @@ private data class ChangeApplyCompleteCliDocument(
     val operation: String,
     val status: String,
     val receiptIdentity: String,
+    val changes: List<ChangeFilePreviewCliDocument>,
 )
 
 @Serializable
@@ -139,8 +147,19 @@ private data class ChangeApplyQualifiedCliDocument(
     val operation: String,
     val status: String,
     val receiptIdentity: String,
+    val changes: List<ChangeFilePreviewCliDocument>,
     val qualification: String,
 )
+
+@Serializable
+private data class ChangeFilePreviewCliDocument(
+    val path: String,
+    val kind: String,
+    val diff: String,
+)
+
+private fun ChangeFilePreview.cliDocument(): ChangeFilePreviewCliDocument =
+    ChangeFilePreviewCliDocument(path.value, kind.name.lowercase(), diff.value)
 
 @Serializable
 private data class ChangeRecoveryCompleteCliDocument(

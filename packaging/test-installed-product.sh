@@ -79,6 +79,26 @@ registry = json.loads(Path(sys.argv[2]).read_text())
 assert document["operationRegistry"] == registry, document
 assert document["cliProjection"]["commands"], document
 assert document["cliProjection"]["localCommands"] == [], document
+projection = document["serverProjection"]
+bootstrap = projection["hostedBootstrap"]
+bindings = projection["cliInvocationBindings"]["bindings"]
+expected_tools = [
+    "symbol_lookup",
+    "symbol_inspect",
+    "source_read",
+    "semantic_query",
+    "impact_analyze",
+    "diagnostic_check",
+    "change_plan",
+    "change_apply",
+    "change_recover",
+]
+assert [tool["name"] for tool in bootstrap["tools"]] == expected_tools, bootstrap
+assert "compiler-grounded Kotlin source intelligence" in bootstrap["policy"], bootstrap
+assert {tool["operationId"] for tool in bootstrap["tools"]} == {
+    binding["operationId"] for binding in bindings
+}, projection
+assert all("invocation" not in tool and "cliUsage" not in tool for tool in bootstrap["tools"]), bootstrap
 PY
 
 help="$(env "${command_environment[@]}" "$kast" --help)"

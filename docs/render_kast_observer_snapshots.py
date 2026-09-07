@@ -15,6 +15,7 @@ from typing import Any
 
 
 SLUG = re.compile(r"^kast-observer-[a-z0-9-]+$")
+OPERATION = re.compile(r"^[a-z]+\.[a-z]+$")
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -69,19 +70,47 @@ def admitted_pages(document: Any) -> list[dict[str, Any]]:
     admitted: list[dict[str, Any]] = []
     slugs: set[str] = set()
     for page in pages:
-        if not isinstance(page, dict) or set(page) != {"slug", "title", "messages"}:
+        if not isinstance(page, dict) or set(page) != {"slug", "title", "items"}:
             raise SystemExit("Observer snapshot page has an unexpected shape.")
-        slug, title, messages = page["slug"], page["title"], page["messages"]
+        slug, title, items = page["slug"], page["title"], page["items"]
         if not isinstance(slug, str) or not SLUG.fullmatch(slug) or slug in slugs:
             raise SystemExit(f"Observer snapshot page has an invalid slug: {slug!r}")
         if not isinstance(title, str) or not title.strip():
             raise SystemExit(f"Observer snapshot page {slug} has no title.")
         if (
-            not isinstance(messages, list)
-            or not messages
-            or any(not isinstance(message, str) or not message.strip() for message in messages)
+            not isinstance(items, list)
+            or not items
+            or any(not isinstance(item, dict) for item in items)
         ):
-            raise SystemExit(f"Observer snapshot page {slug} has invalid messages.")
+            raise SystemExit(f"Observer snapshot page {slug} has invalid items.")
+        for item in items:
+            if set(item) != {"operation", "presentation", "markdown", "changes"}:
+                raise SystemExit(f"Observer snapshot page {slug} has an unexpected item shape.")
+            operation = item["operation"]
+            presentation = item["presentation"]
+            markdown = item["markdown"]
+            changes = item["changes"]
+            if not isinstance(operation, str) or not OPERATION.fullmatch(operation):
+                raise SystemExit(f"Observer snapshot page {slug} has an invalid operation.")
+            if presentation == "markdown":
+                if not isinstance(markdown, str) or not markdown.strip() or changes != []:
+                    raise SystemExit(f"Observer snapshot item {operation} has invalid Markdown.")
+            elif presentation == "file-changes":
+                if markdown is not None or not isinstance(changes, list) or not changes:
+                    raise SystemExit(f"Observer snapshot item {operation} has invalid file changes.")
+                for change in changes:
+                    if not isinstance(change, dict) or set(change) != {"path", "kind", "diff"}:
+                        raise SystemExit(f"Observer snapshot item {operation} has an invalid change.")
+                    if (
+                        not isinstance(change["path"], str)
+                        or not change["path"]
+                        or change["kind"] not in {"add", "delete", "update"}
+                        or not isinstance(change["diff"], str)
+                        or not change["diff"]
+                    ):
+                        raise SystemExit(f"Observer snapshot item {operation} has invalid change data.")
+            else:
+                raise SystemExit(f"Observer snapshot item {operation} has an invalid presentation.")
         forbidden = (
             "candidate:v",
             "exact:v",
@@ -93,7 +122,18 @@ def admitted_pages(document: Any) -> list[dict[str, Any]]:
             "/Users/",
         )
         leaked = next(
-            (token for token in forbidden if any(token in message for message in messages)),
+            (
+                token
+                for token in forbidden
+                if any(
+                    token in (item["markdown"] or "")
+                    or any(
+                        token in change["path"] or token in change["diff"]
+                        for change in item["changes"]
+                    )
+                    for item in items
+                )
+            ),
             None,
         )
         if leaked is not None:
@@ -105,7 +145,7 @@ def admitted_pages(document: Any) -> list[dict[str, Any]]:
 
 def markdown(page: dict[str, Any]) -> str:
     cells = "\n\n".join(
-        f"::: {{.observer-message}}\n{message}\n:::" for message in page["messages"]
+        f"::: {{.observer-message}}\n{item_markdown(item)}\n:::" for item in page["items"]
     )
     return (
         "::: {.snapshot-heading}\n"
@@ -115,6 +155,19 @@ def markdown(page: dict[str, Any]) -> str:
         ":::\n\n"
         f"{cells}\n"
     )
+
+
+def item_markdown(item: dict[str, Any]) -> str:
+    heading = f"**✓ kast.{item['operation']}**"
+    if item["presentation"] == "markdown":
+        return f"{heading}\n\n{item['markdown']}"
+    changes = []
+    for change in item["changes"]:
+        changes.append(
+            f"`{change['kind']}` · `{change['path']}`\n\n"
+            f"```diff\n{change['diff']}\n```"
+        )
+    return f"{heading} · native diff\n\n" + "\n\n".join(changes)
 
 
 def render_page(

@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.broker.protocol.codex
 
+import io.github.amichne.kast.cli.broker.core.AgentSessionBootstrap
 import io.github.amichne.kast.cli.broker.core.Broker
 import io.github.amichne.kast.cli.broker.core.BrokerCallId
 import io.github.amichne.kast.cli.broker.core.BrokerDispatch
@@ -69,24 +70,9 @@ internal sealed interface ProtocolCloseFailure {
 internal sealed interface ProtocolRouting {
     data class ForwardUpstream(val message: String) : ProtocolRouting
     data class ForwardDownstream(val message: String) : ProtocolRouting
-    data class ForwardDownstreamBatch(
-        val messages: NonEmptyProtocolMessages,
-    ) : ProtocolRouting
     data class ReplyUpstream(val message: String) : ProtocolRouting
     data class ReplyDownstream(val message: String) : ProtocolRouting
     data class Close(val failure: ProtocolCloseFailure) : ProtocolRouting
-}
-
-internal class NonEmptyProtocolMessages private constructor(
-    private val first: String,
-    private val second: String,
-) {
-    internal fun inOrder(): List<String> = listOf(first, second)
-
-    companion object {
-        internal fun pair(first: String, second: String): NonEmptyProtocolMessages =
-            NonEmptyProtocolMessages(first, second)
-    }
 }
 
 private enum class PendingThreadOperationType { START, RESUME, FORK }
@@ -114,7 +100,9 @@ internal class CodexProtocolAdapter(
     private val activitySink: BrokerInvocationActivitySink = BrokerInvocationActivitySink.Disabled,
     private val pendingObserverPresentations: PendingObserverPresentations =
         PendingObserverPresentations.withCapacity(broker.limits.inFlightCallsPerConnection),
+    sessionBootstrap: AgentSessionBootstrap? = null,
 ) : AutoCloseable {
+    private val sessionProjection = sessionBootstrap?.toCodexSessionProjection()
     private val pendingResponses = ConcurrentHashMap<String, PendingResponse>()
     private val activeInvocations = ConcurrentHashMap<String, ActiveInvocation>()
     private val invocationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -343,32 +331,26 @@ internal class CodexProtocolAdapter(
             PendingObserverPresentationTake.Missing ->
                 return ProtocolRouting.ForwardDownstream(ordinaryMessage)
         }
-        val compactItem = when (
-            val compact = CodexToolCallProjector.projectCompleted(
-                admittedItem,
-                CodexToolCallResultProjection.COMPACT_FOR_OBSERVER_COMPANION,
-            )
-        ) {
-            is CodexToolCallProjection.Projected -> compact.item
-            is CodexToolCallProjection.Rejected ->
-                return ProtocolRouting.ForwardDownstream(ordinaryMessage)
+        val nativeItem = when (observer) {
+            is ObserverPresentation.Markdown -> when (
+                val native = CodexToolCallProjector.projectCompleted(
+                    admittedItem,
+                    CodexToolCallResultProjection.ExpandableObserver(observer.source),
+                )
+            ) {
+                is CodexToolCallProjection.Projected -> native.item
+                is CodexToolCallProjection.Rejected ->
+                    return ProtocolRouting.ForwardDownstream(ordinaryMessage)
+            }
+            is ObserverPresentation.FileChanges ->
+                CodexFileChangeProjector.completed(callId, observer.files)
         }
-        val compactParams = JsonObject(admittedParams + ("item" to compactItem))
-        if (!contracts.admits(lifecycle.schema, compactParams)) {
+        val nativeParams = JsonObject(admittedParams + ("item" to nativeItem))
+        if (!contracts.admits(lifecycle.schema, nativeParams)) {
             return ProtocolRouting.ForwardDownstream(ordinaryMessage)
         }
-        val compactMessage = JsonObject(document + ("params" to compactParams)).toString()
-        val commentaryParams = CodexObserverMessageProjector.projectCompleted(
-            admittedParams,
-            callId,
-            observer,
-        )
-        if (!contracts.admits(CodexOwnedSchema.ITEM_COMPLETED_NOTIFICATION, commentaryParams)) {
-            return ProtocolRouting.ForwardDownstream(compactMessage)
-        }
-        val commentaryMessage = JsonObject(document + ("params" to commentaryParams)).toString()
-        return ProtocolRouting.ForwardDownstreamBatch(
-            NonEmptyProtocolMessages.pair(compactMessage, commentaryMessage),
+        return ProtocolRouting.ForwardDownstream(
+            JsonObject(document + ("params" to nativeParams)).toString(),
         )
     }
 
@@ -425,9 +407,9 @@ internal class CodexProtocolAdapter(
     }
 
     private fun rememberObserver(callId: BrokerCallId, observer: ObserverPresentation) {
-        val markdown = observer as? ObserverPresentation.Markdown ?: return
+        val available = observer as? ObserverPresentation.Available ?: return
         try {
-            pendingObserverPresentations.put(callId, markdown)
+            pendingObserverPresentations.put(callId, available)
         } catch (_: RuntimeException) {
             // Observer presentation is explicitly best-effort.
         }
@@ -489,8 +471,30 @@ internal class CodexProtocolAdapter(
             refined(ProviderNamespace.admit(name)) in ownedNamespaces
         }
         if (conflict) return ownedRequestFailure(document, "DYNAMIC_NAMESPACE_CONFLICT")
-        val refinedDynamicTools = JsonArray(existing + broker.catalog.dynamicNamespaceDocuments())
-        val refinedParams = JsonObject(paramsObject + ("dynamicTools" to refinedDynamicTools))
+        val refinedDynamicTools = JsonArray(
+            existing + broker.catalog.dynamicNamespaceDocuments(sessionProjection),
+        )
+        val refinedFields = paramsObject + ("dynamicTools" to refinedDynamicTools)
+        val refinedParams = if (sessionProjection == null) {
+            JsonObject(refinedFields)
+        } else {
+            val currentInstructions = when (val current = paramsObject["developerInstructions"]) {
+                null, JsonNull -> null
+                is JsonPrimitive -> current.takeIf(JsonPrimitive::isString)?.content
+                    ?: return ProtocolRouting.Close(ProtocolCloseFailure.OwnedFieldsMissing)
+                else -> return ProtocolRouting.Close(ProtocolCloseFailure.OwnedFieldsMissing)
+            }
+            JsonObject(
+                refinedFields + (
+                    "developerInstructions" to JsonPrimitive(
+                        mergeDeveloperInstructions(
+                            currentInstructions,
+                            sessionProjection.developerInstructions,
+                        ),
+                    )
+                ),
+            )
+        }
         if (!contracts.admits(CodexOwnedSchema.THREAD_START_PARAMS, refinedParams)) {
             return ProtocolRouting.Close(ProtocolCloseFailure.ResponseSchemaRejected)
         }
@@ -822,8 +826,13 @@ internal class CodexProtocolAdapter(
         value: JsonElement,
     ): Boolean = admit(schema, value) is Validation.Validated
 
-    private fun io.github.amichne.kast.cli.broker.core.BrokerCatalog.dynamicNamespaceDocuments(): List<JsonObject> =
+    private fun io.github.amichne.kast.cli.broker.core.BrokerCatalog.dynamicNamespaceDocuments(
+        sessionProjection: CodexSessionProjection?,
+    ): List<JsonObject> =
         namespaces.map { namespace ->
+            if (namespace.name.value == "kast" && sessionProjection != null) {
+                return@map sessionProjection.namespace
+            }
             buildJsonObject {
                 put("type", "namespace")
                 put("name", namespace.name.value)
@@ -842,6 +851,12 @@ internal class CodexProtocolAdapter(
                 })
             }
         }
+
+    private fun mergeDeveloperInstructions(existing: String?, policy: String): String = when {
+        existing.isNullOrBlank() -> policy
+        existing == policy || existing.endsWith("\n\n$policy") -> existing
+        else -> "${existing.trimEnd()}\n\n$policy"
+    }
 
     private fun parseObject(message: String): JsonObject? = try {
         Json.parseToJsonElement(message) as? JsonObject

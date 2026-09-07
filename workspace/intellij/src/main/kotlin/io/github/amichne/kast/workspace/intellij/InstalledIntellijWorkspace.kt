@@ -661,14 +661,17 @@ private fun applyInstalledGradleProjectPolicy(
     project: Project,
 ): InstalledGradleProjectPolicyApplication = try {
     val settings = GradleSettings.getInstance(project)
+    val systemSettings = GradleSystemSettings.getInstance()
     settings.isOfflineWork = false
     settings.storeProjectFilesExternally = false
+    systemSettings.isDownloadSources = false
     val tracker = ExternalSystemProjectTrackerSettings.getInstance(project)
     tracker.autoReloadType =
         ExternalSystemProjectTrackerSettings.AutoReloadType.ALL
     if (
         settings.isOfflineWork ||
         settings.storeProjectFilesExternally ||
+        systemSettings.isDownloadSources ||
         tracker.autoReloadType != ExternalSystemProjectTrackerSettings.AutoReloadType.ALL
     ) {
         InstalledGradleProjectPolicyApplication.Rejected

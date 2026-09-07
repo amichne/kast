@@ -1,5 +1,10 @@
 package io.github.amichne.kast.cli.broker
 
+import io.github.amichne.kast.cli.InstalledSchemaConstruction
+import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
+import io.github.amichne.kast.cli.command.CliCommandGraphFactory
+import io.github.amichne.kast.cli.installedSchema
+import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.cli.broker.protocol.codex.CodexOwnedSchema
 import io.github.amichne.kast.cli.broker.provider.BrokerProcessExecution
 import io.github.amichne.kast.cli.broker.provider.BrokerProcessExecutor
@@ -26,6 +31,10 @@ import io.ktor.websocket.readText
 import io.ktor.websocket.send
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -254,6 +263,32 @@ class InstalledBrokerServerTest {
                 )
                 send(request)
                 assertEquals(request, (incoming.receive() as Frame.Text).readText())
+                send(
+                    """{"id":2,"method":"thread/start","params":{"cwd":"$userHome","dynamicTools":[]}}""",
+                )
+                val bootstrapped = Json.parseToJsonElement(
+                    (incoming.receive() as Frame.Text).readText(),
+                ).jsonObject.getValue("params").jsonObject
+                assertTrue(
+                    bootstrapped.getValue("developerInstructions").jsonPrimitive.content
+                        .contains("Kast provides compiler-grounded Kotlin source intelligence"),
+                )
+                val kastNamespace = bootstrapped.getValue("dynamicTools").jsonArray
+                    .map { it.jsonObject }
+                    .single { it.getValue("name").jsonPrimitive.content == "kast" }
+                assertEquals(
+                    listOf(
+                        "symbol_lookup",
+                        "symbol_inspect",
+                        "source_read",
+                        "semantic_query",
+                        "impact_analyze",
+                        "diagnostic_check",
+                    ),
+                    kastNamespace.getValue("tools").jsonArray.map { tool ->
+                        tool.jsonObject.getValue("name").jsonPrimitive.content
+                    },
+                )
             }
 
             launcher.terminateUnexpectedly()
@@ -354,27 +389,20 @@ class InstalledBrokerServerTest {
         }
     }
 
-    private fun kastSchema(): String =
-        """
-        {
-          "schemaVersion": 1,
-          "serverProjection": {
-            "schemaVersion": 2,
-            "namespace": "kast",
-            "tools": [{
-              "operationId": "index.sync",
-              "name": "index_sync",
-              "description": "Synchronize index evidence.",
-              "deferLoading": false,
-              "approvalPolicy": "none",
-              "cliUsage": "kast index sync",
-              "inputSchema": {"type":"object","additionalProperties":false,"properties":{}},
-              "outputSchema": {"type":"object"},
-              "invocation": {"type":"CLI","command":["index","sync"],"bindings":[]}
-            }]
-          }
+    private fun kastSchema(): String {
+        val factory = when (
+            val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())
+        ) {
+            is CliCommandGraphConstruction.Created -> construction.factory
+            is CliCommandGraphConstruction.Rejected -> error(construction.failures)
         }
-        """.trimIndent()
+        return when (
+            val construction = installedSchema("{}", "{}", factory.surface)
+        ) {
+            is InstalledSchemaConstruction.Constructed -> construction.document.value
+            is InstalledSchemaConstruction.Rejected -> error(construction.failure)
+        }
+    }
 
     private fun executable(path: Path): Path {
         Files.writeString(path, "#!/bin/sh\nexit 0\n")

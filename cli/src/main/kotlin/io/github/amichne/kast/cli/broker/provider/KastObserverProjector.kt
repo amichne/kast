@@ -1,5 +1,8 @@
 package io.github.amichne.kast.cli.broker.provider
 
+import io.github.amichne.kast.cli.broker.core.ObserverFileChange
+import io.github.amichne.kast.cli.broker.core.ObserverFileChangeKind
+import io.github.amichne.kast.cli.broker.core.ObserverFileChangeSet
 import io.github.amichne.kast.cli.broker.core.ObserverMarkdown
 import io.github.amichne.kast.cli.broker.core.ObserverPresentation
 import io.github.amichne.kast.kernel.Refinement
@@ -48,6 +51,7 @@ internal object KastObserverProjector {
             return ObserverPresentation.None
         }
         val evidence = ObserverEvidence.admit(document) ?: return ObserverPresentation.None
+        if (operation.value == CHANGE_APPLY) return projectAppliedChange(document)
         val markdown = when (operation.value) {
             SYMBOL_DISCOVER -> projectDiscovery(document, evidence, directory)
             SYMBOL_INSPECT -> projectInspection(document, evidence, directory)
@@ -55,9 +59,84 @@ internal object KastObserverProjector {
             RELATION_READ -> projectRelations(document, evidence, directory)
             TRAVERSAL_RUN -> projectTraversal(document, evidence, directory)
             DIAGNOSTIC_CHECK -> projectDiagnostics(document, evidence, directory)
+            CHANGE_PLAN -> projectPlannedChange(document, evidence)
+            CHANGE_RECOVER -> projectRecovery(document, evidence)
             else -> null
         } ?: return ObserverPresentation.None
         return ObserverPresentation.Markdown(ObserverMarkdown(markdown))
+    }
+
+    private fun projectAppliedChange(document: JsonObject): ObserverPresentation {
+        val files = admitFileChanges(document) ?: return ObserverPresentation.None
+        return ObserverPresentation.FileChanges(files)
+    }
+
+    private fun projectPlannedChange(
+        document: JsonObject,
+        evidence: ObserverEvidence,
+    ): String? {
+        val planIdentity = document.strictString("planIdentity") ?: return null
+        val files = admitFileChanges(document) ?: return null
+        val body = buildString {
+            append("Plan identity: ")
+            appendLine(inlineCode(planIdentity))
+            appendLine()
+            append("**")
+            append(files.entries.size)
+            append(if (files.entries.size == 1) " file planned" else " files planned")
+            appendLine("**")
+            files.entries.forEach { change ->
+                appendLine()
+                append(inlineCode(change.kind.name.lowercase()))
+                append(" · [")
+                append(change.path.value.substringAfterLast('/').markdownLabel())
+                append("](<")
+                append(change.path.value.markdownDestination())
+                appendLine(">)")
+                appendLine()
+                append(fenced("diff", change.diff.value))
+                appendLine()
+            }
+        }.trimEnd()
+        return observerDocument("change plan", evidence, body)
+    }
+
+    private fun projectRecovery(
+        document: JsonObject,
+        evidence: ObserverEvidence,
+    ): String? {
+        val outcome = when (document.strictString("state")) {
+            "prior-state" -> "Prior state retained."
+            "rolled-back" -> "Change rolled back."
+            "recovery-required" -> "Manual recovery required."
+            else -> return null
+        }
+        return observerDocument("recovery", evidence, outcome)
+    }
+
+    private fun admitFileChanges(document: JsonObject): ObserverFileChangeSet? {
+        val candidates = document["changes"] as? JsonArray ?: return null
+        val files = candidates.map { candidate ->
+            val change = candidate as? JsonObject ?: return null
+            val kind = when (change.strictString("kind")) {
+                "add" -> ObserverFileChangeKind.ADD
+                "delete" -> ObserverFileChangeKind.DELETE
+                "update" -> ObserverFileChangeKind.UPDATE
+                else -> return null
+            }
+            when (val admitted = ObserverFileChange.admit(
+                change.strictString("path") ?: return null,
+                kind,
+                change.strictString("diff") ?: return null,
+            )) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return null
+            }
+        }
+        return when (val admitted = ObserverFileChangeSet.admit(files)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> null
+        }
     }
 
     private fun projectDiscovery(
@@ -481,12 +560,15 @@ internal object KastObserverProjector {
         append(body)
     }
 
-    private fun fencedKotlin(source: String): String {
+    private fun fencedKotlin(source: String): String = fenced("kotlin", source)
+
+    private fun fenced(language: String, source: String): String {
         val longestRun = BACKTICK_RUN.findAll(source).maxOfOrNull { match -> match.value.length } ?: 0
         val fence = "`".repeat(maxOf(3, longestRun + 1))
         return buildString {
             append(fence)
-            append("kotlin\n")
+            append(language)
+            append('\n')
             append(source)
             if (!source.endsWith('\n')) append('\n')
             append(fence)
@@ -678,6 +760,9 @@ internal object KastObserverProjector {
 
     private const val SYMBOL_DISCOVER = "symbol.discover"
     private const val SYMBOL_INSPECT = "symbol.inspect"
+    private const val CHANGE_PLAN = "change.plan"
+    private const val CHANGE_APPLY = "change.apply"
+    private const val CHANGE_RECOVER = "change.recover"
     private const val SOURCE_READ = "source.read"
     private const val RELATION_READ = "relation.read"
     private const val TRAVERSAL_RUN = "traversal.run"

@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.broker.runtime
 
+import io.github.amichne.kast.cli.broker.core.AgentSessionBootstrap
 import io.github.amichne.kast.cli.broker.core.Broker
 import io.github.amichne.kast.cli.broker.core.BrokerInvocationActivitySink
 import io.github.amichne.kast.cli.broker.protocol.ThreadCatalogStore
@@ -98,6 +99,7 @@ internal data class KtorBrokerServerOptions(
     val maximumMessageBytes: Int,
     val connectionInitializationTimeoutMillis: Long = 10_000,
     val activitySink: BrokerInvocationActivitySink = BrokerInvocationActivitySink.Disabled,
+    val sessionBootstrap: AgentSessionBootstrap? = null,
 )
 
 internal enum class KtorBrokerServerFailure {
@@ -254,6 +256,7 @@ internal class KtorBrokerServer private constructor(
                 options.contracts,
                 options.threadStore,
                 options.activitySink,
+                sessionBootstrap = options.sessionBootstrap,
             )
             try {
                 val initializationRouting = adapter.fromDownstream(initialize.message)
@@ -424,10 +427,6 @@ internal class KtorBrokerServer private constructor(
                     downstream.send(routing.message())
                     true
                 }
-            is ProtocolRouting.ForwardDownstreamBatch -> {
-                routing.messages.inOrder().forEach { message -> downstream.send(message) }
-                true
-            }
             is ProtocolRouting.Close -> {
                 closeBoth(downstream, upstream, "protocol rejected")
                 false
@@ -439,8 +438,6 @@ internal class KtorBrokerServer private constructor(
             is ProtocolRouting.ForwardDownstream -> message
             is ProtocolRouting.ReplyUpstream -> message
             is ProtocolRouting.ReplyDownstream -> message
-            is ProtocolRouting.ForwardDownstreamBatch ->
-                error("Downstream batch has no singular message")
             is ProtocolRouting.Close -> error("Closed routing has no message")
         }
 

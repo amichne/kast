@@ -46,7 +46,27 @@ internal sealed interface ChangeIntentWireDocument {
 @Serializable
 internal data class ChangePlanResultDocument(
     val planIdentity: String,
+    val changes: List<ChangeFilePreviewDocument>,
 )
+
+@Serializable
+internal data class ChangeFilePreviewDocument(
+    val path: String,
+    val kind: ChangeFilePreviewKindDocument,
+    val diff: String,
+)
+
+@Serializable
+internal enum class ChangeFilePreviewKindDocument {
+    @SerialName("add")
+    ADD,
+
+    @SerialName("delete")
+    DELETE,
+
+    @SerialName("update")
+    UPDATE,
+}
 
 @Serializable
 internal enum class ChangePlanQualificationDocument {
@@ -92,6 +112,7 @@ internal data class ChangeApplyRequestDocument(
 @Serializable
 internal data class ChangeApplyResultDocument(
     val receiptIdentity: String,
+    val changes: List<ChangeFilePreviewDocument>,
 )
 
 @Serializable

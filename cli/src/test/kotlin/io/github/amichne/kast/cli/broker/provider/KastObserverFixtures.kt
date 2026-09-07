@@ -1,6 +1,73 @@
 package io.github.amichne.kast.cli.broker.provider
 
 internal object KastObserverFixtures {
+    val changePlan =
+        """
+        {
+          "status": "completed",
+          "document": {
+            "operation": "change.plan",
+            "status": "complete",
+            "planIdentity": "plan:opaque",
+            "changes": [{
+              "path": "cli/src/main/kotlin/sample/EventConsumer.kt",
+              "kind": "update",
+              "diff": "@@ class EventConsumer @@\n-    fun consume() = old()\n+    fun consume() = new()"
+            }]
+          }
+        }
+        """.trimIndent()
+
+    val changeApply =
+        """
+        {
+          "status": "completed",
+          "document": {
+            "operation": "change.apply",
+            "status": "complete",
+            "receiptIdentity": "receipt:opaque",
+            "changes": [{
+              "path": "cli/src/main/kotlin/sample/EventConsumer.kt",
+              "kind": "update",
+              "diff": "@@ class EventConsumer @@\n-    fun consume() = old()\n+    fun consume() = new()"
+            }]
+          }
+        }
+        """.trimIndent()
+
+    val changeRecover =
+        """
+        {
+          "status": "completed",
+          "document": {
+            "operation": "change.recover",
+            "status": "complete",
+            "state": "rolled-back"
+          }
+        }
+        """.trimIndent()
+
+    val diagnosticCheck =
+        """
+        {
+          "status": "completed",
+          "document": {
+            "operation": "diagnostic.check",
+            "status": "complete",
+            "diagnostics": [{
+              "severity": "warning",
+              "code": "UNUSED_PARAMETER",
+              "message": "Parameter event is never used",
+              "location": {
+                "candidateSelector": "candidate:v2:hidden",
+                "file": "events/core/src/main/kotlin/sample/EventConsumer.kt",
+                "range": {"startInclusive": 72, "endExclusive": 77}
+              }
+            }]
+          }
+        }
+        """.trimIndent()
+
     val symbolDiscovery =
         """
         {
