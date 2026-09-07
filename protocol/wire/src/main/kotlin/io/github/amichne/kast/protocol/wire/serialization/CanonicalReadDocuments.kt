@@ -147,6 +147,9 @@ internal enum class SymbolInspectQualificationWireDocument {
 @Serializable
 internal enum class SymbolInspectRejectionWireDocument {
     @SerialName("workspace_not_ready") WORKSPACE_NOT_READY,
+    @SerialName("selector_wrong_kind") SELECTOR_WRONG_KIND,
+    @SerialName("selector_malformed") SELECTOR_MALFORMED,
+    @SerialName("selector_workspace_mismatch") SELECTOR_WORKSPACE_MISMATCH,
     @SerialName("candidate_stale") CANDIDATE_STALE,
     @SerialName("candidate_not_declaration") CANDIDATE_NOT_DECLARATION,
     @SerialName("exact_selector_stale") EXACT_SELECTOR_STALE,
@@ -199,6 +202,9 @@ internal enum class RelationLimitationWireDocument {
 @Serializable
 internal enum class RelationReadRejectionWireDocument {
     @SerialName("workspace_not_ready") WORKSPACE_NOT_READY,
+    @SerialName("selector_wrong_kind") SELECTOR_WRONG_KIND,
+    @SerialName("selector_malformed") SELECTOR_MALFORMED,
+    @SerialName("selector_workspace_mismatch") SELECTOR_WORKSPACE_MISMATCH,
     @SerialName("selector_stale") SELECTOR_STALE,
     @SerialName("relation_unsupported") RELATION_UNSUPPORTED,
     @SerialName("continuation_malformed") CONTINUATION_MALFORMED,
@@ -244,6 +250,9 @@ internal enum class TraversalLimitationWireDocument {
 @Serializable
 internal enum class TraversalRunRejectionWireDocument {
     @SerialName("workspace_not_ready") WORKSPACE_NOT_READY,
+    @SerialName("selector_wrong_kind") SELECTOR_WRONG_KIND,
+    @SerialName("selector_malformed") SELECTOR_MALFORMED,
+    @SerialName("selector_workspace_mismatch") SELECTOR_WORKSPACE_MISMATCH,
     @SerialName("selector_stale") SELECTOR_STALE,
     @SerialName("topology_build_required") TOPOLOGY_BUILD_REQUIRED,
     @SerialName("plan_rejected") PLAN_REJECTED,

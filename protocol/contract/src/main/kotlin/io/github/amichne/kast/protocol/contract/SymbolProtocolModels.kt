@@ -484,6 +484,9 @@ enum class SymbolInspectQualification : OperationQualification {
 
 enum class SymbolInspectRejection : OperationRejection {
     WORKSPACE_NOT_READY,
+    SELECTOR_WRONG_KIND,
+    SELECTOR_MALFORMED,
+    SELECTOR_WORKSPACE_MISMATCH,
     CANDIDATE_STALE,
     CANDIDATE_NOT_DECLARATION,
     EXACT_SELECTOR_STALE,

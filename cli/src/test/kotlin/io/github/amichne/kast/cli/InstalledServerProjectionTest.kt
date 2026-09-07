@@ -69,6 +69,7 @@ class InstalledServerProjectionTest {
 
         assertEquals(
             listOf(
+                "query",
                 "symbol_lookup",
                 "symbol_inspect",
                 "source_read",
@@ -105,6 +106,7 @@ class InstalledServerProjectionTest {
 
         assertEquals(
             listOf(
+                "query.run",
                 "symbol.discover",
                 "symbol.inspect",
                 "source.read",
@@ -130,6 +132,41 @@ class InstalledServerProjectionTest {
         )
         tools.tool("diagnostic.check").outputSchema().assertAdmits(
             """{"status":"completed","document":{"operation":"diagnostic.check","status":"complete","diagnostics":[]}}""",
+        )
+    }
+
+    @Test
+    fun `query schema exposes scoped enumeration and typed reusable references`() {
+        val query = projectionTools().tool("query.run")
+        val input = query.getValue("inputSchema").jsonObject
+        val execution = """{"kind":"exhaustive","budget":"interactive"}"""
+        val output = """{"type":"symbols","fields":["name","location","signature"]}"""
+        val scope = """{"sourceSets":["main"],"directory":{"path":"services/payments","containment":"descendants"},"packageName":{"name":"com.acme.payments","containment":"descendants"}}"""
+
+        input.assertAdmits(
+            """{"from":{"type":"symbols","match":{"type":"all"},"scope":$scope,"declarationKinds":["class"]},"steps":[{"type":"where","predicate":{"type":"visibility","values":["public"]}},{"type":"related","relation":"inheritors"},{"type":"distinct"}],"output":$output,"execution":$execution}""",
+        )
+        input.assertAdmits(
+            """{"from":{"type":"references","values":[{"kind":"exact-symbol","token":"exact:v2:opaque"}]},"steps":[],"output":$output,"execution":$execution}""",
+        )
+        input.assertAdmits(
+            """{"from":{"type":"references","values":[{"kind":"declaration-candidate","token":"candidate:v2:opaque"}]},"steps":[],"output":$output,"execution":$execution}""",
+        )
+        input.assertRejects(
+            """{"from":{"type":"references","values":[{"kind":"declaration-candidate","token":"candidate:v2:opaque"},{"kind":"exact-symbol","token":"exact:v2:opaque"}]},"steps":[],"output":$output,"execution":$execution}""",
+        )
+        input.assertRejects(
+            """{"from":{"type":"symbols","match":{"type":"name","text":"   ","matching":"fuzzy"},"scope":$scope,"declarationKinds":["class"]},"steps":[],"output":$output,"execution":$execution}""",
+        )
+        input.assertRejects(
+            """{"from":{"type":"symbols","match":{"type":"all"},"scope":$scope,"declarationKinds":["constructor"]},"steps":[],"output":$output,"execution":$execution}""",
+        )
+
+        query.outputSchema().assertAdmits(
+            """{"status":"completed","document":{"operation":"query.run","status":"complete","items":[],"failures":[]}}""",
+        )
+        query.outputSchema().assertAdmits(
+            """{"status":"completed","document":{"operation":"query.run","status":"qualified","items":[],"failures":[],"qualification":{"knownMinimum":0,"limitations":["discovery-incomplete"]}}}""",
         )
     }
 
@@ -167,7 +204,7 @@ class InstalledServerProjectionTest {
         val internalOperations = HostedOperationProjection.internalDefinitions
             .map { it.operation.id.value }
 
-        assertEquals(9, tools.size)
+        assertEquals(10, tools.size)
         assertEquals(5, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
@@ -176,6 +213,7 @@ class InstalledServerProjectionTest {
         )
         assertEquals(
             listOf(
+                "query",
                 "symbol_lookup",
                 "symbol_inspect",
                 "source_read",
@@ -188,7 +226,11 @@ class InstalledServerProjectionTest {
             ),
             tools.map { it.getValue("name").jsonPrimitive.content },
         )
-        assertTrue(tools.all { it.getValue("deferLoading").jsonPrimitive.content.toBoolean() })
+        assertFalse(tools.tool("query.run").getValue("deferLoading").jsonPrimitive.content.toBoolean())
+        assertTrue(
+            tools.filterNot { it.getValue("operationId").jsonPrimitive.content == "query.run" }
+                .all { it.getValue("deferLoading").jsonPrimitive.content.toBoolean() },
+        )
         assertFalse(
             tools.any { it.getValue("operationId").jsonPrimitive.content in internalOperations },
         )
@@ -218,6 +260,7 @@ class InstalledServerProjectionTest {
         )
         assertEquals(
             linkedMapOf(
+                "query.run" to listOf("query", "run"),
                 "symbol.discover" to listOf("symbol", "discover"),
                 "symbol.inspect" to listOf("symbol", "inspect"),
                 "source.read" to listOf("source", "read"),
@@ -234,6 +277,7 @@ class InstalledServerProjectionTest {
         )
         assertEquals(
             linkedMapOf(
+                "query.run" to listOf("from", "steps", "output", "execution"),
                 "symbol.discover" to
                     listOf("mode", "query", "kind", "match", "file", "offset", "scope", "limit"),
                 "symbol.inspect" to listOf("candidate", "selector"),

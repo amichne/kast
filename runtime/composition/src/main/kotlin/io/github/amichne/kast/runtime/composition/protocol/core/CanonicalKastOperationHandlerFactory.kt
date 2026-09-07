@@ -2,6 +2,7 @@ package io.github.amichne.kast.runtime.composition.protocol
 
 import io.github.amichne.kast.diagnostic.contract.DiagnosticOperations
 import io.github.amichne.kast.relation.contract.RelationOperations
+import io.github.amichne.kast.query.contract.QueryOperations
 import io.github.amichne.kast.runtime.composition.ChangePlanningOperations
 import io.github.amichne.kast.runtime.composition.ChangeRecoveryOperations
 import io.github.amichne.kast.runtime.composition.KastOperationHandlerFactory
@@ -52,6 +53,10 @@ internal class CanonicalKastOperationHandlerFactory private constructor(
         operations: TraversalOperations,
     ) = CanonicalTraversalRunHandler(operations, protocolAuthority)
 
+    override fun queryRun(
+        operations: QueryOperations,
+    ) = CanonicalQueryRunHandler(workspace, operations, protocolAuthority)
+
     override fun diagnosticCheck(
         operations: DiagnosticOperations,
     ) = CanonicalDiagnosticCheckHandler(workspace, operations, protocolAuthority)
@@ -78,7 +83,7 @@ internal class CanonicalKastOperationHandlerFactory private constructor(
          * Proof transition: `(WorkspaceInspectionOperations,
          * ChangePlanAdmissionOperations) -> CanonicalKastOperationHandlerFactory`.
          *
-         * Establishes all eleven canonical handlers under one workspace authority, one selector
+         * Establishes all twelve canonical handlers under one workspace authority, one selector
          * authority, and one plan/apply/verify authority.
          */
         fun create(

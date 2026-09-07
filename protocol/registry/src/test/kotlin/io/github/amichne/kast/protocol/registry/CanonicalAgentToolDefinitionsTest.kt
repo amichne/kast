@@ -35,6 +35,7 @@ class CanonicalAgentToolDefinitionsTest {
     fun `agent tools preserve canonical hosted semantics and lifecycle free policy`() {
         assertEquals(
             listOf(
+                CanonicalOperation.QUERY_RUN,
                 CanonicalOperation.SYMBOL_DISCOVER,
                 CanonicalOperation.SYMBOL_INSPECT,
                 CanonicalOperation.SOURCE_READ,
@@ -49,6 +50,7 @@ class CanonicalAgentToolDefinitionsTest {
         )
         assertEquals(
             listOf(
+                "query",
                 "symbol_lookup",
                 "symbol_inspect",
                 "source_read",
@@ -62,12 +64,14 @@ class CanonicalAgentToolDefinitionsTest {
             CanonicalAgentToolDefinitions.all.map { it.name.value },
         )
         assertEquals(HostedApprovalPolicy.NONE, CanonicalAgentToolDefinitions.symbolLookup.approval)
+        assertEquals(HostedToolLoading.EAGER, CanonicalAgentToolDefinitions.query.loading)
+        assertTrue(CanonicalAgentToolDefinitions.all.drop(1).all { it.loading == HostedToolLoading.DEFERRED })
         assertEquals(HostedApprovalPolicy.EXPLICIT, CanonicalAgentToolDefinitions.changeApply.approval)
         assertTrue("exact selector" in CanonicalAgentToolDefinitions.semanticQuery.description.value)
         assertTrue("automatically" in CanonicalAgentToolDefinitions.impactAnalyze.description.value)
         val policy = CanonicalAgentToolDefinitions.policy.text
         assertTrue("compiler-grounded Kotlin source intelligence" in policy)
-        assertTrue("Preserve returned selectors" in policy)
+        assertTrue("Preserve returned refs" in policy)
         listOf("kast start", "index sync --", "topology build --", "broker serve").forEach { command ->
             assertTrue(command !in policy)
         }

@@ -158,9 +158,9 @@ internal class CanonicalSymbolInspectHandler(
             }
             is SymbolInspectTarget.Exact -> when (val lookup = authority.exact(target.selector)) {
                 is ExactSelectorLookup.Found -> ExactInspectionTarget(lookup.selector, target.selector)
-                ExactSelectorLookup.Missing ->
+                is ExactSelectorLookup.Rejected ->
                     return OperationOutcome.Rejected(
-                        SymbolInspectRejection.EXACT_SELECTOR_STALE,
+                        lookup.reason.inspectProtocol(),
                     )
             }
         }
@@ -180,8 +180,8 @@ internal class CanonicalSymbolInspectHandler(
                         SymbolInspectRejection.CANDIDATE_NOT_DECLARATION,
                     )
             }
-            CandidateSelectorLookup.Missing -> return CandidateInspectionRefinement.Rejected(
-                SymbolInspectRejection.CANDIDATE_STALE,
+            is CandidateSelectorLookup.Rejected -> return CandidateInspectionRefinement.Rejected(
+                lookup.reason.inspectProtocol(),
             )
         }
         val resolved = when (val result = operations.resolve(SymbolResolutionRequest(selection))) {
@@ -248,7 +248,8 @@ private fun DomainDiscoveryRejection.protocol(): SymbolDiscoverRejection = when 
 
 private fun SymbolExactRejection.inspectCandidateProtocol(): SymbolInspectRejection = when (this) {
     SymbolExactRejection.WORKSPACE_NOT_READY -> SymbolInspectRejection.WORKSPACE_NOT_READY
-    SymbolExactRejection.WORKSPACE_ROOT_MISMATCH,
+    SymbolExactRejection.WORKSPACE_ROOT_MISMATCH ->
+        SymbolInspectRejection.SELECTOR_WORKSPACE_MISMATCH
     SymbolExactRejection.STALE_GENERATION,
     SymbolExactRejection.STALE_LOCATION,
     SymbolExactRejection.DECLARATION_MOVED_OR_CHANGED,
@@ -265,7 +266,8 @@ private fun SymbolExactRejection.inspectCandidateProtocol(): SymbolInspectReject
 
 private fun SymbolExactRejection.inspectExactProtocol(): SymbolInspectRejection = when (this) {
     SymbolExactRejection.WORKSPACE_NOT_READY -> SymbolInspectRejection.WORKSPACE_NOT_READY
-    SymbolExactRejection.WORKSPACE_ROOT_MISMATCH,
+    SymbolExactRejection.WORKSPACE_ROOT_MISMATCH ->
+        SymbolInspectRejection.SELECTOR_WORKSPACE_MISMATCH
     SymbolExactRejection.STALE_GENERATION,
     SymbolExactRejection.STALE_LOCATION,
     SymbolExactRejection.DECLARATION_MOVED_OR_CHANGED,
@@ -278,4 +280,9 @@ private fun SymbolExactRejection.inspectExactProtocol(): SymbolInspectRejection 
     SymbolExactRejection.COMPILER_IDENTITY_UNAVAILABLE,
     SymbolExactRejection.COMPILER_CONTRACT_VIOLATION,
         -> SymbolInspectRejection.NOT_FOUND
+}
+
+private fun SelectorLookupRejection.inspectProtocol(): SymbolInspectRejection = when (this) {
+    SelectorLookupRejection.WRONG_KIND -> SymbolInspectRejection.SELECTOR_WRONG_KIND
+    SelectorLookupRejection.MALFORMED -> SymbolInspectRejection.SELECTOR_MALFORMED
 }

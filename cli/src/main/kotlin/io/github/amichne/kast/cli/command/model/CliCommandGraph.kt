@@ -17,6 +17,7 @@ import io.github.amichne.kast.cli.command.broker.brokerCommandGroup
 import io.github.amichne.kast.cli.command.diagnostic.diagnosticCommandGroup
 import io.github.amichne.kast.cli.command.lifecycle.lifecycleCommands
 import io.github.amichne.kast.cli.command.product.productCommandGroup
+import io.github.amichne.kast.cli.command.query.queryCommandGroup
 import io.github.amichne.kast.cli.command.relation.relationCommandGroup
 import io.github.amichne.kast.cli.command.source.sourceCommandGroup
 import io.github.amichne.kast.cli.command.symbol.symbolCommandGroup
@@ -455,10 +456,11 @@ private fun canonicalGraph(preparers: CanonicalCliRequestPreparers): CliCommandG
     val source = sourceCommandGroup(preparers)
     val relation = relationCommandGroup(preparers)
     val traversal = traversalCommandGroup(preparers)
+    val query = queryCommandGroup(preparers)
     val diagnostic = diagnosticCommandGroup(preparers)
     val change = changeCommandGroup(preparers)
     val lifecycle = lifecycleCommands().filter { it.command.exposure == CliLocalExposure.PUBLIC }
-    val families = listOf(index, topology, symbol, source, relation, traversal, diagnostic, change)
+    val families = listOf(index, topology, query, symbol, source, relation, traversal, diagnostic, change)
         .map { it.projectPublicDefinitions(CanonicalOperationDefinitions.all) }
     val semantic = families.flatMap(CommandFamily::semanticCommands)
     val localFamilies = listOf(product, broker).map { family ->

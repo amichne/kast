@@ -43,6 +43,11 @@ import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.RelationReadResult
+import io.github.amichne.kast.protocol.contract.QueryRunCapability
+import io.github.amichne.kast.protocol.contract.QueryRunQualification
+import io.github.amichne.kast.protocol.contract.QueryRunRejection
+import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
 import io.github.amichne.kast.protocol.contract.SourceReadCapability
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
@@ -180,6 +185,22 @@ object CanonicalOperationDefinitions {
         HostedExposure.PUBLIC,
     )
 
+    val queryRun = definition(
+        CanonicalOperation.QUERY_RUN,
+        QueryRunRequest::class,
+        QueryRunResult::class,
+        QueryRunQualification::class,
+        QueryRunRejection::class,
+        QueryRunCapability::class,
+        OperationLane.SCOPED_SEMANTIC_READ,
+        OperationEffect.INTELLIJ_READ,
+        OperationCost.BOUNDED_READ,
+        OperationScope.WORKSPACE,
+        CompletenessPolicy.QUALIFIED_ALLOWED,
+        HostedExposure.PUBLIC,
+        schema = schema("kast.query.run.v1"),
+    )
+
     val diagnosticCheck = definition(
         CanonicalOperation.DIAGNOSTIC_CHECK,
         DiagnosticCheckRequest::class,
@@ -244,6 +265,7 @@ object CanonicalOperationDefinitions {
     val all: List<OperationDefinition<*, *, *, *, *>> = listOf(
         indexSync,
         topologyBuild,
+        queryRun,
         symbolDiscover,
         symbolInspect,
         sourceRead,

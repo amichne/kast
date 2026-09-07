@@ -102,6 +102,10 @@ sealed interface CliUsageFailure {
         CONTINUATION_REJECTED,
     }
 
+    enum class QueryRun : CliUsageFailure {
+        REQUEST_REJECTED,
+    }
+
     enum class ChangePlan : CliUsageFailure {
         OPTIONS_DO_NOT_MATCH_INTENT,
     }
@@ -134,6 +138,8 @@ internal fun CliUsageFailure.message(): String = when (this) {
         "--continuation must be one intact relation continuation token"
     CliUsageFailure.TraversalRun.CONTINUATION_REJECTED ->
         "--continuation must be one intact traversal continuation token"
+    CliUsageFailure.QueryRun.REQUEST_REJECTED ->
+        "query fragments must form one closed, bounded query request"
     CliUsageFailure.ChangePlan.OPTIONS_DO_NOT_MATCH_INTENT ->
         "options do not match the selected change intent"
 }

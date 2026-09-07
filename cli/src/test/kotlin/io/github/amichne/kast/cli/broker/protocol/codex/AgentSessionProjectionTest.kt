@@ -79,6 +79,7 @@ internal fun agentSessionBootstrapFixture(): AgentSessionBootstrap {
                     effect = metadata.operation.effect,
                     approval = metadata.approval,
                     executionBudget = metadata.operation.executionBudget,
+                    loading = metadata.loading,
                 ),
             ),
             policy = CanonicalAgentToolDefinitions.policy,

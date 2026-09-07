@@ -22,8 +22,15 @@ import java.util.Base64
 
 class CliBoundaryContractTest {
     @Test
-    fun `exactly nine public command projections parse to canonical operations`() {
+    fun `every public command projection parses to its canonical operation`() {
         val commands = mapOf(
+            listOf(
+                "query", "run",
+                "--from", """{"type":"symbols","match":{"type":"all"},"scope":{"sourceSets":["main"],"directory":null,"packageName":null},"declarationKinds":["class"]}""",
+                "--steps", "[]",
+                "--output", """{"type":"symbols","fields":["name","location"]}""",
+                "--execution", """{"kind":"exhaustive","budget":"interactive"}""",
+            ) to CanonicalOperation.QUERY_RUN,
             listOf("symbol", "discover", "--query", "Example", "--limit", "10") to
                 CanonicalOperation.SYMBOL_DISCOVER,
             listOf("symbol", "inspect", "--candidate", "candidate") to

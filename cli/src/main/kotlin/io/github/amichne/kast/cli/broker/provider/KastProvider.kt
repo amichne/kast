@@ -27,6 +27,7 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.registry.AgentToolPolicy
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import io.github.amichne.kast.protocol.registry.HostedApprovalPolicy
+import io.github.amichne.kast.protocol.registry.HostedToolLoading
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -408,6 +409,7 @@ internal object KastProviderQualifier {
             KastApprovalPolicy.EXPLICIT -> HostedApprovalPolicy.EXPLICIT
         }
         if (approval != canonicalDefinition.approval) return null
+        if (tool.deferLoading != (canonicalDefinition.loading == HostedToolLoading.DEFERRED)) return null
         val name = refined(ToolName.admit(tool.name)) ?: return null
         val description = refined(ToolDescription.admit(tool.description)) ?: return null
         if (cliBinding.cliUsage.isBlank() || cliBinding.cliUsage.length > 16_384) return null
@@ -447,6 +449,7 @@ internal object KastProviderQualifier {
                 canonicalDefinition.operation.effect,
                 canonicalDefinition.approval,
                 executionBudget,
+                canonicalDefinition.loading,
             ),
             inputSchema,
             outputSchema,
@@ -497,6 +500,7 @@ internal object KastProviderQualifier {
             val document = schema as? JsonObject
             document != null && document["type"]?.jsonPrimitive?.contentOrNull == "boolean"
         }
+        KastBindingType.JSON_OPTION -> schema is JsonObject
     }
 
     private fun String.isAdmittedCliToken(): Boolean =
@@ -566,6 +570,15 @@ internal class KastRuntime(
                                 ProviderFailureCode.KAST_ARGUMENT_NOT_SCALAR,
                             )
                         if (enabled) add(binding.option)
+                    }
+                    KastBindingType.JSON_OPTION -> {
+                        if (value !is JsonObject && value !is JsonArray) {
+                            return ProviderCall.Rejected(
+                                ProviderFailureCode.KAST_ARGUMENT_NOT_SCALAR,
+                            )
+                        }
+                        add(binding.option)
+                        add(value.toString())
                     }
                 }
             }
@@ -777,4 +790,4 @@ private data class KastCliBindingBoundary(
 )
 
 @Serializable
-internal enum class KastBindingType { OPTION, REPEATED_OPTION, FLAG }
+internal enum class KastBindingType { OPTION, REPEATED_OPTION, FLAG, JSON_OPTION }

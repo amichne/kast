@@ -394,7 +394,7 @@ internal fun TraversalRunResultWireDocument.toContract(): WireDocumentConversion
         ::TraversalRunResult,
     )
 
-private fun RelationFactDocument.toWireDocument(): RelationFactWireDocument =
+internal fun RelationFactDocument.toWireDocument(): RelationFactWireDocument =
     RelationFactWireDocument(
         meaning = meaning.toRelationWireDocument(),
         source = source.toWireDocument(),
@@ -408,7 +408,7 @@ private fun RelationFactDocument.toWireDocument(): RelationFactWireDocument =
         coverage = coverage.toWireDocument(),
     )
 
-private fun RelationFactWireDocument.toContract(): WireDocumentConversion<RelationFactDocument> =
+internal fun RelationFactWireDocument.toContract(): WireDocumentConversion<RelationFactDocument> =
     combineConverted(
         source.toContract(),
         target.toContract(),
@@ -502,7 +502,7 @@ internal fun CompilerSymbolEvidenceWireDocument.toContract():
         CompilerSymbolEvidenceDocument.restore(identity, signature).toWireDocumentConversion()
     }
 
-private fun CompilerSignatureDocument.toWireDocument(): CompilerSignatureWireDocument = when (this) {
+internal fun CompilerSignatureDocument.toWireDocument(): CompilerSignatureWireDocument = when (this) {
     is CompilerSignatureDocument.Function -> CompilerSignatureWireDocument.Function(
         qualifiedIdentity.value,
         receiver.toWireDocument(),
@@ -522,7 +522,7 @@ private fun CompilerSignatureDocument.toWireDocument(): CompilerSignatureWireDoc
         CompilerSignatureWireDocument.ClassLike(qualifiedIdentity.value)
 }
 
-private fun CompilerSignatureWireDocument.toContract():
+internal fun CompilerSignatureWireDocument.toContract():
     WireDocumentConversion<CompilerSignatureDocument> = when (this) {
     is CompilerSignatureWireDocument.Function -> combineConverted(
         qualifiedIdentity.toProtocolText(),
@@ -591,14 +591,14 @@ private fun String?.toQualifiedIdentity(): WireDocumentConversion<SymbolQualifie
         }
     }
 
-private fun SourceRangeDocument.toWireDocument() =
+internal fun SourceRangeDocument.toWireDocument() =
     SourceRangeWireDocument(startInclusive.value, endExclusive.value)
 /**
  * Proof transition: `SourceRangeWireDocument -> WireDocumentConversion<SourceRangeDocument>`.
  * Establishes non-negative, ordered offsets; [WireDocumentConversion.Rejected] is the closed
  * expected failure and raw offsets exist only at this wire boundary.
  */
-private fun SourceRangeWireDocument.toContract(): WireDocumentConversion<SourceRangeDocument> =
+internal fun SourceRangeWireDocument.toContract(): WireDocumentConversion<SourceRangeDocument> =
     combineConverted(startInclusive.toProtocolOffset(), endExclusive.toProtocolOffset()) { start, end ->
         start to end
     }.flatMapConverted { (start, end) ->
@@ -668,29 +668,29 @@ private fun SymbolCategoryWireDocument.toNameKind() = when (this) {
     SymbolCategoryWireDocument.SYMBOL -> SymbolNameKindDocument.SYMBOL
 }
 
-private fun SymbolDiscoveryKindDocument.toWireDocument() = when (this) {
+internal fun SymbolDiscoveryKindDocument.toWireDocument() = when (this) {
     SymbolDiscoveryKindDocument.FILE -> SymbolCategoryWireDocument.FILE
     SymbolDiscoveryKindDocument.CLASS -> SymbolCategoryWireDocument.CLASS
     SymbolDiscoveryKindDocument.SYMBOL -> SymbolCategoryWireDocument.SYMBOL
 }
 
-private fun SymbolCategoryWireDocument.toDiscoveryKind() = when (this) {
+internal fun SymbolCategoryWireDocument.toDiscoveryKind() = when (this) {
     SymbolCategoryWireDocument.FILE -> SymbolDiscoveryKindDocument.FILE
     SymbolCategoryWireDocument.CLASS -> SymbolDiscoveryKindDocument.CLASS
     SymbolCategoryWireDocument.SYMBOL -> SymbolDiscoveryKindDocument.SYMBOL
 }
 
-private fun SymbolDiscoveryMatchDocument.toWireDocument() = when (this) {
+internal fun SymbolDiscoveryMatchDocument.toWireDocument() = when (this) {
     SymbolDiscoveryMatchDocument.FUZZY -> SymbolDiscoveryMatchWireDocument.FUZZY
     SymbolDiscoveryMatchDocument.EXACT_NAME -> SymbolDiscoveryMatchWireDocument.EXACT_NAME
 }
 
-private fun SymbolDiscoveryMatchWireDocument.toContract() = when (this) {
+internal fun SymbolDiscoveryMatchWireDocument.toContract() = when (this) {
     SymbolDiscoveryMatchWireDocument.FUZZY -> SymbolDiscoveryMatchDocument.FUZZY
     SymbolDiscoveryMatchWireDocument.EXACT_NAME -> SymbolDiscoveryMatchDocument.EXACT_NAME
 }
 
-private fun SymbolKindDocument.toWireDocument() = when (this) {
+internal fun SymbolKindDocument.toWireDocument() = when (this) {
     SymbolKindDocument.CLASSLIKE -> SymbolKindWireDocument.CLASSLIKE
     SymbolKindDocument.CONSTRUCTOR -> SymbolKindWireDocument.CONSTRUCTOR
     SymbolKindDocument.FUNCTION -> SymbolKindWireDocument.FUNCTION
@@ -698,7 +698,7 @@ private fun SymbolKindDocument.toWireDocument() = when (this) {
     SymbolKindDocument.TYPE_ALIAS -> SymbolKindWireDocument.TYPE_ALIAS
 }
 
-private fun SymbolKindWireDocument.toContract() = when (this) {
+internal fun SymbolKindWireDocument.toContract() = when (this) {
     SymbolKindWireDocument.CLASSLIKE -> SymbolKindDocument.CLASSLIKE
     SymbolKindWireDocument.CONSTRUCTOR -> SymbolKindDocument.CONSTRUCTOR
     SymbolKindWireDocument.FUNCTION -> SymbolKindDocument.FUNCTION

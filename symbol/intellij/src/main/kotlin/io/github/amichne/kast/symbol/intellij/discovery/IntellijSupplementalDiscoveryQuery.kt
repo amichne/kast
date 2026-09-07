@@ -47,7 +47,9 @@ internal class IntellijSupplementalDiscoveryQuery(
     ): IntellijNativeDiscoveryExecution {
         val collector = SupplementalCollector(request, environmentState, clock)
         when (val target = request.target) {
-            is SymbolDiscoveryTarget.Name ->
+            is SymbolDiscoveryTarget.All,
+            is SymbolDiscoveryTarget.Name,
+                ->
                 return IntellijNativeDiscoveryExecution.Rejected(
                     IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT,
                 )

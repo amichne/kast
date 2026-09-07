@@ -7,6 +7,8 @@ import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
+import io.github.amichne.kast.query.contract.QueryBudget
+import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.traversal.contract.TraversalBudget
@@ -19,6 +21,7 @@ internal data class InstalledSemanticBudgets(
     val discovery: SymbolDiscoveryBudget,
     val relation: RelationBudget,
     val traversal: TraversalBudget,
+    val query: QueryBudget,
 )
 
 /**
@@ -39,12 +42,14 @@ internal fun installedSemanticBudgets(): InstalledSemanticBudgets? {
     val oneHopElapsed = ElapsedTimeLimitMillis.parse(1_000L).refinedOrNull() ?: return null
     val oneHopRelation = RelationBudget(ResourceBudget(records, work, oneHopElapsed), relationBytes)
     val traversalBytes = TraversalByteLimit.parse(4_194_304L).refinedOrNull() ?: return null
+    val queryBytes = QueryByteLimit.parse(4_194_304L).refinedOrNull() ?: return null
     val depth = TraversalDepthLimit.parse(1).refinedOrNull() ?: return null
     val frontier = TraversalFrontierLimit.parse(256).refinedOrNull() ?: return null
     return InstalledSemanticBudgets(
         SymbolDiscoveryBudget(resources, discoveryBytes),
         relation,
         TraversalBudget(records, traversalBytes, work, elapsed, depth, frontier, oneHopRelation),
+        QueryBudget(resources, queryBytes),
     )
 }
 

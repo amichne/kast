@@ -88,6 +88,12 @@ internal fun SymbolInspectRejection.toWireDocument(): SymbolInspectRejectionWire
     when (this) {
         SymbolInspectRejection.WORKSPACE_NOT_READY ->
             SymbolInspectRejectionWireDocument.WORKSPACE_NOT_READY
+        SymbolInspectRejection.SELECTOR_WRONG_KIND ->
+            SymbolInspectRejectionWireDocument.SELECTOR_WRONG_KIND
+        SymbolInspectRejection.SELECTOR_MALFORMED ->
+            SymbolInspectRejectionWireDocument.SELECTOR_MALFORMED
+        SymbolInspectRejection.SELECTOR_WORKSPACE_MISMATCH ->
+            SymbolInspectRejectionWireDocument.SELECTOR_WORKSPACE_MISMATCH
         SymbolInspectRejection.CANDIDATE_STALE ->
             SymbolInspectRejectionWireDocument.CANDIDATE_STALE
         SymbolInspectRejection.CANDIDATE_NOT_DECLARATION ->
@@ -102,6 +108,12 @@ internal fun SymbolInspectRejectionWireDocument.toContract(): SymbolInspectRejec
     when (this) {
         SymbolInspectRejectionWireDocument.WORKSPACE_NOT_READY ->
             SymbolInspectRejection.WORKSPACE_NOT_READY
+        SymbolInspectRejectionWireDocument.SELECTOR_WRONG_KIND ->
+            SymbolInspectRejection.SELECTOR_WRONG_KIND
+        SymbolInspectRejectionWireDocument.SELECTOR_MALFORMED ->
+            SymbolInspectRejection.SELECTOR_MALFORMED
+        SymbolInspectRejectionWireDocument.SELECTOR_WORKSPACE_MISMATCH ->
+            SymbolInspectRejection.SELECTOR_WORKSPACE_MISMATCH
         SymbolInspectRejectionWireDocument.CANDIDATE_STALE ->
             SymbolInspectRejection.CANDIDATE_STALE
         SymbolInspectRejectionWireDocument.CANDIDATE_NOT_DECLARATION ->
@@ -217,6 +229,12 @@ internal fun RelationReadRejection.toWireDocument(): RelationReadRejectionWireDo
     when (this) {
         RelationReadRejection.WORKSPACE_NOT_READY ->
             RelationReadRejectionWireDocument.WORKSPACE_NOT_READY
+        RelationReadRejection.SELECTOR_WRONG_KIND ->
+            RelationReadRejectionWireDocument.SELECTOR_WRONG_KIND
+        RelationReadRejection.SELECTOR_MALFORMED ->
+            RelationReadRejectionWireDocument.SELECTOR_MALFORMED
+        RelationReadRejection.SELECTOR_WORKSPACE_MISMATCH ->
+            RelationReadRejectionWireDocument.SELECTOR_WORKSPACE_MISMATCH
         RelationReadRejection.SELECTOR_STALE -> RelationReadRejectionWireDocument.SELECTOR_STALE
         RelationReadRejection.RELATION_UNSUPPORTED ->
             RelationReadRejectionWireDocument.RELATION_UNSUPPORTED
@@ -238,6 +256,12 @@ internal fun RelationReadRejectionWireDocument.toContract(): RelationReadRejecti
     when (this) {
         RelationReadRejectionWireDocument.WORKSPACE_NOT_READY ->
             RelationReadRejection.WORKSPACE_NOT_READY
+        RelationReadRejectionWireDocument.SELECTOR_WRONG_KIND ->
+            RelationReadRejection.SELECTOR_WRONG_KIND
+        RelationReadRejectionWireDocument.SELECTOR_MALFORMED ->
+            RelationReadRejection.SELECTOR_MALFORMED
+        RelationReadRejectionWireDocument.SELECTOR_WORKSPACE_MISMATCH ->
+            RelationReadRejection.SELECTOR_WORKSPACE_MISMATCH
         RelationReadRejectionWireDocument.SELECTOR_STALE -> RelationReadRejection.SELECTOR_STALE
         RelationReadRejectionWireDocument.RELATION_UNSUPPORTED ->
             RelationReadRejection.RELATION_UNSUPPORTED
@@ -329,6 +353,12 @@ internal fun TraversalRunRejection.toWireDocument(): TraversalRunRejectionWireDo
     when (this) {
         TraversalRunRejection.WORKSPACE_NOT_READY ->
             TraversalRunRejectionWireDocument.WORKSPACE_NOT_READY
+        TraversalRunRejection.SELECTOR_WRONG_KIND ->
+            TraversalRunRejectionWireDocument.SELECTOR_WRONG_KIND
+        TraversalRunRejection.SELECTOR_MALFORMED ->
+            TraversalRunRejectionWireDocument.SELECTOR_MALFORMED
+        TraversalRunRejection.SELECTOR_WORKSPACE_MISMATCH ->
+            TraversalRunRejectionWireDocument.SELECTOR_WORKSPACE_MISMATCH
         TraversalRunRejection.SELECTOR_STALE ->
             TraversalRunRejectionWireDocument.SELECTOR_STALE
         TraversalRunRejection.TOPOLOGY_BUILD_REQUIRED ->
@@ -350,6 +380,12 @@ internal fun TraversalRunRejectionWireDocument.toContract(): TraversalRunRejecti
     when (this) {
         TraversalRunRejectionWireDocument.WORKSPACE_NOT_READY ->
             TraversalRunRejection.WORKSPACE_NOT_READY
+        TraversalRunRejectionWireDocument.SELECTOR_WRONG_KIND ->
+            TraversalRunRejection.SELECTOR_WRONG_KIND
+        TraversalRunRejectionWireDocument.SELECTOR_MALFORMED ->
+            TraversalRunRejection.SELECTOR_MALFORMED
+        TraversalRunRejectionWireDocument.SELECTOR_WORKSPACE_MISMATCH ->
+            TraversalRunRejection.SELECTOR_WORKSPACE_MISMATCH
         TraversalRunRejectionWireDocument.SELECTOR_STALE -> TraversalRunRejection.SELECTOR_STALE
         TraversalRunRejectionWireDocument.TOPOLOGY_BUILD_REQUIRED ->
             TraversalRunRejection.TOPOLOGY_BUILD_REQUIRED

@@ -103,6 +103,19 @@ sealed interface SymbolDiscoveryTarget {
         override fun admits(candidate: SymbolDiscoveryKind): Boolean = candidate == resultKind
     }
 
+    /** Explicit scoped enumeration; unlike [Name], it carries no text query. */
+    data class All(
+        val kind: SymbolNameDiscoveryKind,
+    ) : SymbolDiscoveryTarget {
+        val resultKind: SymbolDiscoveryKind = when (kind) {
+            SymbolNameDiscoveryKind.FILE -> SymbolDiscoveryKind.FILE
+            SymbolNameDiscoveryKind.CLASS -> SymbolDiscoveryKind.CLASS
+            SymbolNameDiscoveryKind.SYMBOL -> SymbolDiscoveryKind.SYMBOL
+        }
+
+        override fun admits(candidate: SymbolDiscoveryKind): Boolean = candidate == resultKind
+    }
+
     data class Location(
         val file: CanonicalWorkspaceFilePath,
         val offset: SymbolDiscoverySourceOffset,
@@ -118,10 +131,108 @@ sealed interface SymbolDiscoveryTarget {
     }
 }
 
+enum class SymbolDiscoveryContainment {
+    DIRECT,
+    DESCENDANTS,
+}
+
+enum class SymbolDiscoveryDirectoryFailure {
+    BLANK,
+    ABSOLUTE,
+    NON_CANONICAL,
+}
+
+/** Canonical workspace-relative directory restriction evaluated before candidate budget use. */
+@JvmInline
+value class SymbolDiscoveryDirectory private constructor(
+    val value: String,
+) {
+    companion object {
+        fun parse(
+            raw: String,
+        ): Refinement<SymbolDiscoveryDirectory, SymbolDiscoveryDirectoryFailure> = when {
+            raw.isBlank() -> Refinement.Rejected(SymbolDiscoveryDirectoryFailure.BLANK)
+            raw.startsWith('/') -> Refinement.Rejected(SymbolDiscoveryDirectoryFailure.ABSOLUTE)
+            raw.split('/').any { it.isBlank() || it == "." || it == ".." } ->
+                Refinement.Rejected(SymbolDiscoveryDirectoryFailure.NON_CANONICAL)
+            else -> Refinement.Refined(SymbolDiscoveryDirectory(raw))
+        }
+    }
+}
+
+enum class SymbolDiscoveryPackageFailure {
+    BLANK,
+    INVALID_SEGMENT,
+}
+
+/** Canonical dotted package restriction established from declaration PSI, not file spelling. */
+@JvmInline
+value class SymbolDiscoveryPackage private constructor(
+    val value: String,
+) {
+    companion object {
+        private val segment = Regex("[A-Za-z_][A-Za-z0-9_]*")
+
+        fun parse(
+            raw: String,
+        ): Refinement<SymbolDiscoveryPackage, SymbolDiscoveryPackageFailure> = when {
+            raw.isBlank() -> Refinement.Rejected(SymbolDiscoveryPackageFailure.BLANK)
+            raw.split('.').any { !segment.matches(it) } ->
+                Refinement.Rejected(SymbolDiscoveryPackageFailure.INVALID_SEGMENT)
+            else -> Refinement.Refined(SymbolDiscoveryPackage(raw))
+        }
+    }
+}
+
+data class SymbolDiscoveryDirectoryConstraint(
+    val directory: SymbolDiscoveryDirectory,
+    val containment: SymbolDiscoveryContainment,
+)
+
+data class SymbolDiscoveryPackageConstraint(
+    val packageName: SymbolDiscoveryPackage,
+    val containment: SymbolDiscoveryContainment,
+)
+
+/** Non-empty compiler declaration-kind restriction applied before candidate work accounting. */
+class SymbolDiscoveryDeclarationKinds private constructor(
+    val values: Set<CompilerSymbolKind>,
+) {
+    companion object {
+        fun from(
+            raw: Set<CompilerSymbolKind>,
+        ): Refinement<SymbolDiscoveryDeclarationKinds, SymbolDiscoveryDeclarationKindsFailure> =
+            if (raw.isEmpty()) {
+                Refinement.Rejected(SymbolDiscoveryDeclarationKindsFailure.EMPTY)
+            } else {
+                Refinement.Refined(SymbolDiscoveryDeclarationKinds(raw.toSet()))
+            }
+    }
+
+    override fun equals(other: Any?): Boolean =
+        other is SymbolDiscoveryDeclarationKinds && values == other.values
+
+    override fun hashCode(): Int = values.hashCode()
+}
+
+enum class SymbolDiscoveryDeclarationKindsFailure { EMPTY }
+
+/** Intersected discovery restrictions applied inside the compiled IntelliJ scope. */
+data class SymbolDiscoveryConstraints(
+    val directory: SymbolDiscoveryDirectoryConstraint?,
+    val packageName: SymbolDiscoveryPackageConstraint?,
+    val declarationKinds: SymbolDiscoveryDeclarationKinds? = null,
+) {
+    companion object {
+        val None: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints(null, null, null)
+    }
+}
+
 data class SymbolDiscoveryRequest(
     val scope: SymbolSearchScopeRequest,
     val target: SymbolDiscoveryTarget,
     val budget: SymbolDiscoveryBudget,
+    val constraints: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints.None,
 )
 
 private fun SymbolDiscoveryKind.isDeclaration(): Boolean = when (this) {

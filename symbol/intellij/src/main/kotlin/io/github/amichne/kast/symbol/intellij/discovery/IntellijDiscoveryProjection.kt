@@ -13,6 +13,13 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateFailure
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtConstructor
+import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtParameter
+import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.KtTypeAlias
 
 internal sealed interface IntellijDiscoveryItemFileResult {
     data class Found(
@@ -64,6 +71,35 @@ internal data object AdmitEveryIntellijDiscoveryItem : IntellijDiscoveryItemAdmi
         IntellijDiscoveryItemAdmission.ADMITTED
 }
 
+sealed interface IntellijDiscoveryItemCompilerKindResult {
+    data class Found(val kind: CompilerSymbolKind) : IntellijDiscoveryItemCompilerKindResult
+    data object Unsupported : IntellijDiscoveryItemCompilerKindResult
+}
+
+fun interface IntellijDiscoveryItemCompilerKind {
+    /** Classifies Kotlin declaration syntax before a broad native symbol consumes query work. */
+    fun classify(item: NavigationItem): IntellijDiscoveryItemCompilerKindResult
+}
+
+internal data object IntellijPsiDiscoveryItemCompilerKind : IntellijDiscoveryItemCompilerKind {
+    override fun classify(item: NavigationItem): IntellijDiscoveryItemCompilerKindResult {
+        val kind = when (val element = item.psiElement()) {
+            is KtClassOrObject -> CompilerSymbolKind.CLASSLIKE
+            is KtConstructor<*> -> CompilerSymbolKind.CONSTRUCTOR
+            is KtNamedFunction -> CompilerSymbolKind.FUNCTION
+            is KtProperty -> CompilerSymbolKind.PROPERTY
+            is KtParameter -> if (element.hasValOrVar()) {
+                CompilerSymbolKind.PROPERTY
+            } else {
+                return IntellijDiscoveryItemCompilerKindResult.Unsupported
+            }
+            is KtTypeAlias -> CompilerSymbolKind.TYPE_ALIAS
+            else -> return IntellijDiscoveryItemCompilerKindResult.Unsupported
+        }
+        return IntellijDiscoveryItemCompilerKindResult.Found(kind)
+    }
+}
+
 internal object IntellijPsiDiscoveryItemFile : IntellijDiscoveryItemFile {
     override fun find(item: NavigationItem): IntellijDiscoveryItemFileResult {
         val file = when (item) {
@@ -94,9 +130,14 @@ internal object IntellijPsiDiscoveryCandidateProjector : IntellijDiscoveryCandid
         item: NavigationItem,
         file: VirtualFile,
     ): Refinement<SymbolDiscoveryCandidate, SymbolDiscoveryCandidateFailure> {
-        val target = request.target as? SymbolDiscoveryTarget.Name
-            ?: return Refinement.Rejected(SymbolDiscoveryCandidateFailure.TARGET_KIND_MISMATCH)
-        val rawOffset = when (target.resultKind) {
+        val resultKind = when (val target = request.target) {
+            is SymbolDiscoveryTarget.All -> target.resultKind
+            is SymbolDiscoveryTarget.Name -> target.resultKind
+            is SymbolDiscoveryTarget.Location,
+            is SymbolDiscoveryTarget.Text,
+                -> return Refinement.Rejected(SymbolDiscoveryCandidateFailure.TARGET_KIND_MISMATCH)
+        }
+        val rawOffset = when (resultKind) {
             SymbolDiscoveryKind.FILE -> {
                 if (item !is PsiFile) {
                     return Refinement.Rejected(
@@ -122,7 +163,7 @@ internal object IntellijPsiDiscoveryCandidateProjector : IntellijDiscoveryCandid
         }
         val classifiedPath = nativePath(file)
         return SymbolDiscoveryCandidate.fromBoundary(
-            kind = target.resultKind,
+            kind = resultKind,
             rawName = item.name.orEmpty(),
             lease = request.scope.lease,
             nativePath = when (classifiedPath) {

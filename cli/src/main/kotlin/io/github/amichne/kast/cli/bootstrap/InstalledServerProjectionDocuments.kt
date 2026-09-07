@@ -6,6 +6,7 @@ import io.github.amichne.kast.protocol.registry.AgentToolDefinition
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import io.github.amichne.kast.protocol.registry.HostedBindingCompleteness
 import io.github.amichne.kast.protocol.registry.HostedOperationProjection
+import io.github.amichne.kast.protocol.registry.HostedToolLoading
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -96,6 +97,7 @@ internal enum class InstalledServerBindingType {
     OPTION,
     REPEATED_OPTION,
     FLAG,
+    JSON_OPTION,
 }
 
 /**
@@ -132,7 +134,7 @@ internal fun installedServerProjection(
 
 private val installedServerTools: List<InstalledServerTool> = InstalledServerTool.entries.filter { tool ->
     HostedOperationProjection.publicDefinitions.any { it.operation == tool.operation }
-}.also {
+}.sortedBy { tool -> CanonicalOperation.entries.indexOf(tool.operation) }.also {
     val operations = it.map { tool -> tool.operation }
     when (val completeness = HostedOperationProjection.verifyBindings(operations)) {
         HostedBindingCompleteness.Complete -> Unit
@@ -288,6 +290,17 @@ private enum class InstalledServerTool(
             ServerCliOptionField("continuation", "--continuation"),
         ),
     ),
+    QUERY_RUN(
+        operation = CanonicalOperation.QUERY_RUN,
+        inputSchema = queryRunInputSchema(),
+        command = listOf("query", "run"),
+        optionFields = listOf(
+            ServerCliOptionField("from", "--from", InstalledServerBindingType.JSON_OPTION),
+            ServerCliOptionField("steps", "--steps", InstalledServerBindingType.JSON_OPTION),
+            ServerCliOptionField("output", "--output", InstalledServerBindingType.JSON_OPTION),
+            ServerCliOptionField("execution", "--execution", InstalledServerBindingType.JSON_OPTION),
+        ),
+    ),
     DIAGNOSTIC_CHECK(
         operation = CanonicalOperation.DIAGNOSTIC_CHECK,
         inputSchema = objectSchema(
@@ -340,7 +353,7 @@ private enum class InstalledServerTool(
             operationId = definition.operation.id.value,
             name = definition.name.value,
             description = definition.description.value,
-            deferLoading = true,
+            deferLoading = definition.loading == HostedToolLoading.DEFERRED,
             effect = definition.operation.effect.name.lowercase(),
             approvalPolicy = definition.approval.name.lowercase(),
             executionBudget = InstalledServerExecutionBudgetDocument(
@@ -449,6 +462,141 @@ private fun sourceReadInputSchema(): JsonObject = objectSchemaWithRequired(
     ServerSchemaProperty("continuation", textSchema("Snapshot-bound source continuation.")),
 )
 
+private fun queryRunInputSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("from", queryFromSchema()),
+    ServerSchemaProperty("steps", arraySchema(queryStepSchema())),
+    ServerSchemaProperty("output", queryOutputSchema()),
+    ServerSchemaProperty(
+        "execution",
+        objectSchema(
+            ServerSchemaProperty("kind", constantSchema("exhaustive", "Exhaust the declared domain when budget permits.")),
+            ServerSchemaProperty("budget", constantSchema("interactive", "One shared bounded interactive budget.")),
+        ),
+    ),
+)
+
+private fun queryFromSchema(): JsonObject = unionSchema(
+    queryDiscoverySourceSchema("symbols", "Discover and establish exact compiler identities."),
+    queryDiscoverySourceSchema("candidates", "Discover declaration candidates without compiler refinement."),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("references", "Continue from returned exact references.")),
+        ServerSchemaProperty("values", nonEmptyArraySchema(queryExactReferenceSchema())),
+    ),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("references", "Continue from returned declaration candidates.")),
+        ServerSchemaProperty("values", nonEmptyArraySchema(queryCandidateReferenceSchema())),
+    ),
+)
+
+private fun queryDiscoverySourceSchema(type: String, description: String): JsonObject = objectSchema(
+    ServerSchemaProperty("type", constantSchema(type, description)),
+    ServerSchemaProperty("match", queryMatchSchema()),
+    ServerSchemaProperty("scope", queryScopeSchema()),
+    ServerSchemaProperty("declarationKinds", nonEmptyArraySchema(
+        enumSchema(
+            listOf("class", "function", "property", "type-alias"),
+            "Compiler declaration families to enumerate.",
+        ),
+    )),
+)
+
+private fun queryMatchSchema(): JsonObject = unionSchema(
+    objectSchema(ServerSchemaProperty("type", constantSchema("all", "Enumerate the admitted scope."))),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("name", "Match a non-blank declaration name.")),
+        ServerSchemaProperty("text", nonBlankQueryTextSchema()),
+        ServerSchemaProperty(
+            "matching",
+            enumSchema(listOf("fuzzy", "exact-name"), "Name matching policy."),
+        ),
+    ),
+)
+
+private fun queryScopeSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty(
+        "sourceSets",
+        nonEmptyArraySchema(enumSchema(listOf("main", "test"), "Imported source-set domain.")),
+    ),
+    ServerSchemaProperty("directory", nullableSchema(
+        objectSchema(
+            ServerSchemaProperty("path", workspaceFileSchema()),
+            ServerSchemaProperty("containment", queryContainmentSchema()),
+        ),
+    )),
+    ServerSchemaProperty("packageName", nullableSchema(
+        objectSchema(
+            ServerSchemaProperty("name", patternTextSchema(
+                "^[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$",
+                "Semantic Kotlin package name.",
+            )),
+            ServerSchemaProperty("containment", queryContainmentSchema()),
+        ),
+    )),
+)
+
+private fun queryContainmentSchema(): JsonObject =
+    enumSchema(listOf("direct", "descendants"), "Direct membership or descendant closure.")
+
+private fun queryStepSchema(): JsonObject = unionSchema(
+    objectSchema(ServerSchemaProperty("type", constantSchema("inspect", "Refine candidates to exact symbols."))),
+    objectSchema(ServerSchemaProperty("type", constantSchema("distinct", "Deduplicate by established identity."))),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("related", "Expand one exact semantic relation.")),
+        ServerSchemaProperty("relation", relationSchema()),
+    ),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("where", "Filter using a closed exact-symbol predicate.")),
+        ServerSchemaProperty(
+            "predicate",
+            objectSchema(
+                ServerSchemaProperty("type", constantSchema("visibility", "Compiler-established declaration visibility.")),
+                ServerSchemaProperty(
+                    "values",
+                    nonEmptyArraySchema(enumSchema(
+                        listOf("public", "protected", "internal", "private", "local"),
+                        "Admitted declaration visibility.",
+                    )),
+                ),
+            ),
+        ),
+    ),
+)
+
+private fun queryOutputSchema(): JsonObject = unionSchema(
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("symbols", "Return exact symbols.")),
+        ServerSchemaProperty(
+            "fields",
+            nonEmptyArraySchema(enumSchema(listOf("name", "location", "signature"), "Projected symbol field.")),
+        ),
+    ),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("candidates", "Return declaration candidates.")),
+        ServerSchemaProperty(
+            "fields",
+            nonEmptyArraySchema(enumSchema(listOf("name", "location"), "Projected candidate field.")),
+        ),
+    ),
+)
+
+private fun queryExactReferenceSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("kind", constantSchema("exact-symbol", "Exact compiler identity.")),
+    ServerSchemaProperty("token", patternTextSchema("^exact:v2:", "Exact symbol token.")),
+)
+
+private fun queryCandidateReferenceSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("kind", constantSchema("declaration-candidate", "Declaration candidate identity.")),
+    ServerSchemaProperty("token", patternTextSchema("^candidate:v2:", "Declaration candidate token.")),
+)
+
+private fun nonBlankQueryTextSchema(): JsonObject = buildJsonObject {
+    put("type", "string")
+    put("minLength", 1)
+    put("maxLength", 256)
+    put("pattern", ".*\\S.*")
+    put("description", "Non-blank name text. Use match.type=all for enumeration.")
+}
+
 private fun symbolDiscoverInputSchema(): JsonObject = unionSchema(
     objectSchema(
         ServerSchemaProperty("mode", constantSchema("name", "Discovery mode.")),
@@ -539,6 +687,7 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
         traversalQualificationSchema(),
         ServerSchemaProperty("graph", normalizedTraversalGraphSchema()),
     )
+    CanonicalOperation.QUERY_RUN -> queryRunDocumentSchema(operation)
     CanonicalOperation.DIAGNOSTIC_CHECK -> proofQualifiedOutcomeSchema(
         operation,
         diagnosticQualificationSchema(),
@@ -571,6 +720,234 @@ private fun changeFilePreviewsSchema(): JsonObject = nonEmptyArraySchema(
             enumSchema(listOf("add", "delete", "update"), "Closed file-change kind."),
         ),
         ServerSchemaProperty("diff", textSchema("Bounded semantic change preview.")),
+    ),
+)
+
+private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject = unionSchema(
+    operationOutcomeVariant(
+        operation,
+        "complete",
+        ServerSchemaProperty("items", arraySchema(queryResultItemSchema())),
+        ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
+    ),
+    operationOutcomeVariant(
+        operation,
+        "qualified",
+        ServerSchemaProperty("items", arraySchema(queryResultItemSchema())),
+        ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
+        ServerSchemaProperty(
+            "qualification",
+            objectSchema(
+                ServerSchemaProperty("knownMinimum", integerSchema(0, description = "Known returned item count.")),
+                ServerSchemaProperty(
+                    "limitations",
+                    nonEmptyArraySchema(enumSchema(
+                        listOf(
+                            "result-limit-reached",
+                            "byte-limit-reached",
+                            "work-limit-reached",
+                            "time-limit-reached",
+                            "discovery-incomplete",
+                            "refinement-incomplete",
+                            "visibility-incomplete",
+                            "relation-incomplete",
+                        ),
+                        "Every aggregate query limitation.",
+                    )),
+                ),
+            ),
+        ),
+    ),
+    operationOutcomeVariant(
+        operation,
+        "rejected",
+        ServerSchemaProperty("rejection", queryRejectionSchema()),
+    ),
+)
+
+private fun queryResultItemSchema(): JsonObject = unionSchema(
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("candidate", "Declaration-candidate result.")),
+        ServerSchemaProperty("ref", queryOutputReferenceSchema("declaration-candidate")),
+        ServerSchemaProperty("kind", enumSchema(listOf("class", "symbol"), "Candidate discovery kind.")),
+        ServerSchemaProperty("name", nullableSchema(textSchema("Projected declaration name."))),
+        ServerSchemaProperty("location", nullableSchema(
+            objectSchema(
+                ServerSchemaProperty("file", textSchema("Workspace-relative source file.")),
+                ServerSchemaProperty("offset", integerSchema(0, description = "Declaration offset.")),
+            ),
+        )),
+    ),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("exact-symbol", "Exact-symbol result.")),
+        ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
+        ServerSchemaProperty(
+            "kind",
+            enumSchema(listOf("classlike", "constructor", "function", "property", "type-alias"), "Compiler symbol kind."),
+        ),
+        ServerSchemaProperty("name", nullableSchema(textSchema("Projected declaration name."))),
+        ServerSchemaProperty("location", nullableSchema(
+            objectSchema(
+                ServerSchemaProperty("file", textSchema("Workspace-relative source file.")),
+                ServerSchemaProperty("range", sourceRangeSchema()),
+            ),
+        )),
+        ServerSchemaProperty("signature", nullableSchema(unionSchema(
+            functionCompilerSignatureSchema(),
+            propertyCompilerSignatureSchema(),
+            typeAliasCompilerSignatureSchema(),
+            classLikeCompilerSignatureSchema(),
+        ))),
+        ServerSchemaProperty("connections", arraySchema(relationFactSchema())),
+    ),
+)
+
+private fun queryOutputReferenceSchema(kind: String): JsonObject = objectSchema(
+    ServerSchemaProperty("kind", constantSchema(kind, "Reference evidence family.")),
+    ServerSchemaProperty(
+        "token",
+        patternTextSchema(
+            if (kind == "exact-symbol") "^exact:v2:" else "^candidate:v2:",
+            "Reusable proof-carrying reference.",
+        ),
+    ),
+)
+
+private fun queryItemFailureSchema(): JsonObject = unionSchema(
+    queryItemFailureVariantSchema("refinement", "declaration-candidate", queryExactFailureSchema()),
+    queryItemFailureVariantSchema("exact-reference", "exact-symbol", queryExactFailureSchema()),
+    queryItemFailureVariantSchema("predicate", "exact-symbol", queryPredicateFailureSchema()),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("relation", "Per-symbol relation failure.")),
+        ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
+        ServerSchemaProperty("relation", relationSchema()),
+        ServerSchemaProperty("reason", queryRelationFailureSchema()),
+    ),
+)
+
+private fun queryItemFailureVariantSchema(
+    type: String,
+    refKind: String,
+    reason: JsonObject,
+): JsonObject = objectSchema(
+    ServerSchemaProperty("type", constantSchema(type, "Per-item query failure.")),
+    ServerSchemaProperty("ref", queryOutputReferenceSchema(refKind)),
+    ServerSchemaProperty("reason", reason),
+)
+
+private fun queryExactFailureSchema(): JsonObject = enumSchema(
+    listOf(
+        "workspace-not-ready",
+        "workspace-root-mismatch",
+        "stale-generation",
+        "scope-rejected",
+        "workspace-index-unavailable",
+        "stale-location",
+        "outside-scope",
+        "ambiguous-declaration",
+        "unsupported-declaration",
+        "compiler-identity-unavailable",
+        "declaration-moved-or-changed",
+        "compiler-contract-violation",
+    ),
+    "Closed exact-symbol refinement failure.",
+)
+
+private fun queryPredicateFailureSchema(): JsonObject = enumSchema(
+    listOf(
+        "predicate-unproven",
+        "workspace-not-ready",
+        "workspace-root-mismatch",
+        "stale-generation",
+        "source-state-mismatch",
+        "candidate-stale",
+        "source-selector-stale",
+        "source-snapshot-mismatch",
+        "source-unavailable",
+        "document-dirty",
+        "psi-document-uncommitted",
+        "outside-source-scope",
+        "anchor-not-found",
+        "ambiguous-anchor",
+        "region-not-applicable",
+        "region-absent",
+        "compiler-analysis-unavailable",
+        "contract-violation",
+    ),
+    "Closed exact-symbol predicate failure.",
+)
+
+private fun queryRelationFailureSchema(): JsonObject = enumSchema(
+    listOf(
+        "workspace-not-ready",
+        "workspace-root-mismatch",
+        "stale-generation",
+        "scope-rejected",
+        "workspace-index-unavailable",
+        "stale-selector",
+        "outside-scope",
+        "ambiguous-subject",
+        "unsupported-subject",
+        "compiler-identity-unavailable",
+        "continuation-cursor-moved",
+        "compiler-contract-violation",
+    ),
+    "Closed semantic-relation failure.",
+)
+
+private fun queryRejectionSchema(): JsonObject = unionSchema(
+    objectSchema(ServerSchemaProperty("type", constantSchema("workspace-not-ready", "Workspace unavailable."))),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("plan-rejected", "Typed stage composition rejected.")),
+        ServerSchemaProperty("path", textSchema("Rejected step path.")),
+        ServerSchemaProperty("required", enumSchema(listOf("declaration-candidate", "exact-symbol"), "Required input type.")),
+        ServerSchemaProperty("actual", enumSchema(listOf("declaration-candidate", "exact-symbol"), "Actual input type.")),
+        ServerSchemaProperty(
+            "correction",
+            enumSchema(
+                listOf(
+                    "insert-inspect",
+                    "remove-inspect",
+                    "select-symbol-output",
+                ),
+                "Closed corrective action.",
+            ),
+        ),
+    ),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("reference-rejected", "Reference admission rejected.")),
+        ServerSchemaProperty("path", textSchema("Rejected reference path.")),
+        ServerSchemaProperty(
+            "reason",
+            enumSchema(
+                listOf("wrong-kind", "malformed", "incompatible-workspace", "stale-generation"),
+                "Exact reference rejection reason.",
+            ),
+        ),
+    ),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("source-rejected", "Query source is not exhaustively supported.")),
+        ServerSchemaProperty("kind", constantSchema("constructor", "Unsupported declaration family.")),
+        ServerSchemaProperty(
+            "reason",
+            constantSchema("unsupported-declaration-kind", "Closed source-admission failure."),
+        ),
+    ),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("execution-rejected", "Query execution rejected.")),
+        ServerSchemaProperty(
+            "reason",
+            enumSchema(
+                listOf(
+                    "request-rejected",
+                    "discovery-rejected",
+                    "reference-stale",
+                    "budget-rejected",
+                    "internal-contract-violation",
+                ),
+                "Closed execution rejection reason.",
+            ),
+        ),
     ),
 )
 
@@ -1558,6 +1935,11 @@ private fun unionSchema(vararg variants: JsonObject): JsonObject = buildJsonObje
         variants.forEach(::add)
     }
 }
+
+private fun nullableSchema(value: JsonObject): JsonObject = unionSchema(
+    value,
+    buildJsonObject { put("type", "null") },
+)
 
 private fun arraySchema(item: JsonObject): JsonObject = buildJsonObject {
     put("type", "array")

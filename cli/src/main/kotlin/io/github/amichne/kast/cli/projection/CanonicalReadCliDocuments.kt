@@ -223,7 +223,7 @@ private data class DiagnosticLimitationCliDocument(
 )
 
 @Serializable
-private data class RelationFactCliDocument(
+internal data class RelationFactCliDocument(
     val meaning: String,
     val source: SymbolCliDocument,
     val target: SymbolCliDocument,
@@ -233,7 +233,7 @@ private data class RelationFactCliDocument(
 )
 
 @Serializable
-private data class RelationOccurrenceCliDocument(
+internal data class RelationOccurrenceCliDocument(
     val candidateSelector: String,
     val file: String,
     val range: SourceRangeCliDocument,
@@ -254,7 +254,7 @@ private data class DiagnosticLocationCliDocument(
     val range: SourceRangeCliDocument,
 )
 
-private fun RelationFactDocument.toCliDocument(): RelationFactCliDocument =
+internal fun RelationFactDocument.toCliDocument(): RelationFactCliDocument =
     RelationFactCliDocument(
         meaning.cliName(),
         source.toCliDocument(),

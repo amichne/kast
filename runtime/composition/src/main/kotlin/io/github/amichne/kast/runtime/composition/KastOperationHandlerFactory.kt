@@ -38,6 +38,11 @@ import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import io.github.amichne.kast.relation.contract.RelationOperations
+import io.github.amichne.kast.query.contract.QueryOperations
+import io.github.amichne.kast.protocol.contract.QueryRunQualification
+import io.github.amichne.kast.protocol.contract.QueryRunRejection
+import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
@@ -56,7 +61,7 @@ import io.github.amichne.kast.protocol.contract.IndexSyncRequest
 import io.github.amichne.kast.protocol.contract.IndexSyncResult
 
 /**
- * Operation-specific protocol projection boundary for the eleven target service associations.
+ * Operation-specific protocol projection boundary for the twelve target service associations.
  *
  * Implementations parse public boundary documents into the supplied strong service contracts and
  * project their closed results back to protocol outcomes. Canonical definitions, serializers, and
@@ -120,6 +125,10 @@ interface KastOperationHandlerFactory {
         TraversalRunQualification,
         TraversalRunRejection
         >
+
+    fun queryRun(
+        operations: QueryOperations,
+    ): OperationHandler<QueryRunRequest, QueryRunResult, QueryRunQualification, QueryRunRejection>
 
     fun diagnosticCheck(
         operations: DiagnosticOperations,

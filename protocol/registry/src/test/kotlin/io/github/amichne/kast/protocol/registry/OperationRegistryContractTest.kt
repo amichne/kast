@@ -43,6 +43,7 @@ class OperationRegistryContractTest {
             listOf(
                 "index.sync",
                 "topology.build",
+                "query.run",
                 "symbol.discover",
                 "symbol.inspect",
                 "source.read",

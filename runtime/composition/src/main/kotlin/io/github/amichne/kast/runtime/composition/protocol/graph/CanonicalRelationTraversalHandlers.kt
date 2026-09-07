@@ -48,6 +48,7 @@ import io.github.amichne.kast.runtime.composition.protocol.CandidateSelectorToke
 import io.github.amichne.kast.runtime.composition.protocol.ExactSelectorLookup
 import io.github.amichne.kast.runtime.composition.protocol.RelationEndpointIssuance
 import io.github.amichne.kast.runtime.composition.protocol.RelationSubjectLookup
+import io.github.amichne.kast.runtime.composition.protocol.SelectorLookupRejection
 import io.github.amichne.kast.runtime.composition.protocol.protocolDocument
 import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.traversal.contract.TraversalBudget
@@ -95,8 +96,8 @@ internal class CanonicalRelationReadHandler(
         val meaning = request.relation.meaning()
         val subject = when (val lookup = authority.relationSubject(request.exactSelector)) {
             is RelationSubjectLookup.Selector -> lookup.selector
-            RelationSubjectLookup.Missing ->
-                return OperationOutcome.Rejected(RelationReadRejection.SELECTOR_STALE)
+            is RelationSubjectLookup.Rejected ->
+                return OperationOutcome.Rejected(lookup.reason.relationProtocol())
         }
         val domainRequest = when (val position = request.position) {
             RelationReadPositionDocument.Start ->
@@ -190,8 +191,8 @@ internal class CanonicalTraversalRunHandler(
         > {
         val selector = when (val lookup = authority.exact(request.exactSelector)) {
             is ExactSelectorLookup.Found -> lookup.selector
-            ExactSelectorLookup.Missing ->
-                return OperationOutcome.Rejected(TraversalRunRejection.SELECTOR_STALE)
+            is ExactSelectorLookup.Rejected ->
+                return OperationOutcome.Rejected(lookup.reason.traversalProtocol())
         }
         val budget = when (
             val admitted = traversalBudget(
@@ -421,7 +422,7 @@ private fun RelationKindDocument.meaning(): RelationMeaning = when (this) {
     RelationKindDocument.TYPE_USES -> RelationMeaning.TypeUses
 }
 
-private fun RelationFact.protocolDocument(
+internal fun RelationFact.protocolDocument(
     authority: CanonicalProtocolAuthority,
 ): RelationFactDocument? {
     val occurrenceStart = ProtocolOffset.parse(occurrence.range.startInclusive).refinedOrNull()
@@ -465,7 +466,7 @@ private fun RelationEndpoint.protocolDocument(
     return protocolDocument(selector)
 }
 
-private fun RelationMeaning.protocolDocument(): RelationKindDocument = when (this) {
+internal fun RelationMeaning.protocolDocument(): RelationKindDocument = when (this) {
     RelationMeaning.References -> RelationKindDocument.REFERENCES
     RelationMeaning.Callers -> RelationKindDocument.CALLERS
     RelationMeaning.Callees -> RelationKindDocument.CALLEES
@@ -555,7 +556,8 @@ private fun <Value, Failure> Refinement<Value, Failure>.refinedOrNull(): Value? 
 
 private fun DomainRelationRejection.protocol(): RelationReadRejection = when (this) {
     DomainRelationRejection.WORKSPACE_NOT_READY -> RelationReadRejection.WORKSPACE_NOT_READY
-    DomainRelationRejection.WORKSPACE_ROOT_MISMATCH,
+    DomainRelationRejection.WORKSPACE_ROOT_MISMATCH ->
+        RelationReadRejection.SELECTOR_WORKSPACE_MISMATCH
     DomainRelationRejection.STALE_GENERATION,
     DomainRelationRejection.STALE_SELECTOR,
         -> RelationReadRejection.SELECTOR_STALE
@@ -586,7 +588,8 @@ private fun DomainRelationResumeFailure.protocol(): RelationReadRejection = when
 private fun TraversalRejection.protocol(): TraversalRunRejection = when (this) {
     is TraversalRejection.OneHopRejected -> when (reason) {
         DomainRelationRejection.WORKSPACE_NOT_READY -> TraversalRunRejection.WORKSPACE_NOT_READY
-        DomainRelationRejection.WORKSPACE_ROOT_MISMATCH,
+        DomainRelationRejection.WORKSPACE_ROOT_MISMATCH ->
+            TraversalRunRejection.SELECTOR_WORKSPACE_MISMATCH
         DomainRelationRejection.STALE_GENERATION,
         DomainRelationRejection.STALE_SELECTOR,
             -> TraversalRunRejection.SELECTOR_STALE
@@ -598,6 +601,16 @@ private fun TraversalRejection.protocol(): TraversalRunRejection = when (this) {
     TraversalRejection.ReaderContractViolation,
     TraversalRejection.TraversalContractViolation,
         -> TraversalRunRejection.PLAN_REJECTED
+}
+
+private fun SelectorLookupRejection.relationProtocol(): RelationReadRejection = when (this) {
+    SelectorLookupRejection.WRONG_KIND -> RelationReadRejection.SELECTOR_WRONG_KIND
+    SelectorLookupRejection.MALFORMED -> RelationReadRejection.SELECTOR_MALFORMED
+}
+
+private fun SelectorLookupRejection.traversalProtocol(): TraversalRunRejection = when (this) {
+    SelectorLookupRejection.WRONG_KIND -> TraversalRunRejection.SELECTOR_WRONG_KIND
+    SelectorLookupRejection.MALFORMED -> TraversalRunRejection.SELECTOR_MALFORMED
 }
 
 private fun TraversalPlanResumeFailure.protocol(): TraversalRunRejection = when (this) {

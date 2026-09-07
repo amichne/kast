@@ -6,11 +6,12 @@ import org.junit.jupiter.api.Test
 
 class CanonicalOperationDefinitionsTest {
     @Test
-    fun `production registry owns exactly eleven distinct typed operation definitions`() {
+    fun `production registry owns exactly twelve distinct typed operation definitions`() {
         val definitions = CanonicalOperationDefinitions.all
         val expectedIds = listOf(
             "index.sync",
             "topology.build",
+            "query.run",
             "symbol.discover",
             "symbol.inspect",
             "source.read",
@@ -24,13 +25,17 @@ class CanonicalOperationDefinitionsTest {
 
         assertEquals(expectedIds, CanonicalOperation.entries.map { it.id.value })
         assertEquals(CanonicalOperation.entries, definitions.map { it.operation })
-        assertEquals(11, definitions.map { it.requestType }.toSet().size)
-        assertEquals(11, definitions.map { it.resultType }.toSet().size)
-        assertEquals(11, definitions.map { it.qualificationType }.toSet().size)
-        assertEquals(11, definitions.map { it.rejectionType }.toSet().size)
-        assertEquals(11, definitions.map { it.schema }.toSet().size)
+        assertEquals(12, definitions.map { it.requestType }.toSet().size)
+        assertEquals(12, definitions.map { it.resultType }.toSet().size)
+        assertEquals(12, definitions.map { it.qualificationType }.toSet().size)
+        assertEquals(12, definitions.map { it.rejectionType }.toSet().size)
+        assertEquals(12, definitions.map { it.schema }.toSet().size)
         definitions.forEach { definition ->
-            val version = if (definition.operation == CanonicalOperation.SOURCE_READ) 3 else 2
+            val version = when (definition.operation) {
+                CanonicalOperation.SOURCE_READ -> 3
+                CanonicalOperation.QUERY_RUN -> 1
+                else -> 2
+            }
             assertEquals("kast.${definition.operation.id.value}.v$version", definition.schema.value)
         }
         assertEquals(definitions, CanonicalOperationDefinitions.registry.definitions)

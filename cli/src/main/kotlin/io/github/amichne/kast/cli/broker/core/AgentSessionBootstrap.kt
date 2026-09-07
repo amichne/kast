@@ -6,6 +6,7 @@ import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.registry.AgentToolName
 import io.github.amichne.kast.protocol.registry.AgentToolPolicy
 import io.github.amichne.kast.protocol.registry.HostedApprovalPolicy
+import io.github.amichne.kast.protocol.registry.HostedToolLoading
 import io.github.amichne.kast.protocol.registry.OperationEffect
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 
@@ -19,6 +20,7 @@ internal data class HostedToolDefinition(
     val effect: OperationEffect,
     val approval: HostedApprovalPolicy,
     val executionBudget: OperationExecutionBudget,
+    val loading: HostedToolLoading,
 )
 
 /** Exact ordered hosted surface whose members all have executable installed routes. */
