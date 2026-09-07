@@ -6,6 +6,8 @@ resource: "file://docs/public/index.mdx"
 tags: ["Kotlin", "compiler", "operations", "evidence"]
 timestamp: "2026-09-03T00:00:00-04:00"
 code_sources:
+  - path: "install.sh"
+    lines: "1184-1355"
   - path: "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt"
     lines: "7-20"
     symbols: ["CanonicalOperation"]
@@ -20,6 +22,19 @@ keywords: ["Kotlin", "compiler", "semantic analysis", "coding agents"]
 Kast is a repo-local semantic runtime for Kotlin repositories. It answers code
 questions through IntelliJ and the Kotlin compiler, then returns the root,
 generation, scope, limits, and identities needed to judge each result.
+
+## Install Kast
+
+Install the latest published release with one command:
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash
+```
+
+The installer resolves and verifies the matched control and semantic payloads.
+Kast supports macOS on Apple silicon and uses the Java 25 JBR from a compatible
+IntelliJ IDEA installation. [Review the complete host and installation
+contract.](/start)
 
 ## Choose the depth that matches the question
 

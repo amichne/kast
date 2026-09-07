@@ -43,16 +43,44 @@ Reference pair: IDEA build 262.9437.185 and Kotlin plugin build 262.9437.185-IJ.
 Compatible patch builds are accepted when IDEA and Kotlin plugin both remain on
 JetBrains platform release line 262.
 
-Resolve the latest published release and install that exact version:
+Install the latest published release:
 
 ```shell
-release_url="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/amichne/kast/releases/latest)"
-release_tag="${release_url##*/}"
-curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh" | bash -s -- --version "$release_tag"
+curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash
 ```
 
+The installer resolves the release, downloads both matched payloads, verifies
+their checksums, and installs the `kast` and `kast-codex` commands. Pass options
+after `bash -s --`; for example:
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash -s -- --idea-home "/Applications/IntelliJ IDEA.app"
+```
+
+### Installer flags
+
+| Flag | Applies to | Purpose |
+| --- | --- | --- |
+| `--help`, `-h` | Install or uninstall | Print the installer contract. |
+| `--version <major.minor.patch>` | Install | Install one release instead of the latest stable release. |
+| `--purge-existing` | Install | Remove existing Kast-owned machine state after the requested release is downloaded and verified. |
+| `--install-root <absolute-path>` | Install or uninstall | Select the versioned product root. |
+| `--bin-dir <absolute-path>` | Install or uninstall | Select the directory for the public commands. |
+| `--runtime-store <absolute-path>` | Install or uninstall | Select the downloaded semantic-runtime store. |
+| `--runtime-directory <absolute-path>` | Install or uninstall | Select the runtime socket and process-state directory. |
+| `--cache-root <absolute-path>` | Install or uninstall | Select the private IntelliJ cache root. |
+| `--enable-launchd <0-or-1>` | Install | Choose direct process ownership (`0`) or launchd (`1`). |
+| `--idea-home <absolute-app-or-contents-path>` | Install | Select an IntelliJ IDEA application bundle or its `Contents` directory. |
+| `--repository <owner/name>` | Install | Download releases from another GitHub repository. |
+| `--release-base-url <https-or-file-url>` | Install | Download an explicit version from a custom release root. |
+| `--assets-directory <absolute-path>` | Install | Install an explicit version from four already-downloaded archive and checksum files. |
+| `--installation-only` | Uninstall | Remove only the selected installation and its owned runtime state. |
+
+`install` is optional. Use `uninstall` as the first argument to remove Kast. The
+custom release and local-assets paths require an explicit `--version`.
+
 If discovery finds zero or multiple eligible IDEA installations, pass
-`--idea-home "/path/to/IntelliJ IDEA.app"` or set `KAST_INSTALL_IDEA_HOME`.
+`--idea-home "/path/to/IntelliJ IDEA.app"`.
 
 Read the [full host contract](https://kast.michne.com/start/) or review the
 [installer source](install.sh) before running it.
