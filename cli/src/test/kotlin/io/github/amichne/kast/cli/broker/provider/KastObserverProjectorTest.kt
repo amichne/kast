@@ -34,14 +34,14 @@ class KastObserverProjectorTest {
     }
 
     @Test
-    fun `planned change renders an expandable preview without opaque identity`() {
+    fun `planned change preserves its exact apply identity in the expandable preview`() {
         val presentation = project("change.plan", KastObserverFixtures.changePlan)
             as ObserverPresentation.Markdown
 
         assertTrue("Kast · change plan" in presentation.source.value)
         assertTrue("EventConsumer.kt" in presentation.source.value)
         assertTrue("```diff" in presentation.source.value)
-        assertTrue("plan:opaque" !in presentation.source.value)
+        assertTrue("Plan identity: `plan:opaque`" in presentation.source.value)
     }
 
     @Test
