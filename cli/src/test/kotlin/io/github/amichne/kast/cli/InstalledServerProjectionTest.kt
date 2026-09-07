@@ -7,6 +7,7 @@ import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.registry.HostedApprovalPolicy
 import io.github.amichne.kast.protocol.registry.HostedOperationProjection
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import kotlinx.serialization.json.Json
@@ -22,6 +23,31 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class InstalledServerProjectionTest {
+    @Test
+    fun `installed schema separates hosted bootstrap from cli invocation bindings`() {
+        val projection = installedProjection()
+        val bootstrap = projection.getValue("hostedBootstrap").jsonObject
+        val tools = bootstrap.getValue("tools").jsonArray.map(JsonElement::jsonObject)
+        val cliBindings = projection.getValue("cliInvocationBindings")
+            .jsonObject
+            .getValue("bindings")
+            .jsonArray
+            .map(JsonElement::jsonObject)
+
+        assertEquals(5, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertTrue(
+            bootstrap.getValue("policy").jsonPrimitive.content
+                .contains("compiler-grounded Kotlin source intelligence"),
+        )
+        assertEquals(
+            tools.map { it.getValue("operationId").jsonPrimitive.content },
+            cliBindings.map { it.getValue("operationId").jsonPrimitive.content },
+        )
+        assertTrue(tools.none { "cliUsage" in it || "invocation" in it })
+        assertTrue(cliBindings.all { "cliUsage" in it && "invocation" in it })
+        assertTrue(cliBindings.none { "description" in it || "inputSchema" in it })
+    }
+
     @Test
     fun `server projection publishes readiness and canonical semantic budgets`() {
         val tools = projectionTools()
@@ -39,6 +65,7 @@ class InstalledServerProjectionTest {
     @Test
     fun `installed broker exposes workflow facade names and explicit change approval`() {
         val tools = projectionTools()
+        val bindings = projectionBindings()
 
         assertEquals(
             listOf(
@@ -54,19 +81,19 @@ class InstalledServerProjectionTest {
             ),
             tools.map { it.getValue("name").jsonPrimitive.content },
         )
-        assertEquals(listOf("symbol", "inspect"), tools.tool("symbol.inspect").cliCommand())
+        assertEquals(listOf("symbol", "inspect"), bindings.binding("symbol.inspect").cliCommand())
         assertTrue(
             tools.filter { it.getValue("name").jsonPrimitive.content.startsWith("change_") }
                 .all {
                     it.getValue("approvalPolicy").jsonPrimitive.content ==
-                        InstalledServerApprovalPolicy.EXPLICIT.serialValue
+                        HostedApprovalPolicy.EXPLICIT.name.lowercase()
                 },
         )
         assertTrue(
             tools.filterNot { it.getValue("name").jsonPrimitive.content.startsWith("change_") }
                 .all {
                     it.getValue("approvalPolicy").jsonPrimitive.content ==
-                        InstalledServerApprovalPolicy.NONE.serialValue
+                        HostedApprovalPolicy.NONE.name.lowercase()
                 },
         )
     }
@@ -74,6 +101,7 @@ class InstalledServerProjectionTest {
     @Test
     fun `installed broker publishes executable read operations`() {
         val tools = projectionTools()
+        val bindings = projectionBindings()
 
         assertEquals(
             listOf(
@@ -91,11 +119,11 @@ class InstalledServerProjectionTest {
         )
         assertEquals(
             listOf("selector", "relation", "limit", "continuation"),
-            tools.tool("relation.read").cliOptionFields(),
+            bindings.binding("relation.read").cliOptionFields(),
         )
         assertEquals(
             listOf("scope", "limit"),
-            tools.tool("diagnostic.check").cliOptionFields(),
+            bindings.binding("diagnostic.check").cliOptionFields(),
         )
         tools.tool("relation.read").outputSchema().assertAdmits(
             """{"status":"completed","document":{"operation":"relation.read","status":"complete","relations":[]}}""",
@@ -116,14 +144,17 @@ class InstalledServerProjectionTest {
             .jsonObject
             .getValue("serverProjection")
             .jsonObject
-        val tools = projection.getValue("tools").jsonArray.map { it.jsonObject }
+        val bootstrap = projection.getValue("hostedBootstrap").jsonObject
+        val tools = bootstrap.getValue("tools").jsonArray.map { it.jsonObject }
+        val bindings = projection.getValue("cliInvocationBindings")
+            .jsonObject.getValue("bindings").jsonArray.map { it.jsonObject }
         val expectedPublicOperations = HostedOperationProjection.publicDefinitions
             .map { it.operation.id.value }
         val internalOperations = HostedOperationProjection.internalDefinitions
             .map { it.operation.id.value }
 
         assertEquals(9, tools.size)
-        assertEquals(4, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(5, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
             expectedPublicOperations,
@@ -169,7 +200,7 @@ class InstalledServerProjectionTest {
         )
         assertEquals(
             listOf("mode", "query", "kind", "match", "file", "offset", "scope", "limit"),
-            discover.cliOptionFields(),
+            bindings.binding("symbol.discover").cliOptionFields(),
         )
         assertEquals(
             linkedMapOf(
@@ -183,8 +214,8 @@ class InstalledServerProjectionTest {
                 "change.apply" to listOf("change", "apply"),
                 "change.recover" to listOf("change", "recover"),
             ),
-            tools.associate { tool ->
-                tool.getValue("operationId").jsonPrimitive.content to tool.cliCommand()
+            bindings.associate { binding ->
+                binding.getValue("operationId").jsonPrimitive.content to binding.cliCommand()
             },
         )
         assertEquals(
@@ -222,8 +253,8 @@ class InstalledServerProjectionTest {
                 "change.apply" to listOf("plan"),
                 "change.recover" to listOf("plan"),
             ),
-            tools.associate { tool ->
-                tool.getValue("operationId").jsonPrimitive.content to tool.cliOptionFields()
+            bindings.associate { binding ->
+                binding.getValue("operationId").jsonPrimitive.content to binding.cliOptionFields()
             },
         )
         assertEquals(tools.size, tools.map { it.getValue("outputSchema") }.distinct().size)
@@ -264,6 +295,15 @@ class InstalledServerProjectionTest {
                     .assertAdmits(diagnostic)
             },
         )
+    }
+
+    @Test
+    fun `hosted output schema admits typed cold runtime rejection evidence`() {
+        val runtimeRejection =
+            """{"status":"rejected","diagnostic":{"status":"rejected","boundary":"runtime","reason":"gradle-import-failed","bootstrap":{"state":"rejected","attemptId":"728b343f-b2ca-4c67-b5cb-8abd9fc6886e","phase":"importing-gradle-model","completedPhases":2,"totalPhases":7,"cause":"gradle-import-failed","correctiveAction":"Run the repository Gradle wrapper successfully with the admitted import inputs, then run kast start again.","gradleJvm":{"type":"io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionObservation.Observed","report":{"distribution":{"type":"io.github.amichne.kast.distribution.contract.gradle.GradleDistributionEvidence.Observed","version":"9.4.1"},"requiredJava":[17,21,25],"candidates":[{"java":25,"homeIdentity":"d3bb48e3f4a12b8eafcd37372767714786c6efe55d2683b57822d8d5a69b8923","authority":"AMBIENT_JAVA_HOME","decision":"SELECTED"}],"outcome":{"type":"io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionOutcome.Selected","candidate":{"java":25,"homeIdentity":"d3bb48e3f4a12b8eafcd37372767714786c6efe55d2683b57822d8d5a69b8923","authority":"AMBIENT_JAVA_HOME","decision":"SELECTED"}}}}}}}"""
+
+        installedServerOutputSchema(CanonicalOperation.SYMBOL_DISCOVER)
+            .assertAdmits(runtimeRejection)
     }
 
     @Test
@@ -327,7 +367,7 @@ class InstalledServerProjectionTest {
     @Test
     fun `source read projection binds repeatable filters flags and proof rich outcomes`() {
         val tool = projectionTools().tool("source.read")
-        val bindingTypes = tool.getValue("invocation")
+        val bindingTypes = projectionBindings().binding("source.read").getValue("invocation")
             .jsonObject
             .getValue("bindings")
             .jsonArray
@@ -361,6 +401,15 @@ class InstalledServerProjectionTest {
     }
 
     private fun projectionTools(): List<JsonObject> {
+        return installedProjection()
+            .getValue("hostedBootstrap")
+            .jsonObject
+            .getValue("tools")
+            .jsonArray
+            .map(JsonElement::jsonObject)
+    }
+
+    private fun installedProjection(): JsonObject {
         val schema = installedSchema(
             operationRegistry = "{}",
             wireSchema = "{}",
@@ -370,10 +419,14 @@ class InstalledServerProjectionTest {
             .jsonObject
             .getValue("serverProjection")
             .jsonObject
-            .getValue("tools")
-            .jsonArray
-            .map(JsonElement::jsonObject)
     }
+
+    private fun projectionBindings(): List<JsonObject> = installedProjection()
+        .getValue("cliInvocationBindings")
+        .jsonObject
+        .getValue("bindings")
+        .jsonArray
+        .map(JsonElement::jsonObject)
 
     private fun InstalledSchemaConstruction.constructedDocument(): CliJsonDocument = when (this) {
         is InstalledSchemaConstruction.Constructed -> document
@@ -442,6 +495,12 @@ class InstalledServerProjectionTest {
         completedDocumentSchema().getValue("properties").jsonObject[name]
 
     private fun List<JsonObject>.tool(
+        operationId: String,
+    ): JsonObject = single {
+        it.getValue("operationId").jsonPrimitive.content == operationId
+    }
+
+    private fun List<JsonObject>.binding(
         operationId: String,
     ): JsonObject = single {
         it.getValue("operationId").jsonPrimitive.content == operationId

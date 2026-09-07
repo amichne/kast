@@ -3,7 +3,7 @@ package io.github.amichne.kast.protocol.registry
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class CanonicalAgentToolDefinitionsTest {
@@ -32,38 +32,44 @@ class CanonicalAgentToolDefinitionsTest {
     }
 
     @Test
-    fun `agent tools preserve the canonical Kast operation workflows and inputs`() {
-        val symbol = CanonicalAgentToolDefinitions.symbolInspect
-        val relation = CanonicalAgentToolDefinitions.relationRead
-
+    fun `agent tools preserve canonical hosted semantics and lifecycle free policy`() {
         assertEquals(
             listOf(
                 CanonicalOperation.SYMBOL_DISCOVER,
                 CanonicalOperation.SYMBOL_INSPECT,
+                CanonicalOperation.SOURCE_READ,
+                CanonicalOperation.RELATION_READ,
+                CanonicalOperation.TRAVERSAL_RUN,
+                CanonicalOperation.DIAGNOSTIC_CHECK,
+                CanonicalOperation.CHANGE_PLAN,
+                CanonicalOperation.CHANGE_APPLY,
+                CanonicalOperation.CHANGE_RECOVER,
             ),
-            symbol.execution.operations.map { it.operation },
+            CanonicalAgentToolDefinitions.all.map { it.operation.operation },
         )
         assertEquals(
-            listOf(CanonicalOperation.RELATION_READ),
-            relation.execution.operations.map { it.operation },
-        )
-        assertEquals(CanonicalOperation.SYMBOL_INSPECT, symbol.execution.output.operation)
-        assertEquals(CanonicalOperation.RELATION_READ, relation.execution.output.operation)
-        assertEquals(
-            listOf("symbol_inspect", "relation_read"),
+            listOf(
+                "symbol_lookup",
+                "symbol_inspect",
+                "source_read",
+                "semantic_query",
+                "impact_analyze",
+                "diagnostic_check",
+                "change_plan",
+                "change_apply",
+                "change_recover",
+            ),
             CanonicalAgentToolDefinitions.all.map { it.name.value },
         )
-
-        val symbolInput = assertInstanceOf(
-            AgentToolInput.ExactSymbolName::class.java,
-            symbol.input,
-        )
-        val relationInput = assertInstanceOf(
-            AgentToolInput.ExactRelation::class.java,
-            relation.input,
-        )
-        assertEquals("query", symbolInput.query.name.value)
-        assertEquals("exactSelector", relationInput.exactSelector.name.value)
-        assertEquals("relation", relationInput.relation.name.value)
+        assertEquals(HostedApprovalPolicy.NONE, CanonicalAgentToolDefinitions.symbolLookup.approval)
+        assertEquals(HostedApprovalPolicy.EXPLICIT, CanonicalAgentToolDefinitions.changeApply.approval)
+        assertTrue("exact selector" in CanonicalAgentToolDefinitions.semanticQuery.description.value)
+        assertTrue("automatically" in CanonicalAgentToolDefinitions.impactAnalyze.description.value)
+        val policy = CanonicalAgentToolDefinitions.policy.text
+        assertTrue("compiler-grounded Kotlin source intelligence" in policy)
+        assertTrue("Preserve returned selectors" in policy)
+        listOf("kast start", "index sync --", "topology build --", "broker serve").forEach { command ->
+            assertTrue(command !in policy)
+        }
     }
 }
