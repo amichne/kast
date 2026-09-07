@@ -59,7 +59,7 @@ class CanonicalLocationCandidateProjectionTest {
         val inspect = CanonicalSymbolInspectHandler(fixture.exact, authority)
         val relation = CanonicalRelationReadHandler(fixture.relation, authority)
         val traversal = CanonicalTraversalRunHandler(fixture.traversal, authority)
-        val diagnostic = CanonicalDiagnosticCheckHandler(fixture.workspace, fixture.diagnostic, authority)
+        val diagnostic = CanonicalDiagnosticCheckHandler(fixture.workspace, fixture.diagnostic, authority, singleFileDiagnosticScopes)
 
         val candidate = (
             runSuspend { discover.execute(discoverRequest()) } as OperationOutcome.Complete
@@ -150,7 +150,7 @@ class CanonicalLocationCandidateProjectionTest {
                 )
             },
         )
-        val handler = CanonicalDiagnosticCheckHandler(fixture.workspace, zeroWidth, authority)
+        val handler = CanonicalDiagnosticCheckHandler(fixture.workspace, zeroWidth, authority, singleFileDiagnosticScopes)
 
         val outcome = runSuspend {
             handler.execute(

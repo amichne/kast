@@ -57,8 +57,14 @@ object DerivedTrustStoreMaterializer {
             }
             val store = if (donor.provider == null) java.security.KeyStore.getInstance(donor.type)
                 else java.security.KeyStore.getInstance(donor.type, donor.provider)
-            java.nio.file.Files.newInputStream(donor.path).use { input ->
-                donor.password.useAtJsseBoundary { store.load(input, it) }
+            try {
+                java.nio.file.Files.newInputStream(donor.path).use { input ->
+                    donor.password.useAtJsseBoundary { store.load(input, it) }
+                }
+            } catch (_: java.io.IOException) {
+                return rejected(DerivedTrustStoreFailure.DONOR_UNREADABLE)
+            } catch (_: SecurityException) {
+                return rejected(DerivedTrustStoreFailure.DONOR_UNREADABLE)
             }
             for (alias in store.aliases().asSequence()) {
                 if (store.isCertificateEntry(alias)) {

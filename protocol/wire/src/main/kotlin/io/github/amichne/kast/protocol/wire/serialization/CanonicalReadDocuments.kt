@@ -283,6 +283,12 @@ internal enum class DiagnosticLimitationReasonWireDocument {
 internal enum class DiagnosticCheckRejectionWireDocument {
     @SerialName("workspace_not_ready") WORKSPACE_NOT_READY,
     @SerialName("scope_rejected") SCOPE_REJECTED,
+    @SerialName("scope_empty")
+    SCOPE_EMPTY,
+    @SerialName("scope_limit_exceeded")
+    SCOPE_LIMIT_EXCEEDED,
+    @SerialName("scope_unavailable")
+    SCOPE_UNAVAILABLE,
 }
 
 internal fun SymbolDiscoverQualification.toReadDocument():

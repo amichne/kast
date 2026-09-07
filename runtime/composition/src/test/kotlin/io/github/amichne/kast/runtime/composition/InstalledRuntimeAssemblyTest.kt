@@ -185,6 +185,7 @@ class InstalledRuntimeAssemblyTest {
         sourceRead = SourceReadPort { _, _ -> error("not executed") },
         relation = RelationCompilerPort { error("not executed") },
         diagnostic = DiagnosticCompilerPort { error("not executed") },
+            diagnosticScopes = io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolver { error("not executed") },
     )
 
     private fun unusedChangePhysicalPorts(): InstalledChangePhysicalPorts =

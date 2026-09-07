@@ -73,7 +73,7 @@ class ProductInspectionCommandTest {
                         ),
                     )
 
-                override fun quarantine(root: Path): RootSidecarCacheQuarantine =
+                override fun quarantine(stopped: StoppedSidecarCaches): RootSidecarCacheQuarantine =
                     error("product inspection must not quarantine")
             },
             RuntimeEndpointLocator { RuntimeEndpointResolution.Resolved(endpoint) },

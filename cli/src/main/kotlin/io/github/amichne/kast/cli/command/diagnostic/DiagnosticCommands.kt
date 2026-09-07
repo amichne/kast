@@ -37,7 +37,8 @@ private class DiagnosticCheckCommand(
 ) {
     private val scope by protocolTextOption(
         "--scope",
-        "Workspace-relative diagnostic scope.",
+        "Workspace-relative Kotlin file or directory; use . for the workspace. " +
+            "At most 256 source files; oversized scopes are rejected before analysis.",
     ).requiredOnce()
     private val limit by protocolCountOption(
         "--limit",

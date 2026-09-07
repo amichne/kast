@@ -232,6 +232,20 @@ private fun InstalledIntellijWorkspaceFailure.bootstrapFailure():
         SemanticRuntimeBootstrapFailure.PLATFORM_LINKAGE_INVALID
     InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED ->
         SemanticRuntimeBootstrapFailure.GRADLE_IMPORT_FAILED
+    InstalledIntellijWorkspaceFailure.NETWORK_CONFIGURATION_REJECTED ->
+        SemanticRuntimeBootstrapFailure.NETWORK_CONFIGURATION_REJECTED
+    InstalledIntellijWorkspaceFailure.NETWORK_BOUNDARY_UNAVAILABLE ->
+        SemanticRuntimeBootstrapFailure.NETWORK_BOUNDARY_UNAVAILABLE
+    InstalledIntellijWorkspaceFailure.NETWORK_TRUST_TARGET_REJECTED ->
+        SemanticRuntimeBootstrapFailure.NETWORK_TRUST_TARGET_REJECTED
+    InstalledIntellijWorkspaceFailure.NETWORK_TRUST_DONOR_UNAVAILABLE ->
+        SemanticRuntimeBootstrapFailure.NETWORK_TRUST_DONOR_UNAVAILABLE
+    InstalledIntellijWorkspaceFailure.NETWORK_TRUST_DONOR_UNREADABLE ->
+        SemanticRuntimeBootstrapFailure.NETWORK_TRUST_DONOR_UNREADABLE
+    InstalledIntellijWorkspaceFailure.NETWORK_TRUST_EMPTY_CERTIFICATES ->
+        SemanticRuntimeBootstrapFailure.NETWORK_TRUST_EMPTY_CERTIFICATES
+    InstalledIntellijWorkspaceFailure.NETWORK_TRUST_PUBLICATION_REJECTED ->
+        SemanticRuntimeBootstrapFailure.NETWORK_TRUST_PUBLICATION_REJECTED
     InstalledIntellijWorkspaceFailure.GRADLE_TOOLING_PAYLOAD_INCOMPATIBLE ->
         SemanticRuntimeBootstrapFailure.GRADLE_TOOLING_PAYLOAD_INCOMPATIBLE
     InstalledIntellijWorkspaceFailure.GRADLE_INIT_SCRIPT_UNAVAILABLE ->

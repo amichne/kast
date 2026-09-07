@@ -28,7 +28,7 @@ class SidecarCacheLifecycleTest {
         )
 
         assertEquals(RootSidecarCacheObservation.Absent, lifecycle.observe(project))
-        assertEquals(RootSidecarCacheQuarantine.NoCache(), lifecycle.quarantine(project))
+        assertEquals(RootSidecarCacheQuarantine.Quarantined(emptyList()), quarantine(lifecycle, project))
         assertTrue(Files.notExists(cacheRoot))
     }
 
@@ -148,15 +148,10 @@ class SidecarCacheLifecycleTest {
 
         val quarantine = assertInstanceOf(
             RootSidecarCacheQuarantine.Quarantined::class.java,
-            lifecycle.quarantine(project),
+            quarantine(lifecycle, project),
         )
         assertTrue(Files.notExists(prepared.root))
-        assertTrue(Files.isDirectory(quarantine.quarantinedRoot))
-        val restart = assertInstanceOf(
-            RuntimeStartupRequest.Requested::class.java,
-            quarantine.restart,
-        )
-        assertEquals(StartupIdeHome.Explicit(ideaHome), restart.ideHome)
+        assertTrue(Files.isDirectory(quarantine.roots.single()))
         assertEquals("source", Files.readString(sourceMarker))
     }
 
@@ -270,7 +265,7 @@ class SidecarCacheLifecycleTest {
         )
         assertEquals(
             RootSidecarCacheQuarantine.Rejected(SidecarCacheLifecycleFailure.INVALID_IDENTITY),
-            lifecycle.quarantine(project),
+            quarantine(lifecycle, project),
         )
     }
 
@@ -335,17 +330,13 @@ class SidecarCacheLifecycleTest {
         assertEquals(KastCacheState.SEEDED, observation.status.state)
         val quarantine = assertInstanceOf(
             RootSidecarCacheQuarantine.Quarantined::class.java,
-            lifecycle.quarantine(project),
+            quarantine(lifecycle, project),
         )
-        assertTrue(Files.isDirectory(staleRoot))
+        assertTrue(Files.notExists(staleRoot))
         assertTrue(Files.notExists(currentRoot))
-        assertTrue(Files.isDirectory(quarantine.quarantinedRoot))
-        val stale = assertInstanceOf(
-            RootSidecarCacheObservation.Stale::class.java,
-            lifecycle.observe(project),
-        )
-        assertEquals(staleCacheIdentity.key, stale.status.cacheIdentity)
-        assertEquals(staleSemanticRuntimeId, stale.status.semanticRuntimeId)
+        assertEquals(2, quarantine.roots.size)
+        assertTrue(quarantine.roots.all { Files.isDirectory(it) })
+        assertEquals(RootSidecarCacheObservation.Absent, lifecycle.observe(project))
     }
 
     @Test
@@ -398,6 +389,24 @@ class SidecarCacheLifecycleTest {
 
         assertEquals(currentCache.key, observation.status.cacheIdentity)
         assertEquals(KastCacheState.FRESH, observation.status.state)
+    }
+
+    private fun quarantine(
+        lifecycle: RootSidecarCacheLifecycle,
+        project: Path,
+    ): RootSidecarCacheQuarantine {
+        val inventory = when (val result = lifecycle.inventory(project)) {
+            is Refinement.Refined -> result.value
+            is Refinement.Rejected -> return RootSidecarCacheQuarantine.Rejected(result.failure)
+        }
+        val endpoint = (RuntimeEndpoint.at(
+            CanonicalRoot(project), semanticRuntimeId(), temporary.resolve("base.sock"),
+        ) as RuntimeEndpointResolution.Resolved).endpoint
+        val stopped = (StoppedSidecarCaches.stopAll(inventory, endpoint, object : RuntimeLifecycleController {
+            override fun status(endpoint: RuntimeEndpoint) = RuntimeStatusResult.Observed(RuntimeLifecycleState.STOPPED)
+            override fun stop(endpoint: RuntimeEndpoint) = RuntimeStopResult.Stopped()
+        }) as Refinement.Refined).value
+        return lifecycle.quarantine(stopped)
     }
 
     private fun cacheIdentity(

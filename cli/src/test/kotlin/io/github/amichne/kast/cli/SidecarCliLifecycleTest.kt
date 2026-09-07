@@ -79,7 +79,7 @@ class SidecarCliLifecycleTest {
                         SidecarCacheLifecycleFailure.INVALID_IDENTITY,
                     )
 
-                override fun quarantine(root: Path): RootSidecarCacheQuarantine =
+                override fun quarantine(stopped: StoppedSidecarCaches): RootSidecarCacheQuarantine =
                     error("status must not quarantine a cache")
             },
         )
@@ -136,7 +136,7 @@ class SidecarCliLifecycleTest {
                         ),
                     )
 
-                override fun quarantine(root: Path): RootSidecarCacheQuarantine =
+                override fun quarantine(stopped: StoppedSidecarCaches): RootSidecarCacheQuarantine =
                     error("status must not quarantine a cache")
             },
         )
@@ -185,7 +185,7 @@ class SidecarCliLifecycleTest {
             lifecycle = observedLifecycle(RuntimeLifecycleState.STALE),
             cacheLifecycle = object : RootSidecarCacheLifecycle {
                 override fun observe(root: Path) = RootSidecarCacheObservation.Observed(recorded)
-                override fun quarantine(root: Path): RootSidecarCacheQuarantine = error("status must not repair")
+                override fun quarantine(stopped: StoppedSidecarCaches): RootSidecarCacheQuarantine = error("status must not repair")
             },
         )
         val exit = cli.execute(emptyList(), fixture.root.path)

@@ -358,6 +358,7 @@ object JdkUnixDomainEndpointProbe : RuntimeEndpointProbe {
 sealed interface RuntimeAdmission {
     data class Ready(
         val endpoint: RuntimeEndpoint,
+        val removed: Set<RuntimeEndpointArtifact> = emptySet(),
     ) : RuntimeAdmission
 
     data class Rejected(
@@ -395,9 +396,14 @@ sealed interface RuntimeAdmissionFailure {
     data object Interrupted : RuntimeAdmissionFailure
     data class InstalledIdeRejected(val failure: IndexSeedFailure) : RuntimeAdmissionFailure
     data class SidecarCacheRejected(val failure: SidecarCacheFailure) : RuntimeAdmissionFailure
+    data class StopRejected(val failure: RuntimeStopFailure) : RuntimeAdmissionFailure
+    data class CacheQuarantineRejected(val rejection: RootSidecarCacheQuarantine.Rejected) : RuntimeAdmissionFailure
 }
 
 internal fun RuntimeAdmissionFailure.outputReason(): String = when (this) {
+    is RuntimeAdmissionFailure.StopRejected -> "start-${failure.name.lowercase().replace('_', '-')}"
+    is RuntimeAdmissionFailure.CacheQuarantineRejected ->
+        "start-cache-${rejection.failure.name.lowercase().replace('_', '-')}"
     is RuntimeAdmissionFailure.GradleImportEnvironmentRejected -> "gradle-import-environment-${failure.name.lowercase().replace('_', '-')}"
     RuntimeAdmissionFailure.ManifestInvalid -> "manifest-invalid"
     RuntimeAdmissionFailure.SourceInvalid -> "source-invalid"
