@@ -1,104 +1,63 @@
 ---
 type: "Reference"
 title: "Compatibility and upgrades"
-description: "The supported host, public protocol, selector lifetime, and installer replacement contract."
+description: "Supported hosts, installed agent contracts, and upgrade behavior."
 resource: "file://docs/public/reference/compatibility.mdx"
-tags: ["compatibility", "releases", "migration", "installation"]
-timestamp: "2026-09-05T00:00:00-04:00"
+tags: ["compatibility", "releases", "upgrades", "hosts"]
+timestamp: "2026-09-07T00:00:00-04:00"
 code_sources:
-  - path: "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt"
-    lines: "1-180"
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/IndexSeedProtocol.kt"
-    lines: "1-220"
+  - path: "gradle/libs.versions.toml"
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt"
+    symbols: ["InstalledServerProjectionDocument"]
   - path: "install.sh"
-    lines: "1180-1230"
-    symbols: ["replace_managed_link", "restore_activation"]
 icon: "shield-check"
-keywords: ["1.x", "stable", "preview", "upgrade", "rollback"]
+keywords: ["compatibility", "upgrade", "preview", "rollback"]
 ---
 
-This page describes compatibility that Kast itself owns. Release automation does
-not attempt to infer compatibility by replaying previous binaries or comparing a
-separate compatibility snapshot.
+Kast supports Apple Silicon macOS, on-disk Kotlin Gradle repositories, and the
+IntelliJ platform line named in [Install and connect](/start). Linux, Intel
+macOS, other languages, and other IntelliJ platform lines are not currently
+promised.
 
-## Stable in 1.x
+## Agent integration contract
 
-Within one major version, supported callers should be able to rely on:
+The exact installed `serverProjection` is the harness compatibility boundary.
+It versions the hosted bootstrap and invocation bindings and supplies the tool
+names, schemas, loading hints, effects, approval policies, and budgets.
 
-- canonical operation IDs and the meaning of complete, qualified, and rejected outcomes;
-- documented CLI commands, option spellings, exit behavior, and output channels;
-- typed selector, continuation, plan, and generation semantics;
-- supported configuration keys and explicit Gradle import inputs; and
-- installer replacement, rollback, and uninstall behavior described below.
+Harnesses should qualify that projection at startup. They must not infer
+compatibility from a version string or reuse a catalog from another installation.
 
-A source or semantic-generation change may invalidate selectors, continuations,
-and plans. Compatibility does not authorize reinterpretation of stale identity;
-the correct behavior is a typed stale or rejected outcome followed by fresh
-resolution.
+The Codex App Server integration remains a preview while its upstream protocol
+is experimental. Failure of that integration does not weaken or change the
+installed Kast semantic contract.
 
-Semantic operations emit one final JSON document on stdout, including semantic
-rejection. Boundary rejection uses stderr and a nonzero exit code. Terminal
-startup progress remains stderr output so redirected stdout retains the machine
-document.
+## Evidence lifetime
 
-## Versioned JSON shapes
+Tool names and schemas can remain compatible while repository evidence moves.
+A source or imported-model change may invalidate a returned reference. The safe
+response is a new `kast.query` search, not reinterpretation of the stale value.
 
-Requests, outcomes, selectors, continuations, generations, plans, receipts, and
-private state codecs have explicit version or identity boundaries. Changes to a
-closed public shape require deliberate versioning; callers are not expected to
-guess whether an unknown field or token is safe.
+Complete, qualified, and rejected retain their documented meanings. A new
+version must not turn unknown or stale evidence into an unqualified success.
 
-The source of truth is the typed protocol and generated CLI schema for the exact
-installed version. There is no independent release-comparison artifact that can
-override those authorities.
+## Upgrades
 
-## Preview and supported hosts
+The installer downloads and verifies a matched control and semantic-runtime
+release before replacing the active Kast installation. Ordinary upgrades and
+uninstall preserve repository source and unrelated JetBrains state.
 
-Codex App Server integration is a decoupled preview while its upstream protocol
-remains experimental. Its availability is not required for semantic CLI use.
-At thread creation it receives only the hosted tools proven executable by the
-exact installed projection. Installed schemas, approval policies, and route
-integrity still fail closed.
-
-Linux, Intel macOS, additional languages, and unsupported IntelliJ platform lines
-are not promised. The supported host remains Apple Silicon macOS with the
-documented IntelliJ release line and admitted JBR.
-
-Hosted mutation supports only `add-declaration`. Other command grammar names do
-not establish hosted implementation support.
-
-## Upgrade and recovery
-
-The installer validates the matched control and semantic-runtime assets before
-replacing managed links. Activation replaces installer-owned links and verifies
-the public command. A catchable failure or signal restores the previous
-activation and literal configuration.
-
-Ordinary upgrades preserve repository source and non-owned host state. Kast-owned
-runtime stores and caches may be replaced or rebuilt when their identity is no
-longer admissible. `kast start --cache rebuild` explicitly rebuilds disposable
-cache state.
-
-`uninstall --installation-only` removes the selected installation and its owned
-runtime/configuration state. Ordinary `uninstall` also cleans historical
-Kast-owned locations. Neither mode is authority to delete unrelated JetBrains or
-repository state.
-
-Installer correctness is owned by the installer implementation and focused
-boundary checks. Semantic correctness, selector lifetime, and persisted-state
-behavior remain with their owning Kotlin tests rather than an end-to-end release
-rehearsal.
-
-## Pin installer content and product together
-
-Resolve a published release tag, then execute the installer from that same tag:
+For reproducible environments, run the installer from the same explicit release
+tag passed to `--version`:
 
 ```shell
-release_url="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/amichne/kast/releases/latest)"
-release_tag="${release_url##*/}"
-curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh" | bash -s -- --version "$release_tag"
+release_tag="v0.35.0"
+curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh" | \
+  bash -s -- --version "$release_tag"
 ```
 
-For a pinned installation, use the same explicit release tag for both installer
-source and `--version`. A candidate document does not establish that a future
-release exists.
+Replace the example tag with the release your environment has approved. Do not
+assume that a future release exists.
+
+If an upgrade cannot start the integration or admit the repository, follow
+[Troubleshooting](/troubleshooting) and retain the reported boundary evidence.

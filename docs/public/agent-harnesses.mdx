@@ -1,0 +1,116 @@
+---
+type: "Integration Guide"
+title: "Integrate an agent harness"
+description: "Expose the exact installed Kast tool contract without duplicating its CLI or schemas."
+resource: "file://docs/public/agent-harnesses.mdx"
+tags: ["agents", "harness", "server projection", "search"]
+timestamp: "2026-09-07T00:00:00-04:00"
+code_sources:
+  - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt"
+    symbols: ["CanonicalAgentToolDefinitions"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt"
+    symbols: ["InstalledServerProjectionDocument", "installedServerProjection"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/core/AgentSessionBootstrap.kt"
+    symbols: ["AgentSessionBootstrap", "HostedToolCatalog"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/provider/KastProvider.kt"
+    symbols: ["KastProviderQualifier", "KastRuntime"]
+icon: "bot"
+keywords: ["agent harness", "serverProjection", "query", "tool schemas"]
+---
+
+Kast ships a turnkey Codex integration. Other agent hosts can integrate Kast by
+consuming the exact installed server projection. That projection is the contract;
+copied command tables or handwritten tool definitions are not.
+
+## Prefer the included Codex integration
+
+From the Kotlin repository root, run:
+
+```console
+kast-codex
+```
+
+The integration qualifies the installed Kast and Codex contracts, registers the
+tools, injects the selection policy, and owns both process lifetimes. This is the
+only turnkey agent integration currently shipped with Kast.
+
+## Consume the installed projection
+
+A custom harness has one integration path:
+
+<Steps>
+  <Step title="Read the exact installed contract">
+    Invoke `kast --schema` and read its `serverProjection`. Treat an absent,
+    malformed, unsupported, or contradictory projection as startup failure.
+  </Step>
+  <Step title="Qualify the hosted bootstrap">
+    Preserve the namespace, policy, tool order, names, descriptions, input and
+    output schemas, effects, approval policies, loading hints, and execution
+    budgets. Do not infer any of them from a version string.
+  </Step>
+  <Step title="Join tools to invocation bindings">
+    Match `hostedBootstrap.tools` to `cliInvocations.operations` by canonical
+    operation ID. Require a unique, complete match before advertising a tool.
+  </Step>
+  <Step title="Invoke from the repository root">
+    Execute the declared argument vector without a shell. Send one tool-input
+    JSON object on standard input and validate the result against the declared
+    output schema.
+  </Step>
+</Steps>
+
+The harness should requalify the installed projection when the provider starts.
+If the executable or projection has changed, construct a new catalog instead of
+reusing stale metadata.
+
+## Make search the default
+
+`kast.query` is the only eagerly loaded Kast tool. It searches, filters, and
+expands Kotlin declaration relationships while preserving exact compiler
+identity between query stages.
+
+The remaining read tools are deferred specialist surfaces. Expose them as the
+projection declares, but retain the supplied selection policy so the agent uses
+them only when a narrower contract is required.
+
+The harness must also preserve returned references verbatim. It must not rebuild
+selectors from names, file paths, or source text.
+
+## Let operations own readiness
+
+Do not expose lifecycle, index synchronization, topology preparation, status,
+or broker administration as agent tools. Semantic operations start or join the
+runtime, reconcile the workspace, and acquire derived evidence themselves.
+
+This keeps the agent contract task-oriented and prevents a harness from creating
+an invalid prerequisite sequence.
+
+## Preserve the failure layers
+
+There are two result layers:
+
+- An outer `completed` result means the declared invocation ran and produced a
+  schema-admitted semantic document.
+- An outer `rejected` result carries a `diagnostic` for a process, runtime,
+  protocol, or output-boundary failure.
+
+Inside a completed invocation, the semantic document can still be `complete`,
+`qualified`, or `rejected`. Keep its status, limitations, item failures, and
+proof-carrying references available to the model. Never flatten a qualified or
+rejected semantic outcome into ordinary success.
+
+## Keep mutation explicit
+
+The default catalog is read-only. The built-in Codex integration admits mutation
+tools only when its process starts with:
+
+```shell
+KAST_CODEX_TOOL_EXPOSURE=mutation-enabled kast-codex
+```
+
+Mutation tools retain explicit approval requirements from the projection. An
+unknown exposure value rejects integration startup. Custom harnesses should
+apply an equally explicit, least-privileged authority boundary.
+
+For operational symptoms and safe status collection, see
+[Troubleshooting](/troubleshooting).
