@@ -106,6 +106,20 @@ class InstalledServerProjectionTest {
     }
 
     @Test
+    fun `change schemas admit their emitted proof carrying previews`() {
+        val tools = projectionTools()
+        val preview =
+            """"changes":[{"path":"src/main/kotlin/demo/EventConsumer.kt","kind":"update","diff":"@@ class EventConsumer @@\n-old\n+new"}]"""
+
+        tools.tool("change.plan").outputSchema().assertAdmits(
+            """{"status":"completed","document":{"operation":"change.plan","status":"complete","planIdentity":"plan:opaque",$preview}}""",
+        )
+        tools.tool("change.apply").outputSchema().assertAdmits(
+            """{"status":"completed","document":{"operation":"change.apply","status":"complete","receiptIdentity":"receipt:opaque",$preview}}""",
+        )
+    }
+
+    @Test
     fun `installed schema owns broker tool shapes and exact cli bindings`() {
         val schema = installedSchema(
             operationRegistry = "{}",

@@ -553,6 +553,7 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
     CanonicalOperation.CHANGE_PLAN -> outcomeSchema(
         operation,
         ServerSchemaProperty("planIdentity", textSchema("Durable change plan identity.")),
+        ServerSchemaProperty("changes", changeFilePreviewsSchema()),
     )
     CanonicalOperation.CHANGE_APPLY -> outcomeSchema(
         operation,
@@ -560,12 +561,24 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
             "receiptIdentity",
             textSchema("Verified change receipt identity."),
         ),
+        ServerSchemaProperty("changes", changeFilePreviewsSchema()),
     )
     CanonicalOperation.CHANGE_RECOVER -> outcomeSchema(
         operation,
         ServerSchemaProperty("state", textSchema("Recovered workspace state.")),
     )
 }
+
+private fun changeFilePreviewsSchema(): JsonObject = nonEmptyArraySchema(
+    objectSchema(
+        ServerSchemaProperty("path", workspaceFileSchema()),
+        ServerSchemaProperty(
+            "kind",
+            enumSchema(listOf("add", "delete", "update"), "Closed file-change kind."),
+        ),
+        ServerSchemaProperty("diff", textSchema("Bounded semantic change preview.")),
+    ),
+)
 
 private fun outcomeSchema(
     operation: CanonicalOperation,
