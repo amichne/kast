@@ -58,12 +58,7 @@ internal class CanonicalQueryRunHandler(
             )
         }
         return when (val result = operations.run(execution)) {
-            is QueryExecutionResult.Complete -> project(
-                request.output,
-                lease,
-                result.result,
-                null,
-            )
+            is QueryExecutionResult.Complete -> project(request.output, lease, result.result, null)
             is QueryExecutionResult.Qualified -> project(
                 request.output,
                 lease,
@@ -239,8 +234,7 @@ private fun QueryRunRequest.admitSyntax(lease: SemanticReadLease): QuerySyntaxAd
                 references.position,
                 references.reason,
             )
-            QueryReferenceSourceAdmission.RequestRejected ->
-                return QuerySyntaxAdmission.RequestRejected
+            QueryReferenceSourceAdmission.RequestRejected -> return QuerySyntaxAdmission.RequestRejected
         }
     }
     val querySteps = steps.values.map { it.syntax() ?: return QuerySyntaxAdmission.RequestRejected }
@@ -273,10 +267,7 @@ private fun List<QueryReferenceDocument>.admitCandidateReferences(
     val selections = mutableListOf<io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection>()
     forEachIndexed { index, reference ->
         if (reference !is QueryReferenceDocument.DeclarationCandidate) {
-            return QueryReferenceSourceAdmission.Rejected(
-                index,
-                QueryReferenceRejectionReason.WRONG_KIND,
-            )
+            return QueryReferenceSourceAdmission.Rejected(index, QueryReferenceRejectionReason.WRONG_KIND)
         }
         val selector = when (val decoded = CanonicalSelectorCodec.decodeCandidate(reference.token)) {
             is CanonicalSelectorDecoding.Decoded -> decoded.value
@@ -301,9 +292,7 @@ private fun List<QueryReferenceDocument>.admitCandidateReferences(
     }
     val references = QueryCandidateReferences.from(selections).refinedOrNull()
         ?: return QueryReferenceSourceAdmission.RequestRejected
-    return QueryReferenceSourceAdmission.Admitted(
-        QuerySourceSyntax.CandidateReferences(references),
-    )
+    return QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.CandidateReferences(references))
 }
 
 private fun List<QueryReferenceDocument>.admitExactReferences(
@@ -312,10 +301,7 @@ private fun List<QueryReferenceDocument>.admitExactReferences(
     val selectors = mutableListOf<SymbolSelector>()
     forEachIndexed { index, reference ->
         if (reference !is QueryReferenceDocument.ExactSymbol) {
-            return QueryReferenceSourceAdmission.Rejected(
-                index,
-                QueryReferenceRejectionReason.WRONG_KIND,
-            )
+            return QueryReferenceSourceAdmission.Rejected(index, QueryReferenceRejectionReason.WRONG_KIND)
         }
         val selector = when (val decoded = CanonicalSelectorCodec.decodeExact(reference.token)) {
             is CanonicalSelectorDecoding.Decoded -> decoded.value
@@ -354,10 +340,10 @@ private fun ProtocolText.belongsToOtherReferenceFamily(expectedExact: Boolean): 
     }
 
 private fun QueryDiscoveryDocument.syntax(): QueryDiscoverySyntax? {
-    val kinds = declarationKinds.values.uniqueNonEmpty()
+    val kinds = declarationKinds.values.uniqueValues()
         ?.mapTo(linkedSetOf()) { it.compilerKind() } ?: return null
     val admittedKinds = QueryDeclarationKinds.from(kinds).refinedOrNull() ?: return null
-    val sets = scope.sourceSets.values.uniqueNonEmpty()
+    val sets = scope.sourceSets.values.uniqueValues()
         ?.mapTo(linkedSetOf()) { QuerySourceSet.valueOf(it.name) } ?: return null
     val admittedSets = QuerySourceSets.Exact.from(sets).refinedOrNull() ?: return null
     val directory = scope.directory?.let {
@@ -392,7 +378,7 @@ private fun QueryStepDocument.syntax(): QueryStepSyntax? = when (this) {
     QueryStepDocument.Distinct -> QueryStepSyntax.Distinct
     is QueryStepDocument.Where -> when (val value = predicate) {
         is QueryPredicateDocument.Visibility -> {
-            val visibilities = value.values.values.uniqueNonEmpty()
+            val visibilities = value.values.values.uniqueValues()
                 ?.mapTo(linkedSetOf()) { DeclarationVisibility.valueOf(it.name) } ?: return null
             QueryStepSyntax.Where(
                 QueryPredicate.Visibility(
@@ -405,12 +391,12 @@ private fun QueryStepDocument.syntax(): QueryStepSyntax? = when (this) {
 
 private fun QueryOutputDocument.syntax(): QueryOutputSyntax? = when (this) {
     is QueryOutputDocument.Candidates -> {
-        val selected = fields.values.uniqueNonEmpty()
+        val selected = fields.values.uniqueValues()
             ?.mapTo(linkedSetOf()) { QueryCandidateField.valueOf(it.name) } ?: return null
         QueryOutputSyntax.Candidates(QueryCandidateFields.from(selected).refinedOrNull() ?: return null)
     }
     is QueryOutputDocument.Symbols -> {
-        val selected = fields.values.uniqueNonEmpty()
+        val selected = fields.values.uniqueValues()
             ?.mapTo(linkedSetOf()) { QuerySymbolField.valueOf(it.name) } ?: return null
         QueryOutputSyntax.Symbols(QuerySymbolFields.from(selected).refinedOrNull() ?: return null)
     }
@@ -462,8 +448,9 @@ private fun QueryPlanAdmissionFailure.protocolRejection(): QueryRunRejection = w
 private fun position(raw: Int): ProtocolOffset = ProtocolOffset.parse(raw).refinedOrNull()
     ?: error("A bounded query position cannot be negative")
 
-private fun <Value> List<Value>.uniqueNonEmpty(): List<Value>? =
-    takeIf { it.isNotEmpty() && it.distinct().size == it.size }
+/** Structural uniqueness only. Semantic non-emptiness belongs to each strong collection type. */
+private fun <Value> List<Value>.uniqueValues(): List<Value>? =
+    takeIf { it.distinct().size == it.size }
 
 private fun <Value, Failure> Refinement<Value, Failure>.refinedOrNull(): Value? = when (this) {
     is Refinement.Refined -> value
