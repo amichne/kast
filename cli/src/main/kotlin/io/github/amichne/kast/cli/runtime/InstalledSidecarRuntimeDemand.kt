@@ -209,10 +209,18 @@ class InstalledSidecarRootRuntimeDemander(
     private val legacyEndpointProbe: RuntimeEndpointProbe = JdkUnixDomainEndpointProbe,
     private val legacyProcessAuthority: RuntimeProcessAuthority = JdkRuntimeProcessAuthority,
     private val cacheLifecycle: RootSidecarCacheLifecycle = NoRootSidecarCacheLifecycle,
+    private val lifecycle: RuntimeLifecycleController = ExactRootRuntimeLifecycle(),
 ) : RootRuntimeDemander {
     override fun demand(
         root: CanonicalRoot,
         demand: HostedRuntimeDemand,
+        startup: RuntimeStartupRequest,
+    ): RuntimeAdmission = cacheLifecycle.withStartupLock(root.path) {
+        demandExclusively(root, startup)
+    }
+
+    private fun demandExclusively(
+        root: CanonicalRoot,
         startup: RuntimeStartupRequest,
     ): RuntimeAdmission {
         val endpoint = when (val resolution = endpointLocator.locate(root)) {
@@ -230,18 +238,30 @@ class InstalledSidecarRootRuntimeDemander(
         if (payload.runtimeId != endpoint.runtimeId) {
             return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.RuntimeIdentityMismatch)
         }
-        val selection = when (val requested = startup.ideHome) {
-            StartupIdeHome.Standard -> when (val cached = cacheLifecycle.observe(root.path)) {
-                RootSidecarCacheObservation.Absent -> IdeHomeSelection.standard(userHome)
-                // A record retains installation selection only. The resolver below re-admits
-                // the physical installation against current support and payload; cache identity
-                // is then derived again, including the current import environment.
-                is RootSidecarCacheObservation.Identified -> IdeHomeSelection.Explicit(cached.status.ideaHome)
-                is RootSidecarCacheObservation.Rejected -> return RuntimeAdmission.Rejected(
-                    RuntimeAdmissionFailure.SidecarCacheRejected(SidecarCacheFailure.ObservationRejected(cached.failure)),
-                )
+        val requestedHome = when (val requested = startup.ideHome) {
+            StartupIdeHome.Standard -> {
+                val inventory = when (val observed = cacheLifecycle.inventory(root.path)) {
+                    is Refinement.Refined -> observed.value
+                    is Refinement.Rejected -> return RuntimeAdmission.Rejected(
+                        RuntimeAdmissionFailure.SidecarCacheRejected(
+                            SidecarCacheFailure.ObservationRejected(observed.failure),
+                        ),
+                    )
+                }
+                when (val retained = inventory.retainedIdeHome()) {
+                    is Refinement.Refined -> retained.value
+                    is Refinement.Rejected -> return RuntimeAdmission.Rejected(
+                        RuntimeAdmissionFailure.SidecarCacheRejected(
+                            SidecarCacheFailure.ObservationRejected(retained.failure),
+                        ),
+                    )
+                }
             }
-            is StartupIdeHome.Explicit -> IdeHomeSelection.Explicit(requested.path)
+            is StartupIdeHome.Explicit -> requested
+        }
+        val selection = when (requestedHome) {
+            StartupIdeHome.Standard -> IdeHomeSelection.standard(userHome)
+            is StartupIdeHome.Explicit -> IdeHomeSelection.Explicit(requestedHome.path)
         }
         val runtime = when (
             val resolution = ideRuntimeResolver.resolve(support, payload.digest, selection)
@@ -267,11 +287,38 @@ class InstalledSidecarRootRuntimeDemander(
                 ),
             )
         }
+        val removed = linkedSetOf<RuntimeEndpointArtifact>()
+        val cacheIntent = when (val intent = startup.cacheIntent) {
+            StartupCacheIntent.Rebuild -> {
+                val inventory = when (val observed = cacheLifecycle.inventory(root.path)) {
+                    is Refinement.Refined -> observed.value
+                    is Refinement.Rejected -> return RuntimeAdmission.Rejected(
+                        RuntimeAdmissionFailure.SidecarCacheRejected(
+                            SidecarCacheFailure.ObservationRejected(observed.failure),
+                        ),
+                    )
+                }
+                val stopped = when (val result = StoppedSidecarCaches.stopAll(inventory, endpoint, lifecycle)) {
+                    is Refinement.Refined -> result.value
+                    is Refinement.Rejected -> return RuntimeAdmission.Rejected(result.failure)
+                }
+                when (val result = cacheLifecycle.quarantine(stopped)) {
+                    is RootSidecarCacheQuarantine.Quarantined -> removed += stopped.removed
+                    is RootSidecarCacheQuarantine.Rejected -> return RuntimeAdmission.Rejected(
+                        RuntimeAdmissionFailure.CacheQuarantineRejected(result),
+                    )
+                }
+                StartupCacheIntent.Reuse
+            }
+            StartupCacheIntent.Reuse,
+            is StartupCacheIntent.Seed,
+                -> intent
+        }
         val cache = when (
             val preparation = cachePreparer.prepare(
                 runtime,
                 cacheIdentity,
-                startup.cacheIntent,
+                cacheIntent,
             )
         ) {
             is SidecarCachePreparation.Prepared -> preparation.cache
@@ -304,6 +351,19 @@ class InstalledSidecarRootRuntimeDemander(
         ) {
             return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.LegacySidecarActive)
         }
+        when (val status = lifecycle.status(exactEndpoint)) {
+            is RuntimeStatusResult.Observed -> if (status.state == RuntimeLifecycleState.STALE) {
+                when (val stopped = lifecycle.stop(exactEndpoint)) {
+                    is RuntimeStopResult.Stopped -> removed += stopped.removed
+                    is RuntimeStopResult.Rejected -> return RuntimeAdmission.Rejected(
+                        RuntimeAdmissionFailure.StopRejected(stopped.failure),
+                    )
+                }
+            }
+            is RuntimeStatusResult.Rejected -> return RuntimeAdmission.Rejected(
+                RuntimeAdmissionFailure.EndpointUnavailable,
+            )
+        }
         val context = when (
             val admission = SidecarLaunchContext.admit(
                 runtime,
@@ -320,12 +380,15 @@ class InstalledSidecarRootRuntimeDemander(
                 RuntimeAdmissionFailure.LayoutInvalid,
             )
         }
-        return processDemander.demand(
+        return when (val admitted = processDemander.demand(
             payload.executable,
             PreparedSidecarLaunch(cache, context),
             root,
             exactEndpoint,
-        )
+        )) {
+            is RuntimeAdmission.Ready -> admitted.copy(removed = admitted.removed + removed)
+            is RuntimeAdmission.Rejected -> admitted
+        }
     }
 }
 

@@ -276,6 +276,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
                     InstalledKastControlProductFailure.KAST_EXECUTABLE_UNAVAILABLE,
                 ),
             )
+        val lifecycle = ExactRootRuntimeLifecycle(JdkUnixDomainEndpointProbe, processCapabilities.authority)
         val sidecarDemander = InstalledSidecarRootRuntimeDemander(
             endpointLocator,
             support,
@@ -300,6 +301,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
             ),
             legacyProcessAuthority = processCapabilities.authority,
             cacheLifecycle = cacheLifecycle,
+            lifecycle = lifecycle,
         )
         return KastCliCompositionConstruction.Created(
             KastCli(
@@ -309,10 +311,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
                 sidecarDemander,
                 UnixDomainWireClient(),
                 localMetadata,
-                ExactRootRuntimeLifecycle(
-                    JdkUnixDomainEndpointProbe,
-                    processCapabilities.authority,
-                ),
+                lifecycle,
                 SidecarProductInspector(
                     SidecarProductIdentity(
                         productVersion,

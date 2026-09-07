@@ -151,8 +151,16 @@ object InstalledNetworkBootstrap {
         return NetworkConfiguration.parse(properties.stringPropertyNames().associateWith(properties::getProperty))
     }
 
-    private fun jvmStore(home: Path): Path = home.resolve("lib/security/jssecacerts").let {
-        if (Files.exists(it)) it else home.resolve("lib/security/cacerts")
+    private fun jvmStore(home: Path): Path {
+        // Java 8 JDK homes contain a nested JRE. A Java 8 JRE home and Java 9+ homes
+        // already name the runtime. Choose that layout before applying JSSE precedence.
+        val nestedSecurity = home.resolve("jre/lib/security")
+        val security = if (Files.isDirectory(nestedSecurity)) nestedSecurity
+            else home.resolve("lib/security")
+        val overrideStore = security.resolve("jssecacerts")
+        // An existing but invalid override must fail at donor admission, not fall through.
+        return if (Files.exists(overrideStore, java.nio.file.LinkOption.NOFOLLOW_LINKS)) overrideStore
+            else security.resolve("cacerts")
     }
     private fun canonicalDirectory(raw: String): Path? {
         val path = Path.of(raw)

@@ -1552,6 +1552,21 @@ private fun nonEmptyArraySchema(item: JsonObject): JsonObject = buildJsonObject 
     put("maxItems", MAXIMUM_PROTOCOL_COUNT)
 }
 
+private fun uniqueArraySchema(item: JsonObject): JsonObject = buildJsonObject {
+    put("type", "array")
+    put("items", item)
+    put("uniqueItems", true)
+    put("maxItems", MAXIMUM_PROTOCOL_COUNT)
+}
+
+private fun uniqueNonEmptyArraySchema(item: JsonObject): JsonObject = buildJsonObject {
+    put("type", "array")
+    put("items", item)
+    put("uniqueItems", true)
+    put("minItems", 1)
+    put("maxItems", MAXIMUM_PROTOCOL_COUNT)
+}
+
 private fun finiteArraySchema(item: JsonObject): JsonObject = buildJsonObject {
     put("type", "array")
     put("items", item)

@@ -2,6 +2,9 @@ package io.github.amichne.kast.diagnostic.intellij
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
+import io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolver
+import io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolutionFailure
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilation
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilerPort
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilerRejection
@@ -42,3 +45,12 @@ private fun exactProject(root: CanonicalSemanticProjectRoot): Project? =
 private fun unavailable(): DiagnosticCompilation = DiagnosticCompilation.Rejected(
     DiagnosticCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE,
 )
+
+fun installedIntellijDiagnosticScopes(
+    projectRoot: CanonicalSemanticProjectRoot,
+    workspaces: WorkspaceInspectionOperations,
+): DiagnosticScopeResolver = DiagnosticScopeResolver { query ->
+    val project = exactProject(projectRoot)
+        ?: return@DiagnosticScopeResolver Refinement.Rejected(DiagnosticScopeResolutionFailure.WORKSPACE_NOT_READY)
+    resolveDiagnosticScope(project, workspaces, query)
+}

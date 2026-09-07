@@ -30,6 +30,9 @@ enum class SemanticRuntimeBootstrapPhase(val wireName: String, val displayName: 
 
 /** Finite actions contain only fixed product guidance, never persisted exception or environment text. */
 enum class SemanticRuntimeBootstrapCorrectiveAction(val instruction: String) {
+    VERIFY_NETWORK_CONFIGURATION("Verify the explicit Kast and Gradle network configuration; no Gradle import was attempted."),
+    VERIFY_TRUST_DONOR("Verify that the configured donor Java home contains a readable jssecacerts or cacerts trust store with certificates; do not disable TLS verification."),
+    VERIFY_NETWORK_CACHE("Verify that the private Kast cache is writable and contains no conflicting network artifacts, then run kast start again."),
     VERIFY_RUNTIME("Verify the installed Kast payload and supported IntelliJ installation, then run kast start again."),
     SELECT_GRADLE_JVM("Select a Gradle-compatible project JVM, then run kast start again."),
     VERIFY_GRADLE_TOOLING_PAYLOAD("Update Kast to a build with Gradle tooling payloads compatible with the project JVM, then run kast start again."),
@@ -66,6 +69,16 @@ fun SemanticRuntimeBootstrapState.Rejected.correctiveAction(): SemanticRuntimeBo
 
 private fun SemanticRuntimeBootstrapState.Rejected.defaultCorrectiveAction(): SemanticRuntimeBootstrapCorrectiveAction =
     when (failure) {
+        SemanticRuntimeBootstrapFailure.NETWORK_CONFIGURATION_REJECTED,
+        SemanticRuntimeBootstrapFailure.NETWORK_BOUNDARY_UNAVAILABLE ->
+            SemanticRuntimeBootstrapCorrectiveAction.VERIFY_NETWORK_CONFIGURATION
+        SemanticRuntimeBootstrapFailure.NETWORK_TRUST_DONOR_UNAVAILABLE,
+        SemanticRuntimeBootstrapFailure.NETWORK_TRUST_DONOR_UNREADABLE,
+        SemanticRuntimeBootstrapFailure.NETWORK_TRUST_EMPTY_CERTIFICATES ->
+            SemanticRuntimeBootstrapCorrectiveAction.VERIFY_TRUST_DONOR
+        SemanticRuntimeBootstrapFailure.NETWORK_TRUST_TARGET_REJECTED,
+        SemanticRuntimeBootstrapFailure.NETWORK_TRUST_PUBLICATION_REJECTED ->
+            SemanticRuntimeBootstrapCorrectiveAction.VERIFY_NETWORK_CACHE
         SemanticRuntimeBootstrapFailure.GRADLE_JVM_UNAVAILABLE,
         SemanticRuntimeBootstrapFailure.PROJECT_JVM_UNAVAILABLE,
         SemanticRuntimeBootstrapFailure.GRADLE_JVM_CONFIGURATION_INVALID ->

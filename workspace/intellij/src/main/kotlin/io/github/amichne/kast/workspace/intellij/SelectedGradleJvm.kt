@@ -72,12 +72,10 @@ internal object GradleJvmCandidateSelector {
                 ) is GradleRuntimeCompatibility.Compatible
             }
             .minWithOrNull(
-                compareBy<GradleJvmCandidate>(
-                    { candidate -> candidate.source.precedence() },
-                    { candidate -> candidate.feature.value },
-                    GradleJvmCandidate::runtimeVersion,
-                    { candidate -> candidate.home.toString() },
-                ),
+                compareBy<GradleJvmCandidate> { candidate -> candidate.source.precedence() }
+                    .thenByDescending { candidate -> candidate.feature.value }
+                    .thenBy(GradleJvmCandidate::runtimeVersion)
+                    .thenBy { candidate -> candidate.home.toString() },
             ) ?: return GradleJvmCandidateSelection.Rejected(
             GradleJvmCandidateSelectionFailure.NO_COMPATIBLE_RUNTIME,
         )

@@ -6,6 +6,7 @@ import io.github.amichne.kast.change.verify.ResultingGenerationPublication
 import io.github.amichne.kast.change.verify.ResultingGenerationPublicationRejection
 import io.github.amichne.kast.change.verify.ResultingGenerationPublisher
 import io.github.amichne.kast.change.verify.VerifiedMutationService
+import io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolver
 import io.github.amichne.kast.diagnostic.service.DiagnosticService
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.kernel.KastObservability
@@ -86,6 +87,7 @@ class KastRuntimeComposition private constructor(
         ): KastRuntimeCompositionConstruction = bind(
             constructGraph(workspacePorts, semanticPorts, topologyPorts, indexPorts, changePorts).operations,
             handlers,
+            semanticPorts.diagnosticScopes,
         )
 
         internal fun constructGraph(
@@ -202,6 +204,7 @@ class KastRuntimeComposition private constructor(
         internal fun bind(
             operations: DirectKastOperations,
             handlers: KastOperationHandlerFactory,
+            diagnosticScopes: DiagnosticScopeResolver,
         ): KastRuntimeCompositionConstruction {
             val bindings: List<TypedOperationBinding<*, *, *, *>> = listOf(
                 TypedOperationBinding(
@@ -238,7 +241,7 @@ class KastRuntimeComposition private constructor(
                 ),
                 TypedOperationBinding(
                     CanonicalOperationWireBindings.diagnosticCheck,
-                    handlers.diagnosticCheck(operations.diagnosticCheck),
+                    handlers.diagnosticCheck(operations.diagnosticCheck, diagnosticScopes),
                 ),
                 TypedOperationBinding(
                     CanonicalOperationWireBindings.changePlan,
