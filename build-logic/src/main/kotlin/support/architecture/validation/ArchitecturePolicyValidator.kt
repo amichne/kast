@@ -2,7 +2,7 @@ package support.architecture
 
 object KastArchitecturePolicy {
     internal fun definition(): ArchitecturePolicyDefinition = ArchitecturePolicyDefinition(
-        modules = KastCleanSlateModules.all,
+        modules = KastQueryModules.integrate(KastCleanSlateModules.all),
     )
 
     /**

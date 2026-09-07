@@ -41,6 +41,7 @@ enum class QueryCandidateField {
     LOCATION,
 }
 
+/** Optional presentation fields. The proof-carrying ref is always emitted independently. */
 class QueryCandidateFields private constructor(
     val values: List<QueryCandidateField>,
 ) {
@@ -48,11 +49,7 @@ class QueryCandidateFields private constructor(
         fun from(
             raw: Set<QueryCandidateField>,
         ): Refinement<QueryCandidateFields, QueryCollectionFailure> =
-            if (raw.isEmpty()) {
-                Refinement.Rejected(QueryCollectionFailure.EMPTY)
-            } else {
-                Refinement.Refined(QueryCandidateFields(raw.sortedBy { it.ordinal }))
-            }
+            Refinement.Refined(QueryCandidateFields(raw.sortedBy { it.ordinal }))
     }
 
     override fun equals(other: Any?): Boolean =
@@ -67,6 +64,7 @@ enum class QuerySymbolField {
     SIGNATURE,
 }
 
+/** Optional presentation fields. Exact identity remains present through the returned ref. */
 class QuerySymbolFields private constructor(
     val values: List<QuerySymbolField>,
 ) {
@@ -74,11 +72,7 @@ class QuerySymbolFields private constructor(
         fun from(
             raw: Set<QuerySymbolField>,
         ): Refinement<QuerySymbolFields, QueryCollectionFailure> =
-            if (raw.isEmpty()) {
-                Refinement.Rejected(QueryCollectionFailure.EMPTY)
-            } else {
-                Refinement.Refined(QuerySymbolFields(raw.sortedBy { it.ordinal }))
-            }
+            Refinement.Refined(QuerySymbolFields(raw.sortedBy { it.ordinal }))
     }
 
     override fun equals(other: Any?): Boolean =

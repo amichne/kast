@@ -84,6 +84,30 @@ class QueryPlanCompilerTest {
     }
 
     @Test
+    fun `ref only output is a valid projection`() {
+        val candidateFields = QueryCandidateFields.from(emptySet()).refined()
+        val symbolFields = QuerySymbolFields.from(emptySet()).refined()
+
+        val candidatePlan = QueryPlanCompiler.admit(
+            QueryPlanSyntax(
+                QuerySourceSyntax.Candidates(discovery()),
+                emptyList(),
+                QueryOutputSyntax.Candidates(candidateFields),
+            ),
+        )
+        val symbolPlan = QueryPlanCompiler.admit(
+            QueryPlanSyntax(
+                QuerySourceSyntax.Symbols(discovery()),
+                emptyList(),
+                QueryOutputSyntax.Symbols(symbolFields),
+            ),
+        )
+
+        assertInstanceOf(QueryPlanAdmission.Admitted::class.java, candidatePlan)
+        assertInstanceOf(QueryPlanAdmission.Admitted::class.java, symbolPlan)
+    }
+
+    @Test
     fun `candidate source requires inspect before symbol output`() {
         val syntax = QueryPlanSyntax(
             source = QuerySourceSyntax.Candidates(discovery()),
