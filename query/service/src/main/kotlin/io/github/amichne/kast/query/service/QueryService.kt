@@ -79,7 +79,7 @@ class QueryService(
             is AdmittedQueryPlan.CandidateReferences ->
                 executeCandidate(plan.source.values, plan.stage, state, null)
             is AdmittedQueryPlan.ExactReferences ->
-                executeExact(distinct(revalidate(plan.source.values, state), state), plan.stage, state)
+                executeExact(revalidate(plan.source.values, state), plan.stage, state)
         }
     }
 

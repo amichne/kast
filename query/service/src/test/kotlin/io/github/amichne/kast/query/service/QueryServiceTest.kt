@@ -7,7 +7,6 @@ import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.query.contract.AdmittedQueryPlan
-import io.github.amichne.kast.query.contract.ExactQueryStage
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryCoverage
@@ -19,8 +18,14 @@ import io.github.amichne.kast.query.contract.QueryExactReferences
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryMatch
+import io.github.amichne.kast.query.contract.QueryOutputSyntax
+import io.github.amichne.kast.query.contract.QueryPlanAdmission
+import io.github.amichne.kast.query.contract.QueryPlanCompiler
+import io.github.amichne.kast.query.contract.QueryPlanSyntax
 import io.github.amichne.kast.query.contract.QueryResultSet
 import io.github.amichne.kast.query.contract.QueryScope
+import io.github.amichne.kast.query.contract.QuerySourceSyntax
+import io.github.amichne.kast.query.contract.QueryStepSyntax
 import io.github.amichne.kast.query.contract.QuerySymbolField
 import io.github.amichne.kast.query.contract.QuerySymbolFields
 import io.github.amichne.kast.relation.contract.RelationOperations
@@ -226,6 +231,30 @@ class QueryServiceTest {
     }
 
     @Test
+    fun `exact reference duplicates change only through explicit distinct stage`() = runTest {
+        val selector = selector(selection())
+        val service = service(
+            exact = exactOperations(
+                resolve = { error("Candidate refinement was not expected") },
+                describe = { SymbolDescriptionResult.Described(SymbolDescription.from(it)) },
+            ),
+        )
+
+        val retained = service.run(
+            request(exactReferencePlan(List(2) { selector }), workLimit = 8L),
+        )
+        val distinct = service.run(
+            request(
+                exactReferencePlan(List(2) { selector }, listOf(QueryStepSyntax.Distinct)),
+                workLimit = 8L,
+            ),
+        )
+
+        assertEquals(2, retained.symbolCount())
+        assertEquals(1, distinct.symbolCount())
+    }
+
+    @Test
     fun `time spent inside an exact effect qualifies the result`() = runTest {
         val selector = selector(selection())
         val service = service(
@@ -359,25 +388,45 @@ class QueryServiceTest {
             ),
         ).refined()
 
-    private fun symbolPlan(): AdmittedQueryPlan = AdmittedQueryPlan.Symbols(
-        discovery(),
-        ExactQueryStage.Emit(symbolFields()),
+    private fun symbolPlan(): AdmittedQueryPlan = admittedPlan(
+        source = QuerySourceSyntax.Symbols(discovery()),
+        output = QueryOutputSyntax.Symbols(symbolFields()),
     )
 
-    private fun candidatePlan(): AdmittedQueryPlan = AdmittedQueryPlan.Candidates(
-        discovery(),
-        io.github.amichne.kast.query.contract.CandidateQueryStage.Emit(
+    private fun candidatePlan(): AdmittedQueryPlan = admittedPlan(
+        source = QuerySourceSyntax.Candidates(discovery()),
+        output = QueryOutputSyntax.Candidates(
             io.github.amichne.kast.query.contract.QueryCandidateFields.from(
                 setOf(io.github.amichne.kast.query.contract.QueryCandidateField.NAME),
             ).refined(),
         ),
     )
 
-    private fun exactReferencePlan(selectors: List<SymbolSelector>): AdmittedQueryPlan =
-        AdmittedQueryPlan.ExactReferences(
-            QueryExactReferences.from(selectors).refined(),
-            ExactQueryStage.Emit(symbolFields()),
-        )
+    private fun exactReferencePlan(
+        selectors: List<SymbolSelector>,
+        steps: List<QueryStepSyntax> = emptyList(),
+    ): AdmittedQueryPlan = admittedPlan(
+        source = QuerySourceSyntax.ExactReferences(QueryExactReferences.from(selectors).refined()),
+        steps = steps,
+        output = QueryOutputSyntax.Symbols(symbolFields()),
+    )
+
+    private fun admittedPlan(
+        source: QuerySourceSyntax,
+        steps: List<QueryStepSyntax> = emptyList(),
+        output: QueryOutputSyntax,
+    ): AdmittedQueryPlan = when (
+        val admission = QueryPlanCompiler.admit(QueryPlanSyntax(source, steps, output))
+    ) {
+        is QueryPlanAdmission.Admitted -> admission.plan
+        is QueryPlanAdmission.Rejected -> error("Expected admitted plan, got ${admission.failure}")
+    }
+
+    private fun QueryExecutionResult.symbolCount(): Int = when (this) {
+        is QueryExecutionResult.Complete -> (result.items as QueryResultSet.Symbols).values.size
+        is QueryExecutionResult.Qualified -> (result.items as QueryResultSet.Symbols).values.size
+        is QueryExecutionResult.Rejected -> error("Expected symbol result, got $reason")
+    }
 
     private fun selection(): SymbolDiscoverySelection {
         val request = SymbolDiscoveryRequest(
