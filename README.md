@@ -139,10 +139,13 @@ transport. Integration state lives under `$CODEX_HOME/kast-integration`, or
 
 The broker invokes semantic commands directly with the full readiness budget.
 Successful reads occupy one compact native tool row that expands in place, and
-completed changes carry native file-diff presentation data.
-Its current approval policy excludes mutation tools; the CLI change commands
-are not exposed as working Codex tools. See [broker provenance](docs/broker-provenance.md)
-for ownership, presentation, and the acceptance boundary.
+completed changes carry native file-diff presentation data. It exposes only read
+operations by default. An explicitly authorized launch may set
+`KAST_CODEX_TOOL_EXPOSURE=mutation-enabled` to include the plan, apply, and
+recovery tools for that broker lifetime. The other accepted value is `read-only`;
+absence also means read-only, and unknown values are rejected. See
+[broker provenance](docs/broker-provenance.md) for ownership, presentation, and
+the acceptance boundary.
 
 ## One request, at a high level
 
