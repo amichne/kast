@@ -1,6 +1,23 @@
 package io.github.amichne.kast.cli.broker.provider
 
 internal object KastObserverFixtures {
+    val changeApply =
+        """
+        {
+          "status": "completed",
+          "document": {
+            "operation": "change.apply",
+            "status": "complete",
+            "receiptIdentity": "receipt:opaque",
+            "changes": [{
+              "path": "cli/src/main/kotlin/sample/EventConsumer.kt",
+              "kind": "update",
+              "diff": "@@ class EventConsumer @@\n-    fun consume() = old()\n+    fun consume() = new()"
+            }]
+          }
+        }
+        """.trimIndent()
+
     val symbolDiscovery =
         """
         {

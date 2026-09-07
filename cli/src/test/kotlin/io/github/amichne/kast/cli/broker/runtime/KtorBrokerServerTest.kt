@@ -126,13 +126,14 @@ class KtorBrokerServerTest {
 
                 val first = Json.parseToJsonElement((incoming.receive() as Frame.Text).readText())
                     .jsonObject.getValue("params").jsonObject.getValue("item").jsonObject
-                val second = Json.parseToJsonElement((incoming.receive() as Frame.Text).readText())
-                    .jsonObject.getValue("params").jsonObject.getValue("item").jsonObject
                 assertEquals("mcpToolCall", first.getValue("type").jsonPrimitive.content)
                 assertEquals("<symbol>", first.getValue("arguments").jsonObject
                     .getValue("selector").jsonPrimitive.content)
-                assertEquals("agentMessage", second.getValue("type").jsonPrimitive.content)
-                assertEquals("commentary", second.getValue("phase").jsonPrimitive.content)
+                assertEquals(
+                    "**Kast · symbol**\n\nHuman observer projection",
+                    first.getValue("result").jsonObject.getValue("content").jsonArray
+                        .single().jsonObject.getValue("text").jsonPrimitive.content,
+                )
             }
         } finally {
             client.close()

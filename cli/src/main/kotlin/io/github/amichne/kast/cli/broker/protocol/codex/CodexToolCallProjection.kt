@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli.broker.protocol.codex
 
 import io.github.amichne.kast.cli.broker.core.BrokerCallId
+import io.github.amichne.kast.cli.broker.core.ObserverMarkdown
 import io.github.amichne.kast.cli.broker.core.ProviderNamespace
 import io.github.amichne.kast.cli.broker.core.ToolAddress
 import io.github.amichne.kast.cli.broker.core.ToolName
@@ -180,9 +181,12 @@ internal sealed interface CodexToolCallProjection {
     ) : CodexToolCallProjection
 }
 
-internal enum class CodexToolCallResultProjection {
-    COMPLETE,
-    COMPACT_FOR_OBSERVER_COMPANION,
+internal sealed interface CodexToolCallResultProjection {
+    data object Complete : CodexToolCallResultProjection
+
+    data class ExpandableObserver(
+        val markdown: ObserverMarkdown,
+    ) : CodexToolCallResultProjection
 }
 
 /**
@@ -215,7 +219,7 @@ internal object CodexToolCallProjector {
 
     internal fun projectCompleted(
         item: JsonObject,
-        resultProjection: CodexToolCallResultProjection = CodexToolCallResultProjection.COMPLETE,
+        resultProjection: CodexToolCallResultProjection = CodexToolCallResultProjection.Complete,
     ): CodexToolCallProjection = when (
         val admission = admitIdentity(item)
     ) {
@@ -341,6 +345,9 @@ internal object CodexToolCallProjector {
                 put("server", call.identity.address.namespace.value)
                 put("tool", call.identity.address.tool.value)
                 put("arguments", call.identity.arguments.value)
+                if (call.identity.address.namespace.value == KAST_NAMESPACE) {
+                    put("readOnlyHint", true)
+                }
                 when (call) {
                     is DynamicToolCall.Started -> {
                         put("status", "inProgress")
@@ -351,21 +358,27 @@ internal object CodexToolCallProjector {
                         call.duration?.let { duration -> put("durationMs", duration.value) }
                         put("result", buildJsonObject {
                             put("content", buildJsonArray {
-                                if (
-                                    call.resultProjection == CodexToolCallResultProjection.COMPLETE
-                                ) {
-                                    call.result.texts.forEach { text ->
+                                when (val projection = call.resultProjection) {
+                                    CodexToolCallResultProjection.Complete -> call.result.texts.forEach { text ->
                                         add(buildJsonObject {
                                             put("type", "text")
                                             put("text", text.value)
                                         })
                                     }
+                                    is CodexToolCallResultProjection.ExpandableObserver -> add(
+                                        buildJsonObject {
+                                            put("type", "text")
+                                            put("text", projection.markdown.value)
+                                        },
+                                    )
                                 }
                             })
-                            if (call.resultProjection == CodexToolCallResultProjection.COMPLETE) {
-                                call.result.structuredObject?.let { structured ->
-                                    put("structuredContent", structured)
-                                }
+                            when (call.resultProjection) {
+                                CodexToolCallResultProjection.Complete ->
+                                    call.result.structuredObject?.let { structured ->
+                                        put("structuredContent", structured)
+                                    }
+                                is CodexToolCallResultProjection.ExpandableObserver -> Unit
                             }
                         })
                     }
@@ -450,6 +463,8 @@ internal object CodexToolCallProjector {
     }
 }
 
+private const val KAST_NAMESPACE = "kast"
+
 private object CodexToolCallArgumentProjector {
     fun project(namespace: ProviderNamespace, arguments: JsonElement): JsonElement {
         if (namespace.value != KAST_NAMESPACE) return arguments
@@ -459,7 +474,6 @@ private object CodexToolCallArgumentProjector {
         })
     }
 
-    private const val KAST_NAMESPACE = "kast"
     private val REDACTIONS = mapOf(
         "candidate" to "<candidate>",
         "selector" to "<symbol>",
