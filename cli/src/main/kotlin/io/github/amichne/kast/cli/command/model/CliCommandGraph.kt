@@ -111,6 +111,8 @@ class CliCommandGraphFactory private constructor(
      * failures. Raw argv is extracted only into Clikt at this outer command boundary.
      */
     internal fun parse(argv: List<String>): CliCommandParsing {
+        // Only empty argv selects the baseline; non-empty invocations retain their existing parsing.
+        if (argv.isEmpty()) return CliCommandParsing.Parsed(CliAction.Local.ProductInspect)
         val graph = canonicalGraph(preparers)
         val admitted = when (val admission = CliArgv.admit(argv)) {
             is CliArgvAdmission.Admitted -> admission.argv
@@ -246,7 +248,7 @@ private sealed interface CliArgvToken {
                     is Refinement.Refined -> Refinement.Refined(Traversal(document.value, option))
                     is Refinement.Rejected -> Refinement.Rejected(CliArgvFailure.TRAVERSAL_CONTINUATION_REJECTED)
                 }
-                else -> Refinement.Rejected(CliArgvFailure.TOKEN_TOO_LONG)
+                else -> return Refinement.Rejected(CliArgvFailure.TOKEN_TOO_LONG)
             }
         }
     }
@@ -425,7 +427,8 @@ private class KastRootCommand : KastCommand("kast") {
         "Inspect and change one exact Kotlin workspace through an isolated IntelliJ sidecar."
 
     override fun helpEpilog(context: Context): String =
-        "Semantic results are one JSON document on stdout. Diagnostics are one JSON document on stderr."
+        "Run kast without arguments for passive product inspection. " +
+            "Semantic results are one JSON document on stdout. Diagnostics are one JSON document on stderr."
 
     override fun resolveAction(): CliNodeResolution = if (currentContext.invokedSubcommand == null) {
         CliActionResolution.Selected(CliAction.Local.Inspect)
