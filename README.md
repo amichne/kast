@@ -143,18 +143,12 @@ policy to the Codex session. Semantic commands establish workspace readiness and
 derived evidence internally; users and agents do not start, synchronize, or
 build Kast as a prerequisite.
 
-Successful reads occupy one compact native tool row that expands in place, and
-completed changes carry native file-diff presentation data. The hosted catalog
-exposes only read operations by default. An explicitly authorized launch may set
-`KAST_CODEX_TOOL_EXPOSURE=mutation-enabled` to include the plan, apply, and
-recovery tools for that broker lifetime. The other accepted value is `read-only`;
-absence also means read-only, and unknown values are rejected. See
-[broker provenance](docs/broker-provenance.md) for ownership, presentation, and
-the acceptance boundary.
-
-```bash
-KAST_CODEX_TOOL_EXPOSURE=mutation-enabled kast-codex
-```
+The hosted catalog exposes only read operations by default. An explicitly
+authorized launch may set `KAST_CODEX_TOOL_EXPOSURE=mutation-enabled` to include
+the plan, apply, and recovery tools for that broker lifetime. The other accepted
+value is `read-only`; absence also means read-only, and unknown values are
+rejected. See [broker provenance](docs/broker-provenance.md) for ownership,
+presentation, and the acceptance boundary.
 
 ## One request, at a high level
 
@@ -165,6 +159,14 @@ flowchart LR
 	IDE --> LOCAL["Exact installed IDEA, JBR, Kotlin, and Gradle"]
 	LOCAL --> K2["Private indexes, PSI, and K2"]
 	K2 --> RESULT["Complete, qualified, or rejected JSON"]
+```
+
+In Codex, successful reads occupy one compact native tool row that expands in
+place, and completed changes carry native file-diff presentation data. To opt in
+to those mutation tools for one broker lifetime:
+
+```bash
+KAST_CODEX_TOOL_EXPOSURE=mutation-enabled kast-codex
 ```
 
 The control executable parses the CLI command into a typed request document and
