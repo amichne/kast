@@ -31,10 +31,11 @@ commands demand the sidecar directly; they do not discover Codex, inspect
 `CODEX_HOME`, or issue a preceding `kast start`. A broker failure therefore does
 not remove ordinary semantic CLI capability.
 
-The provider exposes only tools whose canonical approval policy is `NONE`.
-Mutation tools remain excluded while explicit approval routing is unresolved.
-Direct CLI change operations must not be represented as available Codex mutation
-tools.
+The provider exposes only tools whose canonical approval policy is `NONE` by
+default. An explicitly authorized broker launch may set
+`KAST_CODEX_TOOL_EXPOSURE=mutation-enabled`; that typed launch authority is
+retained through catalog construction and admits plan, apply, and recovery for
+that process lifetime. Absence remains read-only, and unknown values fail closed.
 
 ## Dynamic-tool observation
 
@@ -69,8 +70,9 @@ paths, closed change kinds, and bounded semantic diff fragments. A completed
 `change.apply` observation projects that proof to Codex's native `fileChange` item,
 so the compact row expands into the host diff visualization. Malformed, escaped,
 duplicate, empty, or oversized observer data fails closed to the canonical tool
-result. The broker still excludes mutation tools until explicit approval routing is
-available; this presentation path does not weaken that boundary.
+result. Change planning renders the same admitted preview in the expandable tool
+body without exposing its opaque plan identity, and recovery renders its closed
+outcome. These presentation paths do not broaden the catalog authority.
 
 ## Observer fixtures
 
@@ -81,9 +83,20 @@ or model request:
 ./gradlew :cli:renderKastObserverScreenshots
 ```
 
-The task runs the production observer projector over deterministic fixtures and
-renders the resulting Markdown. The renderer rejects opaque selectors,
-fingerprints, workspace roots, and source selectors before capturing images.
+The task runs the production observer projector over deterministic fixtures for
+all nine canonical operations and renders Markdown plus the native apply diff.
+The renderer rejects opaque selectors, fingerprints, workspace roots, and source
+selectors before capturing images.
+
+A complete terminal recording uses the same generated manifest:
+
+```bash
+./gradlew :cli:generateKastObserverSnapshotManifest
+asciinema record --overwrite --window-size 120x42 \
+  --command "python3 docs/play_kast_observer_demo.py \
+    --manifest cli/build/observer-snapshots/kast-observer-presentations.json" \
+  build/kast-native-tui.cast
+```
 
 ## Verification ownership
 

@@ -88,6 +88,7 @@ tasks.register<Exec>("renderKastObserverScreenshots") {
     outputs.files(
         kastObserverSnapshotOutput.file("kast-observer-symbol-source.png"),
         kastObserverSnapshotOutput.file("kast-observer-semantic-impact.png"),
+        kastObserverSnapshotOutput.file("kast-observer-change-lifecycle.png"),
     )
     commandLine(
         "python3",
