@@ -131,6 +131,7 @@ class SidecarStartupProtocolTest {
                 "--runtime-id=${runtimeId.value}",
                 "--idea-home=$ideaHome",
                 "--java-executable=$java",
+                "--max-heap-mib=1536",
                 "--idea-system-path=$system",
                 "--idea-config-path=$config",
                 "--idea-log-path=$log",
@@ -141,6 +142,11 @@ class SidecarStartupProtocolTest {
             ),
             command.arguments,
         )
+        val larger = SidecarLaunchContext.admit(installed, cacheRoot, system, config, log, privatePlugins,
+            maxHeap = (io.github.amichne.kast.distribution.contract.IndexerHeapSize.parse("8g") as Refinement.Refined).value,
+        ).let { (it as SidecarLaunchContextAdmission.Admitted).context }
+        val largerCommand = (IndexerLaunchCommand.create(executable, root, endpoint, larger, attempt) as IndexerLaunchCommandConstruction.Created).command
+        assertEquals(command.arguments.map { if (it == "--max-heap-mib=1536") "--max-heap-mib=8192" else it }, largerCommand.arguments)
     }
 
     private fun commandGraph(): CliCommandGraphFactory = when (

@@ -15,6 +15,7 @@ class KastIndexerBootstrapTest {
             ),
             KastIndexerBootstrap.ideaMainArgs(
                 arrayOf(
+                    "--max-heap-mib=8192",
                     "--idea-home=/installed/idea-home",
                     "--java-executable=/installed/idea-home/jbr/Contents/Home/bin/java",
                     "--idea-system-path=/private/cache/system",

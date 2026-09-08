@@ -4,13 +4,19 @@ title: "Troubleshoot Kast"
 description: "Diagnose agent integration, runtime, and semantic failures without manually operating Kast."
 resource: "file://docs/public/troubleshooting.mdx"
 tags: ["troubleshooting", "failures", "runtime", "support"]
-timestamp: "2026-09-07T00:00:00-04:00"
+timestamp: "2026-09-08T00:00:00-04:00"
 code_sources:
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/BrokerServerRunner.kt"
+  - path: "workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledGradleModelInputs.kt"
+    symbols: ["InstalledGradleModelInputs"]
+  - path: "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/IndexerHeapSize.kt"
+    symbols: ["IndexerHeapSize"]
+  - path: "distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/launch/IndexerHeapObservation.kt"
+    symbols: ["IndexerHeapObservation"]
+  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerServerRunner.kt"
     symbols: ["BrokerServerFailure"]
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/InstalledBrokerServer.kt"
+  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledBrokerServer.kt"
     symbols: ["InstalledBrokerServerConfiguration"]
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/core/BrokerInvocationActivity.kt"
+  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/BrokerInvocationActivity.kt"
     symbols: ["BrokerInvocationActivity", "BrokerInvocationCompletion"]
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/projection/ProductInspectionDocuments.kt"
     symbols: ["ProductInspectionDocuments"]
@@ -93,6 +99,52 @@ an explicitly configured network policy.
 Do not rebuild private state as a generic first response. A rebuild discards a
 reusable cache and should be used only when the reported corrective action or a
 confirmed cache problem requires it.
+
+### Gradle input links reject during startup
+
+Kast admits conventional Gradle model inputs through symbolic links when each
+link resolves inside the canonical workspace. File contents, stored link targets,
+resolved entry kinds, and selected descendants beneath directory aliases are
+retained separately. Retargeting a link invalidates the imported model even if
+the new target has identical content. Two logical aliases remain distinct inputs.
+
+Failures report `capturing-model-inputs` with `bootstrap.evidence.input.path`
+and a finite `reason`: `OUTSIDE_WORKSPACE`, `LINK_CYCLE`, `TARGET_MISSING`,
+`UNREADABLE`, or `UNSUPPORTED`. Correct that repository input and run `kast start`
+again. Kast does not materialize links or delete dangling inputs. The previously
+selected Gradle JVM remains recorded in the bootstrap report.
+
+### The sidecar runs out of heap
+
+Set one maximum heap for the next IntelliJ sidecar launch:
+
+```console
+KAST_INDEXER_MAX_HEAP=8g kast start
+```
+
+Accepted values are positive integral lowercase `m` (MiB) or `g` (GiB), with a
+minimum of `256m`. The default remains `1536m`; the initial heap remains `256m`.
+Blank values, fractions, missing units, negative values, and overflow reject
+before the sidecar launches. The maximum admitted value is `2147483647m`.
+
+For a persistent setting, add `KAST_INDEXER_MAX_HEAP=8g` to
+`${XDG_CONFIG_HOME:-$HOME/.config}/kast/environment`. Values are literal.
+An explicitly present process environment value takes precedence, including an
+invalid value, which rejects instead of falling back. Duplicate saved records
+reject. The installer preserves this setting during upgrades.
+
+A running sidecar keeps its existing heap. Run `kast stop`, then start with the
+new setting. Changing heap does not change semantic cache identity or require
+rebuilding or reseeding caches. This setting controls Kast's isolated IntelliJ
+sidecar; Gradle daemon memory and the interactive IDEA heap have separate settings.
+Ambient `JAVA_OPTS`, `_JAVA_OPTIONS`, `JAVA_TOOL_OPTIONS`, and `JDK_JAVA_OPTIONS`
+remain excluded from the sidecar launch.
+
+The private cache's `log/startup.log` contains a `kast-indexer-heap` record with
+`requestedMaxHeapMiB` and JVM-observed `observedMaxHeapBytes`. Use that record to
+confirm the active process heap; current caller configuration cannot change a
+running JVM. A higher cap addresses a memory limit but does not establish the
+cause of memory pressure or guarantee that every workload fits.
 
 ### A query reaches a limit
 

@@ -10,11 +10,12 @@ class IndexerBootstrapProgressTest {
         val discovering = InstalledIndexerBootstrapProgress.start()
         assertEquals(InstalledIndexerBootstrapPhase.DISCOVERING_RUNTIME, discovering.phase)
         val selecting = discovering.advance(InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION).advanced()
-        val importing = selecting.advance(InstalledIndexerBootstrapPhase.PROJECT_IMPORT).advanced()
+        val capturing = selecting.advance(InstalledIndexerBootstrapPhase.MODEL_INPUT_CAPTURE).advanced()
+        val importing = capturing.advance(InstalledIndexerBootstrapPhase.PROJECT_IMPORT).advanced()
 
         assertEquals(InstalledIndexerBootstrapPhase.PROJECT_IMPORT, importing.phase)
-        assertEquals(2, importing.completedPhases.value)
-        assertEquals(7, importing.totalPhases.value)
+        assertEquals(3, importing.completedPhases.value)
+        assertEquals(8, importing.totalPhases.value)
         assertEquals(
             InstalledIndexerBootstrapAdvance.Rejected(
                 InstalledIndexerBootstrapAdvanceFailure.PHASE_OUT_OF_ORDER,
@@ -30,11 +31,11 @@ class IndexerBootstrapProgressTest {
         ).advanced()
         val ready = transport.ready()
 
-        assertEquals(3, indexing.completedPhases.value)
-        assertEquals(4, model.completedPhases.value)
-        assertEquals(5, assembly.completedPhases.value)
-        assertEquals(6, transport.completedPhases.value)
-        assertEquals(7, ready.completedPhases.value)
+        assertEquals(4, indexing.completedPhases.value)
+        assertEquals(5, model.completedPhases.value)
+        assertEquals(6, assembly.completedPhases.value)
+        assertEquals(7, transport.completedPhases.value)
+        assertEquals(8, ready.completedPhases.value)
         assertEquals(ready.completedPhases, ready.totalPhases)
     }
 
@@ -42,6 +43,7 @@ class IndexerBootstrapProgressTest {
     fun `terminal failure retains its exact active phase and finite cause`() {
         val indexing = InstalledIndexerBootstrapProgress.start()
             .advance(InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION).advanced()
+            .advance(InstalledIndexerBootstrapPhase.MODEL_INPUT_CAPTURE).advanced()
             .advance(InstalledIndexerBootstrapPhase.PROJECT_IMPORT).advanced()
             .advance(InstalledIndexerBootstrapPhase.INDEXING)
             .advanced()

@@ -1,6 +1,6 @@
 # Plan: Gradle Model-Input Symlinks and Sidecar Heap
 
-Status: implementation plan
+Status: implemented; local product and installed acceptance passed
 Base: `main` at `2941ec2d89353871225bcbf38fcf004ea77dedfc` (`v0.36.0`)
 Scope: two startup defects observed against the installed `v0.36.0` product
 
@@ -405,4 +405,28 @@ Update troubleshooting/configuration documentation to cover:
 - valid workspace-contained Gradle input links;
 - finite failures for outside/dangling/cyclic links;
 - the sidecar heap setting, default, accepted syntax, and restart semantics;
-- the distinction between sidecar heap and Gradle daemon
+- the distinction between sidecar heap and Gradle daemon memory.
+
+## Implementation receipt
+
+Implemented contained link resolution and retained logical/physical identity, a
+model-input capture phase with typed rejection evidence, admitted sidecar heap
+configuration, and JVM-observed heap diagnostics. JVM property and daemon criteria
+readers share contained resolution so valid links also pass the earlier selection
+boundary. Reads hold directory descriptors and refuse link replacement at every
+ancestor. Bootstrap schema version is 3.
+
+Validation:
+
+- Focused workspace, distribution, runtime, CLI, and indexer tests pass.
+- `./gradlew --max-workers=2 productBuildGate` passes, including architecture,
+  packaging, installed Codex host, and checkout installer checks.
+- `packaging/test-model-input-startup.py` reaches ready after real Gradle import
+  and indexing with six unchanged links, requested 8192 MiB, and observed
+  8589934592 bytes. It stops the fixture process after verification.
+- The separate representative repository was not named in this plan; its
+  acceptance remains environment-specific. The checked-in installed acceptance
+  command supplies a reproducible successful journey without editing user links.
+
+The README and checkout-installer changes supplied with the implementation request
+are included and tested in the same change.

@@ -13,6 +13,8 @@ enum class SemanticRuntimeBootstrapPhase(val wireName: String, val displayName: 
     DISCOVERING_RUNTIME("discovering-runtime", "discovering runtime"),
     @SerialName("selecting-gradle-jvm")
     GRADLE_JVM_SELECTION("selecting-gradle-jvm", "selecting Gradle JVM"),
+    @SerialName("capturing-model-inputs")
+    MODEL_INPUT_CAPTURE("capturing-model-inputs", "capturing Gradle model inputs"),
     @SerialName("importing-gradle-model")
     PROJECT_IMPORT("importing-gradle-model", "importing Gradle model"),
     @SerialName("indexing")
@@ -39,6 +41,7 @@ enum class SemanticRuntimeBootstrapCorrectiveAction(val instruction: String) {
     RECREATE_GRADLE_INIT_SCRIPTS("Stop Kast, verify its runtime cache is writable, then start again to recreate Gradle initialization scripts."),
     VERIFY_GRADLE_IMPORT("Run the repository Gradle wrapper successfully with the admitted import inputs, then run kast start again."),
     SELECT_SUPPORTED_IDE("Select the supported IntelliJ installation with kast start --idea-home."),
+    CORRECT_MODEL_INPUTS("Repair the reported Gradle input: targets must exist, remain inside the workspace, be readable, and contain no link cycles; then run kast start again."),
     CORRECT_WORKSPACE_MODEL("Correct the repository Gradle model and source roots, then run kast stop followed by kast start."),
     RESTART_RUNTIME("Run kast stop to retire the owned runtime, then run kast start again.");
 }
@@ -57,6 +60,9 @@ sealed interface SemanticRuntimeBootstrapRemediation {
 
 /** A specific observed JVM failure keeps its more precise correction through every projection. */
 fun SemanticRuntimeBootstrapState.Rejected.correctiveAction(): SemanticRuntimeBootstrapRemediation {
+    if (cause is SemanticRuntimeBootstrapCause.ModelInput) return SemanticRuntimeBootstrapRemediation.Bootstrap(
+        SemanticRuntimeBootstrapCorrectiveAction.CORRECT_MODEL_INPUTS,
+    )
     when (val observation = gradleJvm) {
         GradleJvmSelectionObservation.Unobserved -> Unit
         is GradleJvmSelectionObservation.Observed -> when (val outcome = observation.report.outcome) {
@@ -96,6 +102,7 @@ private fun SemanticRuntimeBootstrapState.Rejected.defaultCorrectiveAction(): Se
         else -> when (phase) {
             SemanticRuntimeBootstrapPhase.DISCOVERING_RUNTIME -> SemanticRuntimeBootstrapCorrectiveAction.VERIFY_RUNTIME
             SemanticRuntimeBootstrapPhase.GRADLE_JVM_SELECTION -> SemanticRuntimeBootstrapCorrectiveAction.SELECT_GRADLE_JVM
+            SemanticRuntimeBootstrapPhase.MODEL_INPUT_CAPTURE -> SemanticRuntimeBootstrapCorrectiveAction.CORRECT_MODEL_INPUTS
             SemanticRuntimeBootstrapPhase.PROJECT_IMPORT -> SemanticRuntimeBootstrapCorrectiveAction.VERIFY_GRADLE_IMPORT
             SemanticRuntimeBootstrapPhase.INDEXING,
             SemanticRuntimeBootstrapPhase.MODEL_CAPTURE -> SemanticRuntimeBootstrapCorrectiveAction.CORRECT_WORKSPACE_MODEL

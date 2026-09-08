@@ -104,6 +104,7 @@ run_launcher() {
   local cache="$2"
   local capture="$3"
   local attempt="${4:-${bootstrap_attempt_id}}"
+  local heap="${5:-1536}"
   CAPTURE_FILE="${capture}" \
   HOME="${admitted_user_home}" \
   JAVA_OPTS="-Dkast.untrusted.java-opts=true -Duser.home=/untrusted" \
@@ -122,7 +123,8 @@ run_launcher() {
       --private-plugins-path="${private_plugins}" \
       --cache-state-path="${cache}/cache-state" \
       --bootstrap-state-path="${cache}/bootstrap-state" \
-      --bootstrap-attempt-id="${attempt}"
+      --bootstrap-attempt-id="${attempt}" \
+      --max-heap-mib="${heap}"
 }
 
 capture_a="${fixture}/capture-a"
@@ -130,7 +132,7 @@ capture_a_restart="${fixture}/capture-a-restart"
 capture_b="${fixture}/capture-b"
 run_launcher "${socket_a}" "${cache_a}" "${capture_a}"
 run_launcher "${socket_a}" "${cache_a}" "${capture_a_restart}" "${restart_attempt_id}"
-run_launcher "${socket_b}" "${cache_b}" "${capture_b}"
+run_launcher "${socket_b}" "${cache_b}" "${capture_b}" "${bootstrap_attempt_id}" 8192
 
 cache_c="${fixture}/cache-c"
 mkdir -p "${cache_c}/system" "${cache_c}/config" "${cache_c}/log"
@@ -188,6 +190,8 @@ observed = []
 
 for capture, cache, socket, attempt in zip(captures, caches, sockets, attempts, strict=True):
     decoded = [item.decode() for item in capture.read_bytes().split(b"\0") if item]
+    expected_heap = "8192" if cache == caches[2] else "1536"
+    assert [arg for arg in decoded if arg.startswith("-Xmx")] == [f"-Xmx{expected_heap}m"]
     home_arguments = [argument for argument in decoded if argument.startswith("-Duser.home=")]
     if home_arguments != [f"-Duser.home={admitted_user_home}"]:
         raise SystemExit("indexer-launcher-isolation-test: JVM user.home did not preserve the admitted HOME")
@@ -215,7 +219,7 @@ for capture, cache, socket, attempt in zip(captures, caches, sockets, attempts, 
         current[name] = matches[0]
     required = (
         "-Xms256m",
-        "-Xmx1536m",
+        f"-Xmx{expected_heap}m",
         "-Didea.load.plugins.id=io.github.amichne.kast.indexer",
         f"-Didea.plugins.path={private_plugins}",
         f"-Didea.home.path={idea_home}",
@@ -276,6 +280,7 @@ launcher_arguments=(
   "--private-plugins-path=${private_plugins}"
   "--cache-state-path=${cache_a}/cache-state"
   "--bootstrap-state-path=${cache_a}/bootstrap-state"
+  "--max-heap-mib=1536"
   "--bootstrap-attempt-id=${bootstrap_attempt_id}"
 )
 launcher_owned=(
@@ -289,6 +294,28 @@ launcher_owned=(
   bootstrap-state-path
   bootstrap-attempt-id
 )
+heap_base=()
+for argument in "${launcher_arguments[@]}"; do
+  [[ "$argument" == --max-heap-mib=* ]] || heap_base+=("$argument")
+done
+for value in missing '' 0 255 08 8g 2147483648 999999999999999999999999999999999; do
+  heap_args=("${heap_base[@]}")
+  [[ "$value" == missing ]] || heap_args+=("--max-heap-mib=$value")
+  rejected_heap_capture="${fixture}/rejected-heap-capture"
+  if HOME="$admitted_user_home" CAPTURE_FILE="$rejected_heap_capture" \
+      "${installed}/kast-indexer" "${heap_args[@]}" 2>"${fixture}/heap-error"; then
+    echo "indexer-launcher-isolation-test: malformed heap reached Java" >&2; exit 1
+  fi
+  [[ ! -e "$rejected_heap_capture" ]] || exit 1
+done
+for first in 1536 ''; do
+  if HOME="$admitted_user_home" CAPTURE_FILE="$rejected_heap_capture" \
+      "${installed}/kast-indexer" "${heap_base[@]}" "--max-heap-mib=$first" --max-heap-mib=8192 2>"${fixture}/heap-error"; then
+    echo "indexer-launcher-isolation-test: duplicate heap reached Java" >&2; exit 1
+  fi
+  [[ ! -e "$rejected_heap_capture" ]] || exit 1
+done
+
 ln -s "${admitted_user_home}" "${fixture}/linked-home"
 for invalid_home in "" "relative-home" "${fixture}/missing-home" "${fixture}/linked-home" "${admitted_user_home}/.."; do
   rejected_home_capture="${fixture}/rejected-home-capture"
@@ -360,6 +387,7 @@ alternate_output="$(
       --private-plugins-path="${private_plugins}" \
       --cache-state-path="${cache_a}/cache-state" \
       --bootstrap-state-path="${cache_a}/bootstrap-state" \
+      --max-heap-mib=1536 \
       --bootstrap-attempt-id="${bootstrap_attempt_id}" 2>&1
 )"
 alternate_status=$?

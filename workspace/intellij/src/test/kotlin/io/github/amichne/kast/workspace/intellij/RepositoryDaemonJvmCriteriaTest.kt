@@ -10,6 +10,18 @@ import java.nio.file.Path
 
 class RepositoryDaemonJvmCriteriaTest {
     @Test
+    fun `contained criteria links are admitted but dangling links reject`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        Files.createDirectories(root.resolve("gradle"))
+        Files.writeString(root.resolve("shared.properties"), "toolchainVersion=21\n")
+        val link = Files.createSymbolicLink(root.resolve("gradle/gradle-daemon-jvm.properties"), Path.of("../shared.properties"))
+        assertInstanceOf(RepositoryDaemonJvmCriteria.Required::class.java, repositoryDaemonJvmCriteria(root, org.gradle.util.GradleVersion.version("9.4.1")))
+        Files.delete(root.resolve("shared.properties"))
+        assertEquals(RepositoryDaemonJvmCriteria.Rejected, repositoryDaemonJvmCriteria(root, org.gradle.util.GradleVersion.version("9.4.1")))
+        org.junit.jupiter.api.Assertions.assertTrue(Files.isSymbolicLink(link))
+    }
+
+    @Test
     fun `generated version criteria is admitted for supported Gradle`(@TempDir root: Path) {
         val gradle = Files.createDirectories(root.resolve("gradle"))
         Files.writeString(

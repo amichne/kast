@@ -1,5 +1,7 @@
 package io.github.amichne.kast.runtime.composition.semanticbootstrap
 
+import io.github.amichne.kast.distribution.contract.bootstrap.*
+import io.github.amichne.kast.distribution.contract.gradle.*
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapAttemptId
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapCodec
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapFailure
@@ -22,6 +24,32 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class InstalledSemanticRuntimeBootstrapTest {
+    @Test
+    fun `model input rejection retains selected JVM evidence logical path and precise cause`() {
+        val initial = (InstalledSemanticRuntimeBootstrapAttempt.admit("123e4567-e89b-42d3-a456-426614174000")
+            as InstalledSemanticRuntimeBootstrapAttemptAdmission.Admitted).attempt
+        val candidate = GradleJvmCandidateEvidence(GradleJavaFeature.of(25),
+            (GradleImportEnvironmentIdentity.parse("a".repeat(64)) as Refinement.Refined).value,
+            GradleJvmSelectionAuthority.SIDECAR_COMPATIBLE, GradleJvmCandidateDecision.SELECTED)
+        val report = GradleJvmSelectionReport(GradleDistributionEvidence.Observed(GradleDistributionVersion.observed("9.1")),
+            listOf(candidate.java), listOf(candidate), GradleJvmSelectionOutcome.Selected(candidate))
+        val attempt = (initial.withGradleJvm(InstalledGradleJvmSelectionReport(report)) as InstalledSemanticRuntimeGradleJvmRefinement.Refined).attempt
+        for (reason in ModelInputFailureReason.entries) {
+            val input = ModelInputFailure((ModelInputPath.admit("build-logic/gradle.properties") as Refinement.Refined).value, reason)
+            val failure = InstalledKastRuntimeFailure.Assembly(InstalledRuntimeAssemblyFailure.WorkspacePublication(
+                InstalledRuntimeWorkspaceFailure.ModelInputRejected(input),
+            ))
+            val projected = attempt.rejectionDocument(setOf(failure), InstalledRuntimeBootstrapPhase.MODEL_INPUT_CAPTURE)
+                as InstalledSemanticRuntimeBootstrapRejection.Projected
+            val state = (SemanticRuntimeBootstrapCodec.decode(projected.document.boundaryValue()) as Refinement.Refined).value
+                as SemanticRuntimeBootstrapState.Rejected
+            assertEquals(SemanticRuntimeBootstrapPhase.MODEL_INPUT_CAPTURE, state.phase)
+            assertEquals(SemanticRuntimeBootstrapCause.ModelInput(input), state.cause)
+            assertEquals(GradleJvmSelectionObservation.Observed(report), state.gradleJvm)
+            assertEquals(SemanticRuntimeBootstrapRemediation.Bootstrap(SemanticRuntimeBootstrapCorrectiveAction.CORRECT_MODEL_INPUTS), state.correctiveAction())
+        }
+    }
+
     @Test
     fun `trust donor failure retains its public cause and corrective action`() {
         val attempt = (InstalledSemanticRuntimeBootstrapAttempt.admit("123e4567-e89b-42d3-a456-426614174000")

@@ -170,6 +170,7 @@ sealed interface InstalledRuntimeTelemetryFailure {
 enum class InstalledRuntimeBootstrapPhase {
     DISCOVERING_RUNTIME,
     GRADLE_JVM_SELECTION,
+    MODEL_INPUT_CAPTURE,
     PROJECT_IMPORT,
     INDEXING,
     MODEL_CAPTURE,
@@ -247,6 +248,7 @@ enum class InstalledRuntimePersistenceFailure {
 
 /** Finite initial exact-root publication failures. */
 sealed interface InstalledRuntimeWorkspaceFailure {
+    data class ModelInputRejected(val failure: io.github.amichne.kast.distribution.contract.bootstrap.ModelInputFailure) : InstalledRuntimeWorkspaceFailure
     data class IntellijBootstrap(
         val failure: InstalledIntellijWorkspaceFailure,
     ) : InstalledRuntimeWorkspaceFailure

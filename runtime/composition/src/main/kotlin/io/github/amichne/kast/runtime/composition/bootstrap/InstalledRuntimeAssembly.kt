@@ -86,6 +86,9 @@ internal fun productionInstalledRuntimeAssembler(): InstalledRuntimeAssembler =
                 }
             },
         )) {
+            is InstalledIntellijWorkspaceOpening.ModelInputRejected -> return@InstalledRuntimeAssembler rejected(
+                InstalledRuntimeWorkspaceFailure.ModelInputRejected(opened.failure),
+            )
             is InstalledIntellijWorkspaceOpening.Opened -> opened.model
             is InstalledIntellijWorkspaceOpening.Rejected -> return@InstalledRuntimeAssembler rejected(
                 InstalledRuntimeWorkspaceFailure.IntellijBootstrap(opened.failure),
@@ -123,7 +126,8 @@ internal fun productionInstalledRuntimeAssembler(): InstalledRuntimeAssembler =
                             is Refinement.Rejected -> when (observed.failure) {
                                 io.github.amichne.kast.workspace.intellij.InstalledGradleModelCaptureFailure.MODEL_INPUTS_CHANGED ->
                                     io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.ModelInputsChanged
-                                io.github.amichne.kast.workspace.intellij.InstalledGradleModelCaptureFailure.MODEL_INPUTS_UNAVAILABLE ->
+                                io.github.amichne.kast.workspace.intellij.InstalledGradleModelCaptureFailure.MODEL_INPUTS_UNAVAILABLE,
+                                is io.github.amichne.kast.workspace.intellij.InstalledGradleModelCaptureFailure.ModelInputRejected ->
                                     io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.ModelInputsUnavailable
                                 else -> io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.Unavailable
                             }
@@ -147,6 +151,7 @@ private fun InstalledIntellijWorkspaceBootstrapPhase.runtimePhase():
     InstalledRuntimeBootstrapPhase = when (this) {
     InstalledIntellijWorkspaceBootstrapPhase.GRADLE_JVM_SELECTION ->
         InstalledRuntimeBootstrapPhase.GRADLE_JVM_SELECTION
+    InstalledIntellijWorkspaceBootstrapPhase.MODEL_INPUT_CAPTURE -> InstalledRuntimeBootstrapPhase.MODEL_INPUT_CAPTURE
     InstalledIntellijWorkspaceBootstrapPhase.PROJECT_IMPORT ->
         InstalledRuntimeBootstrapPhase.PROJECT_IMPORT
     InstalledIntellijWorkspaceBootstrapPhase.INDEXING -> InstalledRuntimeBootstrapPhase.INDEXING

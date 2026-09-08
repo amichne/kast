@@ -62,20 +62,21 @@ class InstalledGradleModelCapture internal constructor(
     }
 }
 
-enum class InstalledGradleModelCaptureFailure {
-    MODEL_INPUTS_CHANGED,
-    MODEL_INPUTS_UNAVAILABLE,
-    ROOT_UNAVAILABLE,
-    EXTERNAL_PROJECT_UNAVAILABLE,
-    EXTERNAL_PROJECT_INCOMPLETE,
-    SOURCE_ROOTS_UNAVAILABLE,
-    SOURCE_STATE_UNAVAILABLE,
-    INDEXING_UNAVAILABLE,
-    SEMANTIC_INPUT_INCOMPLETE,
-    SEMANTIC_PROJECT_PATH_INVALID,
-    SEMANTIC_SOURCE_ROOT_INVALID,
-    SEMANTIC_MODULE_INVALID,
-    STATE_IDENTITY_REJECTED,
+sealed interface InstalledGradleModelCaptureFailure {
+    data object MODEL_INPUTS_CHANGED : InstalledGradleModelCaptureFailure
+    data object MODEL_INPUTS_UNAVAILABLE : InstalledGradleModelCaptureFailure
+    data object ROOT_UNAVAILABLE : InstalledGradleModelCaptureFailure
+    data object EXTERNAL_PROJECT_UNAVAILABLE : InstalledGradleModelCaptureFailure
+    data object EXTERNAL_PROJECT_INCOMPLETE : InstalledGradleModelCaptureFailure
+    data object SOURCE_ROOTS_UNAVAILABLE : InstalledGradleModelCaptureFailure
+    data object SOURCE_STATE_UNAVAILABLE : InstalledGradleModelCaptureFailure
+    data object INDEXING_UNAVAILABLE : InstalledGradleModelCaptureFailure
+    data object SEMANTIC_INPUT_INCOMPLETE : InstalledGradleModelCaptureFailure
+    data object SEMANTIC_PROJECT_PATH_INVALID : InstalledGradleModelCaptureFailure
+    data object SEMANTIC_SOURCE_ROOT_INVALID : InstalledGradleModelCaptureFailure
+    data object SEMANTIC_MODULE_INVALID : InstalledGradleModelCaptureFailure
+    data object STATE_IDENTITY_REJECTED : InstalledGradleModelCaptureFailure
+    data class ModelInputRejected(val failure: io.github.amichne.kast.distribution.contract.bootstrap.ModelInputFailure) : InstalledGradleModelCaptureFailure
 }
 
 /**

@@ -1,5 +1,7 @@
 package io.github.amichne.kast.indexer
 
+import io.github.amichne.kast.distribution.managed.launch.IndexerHeapObservation
+import io.github.amichne.kast.distribution.managed.launch.IndexerHeapObservationResult
 import io.github.amichne.kast.distribution.managed.network.InstalledNetworkBootstrap
 import io.github.amichne.kast.distribution.managed.network.NetworkBootstrapResult
 import java.io.IOException
@@ -11,6 +13,13 @@ import kotlin.io.path.Path
 import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
+    when (val heap = IndexerHeapObservation.observe(args, Runtime.getRuntime().maxMemory())) {
+        is IndexerHeapObservationResult.Observed -> System.err.println("kast-indexer-heap: ${heap.observation.boundaryDocument()}")
+        is IndexerHeapObservationResult.Rejected -> {
+            System.err.println("kast-indexer: heap observation rejected: ${heap.failure}")
+            exitProcess(64)
+        }
+    }
     when (val bootstrap = KastIndexerBootstrap.configureSystemProperties(args)) {
         is IndexerBootstrapConfiguration.Configured -> {
             val networkArguments = when (val admission = IndexerNetworkArguments.admit(args)) {
@@ -64,6 +73,7 @@ internal object KastIndexerBootstrap {
     private const val IDEA_HOME_PREFIX = "--idea-home="
     private val LAUNCHER_OWNED_PREFIXES = listOf(
         IDEA_HOME_PREFIX,
+        "--max-heap-mib=",
         "--java-executable=",
         "--idea-system-path=",
         "--idea-config-path=",

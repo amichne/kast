@@ -227,6 +227,7 @@ private val productInspectionFactory =
 private val passiveFactory = CliJsonDocument.generated(JsonObject.serializer())
 
 private fun compositionReason(failure: KastCliCompositionFailure): String = when (failure) {
+    is InstalledCompositionFailure.IndexerHeapRejected -> "indexer-heap-${failure.failure.name.lowercase().replace('_', '-')}"
     is InstalledCompositionFailure.SavedConfigurationRejected -> "saved-configuration-${failure.failure.name.lowercase().replace('_', '-')}"
 
     is InstalledCompositionFailure.RuntimeProcessModeRejected -> "invalid-launchd-flag"

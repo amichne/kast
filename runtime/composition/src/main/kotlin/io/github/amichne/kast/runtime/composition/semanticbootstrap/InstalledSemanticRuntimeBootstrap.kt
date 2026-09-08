@@ -1,5 +1,6 @@
 package io.github.amichne.kast.runtime.composition.semanticbootstrap
 
+import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapCause
 import io.github.amichne.kast.distribution.contract.bootstrap.SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapAttemptId
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapCodec
@@ -151,7 +152,7 @@ class InstalledSemanticRuntimeBootstrapAttempt private constructor(
 
 private sealed interface IntellijBootstrapFailureProjection {
     data class Projected(
-        val failure: SemanticRuntimeBootstrapFailure,
+        val failure: SemanticRuntimeBootstrapCause,
     ) : IntellijBootstrapFailureProjection
 
     data object NotIntellijBootstrap : IntellijBootstrapFailureProjection
@@ -176,8 +177,10 @@ private fun InstalledRuntimeAssemblyFailure.intellijBootstrapFailure():
 
 private fun InstalledRuntimeWorkspaceFailure.intellijBootstrapFailure():
     IntellijBootstrapFailureProjection = when (this) {
+    is InstalledRuntimeWorkspaceFailure.ModelInputRejected ->
+        IntellijBootstrapFailureProjection.Projected(SemanticRuntimeBootstrapCause.ModelInput(failure))
     is InstalledRuntimeWorkspaceFailure.IntellijBootstrap ->
-        IntellijBootstrapFailureProjection.Projected(failure.bootstrapFailure())
+        IntellijBootstrapFailureProjection.Projected(SemanticRuntimeBootstrapCause.Standard(failure.bootstrapFailure()))
     InstalledRuntimeWorkspaceFailure.Blocked,
     InstalledRuntimeWorkspaceFailure.Invalidated,
     is InstalledRuntimeWorkspaceFailure.ModelRefinementUnavailable,
@@ -285,6 +288,7 @@ private fun InstalledIntellijWorkspaceFailure.bootstrapFailure():
 private fun InstalledRuntimeBootstrapPhase.contractPhase(): SemanticRuntimeBootstrapPhase = when (this) {
     InstalledRuntimeBootstrapPhase.DISCOVERING_RUNTIME -> SemanticRuntimeBootstrapPhase.DISCOVERING_RUNTIME
     InstalledRuntimeBootstrapPhase.GRADLE_JVM_SELECTION -> SemanticRuntimeBootstrapPhase.GRADLE_JVM_SELECTION
+    InstalledRuntimeBootstrapPhase.MODEL_INPUT_CAPTURE -> SemanticRuntimeBootstrapPhase.MODEL_INPUT_CAPTURE
     InstalledRuntimeBootstrapPhase.PROJECT_IMPORT -> SemanticRuntimeBootstrapPhase.PROJECT_IMPORT
     InstalledRuntimeBootstrapPhase.INDEXING -> SemanticRuntimeBootstrapPhase.INDEXING
     InstalledRuntimeBootstrapPhase.MODEL_CAPTURE -> SemanticRuntimeBootstrapPhase.MODEL_CAPTURE

@@ -16,6 +16,7 @@ class IndexerBootstrapReporterTest {
         )
 
         reporter.observe(InstalledRuntimeBootstrapPhase.GRADLE_JVM_SELECTION)
+        reporter.observe(InstalledRuntimeBootstrapPhase.MODEL_INPUT_CAPTURE)
         reporter.observe(InstalledRuntimeBootstrapPhase.PROJECT_IMPORT)
         reporter.observe(InstalledRuntimeBootstrapPhase.INDEXING)
         reporter.observe(InstalledRuntimeBootstrapPhase.MODEL_CAPTURE)
@@ -27,6 +28,7 @@ class IndexerBootstrapReporterTest {
             listOf(
                 InstalledIndexerBootstrapPhase.DISCOVERING_RUNTIME,
                 InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION,
+                InstalledIndexerBootstrapPhase.MODEL_INPUT_CAPTURE,
                 InstalledIndexerBootstrapPhase.PROJECT_IMPORT,
                 InstalledIndexerBootstrapPhase.INDEXING,
                 InstalledIndexerBootstrapPhase.MODEL_CAPTURE,
@@ -49,6 +51,7 @@ class IndexerBootstrapReporterTest {
             InstalledIndexerBootstrapStateSink(observed::add),
         )
         reporter.observe(InstalledRuntimeBootstrapPhase.GRADLE_JVM_SELECTION)
+        reporter.observe(InstalledRuntimeBootstrapPhase.MODEL_INPUT_CAPTURE)
         reporter.observe(InstalledRuntimeBootstrapPhase.PROJECT_IMPORT)
         reporter.observe(InstalledRuntimeBootstrapPhase.INDEXING)
         val failures = setOf<InstalledKastRuntimeFailure>(

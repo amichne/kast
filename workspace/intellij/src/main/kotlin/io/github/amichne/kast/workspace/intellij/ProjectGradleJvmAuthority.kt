@@ -4,7 +4,7 @@ import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
-import java.util.Properties
+import io.github.amichne.kast.kernel.Refinement
 
 internal sealed interface ProjectGradleJvmAuthority {
     sealed interface Admitted : ProjectGradleJvmAuthority
@@ -20,6 +20,8 @@ internal sealed interface ProjectGradleJvmAuthority {
                 ) Present(home) else Rejected
         }
     }
+
+    data class InputRejected(val failure: InstalledGradleModelCaptureFailure) : ProjectGradleJvmAuthority
 
     data object Rejected : ProjectGradleJvmAuthority
 }
@@ -43,23 +45,12 @@ internal sealed interface AmbientGradleJvmAuthority {
 
 /** Reads only the repository-owned property; user and installation Gradle properties stay out. */
 internal fun projectGradleJvmAuthority(root: Path): ProjectGradleJvmAuthority {
-    val propertiesFile = root.resolve("gradle.properties")
-    if (Files.notExists(propertiesFile)) return ProjectGradleJvmAuthority.Absent
-    if (!Files.isRegularFile(propertiesFile) || Files.isSymbolicLink(propertiesFile)) {
-        return ProjectGradleJvmAuthority.Rejected
-    }
-    if (try { Files.size(propertiesFile) > 1_048_576L } catch (_: IOException) { true } catch (_: SecurityException) { true }) {
-        return ProjectGradleJvmAuthority.Rejected
-    }
-    val properties = Properties()
-    try {
-        Files.newBufferedReader(propertiesFile).use(properties::load)
-    } catch (_: IOException) {
-        return ProjectGradleJvmAuthority.Rejected
-    } catch (_: SecurityException) {
-        return ProjectGradleJvmAuthority.Rejected
-    } catch (_: IllegalArgumentException) {
-        return ProjectGradleJvmAuthority.Rejected
+    val properties = when (val read = InstalledGradleModelInputs.readProperties(root, Path.of("gradle.properties"))) {
+        is Refinement.Rejected -> return ProjectGradleJvmAuthority.InputRejected(read.failure)
+        is Refinement.Refined -> when (val input = read.value) {
+            InstalledGradleProperties.Absent -> return ProjectGradleJvmAuthority.Absent
+            is InstalledGradleProperties.Present -> input.properties
+        }
     }
     val raw = properties.getProperty("org.gradle.java.home") ?: return ProjectGradleJvmAuthority.Absent
     if (raw.isBlank()) return ProjectGradleJvmAuthority.Rejected

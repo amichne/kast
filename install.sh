@@ -91,6 +91,8 @@ usage() {
 Install or completely remove Kast-owned machine state.
 
 Usage:
+  install.sh --local session [--idea-home <absolute-path>]
+  install.sh --local persistent [<installation-options>]
   install.sh [install] [--purge-existing] [--version <major.minor.patch>]
              [--install-root <absolute-path>] [--bin-dir <absolute-path>]
              [--runtime-store <absolute-path>]
@@ -98,6 +100,7 @@ Usage:
              [--cache-root <absolute-path>]
              [--enable-launchd <0-or-1>]
              [--enable-app-server <0-or-1>]
+             [--refresh-app-server]
              [--app-server-tools <comma-separated-tool-names>]
              [--idea-home <absolute-app-or-contents-path>]
              [--repository <owner/name>]
@@ -123,6 +126,16 @@ Defaults:
   repository    amichne/kast
   release URL   https://github.com/<repository>/releases/download
   config file   ${XDG_CONFIG_HOME:-$HOME/.config}/kast/environment
+
+--local builds the current working directory (a Kast checkout). Session mode
+prints a Bash/Zsh activation file path on stdout; use:
+  source "$(./install.sh --local session)"
+It isolates configuration, caches and sockets and disables persistent services.
+Persistent mode installs into the configured KAST_* paths and enables the
+App Server login service for this workspace. This is a per-user installation,
+available across sessions, not an all-users /Library/LaunchDaemons service.
+--refresh-app-server stops the previous installed App Server before activation
+and enables the new login service for the current workspace afterward.
 
 Environment equivalents:
   KAST_VERSION
@@ -614,6 +627,12 @@ load_persisted_runtime_configuration() {
         persisted_app_server_tools="${line#*=}"
         persisted_app_server_tools_set=true
         ;;
+      KAST_INDEXER_MAX_HEAP=*)
+        [[ "$persisted_indexer_max_heap_set" == false ]] ||
+          fail "runtime configuration repeats KAST_INDEXER_MAX_HEAP"
+        persisted_indexer_max_heap="${line#*=}"
+        persisted_indexer_max_heap_set=true
+        ;;
       *) fail "runtime configuration has an unsupported record: $line" ;;
     esac
   done < "$path"
@@ -801,6 +820,9 @@ install_runtime_configuration() {
     printf 'KAST_ENABLE_APP_SERVER=%s\n' "$enable_app_server"
     printf '%s\n' '# Exact comma-separated App Server tool subset in canonical order.'
     printf 'KAST_APP_SERVER_TOOLS=%s\n' "$app_server_tools"
+    if [[ "$indexer_max_heap_set" == true ]]; then
+      printf 'KAST_INDEXER_MAX_HEAP=%s\n' "$indexer_max_heap"
+    fi
   } > "$staged_configuration"
   chmod 600 "$staged_configuration"
   mv -f "$staged_configuration" "$path"
@@ -846,6 +868,7 @@ if [ -e "$config_file" ] || [ -L "$config_file" ]; then
     seen_enable_launchd=false
     seen_enable_app_server=false
     seen_app_server_tools=false
+    seen_indexer_max_heap=false
     while IFS= read -r config_line || [ -n "$config_line" ]; do
       case "$config_line" in
         ''|'#'*) ;;
@@ -897,11 +920,19 @@ if [ -e "$config_file" ] || [ -L "$config_file" ]; then
           seen_app_server_tools=true
           [ "${KAST_APP_SERVER_TOOLS+x}" = x ] || KAST_APP_SERVER_TOOLS=${config_line#*=}
           ;;
+        KAST_INDEXER_MAX_HEAP=*)
+          if [ "$seen_indexer_max_heap" = true ]; then
+            saved_configuration_failure duplicate-record
+            break
+          fi
+          seen_indexer_max_heap=true
+          [ "${KAST_INDEXER_MAX_HEAP+x}" = x ] || KAST_INDEXER_MAX_HEAP=${config_line#*=}
+          ;;
         *) saved_configuration_failure unsupported-record; break ;;
       esac
     done < "$config_file"
     export KAST_RUNTIME_STORE KAST_RUNTIME_DIRECTORY KAST_CACHE_ROOT KAST_ENABLE_LAUNCHD
-    export KAST_ENABLE_APP_SERVER KAST_APP_SERVER_TOOLS
+    export KAST_ENABLE_APP_SERVER KAST_APP_SERVER_TOOLS KAST_INDEXER_MAX_HEAP
   fi
 fi
 LAUNCHER_CONFIGURATION
@@ -963,6 +994,12 @@ verify_control_root() {
     "$root/bin/kast" --schema >/dev/null
 }
 
+if [[ ${1:-} == --local ]]; then
+  installer_directory="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+  shift
+  exec bash "$installer_directory/packaging/install-checkout.sh" "$installer_directory/install.sh" "$@"
+fi
+
 [[ -n "${HOME:-}" ]] || fail "HOME is unavailable"
 data_home="${XDG_DATA_HOME:-${HOME}/.local/share}"
 config_home="${XDG_CONFIG_HOME:-${HOME}/.config}"
@@ -1003,11 +1040,22 @@ persisted_enable_app_server=""
 persisted_enable_app_server_set=false
 persisted_app_server_tools=""
 persisted_app_server_tools_set=false
+persisted_indexer_max_heap=""
+persisted_indexer_max_heap_set=false
 load_persisted_runtime_configuration "$config_file"
+
+if [[ -n "${KAST_INDEXER_MAX_HEAP+x}" ]]; then
+  indexer_max_heap="$KAST_INDEXER_MAX_HEAP"
+  indexer_max_heap_set=true
+else
+  indexer_max_heap="$persisted_indexer_max_heap"
+  indexer_max_heap_set="$persisted_indexer_max_heap_set"
+fi
 
 action="install"
 installation_only=false
 purge_existing=false
+refresh_app_server=false
 version="${KAST_VERSION:-}"
 repository="${KAST_REPOSITORY:-$DEFAULT_REPOSITORY}"
 release_base_url="${KAST_RELEASE_BASE_URL:-}"
@@ -1080,6 +1128,10 @@ fi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --refresh-app-server)
+      refresh_app_server=true
+      shift
+      ;;
     --purge-existing)
       purge_existing=true
       shift
@@ -1166,6 +1218,9 @@ while [[ $# -gt 0 ]]; do
     *) fail "unknown argument: $1" ;;
   esac
 done
+
+[[ "$refresh_app_server" == false || "$action" == install ]] ||
+  fail "--refresh-app-server is valid only with install"
 
 [[ "$idea_home_option_set" == false || -n "$idea_home" ]] ||
   fail "--idea-home must not be empty"
@@ -1284,6 +1339,11 @@ require_literal_configuration_value "runtime directory" "$runtime_directory"
 require_literal_configuration_value "sidecar cache root" "$cache_root"
 validate_enable_launchd "$enable_launchd"
 validate_enable_app_server "$enable_app_server"
+[[ "$refresh_app_server" == false || "$enable_app_server" == 1 ]] ||
+  fail "--refresh-app-server requires app server enablement"
+if [[ "$indexer_max_heap_set" == true ]]; then
+  require_literal_configuration_value "sidecar heap" "$indexer_max_heap"
+fi
 require_literal_configuration_value "app server tools" "$app_server_tools"
 validate_app_server_tools "$app_server_tools"
 app_server_tools="$(canonical_app_server_tools "$app_server_tools")"
@@ -1398,7 +1458,7 @@ runtime_archive="$temporary_root/$runtime_name"
 runtime_checksum="$temporary_root/$runtime_name.sha256"
 runtime_listing="$temporary_root/runtime.list"
 
-note "downloading the matched Kast $version control and private semantic runtime"
+note "preparing the matched Kast $version control and private semantic runtime"
 for asset in \
   "$control_name" \
   "$control_name.sha256" \
@@ -1436,6 +1496,9 @@ verify_runtime_manifest \
   "$release_url/$runtime_name" \
   "$runtime_digest" \
   "$(wc -c < "$runtime_archive" | tr -d ' ')"
+
+[[ "$refresh_app_server" == false || -x "$verified_root/bin/kast-codex" ]] ||
+  fail "the requested payload does not support App Server integration"
 
 if [[ "$purge_existing" == true ]]; then
   purge_kast
@@ -1518,6 +1581,11 @@ if [[ -e "$config_file" || -L "$config_file" ]]; then
   prior_configuration="present"
 fi
 
+if [[ "$refresh_app_server" == true && -n "$prior_codex_command" ]]; then
+  note "stopping the previous installed App Server before activation"
+  "$command_link" app-server stop
+fi
+
 activation_state="pending"
 install_runtime_configuration "$config_file"
 replace_managed_link "$current_link" "versions/$version"
@@ -1531,6 +1599,14 @@ fi
 verify_control_root "$target_root" "$version" "$java_executable" "$java_home"
 "$command_link" --version >/dev/null
 activation_state="committed"
+
+if [[ "$refresh_app_server" == true ]]; then
+  note "enabling the installed App Server login service for the current workspace"
+  env -u KAST_RUNTIME_STORE -u KAST_RUNTIME_DIRECTORY -u KAST_CACHE_ROOT \
+    -u KAST_ENABLE_LAUNCHD -u KAST_ENABLE_APP_SERVER -u KAST_APP_SERVER_TOOLS \
+    "$command_link" app-server enable ||
+    fail "Kast is installed, but App Server enablement failed; resolve the reported failure and run kast app-server enable"
+fi
 
 note "installed Kast $version"
 note "command: $command_link"
