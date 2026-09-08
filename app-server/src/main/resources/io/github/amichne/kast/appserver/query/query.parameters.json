@@ -1,0 +1,377 @@
+{
+  "type": "object",
+  "description": "Agent-facing query syntax. Defaults are fixed by this contract, not by the environment. This schema does not confer compiler authority.",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "QUERY"
+      ],
+      "description": "Shape discriminator."
+    },
+    "from": {
+      "$ref": "#/$defs/Source"
+    },
+    "steps": {
+      "$ref": "#/$defs/Steps"
+    },
+    "select": {
+      "$ref": "#/$defs/Selection"
+    }
+  },
+  "required": [
+    "type",
+    "from"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "QueryText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+      "description": "Declaration name to match. Blank text is rejected; use ALL for enumeration. At most 256 UTF-16 code units at canonical admission."
+    },
+    "ExactRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1048576,
+      "pattern": "^exact:v2:[\\s\\S]+$",
+      "description": "Copy items[].ref.token from an exact-symbol result verbatim. This prefix check is syntax only; Kast still validates workspace, generation and compiler identity."
+    },
+    "DirectoryPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1048576,
+      "pattern": "^(?:\\.|(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))(?!.*//)(?!.*(?:^|/)\\s*(?:/|$))[^\\x00-\\x1F\\x7F-\\x9F]+)$",
+      "description": "Canonical path relative to the workspace root. A single dot means the root. Absolute paths, backslashes, empty segments, embedded dot segments and parent traversal are rejected; spelling is preserved."
+    },
+    "PackageName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1048576,
+      "pattern": "^(?!.*\\.(?:[0-9.]|$))[A-Za-z_][A-Za-z0-9_.]*$",
+      "description": "Semantic Kotlin package name; not a path. Uses the currently supported ASCII package-name grammar."
+    },
+    "Match": {
+      "type": "string",
+      "enum": [
+        "EXACT",
+        "FUZZY"
+      ],
+      "description": "Omitted means exact declaration-name matching. Exact does not select one overload. Fuzzy matching requires explicit opt-in."
+    },
+    "DeclarationKind": {
+      "type": "string",
+      "enum": [
+        "CLASS",
+        "FUNCTION",
+        "PROPERTY",
+        "TYPE_ALIAS"
+      ],
+      "description": "Supported discovery family. Class includes the existing class-like family; constructors are not discoverable through this source."
+    },
+    "SourceSet": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1048576,
+      "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+      "description": "Exact Gradle source-set name from the imported model, including custom and multiplatform names. Not a production/test category or filesystem glob."
+    },
+    "Containment": {
+      "type": "string",
+      "enum": [
+        "DIRECT",
+        "RECURSIVE"
+      ],
+      "description": "Omitted searches recursively, including this directory or package and all nested directories or subpackages. DIRECT selects only this directory or package."
+    },
+    "Visibility": {
+      "type": "string",
+      "enum": [
+        "PUBLIC",
+        "PROTECTED",
+        "INTERNAL",
+        "PRIVATE",
+        "LOCAL"
+      ],
+      "description": "Compiler-established declaration visibility."
+    },
+    "Relation": {
+      "type": "string",
+      "enum": [
+        "REFERENCES",
+        "CALLERS",
+        "CALLEES",
+        "IMPLEMENTATIONS",
+        "INHERITORS",
+        "OVERRIDES",
+        "TYPE_USES"
+      ],
+      "description": "One compiler-confirmed semantic hop. Callers returns calling declarations; callees returns called declarations."
+    },
+    "Field": {
+      "type": "string",
+      "enum": [
+        "NAME",
+        "LOCATION",
+        "SIGNATURE"
+      ],
+      "description": "Optional result projection. Existing ref and kind fields are always retained."
+    },
+    "Kinds": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/DeclarationKind"
+      },
+      "minItems": 1,
+      "maxItems": 4,
+      "description": "Omitted includes every supported discovery family. Empty and duplicate lists are rejected.",
+      "uniqueItems": true
+    },
+    "SourceSets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SourceSet"
+      },
+      "minItems": 1,
+      "maxItems": 1000,
+      "description": "Omitted selects names main and test. Explicit names intersect with directory and package restrictions; names with no matching roots contribute no declarations.",
+      "uniqueItems": true
+    },
+    "Selection": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Field"
+      },
+      "minItems": 0,
+      "maxItems": 3,
+      "description": "Omitted returns name and location. Empty requests ref and kind only; it does not restore defaults.",
+      "uniqueItems": true
+    },
+    "Steps": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Step"
+      },
+      "minItems": 0,
+      "maxItems": 1000,
+      "description": "Ordered left-to-right transformations. Omitted means no steps. Never reorder filters around expansion."
+    },
+    "RefsList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ExactRef"
+      },
+      "minItems": 1,
+      "maxItems": 1000,
+      "description": "Non-empty returned exact-symbol tokens. No candidate promotion, guessing or alias lookup."
+    },
+    "VisibilityList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Visibility"
+      },
+      "minItems": 1,
+      "maxItems": 5,
+      "description": "Non-empty set of accepted visibilities; unproved predicates remain incomplete evidence, never a negative match.",
+      "uniqueItems": true
+    },
+    "Scope": {
+      "type": "object",
+      "description": "Exactly one directory or package target. Source-set restrictions intersect with the target. Containment applies to either target. Scope does not restrict later expansion destinations.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "DIRECTORY",
+            "PACKAGE"
+          ],
+          "description": "Selects the grammar and meaning of value."
+        },
+        "value": {
+          "$ref": "#/$defs/ScopeValue"
+        },
+        "containment": {
+          "$ref": "#/$defs/Containment"
+        },
+        "sourceSets": {
+          "$ref": "#/$defs/SourceSets"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "Search": {
+      "type": "object",
+      "description": "Find matching declarations and establish exact compiler identities. Multiple overloads remain separate symbols.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "SEARCH"
+          ],
+          "description": "Shape discriminator."
+        },
+        "query": {
+          "$ref": "#/$defs/QueryText"
+        },
+        "match": {
+          "$ref": "#/$defs/Match"
+        },
+        "kinds": {
+          "$ref": "#/$defs/Kinds"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        }
+      },
+      "required": [
+        "type",
+        "query"
+      ],
+      "additionalProperties": false
+    },
+    "All": {
+      "type": "object",
+      "description": "Explicit bounded enumeration. Budget exhaustion remains partial coverage; ALL never implies unbounded work.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "ALL"
+          ],
+          "description": "Shape discriminator."
+        },
+        "kinds": {
+          "$ref": "#/$defs/Kinds"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "Refs": {
+      "type": "object",
+      "description": "Start from exact-symbol references previously returned by Kast.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "REFS"
+          ],
+          "description": "Shape discriminator."
+        },
+        "refs": {
+          "$ref": "#/$defs/RefsList"
+        }
+      },
+      "required": [
+        "type",
+        "refs"
+      ],
+      "additionalProperties": false
+    },
+    "Source": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Search"
+        },
+        {
+          "$ref": "#/$defs/All"
+        },
+        {
+          "$ref": "#/$defs/Refs"
+        }
+      ],
+      "description": "Every source yields exact symbols or explicit incomplete/rejected evidence. Candidates are internal to Kast."
+    },
+    "Filter": {
+      "type": "object",
+      "description": "Filter the current symbol stream by compiler-established visibility.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "FILTER"
+          ],
+          "description": "Shape discriminator."
+        },
+        "visibility": {
+          "$ref": "#/$defs/VisibilityList"
+        }
+      },
+      "required": [
+        "type",
+        "visibility"
+      ],
+      "additionalProperties": false
+    },
+    "Expand": {
+      "type": "object",
+      "description": "Expand the current symbols by exactly one semantic hop, retaining relation evidence.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "EXPAND"
+          ],
+          "description": "Shape discriminator."
+        },
+        "relation": {
+          "$ref": "#/$defs/Relation"
+        }
+      },
+      "required": [
+        "type",
+        "relation"
+      ],
+      "additionalProperties": false
+    },
+    "Distinct": {
+      "type": "object",
+      "description": "Deduplicate exact symbols using the existing engine operation, preserving contributing relation evidence.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "DISTINCT"
+          ],
+          "description": "Shape discriminator."
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "Step": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Filter"
+        },
+        {
+          "$ref": "#/$defs/Expand"
+        },
+        {
+          "$ref": "#/$defs/Distinct"
+        }
+      ],
+      "description": "Closed symbol-to-symbol transformations. INSPECT is intentionally not public."
+    },
+    "ScopeValue": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1048576,
+      "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+      "description": "DIRECTORY: canonical workspace-relative path, with . for the root. PACKAGE: dotted Kotlin package name. The typed parser validates the grammar selected by type."
+    }
+  }
+}

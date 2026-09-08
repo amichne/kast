@@ -1,0 +1,38 @@
+{
+  "type": "QUERY",
+  "from": {
+    "type": "SEARCH",
+    "query": "submitOrder",
+    "match": "EXACT",
+    "kinds": [
+      "FUNCTION"
+    ],
+    "scope": {
+      "type": "DIRECTORY",
+      "value": "services/orders",
+      "sourceSets": [
+        "main"
+      ]
+    }
+  },
+  "steps": [
+    {
+      "type": "EXPAND",
+      "relation": "CALLERS"
+    },
+    {
+      "type": "FILTER",
+      "visibility": [
+        "PUBLIC"
+      ]
+    },
+    {
+      "type": "DISTINCT"
+    }
+  ],
+  "select": [
+    "NAME",
+    "LOCATION",
+    "SIGNATURE"
+  ]
+}

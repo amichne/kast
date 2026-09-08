@@ -8,6 +8,18 @@ import java.nio.file.Path
 
 class WorkspaceSearchScopeSourceRootPolicyTest {
     @Test
+    fun `model retains exact source-set spelling and rejects blank names`() {
+        val raw = boundary().copy(sourceSetName = " customMain ")
+        val admitted = WorkspaceSearchScopeModel.compile(workspaceRoot(), ImportedWorkspaceModelState.COMPLETE, listOf(raw))
+        assertEquals(raw.sourceSetName,
+            assertInstanceOf<WorkspaceSearchScopeModelCompilation.Compiled>(admitted).model.sourceRoots.single().sourceSet.value)
+        val rejected = WorkspaceSearchScopeModel.compile(workspaceRoot(), ImportedWorkspaceModelState.COMPLETE,
+            listOf(raw.copy(sourceSetName = " ")))
+        assertEquals(setOf(WorkspaceSearchScopeModelFailure.INVALID_SOURCE_SET_NAME, WorkspaceSearchScopeModelFailure.NO_SOURCE_ROOTS),
+            assertInstanceOf<WorkspaceSearchScopeModelCompilation.Rejected>(rejected).failures)
+    }
+
+    @Test
     fun `model provenance wins over source-root path names`() {
         val compilation = WorkspaceSearchScopeModel.compile(
             workspaceRoot(),

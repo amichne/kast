@@ -67,9 +67,18 @@ value class GradleProjectPath internal constructor(
 )
 
 @JvmInline
-value class WorkspaceSourceSetName internal constructor(
+value class WorkspaceSourceSetName private constructor(
     val value: String,
-)
+) {
+    companion object {
+        /** Refines boundary text to a non-blank exact name; adapters alone extract its spelling. */
+        fun parse(raw: String): Refinement<WorkspaceSourceSetName, WorkspaceSourceSetNameFailure> =
+            if (raw.isBlank()) Refinement.Rejected(WorkspaceSourceSetNameFailure.BLANK)
+            else Refinement.Refined(WorkspaceSourceSetName(raw))
+    }
+}
+
+enum class WorkspaceSourceSetNameFailure { BLANK }
 
 @JvmInline
 value class CanonicalSourceRoot internal constructor(
@@ -198,7 +207,7 @@ class WorkspaceSearchScopeModel private constructor(
             val workspacePath = Path.of(workspaceRoot.value)
             val moduleName = boundary.ideaModuleName.trim()
             val projectPath = boundary.gradleProjectPath.trim()
-            val sourceSetName = boundary.sourceSetName.trim()
+            val sourceSetName = WorkspaceSourceSetName.parse(boundary.sourceSetName)
 
             if (moduleName.isEmpty()) {
                 failures += WorkspaceSearchScopeModelFailure.INVALID_IDEA_MODULE_NAME
@@ -213,7 +222,7 @@ class WorkspaceSearchScopeModel private constructor(
             if (!GRADLE_PROJECT_PATH.matches(projectPath)) {
                 failures += WorkspaceSearchScopeModelFailure.INVALID_GRADLE_PROJECT_PATH
             }
-            if (sourceSetName.isEmpty()) {
+            if (sourceSetName is Refinement.Rejected) {
                 failures += WorkspaceSearchScopeModelFailure.INVALID_SOURCE_SET_NAME
             }
             if (!boundary.sourceRoot.isAbsolute || boundary.sourceRoot.normalize() != boundary.sourceRoot) {
@@ -242,7 +251,10 @@ class WorkspaceSearchScopeModel private constructor(
                         buildRoot = WorkspaceRelativeGradleBuildRoot(relativeBuildRoot),
                         projectPath = GradleProjectPath(projectPath),
                     ),
-                    sourceSet = WorkspaceSourceSetName(sourceSetName),
+                    sourceSet = when (sourceSetName) {
+                        is Refinement.Refined -> sourceSetName.value
+                        is Refinement.Rejected -> return Refinement.Rejected(failures)
+                    },
                     sourceRoot = CanonicalSourceRoot(boundary.sourceRoot.toString()),
                     sourceKind = boundary.sourceKind,
                     provenance = boundary.provenance,

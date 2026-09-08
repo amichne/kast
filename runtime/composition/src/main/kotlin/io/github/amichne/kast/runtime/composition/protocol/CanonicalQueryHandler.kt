@@ -19,6 +19,8 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackage
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackageConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName
 import io.github.amichne.kast.symbol.contract.SymbolExactRejection
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
@@ -349,8 +351,8 @@ private fun QueryDiscoveryDocument.syntax(): QueryDiscoverySyntax? {
         ?.mapTo(linkedSetOf()) { it.compilerKind() } ?: return null
     val admittedKinds = QueryDeclarationKinds.from(kinds).refinedOrNull() ?: return null
     val sets = scope.sourceSets.values.uniqueValues()
-        ?.mapTo(linkedSetOf()) { QuerySourceSet.valueOf(it.name) } ?: return null
-    val admittedSets = QuerySourceSets.Exact.from(sets).refinedOrNull() ?: return null
+        ?.mapTo(linkedSetOf()) { WorkspaceSourceSetName.parse(it.value).refinedOrNull() ?: return null } ?: return null
+    val admittedSets = SymbolDiscoverySourceSets.Exact.from(sets).refinedOrNull() ?: return null
     val directory = scope.directory?.let {
         SymbolDiscoveryDirectoryConstraint(
             SymbolDiscoveryDirectory.parse(it.path.value).refinedOrNull() ?: return null,

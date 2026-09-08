@@ -29,7 +29,7 @@ class CliBoundaryContractTest {
         val commands = listOf(
             SemanticCase(
                 listOf("query", "run"),
-                """{"from":{"type":"symbols","match":{"type":"all"},"scope":{"sourceSets":["main"],"directory":null,"packageName":null},"declarationKinds":["class"]},"steps":[],"output":{"type":"symbols","fields":["name","location"]},"execution":{"kind":"exhaustive","budget":"interactive"}}""",
+                """{"type":"QUERY","from":{"type":"ALL","kinds":["CLASS"],"scope":{"type":"DIRECTORY","value":".","sourceSets":["main"]}}}""",
                 CanonicalOperation.QUERY_RUN,
             ),
             SemanticCase(
@@ -96,6 +96,27 @@ class CliBoundaryContractTest {
         assertTrue(factory.parse(listOf("change", "verify")) is CliCommandParsing.Rejected)
         assertTrue(factory.parse(listOf("workspace", "refresh")) is CliCommandParsing.Rejected)
         assertTrue(factory.parse(listOf("up")) is CliCommandParsing.Rejected)
+    }
+
+    @Test
+    fun `query command admits public defaults and rejects evaluator syntax`() {
+        val factory = commandGraphFactory()
+        val command = listOf("query", "run")
+        val minimal = factory.parse(
+            command,
+            CliRequestDocumentInput.Provided(
+                """{"type":"QUERY","from":{"type":"SEARCH","query":"OrderService"}}""",
+            ),
+        )
+        assertTrue(minimal is CliCommandParsing.Parsed)
+        val action = (minimal as CliCommandParsing.Parsed).action
+        assertTrue(action is CliAction.Semantic)
+        assertEquals(CanonicalOperation.QUERY_RUN, (action as CliAction.Semantic).request.operation)
+
+        val retired = """{"from":{"type":"symbols","match":{"type":"all"},"scope":{"sourceSets":["main"],"directory":null,"packageName":null},"declarationKinds":["class"]},"steps":[],"output":{"type":"symbols","fields":["name","location"]},"execution":{"kind":"exhaustive","budget":"interactive"}}"""
+        assertTrue(
+            factory.parse(command, CliRequestDocumentInput.Provided(retired)) is CliCommandParsing.Rejected,
+        )
     }
 
     @Test

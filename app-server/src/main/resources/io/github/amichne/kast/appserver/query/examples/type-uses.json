@@ -1,0 +1,16 @@
+{
+  "type": "QUERY",
+  "from": {
+    "type": "SEARCH",
+    "query": "Order",
+    "kinds": [
+      "CLASS"
+    ]
+  },
+  "steps": [
+    {
+      "type": "EXPAND",
+      "relation": "TYPE_USES"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "type": "QUERY",
+  "from": {
+    "type": "SEARCH",
+    "query": "OrderService",
+    "match": "EXACT",
+    "kinds": [
+      "CLASS",
+      "FUNCTION",
+      "PROPERTY",
+      "TYPE_ALIAS"
+    ],
+    "scope": {
+      "type": "DIRECTORY",
+      "value": ".",
+      "containment": "RECURSIVE",
+      "sourceSets": [
+        "main",
+        "test"
+      ]
+    }
+  },
+  "steps": [],
+  "select": [
+    "NAME",
+    "LOCATION"
+  ]
+}

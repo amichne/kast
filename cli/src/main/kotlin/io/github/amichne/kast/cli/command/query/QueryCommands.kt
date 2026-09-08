@@ -7,7 +7,8 @@ import io.github.amichne.kast.cli.command.KastCommandGroup
 import io.github.amichne.kast.cli.command.SemanticKastCommand
 import io.github.amichne.kast.cli.projection.CanonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
-import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.appserver.query.PublicQueryRequestSerializer
+import io.github.amichne.kast.cli.CliRequestPreparer
 
 internal fun queryCommandGroup(
     preparers: CanonicalCliRequestPreparers,
@@ -17,10 +18,10 @@ internal fun queryCommandGroup(
         name = "run",
         operation = CanonicalOperation.QUERY_RUN,
         schemaUsage = "query run < request.json",
-        description = "Execute one canonical typed query request from standard input.",
-        serializer = QueryRunRequest.serializer(),
+        description = "Search or enumerate exact Kotlin symbols; omitted controls use query defaults.",
+        serializer = PublicQueryRequestSerializer,
         requestInput = requestInput,
-        preparer = preparers.queryRun,
+        preparer = CliRequestPreparer { request -> preparers.queryRun.prepare(request.canonicalRequest) },
     )
     return CommandFamily(
         KastCommandGroup("query", "Execute one typed, bounded Kotlin declaration query.")

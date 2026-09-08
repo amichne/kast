@@ -646,7 +646,7 @@ class KastProviderTest {
         {
           "schemaVersion": 1,
           "serverProjection": {
-            "schemaVersion": 7,
+            "schemaVersion": 8,
             "namespace": "kast",
             "hostedBootstrap": {
               "schemaVersion": 1,

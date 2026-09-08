@@ -1,0 +1,10 @@
+{
+  "type": "QUERY",
+  "from": {
+    "type": "REFS",
+    "refs": [
+      "exact:v2:EXAMPLE_NOT_ISSUED"
+    ]
+  },
+  "select": []
+}

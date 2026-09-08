@@ -36,7 +36,7 @@ class CanonicalQueryWireBindingTest {
                 QueryDiscoveryDocument(
                     QueryMatchDocument.All,
                     QueryScopeDocument(
-                        bounded(listOf(QuerySourceSetDocument.MAIN)),
+                        bounded(listOf(text("main"))),
                         QueryDirectoryScopeDocument(text("services/payments"), QueryContainmentDocument.DESCENDANTS),
                         QueryPackageScopeDocument(text("com.acme.payments"), QueryContainmentDocument.DESCENDANTS),
                     ),

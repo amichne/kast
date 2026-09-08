@@ -162,7 +162,7 @@ value class SymbolDiscoveryDirectory private constructor(
             raw.startsWith('/') -> Refinement.Rejected(SymbolDiscoveryDirectoryFailure.ABSOLUTE)
             raw.any(Char::isISOControl) ->
                 Refinement.Rejected(SymbolDiscoveryDirectoryFailure.CONTROL_CHARACTER)
-            raw.split('/').any { it.isBlank() || it == "." || it == ".." } ->
+            raw != "." && raw.split('/').any { it.isBlank() || it == "." || it == ".." } ->
                 Refinement.Rejected(SymbolDiscoveryDirectoryFailure.NON_CANONICAL)
             else -> Refinement.Refined(SymbolDiscoveryDirectory(raw))
         }
@@ -231,6 +231,7 @@ data class SymbolDiscoveryConstraints(
     val directory: SymbolDiscoveryDirectoryConstraint?,
     val packageName: SymbolDiscoveryPackageConstraint?,
     val declarationKinds: SymbolDiscoveryDeclarationKinds? = null,
+    val sourceSets: SymbolDiscoverySourceSets = SymbolDiscoverySourceSets.All,
 ) {
     companion object {
         val None: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints(null, null, null)

@@ -24,6 +24,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualifications
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
 import org.jetbrains.kotlin.psi.KtFile
 import java.nio.file.Path
@@ -272,6 +273,7 @@ private class BoundedNativeDiscoveryCollector(
                 item,
                 file.path,
                 request.scope.lease.workspaceRoot.value,
+                compiledScope,
                 itemCompilerKind,
             )
         ) {
@@ -383,8 +385,29 @@ private fun SymbolDiscoveryConstraints.admit(
     item: NavigationItem,
     filePath: String,
     workspaceRoot: String,
+    compiledScope: CompiledIntellijSearchScope,
     itemCompilerKind: IntellijDiscoveryItemCompilerKind,
 ): IntellijDiscoveryItemAdmission {
+    when (val selection = sourceSets) {
+        SymbolDiscoverySourceSets.All -> Unit
+        is SymbolDiscoverySourceSets.Exact -> {
+            val file = runCatching { Path.of(filePath) }.getOrNull()
+                ?: return IntellijDiscoveryItemAdmission.UNSUPPORTED
+            if (!file.isAbsolute) return IntellijDiscoveryItemAdmission.UNSUPPORTED
+            val normalizedFile = file.normalize()
+            val owners = compiledScope.ownershipRoots.filter {
+                normalizedFile.startsWith(Path.of(it.sourceRoot.value))
+            }
+            val deepest = owners.maxOfOrNull { Path.of(it.sourceRoot.value).nameCount }
+                ?: return IntellijDiscoveryItemAdmission.UNSUPPORTED
+            val exactOwners = owners.filter { Path.of(it.sourceRoot.value).nameCount == deepest }
+            // A shared root can have several proven owners. Intersect readable ownership with
+            // the requested names, without falling back to an ancestor when none is readable.
+            if (exactOwners.none { it in compiledScope.sourceRoots && it.sourceSet in selection.values }) {
+                return IntellijDiscoveryItemAdmission.FILTERED
+            }
+        }
+    }
     directory?.let { restriction ->
         val root = runCatching { Path.of(workspaceRoot).toAbsolutePath().normalize() }.getOrNull()
             ?: return IntellijDiscoveryItemAdmission.UNSUPPORTED

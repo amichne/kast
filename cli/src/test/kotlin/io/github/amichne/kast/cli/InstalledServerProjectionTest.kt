@@ -34,7 +34,7 @@ class InstalledServerProjectionTest {
             .jsonArray
             .map(JsonElement::jsonObject)
 
-        assertEquals(7, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(8, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertTrue(
             bootstrap.getValue("policy").jsonPrimitive.content
                 .contains("compiler-grounded Kotlin source intelligence"),
@@ -139,36 +139,16 @@ class InstalledServerProjectionTest {
     }
 
     @Test
-    fun `query schema exposes scoped enumeration and typed reusable references`() {
+    fun `query schema exposes intent and defaults but not evaluator states`() {
         val query = projectionTools().tool("query.run")
         val input = query.getValue("inputSchema").jsonObject
-        val execution = """{"kind":"exhaustive","budget":"interactive"}"""
-        val output = """{"type":"symbols","fields":["name","location","signature"]}"""
-        val refOnlyOutput = """{"type":"symbols","fields":[]}"""
-        val scope = """{"sourceSets":["main"],"directory":{"path":"services/payments","containment":"descendants"},"packageName":{"name":"com.acme.payments","containment":"descendants"}}"""
-
-        input.assertAdmits(
-            """{"from":{"type":"symbols","match":{"type":"all"},"scope":$scope,"declarationKinds":["class"]},"steps":[{"type":"where","predicate":{"type":"visibility","values":["public"]}},{"type":"related","relation":"inheritors"},{"type":"distinct"}],"output":$output,"execution":$execution}""",
-        )
-        input.assertAdmits(
-            """{"from":{"type":"references","values":[{"kind":"exact-symbol","token":"exact:v2:opaque"}]},"steps":[],"output":$output,"execution":$execution}""",
-        )
-        input.assertAdmits(
-            """{"from":{"type":"references","values":[{"kind":"declaration-candidate","token":"candidate:v2:opaque"}]},"steps":[],"output":$output,"execution":$execution}""",
-        )
-        input.assertAdmits(
-            """{"from":{"type":"references","values":[{"kind":"exact-symbol","token":"exact:v2:opaque"}]},"steps":[],"output":$refOnlyOutput,"execution":$execution}""",
-        )
-        input.assertRejects(
-            """{"from":{"type":"references","values":[{"kind":"declaration-candidate","token":"candidate:v2:opaque"},{"kind":"exact-symbol","token":"exact:v2:opaque"}]},"steps":[],"output":$output,"execution":$execution}""",
-        )
-        input.assertRejects(
-            """{"from":{"type":"symbols","match":{"type":"name","text":"   ","matching":"fuzzy"},"scope":$scope,"declarationKinds":["class"]},"steps":[],"output":$output,"execution":$execution}""",
-        )
-        input.assertRejects(
-            """{"from":{"type":"symbols","match":{"type":"all"},"scope":$scope,"declarationKinds":["constructor"]},"steps":[],"output":$output,"execution":$execution}""",
-        )
-
+        input.assertAdmits("""{"type":"QUERY","from":{"type":"SEARCH","query":"OrderService"}}""")
+        input.assertAdmits("""{"type":"QUERY","from":{"type":"ALL"},"select":[]}""")
+        input.assertAdmits("""{"type":"QUERY","from":{"type":"REFS","refs":["exact:v2:example"]}}""")
+        input.assertRejects("""{"type":"QUERY","from":{"type":"REFS","refs":["candidate:v2:example"]}}""")
+        input.assertRejects("""{"type":"QUERY","from":{"type":"ALL"},"steps":[{"type":"INSPECT"}]}""")
+        input.assertRejects("""{"type":"QUERY","from":{"type":"ALL"},"execution":{"kind":"exhaustive"}}""")
+        assertEquals(io.github.amichne.kast.appserver.query.PublicQueryContract.parameters, input)
         query.outputSchema().assertAdmits(
             """{"status":"completed","document":{"operation":"query.run","status":"complete","items":[],"failures":[]}}""",
         )
@@ -212,7 +192,7 @@ class InstalledServerProjectionTest {
             .map { it.operation.id.value }
 
         assertEquals(10, tools.size)
-        assertEquals(7, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(8, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
             expectedPublicOperations,

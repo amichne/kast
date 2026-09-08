@@ -1,0 +1,24 @@
+{
+  "type": "QUERY",
+  "from": {
+    "type": "ALL",
+    "kinds": [
+      "CLASS"
+    ],
+    "scope": {
+      "type": "DIRECTORY",
+      "value": ".",
+      "sourceSets": [
+        "main"
+      ]
+    }
+  },
+  "steps": [
+    {
+      "type": "FILTER",
+      "visibility": [
+        "PUBLIC"
+      ]
+    }
+  ]
+}

@@ -36,6 +36,8 @@ import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
@@ -67,12 +69,42 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
 
 class QueryServiceTest {
+    @Test
+    fun `source-set identity survives query discovery without source-kind inference`() = runTest {
+        listOf("main", "test", "integrationTest").forEach { name ->
+            val sets = SymbolDiscoverySourceSets.Exact.from(
+                setOf(WorkspaceSourceSetName.parse(name).refined()),
+            ).refined()
+            val syntax = QueryDiscoverySyntax(
+                QueryMatch.All,
+                QueryScope.Restricted(sets, null, null),
+                QueryDeclarationKinds.from(setOf(CompilerSymbolKind.CLASSLIKE)).refined(),
+            )
+            var observed = false
+            val service = service(discovery = SymbolDiscoveryOperations { request ->
+                observed = true
+                assertEquals(sets, request.constraints.sourceSets)
+                assertEquals(SymbolSourceKindPolicy.PRODUCTION_AND_TEST, request.scope.scope.sourceKinds)
+                discoveryEmpty(qualified = false).discover(request)
+            })
+            val plan = QueryPlanCompiler.admit(QueryPlanSyntax(
+                QuerySourceSyntax.Symbols(syntax),
+                emptyList(),
+                QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
+            ))
+            assertTrue(plan is QueryPlanAdmission.Admitted)
+            service.run(request((plan as QueryPlanAdmission.Admitted).plan, workLimit = 8L))
+            assertTrue(observed)
+        }
+    }
+
     @Test
     fun `symbols source owns candidate refinement and emits exact symbols`() = runTest {
         var resolutions = 0

@@ -1,0 +1,18 @@
+# Public query boundary
+
+Follow the root Engineering Dictum and `app-server/docs/public-query-contract.md`.
+The authored schema owns parameter metadata and defaults; generated files are not
+editable authorities. Run `:app-server:verifyPublicQueryGeneration` after schema
+changes, and focused PublicQuery contract/schema tests after admission changes.
+
+A public request is intent, not compiler evidence. Admit into `AdmittedPublicQuery`
+through its private-construction boundary; never reintroduce a raw JSON query
+payload, candidate output, an INSPECT stage, magic wildcard, or implicit retry.
+Omitted controls use concrete defaults on the declaring types. Explicit null is
+rejected. Invalid and empty are not synonyms for omitted. Preserve ordered stages and exact token bytes. Keep all workspace,
+generation, semantic identity and completeness checks in their existing owners.
+
+Encoding is a transport projection of retained typed syntax, not a reverse parser
+for arbitrary canonical requests. No public constructor/copy may bypass admission.
+Schema constraints and canonical syntax guards remain enforced even when a provider
+supports a weaker generation schema. Passing a JSON Schema is not a capability.

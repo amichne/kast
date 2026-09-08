@@ -7,8 +7,6 @@ import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryPredicate
 import io.github.amichne.kast.query.contract.QueryScope
-import io.github.amichne.kast.query.contract.QuerySourceSet
-import io.github.amichne.kast.query.contract.QuerySourceSets
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationFact
@@ -33,7 +31,6 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDeclarationKinds
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolSelector
-import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import java.nio.charset.StandardCharsets
 
 internal fun discoveryKinds(syntax: QueryDiscoverySyntax): List<SymbolNameDiscoveryKind> = buildSet {
@@ -44,18 +41,6 @@ internal fun discoveryKinds(syntax: QueryDiscoverySyntax): List<SymbolNameDiscov
         add(SymbolNameDiscoveryKind.SYMBOL)
     }
 }.sortedBy { it.ordinal }
-
-internal fun sourceKinds(scope: QueryScope): SymbolSourceKindPolicy = when (scope) {
-    QueryScope.Unrestricted -> SymbolSourceKindPolicy.PRODUCTION_AND_TEST
-    is QueryScope.Restricted -> when (val sourceSets = scope.sourceSets) {
-        QuerySourceSets.All -> SymbolSourceKindPolicy.PRODUCTION_AND_TEST
-        is QuerySourceSets.Exact -> when (sourceSets.values.toSet()) {
-            setOf(QuerySourceSet.MAIN) -> SymbolSourceKindPolicy.PRODUCTION_ONLY
-            setOf(QuerySourceSet.TEST) -> SymbolSourceKindPolicy.TEST_ONLY
-            else -> SymbolSourceKindPolicy.PRODUCTION_AND_TEST
-        }
-    }
-}
 
 /**
  * A multi-family query must not spend class candidates once through the class index and again
@@ -85,6 +70,7 @@ internal fun constraints(
             declarationKinds = admittedKinds,
         )
         is QueryScope.Restricted -> SymbolDiscoveryConstraints(
+            sourceSets = scope.sourceSets,
             directory = scope.directory,
             packageName = scope.packageName,
             declarationKinds = admittedKinds,

@@ -18,6 +18,31 @@ import java.nio.file.Path
 
 class CanonicalQueryRunHandlerTest {
     @Test
+    fun `custom source-set identities reach the admitted execution plan`(@TempDir root: Path) = runTest {
+        var observed = false
+        val handler = CanonicalQueryRunHandler(
+            InstalledSymbolProtocolFixture.create(root).workspace,
+            QueryOperations { request ->
+                val plan = request.plan as io.github.amichne.kast.query.contract.AdmittedQueryPlan.Symbols
+                val scope = plan.source.scope as io.github.amichne.kast.query.contract.QueryScope.Restricted
+                val names = scope.sourceSets as io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets.Exact
+                assertEquals(setOf("integrationTest", "commonMain"), names.values.map { it.value }.toSet())
+                observed = true
+                QueryExecutionResult.Rejected(
+                    io.github.amichne.kast.query.contract.QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION,
+                )
+            },
+            CanonicalProtocolAuthority(),
+        )
+        handler.execute(request(QueryFromDocument.Symbols(QueryDiscoveryDocument(
+            QueryMatchDocument.All,
+            QueryScopeDocument(bounded(listOf(text("integrationTest"), text("commonMain"))), null, null),
+            bounded(listOf(QueryDeclarationKindDocument.CLASS)),
+        )), emptyList()))
+        assertTrue(observed)
+    }
+
+    @Test
     fun `candidate relation is rejected by typed admission before semantic execution`(
         @TempDir root: Path,
     ) = runTest {
@@ -65,7 +90,7 @@ class CanonicalQueryRunHandlerTest {
         val constructorSource = QueryFromDocument.Symbols(
             QueryDiscoveryDocument(
                 QueryMatchDocument.All,
-                QueryScopeDocument(bounded(listOf(QuerySourceSetDocument.MAIN)), null, null),
+                QueryScopeDocument(bounded(listOf(text("main"))), null, null),
                 bounded(listOf(QueryDeclarationKindDocument.CONSTRUCTOR)),
             ),
         )
@@ -166,7 +191,7 @@ class CanonicalQueryRunHandlerTest {
     private fun candidateSource() = QueryFromDocument.Candidates(
         QueryDiscoveryDocument(
             QueryMatchDocument.All,
-            QueryScopeDocument(bounded(listOf(QuerySourceSetDocument.MAIN)), null, null),
+            QueryScopeDocument(bounded(listOf(text("main"))), null, null),
             bounded(listOf(QueryDeclarationKindDocument.CLASS)),
         ),
     )
@@ -174,7 +199,7 @@ class CanonicalQueryRunHandlerTest {
     private fun symbolSource() = QueryFromDocument.Symbols(
         QueryDiscoveryDocument(
             QueryMatchDocument.All,
-            QueryScopeDocument(bounded(listOf(QuerySourceSetDocument.MAIN)), null, null),
+            QueryScopeDocument(bounded(listOf(text("main"))), null, null),
             bounded(listOf(QueryDeclarationKindDocument.FUNCTION)),
         ),
     )
@@ -182,7 +207,7 @@ class CanonicalQueryRunHandlerTest {
     private fun candidateSymbolSource() = QueryFromDocument.Candidates(
         QueryDiscoveryDocument(
             QueryMatchDocument.All,
-            QueryScopeDocument(bounded(listOf(QuerySourceSetDocument.MAIN)), null, null),
+            QueryScopeDocument(bounded(listOf(text("main"))), null, null),
             bounded(listOf(QueryDeclarationKindDocument.FUNCTION)),
         ),
     )
