@@ -236,12 +236,20 @@ val installedCodexHostTest = tasks.register<Exec>("installedCodexHostTest") {
     )
 }
 
+val testCheckoutInstaller = tasks.register<Exec>("testCheckoutInstaller") {
+    group = "verification"
+    description = "Verifies checkout installs, saved heap precedence, and service refresh ordering."
+    inputs.files("install.sh", "packaging/install-checkout.sh", "packaging/test-install-checkout.py")
+    commandLine("python3", layout.projectDirectory.file("packaging/test-install-checkout.py"))
+}
+
 val productBuildGate by tasks.registering {
     group = "verification"
     description = "Builds every module and verifies architecture and installed packaging."
     dependsOn(
         "check",
         installedProductTest,
+        testCheckoutInstaller,
         installedCodexHostTest,
         ":app-server:generateCodexHostIntegrationManifest",
         "verifyKastArchitecture",

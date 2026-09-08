@@ -195,7 +195,7 @@ class SidecarCliLifecycleTest {
         val bootstrap = document.getValue("bootstrap") as kotlinx.serialization.json.JsonObject
         assertEquals(kotlinx.serialization.json.JsonPrimitive("indexing"), bootstrap["phase"])
         assertEquals(kotlinx.serialization.json.JsonPrimitive(attempt.value), bootstrap["attemptId"])
-        assertEquals(kotlinx.serialization.json.JsonPrimitive(3), bootstrap["completedPhases"])
+        assertEquals(kotlinx.serialization.json.JsonPrimitive(4), bootstrap["completedPhases"])
     }
 
     private fun observedLifecycle(state: RuntimeLifecycleState): RuntimeLifecycleController =

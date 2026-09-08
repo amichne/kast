@@ -7,6 +7,7 @@ import io.github.amichne.kast.runtime.composition.InstalledRuntimeBootstrapPhase
 enum class InstalledIndexerBootstrapPhase {
     DISCOVERING_RUNTIME,
     GRADLE_JVM_SELECTION,
+    MODEL_INPUT_CAPTURE,
     PROJECT_IMPORT,
     INDEXING,
     MODEL_CAPTURE,
@@ -277,6 +278,7 @@ private fun InstalledRuntimeBootstrapPhase.sidecarPhase(): InstalledIndexerBoots
             InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION
         InstalledRuntimeBootstrapPhase.TRANSPORT_ACTIVATION ->
             InstalledIndexerBootstrapPhase.TRANSPORT_ACTIVATION
+        InstalledRuntimeBootstrapPhase.MODEL_INPUT_CAPTURE -> InstalledIndexerBootstrapPhase.MODEL_INPUT_CAPTURE
         InstalledRuntimeBootstrapPhase.PROJECT_IMPORT ->
             InstalledIndexerBootstrapPhase.PROJECT_IMPORT
         InstalledRuntimeBootstrapPhase.INDEXING -> InstalledIndexerBootstrapPhase.INDEXING
@@ -288,7 +290,8 @@ private fun InstalledRuntimeBootstrapPhase.sidecarPhase(): InstalledIndexerBoots
 
 private fun InstalledIndexerBootstrapPhase.next(): InstalledIndexerBootstrapPhase? = when (this) {
     InstalledIndexerBootstrapPhase.DISCOVERING_RUNTIME -> InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION
-    InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION -> InstalledIndexerBootstrapPhase.PROJECT_IMPORT
+    InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION -> InstalledIndexerBootstrapPhase.MODEL_INPUT_CAPTURE
+    InstalledIndexerBootstrapPhase.MODEL_INPUT_CAPTURE -> InstalledIndexerBootstrapPhase.PROJECT_IMPORT
     InstalledIndexerBootstrapPhase.PROJECT_IMPORT -> InstalledIndexerBootstrapPhase.INDEXING
     InstalledIndexerBootstrapPhase.INDEXING -> InstalledIndexerBootstrapPhase.MODEL_CAPTURE
     InstalledIndexerBootstrapPhase.MODEL_CAPTURE -> InstalledIndexerBootstrapPhase.RUNTIME_ASSEMBLY
@@ -301,6 +304,7 @@ private fun InstalledIndexerBootstrapPhase.next(): InstalledIndexerBootstrapPhas
 internal fun InstalledIndexerBootstrapPhase.runtimePhase(): InstalledRuntimeBootstrapPhase = when (this) {
     InstalledIndexerBootstrapPhase.DISCOVERING_RUNTIME -> InstalledRuntimeBootstrapPhase.DISCOVERING_RUNTIME
     InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION -> InstalledRuntimeBootstrapPhase.GRADLE_JVM_SELECTION
+    InstalledIndexerBootstrapPhase.MODEL_INPUT_CAPTURE -> InstalledRuntimeBootstrapPhase.MODEL_INPUT_CAPTURE
     InstalledIndexerBootstrapPhase.PROJECT_IMPORT -> InstalledRuntimeBootstrapPhase.PROJECT_IMPORT
     InstalledIndexerBootstrapPhase.INDEXING -> InstalledRuntimeBootstrapPhase.INDEXING
     InstalledIndexerBootstrapPhase.MODEL_CAPTURE -> InstalledRuntimeBootstrapPhase.MODEL_CAPTURE

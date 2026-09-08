@@ -247,6 +247,7 @@ private sealed interface CliBootstrapDocument {
         val completedPhases: Int,
         val totalPhases: Int,
         val cause: String,
+        val evidence: io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapCause,
         val correctiveAction: String,
         val gradleJvm: GradleJvmSelectionObservation,
     ) : CliBootstrapDocument
@@ -273,7 +274,7 @@ private fun SemanticRuntimeBootstrapState.document(): CliBootstrapDocument = whe
     is SemanticRuntimeBootstrapState.Ready -> CliBootstrapDocument.Ready(attemptId.value, gradleJvm)
     is SemanticRuntimeBootstrapState.Rejected -> CliBootstrapDocument.Rejected(
         attemptId.value, phase.wireName, phase.completedPhases, phase.totalPhases,
-        failure.wireName, correctiveAction().instruction, gradleJvm,
+        failure.wireName, cause, correctiveAction().instruction, gradleJvm,
     )
 }
 

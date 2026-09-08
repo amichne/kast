@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.distribution.contract.IndexerHeapSize
+import io.github.amichne.kast.distribution.contract.IndexerHeapFailure
 import io.github.amichne.kast.appserver.InstalledBrokerServerRunner
 import io.github.amichne.kast.appserver.host.installedCodexClientLauncher
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
@@ -40,6 +42,7 @@ internal const val SUPPORTED_KOTLIN_PLUGIN_BUILD = "262.9437.185-IJ"
 internal enum class SavedConfigurationFailure { UNREADABLE, DUPLICATE_RECORD, UNSUPPORTED_RECORD, UNKNOWN }
 
 internal sealed interface InstalledCompositionFailure : KastCliCompositionFailure {
+    data class IndexerHeapRejected(val failure: IndexerHeapFailure) : InstalledCompositionFailure
     data class SavedConfigurationRejected(val failure: SavedConfigurationFailure) : InstalledCompositionFailure
 
     data class ControlProductRejected(
@@ -121,6 +124,10 @@ internal class InstalledKastCliComposition : KastCliComposition {
             return KastCliCompositionConstruction.Rejected(InstalledCompositionFailure.SavedConfigurationRejected(failure))
         }
 
+        val maxHeap = when (val parsed = IndexerHeapSize.parse(System.getenv(IndexerHeapSize.SETTING))) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> return KastCliCompositionConstruction.Rejected(InstalledCompositionFailure.IndexerHeapRejected(parsed.failure))
+        }
         val processMode = when (
             val admission = RuntimeProcessModeEnvironment.admit(
                 System.getenv(RUNTIME_PROCESS_MODE_ENVIRONMENT),
@@ -302,6 +309,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
             legacyProcessAuthority = processCapabilities.authority,
             cacheLifecycle = cacheLifecycle,
             lifecycle = lifecycle,
+            maxHeap = maxHeap,
         )
         return KastCliCompositionConstruction.Created(
             KastCli(

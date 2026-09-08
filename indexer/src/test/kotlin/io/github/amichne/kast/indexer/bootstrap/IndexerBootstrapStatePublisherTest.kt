@@ -8,6 +8,7 @@ import io.github.amichne.kast.runtime.composition.InstalledKastRuntimeFailure
 import io.github.amichne.kast.runtime.composition.InstalledRuntimeAssemblyFailure
 import io.github.amichne.kast.runtime.composition.InstalledRuntimeWorkspaceFailure
 import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceFailure
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
@@ -61,9 +62,11 @@ class IndexerBootstrapStatePublisherTest {
     fun `publisher persists each ordered phase and rejects skipped phases and early readiness`() {
         val document = temporary.toRealPath().resolve("bootstrap-state")
         withProperties(document, ATTEMPT) {
+            val events = mutableListOf<IndexerBootstrapProgressEvidence>()
             val logged = mutableListOf<String>()
             val publisher = (IndexerBootstrapStatePublisher.admit(
                 IndexerBootstrapDocumentSink { logged.add(it.boundaryValue()) },
+                events::add,
             ) as IndexerBootstrapStatePublisherAdmission.Admitted).publisher
             assertEquals(IndexerBootstrapStatePublication.PUBLISHED, publisher.publishStarting())
             assertEquals(IndexerBootstrapStatePublication.REJECTED, publisher.publishReady())
@@ -85,9 +88,12 @@ class IndexerBootstrapStatePublisherTest {
             assertEquals(SemanticRuntimeBootstrapFailure.TRANSPORT_ACTIVATION_FAILED, rejection.failure)
             assertEquals(io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapPhase.TRANSPORT_ACTIVATION, rejection.phase)
             assertEquals(IndexerBootstrapStatePublication.REJECTED, publisher.publishReady())
-            assertEquals(8, logged.size)
+            assertEquals(9, logged.size)
+            assertEquals(IndexerBootstrapProgressOutcome.OUT_OF_ORDER, events.first().outcome)
+            assertTrue(events.any { it.outcome == IndexerBootstrapProgressOutcome.ADVANCED })
+            assertTrue(events.any { it.outcome == IndexerBootstrapProgressOutcome.UNCHANGED })
             val loggedStates = logged.map { (SemanticRuntimeBootstrapCodec.decode(it) as Refinement.Refined).value }
-            assertEquals(7, loggedStates.filterIsInstance<SemanticRuntimeBootstrapState.Starting>().size)
+            assertEquals(8, loggedStates.filterIsInstance<SemanticRuntimeBootstrapState.Starting>().size)
             assertEquals(rejection, loggedStates.last())
             assertEquals(true, logged.all { it.length < 16 * 1024 })
         }

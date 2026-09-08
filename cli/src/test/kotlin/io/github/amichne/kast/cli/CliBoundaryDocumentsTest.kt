@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.distribution.contract.bootstrap.*
 import io.github.amichne.kast.cli.command.CliCommandFailure
 import io.github.amichne.kast.cli.command.CliLifecycleCommand
 import io.github.amichne.kast.cli.projection.CliBoundaryDocuments
@@ -13,6 +14,21 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 class CliBoundaryDocumentsTest {
+    @Test
+    fun `model input failure survives the schema generated CLI projection`() {
+        val attempt = (SemanticRuntimeBootstrapAttemptId.admit("123e4567-e89b-42d3-a456-426614174000") as Refinement.Refined).value
+        val input = ModelInputFailure((ModelInputPath.admit("build-logic/gradle.properties") as Refinement.Refined).value, ModelInputFailureReason.TARGET_MISSING)
+        val state = SemanticRuntimeBootstrapState.Rejected(attempt, SemanticRuntimeBootstrapCause.ModelInput(input), SemanticRuntimeBootstrapPhase.MODEL_INPUT_CAPTURE)
+        val raw = CliBoundaryDocuments.runtimeRejected(RuntimeAdmissionFailure.IntellijBootstrap(state)).value
+        val document = kotlinx.serialization.json.Json.parseToJsonElement(raw) as kotlinx.serialization.json.JsonObject
+        val bootstrap = document.getValue("bootstrap") as kotlinx.serialization.json.JsonObject
+        assertEquals(kotlinx.serialization.json.JsonPrimitive("capturing-model-inputs"), bootstrap["phase"])
+        val evidence = bootstrap.getValue("evidence") as kotlinx.serialization.json.JsonObject
+        val retained = evidence.getValue("input") as kotlinx.serialization.json.JsonObject
+        assertEquals(kotlinx.serialization.json.JsonPrimitive(input.path.value), retained["path"])
+        assertEquals(kotlinx.serialization.json.JsonPrimitive("TARGET_MISSING"), retained["reason"])
+    }
+
     @Test
     fun `generated lifecycle document preserves fields and canonical artifact order`(
         @TempDir temporary: Path,

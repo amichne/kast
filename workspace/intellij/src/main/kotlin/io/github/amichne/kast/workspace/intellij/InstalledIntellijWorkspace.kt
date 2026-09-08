@@ -85,6 +85,7 @@ enum class InstalledIntellijWorkspaceFailure {
 /** Ordered installed workspace bootstrap boundaries visible to the owning runtime. */
 enum class InstalledIntellijWorkspaceBootstrapPhase {
     GRADLE_JVM_SELECTION,
+    MODEL_INPUT_CAPTURE,
     PROJECT_IMPORT,
     INDEXING,
     MODEL_CAPTURE,
@@ -167,6 +168,7 @@ class InstalledIntellijWorkspaceModel internal constructor(
 }
 
 sealed interface InstalledIntellijWorkspaceOpening {
+    data class ModelInputRejected(val failure: io.github.amichne.kast.distribution.contract.bootstrap.ModelInputFailure) : InstalledIntellijWorkspaceOpening
     data class Opened(
         val model: InstalledIntellijWorkspaceModel,
     ) : InstalledIntellijWorkspaceOpening
@@ -236,8 +238,10 @@ object InstalledIntellijWorkspace {
             is Refinement.Refined -> admission.value
             is Refinement.Rejected -> return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID)
         }
+        observer.observe(InstalledIntellijWorkspaceBootstrapPhase.GRADLE_JVM_SELECTION)
         val projectJvmAuthority = when (val admitted = projectGradleJvmAuthority(workspacePath)) {
             is ProjectGradleJvmAuthority.Admitted -> admitted
+            is ProjectGradleJvmAuthority.InputRejected -> return admitted.failure.workspaceOpening()
             ProjectGradleJvmAuthority.Rejected -> {
                 observer.observeGradleJvm(InstalledGradleJvmSelection.Rejected(
                     InstalledGradleJvmSelectionFailure.REPOSITORY_JAVA_HOME_INVALID,
@@ -394,11 +398,10 @@ object InstalledIntellijWorkspace {
             )
         }
 
+        observer.observe(InstalledIntellijWorkspaceBootstrapPhase.MODEL_INPUT_CAPTURE)
         val modelInputs = when (val captured = InstalledGradleModelInputs.capture(workspaceRoot)) {
             is io.github.amichne.kast.kernel.Refinement.Refined -> captured.value
-            is io.github.amichne.kast.kernel.Refinement.Rejected -> return rejected(
-                captured.failure.workspaceFailure(),
-            )
+            is io.github.amichne.kast.kernel.Refinement.Rejected -> return captured.failure.workspaceOpening()
         }
 
         observer.observe(InstalledIntellijWorkspaceBootstrapPhase.PROJECT_IMPORT)
@@ -508,9 +511,7 @@ object InstalledIntellijWorkspace {
         observer.observe(InstalledIntellijWorkspaceBootstrapPhase.MODEL_CAPTURE)
         val capture = when (val captured = captureInstalledGradleModel(project, workspaceRoot, importEnvironment.identity, modelInputs)) {
             is io.github.amichne.kast.kernel.Refinement.Refined -> captured.value
-            is io.github.amichne.kast.kernel.Refinement.Rejected -> return rejected(
-                captured.failure.workspaceFailure(),
-            )
+            is io.github.amichne.kast.kernel.Refinement.Rejected -> return captured.failure.workspaceOpening()
         }
         return InstalledIntellijWorkspaceOpening.Opened(
             InstalledIntellijWorkspaceModel(
@@ -682,33 +683,34 @@ private fun applyInstalledGradleProjectPolicy(
     InstalledGradleProjectPolicyApplication.Rejected
 }
 
-private fun InstalledGradleModelCaptureFailure.workspaceFailure(): InstalledIntellijWorkspaceFailure =
+internal fun InstalledGradleModelCaptureFailure.workspaceOpening(): InstalledIntellijWorkspaceOpening =
     when (this) {
+        is InstalledGradleModelCaptureFailure.ModelInputRejected -> InstalledIntellijWorkspaceOpening.ModelInputRejected(failure)
         InstalledGradleModelCaptureFailure.MODEL_INPUTS_CHANGED,
         InstalledGradleModelCaptureFailure.MODEL_INPUTS_UNAVAILABLE ->
-            InstalledIntellijWorkspaceFailure.MODEL_UNAVAILABLE
+            rejected(InstalledIntellijWorkspaceFailure.MODEL_UNAVAILABLE)
         InstalledGradleModelCaptureFailure.ROOT_UNAVAILABLE ->
-            InstalledIntellijWorkspaceFailure.MODEL_ROOT_UNAVAILABLE
+            rejected(InstalledIntellijWorkspaceFailure.MODEL_ROOT_UNAVAILABLE)
         InstalledGradleModelCaptureFailure.EXTERNAL_PROJECT_UNAVAILABLE ->
-            InstalledIntellijWorkspaceFailure.MODEL_EXTERNAL_PROJECT_UNAVAILABLE
+            rejected(InstalledIntellijWorkspaceFailure.MODEL_EXTERNAL_PROJECT_UNAVAILABLE)
         InstalledGradleModelCaptureFailure.EXTERNAL_PROJECT_INCOMPLETE ->
-            InstalledIntellijWorkspaceFailure.MODEL_EXTERNAL_PROJECT_INCOMPLETE
+            rejected(InstalledIntellijWorkspaceFailure.MODEL_EXTERNAL_PROJECT_INCOMPLETE)
         InstalledGradleModelCaptureFailure.SOURCE_ROOTS_UNAVAILABLE ->
-            InstalledIntellijWorkspaceFailure.MODEL_SOURCE_ROOTS_UNAVAILABLE
+            rejected(InstalledIntellijWorkspaceFailure.MODEL_SOURCE_ROOTS_UNAVAILABLE)
         InstalledGradleModelCaptureFailure.SOURCE_STATE_UNAVAILABLE ->
-            InstalledIntellijWorkspaceFailure.MODEL_SOURCE_STATE_UNAVAILABLE
+            rejected(InstalledIntellijWorkspaceFailure.MODEL_SOURCE_STATE_UNAVAILABLE)
         InstalledGradleModelCaptureFailure.INDEXING_UNAVAILABLE ->
-            InstalledIntellijWorkspaceFailure.MODEL_UNAVAILABLE
+            rejected(InstalledIntellijWorkspaceFailure.MODEL_UNAVAILABLE)
         InstalledGradleModelCaptureFailure.SEMANTIC_INPUT_INCOMPLETE ->
-            InstalledIntellijWorkspaceFailure.MODEL_SEMANTIC_INPUT_INCOMPLETE
+            rejected(InstalledIntellijWorkspaceFailure.MODEL_SEMANTIC_INPUT_INCOMPLETE)
         InstalledGradleModelCaptureFailure.SEMANTIC_PROJECT_PATH_INVALID ->
-            InstalledIntellijWorkspaceFailure.MODEL_SEMANTIC_PROJECT_PATH_INVALID
+            rejected(InstalledIntellijWorkspaceFailure.MODEL_SEMANTIC_PROJECT_PATH_INVALID)
         InstalledGradleModelCaptureFailure.SEMANTIC_SOURCE_ROOT_INVALID ->
-            InstalledIntellijWorkspaceFailure.MODEL_SEMANTIC_SOURCE_ROOT_INVALID
+            rejected(InstalledIntellijWorkspaceFailure.MODEL_SEMANTIC_SOURCE_ROOT_INVALID)
         InstalledGradleModelCaptureFailure.SEMANTIC_MODULE_INVALID ->
-            InstalledIntellijWorkspaceFailure.MODEL_SEMANTIC_MODULE_INVALID
+            rejected(InstalledIntellijWorkspaceFailure.MODEL_SEMANTIC_MODULE_INVALID)
         InstalledGradleModelCaptureFailure.STATE_IDENTITY_REJECTED ->
-            InstalledIntellijWorkspaceFailure.MODEL_STATE_IDENTITY_REJECTED
+            rejected(InstalledIntellijWorkspaceFailure.MODEL_STATE_IDENTITY_REJECTED)
     }
 
 private enum class FutureCompletion {

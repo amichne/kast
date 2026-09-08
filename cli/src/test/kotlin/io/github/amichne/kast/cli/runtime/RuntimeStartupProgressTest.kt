@@ -27,9 +27,9 @@ class RuntimeStartupProgressTest {
         assertEquals(2, lines.size)
         now = 5_000_000_000L
         progress.publish(indexing)
-        assertEquals("kast: indexing; elapsed=5s; progress=3/7 phases", lines.last())
+        assertEquals("kast: indexing; elapsed=5s; progress=4/8 phases", lines.last())
         progress.publish(SemanticRuntimeBootstrapState.Ready(attempt))
-        assertEquals("kast: ready; elapsed=5s; progress=7/7 phases", lines.last())
+        assertEquals("kast: ready; elapsed=5s; progress=8/8 phases", lines.last())
     }
 
     @Test
@@ -57,7 +57,7 @@ class RuntimeStartupProgressTest {
 
     @Test
     fun `every finite bootstrap rejection names its failed phase and next action`() {
-        SemanticRuntimeBootstrapFailure.entries.forEach { cause ->
+        SemanticRuntimeBootstrapFailure.entries.filter { it != SemanticRuntimeBootstrapFailure.MODEL_INPUT_REJECTED }.forEach { cause ->
             val lines = mutableListOf<String>()
             TerminalRuntimeStartupProgress(true, { 0L }, lines::add).publish(
                 SemanticRuntimeBootstrapState.Rejected(attempt, cause, SemanticRuntimeBootstrapPhase.GRADLE_JVM_SELECTION),

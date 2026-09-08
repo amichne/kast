@@ -61,6 +61,7 @@ enum class SidecarLaunchContextFailure {
 class SidecarLaunchContext private constructor(
     val runtime: InstalledIdeRuntime,
     val importEnvironment: GradleImportEnvironment,
+    val maxHeap: io.github.amichne.kast.distribution.contract.IndexerHeapSize,
     val cacheRoot: Path,
     val systemDirectory: Path,
     val configDirectory: Path,
@@ -76,6 +77,7 @@ class SidecarLaunchContext private constructor(
             logDirectory: Path,
             privatePluginsDirectory: Path,
             importEnvironment: GradleImportEnvironment = GradleImportEnvironment.Empty,
+            maxHeap: io.github.amichne.kast.distribution.contract.IndexerHeapSize = io.github.amichne.kast.distribution.contract.IndexerHeapSize.Default,
         ): SidecarLaunchContextAdmission {
             val root = canonicalDirectory(cacheRoot)
                 ?: return SidecarLaunchContextAdmission.Rejected(
@@ -111,6 +113,7 @@ class SidecarLaunchContext private constructor(
                 SidecarLaunchContext(
                     runtime,
                     importEnvironment,
+                    maxHeap,
                     root,
                     paths[0],
                     paths[1],

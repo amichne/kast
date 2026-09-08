@@ -205,30 +205,12 @@ internal fun repositoryDaemonJvmCriteria(
     if (distribution < DAEMON_JVM_CRITERIA_MINIMUM_GRADLE) {
         return RepositoryDaemonJvmCriteria.Absent
     }
-    val criteriaFile = root.resolve("gradle/gradle-daemon-jvm.properties")
-    if (Files.notExists(criteriaFile)) return RepositoryDaemonJvmCriteria.Absent
-    if (
-        Files.isSymbolicLink(criteriaFile) ||
-        !Files.isRegularFile(criteriaFile) ||
-        try {
-            Files.size(criteriaFile) > MAX_DAEMON_JVM_CRITERIA_BYTES
-        } catch (_: IOException) {
-            true
-        } catch (_: SecurityException) {
-            true
+    val properties = when (val read = InstalledGradleModelInputs.readProperties(root, Path.of("gradle/gradle-daemon-jvm.properties"))) {
+        is io.github.amichne.kast.kernel.Refinement.Rejected -> return RepositoryDaemonJvmCriteria.Rejected
+        is io.github.amichne.kast.kernel.Refinement.Refined -> when (val input = read.value) {
+            InstalledGradleProperties.Absent -> return RepositoryDaemonJvmCriteria.Absent
+            is InstalledGradleProperties.Present -> input.properties
         }
-    ) {
-        return RepositoryDaemonJvmCriteria.Rejected
-    }
-    val properties = Properties()
-    try {
-        Files.newBufferedReader(criteriaFile).use(properties::load)
-    } catch (_: IOException) {
-        return RepositoryDaemonJvmCriteria.Rejected
-    } catch (_: SecurityException) {
-        return RepositoryDaemonJvmCriteria.Rejected
-    } catch (_: IllegalArgumentException) {
-        return RepositoryDaemonJvmCriteria.Rejected
     }
     val unsupportedCriteria = properties.stringPropertyNames().any { name ->
         name.startsWith("toolchain") &&
@@ -272,4 +254,3 @@ private fun observeGradleJvmCandidate(
 
 private val DAEMON_JVM_CRITERIA_MINIMUM_GRADLE =
     org.gradle.util.GradleVersion.version("8.8")
-private const val MAX_DAEMON_JVM_CRITERIA_BYTES = 1_048_576L

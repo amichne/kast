@@ -103,6 +103,8 @@ enum class SemanticRuntimeBootstrapFailure(
 
     MODEL_UNAVAILABLE("model-unavailable"),
 
+    MODEL_INPUT_REJECTED("model-input-rejected"),
+
     MODEL_ROOT_UNAVAILABLE("model-root-unavailable"),
 
     MODEL_EXTERNAL_PROJECT_UNAVAILABLE("model-external-project-unavailable"),
@@ -197,13 +199,22 @@ sealed interface SemanticRuntimeBootstrapState {
     @SerialName("rejected")
     data class Rejected(
         override val attemptId: SemanticRuntimeBootstrapAttemptId,
-        val failure: SemanticRuntimeBootstrapFailure,
+        val cause: SemanticRuntimeBootstrapCause,
         val phase: SemanticRuntimeBootstrapPhase,
         val gradleJvm: GradleJvmSelectionObservation = GradleJvmSelectionObservation.Unobserved,
     ) : SemanticRuntimeBootstrapState {
-        constructor(attemptId: SemanticRuntimeBootstrapAttemptId, failure: SemanticRuntimeBootstrapFailure) :
-            this(attemptId, failure, SemanticRuntimeBootstrapPhase.DISCOVERING_RUNTIME)
+        val failure: SemanticRuntimeBootstrapFailure get() = when (cause) {
+            is SemanticRuntimeBootstrapCause.Standard -> cause.failure
+            is SemanticRuntimeBootstrapCause.ModelInput -> SemanticRuntimeBootstrapFailure.MODEL_INPUT_REJECTED
+        }
+        constructor(
+            attemptId: SemanticRuntimeBootstrapAttemptId,
+            failure: SemanticRuntimeBootstrapFailure,
+            phase: SemanticRuntimeBootstrapPhase = SemanticRuntimeBootstrapPhase.DISCOVERING_RUNTIME,
+            gradleJvm: GradleJvmSelectionObservation = GradleJvmSelectionObservation.Unobserved,
+        ) : this(attemptId, SemanticRuntimeBootstrapCause.Standard(failure), phase, gradleJvm)
     }
+
 }
 
 enum class SemanticRuntimeBootstrapDocumentFailure {
@@ -273,7 +284,20 @@ object SemanticRuntimeBootstrapCodec {
         SemanticRuntimeBootstrapDocumentFailure,
         > = Refinement.Rejected(SemanticRuntimeBootstrapDocumentFailure.MALFORMED_DOCUMENT)
 
-    private const val BOOTSTRAP_SCHEMA_VERSION = 2
+    private const val BOOTSTRAP_SCHEMA_VERSION = 3
 }
 
 const val SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME = "bootstrap-state"
+
+/** Structured model-input rejection cannot exist without its logical path and finite cause. */
+@Serializable
+sealed interface SemanticRuntimeBootstrapCause {
+    @Serializable
+    @SerialName("standard")
+    data class Standard(val failure: SemanticRuntimeBootstrapFailure) : SemanticRuntimeBootstrapCause {
+        init { require(failure != SemanticRuntimeBootstrapFailure.MODEL_INPUT_REJECTED) }
+    }
+    @Serializable
+    @SerialName("model-input")
+    data class ModelInput(val input: ModelInputFailure) : SemanticRuntimeBootstrapCause
+}

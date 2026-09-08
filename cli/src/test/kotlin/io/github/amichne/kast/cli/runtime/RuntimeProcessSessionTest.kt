@@ -358,6 +358,7 @@ class RuntimeProcessSessionTest {
         )
 
         assertInstanceOf(RuntimeProcessStart.Started::class.java, session.start(command))
+        assertEquals(listOf("--max-heap-mib=8192"), submission.orEmpty().filter { it.startsWith("--max-heap-mib=") })
         val environmentIndex = submission.orEmpty().indexOf("/usr/bin/env")
         val standardErrorIndex = submission.orEmpty().indexOf("-e")
         assertTrue(environmentIndex >= 0)
@@ -490,6 +491,7 @@ class RuntimeProcessSessionTest {
         assertEquals(command(temporary, endpoint).bootstrapAttemptId, accepted.attemptId)
         awaitFile(pidFile)
         awaitFile(serviceFile)
+        assertEquals(listOf("--max-heap-mib=8192"), Files.readAllLines(endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.arguments")).filter { it.startsWith("--max-heap-mib=") })
         val process = ProcessHandle.of(Files.readString(pidFile).trim().toLong()).orElseThrow()
 
         try {
@@ -517,6 +519,7 @@ class RuntimeProcessSessionTest {
         val accepted = assertInstanceOf(RuntimeProcessStart.Started::class.java, start)
         awaitFile(pidFile)
         awaitFile(serviceFile)
+        assertEquals(listOf("--max-heap-mib=8192"), Files.readAllLines(endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.arguments")).filter { it.startsWith("--max-heap-mib=") })
         val process = ProcessHandle.of(Files.readString(pidFile).trim().toLong()).orElseThrow()
 
         try {
@@ -552,6 +555,7 @@ class RuntimeProcessSessionTest {
         ) { "runtime process did not start: $start" }
         awaitFile(pidFile)
         awaitFile(serviceFile)
+        assertEquals(listOf("--max-heap-mib=8192"), Files.readAllLines(endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.arguments")).filter { it.startsWith("--max-heap-mib=") })
         val process = ProcessHandle.of(Files.readString(pidFile).trim().toLong()).orElseThrow()
 
         try {
@@ -642,6 +646,7 @@ class RuntimeProcessSessionTest {
                 |    --socket-path=*) socket_path="${'$'}{argument#--socket-path=}" ;;
                 |  esac
                 |done
+                |printf '%s\n' "${'$'}@" > "${'$'}{socket_path}.arguments"
                 |printf '%s\n' "${'$'}${'$'}" > "${'$'}{socket_path}.pid"
                 |printf '%s\n' "${'$'}{XPC_SERVICE_NAME:-}" > "${'$'}{socket_path}.service"
                 |trap 'exit 0' TERM INT
@@ -737,6 +742,7 @@ class RuntimeProcessSessionTest {
             config,
             log,
             plugins,
+            maxHeap = (io.github.amichne.kast.distribution.contract.IndexerHeapSize.parse("8g") as Refinement.Refined).value,
         ).let { (it as SidecarLaunchContextAdmission.Admitted).context }
     }
 

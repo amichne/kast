@@ -210,6 +210,7 @@ class InstalledSidecarRootRuntimeDemander(
     private val legacyProcessAuthority: RuntimeProcessAuthority = JdkRuntimeProcessAuthority,
     private val cacheLifecycle: RootSidecarCacheLifecycle = NoRootSidecarCacheLifecycle,
     private val lifecycle: RuntimeLifecycleController = ExactRootRuntimeLifecycle(),
+    private val maxHeap: io.github.amichne.kast.distribution.contract.IndexerHeapSize = io.github.amichne.kast.distribution.contract.IndexerHeapSize.Default,
 ) : RootRuntimeDemander {
     override fun demand(
         root: CanonicalRoot,
@@ -373,6 +374,7 @@ class InstalledSidecarRootRuntimeDemander(
                 cache.logDirectory,
                 payload.privatePluginsDirectory,
                 importEnvironment,
+                maxHeap,
             )
         ) {
             is SidecarLaunchContextAdmission.Admitted -> admission.context

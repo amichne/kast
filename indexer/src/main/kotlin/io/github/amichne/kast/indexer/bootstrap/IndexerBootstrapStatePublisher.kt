@@ -61,6 +61,7 @@ internal class AdmittedIndexerBootstrapStatePublisher private constructor(
     private val path: Path,
     private var attempt: InstalledSemanticRuntimeBootstrapAttempt,
     private val documentSink: IndexerBootstrapDocumentSink,
+    private val progressSink: (IndexerBootstrapProgressEvidence) -> Unit,
 ) {
     private var phase = IndexerBootstrapPublicationPhase.ADMITTED
     private var bootstrapPhase = InstalledRuntimeBootstrapPhase.DISCOVERING_RUNTIME
@@ -79,16 +80,28 @@ internal class AdmittedIndexerBootstrapStatePublisher private constructor(
 
     /** Advances only the next canonical phase; repeated observations are idempotent. */
     fun publishProgress(next: InstalledRuntimeBootstrapPhase): IndexerBootstrapStatePublication {
-        if (phase != IndexerBootstrapPublicationPhase.ACTIVE ||
-            next.ordinal !in bootstrapPhase.ordinal..bootstrapPhase.ordinal + 1
-        ) return IndexerBootstrapStatePublication.REJECTED
-        if (next == bootstrapPhase) return IndexerBootstrapStatePublication.PUBLISHED
-        val publication = publish(attempt.startingDocument(next))
-        when (publication) {
-            IndexerBootstrapStatePublication.PUBLISHED -> bootstrapPhase = next
-            IndexerBootstrapStatePublication.REJECTED -> phase = IndexerBootstrapPublicationPhase.TERMINAL
+        val previous = bootstrapPhase
+        val outcome = when {
+            phase != IndexerBootstrapPublicationPhase.ACTIVE -> IndexerBootstrapProgressOutcome.NOT_ACTIVE
+            next.ordinal !in bootstrapPhase.ordinal..bootstrapPhase.ordinal + 1 -> IndexerBootstrapProgressOutcome.OUT_OF_ORDER
+            next == bootstrapPhase -> IndexerBootstrapProgressOutcome.UNCHANGED
+            else -> when (publish(attempt.startingDocument(next))) {
+                IndexerBootstrapStatePublication.PUBLISHED -> {
+                    bootstrapPhase = next
+                    IndexerBootstrapProgressOutcome.ADVANCED
+                }
+                IndexerBootstrapStatePublication.REJECTED -> {
+                    phase = IndexerBootstrapPublicationPhase.TERMINAL
+                    IndexerBootstrapProgressOutcome.PUBLICATION_REJECTED
+                }
+            }
         }
-        return publication
+        progressSink(IndexerBootstrapProgressEvidence(previous, next, outcome))
+        return when (outcome) {
+            IndexerBootstrapProgressOutcome.ADVANCED, IndexerBootstrapProgressOutcome.UNCHANGED -> IndexerBootstrapStatePublication.PUBLISHED
+            IndexerBootstrapProgressOutcome.NOT_ACTIVE, IndexerBootstrapProgressOutcome.OUT_OF_ORDER,
+            IndexerBootstrapProgressOutcome.PUBLICATION_REJECTED -> IndexerBootstrapStatePublication.REJECTED
+        }
     }
 
     /** JVM observations only refine the selecting phase and preserve their exact attempt. */
@@ -198,7 +211,7 @@ internal class AdmittedIndexerBootstrapStatePublisher private constructor(
         private const val ATTEMPT_PROPERTY = "kast.bootstrap.attempt.id"
 
         /** Parses the launcher-owned path and attempt properties exactly once. */
-        internal fun admit(documentSink: IndexerBootstrapDocumentSink): IndexerBootstrapStatePublisherAdmission {
+        internal fun admit(documentSink: IndexerBootstrapDocumentSink, progressSink: (IndexerBootstrapProgressEvidence) -> Unit): IndexerBootstrapStatePublisherAdmission {
             val rawPath = System.getProperty(PATH_PROPERTY)
                 ?: return rejected(IndexerBootstrapStatePublisherFailure.PATH_UNAVAILABLE)
             val path = try {
@@ -238,7 +251,7 @@ internal class AdmittedIndexerBootstrapStatePublisher private constructor(
                 )
             }
             return IndexerBootstrapStatePublisherAdmission.Admitted(
-                AdmittedIndexerBootstrapStatePublisher(path, attempt, documentSink),
+                AdmittedIndexerBootstrapStatePublisher(path, attempt, documentSink, progressSink),
             )
         }
 
@@ -251,6 +264,18 @@ internal class AdmittedIndexerBootstrapStatePublisher private constructor(
 
 /** Stable application-facing admission surface for the single publisher implementation. */
 internal object IndexerBootstrapStatePublisher {
-    fun admit(documentSink: IndexerBootstrapDocumentSink = bootstrapDocumentLog): IndexerBootstrapStatePublisherAdmission =
-        AdmittedIndexerBootstrapStatePublisher.admit(documentSink)
+    fun admit(
+        documentSink: IndexerBootstrapDocumentSink = bootstrapDocumentLog,
+        progressSink: (IndexerBootstrapProgressEvidence) -> Unit = { event ->
+            System.err.println("kast-indexer: bootstrap-transition: current=${event.current} requested=${event.requested} outcome=${event.outcome}")
+        },
+    ): IndexerBootstrapStatePublisherAdmission =
+        AdmittedIndexerBootstrapStatePublisher.admit(documentSink, progressSink)
 }
+
+internal enum class IndexerBootstrapProgressOutcome { ADVANCED, UNCHANGED, NOT_ACTIVE, OUT_OF_ORDER, PUBLICATION_REJECTED }
+internal data class IndexerBootstrapProgressEvidence(
+    val current: InstalledRuntimeBootstrapPhase,
+    val requested: InstalledRuntimeBootstrapPhase,
+    val outcome: IndexerBootstrapProgressOutcome,
+)

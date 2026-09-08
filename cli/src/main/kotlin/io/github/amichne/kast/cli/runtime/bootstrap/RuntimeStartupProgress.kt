@@ -43,7 +43,7 @@ internal class TerminalRuntimeStartupProgress(
                     "progress=${SemanticRuntimeBootstrapPhase.entries.size}/${SemanticRuntimeBootstrapPhase.entries.size} phases"
             is SemanticRuntimeBootstrapState.Rejected ->
                 "rejected during ${state.phase.displayName}; elapsed=${elapsed}s; " +
-                    "cause=${state.failure.wireName}; next: ${state.correctiveAction().instruction}"
+                    "cause=${state.failure.wireName}${state.modelInputDetail()}; next: ${state.correctiveAction().instruction}"
         }
         writeLine("kast: $text")
         last = state
@@ -60,4 +60,10 @@ internal class TerminalRuntimeStartupProgress(
             System.err::println,
         )
     }
+}
+
+private fun SemanticRuntimeBootstrapState.Rejected.modelInputDetail(): String = when (val evidence = cause) {
+    is io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapCause.Standard -> ""
+    is io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapCause.ModelInput ->
+        "; input=${evidence.input.path.value}; reason=${evidence.input.reason}"
 }

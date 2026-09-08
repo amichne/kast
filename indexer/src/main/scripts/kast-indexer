@@ -34,6 +34,8 @@ if [[ -z "${classpath}" ]]; then
   exit 70
 fi
 
+max_heap_mib=""
+heap_argument_seen=false
 idea_home=""
 java_executable=""
 idea_system_path=""
@@ -45,6 +47,18 @@ bootstrap_state_path=""
 bootstrap_attempt_id=""
 for argument in "$@"; do
   case "${argument}" in
+    --max-heap-mib)
+      echo "kast-indexer: max-heap-mib requires a canonical equals argument" >&2
+      exit 70
+      ;;
+    --max-heap-mib=*)
+      [[ "$heap_argument_seen" == false ]] || {
+        echo "kast-indexer: max-heap-mib argument must occur exactly once" >&2
+        exit 70
+      }
+      heap_argument_seen=true
+      max_heap_mib="${argument#--max-heap-mib=}"
+      ;;
     --idea-home=*)
       [[ -z "${idea_home}" ]] || {
         echo "kast-indexer: idea-home argument must occur exactly once" >&2
@@ -137,6 +151,11 @@ require_canonical_directory() {
     exit 70
   fi
 }
+
+if [[ ! "$max_heap_mib" =~ ^[1-9][0-9]{2,9}$ ]] || (( max_heap_mib < 256 || max_heap_mib > 2147483647 )); then
+  echo "kast-indexer: max-heap-mib must be one canonical admitted MiB value" >&2
+  exit 70
+fi
 
 require_argument "idea-home" "${idea_home}"
 require_argument "java-executable" "${java_executable}"
@@ -245,7 +264,7 @@ esac
 
 idea_jvm_args=(
   "-Xms256m"
-  "-Xmx1536m"
+  "-Xmx${max_heap_mib}m"
   "-Duser.home=${kast_user_home}"
   "-Djava.io.tmpdir=${kast_process_tmp}"
   "-Xbootclasspath/a:${idea_home}/lib/nio-fs.jar"

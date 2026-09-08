@@ -272,6 +272,7 @@ class IndexerLaunchCommand private constructor(
                         "--runtime-id=${endpoint.runtimeId.value}",
                         "--idea-home=${context.runtime.home}",
                         "--java-executable=${context.runtime.javaExecutable}",
+                        "--max-heap-mib=${context.maxHeap.mebibytes}",
                         "--idea-system-path=${context.systemDirectory}",
                         "--idea-config-path=${context.configDirectory}",
                         "--idea-log-path=${context.logDirectory}",
