@@ -26,10 +26,26 @@ Desktop host-specific configuration and interactive behavior still require the
 release gate below. A currently running desktop process must be restarted by its
 user to pick up the login environment.
 
-The CLI and `kast-codex app-server` attach to the same service. Per-attachment
-App Server process options are rejected because the service owns that process's
-configuration. `kast-codex` retains CLI argument forwarding. Client closure does
-not stop the service.
+`kast codex desktop` launches the desktop with a process-local `CODEX_CLI_PATH`
+pointing to the installed `kast-codex` façade and forces stdio. Quit an already
+running desktop first so its next process receives that environment. The desktop
+starts the façade with `app-server` and exchanges native JSONL on stdin/stdout;
+diagnostics go to stderr. The façade attaches to the same persistent service used
+by the CLI. Client closure does not stop the service.
+
+The shared upstream enables `features.code_mode_host=true` and uses Codex's
+`--analytics-default-enabled` policy, matching the inspected desktop's launch
+profile. Explicit Codex analytics configuration still takes precedence over that
+default. Those exact options are accepted on the façade; other process options
+and transport overrides reject before attachment. Configure shared settings in
+`CODEX_HOME` rather than passing per-client overrides. `kast-codex` retains CLI
+argument forwarding.
+
+A custom desktop client can spawn `kast-codex app-server`, send `initialize`,
+then `initialized`, and use the ordinary App Server protocol. No TCP listener or
+client-specific RPC envelope is introduced. This launch pattern takes inspiration
+from [Codapter](https://github.com/kcosr/codapter/tree/429812d8976c317d4333aa51ce5106eb511f6816);
+Kast continues to use the real Codex server and existing tool broker.
 
 ```sh
 kast app-server control release THREAD_ID CONNECTION_ID
@@ -53,7 +69,8 @@ on disk; disable does not erase execution history.
 
 ```mermaid
 flowchart LR
-  Desktop[Desktop client] --> Public[Standard Codex control socket]
+  Desktop[Desktop client] -->|JSONL stdio| Facade[kast-codex app-server]
+  Facade --> Public[Standard Codex control socket]
   CLI[CLI and stdio attachments] --> Public
   Public --> Hub[Service-owned sessions and controller routing]
   Hub --> Upstream[One private Codex App Server process]

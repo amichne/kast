@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.appserver.host.admission.CodexAppServerArguments
 import io.github.amichne.kast.appserver.host.admission.DesktopFacadeExecutables
 import io.github.amichne.kast.appserver.host.admission.UpstreamCodexExecutable
 import io.github.amichne.kast.kernel.Refinement
@@ -75,6 +76,7 @@ internal value class BrokerServiceIdentity private constructor(val value: String
         ): BrokerServiceIdentity {
             val source = listOf(
                 VENDORED_BROKER_VERSION,
+                CodexAppServerArguments.sharedService().withOwnedTransport("unix://").joinToString("\n"),
                 kastDigest,
                 codexDigest,
                 codex,
@@ -299,6 +301,7 @@ internal class BrokerServiceLaunchCommand private constructor(
                 val admission = UpstreamCodexExecutable.admit(
                     codexSelection.executable,
                     facades,
+                    launcherCandidate = codexSelection.launcher,
                 )
             ) {
                 is Refinement.Refined -> admission.value
@@ -307,7 +310,7 @@ internal class BrokerServiceLaunchCommand private constructor(
                 )
             }
             val executableSearchPath = BrokerExecutableSearchPath.derive(
-                codexSelection.launcherDirectory,
+                codexSelection.launcher.parent,
                 codex.path,
                 kast,
             ) ?: return rejected(PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE)
@@ -407,7 +410,7 @@ internal class BrokerServiceLaunchCommand private constructor(
                         launcherDirectory.resolve(name),
                         BrokerSymbolicLinkPolicy.CANONICAL_TARGET,
                     ) ?: return@mapNotNull null
-                    BrokerCommandExecutable(executable, launcherDirectory)
+                    BrokerCommandExecutable(executable, launcherDirectory.resolve(name))
                 }
                 .firstOrNull()
         }
@@ -420,7 +423,7 @@ internal class BrokerServiceLaunchCommand private constructor(
                 ) ?: return@let null
                 val launcherDirectory = canonicalDirectoryTarget(candidate.parent)
                     ?: return@let null
-                BrokerCommandExecutable(executable, launcherDirectory)
+                BrokerCommandExecutable(executable, launcherDirectory.resolve(candidate.fileName))
             }
 
         private fun absoluteNormalizedPath(raw: String): Path? = try {
@@ -455,7 +458,7 @@ internal class BrokerServiceLaunchCommand private constructor(
 
 private data class BrokerCommandExecutable(
     val executable: Path,
-    val launcherDirectory: Path,
+    val launcher: Path,
 )
 
 private enum class BrokerSymbolicLinkPolicy { EXACT_PATH, CANONICAL_TARGET }

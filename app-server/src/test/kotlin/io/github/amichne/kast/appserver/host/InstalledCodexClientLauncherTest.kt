@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.host
 
+import io.github.amichne.kast.appserver.BrokerServiceLaunchCommandResolution
 import io.github.amichne.kast.appserver.BrokerServiceLaunchCommand
 import io.github.amichne.kast.appserver.PersistentBrokerServiceAdmission
 import io.github.amichne.kast.appserver.PersistentBrokerServiceHost
@@ -28,21 +29,25 @@ class InstalledCodexClientLauncherTest {
     }
 
     @Test
-    fun `desktop selects the standard local App Server without substituting the Codex executable`(
+    fun `desktop selects the installed stdio facade and keeps the real upstream distinct`(
         @TempDir temporary: Path,
     ) {
         val bin = Files.createDirectory(temporary.resolve("bin"))
         val home = Files.createDirectory(temporary.resolve("home")).toRealPath()
         val kast = executable(bin.resolve("kast"))
-        val upstream = executable(bin.resolve("codex"))
+        val vendor = Files.createDirectory(temporary.resolve("vendor"))
+        val target = executable(vendor.resolve("codex"))
+        val upstream = Files.createSymbolicLink(bin.toRealPath().resolve("custom-codex"), target)
+        val facade = executable(bin.resolve("kast-codex"))
         val capture = temporary.resolve("desktop-environment")
         val desktop = bin.resolve("Codex Desktop")
         Files.writeString(
             desktop,
-            "#!/bin/sh\nprintf '%s\\n%s\\n%s\\n' \"\${CODEX_CLI_PATH:-}\" " +
-                "\"\${CODEX_APP_SERVER_USE_LOCAL_DAEMON:-}\" \"\${CODEX_HOME:-}\" > \"$capture\"\n",
+            "#!/bin/sh\nprintf '%s\\n%s\\n%s\\n%s\\n%s\\n' \"\${CODEX_CLI_PATH:-}\" " +
+                "\"\${CODEX_APP_SERVER_USE_LOCAL_DAEMON:-}\" \"\${CODEX_HOME:-}\" \"\${CODEX_EXECUTABLE:-}\" \"\${CODEX_APP_SERVER_FORCE_CLI:-}\" > \"$capture\"\n",
         )
         Files.setPosixFilePermissions(desktop, PosixFilePermissions.fromString("rwx------"))
+        val serviceHost = ReadyServiceHost()
         val launcher = InstalledCodexClientLauncher(
             kast,
             home,
@@ -51,7 +56,7 @@ class InstalledCodexClientLauncherTest {
                 "CODEX_EXECUTABLE" to upstream.toString(),
                 "KAST_CODEX_DESKTOP_EXECUTABLE" to desktop.toString(),
             ),
-            serviceHost = ReadyServiceHost(),
+            serviceHost = serviceHost,
         )
 
         assertEquals(
@@ -64,9 +69,17 @@ class InstalledCodexClientLauncherTest {
         }
         assertTrue(Files.exists(capture))
         assertEquals(
-            listOf("", "1", home.resolve(".codex").toString()),
+            listOf(facade.toString(), "0", home.resolve(".codex").toString(), upstream.toString(), "1"),
             Files.readAllLines(capture),
         )
+        val attached = BrokerServiceLaunchCommand.resolve(
+            kast, home, mapOf(
+                "CODEX_EXECUTABLE" to Files.readAllLines(capture)[3],
+                "CODEX_HOME" to home.resolve(".codex").toString(),
+            ),
+        ) as BrokerServiceLaunchCommandResolution.Resolved
+        assertEquals(serviceHost.command.identity, attached.command.identity)
+
     }
 
     @Test
@@ -77,6 +90,7 @@ class InstalledCodexClientLauncherTest {
         val home = Files.createDirectory(temporary.resolve("home")).toRealPath()
         val kast = executable(bin.resolve("kast"))
         val upstream = executable(bin.resolve("codex"))
+        executable(bin.resolve("kast-codex"))
         val desktop = executable(bin.resolve("Codex Desktop"))
         val processLauncher = CapturedProcessLauncher()
         val serviceHost = ReadyServiceHost()
@@ -203,6 +217,23 @@ class InstalledCodexClientLauncherTest {
                 ReadyServiceHost(),
             ).launch(CodexClientLaunch.Cli),
         )
+        assertFalse(processLauncher.wasCalled)
+    }
+
+    @Test
+    fun `missing facade rejects before starting the service or desktop`(@TempDir temporary: Path) {
+        val home = temporary.toRealPath()
+        val kast = executable(home.resolve("kast"))
+        val upstream = executable(home.resolve("codex"))
+        val desktop = executable(home.resolve("desktop"))
+        val processLauncher = CapturedProcessLauncher()
+        val result = InstalledCodexClientLauncher(
+            kast, home,
+            mapOf("CODEX_EXECUTABLE" to upstream.toString(), "KAST_CODEX_DESKTOP_EXECUTABLE" to desktop.toString()),
+            processLauncher,
+            PersistentBrokerServiceHost { error("No service effect before facade admission") },
+        ).launch(CodexClientLaunch.Desktop)
+        assertEquals(CodexClientLaunchRun.Rejected(CodexClientLaunchFailure.FACADE_UNAVAILABLE), result)
         assertFalse(processLauncher.wasCalled)
     }
 

@@ -85,9 +85,12 @@ To launch Codex Desktop through the same qualified integration:
 kast codex desktop
 ```
 
-Kast launches Desktop with Codex's standard local-daemon integration enabled.
-It does not substitute `CODEX_CLI_PATH`; Desktop and the CLI share the same
-qualified App Server socket and catalog.
+Quit an already running Desktop before launching it this way. Kast sets
+`CODEX_CLI_PATH` for the new Desktop process to its installed `kast-codex` façade.
+Desktop exchanges the native App Server protocol over stdio; the façade connects
+to the same persistent broker and catalog used by the CLI. Closing Desktop leaves
+the broker running. Full desktop UI compatibility remains unqualified; see the
+[compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md).
 
 Ask the agent a question about the Kotlin repository. Its first Kast read should
 normally use `kast.query`. A successful tool row can be expanded to inspect the

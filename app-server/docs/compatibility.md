@@ -3,6 +3,27 @@
 Evidence recorded during implementation on 2026-09-08 UTC. This record is owned
 by `:app-server`. **Full desktop compatibility has not been established.**
 
+## Stdio desktop launch
+
+The current launch path is `kast codex desktop` → a process-local
+`CODEX_CLI_PATH=.../kast-codex` → JSONL stdio → the existing persistent broker.
+Daemon discovery remains available to CLI clients. The historical daemon-only
+desktop observations below do not qualify the new desktop UI path.
+
+[Codapter at revision 429812d](https://github.com/kcosr/codapter/tree/429812d8976c317d4333aa51ce5106eb511f6816)
+provides the reference launch pattern. Local inspection of desktop build
+`26.901.51231` establishes that its default argument vector is
+`-c features.code_mode_host=true app-server --analytics-default-enabled`.
+The façade accepts that vector, and the shared server applies the same profile.
+Additional host-specific configuration overrides still reject. No alternate
+backend, synthetic native items, or replacement conversation store is added.
+
+The launcher test runs a desktop stand-in and observes its executable override,
+Codex home, and stdio selection. Installed acceptance exercises the exact desktop
+argument vector through real Codex, then closes stdio and checks service survival.
+Neither is an observation of the desktop UI. The manual release checklist still
+applies.
+
 ## Qualified boundaries
 
 | Boundary | Authority and observation |

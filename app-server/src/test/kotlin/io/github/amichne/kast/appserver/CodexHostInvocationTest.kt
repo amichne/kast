@@ -133,6 +133,31 @@ class CodexHostInvocationTest {
         )
     }
 
+    @Test
+    fun `stock desktop startup reaches installation admission while process overrides reject`() = kotlinx.coroutines.runBlocking {
+        val missingKast = java.nio.file.Path.of("/kast-stdio-test-unavailable/kast")
+        listOf(
+            listOf("-c", "features.code_mode_host=true", "app-server", "--analytics-default-enabled"),
+            listOf("app-server", "-c", "features.code_mode_host=true", "--analytics-default-enabled"),
+        ).forEach { arguments ->
+            assertEquals(
+                CodexIntegrationRun.Rejected(CodexIntegrationFailure.CONFIGURATION_REJECTED),
+                runInstalledCodex(arguments, missingKast),
+                arguments.toString(),
+            )
+        }
+        listOf(
+            listOf("-c", "features.code_mode_host=false", "app-server"),
+            listOf("app-server", "-c", "openai_base_url=\"https://example.invalid\""),
+            listOf("app-server", "--help"),
+        ).forEach { arguments ->
+            assertEquals(
+                CodexIntegrationRun.Rejected(CodexIntegrationFailure.ARGUMENTS_REJECTED),
+                runInstalledCodex(arguments, missingKast),
+            )
+        }
+    }
+
     private fun <T, E> refined(refinement: Refinement<T, E>): T =
         (refinement as Refinement.Refined).value
 }

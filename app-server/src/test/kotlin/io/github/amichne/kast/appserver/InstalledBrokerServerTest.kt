@@ -76,6 +76,10 @@ class InstalledBrokerServerTest {
                     InstalledBrokerServerConfiguration.Configured).options
 
             assertEquals(
+                listOf("-c", "features.code_mode_host=true", "app-server", "--analytics-default-enabled", "--listen", "unix:///test.sock"),
+                configured(base).upstreamOptions.appServerArguments.withOwnedTransport("unix:///test.sock"),
+            )
+            assertEquals(
                 "query,source_read,semantic_query,impact_analyze,diagnostic_check," +
                     "change_plan,change_apply,change_recover",
                 configured(base).kastOptions.toolSelection.environmentValue,
