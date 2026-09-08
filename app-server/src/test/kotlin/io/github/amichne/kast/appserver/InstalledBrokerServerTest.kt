@@ -424,7 +424,7 @@ class InstalledBrokerServerTest {
         }
     }
 
-    private fun kastSchema(): String = checkNotNull(javaClass.getResource("/kast-schema.json")).readText()
+    private fun kastSchema(): String = installedKastCatalogFixture()
 
     private fun executable(path: Path): Path {
         Files.writeString(path, "#!/bin/sh\nexit 0\n")
