@@ -47,6 +47,10 @@ bootstrap_state_path=""
 bootstrap_attempt_id=""
 for argument in "$@"; do
   case "${argument}" in
+    --max-heap-mib)
+      echo "kast-indexer: max-heap-mib requires a canonical equals argument" >&2
+      exit 70
+      ;;
     --max-heap-mib=*)
       [[ "$heap_argument_seen" == false ]] || {
         echo "kast-indexer: max-heap-mib argument must occur exactly once" >&2

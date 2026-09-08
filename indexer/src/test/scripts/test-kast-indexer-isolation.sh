@@ -308,6 +308,11 @@ for value in missing '' 0 255 08 8g 2147483648 999999999999999999999999999999999
   fi
   [[ ! -e "$rejected_heap_capture" ]] || exit 1
 done
+if HOME="$admitted_user_home" CAPTURE_FILE="$rejected_heap_capture" \
+    "${installed}/kast-indexer" "${launcher_arguments[@]}" --max-heap-mib 8192 2>"${fixture}/heap-error"; then
+  echo "indexer-launcher-isolation-test: malformed bare heap reached Java" >&2; exit 1
+fi
+[[ ! -e "$rejected_heap_capture" ]] || exit 1
 for first in 1536 ''; do
   if HOME="$admitted_user_home" CAPTURE_FILE="$rejected_heap_capture" \
       "${installed}/kast-indexer" "${heap_base[@]}" "--max-heap-mib=$first" --max-heap-mib=8192 2>"${fixture}/heap-error"; then

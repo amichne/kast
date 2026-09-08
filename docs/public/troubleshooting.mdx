@@ -108,11 +108,13 @@ resolved entry kinds, and selected descendants beneath directory aliases are
 retained separately. Retargeting a link invalidates the imported model even if
 the new target has identical content. Two logical aliases remain distinct inputs.
 
-Failures report `capturing-model-inputs` with `bootstrap.evidence.input.path`
+Capture failures report `capturing-model-inputs` with `bootstrap.evidence.input.path`
 and a finite `reason`: `OUTSIDE_WORKSPACE`, `LINK_CYCLE`, `TARGET_MISSING`,
 `UNREADABLE`, or `UNSUPPORTED`. Correct that repository input and run `kast start`
 again. Kast does not materialize links or delete dangling inputs. The previously
-selected Gradle JVM remains recorded in the bootstrap report.
+selected Gradle JVM remains recorded in the bootstrap report. A JVM property
+input can reject earlier during `selecting-gradle-jvm`, before a selected JVM
+has been established.
 
 ### The sidecar runs out of heap
 
