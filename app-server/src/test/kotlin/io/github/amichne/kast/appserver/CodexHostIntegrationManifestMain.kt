@@ -29,6 +29,7 @@ internal object CodexHostIntegrationManifestMain {
         val installed = installedReceipt.readInstalledReceipt()
         val source = GitSourceSnapshot.capture(repository)
         val document = CodexHostIntegrationManifest(
+            desktopDiscovery = installed.desktopDiscovery,
             sourceRevision = source.revision,
             sourceTreeSha256 = source.treeDigest,
             catalogProjectionSha256 = installed.catalogProjectionSha256,
@@ -130,6 +131,7 @@ private data class InstalledCodexHostAcceptanceReceipt(
     val standardDaemon: InstalledStandardDaemonReceipt,
     val persistentServiceAfterDetach: ValidationOutcome,
     val desktopCompatibility: DesktopQualification,
+    val desktopDiscovery: DesktopDiscovery,
 ) {
     init {
         require(schemaVersion == 1) { "Installed acceptance schema version is unsupported" }
@@ -199,7 +201,11 @@ private enum class FacadeRole {
 private enum class DesktopQualification { UNQUALIFIED }
 
 @Serializable
+private enum class DesktopDiscovery { SYNTHETIC_METADATA }
+
+@Serializable
 private data class CodexHostIntegrationManifest(
+    val desktopDiscovery: DesktopDiscovery,
     val schemaVersion: Int = 3,
     val desktopCompatibility: DesktopQualification = DesktopQualification.UNQUALIFIED,
     val taskId: IntegrationTask = IntegrationTask.HOST_10,
