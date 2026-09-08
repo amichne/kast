@@ -84,9 +84,10 @@ internal class DesktopFacadeExecutables private constructor(
 }
 
 /** Real Codex executable proven distinct from the Desktop façade. */
-@JvmInline
-internal value class UpstreamCodexExecutable private constructor(
+internal class UpstreamCodexExecutable private constructor(
     internal val executable: BrokerExecutable,
+    /** Original launcher path retains interpreter discovery across a desktop child. */
+    val launcherPath: Path,
 ) {
     val path: Path get() = executable.path
 
@@ -94,6 +95,7 @@ internal value class UpstreamCodexExecutable private constructor(
         internal fun admit(
             candidate: Path,
             facades: DesktopFacadeExecutables,
+            launcherCandidate: Path = candidate,
         ): Refinement<UpstreamCodexExecutable, CodexHostExecutableFailure> =
             when (val admission = BrokerExecutable.admit(candidate)) {
                 is Refinement.Rejected -> Refinement.Rejected(
@@ -110,9 +112,24 @@ internal value class UpstreamCodexExecutable private constructor(
                             CodexExecutableIdentity.SAME in identities -> Refinement.Rejected(
                                 CodexHostExecutableFailure.RECURSIVE_FACADE,
                             )
-                            else -> Refinement.Refined(UpstreamCodexExecutable(admission.value))
+                            else -> retainLauncher(admission.value, launcherCandidate)
                         }
                     }
             }
+
+        private fun retainLauncher(
+            executable: BrokerExecutable,
+            launcher: Path,
+        ): Refinement<UpstreamCodexExecutable, CodexHostExecutableFailure> = try {
+            if (Files.isSameFile(executable.path, launcher)) {
+                Refinement.Refined(UpstreamCodexExecutable(executable, launcher))
+            } else {
+                Refinement.Rejected(CodexHostExecutableFailure.IDENTITY_REJECTED)
+            }
+        } catch (_: IOException) {
+            Refinement.Rejected(CodexHostExecutableFailure.IDENTITY_REJECTED)
+        } catch (_: SecurityException) {
+            Refinement.Rejected(CodexHostExecutableFailure.IDENTITY_REJECTED)
+        }
     }
 }

@@ -252,7 +252,7 @@ def main() -> int:
             stderr_path = home / "facade.stderr"
             with stderr_path.open("w+", encoding="utf-8") as stderr_log:
                 process = subprocess.Popen(
-                    [str(facade), "app-server"],
+                    [str(facade), "-c", "features.code_mode_host=true", "app-server", "--analytics-default-enabled"],
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
                     stderr=stderr_log,
@@ -329,6 +329,7 @@ def main() -> int:
         "taskId": "HOST-08",
         "outcome": "COMPLETE",
         "facadeRole": "app-server-stdio",
+        "desktopStartupArguments": "VALIDATED",
         "codexVersion": version,
         "initialize": "VALIDATED",
         "threadStart": "VALIDATED",

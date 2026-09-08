@@ -6,6 +6,7 @@ import io.github.amichne.kast.appserver.MacOsPersistentBrokerServiceHost
 import io.github.amichne.kast.appserver.PersistentBrokerServiceAdmission
 import io.github.amichne.kast.appserver.PersistentBrokerServiceFailure
 import io.github.amichne.kast.appserver.PersistentBrokerServiceHost
+import io.github.amichne.kast.appserver.host.admission.DesktopFacadeExecutable
 import io.github.amichne.kast.appserver.host.admission.UpstreamCodexExecutable
 import io.github.amichne.kast.appserver.provider.BrokerExecutable
 import io.github.amichne.kast.kernel.Refinement
@@ -23,6 +24,7 @@ enum class CodexClientLaunchFailure {
     APP_SERVER_CONFIGURATION_REJECTED,
     APP_SERVER_UNAVAILABLE,
     DESKTOP_UNAVAILABLE,
+    FACADE_UNAVAILABLE,
     DESKTOP_OVERRIDE_CONFLICT,
     PROCESS_REJECTED,
     INTERRUPTED,
@@ -67,6 +69,8 @@ internal sealed interface CodexClientProcessRequest {
 
     data class Desktop(
         val executable: CodexDesktopExecutable,
+        val facade: DesktopFacadeExecutable,
+        val upstream: UpstreamCodexExecutable,
         val codexHome: Path,
     ) : CodexClientProcessRequest
 }
@@ -108,31 +112,37 @@ internal class InstalledCodexClientLauncher(
             is BrokerServiceLaunchCommandResolution.Rejected -> return CodexClientLaunchRun
                 .Rejected(resolution.failure.launchFailure())
         }
+        val request = when (client) {
+            CodexClientLaunch.Cli -> CodexClientProcessRequest.Cli(
+                command.codex,
+                command.publicSocket,
+                command.codexHome,
+            )
+            CodexClientLaunch.Desktop -> when (val admission = desktopRequest(command)) {
+                is Refinement.Refined -> admission.value
+                is Refinement.Rejected -> return CodexClientLaunchRun.Rejected(admission.failure)
+            }
+        }
         when (val admission = serviceHost.ensure(command)) {
             PersistentBrokerServiceAdmission.Ready -> Unit
             is PersistentBrokerServiceAdmission.Rejected -> return CodexClientLaunchRun.Rejected(
                 admission.failure.launchFailure(),
             )
         }
-        return when (client) {
-            CodexClientLaunch.Cli -> processLauncher.launch(
-                CodexClientProcessRequest.Cli(
-                    command.codex,
-                    command.publicSocket,
-                    command.codexHome,
-                ),
-            )
-            CodexClientLaunch.Desktop -> launchDesktop(command.codexHome)
-        }
+        return processLauncher.launch(request)
     }
 
-    private fun launchDesktop(codexHome: Path): CodexClientLaunchRun {
+    private fun desktopRequest(
+        command: BrokerServiceLaunchCommand,
+    ): Refinement<CodexClientProcessRequest.Desktop, CodexClientLaunchFailure> {
+        val facade = when (val admission = DesktopFacadeExecutable.admit(command.kast.parent.resolve("kast-codex"))) {
+            is Refinement.Refined -> admission.value
+            is Refinement.Rejected -> return Refinement.Rejected(CodexClientLaunchFailure.FACADE_UNAVAILABLE)
+        }
         val executable = resolveDesktopExecutable()
-            ?: return CodexClientLaunchRun.Rejected(
-                CodexClientLaunchFailure.DESKTOP_UNAVAILABLE,
-            )
-        return processLauncher.launch(
-            CodexClientProcessRequest.Desktop(executable, codexHome),
+            ?: return Refinement.Rejected(CodexClientLaunchFailure.DESKTOP_UNAVAILABLE)
+        return Refinement.Refined(
+            CodexClientProcessRequest.Desktop(executable, facade, command.codex, command.codexHome),
         )
     }
 
@@ -210,9 +220,11 @@ private object JdkCodexClientProcessLauncher : CodexClientProcessLauncher {
             .redirectOutput(ProcessBuilder.Redirect.to(NULL_DEVICE.toFile()))
             .redirectError(ProcessBuilder.Redirect.to(NULL_DEVICE.toFile()))
             .also { builder ->
-                builder.environment().remove("CODEX_CLI_PATH")
+                builder.environment()["CODEX_CLI_PATH"] = request.facade.path.toString()
+                builder.environment()["CODEX_EXECUTABLE"] = request.upstream.launcherPath.toString()
                 builder.environment().remove("KAST_REAL_CODEX_EXECUTABLE")
-                builder.environment()["CODEX_APP_SERVER_USE_LOCAL_DAEMON"] = "1"
+                builder.environment()["CODEX_APP_SERVER_USE_LOCAL_DAEMON"] = "0"
+                builder.environment()["CODEX_APP_SERVER_FORCE_CLI"] = "1"
                 builder.environment()["CODEX_HOME"] = request.codexHome.toString()
             }
             .start()

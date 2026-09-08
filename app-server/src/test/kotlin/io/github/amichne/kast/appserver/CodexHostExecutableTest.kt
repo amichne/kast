@@ -98,6 +98,19 @@ class CodexHostExecutableTest {
         )
     }
 
+    @Test
+    fun `launcher must still identify the admitted upstream executable`(@TempDir temporary: Path) {
+        val upstream = executable(temporary.resolve("codex"))
+        val other = executable(temporary.resolve("other"))
+        val facades = DesktopFacadeExecutables.none()
+        for (launcher in listOf(other, temporary.resolve("missing"))) {
+            assertEquals(
+                Refinement.Rejected(CodexHostExecutableFailure.IDENTITY_REJECTED),
+                UpstreamCodexExecutable.admit(upstream, facades, launcherCandidate = launcher),
+            )
+        }
+    }
+
     private fun executable(path: Path): Path {
         Files.writeString(path, "#!/bin/sh\nexit 0\n")
         Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rwx------"))

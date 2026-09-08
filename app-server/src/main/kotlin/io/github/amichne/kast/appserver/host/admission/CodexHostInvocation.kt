@@ -165,6 +165,12 @@ internal class CodexAppServerArguments private constructor(
         internal fun defaults(): CodexAppServerArguments =
             CodexAppServerArguments(emptyList(), emptyList())
 
+        /** Process-owned settings shared by CLI and desktop attachments. */
+        internal fun sharedService(): CodexAppServerArguments = CodexAppServerArguments(
+            listOf("-c", SHARED_CODE_MODE_CONFIGURATION),
+            listOf(SHARED_ANALYTICS_FLAG),
+        )
+
         internal fun admit(
             globalArguments: List<String>,
             roleArguments: List<String>,
@@ -342,3 +348,40 @@ private val CODEX_GLOBAL_FLAG_OPTIONS = setOf(
     "-V",
     "--version",
 )
+
+/** An attachment has proven that it cannot alter the shared process configuration. */
+internal sealed interface CodexServiceInvocation {
+    data class Cli(val arguments: CodexClientArguments) : CodexServiceInvocation
+    data object Stdio : CodexServiceInvocation
+
+    companion object {
+        fun admit(invocation: CodexHostInvocation): Refinement<CodexServiceInvocation, CodexServiceArgumentFailure> {
+            return when (invocation) {
+                is CodexHostInvocation.Cli -> Refinement.Refined(Cli(invocation.arguments))
+                is CodexHostInvocation.AppServer -> {
+                    val segments = listOf(invocation.arguments.globalValues, invocation.arguments.roleValues)
+                    for (segment in segments) {
+                        var index = 0
+                        while (index < segment.size) {
+                            when (segment[index]) {
+                                "-c", "--config" -> {
+                                    if (segment.getOrNull(index + 1) != SHARED_CODE_MODE_CONFIGURATION) {
+                                        return Refinement.Rejected(CodexServiceArgumentFailure.PROCESS_CONFIGURATION_CONFLICT)
+                                    }
+                                    index += 2
+                                }
+                                "--config=$SHARED_CODE_MODE_CONFIGURATION", SHARED_ANALYTICS_FLAG -> index++
+                                else -> return Refinement.Rejected(CodexServiceArgumentFailure.PROCESS_CONFIGURATION_CONFLICT)
+                            }
+                        }
+                    }
+                    Refinement.Refined(Stdio)
+                }
+            }
+        }
+    }
+}
+
+internal enum class CodexServiceArgumentFailure { PROCESS_CONFIGURATION_CONFLICT }
+private const val SHARED_CODE_MODE_CONFIGURATION = "features.code_mode_host=true"
+private const val SHARED_ANALYTICS_FLAG = "--analytics-default-enabled"
