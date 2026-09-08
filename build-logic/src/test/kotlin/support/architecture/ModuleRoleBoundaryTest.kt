@@ -30,6 +30,7 @@ class ModuleRoleBoundaryTest {
             ModuleRole.WORKSPACE_ADAPTER to "kast.role.workspace",
             ModuleRole.TRANSPORT to "kast.role.transport",
             ModuleRole.COMPOSITION to "kast.role.composition",
+            ModuleRole.APP_SERVER to "kast.role.app-server",
             ModuleRole.CLI to "kast.role.cli",
             ModuleRole.INDEXER_HOST to "kast.role.indexer-host",
         )

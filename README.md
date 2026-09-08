@@ -46,14 +46,18 @@ will inspect:
 
 ```console
 cd /path/to/kotlin-repository
+kast app-server enable
 kast codex
 ```
 
-To launch Codex Desktop through the same qualified integration, run
-`kast codex desktop` instead. Kast ensures one launchd-owned App Server at
-Codex's standard local-daemon socket. The CLI connects through `--remote`;
-Desktop uses its normal local App Server integration without a substituted
-`CODEX_CLI_PATH`.
+`kast codex desktop` attaches to the same persistent service. Enablement enrolls
+one canonical workspace and installs a login bootstrap for Codex's standard
+local-daemon socket. Client closure leaves the service running. Use
+`kast app-server status`, `stop`, or `disable` to manage its lifecycle.
+
+Desktop build-specific discovery is checked, but full desktop compatibility is
+still unqualified. See the module's [compatibility and blocker record](app-server/docs/compatibility.md)
+for exact evidence and the outstanding real-client release gate.
 
 Kast qualifies the installed tool contract before a thread starts. The default
 catalog includes one eager `kast.query` tool plus deferred source, semantic,

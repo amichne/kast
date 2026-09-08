@@ -302,8 +302,40 @@ internal object KastCleanSlateModules {
             effects = setOf(ForbiddenEffect.FILESYSTEM_WRITE),
         ),
         target(
+            ModuleId.APP_SERVER,
+            ModuleRole.APP_SERVER,
+            ModuleId.KERNEL,
+            ModuleId.PROTOCOL_CONTRACT,
+            ModuleId.PROTOCOL_REGISTRY,
+            effects = setOf(ForbiddenEffect.PROCESS_CONTROL),
+            scopedEffects = mapOf(ForbiddenEffect.FILESYSTEM_WRITE to setOf(
+                    JvmClassName("io/github/amichne/kast/appserver/InstalledAppServerManager"),
+                    JvmClassName("io/github/amichne/kast/appserver/WorkspaceEnrollmentStore"),
+                    JvmClassName("io/github/amichne/kast/appserver/runtime/InvocationFence"),
+                    JvmClassName(
+                        "io/github/amichne/kast/appserver/MacOsPersistentBrokerServiceHost",
+                    ),
+                    JvmClassName(
+                        "io/github/amichne/kast/appserver/InstalledBrokerServerConfiguration\$Companion",
+                    ),
+                    JvmClassName("io/github/amichne/kast/appserver/InstalledBrokerServerKt"),
+                    JvmClassName("io/github/amichne/kast/appserver/OwnedBrokerServiceReadiness"),
+                    JvmClassName(
+                        "io/github/amichne/kast/appserver/protocol/codex/CodexProtocolQualifier\$retireTemporaryTree\$1\$1",
+                    ),
+                    JvmClassName(
+                        "io/github/amichne/kast/appserver/protocol/FileThreadCatalogStore",
+                    ),
+                    JvmClassName("io/github/amichne/kast/appserver/runtime/OwnedUnixSocket"),
+                    JvmClassName(
+                        "io/github/amichne/kast/appserver/runtime/UnixSocketPathOwnership",
+                    ),
+            )),
+        ),
+        target(
             ModuleId.CLI,
             ModuleRole.CLI,
+            ModuleId.APP_SERVER,
             ModuleId.DISTRIBUTION_CONTRACT,
             ModuleId.DISTRIBUTION_MANAGED,
             ModuleId.KERNEL,
@@ -323,24 +355,6 @@ internal object KastCleanSlateModules {
                     JvmClassName("io/github/amichne/kast/cli/SidecarCacheStateFile"),
                     JvmClassName(
                         "io/github/amichne/kast/cli/bootstrap/SidecarBootstrapAttemptLock",
-                    ),
-                    JvmClassName(
-                        "io/github/amichne/kast/cli/broker/MacOsPersistentBrokerServiceHost",
-                    ),
-                    JvmClassName(
-                        "io/github/amichne/kast/cli/broker/InstalledBrokerServerConfiguration\$Companion",
-                    ),
-                    JvmClassName("io/github/amichne/kast/cli/broker/InstalledBrokerServerKt"),
-                    JvmClassName("io/github/amichne/kast/cli/broker/OwnedBrokerServiceReadiness"),
-                    JvmClassName(
-                        "io/github/amichne/kast/cli/broker/protocol/codex/CodexProtocolQualifier\$retireTemporaryTree\$1\$1",
-                    ),
-                    JvmClassName(
-                        "io/github/amichne/kast/cli/broker/protocol/FileThreadCatalogStore",
-                    ),
-                    JvmClassName("io/github/amichne/kast/cli/broker/runtime/OwnedUnixSocket"),
-                    JvmClassName(
-                        "io/github/amichne/kast/cli/broker/runtime/UnixSocketPathOwnership",
                     ),
                 ),
             ),
@@ -372,6 +386,7 @@ internal object KastCleanSlateModules {
 
     private fun runtimeComposition(): ModulePolicy {
         val excluded = setOf(
+            ModuleId.APP_SERVER,
             ModuleId.CLI,
             ModuleId.INDEXER,
             ModuleId.RUNTIME_COMPOSITION,
@@ -451,6 +466,7 @@ internal object KastCleanSlateModules {
         ModuleId.RUNTIME_SERVER,
         ModuleId.RUNTIME_TELEMETRY,
         ModuleId.RUNTIME_COMPOSITION,
+        ModuleId.APP_SERVER,
         ModuleId.CLI,
         ModuleId.INDEXER,
     )

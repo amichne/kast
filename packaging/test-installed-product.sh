@@ -78,7 +78,7 @@ document = json.loads(sys.argv[1])
 registry = json.loads(Path(sys.argv[2]).read_text())
 assert document["operationRegistry"] == registry, document
 assert document["cliProjection"]["commands"], document
-assert document["cliProjection"]["localCommands"] == ["codex", "codex desktop"], document
+assert document["cliProjection"]["localCommands"] == ["codex", "codex desktop", "app-server enable", "app-server status", "app-server stop", "app-server disable", "app-server control claim", "app-server control release"], document["cliProjection"]["localCommands"]
 projection = document["serverProjection"]
 bootstrap = projection["hostedBootstrap"]
 invocations = projection["cliInvocations"]["operations"]

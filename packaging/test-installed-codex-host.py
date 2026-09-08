@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import hashlib
 import os
+import plistlib
 from pathlib import Path
 import select
 import shutil
@@ -148,7 +149,8 @@ def executable(candidate: str | None, name: str) -> Path:
     selected = candidate or shutil.which(name)
     if selected is None:
         raise AcceptanceFailure(f"installed {name} executable is unavailable")
-    path = Path(selected).resolve()
+    # Preserve the installed launcher directory: a Node shim may need its sibling node.
+    path = Path(os.path.abspath(selected))
     if not path.is_file() or not os.access(path, os.X_OK):
         raise AcceptanceFailure(f"installed {name} executable is unavailable")
     return path
@@ -161,58 +163,26 @@ def exercise_standard_daemon(
     home: Path,
 ) -> dict:
     socket = home / ".codex/app-server-control/app-server-control.sock"
-    stderr_path = home / "daemon.stderr"
-    broker_environment = environment.copy()
-    broker_environment.pop("CODEX_CLI_PATH", None)
-    broker_environment.pop("KAST_REAL_CODEX_EXECUTABLE", None)
-    broker_environment["CODEX_EXECUTABLE"] = str(codex)
-    with stderr_path.open("w+", encoding="utf-8") as stderr_log:
-        broker = subprocess.Popen(
-            [str(kast), "broker", "serve"],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=stderr_log,
-            env=broker_environment,
-        )
-        try:
-            deadline = time.monotonic() + 45.0
-            while time.monotonic() < deadline and not socket.is_socket():
-                if broker.poll() is not None:
-                    break
-                time.sleep(0.05)
-            if not socket.is_socket():
-                stderr_log.flush()
-                stderr_log.seek(0)
-                raise AcceptanceFailure(
-                    "standard App Server socket was not published; bounded stderr tail: "
-                    + stderr_log.read()[-4096:].strip()
-                )
-            version = subprocess.run(
-                [str(codex), "app-server", "daemon", "version"],
-                check=True,
-                capture_output=True,
-                text=True,
-                timeout=10,
-                env=broker_environment,
-            )
-            document = json.loads(version.stdout)
-            if document.get("socketPath") != str(socket):
-                raise AcceptanceFailure("Codex did not discover Kast at its standard socket")
-            if document.get("cliVersion") is None:
-                raise AcceptanceFailure("standard App Server did not report Codex authority")
-            return {
-                "socketPath": str(socket),
-                "cliVersion": document["cliVersion"],
-                "appServerVersion": document.get("appServerVersion"),
-            }
-        finally:
-            if broker.poll() is None:
-                broker.terminate()
-                try:
-                    broker.wait(timeout=10)
-                except subprocess.TimeoutExpired:
-                    broker.kill()
-                    broker.wait(timeout=5)
+    version = subprocess.run(
+        [str(codex), "app-server", "daemon", "version"], check=True,
+        capture_output=True, text=True, timeout=10, env=environment,
+    )
+    document = json.loads(version.stdout)
+    if document.get("socketPath") != str(socket) or document.get("cliVersion") is None:
+        raise AcceptanceFailure("Codex did not discover Kast at its standard socket")
+    return {"socketPath": str(socket), "cliVersion": document["cliVersion"], "appServerVersion": document.get("appServerVersion")}
+
+
+def stage_desktop_metadata(home: Path) -> Path:
+    """Supply discovery metadata only; this does not qualify a desktop client."""
+    plist = home / "Applications/Codex.app/Contents/Info.plist"
+    plist.parent.mkdir(parents=True)
+    plist.write_bytes(plistlib.dumps({"CFBundleShortVersionString": "26.901.51231"}))
+    executable = plist.parent / "MacOS/Codex"
+    executable.parent.mkdir()
+    executable.write_text("#!/bin/sh\nexit 1\n")
+    executable.chmod(0o700)
+    return executable
 
 
 def main() -> int:
@@ -241,12 +211,15 @@ def main() -> int:
         prefix="kast-host-", dir="/tmp", ignore_cleanup_errors=True
     ) as temporary:
         home = Path(temporary).resolve()
+        desktop_fixture = stage_desktop_metadata(home)
         environment = os.environ.copy()
         environment.update(
             {
                 "HOME": str(home),
                 "CODEX_HOME": str(home / ".codex"),
                 "KAST_REAL_CODEX_EXECUTABLE": str(codex),
+                "KAST_CODEX_DESKTOP_EXECUTABLE": str(desktop_fixture),
+                "CODEX_EXECUTABLE": str(codex),
                 "KAST_ENABLE_APP_SERVER": "1",
                 "_JAVA_OPTIONS": f"-Duser.home={home}",
             }
@@ -269,71 +242,87 @@ def main() -> int:
             env=environment,
         )
         protocol_digest = codex_protocol_digest(schemas)
-        standard_daemon = exercise_standard_daemon(kast, codex, environment, home)
-        stderr_path = home / "facade.stderr"
-        with stderr_path.open("w+", encoding="utf-8") as stderr_log:
-            process = subprocess.Popen(
-                [str(facade), "app-server", "--analytics-default-enabled"],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=stderr_log,
-                text=True,
-                bufsize=1,
-                env=environment,
-            )
-            try:
-                send(
-                    process,
-                    {
-                        "id": 0,
-                        "method": "initialize",
-                        "params": {
-                            "clientInfo": {
-                                "name": "kast-installed-host-acceptance",
-                                "version": "1",
-                            }
+        try:
+            enabled = subprocess.run([str(kast), "app-server", "enable"], cwd=project, env=environment, capture_output=True, text=True, timeout=90)
+            if enabled.returncode != 0:
+                service_log = home / ".codex/broker/service.log"
+                evidence = service_log.read_text()[-4096:] if service_log.exists() else "no child service log"
+                raise AcceptanceFailure("persistent service enable failed: " + enabled.stderr[-2048:] + "; " + evidence)
+            standard_daemon = exercise_standard_daemon(kast, codex, environment, home)
+            stderr_path = home / "facade.stderr"
+            with stderr_path.open("w+", encoding="utf-8") as stderr_log:
+                process = subprocess.Popen(
+                    [str(facade), "app-server"],
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=stderr_log,
+                    text=True,
+                    bufsize=1,
+                    env=environment,
+                )
+                try:
+                    send(
+                        process,
+                        {
+                            "id": 0,
+                            "method": "initialize",
+                            "params": {
+                                "clientInfo": {
+                                    "name": "kast-installed-host-acceptance",
+                                    "version": "1",
+                                }
+                            },
                         },
-                    },
-                )
-                initialized = receive_response(process, 0, 45.0)
-                if not isinstance(initialized.get("result", {}).get("userAgent"), str):
-                    raise AcceptanceFailure("initialize did not return Codex authority")
-                send(process, {"method": "initialized"})
-                send(
-                    process,
-                    {
-                        "id": 1,
-                        "method": "thread/start",
-                        "params": {"cwd": str(project)},
-                    },
-                )
-                started = receive_response(process, 1, 45.0)
-                result = started.get("result", {})
-                thread = result.get("thread", {})
-                if (
-                    not isinstance(thread.get("id"), str)
-                    or result.get("cwd") != str(project)
-                ):
-                    raise AcceptanceFailure("thread/start did not retain the exact project")
-                process.stdin.close()
-                if drain_jsonl_until_exit(process, 20.0) != 0:
-                    raise AcceptanceFailure(
-                        "facade did not complete cleanly after parent stdio closed"
                     )
-            except (AcceptanceFailure, OSError, subprocess.SubprocessError) as failure:
-                stderr_log.flush()
-                stderr_log.seek(0)
-                tail = stderr_log.read()[-4096:].strip()
-                detail = f"; bounded stderr tail: {tail}" if tail else ""
-                raise AcceptanceFailure(f"{failure}{detail}") from failure
-            finally:
-                if process.poll() is None:
-                    process.terminate()
-                    try:
-                        process.wait(timeout=5)
-                    except subprocess.TimeoutExpired:
-                        process.kill()
-                        process.wait(timeout=5)
+                    initialized = receive_response(process, 0, 45.0)
+                    if not isinstance(initialized.get("result", {}).get("userAgent"), str):
+                        raise AcceptanceFailure("initialize did not return Codex authority")
+                    send(process, {"method": "initialized"})
+                    send(
+                        process,
+                        {
+                            "id": 1,
+                            "method": "thread/start",
+                            "params": {"cwd": str(project)},
+                        },
+                    )
+                    started = receive_response(process, 1, 45.0)
+                    result = started.get("result", {})
+                    thread = result.get("thread", {})
+                    if (
+                        not isinstance(thread.get("id"), str)
+                        or result.get("cwd") != str(project)
+                    ):
+                        raise AcceptanceFailure("thread/start did not retain the exact project")
+                    process.stdin.close()
+                    if drain_jsonl_until_exit(process, 20.0) != 0:
+                        raise AcceptanceFailure(
+                            "facade did not complete cleanly after parent stdio closed"
+                        )
+                except (AcceptanceFailure, OSError, subprocess.SubprocessError) as failure:
+                    stderr_log.flush()
+                    stderr_log.seek(0)
+                    tail = stderr_log.read()[-4096:].strip()
+                    detail = f"; bounded stderr tail: {tail}" if tail else ""
+                    raise AcceptanceFailure(f"{failure}{detail}") from failure
+                finally:
+                    if process.poll() is None:
+                        process.terminate()
+                        try:
+                            process.wait(timeout=5)
+                        except subprocess.TimeoutExpired:
+                            process.kill()
+                            process.wait(timeout=5)
+            # Parent stdio termination must leave the service discoverable.
+            exercise_standard_daemon(kast, codex, environment, home)
+            status = subprocess.run([str(kast), "app-server", "status"], cwd=project, env=environment, check=True, capture_output=True, text=True, timeout=15)
+            service_status = json.loads(status.stdout)
+            if service_status.get("protocol") != "qualified" or service_status.get("catalog") != "qualified":
+                raise AcceptanceFailure("status did not preserve installed qualification evidence")
+        finally:
+            disabled = subprocess.run([str(kast), "app-server", "disable"], cwd=project, env=environment, capture_output=True, text=True, timeout=40)
+            if disabled.returncode != 0:
+                raise AcceptanceFailure("temporary service cleanup failed: " + disabled.stderr[-4096:])
 
     document = {
         "schemaVersion": 1,
@@ -344,6 +333,9 @@ def main() -> int:
         "initialize": "VALIDATED",
         "threadStart": "VALIDATED",
         "parentClosure": "CLEAN",
+        "persistentServiceAfterDetach": "VALIDATED",
+        "desktopCompatibility": "UNQUALIFIED",
+        "desktopDiscovery": "SYNTHETIC_METADATA",
         "stdoutProtocol": "JSONL_ONLY",
         "codexProtocolSha256": protocol_digest,
         "standardDaemon": standard_daemon,

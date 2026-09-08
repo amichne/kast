@@ -243,7 +243,7 @@ val productBuildGate by tasks.registering {
         "check",
         installedProductTest,
         installedCodexHostTest,
-        ":cli:generateCodexHostIntegrationManifest",
+        ":app-server:generateCodexHostIntegrationManifest",
         "verifyKastArchitecture",
     )
     dependsOn(gradle.includedBuild("build-logic").task(":check"))

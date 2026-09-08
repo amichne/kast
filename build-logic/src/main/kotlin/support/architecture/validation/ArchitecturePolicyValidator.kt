@@ -61,6 +61,7 @@ object ArchitecturePolicyValidator {
                 add(ArchitecturePolicyFailure.MissingRuntimeComposition)
             } else {
                 val excluded = setOf(
+                    ModuleId.APP_SERVER,
                     ModuleId.CLI,
                     ModuleId.INDEXER,
                     ModuleId.RUNTIME_COMPOSITION,

@@ -1,7 +1,7 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.cli.broker.BrokerServerRun
-import io.github.amichne.kast.cli.broker.BrokerServerRunner
+import io.github.amichne.kast.appserver.BrokerServerRun
+import io.github.amichne.kast.appserver.BrokerServerRunner
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.projection.CliBoundaryDocuments

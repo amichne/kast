@@ -9,14 +9,14 @@ import io.github.amichne.kast.cli.command.CliLifecycleCommand
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.cli.projection.CliBoundaryDocuments
 import io.github.amichne.kast.cli.projection.ProductInspectionDocuments
-import io.github.amichne.kast.cli.broker.BrokerServerRun
-import io.github.amichne.kast.cli.broker.BrokerServerRunner
-import io.github.amichne.kast.cli.broker.UnavailableBrokerServerRunner
-import io.github.amichne.kast.cli.broker.outputReason
-import io.github.amichne.kast.cli.broker.host.CodexClientLaunch
-import io.github.amichne.kast.cli.broker.host.CodexClientLaunchRun
-import io.github.amichne.kast.cli.broker.host.CodexClientLauncher
-import io.github.amichne.kast.cli.broker.host.UnavailableCodexClientLauncher
+import io.github.amichne.kast.appserver.BrokerServerRun
+import io.github.amichne.kast.appserver.BrokerServerRunner
+import io.github.amichne.kast.appserver.UnavailableBrokerServerRunner
+import io.github.amichne.kast.appserver.outputReason
+import io.github.amichne.kast.appserver.host.CodexClientLaunch
+import io.github.amichne.kast.appserver.host.CodexClientLaunchRun
+import io.github.amichne.kast.appserver.host.CodexClientLauncher
+import io.github.amichne.kast.appserver.host.UnavailableCodexClientLauncher
 import java.nio.file.Path
 
 /** Pure orchestration of the closed CLI boundaries and their explicit outer effects. */
@@ -30,6 +30,7 @@ class KastCli(
     private val lifecycle: RuntimeLifecycleController,
     private val productInspector: ProductInspector,
     private val cacheLifecycle: RootSidecarCacheLifecycle = NoRootSidecarCacheLifecycle,
+    private val appServerManager: io.github.amichne.kast.appserver.AppServerManager = io.github.amichne.kast.appserver.UnavailableAppServerManager,
     private val brokerServerRunner: BrokerServerRunner = UnavailableBrokerServerRunner,
     private val codexClientLauncher: CodexClientLauncher = UnavailableCodexClientLauncher,
 ) {
@@ -89,6 +90,13 @@ class KastCli(
         CliAction.Local.ProductInspect -> CliExit.Complete(
             ProductInspectionDocuments.complete(productInspector.inspect(start)),
         )
+        is CliAction.Local.AppServer -> when (val result = appServerManager.execute(action.action,start)) {
+            is io.github.amichne.kast.appserver.AppServerManagementResult.Completed -> when (val document = CliTextDocument.admit(result.document.toString())) {
+                is CliTextDocumentAdmission.Admitted -> CliExit.Complete(document.document)
+                is CliTextDocumentAdmission.Rejected -> boundaryExit(CliBoundaryExitStatus.RUNTIME,"app-server-output-rejected")
+            }
+            is io.github.amichne.kast.appserver.AppServerManagementResult.Rejected -> boundaryExit(CliBoundaryExitStatus.RUNTIME,(result.serviceFailure?.name ?: result.failure.name).lowercase().replace('_','-'))
+        }
         CliAction.Local.BrokerServe -> when (val run = brokerServerRunner.serve()) {
             BrokerServerRun.Stopped -> CliExit.Complete(CliBoundaryDocuments.brokerStopped())
             is BrokerServerRun.Rejected -> boundaryExit(
