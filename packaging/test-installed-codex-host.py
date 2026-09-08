@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import hashlib
 import os
+import plistlib
 from pathlib import Path
 import select
 import shutil
@@ -172,6 +173,18 @@ def exercise_standard_daemon(
     return {"socketPath": str(socket), "cliVersion": document["cliVersion"], "appServerVersion": document.get("appServerVersion")}
 
 
+def stage_desktop_metadata(home: Path) -> Path:
+    """Supply discovery metadata only; this does not qualify a desktop client."""
+    plist = home / "Applications/Codex.app/Contents/Info.plist"
+    plist.parent.mkdir(parents=True)
+    plist.write_bytes(plistlib.dumps({"CFBundleShortVersionString": "26.901.51231"}))
+    executable = plist.parent / "MacOS/Codex"
+    executable.parent.mkdir()
+    executable.write_text("#!/bin/sh\nexit 1\n")
+    executable.chmod(0o700)
+    return executable
+
+
 def main() -> int:
     if len(sys.argv) != 4:
         raise AcceptanceFailure(
@@ -198,12 +211,14 @@ def main() -> int:
         prefix="kast-host-", dir="/tmp", ignore_cleanup_errors=True
     ) as temporary:
         home = Path(temporary).resolve()
+        desktop_fixture = stage_desktop_metadata(home)
         environment = os.environ.copy()
         environment.update(
             {
                 "HOME": str(home),
                 "CODEX_HOME": str(home / ".codex"),
                 "KAST_REAL_CODEX_EXECUTABLE": str(codex),
+                "KAST_CODEX_DESKTOP_EXECUTABLE": str(desktop_fixture),
                 "CODEX_EXECUTABLE": str(codex),
                 "KAST_ENABLE_APP_SERVER": "1",
                 "_JAVA_OPTIONS": f"-Duser.home={home}",
@@ -320,6 +335,7 @@ def main() -> int:
         "parentClosure": "CLEAN",
         "persistentServiceAfterDetach": "VALIDATED",
         "desktopCompatibility": "UNQUALIFIED",
+        "desktopDiscovery": "SYNTHETIC_METADATA",
         "stdoutProtocol": "JSONL_ONLY",
         "codexProtocolSha256": protocol_digest,
         "standardDaemon": standard_daemon,

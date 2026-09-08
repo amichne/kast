@@ -1,6 +1,13 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.appserver.host.CodexDesktopExecutable
+import io.github.amichne.kast.kernel.Refinement
+import java.nio.file.InvalidPathException
+import java.io.IOException
 import java.nio.file.Files
+import java.nio.file.ClosedFileSystemException
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
@@ -18,28 +25,154 @@ internal object DesktopAttachmentPolicy {
         else -> DesktopAttachmentAdmission.Eligible
     }
 }
-internal object InstalledDesktopAttachmentProbe {
-    fun inspect(environment: Map<String,String>, userHome: Path): DesktopAttachmentAdmission {
-        val bundle = listOf(Path.of("/Applications/ChatGPT.app"),Path.of("/Applications/Codex.app"),userHome.resolve("Applications/Codex.app"))
-            .firstOrNull { Files.isRegularFile(it.resolve("Contents/Info.plist")) }
-            ?: return DesktopAttachmentAdmission.Rejected(DesktopAttachmentFailure.DESKTOP_UNAVAILABLE)
-        return try {
-            val version = readCommand(listOf("/usr/libexec/PlistBuddy","-c","Print :CFBundleShortVersionString",bundle.resolve("Contents/Info.plist").toString()),setOf(0))
-                ?: return DesktopAttachmentAdmission.Rejected(DesktopAttachmentFailure.INSPECTION_REJECTED)
-            val effective = environment.toMutableMap()
-            for (name in listOf("CODEX_CLI_PATH","CODEX_APP_SERVER_FORCE_CLI")) {
-                val gui = readCommand(listOf("/bin/launchctl","getenv",name),setOf(0,1))
-                    ?: return DesktopAttachmentAdmission.Rejected(DesktopAttachmentFailure.INSPECTION_REJECTED)
-                if (gui.isNotEmpty()) effective[name] = gui
+/** Commands are an explicit effect boundary: native tools cannot read a Jimfs path. */
+internal sealed interface DesktopInspectionCommand {
+    data class ReadVersion(val plist: Path) : DesktopInspectionCommand
+    data class ReadOverride(val name: DesktopOverride) : DesktopInspectionCommand
+}
+internal enum class DesktopOverride { CODEX_CLI_PATH, CODEX_APP_SERVER_FORCE_CLI }
+internal sealed interface DesktopInspectionRead {
+    data class Value(val text: String) : DesktopInspectionRead
+    data object Rejected : DesktopInspectionRead
+}
+internal fun interface DesktopInspectionCommands {
+    fun read(command: DesktopInspectionCommand): DesktopInspectionRead
+}
+internal fun interface DesktopAttachmentReporter {
+    fun report(admission: DesktopAttachmentAdmission)
+}
+internal object StderrDesktopAttachmentReporter : DesktopAttachmentReporter {
+    override fun report(admission: DesktopAttachmentAdmission) {
+        System.err.println(buildJsonObject {
+            put("component", "kast-broker")
+            put("stage", "desktop-inspection")
+            when (admission) {
+                DesktopAttachmentAdmission.Eligible -> put("outcome", "eligible")
+                is DesktopAttachmentAdmission.Rejected -> {
+                    put("outcome", "rejected")
+                    put("reason", admission.failure.name.lowercase().replace('_', '-'))
+                }
             }
-            DesktopAttachmentPolicy.admit(effective,version,Files.exists(bundle.resolve("Contents/Resources/git/bin/git")))
-        } catch (_: Exception) { DesktopAttachmentAdmission.Rejected(DesktopAttachmentFailure.INSPECTION_REJECTED) }
+        })
     }
-    private fun readCommand(command: List<String>, exits: Set<Int>): String? {
-        val process = ProcessBuilder(command).redirectError(ProcessBuilder.Redirect.DISCARD).start()
-        if (!process.waitFor(5,TimeUnit.SECONDS)) { process.destroyForcibly(); return null }
-        val output = process.inputStream.use { it.readNBytes(1_025) }
-        if (process.exitValue() !in exits || output.size > 1_024) return null
-        return output.toString(Charsets.UTF_8).trimEnd('\n','\r')
+}
+/** A discovered bundle retains its provider and a proven metadata file. */
+internal class DesktopBundle private constructor(val path: Path) {
+    companion object {
+        fun discover(environment: Map<String, String>, userHome: Path): Refinement<DesktopBundle, DesktopAttachmentFailure> {
+            val filesystem = userHome.fileSystem
+            val explicit = environment["KAST_CODEX_DESKTOP_EXECUTABLE"]
+            if (explicit != null) {
+                val candidate = filesystem.getPath(explicit)
+                if (!candidate.isAbsolute || candidate.normalize() != candidate) {
+                    return Refinement.Rejected(DesktopAttachmentFailure.INSPECTION_REJECTED)
+                }
+                val executable = when (val admitted = CodexDesktopExecutable.admit(candidate)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return Refinement.Rejected(DesktopAttachmentFailure.DESKTOP_UNAVAILABLE)
+                }
+                val path = executable.path
+                // The explicit launch target must belong to an inspectable macOS bundle.
+                if (path.nameCount < 4 || path.parent.fileName.toString() != "MacOS" ||
+                    path.parent.parent.fileName.toString() != "Contents" ||
+                    !path.parent.parent.parent.fileName.toString().endsWith(".app")) {
+                    return Refinement.Rejected(DesktopAttachmentFailure.INSPECTION_REJECTED)
+                }
+                return admit(path.parent.parent.parent)
+            }
+            // Preserve the existing search order and the caller's filesystem provider.
+            for (candidate in listOf(
+                filesystem.getPath("/Applications/ChatGPT.app"),
+                filesystem.getPath("/Applications/Codex.app"),
+                userHome.resolve("Applications/Codex.app"),
+            )) {
+                if (Files.isRegularFile(candidate.resolve("Contents/Info.plist"))) return admit(candidate)
+            }
+            return Refinement.Rejected(DesktopAttachmentFailure.DESKTOP_UNAVAILABLE)
+        }
+
+        private fun admit(path: Path): Refinement<DesktopBundle, DesktopAttachmentFailure> =
+            if (Files.isRegularFile(path.resolve("Contents/Info.plist"))) Refinement.Refined(DesktopBundle(path))
+            else Refinement.Rejected(DesktopAttachmentFailure.DESKTOP_UNAVAILABLE)
+    }
+}
+
+internal object InstalledDesktopAttachmentProbe {
+    fun inspect(
+        environment: Map<String, String>,
+        userHome: Path,
+        commands: DesktopInspectionCommands = NativeDesktopInspectionCommands,
+        reporter: DesktopAttachmentReporter = StderrDesktopAttachmentReporter,
+    ): DesktopAttachmentAdmission {
+        val admission = try {
+            inspectFiles(environment, userHome, commands)
+        } catch (_: IOException) {
+            DesktopAttachmentAdmission.Rejected(DesktopAttachmentFailure.INSPECTION_REJECTED)
+        } catch (_: SecurityException) {
+            DesktopAttachmentAdmission.Rejected(DesktopAttachmentFailure.INSPECTION_REJECTED)
+        } catch (_: InvalidPathException) {
+            DesktopAttachmentAdmission.Rejected(DesktopAttachmentFailure.INSPECTION_REJECTED)
+        } catch (_: ClosedFileSystemException) {
+            DesktopAttachmentAdmission.Rejected(DesktopAttachmentFailure.INSPECTION_REJECTED)
+        }
+        reporter.report(admission)
+        return admission
+    }
+
+    private fun inspectFiles(
+        environment: Map<String, String>,
+        userHome: Path,
+        commands: DesktopInspectionCommands,
+    ): DesktopAttachmentAdmission {
+        val bundle = when (val selected = DesktopBundle.discover(environment, userHome)) {
+            is Refinement.Refined -> selected.value
+            is Refinement.Rejected -> return DesktopAttachmentAdmission.Rejected(selected.failure)
+        }
+        val version = when (val read = commands.read(DesktopInspectionCommand.ReadVersion(bundle.path.resolve("Contents/Info.plist")))) {
+            is DesktopInspectionRead.Value -> read.text
+            DesktopInspectionRead.Rejected -> return DesktopAttachmentAdmission.Rejected(DesktopAttachmentFailure.INSPECTION_REJECTED)
+        }
+        val effective = environment.toMutableMap()
+        for (name in DesktopOverride.entries) {
+            when (val read = commands.read(DesktopInspectionCommand.ReadOverride(name))) {
+                is DesktopInspectionRead.Value -> if (read.text.isNotEmpty()) effective[name.name] = read.text
+                DesktopInspectionRead.Rejected -> return DesktopAttachmentAdmission.Rejected(DesktopAttachmentFailure.INSPECTION_REJECTED)
+            }
+        }
+        return DesktopAttachmentPolicy.admit(effective, version, Files.exists(bundle.path.resolve("Contents/Resources/git/bin/git")))
+    }
+}
+
+internal object NativeDesktopInspectionCommands : DesktopInspectionCommands {
+    override fun read(command: DesktopInspectionCommand): DesktopInspectionRead {
+        val arguments = when (command) {
+            is DesktopInspectionCommand.ReadVersion -> listOf("/usr/libexec/PlistBuddy", "-c", "Print :CFBundleShortVersionString", command.plist.toString())
+            is DesktopInspectionCommand.ReadOverride -> listOf("/bin/launchctl", "getenv", command.name.name)
+        }
+        val process = try {
+            ProcessBuilder(arguments).redirectError(ProcessBuilder.Redirect.DISCARD).start()
+        } catch (_: IOException) {
+            return DesktopInspectionRead.Rejected
+        } catch (_: SecurityException) {
+            return DesktopInspectionRead.Rejected
+        }
+        return try {
+            if (!process.waitFor(5, TimeUnit.SECONDS)) return DesktopInspectionRead.Rejected
+            val output = process.inputStream.use { it.readNBytes(1_025) }
+            val acceptedExit = when (command) {
+                is DesktopInspectionCommand.ReadVersion -> process.exitValue() == 0
+                is DesktopInspectionCommand.ReadOverride -> process.exitValue() in 0..1
+            }
+            if (!acceptedExit || output.size > 1_024) DesktopInspectionRead.Rejected
+            else DesktopInspectionRead.Value(output.toString(Charsets.UTF_8).trimEnd('\n', '\r'))
+        } catch (_: IOException) {
+            DesktopInspectionRead.Rejected
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+            DesktopInspectionRead.Rejected
+        } finally {
+            if (process.isAlive) process.destroyForcibly()
+            process.inputStream.close()
+        }
     }
 }

@@ -33,6 +33,7 @@ plugins {
 }
 
 dependencies {
+    testImplementation(libs.jimfs)
     implementation(libs.bundles.coroutines)
     implementation(libs.serialization.json)
     implementation(libs.json.schema.validator)
