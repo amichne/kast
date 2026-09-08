@@ -38,16 +38,31 @@ propagates the finite startup failure through the management command instead of
 collapsing it to generic service-unavailable; child stage evidence remains in the
 service log.
 
-## Reproduce semantic access
+## Historical semantic-access reproduction
 
-From the repository root, the pre-extraction directory was `cli`; use
-`app-server` for the extracted module:
+The recorded observations above used the projection 7 query grammar. Preserve
+this request as historical evidence; projection 8 rejects it. The pre-extraction
+directory was `cli`; the recorded post-extraction request used `app-server`:
 
 ```sh
 kast query run <<'JSON'
 {"from":{"type":"symbols","match":{"type":"name","text":"KtorBrokerServer","matching":"exact-name"},"scope":{"sourceSets":["main"],"directory":{"path":"app-server","containment":"descendants"},"packageName":null},"declarationKinds":["class"]},"steps":[],"output":{"type":"symbols","fields":["name","location","signature"]},"execution":{"kind":"exhaustive","budget":"interactive"}}
 JSON
 ```
+
+## Current semantic-access request
+
+Projection 8 expresses the same discovery intent with the public query contract:
+
+```sh
+kast query run <<'JSON'
+{"type":"QUERY","from":{"type":"SEARCH","query":"KtorBrokerServer","kinds":["class"],"scope":{"type":"SCOPE","sourceSets":["main"],"directory":{"type":"DIRECTORY","path":"app-server"}}},"select":["name","location","signature"]}
+JSON
+```
+
+The public contract tests cover admission and lowering, not live semantic readiness.
+This replacement request has not been observed against the user's live workspace;
+it does not resolve or supersede the historical readiness blocker above.
 
 ## Desktop release checklist — not yet passed
 
