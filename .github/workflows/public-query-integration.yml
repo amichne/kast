@@ -1,0 +1,113 @@
+name: Public query integration (temporary)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: public-query-integration-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  integrate:
+    if: github.repository == 'amichne/kast' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/public-query-contract'
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Materialize the immutable reviewed changeset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if test ! -f app-server/src/main/resources/io/github/amichne/kast/appserver/query/query.schema.json; then
+            python3 - <<'PY'
+          import base64, gzip, hashlib, json, os, pathlib, subprocess, urllib.request
+          parts = [
+              '1be5441991f54c392776dcfd8d45051c287a8722',
+              'a35f71e1670213bacb357e3a9742aeb08e62576b',
+              '47bc43a73ffd316dde2f0c8945a2580130ee9422',
+              '973258158b16fd2607f88cdc3f9aa0eee32f654d',
+          ]
+          payload = bytearray()
+          for sha in parts:
+              request = urllib.request.Request(
+                  'https://api.github.com/repos/amichne/kast/git/blobs/' + sha,
+                  headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json'},
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  document = json.load(response)
+              data = base64.b64decode(document['content'])
+              assert hashlib.sha1(('blob ' + str(len(data)) + '\0').encode() + data).hexdigest() == sha
+              payload.extend(data)
+          assert hashlib.sha256(payload).hexdigest() == '45cdf69309939446b5743f0685cb0e64a1435752f2b4812819f6a65b13b9e0a1'
+          bundle = pathlib.Path(os.environ['RUNNER_TEMP']) / 'public-query-reviewed-bundle'
+          bundle.mkdir()
+          for name, content in json.loads(gzip.decompress(payload)).items():
+              relative = pathlib.PurePosixPath(name)
+              assert not relative.is_absolute() and '..' not in relative.parts
+              destination = bundle / name
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              destination.write_text(content)
+          subprocess.run(['python3', str(bundle / 'apply.py'), str(pathlib.Path.cwd())], check=True)
+          PY
+            git diff --check
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add app-server cli protocol docs packaging build-logic
+            git commit -m 'feat(query): share an admitted public intent contract between CLI and provider'
+            remote_head="$(git ls-remote origin refs/heads/feat/public-query-contract | cut -f1)"
+            test "$remote_head" = "$EXPECTED_HEAD"
+            git push origin HEAD:refs/heads/feat/public-query-contract
+          fi
+          git archive --format=tar.gz --output "$RUNNER_TEMP/public-query-source.tar.gz" HEAD
+          git rev-parse HEAD > "$RUNNER_TEMP/public-query-source-head.txt"
+
+      - name: Retain the exact source for review
+        if: always()
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: public-query-source-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/public-query-source.tar.gz
+            ${{ runner.temp }}/public-query-source-head.txt
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Set up Java 25
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb
+        with:
+          validate-wrappers: true
+
+      - name: Compile and exercise the changed boundaries
+        run: |
+          python3 packaging/generate-public-query.py --check
+          ./gradlew :app-server:test --tests '*PublicQuery*' --tests '*KastProviderTest' :cli:test --tests '*InstalledServerProjectionTest' --no-daemon
+
+      - name: Retain focused reports
+        if: always()
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: public-query-reports-${{ github.run_id }}
+          path: |
+            app-server/build/test-results/
+            cli/build/test-results/
+            build-logic/build/reports/
+          if-no-files-found: warn
+          retention-days: 7
