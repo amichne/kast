@@ -60,6 +60,7 @@ val cleanSlateProjects = listOf(
     ":runtime:server",
     ":runtime:telemetry",
     ":runtime:composition",
+    ":app-server",
     ":cli",
     ":indexer",
 )

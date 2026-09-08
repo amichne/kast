@@ -20,6 +20,12 @@ enum class CliProductCommand(
     val usage: String,
     val exposure: CliLocalExposure = CliLocalExposure.INTERNAL,
 ) {
+    APP_SERVER_ENABLE("app-server enable", CliLocalExposure.PUBLIC),
+    APP_SERVER_STATUS("app-server status", CliLocalExposure.PUBLIC),
+    APP_SERVER_STOP("app-server stop", CliLocalExposure.PUBLIC),
+    APP_SERVER_DISABLE("app-server disable", CliLocalExposure.PUBLIC),
+    APP_SERVER_CLAIM("app-server control claim", CliLocalExposure.PUBLIC),
+    APP_SERVER_RELEASE("app-server control release", CliLocalExposure.PUBLIC),
     INSPECT("product inspect"),
     BROKER_SERVE("broker serve"),
     CODEX_CLI("codex", CliLocalExposure.PUBLIC),
@@ -46,6 +52,8 @@ sealed interface CliAction {
         data object Inspect : Local
 
         data object ProductInspect : Local
+
+        data class AppServer(val action: io.github.amichne.kast.appserver.AppServerAction) : Local
 
         data object BrokerServe : Local
 

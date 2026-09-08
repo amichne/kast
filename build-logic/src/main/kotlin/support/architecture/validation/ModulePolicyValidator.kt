@@ -27,6 +27,7 @@ enum class ModuleRoleConvention(
     WORKSPACE(ModuleRole.WORKSPACE_ADAPTER, "kast.role.workspace"),
     TRANSPORT(ModuleRole.TRANSPORT, "kast.role.transport"),
     COMPOSITION(ModuleRole.COMPOSITION, "kast.role.composition"),
+    APP_SERVER(ModuleRole.APP_SERVER, "kast.role.app-server"),
     CLI(ModuleRole.CLI, "kast.role.cli"),
     INDEXER_HOST(ModuleRole.INDEXER_HOST, "kast.role.indexer-host"),
 }
@@ -344,12 +345,21 @@ private object ModuleRoleBoundaries {
             allowedDependencyCosts = ModuleCost.entries.toSet() - ModuleCost.LEGACY,
             allowedEffects = emptySet(),
         )
+        ModuleRole.APP_SERVER -> boundary(
+            role,
+            ModuleCost.RUNTIME_ORCHESTRATION,
+            ModuleRoleConvention.APP_SERVER,
+            setOf(ModuleRole.KERNEL, ModuleRole.CONTRACT, ModuleRole.FILESYSTEM_WRITE_ADAPTER),
+            setOf(ModuleCost.HOST_NEUTRAL, ModuleCost.PHYSICAL_EFFECT),
+            allowedEffects = setOf(ForbiddenEffect.PROCESS_CONTROL),
+            allowedScopedEffects = setOf(ForbiddenEffect.FILESYSTEM_WRITE),
+        )
         ModuleRole.CLI -> boundary(
             role,
             ModuleCost.RUNTIME_ORCHESTRATION,
             ModuleRoleConvention.CLI,
-            setOf(ModuleRole.KERNEL, ModuleRole.CONTRACT, ModuleRole.FILESYSTEM_WRITE_ADAPTER),
-            setOf(ModuleCost.HOST_NEUTRAL, ModuleCost.PHYSICAL_EFFECT),
+            setOf(ModuleRole.APP_SERVER, ModuleRole.KERNEL, ModuleRole.CONTRACT, ModuleRole.FILESYSTEM_WRITE_ADAPTER),
+            setOf(ModuleCost.RUNTIME_ORCHESTRATION, ModuleCost.HOST_NEUTRAL, ModuleCost.PHYSICAL_EFFECT),
             allowedEffects = setOf(ForbiddenEffect.PROCESS_CONTROL),
             allowedScopedEffects = setOf(ForbiddenEffect.FILESYSTEM_WRITE),
         )

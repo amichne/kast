@@ -362,6 +362,7 @@ private fun canonicalGraph(
     requestInput: CliRequestDocumentInput,
 ): CliCommandGraph {
     val product = productCommandGroup()
+    val appServer = io.github.amichne.kast.cli.command.appserver.appServerCommandGroup()
     val broker = brokerCommandGroup()
     val codex = codexCommandGroup()
     val index = indexCommandGroup(preparers, requestInput)
@@ -391,9 +392,9 @@ private fun canonicalGraph(
     }.filter { it.commands.isNotEmpty() }
     val root = KastRootCommand().subcommands(
         families.filter { it.semanticCommands.isNotEmpty() }.map { it.root } +
-            localFamilies.map { it.root } + lifecycle,
+            localFamilies.map { it.root } + appServer.root + lifecycle,
     )
-    return CliCommandGraph(root, semantic, localFamilies.flatMap { it.commands }, lifecycle)
+    return CliCommandGraph(root, semantic, localFamilies.flatMap { it.commands } + appServer.commands, lifecycle)
 }
 
 internal class CommandFamily(

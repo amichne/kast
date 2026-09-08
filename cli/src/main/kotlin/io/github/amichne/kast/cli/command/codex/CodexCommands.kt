@@ -36,7 +36,7 @@ private data object CodexDesktopCommand : LocalKastCommand(
     CliProductCommand.CODEX_DESKTOP,
 ) {
     override fun help(context: Context): String =
-        "Launch Codex Desktop with Kast's process-local App Server façade."
+        "Attach Codex Desktop to Kast's persistent App Server."
 
     override fun resolveAction(): CliActionResolution = CliActionResolution.Selected(
         CliAction.Local.CodexDesktop,

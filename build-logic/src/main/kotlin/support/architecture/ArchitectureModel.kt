@@ -23,6 +23,7 @@ enum class ModuleRole {
     WORKSPACE_ADAPTER,
     COMPOSITION,
     TRANSPORT,
+    APP_SERVER,
     CLI,
     INDEXER_HOST,
 }
@@ -101,6 +102,7 @@ enum class ModuleId(val projectPath: String) {
     RUNTIME_SERVER(":runtime:server"),
     RUNTIME_TELEMETRY(":runtime:telemetry"),
     RUNTIME_COMPOSITION(":runtime:composition"),
+    APP_SERVER(":app-server"),
     CLI(":cli"),
     INDEXER(":indexer"),
 }

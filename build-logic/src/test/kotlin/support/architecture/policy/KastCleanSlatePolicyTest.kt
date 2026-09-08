@@ -53,6 +53,7 @@ class KastCleanSlatePolicyTest {
                 ":runtime:server",
                 ":runtime:telemetry",
                 ":runtime:composition",
+                ":app-server",
                 ":cli",
                 ":indexer",
             ),
@@ -138,6 +139,7 @@ class KastCleanSlatePolicyTest {
                 ForbiddenEffect.PROJECT_OPEN to emptySet(),
                 ForbiddenEffect.INTELLIJ_WRITE to setOf(ModuleId.CHANGE_INTELLIJ),
                 ForbiddenEffect.FILESYSTEM_WRITE to setOf(
+                    ModuleId.APP_SERVER,
                     ModuleId.DISTRIBUTION_MANAGED,
                     ModuleId.EVIDENCE_SQLITE,
                     ModuleId.CLI,
@@ -160,7 +162,7 @@ class KastCleanSlatePolicyTest {
                 ForbiddenEffect.BLOCKING_WAIT to emptySet(),
                 ForbiddenEffect.WORKSPACE_TRANSITION to setOf(ModuleId.WORKSPACE_SERVICE),
                 ForbiddenEffect.GRAPH_BUILD to setOf(ModuleId.WORKSPACE_INTELLIJ),
-                ForbiddenEffect.PROCESS_CONTROL to setOf(ModuleId.CLI),
+                ForbiddenEffect.PROCESS_CONTROL to setOf(ModuleId.APP_SERVER, ModuleId.CLI),
                 ForbiddenEffect.ANALYSIS_BACKEND to emptySet(),
                 ForbiddenEffect.MUTATION_AUTHORITY to emptySet(),
                 ForbiddenEffect.TOPOLOGY_AUTHORITY to emptySet(),
@@ -199,6 +201,7 @@ class KastCleanSlatePolicyTest {
         val architecture = canonicalArchitecture()
         val composition = architecture.modules.getValue(ModuleId.RUNTIME_COMPOSITION)
         val excluded = setOf(
+            ModuleId.APP_SERVER,
             ModuleId.CLI,
             ModuleId.INDEXER,
             ModuleId.RUNTIME_COMPOSITION,
