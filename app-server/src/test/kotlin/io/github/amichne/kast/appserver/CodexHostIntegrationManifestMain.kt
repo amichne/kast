@@ -30,6 +30,7 @@ internal object CodexHostIntegrationManifestMain {
         val source = GitSourceSnapshot.capture(repository)
         val document = CodexHostIntegrationManifest(
             desktopDiscovery = installed.desktopDiscovery,
+            desktopStartupArguments = installed.desktopStartupArguments,
             sourceRevision = source.revision,
             sourceTreeSha256 = source.treeDigest,
             catalogProjectionSha256 = installed.catalogProjectionSha256,
@@ -132,6 +133,7 @@ private data class InstalledCodexHostAcceptanceReceipt(
     val persistentServiceAfterDetach: ValidationOutcome,
     val desktopCompatibility: DesktopQualification,
     val desktopDiscovery: DesktopDiscovery,
+    val desktopStartupArguments: ValidationOutcome,
 ) {
     init {
         require(schemaVersion == 1) { "Installed acceptance schema version is unsupported" }
@@ -206,6 +208,7 @@ private enum class DesktopDiscovery { SYNTHETIC_METADATA }
 @Serializable
 private data class CodexHostIntegrationManifest(
     val desktopDiscovery: DesktopDiscovery,
+    val desktopStartupArguments: ValidationOutcome,
     val schemaVersion: Int = 3,
     val desktopCompatibility: DesktopQualification = DesktopQualification.UNQUALIFIED,
     val taskId: IntegrationTask = IntegrationTask.HOST_10,
