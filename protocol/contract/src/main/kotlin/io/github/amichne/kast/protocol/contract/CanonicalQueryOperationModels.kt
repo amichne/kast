@@ -27,14 +27,6 @@ enum class QueryDeclarationKindDocument {
 }
 
 @Serializable
-enum class QuerySourceSetDocument {
-    @SerialName("main")
-    MAIN,
-    @SerialName("test")
-    TEST,
-}
-
-@Serializable
 enum class QueryContainmentDocument {
     @SerialName("direct")
     DIRECT,
@@ -77,7 +69,7 @@ data class QueryPackageScopeDocument(
 @Serializable
 data class QueryScopeDocument(
     @ProtocolCollectionConstraint(minimumItems = 1, uniqueItems = true)
-    val sourceSets: BoundedProtocolList<QuerySourceSetDocument>,
+    val sourceSets: BoundedProtocolList<ProtocolText>,
     val directory: QueryDirectoryScopeDocument?,
     val packageName: QueryPackageScopeDocument?,
 )

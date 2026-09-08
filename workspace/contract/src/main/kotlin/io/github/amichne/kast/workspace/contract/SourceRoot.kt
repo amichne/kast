@@ -77,7 +77,7 @@ data class SourceRoot internal constructor(
             val failures = linkedSetOf<SourceRootAdmissionFailure>()
             val moduleName = evidence.ideaModuleName.trim()
             val projectPath = evidence.gradleProjectPath.trim()
-            val sourceSetName = evidence.sourceSetName.trim()
+            val sourceSetName = WorkspaceSourceSetName.parse(evidence.sourceSetName)
             val linkedBuildRoot = admitRelativePath(
                 evidence.workspaceRelativeBuildRoot,
                 SourceRootAdmissionFailure.InvalidLinkedBuildRoot,
@@ -93,7 +93,7 @@ data class SourceRoot internal constructor(
             if (!GRADLE_PROJECT_PATH.matches(projectPath)) {
                 failures += SourceRootAdmissionFailure.InvalidGradleProjectPath
             }
-            if (sourceSetName.isEmpty()) {
+            if (sourceSetName is Refinement.Rejected) {
                 failures += SourceRootAdmissionFailure.InvalidSourceSetName
             }
             when (linkedBuildRoot) {
@@ -116,7 +116,10 @@ data class SourceRoot internal constructor(
                             buildRoot = WorkspaceRelativeGradleBuildRoot(admittedBuildRoot),
                             projectPath = GradleProjectPath(projectPath),
                         ),
-                        sourceSet = WorkspaceSourceSetName(sourceSetName),
+                        sourceSet = when (sourceSetName) {
+                            is Refinement.Refined -> sourceSetName.value
+                            is Refinement.Rejected -> return Refinement.Rejected(failures)
+                        },
                     ),
                     location = WorkspaceRelativeSourceRoot(admittedSourceRoot),
                     provenance = evidence.provenance,

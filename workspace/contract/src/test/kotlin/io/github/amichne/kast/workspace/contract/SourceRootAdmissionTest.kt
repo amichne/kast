@@ -6,6 +6,24 @@ import org.junit.jupiter.api.Test
 
 class SourceRootAdmissionTest {
     @Test
+    fun `source-set names retain exact spelling and reject blank boundary data`() {
+        val raw = GradleSourceRootEvidence(
+            ideaModuleName = "root.custom",
+            workspaceRelativeBuildRoot = ".",
+            gradleProjectPath = ":",
+            sourceSetName = " customMain ",
+            workspaceRelativeSourceRoot = "unrelated/path",
+            provenance = SourceRootProvenance.Authored,
+        )
+        val admitted = SourceRoot.admit(raw) as Refinement.Refined
+        assertEquals(raw.sourceSetName, admitted.value.owner.sourceSet.value)
+        assertEquals(
+            Refinement.Rejected(setOf(SourceRootAdmissionFailure.InvalidSourceSetName)),
+            SourceRoot.admit(raw.copy(sourceSetName = " ")),
+        )
+    }
+
+    @Test
     fun `platform-invalid source and build paths remain typed admission failures`() {
         val valid = GradleSourceRootEvidence(
             ideaModuleName = "root.main",

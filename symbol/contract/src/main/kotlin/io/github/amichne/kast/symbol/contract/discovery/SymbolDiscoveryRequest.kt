@@ -231,6 +231,7 @@ data class SymbolDiscoveryConstraints(
     val directory: SymbolDiscoveryDirectoryConstraint?,
     val packageName: SymbolDiscoveryPackageConstraint?,
     val declarationKinds: SymbolDiscoveryDeclarationKinds? = null,
+    val sourceSets: SymbolDiscoverySourceSets = SymbolDiscoverySourceSets.All,
 ) {
     companion object {
         val None: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints(null, null, null)

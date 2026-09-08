@@ -40,6 +40,7 @@ import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
 import io.github.amichne.kast.symbol.contract.SymbolResolutionResult
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
+import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 
 /** Monotonic clock isolated at the evaluator effect boundary. */
@@ -100,7 +101,7 @@ class QueryService(
                 scope = SymbolSearchScopeRequest(
                     state.request.lease,
                     SymbolSearchScope.Workspace(
-                        sourceKinds(syntax.scope),
+                        SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
                         SymbolGeneratedSourcePolicy.EXCLUDE,
                         SymbolLibraryPolicy.EXCLUDE,
                     ),

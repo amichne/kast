@@ -7,7 +7,6 @@ import io.github.amichne.kast.protocol.contract.QueryMatchDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
-import io.github.amichne.kast.protocol.contract.QuerySourceSetDocument
 import io.github.amichne.kast.protocol.contract.QueryStepDocument
 import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
@@ -27,7 +26,7 @@ class PublicQueryContractTest {
         val source = request.from as QueryFromDocument.Symbols
         val match = source.match as QueryMatchDocument.Name
         assertEquals(SymbolDiscoveryMatchDocument.EXACT_NAME, match.matching)
-        assertEquals(listOf(QuerySourceSetDocument.MAIN, QuerySourceSetDocument.TEST), source.scope.sourceSets.values)
+        assertEquals(listOf("main", "test"), source.scope.sourceSets.values.map { it.value })
         assertEquals(4, source.declarationKinds.values.size)
         assertEquals(emptyList<QueryStepDocument>(), request.steps.values)
         assertEquals(
@@ -82,6 +81,10 @@ class PublicQueryContractTest {
             """{"type":"QUERY","from":{"type":"SEARCH","query":" "}}""",
             """{"type":"QUERY","from":{"type":"SEARCH","query":"Order","matching":"fuzzy"}}""",
             """{"type":"QUERY","from":{"type":"ALL","kinds":[]}}""",
+            """{"type":"QUERY","from":{"type":"ALL","scope":{"type":"SCOPE","sourceSets":[" "]}}}""",
+            """{"type":"QUERY","from":{"type":"ALL","scope":{"type":"SCOPE","sourceSets":["integrationTest","integrationTest"]}}}""",
+            """{"type":"QUERY","from":{"type":"ALL","scope":{"type":"SCOPE","sourceSets":[1]}}}""",
+            """{"type":"QUERY","from":{"type":"ALL","scope":{"type":"SCOPE","directory":{"type":"DIRECTORY","path":"services","containment":"descendants"}}}}""",
             """{"type":"QUERY","from":{"type":"REFS","refs":["candidate:v2:not-exact"]}}""",
             """{"type":"QUERY","from":{"type":"ALL"},"steps":[{"type":"INSPECT"}]}""",
             """{"type":"QUERY","from":{"type":"ALL"},"execution":{"kind":"exhaustive"}}""",
@@ -115,7 +118,7 @@ class PublicQueryContractTest {
             }}
         }""")
         val scope = (request.from as QueryFromDocument.Symbols).scope
-        assertEquals(listOf(QuerySourceSetDocument.MAIN), scope.sourceSets.values)
+        assertEquals(listOf("main"), scope.sourceSets.values.map { it.value })
         assertEquals(QueryContainmentDocument.DESCENDANTS, scope.directory!!.containment)
         assertEquals("services/orders", scope.directory!!.path.value)
     }
@@ -142,6 +145,34 @@ class PublicQueryContractTest {
             ((exact.from as QueryFromDocument.Symbols).match as QueryMatchDocument.Name).matching)
         assertEquals(SymbolDiscoveryMatchDocument.FUZZY,
             ((fuzzy.from as QueryFromDocument.Symbols).match as QueryMatchDocument.Name).matching)
+    }
+
+    @Test
+    fun `custom source-set names survive lowering and public round trip`() {
+        val input = """{"type":"QUERY","from":{"type":"ALL","scope":{
+            "type":"SCOPE","sourceSets":["integrationTest","commonMain","jvmTest"]
+        }}}"""
+        val admitted = json.decodeFromString(PublicQueryRequestSerializer, input)
+        val encoded = json.encodeToString(PublicQueryRequestSerializer, admitted)
+        assertEquals(canonical(admitted.canonicalRequest), canonical(parse(encoded)))
+        val source = admitted.canonicalRequest.from as QueryFromDocument.Symbols
+        assertEquals(listOf("integrationTest", "commonMain", "jvmTest"), source.scope.sourceSets.values.map { it.value })
+    }
+
+    @Test
+    fun `recursive containment lowers for directory and package and round trips`() {
+        val input = """{"type":"QUERY","from":{"type":"ALL","scope":{
+            "type":"SCOPE",
+            "directory":{"type":"DIRECTORY","path":"services","containment":"recursive"},
+            "package":{"type":"PACKAGE","name":"com.example","containment":"recursive"}
+        }}}"""
+        val admitted = json.decodeFromString(PublicQueryRequestSerializer, input)
+        val scope = (admitted.canonicalRequest.from as QueryFromDocument.Symbols).scope
+        assertEquals(QueryContainmentDocument.DESCENDANTS, scope.directory!!.containment)
+        assertEquals(QueryContainmentDocument.DESCENDANTS, scope.packageName!!.containment)
+        val encoded = json.encodeToString(PublicQueryRequestSerializer, admitted)
+        assertTrue(encoded.contains("recursive"))
+        assertEquals(canonical(admitted.canonicalRequest), canonical(parse(encoded)))
     }
 
     private fun parse(input: String): QueryRunRequest = json.decodeFromString(PublicQueryRequestSerializer, input).canonicalRequest

@@ -2,7 +2,6 @@ package io.github.amichne.kast.appserver.query
 
 import io.github.amichne.kast.protocol.contract.QueryContainmentDocument
 import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
-import io.github.amichne.kast.protocol.contract.QuerySourceSetDocument
 import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
 import io.github.amichne.kast.protocol.contract.QueryVisibilityDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
@@ -20,14 +19,9 @@ internal fun PublicQueryDeclarationKind.canonical(): QueryDeclarationKindDocumen
     PublicQueryDeclarationKind.TYPE_ALIAS -> QueryDeclarationKindDocument.TYPE_ALIAS
 }
 
-internal fun PublicQuerySourceSet.canonical(): QuerySourceSetDocument = when (this) {
-    PublicQuerySourceSet.MAIN -> QuerySourceSetDocument.MAIN
-    PublicQuerySourceSet.TEST -> QuerySourceSetDocument.TEST
-}
-
 internal fun PublicQueryContainment.canonical(): QueryContainmentDocument = when (this) {
     PublicQueryContainment.DIRECT -> QueryContainmentDocument.DIRECT
-    PublicQueryContainment.DESCENDANTS -> QueryContainmentDocument.DESCENDANTS
+    PublicQueryContainment.RECURSIVE -> QueryContainmentDocument.DESCENDANTS
 }
 
 internal fun PublicQueryVisibility.canonical(): QueryVisibilityDocument = when (this) {

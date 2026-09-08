@@ -59,10 +59,16 @@ No implicit fuzzy fallback is permitted.
 
 The schema owns the exact default values. Currently, discovery includes supported
 class/function/property/type-alias families in main and test sources; directory
-and package restrictions include descendants. Omitted steps mean no transformations.
+and package restrictions default to `recursive`, including the named directory or
+package and all nested directories or subpackages. Omitted steps mean no transformations.
 Omitted selection includes name/location. `select: []` retains only mandatory result
 identity/kind information. Constructor discovery is not newly advertised.
 
+Source-set entries are exact Gradle names, including custom and multiplatform names.
+The default remains `["main", "test"]`. Names match imported source-root ownership,
+not production/test categories or directory spelling; unmatched names contribute
+no declarations. Shared roots can belong to multiple named sets. The most specific
+root owns a file, including when a nested root is excluded by readability policy.
 Source-set, directory and package constraints intersect during discovery. They do
 not filter later expansion destinations. Filtering before expansion and after
 expansion have different meanings; the sequence is preserved, including repeated

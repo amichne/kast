@@ -22,6 +22,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDeclarationKinds
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectory
@@ -41,7 +42,7 @@ import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -100,6 +101,116 @@ class SymbolDiscoveryTest {
         assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
         assertEquals(listOf("AItem", "ZItem"), outcome.batch().candidates.map { it.name.value })
         assertEquals(2L, outcome.batch().examinedWorkUnits.value)
+    }
+
+    @Test
+    fun `exact source-set names use deepest model ownership before projection and work`() {
+        val roots = namedRoots()
+        mapOf(
+            "main" to listOf("ZItem"),
+            "integrationTest" to listOf("NoMatch"),
+            "commonMain" to listOf("AItem"),
+            "jvmMain" to listOf("AItem"),
+            "missing" to emptyList(),
+        ).forEach { (name, expected) ->
+            val fixture = fixture(
+                all = true,
+                workLimit = 1L,
+                sourceSets = SymbolDiscoverySourceSets.Exact.from(
+                    setOf(WorkspaceSourceSetName.parse(name).refined()),
+                ).refined(),
+                sourceRoots = roots,
+                itemPaths = namedPaths,
+            )
+            val outcome = fixture.execute().outcome()
+            assertTrue(outcome is SymbolDiscoveryOutcome.Complete, name)
+            assertEquals(expected, outcome.batch().candidates.map { it.name.value }, name)
+            assertEquals(expected, fixture.projectedNames, name)
+            assertEquals(expected.size.toLong(), outcome.batch().examinedWorkUnits.value, name)
+        }
+    }
+
+    @Test
+    fun `excluded nested ownership cannot fall back to selected ancestor`() {
+        val roots = namedRoots()
+        val fixture = fixture(
+            all = true,
+            workLimit = 1L,
+            sourceSets = SymbolDiscoverySourceSets.Exact.from(
+                setOf(WorkspaceSourceSetName.parse("main").refined()),
+            ).refined(),
+            sourceRoots = roots.filter { it.sourceSet.value != "integrationTest" },
+            ownershipRoots = roots,
+            itemPaths = namedPaths,
+        )
+        val outcome = fixture.execute().outcome()
+        assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
+        assertEquals(listOf("ZItem"), fixture.projectedNames)
+        assertEquals(1L, outcome.batch().examinedWorkUnits.value)
+    }
+
+    @Test
+    fun `shared roots retain the selected readable owner without requiring every owner`() {
+        val roots = namedRoots()
+        listOf("commonMain" to listOf("AItem"), "jvmMain" to emptyList()).forEach { (name, expected) ->
+            val fixture = fixture(
+                all = true,
+                workLimit = 1L,
+                sourceSets = SymbolDiscoverySourceSets.Exact.from(
+                    setOf(WorkspaceSourceSetName.parse(name).refined()),
+                ).refined(),
+                sourceRoots = roots.filter { it.sourceSet.value == "commonMain" },
+                ownershipRoots = roots,
+                itemPaths = namedPaths,
+            )
+            val outcome = fixture.execute().outcome()
+            assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
+            assertEquals(expected, fixture.projectedNames)
+            assertEquals(expected.size.toLong(), outcome.batch().examinedWorkUnits.value)
+        }
+    }
+
+    @Test
+    fun `unproven source ownership qualifies result instead of claiming complete`() {
+        val outcome = fixture(
+            sourceSets = SymbolDiscoverySourceSets.Exact.from(
+                setOf(WorkspaceSourceSetName.parse("main").refined()),
+            ).refined(),
+        ).execute().outcome()
+        assertTrue(outcome is SymbolDiscoveryOutcome.Qualified)
+        assertTrue(SymbolDiscoveryQualification.UNSUPPORTED_ITEM in
+            (outcome as SymbolDiscoveryOutcome.Qualified).qualifications.values)
+        assertEquals(0L, outcome.batch().examinedWorkUnits.value)
+    }
+
+    private val namedPaths = mapOf(
+        "ZItem" to "/workspace/code/ZItem.kt",
+        "NoMatch" to "/workspace/code/integration/NoMatch.kt",
+        "AItem" to "/workspace/shared/AItem.kt",
+    )
+
+    private fun namedRoots(): List<ModelOwnedSourceRoot> {
+        val root = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
+        val boundaries = listOf(
+            "main" to "/workspace/code",
+            "integrationTest" to "/workspace/code/integration",
+            "commonMain" to "/workspace/shared",
+            "jvmMain" to "/workspace/shared",
+        ).map { (name, path) ->
+            WorkspaceSourceRootBoundary(
+                ideaModuleName = "app.$name",
+                linkedBuildRoot = Path.of("/workspace"),
+                gradleProjectPath = ":app",
+                sourceSetName = name,
+                sourceRoot = Path.of(path),
+                sourceKind = WorkspaceSourceRootKind.PRODUCTION,
+                provenance = WorkspaceSourceRootProvenance.AUTHORED,
+            )
+        }
+        return when (val model = WorkspaceSearchScopeModel.compile(root, ImportedWorkspaceModelState.COMPLETE, boundaries)) {
+            is WorkspaceSearchScopeModelCompilation.Compiled -> model.model.sourceRoots
+            is WorkspaceSearchScopeModelCompilation.Rejected -> error(model.failures)
+        }
     }
 
     @Test
@@ -227,6 +338,9 @@ class SymbolDiscoveryTest {
         itemPaths: Map<String, String> = emptyMap(),
         declarationKinds: Set<CompilerSymbolKind>? = null,
         itemKinds: Map<String, CompilerSymbolKind> = emptyMap(),
+        sourceSets: SymbolDiscoverySourceSets = SymbolDiscoverySourceSets.All,
+        sourceRoots: List<ModelOwnedSourceRoot> = emptyList(),
+        ownershipRoots: List<ModelOwnedSourceRoot> = sourceRoots,
     ): Fixture {
         val request = request(
             kind = kind,
@@ -237,6 +351,7 @@ class SymbolDiscoveryTest {
             all = all,
             directory = directory,
             declarationKinds = declarationKinds,
+            sourceSets = sourceSets,
         )
         val zed = FakeItem("ZItem")
         val noMatch = FakeItem("NoMatch")
@@ -265,7 +380,8 @@ class SymbolDiscoveryTest {
         val compiledScope = CompiledIntellijSearchScope(
             lease = request.scope.lease,
             scope = request.scope.scope,
-            sourceRoots = emptyList(),
+            sourceRoots = sourceRoots,
+            ownershipRoots = ownershipRoots,
             nativeScope = scope,
         )
         val contributor = FakeContributor(
@@ -333,6 +449,7 @@ class SymbolDiscoveryTest {
         all: Boolean,
         directory: String?,
         declarationKinds: Set<CompilerSymbolKind>?,
+        sourceSets: SymbolDiscoverySourceSets,
     ): SymbolDiscoveryRequest {
         val workspaceRoot =
             CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
@@ -367,6 +484,7 @@ class SymbolDiscoveryTest {
                 returnedBytes = SymbolDiscoveryByteLimit.parse(returnedBytes).refined(),
             ),
             constraints = SymbolDiscoveryConstraints(
+                sourceSets = sourceSets,
                 directory = directory?.let {
                     SymbolDiscoveryDirectoryConstraint(
                         SymbolDiscoveryDirectory.parse(it).refined(),

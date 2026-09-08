@@ -7,6 +7,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackageConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 
 /** Closed discovery meaning. Enumeration never overloads blank text as a wildcard. */
@@ -45,39 +46,12 @@ class QueryDeclarationKinds private constructor(
     override fun hashCode(): Int = values.hashCode()
 }
 
-enum class QuerySourceSet {
-    MAIN,
-    TEST,
-}
-
-sealed interface QuerySourceSets {
-    data object All : QuerySourceSets
-
-    class Exact private constructor(
-        val values: List<QuerySourceSet>,
-    ) : QuerySourceSets {
-        companion object {
-            fun from(
-                raw: Set<QuerySourceSet>,
-            ): Refinement<Exact, QueryCollectionFailure> =
-                if (raw.isEmpty()) {
-                    Refinement.Rejected(QueryCollectionFailure.EMPTY)
-                } else {
-                    Refinement.Refined(Exact(raw.sortedBy { it.ordinal }))
-                }
-        }
-
-        override fun equals(other: Any?): Boolean = other is Exact && values == other.values
-        override fun hashCode(): Int = values.hashCode()
-    }
-}
-
 /** Intersected semantic discovery domain. */
 sealed interface QueryScope {
     data object Unrestricted : QueryScope
 
     data class Restricted(
-        val sourceSets: QuerySourceSets,
+        val sourceSets: SymbolDiscoverySourceSets,
         val directory: SymbolDiscoveryDirectoryConstraint?,
         val packageName: SymbolDiscoveryPackageConstraint?,
     ) : QueryScope

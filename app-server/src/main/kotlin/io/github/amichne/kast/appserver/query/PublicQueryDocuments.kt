@@ -27,19 +27,11 @@ internal enum class PublicQueryDeclarationKind {
 }
 
 @Serializable
-internal enum class PublicQuerySourceSet {
-    @SerialName("main")
-    MAIN,
-    @SerialName("test")
-    TEST,
-}
-
-@Serializable
 internal enum class PublicQueryContainment {
     @SerialName("direct")
     DIRECT,
-    @SerialName("descendants")
-    DESCENDANTS,
+    @SerialName("recursive")
+    RECURSIVE,
 }
 
 @Serializable
@@ -139,7 +131,7 @@ internal data class PublicQueryPackage(
 @Serializable
 internal data class PublicQueryScope(
     val type: PublicQueryScopeType,
-    val sourceSets: BoundedProtocolList<PublicQuerySourceSet>? = null,
+    val sourceSets: BoundedProtocolList<ProtocolText>? = null,
     val directory: PublicQueryDirectory? = null,
     val `package`: PublicQueryPackage? = null,
 )

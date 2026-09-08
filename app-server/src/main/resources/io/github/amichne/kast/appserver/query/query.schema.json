@@ -110,13 +110,14 @@
     },
     "SourceSet": {
       "type": "string",
-      "enum": [
-        "main",
-        "test"
-      ],
-      "description": "Supported semantic source-set category, not a filesystem glob.",
+      "minLength": 1,
+      "maxLength": 1048576,
+      "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+      "description": "Exact Gradle source-set name from the imported model, including custom and multiplatform names. Not a production/test category or filesystem glob.",
       "examples": [
-        "main"
+        "main",
+        "integrationTest",
+        "commonMain"
       ]
     },
     "Containment": {
@@ -126,14 +127,14 @@
       ],
       "enum": [
         "direct",
-        "descendants",
+        "recursive",
         null
       ],
-      "description": "Omitted or null includes descendants. Direct selects only this directory or package.",
+      "description": "Omitted or null searches recursively, including this directory or package and all nested directories or subpackages. Direct selects only this directory or package.",
       "examples": [
-        "descendants"
+        "recursive"
       ],
-      "default": "descendants"
+      "default": "recursive"
     },
     "Visibility": {
       "type": "string",
@@ -210,11 +211,16 @@
         "$ref": "#/$defs/SourceSet"
       },
       "minItems": 1,
-      "maxItems": 2,
-      "description": "Omitted or null includes both main and test. Non-null restrictions intersect with directory and package.",
+      "maxItems": 1000,
+      "description": "Omitted or null selects names main and test. Explicit names intersect with directory and package restrictions; names with no matching roots contribute no declarations.",
       "examples": [
         [
           "main"
+        ],
+        [
+          "integrationTest",
+          "commonMain",
+          "jvmTest"
         ]
       ],
       "uniqueItems": true,

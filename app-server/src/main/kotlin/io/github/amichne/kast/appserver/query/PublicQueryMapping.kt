@@ -52,7 +52,7 @@ internal fun PublicQueryDocument.toCanonicalQuery(): QueryRunRequest = QueryRunR
 )
 
 private fun PublicQueryScope?.canonical(): QueryScopeDocument = QueryScopeDocument(
-    (this?.sourceSets ?: PublicQueryDefaults.sourceSets).mapBounded { it.canonical() },
+    this?.sourceSets ?: PublicQueryDefaults.sourceSets,
     this?.directory?.let { directory ->
         QueryDirectoryScopeDocument(
             directory.path,

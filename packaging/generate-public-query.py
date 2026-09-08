@@ -102,7 +102,8 @@ def render(schema: dict) -> dict[Path, str]:
 
     defaults_header = HEADER.split('import ')[0] + (
         'import io.github.amichne.kast.kernel.Refinement\n'
-        'import io.github.amichne.kast.protocol.contract.BoundedProtocolList\n\n'
+        'import io.github.amichne.kast.protocol.contract.BoundedProtocolList\n'
+        'import io.github.amichne.kast.protocol.contract.ProtocolText\n\n'
     )
     defaults = [defaults_header,
         '/** Defaults come from the same definitions that document the public boundary. */\n',
@@ -116,17 +117,28 @@ def render(schema: dict) -> dict[Path, str]:
             defaults.append(f'    val {field}: {name(key)} = {name(key)}.{enum_entry(default)}\n')
         elif isinstance(default, list):
             item_name = value['items']['$ref'].split('/')[-1]
+            item_type = typename(value['items'])
             if default:
-                contents = ''.join(f'            {name(item_name)}.{enum_entry(x)},\n' for x in default)
+                contents = ''.join(
+                    f'            {item_type}.{enum_entry(x)},\n' if item_name in enums
+                    else f'            text({json.dumps(x)}),\n'
+                    for x in default
+                )
                 defaults.append(
-                    f'    val {field}: BoundedProtocolList<{name(item_name)}> = bounded(\n'
+                    f'    val {field}: BoundedProtocolList<{item_type}> = bounded(\n'
                     f'        listOf(\n{contents}        ),\n    )\n'
                 )
             else:
-                defaults.append(f'    val {field}: BoundedProtocolList<{name(item_name)}> = bounded(emptyList())\n')
+                defaults.append(f'    val {field}: BoundedProtocolList<{item_type}> = bounded(emptyList())\n')
         else:
             raise ValueError(f'Unsupported default on {key}: {default!r}')
     defaults.append('''
+    private fun text(value: String): ProtocolText =
+        when (val result = ProtocolText.parse(value)) {
+            is Refinement.Refined -> result.value
+            is Refinement.Rejected -> error("Invalid schema-owned query default")
+        }
+
     private fun <T> bounded(values: List<T>): BoundedProtocolList<T> =
         when (val result = BoundedProtocolList.create(values)) {
             is Refinement.Refined -> result.value
@@ -136,7 +148,7 @@ def render(schema: dict) -> dict[Path, str]:
 ''')
     return {
         KOTLIN / 'PublicQueryDocuments.kt': ''.join(lines).rstrip() + '\n',
-        KOTLIN / 'PublicQueryDefaults.kt': ''.join(defaults).replace('import io.github.amichne.kast.protocol.contract.ProtocolText\n',''),
+        KOTLIN / 'PublicQueryDefaults.kt': ''.join(defaults),
         RESOURCES / 'query.parameters.json': json.dumps(project(schema, strict=False), indent=2) + '\n',
         RESOURCES / 'query.openai-parameters.json': json.dumps(project(schema, strict=True), indent=2) + '\n',
     }

@@ -85,6 +85,7 @@ internal class CompiledIntellijSearchScope internal constructor(
     val scope: SymbolSearchScope,
     val sourceRoots: List<ModelOwnedSourceRoot>,
     internal val nativeScope: GlobalSearchScope,
+    val ownershipRoots: List<ModelOwnedSourceRoot> = sourceRoots,
 )
 
 internal class IntellijSearchScopeCompiler {
@@ -182,6 +183,7 @@ internal class IntellijSearchScopeCompiler {
                 lease = request.lease,
                 scope = request.scope,
                 sourceRoots = readableRoots,
+                ownershipRoots = model.sourceRoots,
                 nativeScope = ModelOwnedGlobalSearchScope(
                     baseScope = baseScope,
                     pathPolicy = pathPolicy,

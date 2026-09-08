@@ -53,8 +53,14 @@ source sets, blank queries, unknown fields and old INSPECT steps are rejected.
 }
 ```
 
-Scope restrictions intersect during discovery. Directory/package containment defaults
-to descendants; use `direct` for the immediate directory or package. Scope does not
+Scope restrictions intersect during discovery. `sourceSets` accepts exact Gradle
+source-set names, including custom names such as `integrationTest` and multiplatform
+names such as `commonMain`. Omitted or null selects `main` and `test`; an unmatched
+name contributes no declarations. Names are matched against imported ownership,
+independently of production/test classification and physical directory names.
+Directory/package containment defaults to `recursive`, including the named directory
+or package and all nested directories or subpackages; use `direct` for only the
+named directory or package. Scope does not
 silently constrain later expansion destinations. Step order matters: this query
 filters callers, not the declarations that were initially matched.
 
