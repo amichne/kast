@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.provider
 
+import io.github.amichne.kast.appserver.query.PublicQueryContract
 import io.github.amichne.kast.appserver.core.AgentSessionBootstrap
 import io.github.amichne.kast.appserver.core.AgentSessionBootstrapQualification
 import io.github.amichne.kast.appserver.core.BrokerTool
@@ -301,9 +302,7 @@ internal object KastProviderQualifier {
             inputSchema,
             RefinementDefinition<ValidatedJsonValue, KastInvocationInput, KastToolInputFailure> {
                 admitted ->
-                val arguments = admitted.element as? JsonObject
-                if (arguments == null) Validation.rejected(KastToolInputFailure.NOT_OBJECT)
-                else Validation.validated(KastInvocationInput(arguments))
+                admitKastInput(hostedDefinition.operation, admitted)
             },
         )
         return BrokerTool(
@@ -334,7 +333,7 @@ internal object KastProviderQualifier {
     private fun admitProjection(
         projection: KastServerProjectionBoundary,
     ): QualifiedKastProjection? {
-        if (projection.schemaVersion != 7 || projection.namespace != "kast") return null
+        if (projection.schemaVersion != 8 || projection.namespace != "kast") return null
         val bootstrap = projection.hostedBootstrap
         val cli = projection.cliInvocations
         if (bootstrap.schemaVersion != 1 || cli.schemaVersion != 2) return null
@@ -388,6 +387,9 @@ internal object KastProviderQualifier {
         if (cliInvocation.invocation.command.any { token -> !token.isAdmittedCliToken() }) return null
         val inputDocument = tool.inputSchema as? JsonObject ?: return null
         val outputDocument = tool.outputSchema as? JsonObject ?: return null
+        if (canonicalOperation == CanonicalOperation.QUERY_RUN &&
+            inputDocument != PublicQueryContract.parameters
+        ) return null
         if (inputDocument["additionalProperties"] != JsonPrimitive(false)) return null
         val inputSchema = refined(NetworkntJsonSchemaCompiler.compile(inputDocument)) ?: return null
         val outputSchema = refined(NetworkntJsonSchemaCompiler.compile(outputDocument)) ?: return null
@@ -446,7 +448,11 @@ internal class KastRuntime(
         input: KastInvocationInput,
         context: io.github.amichne.kast.appserver.core.BrokerInvocationContext,
     ): ProviderCall<KastInvocationOutput> {
-        val requestInput = when (val admission = BrokerProcessInput.Document.admit(input.arguments.toString())) {
+        val arguments = when (val encoded = input.encodeFor(tool)) {
+            is Refinement.Refined -> encoded.value
+            is Refinement.Rejected -> return ProviderCall.Rejected(ProviderFailureCode.UNEXPECTED_FAILURE)
+        }
+        val requestInput = when (val admission = BrokerProcessInput.Document.admit(arguments.toString())) {
             is Refinement.Refined -> admission.value
             is Refinement.Rejected -> return ProviderCall.Rejected(
                 ProviderFailureCode.UNEXPECTED_FAILURE,
@@ -571,13 +577,11 @@ internal value class KastOperationId private constructor(val value: String) {
     }
 }
 
-internal data class KastInvocationInput(val arguments: JsonObject)
 internal data class KastInvocationOutput(
     val document: JsonObject,
     val success: Boolean,
     val observerDirectory: CanonicalBrokerDirectory,
 )
-internal enum class KastToolInputFailure { NOT_OBJECT }
 
 @Serializable
 private data class KastCapabilityBoundary(

@@ -78,9 +78,10 @@ object CanonicalAgentToolDefinitions {
     val query = tool(
         CanonicalOperationDefinitions.queryRun,
         "query",
-        "Search, filter, and expand Kotlin declaration relations in one typed query. The symbols " +
-            "source returns exact compiler identities. Kast manages intermediate selectors and " +
-            "bounded work. Exhaustive intent is qualified when the shared budget is exhausted.",
+        "Search, filter, and expand exact Kotlin symbols. Use SEARCH for names, ALL for " +
+            "enumeration, or REFS for returned exact-symbol tokens. Omitted controls use the " +
+            "defaults documented in the parameter contract. Kast owns candidate refinement " +
+            "and bounded work; incomplete coverage stays explicit.",
         loading = HostedToolLoading.EAGER,
     )
     val symbolLookup = tool(
@@ -170,7 +171,7 @@ object CanonicalAgentToolDefinitions {
             Kast provides compiler-grounded Kotlin source intelligence for the current repository.
 
             Prefer kast.query for read-only symbol discovery, filtering, and semantic expansion.
-            Its symbols source establishes exact compiler identity and Kast owns candidate
+            Its SEARCH, ALL, and REFS sources request exact symbols; Kast owns candidate
             refinement, intermediate references, and bounded iteration. Use specialized read tools
             only when their narrower contract is specifically required. Preserve returned refs
             rather than reconstructing identities from source text.

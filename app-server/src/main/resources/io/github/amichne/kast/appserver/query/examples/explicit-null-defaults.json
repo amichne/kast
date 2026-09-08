@@ -1,0 +1,12 @@
+{
+  "type": "QUERY",
+  "from": {
+    "type": "SEARCH",
+    "query": "OrderService",
+    "match": null,
+    "kinds": null,
+    "scope": null
+  },
+  "steps": null,
+  "select": null
+}

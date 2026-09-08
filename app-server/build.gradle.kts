@@ -30,6 +30,7 @@ plugins {
     id("kast.kotlin-library")
     kotlin("plugin.serialization")
     id("kast.role.app-server")
+    id("kast.public-query-contract")
 }
 
 dependencies {

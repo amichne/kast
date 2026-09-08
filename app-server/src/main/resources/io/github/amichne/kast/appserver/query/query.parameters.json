@@ -1,0 +1,446 @@
+{
+  "type": "object",
+  "description": "Agent-facing query syntax. Defaults are fixed by this contract, not by the environment. This schema does not confer compiler authority.",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "QUERY"
+      ],
+      "description": "Shape discriminator."
+    },
+    "from": {
+      "$ref": "#/$defs/Source"
+    },
+    "steps": {
+      "$ref": "#/$defs/Steps"
+    },
+    "select": {
+      "$ref": "#/$defs/Selection"
+    }
+  },
+  "required": [
+    "type",
+    "from"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "QueryText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+      "description": "Declaration name to match. Blank text is rejected; use ALL for enumeration. At most 256 UTF-16 code units at canonical admission."
+    },
+    "ExactRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1048576,
+      "pattern": "^exact:v2:[\\s\\S]+$",
+      "description": "Copy items[].ref.token from an exact-symbol result verbatim. This prefix check is syntax only; Kast still validates workspace, generation and compiler identity."
+    },
+    "DirectoryPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1048576,
+      "pattern": "^(?!/)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))(?!.*//)(?!.*(?:^|/)\\s*(?:/|$))[^\\x00-\\x1F\\x7F]+$",
+      "description": "Workspace-relative directory without empty, dot or parent segments. Use null scope for the workspace root. Do not trim or rewrite paths."
+    },
+    "PackageName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1048576,
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$",
+      "description": "Semantic Kotlin package name; not a path. Uses the currently supported ASCII package-name grammar."
+    },
+    "Match": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "exact",
+        "fuzzy",
+        null
+      ],
+      "description": "Omitted or null means exact declaration-name matching. Exact does not select one overload. Fuzzy matching requires explicit opt-in."
+    },
+    "DeclarationKind": {
+      "type": "string",
+      "enum": [
+        "class",
+        "function",
+        "property",
+        "type-alias"
+      ],
+      "description": "Supported discovery family. Class includes the existing class-like family; constructors are not discoverable through this source."
+    },
+    "SourceSet": {
+      "type": "string",
+      "enum": [
+        "main",
+        "test"
+      ],
+      "description": "Supported semantic source-set category, not a filesystem glob."
+    },
+    "Containment": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "direct",
+        "descendants",
+        null
+      ],
+      "description": "Omitted or null includes descendants. Direct selects only this directory or package."
+    },
+    "Visibility": {
+      "type": "string",
+      "enum": [
+        "public",
+        "protected",
+        "internal",
+        "private",
+        "local"
+      ],
+      "description": "Compiler-established declaration visibility."
+    },
+    "Relation": {
+      "type": "string",
+      "enum": [
+        "references",
+        "callers",
+        "callees",
+        "implementations",
+        "inheritors",
+        "overrides",
+        "type-uses"
+      ],
+      "description": "One compiler-confirmed semantic hop. Callers returns calling declarations; callees returns called declarations."
+    },
+    "Field": {
+      "type": "string",
+      "enum": [
+        "name",
+        "location",
+        "signature"
+      ],
+      "description": "Optional result projection. Existing ref and kind fields are always retained."
+    },
+    "Kinds": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/$defs/DeclarationKind"
+      },
+      "minItems": 1,
+      "maxItems": 4,
+      "description": "Omitted or null includes every supported discovery family. Empty and duplicate lists are rejected.",
+      "uniqueItems": true
+    },
+    "SourceSets": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/$defs/SourceSet"
+      },
+      "minItems": 1,
+      "maxItems": 2,
+      "description": "Omitted or null includes both main and test. Non-null restrictions intersect with directory and package.",
+      "uniqueItems": true
+    },
+    "Selection": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/$defs/Field"
+      },
+      "minItems": 0,
+      "maxItems": 3,
+      "description": "Omitted or null returns name and location. Empty requests ref and kind only; it does not restore defaults.",
+      "uniqueItems": true
+    },
+    "Steps": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/$defs/Step"
+      },
+      "minItems": 0,
+      "maxItems": 1000,
+      "description": "Ordered left-to-right transformations. Omitted or null means no steps. Never reorder filters around expansion."
+    },
+    "RefsList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ExactRef"
+      },
+      "minItems": 1,
+      "maxItems": 1000,
+      "description": "Non-empty returned exact-symbol tokens. No candidate promotion, guessing or alias lookup."
+    },
+    "VisibilityList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Visibility"
+      },
+      "minItems": 1,
+      "maxItems": 5,
+      "description": "Non-empty set of accepted visibilities; unproved predicates remain incomplete evidence, never a negative match.",
+      "uniqueItems": true
+    },
+    "Directory": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Optional discovery directory restriction. Null means no directory restriction.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "DIRECTORY"
+          ],
+          "description": "Shape discriminator."
+        },
+        "path": {
+          "$ref": "#/$defs/DirectoryPath"
+        },
+        "containment": {
+          "$ref": "#/$defs/Containment"
+        }
+      },
+      "required": [
+        "type",
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "Package": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Optional semantic package restriction. Null means no package restriction.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "PACKAGE"
+          ],
+          "description": "Shape discriminator."
+        },
+        "name": {
+          "$ref": "#/$defs/PackageName"
+        },
+        "containment": {
+          "$ref": "#/$defs/Containment"
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "Scope": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Discovery restrictions intersect. Null means the supported main and test workspace domain. Scope does not silently restrict later expansion destinations.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "SCOPE"
+          ],
+          "description": "Shape discriminator."
+        },
+        "sourceSets": {
+          "$ref": "#/$defs/SourceSets"
+        },
+        "directory": {
+          "$ref": "#/$defs/Directory"
+        },
+        "package": {
+          "$ref": "#/$defs/Package"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "Search": {
+      "type": "object",
+      "description": "Find matching declarations and establish exact compiler identities. Multiple overloads remain separate symbols.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "SEARCH"
+          ],
+          "description": "Shape discriminator."
+        },
+        "query": {
+          "$ref": "#/$defs/QueryText"
+        },
+        "match": {
+          "$ref": "#/$defs/Match"
+        },
+        "kinds": {
+          "$ref": "#/$defs/Kinds"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        }
+      },
+      "required": [
+        "type",
+        "query"
+      ],
+      "additionalProperties": false
+    },
+    "All": {
+      "type": "object",
+      "description": "Explicit bounded enumeration. Budget exhaustion remains partial coverage; ALL never implies unbounded work.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "ALL"
+          ],
+          "description": "Shape discriminator."
+        },
+        "kinds": {
+          "$ref": "#/$defs/Kinds"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "Refs": {
+      "type": "object",
+      "description": "Start from exact-symbol references previously returned by Kast.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "REFS"
+          ],
+          "description": "Shape discriminator."
+        },
+        "refs": {
+          "$ref": "#/$defs/RefsList"
+        }
+      },
+      "required": [
+        "type",
+        "refs"
+      ],
+      "additionalProperties": false
+    },
+    "Source": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Search"
+        },
+        {
+          "$ref": "#/$defs/All"
+        },
+        {
+          "$ref": "#/$defs/Refs"
+        }
+      ],
+      "description": "Every source yields exact symbols or explicit incomplete/rejected evidence. Candidates are internal to Kast."
+    },
+    "Filter": {
+      "type": "object",
+      "description": "Filter the current symbol stream by compiler-established visibility.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "FILTER"
+          ],
+          "description": "Shape discriminator."
+        },
+        "visibility": {
+          "$ref": "#/$defs/VisibilityList"
+        }
+      },
+      "required": [
+        "type",
+        "visibility"
+      ],
+      "additionalProperties": false
+    },
+    "Expand": {
+      "type": "object",
+      "description": "Expand the current symbols by exactly one semantic hop, retaining relation evidence.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "EXPAND"
+          ],
+          "description": "Shape discriminator."
+        },
+        "relation": {
+          "$ref": "#/$defs/Relation"
+        }
+      },
+      "required": [
+        "type",
+        "relation"
+      ],
+      "additionalProperties": false
+    },
+    "Distinct": {
+      "type": "object",
+      "description": "Deduplicate exact symbols using the existing engine operation, preserving contributing relation evidence.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "DISTINCT"
+          ],
+          "description": "Shape discriminator."
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "Step": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Filter"
+        },
+        {
+          "$ref": "#/$defs/Expand"
+        },
+        {
+          "$ref": "#/$defs/Distinct"
+        }
+      ],
+      "description": "Closed symbol-to-symbol transformations. INSPECT is intentionally not public."
+    }
+  }
+}
