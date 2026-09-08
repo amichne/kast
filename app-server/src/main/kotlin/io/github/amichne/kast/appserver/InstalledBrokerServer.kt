@@ -87,7 +87,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
             processExecutor: BrokerProcessExecutor = JdkBrokerProcessExecutor,
             launcher: CodexAppServerProcessLauncher? = null,
             clientTransport: BrokerClientTransport = BrokerClientTransport.LEGACY_CONTROL,
-            appServerArguments: CodexAppServerArguments = CodexAppServerArguments.defaults(),
+            appServerArguments: CodexAppServerArguments = CodexAppServerArguments.sharedService(),
         ): InstalledBrokerServerConfiguration {
             val canonicalUserHome = canonicalDirectory(userHome)
                 ?: return rejected(InstalledBrokerServerConfigurationFailure.USER_HOME_REJECTED)

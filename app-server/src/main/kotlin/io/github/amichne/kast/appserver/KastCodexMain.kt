@@ -3,7 +3,7 @@ package io.github.amichne.kast.appserver
 import io.github.amichne.kast.appserver.host.CliRemoteClientHost
 import io.github.amichne.kast.appserver.host.CodexIntegrationHost
 import io.github.amichne.kast.appserver.host.DesktopStdioHost
-import io.github.amichne.kast.appserver.host.admission.CodexAppServerArguments
+import io.github.amichne.kast.appserver.host.admission.CodexServiceInvocation
 import io.github.amichne.kast.appserver.host.admission.CodexHostInvocation
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnector
 import io.github.amichne.kast.appserver.runtime.connectCodexUnixWebSocket
@@ -35,13 +35,13 @@ enum class CodexIntegrationFailure {
 }
 
 suspend fun runInstalledCodex(arguments: List<String>, kast: Path): CodexIntegrationRun {
-    val invocation = when (val admitted = CodexHostInvocation.admit(arguments)) {
+    val requested = when (val admitted = CodexHostInvocation.admit(arguments)) {
         is Refinement.Refined -> admitted.value
         is Refinement.Rejected -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.ARGUMENTS_REJECTED)
     }
-    if (invocation is CodexHostInvocation.AppServer &&
-        (invocation.arguments.globalValues.isNotEmpty() || invocation.arguments.roleValues.isNotEmpty())) {
-        return CodexIntegrationRun.Rejected(CodexIntegrationFailure.ARGUMENTS_REJECTED)
+    val invocation = when (val admitted = CodexServiceInvocation.admit(requested)) {
+        is Refinement.Refined -> admitted.value
+        is Refinement.Rejected -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.ARGUMENTS_REJECTED)
     }
     if (System.getenv().containsKey("KAST_SAVED_CONFIGURATION_FAILURE")) {
         return CodexIntegrationRun.Rejected(CodexIntegrationFailure.CONFIGURATION_REJECTED)
@@ -55,12 +55,12 @@ suspend fun runInstalledCodex(arguments: List<String>, kast: Path): CodexIntegra
         is PersistentBrokerServiceAdmission.Rejected -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.BROKER_REJECTED)
     }
     val host: CodexIntegrationHost = when (invocation) {
-        is CodexHostInvocation.Cli -> CliRemoteClientHost(
+        is CodexServiceInvocation.Cli -> CliRemoteClientHost(
             launch.codex,
             launch.publicSocket,
             invocation.arguments,
         )
-        is CodexHostInvocation.AppServer -> DesktopStdioHost(
+        CodexServiceInvocation.Stdio -> DesktopStdioHost(
             System.`in`,
             System.out,
             BrokerUpstreamConnector {
