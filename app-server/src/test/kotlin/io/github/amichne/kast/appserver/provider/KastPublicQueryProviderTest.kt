@@ -35,7 +35,7 @@ class KastPublicQueryProviderTest {
         val sent = (calls.single().input as BrokerProcessInput.Document).value
         val parsed = PublicQueryContract.admit(Json.parseToJsonElement(sent)).refined()
         assertEquals(PublicQueryContract.encode(parsed), Json.parseToJsonElement(sent))
-        assertTrue(sent.contains("\"match\":\"exact\""))
+        assertTrue(sent.contains("\"match\":\"EXACT\""))
         assertTrue(sent.contains("\"select\":[]"))
         assertTrue(!sent.contains("execution"))
         assertTrue(executor.requests.none { it.arguments.first() in setOf("start", "index", "topology") })

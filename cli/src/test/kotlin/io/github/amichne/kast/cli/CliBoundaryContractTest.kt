@@ -29,7 +29,7 @@ class CliBoundaryContractTest {
         val commands = listOf(
             SemanticCase(
                 listOf("query", "run"),
-                """{"type":"QUERY","from":{"type":"ALL","kinds":["class"],"scope":{"type":"SCOPE","sourceSets":["main"]}}}""",
+                """{"type":"QUERY","from":{"type":"ALL","kinds":["CLASS"],"scope":{"type":"DIRECTORY","value":".","sourceSets":["main"]}}}""",
                 CanonicalOperation.QUERY_RUN,
             ),
             SemanticCase(

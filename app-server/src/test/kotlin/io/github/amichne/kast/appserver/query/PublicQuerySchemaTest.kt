@@ -18,12 +18,26 @@ class PublicQuerySchemaTest {
                 assertTrue(JsonPrimitive("type") in node.getValue("required").jsonArray)
                 val tag = node.getValue("properties").jsonObject.getValue("type").jsonObject
                 assertNull(tag["const"])
-                assertTrue(tag.getValue("enum").jsonArray.single().jsonPrimitive.content.matches(Regex("[A-Z][A-Z0-9_]*")))
+                assertTrue(tag.getValue("enum").jsonArray.all { it.jsonPrimitive.content.matches(Regex("[A-Z][A-Z0-9_]*")) })
             }
             if (node["anyOf"] != null) {
                 assertEquals("type", node.getValue("discriminator").jsonObject.getValue("propertyName").jsonPrimitive.content)
             }
         }
+    }
+
+    @Test
+    fun `every enumerated value is caps case and scope needs no union keywords`() {
+        visit(authoring) { node ->
+            node["enum"]?.jsonArray?.forEach { value ->
+                assertTrue(value.jsonPrimitive.content.matches(Regex("[A-Z][A-Z0-9_]*")), value.toString())
+            }
+        }
+        val scope = authoring.getValue("\$defs").jsonObject.getValue("Scope").jsonObject
+        visit(scope) { node ->
+            assertTrue(node.keys.intersect(setOf("anyOf", "allOf", "oneOf", "if", "then", "else")).isEmpty())
+        }
+        assertEquals(setOf("type", "value", "containment", "sourceSets"), scope.getValue("properties").jsonObject.keys)
     }
 
     @Test
@@ -90,7 +104,7 @@ class PublicQuerySchemaTest {
     fun `provider profiles contain no authoring annotations and strict fields are required`() {
         listOf("query.parameters.json", "query.openai-parameters.json").forEach { name ->
             visit(read(name)) { node ->
-                assertTrue(node.keys.intersect(setOf("\$id", "\$schema", "discriminator", "examples", "default", "title")).isEmpty())
+                assertTrue(node.keys.intersect(setOf("\$id", "\$schema", "discriminator", "examples", "default", "title", "x-kotlin-type", "x-kotlin-variants")).isEmpty())
                 if (name == "query.openai-parameters.json" && node["properties"] != null) {
                     assertEquals(node.getValue("properties").jsonObject.keys,
                         node.getValue("required").jsonArray.map { it.jsonPrimitive.content }.toSet())

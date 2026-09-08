@@ -26,10 +26,11 @@ locator is introduced.
 1. Validate against the exact schema identity, then parse into a stronger value.
    A `ValidatedJsonValue` from an unrelated schema is not query admission evidence.
    Preserve operation/schema binding until the subprocess serialization boundary.
-2. Omission and explicit null request a documented default. Invalid values never
-   request defaults. Empty projection is meaningful; empty scope selectors and
+2. Omission uses the declaring type’s concrete default. Explicit null and invalid
+   values are rejected. Empty projection is meaningful; empty scope selectors and
    empty reference collections are rejected. Unknown fields fail before effects.
-3. Defaults belong to the schema and generated types. Do not copy default literals
+3. Defaults are expressed on the declaring types and at construction sites, generated
+   from the schema. There is no external defaults registry. Do not copy default literals
    into providers, command handlers, help tables, or a second policy registry.
 4. Use closed `type` unions and CAPS_CASE enum tags. Name reusable concepts once.
    Authoring annotations are not provider protocol keywords. Provider projection
@@ -59,7 +60,7 @@ No implicit fuzzy fallback is permitted.
 
 The schema owns the exact default values. Currently, discovery includes supported
 class/function/property/type-alias families in main and test sources; directory
-and package restrictions default to `recursive`, including the named directory or
+and package restrictions default to `RECURSIVE`, including the named directory or
 package and all nested directories or subpackages. Omitted steps mean no transformations.
 Omitted selection includes name/location. `select: []` retains only mandatory result
 identity/kind information. Constructor discovery is not newly advertised.
@@ -69,7 +70,13 @@ The default remains `["main", "test"]`. Names match imported source-root ownersh
 not production/test categories or directory spelling; unmatched names contribute
 no declarations. Shared roots can belong to multiple named sets. The most specific
 root owns a file, including when a nested root is excluded by readability policy.
-Source-set, directory and package constraints intersect during discovery. They do
+Scope uses `type: "DIRECTORY"` or `type: "PACKAGE"` with one `value`, plus shared
+`containment` and `sourceSets`. Omitted scope defaults to the workspace-relative
+directory `"."`. A directory value is retained as `WorkspaceRelativePath`; a package
+value is retained as `PublicQueryPackageName`. Their sealed scope variants exclude
+simultaneous directory and package targets. The shared JSON envelope needs no
+`anyOf`/`allOf`; its discriminator-specific value grammar is proven by typed parsing.
+Source-set and target constraints intersect during discovery. They do
 not filter later expansion destinations. Filtering before expansion and after
 expansion have different meanings; the sequence is preserved, including repeated
 stages. Work stays under the existing exhaustive/interactive execution policy.
@@ -82,7 +89,8 @@ failures, provenance, compiler evidence, and generation-bound reference checks a
 not suppressed. A qualified empty result never proves that no matches exist.
 
 Strict-target parameter projection requires declared controls and expresses
-unselected defaults as null. The native CLI/Codex grammar permits omission.
+the concrete default values for controls they do not customize. The native CLI/Codex
+grammar permits omission; explicit null is rejected in both profiles.
 Both forms pass the same full server admission and normalize identically. No live
 OpenAI acceptance or model-accuracy improvement follows from schema validation alone.
 
@@ -104,7 +112,7 @@ The revision does not change result schemas or the specialist read/write tools.
 | --- | --- | --- |
 | Schema owns syntax/defaults/projections | schema + generator | `:app-server:verifyPublicQueryGeneration` |
 | Closed shapes, valid examples, rejected legacy requests | `PublicQuerySchemaTest` | `:app-server:test --tests '*PublicQuerySchemaTest'` |
-| Defaults preserve null/empty, stage order, tokens | `PublicQueryContractTest` | `:app-server:test --tests '*PublicQueryContractTest'` |
+| Declaring defaults reject null and preserve empty projection, stage order, tokens | `PublicQueryContractTest` | `:app-server:test --tests '*PublicQueryContractTest'` |
 | Provider retains typed admission and rejects schema drift | `KastPublicQueryProviderTest` | `:app-server:test --tests '*KastPublicQueryProviderTest'` |
 | Installed advertisement matches the public CLI grammar | `InstalledServerProjectionTest` | `:cli:test --tests '*InstalledServerProjectionTest'` |
 | Existing module/effect constraints | architecture policy | `verifyKastArchitecture` |

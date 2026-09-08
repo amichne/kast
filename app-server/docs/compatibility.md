@@ -56,7 +56,7 @@ Projection 8 expresses the same discovery intent with the public query contract:
 
 ```sh
 kast query run <<'JSON'
-{"type":"QUERY","from":{"type":"SEARCH","query":"KtorBrokerServer","kinds":["class"],"scope":{"type":"SCOPE","sourceSets":["main"],"directory":{"type":"DIRECTORY","path":"app-server"}}},"select":["name","location","signature"]}
+{"type":"QUERY","from":{"type":"SEARCH","query":"KtorBrokerServer","kinds":["CLASS"],"scope":{"type":"DIRECTORY","value":"app-server","sourceSets":["main"]}},"select":["NAME","LOCATION","SIGNATURE"]}
 JSON
 ```
 

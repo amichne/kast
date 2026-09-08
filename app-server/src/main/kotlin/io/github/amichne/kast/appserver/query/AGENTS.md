@@ -8,8 +8,8 @@ changes, and focused PublicQuery contract/schema tests after admission changes.
 A public request is intent, not compiler evidence. Admit into `AdmittedPublicQuery`
 through its private-construction boundary; never reintroduce a raw JSON query
 payload, candidate output, an INSPECT stage, magic wildcard, or implicit retry.
-Omitted/null controls request defaults. Invalid and empty are not synonyms for
-omitted. Preserve ordered stages and exact token bytes. Keep all workspace,
+Omitted controls use concrete defaults on the declaring types. Explicit null is
+rejected. Invalid and empty are not synonyms for omitted. Preserve ordered stages and exact token bytes. Keep all workspace,
 generation, semantic identity and completeness checks in their existing owners.
 
 Encoding is a transport projection of retained typed syntax, not a reverse parser

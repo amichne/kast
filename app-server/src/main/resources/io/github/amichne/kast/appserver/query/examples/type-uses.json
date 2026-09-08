@@ -4,13 +4,13 @@
     "type": "SEARCH",
     "query": "Order",
     "kinds": [
-      "class"
+      "CLASS"
     ]
   },
   "steps": [
     {
       "type": "EXPAND",
-      "relation": "type-uses"
+      "relation": "TYPE_USES"
     }
   ]
 }

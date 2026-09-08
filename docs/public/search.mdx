@@ -32,6 +32,8 @@ Use the same request with `kast.query` or `kast query run < request.json`.
 The default is exact declaration-name matching, not a unique overload selection.
 All matching overloads remain separate exact symbols. Omitted controls use supported
 kinds, main and test sources, no pipeline stages, and name/location projection.
+Enumerated controls use CAPS_CASE; source-set names preserve Gradle spelling.
+Explicit `null` is rejected; omit a control to use its declaring default.
 `select: []` deliberately requests no optional display fields. Empty kinds, empty
 source sets, blank queries, unknown fields and old INSPECT steps are rejected.
 
@@ -39,28 +41,51 @@ source sets, blank queries, unknown fields and old INSPECT steps are rejected.
 
 ```json
 {
-  "type":"QUERY",
-  "from":{"type":"SEARCH","query":"submitOrder","scope":{
-    "type":"SCOPE","sourceSets":["main"],
-    "directory":{"type":"DIRECTORY","path":"services/orders"}
-  }},
-  "steps":[
-    {"type":"EXPAND","relation":"callers"},
-    {"type":"FILTER","visibility":["public"]},
-    {"type":"DISTINCT"}
+  "type": "QUERY",
+  "from": {
+    "type": "SEARCH",
+    "query": "submitOrder",
+    "scope": {
+      "type": "DIRECTORY",
+      "value": "services/orders",
+      "sourceSets": [
+        "main"
+      ]
+    }
+  },
+  "steps": [
+    {
+      "type": "EXPAND",
+      "relation": "CALLERS"
+    },
+    {
+      "type": "FILTER",
+      "visibility": [
+        "PUBLIC"
+      ]
+    },
+    {
+      "type": "DISTINCT"
+    }
   ],
-  "select":["name","location","signature"]
+  "select": [
+    "NAME",
+    "LOCATION",
+    "SIGNATURE"
+  ]
 }
 ```
 
 Scope restrictions intersect during discovery. `sourceSets` accepts exact Gradle
 source-set names, including custom names such as `integrationTest` and multiplatform
-names such as `commonMain`. Omitted or null selects `main` and `test`; an unmatched
+names such as `commonMain`. Omitted source-set selection uses `main` and `test`; an unmatched
 name contributes no declarations. Names are matched against imported ownership,
 independently of production/test classification and physical directory names.
-Directory/package containment defaults to `recursive`, including the named directory
-or package and all nested directories or subpackages; use `direct` for only the
-named directory or package. Scope does not
+Scope selects exactly one `DIRECTORY` or `PACKAGE` target through `type` and `value`.
+Directory values are relative to the workspace root; `"."` names the root. Package
+values use dotted Kotlin names. Omitted scope means the workspace root.
+Containment defaults to `RECURSIVE`, including the target and nested directories or
+subpackages; `DIRECT` searches only the target. Scope does not
 silently constrain later expansion destinations. Step order matters: this query
 filters callers, not the declarations that were initially matched.
 

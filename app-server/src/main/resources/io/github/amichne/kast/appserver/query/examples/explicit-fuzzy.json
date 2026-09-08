@@ -3,6 +3,6 @@
   "from": {
     "type": "SEARCH",
     "query": "OrderServ",
-    "match": "fuzzy"
+    "match": "FUZZY"
   }
 }

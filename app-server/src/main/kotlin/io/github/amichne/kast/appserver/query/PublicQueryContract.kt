@@ -75,7 +75,7 @@ class AdmittedPublicQuery private constructor(
             return try {
                 val syntax = PublicQueryContract.json.decodeFromJsonElement(
                     PublicQueryDocument.serializer(), raw.element,
-                ).withDefaults()
+                )
                 val request = syntax.toCanonicalQuery()
                 // Retain the canonical syntax proof (including the engine's UTF-16 name bound).
                 // Workspace, generation and compiler reference admission still belong to execution.

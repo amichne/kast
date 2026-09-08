@@ -20,20 +20,20 @@ import io.github.amichne.kast.protocol.contract.QueryStepDocument
 internal fun PublicQueryDocument.toCanonicalQuery(): QueryRunRequest = QueryRunRequest(
     from = when (val source = from) {
         is PublicQuerySearch -> QueryFromDocument.Symbols(
-            QueryMatchDocument.Name(source.query, (source.match ?: PublicQueryDefaults.match).canonical()),
+            QueryMatchDocument.Name(source.query, source.match.canonical()),
             source.scope.canonical(),
-            (source.kinds ?: PublicQueryDefaults.kinds).mapBounded { it.canonical() },
+            source.kinds.mapBounded { it.canonical() },
         )
         is PublicQueryAll -> QueryFromDocument.Symbols(
             QueryMatchDocument.All,
             source.scope.canonical(),
-            (source.kinds ?: PublicQueryDefaults.kinds).mapBounded { it.canonical() },
+            source.kinds.mapBounded { it.canonical() },
         )
         is PublicQueryRefs -> QueryFromDocument.References(
             source.refs.mapBounded { QueryReferenceDocument.ExactSymbol(it) },
         )
     },
-    steps = (steps ?: PublicQueryDefaults.steps).mapBounded { step ->
+    steps = steps.mapBounded { step ->
         when (step) {
             is PublicQueryFilter -> QueryStepDocument.Where(
                 QueryPredicateDocument.Visibility(step.visibility.mapBounded { it.canonical() }),
@@ -43,7 +43,7 @@ internal fun PublicQueryDocument.toCanonicalQuery(): QueryRunRequest = QueryRunR
         }
     },
     output = QueryOutputDocument.Symbols(
-        (select ?: PublicQueryDefaults.selection).mapBounded { it.canonical() },
+        select.mapBounded { it.canonical() },
     ),
     execution = QueryExecutionDocument(
         QueryExecutionKindDocument.EXHAUSTIVE,
@@ -51,46 +51,25 @@ internal fun PublicQueryDocument.toCanonicalQuery(): QueryRunRequest = QueryRunR
     ),
 )
 
-private fun PublicQueryScope?.canonical(): QueryScopeDocument = QueryScopeDocument(
-    this?.sourceSets ?: PublicQueryDefaults.sourceSets,
-    this?.directory?.let { directory ->
-        QueryDirectoryScopeDocument(
-            directory.path,
-            (directory.containment ?: PublicQueryDefaults.containment).canonical(),
-        )
-    },
-    this?.`package`?.let { packageScope ->
-        QueryPackageScopeDocument(
-            packageScope.name,
-            (packageScope.containment ?: PublicQueryDefaults.containment).canonical(),
-        )
-    },
-)
+private fun PublicQueryScope.canonical(): QueryScopeDocument = when (this) {
+    is PublicQueryScope.Directory -> QueryScopeDocument(
+        sourceSets,
+        QueryDirectoryScopeDocument(protocolText(value.value), containment.canonical()),
+        null,
+    )
+    is PublicQueryScope.Package -> QueryScopeDocument(
+        sourceSets,
+        null,
+        QueryPackageScopeDocument(protocolText(value.value), containment.canonical()),
+    )
+}
 
-/** Defaults are normalized once, before lowering. Empty selection and ordered stages survive. */
-internal fun PublicQueryDocument.withDefaults(): PublicQueryDocument = copy(
-    from = when (val source = from) {
-        is PublicQuerySearch -> source.copy(
-            match = source.match ?: PublicQueryDefaults.match,
-            kinds = source.kinds ?: PublicQueryDefaults.kinds,
-            scope = source.scope.withDefaults(),
-        )
-        is PublicQueryAll -> source.copy(
-            kinds = source.kinds ?: PublicQueryDefaults.kinds,
-            scope = source.scope.withDefaults(),
-        )
-        is PublicQueryRefs -> source
-    },
-    steps = steps ?: PublicQueryDefaults.steps,
-    select = select ?: PublicQueryDefaults.selection,
-)
-
-private fun PublicQueryScope?.withDefaults(): PublicQueryScope = PublicQueryScope(
-    PublicQueryScopeType.SCOPE,
-    this?.sourceSets ?: PublicQueryDefaults.sourceSets,
-    this?.directory?.let { it.copy(containment = it.containment ?: PublicQueryDefaults.containment) },
-    this?.`package`?.let { it.copy(containment = it.containment ?: PublicQueryDefaults.containment) },
-)
+/** Extraction into the canonical transport occurs only after the target-specific proof. */
+private fun protocolText(raw: String): io.github.amichne.kast.protocol.contract.ProtocolText =
+    when (val result = io.github.amichne.kast.protocol.contract.ProtocolText.parse(raw)) {
+        is Refinement.Refined -> result.value
+        is Refinement.Rejected -> error("A refined scope value violated the transport text bound")
+    }
 
 private fun <T, R> BoundedProtocolList<T>.mapBounded(transform: (T) -> R): BoundedProtocolList<R> =
     when (val result = BoundedProtocolList.create(values.map(transform))) {

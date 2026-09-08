@@ -86,6 +86,29 @@ class SymbolDiscoveryTest {
     }
 
     @Test
+    fun `workspace-relative root honors direct and recursive containment`() {
+        listOf(
+            SymbolDiscoveryContainment.DIRECT to listOf("ZItem"),
+            SymbolDiscoveryContainment.DESCENDANTS to listOf("AItem", "NoMatch", "ZItem"),
+        ).forEach { (containment, expected) ->
+            val outcome = fixture(
+                all = true,
+                workLimit = expected.size.toLong(),
+                directory = ".",
+                containment = containment,
+                itemPaths = mapOf(
+                    "ZItem" to "/workspace/ZItem.kt",
+                    "AItem" to "/workspace/nested/AItem.kt",
+                    "NoMatch" to "/workspace/nested/NoMatch.kt",
+                ),
+            ).execute().outcome()
+            assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
+            assertEquals(expected, outcome.batch().candidates.map { it.name.value })
+            assertEquals(expected.size.toLong(), outcome.batch().examinedWorkUnits.value)
+        }
+    }
+
+    @Test
     fun `explicit all applies directory scope before consuming work budget`() {
         val outcome = fixture(
             all = true,
@@ -335,6 +358,7 @@ class SymbolDiscoveryTest {
         leadingUnrelatedNames: Int = 0,
         all: Boolean = false,
         directory: String? = null,
+        containment: SymbolDiscoveryContainment = SymbolDiscoveryContainment.DESCENDANTS,
         itemPaths: Map<String, String> = emptyMap(),
         declarationKinds: Set<CompilerSymbolKind>? = null,
         itemKinds: Map<String, CompilerSymbolKind> = emptyMap(),
@@ -350,6 +374,7 @@ class SymbolDiscoveryTest {
             elapsedMillis = elapsedMillis,
             all = all,
             directory = directory,
+            containment = containment,
             declarationKinds = declarationKinds,
             sourceSets = sourceSets,
         )
@@ -448,6 +473,7 @@ class SymbolDiscoveryTest {
         elapsedMillis: Long,
         all: Boolean,
         directory: String?,
+        containment: SymbolDiscoveryContainment,
         declarationKinds: Set<CompilerSymbolKind>?,
         sourceSets: SymbolDiscoverySourceSets,
     ): SymbolDiscoveryRequest {
@@ -488,7 +514,7 @@ class SymbolDiscoveryTest {
                 directory = directory?.let {
                     SymbolDiscoveryDirectoryConstraint(
                         SymbolDiscoveryDirectory.parse(it).refined(),
-                        SymbolDiscoveryContainment.DESCENDANTS,
+                        containment,
                     )
                 },
                 packageName = null,

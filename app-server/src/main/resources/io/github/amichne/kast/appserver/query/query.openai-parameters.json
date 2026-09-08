@@ -39,33 +39,29 @@
     },
     "DirectoryPath": {
       "type": "string",
-      "pattern": "^(?!/)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))(?!.*//)(?!.*(?:^|/)\\s*(?:/|$))[^\\x00-\\x1F\\x7F]+$",
-      "description": "Workspace-relative directory without empty, dot or parent segments. Use null scope for the workspace root. Do not trim or rewrite paths."
+      "pattern": "^(?:\\.|(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))(?!.*//)(?!.*(?:^|/)\\s*(?:/|$))[^\\x00-\\x1F\\x7F-\\x9F]+)$",
+      "description": "Canonical path relative to the workspace root. A single dot means the root. Absolute paths, backslashes, empty segments, embedded dot segments and parent traversal are rejected; spelling is preserved."
     },
     "PackageName": {
       "type": "string",
-      "pattern": "^[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$",
+      "pattern": "^(?!.*\\.(?:[0-9.]|$))[A-Za-z_][A-Za-z0-9_.]*$",
       "description": "Semantic Kotlin package name; not a path. Uses the currently supported ASCII package-name grammar."
     },
     "Match": {
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": "string",
       "enum": [
-        "exact",
-        "fuzzy",
-        null
+        "EXACT",
+        "FUZZY"
       ],
-      "description": "Omitted or null means exact declaration-name matching. Exact does not select one overload. Fuzzy matching requires explicit opt-in."
+      "description": "Omitted means exact declaration-name matching. Exact does not select one overload. Fuzzy matching requires explicit opt-in."
     },
     "DeclarationKind": {
       "type": "string",
       "enum": [
-        "class",
-        "function",
-        "property",
-        "type-alias"
+        "CLASS",
+        "FUNCTION",
+        "PROPERTY",
+        "TYPE_ALIAS"
       ],
       "description": "Supported discovery family. Class includes the existing class-like family; constructors are not discoverable through this source."
     },
@@ -75,97 +71,81 @@
       "description": "Exact Gradle source-set name from the imported model, including custom and multiplatform names. Not a production/test category or filesystem glob."
     },
     "Containment": {
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": "string",
       "enum": [
-        "direct",
-        "recursive",
-        null
+        "DIRECT",
+        "RECURSIVE"
       ],
-      "description": "Omitted or null searches recursively, including this directory or package and all nested directories or subpackages. Direct selects only this directory or package."
+      "description": "Omitted searches recursively, including this directory or package and all nested directories or subpackages. DIRECT selects only this directory or package."
     },
     "Visibility": {
       "type": "string",
       "enum": [
-        "public",
-        "protected",
-        "internal",
-        "private",
-        "local"
+        "PUBLIC",
+        "PROTECTED",
+        "INTERNAL",
+        "PRIVATE",
+        "LOCAL"
       ],
       "description": "Compiler-established declaration visibility."
     },
     "Relation": {
       "type": "string",
       "enum": [
-        "references",
-        "callers",
-        "callees",
-        "implementations",
-        "inheritors",
-        "overrides",
-        "type-uses"
+        "REFERENCES",
+        "CALLERS",
+        "CALLEES",
+        "IMPLEMENTATIONS",
+        "INHERITORS",
+        "OVERRIDES",
+        "TYPE_USES"
       ],
       "description": "One compiler-confirmed semantic hop. Callers returns calling declarations; callees returns called declarations."
     },
     "Field": {
       "type": "string",
       "enum": [
-        "name",
-        "location",
-        "signature"
+        "NAME",
+        "LOCATION",
+        "SIGNATURE"
       ],
       "description": "Optional result projection. Existing ref and kind fields are always retained."
     },
     "Kinds": {
-      "type": [
-        "array",
-        "null"
-      ],
+      "type": "array",
       "items": {
         "$ref": "#/$defs/DeclarationKind"
       },
       "minItems": 1,
       "maxItems": 4,
-      "description": "Omitted or null includes every supported discovery family. Empty and duplicate lists are rejected."
+      "description": "Omitted includes every supported discovery family. Empty and duplicate lists are rejected."
     },
     "SourceSets": {
-      "type": [
-        "array",
-        "null"
-      ],
+      "type": "array",
       "items": {
         "$ref": "#/$defs/SourceSet"
       },
       "minItems": 1,
       "maxItems": 1000,
-      "description": "Omitted or null selects names main and test. Explicit names intersect with directory and package restrictions; names with no matching roots contribute no declarations."
+      "description": "Omitted selects names main and test. Explicit names intersect with directory and package restrictions; names with no matching roots contribute no declarations."
     },
     "Selection": {
-      "type": [
-        "array",
-        "null"
-      ],
+      "type": "array",
       "items": {
         "$ref": "#/$defs/Field"
       },
       "minItems": 0,
       "maxItems": 3,
-      "description": "Omitted or null returns name and location. Empty requests ref and kind only; it does not restore defaults."
+      "description": "Omitted returns name and location. Empty requests ref and kind only; it does not restore defaults."
     },
     "Steps": {
-      "type": [
-        "array",
-        "null"
-      ],
+      "type": "array",
       "items": {
         "$ref": "#/$defs/Step"
       },
       "minItems": 0,
       "maxItems": 1000,
-      "description": "Ordered left-to-right transformations. Omitted or null means no steps. Never reorder filters around expansion."
+      "description": "Ordered left-to-right transformations. Omitted means no steps. Never reorder filters around expansion."
     },
     "RefsList": {
       "type": "array",
@@ -185,91 +165,33 @@
       "maxItems": 5,
       "description": "Non-empty set of accepted visibilities; unproved predicates remain incomplete evidence, never a negative match."
     },
-    "Directory": {
-      "type": [
-        "object",
-        "null"
-      ],
-      "description": "Optional discovery directory restriction. Null means no directory restriction.",
+    "Scope": {
+      "type": "object",
+      "description": "Exactly one directory or package target. Source-set restrictions intersect with the target. Containment applies to either target. Scope does not restrict later expansion destinations.",
       "properties": {
         "type": {
           "type": "string",
           "enum": [
-            "DIRECTORY"
-          ],
-          "description": "Shape discriminator."
-        },
-        "path": {
-          "$ref": "#/$defs/DirectoryPath"
-        },
-        "containment": {
-          "$ref": "#/$defs/Containment"
-        }
-      },
-      "required": [
-        "type",
-        "path",
-        "containment"
-      ],
-      "additionalProperties": false
-    },
-    "Package": {
-      "type": [
-        "object",
-        "null"
-      ],
-      "description": "Optional semantic package restriction. Null means no package restriction.",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
+            "DIRECTORY",
             "PACKAGE"
           ],
-          "description": "Shape discriminator."
+          "description": "Selects the grammar and meaning of value."
         },
-        "name": {
-          "$ref": "#/$defs/PackageName"
+        "value": {
+          "$ref": "#/$defs/ScopeValue"
         },
         "containment": {
           "$ref": "#/$defs/Containment"
-        }
-      },
-      "required": [
-        "type",
-        "name",
-        "containment"
-      ],
-      "additionalProperties": false
-    },
-    "Scope": {
-      "type": [
-        "object",
-        "null"
-      ],
-      "description": "Discovery restrictions intersect. Null means the supported main and test workspace domain. Scope does not silently restrict later expansion destinations.",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "SCOPE"
-          ],
-          "description": "Shape discriminator."
         },
         "sourceSets": {
           "$ref": "#/$defs/SourceSets"
-        },
-        "directory": {
-          "$ref": "#/$defs/Directory"
-        },
-        "package": {
-          "$ref": "#/$defs/Package"
         }
       },
       "required": [
         "type",
-        "sourceSets",
-        "directory",
-        "package"
+        "value",
+        "containment",
+        "sourceSets"
       ],
       "additionalProperties": false
     },
@@ -438,6 +360,11 @@
         }
       ],
       "description": "Closed symbol-to-symbol transformations. INSPECT is intentionally not public."
+    },
+    "ScopeValue": {
+      "type": "string",
+      "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+      "description": "DIRECTORY: canonical workspace-relative path, with . for the root. PACKAGE: dotted Kotlin package name. The typed parser validates the grammar selected by type."
     }
   }
 }

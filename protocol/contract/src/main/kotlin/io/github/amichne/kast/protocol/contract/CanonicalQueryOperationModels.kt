@@ -52,7 +52,7 @@ sealed interface QueryMatchDocument {
 @Serializable
 data class QueryDirectoryScopeDocument(
     @ProtocolStringConstraint(
-        pattern = "^(?!/)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))(?!.*//)[^\\x00-\\x1F\\x7F]+$",
+        pattern = "^(?:\\.|(?!/)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))(?!.*//)[^\\x00-\\x1F\\x7F]+)$",
     )
     val path: ProtocolText,
     val containment: QueryContainmentDocument,
@@ -60,7 +60,7 @@ data class QueryDirectoryScopeDocument(
 
 @Serializable
 data class QueryPackageScopeDocument(
-    @ProtocolStringConstraint(pattern = "^[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$")
+    @ProtocolStringConstraint(pattern = "^(?!.*\\.(?:[0-9.]|$))[A-Za-z_][A-Za-z0-9_.]*$")
     val name: ProtocolText,
     val containment: QueryContainmentDocument,
 )
@@ -295,7 +295,7 @@ private fun QueryDiscoveryDocument.isCanonical(): Boolean {
     val packageName = scope.packageName?.name?.value
     if (packageName != null && !QUERY_PACKAGE_NAME.matches(packageName)) return false
     val directory = scope.directory?.path?.value
-    if (directory != null &&
+    if (directory != null && directory != "." &&
         (directory.startsWith('/') || directory.any(Char::isISOControl) ||
             directory.split('/').any { it.isBlank() || it == "." || it == ".." })
     ) {
@@ -320,7 +320,7 @@ private fun <Value> List<Value>.isUniqueNonEmpty(): Boolean =
 private fun <Value> List<Value>.isUnique(): Boolean = size == distinct().size
 
 private val QUERY_PACKAGE_NAME = Regex(
-    "[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*",
+    "(?!.*\\.(?:[0-9.]|$))[A-Za-z_][A-Za-z0-9_.]*",
 )
 
 data class QueryCandidateLocationDocument(

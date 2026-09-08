@@ -3,10 +3,11 @@
   "from": {
     "type": "ALL",
     "kinds": [
-      "class"
+      "CLASS"
     ],
     "scope": {
-      "type": "SCOPE",
+      "type": "DIRECTORY",
+      "value": ".",
       "sourceSets": [
         "main"
       ]
@@ -16,7 +17,7 @@
     {
       "type": "FILTER",
       "visibility": [
-        "public"
+        "PUBLIC"
       ]
     }
   ]

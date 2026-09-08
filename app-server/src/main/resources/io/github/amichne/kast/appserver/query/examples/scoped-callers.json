@@ -3,31 +3,27 @@
   "from": {
     "type": "SEARCH",
     "query": "submitOrder",
-    "match": "exact",
+    "match": "EXACT",
     "kinds": [
-      "function"
+      "FUNCTION"
     ],
     "scope": {
-      "type": "SCOPE",
+      "type": "DIRECTORY",
+      "value": "services/orders",
       "sourceSets": [
         "main"
-      ],
-      "directory": {
-        "type": "DIRECTORY",
-        "path": "services/orders"
-      },
-      "package": null
+      ]
     }
   },
   "steps": [
     {
       "type": "EXPAND",
-      "relation": "callers"
+      "relation": "CALLERS"
     },
     {
       "type": "FILTER",
       "visibility": [
-        "public"
+        "PUBLIC"
       ]
     },
     {
@@ -35,8 +31,8 @@
     }
   ],
   "select": [
-    "name",
-    "location",
-    "signature"
+    "NAME",
+    "LOCATION",
+    "SIGNATURE"
   ]
 }
