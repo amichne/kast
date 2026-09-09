@@ -272,9 +272,17 @@ val installedTwoWorkspaceTest = tasks.register<Exec>("installedTwoWorkspaceTest"
 
 val testCheckoutInstaller = tasks.register<Exec>("testCheckoutInstaller") {
     group = "verification"
-    description = "Verifies checkout installs, saved heap precedence, and service refresh ordering."
+    description = "Verifies checkout and release bootstrap boundaries without touching machine state."
     inputs.files("install.sh", "packaging/install-checkout.sh", "packaging/test-install-checkout.py")
     commandLine("python3", layout.projectDirectory.file("packaging/test-install-checkout.py"))
+}
+
+val installerEntrypointTest = tasks.register<Exec>("installerEntrypointTest") {
+    group = "verification"
+    description = "Pins the documented Bash -c installer invocation and argument delivery contract."
+    inputs.files("install.sh", "README.md", "docs/public/start.mdx",
+        "docs/public/reference/compatibility.mdx", "packaging/test-installer-entrypoint.py")
+    commandLine("python3", layout.projectDirectory.file("packaging/test-installer-entrypoint.py"))
 }
 
 val isolatedAcceptanceEnvironmentTest = tasks.register<Exec>("isolatedAcceptanceEnvironmentTest") {
@@ -324,6 +332,7 @@ val productBuildGate by tasks.registering {
         installerRemovalTest,
         installedProductTest,
         testCheckoutInstaller,
+        installerEntrypointTest,
         "verifyKastArchitecture",
     )
     dependsOn(gradle.includedBuild("build-logic").task(":check"))

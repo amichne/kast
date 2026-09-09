@@ -363,6 +363,18 @@ internal object KastCleanSlateModules {
                     JvmClassName(
                         "io/github/amichne/kast/cli/bootstrap/SidecarBootstrapAttemptLock",
                     ),
+                    JvmClassName(
+                        "io/github/amichne/kast/cli/installation/InstallationWorkflow",
+                    ),
+                    JvmClassName(
+                        "io/github/amichne/kast/cli/installation/InstallationWorkflow\$copyControl\$1",
+                    ),
+                    JvmClassName(
+                        "io/github/amichne/kast/cli/installation/InstallationWorkflowKt",
+                    ),
+                    JvmClassName(
+                        "io/github/amichne/kast/cli/installation/InstallationWorkflowKt\$deleteTree\$1",
+                    ),
                 ),
             ),
         ),

@@ -15,13 +15,11 @@ checkout=$(pwd -P)
 [[ -z ${KAST_SESSION_ROOT:-} || $mode != persistent ]] ||
   fail 'run persistent installation from a shell without an active Kast session'
 
-# Admit options before invoking Gradle or creating any installation state.
+# Admit the sole public checkout option before invoking Gradle or creating state.
 options=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --idea-home) ;;
-    --install-root|--bin-dir|--runtime-store|--runtime-directory|--cache-root|--app-server-tools)
-      [[ $mode == persistent ]] || fail "$1 is only available for persistent checkout installs" ;;
     *) fail "unsupported checkout installation option: $1" ;;
   esac
   [[ $# -ge 2 && -n $2 ]] || fail "$1 requires a value"
@@ -62,15 +60,15 @@ if [[ $mode == session ]]; then
   export KAST_ENABLE_LAUNCHD=0 KAST_ENABLE_APP_SERVER=0
   export XDG_CONFIG_HOME="$session_root/config"
 else
-  options+=(--enable-launchd 1 --enable-app-server 1)
+  export KAST_ENABLE_LAUNCHD=1 KAST_ENABLE_APP_SERVER=1
 fi
 
-# Bash 3.2 needs the guarded expansion for an empty array under nounset.
 if [[ $mode == persistent ]]; then
-  options+=(--refresh-app-server)
+  export KAST_INSTALL_REFRESH_APP_SERVER=1
 fi
-bash "$installer" --version "$version" --release-base-url "$base_url" \
-  --assets-directory "$scratch" ${options[@]+"${options[@]}"} >&2
+KAST_VERSION="$version" KAST_RELEASE_BASE_URL="$base_url" \
+KAST_INSTALL_ASSETS_DIRECTORY="$scratch" \
+  bash "$installer" ${options[@]+"${options[@]}"} >&2
 
 if [[ $mode == session ]]; then
   physical_release=$(CDPATH='' cd -- "$KAST_INSTALL_ROOT/current" && pwd -P)

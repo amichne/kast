@@ -107,9 +107,10 @@ rejected semantic outcome into ordinary success.
 
 ## Configure the App Server catalog
 
-The installer writes App Server settings beside `KAST_ENABLE_LAUNCHD` in
-`${XDG_CONFIG_HOME:-$HOME/.config}/kast/environment`. Disable the integration
-without removing Kast with:
+The installer writes App Server settings beside `KAST_ENABLE_LAUNCHD` in the
+selected release's `config/environment` file. By default, the selected file is
+available through `~/.local/share/kast/current/config/environment`. Disable the
+integration without removing Kast with a process override:
 
 ```shell
 KAST_ENABLE_APP_SERVER=0

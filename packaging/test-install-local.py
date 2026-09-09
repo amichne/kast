@@ -14,8 +14,16 @@ class LocalInstallationTest(unittest.TestCase):
             (root / 'packaging').mkdir()
             script = root / 'packaging/install-local.sh'
             shutil.copy2(Path(__file__).with_name('install-local.sh'), script)
-            record = root / 'installer-arguments'
-            (root / 'install.sh').write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "' + str(record) + '"\n')
+            record = root / 'installer-contract'
+            (root / 'install.sh').write_text(
+                '#!/bin/sh\n'
+                'printf "argument=%s\\n" "$@" > "' + str(record) + '"\n'
+                'for key in KAST_VERSION KAST_RELEASE_BASE_URL KAST_INSTALL_ASSETS_DIRECTORY '
+                'KAST_INSTALL_ROOT KAST_BIN_DIR KAST_ENABLE_LAUNCHD KAST_ENABLE_APP_SERVER; do\n'
+                '  eval "value=\\${$key-}"\n'
+                '  printf "%s=%s\\n" "$key" "$value" >> "' + str(record) + '"\n'
+                'done\n'
+            )
             product = root / 'product'
             (product / 'bin').mkdir(parents=True)
             (product / 'share/kast').mkdir(parents=True)
@@ -39,10 +47,14 @@ class LocalInstallationTest(unittest.TestCase):
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertTrue(all(path.is_file() and path.read_text() == 'preserve' for path in markers),
                             'unproven legacy siblings must survive local installation')
-            arguments = record.read_text().splitlines()
-            self.assertEqual('1.2.3', arguments[arguments.index('--version') + 1])
-            self.assertEqual(str(prefix / 'share/kast'), arguments[arguments.index('--install-root') + 1])
-            self.assertIn('--assets-directory', arguments)
+            contract = dict(line.split('=', 1) for line in record.read_text().splitlines())
+            self.assertEqual('', contract['argument'])
+            self.assertEqual('1.2.3', contract['KAST_VERSION'])
+            self.assertEqual(str(prefix / 'share/kast'), contract['KAST_INSTALL_ROOT'])
+            self.assertEqual(str(prefix / 'bin'), contract['KAST_BIN_DIR'])
+            self.assertEqual('0', contract['KAST_ENABLE_LAUNCHD'])
+            self.assertEqual('0', contract['KAST_ENABLE_APP_SERVER'])
+            self.assertTrue(Path(contract['KAST_INSTALL_ASSETS_DIRECTORY']).name.startswith('kast-local-assets.'))
 
 
 if __name__ == '__main__':

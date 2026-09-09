@@ -71,6 +71,11 @@ cp "$runtime_archive" "$assets/$runtime_name"
 for name in "$control_name" "$runtime_name"; do
   (cd "$assets" && shasum -a 256 "$name" > "$name.sha256")
 done
-bash "$installer" --version "$version" --assets-directory "$assets" \
-  --install-root "$install_prefix/share/kast" --bin-dir "$install_prefix/bin" \
-  --enable-launchd 0 --enable-app-server 0
+KAST_VERSION="$version" \
+KAST_RELEASE_BASE_URL="https://github.com/amichne/kast/releases/download" \
+KAST_INSTALL_ASSETS_DIRECTORY="$assets" \
+KAST_INSTALL_ROOT="$install_prefix/share/kast" \
+KAST_BIN_DIR="$install_prefix/bin" \
+KAST_ENABLE_LAUNCHD=0 \
+KAST_ENABLE_APP_SERVER=0 \
+  bash "$installer"

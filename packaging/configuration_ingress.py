@@ -21,8 +21,6 @@ class Failure(Enum):
 # Explicit cross-language projection identities; values belong to the generated owner catalogue.
 _INSTALLATION_PROJECTIONS = {
     'install.sh': {
-        'INSTALL_ACTIVATION_LOCK_TIMEOUT_MILLIS': 'installation.activation.lock_timeout',
-        'INSTALL_ACTIVATION_LOCK_POLL_MILLIS': 'installation.activation.lock_poll',
         'INSTALL_DOWNLOAD_RETRIES': 'installation.download.retries',
         'INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS': 'installation.download.retry_delay',
     },
