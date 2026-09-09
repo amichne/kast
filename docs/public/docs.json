@@ -54,6 +54,11 @@
             ]
           },
           {
+            "group": "Callable reference",
+            "icon": "square-function",
+            "openapi": "reference/callables.openapi.json"
+          },
+          {
             "group": "Support",
             "icon": "life-buoy",
             "pages": [
@@ -141,6 +146,14 @@
       "view"
     ],
     "display": "header"
+  },
+  "api": {
+    "playground": {
+      "display": "none"
+    },
+    "examples": {
+      "autogenerate": false
+    }
   },
   "search": {
     "prompt": "Search setup, harnesses, and errors"

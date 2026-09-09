@@ -98,6 +98,32 @@ internal enum class InstalledServerInvocationType {
     CLI,
 }
 
+/** One public hosted tool retained with its canonical operation and exact CLI invocation. */
+internal class InstalledServerBinding private constructor(
+    val operation: CanonicalOperation,
+    val tool: InstalledHostedToolDocument,
+    val invocation: InstalledCliOperationInvocationDocument,
+) {
+    companion object {
+        /** Derives the complete binding set without accepting independently associated members. */
+        fun from(commandSurface: CliCommandSurface): List<InstalledServerBinding> {
+            val commandByOperation = commandSurface.semanticCommands.associateBy { it.operation }
+            val toolsByOperation = installedServerTools.associateBy(InstalledServerTool::operation)
+            return CanonicalAgentToolDefinitions.all.map { definition ->
+                val operation = definition.operation.operation
+                val tool = toolsByOperation.getValue(operation)
+                InstalledServerBinding(
+                    operation = operation,
+                    tool = tool.hostedDocument(definition),
+                    invocation = tool.cliInvocationDocument(
+                        commandByOperation.getValue(operation).usage,
+                    ),
+                )
+            }
+        }
+    }
+}
+
 /**
  * Proof transition: `CliCommandSurface -> InstalledServerProjectionDocument`.
  *
@@ -109,26 +135,31 @@ internal enum class InstalledServerInvocationType {
 internal fun installedServerProjection(
     commandSurface: CliCommandSurface,
 ): InstalledServerProjectionDocument {
-    val commandByOperation = commandSurface.semanticCommands.associateBy { it.operation }
-    val toolsByOperation = installedServerTools.associateBy(InstalledServerTool::operation)
+    val bindings = installedServerBindings(commandSurface)
     return InstalledServerProjectionDocument(
         schemaVersion = SERVER_PROJECTION_SCHEMA_VERSION,
         namespace = "kast",
         hostedBootstrap = InstalledHostedBootstrapDocument(
             schemaVersion = HOSTED_BOOTSTRAP_SCHEMA_VERSION,
             policy = CanonicalAgentToolDefinitions.policy.text,
-            tools = CanonicalAgentToolDefinitions.all.map { definition ->
-                toolsByOperation.getValue(definition.operation.operation).hostedDocument(definition)
-            },
+            tools = bindings.map(InstalledServerBinding::tool),
         ),
         cliInvocations = InstalledCliInvocationsDocument(
             schemaVersion = CLI_INVOCATIONS_SCHEMA_VERSION,
-            operations = installedServerTools.map { tool ->
-                tool.cliInvocationDocument(commandByOperation.getValue(tool.operation).usage)
-            },
+            operations = bindings.map(InstalledServerBinding::invocation),
         ),
     )
 }
+
+/**
+ * Proof transition: `CliCommandSurface -> List<InstalledServerBinding>`.
+ *
+ * Retains the canonical operation while joining its hosted schema and CLI invocation. Consumers
+ * can project another representation without reconstructing operation identity from JSON text.
+ */
+internal fun installedServerBindings(
+    commandSurface: CliCommandSurface,
+): List<InstalledServerBinding> = InstalledServerBinding.from(commandSurface)
 
 private val installedServerTools: List<InstalledServerTool> = InstalledServerTool.entries.filter { tool ->
     HostedOperationProjection.publicDefinitions.any { it.operation == tool.operation }
