@@ -386,6 +386,25 @@ class PersistentBrokerServiceTest {
             submission.orEmpty().contains("PATH=${command.executableSearchPath.value}"),
         )
         assertTrue(submission.orEmpty().contains(command.serviceLabel.value))
+
+        val launchEnvironment = command.stateDirectory.resolve("launch-environment")
+        assertTrue(Files.isRegularFile(launchEnvironment))
+        val launchLines = Files.readAllLines(launchEnvironment)
+            .filterNot { it.startsWith("#") }
+            .filter(String::isNotBlank)
+        assertEquals(launchLines.sorted(), launchLines)
+        val launched = launchLines.associate { line ->
+            line.substringBefore('=') to line.substringAfter('=')
+        }
+        assertEquals("0", launched["KAST_DEBUG"])
+        assertNotNull(launched["KAST_INDEXER_MAX_HEAP"])
+        assertEquals("1", launched["KAST_WORKER_RESIDENT_LIMIT"])
+        assertEquals(command.codexHome.toString(), launched["CODEX_HOME"])
+        assertEquals(
+            command.toolSelection.environmentValue,
+            launched["KAST_APP_SERVER_TOOLS"],
+        )
+        assertFalse(launched.containsKey("KAST_OPTS"))
     }
 
     @Test
@@ -583,6 +602,116 @@ class PersistentBrokerServiceTest {
         assertEquals(PersistentBrokerServiceAdmission.Ready, host.ensure(command))
         assertEquals(1, operations.count { it == "bootout" })
         assertEquals(1, operations.count { it == "bootstrap" })
+    }
+
+    @Test
+    fun `malformed owned readiness is recovered in one ensure call`(
+        @TempDir temporary: Path,
+    ) {
+        val command = resolvedCommand(installedFixture(temporary))
+        var present = false
+        val operations = mutableListOf<String>()
+        val launchctl = LaunchctlInvoker { arguments, _ ->
+            operations += arguments[1]
+            when (arguments[1]) {
+                "list" -> if (present) LaunchctlInvocation.Completed else LaunchctlInvocation.Absent
+                "bootout" -> {
+                    present = false
+                    LaunchctlInvocation.Completed
+                }
+                "bootstrap" -> {
+                    present = true
+                    writeReadiness(command)
+                    LaunchctlInvocation.Completed
+                }
+                else -> error("unexpected launchctl operation: ${arguments[1]}")
+            }
+        }
+        val host = MacOsPersistentBrokerServiceHost(
+            launchctl,
+            BrokerSocketProbe {
+                if (present) BrokerSocketReachability.REACHABLE else BrokerSocketReachability.UNREACHABLE
+            },
+            BrokerServiceSleeper { BrokerServiceSleep.CONTINUE },
+            retirementTimeoutNanos = TimeUnit.SECONDS.toNanos(1),
+        )
+
+        assertEquals(PersistentBrokerServiceAdmission.Ready, host.ensure(command))
+        Files.writeString(command.readinessFile, "malformed")
+        assertEquals(PersistentBrokerServiceAdmission.Ready, host.ensure(command))
+        assertEquals(1, operations.count { it == "bootout" })
+        assertEquals(2, operations.count { it == "bootstrap" })
+    }
+
+    @Test
+    fun `orphaned malformed readiness is recovered when the service and socket are absent`(
+        @TempDir temporary: Path,
+    ) {
+        val command = resolvedCommand(installedFixture(temporary))
+        Files.createDirectories(command.readinessFile.parent)
+        Files.writeString(command.readinessFile, "malformed")
+        var present = false
+        var submissions = 0
+        val host = MacOsPersistentBrokerServiceHost(
+            launchctl = LaunchctlInvoker { arguments, _ ->
+                when (arguments[1]) {
+                    "list" -> if (present) LaunchctlInvocation.Completed else LaunchctlInvocation.Absent
+                    "bootstrap" -> {
+                        submissions += 1
+                        present = true
+                        writeReadiness(command)
+                        LaunchctlInvocation.Completed
+                    }
+                    else -> error("unexpected launchctl operation: ${arguments[1]}")
+                }
+            },
+            socketProbe = BrokerSocketProbe {
+                if (present) BrokerSocketReachability.REACHABLE else BrokerSocketReachability.UNREACHABLE
+            },
+            sleeper = BrokerServiceSleeper { BrokerServiceSleep.CONTINUE },
+        )
+
+        assertEquals(PersistentBrokerServiceAdmission.Ready, host.ensure(command))
+        assertEquals(1, submissions)
+    }
+
+    @Test
+    fun `destructive recovery removes only the exact installation state tree`(
+        @TempDir temporary: Path,
+    ) {
+        val command = resolvedCommand(installedFixture(temporary))
+        val state = command.kast.parent.parent.resolve("state")
+        val runtimePayloads = Files.createDirectories(command.kast.parent.parent.resolve("runtime-payloads"))
+        Files.writeString(runtimePayloads.resolve("poisoned-runtime"), "state")
+        Files.createDirectories(command.stateDirectory)
+        Files.writeString(command.stateDirectory.resolve("poisoned"), "state")
+        val outside = Files.createDirectory(temporary.resolve("outside"))
+        val canary = Files.writeString(outside.resolve("canary"), "preserved")
+        Files.createSymbolicLink(state.resolve("outside-link"), outside)
+        var present = true
+        val operations = mutableListOf<String>()
+        val host = MacOsPersistentBrokerServiceHost(
+            launchctl = LaunchctlInvoker { arguments, _ ->
+                operations += arguments[1]
+                when (arguments[1]) {
+                    "list" -> if (present) LaunchctlInvocation.Completed else LaunchctlInvocation.Absent
+                    "bootout" -> {
+                        present = false
+                        LaunchctlInvocation.Completed
+                    }
+                    else -> error("unexpected launchctl operation: ${arguments[1]}")
+                }
+            },
+            socketProbe = BrokerSocketProbe { BrokerSocketReachability.UNREACHABLE },
+            sleeper = BrokerServiceSleeper { BrokerServiceSleep.CONTINUE },
+            retirementTimeoutNanos = TimeUnit.SECONDS.toNanos(1),
+        )
+
+        assertEquals(PersistentBrokerServiceAdmission.Ready, host.destructiveReset(command))
+        assertFalse(Files.exists(state, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+        assertFalse(Files.exists(runtimePayloads, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+        assertEquals("preserved", Files.readString(canary))
+        assertEquals(1, operations.count { it == "bootout" })
     }
 
     @Test

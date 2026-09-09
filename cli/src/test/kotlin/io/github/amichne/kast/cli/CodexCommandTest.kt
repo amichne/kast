@@ -3,6 +3,10 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.appserver.host.CodexClientLaunch
 import io.github.amichne.kast.appserver.host.CodexClientLaunchRun
 import io.github.amichne.kast.appserver.host.CodexClientLauncher
+import io.github.amichne.kast.appserver.AppServerAction
+import io.github.amichne.kast.appserver.AppServerManagementResult
+import io.github.amichne.kast.appserver.AppServerManager
+import kotlinx.serialization.json.put
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
@@ -44,9 +48,41 @@ class CodexCommandTest {
         val nested = testCli(CodexClientLauncher { error("help must be passive") })
             .execute(listOf("codex", "--help"), Path.of("/missing")) as CliExit.Complete
         assertTrue(nested.document.value.contains("desktop"))
+        assertTrue(nested.document.value.contains("state/broker/<installation-id>/service.log"))
+        assertTrue(nested.document.value.contains("state/broker/<installation-id>/launch-environment"))
+        assertTrue(nested.document.value.contains("KAST_DEBUG=1"))
+
+        val appServer = testCli(CodexClientLauncher { error("help must be passive") })
+            .execute(listOf("app-server", "--help"), Path.of("/missing")) as CliExit.Complete
+        assertTrue(appServer.document.value.contains("state/broker/<installation-id>/service.log"))
+        assertTrue(appServer.document.value.contains("state/broker/<installation-id>/launch-environment"))
+        assertTrue(appServer.document.value.contains("KAST_DEBUG=1"))
     }
 
-    private fun testCli(launcher: CodexClientLauncher): KastCli = KastCli(
+    @Test
+    fun `destructive App Server recovery requires explicit confirmation`() {
+        val actions = mutableListOf<AppServerAction>()
+        val manager = AppServerManager { action, _ ->
+            actions.add(action)
+            AppServerManagementResult.Completed(kotlinx.serialization.json.buildJsonObject {
+                put("status", "ready")
+            })
+        }
+        val cli = testCli(
+            CodexClientLauncher { error("repair must not launch Codex") },
+            manager,
+        )
+
+        assertTrue(cli.execute(listOf("app-server", "repair"), Path.of("/missing")) is CliExit.BoundaryRejected)
+        assertEquals(emptyList<AppServerAction>(), actions)
+        assertTrue(cli.execute(listOf("app-server", "repair", "--destructive"), Path.of("/missing")) is CliExit.Complete)
+        assertEquals(listOf(AppServerAction.Repair), actions)
+    }
+
+    private fun testCli(
+        launcher: CodexClientLauncher,
+        appServerManager: AppServerManager = io.github.amichne.kast.appserver.UnavailableAppServerManager,
+    ): KastCli = KastCli(
         commandGraphFactory = commandGraphFactory(),
         rootDiscovery = CanonicalRootDiscoverer { error("Codex launch must not discover a root") },
         endpointLocator = RuntimeEndpointLocator { error("Codex launch must not locate a sidecar") },
@@ -66,6 +102,7 @@ class CodexCommandTest {
         },
         lifecycle = ExactRootRuntimeLifecycle(),
         productInspector = ProductInspector { error("Codex launch must not inspect product") },
+        appServerManager = appServerManager,
         codexClientLauncher = launcher,
     )
 

@@ -22,7 +22,14 @@ private class CodexCommand : LocalKastCommand(
     override val printHelpOnEmptyArgs: Boolean = false
 
     override fun help(context: Context): String =
-        "Use the qualified Kast tool catalog from a Codex host."
+        """Use the qualified Kast tool catalog from a Codex host.
+
+           Diagnostics: the active installation writes App Server output to
+           state/broker/<installation-id>/service.log and the complete resolved launch
+           settings to state/broker/<installation-id>/launch-environment. Set
+           KAST_DEBUG=1 to also stream bounded
+           launch diagnostics to the calling process on stderr.
+        """.trimIndent()
 
     override fun resolveAction() = if (currentContext.invokedSubcommand == null) {
         CliActionResolution.Selected(CliAction.Local.CodexCli)

@@ -18,6 +18,10 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import io.github.amichne.kast.distribution.managed.ManagedInstallationOwnedTree
+import io.github.amichne.kast.distribution.managed.ManagedInstallationOwnedTreeAdmission
+import io.github.amichne.kast.distribution.managed.ManagedInstallationOwnedTreeDeletion
+import io.github.amichne.kast.distribution.managed.ManagedInstallationTreeKind
 import java.io.IOException
 import java.net.ConnectException
 import java.nio.channels.FileChannel
@@ -362,6 +366,68 @@ internal class MacOsPersistentBrokerServiceHost(
         }
     }
 
+    /** Explicit destructive recovery for state owned by this exact physical installation. */
+    internal fun destructiveReset(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission {
+        val installationRoot = command.kast.parent.parent
+        val stateRoot = installationRoot.resolve("state")
+        val ownedTrees = ManagedInstallationTreeKind.entries.map { kind ->
+            ManagedInstallationOwnedTree.admit(
+                installationRoot,
+                kind,
+                installationRoot.resolve(kind.directoryName),
+            )
+        }
+        if (ownedTrees.any { it is ManagedInstallationOwnedTreeAdmission.Rejected }) {
+            return rejected(PersistentBrokerServiceFailure.STATE_DIRECTORY_REJECTED)
+        }
+        val admittedTrees = ownedTrees.map { admission ->
+            when (admission) {
+                is ManagedInstallationOwnedTreeAdmission.Admitted -> admission.tree
+                ManagedInstallationOwnedTreeAdmission.Rejected ->
+                return rejected(PersistentBrokerServiceFailure.STATE_DIRECTORY_REJECTED)
+            }
+        }
+        if (!command.stateDirectory.startsWith(stateRoot) ||
+            !command.serviceLog.startsWith(command.stateDirectory) ||
+            !command.launchEnvironment.startsWith(command.stateDirectory)) {
+            return rejected(PersistentBrokerServiceFailure.STATE_DIRECTORY_REJECTED)
+        }
+
+        when (observeService(command.serviceLabel)) {
+            BrokerLaunchdServiceObservation.Present -> when (retireService(command)) {
+                BrokerLaunchdServiceRetirement.Retired -> Unit
+                BrokerLaunchdServiceRetirement.Interrupted -> return rejected(PersistentBrokerServiceFailure.INTERRUPTED)
+                BrokerLaunchdServiceRetirement.TimedOut -> return rejected(PersistentBrokerServiceFailure.LAUNCHCTL_TIMED_OUT)
+                BrokerLaunchdServiceRetirement.Rejected -> return rejected(PersistentBrokerServiceFailure.SERVICE_RETIREMENT_REJECTED)
+            }
+            BrokerLaunchdServiceObservation.Absent -> Unit
+            BrokerLaunchdServiceObservation.Interrupted -> return rejected(PersistentBrokerServiceFailure.INTERRUPTED)
+            BrokerLaunchdServiceObservation.TimedOut -> return rejected(PersistentBrokerServiceFailure.LAUNCHCTL_TIMED_OUT)
+            BrokerLaunchdServiceObservation.Rejected -> return rejected(PersistentBrokerServiceFailure.SERVICE_OBSERVATION_REJECTED)
+        }
+        val deadline = System.nanoTime() + retirementTimeoutNanos
+        while (System.nanoTime() < deadline) {
+            when (observeService(command.serviceLabel)) {
+                BrokerLaunchdServiceObservation.Absent -> break
+                BrokerLaunchdServiceObservation.Present -> if (sleeper.sleep() == BrokerServiceSleep.INTERRUPTED) {
+                    return rejected(PersistentBrokerServiceFailure.INTERRUPTED)
+                }
+                BrokerLaunchdServiceObservation.Interrupted -> return rejected(PersistentBrokerServiceFailure.INTERRUPTED)
+                BrokerLaunchdServiceObservation.TimedOut -> return rejected(PersistentBrokerServiceFailure.LAUNCHCTL_TIMED_OUT)
+                BrokerLaunchdServiceObservation.Rejected -> return rejected(PersistentBrokerServiceFailure.SERVICE_OBSERVATION_REJECTED)
+            }
+        }
+        if (observeService(command.serviceLabel) != BrokerLaunchdServiceObservation.Absent) {
+            return rejected(PersistentBrokerServiceFailure.SERVICE_RETIREMENT_REJECTED)
+        }
+        return when {
+            admittedTrees.all { it.delete() == ManagedInstallationOwnedTreeDeletion.Deleted } ->
+                PersistentBrokerServiceAdmission.Ready
+            else ->
+                rejected(PersistentBrokerServiceFailure.STATE_DIRECTORY_REJECTED)
+        }
+    }
+
     private fun ensureExclusively(
         command: BrokerServiceLaunchCommand,
     ): PersistentBrokerServiceAdmission = when (observeService(command.serviceLabel)) {
@@ -382,9 +448,7 @@ internal class MacOsPersistentBrokerServiceHost(
         command: BrokerServiceLaunchCommand,
     ): PersistentBrokerServiceAdmission = when (val readiness = observeReadiness(command)) {
         BrokerReadinessObservation.Missing -> awaitReadiness(command)
-        BrokerReadinessObservation.Invalid -> rejected(
-            PersistentBrokerServiceFailure.READINESS_REJECTED,
-        )
+        BrokerReadinessObservation.Invalid -> recoverInvalidReadiness(command)
         is BrokerReadinessObservation.Starting -> if (readiness.isCurrent(command)) {
             awaitReadiness(command)
         } else {
@@ -406,6 +470,44 @@ internal class MacOsPersistentBrokerServiceHost(
         }
     }
 
+    private fun recoverInvalidReadiness(
+        command: BrokerServiceLaunchCommand,
+    ): PersistentBrokerServiceAdmission {
+        val published = PublishedBrokerServiceCommand.recover(command)
+            ?: return rejected(PersistentBrokerServiceFailure.READINESS_REJECTED)
+        when (retireService(published)) {
+            BrokerLaunchdServiceRetirement.Retired -> Unit
+            BrokerLaunchdServiceRetirement.Interrupted -> return rejected(PersistentBrokerServiceFailure.INTERRUPTED)
+            BrokerLaunchdServiceRetirement.TimedOut -> return rejected(PersistentBrokerServiceFailure.LAUNCHCTL_TIMED_OUT)
+            BrokerLaunchdServiceRetirement.Rejected -> return rejected(PersistentBrokerServiceFailure.SERVICE_RETIREMENT_REJECTED)
+        }
+        val deadline = System.nanoTime() + retirementTimeoutNanos
+        while (System.nanoTime() < deadline) {
+            when (observeService(command.serviceLabel)) {
+                BrokerLaunchdServiceObservation.Absent -> {
+                    if (Files.isSymbolicLink(command.readinessFile)) {
+                        return rejected(PersistentBrokerServiceFailure.READINESS_REJECTED)
+                    }
+                    return try {
+                        Files.deleteIfExists(command.readinessFile)
+                        submitAndAwait(command)
+                    } catch (_: IOException) {
+                        rejected(PersistentBrokerServiceFailure.READINESS_REJECTED)
+                    } catch (_: SecurityException) {
+                        rejected(PersistentBrokerServiceFailure.READINESS_REJECTED)
+                    }
+                }
+                BrokerLaunchdServiceObservation.Present -> if (sleeper.sleep() == BrokerServiceSleep.INTERRUPTED) {
+                    return rejected(PersistentBrokerServiceFailure.INTERRUPTED)
+                }
+                BrokerLaunchdServiceObservation.Interrupted -> return rejected(PersistentBrokerServiceFailure.INTERRUPTED)
+                BrokerLaunchdServiceObservation.TimedOut -> return rejected(PersistentBrokerServiceFailure.LAUNCHCTL_TIMED_OUT)
+                BrokerLaunchdServiceObservation.Rejected -> return rejected(PersistentBrokerServiceFailure.SERVICE_OBSERVATION_REJECTED)
+            }
+        }
+        return rejected(PersistentBrokerServiceFailure.SERVICE_RETIREMENT_REJECTED)
+    }
+
     private fun reconcileAbsent(
         command: BrokerServiceLaunchCommand,
     ): PersistentBrokerServiceAdmission = when (val readiness = observeReadiness(command)) {
@@ -418,9 +520,7 @@ internal class MacOsPersistentBrokerServiceHost(
                 PersistentBrokerServiceFailure.SOCKET_PROBE_REJECTED,
             )
         }
-        BrokerReadinessObservation.Invalid -> rejected(
-            PersistentBrokerServiceFailure.READINESS_REJECTED,
-        )
+        BrokerReadinessObservation.Invalid -> recoverOrphanedInvalidReadiness(command)
         is BrokerReadinessObservation.Published -> when (probeSocket(command)) {
             BrokerSocketReachability.REACHABLE -> rejected(
                 PersistentBrokerServiceFailure.PUBLIC_SOCKET_OWNED,
@@ -442,6 +542,27 @@ internal class MacOsPersistentBrokerServiceHost(
                 BrokerReadinessRetirement.Rejected -> rejected(
                     PersistentBrokerServiceFailure.READINESS_REJECTED,
                 )
+            }
+        }
+    }
+
+    private fun recoverOrphanedInvalidReadiness(
+        command: BrokerServiceLaunchCommand,
+    ): PersistentBrokerServiceAdmission = when (probeSocket(command)) {
+        BrokerSocketReachability.REACHABLE -> rejected(PersistentBrokerServiceFailure.PUBLIC_SOCKET_OWNED)
+        BrokerSocketReachability.REJECTED -> rejected(PersistentBrokerServiceFailure.SOCKET_PROBE_REJECTED)
+        BrokerSocketReachability.UNREACHABLE -> {
+            if (Files.isSymbolicLink(command.readinessFile)) {
+                rejected(PersistentBrokerServiceFailure.READINESS_REJECTED)
+            } else {
+                try {
+                    Files.deleteIfExists(command.readinessFile)
+                    submitAndAwait(command)
+                } catch (_: IOException) {
+                    rejected(PersistentBrokerServiceFailure.READINESS_REJECTED)
+                } catch (_: SecurityException) {
+                    rejected(PersistentBrokerServiceFailure.READINESS_REJECTED)
+                }
             }
         }
     }
@@ -823,9 +944,10 @@ internal class MacOsPersistentBrokerServiceHost(
         val pathsAdmitted = listOf(
             command.readinessFile,
             command.serviceLog,
+            command.launchEnvironment,
             command.serviceLock,
         ).none(Files::isSymbolicLink)
-        if (exact && pathsAdmitted) {
+        if (exact && pathsAdmitted && writeLaunchEnvironment(command)) {
             BrokerStateDirectoryPreparation.Prepared
         } else {
             BrokerStateDirectoryPreparation.Rejected
@@ -834,6 +956,40 @@ internal class MacOsPersistentBrokerServiceHost(
         BrokerStateDirectoryPreparation.Rejected
     } catch (_: SecurityException) {
         BrokerStateDirectoryPreparation.Rejected
+    }
+
+    private fun writeLaunchEnvironment(command: BrokerServiceLaunchCommand): Boolean = try {
+        val selectedHost = when (val host = command.host) {
+            is BrokerHostSelection.Selected -> mapOf("CODEX_EXECUTABLE" to host.executable.launcherPath.toString())
+            BrokerHostSelection.Disabled, BrokerHostSelection.NotConfigured -> emptyMap()
+        }
+        val values = command.configuration.launchEnvironment().variables + selectedHost + mapOf(
+            "CODEX_HOME" to command.codexHome.toString(),
+            APP_SERVER_ENABLE_ENVIRONMENT to if (command.host == BrokerHostSelection.Disabled) "0" else "1",
+            APP_SERVER_TOOLS_ENVIRONMENT to command.toolSelection.environmentValue,
+        )
+        val document = buildString {
+            appendLine("# Complete resolved Kast launch configuration. Values are literal; shell syntax is not evaluated.")
+            values.toSortedMap().forEach { (key, value) -> appendLine("$key=$value") }
+        }
+        val temporary = Files.createTempFile(command.stateDirectory, ".launch-environment-", ".tmp")
+        try {
+            Files.writeString(temporary, document)
+            Files.setPosixFilePermissions(temporary, PosixFilePermissions.fromString("rw-------"))
+            Files.move(
+                temporary,
+                command.launchEnvironment,
+                java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+            )
+        } finally {
+            Files.deleteIfExists(temporary)
+        }
+        true
+    } catch (_: IOException) {
+        false
+    } catch (_: SecurityException) {
+        false
     }
 
     private fun observeReadiness(

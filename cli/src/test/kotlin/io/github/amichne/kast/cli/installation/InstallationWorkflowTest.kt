@@ -1,6 +1,8 @@
 package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSource
+import io.github.amichne.kast.distribution.contract.configuration.KastConfigurationCatalogue
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
@@ -14,6 +16,39 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class InstallationWorkflowTest {
+    @Test
+    fun `fresh installation materializes every saved default in its environment file`(
+        @TempDir temporary: Path,
+    ) {
+        val root = temporary.toRealPath()
+        val installation = root.resolve("installation")
+        assertInstanceOf(
+            InstallationOutcome.Complete::class.java,
+            InstallationWorkflow.execute(
+                releaseRequest(
+                    root,
+                    installation,
+                    root.resolve("commands"),
+                    Files.createDirectory(root.resolve("home")),
+                    Files.createDirectory(root.resolve("codex-home")),
+                    "1.2.3",
+                ),
+            ),
+        )
+        val selected = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
+        val values = Files.readAllLines(selected.resolve("config/environment"))
+            .filterNot { it.startsWith("#") }
+            .filter(String::isNotBlank)
+            .associate { it.substringBefore('=') to it.substringAfter('=') }
+        val defaults = KastConfigurationCatalogue.declarations.filter {
+            ConfigurationSource.SAVED_INSTALLATION in it.sources && it.defaultValue != null
+        }
+        defaults.forEach { declaration ->
+            assertTrue(values.containsKey(declaration.key), declaration.key)
+        }
+        assertEquals("0", values["KAST_DEBUG"])
+    }
+
     @Test
     fun `upgrade retains the admitted workspace registry`(
         @TempDir temporary: Path,

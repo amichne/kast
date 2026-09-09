@@ -70,14 +70,21 @@ will inspect:
 
 ```console
 cd /path/to/kotlin-repository
-kast app-server enable
 kast codex
 ```
 
-`kast codex desktop` attaches to the same persistent service. Enablement enrolls
-one canonical workspace and installs a login bootstrap for Codex's standard
-local-daemon socket. Client closure leaves the service running. Use
+`kast codex` now enrolls the current workspace, installs or refreshes the login
+bootstrap, recovers stale owned broker state, and starts the persistent service
+before launching Codex. `kast codex desktop` performs the same preparation and
+attaches to that service. Client closure leaves the service running. Use
 `kast app-server status`, `stop`, or `disable` to manage its lifecycle.
+
+`kast app-server status` reports the exact service-log and resolved launch-
+environment paths. Set `KAST_DEBUG=1` for bounded launch stages on the calling
+process's stderr. If normal ownership recovery cannot converge, the explicit
+`kast app-server repair --destructive` command deletes only the active
+installation's owned runtime, cache, broker, and workspace-registry state,
+re-enrolls the current workspace, and starts clean.
 
 Desktop build-specific discovery is checked, but full desktop compatibility is
 still unqualified. See the module's [compatibility and blocker record](app-server/docs/compatibility.md)

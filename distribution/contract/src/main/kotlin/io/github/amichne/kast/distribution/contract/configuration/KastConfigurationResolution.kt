@@ -108,12 +108,18 @@ class ConfigurationOwnerCandidate internal constructor(
     override fun toString(): String = "ConfigurationOwnerCandidate(parameter=$parameter, source=$source)"
 }
 
+/** Resolved, non-secret launch evidence; arbitrary ambient variables can never enter it. */
+class ResolvedLaunchEnvironment internal constructor(
+    val variables: Map<String, String>,
+)
+
 /** Resolved syntax and provenance. Effectful owner admission (paths, tools, trust) remains explicit. */
 class ResolvedKastConfiguration private constructor(
     private val assignments: List<ResolvedAssignment>,
     private val suppliedCandidates: List<ResolvedAssignment>,
     val indexerHeap: IndexerHeapSize,
     val launchd: ConfigurationSwitch,
+    val debug: ConfigurationSwitch,
     val workerCapacity: WorkerCapacityConfiguration,
     private val delegatedEnvironment: GradleImportEnvironment,
 ) {
@@ -149,6 +155,21 @@ class ResolvedKastConfiguration private constructor(
             },
         )
     }
+
+    /** Complete non-secret runtime configuration, including catalogue defaults, for launch evidence. */
+    fun launchEnvironment(): ResolvedLaunchEnvironment = ResolvedLaunchEnvironment(
+        assignments
+            .filter { assignment ->
+                assignment.parameter.scope in setOf(
+                    ConfigurationScope.INSTALLATION,
+                    ConfigurationScope.HOST_PROFILE,
+                    ConfigurationScope.WORKSPACE,
+                ) && assignment.parameter.disclosure != ConfigurationDisclosure.SECRET_PRESENCE
+            }
+            .associate { assignment ->
+                assignment.parameter.key to assignment.value.boundaryValue()
+            },
+    )
 
     /** Raw values may leave only at the named child process effect boundary. No ambient forwarding. */
     fun childEnvironment(child: ConfigurationChild): Map<String, String> = childProjection(child, reloadSaved = true)
@@ -235,6 +256,7 @@ class ResolvedKastConfiguration private constructor(
             val byKey = resolved.associateBy { it.parameter }
             val heap = (byKey.getValue(ConfigurationParameter.INDEXER_MAX_HEAP).value as ConfigurationValue.Heap).value
             val launchd = (byKey.getValue(ConfigurationParameter.ENABLE_LAUNCHD).value as ConfigurationValue.Switch).value
+            val debug = (byKey.getValue(ConfigurationParameter.DEBUG).value as ConfigurationValue.Switch).value
             val rawNames = byKey.getValue(ConfigurationParameter.GRADLE_IMPORT_VARIABLES).value.boundaryValue()
             val gradleHome = byKey[ConfigurationParameter.GRADLE_USER_HOME]?.value?.boundaryValue()
             val names = if (gradleHome == null) rawNames else listOf(rawNames, "GRADLE_USER_HOME").filter { it.isNotEmpty() }.joinToString(",")
@@ -250,7 +272,7 @@ class ResolvedKastConfiguration private constructor(
                 count(ConfigurationParameter.WORKER_STARTUP_LIMIT), memory(ConfigurationParameter.WORKER_AGGREGATE_MIB),
                 memory(ConfigurationParameter.WORKER_NATIVE_MIB), memory(ConfigurationParameter.WORKER_GRADLE_MIB))
             if (capacity.startup.value > capacity.resident.value) return rejected(ConfigurationParameter.WORKER_STARTUP_LIMIT.key, ConfigurationFailure.INVALID_VALUE)
-            return Refinement.Refined(ResolvedKastConfiguration(resolved.sortedBy { it.parameter.key }, admitted.values.flatten().toList(), heap, launchd, capacity, delegated))
+            return Refinement.Refined(ResolvedKastConfiguration(resolved.sortedBy { it.parameter.key }, admitted.values.flatten().toList(), heap, launchd, debug, capacity, delegated))
         }
     }
 }

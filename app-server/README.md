@@ -12,16 +12,17 @@ for observed evidence, remaining client checks, and reproduction commands.
 On the inspected macOS desktop build, run from the workspace to enroll:
 
 ```sh
-kast app-server enable
 kast app-server status
 kast codex
 # Alternatively:
 kast codex desktop
 ```
 
-Enablement records one canonical workspace under the selected `CODEX_HOME`,
-installs a login LaunchAgent, starts the broker, and establishes the GUI daemon
-opt-in. It rejects known conflicting overrides and unsupported desktop builds.
+`kast codex` performs enablement automatically: it records the canonical current
+workspace, refreshes the login LaunchAgent, starts or safely recovers the broker,
+and establishes the GUI daemon opt-in before launching the client. Explicit
+`kast app-server enable` remains available for service-only setup. It rejects
+known conflicting overrides and unsupported desktop builds.
 Desktop host-specific configuration and interactive behavior still require the
 release gate below. A currently running desktop process must be restarted by its
 user to pick up the login environment.
@@ -103,7 +104,11 @@ history or authoritative idle status can restore task control. This does not
 clear an uncertain mutation's durable fence. Corrupt enrollment, thread bindings,
 or invocation journals fail closed. The journal caps at 4,096 invocation records;
 capacity exhaustion is an explicit rejection, not automatic eviction of replay
-protection. There is no destructive journal-reset command.
+protection. When safe ownership recovery cannot converge,
+`kast app-server repair --destructive` explicitly retires the installation's
+launchd label, deletes only that physical installation's state and workspace
+registry, re-enrolls the current workspace, and starts clean. Symlinks found
+inside the state tree are deleted as links and never followed.
 
 ## Presentation and evidence
 
@@ -115,6 +120,11 @@ client-owned responders keep their protocol identities.
 
 Status separates transport, protocol, catalog, semantic readiness, and desktop
 qualification. Startup and invocation logs contain typed stage/outcome evidence.
+A status document includes the exact service log, saved configuration, workspace
+registry, and `launch-environment` paths. Each service ensure atomically rewrites
+the private launch-environment snapshot with all resolved non-secret settings,
+including defaults. `KAST_DEBUG=1` additionally streams bounded launch stages to
+the calling process's stderr.
 A bounded session trail records admission, handshake, detach, transport failure,
 reconciliation, and invocation outcome without source or argument payloads.
 

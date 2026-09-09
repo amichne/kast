@@ -1,23 +1,30 @@
 package io.github.amichne.kast.appserver.host
 
+import io.github.amichne.kast.appserver.AppServerAction
+import io.github.amichne.kast.appserver.AppServerManagementFailure
+import io.github.amichne.kast.appserver.AppServerManagementResult
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
-import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOwner
-import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
-
 import io.github.amichne.kast.appserver.BrokerServiceLaunchCommand
 import io.github.amichne.kast.appserver.BrokerServiceLaunchCommandResolution
+import io.github.amichne.kast.appserver.InstalledAppServerManager
 import io.github.amichne.kast.appserver.MacOsPersistentBrokerServiceHost
 import io.github.amichne.kast.appserver.PersistentBrokerServiceAdmission
 import io.github.amichne.kast.appserver.PersistentBrokerServiceFailure
 import io.github.amichne.kast.appserver.PersistentBrokerServiceHost
+import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.appserver.host.admission.DesktopFacadeExecutable
 import io.github.amichne.kast.appserver.host.admission.UpstreamCodexExecutable
-import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.appserver.provider.BrokerExecutable
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOwner
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSwitch
+import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
+import java.io.PrintStream
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 enum class CodexClientLaunch {
     Cli,
@@ -90,6 +97,22 @@ fun interface CodexClientLauncher {
     fun launch(client: CodexClientLaunch): CodexClientLaunchRun
 }
 
+internal sealed interface CodexLaunchPreparation {
+    data object Prepared : CodexLaunchPreparation
+    data class Rejected(
+        val failure: AppServerManagementFailure,
+        val serviceFailure: PersistentBrokerServiceFailure?,
+    ) : CodexLaunchPreparation
+}
+
+internal fun interface CodexLaunchPreparer {
+    fun prepare(workspace: Path): CodexLaunchPreparation
+}
+
+private data object NoCodexLaunchPreparation : CodexLaunchPreparer {
+    override fun prepare(workspace: Path): CodexLaunchPreparation = CodexLaunchPreparation.Prepared
+}
+
 object UnavailableCodexClientLauncher : CodexClientLauncher {
     override fun launch(client: CodexClientLaunch): CodexClientLaunchRun =
         CodexClientLaunchRun.Rejected(CodexClientLaunchFailure.APP_SERVER_UNAVAILABLE)
@@ -102,6 +125,8 @@ internal class InstalledCodexClientLauncher(
     private val environment: Map<String, String> = System.getenv(),
     private val processLauncher: CodexClientProcessLauncher = JdkCodexClientProcessLauncher,
     private val serviceHost: PersistentBrokerServiceHost = MacOsPersistentBrokerServiceHost(),
+    private val preparer: CodexLaunchPreparer = NoCodexLaunchPreparation,
+    private val debugOutput: PrintStream = System.err,
 ) : CodexClientLauncher {
     override fun launch(client: CodexClientLaunch): CodexClientLaunchRun {
         if (client == CodexClientLaunch.Desktop &&
@@ -124,13 +149,26 @@ internal class InstalledCodexClientLauncher(
             io.github.amichne.kast.appserver.BrokerHostSelection.Disabled,
             io.github.amichne.kast.appserver.BrokerHostSelection.NotConfigured -> return CodexClientLaunchRun.Rejected(CodexClientLaunchFailure.APP_SERVER_UNAVAILABLE)
         }
+        debug(command, client, "configuration-resolved")
+        val workingDirectory = CanonicalBrokerDirectory.admit(
+            Path.of(System.getProperty("user.dir")),
+        ) ?: return CodexClientLaunchRun.Rejected(
+            CodexClientLaunchFailure.WORKING_DIRECTORY_REJECTED,
+        )
+        when (val preparation = preparer.prepare(workingDirectory.path)) {
+            CodexLaunchPreparation.Prepared -> debug(command, client, "workspace-prepared")
+            is CodexLaunchPreparation.Rejected -> {
+                debug(
+                    command,
+                    client,
+                    "workspace-preparation-rejected",
+                    preparation.serviceFailure?.name?.lowercase() ?: preparation.failure.name.lowercase(),
+                )
+                return CodexClientLaunchRun.Rejected(CodexClientLaunchFailure.APP_SERVER_UNAVAILABLE)
+            }
+        }
         val request = when (client) {
             CodexClientLaunch.Cli -> {
-                val workingDirectory = CanonicalBrokerDirectory.admit(
-                    Path.of(System.getProperty("user.dir")),
-                ) ?: return CodexClientLaunchRun.Rejected(
-                    CodexClientLaunchFailure.WORKING_DIRECTORY_REJECTED,
-                )
                 CodexClientProcessRequest.Cli(
                     codex,
                     command.publicSocket,
@@ -144,12 +182,35 @@ internal class InstalledCodexClientLauncher(
             }
         }
         when (val admission = serviceHost.ensure(command)) {
-            PersistentBrokerServiceAdmission.Ready -> Unit
-            is PersistentBrokerServiceAdmission.Rejected -> return CodexClientLaunchRun.Rejected(
-                admission.failure.launchFailure(),
-            )
+            PersistentBrokerServiceAdmission.Ready -> debug(command, client, "service-ready")
+            is PersistentBrokerServiceAdmission.Rejected -> {
+                debug(command, client, "service-rejected", admission.failure.name.lowercase())
+                return CodexClientLaunchRun.Rejected(admission.failure.launchFailure())
+            }
         }
-        return processLauncher.launch(request)
+        return processLauncher.launch(request).also { result ->
+            when (result) {
+                is CodexClientLaunchRun.Completed -> debug(command, client, "client-completed", result.exitCode.toString())
+                is CodexClientLaunchRun.Rejected -> debug(command, client, "client-rejected", result.failure.name.lowercase())
+            }
+        }
+    }
+
+    private fun debug(
+        command: BrokerServiceLaunchCommand,
+        client: CodexClientLaunch,
+        event: String,
+        outcome: String? = null,
+    ) {
+        if (command.configuration.debug != ConfigurationSwitch.ENABLED) return
+        debugOutput.println(buildJsonObject {
+            put("component", "kast-launch")
+            put("event", event)
+            put("client", client.name.lowercase())
+            put("serviceLog", command.serviceLog.toString())
+            put("launchEnvironment", command.launchEnvironment.toString())
+            outcome?.let { put("outcome", it) }
+        })
     }
 
     private fun desktopRequest(
@@ -294,5 +355,19 @@ private fun PersistentBrokerServiceFailure.launchFailure(): CodexClientLaunchFai
     PersistentBrokerServiceFailure.INTERRUPTED -> CodexClientLaunchFailure.INTERRUPTED
 }
 
-fun installedCodexClientLauncher(kastExecutable: Path, userHome: Path): CodexClientLauncher =
-    InstalledCodexClientLauncher(kastExecutable, userHome)
+fun installedCodexClientLauncher(kastExecutable: Path, userHome: Path): CodexClientLauncher {
+    val manager = InstalledAppServerManager(kastExecutable, userHome)
+    return InstalledCodexClientLauncher(
+        kastExecutable,
+        userHome,
+        preparer = CodexLaunchPreparer { workspace ->
+            when (val result = manager.execute(AppServerAction.Enable, workspace)) {
+                is AppServerManagementResult.Completed -> CodexLaunchPreparation.Prepared
+                is AppServerManagementResult.Rejected -> CodexLaunchPreparation.Rejected(
+                    result.failure,
+                    result.serviceFailure,
+                )
+            }
+        },
+    )
+}

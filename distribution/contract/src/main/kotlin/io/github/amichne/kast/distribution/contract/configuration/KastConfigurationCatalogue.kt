@@ -105,6 +105,7 @@ enum class ConfigurationParameter(
     INSTALL_MODE("KAST_INSTALL_MODE", ConfigurationSyntax.OWNER_INPUT, ConfigurationScope.INSTALLATION, ":cli",
         mutability = ConfigurationMutability.DERIVED),
     ASCII("KAST_ASCII", ConfigurationSyntax.SWITCH, ConfigurationScope.INSTALLATION, defaultValue = "0"),
+    DEBUG("KAST_DEBUG", ConfigurationSyntax.SWITCH, ConfigurationScope.HOST_PROFILE, defaultValue = "0", children = setOf(ConfigurationChild.BROKER)),
     APP_JAR("KAST_APP_JAR", ConfigurationSyntax.ABSOLUTE_PATH, ConfigurationScope.INSTALLATION),
     JVM_OPTIONS("KAST_OPTS", ConfigurationSyntax.OWNER_INPUT, ConfigurationScope.INSTALLATION, ":cli", disclosure = ConfigurationDisclosure.SECRET_PRESENCE, mutability = ConfigurationMutability.DERIVED),
     RUNTIME_BASE_URL("KAST_RUNTIME_BASE_URL", ConfigurationSyntax.OWNER_INPUT, ConfigurationScope.BUILD, ":build-logic", mutability = ConfigurationMutability.BUILD_SETTING),

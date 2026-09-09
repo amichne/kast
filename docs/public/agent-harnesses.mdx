@@ -116,6 +116,12 @@ integration without removing Kast with a process override:
 KAST_ENABLE_APP_SERVER=0
 ```
 
+Fresh installations materialize every saved-installation default in this file,
+including `KAST_DEBUG=0`. Each App Server launch also atomically writes the full
+resolved non-secret snapshot to the `launchEnvironment` path reported by
+`kast app-server status`. Use `KAST_DEBUG=1` to stream bounded launch diagnostics
+to stderr in addition to the persistent service log.
+
 Set `KAST_APP_SERVER_TOOLS` to an exact, non-empty comma-separated subset of the
 names in `kast --schema`. Process values override the saved file. Unknown,
 duplicate, or empty names reject startup. The default value is:

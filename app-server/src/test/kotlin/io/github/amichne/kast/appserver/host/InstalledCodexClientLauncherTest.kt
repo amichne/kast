@@ -10,12 +10,49 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import java.util.concurrent.atomic.AtomicReference
 
 class InstalledCodexClientLauncherTest {
+    @Test
+    fun `debug launch prepares the workspace and streams bounded stages to the caller`(
+        @TempDir temporary: Path,
+    ) {
+        val bin = Files.createDirectory(temporary.resolve("bin"))
+        val home = Files.createDirectory(temporary.resolve("home")).toRealPath()
+        val kast = executable(bin.resolve("kast"))
+        executable(bin.resolve("codex"))
+        val prepared = mutableListOf<Path>()
+        val output = ByteArrayOutputStream()
+        val launcher = InstalledCodexClientLauncher(
+            kast,
+            home,
+            mapOf("PATH" to bin.toString(), "KAST_DEBUG" to "1"),
+            CapturedProcessLauncher(),
+            ReadyServiceHost(),
+            CodexLaunchPreparer { workspace ->
+                prepared.add(workspace)
+                CodexLaunchPreparation.Prepared
+            },
+            PrintStream(output, true, Charsets.UTF_8),
+        )
+
+        assertEquals(CodexClientLaunchRun.Completed(0), launcher.launch(CodexClientLaunch.Cli))
+        assertEquals(listOf(Path.of(System.getProperty("user.dir")).toRealPath()), prepared)
+        val debug = output.toString(Charsets.UTF_8)
+        assertTrue(debug.contains("\"event\":\"configuration-resolved\""), debug)
+        assertTrue(debug.contains("\"event\":\"workspace-prepared\""), debug)
+        assertTrue(debug.contains("\"event\":\"service-ready\""), debug)
+        assertTrue(debug.contains("\"event\":\"client-completed\""), debug)
+        assertTrue(debug.contains("/service.log"), debug)
+        assertTrue(debug.contains("/launch-environment"), debug)
+        assertFalse(debug.contains("CODEX_EXECUTABLE"), debug)
+    }
+
     @Test
     fun `saved desktop executable is selected from the resolved owner snapshot`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()

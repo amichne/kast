@@ -84,6 +84,27 @@ The broker rejects startup if it cannot prove the installed projection, the
 Codex protocol, the tool catalog, or an executable route. Do not work around
 that rejection with handwritten tool definitions.
 
+`kast codex` automatically enrolls the current workspace, refreshes the owned
+login bootstrap, and recovers stale or malformed owned broker readiness before
+launching the client. `kast app-server status` reports exact paths under `paths`,
+including `serviceLog`, `launchEnvironment`, `savedConfiguration`, and
+`workspaceRegistry`. Set `KAST_DEBUG=1` to stream bounded, payload-free launch
+stages and those diagnostic paths to the calling process's stderr.
+
+If ordinary recovery cannot establish a healthy service, explicitly request the
+destructive mode:
+
+```console
+kast app-server repair --destructive
+```
+
+This retires the exact launchd label for the active physical installation,
+deletes that installation's runtime, cache, broker, and workspace-registry state,
+re-enrolls the current workspace, rewrites the login bootstrap, and starts clean.
+It does not follow symlinks found inside the owned state tree. The operation is
+intentionally unavailable without `--destructive` because cached indexes and
+durable invocation evidence are discarded.
+
 ### A stale reference rejects
 
 Source or imported-model changes can move the semantic generation. Ask the agent

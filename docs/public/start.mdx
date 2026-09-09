@@ -74,9 +74,10 @@ kast codex
 ```
 
 The integration ensures a launchd-owned App Server at Codex's standard local
-daemon socket, qualifies the exact installed Kast projection, and starts Codex
-through its supported remote transport. The default catalog omits only direct
-symbol lookup and inspection.
+daemon socket, enrolls the current workspace, refreshes the login bootstrap,
+qualifies the exact installed Kast projection, and starts Codex through its
+supported remote transport. A separate `kast app-server enable` step is not
+required. The default catalog omits only direct symbol lookup and inspection.
 
 To launch Codex Desktop through the same qualified integration:
 

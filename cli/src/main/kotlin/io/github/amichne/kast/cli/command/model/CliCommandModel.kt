@@ -22,6 +22,7 @@ enum class CliProductCommand(
 ) {
     APP_SERVER_REGISTER("app-server register", CliLocalExposure.PUBLIC),
     APP_SERVER_ENABLE("app-server enable", CliLocalExposure.PUBLIC),
+    APP_SERVER_REPAIR("app-server repair --destructive", CliLocalExposure.PUBLIC),
     APP_SERVER_STATUS("app-server status", CliLocalExposure.PUBLIC),
     APP_SERVER_STOP("app-server stop", CliLocalExposure.PUBLIC),
     APP_SERVER_DISABLE("app-server disable", CliLocalExposure.PUBLIC),

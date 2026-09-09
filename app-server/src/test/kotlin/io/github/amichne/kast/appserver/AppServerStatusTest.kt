@@ -34,6 +34,11 @@ class AppServerStatusTest {
                 assertEquals("1", document.getValue("registry").jsonObject.getValue("count").jsonPrimitive.content)
                 assertEquals("unobserved", document.getValue("protocol").jsonPrimitive.content)
                 assertEquals("pending", document.getValue("host").jsonObject.getValue("attachment").jsonPrimitive.content)
+                val paths = document.getValue("paths").jsonObject
+                assertEquals(command.serviceLog.toString(), paths.getValue("serviceLog").jsonPrimitive.content)
+                assertEquals(command.launchEnvironment.toString(), paths.getValue("launchEnvironment").jsonPrimitive.content)
+                assertEquals(root.resolve("config/environment").toString(), paths.getValue("savedConfiguration").jsonPrimitive.content)
+                assertEquals(root.resolve("config/workspaces.json").toString(), paths.getValue("workspaceRegistry").jsonPrimitive.content)
                 assertFalse(activities.any { it.stage == BrokerStartupStage.HOST_ADMISSION })
                 assertFalse(Files.exists(root.resolve(".codex")))
                 assertFalse(Files.exists(root.resolve("state/run/u.sock")))

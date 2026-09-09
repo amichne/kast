@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit
 sealed interface AppServerAction {
     data object Register : AppServerAction
     data object Enable : AppServerAction
+    data object Repair : AppServerAction
     data object Bootstrap : AppServerAction
     data object Status : AppServerAction
     data object Stop : AppServerAction
@@ -63,7 +64,7 @@ class InstalledAppServerManager(
         val installationRoot = try { kast.toRealPath().parent.parent } catch (_: Exception) {
             return reject(AppServerManagementFailure.CONFIGURATION_REJECTED)
         }
-        if ((action == AppServerAction.Enable || action == AppServerAction.Bootstrap) &&
+        if ((action == AppServerAction.Enable || action == AppServerAction.Repair || action == AppServerAction.Bootstrap) &&
             InstallationLifecycleFence.observe(installationRoot) != InstallationLifecycleStartAdmission.AVAILABLE) {
             return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
         }
@@ -77,7 +78,7 @@ class InstalledAppServerManager(
                 put("revision", registered.value.revision.value)
             })
         }
-        val selectedEnvironment = if (action == AppServerAction.Enable) environment + (APP_SERVER_ENABLE_ENVIRONMENT to "1") else environment
+        val selectedEnvironment = if (action == AppServerAction.Enable || action == AppServerAction.Repair) environment + (APP_SERVER_ENABLE_ENVIRONMENT to "1") else environment
         val command = when (val resolved = BrokerServiceLaunchCommand.resolveCoordinator(kast,userHome,selectedEnvironment)) {
             is BrokerServiceLaunchCommandResolution.Resolved -> resolved.command
             is BrokerServiceLaunchCommandResolution.Rejected -> return reject(AppServerManagementFailure.CONFIGURATION_REJECTED)
@@ -90,13 +91,25 @@ class InstalledAppServerManager(
                     if (enrollment.enroll(workspace) is Refinement.Rejected) return reject(AppServerManagementFailure.ENROLLMENT_REJECTED)
                     if (Files.exists(agent) && (Files.isSymbolicLink(agent) || !Files.readString(agent).contains("<!-- Kast App Server login bootstrap v1 -->"))) return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
                     Files.createDirectories(agent.parent)
-                    val xml = loginAgent(command)
-                    val temporary = Files.createTempFile(agent.parent,".kast-login-",".plist")
-                    try {
-                        Files.writeString(temporary,xml)
-                        Files.setPosixFilePermissions(temporary,PosixFilePermissions.fromString("rw-------"))
-                        Files.move(temporary,agent,StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
-                    } finally { Files.deleteIfExists(temporary) }
+                    writeLoginAgent(agent, command)
+                    Files.deleteIfExists(command.stateDirectory.resolve("stopped"))
+                    bootstrap(command)
+                }
+                AppServerAction.Repair -> {
+                    val host = MacOsPersistentBrokerServiceHost()
+                    when (val reset = host.destructiveReset(command)) {
+                        PersistentBrokerServiceAdmission.Ready -> Unit
+                        is PersistentBrokerServiceAdmission.Rejected -> return AppServerManagementResult.Rejected(
+                            AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN,
+                            reset.failure,
+                        )
+                    }
+                    val registry = installationRoot.resolve("config/workspaces.json")
+                    Files.deleteIfExists(registry)
+                    if (enrollment.enroll(workspace) is Refinement.Rejected) return reject(AppServerManagementFailure.ENROLLMENT_REJECTED)
+                    Files.createDirectories(agent.parent)
+                    Files.deleteIfExists(agent)
+                    writeLoginAgent(agent, command)
                     Files.deleteIfExists(command.stateDirectory.resolve("stopped"))
                     bootstrap(command)
                 }
@@ -181,6 +194,12 @@ class InstalledAppServerManager(
                 })
                 put("desktop", "unqualified")
             }
+            putJsonObject("paths") {
+                put("serviceLog", command.serviceLog.toString())
+                put("launchEnvironment", command.launchEnvironment.toString())
+                put("savedConfiguration", command.kast.parent.parent.resolve("config/environment").toString())
+                put("workspaceRegistry", command.kast.parent.parent.resolve("config/workspaces.json").toString())
+            }
             putJsonObject("registry") {
                 when (registered) {
                     is WorkspaceRegistryRead.Read -> {
@@ -221,6 +240,16 @@ class InstalledAppServerManager(
 <!-- Kast App Server login bootstrap v1 -->
 <plist version="1.0"><dict><key>Label</key><string>${escape(command.serviceLabel.value)}.login</string><key>ProgramArguments</key><array>$arguments</array><key>RunAtLoad</key><true/><key>EnvironmentVariables</key><dict>${env.entries.joinToString("") { "<key>${escape(it.key)}</key><string>${escape(it.value)}</string>" }}</dict></dict></plist>
 """
+    }
+
+    private fun writeLoginAgent(agent: Path, command: BrokerServiceLaunchCommand) {
+        val xml = loginAgent(command)
+        val temporary = Files.createTempFile(agent.parent,".kast-login-",".plist")
+        try {
+            Files.writeString(temporary,xml)
+            Files.setPosixFilePermissions(temporary,PosixFilePermissions.fromString("rw-------"))
+            Files.move(temporary,agent,StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
+        } finally { Files.deleteIfExists(temporary) }
     }
     private fun rpc(command: BrokerServiceLaunchCommand, method: String, params: JsonObject): JsonObject? = runBlocking {
         kotlinx.coroutines.withTimeoutOrNull(BrokerOperationalLimits.managementExchange.value) {

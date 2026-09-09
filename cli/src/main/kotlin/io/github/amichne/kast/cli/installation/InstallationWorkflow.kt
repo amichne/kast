@@ -3,6 +3,8 @@ package io.github.amichne.kast.cli.installation
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifest
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifestAdmission
 import io.github.amichne.kast.distribution.contract.configuration.InstallationOperationalLimits
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSource
+import io.github.amichne.kast.distribution.contract.configuration.KastConfigurationCatalogue
 import io.github.amichne.kast.distribution.managed.endpoint.InstalledUpstreamDirectories
 import io.github.amichne.kast.appserver.InstalledWorkspaceRegistryRetention
 import io.github.amichne.kast.appserver.PublishedBrokerServiceCommand
@@ -348,14 +350,25 @@ internal object InstallationWorkflow {
         Files.createDirectories(stagedConfiguration.parent)
         val target = plan.targetRoot
         val request = plan.request
+        val values = KastConfigurationCatalogue.declarations
+            .filter { declaration ->
+                ConfigurationSource.SAVED_INSTALLATION in declaration.sources &&
+                    declaration.defaultValue != null
+            }
+            .associate { declaration -> declaration.key to checkNotNull(declaration.defaultValue) }
+            .plus(
+                mapOf(
+                    "KAST_RUNTIME_STORE" to target.resolve("runtime-payloads").toString(),
+                    "KAST_RUNTIME_DIRECTORY" to target.resolve("state/run").toString(),
+                    "KAST_CACHE_ROOT" to target.resolve("state/cache").toString(),
+                    "KAST_ENABLE_LAUNCHD" to request.enableLaunchd.wireValue(),
+                    "KAST_ENABLE_APP_SERVER" to request.enableAppServer.wireValue(),
+                    "KAST_APP_SERVER_TOOLS" to request.appServerTools.value,
+                ),
+            )
         val content = buildString {
             appendLine("# Kast runtime configuration. Values are literal; shell syntax is not evaluated.")
-            appendLine("KAST_RUNTIME_STORE=${target.resolve("runtime-payloads")}")
-            appendLine("KAST_RUNTIME_DIRECTORY=${target.resolve("state/run")}")
-            appendLine("KAST_CACHE_ROOT=${target.resolve("state/cache")}")
-            appendLine("KAST_ENABLE_LAUNCHD=${request.enableLaunchd.wireValue()}")
-            appendLine("KAST_ENABLE_APP_SERVER=${request.enableAppServer.wireValue()}")
-            appendLine("KAST_APP_SERVER_TOOLS=${request.appServerTools.value}")
+            values.toSortedMap().forEach { (key, value) -> appendLine("$key=$value") }
         }
         Files.writeString(stagedConfiguration, content, StandardOpenOption.CREATE_NEW)
         setMode(stagedConfiguration, "rw-------")
