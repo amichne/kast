@@ -24,6 +24,21 @@ class InstalledGradleModelInputsTest {
     }
 
     @Test
+    fun `Kotlin tool state inside build logic does not invalidate imported authority`(
+        @TempDir temporary: Path,
+    ) {
+        val root = temporary.toRealPath()
+        val source = write(root, "build-logic/src/main/kotlin/Convention.kt", "class Convention")
+        val inputs = capture(root)
+
+        write(root, "build-logic/.kotlin/errors/errors.log", "volatile compiler output")
+        assertSame(inputs, assertInstanceOf(Refinement.Refined::class.java, inputs.current()).value)
+
+        Files.writeString(source, "class ChangedConvention")
+        assertEquals(InstalledGradleModelCaptureFailure.MODEL_INPUTS_CHANGED, failure(inputs.current()))
+    }
+
+    @Test
     fun `changed deleted and newly added conventional model inputs reject the original import`(
         @TempDir temporary: Path,
     ) {

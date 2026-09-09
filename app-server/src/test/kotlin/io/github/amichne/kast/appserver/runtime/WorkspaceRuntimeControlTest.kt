@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+
 package io.github.amichne.kast.appserver.runtime
 
 import io.github.amichne.kast.appserver.*
@@ -8,6 +10,10 @@ import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBoo
 import io.github.amichne.kast.distribution.contract.configuration.*
 import io.github.amichne.kast.kernel.Refinement
 import kotlinx.coroutines.*
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -16,7 +22,7 @@ import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicInteger
 
 class WorkspaceRuntimeControlTest {
-    @Test fun `control owns shared startup and durable receipt before launcher admission`(@TempDir directory: Path): Unit = runBlocking {
+    @Test fun `control owns shared startup and durable receipt before launcher admission`(@TempDir directory: Path) = runTest {
         val fixture = Fixture(directory)
         val entered = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
@@ -29,17 +35,18 @@ class WorkspaceRuntimeControlTest {
             }
             override suspend fun observe(route: InstalledWorkerEndpoint) = InstalledWorkerObservation.EXACT_READY
         }
-        val control = fixture.control(effects)
+        val control = fixture.control(effects, this)
         val first = async { control.demand(fixture.root, fixture.heap, InstalledWorkerStartup.Reuse()) }
-        assertNotNull(withTimeoutOrNull(1_000) { entered.await() }, "control did not invoke owned launcher")
+        runCurrent()
+        assertTrue(entered.isCompleted, "control did not invoke owned launcher")
         val second = async { control.demand(fixture.root, fixture.heap, InstalledWorkerStartup.Reuse()) }
         first.cancelAndJoin(); release.complete(Unit)
-        assertInstanceOf(InstalledWorkerStart.Ready::class.java, withTimeout(1_000) { second.await() })
+        assertInstanceOf(InstalledWorkerStart.Ready::class.java, second.await())
         assertEquals(1, fixture.starts.get())
         control.drain()
     }
 
-    @Test fun `shared startup rejects a different pending lifecycle intent`(@TempDir directory: Path): Unit = runBlocking {
+    @Test fun `shared startup rejects a different pending lifecycle intent`(@TempDir directory: Path) = runTest {
         val fixture = Fixture(directory)
         val entered = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
@@ -48,17 +55,17 @@ class WorkspaceRuntimeControlTest {
                 entered.complete(Unit); release.await(); return InstalledWorkerStart.Rejected(WorkerControlFailure.STARTUP_REJECTED)
             }
         }
-        val control = fixture.control(effects)
+        val control = fixture.control(effects, this)
         val first = async { control.demand(fixture.root, fixture.heap, InstalledWorkerStartup.Reuse()) }
-        entered.await()
+        runCurrent()
+        assertTrue(entered.isCompleted, "shared startup did not enter the worker effect")
         try {
-            val conflicting = withTimeoutOrNull(250) { control.demand(fixture.root, fixture.heap, InstalledWorkerStartup.Rebuild()) }
-            assertNotNull(conflicting, "incompatible lifecycle intent joined another startup")
+            val conflicting = control.demand(fixture.root, fixture.heap, InstalledWorkerStartup.Rebuild())
             assertEquals(WorkerControlFailure.IDENTITY_REJECTED, (conflicting as InstalledWorkerStart.Rejected).failure)
         } finally { release.complete(Unit); first.await(); control.drain() }
     }
 
-    @Test fun `default reuse joins pending explicitly selected IDE without replacing its startup`(@TempDir directory: Path): Unit = runBlocking {
+    @Test fun `default reuse joins pending explicitly selected IDE without replacing its startup`(@TempDir directory: Path) = runTest {
         val fixture = Fixture(directory)
         val entered = CompletableDeferred<Unit>(); val release = CompletableDeferred<Unit>()
         val selectedIde = Files.createDirectory(directory.resolve("ide")).toRealPath()
@@ -71,19 +78,20 @@ class WorkspaceRuntimeControlTest {
             override suspend fun observe(route: InstalledWorkerEndpoint) = InstalledWorkerObservation.EXACT_READY
             override suspend fun stop(route: InstalledWorkerEndpoint) = InstalledWorkerRetirement.EXACT_RETIRED
         }
-        val control = fixture.control(effects)
+        val control = fixture.control(effects, this)
         val first = async { control.demand(fixture.root, fixture.heap, InstalledWorkerStartup.Reuse(selectedIde)) }
-        entered.await()
+        runCurrent()
+        assertTrue(entered.isCompleted, "selected startup did not enter the worker effect")
         val joined = async { control.demand(fixture.root, fixture.heap, InstalledWorkerStartup.Reuse()) }
         try {
-            yield(); release.complete(Unit)
+            runCurrent(); release.complete(Unit)
             assertInstanceOf(InstalledWorkerStart.Ready::class.java, first.await())
             assertInstanceOf(InstalledWorkerStart.Ready::class.java, joined.await(), "default reuse rejected the pending selected IDE")
             assertEquals(1, starts)
         } finally { release.complete(Unit); first.await(); joined.await(); control.drain() }
     }
 
-    @Test fun `ready reuse rejects a conflicting explicit IDE selection`(@TempDir directory: Path): Unit = runBlocking {
+    @Test fun `ready reuse rejects a conflicting explicit IDE selection`(@TempDir directory: Path) = runTest {
         val fixture = Fixture(directory)
         val selectedIde = Files.createDirectory(directory.resolve("ide-one")).toRealPath()
         val otherIde = Files.createDirectory(directory.resolve("ide-two")).toRealPath()
@@ -93,7 +101,7 @@ class WorkspaceRuntimeControlTest {
             override suspend fun observe(route: InstalledWorkerEndpoint) = InstalledWorkerObservation.EXACT_READY
             override suspend fun stop(route: InstalledWorkerEndpoint) = InstalledWorkerRetirement.EXACT_RETIRED
         }
-        val control = fixture.control(effects)
+        val control = fixture.control(effects, this)
         try {
             assertInstanceOf(InstalledWorkerStart.Ready::class.java, control.demand(fixture.root, fixture.heap, InstalledWorkerStartup.Reuse(selectedIde)))
             assertEquals(InstalledWorkerStart.Rejected(WorkerControlFailure.IDENTITY_REJECTED), control.demand(fixture.root, fixture.heap, InstalledWorkerStartup.Reuse(otherIde)))
@@ -101,7 +109,67 @@ class WorkspaceRuntimeControlTest {
         } finally { control.drain() }
     }
 
-    @Test fun `failed unpublished startup retires only through exact launch authority`(@TempDir directory: Path): Unit = runBlocking {
+    @Test fun `lost ready worker is exactly retired and restarted by the same demand`(@TempDir directory: Path) = runTest {
+        val fixture = Fixture(directory)
+        var observations = 0
+        var starts = 0
+        var stops = 0
+        val effects = object : InstalledWorkerEffects by InstalledWorkerEffects.Unavailable {
+            override suspend fun start(request: InstalledWorkerStartRequest): InstalledWorkerStart {
+                starts++
+                return InstalledWorkerStart.Ready(fixture.endpoint(request.root))
+            }
+            override suspend fun observe(route: InstalledWorkerEndpoint) =
+                if (++observations == 3) InstalledWorkerObservation.UNPROVEN else InstalledWorkerObservation.EXACT_READY
+            override suspend fun stop(route: InstalledWorkerEndpoint): InstalledWorkerRetirement {
+                stops++
+                return InstalledWorkerRetirement.EXACT_RETIRED
+            }
+        }
+        val control = fixture.control(effects, this)
+        try {
+            assertInstanceOf(InstalledWorkerStart.Ready::class.java, control.demand(fixture.root, fixture.heap, InstalledWorkerStartup.Reuse()))
+            assertInstanceOf(InstalledWorkerStart.Ready::class.java, control.demand(fixture.root, fixture.heap, InstalledWorkerStartup.Reuse()))
+            assertEquals(2, starts)
+            assertEquals(1, stops)
+            assertEquals(1L, Files.list(directory.resolve("state/workers")).use { it.count() })
+        } finally { control.drain() }
+    }
+
+    @Test fun `lost ready worker stays fenced when exact retirement cannot be proved`(@TempDir directory: Path) = runTest {
+        val fixture = Fixture(directory)
+        var observations = 0
+        var starts = 0
+        var stops = 0
+        val effects = object : InstalledWorkerEffects by InstalledWorkerEffects.Unavailable {
+            override suspend fun start(request: InstalledWorkerStartRequest): InstalledWorkerStart {
+                starts++
+                return InstalledWorkerStart.Ready(fixture.endpoint(request.root))
+            }
+            override suspend fun observe(route: InstalledWorkerEndpoint) =
+                if (++observations == 3) InstalledWorkerObservation.UNPROVEN else InstalledWorkerObservation.EXACT_READY
+            override suspend fun stop(route: InstalledWorkerEndpoint): InstalledWorkerRetirement {
+                stops++
+                return InstalledWorkerRetirement.UNPROVEN
+            }
+        }
+        val control = fixture.control(effects, this)
+        try {
+            assertInstanceOf(InstalledWorkerStart.Ready::class.java, control.demand(fixture.root, fixture.heap, InstalledWorkerStartup.Reuse()))
+            assertEquals(
+                InstalledWorkerStart.Rejected(WorkerControlFailure.RETIREMENT_UNPROVEN),
+                control.demand(fixture.root, fixture.heap, InstalledWorkerStartup.Reuse()),
+            )
+            assertEquals(
+                InstalledWorkerStart.Rejected(WorkerControlFailure.RECOVERY_REQUIRED),
+                control.demand(fixture.root, fixture.heap, InstalledWorkerStartup.Reuse()),
+            )
+            assertEquals(1, starts)
+            assertEquals(1, stops)
+        } finally { control.drain() }
+    }
+
+    @Test fun `failed unpublished startup retires only through exact launch authority`(@TempDir directory: Path) = runTest {
         val fixture = Fixture(directory)
         var retirements = 0
         val effects = object : InstalledWorkerEffects by InstalledWorkerEffects.Unavailable {
@@ -110,7 +178,7 @@ class WorkspaceRuntimeControlTest {
                 assertEquals(fixture.root, root); retirements++; return InstalledWorkerRetirement.EXACT_RETIRED
             }
         }
-        val control = fixture.control(effects)
+        val control = fixture.control(effects, this)
         assertInstanceOf(InstalledWorkerStart.Rejected::class.java, control.demand(fixture.root, fixture.heap, InstalledWorkerStartup.Reuse()))
         assertInstanceOf(InstalledWorkerStop.Stopped::class.java, control.stop(fixture.root), "failed startup could not be retired by exact owned launch authority")
         assertEquals(1, retirements)
@@ -118,7 +186,7 @@ class WorkspaceRuntimeControlTest {
         control.drain()
     }
 
-    @Test fun `interactive seed passes measured disclosure to original frontend before granting copy`(@TempDir directory: Path): Unit = runBlocking {
+    @Test fun `interactive seed passes measured disclosure to original frontend before granting copy`(@TempDir directory: Path) = runTest {
         val fixture = Fixture(directory)
         var approvals = 0
         val effects = object : InstalledWorkerEffects by InstalledWorkerEffects.Unavailable {
@@ -128,7 +196,7 @@ class WorkspaceRuntimeControlTest {
                 return InstalledWorkerStart.Rejected(WorkerControlFailure.STARTUP_REJECTED)
             }
         }
-        val control = fixture.control(effects)
+        val control = fixture.control(effects, this)
         var prompts = 0
         val authority = WorkerSeedConsentAuthority { disclosure ->
             assertEquals(1234L, disclosure.estimatedBytes); assertEquals(2, disclosure.categories.size); prompts++; WorkerSeedConsent.GRANTED
@@ -139,7 +207,7 @@ class WorkspaceRuntimeControlTest {
         control.drain()
     }
 
-    @Test fun `worker launch retains selected workspace overlay and source provenance`(@TempDir directory: Path): Unit = runBlocking {
+    @Test fun `worker launch retains selected workspace overlay and source provenance`(@TempDir directory: Path) = runTest {
         val fixture = Fixture(directory)
         val workspaceKey = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(fixture.root.toString().toByteArray()))
         val overlay = directory.resolve("config/workspaces/$workspaceKey/environment")
@@ -152,7 +220,7 @@ class WorkspaceRuntimeControlTest {
             }
             override suspend fun retireUnpublished(root: Path) = InstalledWorkerRetirement.EXACT_RETIRED
         }
-        val control = fixture.control(effects)
+        val control = fixture.control(effects, this)
         control.demand(fixture.root, IndexerHeapSize.parse("2g").refined(), InstalledWorkerStartup.Reuse())
         val assignment = requireNotNull(selected).inspection().single { it.key == "KAST_INDEXER_MAX_HEAP" }
         assertEquals(ConfigurationSource.SAVED_WORKSPACE, assignment.source, "worker launch erased workspace configuration provenance")
@@ -160,7 +228,7 @@ class WorkspaceRuntimeControlTest {
         control.drain()
     }
 
-    @Test fun `explicit rebuild retires previous worker before admitting changed workspace heap`(@TempDir directory: Path): Unit = runBlocking {
+    @Test fun `explicit rebuild retires previous worker before admitting changed workspace heap`(@TempDir directory: Path) = runTest {
         val fixture = Fixture(directory)
         val workspaceKey = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(fixture.root.toString().toByteArray()))
         val overlay = directory.resolve("config/workspaces/$workspaceKey/environment")
@@ -173,7 +241,7 @@ class WorkspaceRuntimeControlTest {
             override suspend fun observe(route: InstalledWorkerEndpoint) = InstalledWorkerObservation.EXACT_READY
             override suspend fun stop(route: InstalledWorkerEndpoint): InstalledWorkerRetirement { events += "stop"; return InstalledWorkerRetirement.EXACT_RETIRED }
         }
-        val control = fixture.control(effects)
+        val control = fixture.control(effects, this)
         try {
             assertInstanceOf(InstalledWorkerStart.Ready::class.java, control.demand(fixture.root, IndexerHeapSize.parse("2g").refined(), InstalledWorkerStartup.Reuse()))
             Files.writeString(overlay, "KAST_INDEXER_MAX_HEAP=4g\n")
@@ -184,7 +252,7 @@ class WorkspaceRuntimeControlTest {
         } finally { control.drain() }
     }
 
-    @Test fun `registered root without reservation stops idempotently under root admission fence`(@TempDir directory: Path): Unit = runBlocking {
+    @Test fun `registered root without reservation stops idempotently under root admission fence`(@TempDir directory: Path) = runTest {
         val fixture = Fixture(directory)
         WorkspaceEnrollmentStore(directory.toRealPath().resolve("config/workspaces.json")).enroll(fixture.root).refined()
         val entered = CompletableDeferred<Unit>(); val release = CompletableDeferred<Unit>()
@@ -194,10 +262,11 @@ class WorkspaceRuntimeControlTest {
                 assertEquals(fixture.root, root); stops++; entered.complete(Unit); release.await(); return InstalledWorkerRetirement.EXACT_RETIRED
             }
         }
-        val control = fixture.control(effects)
+        val control = fixture.control(effects, this)
         val stopped = async { control.stop(fixture.root) }
         try {
-            assertNotNull(withTimeoutOrNull(1_000) { entered.await() }, "registered empty root never reached exact retirement authority")
+            runCurrent()
+            assertTrue(entered.isCompleted, "registered empty root never reached exact retirement authority")
             assertInstanceOf(InstalledWorkerStart.Rejected::class.java, control.demand(fixture.root, fixture.heap, InstalledWorkerStartup.Reuse()), "new admission outran exact root retirement")
             release.complete(Unit)
             assertInstanceOf(InstalledWorkerStop.Stopped::class.java, stopped.await())
@@ -206,10 +275,10 @@ class WorkspaceRuntimeControlTest {
         } finally { release.complete(Unit); stopped.await(); control.drain() }
     }
 
-    @Test fun `unproven empty root retirement retains its root admission fence`(@TempDir directory: Path): Unit = runBlocking {
+    @Test fun `unproven empty root retirement retains its root admission fence`(@TempDir directory: Path) = runTest {
         val fixture = Fixture(directory)
         WorkspaceEnrollmentStore(directory.toRealPath().resolve("config/workspaces.json")).enroll(fixture.root).refined()
-        val control = fixture.control(InstalledWorkerEffects.Unavailable)
+        val control = fixture.control(InstalledWorkerEffects.Unavailable, this)
         try {
             assertEquals(InstalledWorkerStop.Rejected(WorkerControlFailure.RETIREMENT_UNPROVEN), control.stop(fixture.root))
             assertEquals(InstalledWorkerStart.Rejected(WorkerControlFailure.RECOVERY_REQUIRED), control.demand(fixture.root, fixture.heap, InstalledWorkerStartup.Reuse()))
@@ -223,9 +292,9 @@ class WorkspaceRuntimeControlTest {
         assertInstanceOf(Refinement.Rejected::class.java, fixture.create(InstalledWorkerEffects.Unavailable), "restart must not forget unresolved worker receipt")
     }
 
-    @Test fun `lifecycle fence blocks launch from already running control`(@TempDir directory: Path): Unit = runBlocking {
+    @Test fun `lifecycle fence blocks launch from already running control`(@TempDir directory: Path) = runTest {
         val fixture = Fixture(directory)
-        val control = fixture.control(InstalledWorkerEffects.Unavailable)
+        val control = fixture.control(InstalledWorkerEffects.Unavailable, this)
         Files.writeString(directory.resolve(".lifecycle-transition.json"), "{}")
         assertEquals(WorkerControlFailure.LIFECYCLE_TRANSITION, (control.demand(fixture.root, fixture.heap, InstalledWorkerStartup.Reuse()) as InstalledWorkerStart.Rejected).failure)
         control.drain()
@@ -238,8 +307,10 @@ class WorkspaceRuntimeControlTest {
         val owner = ThreadBindingOwner.admit("installation", "00000000-0000-0000-0000-000000000001").refined()
         val configuration = ResolvedKastConfiguration.resolve(ConfigurationSources()).refined()
         fun endpoint(root: Path) = InstalledWorkerEndpoint.admit(root, SemanticRuntimeId.parse("sha256:" + "a".repeat(64)).refined(), root.resolve("runtime.sock"), SemanticRuntimeBootstrapAttemptId.admit("00000000-0000-4000-8000-000000000001").refined()).refined()
-        fun create(effects: InstalledWorkerEffects) = WorkspaceRuntimeControl.create(directory.toRealPath(), owner, BrokerServiceGeneration.fresh(), configuration, effects)
-        fun control(effects: InstalledWorkerEffects) = create(effects).refined()
+        fun create(effects: InstalledWorkerEffects, workerDispatcher: CoroutineDispatcher = Dispatchers.IO) =
+            WorkspaceRuntimeControl.create(directory.toRealPath(), owner, BrokerServiceGeneration.fresh(), configuration, effects, workerDispatcher = workerDispatcher)
+        fun control(effects: InstalledWorkerEffects, scope: TestScope) =
+            create(effects, StandardTestDispatcher(scope.testScheduler)).refined()
     }
 }
 private fun <V,F> Refinement<V,F>.refined(): V = when (this) { is Refinement.Refined -> value; is Refinement.Rejected -> error("Rejected: $failure") }

@@ -46,8 +46,9 @@ internal class WorkspaceRuntimeControl private constructor(
     private val lifecycle: WorkerControlLifecycle,
     private val hostObservation: () -> BrokerFrontendObservation,
     private val sourceEnvironment: Map<String,String>,
+    workerDispatcher: CoroutineDispatcher,
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + workerDispatcher)
     private val admission = Mutex()
     private val closed = AtomicBoolean(false)
     private val jobs = ConcurrentHashMap<WorkerReservationId, Job>()
@@ -175,15 +176,7 @@ internal class WorkspaceRuntimeControl private constructor(
         val result = when (selection) {
             is DemandSelection.Admitted -> selection.demand
             is DemandSelection.Replace -> {
-                val previous = selection.reservation
-                val settled = jobs[previous.id]?.let { (withTimeoutOrNull(BrokerOperationalLimits.workerStartupJoin.value) { it.join(); true } == true) } ?: true
-                val retired = if (settled) retire(previous, selection.endpoint) else InstalledWorkerRetirement.UNPROVEN
-                admission.withLock {
-                    if (retired == InstalledWorkerRetirement.EXACT_RETIRED) rootRetirements.remove(previous.identity.workspace.root.path)
-                    else rootRetirements[previous.identity.workspace.root.path] = RootRetirementState.UNCERTAIN
-                }
-                return if (retired == InstalledWorkerRetirement.EXACT_RETIRED) demand(root, heap, startup, consentAuthority, expectedConfiguration)
-                    else rejected(WorkerControlFailure.RETIREMENT_UNPROVEN)
+                return retireAndDemand(selection.reservation, selection.endpoint, root, heap, startup, consentAuthority, expectedConfiguration)
             }
         }
         val route = when (result) {
@@ -197,11 +190,59 @@ internal class WorkspaceRuntimeControl private constructor(
             is WorkerReadiness.Ready -> {
                 val endpoint = routes[route.route.reservation.id] ?: return rejected(WorkerControlFailure.RECOVERY_REQUIRED)
                 if (effects.observe(endpoint) != InstalledWorkerObservation.EXACT_READY) {
-                    quarantine(route.route.reservation, WorkerAdmissionFailure.WORKER_LOST)
-                    return rejected(WorkerControlFailure.RECOVERY_REQUIRED)
+                    return recoverLostWorker(route.route.reservation, endpoint, root, heap, startup, consentAuthority, expectedConfiguration)
                 }
                 bound(route.route.reservation, endpoint)
             }
+        }
+    }
+
+    private suspend fun recoverLostWorker(
+        reservation: WorkerReservation,
+        endpoint: InstalledWorkerEndpoint,
+        root: Path,
+        heap: IndexerHeapSize,
+        startup: InstalledWorkerStartup,
+        consentAuthority: WorkerSeedConsentAuthority,
+        expectedConfiguration: WorkerConfigurationExpectation,
+    ): InstalledWorkerStart {
+        val ownsRecovery = admission.withLock {
+            val current = ledger.snapshot().workers.singleOrNull {
+                it.reservation.identity.workspace.id == reservation.identity.workspace.id
+            }
+            if (current?.reservation !== reservation || current.phase != WorkerReservationPhase.READY ||
+                rootRetirements.containsKey(reservation.identity.workspace.root.path)) {
+                false
+            } else {
+                rootRetirements[reservation.identity.workspace.root.path] = RootRetirementState.IN_PROGRESS
+                true
+            }
+        }
+        if (!ownsRecovery) return rejected(WorkerControlFailure.RECOVERY_REQUIRED)
+        return retireAndDemand(reservation, endpoint, root, heap, startup, consentAuthority, expectedConfiguration)
+    }
+
+    private suspend fun retireAndDemand(
+        reservation: WorkerReservation,
+        endpoint: InstalledWorkerEndpoint,
+        root: Path,
+        heap: IndexerHeapSize,
+        startup: InstalledWorkerStartup,
+        consentAuthority: WorkerSeedConsentAuthority,
+        expectedConfiguration: WorkerConfigurationExpectation,
+    ): InstalledWorkerStart {
+        val settled = jobs[reservation.id]?.let {
+            withTimeoutOrNull(BrokerOperationalLimits.workerStartupJoin.value) { it.join(); true } == true
+        } ?: true
+        val retired = if (settled) retire(reservation, endpoint) else InstalledWorkerRetirement.UNPROVEN
+        admission.withLock {
+            if (retired == InstalledWorkerRetirement.EXACT_RETIRED) rootRetirements.remove(reservation.identity.workspace.root.path)
+            else rootRetirements[reservation.identity.workspace.root.path] = RootRetirementState.UNCERTAIN
+        }
+        return if (retired == InstalledWorkerRetirement.EXACT_RETIRED) {
+            demand(root, heap, startup, consentAuthority, expectedConfiguration)
+        } else {
+            rejected(WorkerControlFailure.RETIREMENT_UNPROVEN)
         }
     }
 
@@ -393,7 +434,7 @@ internal class WorkspaceRuntimeControl private constructor(
     }
 
     companion object {
-        fun create(installationRoot: Path, owner: ThreadBindingOwner.Installation, generation: BrokerServiceGeneration, configuration: ResolvedKastConfiguration, effects: InstalledWorkerEffects, lifecycle: WorkerControlLifecycle = WorkerControlLifecycle.ProtocolFixture, hostObservation: () -> BrokerFrontendObservation = { BrokerFrontendObservation.PENDING }, sourceEnvironment: Map<String,String> = emptyMap()): Refinement<WorkspaceRuntimeControl,WorkerControlFailure> {
+        fun create(installationRoot: Path, owner: ThreadBindingOwner.Installation, generation: BrokerServiceGeneration, configuration: ResolvedKastConfiguration, effects: InstalledWorkerEffects, lifecycle: WorkerControlLifecycle = WorkerControlLifecycle.ProtocolFixture, hostObservation: () -> BrokerFrontendObservation = { BrokerFrontendObservation.PENDING }, sourceEnvironment: Map<String,String> = emptyMap(), workerDispatcher: CoroutineDispatcher = Dispatchers.IO): Refinement<WorkspaceRuntimeControl,WorkerControlFailure> {
             return try {
                 if (installationRoot.toRealPath() != installationRoot || InstallationLifecycleFence.observe(installationRoot) != InstallationLifecycleStartAdmission.AVAILABLE) return Refinement.Rejected(WorkerControlFailure.LIFECYCLE_TRANSITION)
                 val receipts = installationRoot.resolve("state/workers")
@@ -405,7 +446,7 @@ internal class WorkspaceRuntimeControl private constructor(
                     is Refinement.Refined -> admitted.value
                     is Refinement.Rejected -> return Refinement.Rejected(WorkerControlFailure.CAPACITY_REJECTED)
                 }
-                Refinement.Refined(WorkspaceRuntimeControl(installationRoot, owner, generation, configuration, effects, WorkerAdmissionCoordinator(owner,generation,policy, WorkerReservationIdSource { WorkerReservationId.fresh() }), receipts, lifecycle, hostObservation, sourceEnvironment.toMap()))
+                Refinement.Refined(WorkspaceRuntimeControl(installationRoot, owner, generation, configuration, effects, WorkerAdmissionCoordinator(owner,generation,policy, WorkerReservationIdSource { WorkerReservationId.fresh() }), receipts, lifecycle, hostObservation, sourceEnvironment.toMap(), workerDispatcher))
             } catch (_: Exception) { Refinement.Rejected(WorkerControlFailure.RECEIPT_REJECTED) }
         }
     }
