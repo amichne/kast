@@ -31,5 +31,6 @@ if git symbolic-ref -q HEAD >/dev/null; then
   exit 1
 fi
 export JAVA_HOME="${KAST_RELEASE_JDK_25:?Set KAST_RELEASE_JDK_25 to a Java 25 home}"
+unset KAST_RELEASE_JDK_25
 bash .github/scripts/release/build-assets.sh --version "$version" --source-revision "$sha"
 printf '%s\n' "release-candidate: built v${version} from ${sha}"
