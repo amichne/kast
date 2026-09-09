@@ -171,7 +171,7 @@ internal object JdkBrokerSocketProbe : BrokerSocketProbe {
 
     private suspend fun exchangeStatus(path: Path, expectedGeneration: UUID?): BrokerSocketReachability {
         val client = HttpClient(CIO) {
-            install(WebSockets) { maxFrameSize = MAXIMUM_READINESS_FRAME_BYTES }
+            install(WebSockets) { maxFrameSize = CoordinatorStatusProtocol.maximumMessageBytes.toLong() }
         }
         return try {
             withTimeoutOrNull(READINESS_EXCHANGE_TIMEOUT_MILLIS) {
@@ -219,8 +219,7 @@ internal object JdkBrokerSocketProbe : BrokerSocketProbe {
         raw != null && UUID.fromString(raw).toString() == raw
     } catch (_: IllegalArgumentException) { false }
 
-    private const val READINESS_EXCHANGE_TIMEOUT_MILLIS = 3_000L
-    private const val MAXIMUM_READINESS_FRAME_BYTES = 16_384L
+    private val READINESS_EXCHANGE_TIMEOUT_MILLIS = BrokerOperationalLimits.readinessExchange.value
 
 }
 
@@ -243,10 +242,10 @@ private object ThreadBrokerServiceSleeper : BrokerServiceSleeper {
 /** Product-level deadline proof: every enclosing budget strictly contains its child phases. */
 internal object BrokerServiceStartupBudgets {
     // Kast version + schema (20s), Codex version + schema (60s), upstream UDS (10s).
-    val admittedChildPhasesNanos: Long = TimeUnit.SECONDS.toNanos(90L)
-    val hostTimeoutNanos: Long = TimeUnit.SECONDS.toNanos(120L)
-    val retirementTimeoutNanos: Long = TimeUnit.SECONDS.toNanos(10L)
-    val lockTimeoutNanos: Long = TimeUnit.SECONDS.toNanos(180L)
+    val admittedChildPhasesNanos: Long = TimeUnit.MILLISECONDS.toNanos(BrokerOperationalLimits.serviceChildPhases.value)
+    val hostTimeoutNanos: Long = TimeUnit.MILLISECONDS.toNanos(BrokerOperationalLimits.serviceStartup.value)
+    val retirementTimeoutNanos: Long = TimeUnit.MILLISECONDS.toNanos(BrokerOperationalLimits.serviceRetirement.value)
+    val lockTimeoutNanos: Long = TimeUnit.MILLISECONDS.toNanos(BrokerOperationalLimits.serviceStartLock.value)
 
     init {
         require(admittedChildPhasesNanos < hostTimeoutNanos)
@@ -1062,7 +1061,7 @@ private object BrokerServiceStartLock {
     }
 
     private val LOCK_TIMEOUT_NANOS = BrokerServiceStartupBudgets.lockTimeoutNanos
-    private const val LOCK_POLL_MILLIS = 25L
+    private val LOCK_POLL_MILLIS = BrokerOperationalLimits.serviceLockPoll.value
 }
 
 private enum class BrokerLaunchdServiceObservation {
@@ -1102,7 +1101,7 @@ private object JdkBrokerLaunchctlInvoker : LaunchctlInvoker {
             return LaunchctlInvocation.Rejected
         }
         val completed = try {
-            process.waitFor(LAUNCHCTL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            process.waitFor(BrokerOperationalLimits.launchctlInvocation.value, TimeUnit.MILLISECONDS)
         } catch (_: InterruptedException) {
             process.destroyForcibly()
             Thread.currentThread().interrupt()
@@ -1129,7 +1128,6 @@ private object JdkBrokerLaunchctlInvoker : LaunchctlInvoker {
         }
     }
 
-    private const val LAUNCHCTL_TIMEOUT_SECONDS = 5L
 }
 
-private const val POLL_MILLIS = 50L
+private val POLL_MILLIS = BrokerOperationalLimits.servicePoll.value

@@ -104,7 +104,7 @@ internal class WorkspaceRuntimeControl private constructor(
         val retired = try { when (selection) {
             is StopSelection.Reserved -> {
                 val reservation = selection.reservation
-                val settled = jobs[reservation.id]?.let { job -> job.cancel(); (withTimeoutOrNull(10_000) { job.join(); true } == true) } ?: true
+                val settled = jobs[reservation.id]?.let { job -> job.cancel(); (withTimeoutOrNull(BrokerOperationalLimits.workerStartupJoin.value) { job.join(); true } == true) } ?: true
                 if (settled) retire(reservation, routes[reservation.id]) else InstalledWorkerRetirement.UNPROVEN
             }
             is StopSelection.Unreserved -> withTimeoutOrNull(OperationExecutionBudget.LOCAL_QUALIFICATION.value) { effects.retireUnreserved(canonical) }
@@ -176,7 +176,7 @@ internal class WorkspaceRuntimeControl private constructor(
             is DemandSelection.Admitted -> selection.demand
             is DemandSelection.Replace -> {
                 val previous = selection.reservation
-                val settled = jobs[previous.id]?.let { (withTimeoutOrNull(10_000) { it.join(); true } == true) } ?: true
+                val settled = jobs[previous.id]?.let { (withTimeoutOrNull(BrokerOperationalLimits.workerStartupJoin.value) { it.join(); true } == true) } ?: true
                 val retired = if (settled) retire(previous, selection.endpoint) else InstalledWorkerRetirement.UNPROVEN
                 admission.withLock {
                     if (retired == InstalledWorkerRetirement.EXACT_RETIRED) rootRetirements.remove(previous.identity.workspace.root.path)
@@ -273,7 +273,7 @@ internal class WorkspaceRuntimeControl private constructor(
     }
 
     suspend fun handle(session: DefaultWebSocketServerSession, handshakeAllowed: Boolean = true) {
-        val frame = withTimeoutOrNull(10_000) { session.incoming.receiveCatching().getOrNull() }
+        val frame = withTimeoutOrNull(BrokerOperationalLimits.workerControlHandshake.value) { session.incoming.receiveCatching().getOrNull() }
         val document = try {
             val text = (frame as? Frame.Text)?.readText() ?: return
             if (text.toByteArray().size > CoordinatorStatusProtocol.maximumCommandBytes) return
@@ -343,7 +343,7 @@ internal class WorkspaceRuntimeControl private constructor(
         ledger.drain()
         val active = jobs.values.toList()
         active.forEach { it.cancel() }
-        withTimeoutOrNull(10_000) { active.joinAll() }
+        withTimeoutOrNull(BrokerOperationalLimits.workerShutdownJoin.value) { active.joinAll() }
         withContext(NonCancellable) {
             ledger.snapshot().workers.forEach { status ->
                 val endpoint = routes[status.reservation.id]

@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.runtime
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.core.BrokerThreadId
 import java.util.UUID
 
@@ -33,7 +34,7 @@ internal sealed interface TaskActivity {
 internal data class TaskSessionView(val thread: BrokerThreadId, val controller: ClientConnectionId?, val observers: Set<ClientConnectionId>, val activity: TaskActivity, val pendingRequests: Int, val lease: ControllerLeaseId?)
 
 /** Service-confined controller and subscription state, independent of frontend lifetimes. */
-internal class SharedTaskSessions(private val capacity: Int = 4_096) {
+internal class SharedTaskSessions(private val capacity: Int = BrokerOperationalLimits.maximumTaskSessions) {
     private class Session(val thread: BrokerThreadId, initial: ClientConnectionId?) {
         private var control: TaskController = initial?.let { TaskController.Leased(it,ControllerLeaseId.fresh()) } ?: TaskController.Unclaimed
         var controller: ClientConnectionId?

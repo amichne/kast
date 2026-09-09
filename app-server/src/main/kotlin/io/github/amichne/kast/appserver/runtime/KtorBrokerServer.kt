@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.runtime
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.core.AgentSessionBootstrap
 import io.github.amichne.kast.appserver.core.Broker
 import io.github.amichne.kast.appserver.core.BrokerInvocationActivitySink
@@ -146,7 +147,7 @@ internal data class KtorBrokerServerOptions(
     val upstream: BrokerUpstreamConnector,
     val maximumConnections: Int,
     val maximumMessageBytes: Int,
-    val connectionInitializationTimeoutMillis: Long = 10_000,
+    val connectionInitializationTimeoutMillis: Long = BrokerOperationalLimits.connectionInitialization.value,
     val bindingOwner: io.github.amichne.kast.appserver.protocol.ThreadBindingOwner = io.github.amichne.kast.appserver.protocol.ThreadBindingOwner.ProtocolFixture,
     val activitySink: BrokerInvocationActivitySink = BrokerInvocationActivitySink.Disabled,
     val sessionBootstrap: AgentSessionBootstrap? = null,
@@ -183,7 +184,7 @@ internal class KtorBrokerServer private constructor(
             try { runtimeControl?.drain() }
             finally {
                 try { frontend.close() }
-                finally { engine.stopSuspend(gracePeriodMillis = 500, timeoutMillis = 2_000) }
+                finally { engine.stopSuspend(gracePeriodMillis = BrokerOperationalLimits.serverShutdownGrace.value, timeoutMillis = BrokerOperationalLimits.serverShutdown.value) }
             }
         } finally {
             try {
@@ -215,7 +216,7 @@ internal class KtorBrokerServer private constructor(
             socket: BrokerSocketPath,
             runtimeControl: WorkspaceRuntimeControl,
             frontend: BrokerFrontend,
-        ): KtorBrokerServerStart = startTransport(socket, 8, 64 * 1_024 * 1_024, frontend, runtimeControl)
+        ): KtorBrokerServerStart = startTransport(socket, BrokerOperationalLimits.maximumConnections, BrokerOperationalLimits.maximumMessageBytes, frontend, runtimeControl)
 
         internal suspend fun frontend(options: KtorBrokerServerOptions, afterClose: suspend () -> Unit = {}): BrokerFrontendAdmission {
             val hub = BrokerSessionHub(options)
@@ -281,7 +282,7 @@ internal class KtorBrokerServer private constructor(
                             webSocket("/kast-runtime") {
                                 val count = controlConnections.incrementAndGet()
                                 try {
-                                    if (count > 32) close(CloseReason(CloseReason.Codes.TRY_AGAIN_LATER, "runtime connection limit exceeded"))
+                                    if (count > BrokerOperationalLimits.maximumRuntimeConnections) close(CloseReason(CloseReason.Codes.TRY_AGAIN_LATER, "runtime connection limit exceeded"))
                                     else runtimeControl.handle(this)
                                 } finally { controlConnections.decrementAndGet() }
                             }
@@ -319,7 +320,7 @@ internal class KtorBrokerServer private constructor(
                     PosixFilePermissions.fromString("rw-------"),
                 )
             } catch (_: Exception) {
-                engine.stopSuspend(gracePeriodMillis = 0, timeoutMillis = 1_000)
+                engine.stopSuspend(gracePeriodMillis = 0, timeoutMillis = BrokerOperationalLimits.serverFailedStartupShutdown.value)
                 ownershipLease.close()
                 return KtorBrokerServerStart.Rejected(
                     KtorBrokerServerFailure.SERVER_START_REJECTED,
@@ -327,7 +328,7 @@ internal class KtorBrokerServer private constructor(
             }
             val owned = OwnedUnixSocket.capture(socket)
                 ?: run {
-                    engine.stopSuspend(gracePeriodMillis = 0, timeoutMillis = 1_000)
+                    engine.stopSuspend(gracePeriodMillis = 0, timeoutMillis = BrokerOperationalLimits.serverFailedStartupShutdown.value)
                     ownershipLease.close()
                     return KtorBrokerServerStart.Rejected(
                         KtorBrokerServerFailure.SOCKET_IDENTITY_REJECTED,

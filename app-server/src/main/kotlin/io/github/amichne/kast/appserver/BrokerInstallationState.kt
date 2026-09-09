@@ -60,12 +60,12 @@ internal object BrokerInstallationState {
             return Refinement.Rejected(InstallationStateFailure.EPOCH_REJECTED)
         val epoch = state.resolve("epoch.json")
             val attributes = Files.readAttributes(epoch, java.nio.file.attribute.BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
-            if (!attributes.isRegularFile || attributes.size() > 1_024) {
+            if (!attributes.isRegularFile || attributes.size() > BrokerOperationalLimits.maximumEpochBytes) {
                 return Refinement.Rejected(InstallationStateFailure.EPOCH_REJECTED)
             }
             val document = Files.newInputStream(epoch, LinkOption.NOFOLLOW_LINKS).use {
-                val bytes = it.readNBytes(1_025)
-                if (bytes.size > 1_024) return Refinement.Rejected(InstallationStateFailure.EPOCH_REJECTED)
+                val bytes = it.readNBytes(BrokerOperationalLimits.maximumEpochBytes + 1)
+                if (bytes.size > BrokerOperationalLimits.maximumEpochBytes) return Refinement.Rejected(InstallationStateFailure.EPOCH_REJECTED)
                 Json.parseToJsonElement(bytes.toString(Charsets.UTF_8)).jsonObject
             }
             if (document.keys != setOf("schemaVersion", "installation", "epoch") ||
@@ -96,12 +96,12 @@ internal object BrokerInstallationState {
                 return Refinement.Rejected(InstallationStateFailure.PAYLOAD_REJECTED)
             }
             Files.walk(payload).use { paths ->
-                val files = paths.limit(4_097).sorted().toList()
-                if (files.size > 4_096) return Refinement.Rejected(InstallationStateFailure.PAYLOAD_REJECTED)
+                val files = paths.limit(BrokerOperationalLimits.maximumInventoryEntries.toLong() + 1).sorted().toList()
+                if (files.size > BrokerOperationalLimits.maximumInventoryEntries) return Refinement.Rejected(InstallationStateFailure.PAYLOAD_REJECTED)
                 for (file in files) {
                     if (Files.isSymbolicLink(file)) return Refinement.Rejected(InstallationStateFailure.PAYLOAD_REJECTED)
                     if (Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS)) continue
-                    if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS) || ++count > 4_096) {
+                    if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS) || ++count > BrokerOperationalLimits.maximumInventoryEntries) {
                         return Refinement.Rejected(InstallationStateFailure.PAYLOAD_REJECTED)
                     }
                     digest.update(0)
@@ -113,7 +113,7 @@ internal object BrokerInstallationState {
                             val size = input.read(buffer)
                             if (size < 0) break
                             totalBytes += size
-                            if (totalBytes > 1_024L * 1_024 * 1_024) return Refinement.Rejected(InstallationStateFailure.PAYLOAD_REJECTED)
+                            if (totalBytes > BrokerOperationalLimits.maximumInventoryBytes) return Refinement.Rejected(InstallationStateFailure.PAYLOAD_REJECTED)
                             digest.update(buffer, 0, size)
                         }
                     }

@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.runtime
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.core.BrokerThreadId
 import io.github.amichne.kast.appserver.protocol.ThreadStoreRead
 import io.github.amichne.kast.appserver.protocol.codex.CodexProtocolAdapter
@@ -46,8 +47,8 @@ internal class BrokerSessionHub(
         private val initializeId: JsonElement,
         val clientName: String,
     ) {
-        val output = Channel<String>(256)
-        private val outgoing = Channel<String>(256)
+        val output = Channel<String>(BrokerOperationalLimits.sessionChannelCapacity)
+        private val outgoing = Channel<String>(BrokerOperationalLimits.sessionChannelCapacity)
         private val adapter = CodexProtocolAdapter(options.broker, options.contracts, options.threadStore,
             options.activitySink, sessionBootstrap = options.sessionBootstrap, enrollment = options.enrollment,
             bindingOwner = options.bindingOwner)
@@ -65,7 +66,7 @@ internal class BrokerSessionHub(
             scope.launch {
                 try {
                     for (next in outgoing) {
-                        if (withTimeoutOrNull(5_000) { upstream.send(next) } != BrokerUpstreamSend.SENT) break
+                        if (withTimeoutOrNull(BrokerOperationalLimits.sessionSend.value) { upstream.send(next) } != BrokerUpstreamSend.SENT) break
                     }
                 } finally { close() }
             }
@@ -173,7 +174,7 @@ internal class BrokerSessionHub(
                 }
                 val identity = InvocationIdentity(thread ?: return close(), params.text("turnId")?.let(io.github.amichne.kast.appserver.core.BrokerTurnId::admit) ?: return close(), params.text("callId")?.let(io.github.amichne.kast.appserver.core.BrokerCallId::admit) ?: return close())
                 val future = CompletableDeferred<ProtocolRouting>()
-                if (invocations.size >= 4_096 && !invocations.containsKey(identity)) { sendUpstream(toolFailure(doc,"INVOCATION_CAPACITY_EXCEEDED")); return }
+                if (invocations.size >= BrokerOperationalLimits.maximumInvocations && !invocations.containsKey(identity)) { sendUpstream(toolFailure(doc,"INVOCATION_CAPACITY_EXCEEDED")); return }
                 val fingerprint = InvocationFence.digest(io.github.amichne.kast.appserver.schema.canonicalJson(params))
                 val previous = invocations.putIfAbsent(identity,InvocationRecord(fingerprint,future))
                 if (previous != null && previous.fingerprint != fingerprint) { sendUpstream(toolFailure(doc,"INPUT_CONFLICT")); return }
@@ -233,7 +234,7 @@ internal class BrokerSessionHub(
                 val recipientId = if (method in APPROVAL_METHODS && thread != null && tasks.contains(thread)) tasks.controller(thread) else id
                 val recipient = recipientId?.let(sessions::get)
                 if (recipient == null || !recipient.attached) { sendUpstream(rejection(doc,"RESPONDER_DISCONNECTED")); return }
-                if (serverRequests.size >= 4_096) { sendUpstream(rejection(doc,"REQUEST_CAPACITY_EXCEEDED")); return }
+                if (serverRequests.size >= BrokerOperationalLimits.maximumServerRequests) { sendUpstream(rejection(doc,"REQUEST_CAPACITY_EXCEEDED")); return }
                 val routedId = JsonPrimitive("kast-request-${java.util.UUID.randomUUID()}")
                 val key = routedId.toString()
                 serverRequests[key] = ServerRequest(this,recipient.id,doc.getValue("id"),thread)
@@ -348,7 +349,7 @@ internal class BrokerSessionHub(
                 }
             }
             handshake = Handshake.CLOSED; attached = false; output.close(); outgoing.close(); tasks.upstreamLost(id)
-            try { adapter.close(); withContext(NonCancellable) { withTimeoutOrNull(2_000) { upstream.close() } } }
+            try { adapter.close(); withContext(NonCancellable) { withTimeoutOrNull(BrokerOperationalLimits.sessionClose.value) { upstream.close() } } }
             finally { sessions.remove(id); admission.release() }
         }
     }

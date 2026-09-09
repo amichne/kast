@@ -120,7 +120,7 @@ internal class RuntimeSocketDirectory private constructor(
     internal val physicalPath: Path,
 ) {
     companion object {
-        internal const val MAXIMUM_ENDPOINT_PATH_BYTES = 103
+        internal const val MAXIMUM_ENDPOINT_PATH_BYTES = CliOperationalLimits.maximumEndpointPathBytes
         internal fun from(logicalDirectory: InstalledRuntimeDirectory): RuntimeSocketDirectory =
             installed(logicalDirectory.path.resolve("state/run"))
 

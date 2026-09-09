@@ -6,6 +6,12 @@ IFS=$'\n\t'
 PROGRAM="kast-install"
 DEFAULT_REPOSITORY="amichne/kast"
 
+# Fixed read-only projections of InstallationOperationalLimits; checked against the generated catalogue.
+readonly INSTALL_ACTIVATION_LOCK_TIMEOUT_MILLIS=30000
+readonly INSTALL_ACTIVATION_LOCK_POLL_MILLIS=50
+readonly INSTALL_DOWNLOAD_RETRIES=5
+readonly INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS=2000
+
 supports_color() {
   [[ -z "${NO_COLOR:-}" ]] || return 1
   [[ "${CLICOLOR_FORCE:-}" != "1" ]] || return 0
@@ -560,8 +566,8 @@ resolve_latest_version() {
       --location \
       --silent \
       --show-error \
-      --retry 5 \
-      --retry-delay 2 \
+      --retry "$INSTALL_DOWNLOAD_RETRIES" \
+      --retry-delay "$((INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS / 1000))" \
       --output /dev/null \
       --write-out '%{url_effective}' \
       "https://github.com/${repository}/releases/latest"
@@ -1306,7 +1312,7 @@ acquire_activation_lock() {
   activation_control_open=true
   # flock belongs to this shared open file description. Python admits/acquires it;
   # the shell retains descriptor 9 until activation/rollback completes.
-  python3 - "$lock_path" <<'PYTHON_LOCK' || fail "activation lock ownership was not established"
+  python3 - "$lock_path" "$INSTALL_ACTIVATION_LOCK_TIMEOUT_MILLIS" "$INSTALL_ACTIVATION_LOCK_POLL_MILLIS" <<'PYTHON_LOCK' || fail "activation lock ownership was not established"
 import fcntl, os, pathlib, stat, sys, time
 path = pathlib.Path(sys.argv[1])
 root = path.parent
@@ -1319,7 +1325,7 @@ if (not stat.S_ISREG(identity.st_mode) or identity.st_uid != os.getuid()
         or stat.S_IMODE(identity.st_mode) != 0o600
         or (identity.st_dev, identity.st_ino) != (current.st_dev, current.st_ino)):
     sys.exit(1)
-deadline = time.monotonic() + 30
+deadline = time.monotonic() + int(sys.argv[2]) / 1000
 while True:
     try:
         fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -1327,7 +1333,7 @@ while True:
     except BlockingIOError:
         if time.monotonic() >= deadline:
             sys.exit(1)
-        time.sleep(0.05)
+        time.sleep(int(sys.argv[3]) / 1000)
 current = path.lstat()
 if (current.st_dev, current.st_ino) != (identity.st_dev, identity.st_ino):
     sys.exit(1)
@@ -1483,8 +1489,8 @@ for asset in \
       --location \
       --silent \
       --show-error \
-      --retry 5 \
-      --retry-delay 2 \
+      --retry "$INSTALL_DOWNLOAD_RETRIES" \
+      --retry-delay "$((INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS / 1000))" \
       --output "$temporary_root/$asset" \
       "$release_url/$asset"
   fi

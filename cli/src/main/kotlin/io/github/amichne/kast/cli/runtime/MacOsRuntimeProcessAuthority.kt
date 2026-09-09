@@ -349,6 +349,6 @@ internal fun terminateDirectProcess(process: ProcessHandle): RuntimeProcessTermi
     RuntimeProcessTermination.Rejected
 }
 
-private const val PROCESS_STOP_TIMEOUT_SECONDS = 10L
+private const val PROCESS_STOP_TIMEOUT_SECONDS = CliOperationalLimits.processStopTimeoutSeconds
 private const val INDEXER_MAIN_CLASS = "io.github.amichne.kast.indexer.KastIndexerMainKt"
 private const val BOOTSTRAP_ATTEMPT_ARGUMENT_PREFIX = "--bootstrap-attempt-id="

@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.runtime
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.BrokerWorkspaceId
 import io.github.amichne.kast.appserver.core.BrokerCallId
 import io.github.amichne.kast.appserver.core.BrokerThreadId
@@ -8,7 +9,6 @@ import io.github.amichne.kast.appserver.protocol.codex.InvocationCertainty
 import io.github.amichne.kast.appserver.protocol.codex.ProtocolRouting
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import kotlin.time.Duration
@@ -24,10 +24,10 @@ internal class WorkspaceExecutionPolicy private constructor(
     val interaction: ElapsedTimeLimitMillis,
 ) {
     companion object {
-        val Default = WorkspaceExecutionPolicy(32, OperationExecutionBudget.LOCAL_QUALIFICATION, OperationExecutionBudget.GRAPH_BUILD.invocation)
+        val Default = WorkspaceExecutionPolicy(BrokerOperationalLimits.defaultWorkspaceQueued, BrokerOperationalLimits.workspaceQueueWait, BrokerOperationalLimits.workspaceInteraction)
 
         fun admit(maximumQueued: Int, queueWaitMillis: Long, interactionMillis: Long): Refinement<WorkspaceExecutionPolicy, WorkspaceExecutionPolicyFailure> {
-            if (maximumQueued !in 0..4_096) return Refinement.Rejected(WorkspaceExecutionPolicyFailure.QUEUED_LIMIT_REJECTED)
+            if (maximumQueued !in 0..BrokerOperationalLimits.maximumWorkspaceQueued) return Refinement.Rejected(WorkspaceExecutionPolicyFailure.QUEUED_LIMIT_REJECTED)
             val queueWait = when (val admitted = ElapsedTimeLimitMillis.parse(queueWaitMillis)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return Refinement.Rejected(WorkspaceExecutionPolicyFailure.WAIT_LIMIT_REJECTED)
@@ -241,7 +241,7 @@ internal class WorkspaceExecution(
         (limit.value - request.enqueuedAt.elapsedNow().inWholeMilliseconds).coerceAtLeast(0)
 
     private fun publish(request: Request, stage: WorkspaceExecutionStage, outcome: WorkspaceExecutionOutcome, failure: WorkspaceExecutionFailure? = null) {
-        if (events.size == 128) events.removeFirst()
+        if (events.size == BrokerOperationalLimits.maximumWorkspaceEvents) events.removeFirst()
         events.addLast(WorkspaceExecutionEvent(request.identity, stage, outcome, request.enqueuedAt.elapsedNow(), request.queued, request.interactionLimit, failure))
     }
 

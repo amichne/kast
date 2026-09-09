@@ -210,9 +210,9 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     codexHome,
                     protocolTemporary,
                     processExecutor,
-                    maximumSchemaBytes = 32 * 1_024 * 1_024,
-                    maximumSchemaFiles = 2_048,
-                    timeoutMillis = 30_000,
+                    maximumSchemaBytes = BrokerOperationalLimits.installedCodexSchemaBytes,
+                    maximumSchemaFiles = BrokerOperationalLimits.maximumCodexSchemaFiles,
+                    timeoutMillis = BrokerOperationalLimits.codexQualification.value,
                 )
             ) {
                 is Refinement.Refined -> admission.value

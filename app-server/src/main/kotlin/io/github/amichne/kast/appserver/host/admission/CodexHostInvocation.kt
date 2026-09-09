@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.host.admission
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.kernel.Refinement
 
 /** Closed process role selected before any broker, Codex, or Desktop effect begins. */
@@ -311,8 +312,8 @@ private fun admitCommonArguments(
     else -> Refinement.Refined(arguments.toList())
 }
 
-private const val MAXIMUM_ARGUMENT_COUNT = 256
-private const val MAXIMUM_ARGUMENT_BYTES = 65_536
+private const val MAXIMUM_ARGUMENT_COUNT = BrokerOperationalLimits.maximumHostArgumentCount
+private const val MAXIMUM_ARGUMENT_BYTES = BrokerOperationalLimits.maximumHostArgumentBytes
 
 private val CODEX_GLOBAL_OPTIONS_WITH_VALUE = setOf(
     "-c",

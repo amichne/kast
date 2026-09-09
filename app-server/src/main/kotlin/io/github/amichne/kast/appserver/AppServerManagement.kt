@@ -212,8 +212,8 @@ class InstalledAppServerManager(
 """
     }
     private fun rpc(command: BrokerServiceLaunchCommand, method: String, params: JsonObject): JsonObject? = runBlocking {
-        kotlinx.coroutines.withTimeoutOrNull(5_000) {
-            val connection = (connectCodexUnixWebSocket(command.publicSocket,4 * 1_024 * 1_024,2_000) as? BrokerUpstreamConnectionAdmission.Connected)?.connection ?: return@withTimeoutOrNull null
+        kotlinx.coroutines.withTimeoutOrNull(BrokerOperationalLimits.managementExchange.value) {
+            val connection = (connectCodexUnixWebSocket(command.publicSocket,BrokerOperationalLimits.maximumClientMessageBytes,BrokerOperationalLimits.managementConnect.value) as? BrokerUpstreamConnectionAdmission.Connected)?.connection ?: return@withTimeoutOrNull null
             try {
                 connection.send("""{"id":1,"method":"initialize","params":{"clientInfo":{"name":"kast-control","version":"1"}}}""")
                 val initialize = (connection.receive() as? BrokerUpstreamFrame.Text)?.message?.let { Json.parseToJsonElement(it).jsonObject } ?: return@withTimeoutOrNull null

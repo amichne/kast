@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.provider
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.core.BrokerInvocationContext
 import io.github.amichne.kast.appserver.core.BrokerTool
 import io.github.amichne.kast.appserver.core.ProviderCall
@@ -218,7 +219,7 @@ internal class GradleRuntime(
     }
 
     private companion object {
-        const val MAXIMUM_OUTPUT_BYTES = 512 * 1_024
-        const val INVOCATION_TIMEOUT_MILLIS = 30_000L
+        const val MAXIMUM_OUTPUT_BYTES = BrokerOperationalLimits.maximumGradleOutputBytes
+        val INVOCATION_TIMEOUT_MILLIS = BrokerOperationalLimits.gradleInvocation.value
     }
 }

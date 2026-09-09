@@ -210,8 +210,8 @@ internal class WorkspaceEnrollmentStore(private val file: Path) {
     }
 
     private companion object {
-        const val MAXIMUM_WORKSPACES = 256
-        const val MAXIMUM_BYTES = 1_048_576L
+        const val MAXIMUM_WORKSPACES = BrokerOperationalLimits.maximumWorkspaces
+        val MAXIMUM_BYTES = BrokerOperationalLimits.maximumRegistryBytes.toLong()
         val locks = ConcurrentHashMap<Path, Any>()
     }
 }

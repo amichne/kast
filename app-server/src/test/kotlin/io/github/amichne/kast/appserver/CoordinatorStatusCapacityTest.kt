@@ -52,6 +52,10 @@ class CoordinatorStatusCapacityTest {
                 val observed = withTimeout(5_000) { InstalledWorkerClient(kast, root, emptyMap()).status(command) }
                 assertTrue(observed is CoordinatorStatusRead.Observed, "valid bounded status was rejected: $observed")
                 assertEquals(256, (observed as CoordinatorStatusRead.Observed).snapshot.workers.size)
+                assertEquals(BrokerSocketReachability.REACHABLE,
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        JdkBrokerSocketProbe.probeGeneration(command.publicSocket, UUID.fromString(generation))
+                    }, "readiness probe rejected the same valid maximum-capacity STATUS reply")
             } finally { engine.stopSuspend(0, 1_000) }
         } finally { Files.walk(root).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::deleteIfExists) } }
     }

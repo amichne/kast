@@ -119,7 +119,7 @@ private fun readCanonicalRequestInput(): CliRequestDocumentInput {
     else CliRequestDocumentInput.Provided(document)
 }
 
-private const val MAXIMUM_REQUEST_DOCUMENT_BYTES = 4 * 1_024 * 1_024
+private const val MAXIMUM_REQUEST_DOCUMENT_BYTES = CliOperationalLimits.maximumRequestDocumentBytes
 
 /**
  * Proof transition: installed service providers -> `CliBootstrap`.

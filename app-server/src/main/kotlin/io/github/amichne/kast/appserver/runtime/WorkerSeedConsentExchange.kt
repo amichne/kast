@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.runtime
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.*
 import io.github.amichne.kast.kernel.Refinement
 import io.ktor.server.websocket.DefaultWebSocketServerSession
@@ -56,11 +57,11 @@ internal class WorkerSeedConsentExchange(private val session: DefaultWebSocketSe
         if (!requested.compareAndSet(false,true)) return WorkerSeedConsent.ABSENT
         val prompt = WorkerSeedPrompt.create(disclosure)
         return try {
-            withTimeoutOrNull(60_000) {
+            withTimeoutOrNull(BrokerOperationalLimits.seedConsent.value) {
                 session.send(prompt.encode())
                 val frame = session.incoming.receiveCatching().getOrNull() as? Frame.Text ?: return@withTimeoutOrNull WorkerSeedConsent.ABSENT
                 val raw = frame.readText()
-                if (raw.toByteArray().size > 4_096) WorkerSeedConsent.ABSENT else prompt.decision(raw)
+                if (raw.toByteArray().size > BrokerOperationalLimits.maximumSeedConsentBytes) WorkerSeedConsent.ABSENT else prompt.decision(raw)
             } ?: WorkerSeedConsent.ABSENT
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) { WorkerSeedConsent.ABSENT }

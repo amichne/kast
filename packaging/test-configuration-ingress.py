@@ -7,6 +7,33 @@ import tempfile
 from configuration_ingress import Failure, violations
 
 class ConfigurationIngressTest(unittest.TestCase):
+    def test_operational_projection_drift_is_rejected_by_snapshot_check(self):
+        for altered in (None, 'INSTALL_DOWNLOAD_RETRIES', 'RETIREMENT_CHILD_TIMEOUT_MILLIS'):
+            with self.subTest(altered=altered), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                (root / 'packaging').mkdir()
+                shell = {'INSTALL_ACTIVATION_LOCK_TIMEOUT_MILLIS': 30000, 'INSTALL_ACTIVATION_LOCK_POLL_MILLIS': 50,
+                         'INSTALL_DOWNLOAD_RETRIES': 5, 'INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS': 2000}
+                python = {'RETIREMENT_CHILD_TIMEOUT_MILLIS': 60000, 'STATE_MAXIMUM_ENTRIES': 100000}
+                keys = ['installation.activation.lock_timeout', 'installation.activation.lock_poll',
+                        'installation.download.retries', 'installation.download.retry_delay',
+                        'installation.retirement.child_timeout', 'installation.state.maximum_entries']
+                schema = {'parameters': [], 'operationalLimits': [dict(key=key, value=value)
+                    for key, value in zip(keys, [*shell.values(), *python.values()])]}
+                (root / 'install.sh').write_text('\n'.join(f'readonly {key}={value + (key == altered)}' for key, value in shell.items()))
+                (root / 'packaging/installation-lifecycle.py').write_text('\n'.join(f'{key} = {value + (key == altered)}' for key, value in python.items()))
+                for name in ('generated.json', 'snapshot.json'):
+                    (root / name).write_text(json.dumps(schema))
+                (root / 'policy.json').write_text('{"ingressOwners":[]}')
+                result = subprocess.run([sys.executable, str(Path(__file__).with_name('configuration_ingress.py')),
+                    '--root', str(root), '--schema', str(root / 'generated.json'), '--snapshot', str(root / 'snapshot.json'),
+                    '--policy', str(root / 'policy.json')], capture_output=True, text=True, timeout=10)
+                if altered is None:
+                    self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                else:
+                    self.assertNotEqual(0, result.returncode, 'altered operational projection was accepted')
+                    self.assertEqual('OPERATIONAL_PROJECTION_MISMATCH', json.loads(result.stdout)['findings'][0]['condition'])
+
     def test_stale_checked_in_snapshot_rejects_even_equivalent_json(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

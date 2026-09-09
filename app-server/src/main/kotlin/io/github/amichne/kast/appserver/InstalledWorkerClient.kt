@@ -95,7 +95,7 @@ class InstalledWorkerClient(
             is Refinement.Refined -> observed.value
             is Refinement.Rejected -> return reject(observed.failure)
         }
-        val connection = when (val connected = connectCodexUnixWebSocket(command.publicSocket, CoordinatorStatusProtocol.maximumMessageBytes, 10_000, BrokerControlRoute.RUNTIME)) {
+        val connection = when (val connected = connectCodexUnixWebSocket(command.publicSocket, CoordinatorStatusProtocol.maximumMessageBytes, BrokerOperationalLimits.clientConnect.value, BrokerControlRoute.RUNTIME)) {
             is BrokerUpstreamConnectionAdmission.Connected -> connected.connection
             BrokerUpstreamConnectionAdmission.Rejected -> return reject(WorkerControlFailure.UNAVAILABLE)
         }
@@ -128,7 +128,7 @@ class InstalledWorkerClient(
                     is Refinement.Refined -> admitted.value
                     is Refinement.Rejected -> return reject(admitted.failure)
                 }
-                val decision = withTimeoutOrNull(60_000) { seedConsent.request(prompt.disclosure) } ?: WorkerSeedConsent.ABSENT
+                val decision = withTimeoutOrNull(BrokerOperationalLimits.seedConsent.value) { seedConsent.request(prompt.disclosure) } ?: WorkerSeedConsent.ABSENT
                 if (connection.send(prompt.reply(decision)) != BrokerUpstreamSend.SENT) return reject(WorkerControlFailure.UNAVAILABLE)
             } else return when (val decoded = decode(frame.message)) {
                 is Refinement.Rejected -> reject(decoded.failure)
@@ -160,8 +160,8 @@ class InstalledWorkerClient(
     private fun readBounded(path: Path): String {
         if (!java.nio.file.Files.isRegularFile(path, java.nio.file.LinkOption.NOFOLLOW_LINKS)) throw java.io.IOException("state rejected")
         return java.nio.file.Files.newInputStream(path, java.nio.file.LinkOption.NOFOLLOW_LINKS).use {
-            val bytes = it.readNBytes(16_385)
-            if (bytes.size > 16_384) throw java.io.IOException("state rejected")
+            val bytes = it.readNBytes(BrokerOperationalLimits.maximumControlStateBytes + 1)
+            if (bytes.size > BrokerOperationalLimits.maximumControlStateBytes) throw java.io.IOException("state rejected")
             bytes.toString(Charsets.UTF_8)
         }
     }

@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.protocol
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.WorkspaceRegistration
 import io.github.amichne.kast.appserver.core.BrokerThreadId
 import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
@@ -380,7 +381,7 @@ internal class FileThreadCatalogStore private constructor(
         ): FileThreadCatalogStoreOpen.Rejected = FileThreadCatalogStoreOpen.Rejected(failure)
 
         private const val STORE_VERSION = 2
-        private const val MAXIMUM_STORE_BYTES = 4 * 1_024 * 1_024
+        private const val MAXIMUM_STORE_BYTES = BrokerOperationalLimits.maximumThreadStoreBytes
         private val STORE_JSON = Json {
             ignoreUnknownKeys = false
             explicitNulls = false

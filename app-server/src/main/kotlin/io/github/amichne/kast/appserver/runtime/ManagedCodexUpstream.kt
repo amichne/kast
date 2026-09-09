@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.runtime
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.host.admission.CodexAppServerArguments
 import io.github.amichne.kast.appserver.host.admission.UpstreamCodexExecutable
 import io.ktor.client.HttpClient
@@ -219,7 +220,7 @@ internal class ManagedCodexUpstream private constructor(
             failure: ManagedCodexUpstreamFailure,
         ): ManagedCodexUpstreamStart.Rejected = ManagedCodexUpstreamStart.Rejected(failure)
 
-        private const val PROCESS_HEALTH_POLL_MILLIS = 25L
+        private val PROCESS_HEALTH_POLL_MILLIS = BrokerOperationalLimits.upstreamHealthPoll.value
     }
 }
 
@@ -357,9 +358,9 @@ private class JdkCodexAppServerProcess(
         if (!process.isAlive) return@withContext
         process.destroy()
         try {
-            if (!process.waitFor(2, TimeUnit.SECONDS)) {
+            if (!process.waitFor(BrokerOperationalLimits.upstreamProcessRetirementWait.value, TimeUnit.MILLISECONDS)) {
                 process.destroyForcibly()
-                process.waitFor(2, TimeUnit.SECONDS)
+                process.waitFor(BrokerOperationalLimits.upstreamProcessRetirementWait.value, TimeUnit.MILLISECONDS)
             }
         } catch (_: InterruptedException) {
             process.destroyForcibly()

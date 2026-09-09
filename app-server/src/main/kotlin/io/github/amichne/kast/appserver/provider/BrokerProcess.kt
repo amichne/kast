@@ -1,9 +1,9 @@
 package io.github.amichne.kast.appserver.provider
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.appserver.core.ProviderFailureCode
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -69,7 +69,7 @@ internal sealed interface BrokerProcessInput {
                 }
             }
 
-            private const val MAXIMUM_INPUT_BYTES = 4 * 1_024 * 1_024
+            private const val MAXIMUM_INPUT_BYTES = BrokerOperationalLimits.maximumProcessInputBytes
         }
     }
 }
@@ -112,8 +112,8 @@ internal class BrokerProcessRequest private constructor(
             )
         }
 
-        private const val MAXIMUM_OUTPUT_BYTES = 64 * 1_024 * 1_024
-        private val MAXIMUM_TIMEOUT_MILLIS = OperationExecutionBudget.GRAPH_BUILD.invocation.value
+        private const val MAXIMUM_OUTPUT_BYTES = BrokerOperationalLimits.maximumProcessOutputBytes
+        private val MAXIMUM_TIMEOUT_MILLIS = BrokerOperationalLimits.maximumProcessTimeout.value
     }
 }
 
@@ -266,9 +266,9 @@ internal object JdkBrokerProcessExecutor : BrokerProcessExecutor {
             if (process.isAlive) process.destroy()
             closeProcessStreams(process)
             try {
-                if (process.isAlive && !process.waitFor(250, TimeUnit.MILLISECONDS)) {
+                if (process.isAlive && !process.waitFor(BrokerOperationalLimits.processRetirementWait.value, TimeUnit.MILLISECONDS)) {
                     process.destroyForcibly()
-                    process.waitFor(250, TimeUnit.MILLISECONDS)
+                    process.waitFor(BrokerOperationalLimits.processRetirementWait.value, TimeUnit.MILLISECONDS)
                 }
             } catch (_: InterruptedException) {
                 process.destroyForcibly()

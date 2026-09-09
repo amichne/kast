@@ -4,6 +4,7 @@ import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.CoordinatorStatusProtocol
 import io.github.amichne.kast.distribution.contract.IndexerTransportLimits
 import io.github.amichne.kast.distribution.contract.WireRuntimeQualification
+import io.github.amichne.kast.distribution.contract.configuration.InstallationOperationalLimits
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOperationalLimit
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSchemaDocument
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationScope
@@ -17,6 +18,9 @@ object InstalledConfigurationSchema {
     val document: ConfigurationSchemaDocument get() = ConfigurationSchemaDocument(
         parameters = KastConfigurationCatalogue.declarations,
         operationalLimits = buildList {
+            addAll(BrokerOperationalLimits.declarations)
+            addAll(CliOperationalLimits.declarations)
+            addAll(InstallationOperationalLimits.declarations)
             for (budget in OperationExecutionBudget.entries) {
                 add(limit("operation.${budget.name.lowercase()}.dispatch", ":protocol:registry", budget.operation.value, ConfigurationUnit.MILLISECONDS, "OperationExecutionBudget.${budget.name}.operation"))
                 add(limit("operation.${budget.name.lowercase()}.invocation", ":protocol:registry", budget.invocation.value, ConfigurationUnit.MILLISECONDS, "OperationExecutionBudget.${budget.name}.invocation"))
@@ -30,9 +34,6 @@ object InstalledConfigurationSchema {
             add(limit("indexer.connections.maximum", ":distribution:contract", IndexerTransportLimits.maximumConnections.toLong(), ConfigurationUnit.COUNT, "IndexerTransportLimits.maximumConnections", ConfigurationScope.WORKSPACE))
             add(limit("coordinator.status.maximum_bytes", ":app-server", CoordinatorStatusProtocol.maximumMessageBytes.toLong(), ConfigurationUnit.BYTES, "CoordinatorStatusProtocol.maximumMessageBytes; generated maximum scalar widths and admitted worker count"))
             add(limit("coordinator.command.maximum_bytes", ":app-server", CoordinatorStatusProtocol.maximumCommandBytes.toLong(), ConfigurationUnit.BYTES, "CoordinatorStatusProtocol.maximumCommandBytes"))
-            add(limit("broker.message.maximum_bytes", ":app-server", BrokerOperationalLimits.maximumMessageBytes.toLong(), ConfigurationUnit.BYTES, "BrokerOperationalLimits.maximumMessageBytes"))
-            add(limit("broker.connections.maximum", ":app-server", BrokerOperationalLimits.maximumConnections.toLong(), ConfigurationUnit.COUNT, "BrokerOperationalLimits.maximumConnections", ConfigurationScope.INSTALLATION))
-            add(limit("broker.upstream_startup", ":app-server", BrokerOperationalLimits.upstreamStartup.value, ConfigurationUnit.MILLISECONDS, "BrokerOperationalLimits.upstreamStartup", ConfigurationScope.HOST_PROFILE))
         }.sortedBy { it.key },
         sourceCoverage = "declared-process-saved-workspace-saved-installation-derived-jvm-and-operational-owner-contracts",
     )

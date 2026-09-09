@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.host
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.CodexIntegrationFailure
 import io.github.amichne.kast.appserver.CodexIntegrationRun
 import io.github.amichne.kast.appserver.CodexIntegrationShutdownHooks
@@ -127,7 +128,7 @@ internal class DesktopStdioHost(
     }
 
     private companion object {
-        const val DEFAULT_SHUTDOWN_TIMEOUT_MILLIS = 10_000L
+        val DEFAULT_SHUTDOWN_TIMEOUT_MILLIS = BrokerOperationalLimits.desktopShutdown.value
     }
 
     private suspend fun bridge(

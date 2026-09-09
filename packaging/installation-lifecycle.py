@@ -13,6 +13,10 @@ import subprocess
 import sys
 import uuid
 
+# Fixed projections of InstallationOperationalLimits; checked against the generated catalogue.
+RETIREMENT_CHILD_TIMEOUT_MILLIS = 60000
+STATE_MAXIMUM_ENTRIES = 100000
+
 class Failure(str, Enum):
     MANIFEST_REJECTED = 'MANIFEST_REJECTED'
     STATE_REJECTED = 'STATE_REJECTED'
@@ -49,7 +53,7 @@ def retire_child(executable, arguments, root, environment, stage):
     try:
         result = subprocess.run([str(executable), *arguments], cwd=root, env=environment,
                                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                check=False, timeout=60)
+                                check=False, timeout=RETIREMENT_CHILD_TIMEOUT_MILLIS / 1000)
     except subprocess.TimeoutExpired:
         observe_retirement(stage, RetirementOutcome.DEADLINE_EXCEEDED, root)
         raise Rejected(Failure.RETIREMENT_UNPROVEN) from None
@@ -172,7 +176,7 @@ def inspect_state(installation):
     count = 0
     for current, directories, files in os.walk(state, followlinks=False):
         count += len(directories) + len(files)
-        if count > 100000:
+        if count > STATE_MAXIMUM_ENTRIES:
             raise Rejected(Failure.STATE_REJECTED)
         for name in directories + files:
             if (Path(current) / name).is_symlink():

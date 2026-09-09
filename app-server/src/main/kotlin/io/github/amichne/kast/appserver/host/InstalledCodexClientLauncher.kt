@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.host
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOwner
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 
@@ -209,9 +210,9 @@ private object JdkCodexClientProcessLauncher : CodexClientProcessLauncher {
         } catch (_: InterruptedException) {
             process.destroy()
             try {
-                if (!process.waitFor(2, TimeUnit.SECONDS)) {
+                if (!process.waitFor(BrokerOperationalLimits.clientProcessRetirementWait.value, TimeUnit.MILLISECONDS)) {
                     process.destroyForcibly()
-                    process.waitFor(2, TimeUnit.SECONDS)
+                    process.waitFor(BrokerOperationalLimits.clientProcessRetirementWait.value, TimeUnit.MILLISECONDS)
                 }
             } catch (_: InterruptedException) {
                 process.destroyForcibly()
