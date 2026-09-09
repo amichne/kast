@@ -215,7 +215,28 @@ internal object JdkRuntimeBootstrapProcessSearch : RuntimeBootstrapProcessSearch
         return when (matches.size) {
             0 -> RuntimeBootstrapProcessSearchResult.None
             1 -> matches.single()
-            else -> RuntimeBootstrapProcessSearchResult.Ambiguous
+            else -> selectTerminalBootstrapProcess(matches)
+        }
+    }
+
+    /** A launchd wrapper and its child retain one identity only when every match forms one chain. */
+    private fun selectTerminalBootstrapProcess(
+        matches: List<RuntimeBootstrapProcessSearchResult.Exact>,
+    ): RuntimeBootstrapProcessSearchResult {
+        if (matches.map { it.attemptId }.distinct().size != 1) {
+            return RuntimeBootstrapProcessSearchResult.Ambiguous
+        }
+        return try {
+            matches.singleOrNull { candidate ->
+                matches.all { observed ->
+                    observed.process.pid() == candidate.process.pid() ||
+                        generateSequence(candidate.process.parent().orElse(null)) { process ->
+                            process.parent().orElse(null)
+                        }.any { ancestor -> ancestor.pid() == observed.process.pid() }
+                }
+            } ?: RuntimeBootstrapProcessSearchResult.Ambiguous
+        } catch (_: SecurityException) {
+            RuntimeBootstrapProcessSearchResult.Ambiguous
         }
     }
 }

@@ -105,6 +105,16 @@ kast 'argument with spaces'
             )
             self.assertEqual(checked.returncode, 0, checked.stderr)
 
+    def test_session_canonicalizes_a_symlinked_temporary_root(self):
+        temporary_alias = self.root / "tmp-alias"
+        temporary_alias.symlink_to(self.fixture.root / "tmp", target_is_directory=True)
+        self.env["TMPDIR"] = str(temporary_alias)
+        result = self.run_install("session")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        activation = Path(result.stdout.strip())
+        self.assertEqual(activation, activation.resolve())
+        self.assertTrue(activation.is_file())
+
     def test_persistent_uses_environment_selected_bin_and_refresh(self):
         self.env["KAST_BIN_DIR"] = str(self.root / "custom bin")
         result = self.run_install("persistent")

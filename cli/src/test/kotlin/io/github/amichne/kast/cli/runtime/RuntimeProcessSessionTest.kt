@@ -24,6 +24,45 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 class RuntimeProcessSessionTest {
+    @Test
+    @EnabledOnOs(OS.MAC)
+    fun `launchd wrapper and indexer child retain one bootstrap process identity`(@TempDir temporary: Path) {
+        val endpoint = endpoint(temporary)
+        val context = launchContext(temporary)
+        val selectedAttempt = attempt("123e4567-e89b-42d3-a456-42661417400a")
+        val query = RuntimeBootstrapProcessQuery.from(endpoint, executable(temporary), context)
+        val exactArguments = listOf(
+            "io.github.amichne.kast.indexer.KastIndexerMainKt",
+            "--workspace-root=${endpoint.root.path}",
+            "--socket-path=${endpoint.socketPath}",
+            "--runtime-id=${endpoint.runtimeId.value}",
+            "--bootstrap-state-path=${query.bootstrapState}",
+            "--max-heap-mib=${query.maxHeap.mebibytes}",
+            "--bootstrap-attempt-id=${selectedAttempt.value}",
+        )
+        val wrapper = ProcessBuilder(
+            listOf("/bin/sh", "-c", "/bin/sh -c 'while :; do sleep 1; done' \"\$@\" & wait", "kast-indexer-wrapper") +
+                exactArguments,
+        ).start()
+        try {
+            var child: ProcessHandle? = null
+            repeat(100) {
+                child = wrapper.descendants().use { descendants -> descendants.findFirst().orElse(null) }
+                if (child == null) Thread.sleep(10)
+            }
+            assertTrue(child != null, "fixture child did not start")
+
+            val observed = JdkRuntimeBootstrapProcessSearch.find(query)
+            val exact = assertInstanceOf(RuntimeBootstrapProcessSearchResult.Exact::class.java, observed)
+            assertEquals(selectedAttempt, exact.attemptId)
+            assertNotEquals(wrapper.pid(), exact.process.pid(), "the admitted identity must be the indexer child")
+        } finally {
+            wrapper.descendants().use { descendants -> descendants.forEach(ProcessHandle::destroyForcibly) }
+            wrapper.destroyForcibly()
+            wrapper.waitFor()
+        }
+    }
+
     @Test fun `bootstrap process authority retains admitted heap reservation`(@TempDir temporary: Path) {
         val heap = (io.github.amichne.kast.distribution.contract.IndexerHeapSize.parse("2g") as Refinement.Refined).value
         val query = RuntimeBootstrapProcessQuery.from(endpoint(temporary), executable(temporary), launchContext(temporary, heap = heap))

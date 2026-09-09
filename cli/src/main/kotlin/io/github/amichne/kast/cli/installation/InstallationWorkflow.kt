@@ -227,7 +227,7 @@ internal object InstallationWorkflow {
         FileChannel.open(lockPath, StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE).use { channel ->
             val lock = acquire(channel) ?: return InstallationOutcome.Rejected(InstallationFailure.ACTIVATION_LOCK_REJECTED)
             lock.use {
-                if (Files.isSymbolicLink(lockPath) || !regularFile(lockPath)) {
+                if (Files.isSymbolicLink(lockPath) || !secureActivationLock(lockPath)) {
                     return InstallationOutcome.Rejected(InstallationFailure.ACTIVATION_LOCK_REJECTED)
                 }
                 val existing = Files.exists(plan.targetRoot, LinkOption.NOFOLLOW_LINKS)
@@ -370,6 +370,7 @@ internal object InstallationWorkflow {
             |export JAVA=${shellQuote(plan.request.javaHome.value.resolve("bin/java").toString())}
             |export JAVA_HOME=${shellQuote(plan.request.javaHome.value.toString())}
             |export KAST_RUNTIME_ARCHIVE="${'$'}runtime_archive"
+            |unset KAST_SESSION_ROOT
             |exec "${'$'}control_executable" "${'$'}@"
             |
         """.trimMargin()
@@ -602,6 +603,19 @@ private fun regularFile(path: Path): Boolean =
     Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) && !Files.isSymbolicLink(path)
 
 private fun regularExecutable(path: Path): Boolean = regularFile(path) && Files.isExecutable(path)
+
+internal fun secureActivationLock(path: Path): Boolean = try {
+    if (!regularFile(path)) {
+        false
+    } else {
+        setMode(path, "rw-------")
+        mode(path) == 0b110_000_000
+    }
+} catch (_: IOException) {
+    false
+} catch (_: SecurityException) {
+    false
+}
 
 private fun fileSize(path: Path): Long = try {
     Files.size(path)
