@@ -80,10 +80,15 @@ internal data class WorkspaceExecutionEvent(
 internal class WorkspaceExecution(
     private val scope: CoroutineScope,
     private val policy: WorkspaceExecutionPolicy,
+    private val timeSource: TimeSource = TimeSource.Monotonic,
 ) {
     private enum class RequestPhase { QUEUED, GRANTED, EXECUTING, RETIRED }
-    private class Request(val identity: WorkspaceExecutionIdentity, val interactionLimit: ElapsedTimeLimitMillis) {
-        val enqueuedAt: TimeMark = TimeSource.Monotonic.markNow()
+    private class Request(
+        val identity: WorkspaceExecutionIdentity,
+        val interactionLimit: ElapsedTimeLimitMillis,
+        timeSource: TimeSource,
+    ) {
+        val enqueuedAt: TimeMark = timeSource.markNow()
         val permission = CompletableDeferred<Unit>()
         val result = CompletableDeferred<WorkspaceExecutionResult>()
         var phase = RequestPhase.QUEUED
@@ -99,7 +104,11 @@ internal class WorkspaceExecution(
     private val events = ArrayDeque<WorkspaceExecutionEvent>()
 
     fun submit(identity: WorkspaceExecutionIdentity, interactionLimit: ElapsedTimeLimitMillis = policy.interaction, operation: suspend () -> ProtocolRouting): Deferred<WorkspaceExecutionResult> {
-        val request = Request(identity, if (interactionLimit.value < policy.interaction.value) interactionLimit else policy.interaction)
+        val request = Request(
+            identity,
+            if (interactionLimit.value < policy.interaction.value) interactionLimit else policy.interaction,
+            timeSource,
+        )
         val job = scope.launch(start = CoroutineStart.LAZY) { perform(request, operation) }
         val execution = Execution(request, job)
         val accepted = synchronized(this) {
