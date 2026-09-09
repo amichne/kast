@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TestTimeSource
 
 class WorkspaceExecutionBudgetTest {
     @Test fun `queue policy admits published maximum and rejects overflow and inverted wait`() {
@@ -27,17 +29,26 @@ class WorkspaceExecutionBudgetTest {
 
     @Test fun `selected operation allowance includes time already spent queued`(@TempDir directory: Path): Unit = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-        val policy = (WorkspaceExecutionPolicy.admit(2, 1_000, 1_000) as Refinement.Refined).value
-        val executions = WorkspaceExecution(scope, policy)
+        val policy = (WorkspaceExecutionPolicy.admit(2, 30_000, 30_000) as Refinement.Refined).value
+        val timeSource = TestTimeSource()
+        val executions = WorkspaceExecution(scope, policy, timeSource)
         val workspace = BrokerWorkspaceId.derive(requireNotNull(CanonicalBrokerDirectory.admit(directory.toRealPath())))
         fun identity(call: String) = WorkspaceExecutionIdentity(workspace, ClientConnectionId.fresh(), requireNotNull(BrokerThreadId.admit("thread")), requireNotNull(BrokerTurnId.admit("turn")), requireNotNull(BrokerCallId.admit(call)))
         val entered = CompletableDeferred<Unit>(); val release = CompletableDeferred<Unit>()
-        val first = executions.submit(identity("first")) { entered.complete(Unit); release.await(); ProtocolRouting.ReplyUpstream("{}") }
+        val first = executions.submit(identity("first")) {
+            entered.complete(Unit)
+            release.await()
+            timeSource += 40.milliseconds
+            ProtocolRouting.ReplyUpstream("{}")
+        }
         entered.await()
-        val second = executions.submit(identity("second"), (ElapsedTimeLimitMillis.parse(100) as Refinement.Refined).value) { awaitCancellation() }
+        val second = executions.submit(identity("second"), (ElapsedTimeLimitMillis.parse(100) as Refinement.Refined).value) {
+            timeSource += 60.milliseconds
+            awaitCancellation()
+        }
         try {
-            delay(40); release.complete(Unit); first.await()
-            val outcome = withTimeoutOrNull(300) { second.await() }
+            release.complete(Unit); first.await()
+            val outcome = withTimeoutOrNull(5_000) { second.await() }
             assertNotNull(outcome, "selected operation allowance was reset to global workspace limit")
             assertEquals(WorkspaceExecutionResult.Rejected(WorkspaceExecutionFailure.WORKSPACE_INTERACTION_TIMED_OUT), outcome)
             val events = executions.snapshot().getValue("events").jsonArray.map { it.jsonObject }
