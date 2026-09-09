@@ -118,6 +118,6 @@ Run one Gradle invocation at a time in a checkout. The two-workspace script prin
 
 As of 2026-09-08, the source branch contains the typed configuration catalogue, version-owned coordinator and worker receipts, workspace registry and thread bindings, per-workspace admission, elapsed wire budgets, indexer retirement handling, lifecycle tooling, and the isolated acceptance harness.
 
-Focused indexer alias and request-lifetime checks, plus the offline lifecycle regression suite, have been observed passing during implementation. Passive App Server status still has an observed failing test while its coordinator projection is being completed. The installed two-workspace script and final `productBuildGate` have not yet been observed at the final implementation head.
+Focused indexer alias, request-lifetime, passive coordinator status, unpublished-startup recovery, and offline lifecycle checks have been observed passing during implementation. Those focused results do not establish the entire product. The installed two-workspace script and final `productBuildGate` have not yet been observed at the final implementation head.
 
 Completion requires all R1-R7 acceptance evidence from the plan at one final source revision, including a clean-checkout build and required CI. Representative heavy-monolith qualification remains a separate, explicitly authorized gate; the small fixtures establish routing and lifecycle behavior, not universal capacity.
