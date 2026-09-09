@@ -59,7 +59,8 @@
             "pages": [
               "troubleshooting",
               "concepts/evidence-boundaries",
-              "reference/compatibility"
+              "reference/compatibility",
+              "concepts/runtime-integration-validation"
             ]
           }
         ]
