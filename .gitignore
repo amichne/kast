@@ -50,4 +50,4 @@ skills-lock.json
 /AGENTS.local.md
 /.kast/
 /.graphify/
-.agents/mintlify*/*
+/.agents/mintlify*/*
