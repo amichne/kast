@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.core
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import io.github.amichne.kast.appserver.schema.CompiledJsonSchema
@@ -207,13 +208,13 @@ internal data class BrokerLimits private constructor(
 ) {
     companion object {
         internal fun defaults(): BrokerLimits = BrokerLimits(
-            inFlightCallsPerConnection = 8,
-            inFlightCallsPerProvider = 4,
-            maximumDescriptorCount = 64,
-            maximumCatalogBytes = 1_024 * 1_024,
-            maximumToolArgumentBytes = 64 * 1_024,
-            maximumToolResultBytes = 1_024 * 1_024,
-            providerStartupTimeoutMillis = OperationExecutionBudget.PROVIDER_QUALIFICATION.value,
+            inFlightCallsPerConnection = BrokerOperationalLimits.inFlightCallsPerConnection,
+            inFlightCallsPerProvider = BrokerOperationalLimits.inFlightCallsPerProvider,
+            maximumDescriptorCount = BrokerOperationalLimits.maximumDescriptorCount,
+            maximumCatalogBytes = BrokerOperationalLimits.maximumCatalogBytes,
+            maximumToolArgumentBytes = BrokerOperationalLimits.maximumToolArgumentBytes,
+            maximumToolResultBytes = BrokerOperationalLimits.maximumToolResultBytes,
+            providerStartupTimeoutMillis = BrokerOperationalLimits.providerStartup.value,
         )
     }
 }

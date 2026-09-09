@@ -4,6 +4,10 @@ import io.github.amichne.kast.appserver.host.admission.CodexAppServerArguments
 import io.github.amichne.kast.appserver.host.admission.DesktopFacadeExecutables
 import io.github.amichne.kast.appserver.host.admission.UpstreamCodexExecutable
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationChild
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOwner
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSources
+import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import java.io.File
 import java.io.IOException
 import java.nio.charset.StandardCharsets
@@ -63,8 +67,7 @@ internal value class BrokerServiceIdentity private constructor(val value: String
     companion object {
         internal fun derive(
             kastDigest: String,
-            codexDigest: String,
-            codex: Path,
+            host: BrokerHostSelection,
             kast: Path,
             userHome: Path,
             javaHome: Path,
@@ -78,8 +81,7 @@ internal value class BrokerServiceIdentity private constructor(val value: String
                 VENDORED_BROKER_VERSION,
                 CodexAppServerArguments.sharedService().withOwnedTransport("unix://").joinToString("\n"),
                 kastDigest,
-                codexDigest,
-                codex,
+                host.identityValue,
                 kast,
                 userHome,
                 javaHome,
@@ -107,6 +109,8 @@ internal value class BrokerServiceIdentity private constructor(val value: String
 @JvmInline
 internal value class BrokerExecutableSearchPath private constructor(val value: String) {
     companion object {
+        internal fun coordinator(kast: Path): BrokerExecutableSearchPath? = derive(kast.parent, kast, kast)
+
         internal fun derive(
             codexLauncherDirectory: Path,
             codex: Path,
@@ -161,42 +165,35 @@ internal enum class BrokerChildEnvironmentFailure { INVALID_VALUE }
 /** Exact admitted runtime configuration forwarded across launchd's empty environment. */
 internal class BrokerChildEnvironment private constructor(
     val assignments: List<String>,
+    val identityValue: String,
 ) {
-    val identityValue: String = assignments.joinToString("\n")
 
     companion object {
         internal fun admit(
             environment: Map<String, String>,
         ): Refinement<BrokerChildEnvironment, BrokerChildEnvironmentFailure> {
-            val assignments = CHILD_ENVIRONMENT_NAMES.mapNotNull { name ->
-                environment[name]?.let { value ->
-                    if (
-                        value.length > MAXIMUM_CHILD_ENVIRONMENT_VALUE_CHARACTERS ||
-                        value.any { character ->
-                            character == '\n' || character == '\r' || character == '\u0000'
-                        }
-                    ) {
-                        return Refinement.Rejected(BrokerChildEnvironmentFailure.INVALID_VALUE)
-                    }
-                    "$name=$value"
-                }
+            val configuration = when (val resolution = ResolvedKastConfiguration.resolve(ConfigurationSources(environment))) {
+                is Refinement.Refined -> resolution.value
+                is Refinement.Rejected -> return Refinement.Rejected(BrokerChildEnvironmentFailure.INVALID_VALUE)
             }
-            return Refinement.Refined(BrokerChildEnvironment(assignments))
+            return admit(configuration)
+        }
+
+        internal fun admit(configuration: ResolvedKastConfiguration): Refinement<BrokerChildEnvironment, BrokerChildEnvironmentFailure> {
+            val assignments = configuration.childEnvironment(ConfigurationChild.BROKER).toSortedMap().map { (name, value) ->
+                if (value.length > MAXIMUM_CHILD_ENVIRONMENT_VALUE_CHARACTERS ||
+                    value.any { it == '\n' || it == '\r' || it == '\u0000' }) {
+                    return Refinement.Rejected(BrokerChildEnvironmentFailure.INVALID_VALUE)
+                }
+                "$name=$value"
+            }
+            val identity = configuration.childIdentityInputs(ConfigurationChild.BROKER).toSortedMap()
+                .entries.joinToString("\n") { (key, value) -> "$key=$value" }
+            return Refinement.Refined(BrokerChildEnvironment(assignments, identity))
         }
 
         private const val MAXIMUM_CHILD_ENVIRONMENT_VALUE_CHARACTERS = 32 * 1_024
-        private val CHILD_ENVIRONMENT_NAMES = listOf(
-            "KAST_RUNTIME_ARCHIVE",
-            "KAST_RUNTIME_STORE",
-            "KAST_RUNTIME_DIRECTORY",
-            "KAST_CACHE_ROOT",
-            "KAST_ENABLE_LAUNCHD",
-            "KAST_GRADLE_JAVA_HOME",
-            "KAST_GRADLE_IMPORT_VARIABLES",
-            "KAST_GRADLE_IMPORT_PATH",
-            "KAST_NETWORK_CONFIG",
-            "KAST_TRUST_DONOR_JAVA_HOME",
-        )
+
     }
 }
 
@@ -224,8 +221,23 @@ internal sealed interface BrokerServiceLaunchCommandResolution {
         BrokerServiceLaunchCommandResolution
 }
 
+internal sealed interface BrokerHostSelection {
+    class Selected(val executable: UpstreamCodexExecutable, val launcherDirectory: Path, private val payloadDigest: String) : BrokerHostSelection {
+        override val identityValue: String = "selected\n${executable.path}\n$payloadDigest"
+    }
+    data object Disabled : BrokerHostSelection { override val identityValue = "disabled" }
+    data object NotConfigured : BrokerHostSelection { override val identityValue = "not-configured" }
+    val identityValue: String
+    fun environment(): Map<String, String> = when (this) {
+        is Selected -> mapOf("CODEX_EXECUTABLE" to executable.path.toString())
+        Disabled, NotConfigured -> emptyMap()
+    }
+}
+
+internal enum class BrokerServicePurpose { HOST_ATTACHMENT, COORDINATOR }
+
 internal class BrokerServiceLaunchCommand private constructor(
-    val codex: UpstreamCodexExecutable,
+    val host: BrokerHostSelection,
     val kast: Path,
     val executableSearchPath: BrokerExecutableSearchPath,
     val userHome: Path,
@@ -242,13 +254,18 @@ internal class BrokerServiceLaunchCommand private constructor(
     val serviceLabel: BrokerLaunchdServiceLabel,
     val toolSelection: KastToolSelection,
     val childEnvironment: BrokerChildEnvironment,
+    val configuration: ResolvedKastConfiguration,
 ) {
     companion object {
+        fun resolveCoordinator(kastCandidate: Path, userHomeCandidate: Path, environment: Map<String, String>): BrokerServiceLaunchCommandResolution =
+            resolve(kastCandidate, userHomeCandidate, environment, purpose = BrokerServicePurpose.COORDINATOR)
+
         fun resolve(
             kastCandidate: Path,
             userHomeCandidate: Path,
             environment: Map<String, String>,
             javaHomeCandidate: Path = Path.of(System.getProperty("java.home")),
+            purpose: BrokerServicePurpose = BrokerServicePurpose.HOST_ATTACHMENT,
         ): BrokerServiceLaunchCommandResolution {
             val kast = regularExecutable(kastCandidate, BrokerSymbolicLinkPolicy.EXACT_PATH)
                 ?: return rejected(PersistentBrokerServiceFailure.KAST_EXECUTABLE_UNAVAILABLE)
@@ -256,31 +273,23 @@ internal class BrokerServiceLaunchCommand private constructor(
                 ?: return rejected(PersistentBrokerServiceFailure.USER_HOME_REJECTED)
             val jvmUserHomeOption = BrokerJvmUserHomeOption.from(userHome)
                 ?: return rejected(PersistentBrokerServiceFailure.USER_HOME_REJECTED)
-            val toolingMode = when (
-                val admission = AppServerToolingMode.admit(environment[APP_SERVER_ENABLE_ENVIRONMENT])
-            ) {
+            val admittedConfiguration = when (val admission = InstalledBrokerConfigurationIngress.admit(environment)) {
                 is Refinement.Refined -> admission.value
-                is Refinement.Rejected -> return rejected(
-                    PersistentBrokerServiceFailure.CONFIGURATION_REJECTED,
-                )
+                is Refinement.Rejected -> return rejected(when (val failure = admission.failure) {
+                    is BrokerConfigurationIngressRejection.Configuration -> when (failure.failure.key) {
+                        "CODEX_EXECUTABLE", "KAST_REAL_CODEX_EXECUTABLE" -> PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE
+                        "CODEX_HOME" -> PersistentBrokerServiceFailure.CODEX_HOME_REJECTED
+                        else -> PersistentBrokerServiceFailure.CONFIGURATION_REJECTED
+                    }
+                    is BrokerConfigurationIngressRejection.Owner, is BrokerConfigurationIngressRejection.Source -> PersistentBrokerServiceFailure.CONFIGURATION_REJECTED
+                })
             }
-            if (toolingMode == AppServerToolingMode.DISABLED) {
+            val configuration = admittedConfiguration.configuration
+            val ownerInputs = configuration.ownerInputs(ConfigurationOwner.APP_SERVER)
+            if (purpose == BrokerServicePurpose.HOST_ATTACHMENT && admittedConfiguration.toolingMode == AppServerToolingMode.DISABLED) {
                 return rejected(PersistentBrokerServiceFailure.DISABLED)
             }
-            val toolSelection = when (
-                val admission = KastToolSelection.admit(environment[APP_SERVER_TOOLS_ENVIRONMENT])
-            ) {
-                is Refinement.Refined -> admission.value
-                is Refinement.Rejected -> return rejected(
-                    PersistentBrokerServiceFailure.CONFIGURATION_REJECTED,
-                )
-            }
-            val childEnvironment = when (val admission = BrokerChildEnvironment.admit(environment)) {
-                is Refinement.Refined -> admission.value
-                is Refinement.Rejected -> return rejected(
-                    PersistentBrokerServiceFailure.CONFIGURATION_REJECTED,
-                )
-            }
+            val toolSelection = admittedConfiguration.toolSelection
             val javaHome = canonicalDirectoryTarget(javaHomeCandidate)
                 ?: return rejected(PersistentBrokerServiceFailure.JAVA_RUNTIME_UNAVAILABLE)
             val javaExecutable = regularExecutable(
@@ -288,46 +297,50 @@ internal class BrokerServiceLaunchCommand private constructor(
                 BrokerSymbolicLinkPolicy.CANONICAL_TARGET,
             ) ?: return rejected(PersistentBrokerServiceFailure.JAVA_RUNTIME_UNAVAILABLE)
             val searchPath = environment["PATH"].orEmpty()
-            val codexSelection = if (environment.containsKey("CODEX_EXECUTABLE")) {
-                absoluteExecutableSelection(environment.getValue("CODEX_EXECUTABLE"))
-            } else {
-                resolveExecutable("codex", searchPath)
-            } ?: return rejected(PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE)
-            val facades = DesktopFacadeExecutables.resolve(
-                kast.parent.resolve("kast-codex"),
-                null,
-            )
-            val codex = when (
-                val admission = UpstreamCodexExecutable.admit(
-                    codexSelection.executable,
-                    facades,
-                    launcherCandidate = codexSelection.launcher,
-                )
-            ) {
-                is Refinement.Refined -> admission.value
-                is Refinement.Rejected -> return rejected(
-                    PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE,
-                )
+            val codexSelection = if (ownerInputs.containsKey("CODEX_EXECUTABLE")) {
+                absoluteExecutableSelection(ownerInputs.getValue("CODEX_EXECUTABLE"))
+                    ?: return rejected(PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE)
+            } else resolveExecutable("codex", searchPath)
+            val host = when {
+                admittedConfiguration.toolingMode == AppServerToolingMode.DISABLED -> BrokerHostSelection.Disabled
+                codexSelection == null -> {
+                    if (purpose == BrokerServicePurpose.HOST_ATTACHMENT) return rejected(PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE)
+                    BrokerHostSelection.NotConfigured
+                }
+                else -> {
+                    val facades = DesktopFacadeExecutables.resolve(kast.parent.resolve("kast-codex"), null)
+                    val codex = when (val admission = UpstreamCodexExecutable.admit(codexSelection.executable,
+                        facades, launcherCandidate = codexSelection.launcher)) {
+                        is Refinement.Refined -> admission.value
+                        is Refinement.Rejected -> return rejected(PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE)
+                    }
+                    val digest = sha256(codex.path) ?: return rejected(PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE)
+                    BrokerHostSelection.Selected(codex, codexSelection.launcher.parent, digest)
+                }
             }
-            val executableSearchPath = BrokerExecutableSearchPath.derive(
-                codexSelection.launcher.parent,
-                codex.path,
-                kast,
-            ) ?: return rejected(PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE)
-            val codexHome = if (environment.containsKey("CODEX_HOME")) {
-                absoluteNormalizedPath(environment.getValue("CODEX_HOME"))
+            val executableSearchPath = when (host) {
+                is BrokerHostSelection.Selected -> BrokerExecutableSearchPath.derive(
+                    host.launcherDirectory, host.executable.path, kast)
+                BrokerHostSelection.Disabled, BrokerHostSelection.NotConfigured -> BrokerExecutableSearchPath.coordinator(kast)
+            } ?: return rejected(PersistentBrokerServiceFailure.CONFIGURATION_REJECTED)
+            val codexHome = if (ownerInputs.containsKey("CODEX_HOME")) {
+                absoluteNormalizedPath(ownerInputs.getValue("CODEX_HOME"))
             } else {
                 userHome.resolve(".codex")
             } ?: return rejected(PersistentBrokerServiceFailure.CODEX_HOME_REJECTED)
-            val stateDirectory = codexHome.resolve("broker")
+            val childEnvironment = when (val admission = BrokerChildEnvironment.admit(configuration)) {
+                is Refinement.Refined -> admission.value
+                is Refinement.Rejected -> return rejected(
+                    PersistentBrokerServiceFailure.CONFIGURATION_REJECTED,
+                )
+            }
+            val installation = BrokerInstallationLayout.from(kast, codexHome)
+            val stateDirectory = installation.broker
             val kastDigest = sha256(kast)
                 ?: return rejected(PersistentBrokerServiceFailure.KAST_EXECUTABLE_UNAVAILABLE)
-            val codexDigest = sha256(codex.path)
-                ?: return rejected(PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE)
             val identity = BrokerServiceIdentity.derive(
                 kastDigest,
-                codexDigest,
-                codex.path,
+                host,
                 kast,
                 userHome,
                 javaHome,
@@ -339,7 +352,7 @@ internal class BrokerServiceLaunchCommand private constructor(
             )
             return BrokerServiceLaunchCommandResolution.Resolved(
                 BrokerServiceLaunchCommand(
-                    codex,
+                    host,
                     kast,
                     executableSearchPath,
                     userHome,
@@ -349,13 +362,14 @@ internal class BrokerServiceLaunchCommand private constructor(
                     codexHome,
                     stateDirectory,
                     stateDirectory.resolve("service-readiness.json"),
-                    codexHome.resolve("app-server-control/app-server-control.sock"),
+                    installation.publicSocket,
                     stateDirectory.resolve("service.log"),
                     stateDirectory.resolve("service-start.lock"),
                     identity,
-                    BrokerLaunchdServiceLabel.from(codexHome),
+                    BrokerLaunchdServiceLabel.from(installation.root),
                     toolSelection,
                     childEnvironment,
+                    configuration,
                 ),
             )
         }
@@ -474,7 +488,7 @@ internal class InstalledPersistentBrokerService(
     private val host: PersistentBrokerServiceHost = MacOsPersistentBrokerServiceHost(),
 ) : PersistentBrokerService {
     override fun ensure(): PersistentBrokerServiceAdmission = when (
-        val resolution = BrokerServiceLaunchCommand.resolve(kast, userHome, environment)
+        val resolution = BrokerServiceLaunchCommand.resolveCoordinator(kast, userHome, environment)
     ) {
         is BrokerServiceLaunchCommandResolution.Resolved -> host.ensure(resolution.command)
         is BrokerServiceLaunchCommandResolution.Rejected ->

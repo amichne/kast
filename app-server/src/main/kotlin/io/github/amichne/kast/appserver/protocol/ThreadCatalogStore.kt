@@ -1,5 +1,7 @@
 package io.github.amichne.kast.appserver.protocol
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
+import io.github.amichne.kast.appserver.WorkspaceRegistration
 import io.github.amichne.kast.appserver.core.BrokerThreadId
 import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.appserver.core.CatalogDigest
@@ -28,21 +30,64 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
+@JvmInline
+internal value class BindingInstallationId private constructor(val value: String) {
+    companion object {
+        internal fun admit(raw: String): BindingInstallationId? =
+            raw.takeIf { it.matches(Regex("[A-Za-z0-9._:-]{1,256}")) }?.let(::BindingInstallationId)
+    }
+}
+
+@JvmInline
+internal value class BindingStateEpoch private constructor(val value: UUID) {
+    companion object {
+        internal fun admit(raw: String): BindingStateEpoch? = try {
+            UUID.fromString(raw).takeIf { it.toString() == raw }?.let(::BindingStateEpoch)
+        } catch (_: IllegalArgumentException) { null }
+    }
+}
+
+internal enum class ThreadBindingOwnerFailure { INSTALLATION_REJECTED, EPOCH_REJECTED }
+internal sealed interface ThreadBindingOwner {
+    data object ProtocolFixture : ThreadBindingOwner
+    data class Installation(val installationId: BindingInstallationId, val stateEpoch: BindingStateEpoch) : ThreadBindingOwner
+
+    companion object {
+        internal fun admit(installationId: String, stateEpoch: String): Refinement<Installation, ThreadBindingOwnerFailure> {
+            val installation = BindingInstallationId.admit(installationId)
+                ?: return Refinement.Rejected(ThreadBindingOwnerFailure.INSTALLATION_REJECTED)
+            val epoch = BindingStateEpoch.admit(stateEpoch)
+                ?: return Refinement.Rejected(ThreadBindingOwnerFailure.EPOCH_REJECTED)
+            return Refinement.Refined(Installation(installation, epoch))
+        }
+    }
+}
+
 internal enum class ThreadCatalogBindingFailure {
     INVALID_THREAD_ID,
     WORKING_DIRECTORY_REJECTED,
+    WORKSPACE_ROOT_REJECTED,
+    WORKING_DIRECTORY_OUTSIDE_WORKSPACE,
 }
 
 internal class ThreadCatalogBinding private constructor(
     val threadId: BrokerThreadId,
     val catalogDigest: CatalogDigest,
     val workingDirectory: CanonicalBrokerDirectory,
+    val workspace: WorkspaceRegistration,
+    val owner: ThreadBindingOwner,
 ) {
+    internal fun sameBinding(other: ThreadCatalogBinding): Boolean =
+        threadId == other.threadId && catalogDigest == other.catalogDigest && workingDirectory == other.workingDirectory &&
+            workspace == other.workspace && owner == other.owner
+
     companion object {
         internal fun admit(
             threadId: String,
             catalogDigest: CatalogDigest,
             workingDirectory: Path,
+            workspaceRoot: Path = workingDirectory,
+            owner: ThreadBindingOwner = ThreadBindingOwner.ProtocolFixture,
         ): Refinement<ThreadCatalogBinding, ThreadCatalogBindingFailure> {
             val admittedThread = BrokerThreadId.admit(threadId)
                 ?: return Refinement.Rejected(ThreadCatalogBindingFailure.INVALID_THREAD_ID)
@@ -50,8 +95,13 @@ internal class ThreadCatalogBinding private constructor(
                 ?: return Refinement.Rejected(
                     ThreadCatalogBindingFailure.WORKING_DIRECTORY_REJECTED,
                 )
+            val admittedRoot = CanonicalBrokerDirectory.admit(workspaceRoot)
+                ?: return Refinement.Rejected(ThreadCatalogBindingFailure.WORKSPACE_ROOT_REJECTED)
+            if (!admittedDirectory.path.startsWith(admittedRoot.path)) {
+                return Refinement.Rejected(ThreadCatalogBindingFailure.WORKING_DIRECTORY_OUTSIDE_WORKSPACE)
+            }
             return Refinement.Refined(
-                ThreadCatalogBinding(admittedThread, catalogDigest, admittedDirectory),
+                ThreadCatalogBinding(admittedThread, catalogDigest, admittedDirectory, WorkspaceRegistration(admittedRoot), owner),
             )
         }
     }
@@ -77,8 +127,8 @@ internal class MemoryThreadCatalogStore : ThreadCatalogStore {
         bindings[threadId]?.let(ThreadStoreRead::Found) ?: ThreadStoreRead.Missing
 
     override suspend fun write(binding: ThreadCatalogBinding): ThreadStoreWrite {
-        bindings[binding.threadId.value] = binding
-        return ThreadStoreWrite.WRITTEN
+        val previous = bindings.putIfAbsent(binding.threadId.value, binding)
+        return if (previous == null || previous.sameBinding(binding)) ThreadStoreWrite.WRITTEN else ThreadStoreWrite.REJECTED
     }
 }
 
@@ -110,6 +160,9 @@ internal class FileThreadCatalogStore private constructor(
     }
 
     override suspend fun write(binding: ThreadCatalogBinding): ThreadStoreWrite = mutex.withLock {
+        bindings[binding.threadId.value]?.let { previous ->
+            return@withLock if (previous.sameBinding(binding)) ThreadStoreWrite.WRITTEN else ThreadStoreWrite.REJECTED
+        }
         val updated = bindings + (binding.threadId.value to binding)
         val written = withContext(Dispatchers.IO) { flush(updated) }
         if (written) {
@@ -131,6 +184,11 @@ internal class FileThreadCatalogStore private constructor(
                     threadId = binding.threadId.value,
                     catalogDigest = binding.catalogDigest.value,
                     cwd = binding.workingDirectory.path.toString(),
+                    workspaceRoot = binding.workspace.root.path.toString(),
+                    workspaceId = binding.workspace.id.value,
+                    ownerKind = if (binding.owner is ThreadBindingOwner.Installation) "installation" else "protocolFixture",
+                    installationId = (binding.owner as? ThreadBindingOwner.Installation)?.installationId?.value,
+                    stateEpoch = (binding.owner as? ThreadBindingOwner.Installation)?.stateEpoch?.value?.toString(),
                 )
             },
         )
@@ -229,14 +287,27 @@ internal class FileThreadCatalogStore private constructor(
                 } catch (_: RuntimeException) {
                     return rejected(ThreadCatalogStoreFailure.BINDING_REJECTED)
                 }
+                val owner = when (boundary.ownerKind) {
+                    "protocolFixture" -> if (boundary.installationId == null && boundary.stateEpoch == null) ThreadBindingOwner.ProtocolFixture
+                        else return rejected(ThreadCatalogStoreFailure.BINDING_REJECTED)
+                    "installation" -> when (val admission = ThreadBindingOwner.admit(boundary.installationId ?: "", boundary.stateEpoch ?: "")) {
+                        is Refinement.Refined -> admission.value
+                        is Refinement.Rejected -> return rejected(ThreadCatalogStoreFailure.BINDING_REJECTED)
+                    }
+                    else -> return rejected(ThreadCatalogStoreFailure.BINDING_REJECTED)
+                }
+                val root = try { Path.of(boundary.workspaceRoot) } catch (_: RuntimeException) {
+                    return rejected(ThreadCatalogStoreFailure.BINDING_REJECTED)
+                }
                 val binding = when (
-                    val refinement = ThreadCatalogBinding.admit(boundary.threadId, digest, cwd)
+                    val refinement = ThreadCatalogBinding.admit(boundary.threadId, digest, cwd, root, owner)
                 ) {
                     is Refinement.Refined -> refinement.value
                     is Refinement.Rejected -> return rejected(
                         ThreadCatalogStoreFailure.BINDING_REJECTED,
                     )
                 }
+                if (boundary.workspaceId != binding.workspace.id.value) return rejected(ThreadCatalogStoreFailure.BINDING_REJECTED)
                 admitted[binding.threadId.value] = binding
             }
             return FileThreadCatalogStoreOpen.Opened(FileThreadCatalogStore(path, admitted))
@@ -309,8 +380,8 @@ internal class FileThreadCatalogStore private constructor(
             failure: ThreadCatalogStoreFailure,
         ): FileThreadCatalogStoreOpen.Rejected = FileThreadCatalogStoreOpen.Rejected(failure)
 
-        private const val STORE_VERSION = 1
-        private const val MAXIMUM_STORE_BYTES = 4 * 1_024 * 1_024
+        private const val STORE_VERSION = 2
+        private const val MAXIMUM_STORE_BYTES = BrokerOperationalLimits.maximumThreadStoreBytes
         private val STORE_JSON = Json {
             ignoreUnknownKeys = false
             explicitNulls = false
@@ -329,6 +400,11 @@ private data class ThreadStoreBindingDocument(
     val threadId: String,
     val catalogDigest: String,
     val cwd: String,
+    val workspaceRoot: String,
+    val workspaceId: String,
+    val ownerKind: String,
+    val installationId: String? = null,
+    val stateEpoch: String? = null,
 )
 
 private sealed interface ThreadStoreDocumentRead {

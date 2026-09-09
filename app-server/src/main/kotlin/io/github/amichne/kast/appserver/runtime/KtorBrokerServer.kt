@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.runtime
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.core.AgentSessionBootstrap
 import io.github.amichne.kast.appserver.core.Broker
 import io.github.amichne.kast.appserver.core.BrokerInvocationActivitySink
@@ -45,12 +46,32 @@ internal enum class BrokerSocketPathFailure {
     NOT_ABSOLUTE,
     NOT_NORMALIZED,
     TOO_LONG,
+    ALIAS_REJECTED,
 }
 
-@JvmInline
-internal value class BrokerSocketPath private constructor(
+internal sealed interface BrokerSocketRoute {
+    data object Canonical : BrokerSocketRoute
+    data class Aliased(val receipt: io.github.amichne.kast.appserver.BrokerEndpointAliasReceipt) : BrokerSocketRoute
+}
+
+internal class BrokerSocketPath private constructor(
     val path: Path,
+    val physicalPath: Path,
+    val route: BrokerSocketRoute,
 ) {
+    internal fun revalidate(): Validation<BrokerSocketPath, BrokerSocketPathFailure> = when (val proof = route) {
+        BrokerSocketRoute.Canonical -> Validation.validated(this)
+        is BrokerSocketRoute.Aliased -> when (proof.receipt.validate()) {
+            is Validation.Validated -> Validation.validated(this)
+            is Validation.Rejected -> Validation.rejected(BrokerSocketPathFailure.ALIAS_REJECTED)
+        }
+    }
+
+    override fun equals(other: Any?): Boolean = other is BrokerSocketPath &&
+        path == other.path && physicalPath == other.physicalPath
+
+    override fun hashCode(): Int = 31 * path.hashCode() + physicalPath.hashCode()
+
     companion object {
         internal fun admit(candidate: Path): Validation<BrokerSocketPath, BrokerSocketPathFailure> =
             when {
@@ -59,8 +80,37 @@ internal value class BrokerSocketPath private constructor(
                     Validation.rejected(BrokerSocketPathFailure.NOT_NORMALIZED)
                 candidate.toString().toByteArray(StandardCharsets.UTF_8).size >= UNIX_PATH_BYTES ->
                     Validation.rejected(BrokerSocketPathFailure.TOO_LONG)
-                else -> Validation.validated(BrokerSocketPath(candidate))
+                else -> Validation.validated(BrokerSocketPath(candidate, candidate, BrokerSocketRoute.Canonical))
             }
+
+        /** Creation happens only at the explicit installed-server startup boundary. */
+        internal fun prepareInstalled(physicalSocket: Path): Validation<BrokerSocketPath, BrokerSocketPathFailure> {
+            when (val direct = admit(physicalSocket)) {
+                is Validation.Validated -> return direct
+                is Validation.Rejected -> if (direct.failures.toList() != listOf(BrokerSocketPathFailure.TOO_LONG)) return direct
+            }
+            if (physicalSocket.fileName.toString() !in setOf("c.sock", "u.sock")) {
+                return Validation.rejected(BrokerSocketPathFailure.ALIAS_REJECTED)
+            }
+            return when (val alias = io.github.amichne.kast.appserver.BrokerEndpointAliases.prepare(physicalSocket.parent)) {
+                is Validation.Rejected -> Validation.rejected(BrokerSocketPathFailure.ALIAS_REJECTED)
+                is Validation.Validated -> Validation.validated(BrokerSocketPath(
+                    alias.value.alias.resolve(physicalSocket.fileName), physicalSocket,
+                    BrokerSocketRoute.Aliased(alias.value),
+                ))
+            }
+        }
+
+        /** External observation reconstructs only a declared exact ownership receipt. */
+        internal fun observe(candidate: Path): Validation<BrokerSocketPath, BrokerSocketPathFailure> {
+            if (!io.github.amichne.kast.appserver.BrokerEndpointAliases.isReservedSocket(candidate)) return admit(candidate)
+            return when (val alias = io.github.amichne.kast.appserver.BrokerEndpointAliases.observe(candidate)) {
+                is Validation.Rejected -> Validation.rejected(BrokerSocketPathFailure.ALIAS_REJECTED)
+                is Validation.Validated -> Validation.validated(BrokerSocketPath(
+                    candidate, alias.value.physicalDirectory.resolve(candidate.fileName), BrokerSocketRoute.Aliased(alias.value),
+                ))
+            }
+        }
 
         private const val UNIX_PATH_BYTES = 104
     }
@@ -97,7 +147,8 @@ internal data class KtorBrokerServerOptions(
     val upstream: BrokerUpstreamConnector,
     val maximumConnections: Int,
     val maximumMessageBytes: Int,
-    val connectionInitializationTimeoutMillis: Long = 10_000,
+    val connectionInitializationTimeoutMillis: Long = BrokerOperationalLimits.connectionInitialization.value,
+    val bindingOwner: io.github.amichne.kast.appserver.protocol.ThreadBindingOwner = io.github.amichne.kast.appserver.protocol.ThreadBindingOwner.ProtocolFixture,
     val activitySink: BrokerInvocationActivitySink = BrokerInvocationActivitySink.Disabled,
     val sessionBootstrap: AgentSessionBootstrap? = null,
     val sessionActivitySink: SessionActivitySink = SessionActivitySink.Disabled,
@@ -125,12 +176,16 @@ internal class KtorBrokerServer private constructor(
     private val engine: EmbeddedServer<*, *>,
     private val ownedSocket: OwnedUnixSocket,
     private val ownershipLease: UnixSocketOwnershipLease,
-    private val hub: BrokerSessionHub,
+    private val frontend: BrokerFrontend,
+    private val runtimeControl: WorkspaceRuntimeControl?,
 ) {
     internal suspend fun close() {
         try {
-            hub.close()
-            engine.stopSuspend(gracePeriodMillis = 500, timeoutMillis = 2_000)
+            try { runtimeControl?.drain() }
+            finally {
+                try { frontend.close() }
+                finally { engine.stopSuspend(gracePeriodMillis = BrokerOperationalLimits.serverShutdownGrace.value, timeoutMillis = BrokerOperationalLimits.serverShutdown.value) }
+            }
         } finally {
             try {
                 ownedSocket.retire()
@@ -148,8 +203,42 @@ internal class KtorBrokerServer private constructor(
             ) {
                 return KtorBrokerServerStart.Rejected(KtorBrokerServerFailure.INVALID_LIMIT)
             }
+            val frontend = when (val admission = frontend(options)) {
+                is BrokerFrontendAdmission.Prepared -> admission.frontend
+                BrokerFrontendAdmission.Rejected -> return KtorBrokerServerStart.Rejected(KtorBrokerServerFailure.INVOCATION_STORE_REJECTED)
+            }
+            return startTransport(options.publicSocket, options.maximumConnections, options.maximumMessageBytes, frontend, null).also {
+                if (it is KtorBrokerServerStart.Rejected) frontend.close()
+            }
+        }
+
+        internal suspend fun startCoordinator(
+            socket: BrokerSocketPath,
+            runtimeControl: WorkspaceRuntimeControl,
+            frontend: BrokerFrontend,
+        ): KtorBrokerServerStart = startTransport(socket, BrokerOperationalLimits.maximumConnections, BrokerOperationalLimits.maximumMessageBytes, frontend, runtimeControl)
+
+        internal suspend fun frontend(options: KtorBrokerServerOptions, afterClose: suspend () -> Unit = {}): BrokerFrontendAdmission {
+            val hub = BrokerSessionHub(options)
+            if (hub.initialization() is InvocationAdmission.Rejected) {
+                hub.close()
+                return BrokerFrontendAdmission.Rejected
+            }
+            return BrokerFrontendAdmission.Prepared(object : BrokerFrontend {
+                override suspend fun connect(session: DefaultWebSocketServerSession) = bridgeConnection(session, options, hub)
+                override suspend fun close() { try { hub.close() } finally { afterClose() } }
+            })
+        }
+
+        private suspend fun startTransport(
+            socket: BrokerSocketPath,
+            maximumConnections: Int,
+            maximumMessageBytes: Int,
+            frontend: BrokerFrontend,
+            runtimeControl: WorkspaceRuntimeControl?,
+        ): KtorBrokerServerStart {
             val ownershipLease = when (
-                val acquisition = UnixSocketPathOwnership.acquireLease(options.publicSocket.path)
+                val acquisition = UnixSocketPathOwnership.acquireLease(socket)
             ) {
                 is UnixSocketOwnershipLeaseAcquisition.Acquired -> acquisition.lease
                 UnixSocketOwnershipLeaseAcquisition.Owned -> return KtorBrokerServerStart.Rejected(
@@ -164,7 +253,7 @@ internal class KtorBrokerServer private constructor(
                         KtorBrokerServerFailure.SOCKET_PARENT_REJECTED,
                     )
             }
-            when (UnixSocketPathOwnership.prepare(options.publicSocket.path)) {
+            when (UnixSocketPathOwnership.prepare(socket)) {
                 UnixSocketPathPreparation.PREPARED -> Unit
                 UnixSocketPathPreparation.OWNED -> return rejectedAfterLease(
                     ownershipLease,
@@ -180,24 +269,29 @@ internal class KtorBrokerServer private constructor(
                 )
             }
             val connectionCount = AtomicInteger(0)
-            val hub = BrokerSessionHub(options)
-            if (hub.initialization() is InvocationAdmission.Rejected) {
-                hub.close()
-                return rejectedAfterLease(ownershipLease,KtorBrokerServerFailure.INVOCATION_STORE_REJECTED)
-            }
             val engine = embeddedServer(
                 factory = CIO,
-                configure = { unixConnector(options.publicSocket.path.toString()) },
+                configure = { unixConnector(socket.path.toString()) },
                 module = {
                     install(WebSockets) {
-                        maxFrameSize = options.maximumMessageBytes.toLong()
+                        maxFrameSize = maximumMessageBytes.toLong()
                     }
                     routing {
+                        if (runtimeControl != null) {
+                            val controlConnections = AtomicInteger(0)
+                            webSocket("/kast-runtime") {
+                                val count = controlConnections.incrementAndGet()
+                                try {
+                                    if (count > BrokerOperationalLimits.maximumRuntimeConnections) close(CloseReason(CloseReason.Codes.TRY_AGAIN_LATER, "runtime connection limit exceeded"))
+                                    else runtimeControl.handle(this)
+                                } finally { controlConnections.decrementAndGet() }
+                            }
+                        }
                         BrokerWebSocketRoute.entries.forEach { route ->
                             webSocket(route.path) {
                                 val count = connectionCount.incrementAndGet()
                                 try {
-                                    if (count > options.maximumConnections) {
+                                    if (count > maximumConnections) {
                                         close(
                                             CloseReason(
                                                 CloseReason.Codes.TRY_AGAIN_LATER,
@@ -205,7 +299,7 @@ internal class KtorBrokerServer private constructor(
                                             ),
                                         )
                                     } else {
-                                        bridgeConnection(this, options, hub)
+                                        frontend.connect(this)
                                     }
                                 } finally {
                                     connectionCount.decrementAndGet()
@@ -216,28 +310,32 @@ internal class KtorBrokerServer private constructor(
                 },
             )
             try {
+                if (socket.revalidate() is Validation.Rejected) {
+                    frontend.close()
+                    return rejectedAfterLease(ownershipLease, KtorBrokerServerFailure.SOCKET_PARENT_REJECTED)
+                }
                 engine.startSuspend(wait = false)
                 Files.setPosixFilePermissions(
-                    options.publicSocket.path,
+                    socket.physicalPath,
                     PosixFilePermissions.fromString("rw-------"),
                 )
             } catch (_: Exception) {
-                engine.stopSuspend(gracePeriodMillis = 0, timeoutMillis = 1_000)
+                engine.stopSuspend(gracePeriodMillis = 0, timeoutMillis = BrokerOperationalLimits.serverFailedStartupShutdown.value)
                 ownershipLease.close()
                 return KtorBrokerServerStart.Rejected(
                     KtorBrokerServerFailure.SERVER_START_REJECTED,
                 )
             }
-            val owned = OwnedUnixSocket.capture(options.publicSocket.path)
+            val owned = OwnedUnixSocket.capture(socket)
                 ?: run {
-                    engine.stopSuspend(gracePeriodMillis = 0, timeoutMillis = 1_000)
+                    engine.stopSuspend(gracePeriodMillis = 0, timeoutMillis = BrokerOperationalLimits.serverFailedStartupShutdown.value)
                     ownershipLease.close()
                     return KtorBrokerServerStart.Rejected(
                         KtorBrokerServerFailure.SOCKET_IDENTITY_REJECTED,
                     )
                 }
             return KtorBrokerServerStart.Started(
-                KtorBrokerServer(engine, owned, ownershipLease, hub),
+                KtorBrokerServer(engine, owned, ownershipLease, frontend, runtimeControl),
             )
         }
 

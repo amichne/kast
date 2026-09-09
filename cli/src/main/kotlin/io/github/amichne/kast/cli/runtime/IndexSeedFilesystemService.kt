@@ -17,7 +17,7 @@ import java.util.Properties
 
 private const val INDEX_SEED_PROJECT_STATE = "cache-state.xml"
 private const val INDEX_SEED_RECEIPT = "seed-receipt.properties"
-private const val MAX_PROJECT_STATE_BYTES = 4L * 1024L * 1024L
+private const val MAX_PROJECT_STATE_BYTES = CliOperationalLimits.maximumProjectStateBytes
 private val INDEX_SEED_PROJECT_DIRECTORY = Regex("[A-Za-z0-9._-]{1,160}")
 private val INDEX_SEED_CATEGORY_LAYOUT = mapOf(
     IndexSeedCategory.GLOBAL_VFS to listOf(Path.of(".home"), Path.of("caches")),

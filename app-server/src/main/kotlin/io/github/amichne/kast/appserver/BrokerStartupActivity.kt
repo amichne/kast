@@ -8,6 +8,9 @@ import java.io.PrintStream
 /** Ordered, bounded effect stages for one broker-service startup. */
 internal enum class BrokerStartupStage {
     READINESS_ACQUISITION,
+    INSTALLATION_OWNERSHIP,
+    WORKER_CONTROL,
+    HOST_ADMISSION,
     KAST_QUALIFICATION,
     GRADLE_DEFINITION,
     CATALOG,
@@ -20,6 +23,8 @@ internal enum class BrokerStartupStage {
 
 /** Closed startup rejection evidence, retaining a Codex protocol's exact finite cause. */
 internal sealed interface BrokerStartupRejection {
+    data class Coordinator(val failure: BrokerServerFailure) : BrokerStartupRejection
+    data class HostAdmission(val failure: InstalledBrokerServerConfigurationFailure) : BrokerStartupRejection
     data class Server(
         val failure: InstalledBrokerServerFailure,
     ) : BrokerStartupRejection
@@ -120,6 +125,8 @@ internal class BrokerStartupActivityPublisher(
 private fun BrokerStartupStage.wireName(): String = name.lowercase().replace('_', '-')
 
 private fun BrokerStartupRejection.wireName(): String = when (this) {
+    is BrokerStartupRejection.Coordinator -> "coordinator-${failure.name.lowercase().replace('_', '-')}"
+    is BrokerStartupRejection.HostAdmission -> "host-admission-${failure.name.lowercase().replace('_', '-')}"
     is BrokerStartupRejection.Upstream -> "upstream-${failure.name.lowercase().replace('_', '-')}"
     is BrokerStartupRejection.Server -> failure.name.lowercase().replace('_', '-')
     is BrokerStartupRejection.CodexQualification ->

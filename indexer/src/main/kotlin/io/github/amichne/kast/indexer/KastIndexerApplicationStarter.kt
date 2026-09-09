@@ -138,10 +138,16 @@ class KastIndexerApplicationStarter : ApplicationStarter {
             }
         }
         bootstrap.beginTransportActivation()
+        val wireIdentity = when (val identity = io.github.amichne.kast.distribution.contract.WireRuntimeIdentity.admit(
+            options.workspaceRoot, options.runtimeId.value, bootstrapState.attemptId)) {
+            is io.github.amichne.kast.kernel.Refinement.Refined -> identity.value
+            is io.github.amichne.kast.kernel.Refinement.Rejected -> reject(InstalledIndexerStartupFailure.BootstrapState)
+        }
         val transport = when (
             val activation = InstalledIndexerTransport.activate(
                 endpoint,
                 KastIndexerHost(dispatch),
+                authority = IndexerWireAuthority.Installed(wireIdentity),
             )
         ) {
             is IndexerTransportActivation.Activated -> activation.transport

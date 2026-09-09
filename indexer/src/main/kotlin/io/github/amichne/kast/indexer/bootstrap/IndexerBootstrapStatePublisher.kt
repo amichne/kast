@@ -64,6 +64,7 @@ internal class AdmittedIndexerBootstrapStatePublisher private constructor(
     private val progressSink: (IndexerBootstrapProgressEvidence) -> Unit,
 ) {
     private var phase = IndexerBootstrapPublicationPhase.ADMITTED
+    val attemptId get() = attempt.attemptId
     private var bootstrapPhase = InstalledRuntimeBootstrapPhase.DISCOVERING_RUNTIME
 
     fun publishStarting(): IndexerBootstrapStatePublication {

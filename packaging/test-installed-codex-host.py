@@ -4,20 +4,26 @@
 from __future__ import annotations
 
 import json
+from enum import Enum
 import hashlib
 import os
-import plistlib
+import stat
 from pathlib import Path
 import select
 import shutil
 import subprocess
 import sys
-import tempfile
+from acceptance_environment import AcceptanceEnvironment, admitted_tools
 import time
 
 
 class AcceptanceFailure(Exception):
     pass
+
+
+class HostObservationPhase(Enum):
+    COORDINATOR_ONLY = "pending"
+    FRONTEND_PREPARED = "prepared"
 
 
 def canonical_json(document: object) -> bytes:
@@ -35,6 +41,13 @@ def sha256_bytes(value: bytes) -> str:
 
 def sha256_file(path: Path) -> str:
     return sha256_bytes(path.read_bytes())
+
+
+def bounded_tail(path: Path, maximum_bytes: int = 4096) -> str:
+    with path.open("rb") as stream:
+        stream.seek(0, os.SEEK_END)
+        stream.seek(max(0, stream.tell() - maximum_bytes))
+        return stream.read(maximum_bytes).decode("utf-8", errors="replace")
 
 
 def codex_protocol_digest(root: Path) -> str:
@@ -156,33 +169,31 @@ def executable(candidate: str | None, name: str) -> Path:
     return path
 
 
-def exercise_standard_daemon(
-    kast: Path,
-    codex: Path,
-    environment: dict[str, str],
-    home: Path,
-) -> dict:
-    socket = home / ".codex/app-server-control/app-server-control.sock"
-    version = subprocess.run(
-        [str(codex), "app-server", "daemon", "version"], check=True,
-        capture_output=True, text=True, timeout=10, env=environment,
-    )
-    document = json.loads(version.stdout)
-    if document.get("socketPath") != str(socket) or document.get("cliVersion") is None:
-        raise AcceptanceFailure("Codex did not discover Kast at its standard socket")
-    return {"socketPath": str(socket), "cliVersion": document["cliVersion"], "appServerVersion": document.get("appServerVersion")}
-
-
-def stage_desktop_metadata(home: Path) -> Path:
-    """Supply discovery metadata only; this does not qualify a desktop client."""
-    plist = home / "Applications/Codex.app/Contents/Info.plist"
-    plist.parent.mkdir(parents=True)
-    plist.write_bytes(plistlib.dumps({"CFBundleShortVersionString": "26.901.51231"}))
-    executable = plist.parent / "MacOS/Codex"
-    executable.parent.mkdir()
-    executable.write_text("#!/bin/sh\nexit 1\n")
-    executable.chmod(0o700)
-    return executable
+def exercise_private_service(kast: Path, environment: dict[str, str], home: Path, project: Path, product: Path, phase: HostObservationPhase) -> dict:
+    socket = product / "state/run/c.sock"
+    ordinary_socket = home / ".codex/app-server-control/app-server-control.sock"
+    if ordinary_socket.exists():
+        raise AcceptanceFailure("Kast occupied the ordinary Codex daemon socket")
+    if not socket.exists() or not stat.S_ISSOCK(socket.stat().st_mode):
+        raise AcceptanceFailure("private Kast service socket is unavailable")
+    status = subprocess.run([str(kast), "app-server", "status"], cwd=project,
+                            env=environment, check=True, capture_output=True, text=True, timeout=15)
+    evidence = home / f"status-{phase.name.lower()}.json"
+    encoded = status.stdout.encode("utf-8")
+    if len(encoded) > 256 * 1024:
+        evidence.write_text(json.dumps({"outcome": "REJECTED", "reason": "STATUS_EVIDENCE_TOO_LARGE"}) + "\n")
+        raise AcceptanceFailure("passive status exceeded bounded fixture evidence capacity")
+    evidence.write_bytes(encoded)
+    evidence.chmod(0o600)
+    document = json.loads(status.stdout)
+    if (document.get("coordinator", {}).get("state") != "ready"
+            or document.get("service", {}).get("ownership") != "matched"
+            or document.get("host", {}).get("attachment") != phase.value
+            or document.get("registry", {}).get("state") != "registered"
+            or document.get("protocol") != "unobserved"
+            or document.get("catalog") != "unobserved"):
+        raise AcceptanceFailure(f"passive status did not match {phase.name.lower()} ownership and registration; bounded evidence: {evidence}")
+    return {"socketPath": str(socket), "ordinaryDaemonSocket": "ABSENT", "phase": phase.name, "statusEvidence": str(evidence), "qualification": document}
 
 
 def main() -> int:
@@ -193,37 +204,29 @@ def main() -> int:
     product = Path(sys.argv[1]).resolve()
     project = Path(sys.argv[2]).resolve()
     report = Path(sys.argv[3]).resolve()
-    facade = executable(str(product / "bin/kast-codex"), "kast-codex")
-    kast = executable(str(product / "bin/kast"), "kast")
     codex = executable(os.environ.get("KAST_ACCEPTANCE_CODEX_EXECUTABLE"), "codex")
-    version = subprocess.run(
-        [str(codex), "--version"],
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=10,
-    ).stdout.strip()
-    expected_version = os.environ.get("KAST_CODEX_ACCEPTANCE_VERSION")
-    if expected_version is not None and version != f"codex-cli {expected_version}":
-        raise AcceptanceFailure("installed Codex version did not match the admitted authority")
-
-    with tempfile.TemporaryDirectory(
-        prefix="kast-host-", dir="/tmp", ignore_cleanup_errors=True
-    ) as temporary:
-        home = Path(temporary).resolve()
-        desktop_fixture = stage_desktop_metadata(home)
-        environment = os.environ.copy()
-        environment.update(
-            {
-                "HOME": str(home),
-                "CODEX_HOME": str(home / ".codex"),
-                "KAST_REAL_CODEX_EXECUTABLE": str(codex),
-                "KAST_CODEX_DESKTOP_EXECUTABLE": str(desktop_fixture),
-                "CODEX_EXECUTABLE": str(codex),
-                "KAST_ENABLE_APP_SERVER": "1",
-                "_JAVA_OPTIONS": f"-Duser.home={home}",
-            }
-        )
+    tools = admitted_tools()
+    tools["codex"] = codex
+    with AcceptanceEnvironment(tools) as isolation:
+        product = isolation.stage_product(product)
+        facade = executable(str(product / "bin/kast-codex"), "kast-codex")
+        kast = executable(str(product / "bin/kast"), "kast")
+        home = Path(isolation.environment["HOME"])
+        project = isolation.root / "workspace"
+        (project / "settings.gradle.kts").write_text('rootProject.name = "installed-host-fixture"\n')
+        environment = dict(isolation.environment)
+        environment.update({
+            "KAST_REAL_CODEX_EXECUTABLE": str(codex),
+            "CODEX_EXECUTABLE": str(codex),
+            "KAST_ENABLE_APP_SERVER": "1",
+        })
+        version = subprocess.run(
+            [str(codex), "--version"], check=True, capture_output=True,
+            text=True, timeout=10, env=environment, cwd=project,
+        ).stdout.strip()
+        expected_version = os.environ.get("KAST_CODEX_ACCEPTANCE_VERSION")
+        if expected_version is not None and version != f"codex-cli {expected_version}":
+            raise AcceptanceFailure("installed Codex version did not match the admitted authority")
         catalog_evidence = installed_catalog_evidence(kast, environment)
         schemas = home / "generated-codex-schema"
         subprocess.run(
@@ -245,13 +248,13 @@ def main() -> int:
         try:
             enabled = subprocess.run([str(kast), "app-server", "enable"], cwd=project, env=environment, capture_output=True, text=True, timeout=90)
             if enabled.returncode != 0:
-                service_log = home / ".codex/broker/service.log"
-                evidence = service_log.read_text()[-4096:] if service_log.exists() else "no child service log"
+                service_logs = list(product.glob("state/broker/*/service.log"))
+                evidence = bounded_tail(service_logs[0]) if len(service_logs) == 1 else "no unique child service log"
                 raise AcceptanceFailure("persistent service enable failed: " + enabled.stderr[-2048:] + "; " + evidence)
-            standard_daemon = exercise_standard_daemon(kast, codex, environment, home)
+            private_service = exercise_private_service(kast, environment, home, project, product, HostObservationPhase.COORDINATOR_ONLY)
             stderr_path = home / "facade.stderr"
             with stderr_path.open("w+", encoding="utf-8") as stderr_log:
-                process = subprocess.Popen(
+                process = isolation.spawn(
                     [str(facade), "-c", "features.code_mode_host=true", "app-server", "--analytics-default-enabled"],
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
@@ -259,6 +262,7 @@ def main() -> int:
                     text=True,
                     bufsize=1,
                     env=environment,
+                    cwd=project,
                 )
                 try:
                     send(
@@ -301,8 +305,7 @@ def main() -> int:
                         )
                 except (AcceptanceFailure, OSError, subprocess.SubprocessError) as failure:
                     stderr_log.flush()
-                    stderr_log.seek(0)
-                    tail = stderr_log.read()[-4096:].strip()
+                    tail = bounded_tail(stderr_path).strip()
                     detail = f"; bounded stderr tail: {tail}" if tail else ""
                     raise AcceptanceFailure(f"{failure}{detail}") from failure
                 finally:
@@ -313,46 +316,43 @@ def main() -> int:
                         except subprocess.TimeoutExpired:
                             process.kill()
                             process.wait(timeout=5)
-            # Parent stdio termination must leave the service discoverable.
-            exercise_standard_daemon(kast, codex, environment, home)
-            status = subprocess.run([str(kast), "app-server", "status"], cwd=project, env=environment, check=True, capture_output=True, text=True, timeout=15)
-            service_status = json.loads(status.stdout)
-            if service_status.get("protocol") != "qualified" or service_status.get("catalog") != "qualified":
-                raise AcceptanceFailure("status did not preserve installed qualification evidence")
+            # Parent stdio termination must preserve the coordinator and its prepared host.
+            private_service = exercise_private_service(kast, environment, home, project, product, HostObservationPhase.FRONTEND_PREPARED)
         finally:
             disabled = subprocess.run([str(kast), "app-server", "disable"], cwd=project, env=environment, capture_output=True, text=True, timeout=40)
             if disabled.returncode != 0:
                 raise AcceptanceFailure("temporary service cleanup failed: " + disabled.stderr[-4096:])
 
-    document = {
-        "schemaVersion": 1,
-        "taskId": "HOST-08",
-        "outcome": "COMPLETE",
-        "facadeRole": "app-server-stdio",
-        "desktopStartupArguments": "VALIDATED",
-        "codexVersion": version,
-        "initialize": "VALIDATED",
-        "threadStart": "VALIDATED",
-        "parentClosure": "CLEAN",
-        "persistentServiceAfterDetach": "VALIDATED",
-        "desktopCompatibility": "UNQUALIFIED",
-        "desktopDiscovery": "SYNTHETIC_METADATA",
-        "stdoutProtocol": "JSONL_ONLY",
-        "codexProtocolSha256": protocol_digest,
-        "standardDaemon": standard_daemon,
-        "codexExecutableSha256": sha256_file(codex),
-        "kastExecutableSha256": sha256_file(kast),
-        "kastFacadeSha256": sha256_file(facade),
-        **catalog_evidence,
-    }
-    report.parent.mkdir(parents=True, exist_ok=True)
-    temporary_report = report.with_suffix(report.suffix + ".tmp")
-    temporary_report.write_text(
-        json.dumps(document, sort_keys=True, separators=(",", ":")) + "\n"
-    )
-    temporary_report.replace(report)
-    print("installed-codex-host: standard daemon and real Codex stdio handshake passed")
-    return 0
+        document = {
+            "schemaVersion": 1,
+            "taskId": "HOST-08",
+            "outcome": "COMPLETE",
+            "facadeRole": "app-server-stdio",
+            "desktopStartupArguments": "VALIDATED",
+            "codexVersion": version,
+            "initialize": "VALIDATED",
+            "threadStart": "VALIDATED",
+            "parentClosure": "CLEAN",
+            "persistentServiceAfterDetach": "VALIDATED",
+            "desktopCompatibility": "UNQUALIFIED",
+            "desktopDiscovery": "NOT_REQUIRED",
+            "stdoutProtocol": "JSONL_ONLY",
+            "codexProtocolSha256": protocol_digest,
+            "privateService": private_service,
+            "codexExecutableSha256": sha256_file(codex),
+            "kastExecutableSha256": sha256_file(kast),
+            "kastFacadeSha256": sha256_file(facade),
+            **catalog_evidence,
+        }
+        report.parent.mkdir(parents=True, exist_ok=True)
+        temporary_report = report.with_suffix(report.suffix + ".tmp")
+        temporary_report.write_text(
+            json.dumps(document, sort_keys=True, separators=(",", ":")) + "\n"
+        )
+        temporary_report.replace(report)
+        print("installed-codex-host: private service and real Codex stdio handshake passed")
+        isolation.mark_passed()
+        return 0
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ internal object JdkRuntimeProcessStarter : RuntimeProcessStarter {
      */
     override fun start(command: IndexerLaunchCommand): RuntimeProcessStart {
         val environment = when (
-            val resolution = MacOsRuntimeProcessEnvironment.resolve(command.runtime, command.importEnvironment)
+            val resolution = MacOsRuntimeProcessEnvironment.resolve(command.runtime, command.importEnvironment, command.sidecarEnvironment.processVariables())
         ) {
             is MacOsRuntimeProcessEnvironmentResolution.Resolved -> resolution.environment
             is MacOsRuntimeProcessEnvironmentResolution.Rejected ->
@@ -197,7 +197,7 @@ private class DirectRuntimeStartupSession(
 
 private const val SHELL_EXECUTABLE = "/bin/sh"
 private const val SHELL_COMMAND_NAME = "kast-direct-sidecar"
-private const val DIRECT_LAUNCH_TIMEOUT_SECONDS = 5L
+private const val DIRECT_LAUNCH_TIMEOUT_SECONDS = CliOperationalLimits.directLaunchTimeoutSeconds
 private const val DETACHED_LAUNCH_SCRIPT =
     "startup_log=\"\$1\"\n" +
         "shift\n" +

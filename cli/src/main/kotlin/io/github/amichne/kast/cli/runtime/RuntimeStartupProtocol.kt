@@ -67,6 +67,7 @@ class SidecarLaunchContext private constructor(
     val configDirectory: Path,
     val logDirectory: Path,
     val privatePluginsDirectory: Path,
+    val sidecarEnvironment: SidecarEnvironmentInputs,
 ) {
     companion object {
         fun admit(
@@ -78,6 +79,7 @@ class SidecarLaunchContext private constructor(
             privatePluginsDirectory: Path,
             importEnvironment: GradleImportEnvironment = GradleImportEnvironment.Empty,
             maxHeap: io.github.amichne.kast.distribution.contract.IndexerHeapSize = io.github.amichne.kast.distribution.contract.IndexerHeapSize.Default,
+            sidecarEnvironment: SidecarEnvironmentInputs = SidecarEnvironmentInputs.Empty,
         ): SidecarLaunchContextAdmission {
             val root = canonicalDirectory(cacheRoot)
                 ?: return SidecarLaunchContextAdmission.Rejected(
@@ -119,6 +121,7 @@ class SidecarLaunchContext private constructor(
                     paths[1],
                     paths[2],
                     paths[3],
+                    sidecarEnvironment,
                 ),
             )
         }

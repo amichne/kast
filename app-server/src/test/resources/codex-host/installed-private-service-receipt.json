@@ -1,0 +1,80 @@
+{
+  "catalogProjectionSha256": "sha256:62fdf64e929761e1f45274a65315965b0de6ee79d693360f353e3b8348f2d7e3",
+  "catalogToolNames": [
+    "query",
+    "source_read",
+    "semantic_query",
+    "impact_analyze",
+    "diagnostic_check",
+    "change_plan",
+    "change_apply",
+    "change_recover"
+  ],
+  "codexExecutableSha256": "sha256:61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70",
+  "codexProtocolSha256": "sha256:a4e7ee85a1237179f0f8cec1e69dc7085e05e038416f7d8f2a2ccbd780ef2a79",
+  "codexVersion": "codex-cli 0.153.4",
+  "desktopCompatibility": "UNQUALIFIED",
+  "desktopDiscovery": "NOT_REQUIRED",
+  "desktopStartupArguments": "VALIDATED",
+  "facadeRole": "app-server-stdio",
+  "initialize": "VALIDATED",
+  "kastContractSha256": "sha256:a1f1d637ab66e8b804a8049c3b23604a9ae6a9d205af422149dec7ea0028aaea",
+  "kastExecutableSha256": "sha256:03a53feb97020f5e49e024bf6dc4a12697583ef362a008b8d2d4241a4d7812bd",
+  "kastFacadeSha256": "sha256:b3755a0a700b85cc0db30b69296d63c281c53229d2e471c3546945c8f07a5805",
+  "outcome": "COMPLETE",
+  "parentClosure": "CLEAN",
+  "persistentServiceAfterDetach": "VALIDATED",
+  "privateService": {
+    "ordinaryDaemonSocket": "ABSENT",
+    "phase": "FRONTEND_PREPARED",
+    "qualification": {
+      "catalog": "unobserved",
+      "coordinator": {
+        "observation": {
+          "configurationIdentity": "522a65660a38db76f98aa4c4f24564bb8a489f5a0d98ce71c07ae17d4dc45082",
+          "hostAttachment": "PREPARED",
+          "installationId": "sha256:b37e7cc6b718c91aa22b4ad89759a1e0dffb88ffadb52b18c83951addb458bdf",
+          "reservedMiB": 0,
+          "serviceGeneration": "a7b0e7cc-b24a-4700-a85d-6b88f7e52168",
+          "starting": 0,
+          "stateEpoch": "4683fb19-75d5-4ef3-9c5b-3f052ad42f38",
+          "status": "READY",
+          "workers": []
+        },
+        "state": "ready"
+      },
+      "desktop": "unqualified",
+      "enrollment": "/fixture/workspace",
+      "host": {
+        "attachment": "prepared",
+        "desktop": "unqualified"
+      },
+      "operation": "app-server.status",
+      "protocol": "unobserved",
+      "registry": {
+        "count": 1,
+        "revision": 1,
+        "state": "registered",
+        "workspaces": [
+          {
+            "root": "/fixture/workspace",
+            "workspaceId": "c55218afb5a1f3542a92194e1081caebbef8a2ab1cd292c6b2e18962f6068483"
+          }
+        ]
+      },
+      "semantic": "unobserved",
+      "service": {
+        "ownership": "matched",
+        "state": "ready"
+      },
+      "session": null,
+      "transport": "ready"
+    },
+    "socketPath": "/fixture/product/state/run/c.sock",
+    "statusEvidence": "/fixture/home/status-frontend_prepared.json"
+  },
+  "schemaVersion": 1,
+  "stdoutProtocol": "JSONL_ONLY",
+  "taskId": "HOST-08",
+  "threadStart": "VALIDATED"
+}

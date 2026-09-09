@@ -50,13 +50,17 @@ suspend fun runInstalledCodex(arguments: List<String>, kast: Path): CodexIntegra
         is BrokerServiceLaunchCommandResolution.Resolved -> admitted.command
         is BrokerServiceLaunchCommandResolution.Rejected -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.CONFIGURATION_REJECTED)
     }
+    val codex = when (val host = launch.host) {
+        is BrokerHostSelection.Selected -> host.executable
+        BrokerHostSelection.Disabled, BrokerHostSelection.NotConfigured -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.CLIENT_UNAVAILABLE)
+    }
     when (MacOsPersistentBrokerServiceHost().ensure(launch)) {
         PersistentBrokerServiceAdmission.Ready -> Unit
         is PersistentBrokerServiceAdmission.Rejected -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.BROKER_REJECTED)
     }
     val host: CodexIntegrationHost = when (invocation) {
         is CodexServiceInvocation.Cli -> CliRemoteClientHost(
-            launch.codex,
+            codex,
             launch.publicSocket,
             invocation.arguments,
         )
@@ -66,17 +70,17 @@ suspend fun runInstalledCodex(arguments: List<String>, kast: Path): CodexIntegra
             BrokerUpstreamConnector {
                 connectCodexUnixWebSocket(
                     launch.publicSocket,
-                    4 * 1_024 * 1_024,
+                    BrokerOperationalLimits.maximumClientMessageBytes,
                     CONNECTION_TIMEOUT_MILLIS,
                 )
             },
-            4 * 1_024 * 1_024,
+            BrokerOperationalLimits.maximumClientMessageBytes,
         )
     }
     return host.run { /* The service outlives this attachment. */ }
 }
 
-private const val CONNECTION_TIMEOUT_MILLIS = 10_000L
+private val CONNECTION_TIMEOUT_MILLIS = BrokerOperationalLimits.clientConnect.value
 
 internal interface CodexIntegrationShutdownHooks {
     fun register(hook: Thread)
@@ -166,15 +170,15 @@ private class OwnedCodexIntegration(private val closeServer: suspend () -> Unit)
                     val client = owned.client
                     client.destroy()
                     try {
-                        if (!client.waitFor(2, TimeUnit.SECONDS)) {
+                        if (!client.waitFor(BrokerOperationalLimits.clientProcessRetirementWait.value, TimeUnit.MILLISECONDS)) {
                             client.destroyForcibly()
-                            if (!client.waitFor(2, TimeUnit.SECONDS)) result = CodexIntegrationShutdown.CLIENT_UNREAPED
+                            if (!client.waitFor(BrokerOperationalLimits.clientProcessRetirementWait.value, TimeUnit.MILLISECONDS)) result = CodexIntegrationShutdown.CLIENT_UNREAPED
                         }
                     } catch (_: InterruptedException) {
                         interrupted = true
                         client.destroyForcibly()
                         try {
-                            if (!client.waitFor(2, TimeUnit.SECONDS)) result = CodexIntegrationShutdown.CLIENT_UNREAPED
+                            if (!client.waitFor(BrokerOperationalLimits.clientProcessRetirementWait.value, TimeUnit.MILLISECONDS)) result = CodexIntegrationShutdown.CLIENT_UNREAPED
                         } catch (_: InterruptedException) {
                             interrupted = true
                             result = CodexIntegrationShutdown.CLIENT_UNREAPED
@@ -183,7 +187,7 @@ private class OwnedCodexIntegration(private val closeServer: suspend () -> Unit)
                 }
             } finally {
                 try {
-                    runBlocking { withTimeout(10_000) { closeServer() } }
+                    runBlocking { withTimeout(BrokerOperationalLimits.clientShutdown.value) { closeServer() } }
                 } catch (_: TimeoutCancellationException) {
                     result = CodexIntegrationShutdown.SERVER_TIMED_OUT
                 } catch (_: InterruptedException) {

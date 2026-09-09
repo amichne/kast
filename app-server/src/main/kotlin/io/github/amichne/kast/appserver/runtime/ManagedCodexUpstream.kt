@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.runtime
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.host.admission.CodexAppServerArguments
 import io.github.amichne.kast.appserver.host.admission.UpstreamCodexExecutable
 import io.ktor.client.HttpClient
@@ -129,7 +130,7 @@ internal class ManagedCodexUpstream private constructor(
             ) {
                 return rejected(ManagedCodexUpstreamFailure.INVALID_OPTIONS)
             }
-            when (UnixSocketPathOwnership.prepare(options.privateSocket.path)) {
+            when (UnixSocketPathOwnership.prepare(options.privateSocket)) {
                 UnixSocketPathPreparation.PREPARED -> Unit
                 UnixSocketPathPreparation.OWNED -> return rejected(
                     ManagedCodexUpstreamFailure.SOCKET_PATH_OWNED,
@@ -157,6 +158,10 @@ internal class ManagedCodexUpstream private constructor(
             )
             try {
                 while (System.nanoTime() < deadline && process.isAlive()) {
+                    if (options.privateSocket.revalidate() is io.github.amichne.kast.kernel.Validation.Rejected) {
+                        process.close()
+                        return rejected(ManagedCodexUpstreamFailure.SOCKET_IDENTITY_REJECTED)
+                    }
                     val remainingNanos = deadline - System.nanoTime()
                     if (remainingNanos <= 0) break
                     val remainingMillis = maxOf(
@@ -173,10 +178,10 @@ internal class ManagedCodexUpstream private constructor(
                     if (connection != null) {
                         connection.close()
                         Files.setPosixFilePermissions(
-                            options.privateSocket.path,
+                            options.privateSocket.physicalPath,
                             PosixFilePermissions.fromString("rw-------"),
                         )
-                        val owned = OwnedUnixSocket.capture(options.privateSocket.path)
+                        val owned = OwnedUnixSocket.capture(options.privateSocket)
                         if (owned == null) {
                             process.close()
                             return rejected(ManagedCodexUpstreamFailure.SOCKET_IDENTITY_REJECTED)
@@ -215,7 +220,7 @@ internal class ManagedCodexUpstream private constructor(
             failure: ManagedCodexUpstreamFailure,
         ): ManagedCodexUpstreamStart.Rejected = ManagedCodexUpstreamStart.Rejected(failure)
 
-        private const val PROCESS_HEALTH_POLL_MILLIS = 25L
+        private val PROCESS_HEALTH_POLL_MILLIS = BrokerOperationalLimits.upstreamHealthPoll.value
     }
 }
 
@@ -239,10 +244,13 @@ private class ManagedUpstreamConnection(
     }
 }
 
+internal enum class BrokerControlRoute(val path: String) { CODEX("/"), RUNTIME("/kast-runtime") }
+
 internal suspend fun connectCodexUnixWebSocket(
     socket: Path,
     maximumMessageBytes: Int,
     timeoutMillis: Long,
+    route: BrokerControlRoute = BrokerControlRoute.CODEX,
 ): BrokerUpstreamConnectionAdmission {
     val client = HttpClient(CIO) {
         install(WebSockets) { maxFrameSize = maximumMessageBytes.toLong() }
@@ -250,7 +258,7 @@ internal suspend fun connectCodexUnixWebSocket(
     return try {
         val session = withTimeoutOrNull(timeoutMillis) {
             client.webSocketSession {
-                url("ws://localhost/")
+                url("ws://localhost${route.path}")
                 unixSocket(socket.toString())
             }
         } ?: return BrokerUpstreamConnectionAdmission.Rejected.also { client.close() }
@@ -350,9 +358,9 @@ private class JdkCodexAppServerProcess(
         if (!process.isAlive) return@withContext
         process.destroy()
         try {
-            if (!process.waitFor(2, TimeUnit.SECONDS)) {
+            if (!process.waitFor(BrokerOperationalLimits.upstreamProcessRetirementWait.value, TimeUnit.MILLISECONDS)) {
                 process.destroyForcibly()
-                process.waitFor(2, TimeUnit.SECONDS)
+                process.waitFor(BrokerOperationalLimits.upstreamProcessRetirementWait.value, TimeUnit.MILLISECONDS)
             }
         } catch (_: InterruptedException) {
             process.destroyForcibly()

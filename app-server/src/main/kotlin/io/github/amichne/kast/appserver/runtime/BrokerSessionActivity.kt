@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.runtime
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.protocol.codex.ProtocolCloseFailure
 import kotlinx.serialization.json.*
 import java.io.PrintStream
@@ -21,7 +22,7 @@ internal fun interface SessionActivitySink {
 internal class SessionActivityJournal(private val sink: SessionActivitySink) {
     private val events = ArrayDeque<SessionActivity>()
     @Synchronized fun publish(activity: SessionActivity) {
-        if (events.size == 128) events.removeFirst()
+        if (events.size == BrokerOperationalLimits.maximumSessionEvents) events.removeFirst()
         events.addLast(activity)
         sink.publish(activity)
     }

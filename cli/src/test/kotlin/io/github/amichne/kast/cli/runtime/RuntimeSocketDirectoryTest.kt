@@ -37,6 +37,8 @@ class RuntimeSocketDirectoryTest {
             ),
         ).endpoint
 
+        assertTrue(endpoint.physicalSocketPath.startsWith(logicalDirectory),
+            "runtime socket inode and persistent state must stay within the admitted runtime directory")
         assertEquals(Path.of("/tmp"), socketDirectory.path.parent)
         assertNotEquals(logicalDirectory, socketDirectory.path)
         assertTrue(

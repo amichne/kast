@@ -62,7 +62,22 @@ private sealed interface CliBootstrapFailure {
 
 /** Process entrypoint for the single Kotlin `kast` executable. */
 fun main(args: Array<String>) {
-    val exit = when (val bootstrap = loadComposition(args.isEmpty())) {
+    val exit = when (val inspection = ConfigurationCliInspection.inspect(args.toList(), System.getenv())) {
+        is ConfigurationInspectionHandling.Handled -> inspection.exit
+        ConfigurationInspectionHandling.Unrelated -> executeInstalledCommand(args)
+    }
+    when (exit) {
+        is CliExit.Delegated -> Unit
+        is CliExit.Complete -> System.out.println(exit.document.value)
+        is CliExit.Qualified -> System.out.println(exit.document.value)
+        is CliExit.OperationRejected -> System.out.println(exit.document.value)
+        is CliExit.BoundaryRejected -> System.err.println(exit.document.value)
+    }
+    exitProcess(exit.code)
+}
+
+private fun executeInstalledCommand(args: Array<String>): CliExit =
+    when (val bootstrap = loadComposition(args.isEmpty())) {
         is CliBootstrap.Ready -> bootstrap.cli.execute(
             args.toList(),
             Path.of("").toAbsolutePath(),
@@ -74,15 +89,6 @@ fun main(args: Array<String>) {
             bootstrap.failure.outputReason(),
         )
     }
-    when (exit) {
-        is CliExit.Delegated -> Unit
-        is CliExit.Complete -> System.out.println(exit.document.value)
-        is CliExit.Qualified -> System.out.println(exit.document.value)
-        is CliExit.OperationRejected -> System.out.println(exit.document.value)
-        is CliExit.BoundaryRejected -> System.err.println(exit.document.value)
-    }
-    exitProcess(exit.code)
-}
 
 private fun readCanonicalRequestInput(): CliRequestDocumentInput {
     val bytes = ByteArrayOutputStream()
@@ -113,7 +119,7 @@ private fun readCanonicalRequestInput(): CliRequestDocumentInput {
     else CliRequestDocumentInput.Provided(document)
 }
 
-private const val MAXIMUM_REQUEST_DOCUMENT_BYTES = 4 * 1_024 * 1_024
+private const val MAXIMUM_REQUEST_DOCUMENT_BYTES = CliOperationalLimits.maximumRequestDocumentBytes
 
 /**
  * Proof transition: installed service providers -> `CliBootstrap`.

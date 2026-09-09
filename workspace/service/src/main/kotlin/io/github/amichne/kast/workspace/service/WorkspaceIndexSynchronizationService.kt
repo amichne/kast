@@ -1,5 +1,9 @@
 package io.github.amichne.kast.workspace.service
 
+import io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome
+import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefreshFailure
+import io.github.amichne.kast.workspace.contract.WorkspacePublicationBlocker
+
 import io.github.amichne.kast.workspace.contract.WorkspaceReadinessOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceObservationOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation
@@ -42,7 +46,7 @@ class WorkspaceIndexSynchronizationService(
             is WorkspaceRuntimeState.Ready -> when (val observed = sourceObservation.observe(state.workspace)) {
                 is WorkspaceSourceObservation.Observed -> if (observed.identity == state.workspace.sourceState) {
                     if (workspaces.inspect() == state) {
-                        observability.observeWorkspaceReadiness(io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.REUSED)
+                        observability.observeWorkspaceReadiness(KastWorkspaceReadinessOutcome.REUSED)
                         IndexSynchronizationResult.Unchanged(state.workspace)
                     } else rejected(IndexSynchronizationFailure.PublicationInvalidated)
                 } else {
@@ -50,20 +54,23 @@ class WorkspaceIndexSynchronizationService(
                 }
                 WorkspaceSourceObservation.ModelInputsChanged -> rejected(
                     IndexSynchronizationFailure.PublicationBlocked(io.github.amichne.kast.workspace.contract.WorkspacePublicationBlocker.ModelInputsChanged),
-                    io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.MODEL_INPUTS_CHANGED,
+                    KastWorkspaceReadinessOutcome.MODEL_INPUTS_CHANGED,
                 )
                 WorkspaceSourceObservation.ModelInputsUnavailable -> rejected(
                     IndexSynchronizationFailure.PublicationBlocked(io.github.amichne.kast.workspace.contract.WorkspacePublicationBlocker.ModelInputsUnavailable),
-                    io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.MODEL_INPUTS_UNAVAILABLE,
+                    KastWorkspaceReadinessOutcome.MODEL_INPUTS_UNAVAILABLE,
                 )
                 WorkspaceSourceObservation.Unavailable -> rejected(
                     IndexSynchronizationFailure.PublicationBlocked(
                         io.github.amichne.kast.workspace.contract.WorkspacePublicationBlocker.CandidateCaptureUnavailable,
                     ),
+                    KastWorkspaceReadinessOutcome.SOURCE_OBSERVATION_UNAVAILABLE,
                 )
             }
             WorkspaceRuntimeState.Reconciling, is WorkspaceRuntimeState.Blocked -> synchronizeExclusively()
-            else -> rejected(IndexSynchronizationFailure.WorkspaceNotReady)
+            WorkspaceRuntimeState.Absent -> rejected(IndexSynchronizationFailure.WorkspaceNotReady, KastWorkspaceReadinessOutcome.WORKSPACE_ABSENT)
+            WorkspaceRuntimeState.Starting -> rejected(IndexSynchronizationFailure.WorkspaceNotReady, KastWorkspaceReadinessOutcome.WORKSPACE_STARTING)
+            WorkspaceRuntimeState.Stopping -> rejected(IndexSynchronizationFailure.WorkspaceNotReady, KastWorkspaceReadinessOutcome.WORKSPACE_STOPPING)
         }
     }
 
@@ -77,12 +84,11 @@ class WorkspaceIndexSynchronizationService(
             is WorkspaceRuntimeState.Blocked, WorkspaceRuntimeState.Reconciling -> when (val basis = refreshBasis.refreshBasis()) {
                 is io.github.amichne.kast.workspace.contract.WorkspaceRefreshBasis.Available -> basis.publication
                 io.github.amichne.kast.workspace.contract.WorkspaceRefreshBasis.Unavailable ->
-                    return rejected(IndexSynchronizationFailure.WorkspaceNotReady)
+                    return rejected(IndexSynchronizationFailure.WorkspaceNotReady, KastWorkspaceReadinessOutcome.REFRESH_BASIS_UNAVAILABLE)
             }
-            WorkspaceRuntimeState.Absent,
-            WorkspaceRuntimeState.Starting,
-            WorkspaceRuntimeState.Stopping,
-                -> return rejected(IndexSynchronizationFailure.WorkspaceNotReady)
+            WorkspaceRuntimeState.Absent -> return rejected(IndexSynchronizationFailure.WorkspaceNotReady, KastWorkspaceReadinessOutcome.WORKSPACE_ABSENT)
+            WorkspaceRuntimeState.Starting -> return rejected(IndexSynchronizationFailure.WorkspaceNotReady, KastWorkspaceReadinessOutcome.WORKSPACE_STARTING)
+            WorkspaceRuntimeState.Stopping -> return rejected(IndexSynchronizationFailure.WorkspaceNotReady, KastWorkspaceReadinessOutcome.WORKSPACE_STOPPING)
         }
         val refreshed = try {
             refresh.refresh(prior)
@@ -102,7 +108,7 @@ class WorkspaceIndexSynchronizationService(
                 published.workspace.root == prior.root &&
                 published.workspace.generation.value > prior.generation.value
             ) {
-                observability.observeWorkspaceReadiness(io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.PUBLISHED)
+                observability.observeWorkspaceReadiness(KastWorkspaceReadinessOutcome.PUBLISHED)
                 IndexSynchronizationResult.Synchronized(published.workspace)
             } else {
                 rejected(IndexSynchronizationFailure.PublicationContractViolation)
@@ -111,7 +117,7 @@ class WorkspaceIndexSynchronizationService(
                 published.workspace.readLease == prior.readLease &&
                 published.workspace.sourceState == prior.sourceState
             ) {
-                observability.observeWorkspaceReadiness(io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.REFRESHED_UNCHANGED)
+                observability.observeWorkspaceReadiness(KastWorkspaceReadinessOutcome.REFRESHED_UNCHANGED)
                 IndexSynchronizationResult.Unchanged(published.workspace)
             } else {
                 rejected(IndexSynchronizationFailure.PublicationContractViolation)
@@ -128,9 +134,31 @@ class WorkspaceIndexSynchronizationService(
 
     private fun rejected(
         failure: IndexSynchronizationFailure,
-        outcome: io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome = io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.REJECTED,
+        outcome: KastWorkspaceReadinessOutcome = failure.readinessOutcome(),
     ): IndexSynchronizationResult.Rejected {
         observability.observeWorkspaceReadiness(outcome)
         return IndexSynchronizationResult.Rejected(failure)
+    }
+}
+
+/** Exhaustive finite projection: no failure details, workspace identities, or source payloads escape. */
+private fun IndexSynchronizationFailure.readinessOutcome(): KastWorkspaceReadinessOutcome = when (this) {
+    IndexSynchronizationFailure.WorkspaceNotReady -> KastWorkspaceReadinessOutcome.WORKSPACE_NOT_READY
+    is IndexSynchronizationFailure.Refresh -> when (failure) {
+        WorkspaceIndexRefreshFailure.INVALID_SOURCE_ROOT_SCOPE -> KastWorkspaceReadinessOutcome.REFRESH_INVALID_SOURCE_ROOT_SCOPE
+        WorkspaceIndexRefreshFailure.REFRESH_UNAVAILABLE -> KastWorkspaceReadinessOutcome.REFRESH_UNAVAILABLE
+        WorkspaceIndexRefreshFailure.INDEXING_INTERRUPTED -> KastWorkspaceReadinessOutcome.INDEXING_INTERRUPTED
+        WorkspaceIndexRefreshFailure.INDEXING_TIMED_OUT -> KastWorkspaceReadinessOutcome.INDEXING_TIMED_OUT
+        WorkspaceIndexRefreshFailure.INDEXING_FAILED -> KastWorkspaceReadinessOutcome.INDEXING_FAILED
+    }
+    IndexSynchronizationFailure.PublicationInvalidated -> KastWorkspaceReadinessOutcome.PUBLICATION_INVALIDATED
+    IndexSynchronizationFailure.PublicationContractViolation -> KastWorkspaceReadinessOutcome.PUBLICATION_CONTRACT_VIOLATION
+    is IndexSynchronizationFailure.PublicationBlocked -> when (blocker) {
+        WorkspacePublicationBlocker.ModelInputsChanged -> KastWorkspaceReadinessOutcome.MODEL_INPUTS_CHANGED
+        WorkspacePublicationBlocker.ModelInputsUnavailable -> KastWorkspaceReadinessOutcome.MODEL_INPUTS_UNAVAILABLE
+        WorkspacePublicationBlocker.CandidateCaptureUnavailable -> KastWorkspaceReadinessOutcome.CANDIDATE_CAPTURE_UNAVAILABLE
+        WorkspacePublicationBlocker.ReconciliationUnavailable -> KastWorkspaceReadinessOutcome.RECONCILIATION_UNAVAILABLE
+        is WorkspacePublicationBlocker.IncompleteEvidence -> KastWorkspaceReadinessOutcome.INCOMPLETE_EVIDENCE
+        WorkspacePublicationBlocker.PublicationUnavailable -> KastWorkspaceReadinessOutcome.PUBLICATION_UNAVAILABLE
     }
 }

@@ -157,13 +157,13 @@ internal object NativeDesktopInspectionCommands : DesktopInspectionCommands {
             return DesktopInspectionRead.Rejected
         }
         return try {
-            if (!process.waitFor(5, TimeUnit.SECONDS)) return DesktopInspectionRead.Rejected
-            val output = process.inputStream.use { it.readNBytes(1_025) }
+            if (!process.waitFor(BrokerOperationalLimits.desktopInspection.value, TimeUnit.MILLISECONDS)) return DesktopInspectionRead.Rejected
+            val output = process.inputStream.use { it.readNBytes(BrokerOperationalLimits.maximumDesktopInspectionBytes + 1) }
             val acceptedExit = when (command) {
                 is DesktopInspectionCommand.ReadVersion -> process.exitValue() == 0
                 is DesktopInspectionCommand.ReadOverride -> process.exitValue() in 0..1
             }
-            if (!acceptedExit || output.size > 1_024) DesktopInspectionRead.Rejected
+            if (!acceptedExit || output.size > BrokerOperationalLimits.maximumDesktopInspectionBytes) DesktopInspectionRead.Rejected
             else DesktopInspectionRead.Value(output.toString(Charsets.UTF_8).trimEnd('\n', '\r'))
         } catch (_: IOException) {
             DesktopInspectionRead.Rejected

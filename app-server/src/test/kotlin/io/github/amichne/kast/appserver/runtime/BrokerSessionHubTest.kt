@@ -16,6 +16,179 @@ import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicInteger
 
 class BrokerSessionHubTest {
+    @Test fun `blocked semantic work in one workspace leaves another workspace serviceable`(@TempDir root: Path) = runBlocking {
+        val fixture = Fixture(root)
+        val other = java.nio.file.Files.createDirectory(root.resolve("other")).toRealPath()
+        try {
+            val a = fixture.connect(); val b = fixture.connect()
+            fixture.bind(a, "thread/start")
+            fixture.bind(b, "thread/start", "thread-2", other)
+            a.upstream.received.send(BrokerUpstreamFrame.Text("""{"id":7,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"kast","tool":"query","arguments":{}}}"""))
+            fixture.entered.await()
+            b.upstream.received.send(BrokerUpstreamFrame.Text("""{"id":7,"method":"item/tool/call","params":{"threadId":"thread-2","turnId":"turn-1","callId":"call-1","namespace":"kast","tool":"query","arguments":{"independent":true}}}"""))
+            val response = withTimeoutOrNull(1_000) { b.upstream.sent.receive() }
+            assertNotNull(response, "ready workspace B was blocked by workspace A's semantic execution")
+            assertTrue(response!!.contains("independent"))
+            assertFalse(fixture.allowExecution.isCompleted)
+        } finally { fixture.allowExecution.complete(Unit); fixture.hub.close() }
+    }
+    @Test fun `queued cancellation returns before active work and never journals execution`(@TempDir root: Path) = runBlocking {
+        val journal = root.toRealPath().resolve("invocations.json")
+        val fixture = Fixture(root, invocationJournal = journal)
+        try {
+            val active = fixture.connect(); val queued = fixture.connect()
+            fixture.bind(active, "thread/start")
+            fixture.bind(queued, "thread/start", "thread-2")
+            active.upstream.received.send(BrokerUpstreamFrame.Text(toolCall("thread-1", "active", 7)))
+            fixture.entered.await()
+            queued.upstream.received.send(BrokerUpstreamFrame.Text(toolCall("thread-2", "queued", 8)))
+            queued.upstream.received.send(BrokerUpstreamFrame.Text("""{"method":"fixture/barrier"}"""))
+            queued.session.output.receive()
+            queued.session.accept("""{"id":20,"method":"turn/interrupt","params":{"threadId":"thread-2","turnId":"turn-queued"}}""")
+            val responses = mutableListOf<String>()
+            withTimeoutOrNull(1_000) {
+                while (responses.none { Json.parseToJsonElement(it).jsonObject["id"] == JsonPrimitive(8) }) responses += queued.upstream.sent.receive()
+            }
+            val result = responses.firstOrNull { Json.parseToJsonElement(it).jsonObject["id"] == JsonPrimitive(8) }
+            assertNotNull(result, "queued invocation did not retire before active work completed")
+            assertTrue(result!!.contains("CANCELLED_BEFORE_EXECUTION"))
+            assertEquals(1, fixture.invocations.get())
+            val records = Json.parseToJsonElement(java.nio.file.Files.readString(journal)).jsonObject.getValue("records").jsonObject
+            assertEquals(1, records.size, "queued cancellation was incorrectly journaled as started")
+            assertFalse(fixture.allowExecution.isCompleted)
+        } finally { fixture.allowExecution.complete(Unit); fixture.hub.close() }
+    }
+
+    @Test fun `workspace queue rejects demand beyond its declared bound`(@TempDir root: Path) = runBlocking {
+        val fixture = Fixture(root)
+        try {
+            val peer = fixture.connect()
+            fixture.bind(peer, "thread/start")
+            peer.upstream.received.send(BrokerUpstreamFrame.Text(toolCall("thread-1", "active", 7)))
+            fixture.entered.await()
+            repeat(33) { index -> peer.upstream.received.send(BrokerUpstreamFrame.Text(toolCall("thread-1", "queued-$index", index + 8))) }
+            val rejection = withTimeoutOrNull(1_000) { peer.upstream.sent.receive() }
+            assertNotNull(rejection, "workspace accepted unbounded pending work")
+            assertTrue(rejection!!.contains("WORKSPACE_QUEUE_CAPACITY_EXCEEDED"))
+            assertEquals(1, fixture.invocations.get())
+        } finally { fixture.allowExecution.complete(Unit); fixture.hub.close() }
+    }
+
+    @Test fun `controller handoff cancels original execution and uncertainty stays workspace local`(@TempDir root: Path) = runBlocking {
+        val fixture = Fixture(root)
+        val other = java.nio.file.Files.createDirectory(root.resolve("other")).toRealPath()
+        try {
+            val source = fixture.connect(); val controller = fixture.connect(); val independent = fixture.connect()
+            fixture.bind(source, "thread/start")
+            fixture.bind(controller, "thread/resume")
+            fixture.bind(independent, "thread/start", "thread-2", other)
+            assertEquals(ControlResult.Accepted, fixture.hub.tasks.release(fixture.thread, source.session.id))
+            assertEquals(ControlResult.Accepted, fixture.hub.tasks.claim(fixture.thread, controller.session.id))
+            source.upstream.received.send(BrokerUpstreamFrame.Text(toolCall("thread-1", "active", 7)))
+            fixture.entered.await()
+            controller.session.accept("""{"id":20,"method":"turn/interrupt","params":{"threadId":"thread-1","turnId":"turn-active"}}""")
+            val interrupted = withTimeoutOrNull(1_000) { source.upstream.sent.receive() }
+            assertNotNull(interrupted, "new controller could not interrupt original session's execution")
+            assertTrue(interrupted!!.contains("uncertain", ignoreCase = true))
+            assertNotNull(withTimeoutOrNull(1_000) { fixture.cancelled.await() }, "cancelled wrapper left the provider operation running")
+            source.upstream.received.send(BrokerUpstreamFrame.Text(toolCall("thread-1", "next", 8)))
+            assertTrue(withTimeout(1_000) { source.upstream.sent.receive() }.contains("WORKSPACE_RECOVERY_REQUIRED"))
+            independent.upstream.received.send(BrokerUpstreamFrame.Text(toolCall("thread-2", "independent", 9, true)))
+            assertTrue(withTimeout(1_000) { independent.upstream.sent.receive() }.contains("independent"))
+            assertFalse(fixture.allowExecution.isCompleted)
+        } finally { fixture.allowExecution.complete(Unit); fixture.hub.close() }
+    }
+
+    @Test fun `one workspace serializes semantic work until its active request completes`(@TempDir root: Path) = runBlocking {
+        val fixture = Fixture(root)
+        try {
+            val active = fixture.connect(); val pending = fixture.connect()
+            fixture.bind(active, "thread/start")
+            fixture.bind(pending, "thread/start", "thread-2")
+            active.upstream.received.send(BrokerUpstreamFrame.Text(toolCall("thread-1", "active", 7)))
+            fixture.entered.await()
+            pending.upstream.received.send(BrokerUpstreamFrame.Text(toolCall("thread-2", "pending", 8, true)))
+            assertNull(withTimeoutOrNull(150) { pending.upstream.sent.receive() })
+            assertEquals(1, fixture.invocations.get())
+            fixture.allowExecution.complete(Unit)
+            assertTrue(withTimeout(1_000) { active.upstream.sent.receive() }.contains("success"))
+            assertTrue(withTimeout(1_000) { pending.upstream.sent.receive() }.contains("independent"))
+            assertEquals(2, fixture.invocations.get())
+        } finally { fixture.allowExecution.complete(Unit); fixture.hub.close() }
+    }
+
+    @Test fun `queue deadline reports elapsed wait and leaves the workspace reusable`(@TempDir root: Path) = runBlocking {
+        val policy = WorkspaceExecutionPolicy.admit(1, 100, 5_000).refined()
+        val fixture = Fixture(root, executionPolicy = policy)
+        try {
+            val active = fixture.connect(); val pending = fixture.connect()
+            fixture.bind(active, "thread/start")
+            fixture.bind(pending, "thread/start", "thread-2")
+            active.upstream.received.send(BrokerUpstreamFrame.Text(toolCall("thread-1", "active", 7)))
+            fixture.entered.await()
+            pending.upstream.received.send(BrokerUpstreamFrame.Text(toolCall("thread-2", "pending", 8, true)))
+            assertTrue(withTimeout(1_000) { pending.upstream.sent.receive() }.contains("WORKSPACE_QUEUE_TIMED_OUT"))
+            assertEquals(1, fixture.invocations.get())
+            pending.session.accept("""{"id":21,"method":"kast/appServer/status"}""")
+            val status = Json.parseToJsonElement(pending.session.output.receive()).jsonObject.getValue("result").jsonObject.getValue("workspaceExecution").jsonObject
+            val timedOut = status.getValue("events").jsonArray.map { it.jsonObject }.single { it["failure"] == JsonPrimitive("WORKSPACE_QUEUE_TIMED_OUT") }
+            assertEquals(JsonPrimitive("queue"), timedOut["stage"])
+            assertEquals(JsonPrimitive("timed_out"), timedOut["outcome"])
+            assertTrue(timedOut.getValue("queueAgeMillis").jsonPrimitive.long > 0, "queue timeout evidence lost the time spent waiting")
+            assertTrue(timedOut.getValue("elapsedMillis").jsonPrimitive.long >= timedOut.getValue("queueAgeMillis").jsonPrimitive.long)
+            fixture.allowExecution.complete(Unit)
+            active.upstream.sent.receive()
+            pending.upstream.received.send(BrokerUpstreamFrame.Text(toolCall("thread-2", "next", 9, true)))
+            assertTrue(withTimeout(1_000) { pending.upstream.sent.receive() }.contains("independent"))
+        } finally { fixture.allowExecution.complete(Unit); fixture.hub.close() }
+    }
+
+    @Test fun `interaction deadline cancels execution and retains local recovery evidence`(@TempDir root: Path) = runBlocking {
+        val policy = WorkspaceExecutionPolicy.admit(1, 50, 200).refined()
+        val fixture = Fixture(root, executionPolicy = policy)
+        try {
+            val peer = fixture.connect()
+            fixture.bind(peer, "thread/start")
+            peer.upstream.received.send(BrokerUpstreamFrame.Text(toolCall("thread-1", "deadline", 7)))
+            fixture.entered.await()
+            assertTrue(withTimeout(1_000) { peer.upstream.sent.receive() }.contains("WORKSPACE_INTERACTION_TIMED_OUT"))
+            withTimeout(1_000) { fixture.cancelled.await() }
+            peer.session.accept("""{"id":21,"method":"kast/appServer/status"}""")
+            val status = Json.parseToJsonElement(peer.session.output.receive()).jsonObject.getValue("result").jsonObject.getValue("workspaceExecution").jsonObject
+            assertEquals(JsonPrimitive("recovery_required"), status.getValue("lanes").jsonArray.single().jsonObject["state"])
+            assertTrue(status.getValue("events").jsonArray.map { it.jsonObject }.any { it["outcome"] == JsonPrimitive("timed_out") && it["certainty"] == JsonPrimitive("uncertain") && it["failure"] == JsonPrimitive("WORKSPACE_INTERACTION_TIMED_OUT") })
+            assertFalse(fixture.allowExecution.isCompleted)
+        } finally { fixture.allowExecution.complete(Unit); fixture.hub.close() }
+    }
+
+    @Test fun `workspace diagnostic history is bounded and excludes tool payloads`(@TempDir root: Path) = runBlocking {
+        val fixture = Fixture(root)
+        try {
+            val peer = fixture.connect()
+            fixture.bind(peer, "thread/start")
+            repeat(70) { index ->
+                val document = Json.parseToJsonElement(toolCall("thread-1", "diagnostic-$index", index + 7, true)).jsonObject
+                val params = document.getValue("params").jsonObject
+                val arguments = JsonObject(params.getValue("arguments").jsonObject + ("privatePayload" to JsonPrimitive("must-not-appear")))
+                val call = JsonObject(document + ("params" to JsonObject(params + ("arguments" to arguments)))).toString()
+                peer.upstream.received.send(BrokerUpstreamFrame.Text(call))
+                withTimeout(1_000) { peer.upstream.sent.receive() }
+            }
+            peer.session.accept("""{"id":100,"method":"kast/appServer/status"}""")
+            val status = Json.parseToJsonElement(peer.session.output.receive()).jsonObject.getValue("result").jsonObject.getValue("workspaceExecution").jsonObject
+            assertEquals(128, status.getValue("events").jsonArray.size)
+            assertTrue(status.getValue("events").jsonArray.map { it.jsonObject }.any { it["outcome"] == JsonPrimitive("completed") })
+            assertFalse(status.toString().contains("privatePayload"))
+            assertFalse(status.toString().contains("must-not-appear"))
+        } finally { fixture.allowExecution.complete(Unit); fixture.hub.close() }
+    }
+
+    @Test fun `queue policy rejects invalid bounds`() {
+        assertEquals(WorkspaceExecutionPolicyFailure.QUEUED_LIMIT_REJECTED, (WorkspaceExecutionPolicy.admit(-1, 10, 20) as Refinement.Rejected).failure)
+        assertEquals(WorkspaceExecutionPolicyFailure.WAIT_LIMIT_REJECTED, (WorkspaceExecutionPolicy.admit(1, 30, 20) as Refinement.Rejected).failure)
+        assertEquals(WorkspaceExecutionPolicyFailure.INTERACTION_LIMIT_REJECTED, (WorkspaceExecutionPolicy.admit(1, 10, 0) as Refinement.Rejected).failure)
+    }
+
     @Test fun `resolution on source retires detached approval recipient`(@TempDir root: Path) = runBlocking {
         val fixture = Fixture(root)
         try {
@@ -110,14 +283,20 @@ class BrokerSessionHubTest {
         } finally { fixture.hub.close() }
     }
 
-    @Test fun `unenrolled start and resume are transparent including whitespace and override fields`(@TempDir root: Path) = runBlocking {
+    @Test fun `unenrolled start and resume reject missing workspace ownership`(@TempDir root: Path) = runBlocking {
         val fixture = Fixture(root, WorkspaceEnrollment.Unenrolled)
         try {
             val a = fixture.connect()
             for (request in listOf(
                 " { \"id\":1, \"method\":\"thread/start\", \"params\":{\"cwd\":\"$root\"} } ",
                 " { \"id\":2, \"method\":\"thread/resume\", \"params\":{\"threadId\":\"external\",\"path\":\"external.jsonl\"} } ",
-            )) { a.session.accept(request); assertEquals(request,a.upstream.sent.receive()) }
+            )) {
+                a.session.accept(request)
+                val response = Json.parseToJsonElement(withTimeout(1_000) { a.session.output.receive() }).jsonObject
+                assertTrue(response.containsKey("error"))
+                assertEquals(Json.parseToJsonElement(request).jsonObject["id"], response["id"])
+                assertTrue(a.upstream.sent.tryReceive().isFailure)
+            }
         } finally { fixture.hub.close() }
     }
 
@@ -170,10 +349,11 @@ class BrokerSessionHubTest {
         override suspend fun receive(): BrokerUpstreamFrame = received.receiveCatching().getOrNull() ?: BrokerUpstreamFrame.Closed
         override suspend fun close() { closed = true; received.close(); sent.close(); block?.cancel() }
     }
-    private class Fixture(root: Path, enrollment: WorkspaceEnrollment = WorkspaceEnrollment.ProtocolFixture) {
+    private class Fixture(root: Path, enrollment: WorkspaceEnrollment = WorkspaceEnrollment.ProtocolFixture, invocationJournal: Path? = null, executionPolicy: WorkspaceExecutionPolicy = WorkspaceExecutionPolicy.Default) {
         val root = root.toRealPath()
         val invocations = AtomicInteger()
         val entered = CompletableDeferred<Unit>()
+        val cancelled = CompletableDeferred<Unit>()
         val allowExecution = CompletableDeferred<Unit>()
         val thread = checkNotNull(BrokerThreadId.admit("thread-1"))
         private val connecting = Channel<FakeUpstream>(16)
@@ -182,7 +362,14 @@ class BrokerSessionHubTest {
         private val tool: BrokerTool<Unit,JsonElement,JsonElement,Nothing> = BrokerTool(
             ToolName.admit("query").refined(),ToolDescription.admit("Query test workspace").refined(),ToolLoading.EAGER,
             JsonDomainDefinition(schema,RefinementDefinition { input -> Validation.validated(input.element) }),schema,
-            invoke = { _, input, _ -> invocations.incrementAndGet(); entered.complete(Unit); allowExecution.await(); ProviderCall.Completed(input) },
+            invoke = { _, input, _ ->
+                invocations.incrementAndGet()
+                if ((input as? JsonObject)?.get("independent") != JsonPrimitive(true)) {
+                    entered.complete(Unit)
+                    try { allowExecution.await() } catch (failure: CancellationException) { cancelled.complete(Unit); throw failure }
+                }
+                ProviderCall.Completed(input)
+            },
             encode = { it }, present = { ToolPresentation.text(it.toString(),true) },
         )
         private val broker = Broker.create(listOf(ProviderRegistration.define(
@@ -193,8 +380,8 @@ class BrokerSessionHubTest {
             CodexProtocolContracts.define(CodexOwnedSchema.entries.associateWith {
                 if (it == CodexOwnedSchema.TURN_INTERRUPT_PARAMS) Json.parseToJsonElement("""{"type":"object","required":["threadId","turnId"]}""").jsonObject else objectSchema
             }).validated(),MemoryThreadCatalogStore(),BrokerUpstreamConnector { BrokerUpstreamConnectionAdmission.Connected(connecting.receive()) },
-            4,4 * 1_024 * 1_024,enrollment = enrollment,
-        ))
+            4,4 * 1_024 * 1_024,enrollment = enrollment, invocationJournal = invocationJournal,
+        ), executionPolicy)
         suspend fun connect(): Peer {
             val upstream = FakeUpstream(); connecting.send(upstream)
             val session = checkNotNull(hub.attach("""{"id":0,"method":"initialize","params":{"clientInfo":{"name":"test"}}}"""))
@@ -202,14 +389,16 @@ class BrokerSessionHubTest {
             session.accept("""{"method":"initialized"}"""); upstream.sent.receive()
             return Peer(session,upstream)
         }
-        suspend fun bind(peer: Peer,method: String) {
-            peer.session.accept("""{"id":1,"method":"$method","params":{"threadId":"thread-1","cwd":"$root"}}""")
+        suspend fun bind(peer: Peer,method: String, threadId: String = "thread-1", directory: Path = root) {
+            peer.session.accept("""{"id":1,"method":"$method","params":{"threadId":"$threadId","cwd":"$directory"}}""")
             peer.upstream.sent.receive()
-            peer.upstream.received.send(BrokerUpstreamFrame.Text("""{"id":1,"result":{"thread":{"id":"thread-1","turns":[]},"cwd":"$root"}}"""))
+            peer.upstream.received.send(BrokerUpstreamFrame.Text("""{"id":1,"result":{"thread":{"id":"$threadId","turns":[]},"cwd":"$directory"}}"""))
             peer.session.output.receive()
         }
     }
     companion object {
+        private fun toolCall(thread: String, call: String, request: Int, independent: Boolean = false): String =
+            """{"id":$request,"method":"item/tool/call","params":{"threadId":"$thread","turnId":"turn-$call","callId":"$call","namespace":"kast","tool":"query","arguments":{"independent":$independent}}}"""
         private fun <T,E> Refinement<T,E>.refined(): T = (this as Refinement.Refined).value
         private fun <T,E> Validation<T,E>.validated(): T = (this as Validation.Validated).value
     }

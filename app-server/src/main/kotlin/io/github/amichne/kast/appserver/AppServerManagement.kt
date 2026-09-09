@@ -12,6 +12,7 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.util.concurrent.TimeUnit
 
 sealed interface AppServerAction {
+    data object Register : AppServerAction
     data object Enable : AppServerAction
     data object Bootstrap : AppServerAction
     data object Status : AppServerAction
@@ -59,24 +60,33 @@ class InstalledAppServerManager(
     private val environment: Map<String,String> = System.getenv(),
 ) : AppServerManager {
     override fun execute(action: AppServerAction, workspace: Path): AppServerManagementResult {
-        val command = when (val resolved = BrokerServiceLaunchCommand.resolve(kast,userHome,environment + (APP_SERVER_ENABLE_ENVIRONMENT to "1"))) {
+        val installationRoot = try { kast.toRealPath().parent.parent } catch (_: Exception) {
+            return reject(AppServerManagementFailure.CONFIGURATION_REJECTED)
+        }
+        if ((action == AppServerAction.Enable || action == AppServerAction.Bootstrap) &&
+            InstallationLifecycleFence.observe(installationRoot) != InstallationLifecycleStartAdmission.AVAILABLE) {
+            return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
+        }
+        val enrollment = WorkspaceEnrollmentStore(installationRoot.resolve("config/workspaces.json"))
+        if (action == AppServerAction.Register) return when (val registered = enrollment.enroll(workspace)) {
+            is Refinement.Rejected -> reject(AppServerManagementFailure.ENROLLMENT_REJECTED)
+            is Refinement.Refined -> AppServerManagementResult.Completed(buildJsonObject {
+                put("operation", "app-server.register")
+                put("workspaceId", registered.value.workspace.id.value)
+                put("root", registered.value.workspace.root.path.toString())
+                put("revision", registered.value.revision.value)
+            })
+        }
+        val selectedEnvironment = if (action == AppServerAction.Enable) environment + (APP_SERVER_ENABLE_ENVIRONMENT to "1") else environment
+        val command = when (val resolved = BrokerServiceLaunchCommand.resolveCoordinator(kast,userHome,selectedEnvironment)) {
             is BrokerServiceLaunchCommandResolution.Resolved -> resolved.command
             is BrokerServiceLaunchCommandResolution.Rejected -> return reject(AppServerManagementFailure.CONFIGURATION_REJECTED)
         }
-        val enrollment = WorkspaceEnrollmentStore(command.stateDirectory.resolve("workspace.json"))
         val agent = userHome.resolve("Library/LaunchAgents/${command.serviceLabel.value}.login.plist")
         return try {
             when (action) {
+                AppServerAction.Register -> error("registration is handled before service admission")
                 AppServerAction.Enable -> {
-                    when (val desktop = InstalledDesktopAttachmentProbe.inspect(environment,userHome)) {
-                        DesktopAttachmentAdmission.Eligible -> Unit
-                        is DesktopAttachmentAdmission.Rejected -> return reject(when (desktop.failure) {
-                            DesktopAttachmentFailure.OVERRIDE_CONFLICT -> AppServerManagementFailure.DESKTOP_OVERRIDE_CONFLICT
-                            DesktopAttachmentFailure.VERSION_UNSUPPORTED -> AppServerManagementFailure.DESKTOP_VERSION_UNSUPPORTED
-                            DesktopAttachmentFailure.DESKTOP_UNAVAILABLE -> AppServerManagementFailure.DESKTOP_UNAVAILABLE
-                            DesktopAttachmentFailure.INSPECTION_REJECTED -> AppServerManagementFailure.DESKTOP_INSPECTION_REJECTED
-                        })
-                    }
                     if (enrollment.enroll(workspace) is Refinement.Rejected) return reject(AppServerManagementFailure.ENROLLMENT_REJECTED)
                     if (Files.exists(agent) && (Files.isSymbolicLink(agent) || !Files.readString(agent).contains("<!-- Kast App Server login bootstrap v1 -->"))) return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
                     Files.createDirectories(agent.parent)
@@ -91,36 +101,12 @@ class InstalledAppServerManager(
                     bootstrap(command)
                 }
                 AppServerAction.Bootstrap -> {
-                    if ((enrollment.read() as? EnrollmentRead.Read)?.enrollment !is WorkspaceEnrollment.Enrolled) return reject(AppServerManagementFailure.ENROLLMENT_REJECTED)
+                    if (enrollment.read() is EnrollmentRead.Rejected) return reject(AppServerManagementFailure.ENROLLMENT_REJECTED)
                     // A new login runs this once. The broker is subsequently restarted by launchd.
                     Files.deleteIfExists(command.stateDirectory.resolve("stopped"))
                     bootstrap(command)
                 }
-                AppServerAction.Status -> {
-                    val response = rpc(command,"kast/appServer/status",JsonObject(emptyMap()))
-                    val proof = (response?.get("result") as? JsonObject)?.get("qualification") as? JsonObject
-                    val qualified = response?.containsKey("error") == false && proof?.get("serviceIdentity") == JsonPrimitive(command.identity.value) &&
-                        listOf("schemaDigest","catalogDigest").all { (proof[it] as? JsonPrimitive)?.contentOrNull?.matches(Regex("sha256:[a-f0-9]{64}")) == true } &&
-                        (proof["codexVersion"] as? JsonPrimitive)?.contentOrNull?.isNotBlank() == true
-
-                    val status = buildJsonObject {
-                        put("operation","app-server.status")
-                        put("transport",if (response == null) "unavailable" else "ready")
-                        put("protocol",if (qualified) "qualified" else "unobserved")
-                        put("catalog",if (qualified) "qualified" else "unobserved")
-                        put("semantic","unobserved")
-                        put("desktop","unqualified")
-                        put("enrollment",when (val read = enrollment.read()) {
-                            is EnrollmentRead.Read -> when (val value = read.enrollment) {
-                                is WorkspaceEnrollment.Enrolled -> JsonPrimitive(value.root.path.toString())
-                                else -> JsonNull
-                            }
-                            is EnrollmentRead.Rejected -> JsonPrimitive("rejected")
-                        })
-                        put("session",response ?: JsonNull)
-                    }
-                    AppServerManagementResult.Completed(status)
-                }
+                AppServerAction.Status -> passiveStatus(command, enrollment)
                 AppServerAction.Stop, AppServerAction.Disable -> {
                     val stopped = MacOsPersistentBrokerServiceHost().stop(command)
                     if (stopped != PersistentBrokerServiceAdmission.Ready) return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
@@ -129,18 +115,7 @@ class InstalledAppServerManager(
                             if (Files.isSymbolicLink(agent) || !Files.readString(agent).contains("<!-- Kast App Server login bootstrap v1 -->")) return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
                             Files.delete(agent)
                         }
-                        val owned = command.stateDirectory.resolve("desktop-opt-in-owned")
-                        if (Files.exists(owned, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
-                            if (Files.isSymbolicLink(owned) || Files.size(owned) > 1_024) return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
-                            val previous = Json.parseToJsonElement(Files.readString(owned)).jsonObject.getValue("previous")
-                            val current = readLaunchEnvironment("CODEX_APP_SERVER_USE_LOCAL_DAEMON") ?: return reject(AppServerManagementFailure.LAUNCHCTL_REJECTED)
-                            if (current == "1") {
-                                val restored = if (previous == JsonNull) launchctl("unsetenv","CODEX_APP_SERVER_USE_LOCAL_DAEMON")
-                                    else launchctl("setenv","CODEX_APP_SERVER_USE_LOCAL_DAEMON",previous.jsonPrimitive.content)
-                                if (!restored) return reject(AppServerManagementFailure.LAUNCHCTL_REJECTED)
-                            }
-                            Files.delete(owned)
-                        }
+
                     }
                     complete(if (action == AppServerAction.Stop) "stopped" else "disabled")
                 }
@@ -156,24 +131,80 @@ class InstalledAppServerManager(
         } catch (_: Exception) { reject(AppServerManagementFailure.FILESYSTEM_REJECTED) }
     }
 
+    private fun passiveStatus(command: BrokerServiceLaunchCommand, registry: WorkspaceEnrollmentStore): AppServerManagementResult {
+        val observed = runBlocking { InstalledWorkerClient(kast, userHome, environment).status(command) }
+        val service = when (observed) {
+            is CoordinatorStatusRead.Observed -> PassiveServiceState.READY
+            is CoordinatorStatusRead.Rejected -> when (observed.failure) {
+                WorkerControlFailure.UNAVAILABLE, WorkerControlFailure.DEADLINE_EXCEEDED -> PassiveServiceState.UNAVAILABLE
+                WorkerControlFailure.INVALID_REQUEST, WorkerControlFailure.IDENTITY_REJECTED,
+                WorkerControlFailure.REGISTRATION_REJECTED, WorkerControlFailure.RECEIPT_REJECTED,
+                WorkerControlFailure.LIFECYCLE_TRANSITION, WorkerControlFailure.RECOVERY_REQUIRED,
+                WorkerControlFailure.CAPACITY_REJECTED, WorkerControlFailure.STARTUP_REJECTED,
+                WorkerControlFailure.RETIREMENT_UNPROVEN -> PassiveServiceState.REJECTED
+            }
+        }
+        val registered = registry.snapshot()
+        return AppServerManagementResult.Completed(buildJsonObject {
+            put("operation", "app-server.status")
+            put("transport", if (service == PassiveServiceState.READY) "ready" else "unavailable")
+            put("protocol", "unobserved")
+            put("catalog", "unobserved")
+            put("semantic", "unobserved")
+            put("desktop", "unqualified")
+            putJsonObject("coordinator") {
+                put("state", service.name.lowercase())
+                when (observed) {
+                    is CoordinatorStatusRead.Observed -> put("observation", observed.snapshot.document())
+                    is CoordinatorStatusRead.Rejected -> put("reason", observed.failure.name)
+                }
+            }
+            putJsonObject("service") {
+                put("state", service.name.lowercase())
+                put("ownership", if (observed is CoordinatorStatusRead.Observed) "matched" else "unobserved")
+            }
+            putJsonObject("host") {
+                put("attachment", when (observed) {
+                    is CoordinatorStatusRead.Observed -> observed.snapshot.hostAttachment.name.lowercase()
+                    is CoordinatorStatusRead.Rejected -> CoordinatorHostAttachment.UNOBSERVED.name.lowercase()
+                })
+                put("desktop", "unqualified")
+            }
+            putJsonObject("registry") {
+                when (registered) {
+                    is WorkspaceRegistryRead.Read -> {
+                        put("state", if (registered.snapshot.workspaces.isEmpty()) "empty" else "registered")
+                        put("revision", registered.snapshot.revision.value)
+                        put("count", registered.snapshot.workspaces.size)
+                        putJsonArray("workspaces") {
+                            registered.snapshot.workspaces.forEach { workspace -> add(buildJsonObject {
+                                put("workspaceId", workspace.id.value)
+                                put("root", workspace.root.path.toString())
+                            }) }
+                        }
+                    }
+                    is WorkspaceRegistryRead.Rejected -> { put("state", "rejected"); put("reason", registered.failure.name) }
+                }
+            }
+            put("enrollment", when (registered) {
+                is WorkspaceRegistryRead.Read -> registered.snapshot.workspaces.singleOrNull()?.let { JsonPrimitive(it.root.path.toString()) } ?: JsonNull
+                is WorkspaceRegistryRead.Rejected -> JsonPrimitive("rejected")
+            })
+            put("session", JsonNull)
+        })
+    }
+
     private fun bootstrap(command: BrokerServiceLaunchCommand): AppServerManagementResult {
         when (val ensured = MacOsPersistentBrokerServiceHost().ensure(command)) {
             PersistentBrokerServiceAdmission.Ready -> Unit
             is PersistentBrokerServiceAdmission.Rejected -> return AppServerManagementResult.Rejected(AppServerManagementFailure.SERVICE_UNAVAILABLE,ensured.failure)
-        }
-        val previous = readLaunchEnvironment("CODEX_APP_SERVER_USE_LOCAL_DAEMON") ?: return reject(AppServerManagementFailure.LAUNCHCTL_REJECTED)
-        val owned = command.stateDirectory.resolve("desktop-opt-in-owned")
-        if (Files.isSymbolicLink(owned)) return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
-        if (previous != "1") {
-            if (!Files.exists(owned)) Files.writeString(owned,buildJsonObject { put("previous",previous.takeIf(String::isNotEmpty)?.let(::JsonPrimitive) ?: JsonNull) }.toString(),java.nio.file.StandardOpenOption.CREATE_NEW)
-            if (!launchctl("setenv","CODEX_APP_SERVER_USE_LOCAL_DAEMON","1")) return reject(AppServerManagementFailure.LAUNCHCTL_REJECTED)
         }
         return complete("ready")
     }
     private fun loginAgent(command: BrokerServiceLaunchCommand): String {
         fun escape(raw: String) = raw.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\"","&quot;")
         val arguments = listOf(command.kast.toString(),"app-server","bootstrap").joinToString("") { "<string>${escape(it)}</string>" }
-        val env = mapOf("PATH" to command.executableSearchPath.value,"CODEX_EXECUTABLE" to command.codex.path.toString(),"CODEX_HOME" to command.codexHome.toString(),APP_SERVER_ENABLE_ENVIRONMENT to "1")
+        val env = mapOf("PATH" to command.executableSearchPath.value,"CODEX_HOME" to command.codexHome.toString(),APP_SERVER_ENABLE_ENVIRONMENT to "1") + command.host.environment()
         return """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- Kast App Server login bootstrap v1 -->
@@ -181,8 +212,8 @@ class InstalledAppServerManager(
 """
     }
     private fun rpc(command: BrokerServiceLaunchCommand, method: String, params: JsonObject): JsonObject? = runBlocking {
-        kotlinx.coroutines.withTimeoutOrNull(5_000) {
-            val connection = (connectCodexUnixWebSocket(command.publicSocket,4 * 1_024 * 1_024,2_000) as? BrokerUpstreamConnectionAdmission.Connected)?.connection ?: return@withTimeoutOrNull null
+        kotlinx.coroutines.withTimeoutOrNull(BrokerOperationalLimits.managementExchange.value) {
+            val connection = (connectCodexUnixWebSocket(command.publicSocket,BrokerOperationalLimits.maximumClientMessageBytes,BrokerOperationalLimits.managementConnect.value) as? BrokerUpstreamConnectionAdmission.Connected)?.connection ?: return@withTimeoutOrNull null
             try {
                 connection.send("""{"id":1,"method":"initialize","params":{"clientInfo":{"name":"kast-control","version":"1"}}}""")
                 val initialize = (connection.receive() as? BrokerUpstreamFrame.Text)?.message?.let { Json.parseToJsonElement(it).jsonObject } ?: return@withTimeoutOrNull null
@@ -197,18 +228,9 @@ class InstalledAppServerManager(
             } finally { connection.close() }
         }
     }
-    private fun readLaunchEnvironment(name: String): String? {
-        val process = ProcessBuilder("/bin/launchctl","getenv",name).redirectError(ProcessBuilder.Redirect.DISCARD).start()
-        if (!process.waitFor(5,TimeUnit.SECONDS)) { process.destroyForcibly(); return null }
-        val bytes = process.inputStream.use { it.readNBytes(1_025) }
-        if (bytes.size > 1_024 || process.exitValue() !in setOf(0,1)) return null
-        return bytes.toString(Charsets.UTF_8).trimEnd('\n','\r')
-    }
-    private fun launchctl(vararg arguments: String): Boolean {
-        val process = ProcessBuilder(listOf("/bin/launchctl") + arguments).redirectOutput(ProcessBuilder.Redirect.DISCARD).redirectError(ProcessBuilder.Redirect.DISCARD).start()
-        if (!process.waitFor(5,TimeUnit.SECONDS)) { process.destroyForcibly(); process.waitFor(2,TimeUnit.SECONDS); return false }
-        return process.exitValue() == 0
-    }
     private fun complete(status: String) = AppServerManagementResult.Completed(buildJsonObject { put("operation","app-server");put("status",status);put("desktop","unqualified") })
     private fun reject(failure: AppServerManagementFailure) = AppServerManagementResult.Rejected(failure)
 }
+
+/** Passive observation does not confer authorization to start or attach a host. */
+private enum class PassiveServiceState { READY, UNAVAILABLE, REJECTED }

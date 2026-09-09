@@ -52,8 +52,8 @@ internal class TerminalRuntimeStartupProgress(
     }
 
     companion object {
-        private val HEARTBEAT = Duration.ofSeconds(5)
-        private const val MAXIMUM_LINES = 256
+        private val HEARTBEAT = Duration.ofMillis(CliOperationalLimits.progressHeartbeatMillis)
+        private const val MAXIMUM_LINES = CliOperationalLimits.maximumProgressLines
         fun create(): RuntimeStartupProgressSink = TerminalRuntimeStartupProgress(
             System.console()?.isTerminal == true,
             System::nanoTime,

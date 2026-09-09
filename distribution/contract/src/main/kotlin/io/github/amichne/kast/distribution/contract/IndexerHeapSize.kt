@@ -9,6 +9,7 @@ value class IndexerHeapSize private constructor(val mebibytes: Int) {
         const val SETTING = "KAST_INDEXER_MAX_HEAP"
         val Default = IndexerHeapSize(1536)
         private const val INITIAL_MEBIBYTES = 256
+        val minimumMebibytes: Int get() = INITIAL_MEBIBYTES
 
         /** Process environment has already taken precedence over saved configuration at the launcher boundary. */
         fun parse(raw: String?): Refinement<IndexerHeapSize, IndexerHeapFailure> {

@@ -1,7 +1,15 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.distribution.contract.IndexerHeapSize
+import io.github.amichne.kast.appserver.InstalledSavedConfigurationIngress
+import io.github.amichne.kast.appserver.SavedConfigurationIngress
+
 import io.github.amichne.kast.distribution.contract.IndexerHeapFailure
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationRejection
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationRejectionDetail
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSwitch
+import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.appserver.InstalledBrokerServerRunner
 import io.github.amichne.kast.appserver.host.installedCodexClientLauncher
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
@@ -31,15 +39,16 @@ import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 
-private const val RUNTIME_ARCHIVE_ENVIRONMENT = "KAST_RUNTIME_ARCHIVE"
 private const val RUNTIME_DIRECTORY_ENVIRONMENT = "KAST_RUNTIME_DIRECTORY"
-private const val RUNTIME_STORE_ENVIRONMENT = "KAST_RUNTIME_STORE"
-private const val SIDECAR_CACHE_ROOT_ENVIRONMENT = "KAST_CACHE_ROOT"
 
 internal const val SUPPORTED_IDE_BUILD = "262.9437.185"
 internal const val SUPPORTED_KOTLIN_PLUGIN_BUILD = "262.9437.185-IJ"
 
 internal enum class SavedConfigurationFailure { UNREADABLE, DUPLICATE_RECORD, UNSUPPORTED_RECORD, UNKNOWN }
+
+internal class ConfigurationCompositionFailure(val rejection: ConfigurationRejection) : KastCliCompositionFailure {
+    override val outputReason: String = "configuration-${rejection.reason.name.lowercase()}"
+}
 
 internal sealed interface InstalledCompositionFailure : KastCliCompositionFailure {
     data class IndexerHeapRejected(val failure: IndexerHeapFailure) : InstalledCompositionFailure
@@ -114,7 +123,8 @@ internal class InstalledKastCliComposition : KastCliComposition {
      * extraction remain in this installed composition boundary.
      */
     override fun create(): KastCliCompositionConstruction {
-        System.getenv("KAST_SAVED_CONFIGURATION_FAILURE")?.let { raw ->
+        val environment = System.getenv()
+        environment["KAST_SAVED_CONFIGURATION_FAILURE"]?.let { raw ->
             val failure = when (raw) {
                 "unreadable" -> SavedConfigurationFailure.UNREADABLE
                 "duplicate-record" -> SavedConfigurationFailure.DUPLICATE_RECORD
@@ -124,20 +134,25 @@ internal class InstalledKastCliComposition : KastCliComposition {
             return KastCliCompositionConstruction.Rejected(InstalledCompositionFailure.SavedConfigurationRejected(failure))
         }
 
-        val maxHeap = when (val parsed = IndexerHeapSize.parse(System.getenv(IndexerHeapSize.SETTING))) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> return KastCliCompositionConstruction.Rejected(InstalledCompositionFailure.IndexerHeapRejected(parsed.failure))
+        val sources = when (val saved = InstalledSavedConfigurationIngress.load(environment)) {
+            is SavedConfigurationIngress.Loaded -> saved.sources
+            is SavedConfigurationIngress.Rejected -> return KastCliCompositionConstruction.Rejected(SavedConfigurationIngressCompositionFailure(saved.rejection))
         }
-        val processMode = when (
-            val admission = RuntimeProcessModeEnvironment.admit(
-                System.getenv(RUNTIME_PROCESS_MODE_ENVIRONMENT),
-            )
-        ) {
-            is RuntimeProcessModeAdmission.Admitted -> admission.mode
-            is RuntimeProcessModeAdmission.Rejected ->
-                return KastCliCompositionConstruction.Rejected(
-                    InstalledCompositionFailure.RuntimeProcessModeRejected(admission.failure),
-                )
+        val configuration = when (val resolved = ResolvedKastConfiguration.resolve(sources)) {
+            is Refinement.Refined -> resolved.value
+            is Refinement.Rejected -> return KastCliCompositionConstruction.Rejected(when (val detail = resolved.failure.detail) {
+                is ConfigurationRejectionDetail.Heap -> InstalledCompositionFailure.IndexerHeapRejected(detail.failure)
+                ConfigurationRejectionDetail.General -> when (resolved.failure.key) {
+                    ConfigurationParameter.ENABLE_LAUNCHD.key -> InstalledCompositionFailure.RuntimeProcessModeRejected(RuntimeProcessModeFailure.INVALID_ENVIRONMENT_VALUE)
+                    else -> ConfigurationCompositionFailure(resolved.failure)
+                }
+            })
+        }
+        val sidecarEnvironment = io.github.amichne.kast.cli.SidecarEnvironmentInputs.from(configuration, environment["JAVA_HOME"])
+        val maxHeap = configuration.indexerHeap
+        val processMode = when (configuration.launchd) {
+            ConfigurationSwitch.ENABLED -> RuntimeProcessMode.Launchd
+            ConfigurationSwitch.DISABLED -> RuntimeProcessMode.Direct
         }
         val processCapabilities = processMode.capabilities()
         val installation = when (val admission = InstalledKastControlProduct.discover()) {
@@ -202,12 +217,18 @@ internal class InstalledKastCliComposition : KastCliComposition {
                     InstalledCompositionFailure.CommandGraphRejected(construction.failures),
                 )
         }
-        val runtimeDirectory = when (val admission = InstalledRuntimeDirectory.admit()) {
+        val runtimeDirectory = when (val admission = InstalledRuntimeDirectory.admit(
+            configured = configuration.runtimeDirectory.boundaryPath() ?: installation.root.resolve("state/run").toString(),
+            temporaryDirectory = System.getProperty("java.io.tmpdir"),
+        )) {
             is InstalledRuntimeDirectoryAdmission.Admitted -> admission.directory
             is InstalledRuntimeDirectoryAdmission.Rejected ->
                 return KastCliCompositionConstruction.Rejected(
                     InstalledCompositionFailure.RuntimeDirectoryRejected(admission.failure),
                 )
+        }
+        if (runtimeDirectory.path != installation.root.resolve("state/run")) {
+            return KastCliCompositionConstruction.Rejected(InstalledCompositionFailure.RuntimeDirectoryRejected(InstalledRuntimeDirectoryFailure.INVALID_PATH))
         }
         val localMetadata = when (
             val construction = installation.localMetadata(
@@ -229,7 +250,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
         }
         val cacheRoot = when (
             val admission = InstalledSidecarCacheRoot.admit(
-                System.getenv(SIDECAR_CACHE_ROOT_ENVIRONMENT),
+                configuration.cacheRoot.boundaryPath() ?: installation.root.resolve("state/cache").toString(),
                 userHome,
             )
         ) {
@@ -239,21 +260,24 @@ internal class InstalledKastCliComposition : KastCliComposition {
                     InstalledCompositionFailure.SidecarCacheRootRejected(admission.failure),
                 )
         }
+        if (cacheRoot != installation.root.resolve("state/cache")) {
+            return KastCliCompositionConstruction.Rejected(InstalledCompositionFailure.SidecarCacheRootRejected(InstalledSidecarCacheRootFailure.INVALID_PATH))
+        }
         val endpointLocator = Sha256RuntimeEndpointLocator(
-            RuntimeSocketDirectory.from(runtimeDirectory),
+            RuntimeSocketDirectory.installed(runtimeDirectory.path),
             manifest.runtimeId,
         )
         val defaultSourceSystem = userHome.resolve(
             "Library/Caches/JetBrains/IntelliJIdea2026.2",
         )
-        val cachePreparer = FilesystemSidecarCachePreparer(
+        fun cachePreparer(consent: IndexSeedConsentProvider) = FilesystemSidecarCachePreparer(
             cacheRoot,
             defaultSourceSystem,
             IndexSeedFilesystemService(
                 FilesystemSourceIdeQuiescenceProbe,
                 ApfsIndexSeedFilesystemProbe,
                 ApfsCoWIndexSeedCloner,
-                ConsoleIndexSeedConsentProvider,
+                consent,
                 JsonLineIndexSeedActivitySink(System.err),
             ),
         )
@@ -276,6 +300,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
             SidecarIdeRuntimeResolver { supported, digest, selection ->
                 InstalledIdeRuntimeDiscovery.discover(supported, digest, selection)
             },
+            importEnvironment = sidecarEnvironment::importEnvironment,
         )
         val installedKastExecutable = installation.kastExecutable()
             ?: return KastCliCompositionConstruction.Rejected(
@@ -284,42 +309,101 @@ internal class InstalledKastCliComposition : KastCliComposition {
                 ),
             )
         val lifecycle = ExactRootRuntimeLifecycle(JdkUnixDomainEndpointProbe, processCapabilities.authority)
-        val sidecarDemander = InstalledSidecarRootRuntimeDemander(
+        fun sidecarDemander(request: io.github.amichne.kast.appserver.InstalledWorkerStartRequest,
+            capture: (WorkerProcessCapture) -> Unit, consent: IndexSeedConsentProvider): RootRuntimeDemander {
+            val selected = request.configuration
+            if ((selected.cacheRoot.boundaryPath()?.let(Path::of) ?: cacheRoot) != cacheRoot ||
+                (selected.runtimeDirectory.boundaryPath()?.let(Path::of) ?: runtimeDirectory.path) != runtimeDirectory.path) {
+                return RootRuntimeDemander { _, _, _ -> RuntimeAdmission.Rejected(RuntimeAdmissionFailure.LayoutInvalid) }
+            }
+            val selectedInputs = SidecarEnvironmentInputs.from(selected, environment["JAVA_HOME"])
+            val selectedProcesses = when (selected.launchd) {
+                ConfigurationSwitch.ENABLED -> RuntimeProcessMode.Launchd
+                ConfigurationSwitch.DISABLED -> RuntimeProcessMode.Direct
+            }.capabilities()
+            val selectedLifecycle = ExactRootRuntimeLifecycle(JdkUnixDomainEndpointProbe, selectedProcesses.authority)
+            val selectedCache = FilesystemRootSidecarCacheLifecycle(cacheRoot, cacheReleaseIdentity,
+                SidecarIdeRuntimeResolver { supported, digest, selection -> InstalledIdeRuntimeDiscovery.discover(supported,digest,selection) },
+                selectedInputs::importEnvironment)
+            return InstalledSidecarRootRuntimeDemander(
             endpointLocator,
             support,
             userHome,
             ManagedInstalledSidecarPayloadResolver(
                 manifest,
-                InstalledSemanticRuntimeResolver(::resolveInstalledRuntime),
+                InstalledSemanticRuntimeResolver { selectedManifest -> resolveInstalledRuntime(selectedManifest, selected, installation.root) },
             ),
             { supported, digest, selection ->
                 InstalledIdeRuntimeDiscovery.discover(supported, digest, selection)
             },
-            cachePreparer,
+            cachePreparer(consent),
             ExactSidecarProcessDemander(
                 runtimeDemanderFactory = { executable, context ->
-                    ExactRootProcessRuntimeDemander(
+                    val exact = ExactRootProcessRuntimeDemander(
                         executable,
                         context,
-                        processCapabilities.starter,
-                        bootstrapProcessAuthority = processCapabilities.bootstrapAuthority,
+                        selectedProcesses.starter,
+                        bootstrapProcessAuthority = selectedProcesses.bootstrapAuthority,
                     )
+                    RuntimeDemander { root, endpoint ->
+                        capture(WorkerProcessCapture(executable, context, endpoint, selectedProcesses.bootstrapAuthority, selectedLifecycle))
+                        exact.demand(root, endpoint)
+                    }
                 },
             ),
-            legacyProcessAuthority = processCapabilities.authority,
-            cacheLifecycle = cacheLifecycle,
-            lifecycle = lifecycle,
-            maxHeap = maxHeap,
+            legacyProcessAuthority = selectedProcesses.authority,
+            cacheLifecycle = selectedCache,
+            lifecycle = selectedLifecycle,
+            maxHeap = request.heap,
+            sidecarEnvironment = selectedInputs,
         )
+        }
+        fun retireUnreserved(requested: Path): io.github.amichne.kast.appserver.InstalledWorkerRetirement {
+            val unproven = io.github.amichne.kast.appserver.InstalledWorkerRetirement.UNPROVEN
+            val root = when (val discovered = FilesystemCanonicalRootDiscovery.discover(requested)) {
+                is CanonicalRootDiscovery.Discovered -> discovered.root
+                is CanonicalRootDiscovery.Rejected -> return unproven
+            }
+            if (root.path != requested) return unproven
+            val selected = when (val admitted = io.github.amichne.kast.appserver.InstalledWorkspaceConfigurationIngress.resolve(installation.root, requested, environment)) {
+                is io.github.amichne.kast.kernel.Refinement.Refined -> admitted.value
+                is io.github.amichne.kast.kernel.Refinement.Rejected -> return unproven
+            }
+            val endpoint = when (val located = endpointLocator.locate(root)) {
+                is RuntimeEndpointResolution.Resolved -> located.endpoint
+                is RuntimeEndpointResolution.Rejected -> return unproven
+            }
+            val selectedInputs = SidecarEnvironmentInputs.from(selected, environment["JAVA_HOME"])
+            val selectedCache = FilesystemRootSidecarCacheLifecycle(cacheRoot, cacheReleaseIdentity,
+                SidecarIdeRuntimeResolver { supported, digest, selection -> InstalledIdeRuntimeDiscovery.discover(supported,digest,selection) }, selectedInputs::importEnvironment)
+            val exact = when (val cache = selectedCache.observe(root.path)) {
+                RootSidecarCacheObservation.Absent -> endpoint
+                is RootSidecarCacheObservation.Rejected -> return unproven
+                is RootSidecarCacheObservation.Identified -> when (val located = endpoint.forSidecarCache(cache.status.cacheIdentity, cache.status.semanticRuntimeId, cache.status.cacheRoot)) {
+                    is RuntimeEndpointResolution.Resolved -> located.endpoint
+                    is RuntimeEndpointResolution.Rejected -> return unproven
+                }
+            }
+            val processes = when (selected.launchd) {
+                ConfigurationSwitch.ENABLED -> RuntimeProcessMode.Launchd
+                ConfigurationSwitch.DISABLED -> RuntimeProcessMode.Direct
+            }.capabilities()
+            return when (ExactRootRuntimeLifecycle(JdkUnixDomainEndpointProbe, processes.authority).stop(exact)) {
+                is RuntimeStopResult.Stopped -> io.github.amichne.kast.appserver.InstalledWorkerRetirement.EXACT_RETIRED
+                is RuntimeStopResult.Rejected -> unproven
+            }
+        }
+        val workerEffects = io.github.amichne.kast.cli.InstalledRuntimeWorkerEffects(::sidecarDemander, unreservedRetirement = ::retireUnreserved)
+        val workerClient = io.github.amichne.kast.appserver.InstalledWorkerClient(installedKastExecutable, userHome, environment, seedConsent = FrontendWorkerSeedConsent)
         return KastCliCompositionConstruction.Created(
             KastCli(
                 commandGraphFactory,
                 FilesystemCanonicalRootDiscovery,
                 endpointLocator,
-                sidecarDemander,
-                UnixDomainWireClient(),
+                io.github.amichne.kast.cli.CoordinatedRootRuntimeDemander(workerClient, maxHeap),
+                UnixDomainWireClient(activity = JsonLineWireActivitySink(System.err)),
                 localMetadata,
-                lifecycle,
+                io.github.amichne.kast.cli.CoordinatedRuntimeLifecycle(workerClient, lifecycle),
                 SidecarProductInspector(
                     SidecarProductIdentity(
                         productVersion,
@@ -336,6 +420,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
                 brokerServerRunner = InstalledBrokerServerRunner(
                     installedKastExecutable,
                     userHome,
+                    workerEffects = workerEffects,
                 ),
                 codexClientLauncher = installedCodexClientLauncher(
                     installedKastExecutable,
@@ -385,7 +470,7 @@ private sealed interface InstalledLocalMetadataConstruction {
 
 /** One control installation proven by the CLI jar and exact `share/kast` resources. */
 private class InstalledKastControlProduct private constructor(
-    private val root: Path,
+    val root: Path,
 ) {
     fun kastExecutable(): Path? = admittedFile(root.resolve("bin/kast"), executable = true)
 
@@ -579,9 +664,11 @@ private class ManagedInstalledSidecarPayloadResolver(
 /** Performs small sidecar payload source selection and store admission only after demand. */
 private fun resolveInstalledRuntime(
     manifest: SemanticRuntimeManifest,
+    configuration: ResolvedKastConfiguration,
+    installationRoot: Path,
 ): SemanticRuntimeResolution {
     val source = when (
-        val selected = SemanticRuntimeSource.select(System.getenv(RUNTIME_ARCHIVE_ENVIRONMENT))
+        val selected = SemanticRuntimeSource.select(configuration.runtimeArchive.boundaryPath())
     ) {
         is SemanticRuntimeSourceSelection.Managed -> selected.source
         is SemanticRuntimeSourceSelection.Preseeded -> selected.source
@@ -589,19 +676,11 @@ private fun resolveInstalledRuntime(
             RuntimeStoreFailure.STORE_INVALID,
         )
     }
-    val rawStore = System.getenv(RUNTIME_STORE_ENVIRONMENT)
-    val storePath = try {
-        when {
-            rawStore == null -> Path.of(System.getProperty("user.home"))
-                .resolve(".cache/kast/semantic-runtimes")
-            rawStore.isBlank() -> return SemanticRuntimeResolution.Rejected(
-                RuntimeStoreFailure.STORE_INVALID,
-            )
-            else -> Path.of(rawStore)
-        }
-    } catch (_: InvalidPathException) {
-        return SemanticRuntimeResolution.Rejected(RuntimeStoreFailure.STORE_INVALID)
+    val storePath = when (val selected = configuration.runtimeStore) {
+        ConfigurationPathSelection.OwnerDefault -> installationRoot.resolve("runtime-payloads")
+        is ConfigurationPathSelection.Selected -> selected.path
     }
+    if (storePath != installationRoot.resolve("runtime-payloads")) return SemanticRuntimeResolution.Rejected(RuntimeStoreFailure.STORE_INVALID)
     val store = when (val admission = RuntimeStore.admit(storePath.toAbsolutePath())) {
         is RuntimeStoreAdmission.Admitted -> admission.store
         is RuntimeStoreAdmission.Rejected -> return SemanticRuntimeResolution.Rejected(
@@ -609,6 +688,12 @@ private fun resolveInstalledRuntime(
         )
     }
     return ManagedSemanticRuntimeProvider(store).resolve(manifest, source)
+}
+
+/** Existing path ingress adapters retain responsibility for physical filesystem admission. */
+private fun ConfigurationPathSelection.boundaryPath(): String? = when (this) {
+    ConfigurationPathSelection.OwnerDefault -> null
+    is ConfigurationPathSelection.Selected -> path.toString()
 }
 
 private fun RuntimeStoreFailure.sidecarAdmissionFailure(): RuntimeAdmissionFailure = when (this) {

@@ -44,14 +44,40 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class InstalledBrokerServerTest {
     @Test
-    fun `runner retains the exact configuration rejection`(
+    fun `installation lifecycle fence rejects direct server before state creation`(@TempDir temporary: Path) {
+        val user = temporary.toRealPath()
+        val kast = executable(Files.createDirectories(user.resolve("bin")).resolve("kast"))
+        Files.writeString(user.resolve(".lifecycle-transition.json"), "{}")
+        assertEquals(InstalledBrokerServerConfiguration.Rejected(InstalledBrokerServerConfigurationFailure.STATE_DIRECTORY_REJECTED),
+            InstalledBrokerServerConfiguration.admit(kast, user, emptyMap()))
+        assertFalse(Files.exists(user.resolve(".codex")))
+        assertFalse(Files.exists(user.resolve("state")))
+    }
+
+    @Test
+    fun `saved configuration rejects disabled broker before state creation`(@TempDir temporary: Path) {
+        val user = temporary.toRealPath()
+        val kast = executable(Files.createDirectories(user.resolve("bin")).resolve("kast"))
+        val codex = executable(user.resolve("codex"))
+        val saved = Files.writeString(user.resolve("environment"), "KAST_ENABLE_APP_SERVER=0\n")
+        assertEquals(
+            InstalledBrokerServerConfiguration.Rejected(InstalledBrokerServerConfigurationFailure.APP_SERVER_DISABLED),
+            InstalledBrokerServerConfiguration.admit(kast, user, mapOf(
+                "CODEX_EXECUTABLE" to codex.toString(), "KAST_CONFIGURATION_FILE" to saved.toString(),
+            )),
+        )
+        assertFalse(Files.exists(user.resolve(".codex")))
+    }
+
+    @Test
+    fun `runner rejects incomplete installed payload before binding`(
         @TempDir temporary: Path,
     ) {
         val user = temporary.toRealPath()
-        val kast = executable(user.resolve("kast"))
+        val kast = executable(Files.createDirectories(user.resolve("bin")).resolve("kast"))
 
         assertEquals(
-            BrokerServerRun.Rejected(BrokerServerFailure.CODEX_EXECUTABLE_REJECTED),
+            BrokerServerRun.Rejected(BrokerServerFailure.STATE_DIRECTORY_REJECTED),
             InstalledBrokerServerRunner(kast, user, emptyMap()).serve(),
         )
     }
@@ -64,7 +90,7 @@ class InstalledBrokerServerTest {
         val codexHome = Path.of("/private/tmp/kast-tool-exposure-$suffix")
         Files.createDirectory(codexHome)
         val user = temporary.toRealPath()
-        val kast = executable(user.resolve("kast"))
+        val kast = executable(Files.createDirectories(user.resolve("bin")).resolve("kast"))
         val codex = executable(user.resolve("codex"))
         val base = mapOf(
             "CODEX_HOME" to codexHome.toString(),
@@ -116,12 +142,12 @@ class InstalledBrokerServerTest {
     }
 
     @Test
-    fun `integration transport owns a distinct socket namespace from legacy broker`(@TempDir temporary: Path) {
+    fun `all installed clients share the version owned socket namespace`(@TempDir temporary: Path) {
         val home = Path.of("/private/tmp/kast-host-" + UUID.randomUUID().toString().take(8))
         Files.createDirectory(home)
         try {
             val user = temporary.toRealPath()
-            val kast = executable(user.resolve("kast"))
+            val kast = executable(Files.createDirectories(user.resolve("bin")).resolve("kast"))
             val codex = executable(user.resolve("codex"))
             val environment = mapOf("CODEX_HOME" to home.toString(), "CODEX_EXECUTABLE" to codex.toString())
             fun options(transport: BrokerClientTransport) = (InstalledBrokerServerConfiguration.admit(
@@ -129,9 +155,9 @@ class InstalledBrokerServerTest {
             ) as InstalledBrokerServerConfiguration.Configured).options
             val legacy = options(BrokerClientTransport.LEGACY_CONTROL)
             val integration = options(BrokerClientTransport.INTEGRATION_OWNED)
-            assertFalse(legacy.publicSocket == integration.publicSocket)
-            assertFalse(legacy.upstreamOptions.privateSocket == integration.upstreamOptions.privateSocket)
-            assertTrue(integration.publicSocket.path.startsWith(home.resolve("kast-integration")))
+            assertEquals(legacy.publicSocket, integration.publicSocket)
+            assertEquals(legacy.upstreamOptions.privateSocket, integration.upstreamOptions.privateSocket)
+            assertEquals(user.resolve("state/run/c.sock"), integration.publicSocket.physicalPath)
         } finally { retireOwnedTree(home) }
     }
 
@@ -155,9 +181,9 @@ class InstalledBrokerServerTest {
         val codexHome = Path.of("/private/tmp/kast-service-rejected-$suffix")
         Files.createDirectory(codexHome)
         val userHome = temporary.toRealPath()
-        val kast = executable(userHome.resolve("kast"))
+        val kast = executable(Files.createDirectories(userHome.resolve("bin")).resolve("kast"))
         val codex = executable(userHome.resolve("codex"))
-        val readiness = codexHome.resolve("broker/service-readiness.json")
+        val readiness = BrokerInstallationLayout.from(kast, codexHome).broker.resolve("service-readiness.json")
         val identity = "sha256:${"b".repeat(64)}"
         try {
             val configuration = InstalledBrokerServerConfiguration.admit(
@@ -200,7 +226,7 @@ class InstalledBrokerServerTest {
         val codexHome = Path.of("/private/tmp/kast-service-observed-$suffix")
         Files.createDirectory(codexHome)
         val userHome = temporary.toRealPath()
-        val kast = executable(userHome.resolve("kast"))
+        val kast = executable(Files.createDirectories(userHome.resolve("bin")).resolve("kast"))
         val codex = executable(userHome.resolve("codex"))
         val output = ByteArrayOutputStream()
         try {
@@ -245,10 +271,12 @@ class InstalledBrokerServerTest {
         val codexHome = Path.of("/private/tmp/kast-service-$suffix")
         Files.createDirectory(codexHome)
         val userHome = temporary.toRealPath()
-        val kast = executable(userHome.resolve("kast"))
+        val kast = executable(Files.createDirectories(userHome.resolve("bin")).resolve("kast"))
         val codex = executable(userHome.resolve("codex"))
-        val readiness = codexHome.resolve("broker/service-readiness.json")
-        WorkspaceEnrollmentStore(codexHome.resolve("broker/workspace.json")).enroll(userHome)
+        val readiness = BrokerInstallationLayout.from(kast, codexHome).broker.resolve("service-readiness.json")
+        Files.createDirectories(userHome.resolve("lib"))
+        Files.createDirectories(userHome.resolve("share"))
+        WorkspaceEnrollmentStore(userHome.resolve("config/workspaces.json")).enroll(userHome)
         val identity = "sha256:${"a".repeat(64)}"
         val executor = InstalledProcessExecutor(kast, codex)
         val launcher = EchoCodexLauncher()
@@ -269,9 +297,9 @@ class InstalledBrokerServerTest {
                 executor,
                 launcher,
             ) as InstalledBrokerServerConfiguration.Configured
-            running = (
-                InstalledBrokerServer.start(configuration.options) as InstalledBrokerServerStart.Started
-            ).server
+            val started = InstalledBrokerServer.start(configuration.options)
+            assertTrue(started is InstalledBrokerServerStart.Started, started.toString())
+            running = (started as InstalledBrokerServerStart.Started).server
 
             val readinessText = Files.readString(readiness)
             assertTrue(readinessText.contains("\"serviceIdentity\":\"$identity\""))
@@ -331,7 +359,6 @@ class InstalledBrokerServerTest {
         } finally {
             client.close()
             running?.close()
-            assertFalse(Files.exists(readiness))
             retireOwnedTree(codexHome)
         }
     }

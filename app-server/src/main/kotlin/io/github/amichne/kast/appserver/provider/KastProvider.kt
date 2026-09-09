@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.provider
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.query.PublicQueryContract
 import io.github.amichne.kast.appserver.core.AgentSessionBootstrap
 import io.github.amichne.kast.appserver.core.AgentSessionBootstrapQualification
@@ -79,7 +80,7 @@ internal class KastProviderOptions private constructor(
                 ?: return Refinement.Rejected(
                     KastProviderOptionsFailure.QUALIFICATION_DIRECTORY_REJECTED,
                 )
-            if (qualificationTimeoutMillis !in 1..300_000L) {
+            if (qualificationTimeoutMillis !in 1..BrokerOperationalLimits.maximumKastQualification.value) {
                 return Refinement.Rejected(
                     KastProviderOptionsFailure.QUALIFICATION_TIMEOUT_REJECTED,
                 )
@@ -435,8 +436,8 @@ internal object KastProviderQualifier {
             is Refinement.Rejected -> null
         }
 
-    private const val MAXIMUM_VERSION_BYTES = 4 * 1_024
-    private const val MAXIMUM_SCHEMA_BYTES = 512 * 1_024
+    private const val MAXIMUM_VERSION_BYTES = BrokerOperationalLimits.maximumKastVersionBytes
+    private const val MAXIMUM_SCHEMA_BYTES = BrokerOperationalLimits.maximumKastSchemaBytes
     private val boundaryJson = Json { ignoreUnknownKeys = true }
 }
 
@@ -515,7 +516,7 @@ internal class KastRuntime(
     }
 
     private companion object {
-        const val MAXIMUM_OUTPUT_BYTES = 512 * 1_024
+        const val MAXIMUM_OUTPUT_BYTES = BrokerOperationalLimits.maximumKastOutputBytes
     }
 }
 

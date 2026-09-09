@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.runtime.bootstrap
 
+import io.github.amichne.kast.cli.CliOperationalLimits
 import io.github.amichne.kast.distribution.contract.bootstrap.SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapCodec
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapDocumentFailure
@@ -30,7 +31,7 @@ internal sealed interface SidecarBootstrapStateObservation {
 
 /** Read-only exact-cache adapter for the child-owned typed bootstrap document. */
 internal object SidecarBootstrapStateFile {
-    private const val MAXIMUM_DOCUMENT_BYTES = 16 * 1024
+    private const val MAXIMUM_DOCUMENT_BYTES = CliOperationalLimits.maximumBootstrapDocumentBytes
     fun observe(path: Path): SidecarBootstrapStateObservation {
         path.admittedParent()
             ?: return SidecarBootstrapStateObservation.Rejected(

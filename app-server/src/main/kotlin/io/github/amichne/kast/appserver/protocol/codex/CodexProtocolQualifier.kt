@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.protocol.codex
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.appserver.host.admission.UpstreamCodexExecutable
 import io.github.amichne.kast.appserver.provider.BrokerProcessExecution
@@ -48,9 +49,9 @@ internal class CodexProtocolQualificationOptions private constructor(
             codexHome: Path,
             temporaryRoot: Path,
             processExecutor: BrokerProcessExecutor = JdkBrokerProcessExecutor,
-            maximumSchemaBytes: Int = 16 * 1_024 * 1_024,
-            maximumSchemaFiles: Int = 2_048,
-            timeoutMillis: Long = 30_000,
+            maximumSchemaBytes: Int = BrokerOperationalLimits.defaultCodexSchemaBytes,
+            maximumSchemaFiles: Int = BrokerOperationalLimits.maximumCodexSchemaFiles,
+            timeoutMillis: Long = BrokerOperationalLimits.codexQualification.value,
         ): Refinement<CodexProtocolQualificationOptions, CodexProtocolOptionsFailure> {
             val home = CanonicalBrokerDirectory.admit(codexHome)
                 ?: return Refinement.Rejected(CodexProtocolOptionsFailure.CODEX_HOME_REJECTED)
@@ -389,7 +390,7 @@ internal object CodexProtocolQualifier {
         failure: CodexProtocolQualificationFailure,
     ): CodexSchemaCollection.Rejected = CodexSchemaCollection.Rejected(failure)
 
-    private const val MAXIMUM_COMMAND_OUTPUT_BYTES = 1 * 1_024 * 1_024
+    private const val MAXIMUM_COMMAND_OUTPUT_BYTES = BrokerOperationalLimits.maximumCodexCommandOutputBytes
 }
 
 internal data class CollectedCodexSchema(

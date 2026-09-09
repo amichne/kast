@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.core
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
@@ -51,7 +52,7 @@ internal value class ObserverFileChangePath private constructor(val value: Strin
 @JvmInline
 internal value class ObserverFileDiff private constructor(val value: String) {
     companion object {
-        private const val MAXIMUM_UTF8_BYTES = 512 * 1024
+        private const val MAXIMUM_UTF8_BYTES = BrokerOperationalLimits.maximumObserverDiffBytes
 
         internal fun admit(raw: String): Refinement<ObserverFileDiff, ObserverFileChangeFailure> =
             when {
@@ -99,7 +100,7 @@ internal class ObserverFileChangeSet private constructor(entries: List<ObserverF
     val entries: List<ObserverFileChange> = entries.toList()
 
     companion object {
-        private const val MAXIMUM_FILES = 64
+        private const val MAXIMUM_FILES = BrokerOperationalLimits.maximumObserverChangeFiles
 
         internal fun admit(
             entries: List<ObserverFileChange>,

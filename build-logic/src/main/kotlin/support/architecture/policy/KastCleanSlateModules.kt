@@ -305,11 +305,17 @@ internal object KastCleanSlateModules {
             ModuleId.APP_SERVER,
             ModuleRole.APP_SERVER,
             ModuleId.KERNEL,
+            ModuleId.DISTRIBUTION_CONTRACT,
+            ModuleId.DISTRIBUTION_MANAGED,
             ModuleId.PROTOCOL_CONTRACT,
             ModuleId.PROTOCOL_REGISTRY,
             effects = setOf(ForbiddenEffect.PROCESS_CONTROL),
             scopedEffects = mapOf(ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                     JvmClassName("io/github/amichne/kast/appserver/InstalledAppServerManager"),
+                    JvmClassName("io/github/amichne/kast/appserver/BrokerInstallationState"),
+                    JvmClassName("io/github/amichne/kast/appserver/InstalledCoordinatorConfiguration"),
+                    JvmClassName("io/github/amichne/kast/appserver/runtime/WorkspaceRuntimeControl"),
+                    JvmClassName("io/github/amichne/kast/appserver/runtime/WorkspaceRuntimeControl\$Companion"),
                     JvmClassName("io/github/amichne/kast/appserver/WorkspaceEnrollmentStore"),
                     JvmClassName("io/github/amichne/kast/appserver/runtime/InvocationFence"),
                     JvmClassName(
@@ -351,6 +357,7 @@ internal object KastCleanSlateModules {
                     JvmClassName("io/github/amichne/kast/cli/IndexSeedFilesystemService"),
                     JvmClassName("io/github/amichne/kast/cli/IndexSeedFilesystemServiceKt"),
                     JvmClassName("io/github/amichne/kast/cli/InstalledSidecarRuntimeDemandKt"),
+                    JvmClassName("io/github/amichne/kast/cli/PosixRuntimeEndpointArtifacts"),
                     JvmClassName("io/github/amichne/kast/cli/SidecarCacheIdentityFile"),
                     JvmClassName("io/github/amichne/kast/cli/SidecarCacheStateFile"),
                     JvmClassName(
@@ -374,7 +381,9 @@ internal object KastCleanSlateModules {
             ModuleId.INDEXER,
             ModuleRole.INDEXER_HOST,
             ModuleId.RUNTIME_COMPOSITION,
+            ModuleId.PROTOCOL_REGISTRY,
             ModuleId.DISTRIBUTION_MANAGED, // JSSE bootstrap precedes IntelliJ class loading.
+            ModuleId.DISTRIBUTION_CONTRACT,
             effects = setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,
                 ForbiddenEffect.FILESYSTEM_WRITE,

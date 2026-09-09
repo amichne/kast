@@ -1,5 +1,11 @@
 package io.github.amichne.kast.appserver.protocol.codex
 
+import io.github.amichne.kast.appserver.WorkspaceEnrollment
+import io.github.amichne.kast.appserver.WorkspaceSelection
+import io.github.amichne.kast.appserver.WorkspaceRegistration
+import io.github.amichne.kast.appserver.core.BrokerThreadId
+import io.github.amichne.kast.appserver.protocol.ThreadBindingOwner
+
 import io.github.amichne.kast.appserver.core.AgentSessionBootstrap
 import io.github.amichne.kast.appserver.core.Broker
 import io.github.amichne.kast.appserver.core.BrokerCallId
@@ -79,8 +85,15 @@ internal sealed interface ProtocolRouting {
 
 private enum class PendingThreadOperationType { START, RESUME, FORK }
 
+private sealed interface PendingWorkspaceBinding {
+    data object ProtocolFixture : PendingWorkspaceBinding
+    data class Selected(val selection: WorkspaceSelection.Selected) : PendingWorkspaceBinding
+    data class Existing(val binding: ThreadCatalogBinding) : PendingWorkspaceBinding
+}
+
 private data class PendingThreadOperation(
     val type: PendingThreadOperationType,
+    val binding: PendingWorkspaceBinding,
     val sourceThreadId: String? = null,
 )
 
@@ -95,6 +108,10 @@ private data class ActiveInvocation(
     val job: Job,
 )
 
+internal enum class ThreadWorkspaceFailure {
+    BINDING_MISSING, STORE_REJECTED, CATALOG_INCOMPATIBLE, OWNER_INCOMPATIBLE, WORKSPACE_REJECTED,
+}
+
 internal class CodexProtocolAdapter(
     private val broker: Broker,
     private val contracts: CodexProtocolContracts,
@@ -104,6 +121,7 @@ internal class CodexProtocolAdapter(
         PendingObserverPresentations.withCapacity(broker.limits.inFlightCallsPerConnection),
     sessionBootstrap: AgentSessionBootstrap? = null,
     private val enrollment: io.github.amichne.kast.appserver.WorkspaceEnrollment = io.github.amichne.kast.appserver.WorkspaceEnrollment.ProtocolFixture,
+    private val bindingOwner: io.github.amichne.kast.appserver.protocol.ThreadBindingOwner = io.github.amichne.kast.appserver.protocol.ThreadBindingOwner.ProtocolFixture,
 ) : AutoCloseable {
     private val sessionProjection = sessionBootstrap?.toCodexSessionProjection()
     private val pendingResponses = ConcurrentHashMap<String, PendingResponse>()
@@ -197,7 +215,7 @@ internal class CodexProtocolAdapter(
         }
         val binding = when (val stored = threadStore.read(threadId)) {
             is ThreadStoreRead.Found -> stored.binding.takeIf {
-                it.catalogDigest == broker.catalog.digest && enrollment.contains(it.workingDirectory.path.toString())
+                validBinding(it)
             }
             ThreadStoreRead.Missing -> null
             ThreadStoreRead.Rejected -> return ProtocolRouting.Close(
@@ -209,7 +227,7 @@ internal class CodexProtocolAdapter(
                 threadId,
                 turnId,
                 callId,
-                (enrollment as? io.github.amichne.kast.appserver.WorkspaceEnrollment.Enrolled)?.root?.path ?: binding.workingDirectory.path,
+                binding.workspace.root.path,
             )
         ) {
             is Refinement.Refined -> admission.value
@@ -253,6 +271,8 @@ internal class CodexProtocolAdapter(
         val dispatch = try {
             operation.await()
         } catch (_: CancellationException) {
+            // Dispatch lives in the adapter scope; cancellation of its caller must reach that operation.
+            operation.cancel()
             null
         } finally {
             activeInvocations.remove(invocationId)
@@ -437,14 +457,27 @@ internal class CodexProtocolAdapter(
 
     private fun threadStart(document: JsonObject, message: String): ProtocolRouting {
         val rawParams = document["params"] as? JsonObject
-        if (!enrollment.contains(rawParams?.string("cwd"))) return ProtocolRouting.ForwardUpstream(message)
-        val params = document["params"]
             ?: return ProtocolRouting.Close(ProtocolCloseFailure.OwnedFieldsMissing)
+        val explicitRoot = when (val raw = rawParams["kastWorkspaceRoot"]) {
+            null -> null
+            is JsonPrimitive -> raw.takeIf(JsonPrimitive::isString)?.content
+                ?: return ownedRequestFailure(document, "WORKSPACE_SELECTION_REJECTED")
+            else -> return ownedRequestFailure(document, "WORKSPACE_SELECTION_REJECTED")
+        }
+        val pendingBinding = if (enrollment == WorkspaceEnrollment.ProtocolFixture) {
+            PendingWorkspaceBinding.ProtocolFixture
+        } else {
+            if (bindingOwner !is ThreadBindingOwner.Installation) return ownedRequestFailure(document, "BINDING_OWNER_UNPROVEN")
+            when (val selected = enrollment.select(rawParams.string("cwd"), explicitRoot)) {
+                is WorkspaceSelection.Selected -> PendingWorkspaceBinding.Selected(selected)
+                is WorkspaceSelection.Rejected -> return ownedRequestFailure(document, "WORKSPACE_${selected.failure.name}")
+            }
+        }
+        val params = JsonObject(rawParams - "kastWorkspaceRoot")
         if (!contracts.admits(CodexOwnedSchema.THREAD_START_PARAMS, params)) {
             return ownedRequestFailure(document, "THREAD_START_SCHEMA_REJECTED")
         }
-        val paramsObject = params as? JsonObject
-            ?: return ProtocolRouting.Close(ProtocolCloseFailure.OwnedFieldsMissing)
+        val paramsObject = params
         val existing = when (val dynamic = paramsObject["dynamicTools"]) {
             null, JsonNull -> JsonArray(emptyList())
             is JsonArray -> dynamic
@@ -488,7 +521,7 @@ internal class CodexProtocolAdapter(
         if (
             pendingResponses.putIfAbsent(
                 id.key,
-                PendingResponse.Thread(PendingThreadOperation(PendingThreadOperationType.START)),
+                PendingResponse.Thread(PendingThreadOperation(PendingThreadOperationType.START, pendingBinding)),
             ) != null
         ) {
             return ownedRequestFailure(document, "DUPLICATE_REQUEST_ID")
@@ -532,19 +565,17 @@ internal class CodexProtocolAdapter(
             ?: return ProtocolRouting.Close(ProtocolCloseFailure.OwnedFieldsMissing)
         val threadId = paramsObject.string("threadId")
             ?: return ProtocolRouting.Close(ProtocolCloseFailure.OwnedFieldsMissing)
-        when (val stored = threadStore.read(threadId)) {
-            is ThreadStoreRead.Found -> if (stored.binding.catalogDigest != broker.catalog.digest ||
-                !enrollment.contains(stored.binding.workingDirectory.path.toString()) ||
-                (paramsObject.string("cwd") != null && !enrollment.contains(paramsObject.string("cwd")))
-            ) {
-                return ownedRequestFailure(document, "CATALOG_INCOMPATIBLE")
+        val binding = when (val stored = threadStore.read(threadId)) {
+            is ThreadStoreRead.Found -> stored.binding.takeIf(::validBinding)
+                ?: return ownedRequestFailure(document, "CATALOG_INCOMPATIBLE")
+            ThreadStoreRead.Missing -> return ownedRequestFailure(document, "THREAD_BINDING_MISSING")
+            ThreadStoreRead.Rejected -> return ProtocolRouting.Close(ProtocolCloseFailure.ThreadStoreRejected)
+        }
+        paramsObject.string("cwd")?.let { requested ->
+            val selection = enrollment.select(requested, if (enrollment == WorkspaceEnrollment.ProtocolFixture) null else binding.workspace.root.path.toString())
+            if (selection !is WorkspaceSelection.Selected || selection.workingDirectory != binding.workingDirectory) {
+                return ownedRequestFailure(document, "WORKSPACE_RETARGET_REJECTED")
             }
-            ThreadStoreRead.Missing -> return if (enrollment == io.github.amichne.kast.appserver.WorkspaceEnrollment.ProtocolFixture) {
-                ownedRequestFailure(document, "CATALOG_INCOMPATIBLE")
-            } else ProtocolRouting.ForwardUpstream(message)
-            ThreadStoreRead.Rejected -> return ProtocolRouting.Close(
-                ProtocolCloseFailure.ThreadStoreRejected,
-            )
         }
         if (!isAbsentProtocolOverride(paramsObject["path"])) {
             return ownedRequestFailure(document, "CATALOG_INCOMPATIBLE")
@@ -557,7 +588,7 @@ internal class CodexProtocolAdapter(
         if (
             pendingResponses.putIfAbsent(
                 id.key,
-                PendingResponse.Thread(PendingThreadOperation(operation, threadId)),
+                PendingResponse.Thread(PendingThreadOperation(operation, PendingWorkspaceBinding.Existing(binding), threadId)),
             ) != null
         ) {
             return ownedRequestFailure(document, "DUPLICATE_REQUEST_ID")
@@ -581,6 +612,32 @@ internal class CodexProtocolAdapter(
             return ownedRequestFailure(document, "DUPLICATE_REQUEST_ID")
         }
         return ProtocolRouting.ForwardUpstream(message)
+    }
+
+    internal suspend fun boundWorkspace(thread: BrokerThreadId): Refinement<WorkspaceRegistration, ThreadWorkspaceFailure> {
+        val binding = when (val stored = threadStore.read(thread.value)) {
+            is ThreadStoreRead.Found -> stored.binding
+            ThreadStoreRead.Missing -> return Refinement.Rejected(ThreadWorkspaceFailure.BINDING_MISSING)
+            ThreadStoreRead.Rejected -> return Refinement.Rejected(ThreadWorkspaceFailure.STORE_REJECTED)
+        }
+        return when (val admitted = refineBinding(binding)) {
+            is Refinement.Refined -> Refinement.Refined(admitted.value.workspace)
+            is Refinement.Rejected -> Refinement.Rejected(admitted.failure)
+        }
+    }
+
+    private fun validBinding(binding: ThreadCatalogBinding): Boolean = refineBinding(binding) is Refinement.Refined
+
+    private fun refineBinding(binding: ThreadCatalogBinding): Refinement<ThreadCatalogBinding, ThreadWorkspaceFailure> {
+        if (binding.catalogDigest != broker.catalog.digest) return Refinement.Rejected(ThreadWorkspaceFailure.CATALOG_INCOMPATIBLE)
+        if (binding.owner != bindingOwner) return Refinement.Rejected(ThreadWorkspaceFailure.OWNER_INCOMPATIBLE)
+        if (enrollment == WorkspaceEnrollment.ProtocolFixture) return if (bindingOwner == ThreadBindingOwner.ProtocolFixture) {
+            Refinement.Refined(binding)
+        } else Refinement.Rejected(ThreadWorkspaceFailure.OWNER_INCOMPATIBLE)
+        if (bindingOwner !is ThreadBindingOwner.Installation) return Refinement.Rejected(ThreadWorkspaceFailure.OWNER_INCOMPATIBLE)
+        val selected = enrollment.select(binding.workingDirectory.path.toString(), binding.workspace.root.path.toString())
+        return if (selected is WorkspaceSelection.Selected && selected.workspace == binding.workspace) Refinement.Refined(binding)
+        else Refinement.Rejected(ThreadWorkspaceFailure.WORKSPACE_REJECTED)
     }
 
     private fun turnInterrupt(document: JsonObject, message: String): ProtocolRouting {
@@ -650,22 +707,29 @@ internal class CodexProtocolAdapter(
             return ProtocolRouting.Close(ProtocolCloseFailure.ThreadBindingRejected)
         }
         val cwdPath = try {
-            Path.of(cwd)
-        } catch (_: InvalidPathException) {
+            Path.of(cwd).takeIf(Path::isAbsolute)?.toRealPath()
+                ?: return ProtocolRouting.Close(ProtocolCloseFailure.ThreadBindingRejected)
+        } catch (_: Exception) {
             return ProtocolRouting.Close(ProtocolCloseFailure.ThreadBindingRejected)
         }
-        if (!enrollment.contains(cwd)) return ProtocolRouting.Close(ProtocolCloseFailure.ThreadBindingRejected)
+        val workspaceRoot = when (val selected = pending.binding) {
+            PendingWorkspaceBinding.ProtocolFixture -> cwdPath
+            is PendingWorkspaceBinding.Selected -> {
+                if (selected.selection.workingDirectory.path != cwdPath) return ProtocolRouting.Close(ProtocolCloseFailure.ThreadBindingRejected)
+                val current = enrollment.select(cwd, selected.selection.workspace.root.path.toString())
+                if (current !is WorkspaceSelection.Selected || current.workspace != selected.selection.workspace) return ProtocolRouting.Close(ProtocolCloseFailure.ThreadBindingRejected)
+                selected.selection.workspace.root.path
+            }
+            is PendingWorkspaceBinding.Existing -> {
+                if (!validBinding(selected.binding) || selected.binding.workingDirectory.path != cwdPath) return ProtocolRouting.Close(ProtocolCloseFailure.ThreadBindingRejected)
+                selected.binding.workspace.root.path
+            }
+        }
         val binding = when (
-            val admission = ThreadCatalogBinding.admit(
-                threadId,
-                broker.catalog.digest,
-                cwdPath,
-            )
+            val admission = ThreadCatalogBinding.admit(threadId, broker.catalog.digest, cwdPath, workspaceRoot, bindingOwner)
         ) {
             is Refinement.Refined -> admission.value
-            is Refinement.Rejected -> return ProtocolRouting.Close(
-                ProtocolCloseFailure.ThreadBindingRejected,
-            )
+            is Refinement.Rejected -> return ProtocolRouting.Close(ProtocolCloseFailure.ThreadBindingRejected)
         }
         if (threadStore.write(binding) != ThreadStoreWrite.WRITTEN) {
             return ProtocolRouting.Close(ProtocolCloseFailure.ThreadStoreRejected)

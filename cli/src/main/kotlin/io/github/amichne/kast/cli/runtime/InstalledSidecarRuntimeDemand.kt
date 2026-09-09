@@ -211,6 +211,7 @@ class InstalledSidecarRootRuntimeDemander(
     private val cacheLifecycle: RootSidecarCacheLifecycle = NoRootSidecarCacheLifecycle,
     private val lifecycle: RuntimeLifecycleController = ExactRootRuntimeLifecycle(),
     private val maxHeap: io.github.amichne.kast.distribution.contract.IndexerHeapSize = io.github.amichne.kast.distribution.contract.IndexerHeapSize.Default,
+    private val sidecarEnvironment: SidecarEnvironmentInputs = SidecarEnvironmentInputs.Empty,
 ) : RootRuntimeDemander {
     override fun demand(
         root: CanonicalRoot,
@@ -272,7 +273,7 @@ class InstalledSidecarRootRuntimeDemander(
                 RuntimeAdmissionFailure.InstalledIdeRejected(resolution.failure),
             )
         }
-        val importEnvironment = when (val admission = currentGradleImportEnvironment()) {
+        val importEnvironment = when (val admission = sidecarEnvironment.importEnvironment()) {
             is Refinement.Refined -> admission.value
             is Refinement.Rejected -> return RuntimeAdmission.Rejected(
                 RuntimeAdmissionFailure.GradleImportEnvironmentRejected(admission.failure),
@@ -375,6 +376,7 @@ class InstalledSidecarRootRuntimeDemander(
                 payload.privatePluginsDirectory,
                 importEnvironment,
                 maxHeap,
+                sidecarEnvironment,
             )
         ) {
             is SidecarLaunchContextAdmission.Admitted -> admission.context

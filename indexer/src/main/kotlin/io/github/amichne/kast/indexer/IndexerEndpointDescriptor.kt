@@ -51,8 +51,9 @@ internal sealed interface EndpointDescriptorRetirement {
  */
 internal fun publishEndpointDescriptor(
     options: IndexerLaunchOptions,
+    physicalSocket: Path = options.socketPath,
 ): EndpointDescriptorPublication {
-    val descriptor = options.socketPath.endpointDescriptorPath()
+    val descriptor = physicalSocket.endpointDescriptorPath()
     val parent = descriptor.parent ?: return EndpointDescriptorPublication.Rejected
     val temporary = try {
         Files.createTempFile(parent, ".${descriptor.fileName}.", ".tmp")

@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.runtime
 
+import io.github.amichne.kast.kernel.Validation
 import java.io.IOException
 import java.net.ConnectException
 import java.net.StandardProtocolFamily
@@ -54,6 +55,18 @@ internal enum class UnixSocketPathPreparation {
 }
 
 internal object UnixSocketPathOwnership {
+    internal fun acquireLease(socket: BrokerSocketPath): UnixSocketOwnershipLeaseAcquisition =
+        when (socket.revalidate()) {
+            is Validation.Validated -> acquireLease(socket.physicalPath)
+            is Validation.Rejected -> UnixSocketOwnershipLeaseAcquisition.ParentRejected
+        }
+
+    internal fun prepare(socket: BrokerSocketPath): UnixSocketPathPreparation =
+        when (socket.revalidate()) {
+            is Validation.Validated -> preparePhysical(socket.physicalPath, socket.path)
+            is Validation.Rejected -> UnixSocketPathPreparation.PARENT_REJECTED
+        }
+
     internal fun acquireLease(socketPath: Path): UnixSocketOwnershipLeaseAcquisition {
         val parent = socketPath.parent
             ?: return UnixSocketOwnershipLeaseAcquisition.ParentRejected
@@ -140,7 +153,9 @@ internal object UnixSocketPathOwnership {
         return UnixSocketOwnershipLeaseAcquisition.Rejected
     }
 
-    internal fun prepare(path: Path): UnixSocketPathPreparation {
+    internal fun prepare(path: Path): UnixSocketPathPreparation = preparePhysical(path, path)
+
+    private fun preparePhysical(path: Path, transport: Path): UnixSocketPathPreparation {
         val parent = path.parent ?: return UnixSocketPathPreparation.PARENT_REJECTED
         try {
             Files.createDirectories(parent)
@@ -151,7 +166,7 @@ internal object UnixSocketPathOwnership {
             if (Files.isSymbolicLink(path) || Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
                 return UnixSocketPathPreparation.REJECTED
             }
-            return when (probe(path)) {
+            return when (probe(transport)) {
                 UnixSocketReachability.REACHABLE -> UnixSocketPathPreparation.OWNED
                 UnixSocketReachability.UNREACHABLE -> {
                     Files.delete(path)
@@ -208,6 +223,11 @@ internal class OwnedUnixSocket private constructor(
     }
 
     companion object {
+        internal fun capture(socket: BrokerSocketPath): OwnedUnixSocket? = when (socket.revalidate()) {
+            is Validation.Validated -> capture(socket.physicalPath)
+            is Validation.Rejected -> null
+        }
+
         internal fun capture(path: Path): OwnedUnixSocket? = try {
             val attributes = Files.readAttributes(
                 path,

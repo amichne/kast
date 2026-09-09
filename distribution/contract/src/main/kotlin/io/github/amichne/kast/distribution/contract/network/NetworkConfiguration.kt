@@ -3,6 +3,8 @@ package io.github.amichne.kast.distribution.contract.network
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 
+object KastNetworkPropertyNamespace { const val DAEMON_PREFIX: String = "kast.network.daemon." }
+
 /** The only JVM networking properties admitted across the runtime isolation boundary. */
 enum class NetworkProperty(val key: String) {
     TRUST_STORE("javax.net.ssl.trustStore"),

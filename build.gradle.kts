@@ -75,14 +75,18 @@ val generatedControlMetadata = layout.buildDirectory.dir("generated/control-meta
 val generatedOperationRegistry = project(":protocol:wire").layout.buildDirectory.file(
     "generated/operation-registry/operation-registry.json",
 )
+val generatedConfigurationCatalogue = project(":cli").layout.buildDirectory.file(
+    "generated/configuration/configuration-schema.json",
+)
 val generateKastControlMetadata by tasks.registering(GenerateControlMetadataTask::class) {
     group = "distribution"
     description = "Generates the exact installed-IDE sidecar manifest and public schemas."
-    dependsOn(semanticRuntimeArchive, ":protocol:wire:generateOperationRegistry")
+    dependsOn(semanticRuntimeArchive, ":protocol:wire:generateOperationRegistry", ":cli:generateConfigurationCatalogue")
     runtimeArchive.set(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
     runtimeDirectory.set(semanticRuntimeStage)
     licenseFile.set(layout.projectDirectory.file("LICENSE"))
     operationRegistryFile.set(generatedOperationRegistry)
+    configurationCatalogueFile.set(generatedConfigurationCatalogue)
     productVersion.set(project.version.toString())
     ideaBuild.set(libs.versions.ide.host.build)
     kotlinPluginBuild.set(libs.versions.ide.kotlin.plugin.build)
@@ -105,6 +109,7 @@ val stageKastControlProduct by tasks.registering(Sync::class) {
     from(generatedControlMetadata) {
         into("share/kast")
     }
+    from("packaging/installation-lifecycle.py") { into("share/kast") }
 }
 
 val assembleKastControlDist by tasks.registering(Tar::class) {
@@ -164,7 +169,7 @@ val localInstallPrefix = providers.gradleProperty("kastLocalPrefix")
         providers.systemProperty("user.home")
             .map { userHome -> file(userHome).resolve(".local") },
     )
-val localProductDirectory = localInstallPrefix.map { it.resolve("share/kast/local") }
+val localProductDirectory = localInstallPrefix.map { it.resolve("share/kast/current") }
 val localLauncherFile = localInstallPrefix.map { it.resolve("bin/kast") }
 val localJavaHome = providers.systemProperty("java.home").map { configuredHome ->
     file(configuredHome).toPath().toRealPath().toFile()
@@ -173,16 +178,17 @@ val localJavaExecutable = localJavaHome.map { home -> home.resolve("bin/java") }
 
 tasks.register<Exec>("installLocal") {
     group = "distribution"
-    description = "Installs one coherent Kast product under ~/.local, or -PkastLocalPrefix."
+    description = "Installs a version-owned Kast product (-Pversion=x.y.z) under ~/.local or -PkastLocalPrefix."
     dependsOn(stageKastControlProduct, semanticRuntimeArchive)
     inputs.dir(controlProductDirectory)
     inputs.file(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
-    inputs.file(layout.projectDirectory.file("packaging/install-local.sh"))
+    inputs.files("packaging/install-local.sh", "install.sh")
     inputs.property("localInstallPrefix", localInstallPrefix.map { it.absolutePath })
     inputs.property("localJavaHome", localJavaHome.map { it.absolutePath })
     inputs.property("localJavaExecutable", localJavaExecutable.map { it.absolutePath })
     outputs.dir(localProductDirectory)
     outputs.file(localLauncherFile)
+    outputs.upToDateWhen { false }
     outputs.upToDateWhen { false }
     environment("KAST_LOCAL_PREFIX", localInstallPrefix.get().absolutePath)
     environment("KAST_LOCAL_CONTROL_PRODUCT", controlProductDirectory.get().asFile.absolutePath)
@@ -202,6 +208,7 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     inputs.dir(installedProductDirectory)
     inputs.file(assembleKastControlDist.flatMap(Tar::getArchiveFile))
     inputs.file(layout.projectDirectory.file("packaging/test-installed-product.sh"))
+    inputs.files("packaging/acceptance_environment.py", "packaging/run-installed-product.py")
     outputs.file(layout.buildDirectory.file("reports/installed-product/topology-installed-product.json"))
     outputs.upToDateWhen { false }
     environment("KAST_INSTALLED_PRODUCT", installedProductDirectory.get().asFile.absolutePath)
@@ -220,10 +227,11 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
 
 val installedCodexHostTest = tasks.register<Exec>("installedCodexHostTest") {
     group = "verification"
-    description = "Exercises the staged standard daemon and stdio compatibility host against Codex."
+    description = "Exercises the staged private facade and stdio compatibility host against Codex."
     dependsOn(stageInstalledProduct)
     inputs.dir(installedProductDirectory)
     inputs.file(layout.projectDirectory.file("packaging/test-installed-codex-host.py"))
+    inputs.file("packaging/acceptance_environment.py")
     outputs.file(layout.buildDirectory.file("reports/installed-product/codex-host.json"))
     outputs.upToDateWhen { false }
     commandLine(
@@ -236,6 +244,32 @@ val installedCodexHostTest = tasks.register<Exec>("installedCodexHostTest") {
     )
 }
 
+val installedTwoWorkspaceTest = tasks.register<Exec>("installedTwoWorkspaceTest") {
+    group = "verification"
+    description = "Runs two independent installed Gradle workers through semantic reconnect, stop and reset."
+    dependsOn(stageInstalledProduct, semanticRuntimeArchive, ":app-server:writeInstalledWorkspaceHarnessClasspath")
+    // Only one expensive fixture; the selected input profile is recorded in its report.
+    inputs.dir(installedProductDirectory)
+    inputs.file(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
+    inputs.files("packaging/test-model-input-startup.py", "packaging/run-two-workspace-acceptance.py",
+        "packaging/acceptance_idea.py", "packaging/acceptance_environment.py",
+        "packaging/installed_acceptance_product.py", "gradle/wrapper/gradle-wrapper.properties",
+        "gradle/wrapper/gradle-wrapper.jar", "gradlew")
+    val profile = providers.environmentVariable("KAST_ACCEPTANCE_PROFILE").orElse("local-8g")
+    inputs.property("acceptanceProfile", profile)
+    inputs.property("ideaHome", providers.environmentVariable("KAST_ACCEPTANCE_IDEA_HOME").orElse("pinned-download"))
+    outputs.file(layout.buildDirectory.file("reports/installed-product/two-workspace-runtime.json"))
+    outputs.upToDateWhen { false }
+    commandLine("python3", layout.projectDirectory.file("packaging/run-two-workspace-acceptance.py"),
+        "--product", installedProductDirectory.get().asFile.absolutePath,
+        "--runtime", semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
+        "--idea-cache", layout.buildDirectory.dir("acceptance-inputs").get().asFile.absolutePath,
+        "--harness-classpath-file", project(":app-server").layout.buildDirectory.file("acceptance/installed-workspace-harness.classpath").get().asFile.absolutePath,
+        "--profile", profile.get(),
+        "--report", layout.buildDirectory.file("reports/installed-product/two-workspace-runtime.json")
+            .get().asFile.absolutePath)
+}
+
 val testCheckoutInstaller = tasks.register<Exec>("testCheckoutInstaller") {
     group = "verification"
     description = "Verifies checkout installs, saved heap precedence, and service refresh ordering."
@@ -243,22 +277,99 @@ val testCheckoutInstaller = tasks.register<Exec>("testCheckoutInstaller") {
     commandLine("python3", layout.projectDirectory.file("packaging/test-install-checkout.py"))
 }
 
+val isolatedAcceptanceEnvironmentTest = tasks.register<Exec>("isolatedAcceptanceEnvironmentTest") {
+    group = "verification"
+    description = "Proves installed fixtures isolate homes, environment, products and owned processes."
+    inputs.files("packaging/acceptance_environment.py", "packaging/test-acceptance-environment.py",
+        "packaging/test-model-input-startup.py", "packaging/installed_acceptance_product.py", "packaging/run-installed-product.py")
+    commandLine("python3", layout.projectDirectory.file("packaging/test-acceptance-environment.py"))
+}
+
+val installerRemovalTest = tasks.register<Exec>("installerRemovalTest") {
+    group = "verification"
+    inputs.files("install.sh", "packaging/test-installer-removal.py")
+    commandLine("python3", layout.projectDirectory.file("packaging/test-installer-removal.py"))
+}
+
+val acceptanceIdeaInputTest = tasks.register<Exec>("acceptanceIdeaInputTest") {
+    group = "verification"
+    description = "Checks exact IDEA input admission without downloading or starting an IDE."
+    inputs.files("packaging/acceptance_idea.py", "packaging/test-acceptance-idea.py",
+        "packaging/run-two-workspace-acceptance.py")
+    commandLine("python3", layout.projectDirectory.file("packaging/test-acceptance-idea.py"))
+}
+
+val installationLifecycleTest = tasks.register<Exec>("installationLifecycleTest") {
+    group = "verification"
+    description = "Proves explicit installation reset preserves configuration and rejects unresolved ownership."
+    inputs.files("packaging/installation-lifecycle.py", "packaging/test-installation-lifecycle.py")
+    commandLine("python3", layout.projectDirectory.file("packaging/test-installation-lifecycle.py"))
+}
+
+val localInstallationTest = tasks.register<Exec>("localInstallationTest") {
+    group = "verification"
+    inputs.files("packaging/install-local.sh", "packaging/test-install-local.py")
+    commandLine("python3", layout.projectDirectory.file("packaging/test-install-local.py"))
+}
+
 val productBuildGate by tasks.registering {
     group = "verification"
-    description = "Builds every module and verifies architecture and installed packaging."
+    description = "Builds every module and verifies deterministic contracts, architecture and packaging without runtime qualification."
     dependsOn(
         "check",
+        isolatedAcceptanceEnvironmentTest,
+        acceptanceIdeaInputTest,
+        installationLifecycleTest,
+        localInstallationTest,
+        installerRemovalTest,
         installedProductTest,
         testCheckoutInstaller,
-        installedCodexHostTest,
-        ":app-server:generateCodexHostIntegrationManifest",
         "verifyKastArchitecture",
     )
     dependsOn(gradle.includedBuild("build-logic").task(":check"))
 }
 
+tasks.register("runtimeQualification") {
+    group = "verification"
+    description = "Explicit installed Codex and two-workspace runtime qualification; excluded from routine CI and release gates."
+    dependsOn(installedCodexHostTest, installedTwoWorkspaceTest, ":app-server:generateCodexHostIntegrationManifest")
+}
+
+installedTwoWorkspaceTest.configure {
+    mustRunAfter("check", isolatedAcceptanceEnvironmentTest, acceptanceIdeaInputTest,
+        installationLifecycleTest, localInstallationTest, installerRemovalTest,
+        installedProductTest, testCheckoutInstaller, installedCodexHostTest,
+        "verifyKastArchitecture")
+}
+
 subprojects.forEach { owner ->
     owner.plugins.withId("base") {
         productBuildGate.configure { dependsOn(owner.tasks.named("check")) }
+        installedTwoWorkspaceTest.configure { mustRunAfter(owner.tasks.named("check")) }
     }
 }
+
+val configurationIngressTest = tasks.register<Exec>("configurationIngressTest") {
+    group = "verification"
+    inputs.files("packaging/configuration_ingress.py", "packaging/test-configuration-ingress.py")
+    commandLine("python3", layout.projectDirectory.file("packaging/test-configuration-ingress.py"))
+}
+
+val verifyConfigurationIngress = tasks.register<Exec>("verifyConfigurationIngress") {
+    group = "verification"
+    description = "Rejects undeclared Kast input references and ambient reads outside named ingress owners."
+    dependsOn(":cli:generateConfigurationCatalogue", configurationIngressTest)
+    inputs.file(generatedConfigurationCatalogue)
+    inputs.files("build-policy/configuration-ingress.json", "packaging/configuration_ingress.py", "packaging/configuration-schema.json")
+    inputs.files(fileTree(layout.projectDirectory) {
+        include("**/src/main/**/*.kt", "**/src/main/**/*.kts", "**/src/gradleTooling/**/*.kt",
+            "**/src/main/scripts/**", "*.kts", "install.sh", "packaging/*.sh", "packaging/*.py")
+        exclude("**/build/**", "**/.gradle/**")
+    })
+    commandLine("python3", layout.projectDirectory.file("packaging/configuration_ingress.py"),
+        "--root", layout.projectDirectory, "--schema", generatedConfigurationCatalogue.get().asFile,
+        "--policy", layout.projectDirectory.file("build-policy/configuration-ingress.json"),
+        "--snapshot", layout.projectDirectory.file("packaging/configuration-schema.json"))
+}
+
+tasks.named("check") { dependsOn(verifyConfigurationIngress) }

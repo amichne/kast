@@ -26,6 +26,48 @@ class InstalledIndexerLaunchTest {
     lateinit var temporaryDirectory: Path
 
     @Test
+    fun `alias replacement after preparation cannot bind or mutate foreign target`() {
+        val physical = Files.createDirectories(temporaryDirectory.resolve("installation/state/run")).toRealPath()
+        Files.setPosixFilePermissions(physical, PosixFilePermissions.fromString("rwx------"))
+        val aliasPreparation = io.github.amichne.kast.distribution.managed.endpoint.InstalledEndpointAliases.prepare(physical)
+        val receipt = assertInstanceOf(io.github.amichne.kast.kernel.Validation.Validated::class.java,
+            aliasPreparation, aliasPreparation.toString()).value as
+            io.github.amichne.kast.distribution.managed.endpoint.InstalledEndpointAliasReceipt
+        val workspace = Files.createDirectory(temporaryDirectory.resolve("workspace")).toRealPath()
+        val socket = receipt.alias.resolve("kast-${"a".repeat(24)}.sock")
+        val endpoint = preparedEndpoint(admittedOptions(workspace, socket))
+        val foreign = Files.createDirectory(temporaryDirectory.resolve("foreign")).toRealPath()
+        try {
+            Files.delete(receipt.alias)
+            Files.createSymbolicLink(receipt.alias, foreign)
+            val activation = InstalledIndexerTransport.activate(endpoint,
+                KastIndexerHost { error("No semantic request expected") }, authority = IndexerWireAuthority.Fixture)
+            if (activation is IndexerTransportActivation.Activated) activation.transport.close()
+            assertInstanceOf(IndexerTransportActivation.Rejected::class.java, activation)
+            assertTrue(Files.list(foreign).use { it.findAny().isEmpty })
+        } finally {
+            Files.deleteIfExists(receipt.alias)
+        }
+    }
+
+    @Test
+    fun `replacement socket marker survives close with uncertain retirement diagnostic`() {
+        val workspace = Files.createDirectory(temporaryDirectory.resolve("workspace")).toRealPath()
+        val socket = temporaryDirectory.resolve("runtime/kast.sock").toAbsolutePath()
+        val endpoint = preparedEndpoint(admittedOptions(workspace, socket))
+        val observations = mutableListOf<IndexerRequestActivity>()
+        val transport = (InstalledIndexerTransport.activate(endpoint,
+            KastIndexerHost { error("No semantic request expected") },
+            activity = IndexerRequestActivitySink { observations.add(it) }, authority = IndexerWireAuthority.Fixture) as IndexerTransportActivation.Activated).transport
+        Files.delete(socket)
+        Files.writeString(socket, "foreign marker")
+        transport.close()
+        assertEquals("foreign marker", Files.readString(socket))
+        assertTrue(observations.contains(IndexerRequestActivity(
+            IndexerRequestStage.TRANSPORT_CLOSE, IndexerRequestOutcome.RECOVERY_REQUIRED)))
+    }
+
+    @Test
     fun `exact command root and socket refine to installed launch options`() {
         val workspace = Files.createDirectory(temporaryDirectory.resolve("workspace")).toRealPath()
         val socket = temporaryDirectory.resolve("runtime/kast.sock").toAbsolutePath()
@@ -207,7 +249,7 @@ class InstalledIndexerLaunchTest {
                         IndexerWireFrameCodec.read(client),
                     )
                 }
-                assertEquals(IndexerConnectionHandling.Served, served.get(5, TimeUnit.SECONDS))
+                assertEquals(IndexerConnectionHandling.Admitted, served.get(5, TimeUnit.SECONDS))
             } finally {
                 executor.shutdownNow()
             }
@@ -242,7 +284,7 @@ class InstalledIndexerLaunchTest {
                 }
 
                 assertEquals(IndexerFrameRead.Received("response:request"), response)
-                assertEquals(IndexerConnectionHandling.Served, served.get(5, TimeUnit.SECONDS))
+                assertEquals(IndexerConnectionHandling.Admitted, served.get(5, TimeUnit.SECONDS))
             } finally {
                 executor.shutdownNow()
             }
@@ -275,6 +317,7 @@ class InstalledIndexerLaunchTest {
         InstalledIndexerTransport.activate(
             endpoint,
             KastIndexerHost { request -> KastRuntimeDispatch.Responded("response:$request") },
+            authority = IndexerWireAuthority.Fixture,
         ),
     ).transport
 }

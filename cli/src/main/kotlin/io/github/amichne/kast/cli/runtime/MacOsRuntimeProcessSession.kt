@@ -125,7 +125,7 @@ internal class MacOsRuntimeProcessSession private constructor(
      */
     private fun launchctlSubmission(command: IndexerLaunchCommand): MacOsLaunchctlSubmission {
         val environment = when (
-            val resolution = MacOsRuntimeProcessEnvironment.resolve(command.runtime, command.importEnvironment)
+            val resolution = MacOsRuntimeProcessEnvironment.resolve(command.runtime, command.importEnvironment, command.sidecarEnvironment.processVariables())
         ) {
             is MacOsRuntimeProcessEnvironmentResolution.Resolved -> resolution.environment
             is MacOsRuntimeProcessEnvironmentResolution.Rejected ->
@@ -368,7 +368,7 @@ private const val ENV_EXECUTABLE = "/usr/bin/env"
 private const val SHELL_EXECUTABLE = "/bin/sh"
 private const val NULL_DEVICE = "/dev/null"
 private const val SESSION_WRAPPER_NAME = "kast-indexer-session"
-private const val LAUNCHCTL_TIMEOUT_SECONDS = 5L
+private const val LAUNCHCTL_TIMEOUT_SECONDS = CliOperationalLimits.launchctlTimeoutSeconds
 private const val TERMINAL_STARTUP_WRAPPER =
     "\"${'$'}@\"; status=${'$'}?; " +
         "/bin/launchctl remove \"${'$'}XPC_SERVICE_NAME\" >/dev/null 2>&1 || true; " +

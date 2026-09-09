@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.runtime
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -27,12 +28,12 @@ internal class InvocationFence(private val file: Path?) {
         if (file != null) try {
             if (Files.isSymbolicLink(file)) healthy = false
             else if (Files.exists(file,LinkOption.NOFOLLOW_LINKS)) {
-                if (!Files.isRegularFile(file) || Files.size(file) > 2_097_152) healthy = false
+                if (!Files.isRegularFile(file) || Files.size(file) > BrokerOperationalLimits.maximumInvocationJournalBytes) healthy = false
                 else {
                     val doc = Json.parseToJsonElement(Files.readString(file)).jsonObject
                     if (doc.keys != setOf("schemaVersion","records") || doc["schemaVersion"] != JsonPrimitive(1)) healthy = false
                     val items = doc.getValue("records").jsonObject
-                    if (items.size > 4_096) healthy = false
+                    if (items.size > BrokerOperationalLimits.maximumInvocations) healthy = false
                     items.forEach { (key,value) ->
                         val record = value.jsonObject
                         if (record.keys != setOf("fingerprint","phase")) healthy = false
@@ -53,7 +54,7 @@ internal class InvocationFence(private val file: Path?) {
             record.phase == InvocationPhase.COMPLETED -> InvocationFenceFailure.ALREADY_COMPLETED
             else -> InvocationFenceFailure.OUTCOME_UNCERTAIN
         }) }
-        if (records.size >= 4_096) return InvocationAdmission.Rejected(InvocationFenceFailure.CAPACITY_EXCEEDED)
+        if (records.size >= BrokerOperationalLimits.maximumInvocations) return InvocationAdmission.Rejected(InvocationFenceFailure.CAPACITY_EXCEEDED)
         records[key] = Record(fingerprint,InvocationPhase.STARTED)
         return if (flush()) InvocationAdmission.Admitted else InvocationAdmission.Rejected(InvocationFenceFailure.STORE_REJECTED)
     }
