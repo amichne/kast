@@ -5,7 +5,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.*
+import kotlinx.serialization.Transient
+import io.github.amichne.kast.kernel.Refinement
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
@@ -40,17 +42,13 @@ internal object CodexHostIntegrationManifestMain {
                 codexVersion = installed.codexVersion,
                 schemaSha256 = installed.codexProtocolSha256,
             ),
-            standardAppServer = StandardAppServerEvidence(
-                socket = installed.standardDaemon.socketPath,
-                codexVersion = installed.standardDaemon.cliVersion,
-            ),
+            privateService = installed.privateService,
             installedArtifacts = InstalledArtifactEvidence(
                 kast = installed.kastExecutableSha256,
                 kastCodexFacade = installed.kastFacadeSha256,
                 codex = installed.codexExecutableSha256,
             ),
-            hostModes = listOf(HostModeManifestEntry.standardAppServer()) +
-                CodexHostMode.entries.map(HostModeManifestEntry::from),
+            hostModes = CodexHostMode.entries.map(HostModeManifestEntry::from),
             installedCommands = listOf(
                 "kast codex",
                 "kast codex desktop",
@@ -67,7 +65,7 @@ internal object CodexHostIntegrationManifestMain {
                 DependencyProof("HOST-07", "InstalledCodexClientLauncherTest"),
                 DependencyProof(
                     "HOST-08",
-                    "installedCodexHostTest standard daemon + compatibility stdio",
+                    "installedCodexHostTest private coordinator + stdio attachment",
                 ),
                 DependencyProof("HOST-09", "AgentSessionProjectionTest"),
             ),
@@ -129,7 +127,7 @@ private data class InstalledCodexHostAcceptanceReceipt(
     val kastExecutableSha256: Sha256Digest,
     val kastFacadeSha256: Sha256Digest,
     val codexExecutableSha256: Sha256Digest,
-    val standardDaemon: InstalledStandardDaemonReceipt,
+    val privateService: InstalledPrivateServiceReceipt,
     val persistentServiceAfterDetach: ValidationOutcome,
     val desktopCompatibility: DesktopQualification,
     val desktopDiscovery: DesktopDiscovery,
@@ -143,27 +141,82 @@ private data class InstalledCodexHostAcceptanceReceipt(
         require(catalogToolNames.distinct().size == catalogToolNames.size) {
             "Installed catalog contains duplicate tool names"
         }
-        require(standardDaemon.cliVersion == standardDaemon.appServerVersion) {
-            "Installed Codex CLI and App Server versions differ"
-        }
-        require(codexVersion.removePrefix("codex-cli ") == standardDaemon.cliVersion) {
-            "Installed Codex version and standard daemon version differ"
-        }
+    }
+}
+
+/** A captured private coordinator observation; it does not claim ownership of Codex's ordinary daemon. */
+@Serializable
+private data class InstalledPrivateServiceReceipt(
+    val socketPath: EvidencePath,
+    val ordinaryDaemonSocket: OrdinaryDaemonObservation,
+    val phase: PrivateServicePhase,
+    val statusEvidence: EvidencePath,
+    val qualification: PrivateServiceStatus,
+) {
+    init {
+        require(socketPath.value.endsWith("/state/run/c.sock")) { "Private coordinator socket is invalid" }
+        require(statusEvidence.value.endsWith("/status-frontend_prepared.json")) { "Prepared status evidence is absent" }
+    }
+}
+
+@Serializable private enum class OrdinaryDaemonObservation { ABSENT }
+@Serializable private enum class PrivateServicePhase { FRONTEND_PREPARED }
+@Serializable private enum class ReadyEvidence { @SerialName("ready") READY }
+@Serializable private enum class UnobservedEvidence { @SerialName("unobserved") UNOBSERVED }
+@Serializable private enum class UnqualifiedEvidence { @SerialName("unqualified") UNQUALIFIED }
+@Serializable private enum class PreparedEvidence { @SerialName("prepared") PREPARED }
+@Serializable private enum class MatchedEvidence { @SerialName("matched") MATCHED }
+@Serializable private enum class RegisteredEvidence { @SerialName("registered") REGISTERED }
+@Serializable private enum class StatusOperation { @SerialName("app-server.status") STATUS }
+
+@Serializable
+private data class PrivateServiceStatus(
+    val operation: StatusOperation,
+    val transport: ReadyEvidence,
+    val protocol: UnobservedEvidence,
+    val catalog: UnobservedEvidence,
+    val semantic: UnobservedEvidence,
+    val desktop: UnqualifiedEvidence,
+    val coordinator: PrivateCoordinatorStatus,
+    val service: PrivateServiceOwnership,
+    val host: PrivateHostStatus,
+    val registry: PrivateRegistryStatus,
+    val enrollment: EvidencePath,
+    val session: JsonElement,
+) {
+    init {
+        require(session == JsonNull) { "Passive status must not manufacture frontend session evidence" }
+        require(registry.workspaces.any { it.root == enrollment }) { "Enrolled root is not registered" }
     }
 }
 
 @Serializable
-private data class InstalledStandardDaemonReceipt(
-    val socketPath: String,
-    val cliVersion: String,
-    val appServerVersion: String,
-) {
+private data class PrivateCoordinatorStatus(val state: ReadyEvidence, val observation: JsonObject) {
+    @Transient private val admitted: CoordinatorStatusSnapshot = when (val result = CoordinatorStatusSnapshot.admit(observation)) {
+        is Refinement.Refined -> result.value
+        is Refinement.Rejected -> throw IllegalArgumentException("Coordinator status is invalid")
+    }
+    init { require(admitted.hostAttachment == CoordinatorHostAttachment.PREPARED) { "Coordinator did not retain prepared frontend" } }
+}
+
+@Serializable private data class PrivateServiceOwnership(val state: ReadyEvidence, val ownership: MatchedEvidence)
+@Serializable private data class PrivateHostStatus(val attachment: PreparedEvidence, val desktop: UnqualifiedEvidence)
+@Serializable private data class PrivateRegisteredWorkspace(val root: EvidencePath, val workspaceId: String) {
     init {
-        require(socketPath.endsWith("/.codex/app-server-control/app-server-control.sock")) {
-            "Installed standard App Server socket is invalid"
-        }
-        require(cliVersion.isNotBlank()) { "Installed Codex CLI version is absent" }
-        require(appServerVersion.isNotBlank()) { "Installed App Server version is absent" }
+        val expected = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(root.value.toByteArray(StandardCharsets.UTF_8)))
+        require(workspaceId == expected) { "Workspace identity does not match canonical root" }
+    }
+}
+@Serializable private data class PrivateRegistryStatus(val state: RegisteredEvidence, val revision: Long, val count: Int, val workspaces: List<PrivateRegisteredWorkspace>) {
+    init {
+        require(revision > 0 && count in 1..CoordinatorStatusProtocol.maximumWorkers && count == workspaces.size) { "Registry observation is inconsistent" }
+        require(workspaces.map { it.workspaceId }.distinct().size == count) { "Registry contains duplicate identities" }
+    }
+}
+@JvmInline @Serializable private value class EvidencePath(val value: String) {
+    init {
+        val path = Path.of(value)
+        require(path.isAbsolute && path.normalize().toString() == value) { "Evidence path is not canonical absolute syntax" }
     }
 }
 
@@ -203,13 +256,13 @@ private enum class FacadeRole {
 private enum class DesktopQualification { UNQUALIFIED }
 
 @Serializable
-private enum class DesktopDiscovery { SYNTHETIC_METADATA }
+private enum class DesktopDiscovery { NOT_REQUIRED }
 
 @Serializable
 private data class CodexHostIntegrationManifest(
     val desktopDiscovery: DesktopDiscovery,
     val desktopStartupArguments: ValidationOutcome,
-    val schemaVersion: Int = 3,
+    val schemaVersion: Int = 4,
     val desktopCompatibility: DesktopQualification = DesktopQualification.UNQUALIFIED,
     val taskId: IntegrationTask = IntegrationTask.HOST_10,
     val outcome: CompletionOutcome = CompletionOutcome.COMPLETE,
@@ -222,7 +275,7 @@ private data class CodexHostIntegrationManifest(
     val kastContractSha256: Sha256Digest,
     val catalogToolNames: List<String>,
     val protocolAuthority: ProtocolAuthorityEvidence,
-    val standardAppServer: StandardAppServerEvidence,
+    val privateService: InstalledPrivateServiceReceipt,
     val installedArtifacts: InstalledArtifactEvidence,
     val hostModes: List<HostModeManifestEntry>,
     val installedCommands: List<String>,
@@ -257,12 +310,6 @@ private enum class ProtocolAuthorityKind {
 }
 
 @Serializable
-private data class StandardAppServerEvidence(
-    val socket: String,
-    val codexVersion: String,
-)
-
-@Serializable
 private data class InstalledArtifactEvidence(
     val kast: Sha256Digest,
     val kastCodexFacade: Sha256Digest,
@@ -271,9 +318,6 @@ private data class InstalledArtifactEvidence(
 
 @Serializable
 private enum class HostModeEvidence {
-    @SerialName("STANDARD_APP_SERVER")
-    STANDARD_APP_SERVER,
-
     @SerialName("CLI_REMOTE_CLIENT")
     CLI_REMOTE_CLIENT,
 
@@ -287,11 +331,6 @@ private data class HostModeManifestEntry(
     val transport: HostTransportEvidence,
 ) {
     companion object {
-        fun standardAppServer(): HostModeManifestEntry = HostModeManifestEntry(
-            HostModeEvidence.STANDARD_APP_SERVER,
-            HostTransportEvidence.CODEX_LOCAL_DAEMON_UDS,
-        )
-
         fun from(mode: CodexHostMode): HostModeManifestEntry = when (mode) {
             CodexHostMode.CLI_REMOTE_CLIENT -> HostModeManifestEntry(
                 HostModeEvidence.CLI_REMOTE_CLIENT,
@@ -307,9 +346,6 @@ private data class HostModeManifestEntry(
 
 @Serializable
 private enum class HostTransportEvidence {
-    @SerialName("codex-local-daemon-uds")
-    CODEX_LOCAL_DAEMON_UDS,
-
     @SerialName("broker-uds-codex-remote")
     BROKER_UDS_CODEX_REMOTE,
 

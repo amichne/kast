@@ -1,6 +1,8 @@
 package io.github.amichne.kast.appserver
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -24,6 +26,11 @@ class CodexHostIntegrationManifestMainTest {
         val manifest = Json.parseToJsonElement(Files.readString(output)).jsonObject
         assertEquals("VALIDATED", manifest.getValue("desktopStartupArguments").jsonPrimitive.content)
         assertEquals("UNQUALIFIED", manifest.getValue("desktopCompatibility").jsonPrimitive.content)
+        assertEquals("NOT_REQUIRED", manifest.getValue("desktopDiscovery").jsonPrimitive.content)
+        assertEquals("4", manifest.getValue("schemaVersion").jsonPrimitive.content)
+        assertEquals(installedReceipt().getValue("privateService"), manifest.getValue("privateService"))
+        assertFalse("standardAppServer" in manifest)
+        assertEquals(setOf("CLI_REMOTE_CLIENT", "APP_SERVER_STDIO"), manifest.getValue("hostModes").jsonArray.map { it.jsonObject.getValue("mode").jsonPrimitive.content }.toSet())
     }
 
     @Test
@@ -41,6 +48,31 @@ class CodexHostIntegrationManifestMainTest {
         assertRejected(temporary, JsonObject(installedReceipt() + ("unexpectedEvidence" to JsonPrimitive("VALIDATED"))))
     }
 
+    @Test
+    fun `legacy daemon evidence cannot substitute for private service receipt`(@TempDir temporary: Path) {
+        val legacy = JsonObject(installedReceipt() - "privateService" + ("standardDaemon" to buildJsonObject {
+            put("socketPath", "/fixture/.codex/app-server-control/app-server-control.sock")
+            put("cliVersion", "0.153.4"); put("appServerVersion", "0.153.4")
+        }))
+        assertRejected(temporary, legacy)
+    }
+
+    @Test
+    fun `unattached or unowned service evidence remains rejected`(@TempDir temporary: Path) {
+        for ((path, value) in listOf(
+            listOf("privateService", "ordinaryDaemonSocket") to "PRESENT",
+            listOf("privateService", "phase") to "COORDINATOR_ONLY",
+            listOf("privateService", "qualification", "service", "ownership") to "unobserved",
+            listOf("privateService", "qualification", "coordinator", "observation", "hostAttachment") to "PENDING",
+            listOf("privateService", "socketPath") to "/fixture/.codex/app-server-control/app-server-control.sock",
+        )) assertRejected(temporary, installedReceipt().updated(path, JsonPrimitive(value)))
+    }
+
+    @Test
+    fun `unknown nested private observation fields remain rejected`(@TempDir temporary: Path) {
+        assertRejected(temporary, installedReceipt().updated(listOf("privateService", "qualification", "coordinator", "observation", "unexpected"), JsonPrimitive("VALIDATED")))
+    }
+
     private fun assertRejected(temporary: Path, receipt: JsonObject) {
         val failure = assertThrows<IllegalArgumentException> { generate(temporary, receipt) }
         assertEquals("Installed acceptance receipt is invalid", failure.message)
@@ -55,31 +87,11 @@ class CodexHostIntegrationManifestMainTest {
         return output
     }
 
-    private fun installedReceipt(): JsonObject = buildJsonObject {
-        put("schemaVersion", 1)
-        put("taskId", "HOST-08")
-        put("outcome", "COMPLETE")
-        put("parentClosure", "CLEAN")
-        put("stdoutProtocol", "JSONL_ONLY")
-        put("initialize", "VALIDATED")
-        put("threadStart", "VALIDATED")
-        put("facadeRole", "app-server-stdio")
-        put("codexVersion", "codex-cli 0.153.4")
-        for (field in listOf(
-            "catalogProjectionSha256", "codexProtocolSha256", "kastContractSha256",
-            "kastExecutableSha256", "kastFacadeSha256", "codexExecutableSha256",
-        )) {
-            put(field, "sha256:" + "1".repeat(64))
-        }
-        put("catalogToolNames", buildJsonArray { add(JsonPrimitive("query")) })
-        put("standardDaemon", buildJsonObject {
-            put("socketPath", "/fixture/.codex/app-server-control/app-server-control.sock")
-            put("cliVersion", "0.153.4")
-            put("appServerVersion", "0.153.4")
-        })
-        put("persistentServiceAfterDetach", "VALIDATED")
-        put("desktopCompatibility", "UNQUALIFIED")
-        put("desktopDiscovery", "SYNTHETIC_METADATA")
-        put("desktopStartupArguments", "VALIDATED")
-    }
+    private fun installedReceipt(): JsonObject = Json.parseToJsonElement(
+        requireNotNull(javaClass.getResource("/codex-host/installed-private-service-receipt.json")).readText(),
+    ).jsonObject
+
+    private fun JsonObject.updated(path: List<String>, value: JsonElement): JsonObject = JsonObject(
+        this + (path.first() to if (path.size == 1) value else getValue(path.first()).jsonObject.updated(path.drop(1), value)),
+    )
 }
