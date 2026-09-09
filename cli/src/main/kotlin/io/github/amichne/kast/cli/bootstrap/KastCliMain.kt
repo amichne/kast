@@ -1,6 +1,8 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
+import io.github.amichne.kast.cli.installation.InstallationCliInspection
+import io.github.amichne.kast.cli.installation.InstallationHandling
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -62,9 +64,13 @@ private sealed interface CliBootstrapFailure {
 
 /** Process entrypoint for the single Kotlin `kast` executable. */
 fun main(args: Array<String>) {
-    val exit = when (val inspection = ConfigurationCliInspection.inspect(args.toList(), System.getenv())) {
-        is ConfigurationInspectionHandling.Handled -> inspection.exit
-        ConfigurationInspectionHandling.Unrelated -> executeInstalledCommand(args)
+    val environment = System.getenv()
+    val exit = when (val installation = InstallationCliInspection.inspect(args.toList(), environment)) {
+        is InstallationHandling.Handled -> installation.exit
+        InstallationHandling.Unrelated -> when (val inspection = ConfigurationCliInspection.inspect(args.toList(), environment)) {
+            is ConfigurationInspectionHandling.Handled -> inspection.exit
+            ConfigurationInspectionHandling.Unrelated -> executeInstalledCommand(args)
+        }
     }
     when (exit) {
         is CliExit.Delegated -> Unit

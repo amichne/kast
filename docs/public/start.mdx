@@ -8,7 +8,6 @@ tags: ["installation", "agents", "Codex", "IntelliJ"]
 timestamp: "2026-09-07T00:00:00-04:00"
 code_sources:
   - path: "install.sh"
-    symbols: ["main"]
   - path: "gradle/libs.versions.toml"
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/KastCodexMain.kt"
     symbols: ["KastCodexMain"]
@@ -48,7 +47,7 @@ The built-in Codex integration also requires an installed `codex` executable on
 Install the latest published release:
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
 The installer verifies the matched control and semantic-runtime payloads before
@@ -58,8 +57,8 @@ If more than one compatible IDEA installation is available, select it
 explicitly:
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | \
-  bash -s -- --idea-home "/Applications/IntelliJ IDEA.app"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
+  -- --idea-home "/Applications/IntelliJ IDEA.app"
 ```
 
 The installer creates the public commands in `~/.local/bin` by default. Add that
@@ -117,8 +116,8 @@ requiring application developers to learn the underlying CLI operations.
 Run the current installer in uninstall mode:
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | \
-  bash -s -- uninstall
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
+  -- uninstall
 ```
 
 Uninstall removes Kast-owned commands, installations, runtime state,

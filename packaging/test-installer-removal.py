@@ -23,9 +23,22 @@ class InstallerRemovalTest(unittest.TestCase):
         for directory in ('bin', 'lib', 'share/kast'):
             (self.product / directory).mkdir(parents=True)
         lifecycle = self.product / 'share/kast/installation-lifecycle.py'
-        lifecycle.write_text('import json, sys\nprint(json.dumps(sys.argv[1:]))\n')
+        lifecycle.write_text(
+            'import json, pathlib, sys\n'
+            'root = pathlib.Path(sys.argv[sys.argv.index("--installation") + 1])\n'
+            'if not (root / "installation.json").is_file():\n'
+            '    raise SystemExit("installation manifest rejected")\n'
+            'print(json.dumps(sys.argv[1:]))\n'
+        )
         launcher = self.product / 'bin/kast-complete'
-        launcher.write_text('#!/bin/bash\nexit 0\n')
+        launcher.write_text(
+            '#!/bin/bash\n'
+            'if [[ ${1:-} == installation ]]; then\n'
+            '  shift\n'
+            f'  exec python3 "{lifecycle}" --installation "{self.product}" "$@"\n'
+            'fi\n'
+            'exit 90\n'
+        )
         launcher.chmod(0o755)
         payload = []
         for directory in ('bin', 'lib', 'share'):
@@ -56,20 +69,20 @@ class InstallerRemovalTest(unittest.TestCase):
         self.fixture.__exit__(None, None, None)
 
     def uninstall(self):
-        return subprocess.run(['bash', str(INSTALLER), 'uninstall', '--installation-only'],
+        return subprocess.run(['bash', str(INSTALLER), 'uninstall'],
                               env=self.env, capture_output=True, text=True)
 
-    def test_legacy_uninstall_dispatches_only_exact_manifest_owned_release(self):
+    def test_uninstall_dispatches_only_to_selected_installation_lifecycle(self):
         result = self.uninstall()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.strip(), json.dumps(['--installation', str(self.product), 'remove']),
-                         'legacy entry point must invoke bounded lifecycle removal, never broad rm')
+        self.assertEqual(result.stdout.strip(), json.dumps(['--installation', str(self.product), 'remove', '--json']),
+                         'entry point must invoke bounded lifecycle removal, never broad rm')
 
-    def test_manifestless_legacy_installation_requires_explicit_migration(self):
+    def test_manifestless_installation_is_rejected(self):
         (self.product / 'installation.json').unlink()
         result = self.uninstall()
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('migration', result.stderr)
+        self.assertIn('manifest', result.stderr)
         self.assertTrue(self.product.exists())
 
 if __name__ == '__main__':

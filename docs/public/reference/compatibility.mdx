@@ -52,8 +52,8 @@ tag passed to `--version`:
 
 ```shell
 release_tag="v0.35.0"
-curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh" | \
-  bash -s -- --version "$release_tag"
+/bin/bash -c "$(curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh")" \
+  -- --version "$release_tag"
 ```
 
 Replace the example tag with the release your environment has approved. Do not

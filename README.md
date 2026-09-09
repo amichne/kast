@@ -24,7 +24,7 @@ Kast currently requires:
 Install the latest published release:
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
 The installer discovers the supported IntelliJ runtime, verifies the matched
@@ -32,8 +32,8 @@ Kast payloads, and installs the integration entrypoints. If discovery is
 ambiguous, select IDEA explicitly:
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | \
-  bash -s -- --idea-home "/Applications/IntelliJ IDEA.app"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
+  -- --idea-home "/Applications/IntelliJ IDEA.app"
 ```
 
 See [Install and connect Kast](https://kast.michne.com/start/) for the complete
@@ -54,10 +54,10 @@ the matched control and semantic runtime archives. Session mode isolates its
 configuration, caches and sockets and disables persistent services. Repeated
 activation is safe; its temporary files remain under `$KAST_SESSION_ROOT`.
 
-Persistent mode uses `KAST_INSTALL_ROOT`, `KAST_BIN_DIR` and the existing saved
-runtime settings, with the same path overrides as the release installer. It
-enables launchd indexer ownership, stops the previous installed App Server before
-activation, and enables the new App Server login service for this checkout.
+Persistent mode honors `KAST_INSTALL_ROOT` and `KAST_BIN_DIR`, writes a fresh
+release-local runtime configuration, and enables launchd indexer ownership. It
+stops the previous installed App Server before activation and enables the new
+App Server login service for this checkout.
 This requires the App Server's Codex prerequisites. If service enablement fails,
 the installation remains available and the command reports failure. The
 installation persists for your user account across sessions; it is not an

@@ -12,11 +12,9 @@ class ConfigurationIngressTest(unittest.TestCase):
             with self.subTest(altered=altered), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 (root / 'packaging').mkdir()
-                shell = {'INSTALL_ACTIVATION_LOCK_TIMEOUT_MILLIS': 30000, 'INSTALL_ACTIVATION_LOCK_POLL_MILLIS': 50,
-                         'INSTALL_DOWNLOAD_RETRIES': 5, 'INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS': 2000}
+                shell = {'INSTALL_DOWNLOAD_RETRIES': 5, 'INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS': 2000}
                 python = {'RETIREMENT_CHILD_TIMEOUT_MILLIS': 60000, 'STATE_MAXIMUM_ENTRIES': 100000}
-                keys = ['installation.activation.lock_timeout', 'installation.activation.lock_poll',
-                        'installation.download.retries', 'installation.download.retry_delay',
+                keys = ['installation.download.retries', 'installation.download.retry_delay',
                         'installation.retirement.child_timeout', 'installation.state.maximum_entries']
                 schema = {'parameters': [], 'operationalLimits': [dict(key=key, value=value)
                     for key, value in zip(keys, [*shell.values(), *python.values()])]}
