@@ -28,10 +28,32 @@ class BrokerEndpointAliasTest {
     @Test
     fun `long physical installation selects a representable private socket`(@TempDir temporary: Path) {
         val root = Files.createDirectories(temporary.resolve("physical-version-" + "v".repeat(100))).toRealPath()
+        val run = Files.createDirectories(root.resolve("state/run")).toRealPath()
+        Files.setPosixFilePermissions(run, PosixFilePermissions.fromString("rwx------"))
         val layout = BrokerInstallationLayout.from(root.resolve("bin/kast"), root.resolve("host"))
-        assertTrue(layout.publicSocket.toString().toByteArray(StandardCharsets.UTF_8).size < 104,
-            "selected Unix transport must fit while physical state stays under the version root")
-        assertTrue(layout.run.startsWith(root))
+        val socket = (BrokerSocketPath.prepareInstalled(run.resolve("u.sock")) as Validation.Validated).value
+        val receipt = (socket.route as BrokerSocketRoute.PrivateUpstream).receipt
+        try {
+            assertTrue(layout.publicSocket.toString().toByteArray(StandardCharsets.UTF_8).size < 104,
+                "selected public Unix transport must fit while physical state stays under the version root")
+            assertTrue(socket.path.toString().toByteArray(StandardCharsets.UTF_8).size < 104,
+                "selected private Unix transport must fit")
+            assertTrue(Files.isDirectory(socket.path.parent, LinkOption.NOFOLLOW_LINKS),
+                "Codex requires the private socket parent to be a real directory")
+            assertFalse(Files.isSymbolicLink(socket.path.parent),
+                "Codex rejects a private socket whose parent is an alias")
+            assertEquals(PosixFilePermissions.fromString("rwx------"),
+                Files.getPosixFilePermissions(socket.path.parent, LinkOption.NOFOLLOW_LINKS))
+            assertEquals(layout.upstreamSocket, socket.path)
+            assertTrue(layout.run.startsWith(root))
+            val observed = BrokerUpstreamDirectories.prepare(run)
+            assertTrue(observed is Validation.Validated)
+            observed as Validation.Validated
+            assertEquals(receipt.directory.path, observed.value.directory.path)
+            assertEquals(receipt.physicalDirectory.path, observed.value.physicalDirectory.path)
+        } finally {
+            retireTestUpstream(receipt)
+        }
     }
 
     @Test
@@ -117,6 +139,30 @@ class BrokerEndpointAliasTest {
     }
 
     @Test
+    fun `replaced private upstream directory rejects the retained proof without touching foreign state`(
+        @TempDir temporary: Path,
+    ) {
+        val run = privateRun(temporary)
+        val socket = (BrokerSocketPath.prepareInstalled(run.resolve("u.sock")) as Validation.Validated).value
+        val receipt = (socket.route as BrokerSocketRoute.PrivateUpstream).receipt
+        val held = receipt.directory.path.resolveSibling(receipt.directory.path.fileName.toString() + ".held")
+        Files.move(receipt.directory.path, held)
+        Files.createDirectory(receipt.directory.path)
+        Files.setPosixFilePermissions(receipt.directory.path, PosixFilePermissions.fromString("rwx------"))
+        val foreign = Files.writeString(receipt.directory.path.resolve("foreign"), "foreign state")
+        try {
+            assertTrue(socket.revalidate() is Validation.Rejected)
+            assertEquals(UnixSocketPathPreparation.PARENT_REJECTED, UnixSocketPathOwnership.prepare(socket))
+            assertEquals("foreign state", Files.readString(foreign))
+        } finally {
+            Files.delete(foreign)
+            Files.delete(receipt.directory.path)
+            Files.move(held, receipt.directory.path)
+            retireTestUpstream(receipt)
+        }
+    }
+
+    @Test
     fun `planned absent alias is observed passively without creation`(@TempDir temporary: Path) {
         val physical = temporary.toRealPath().resolve("version-" + "x".repeat(100))
         val layout = BrokerInstallationLayout.from(physical.resolve("bin/kast"), temporary)
@@ -134,5 +180,11 @@ class BrokerEndpointAliasTest {
     private fun retireTestAlias(receipt: BrokerEndpointAliasReceipt) {
         assertTrue(receipt.validate() is Validation.Validated)
         Files.delete(receipt.alias)
+    }
+
+    private fun retireTestUpstream(receipt: BrokerUpstreamDirectoryReceipt) {
+        assertTrue(receipt.validate() is Validation.Validated)
+        Files.delete(receipt.directory.path)
+        Files.delete(receipt.physicalDirectory.path.resolve("upstream-directory.json"))
     }
 }

@@ -26,6 +26,7 @@ class Failure(str, Enum):
     ANCHOR_OWNERSHIP_UNPROVEN = 'ANCHOR_OWNERSHIP_UNPROVEN'
     FILESYSTEM_REJECTED = 'FILESYSTEM_REJECTED'
     EXTERNAL_STATE_UNPROVEN = 'EXTERNAL_STATE_UNPROVEN'
+    RECOVERY_REJECTED = 'RECOVERY_REJECTED'
 
 class Rejected(Exception):
     def __init__(self, failure):
@@ -166,6 +167,164 @@ def read_json(path, limit, failure):
         raise Rejected(failure) from None
 
 
+def read_regular(path, limit, failure):
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        with os.fdopen(descriptor, 'rb') as source:
+            observed = os.fstat(source.fileno())
+            if not stat.S_ISREG(observed.st_mode) or observed.st_size > limit:
+                raise Rejected(failure)
+            raw = source.read(limit + 1)
+        if len(raw) > limit:
+            raise Rejected(failure)
+        return raw
+    except OSError:
+        raise Rejected(failure) from None
+
+
+def invocation_key(event):
+    identity = [event.get(name) for name in ('threadId', 'turnId', 'callId')]
+    if any(not isinstance(value, str) or not value for value in identity):
+        raise Rejected(Failure.RECOVERY_REJECTED)
+    encoded = json.dumps(identity, separators=(',', ':')).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def recovery_candidates(installation):
+    state = installation.root / 'state'
+    if state.is_symlink() or not state.is_dir():
+        raise Rejected(Failure.RECOVERY_REJECTED)
+    candidates = []
+    count = 0
+    for current, directories, files in os.walk(state, followlinks=False):
+        count += len(directories) + len(files)
+        if count > STATE_MAXIMUM_ENTRIES:
+            raise Rejected(Failure.RECOVERY_REJECTED)
+        for name in directories + files:
+            if (Path(current) / name).is_symlink():
+                raise Rejected(Failure.RECOVERY_REJECTED)
+        for name in files:
+            if 'journal' in name.lower() and name != 'invocations.json':
+                raise Rejected(Failure.RECOVERY_REJECTED)
+            if name != 'invocations.json':
+                continue
+            journal_path = Path(current) / name
+            journal = read_json(journal_path, 2097152, Failure.RECOVERY_REJECTED)
+            records = journal.get('records')
+            if set(journal) != {'schemaVersion', 'records'} or journal.get('schemaVersion') != 1 \
+                    or not isinstance(records, dict) or len(records) > 4096:
+                raise Rejected(Failure.RECOVERY_REJECTED)
+            uncertain = {}
+            for key, record in records.items():
+                if (not isinstance(key, str) or len(key) != 64
+                        or any(character not in '0123456789abcdef' for character in key)
+                        or not isinstance(record, dict) or set(record) != {'fingerprint', 'phase'}
+                        or not isinstance(record['fingerprint'], str) or len(record['fingerprint']) != 64
+                        or any(character not in '0123456789abcdef' for character in record['fingerprint'])
+                        or record['phase'] not in {'COMPLETED', 'UNCERTAIN'}):
+                    raise Rejected(Failure.RECOVERY_REJECTED)
+                if record['phase'] == 'UNCERTAIN':
+                    uncertain[key] = record
+            if not uncertain:
+                continue
+            service_log = journal_path.with_name('service.log')
+            raw_log = read_regular(service_log, 16777216, Failure.RECOVERY_REJECTED)
+            events = []
+            try:
+                for index, raw_line in enumerate(raw_log.splitlines()):
+                    if not raw_line.startswith(b'{'):
+                        continue
+                    event = json.loads(raw_line)
+                    if isinstance(event, dict) and event.get('component') == 'kast-broker' \
+                            and event.get('event') in {'tool-call-started', 'tool-call-finished'}:
+                        events.append((index, event))
+            except (UnicodeDecodeError, ValueError, TypeError):
+                raise Rejected(Failure.RECOVERY_REJECTED) from None
+            recoveries = []
+            for key, record in uncertain.items():
+                matched = [(index, event) for index, event in events if invocation_key(event) == key]
+                started = [(index, event) for index, event in matched if event['event'] == 'tool-call-started']
+                finished = [(index, event) for index, event in matched if event['event'] == 'tool-call-finished']
+                if (len(started) != 1 or len(finished) != 1 or started[0][0] >= finished[0][0]
+                        or started[0][1].get('namespace') != 'kast' or started[0][1].get('tool') != 'query'
+                        or finished[0][1].get('namespace') != 'kast' or finished[0][1].get('tool') != 'query'
+                        or finished[0][1].get('completion') != 'cancelled'):
+                    raise Rejected(Failure.RECOVERY_REJECTED)
+                recoveries.append({'invocationKey': key, 'fingerprint': record['fingerprint'],
+                    'started': started[0][1], 'finished': finished[0][1]})
+            candidates.append({'journalPath': str(journal_path), 'journalIdentity': FileIdentity.observe(journal_path),
+                'logPath': str(service_log), 'logIdentity': FileIdentity.observe(service_log),
+                'journal': journal, 'recoveries': recoveries})
+    if not candidates:
+        raise Rejected(Failure.RECOVERY_REJECTED)
+    return candidates
+
+
+def write_exclusive_json(path, document):
+    try:
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(descriptor, 'w') as output:
+            json.dump(document, output, separators=(',', ':'))
+            output.flush()
+            os.fsync(output.fileno())
+    except OSError:
+        raise Rejected(Failure.FILESYSTEM_REJECTED) from None
+
+
+def execute_read_only_recovery(installation, dry_run):
+    installation.revalidate()
+    candidates = recovery_candidates(installation)
+    roots = workspaces(installation)
+    validate_owned_configuration(installation)
+    owned_aliases(installation)
+    owned_upstream_directories(installation)
+    count = sum(len(candidate['recoveries']) for candidate in candidates)
+    report = {'operation': 'installation.recover-read-only', 'installation': str(installation.root),
+              'recoveredInvocationCount': count, 'status': 'planned' if dry_run else 'recovered'}
+    if dry_run:
+        return report
+    retire(installation, roots)
+    installation.revalidate()
+    worker_receipts = installation.root / 'state/workers'
+    if worker_receipts.exists() and any(worker_receipts.iterdir()):
+        raise Rejected(Failure.RETIREMENT_UNPROVEN)
+    observed = recovery_candidates(installation)
+    if len(observed) != len(candidates):
+        raise Rejected(Failure.RECOVERY_REJECTED)
+    for expected, actual in zip(candidates, observed):
+        if (expected['journalPath'] != actual['journalPath']
+                or expected['journalIdentity'] != actual['journalIdentity']
+                or expected['logPath'] != actual['logPath']
+                or expected['logIdentity'] != actual['logIdentity']
+                or expected['journal'] != actual['journal']
+                or expected['recoveries'] != actual['recoveries']):
+            raise Rejected(Failure.RECOVERY_REJECTED)
+    evidence_path = installation.root / ('.read-only-recovery-' + uuid.uuid4().hex + '.json')
+    evidence = {'schemaVersion': 1, 'installation': str(installation.root), 'recoveries': []}
+    for candidate in candidates:
+        for recovery in candidate['recoveries']:
+            evidence['recoveries'].append({'journal': candidate['journalPath'],
+                'sourceJournal': candidate['journal'], **recovery})
+    write_exclusive_json(evidence_path, evidence)
+    for candidate in candidates:
+        journal_path = Path(candidate['journalPath'])
+        if FileIdentity.observe(journal_path) != candidate['journalIdentity']:
+            raise Rejected(Failure.RECOVERY_REJECTED)
+        retained = {key: record for key, record in candidate['journal']['records'].items()
+                    if record['phase'] == 'COMPLETED'}
+        replacement = journal_path.with_name('.invocations-' + uuid.uuid4().hex + '.tmp')
+        write_exclusive_json(replacement, {'schemaVersion': 1, 'records': retained})
+        try:
+            if FileIdentity.observe(journal_path) != candidate['journalIdentity']:
+                raise Rejected(Failure.RECOVERY_REJECTED)
+            os.replace(replacement, journal_path)
+        finally:
+            if replacement.exists():
+                replacement.unlink()
+    report['evidence'] = str(evidence_path)
+    return report
+
+
 def inspect_state(installation):
     state = installation.root / 'state'
     if state.is_symlink() or (state.exists() and not state.is_dir()):
@@ -246,6 +405,38 @@ def owned_aliases(installation):
     return result
 
 
+def owned_upstream_directories(installation):
+    result = []
+    run = installation.root / 'state/run'
+    expected = Path('/tmp').resolve() / ('kast-codex-' + hashlib.sha256(str(run).encode()).hexdigest()[:32])
+    for anchor in installation.manifest['externalAnchors']:
+        if not isinstance(anchor, dict):
+            raise Rejected(Failure.MANIFEST_REJECTED)
+        if anchor.get('kind') != 'upstream-directory':
+            continue
+        receipt_path = run / 'upstream-directory.json'
+        if (anchor.get('path') != str(expected) or anchor.get('expectedPhysicalDirectory') != str(run)
+                or anchor.get('identityReceipt') != str(receipt_path)):
+            raise Rejected(Failure.MANIFEST_REJECTED)
+        if not os.path.lexists(expected):
+            continue
+        receipt = read_json(receipt_path, 8192, Failure.ANCHOR_OWNERSHIP_UNPROVEN)
+        directory_identity = FileIdentity.observe(expected)
+        physical_identity = FileIdentity.observe(run)
+        def matches(actual, recorded):
+            return recorded == {'device': actual.device, 'inode': actual.inode, 'owner': actual.owner}
+        if (receipt.get('schemaVersion') != 1 or receipt.get('directory') != str(expected)
+                or receipt.get('physicalDirectory') != str(run) or expected.is_symlink()
+                or not expected.is_dir() or expected.resolve() != expected
+                or stat.S_IMODE(expected.stat().st_mode) != 0o700
+                or directory_identity.owner != physical_identity.owner
+                or not matches(directory_identity, receipt.get('directoryIdentity'))
+                or not matches(physical_identity, receipt.get('physicalDirectoryIdentity'))):
+            raise Rejected(Failure.ANCHOR_OWNERSHIP_UNPROVEN)
+        result.append((expected, directory_identity))
+    return result
+
+
 def retire(installation, roots):
     executable = installation.root / 'bin/kast-complete'
     if executable.is_symlink() or not executable.is_file() or not os.access(executable, os.X_OK):
@@ -265,7 +456,11 @@ def retire(installation, roots):
     # Host selection is retained from installation admission, never inferred from a workspace.
     if 'codexHome' in installation.manifest:
         environment['CODEX_HOME'] = installation.manifest['codexHome']
-    retire_child(executable, ['app-server', 'disable'], installation.root, environment, RetirementStage.COORDINATOR)
+    coordinator_environment = dict(environment)
+    # The supported enable command creates enabled-mode identity without weakening the saved
+    # local opt-out. Retirement must reconstruct that exact possible owner, not disabled identity.
+    coordinator_environment['KAST_ENABLE_APP_SERVER'] = '1'
+    retire_child(executable, ['app-server', 'disable'], installation.root, coordinator_environment, RetirementStage.COORDINATOR)
     for root in roots:
         retire_child(executable, ['stop'], root, environment, RetirementStage.WORKSPACE)
 
@@ -283,6 +478,7 @@ def execute(installation, operation, dry_run):
     roots = workspaces(installation)
     validate_owned_configuration(installation)
     aliases = owned_aliases(installation)
+    upstream_directories = owned_upstream_directories(installation)
     report = {'operation': 'installation.' + operation, 'installation': str(installation.root),
               'state': str(installation.root / 'state'), 'retained': ['config', 'payload'],
               'workspaceCount': len(roots), 'externalAnchors': installation.manifest['externalAnchors'],
@@ -300,6 +496,8 @@ def execute(installation, operation, dry_run):
         raise Rejected(Failure.RETIREMENT_UNPROVEN)
     if owned_aliases(installation) != aliases:
         raise Rejected(Failure.ANCHOR_OWNERSHIP_UNPROVEN)
+    if owned_upstream_directories(installation) != upstream_directories:
+        raise Rejected(Failure.ANCHOR_OWNERSHIP_UNPROVEN)
     state = installation.root / 'state'
     epoch = None
     if state_identity is not None:
@@ -314,6 +512,12 @@ def execute(installation, operation, dry_run):
             if FileIdentity.observe(alias) != identity:
                 raise Rejected(Failure.ANCHOR_OWNERSHIP_UNPROVEN)
             alias.unlink()
+        for directory, identity in upstream_directories:
+            with os.scandir(directory) as entries:
+                populated = next(entries, None) is not None
+            if FileIdentity.observe(directory) != identity or directory.is_symlink() or populated:
+                raise Rejected(Failure.ANCHOR_OWNERSHIP_UNPROVEN)
+            directory.rmdir()
         retired = installation.root / ('.retired-state-' + uuid.uuid4().hex)
         state.rename(retired)
         state.mkdir(mode=0o700)
@@ -411,7 +615,7 @@ def remove_anchors(installation):
             # The exact executable's disable operation owns login cleanup, not this manifest reader.
             if path.exists() or path.is_symlink():
                 raise Rejected(Failure.ANCHOR_OWNERSHIP_UNPROVEN)
-        elif kind != 'socket-alias':
+        elif kind not in ('socket-alias', 'upstream-directory'):
             raise Rejected(Failure.MANIFEST_REJECTED)
     for path, identity, target in selected:
         if FileIdentity.observe(path) != identity or not path.is_symlink() or os.readlink(path) != target:
@@ -425,13 +629,13 @@ def remove_anchors(installation):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--installation', required=True)
-    parser.add_argument('operation', choices=('inspect', 'reset', 'remove'))
+    parser.add_argument('operation', choices=('inspect', 'recover-read-only', 'reset', 'remove'))
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--json', action='store_true')
     arguments = parser.parse_args()
     try:
         installation = Installation.admit(arguments.installation)
-        if arguments.operation == 'inspect' or arguments.dry_run:
+        if arguments.operation == 'inspect':
             report = execute(installation, arguments.operation, arguments.dry_run)
         else:
             lock = installation.root.parent.parent / 'activation.lock'
@@ -440,7 +644,10 @@ def main():
                 if not stat.S_ISREG(os.fstat(descriptor).st_mode):
                     raise Rejected(Failure.MANIFEST_REJECTED)
                 fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                report = execute(installation, arguments.operation, arguments.dry_run)
+                if arguments.operation == 'recover-read-only':
+                    report = execute_read_only_recovery(installation, arguments.dry_run)
+                else:
+                    report = execute(installation, arguments.operation, arguments.dry_run)
             finally:
                 os.close(descriptor)
         print(json.dumps(report, separators=(',', ':')))

@@ -229,7 +229,7 @@ internal sealed interface BrokerHostSelection {
     data object NotConfigured : BrokerHostSelection { override val identityValue = "not-configured" }
     val identityValue: String
     fun environment(): Map<String, String> = when (this) {
-        is Selected -> mapOf("CODEX_EXECUTABLE" to executable.path.toString())
+        is Selected -> mapOf("CODEX_EXECUTABLE" to executable.launcherPath.toString())
         Disabled, NotConfigured -> emptyMap()
     }
 }

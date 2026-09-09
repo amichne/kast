@@ -13,6 +13,75 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 
 class InstalledWorkerClientOwnerTest {
+    @Test fun `current broker descendant reuses its publication without ensuring its own service`(): Unit = runBlocking {
+        val root = Files.createTempDirectory(Path.of("/private/tmp"), "kast-descendant-").toRealPath()
+        try {
+            listOf("bin", "lib", "share").forEach { Files.createDirectory(root.resolve(it)) }
+            val kast = Files.writeString(root.resolve("bin/kast"), "#!/bin/sh\nexit 0\n")
+            Files.setPosixFilePermissions(kast, PosixFilePermissions.fromString("rwx------"))
+            val command = (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, emptyMap()) as BrokerServiceLaunchCommandResolution.Resolved).command
+            val environment = mapOf(
+                "BROKER_SERVICE_IDENTITY" to command.identity.value,
+                "BROKER_READINESS_FILE" to command.readinessFile.toString(),
+                "KAST_OPTS" to command.jvmUserHomeOption.value,
+            )
+            val descendantCommand = (
+                BrokerServiceDemandContext.resolveCommand(kast, root, environment)
+                    as BrokerServiceLaunchCommandResolution.Resolved
+                ).command
+            val configurationEnvironment = BrokerServiceDemandContext.configurationEnvironment(
+                environment + ("KAST_ENABLE_APP_SERVER" to "1"),
+            )
+            var ensures = 0
+
+            assertEquals(command.identity, descendantCommand.identity)
+            assertEquals(mapOf("KAST_ENABLE_APP_SERVER" to "1"), configurationEnvironment)
+            assertEquals(
+                PersistentBrokerServiceAdmission.Ready,
+                ensureWorkerService(BrokerServiceDemandContext.observe(descendantCommand, environment)) {
+                    ensures += 1
+                    PersistentBrokerServiceAdmission.Rejected(PersistentBrokerServiceFailure.UNAVAILABLE)
+                },
+            )
+            assertEquals(0, ensures, "a broker descendant must not retire or replace its owner")
+        } finally {
+            Files.walk(root).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
+        }
+    }
+
+    @Test fun `partial or mismatched broker descendant authority fails closed`(): Unit = runBlocking {
+        val root = Files.createTempDirectory(Path.of("/private/tmp"), "kast-descendant-").toRealPath()
+        try {
+            listOf("bin", "lib", "share").forEach { Files.createDirectory(root.resolve(it)) }
+            val kast = Files.writeString(root.resolve("bin/kast"), "#!/bin/sh\nexit 0\n")
+            Files.setPosixFilePermissions(kast, PosixFilePermissions.fromString("rwx------"))
+            val command = (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, emptyMap()) as BrokerServiceLaunchCommandResolution.Resolved).command
+            var ensures = 0
+
+            listOf(
+                mapOf("BROKER_SERVICE_IDENTITY" to command.identity.value),
+                mapOf("BROKER_READINESS_FILE" to command.readinessFile.toString()),
+                mapOf(
+                    "BROKER_SERVICE_IDENTITY" to "sha256:${"0".repeat(64)}",
+                    "BROKER_READINESS_FILE" to command.readinessFile.toString(),
+                ),
+            ).forEach { environment ->
+                assertEquals(
+                    PersistentBrokerServiceAdmission.Rejected(
+                        PersistentBrokerServiceFailure.SERVICE_OBSERVATION_REJECTED,
+                    ),
+                    ensureWorkerService(BrokerServiceDemandContext.observe(command, environment)) {
+                        ensures += 1
+                        PersistentBrokerServiceAdmission.Ready
+                    },
+                )
+            }
+            assertEquals(0, ensures)
+        } finally {
+            Files.walk(root).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
+        }
+    }
+
     @Test fun `self consistent forged epoch and live status cannot replace physical installation authority`(): Unit = runBlocking {
         val root = Files.createTempDirectory(Path.of("/private/tmp"), "kast-owner-").toRealPath()
         try {

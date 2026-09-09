@@ -92,7 +92,9 @@ class PersistentBrokerServiceTest {
         val host = MacOsPersistentBrokerServiceHost(
             launchctl = LaunchctlInvoker { arguments, _ -> when (arguments[1]) {
                 "list" -> if (present) LaunchctlInvocation.Completed else LaunchctlInvocation.Absent
-                "remove" -> {
+                "bootout" -> {
+                    val uid = Files.getAttribute(command.userHome, "unix:uid") as Number
+                    assertEquals("gui/${uid.toLong()}/${command.serviceLabel.value}", arguments[2])
                     assertTrue(Files.exists(command.stateDirectory.resolve("stopped")))
                     present = false
                     LaunchctlInvocation.Completed
@@ -496,7 +498,9 @@ class PersistentBrokerServiceTest {
             operations += arguments[1]
             when (arguments[1]) {
                 "list" -> if (present) LaunchctlInvocation.Completed else LaunchctlInvocation.Absent
-                "remove" -> {
+                "bootout" -> {
+                    val uid = Files.getAttribute(command.userHome, "unix:uid") as Number
+                    assertEquals("gui/${uid.toLong()}/${command.serviceLabel.value}", arguments[2])
                     present = false
                     LaunchctlInvocation.Completed
                 }
@@ -525,7 +529,7 @@ class PersistentBrokerServiceTest {
             ),
             host.ensure(command),
         )
-        assertTrue(operations.contains("remove"))
+        assertTrue(operations.contains("bootout"))
         val recoveringHost = MacOsPersistentBrokerServiceHost(
             launchctl,
             BrokerSocketProbe {
@@ -551,7 +555,9 @@ class PersistentBrokerServiceTest {
             operations += arguments[1]
             when (arguments[1]) {
                 "list" -> if (present) LaunchctlInvocation.Completed else LaunchctlInvocation.Absent
-                "remove" -> {
+                "bootout" -> {
+                    val uid = Files.getAttribute(command.userHome, "unix:uid") as Number
+                    assertEquals("gui/${uid.toLong()}/${command.serviceLabel.value}", arguments[2])
                     present = false
                     LaunchctlInvocation.Completed
                 }
@@ -575,7 +581,7 @@ class PersistentBrokerServiceTest {
         )
 
         assertEquals(PersistentBrokerServiceAdmission.Ready, host.ensure(command))
-        assertEquals(1, operations.count { it == "remove" })
+        assertEquals(1, operations.count { it == "bootout" })
         assertEquals(1, operations.count { it == "bootstrap" })
     }
 
@@ -595,7 +601,9 @@ class PersistentBrokerServiceTest {
             operations += arguments[1]
             when (arguments[1]) {
                 "list" -> if (present) LaunchctlInvocation.Completed else LaunchctlInvocation.Absent
-                "remove" -> {
+                "bootout" -> {
+                    val uid = Files.getAttribute(command.userHome, "unix:uid") as Number
+                    assertEquals("gui/${uid.toLong()}/${command.serviceLabel.value}", arguments[2])
                     present = false
                     LaunchctlInvocation.Completed
                 }
@@ -615,7 +623,7 @@ class PersistentBrokerServiceTest {
             ),
             host.ensure(command),
         )
-        assertEquals(listOf("list", "list", "remove", "list"), operations)
+        assertEquals(listOf("list", "list", "bootout", "list"), operations)
         assertEquals(false, Files.exists(command.readinessFile))
     }
 

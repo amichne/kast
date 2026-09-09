@@ -66,7 +66,9 @@ assets="$(mktemp -d "${TMPDIR:-/tmp}/kast-local-assets.XXXXXX")"
 cleanup() { rm -rf -- "$assets"; }
 trap cleanup EXIT
 control_name="kast-control-v${version}-macos-aarch64.tar.gz"
-tar -czf "$assets/$control_name" -C "$control_product" .
+# Name the admitted top-level payloads explicitly; archiving `.` creates a root
+# member that the release installer's traversal-safe extractor correctly rejects.
+tar -czf "$assets/$control_name" -C "$control_product" bin lib share
 cp "$runtime_archive" "$assets/$runtime_name"
 for name in "$control_name" "$runtime_name"; do
   (cd "$assets" && shasum -a 256 "$name" > "$name.sha256")

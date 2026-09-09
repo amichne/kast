@@ -53,10 +53,13 @@ def stage_versioned_product(isolation, source: Path, runtime: Path) -> Path:
                                   'sha256': 'sha256:' + sha256(candidate), 'mode': candidate.stat().st_mode & 0o777})
     run = root / 'state/run'
     alias = Path('/tmp') / ('kast-uds-' + hashlib.sha256(str(run).encode()).hexdigest()[:32])
+    upstream = Path('/tmp').resolve() / ('kast-codex-' + hashlib.sha256(str(run).encode()).hexdigest()[:32])
     label = 'io.github.amichne.kast.broker.' + hashlib.sha256(str(root).encode()).hexdigest()[:32]
     anchors = [
         {'kind': 'socket-alias', 'path': str(alias), 'expectedLinkTarget': str(run),
          'identityReceipt': str(run / 'endpoint-alias.json'), 'ownership': 'declared-not-observed'},
+        {'kind': 'upstream-directory', 'path': str(upstream), 'expectedPhysicalDirectory': str(run),
+         'identityReceipt': str(run / 'upstream-directory.json'), 'ownership': 'declared-not-observed'},
         {'kind': 'login', 'path': str(Path(isolation.environment['HOME']) / 'Library/LaunchAgents' / (label + '.login.plist')),
          'expectedExecutable': str(root / 'bin/kast'), 'expectedLabel': label + '.login', 'ownership': 'declared-not-observed'},
     ]

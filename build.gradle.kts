@@ -179,6 +179,7 @@ val localJavaExecutable = localJavaHome.map { home -> home.resolve("bin/java") }
 tasks.register<Exec>("installLocal") {
     group = "distribution"
     description = "Installs a version-owned Kast product (-Pversion=x.y.z) under ~/.local or -PkastLocalPrefix."
+    doNotTrackState("The installed prefix contains live service sockets and is mutated by the versioned installer.")
     dependsOn(stageKastControlProduct, semanticRuntimeArchive)
     inputs.dir(controlProductDirectory)
     inputs.file(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
@@ -186,10 +187,6 @@ tasks.register<Exec>("installLocal") {
     inputs.property("localInstallPrefix", localInstallPrefix.map { it.absolutePath })
     inputs.property("localJavaHome", localJavaHome.map { it.absolutePath })
     inputs.property("localJavaExecutable", localJavaExecutable.map { it.absolutePath })
-    outputs.dir(localProductDirectory)
-    outputs.file(localLauncherFile)
-    outputs.upToDateWhen { false }
-    outputs.upToDateWhen { false }
     environment("KAST_LOCAL_PREFIX", localInstallPrefix.get().absolutePath)
     environment("KAST_LOCAL_CONTROL_PRODUCT", controlProductDirectory.get().asFile.absolutePath)
     environment(

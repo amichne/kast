@@ -26,6 +26,7 @@ class LocalInstallationTest(unittest.TestCase):
             )
             product = root / 'product'
             (product / 'bin').mkdir(parents=True)
+            (product / 'lib').mkdir(parents=True)
             (product / 'share/kast').mkdir(parents=True)
             (product / 'bin/kast').write_text('#!/bin/sh\nexit 0\n')
             (product / 'bin/kast').chmod(0o755)

@@ -17,6 +17,63 @@ interface WorkerControlClient {
     suspend fun retired(root: Path): InstalledWorkerStop
 }
 
+/** A coordinator descendant may use its already-published service, but must never lifecycle-manage it. */
+internal sealed interface BrokerServiceDemandContext {
+    data object External : BrokerServiceDemandContext
+    data object CurrentServiceDescendant : BrokerServiceDemandContext
+    data object Rejected : BrokerServiceDemandContext
+
+    companion object {
+        private val serviceRuntimeKeys = setOf(
+            "BROKER_SERVICE_IDENTITY",
+            "BROKER_READINESS_FILE",
+            "KAST_OPTS",
+        )
+
+        /** Service ownership proofs and the launcher's synthetic JVM option are observations, never configuration inputs. */
+        fun configurationEnvironment(environment: Map<String, String>): Map<String, String> =
+            environment - serviceRuntimeKeys
+
+        fun resolveCommand(
+            kast: Path,
+            userHome: Path,
+            environment: Map<String, String>,
+        ): BrokerServiceLaunchCommandResolution = BrokerServiceLaunchCommand.resolveCoordinator(
+            kast,
+            userHome,
+            configurationEnvironment(environment),
+        )
+
+        fun observe(
+            command: BrokerServiceLaunchCommand,
+            environment: Map<String, String>,
+        ): BrokerServiceDemandContext {
+            val identity = environment["BROKER_SERVICE_IDENTITY"]
+            val readiness = environment["BROKER_READINESS_FILE"]
+            if (identity == null && readiness == null) return External
+            return if (
+                identity == command.identity.value &&
+                readiness == command.readinessFile.toString()
+            ) {
+                CurrentServiceDescendant
+            } else {
+                Rejected
+            }
+        }
+    }
+}
+
+internal suspend fun ensureWorkerService(
+    context: BrokerServiceDemandContext,
+    ensure: suspend () -> PersistentBrokerServiceAdmission,
+): PersistentBrokerServiceAdmission = when (context) {
+    BrokerServiceDemandContext.External -> ensure()
+    BrokerServiceDemandContext.CurrentServiceDescendant -> PersistentBrokerServiceAdmission.Ready
+    BrokerServiceDemandContext.Rejected -> PersistentBrokerServiceAdmission.Rejected(
+        PersistentBrokerServiceFailure.SERVICE_OBSERVATION_REJECTED,
+    )
+}
+
 /** A runtime control connection never initializes an upstream Codex protocol session. */
 class InstalledWorkerClient(
     private val kast: Path,
@@ -77,17 +134,34 @@ class InstalledWorkerClient(
     }
 
     private suspend fun <T> exchange(request: WorkerControlDocument, startService: Boolean, reject: (WorkerControlFailure) -> T, decode: (String) -> Refinement<Decoded<T>,WorkerControlFailure>): T {
-        val command = when (val resolved = BrokerServiceLaunchCommand.resolveCoordinator(kast, userHome, environment)) {
+        val configurationEnvironment = BrokerServiceDemandContext.configurationEnvironment(environment)
+        val command = when (val resolved = BrokerServiceDemandContext.resolveCommand(kast, userHome, environment)) {
             is BrokerServiceLaunchCommandResolution.Resolved -> resolved.command
             is BrokerServiceLaunchCommandResolution.Rejected -> return reject(WorkerControlFailure.UNAVAILABLE)
         }
-        if (startService && withContext(Dispatchers.IO) { InstalledPersistentBrokerService(kast, userHome, environment).ensure() } !is PersistentBrokerServiceAdmission.Ready) {
-            return reject(WorkerControlFailure.UNAVAILABLE)
+        if (startService) {
+            val demandContext = BrokerServiceDemandContext.observe(command, environment)
+            val service = ensureWorkerService(
+                demandContext,
+            ) {
+                withContext(Dispatchers.IO) {
+                    InstalledPersistentBrokerService(kast, userHome, environment).ensure()
+                }
+            }
+            if (service !is PersistentBrokerServiceAdmission.Ready) {
+                return reject(
+                    if (demandContext == BrokerServiceDemandContext.Rejected) {
+                        WorkerControlFailure.SERVICE_IDENTITY_REJECTED
+                    } else {
+                        WorkerControlFailure.UNAVAILABLE
+                    },
+                )
+            }
         }
         val selectedRequest = if (request.action == WorkerControlAction.DEMAND) {
-            val selected = when (val admitted = InstalledWorkspaceConfigurationIngress.resolve(kast.toRealPath().parent.parent, Path.of(request.root), environment)) {
+            val selected = when (val admitted = InstalledWorkspaceConfigurationIngress.resolve(kast.toRealPath().parent.parent, Path.of(request.root), configurationEnvironment)) {
                 is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return reject(WorkerControlFailure.IDENTITY_REJECTED)
+                is Refinement.Rejected -> return reject(WorkerControlFailure.WORKSPACE_CONFIGURATION_REJECTED)
             }
             request.copy(heap = "${selected.indexerHeap.mebibytes}m", configurationIdentity = workerConfigurationIdentity(selected))
         } else request
@@ -103,12 +177,12 @@ class InstalledWorkerClient(
             withTimeoutOrNull(OperationExecutionBudget.WORKSPACE_READINESS.value) {
                 if (connection.send(Json.encodeToString(WorkerControlDocument(WorkerControlAction.STATUS, ""))) != BrokerUpstreamSend.SENT) return@withTimeoutOrNull reject(WorkerControlFailure.UNAVAILABLE)
                 val status = when (val frame = connection.receive()) {
-                    is BrokerUpstreamFrame.Text -> try { Json.parseToJsonElement(frame.message).jsonObject } catch (_: Exception) { return@withTimeoutOrNull reject(WorkerControlFailure.IDENTITY_REJECTED) }
+                    is BrokerUpstreamFrame.Text -> try { Json.parseToJsonElement(frame.message).jsonObject } catch (_: Exception) { return@withTimeoutOrNull reject(WorkerControlFailure.COORDINATOR_IDENTITY_REJECTED) }
                     else -> return@withTimeoutOrNull reject(WorkerControlFailure.UNAVAILABLE)
                 }
                 if (status["status"] != JsonPrimitive("READY") || status["serviceGeneration"] != JsonPrimitive(published.generation) ||
                     status["installationId"] != JsonPrimitive(published.installation) || status["stateEpoch"] != JsonPrimitive(published.epoch) ||
-                    (startService && status["configurationIdentity"] != JsonPrimitive(published.configuration))) return@withTimeoutOrNull reject(WorkerControlFailure.IDENTITY_REJECTED)
+                    (startService && status["configurationIdentity"] != JsonPrimitive(published.configuration))) return@withTimeoutOrNull reject(WorkerControlFailure.COORDINATOR_IDENTITY_REJECTED)
                 if (connection.send(Json.encodeToString(selectedRequest)) != BrokerUpstreamSend.SENT) return@withTimeoutOrNull reject(WorkerControlFailure.UNAVAILABLE)
                 receiveResult(connection,selectedRequest,published,reject,decode)
             } ?: reject(WorkerControlFailure.DEADLINE_EXCEEDED)
@@ -136,7 +210,7 @@ class InstalledWorkerClient(
                     val binding = decoded.value.binding
                     if (binding.installationId != published.installation || binding.stateEpoch.toString() != published.epoch ||
                         binding.serviceGeneration.toString() != published.generation || (request.action == WorkerControlAction.DEMAND && binding.configurationIdentity != request.configurationIdentity))
-                        reject(WorkerControlFailure.IDENTITY_REJECTED)
+                        reject(WorkerControlFailure.WORKER_BINDING_IDENTITY_REJECTED)
                     else decoded.value.result
                 }
             }

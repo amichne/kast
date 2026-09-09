@@ -3,6 +3,10 @@ package io.github.amichne.kast.cli.installation
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifest
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifestAdmission
 import io.github.amichne.kast.distribution.contract.configuration.InstallationOperationalLimits
+import io.github.amichne.kast.distribution.managed.endpoint.InstalledUpstreamDirectories
+import io.github.amichne.kast.appserver.InstalledWorkspaceRegistryRetention
+import io.github.amichne.kast.appserver.PublishedBrokerServiceCommand
+import io.github.amichne.kast.appserver.WorkspaceRegistryRetention
 import java.io.IOException
 import java.nio.channels.FileChannel
 import java.nio.channels.OverlappingFileLockException
@@ -28,6 +32,21 @@ import kotlinx.serialization.json.Json
 private const val MAXIMUM_CONTROL_FILES = 4_096
 private const val MAXIMUM_CONTROL_BYTES = 1024L * 1024L * 1024L
 private const val MAXIMUM_MANIFEST_BYTES = 1024L * 1024L
+
+/** Reconstruct the only supported transient enabled owner of an opt-out installation. */
+internal fun priorServiceRetirementEnvironment(
+    prior: Path,
+    home: Path,
+    codexHome: Path,
+    path: String,
+): Map<String, String> = mapOf(
+    "HOME" to home.toString(),
+    "PATH" to path,
+    "CODEX_HOME" to codexHome.toString(),
+    "KAST_CONFIGURATION_FILE" to prior.resolve("config/environment").toString(),
+    "KAST_ENABLE_APP_SERVER" to "1",
+)
+
 internal enum class InstallationFailure {
     REQUEST_REJECTED,
     CONTROL_REJECTED,
@@ -39,6 +58,7 @@ internal enum class InstallationFailure {
     CONFIGURATION_REJECTED,
     PREVIOUS_INSTALLATION_REJECTED,
     RETIREMENT_REJECTED,
+    REGISTRY_RETENTION_REJECTED,
     ACTIVATION_REJECTED,
     APP_SERVER_ENABLE_REJECTED,
     FILESYSTEM_REJECTED,
@@ -88,6 +108,7 @@ private data class ExternalAnchor(
     val expectedExecutable: String? = null,
     val expectedLabel: String? = null,
     val identityReceipt: String? = null,
+    val expectedPhysicalDirectory: String? = null,
     val ownership: String = "declared-not-observed",
 )
 
@@ -125,6 +146,7 @@ private data class VerifiedInstallationPlan(
             "install-immutable-payload",
             "write-release-local-configuration",
             "retire-previous-app-server",
+            "retain-workspace-registry",
             "replace-current-link",
             "replace-command-links",
         ) + if (request.refreshAppServer == InstallationSwitch.ENABLED) {
@@ -249,6 +271,15 @@ internal object InstallationWorkflow {
                 if (prior != null && prior != plan.targetRoot) {
                     if (!admitPrior(prior, plan.request) || !retire(prior, plan.request)) {
                         return InstallationOutcome.Rejected(InstallationFailure.RETIREMENT_REJECTED)
+                    }
+                    when (InstalledWorkspaceRegistryRetention.retain(
+                        source = prior.resolve("config/workspaces.json"),
+                        destination = plan.targetRoot.resolve("config/workspaces.json"),
+                    )) {
+                        WorkspaceRegistryRetention.Retained -> Unit
+                        is WorkspaceRegistryRetention.Rejected -> return InstallationOutcome.Rejected(
+                            InstallationFailure.REGISTRY_RETENTION_REJECTED,
+                        )
                     }
                 }
                 if (!validateConfiguration(plan)) {
@@ -393,6 +424,15 @@ internal object InstallationWorkflow {
                 val alias = Path.of("/tmp/kast-uds-${sha256(run.toString().toByteArray()).value.take(32)}")
                 add(ExternalAnchor("socket-alias", alias.toString(), expectedLinkTarget = run.toString(), identityReceipt = run.resolve("endpoint-alias.json").toString()))
             }
+            val upstream = InstalledUpstreamDirectories.transportPath(run.resolve("u.sock"))
+            if (upstream != run.resolve("u.sock")) {
+                add(ExternalAnchor(
+                    "upstream-directory",
+                    upstream.parent.toString(),
+                    identityReceipt = run.resolve("upstream-directory.json").toString(),
+                    expectedPhysicalDirectory = run.toString(),
+                ))
+            }
         }
         val manifest = InstallationManifest(
             semanticVersion = plan.request.version.toString(),
@@ -446,12 +486,18 @@ internal object InstallationWorkflow {
     private fun retire(prior: Path, request: InstallationRequest): Boolean {
         val executable = prior.resolve("bin/kast-complete")
         if (!regularExecutable(executable)) return false
+        val recorded = PublishedBrokerServiceCommand.retirementEnvironment(
+            installationRoot = prior,
+            userHome = request.home.value,
+            codexHome = request.codexHome.value,
+        )
         return run(
             listOf(executable.toString(), "app-server", "disable"),
-            mapOf(
-                "HOME" to request.home.value.toString(),
-                "PATH" to (System.getenv("PATH") ?: "/usr/bin:/bin"),
-                "CODEX_HOME" to request.codexHome.value.toString(),
+            recorded?.values ?: priorServiceRetirementEnvironment(
+                prior = prior,
+                home = request.home.value,
+                codexHome = request.codexHome.value,
+                path = System.getenv("PATH") ?: "/usr/bin:/bin",
             ),
         ) == 0
     }

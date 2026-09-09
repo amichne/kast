@@ -1,6 +1,7 @@
 package io.github.amichne.kast.appserver.host.admission
 
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
+import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.kernel.Refinement
 
 /** Closed process role selected before any broker, Codex, or Desktop effect begins. */
@@ -112,6 +113,7 @@ internal sealed interface CodexHostInvocationFailure {
 
 internal enum class CodexArgumentFailure {
     REMOTE_OVERRIDE,
+    WORKING_DIRECTORY_OVERRIDE,
     TOO_MANY_ARGUMENTS,
     TOO_MANY_BYTES,
     INVALID_CHARACTER,
@@ -121,6 +123,16 @@ internal enum class CodexArgumentFailure {
 internal class CodexClientArguments private constructor(
     val values: List<String>,
 ) {
+    internal fun withOwnedConnection(
+        transport: String,
+        workingDirectory: CanonicalBrokerDirectory,
+    ): List<String> = listOf(
+        "--remote",
+        transport,
+        "--cd",
+        workingDirectory.path.toString(),
+    ) + values
+
     companion object {
         internal fun admit(
             arguments: List<String>,
@@ -133,6 +145,13 @@ internal class CodexClientArguments private constructor(
                     }
                 ) {
                     Refinement.Rejected(CodexArgumentFailure.REMOTE_OVERRIDE)
+                } else if (
+                    bounded.value.any { argument ->
+                        argument == "-C" || argument.startsWith("-C") ||
+                            argument == "--cd" || argument.startsWith("--cd=")
+                    }
+                ) {
+                    Refinement.Rejected(CodexArgumentFailure.WORKING_DIRECTORY_OVERRIDE)
                 } else {
                     Refinement.Refined(CodexClientArguments(bounded.value))
                 }
@@ -187,8 +206,9 @@ internal class CodexAppServerArguments private constructor(
                             CodexAppServerArgumentFailure.TOO_MANY_BYTES
                         CodexArgumentFailure.INVALID_CHARACTER ->
                             CodexAppServerArgumentFailure.INVALID_CHARACTER
-                        CodexArgumentFailure.REMOTE_OVERRIDE ->
-                            error("Common argument admission cannot produce a remote override")
+                        CodexArgumentFailure.REMOTE_OVERRIDE,
+                        CodexArgumentFailure.WORKING_DIRECTORY_OVERRIDE,
+                            -> error("Common argument admission cannot produce an owned-argument override")
                     },
                 )
             }
