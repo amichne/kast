@@ -27,8 +27,8 @@ concurrency:
 jobs:
   release:
     name: Build and publish release
-    runs-on: macos-15
-    timeout-minutes: 60
+    runs-on: ${{ vars.KAST_ACCEPTANCE_RUNNER || 'macos-15' }}
+    timeout-minutes: 120
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -85,6 +85,7 @@ jobs:
         env:
           KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
           RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
+          KAST_ACCEPTANCE_PROFILE: ci-small
         run: bash .github/scripts/ci/verify.sh --version "$RELEASE_VERSION"
 
       - name: Publish immutable GitHub release

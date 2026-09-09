@@ -156,10 +156,9 @@ class InstalledSidecarRuntimeDemanderTest {
             is Refinement.Rejected -> error(parsed.failure)
         }
         val otherBaseEndpoint = when (
-            val resolution = RuntimeEndpoint.at(
-                fixture.root,
+            val resolution = fixture.endpoint.withFileName(
+                fixture.endpoint.socketPath.fileName.toString(),
                 otherRuntimeId,
-                fixture.endpoint.socketPath,
             )
         ) {
             is RuntimeEndpointResolution.Resolved -> resolution.endpoint

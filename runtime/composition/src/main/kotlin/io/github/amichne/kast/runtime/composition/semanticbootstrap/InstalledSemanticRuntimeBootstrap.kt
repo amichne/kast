@@ -65,7 +65,7 @@ sealed interface InstalledSemanticRuntimeGradleJvmRefinement {
 
 /** One admitted identity produces only canonical state documents for one Indexer process. */
 class InstalledSemanticRuntimeBootstrapAttempt private constructor(
-    private val attemptId: SemanticRuntimeBootstrapAttemptId,
+    val attemptId: SemanticRuntimeBootstrapAttemptId,
     private val gradleJvm: GradleJvmSelectionObservation = GradleJvmSelectionObservation.Unobserved,
 ) {
     /** Refines absent JVM evidence once; an existing proof can only be observed identically. */

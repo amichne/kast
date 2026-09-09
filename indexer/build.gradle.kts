@@ -69,7 +69,9 @@ application {
 
 dependencies {
     implementation(project(":runtime:composition"))
+    implementation(project(":protocol:registry"))
     implementation(project(":distribution:managed"))
+    implementation(project(":distribution:contract"))
     indexerNetworkRuntime(project(":distribution:managed"))
 
     indexerIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
@@ -77,7 +79,6 @@ dependencies {
     }
     compileOnly(ideaCompileLibs)
     indexerPluginRuntime(project(":runtime:composition"))
-    testImplementation(project(":distribution:contract"))
     testImplementation(project(":workspace:intellij"))
     testImplementation(ideaCompileLibs)
     testRuntimeOnly(ideaLibs)

@@ -17,6 +17,25 @@ import java.util.concurrent.atomic.AtomicReference
 
 class InstalledCodexClientLauncherTest {
     @Test
+    fun `saved desktop executable is selected from the resolved owner snapshot`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        val bin = Files.createDirectory(root.resolve("bin"))
+        val home = Files.createDirectory(root.resolve("home"))
+        val kast = executable(bin.resolve("kast"))
+        val upstream = executable(bin.resolve("codex"))
+        executable(bin.resolve("kast-codex"))
+        val desktop = executable(bin.resolve("saved-desktop"))
+        val saved = Files.writeString(root.resolve("environment"), "KAST_CODEX_DESKTOP_EXECUTABLE=$desktop\n")
+        val processLauncher = CapturedProcessLauncher()
+        val launcher = InstalledCodexClientLauncher(kast, home, mapOf(
+            "CODEX_EXECUTABLE" to upstream.toString(), "KAST_CONFIGURATION_FILE" to saved.toString(),
+        ), processLauncher, ReadyServiceHost())
+        assertEquals(CodexClientLaunchRun.Completed(0), launcher.launch(CodexClientLaunch.Desktop))
+        val request = assertInstanceOf(CodexClientProcessRequest.Desktop::class.java, processLauncher.request)
+        assertEquals(desktop, request.executable.path)
+    }
+
+    @Test
     fun `desktop executable rejection retains a named failure`(
         @TempDir temporary: Path,
     ) {
@@ -146,7 +165,8 @@ class InstalledCodexClientLauncherTest {
             processLauncher.request,
         )
         assertEquals(upstream, request.upstream.path)
-        assertEquals(home.resolve(".codex/app-server-control/app-server-control.sock"), request.publicSocket)
+        assertEquals(serviceHost.command.publicSocket, request.publicSocket)
+        assertTrue(request.publicSocket.fileName.toString() == "c.sock")
         assertEquals(home.resolve(".codex"), request.codexHome)
         assertEquals(request.publicSocket, serviceHost.command.publicSocket)
     }

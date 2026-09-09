@@ -1,5 +1,7 @@
 package io.github.amichne.kast.workspace.service
 
+import io.github.amichne.kast.kernel.KastObservability
+import io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
@@ -23,6 +25,89 @@ import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicInteger
 
 class WorkspaceIndexSynchronizationServiceTest {
+    @Test
+    fun `unready lifecycle phases remain distinguishable without triggering refresh`() {
+        val states = mapOf(
+            WorkspaceRuntimeState.Absent to KastWorkspaceReadinessOutcome.WORKSPACE_ABSENT,
+            WorkspaceRuntimeState.Starting to KastWorkspaceReadinessOutcome.WORKSPACE_STARTING,
+            WorkspaceRuntimeState.Stopping to KastWorkspaceReadinessOutcome.WORKSPACE_STOPPING,
+            WorkspaceRuntimeState.Reconciling to KastWorkspaceReadinessOutcome.REFRESH_BASIS_UNAVAILABLE,
+        )
+        for ((state, expected) in states) {
+            val observations = mutableListOf<KastWorkspaceReadinessOutcome>()
+            val service = WorkspaceIndexSynchronizationService(
+                WorkspaceInspectionOperations { state },
+                WorkspaceIndexRefreshOperations { error("unready workspace must not refresh") },
+                WorkspaceIndexPublicationOperations { error("unready workspace must not publish") },
+                observability = readinessObservations(observations),
+            )
+            assertEquals(IndexSynchronizationResult.Rejected(IndexSynchronizationFailure.WorkspaceNotReady), service.ready())
+            assertEquals(listOf(expected), observations)
+        }
+    }
+
+    @Test
+    fun `unavailable source observation emits its finite reason without changing rejection`() {
+        val prior = workspace(1, "before")
+        val observations = mutableListOf<KastWorkspaceReadinessOutcome>()
+        val service = WorkspaceIndexSynchronizationService(
+            WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(prior) },
+            WorkspaceIndexRefreshOperations { error("source failure must not refresh") },
+            WorkspaceIndexPublicationOperations { error("source failure must not publish") },
+            observability = readinessObservations(observations),
+        )
+        assertEquals(IndexSynchronizationResult.Rejected(IndexSynchronizationFailure.PublicationBlocked(
+            WorkspacePublicationBlocker.CandidateCaptureUnavailable,
+        )), service.ready())
+        assertEquals(listOf(KastWorkspaceReadinessOutcome.SOURCE_OBSERVATION_UNAVAILABLE), observations)
+    }
+
+    @Test
+    fun `physical refresh failure emits its exact finite classification`() {
+        val classifications = mapOf(
+            WorkspaceIndexRefreshFailure.INVALID_SOURCE_ROOT_SCOPE to KastWorkspaceReadinessOutcome.REFRESH_INVALID_SOURCE_ROOT_SCOPE,
+            WorkspaceIndexRefreshFailure.REFRESH_UNAVAILABLE to KastWorkspaceReadinessOutcome.REFRESH_UNAVAILABLE,
+            WorkspaceIndexRefreshFailure.INDEXING_INTERRUPTED to KastWorkspaceReadinessOutcome.INDEXING_INTERRUPTED,
+            WorkspaceIndexRefreshFailure.INDEXING_TIMED_OUT to KastWorkspaceReadinessOutcome.INDEXING_TIMED_OUT,
+            WorkspaceIndexRefreshFailure.INDEXING_FAILED to KastWorkspaceReadinessOutcome.INDEXING_FAILED,
+        )
+        val prior = workspace(1, "before")
+        for ((failure, expected) in classifications) {
+            val observations = mutableListOf<KastWorkspaceReadinessOutcome>()
+            val service = WorkspaceIndexSynchronizationService(
+                WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(prior) },
+                WorkspaceIndexRefreshOperations { WorkspaceIndexRefresh.Rejected(failure) },
+                WorkspaceIndexPublicationOperations { error("refresh rejection must not publish") },
+                observability = readinessObservations(observations),
+            )
+            assertEquals(IndexSynchronizationResult.Rejected(IndexSynchronizationFailure.Refresh(failure)), service.synchronize())
+            assertEquals(listOf(expected), observations)
+        }
+    }
+
+    @Test
+    fun `publication rejection preserves the exact blocker classification`() {
+        val blockers = mapOf(
+            WorkspacePublicationBlocker.ModelInputsChanged to KastWorkspaceReadinessOutcome.MODEL_INPUTS_CHANGED,
+            WorkspacePublicationBlocker.ModelInputsUnavailable to KastWorkspaceReadinessOutcome.MODEL_INPUTS_UNAVAILABLE,
+            WorkspacePublicationBlocker.CandidateCaptureUnavailable to KastWorkspaceReadinessOutcome.CANDIDATE_CAPTURE_UNAVAILABLE,
+            WorkspacePublicationBlocker.ReconciliationUnavailable to KastWorkspaceReadinessOutcome.RECONCILIATION_UNAVAILABLE,
+            WorkspacePublicationBlocker.PublicationUnavailable to KastWorkspaceReadinessOutcome.PUBLICATION_UNAVAILABLE,
+        )
+        val prior = workspace(1, "before")
+        for ((blocker, expected) in blockers) {
+            val observations = mutableListOf<KastWorkspaceReadinessOutcome>()
+            val service = WorkspaceIndexSynchronizationService(
+                WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(prior) },
+                WorkspaceIndexRefreshOperations { WorkspaceIndexRefresh.Refreshed },
+                WorkspaceIndexPublicationOperations { WorkspacePublicationRun.Blocked(blocker) },
+                observability = readinessObservations(observations),
+            )
+            assertEquals(IndexSynchronizationResult.Rejected(IndexSynchronizationFailure.PublicationBlocked(blocker)), service.synchronize())
+            assertEquals(listOf(expected), observations)
+        }
+    }
+
     @Test
     fun `ready refresh publishes an advanced workspace`() {
         val prior = workspace(1, "state-one")
@@ -90,6 +175,7 @@ class WorkspaceIndexSynchronizationServiceTest {
     fun `unchanged physical identity reuses publication without refresh`() {
         val prior = workspace(1, "same")
         var refreshes = 0
+        val observations = mutableListOf<KastWorkspaceReadinessOutcome>()
         val service = WorkspaceIndexSynchronizationService(
             WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(prior) },
             WorkspaceIndexRefreshOperations { refreshes++; WorkspaceIndexRefresh.Refreshed },
@@ -97,9 +183,11 @@ class WorkspaceIndexSynchronizationServiceTest {
             io.github.amichne.kast.workspace.contract.WorkspaceSourceObservationOperations {
                 io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.Observed(prior.sourceState)
             },
+            observability = readinessObservations(observations),
         )
         repeat(2) { assertEquals(IndexSynchronizationResult.Unchanged(prior), service.ready()) }
         assertEquals(0, refreshes)
+        assertEquals(listOf(KastWorkspaceReadinessOutcome.REUSED, KastWorkspaceReadinessOutcome.REUSED), observations)
     }
 
     @Test
@@ -152,6 +240,11 @@ class WorkspaceIndexSynchronizationServiceTest {
             service.ready(),
         )
     }
+
+    private fun readinessObservations(values: MutableList<KastWorkspaceReadinessOutcome>): KastObservability =
+        object : KastObservability by KastObservability.Disabled {
+            override fun observeWorkspaceReadiness(outcome: KastWorkspaceReadinessOutcome) { values.add(outcome) }
+        }
 
     private fun workspace(generation: Long, state: String): PublishedWorkspace {
         val root = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()

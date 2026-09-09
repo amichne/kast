@@ -34,6 +34,7 @@ import java.util.concurrent.TimeUnit
 
 internal fun interface BrokerSocketProbe {
     fun probe(path: Path): BrokerSocketReachability
+    fun probeGeneration(path: Path, generation: UUID): BrokerSocketReachability = probe(path)
 }
 
 internal enum class BrokerSocketReachability { REACHABLE, UNREACHABLE, REJECTED }
@@ -56,6 +57,14 @@ internal object JdkBrokerSocketPathObserver : BrokerSocketPathObserver {
     override fun observe(path: Path): BrokerSocketPathObservation {
         if (!path.isAbsolute || path.normalize() != path) {
             return BrokerSocketPathObservation.Rejected
+        }
+        if (BrokerEndpointAliases.isReservedSocket(path)) {
+            if (Files.notExists(path.parent, LinkOption.NOFOLLOW_LINKS)) return BrokerSocketPathObservation.Absent
+            return when (val route = BrokerEndpointAliases.observe(path)) {
+                is io.github.amichne.kast.kernel.Validation.Rejected -> BrokerSocketPathObservation.Rejected
+                is io.github.amichne.kast.kernel.Validation.Validated ->
+                    observe(route.value.physicalDirectory.resolve(path.fileName))
+            }
         }
         val parent = path.parent ?: return BrokerSocketPathObservation.Rejected
         when (admitParent(parent)) {
@@ -126,7 +135,10 @@ private enum class BrokerSocketParentAdmission { Admitted, Absent, Rejected }
 internal object JdkBrokerSocketProbe : BrokerSocketProbe {
     private val pathObserver: BrokerSocketPathObserver = JdkBrokerSocketPathObserver
 
-    override fun probe(path: Path): BrokerSocketReachability {
+    override fun probe(path: Path): BrokerSocketReachability = observe(path, null)
+    override fun probeGeneration(path: Path, generation: UUID): BrokerSocketReachability = observe(path, generation)
+
+    private fun observe(path: Path, expectedGeneration: UUID?): BrokerSocketReachability {
         when (pathObserver.observe(path)) {
             BrokerSocketPathObservation.Absent -> return BrokerSocketReachability.UNREACHABLE
             BrokerSocketPathObservation.WrongType,
@@ -134,8 +146,14 @@ internal object JdkBrokerSocketProbe : BrokerSocketProbe {
                 -> return BrokerSocketReachability.REJECTED
             BrokerSocketPathObservation.Socket -> Unit
         }
+        val route = when (val admitted = io.github.amichne.kast.appserver.runtime.BrokerSocketPath.observe(path)) {
+            is io.github.amichne.kast.kernel.Validation.Rejected -> return BrokerSocketReachability.REJECTED
+            is io.github.amichne.kast.kernel.Validation.Validated -> admitted.value
+        }
+        if (route.revalidate() is io.github.amichne.kast.kernel.Validation.Rejected) return BrokerSocketReachability.REJECTED
         return try {
-            runBlocking(Dispatchers.IO) { exchangeInitialize(path) }
+            val result = runBlocking(Dispatchers.IO) { exchangeStatus(route.path, expectedGeneration) }
+            if (route.revalidate() is io.github.amichne.kast.kernel.Validation.Rejected) BrokerSocketReachability.REJECTED else result
         } catch (failure: Exception) {
             if (failure.hasCause<ConnectException>()) {
                 BrokerSocketReachability.UNREACHABLE
@@ -151,39 +169,31 @@ internal object JdkBrokerSocketProbe : BrokerSocketProbe {
         }
     }
 
-    private suspend fun exchangeInitialize(path: Path): BrokerSocketReachability {
+    private suspend fun exchangeStatus(path: Path, expectedGeneration: UUID?): BrokerSocketReachability {
         val client = HttpClient(CIO) {
             install(WebSockets) { maxFrameSize = MAXIMUM_READINESS_FRAME_BYTES }
         }
         return try {
             withTimeoutOrNull(READINESS_EXCHANGE_TIMEOUT_MILLIS) {
                 val session = client.webSocketSession {
-                    url("ws://localhost/rpc")
+                    url("ws://localhost/kast-runtime")
                     unixSocket(path.toString())
                 }
                 try {
-                    session.send(READINESS_INITIALIZE_REQUEST)
-                    while (true) {
-                        val frame = session.incoming.receiveCatching().getOrNull()
-                            ?: return@withTimeoutOrNull BrokerSocketReachability.REJECTED
-                        val message = (frame as? Frame.Text)?.readText()
-                            ?: return@withTimeoutOrNull BrokerSocketReachability.REJECTED
-                        val document = parseObject(message)
-                            ?: return@withTimeoutOrNull BrokerSocketReachability.REJECTED
-                        val responseId = (document["id"] as? JsonPrimitive)?.contentOrNull
-                        if (responseId != READINESS_REQUEST_ID) continue
-                        return@withTimeoutOrNull if (
-                            document["method"] == null &&
-                            document.containsKey("result") &&
-                            !document.containsKey("error")
-                        ) {
-                            BrokerSocketReachability.REACHABLE
-                        } else {
-                            BrokerSocketReachability.REJECTED
-                        }
-                    }
-                    @Suppress("UNREACHABLE_CODE")
-                    BrokerSocketReachability.REJECTED
+                    session.send("""{"action":"STATUS","root":""}""")
+                    val frame = session.incoming.receiveCatching().getOrNull()
+                    val message = (frame as? Frame.Text)?.readText()
+                        ?: return@withTimeoutOrNull BrokerSocketReachability.REJECTED
+                    val document = parseObject(message) ?: return@withTimeoutOrNull BrokerSocketReachability.REJECTED
+                    val generation = (document["serviceGeneration"] as? JsonPrimitive)?.contentOrNull
+                    val epoch = (document["stateEpoch"] as? JsonPrimitive)?.contentOrNull
+                    val installation = (document["installationId"] as? JsonPrimitive)?.contentOrNull
+                    val admitted = document["status"] == JsonPrimitive("READY") &&
+                        document["failure"] == null && installation?.matches(Regex("sha256:[a-f0-9]{64}")) == true &&
+                        canonicalUuid(generation) && canonicalUuid(epoch) &&
+                        (expectedGeneration == null || generation == expectedGeneration.toString())
+                    if (admitted) BrokerSocketReachability.REACHABLE else BrokerSocketReachability.REJECTED
+
                 } finally {
                     session.close()
                 }
@@ -205,11 +215,13 @@ internal object JdkBrokerSocketProbe : BrokerSocketProbe {
         generateSequence(this) { current -> current.cause }
             .any { current -> current is Failure }
 
-    private const val READINESS_REQUEST_ID = "kast-readiness-v1"
+    private fun canonicalUuid(raw: String?): Boolean = try {
+        raw != null && UUID.fromString(raw).toString() == raw
+    } catch (_: IllegalArgumentException) { false }
+
     private const val READINESS_EXCHANGE_TIMEOUT_MILLIS = 3_000L
-    private const val MAXIMUM_READINESS_FRAME_BYTES = 1024L * 1024L
-    private val READINESS_INITIALIZE_REQUEST =
-        """{"id":"$READINESS_REQUEST_ID","method":"initialize","params":{"clientInfo":{"name":"kast-readiness","version":"$VENDORED_BROKER_VERSION"},"capabilities":{"experimentalApi":true}}}"""
+    private const val MAXIMUM_READINESS_FRAME_BYTES = 16_384L
+
 }
 
 internal fun interface BrokerServiceSleeper {
@@ -291,7 +303,9 @@ internal class MacOsPersistentBrokerServiceHost(
         }
         return when (
             val execution = BrokerServiceStartLock.withAcquired(command.serviceLock) {
-                if (Files.exists(command.stateDirectory.resolve("stopped"), LinkOption.NOFOLLOW_LINKS)) {
+                if (InstallationLifecycleFence.observe(command.kast.parent.parent) != InstallationLifecycleStartAdmission.AVAILABLE) {
+                    rejected(PersistentBrokerServiceFailure.DISABLED)
+                } else if (Files.exists(command.stateDirectory.resolve("stopped"), LinkOption.NOFOLLOW_LINKS)) {
                     rejected(PersistentBrokerServiceFailure.DISABLED)
                 } else ensureExclusively(command)
             }
@@ -309,6 +323,12 @@ internal class MacOsPersistentBrokerServiceHost(
         }
     }
 
+    private fun probeSocket(command: BrokerServiceLaunchCommand): BrokerSocketReachability =
+        when (val state = observeReadiness(command)) {
+            is BrokerReadinessObservation.Published -> socketProbe.probeGeneration(command.publicSocket, state.instanceId)
+            BrokerReadinessObservation.Missing, BrokerReadinessObservation.Invalid -> socketProbe.probe(command.publicSocket)
+        }
+
     /** Stop and startup share one installation lock. The marker precedes process retirement. */
     internal fun stop(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission {
         if (prepareStateDirectory(command) != BrokerStateDirectoryPreparation.Prepared) return rejected(PersistentBrokerServiceFailure.STATE_DIRECTORY_REJECTED)
@@ -319,7 +339,7 @@ internal class MacOsPersistentBrokerServiceHost(
                 rejected(PersistentBrokerServiceFailure.READINESS_REJECTED)
             } else if (state == BrokerReadinessObservation.Missing &&
                 (observeService(command.serviceLabel) != BrokerLaunchdServiceObservation.Absent ||
-                 socketProbe.probe(command.publicSocket) != BrokerSocketReachability.UNREACHABLE)) {
+                 probeSocket(command) != BrokerSocketReachability.UNREACHABLE)) {
                 rejected(PersistentBrokerServiceFailure.PUBLIC_SOCKET_OWNED)
             } else {
                 val marker = command.stateDirectory.resolve("stopped")
@@ -372,7 +392,7 @@ internal class MacOsPersistentBrokerServiceHost(
             retireAndSubmit(command, readiness)
         }
         is BrokerReadinessObservation.Ready -> if (readiness.isCurrent(command)) {
-            when (socketProbe.probe(command.publicSocket)) {
+            when (probeSocket(command)) {
                 BrokerSocketReachability.REACHABLE -> PersistentBrokerServiceAdmission.Ready
                 BrokerSocketReachability.UNREACHABLE -> retireAndSubmit(command, readiness)
                 BrokerSocketReachability.REJECTED -> retireAndSubmit(command, readiness)
@@ -390,7 +410,7 @@ internal class MacOsPersistentBrokerServiceHost(
     private fun reconcileAbsent(
         command: BrokerServiceLaunchCommand,
     ): PersistentBrokerServiceAdmission = when (val readiness = observeReadiness(command)) {
-        BrokerReadinessObservation.Missing -> when (socketProbe.probe(command.publicSocket)) {
+        BrokerReadinessObservation.Missing -> when (probeSocket(command)) {
             BrokerSocketReachability.UNREACHABLE -> submitAndAwait(command)
             BrokerSocketReachability.REACHABLE -> rejected(
                 PersistentBrokerServiceFailure.PUBLIC_SOCKET_OWNED,
@@ -402,7 +422,7 @@ internal class MacOsPersistentBrokerServiceHost(
         BrokerReadinessObservation.Invalid -> rejected(
             PersistentBrokerServiceFailure.READINESS_REJECTED,
         )
-        is BrokerReadinessObservation.Published -> when (socketProbe.probe(command.publicSocket)) {
+        is BrokerReadinessObservation.Published -> when (probeSocket(command)) {
             BrokerSocketReachability.REACHABLE -> rejected(
                 PersistentBrokerServiceFailure.PUBLIC_SOCKET_OWNED,
             )
@@ -567,7 +587,7 @@ internal class MacOsPersistentBrokerServiceHost(
                     if (!readiness.isCurrent(command)) {
                         return rejected(PersistentBrokerServiceFailure.READINESS_REJECTED)
                     }
-                    when (socketProbe.probe(command.publicSocket)) {
+                    when (probeSocket(command)) {
                         BrokerSocketReachability.REACHABLE ->
                             return PersistentBrokerServiceAdmission.Ready
                         BrokerSocketReachability.UNREACHABLE -> Unit
@@ -638,9 +658,9 @@ internal class MacOsPersistentBrokerServiceHost(
             val environment = listOf(
                 "HOME=${command.userHome}", "PATH=${command.executableSearchPath.value}",
                 "JAVA_HOME=${command.javaHome}", "KAST_OPTS=${command.jvmUserHomeOption.value}",
-                "CODEX_HOME=${command.codexHome}", "CODEX_EXECUTABLE=${command.codex.path}",
-            ) + command.childEnvironment.assignments + listOf(
-                "$APP_SERVER_ENABLE_ENVIRONMENT=1", "$APP_SERVER_TOOLS_ENVIRONMENT=${command.toolSelection.environmentValue}",
+                "CODEX_HOME=${command.codexHome}",
+            ) + command.host.environment().map { (key, value) -> "$key=$value" } + command.childEnvironment.assignments + listOf(
+                "$APP_SERVER_ENABLE_ENVIRONMENT=${if (command.host == BrokerHostSelection.Disabled) "0" else "1"}", "$APP_SERVER_TOOLS_ENVIRONMENT=${command.toolSelection.environmentValue}",
                 "BROKER_SERVICE_IDENTITY=${command.identity.value}", "BROKER_READINESS_FILE=${command.readinessFile}",
             )
             val arguments = listOf(ENV_EXECUTABLE, "-i") + environment + listOf(command.kast.toString(), "broker", "serve")
@@ -741,7 +761,7 @@ internal class MacOsPersistentBrokerServiceHost(
             }
             when (val readiness = observeReadiness(command)) {
                 BrokerReadinessObservation.Missing -> when (
-                    socketProbe.probe(command.publicSocket)
+                    probeSocket(command)
                 ) {
                     BrokerSocketReachability.UNREACHABLE ->
                         return BrokerLaunchdServiceRetirement.Retired
@@ -755,7 +775,7 @@ internal class MacOsPersistentBrokerServiceHost(
                     if (readiness != retiring) {
                         return BrokerLaunchdServiceRetirement.Rejected
                     }
-                    when (socketProbe.probe(command.publicSocket)) {
+                    when (probeSocket(command)) {
                         BrokerSocketReachability.REACHABLE -> Unit
                         BrokerSocketReachability.REJECTED ->
                             return BrokerLaunchdServiceRetirement.Rejected

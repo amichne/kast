@@ -20,6 +20,7 @@ enum class CliProductCommand(
     val usage: String,
     val exposure: CliLocalExposure = CliLocalExposure.INTERNAL,
 ) {
+    APP_SERVER_REGISTER("app-server register", CliLocalExposure.PUBLIC),
     APP_SERVER_ENABLE("app-server enable", CliLocalExposure.PUBLIC),
     APP_SERVER_STATUS("app-server status", CliLocalExposure.PUBLIC),
     APP_SERVER_STOP("app-server stop", CliLocalExposure.PUBLIC),

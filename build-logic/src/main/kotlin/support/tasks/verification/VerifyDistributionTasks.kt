@@ -47,6 +47,7 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         val required = listOf(
             "bin/kast",
             "share/kast/operation-registry.json",
+            "share/kast/configuration-schema.json",
             "share/kast/wire-schema.json",
             "share/kast/semantic-runtime.json",
             "share/kast/licenses/LICENSE",

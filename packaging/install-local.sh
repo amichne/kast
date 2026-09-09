@@ -47,91 +47,30 @@ esac
 [[ -x "${java_executable}" ]] || fail "Java executable is unavailable: ${java_executable}"
 [[ -d "${java_home}" ]] || fail "Java home is unavailable: ${java_home}"
 
-runtime_name="${runtime_archive##*/}"
-[[ "${runtime_name}" =~ ^kast-semantic-runtime-[A-Za-z0-9._-]+-macos-aarch64\.zip$ ]] ||
-  fail "semantic runtime archive has an unexpected name: ${runtime_name}"
-
-for command_name in cp chmod mkdir mktemp mv rm sed; do
-  require_command "${command_name}"
-done
-
-shell_single_quote() {
-  printf "'"
-  printf '%s' "$1" | sed "s/'/'\"'\"'/g"
-  printf "'"
-}
-
-kast_root="${install_prefix}/share/kast"
-local_product="${kast_root}/local"
-legacy_control="${kast_root}/control"
-legacy_runtime="${kast_root}/runtime"
-public_bin="${install_prefix}/bin"
-public_launcher="${public_bin}/kast"
-public_codex_launcher="${public_bin}/kast-codex"
-
-mkdir -p -- "${kast_root}" "${public_bin}"
-[[ -d "${kast_root}" && ! -L "${kast_root}" ]] ||
-  fail "Kast installation root is not a directory: ${kast_root}"
-[[ -d "${public_bin}" && ! -L "${public_bin}" ]] ||
-  fail "public binary root is not a directory: ${public_bin}"
-if [[ -e "${public_launcher}" && -d "${public_launcher}" && ! -L "${public_launcher}" ]]; then
-  fail "public launcher path is a directory: ${public_launcher}"
-fi
-
-staged_product="$(mktemp -d "${kast_root}/.local.XXXXXX")"
-staged_launcher="$(mktemp "${public_bin}/.kast.XXXXXX")"
-staged_codex_launcher="$(mktemp "${public_bin}/.kast-codex.XXXXXX")"
-cleanup() {
-  [[ -z "${staged_product}" ]] || rm -rf -- "${staged_product}"
-  [[ -z "${staged_launcher}" ]] || rm -f -- "${staged_launcher}"
-  [[ -z "${staged_codex_launcher}" ]] || rm -f -- "${staged_codex_launcher}"
-}
+# Delegate all activation and retirement authority to the release installer.
+# A local numeric version is explicit; the complete payload digest distinguishes rebuilds.
+version="$(python3 - "$control_product/share/kast/semantic-runtime.json" <<'VERSION'
+import json, re, sys
+with open(sys.argv[1]) as stream:
+    version = json.load(stream)["productVersion"]
+if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
+    sys.exit("install-local: supply -Pversion=<major>.<minor>.<patch> for a versioned local installation")
+print(version)
+VERSION
+)"
+runtime_name="kast-semantic-runtime-${version}-macos-aarch64.zip"
+[[ "${runtime_archive##*/}" == "$runtime_name" ]] || fail "runtime archive and control version differ"
+installer="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)/install.sh"
+[[ -f "$installer" && ! -L "$installer" ]] || fail "versioned installer is unavailable"
+assets="$(mktemp -d "${TMPDIR:-/tmp}/kast-local-assets.XXXXXX")"
+cleanup() { rm -rf -- "$assets"; }
 trap cleanup EXIT
-
-cp -R "${control_product}/." "${staged_product}/"
-mkdir -p -- "${staged_product}/share/kast/runtime"
-cp "${runtime_archive}" "${staged_product}/share/kast/runtime/${runtime_name}"
-
-# The generated launcher expands these literals when it runs.
-# shellcheck disable=SC2016
-{
-  printf '%s\n' '#!/bin/sh' 'set -eu' ''
-  printf '%s\n' 'script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"'
-  printf '%s\n' 'install_prefix="$(CDPATH= cd -- "${script_dir}/.." && pwd -P)"'
-  printf '%s\n' 'local_product="${install_prefix}/share/kast/local"'
-  printf '%s\n' 'control_executable="${local_product}/bin/kast"'
-  printf 'runtime_archive="${local_product}/share/kast/runtime/%s"\n' "${runtime_name}"
-  printf '%s\n' '' 'if [ ! -x "${control_executable}" ]; then'
-  printf '%s\n' '  echo "kast: local control executable is missing: ${control_executable}" >&2'
-  printf '%s\n' '  exit 1' 'fi'
-  printf '%s\n' 'if [ ! -f "${runtime_archive}" ]; then'
-  printf '%s\n' '  echo "kast: local sidecar payload is missing: ${runtime_archive}" >&2'
-  printf '%s\n' '  exit 1' 'fi' ''
-  printf '%s\n' 'if [ -z "${KAST_GRADLE_JAVA_HOME+x}" ] && [ -n "${JAVA_HOME:-}" ]; then'
-  printf '%s\n' '  export KAST_GRADLE_JAVA_HOME="${JAVA_HOME}"' 'fi'
-  printf 'export JAVA=%s\n' "$(shell_single_quote "${java_executable}")"
-  printf 'export JAVA_HOME=%s\n' "$(shell_single_quote "${java_home}")"
-  printf '%s\n' 'export KAST_RUNTIME_ARCHIVE="${runtime_archive}"'
-  printf '%s\n' 'exec "${control_executable}" "$@"'
-} >"${staged_launcher}"
-chmod 755 "${staged_launcher}"
-# shellcheck disable=SC2016
-sed 's|control_executable="${local_product}/bin/kast"|control_executable="${local_product}/bin/kast-codex"|' "${staged_launcher}" > "${staged_codex_launcher}"
-chmod 755 "${staged_codex_launcher}"
-
-[[ -x "${staged_product}/bin/kast" ]] || fail "staged control executable is missing"
-[[ -f "${staged_product}/share/kast/runtime/${runtime_name}" ]] ||
-  fail "staged semantic runtime archive is missing"
-
-# These exact siblings are owned by the superseded split local-install tasks.
-# Removing a symbolic link here removes the link itself; no target is followed.
-rm -rf -- "${legacy_control}" "${legacy_runtime}" "${local_product}"
-mv -- "${staged_product}" "${local_product}"
-staged_product=""
-mv -f -- "${staged_launcher}" "${public_launcher}"
-staged_launcher=""
-mv -f -- "${staged_codex_launcher}" "${public_codex_launcher}"
-staged_codex_launcher=""
-trap - EXIT
-
-printf 'install-local: installed %s\n' "${public_launcher}"
+control_name="kast-control-v${version}-macos-aarch64.tar.gz"
+tar -czf "$assets/$control_name" -C "$control_product" .
+cp "$runtime_archive" "$assets/$runtime_name"
+for name in "$control_name" "$runtime_name"; do
+  (cd "$assets" && shasum -a 256 "$name" > "$name.sha256")
+done
+bash "$installer" --version "$version" --assets-directory "$assets" \
+  --install-root "$install_prefix/share/kast" --bin-dir "$install_prefix/bin" \
+  --enable-launchd 0 --enable-app-server 0

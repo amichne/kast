@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.distribution.managed.endpoint.InstalledEndpointAliases
+import io.github.amichne.kast.kernel.Validation
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -54,10 +56,44 @@ internal interface RuntimeEndpointArtifacts {
 }
 
 internal object PosixRuntimeEndpointArtifacts : RuntimeEndpointArtifacts {
+    internal fun prepareTransport(endpoint: RuntimeEndpoint): RuntimeEndpointResolution {
+        if (endpoint.route !is RuntimeSocketRoute.Planned) return observeTransport(endpoint)
+        return try {
+            val parent = endpoint.physicalSocketPath.parent
+            Files.createDirectories(parent)
+            if (parent.toRealPath() != parent || !Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)) return rejectedTransport()
+            Files.setPosixFilePermissions(parent, java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"))
+            if (endpoint.socketPath == endpoint.physicalSocketPath) endpoint.canonicalTransport()
+            else when (val admission = InstalledEndpointAliases.prepare(parent)) {
+                is Validation.Validated -> endpoint.admittedAlias(admission.value)
+                is Validation.Rejected -> rejectedTransport()
+            }
+        } catch (_: Exception) { rejectedTransport() }
+    }
+
+    internal fun observeTransport(endpoint: RuntimeEndpoint): RuntimeEndpointResolution = when (val proof = endpoint.route) {
+        RuntimeSocketRoute.Canonical -> RuntimeEndpointResolution.Resolved(endpoint)
+        RuntimeSocketRoute.Planned -> if (endpoint.socketPath == endpoint.physicalSocketPath ||
+            (!Files.exists(endpoint.socketPath.parent, LinkOption.NOFOLLOW_LINKS) &&
+                !Files.exists(endpoint.physicalSocketPath.parent.resolve("endpoint-alias.json"), LinkOption.NOFOLLOW_LINKS))) RuntimeEndpointResolution.Resolved(endpoint)
+            else when (val admission = InstalledEndpointAliases.observe(endpoint.socketPath)) {
+                is Validation.Validated -> endpoint.admittedAlias(admission.value)
+                is Validation.Rejected -> rejectedTransport()
+            }
+        is RuntimeSocketRoute.Aliased -> when (proof.receipt.validate()) {
+            is Validation.Validated -> RuntimeEndpointResolution.Resolved(endpoint)
+            is Validation.Rejected -> rejectedTransport()
+        }
+    }
+
+    private fun rejectedTransport() = RuntimeEndpointResolution.Rejected(RuntimeEndpointFailure.INVALID_SOCKET_PATH)
+
     override fun observeMarkers(endpoint: RuntimeEndpoint): RuntimeEndpointMarkerObservation =
-        observeMarkers(RuntimeEndpointArtifactPaths.from(endpoint))
+        if (endpoint.observeTransport() is RuntimeEndpointResolution.Rejected) RuntimeEndpointMarkerObservation.Rejected
+        else observeMarkers(RuntimeEndpointArtifactPaths.from(endpoint))
 
     override fun clean(endpoint: InactiveRuntimeEndpoint): RuntimeEndpointArtifactCleaning {
+        if (endpoint.endpoint.observeTransport() is RuntimeEndpointResolution.Rejected) return RuntimeEndpointArtifactCleaning.Rejected
         val paths = RuntimeEndpointArtifactPaths.from(endpoint.endpoint)
         val observed = when (val observation = observeAll(paths)) {
             RuntimeEndpointArtifactObservation.Rejected ->
@@ -235,15 +271,8 @@ private data class RuntimeEndpointArtifactPaths(
          * the exact socket. Raw paths remain inside the lifecycle filesystem adapter.
          */
         fun from(endpoint: RuntimeEndpoint): RuntimeEndpointArtifactPaths {
-            val socket = endpoint.socketPath
-            val parent = socket.parent
-            val stateParent = try {
-                parent.toRealPath()
-            } catch (_: IOException) {
-                parent.toAbsolutePath().normalize()
-            } catch (_: SecurityException) {
-                parent.toAbsolutePath().normalize()
-            }
+            val socket = endpoint.physicalSocketPath
+            val stateParent = socket.parent
             return RuntimeEndpointArtifactPaths(
                 socket,
                 socket.resolveSibling("${socket.fileName}.endpoint.json"),

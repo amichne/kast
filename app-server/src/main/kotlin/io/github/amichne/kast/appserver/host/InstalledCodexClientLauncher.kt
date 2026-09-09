@@ -1,5 +1,8 @@
 package io.github.amichne.kast.appserver.host
 
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOwner
+import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
+
 import io.github.amichne.kast.appserver.BrokerServiceLaunchCommand
 import io.github.amichne.kast.appserver.BrokerServiceLaunchCommandResolution
 import io.github.amichne.kast.appserver.MacOsPersistentBrokerServiceHost
@@ -112,13 +115,18 @@ internal class InstalledCodexClientLauncher(
             is BrokerServiceLaunchCommandResolution.Rejected -> return CodexClientLaunchRun
                 .Rejected(resolution.failure.launchFailure())
         }
+        val codex = when (val host = command.host) {
+            is io.github.amichne.kast.appserver.BrokerHostSelection.Selected -> host.executable
+            io.github.amichne.kast.appserver.BrokerHostSelection.Disabled,
+            io.github.amichne.kast.appserver.BrokerHostSelection.NotConfigured -> return CodexClientLaunchRun.Rejected(CodexClientLaunchFailure.APP_SERVER_UNAVAILABLE)
+        }
         val request = when (client) {
             CodexClientLaunch.Cli -> CodexClientProcessRequest.Cli(
-                command.codex,
+                codex,
                 command.publicSocket,
                 command.codexHome,
             )
-            CodexClientLaunch.Desktop -> when (val admission = desktopRequest(command)) {
+            CodexClientLaunch.Desktop -> when (val admission = desktopRequest(command, codex)) {
                 is Refinement.Refined -> admission.value
                 is Refinement.Rejected -> return CodexClientLaunchRun.Rejected(admission.failure)
             }
@@ -134,20 +142,21 @@ internal class InstalledCodexClientLauncher(
 
     private fun desktopRequest(
         command: BrokerServiceLaunchCommand,
+        codex: io.github.amichne.kast.appserver.host.admission.UpstreamCodexExecutable,
     ): Refinement<CodexClientProcessRequest.Desktop, CodexClientLaunchFailure> {
         val facade = when (val admission = DesktopFacadeExecutable.admit(command.kast.parent.resolve("kast-codex"))) {
             is Refinement.Refined -> admission.value
             is Refinement.Rejected -> return Refinement.Rejected(CodexClientLaunchFailure.FACADE_UNAVAILABLE)
         }
-        val executable = resolveDesktopExecutable()
+        val executable = resolveDesktopExecutable(command.configuration)
             ?: return Refinement.Rejected(CodexClientLaunchFailure.DESKTOP_UNAVAILABLE)
         return Refinement.Refined(
-            CodexClientProcessRequest.Desktop(executable, facade, command.codex, command.codexHome),
+            CodexClientProcessRequest.Desktop(executable, facade, codex, command.codexHome),
         )
     }
 
-    private fun resolveDesktopExecutable(): CodexDesktopExecutable? {
-        val explicit = environment[DESKTOP_EXECUTABLE_ENVIRONMENT]
+    private fun resolveDesktopExecutable(configuration: ResolvedKastConfiguration): CodexDesktopExecutable? {
+        val explicit = configuration.ownerInputs(ConfigurationOwner.APP_SERVER)[DESKTOP_EXECUTABLE_ENVIRONMENT]
         if (explicit != null) {
             val candidate = try {
                 Path.of(explicit).takeIf { path ->

@@ -143,7 +143,18 @@ interface KastTraceSpan {
 /** Host-neutral trace boundary. OpenTelemetry types are confined to the runtime adapter. */
 enum class KastWorkspaceRefreshOutcome { COMPLETED, REJECTED, INTERRUPTED }
 
-enum class KastWorkspaceReadinessOutcome { REUSED, PUBLISHED, REFRESHED_UNCHANGED, REJECTED, MODEL_INPUTS_CHANGED, MODEL_INPUTS_UNAVAILABLE }
+/** Finite readiness evidence only; names never contain workspace paths or source content. */
+enum class KastWorkspaceReadinessOutcome {
+    REUSED, PUBLISHED, REFRESHED_UNCHANGED, REJECTED,
+    MODEL_INPUTS_CHANGED, MODEL_INPUTS_UNAVAILABLE,
+    WORKSPACE_NOT_READY, WORKSPACE_ABSENT, WORKSPACE_STARTING, WORKSPACE_STOPPING, REFRESH_BASIS_UNAVAILABLE,
+    SOURCE_OBSERVATION_UNAVAILABLE,
+    REFRESH_INVALID_SOURCE_ROOT_SCOPE, REFRESH_UNAVAILABLE,
+    INDEXING_INTERRUPTED, INDEXING_TIMED_OUT, INDEXING_FAILED,
+    PUBLICATION_INVALIDATED, PUBLICATION_CONTRACT_VIOLATION,
+    CANDIDATE_CAPTURE_UNAVAILABLE, RECONCILIATION_UNAVAILABLE,
+    INCOMPLETE_EVIDENCE, PUBLICATION_UNAVAILABLE,
+}
 
 /** Terminal mutation verification stages, without source, selector, or plan payloads. */
 enum class KastChangeVerificationOutcome {

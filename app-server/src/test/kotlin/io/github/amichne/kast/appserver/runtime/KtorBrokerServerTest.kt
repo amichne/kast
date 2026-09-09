@@ -252,27 +252,17 @@ class KtorBrokerServerTest {
     }
 
     @Test
-    fun `readiness requires rpc initialize through the live broker`() = runBlocking {
+    fun `legacy host socket cannot establish coordinator readiness`() = runBlocking {
         val publicSocket = Path.of("/private/tmp/kast-ktor-${UUID.randomUUID()}.sock")
         val upstream = FakeUpstreamConnection()
         val started = start(publicSocket, upstream)
-        val responder = launch {
-            val initialize = Json.parseToJsonElement(upstream.sentByBroker.receive()).jsonObject
-            upstream.receivedFromUpstream.send(
-                BrokerUpstreamFrame.Text("""{"id":${initialize.getValue("id")},"result":{}}"""),
-            )
-        }
         try {
             assertEquals(
-                BrokerSocketReachability.REACHABLE,
+                BrokerSocketReachability.REJECTED,
                 withContext(Dispatchers.IO) { JdkBrokerSocketProbe.probe(publicSocket) },
             )
-            val exchanged = withTimeoutOrNull(1_000) {
-                responder.join()
-                true
-            }
-            if (exchanged == null) responder.cancelAndJoin()
-            assertTrue(exchanged == true)
+            assertTrue(upstream.sentByBroker.tryReceive().isFailure,
+                "coordinator readiness must not initialize an optional host")
         } finally {
             started.server.close()
             Files.deleteIfExists(ownershipLockPath(publicSocket))

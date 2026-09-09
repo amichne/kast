@@ -39,7 +39,7 @@ sealed interface NetworkBootstrapFailure {
     data object BoundaryUnavailable : NetworkBootstrapFailure
 }
 
-const val DAEMON_PREFIX = "kast.network.daemon."
+const val DAEMON_PREFIX = io.github.amichne.kast.distribution.contract.network.KastNetworkPropertyNamespace.DAEMON_PREFIX
 
 /** Resolves two consumers before any Gradle networking, retaining original configuration precedence. */
 object InstalledNetworkBootstrap {

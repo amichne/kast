@@ -58,8 +58,8 @@ if [[ $mode == session ]]; then
   session_root=$(mktemp -d "${TMPDIR:-/tmp}/kast-session.XXXXXX")
   # Ignore inherited persistent settings; the launcher captures its own config.
   export KAST_INSTALL_ROOT="$session_root/install" KAST_BIN_DIR="$session_root/bin"
-  export KAST_RUNTIME_STORE="$session_root/runtimes" KAST_RUNTIME_DIRECTORY="$session_root/run"
-  export KAST_CACHE_ROOT="$session_root/cache" KAST_ENABLE_LAUNCHD=0 KAST_ENABLE_APP_SERVER=0
+  unset KAST_RUNTIME_STORE KAST_RUNTIME_DIRECTORY KAST_CACHE_ROOT
+  export KAST_ENABLE_LAUNCHD=0 KAST_ENABLE_APP_SERVER=0
   export XDG_CONFIG_HOME="$session_root/config"
 else
   options+=(--enable-launchd 1 --enable-app-server 1)
@@ -73,6 +73,10 @@ bash "$installer" --version "$version" --release-base-url "$base_url" \
   --assets-directory "$scratch" ${options[@]+"${options[@]}"} >&2
 
 if [[ $mode == session ]]; then
+  physical_release=$(CDPATH='' cd -- "$KAST_INSTALL_ROOT/current" && pwd -P)
+  case "$physical_release" in "$KAST_INSTALL_ROOT/versions/"*) ;; *) echo 'kast-install: session release ownership rejected' >&2; exit 1 ;; esac
+  export KAST_RUNTIME_STORE="$physical_release/runtime-payloads" KAST_RUNTIME_DIRECTORY="$physical_release/state/run"
+  export KAST_CACHE_ROOT="$physical_release/state/cache"
   activation="$session_root/activate.sh"
   {
     printf '# Source in Bash or Zsh. Session files remain available until explicitly removed.\n'

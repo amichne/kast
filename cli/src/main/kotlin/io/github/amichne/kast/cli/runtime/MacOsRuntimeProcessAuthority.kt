@@ -167,6 +167,7 @@ internal object JdkRuntimeBootstrapProcessSearch : RuntimeBootstrapProcessSearch
             "--socket-path=${endpoint.socketPath}",
             "--runtime-id=${endpoint.runtimeId.value}",
             "--bootstrap-state-path=${query.bootstrapState}",
+            "--max-heap-mib=${query.maxHeap.mebibytes}",
         )
         val launcher = query.executable.path.toString()
         val current = ProcessHandle.current()

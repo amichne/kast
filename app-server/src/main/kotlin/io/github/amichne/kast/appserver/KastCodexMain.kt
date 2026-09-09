@@ -50,13 +50,17 @@ suspend fun runInstalledCodex(arguments: List<String>, kast: Path): CodexIntegra
         is BrokerServiceLaunchCommandResolution.Resolved -> admitted.command
         is BrokerServiceLaunchCommandResolution.Rejected -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.CONFIGURATION_REJECTED)
     }
+    val codex = when (val host = launch.host) {
+        is BrokerHostSelection.Selected -> host.executable
+        BrokerHostSelection.Disabled, BrokerHostSelection.NotConfigured -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.CLIENT_UNAVAILABLE)
+    }
     when (MacOsPersistentBrokerServiceHost().ensure(launch)) {
         PersistentBrokerServiceAdmission.Ready -> Unit
         is PersistentBrokerServiceAdmission.Rejected -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.BROKER_REJECTED)
     }
     val host: CodexIntegrationHost = when (invocation) {
         is CodexServiceInvocation.Cli -> CliRemoteClientHost(
-            launch.codex,
+            codex,
             launch.publicSocket,
             invocation.arguments,
         )

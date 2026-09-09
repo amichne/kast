@@ -1069,6 +1069,121 @@ class CodexProtocolAdapterTest {
         Unit
     }
 
+    @Test
+    fun `registered thread start keeps its selected root and rejects an upstream retarget`(@TempDir temporary: Path) = runBlocking {
+        val root = temporary.toRealPath()
+        val first = Files.createDirectory(root.resolve("first"))
+        val second = Files.createDirectory(root.resolve("second"))
+        val registry = io.github.amichne.kast.appserver.WorkspaceEnrollmentStore(root.resolve("workspaces.json"))
+        registry.enroll(first)
+        registry.enroll(second)
+        val enrollment = (registry.read() as io.github.amichne.kast.appserver.EnrollmentRead.Read).enrollment
+        val owner = io.github.amichne.kast.appserver.protocol.ThreadBindingOwner.admit("installation", "00000000-0000-0000-0000-000000000001").refinedValue()
+        val store = MemoryThreadCatalogStore()
+        val adapter = CodexProtocolAdapter(echoBroker(), protocolContracts(), store, enrollment = enrollment, bindingOwner = owner)
+        assertInstanceOf(ProtocolRouting.ForwardUpstream::class.java, adapter.fromDownstream(
+            """{"id":1,"method":"thread/start","params":{"cwd":"$first"}}""",
+        ))
+        assertInstanceOf(ProtocolRouting.Close::class.java, adapter.fromUpstream(
+            """{"id":1,"result":{"thread":{"id":"thread-1","turns":[]},"cwd":"$second"}}""",
+        ))
+        assertEquals(ThreadStoreRead.Missing, store.read("thread-1"))
+        adapter.close()
+    }
+
+    @Test
+    fun `production resume rejects missing durable binding`(@TempDir temporary: Path) = runBlocking {
+        val root = temporary.toRealPath()
+        val registry = io.github.amichne.kast.appserver.WorkspaceEnrollmentStore(root.resolve("workspaces.json"))
+        registry.enroll(root)
+        val enrollment = (registry.read() as io.github.amichne.kast.appserver.EnrollmentRead.Read).enrollment
+        val owner = io.github.amichne.kast.appserver.protocol.ThreadBindingOwner.admit("installation", "00000000-0000-0000-0000-000000000001").refinedValue()
+        val adapter = CodexProtocolAdapter(echoBroker(), protocolContracts(), MemoryThreadCatalogStore(), enrollment = enrollment, bindingOwner = owner)
+        assertInstanceOf(ProtocolRouting.ReplyDownstream::class.java, adapter.fromDownstream(
+            """{"id":1,"method":"thread/resume","params":{"threadId":"missing"}}""",
+        ))
+        adapter.close()
+    }
+
+    @Test
+    fun `live registry routes interleaved threads by bound root after registration`(@TempDir temporary: Path) = runBlocking {
+        val root = temporary.toRealPath()
+        val first = Files.createDirectory(root.resolve("first"))
+        val firstCwd = Files.createDirectory(first.resolve("subdirectory"))
+        val second = Files.createDirectory(root.resolve("second"))
+        val registry = io.github.amichne.kast.appserver.WorkspaceEnrollmentStore(root.resolve("workspaces.json"))
+        val enrollment = (registry.read() as io.github.amichne.kast.appserver.EnrollmentRead.Read).enrollment
+        val owner = io.github.amichne.kast.appserver.protocol.ThreadBindingOwner.admit("installation", "00000000-0000-0000-0000-000000000001").refinedValue()
+        val store = MemoryThreadCatalogStore()
+        val activity = mutableListOf<BrokerInvocationActivity>()
+        val adapter = CodexProtocolAdapter(echoBroker(), protocolContracts(), store,
+            BrokerInvocationActivitySink { activity += it; BrokerInvocationActivityPublication.PUBLISHED },
+            enrollment = enrollment, bindingOwner = owner)
+        registry.enroll(first)
+        registry.enroll(second)
+        for ((index, cwd) in listOf(firstCwd, second).withIndex()) {
+            assertInstanceOf(ProtocolRouting.ForwardUpstream::class.java, adapter.fromDownstream(
+                """{"id":$index,"method":"thread/start","params":{"cwd":"$cwd"}}""",
+            ))
+        }
+        for ((index, cwd) in listOf(firstCwd, second).withIndex().reversed()) {
+            assertInstanceOf(ProtocolRouting.ForwardDownstream::class.java, adapter.fromUpstream(
+                """{"id":$index,"result":{"thread":{"id":"thread-$index","turns":[]},"cwd":"$cwd"}}""",
+            ))
+        }
+        for (index in listOf(0, 1, 0)) {
+            val callId = "call-${activity.size}"
+            val response = adapter.fromUpstream(
+                """{"id":9,"method":"item/tool/call","params":{"threadId":"thread-$index","turnId":"turn-1","callId":"$callId","namespace":"echo","tool":"say","arguments":{"value":"hello"}}}""",
+            ) as ProtocolRouting.ReplyUpstream
+            assertTrue(response.message.objectValue("result").getValue("success").jsonPrimitive.content.toBoolean())
+        }
+        assertEquals(listOf(first, second, first), activity.filterIsInstance<BrokerInvocationActivity.Started>().map { it.context.workingDirectory.path })
+        val firstBinding = (store.read("thread-0") as ThreadStoreRead.Found).binding
+        assertEquals(firstCwd, firstBinding.workingDirectory.path)
+        assertEquals(first, firstBinding.workspace.root.path)
+        assertEquals(owner, firstBinding.owner)
+        assertEquals(firstBinding.workspace, adapter.boundWorkspace(io.github.amichne.kast.appserver.core.BrokerThreadId.admit("thread-0")!!).refinedValue())
+        Files.writeString(root.resolve("workspaces.json"), "{")
+        assertEquals(ThreadWorkspaceFailure.WORKSPACE_REJECTED, (adapter.boundWorkspace(io.github.amichne.kast.appserver.core.BrokerThreadId.admit("thread-0")!!) as Refinement.Rejected).failure)
+        adapter.close()
+    }
+
+    @Test
+    fun `overlap requires explicit workspace and stale owner cannot resume or invoke`(@TempDir temporary: Path) = runBlocking {
+        val root = temporary.toRealPath()
+        val child = Files.createDirectory(root.resolve("child"))
+        val registry = io.github.amichne.kast.appserver.WorkspaceEnrollmentStore(root.resolve("workspaces.json"))
+        registry.enroll(root)
+        registry.enroll(child)
+        val enrollment = (registry.read() as io.github.amichne.kast.appserver.EnrollmentRead.Read).enrollment
+        val owner = io.github.amichne.kast.appserver.protocol.ThreadBindingOwner.admit("installation", "00000000-0000-0000-0000-000000000001").refinedValue()
+        val store = MemoryThreadCatalogStore()
+        val broker = echoBroker()
+        val adapter = CodexProtocolAdapter(broker, protocolContracts(), store, enrollment = enrollment, bindingOwner = owner)
+        assertInstanceOf(ProtocolRouting.ReplyDownstream::class.java, adapter.fromDownstream(
+            """{"id":1,"method":"thread/start","params":{"cwd":"$child"}}""",
+        ))
+        val selected = adapter.fromDownstream(
+            """{"id":1,"method":"thread/start","params":{"cwd":"$child","kastWorkspaceRoot":"$root"}}""",
+        ) as ProtocolRouting.ForwardUpstream
+        assertFalse(selected.message.objectValue("params").containsKey("kastWorkspaceRoot"))
+        adapter.fromUpstream("""{"id":1,"result":{"thread":{"id":"thread-1","turns":[]},"cwd":"$child"}}""")
+        assertEquals(root, (store.read("thread-1") as ThreadStoreRead.Found).binding.workspace.root.path)
+        val staleOwner = io.github.amichne.kast.appserver.protocol.ThreadBindingOwner.admit("installation", "00000000-0000-0000-0000-000000000002").refinedValue()
+        val restarted = CodexProtocolAdapter(broker, protocolContracts(), store, enrollment = enrollment, bindingOwner = staleOwner)
+        assertInstanceOf(ProtocolRouting.ReplyDownstream::class.java, restarted.fromDownstream(
+            """{"id":2,"method":"thread/resume","params":{"threadId":"thread-1"}}""",
+        ))
+        assertEquals(ThreadWorkspaceFailure.OWNER_INCOMPATIBLE, (restarted.boundWorkspace(io.github.amichne.kast.appserver.core.BrokerThreadId.admit("thread-1")!!) as Refinement.Rejected).failure)
+        val call = restarted.fromUpstream(
+            """{"id":3,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"echo","tool":"say","arguments":{"value":"hello"}}}""",
+        ) as ProtocolRouting.ReplyUpstream
+        assertFalse(call.message.objectValue("result").getValue("success").jsonPrimitive.content.toBoolean())
+        adapter.close()
+        restarted.close()
+    }
+
     private fun echoBroker(): Broker {
         val inputSchema = schema(
             """{"type":"object","additionalProperties":false,"required":["value"],"properties":{"value":{"type":"string","minLength":1}}}""",

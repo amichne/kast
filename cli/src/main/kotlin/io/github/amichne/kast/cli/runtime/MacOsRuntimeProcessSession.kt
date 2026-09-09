@@ -125,7 +125,7 @@ internal class MacOsRuntimeProcessSession private constructor(
      */
     private fun launchctlSubmission(command: IndexerLaunchCommand): MacOsLaunchctlSubmission {
         val environment = when (
-            val resolution = MacOsRuntimeProcessEnvironment.resolve(command.runtime, command.importEnvironment)
+            val resolution = MacOsRuntimeProcessEnvironment.resolve(command.runtime, command.importEnvironment, command.sidecarEnvironment.processVariables())
         ) {
             is MacOsRuntimeProcessEnvironmentResolution.Resolved -> resolution.environment
             is MacOsRuntimeProcessEnvironmentResolution.Rejected ->

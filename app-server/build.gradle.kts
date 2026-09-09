@@ -40,6 +40,8 @@ dependencies {
     implementation(libs.json.schema.validator)
     implementation(libs.bundles.ktor.broker)
     implementation(project(":kernel"))
+    implementation(project(":distribution:contract"))
+    implementation(project(":distribution:managed"))
     implementation(project(":protocol:contract"))
     implementation(project(":protocol:registry"))
 }
@@ -120,4 +122,21 @@ tasks.register<Exec>("renderKastObserverScreenshots") {
         "--output-directory",
         kastObserverSnapshotOutput.asFile.absolutePath,
     )
+}
+
+val installedWorkspaceHarnessClasspath = layout.buildDirectory.file("acceptance/installed-workspace-harness.classpath")
+tasks.register("writeInstalledWorkspaceHarnessClasspath") {
+    group = "verification"
+    description = "Projects the test-only installed routing harness classpath; never ships it in the product."
+    dependsOn(tasks.named("testClasses"))
+    val harnessClasspath = sourceSets.test.get().runtimeClasspath
+    val classpathOutput = installedWorkspaceHarnessClasspath
+    inputs.files(harnessClasspath)
+    outputs.file(classpathOutput)
+    doLast {
+        classpathOutput.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText(harnessClasspath.filter { it.exists() }.asPath)
+        }
+    }
 }

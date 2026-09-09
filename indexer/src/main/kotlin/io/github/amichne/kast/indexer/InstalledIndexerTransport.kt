@@ -1,6 +1,9 @@
 package io.github.amichne.kast.indexer
 
 import io.github.amichne.kast.runtime.composition.KastRuntimeDispatch
+import io.github.amichne.kast.kernel.Validation
+import io.github.amichne.kast.distribution.contract.WireRuntimeQualification
+import io.github.amichne.kast.distribution.contract.WirePeerQualification
 import java.io.IOException
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
@@ -11,11 +14,13 @@ import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.PosixFilePermissions
-import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.Semaphore
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.startCoroutine
 
 enum class IndexerTransportFailure {
     SOCKET_PARENT_UNAVAILABLE,
@@ -40,6 +45,7 @@ sealed interface IndexerEndpointPreparation {
 class PreparedIndexerEndpoint private constructor(
     internal val options: IndexerLaunchOptions,
     val stateDirectory: Path,
+    internal val route: IndexerSocketRoute,
 ) {
     companion object {
         /**
@@ -52,10 +58,11 @@ class PreparedIndexerEndpoint private constructor(
          */
         fun prepare(options: IndexerLaunchOptions): IndexerEndpointPreparation {
             val socketPath = options.socketPath
-            val socketParent = socketPath.parent
-                ?: return IndexerEndpointPreparation.Rejected(
-                    IndexerTransportFailure.SOCKET_PARENT_UNAVAILABLE,
-                )
+            val route = when (val admission = IndexerSocketRoute.prepare(socketPath)) {
+                is Validation.Validated -> admission.value
+                is Validation.Rejected -> return IndexerEndpointPreparation.Rejected(IndexerTransportFailure.SOCKET_PARENT_UNAVAILABLE)
+            }
+            val socketParent = route.physical.parent
             val canonicalStateParent = try {
                 Files.createDirectories(socketParent)
                 Files.setPosixFilePermissions(
@@ -85,13 +92,15 @@ class PreparedIndexerEndpoint private constructor(
                     IndexerTransportFailure.STATE_DIRECTORY_UNAVAILABLE,
                 )
             }
+            if (route.validate() is Validation.Rejected)
+                return IndexerEndpointPreparation.Rejected(IndexerTransportFailure.SOCKET_PARENT_UNAVAILABLE)
             when (admitSocketPath(socketPath)) {
                 SocketPathAdmission.Available -> Unit
                 SocketPathAdmission.Occupied -> return IndexerEndpointPreparation.Rejected(
                     IndexerTransportFailure.SOCKET_PATH_OCCUPIED,
                 )
             }
-            when (retireEndpointDescriptor(socketPath.endpointDescriptorPath())) {
+            when (retireEndpointDescriptor(route.physical.endpointDescriptorPath())) {
                 EndpointDescriptorRetirement.Retired -> Unit
                 EndpointDescriptorRetirement.Rejected ->
                     return IndexerEndpointPreparation.Rejected(
@@ -99,7 +108,7 @@ class PreparedIndexerEndpoint private constructor(
                     )
             }
             return IndexerEndpointPreparation.Prepared(
-                PreparedIndexerEndpoint(options, stateDirectory),
+                PreparedIndexerEndpoint(options, stateDirectory, route),
             )
         }
     }
@@ -120,9 +129,20 @@ enum class IndexerConnectionFailure {
     INVALID_REQUEST_FRAME,
     DISPATCH_REJECTED,
     RESPONSE_WRITE_FAILED,
+    CONNECTION_CAPACITY_EXCEEDED,
+    FRAME_READ_DEADLINE_EXCEEDED,
+    FRAME_WRITE_DEADLINE_EXCEEDED,
+    SEMANTIC_LANE_BUSY,
+    DISPATCH_DEADLINE_EXCEEDED,
+    REQUEST_CANCELLED,
+    RECOVERY_REQUIRED,
+    TRANSPORT_CLOSED,
+    PEER_QUALIFICATION_REJECTED,
 }
 
 sealed interface IndexerConnectionHandling {
+    /** Admission owns the channel until a worker emits its terminal observation. */
+    data object Admitted : IndexerConnectionHandling
     data object Served : IndexerConnectionHandling
 
     data class Rejected(
@@ -133,61 +153,149 @@ sealed interface IndexerConnectionHandling {
 /** Bound exact-root ready transport carrying its already-created runtime host. */
 class InstalledIndexerTransport private constructor(
     private val server: ServerSocketChannel,
-    private val socketPath: Path,
-    private val descriptorPath: Path,
-    private val host: KastIndexerHost,
+    private val route: IndexerSocketRoute,
+    private val socket: IndexerOwnedFile,
+    private val descriptor: IndexerOwnedFile,
+    host: KastIndexerHost,
+    private val policy: IndexerRequestPolicy,
+    private val activity: IndexerRequestActivitySink,
+    private val authority: IndexerWireAuthority,
 ) : AutoCloseable {
     private val closed = AtomicBoolean(false)
     private val shutdownHookRegistered = AtomicBoolean(false)
     private val shutdownHook = Thread(::close, "kast-indexer-transport-shutdown")
+    private val capacity = Semaphore(policy.connections.value)
+    private val connections = ConcurrentHashMap.newKeySet<SocketChannel>()
+    private val workers = ThreadPoolExecutor(
+        policy.connections.value, policy.connections.value, 0L, TimeUnit.MILLISECONDS,
+        ArrayBlockingQueue(policy.connections.value),
+        Thread.ofPlatform().name("kast-indexer-connection-", 0).daemon(true).inheritInheritableThreadLocals(false).factory(),
+    )
+    private val semantic = IndexerSemanticLane(host, policy, activity)
 
     /**
      * Proof transition: `one accepted socket -> IndexerConnectionHandling`.
      *
-     * Establishes zero or more bounded request/response exchanges through the host captured at
-     * activation. [IndexerConnectionFailure] is the closed expected failure. Raw documents may
-     * cross only the frame codec and [KastIndexerHost].
+     * Establishes bounded admission independently of request framing and semantic execution.
+     * The admitted worker owns its channel until terminal activity; no incomplete client holds
+     * the accept thread. Raw documents cross only the frame codec and [KastIndexerHost].
      */
     fun serveNext(): IndexerConnectionHandling {
+        if (closed.get()) return rejected(IndexerConnectionFailure.TRANSPORT_CLOSED)
         val channel = try {
             server.accept()
         } catch (_: IOException) {
-            return IndexerConnectionHandling.Rejected(IndexerConnectionFailure.ACCEPT_FAILED)
+            return rejected(if (closed.get()) IndexerConnectionFailure.TRANSPORT_CLOSED else IndexerConnectionFailure.ACCEPT_FAILED)
         }
-        return channel.use(::serveFrames)
+        if (closed.get() || !capacity.tryAcquire()) {
+            channel.close()
+            observe(IndexerRequestStage.CONNECTION_ADMISSION, IndexerRequestOutcome.CAPACITY_EXCEEDED)
+            return rejected(if (closed.get()) IndexerConnectionFailure.TRANSPORT_CLOSED else IndexerConnectionFailure.CONNECTION_CAPACITY_EXCEEDED)
+        }
+        connections.add(channel)
+        try {
+            workers.execute {
+                try {
+                    channel.use { connection ->
+                        if (!closed.get()) serveFrames(connection)
+                    }
+                } finally {
+                    connections.remove(channel)
+                    capacity.release()
+                }
+            }
+        } catch (_: RejectedExecutionException) {
+            connections.remove(channel)
+            capacity.release()
+            channel.close()
+            observe(IndexerRequestStage.CONNECTION_ADMISSION, IndexerRequestOutcome.REJECTED)
+            return rejected(IndexerConnectionFailure.TRANSPORT_CLOSED)
+        }
+        observe(IndexerRequestStage.CONNECTION_ADMISSION, IndexerRequestOutcome.COMPLETED)
+        return IndexerConnectionHandling.Admitted
     }
 
     private fun serveFrames(connection: SocketChannel): IndexerConnectionHandling {
-        while (true) {
-            val request = when (val frame = IndexerWireFrameCodec.read(connection)) {
-                is IndexerFrameRead.Received -> frame.document
-                IndexerFrameRead.EndOfStream -> return IndexerConnectionHandling.Served
-                IndexerFrameRead.Rejected -> return IndexerConnectionHandling.Rejected(
-                    IndexerConnectionFailure.INVALID_REQUEST_FRAME,
-                )
-            }
-            when (val dispatch = awaitDispatch { host.dispatch(request) }) {
-                is KastRuntimeDispatch.Responded -> when (
-                    IndexerWireFrameCodec.write(connection, dispatch.document)
-                ) {
-                    IndexerFrameWrite.Written -> Unit
-                    IndexerFrameWrite.Rejected -> return IndexerConnectionHandling.Rejected(
-                        IndexerConnectionFailure.RESPONSE_WRITE_FAILED,
-                    )
+        val input = IndexerConnectionInput(connection)
+        when (val selected = authority) {
+            IndexerWireAuthority.Fixture -> Unit
+            is IndexerWireAuthority.Installed -> {
+                val request = IndexerWireFrameCodec.read(connection, policy.frameRead, input)
+                if (request !is IndexerFrameRead.Received ||
+                    WireRuntimeQualification.admitRequest(request.document, selected.identity) != WirePeerQualification.QUALIFIED) {
+                    observe(IndexerRequestStage.PEER_QUALIFICATION, IndexerRequestOutcome.REJECTED)
+                    return rejected(IndexerConnectionFailure.PEER_QUALIFICATION_REJECTED)
                 }
-                is KastRuntimeDispatch.Rejected -> return IndexerConnectionHandling.Rejected(
-                    IndexerConnectionFailure.DISPATCH_REJECTED,
-                )
+                if (IndexerWireFrameCodec.write(connection, WireRuntimeQualification.response(selected.identity),
+                        policy.frameWrite) != IndexerFrameWrite.Written) {
+                    observe(IndexerRequestStage.PEER_QUALIFICATION, IndexerRequestOutcome.REJECTED)
+                    return rejected(IndexerConnectionFailure.PEER_QUALIFICATION_REJECTED)
+                }
+                observe(IndexerRequestStage.PEER_QUALIFICATION, IndexerRequestOutcome.COMPLETED)
             }
         }
+        while (!closed.get()) {
+            observe(IndexerRequestStage.FRAME_READ, IndexerRequestOutcome.STARTED)
+            val request = when (val frame = IndexerWireFrameCodec.read(connection, policy.frameRead, input)) {
+                is IndexerFrameRead.Received -> {
+                    observe(IndexerRequestStage.FRAME_READ, IndexerRequestOutcome.COMPLETED)
+                    frame.document
+                }
+                IndexerFrameRead.EndOfStream -> {
+                    observe(IndexerRequestStage.FRAME_READ, IndexerRequestOutcome.COMPLETED)
+                    return IndexerConnectionHandling.Served
+                }
+                IndexerFrameRead.Rejected -> {
+                    observe(IndexerRequestStage.FRAME_READ, IndexerRequestOutcome.REJECTED)
+                    return rejected(IndexerConnectionFailure.INVALID_REQUEST_FRAME)
+                }
+                IndexerFrameRead.TimedOut -> {
+                    observe(IndexerRequestStage.FRAME_READ, IndexerRequestOutcome.DEADLINE_EXCEEDED)
+                    return rejected(IndexerConnectionFailure.FRAME_READ_DEADLINE_EXCEEDED)
+                }
+            }
+            val dispatch = when (val execution = semantic.dispatch(request, input)) {
+                is IndexerSemanticExecution.Completed -> execution.dispatch
+                IndexerSemanticExecution.Busy -> return rejected(IndexerConnectionFailure.SEMANTIC_LANE_BUSY)
+                IndexerSemanticExecution.DeadlineExceeded -> return rejected(IndexerConnectionFailure.DISPATCH_DEADLINE_EXCEEDED)
+                IndexerSemanticExecution.Cancelled -> return rejected(IndexerConnectionFailure.REQUEST_CANCELLED)
+                IndexerSemanticExecution.Rejected -> return rejected(IndexerConnectionFailure.DISPATCH_REJECTED)
+                IndexerSemanticExecution.RecoveryRequired -> return rejected(IndexerConnectionFailure.RECOVERY_REQUIRED)
+            }
+            when (dispatch) {
+                is KastRuntimeDispatch.Responded -> {
+                    observe(IndexerRequestStage.FRAME_WRITE, IndexerRequestOutcome.STARTED)
+                    when (IndexerWireFrameCodec.write(connection, dispatch.document, policy.frameWrite)) {
+                        IndexerFrameWrite.Written -> observe(IndexerRequestStage.FRAME_WRITE, IndexerRequestOutcome.COMPLETED)
+                        IndexerFrameWrite.Rejected -> {
+                            observe(IndexerRequestStage.FRAME_WRITE, IndexerRequestOutcome.REJECTED)
+                            return rejected(IndexerConnectionFailure.RESPONSE_WRITE_FAILED)
+                        }
+                        IndexerFrameWrite.TimedOut -> {
+                            observe(IndexerRequestStage.FRAME_WRITE, IndexerRequestOutcome.DEADLINE_EXCEEDED)
+                            return rejected(IndexerConnectionFailure.FRAME_WRITE_DEADLINE_EXCEEDED)
+                        }
+                    }
+                }
+                is KastRuntimeDispatch.Rejected -> return rejected(IndexerConnectionFailure.DISPATCH_REJECTED)
+            }
+        }
+        return rejected(IndexerConnectionFailure.TRANSPORT_CLOSED)
     }
 
-    fun serve(): Nothing {
-        while (true) serveNext()
+    fun serve() {
+        while (!closed.get()) {
+            val admission = serveNext()
+            if (admission is IndexerConnectionHandling.Rejected && admission.failure == IndexerConnectionFailure.ACCEPT_FAILED) {
+                close()
+                return
+            }
+        }
     }
 
     override fun close() {
         if (!closed.compareAndSet(false, true)) return
+        observe(IndexerRequestStage.TRANSPORT_CLOSE, IndexerRequestOutcome.STARTED)
         if (shutdownHookRegistered.compareAndSet(true, false)) {
             try {
                 Runtime.getRuntime().removeShutdownHook(shutdownHook)
@@ -200,8 +308,24 @@ class InstalledIndexerTransport private constructor(
         try {
             server.close()
         } finally {
-            deleteEndpointDescriptor(descriptorPath)
-            deleteOwnedSocket(socketPath)
+            connections.forEach { connection -> try { connection.close() } catch (_: IOException) { } }
+            connections.clear()
+            workers.shutdownNow()
+            val retirement = semantic.close()
+            val interrupted = Thread.interrupted()
+            val workersRetired = try { workers.awaitTermination(policy.retirement.value, TimeUnit.MILLISECONDS) }
+                catch (_: InterruptedException) { Thread.currentThread().interrupt(); false }
+                finally { if (interrupted) Thread.currentThread().interrupt() }
+            if (retirement == IndexerSemanticRetirement.PROVEN && workersRetired && route.validate() is Validation.Validated) {
+                val descriptorRetirement = descriptor.retire()
+                val socketRetirement = socket.retire()
+                observe(IndexerRequestStage.TRANSPORT_CLOSE,
+                    if (descriptorRetirement == IndexerArtifactRetirement.PROVEN && socketRetirement == IndexerArtifactRetirement.PROVEN)
+                        IndexerRequestOutcome.COMPLETED else IndexerRequestOutcome.RECOVERY_REQUIRED)
+            } else {
+                // A closed listening channel is not proof of retired semantic work or worker ownership.
+                observe(IndexerRequestStage.TRANSPORT_CLOSE, IndexerRequestOutcome.RECOVERY_REQUIRED)
+            }
         }
     }
 
@@ -227,8 +351,13 @@ class InstalledIndexerTransport private constructor(
         fun activate(
             prepared: PreparedIndexerEndpoint,
             host: KastIndexerHost,
+            policy: IndexerRequestPolicy = IndexerRequestPolicy.Default,
+            activity: IndexerRequestActivitySink = IndexerRequestActivitySink.StandardError,
+            authority: IndexerWireAuthority,
         ): IndexerTransportActivation {
             val socketPath = prepared.options.socketPath
+            if (prepared.route.validate() is Validation.Rejected)
+                return IndexerTransportActivation.Rejected(IndexerTransportFailure.SOCKET_PARENT_UNAVAILABLE)
             when (admitSocketPath(socketPath)) {
                 SocketPathAdmission.Available -> Unit
                 SocketPathAdmission.Occupied -> return IndexerTransportActivation.Rejected(
@@ -252,46 +381,69 @@ class InstalledIndexerTransport private constructor(
                     IndexerTransportFailure.SOCKET_BIND_FAILED,
                 )
             }
+            if (prepared.route.validate() is Validation.Rejected) {
+                server.close()
+                return IndexerTransportActivation.Rejected(IndexerTransportFailure.SOCKET_PARENT_UNAVAILABLE)
+            }
+            val ownedSocket = when (val captured = IndexerOwnedFile.capture(prepared.route.physical)) {
+                is Validation.Validated -> captured.value
+                is Validation.Rejected -> {
+                    server.close()
+                    return IndexerTransportActivation.Rejected(IndexerTransportFailure.SOCKET_BIND_FAILED)
+                }
+            }
             try {
                 Files.setPosixFilePermissions(
-                    socketPath,
+                    prepared.route.physical,
                     PosixFilePermissions.fromString("rw-------"),
                 )
             } catch (_: IOException) {
                 server.close()
-                deleteOwnedSocket(socketPath)
+                ownedSocket.retire()
                 return IndexerTransportActivation.Rejected(
                     IndexerTransportFailure.SOCKET_BIND_FAILED,
                 )
             } catch (_: UnsupportedOperationException) {
                 server.close()
-                deleteOwnedSocket(socketPath)
+                ownedSocket.retire()
                 return IndexerTransportActivation.Rejected(
                     IndexerTransportFailure.SOCKET_BIND_FAILED,
                 )
             } catch (_: SecurityException) {
                 server.close()
-                deleteOwnedSocket(socketPath)
+                ownedSocket.retire()
                 return IndexerTransportActivation.Rejected(
                     IndexerTransportFailure.SOCKET_BIND_FAILED,
                 )
             }
             val descriptor = when (
-                val publication = publishEndpointDescriptor(prepared.options)
+                val publication = publishEndpointDescriptor(prepared.options, prepared.route.physical)
             ) {
                 is EndpointDescriptorPublication.Published -> publication.path
                 EndpointDescriptorPublication.Rejected -> {
                     try {
                         server.close()
                     } finally {
-                        deleteOwnedSocket(socketPath)
+                        ownedSocket.retire()
                     }
                     return IndexerTransportActivation.Rejected(
                         IndexerTransportFailure.ENDPOINT_DESCRIPTOR_UNAVAILABLE,
                     )
                 }
             }
-            val transport = InstalledIndexerTransport(server, socketPath, descriptor, host)
+            val ownedDescriptor = when (val captured = IndexerOwnedFile.capture(descriptor)) {
+                is Validation.Validated -> captured.value
+                is Validation.Rejected -> {
+                    server.close()
+                    ownedSocket.retire()
+                    return IndexerTransportActivation.Rejected(IndexerTransportFailure.ENDPOINT_DESCRIPTOR_UNAVAILABLE)
+                }
+            }
+            if (prepared.route.validate() is Validation.Rejected) {
+                server.close()
+                return IndexerTransportActivation.Rejected(IndexerTransportFailure.SOCKET_PARENT_UNAVAILABLE)
+            }
+            val transport = InstalledIndexerTransport(server, prepared.route, ownedSocket, ownedDescriptor, host, policy, activity, authority)
             if (!transport.installShutdownHook()) {
                 transport.close()
                 return IndexerTransportActivation.Rejected(
@@ -301,6 +453,8 @@ class InstalledIndexerTransport private constructor(
             return IndexerTransportActivation.Activated(transport)
         }
     }
+
+    private fun observe(stage: IndexerRequestStage, outcome: IndexerRequestOutcome) = activity.observe(IndexerRequestActivity(stage, outcome))
 }
 
 private sealed interface SocketPathAdmission {
@@ -375,29 +529,4 @@ private fun socketReachability(path: Path): SocketReachability = try {
     SocketReachability.Unreachable
 }
 
-private fun deleteOwnedSocket(path: Path) {
-    try {
-        val attributes = Files.readAttributes(
-            path,
-            BasicFileAttributes::class.java,
-            LinkOption.NOFOLLOW_LINKS,
-        )
-        if (attributes.isOther) Files.deleteIfExists(path)
-    } catch (_: IOException) {
-    } catch (_: SecurityException) {
-    }
-}
-
-private fun awaitDispatch(block: suspend () -> KastRuntimeDispatch): KastRuntimeDispatch {
-    val completion = CompletableFuture<KastRuntimeDispatch>()
-    block.startCoroutine(
-        object : Continuation<KastRuntimeDispatch> {
-            override val context = EmptyCoroutineContext
-
-            override fun resumeWith(result: Result<KastRuntimeDispatch>) {
-                result.fold(completion::complete, completion::completeExceptionally)
-            }
-        },
-    )
-    return completion.join()
-}
+private fun rejected(failure: IndexerConnectionFailure): IndexerConnectionHandling = IndexerConnectionHandling.Rejected(failure)

@@ -51,11 +51,15 @@ class OpenTelemetryKastObservabilityTest {
         val telemetry = telemetry(capture)
         io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.entries.forEach(telemetry::observeWorkspaceReadiness)
         io.github.amichne.kast.kernel.KastWorkspaceRefreshOutcome.entries.forEach(telemetry::observeWorkspaceRefresh)
-        assertEquals(9, capture.spans.size)
+        assertEquals(io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.entries.size +
+            io.github.amichne.kast.kernel.KastWorkspaceRefreshOutcome.entries.size, capture.spans.size)
         capture.spans.forEach { span ->
             assertEquals(1, span.attributes.size())
             assertEquals(emptyList<io.opentelemetry.sdk.trace.data.EventData>(), span.events)
         }
+        val readiness = capture.spans.filter { it.name == "kast.workspace.readiness" }
+        assertEquals(io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.entries.map { it.name.lowercase() },
+            readiness.map { it.attributes.get(AttributeKey.stringKey("kast.workspace.readiness.outcome")) })
         val refresh = capture.spans.filter { it.name == "kast.workspace.refresh" }
         assertEquals(listOf("completed", "rejected", "interrupted"), refresh.map { it.attributes.get(AttributeKey.stringKey("kast.workspace.refresh.outcome")) })
         assertEquals(listOf(StatusCode.UNSET, StatusCode.ERROR, StatusCode.ERROR), refresh.map { it.status.statusCode })

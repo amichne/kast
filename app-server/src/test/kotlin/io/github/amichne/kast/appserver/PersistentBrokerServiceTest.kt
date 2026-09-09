@@ -20,6 +20,70 @@ import kotlin.concurrent.thread
 
 class PersistentBrokerServiceTest {
     @Test
+    fun `coordinator service admission does not require an enabled or available Codex host`(@TempDir temporary: Path) {
+        val fixture = installedFixture(temporary)
+        val result = BrokerServiceLaunchCommand.resolveCoordinator(fixture.kast, fixture.userHome,
+            mapOf("PATH" to "/usr/bin:/bin", "KAST_ENABLE_APP_SERVER" to "0"))
+        assertTrue(result is BrokerServiceLaunchCommandResolution.Resolved, result.toString())
+        assertFalse(Files.exists(fixture.kast.parent.parent.resolve("state")))
+    }
+
+    @Test
+    fun `installation lifecycle fence prevents launch inside service ownership lock`(@TempDir temporary: Path) {
+        val fixture = installedFixture(temporary)
+        val command = resolvedCommand(fixture)
+        Files.writeString(fixture.kast.parent.parent.resolve(".lifecycle-transition.json"), "{}")
+        var calls = 0
+        val host = MacOsPersistentBrokerServiceHost(launchctl = LaunchctlInvoker { _, _ ->
+            calls += 1
+            LaunchctlInvocation.Rejected
+        })
+        assertEquals(PersistentBrokerServiceAdmission.Rejected(PersistentBrokerServiceFailure.DISABLED), host.ensure(command))
+        assertEquals(0, calls)
+    }
+
+    @Test
+    fun `installation lifecycle fence blocks login bootstrap before enrollment or stopped marker mutation`(@TempDir temporary: Path) {
+        val fixture = installedFixture(temporary)
+        val root = fixture.kast.parent.parent
+        Files.writeString(root.resolve(".lifecycle-transition.json"), "{}")
+        val config = Files.createDirectories(root.resolve("config"))
+        Files.writeString(config.resolve("workspaces.json"), "invalid")
+        val stopped = Files.createDirectories(root.resolve("state/broker")).resolve("stopped")
+        Files.writeString(stopped, "stopped")
+        val manager = InstalledAppServerManager(fixture.kast, fixture.userHome, fixture.environment)
+        assertEquals(AppServerManagementResult.Rejected(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN),
+            manager.execute(AppServerAction.Bootstrap, fixture.userHome))
+        assertTrue(Files.exists(stopped))
+    }
+
+    @Test
+    fun `saved configuration disables persistent service without composing a runtime`(@TempDir temporary: Path) {
+        val fixture = installedFixture(temporary)
+        val saved = Files.writeString(temporary.toRealPath().resolve("environment"), "KAST_ENABLE_APP_SERVER=0\n")
+        assertEquals(
+            BrokerServiceLaunchCommandResolution.Rejected(PersistentBrokerServiceFailure.DISABLED),
+            BrokerServiceLaunchCommand.resolve(fixture.kast, fixture.userHome,
+                fixture.environment + ("KAST_CONFIGURATION_FILE" to saved.toString())),
+        )
+        assertTrue(!Files.exists(fixture.userHome.resolve(".codex")))
+    }
+
+    @Test
+    fun `two physical installations sharing a host home have disjoint service ownership`(@TempDir temporary: Path) {
+        val first = installedFixture(Files.createDirectory(temporary.resolve("first")))
+        val second = installedFixture(Files.createDirectory(temporary.resolve("second")))
+        val host = first.userHome.resolve(".codex")
+        val a = resolvedCommand(first.copy(environment = first.environment + ("CODEX_HOME" to host.toString())))
+        val b = resolvedCommand(second.copy(environment = second.environment + ("CODEX_HOME" to host.toString())))
+        assertNotEquals(a.stateDirectory, b.stateDirectory)
+        assertNotEquals(a.publicSocket, b.publicSocket)
+        assertNotEquals(a.serviceLabel, b.serviceLabel)
+        assertTrue(a.stateDirectory.startsWith(first.kast.parent.parent))
+        assertFalse(a.stateDirectory.startsWith(host))
+    }
+
+    @Test
     fun `explicit stop fences future startup before retiring the owned service`(@TempDir temporary: Path) {
         val command = resolvedCommand(installedFixture(temporary))
         var present = true
@@ -175,7 +239,7 @@ class PersistentBrokerServiceTest {
             mapOf("PATH" to links.toString()),
         ) as BrokerServiceLaunchCommandResolution.Resolved
 
-        assertEquals(tools.resolve("codex").toRealPath(), resolution.command.codex.path)
+        assertEquals(tools.resolve("codex").toRealPath(), (resolution.command.host as BrokerHostSelection.Selected).executable.path)
         assertEquals(
             links.toRealPath().toString(),
             resolution.command.executableSearchPath.value.substringBefore(':'),

@@ -13,6 +13,7 @@ class CliSidecarFilesystemEffectBoundaryTest {
         JvmClassName("io/github/amichne/kast/cli/IndexSeedFilesystemService"),
         JvmClassName("io/github/amichne/kast/cli/IndexSeedFilesystemServiceKt"),
         JvmClassName("io/github/amichne/kast/cli/InstalledSidecarRuntimeDemandKt"),
+        JvmClassName("io/github/amichne/kast/cli/PosixRuntimeEndpointArtifacts"),
         JvmClassName("io/github/amichne/kast/cli/SidecarCacheIdentityFile"),
         JvmClassName("io/github/amichne/kast/cli/SidecarCacheStateFile"),
         JvmClassName("io/github/amichne/kast/cli/bootstrap/SidecarBootstrapAttemptLock"),

@@ -16,6 +16,9 @@ import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifest
 import io.github.amichne.kast.distribution.managed.RuntimeStoreFailure
 import io.github.amichne.kast.distribution.managed.SemanticRuntimeResolution
+import io.github.amichne.kast.distribution.managed.endpoint.InstalledEndpointAliasReceipt
+import io.github.amichne.kast.distribution.managed.endpoint.InstalledEndpointAliases
+import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.net.StandardProtocolFamily
@@ -32,43 +35,56 @@ import java.util.HexFormat
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 
-/** An exact-root UDS endpoint. */
+/** An exact-root UDS endpoint, retaining its physical location and optional alias receipt. */
 class RuntimeEndpoint private constructor(
     val root: CanonicalRoot,
     val runtimeId: SemanticRuntimeId,
     internal val socketPath: Path,
+    internal val physicalSocketPath: Path,
+    internal val route: RuntimeSocketRoute,
 ) {
-    override fun equals(other: Any?): Boolean =
-        other is RuntimeEndpoint &&
-        root == other.root && runtimeId == other.runtimeId && socketPath == other.socketPath
+    override fun equals(other: Any?): Boolean = other is RuntimeEndpoint &&
+        root == other.root && runtimeId == other.runtimeId && socketPath == other.socketPath &&
+        physicalSocketPath == other.physicalSocketPath
+    override fun hashCode(): Int = 31 * (31 * root.hashCode() + runtimeId.hashCode()) + socketPath.hashCode()
 
-    override fun hashCode(): Int =
-        31 * (31 * root.hashCode() + runtimeId.hashCode()) + socketPath.hashCode()
+    internal fun prepareTransport(): RuntimeEndpointResolution = PosixRuntimeEndpointArtifacts.prepareTransport(this)
+    internal fun observeTransport(): RuntimeEndpointResolution = PosixRuntimeEndpointArtifacts.observeTransport(this)
+    internal fun canonicalTransport(): RuntimeEndpointResolution =
+        if (socketPath != physicalSocketPath) rejected()
+        else RuntimeEndpointResolution.Resolved(RuntimeEndpoint(root, runtimeId, socketPath, physicalSocketPath, RuntimeSocketRoute.Canonical))
+
+    internal fun admittedAlias(receipt: InstalledEndpointAliasReceipt): RuntimeEndpointResolution =
+        if (receipt.physicalDirectory != physicalSocketPath.parent || receipt.alias != socketPath.parent) rejected()
+        else RuntimeEndpointResolution.Resolved(RuntimeEndpoint(root, runtimeId, socketPath, physicalSocketPath,
+            RuntimeSocketRoute.Aliased(receipt)))
+
+    internal fun withFileName(name: String, runtime: SemanticRuntimeId): RuntimeEndpointResolution =
+        RuntimeEndpointResolution.Resolved(RuntimeEndpoint(root, runtime, socketPath.resolveSibling(name),
+            physicalSocketPath.resolveSibling(name), route))
+
+    private fun rejected() = RuntimeEndpointResolution.Rejected(RuntimeEndpointFailure.INVALID_SOCKET_PATH)
 
     companion object {
-        /**
-         * Proof transition: `CanonicalRoot + SemanticRuntimeId + Path ->
-         * RuntimeEndpointResolution`.
-         *
-         * Establishes an absolute normalized socket endpoint bound to the exact canonical root.
-         * [RuntimeEndpointFailure] is the closed expected failure. The raw socket path may be
-         * extracted only by the process and UDS adapters.
-         */
-        fun at(
-            root: CanonicalRoot,
-            runtimeId: SemanticRuntimeId,
-            socket: Path,
-        ): RuntimeEndpointResolution {
-            if (!socket.isAbsolute) {
-                return RuntimeEndpointResolution.Rejected(
-                    RuntimeEndpointFailure.INVALID_SOCKET_PATH,
-                )
+        fun at(root: CanonicalRoot, runtimeId: SemanticRuntimeId, socket: Path): RuntimeEndpointResolution {
+            if (!socket.isAbsolute || socket.normalize() != socket) return RuntimeEndpointResolution.Rejected(RuntimeEndpointFailure.INVALID_SOCKET_PATH)
+            if (InstalledEndpointAliases.isReservedSocket(socket)) return when (val admission = InstalledEndpointAliases.observe(socket)) {
+                is Validation.Validated -> RuntimeEndpointResolution.Resolved(RuntimeEndpoint(root, runtimeId, socket,
+                    admission.value.physicalDirectory.resolve(socket.fileName), RuntimeSocketRoute.Aliased(admission.value)))
+                is Validation.Rejected -> RuntimeEndpointResolution.Rejected(RuntimeEndpointFailure.INVALID_SOCKET_PATH)
             }
-            return RuntimeEndpointResolution.Resolved(
-                RuntimeEndpoint(root, runtimeId, socket.normalize()),
-            )
+            return RuntimeEndpointResolution.Resolved(RuntimeEndpoint(root, runtimeId, socket, socket, RuntimeSocketRoute.Canonical))
         }
+
+        internal fun planned(root: CanonicalRoot, runtimeId: SemanticRuntimeId, socket: Path, physical: Path): RuntimeEndpointResolution =
+            RuntimeEndpointResolution.Resolved(RuntimeEndpoint(root, runtimeId, socket, physical, RuntimeSocketRoute.Planned))
     }
+}
+
+internal sealed interface RuntimeSocketRoute {
+    data object Canonical : RuntimeSocketRoute
+    data object Planned : RuntimeSocketRoute
+    data class Aliased(val receipt: InstalledEndpointAliasReceipt) : RuntimeSocketRoute
 }
 
 sealed interface RuntimeEndpointResolution {
@@ -98,37 +114,22 @@ fun interface RuntimeEndpointLocator {
     fun locate(root: CanonicalRoot): RuntimeEndpointResolution
 }
 
-/** A deterministic physical directory that leaves enough bytes for every derived UDS name. */
+/** The physical state directory is installation owned; a short alias is only a transport route. */
 internal class RuntimeSocketDirectory private constructor(
     internal val path: Path,
+    internal val physicalPath: Path,
 ) {
     companion object {
         internal const val MAXIMUM_ENDPOINT_PATH_BYTES = 103
+        internal fun from(logicalDirectory: InstalledRuntimeDirectory): RuntimeSocketDirectory =
+            installed(logicalDirectory.path.resolve("state/run"))
 
-        /**
-         * Proof transition: `InstalledRuntimeDirectory -> RuntimeSocketDirectory`.
-         *
-         * Maps an admitted logical runtime namespace into one fixed-length physical namespace.
-         * The complete endpoint shape is checked against macOS's Unix-domain address bound before
-         * this proof-carrying directory can reach a locator. Raw paths leave only at endpoint
-         * derivation and filesystem boundaries.
-         */
-        internal fun from(logicalDirectory: InstalledRuntimeDirectory): RuntimeSocketDirectory {
-            val namespace = sha256Prefix(logicalDirectory.path.toString(), DIGEST_BYTES)
-            val physical = PHYSICAL_SOCKET_ROOT.resolve("kast-runtime-$namespace")
-            val maximumEndpoint = physical.resolve(
-                "kast-${"0".repeat(ENDPOINT_TOKEN_CHARACTERS)}.sock",
-            )
-            check(
-                maximumEndpoint.toString().toByteArray(StandardCharsets.UTF_8).size <=
-                    MAXIMUM_ENDPOINT_PATH_BYTES,
-            )
-            return RuntimeSocketDirectory(physical)
+        internal fun installed(physicalRun: Path): RuntimeSocketDirectory {
+            val maximumEndpoint = physicalRun.resolve("kast-${"0".repeat(43)}.sock")
+            val transport = InstalledEndpointAliases.transportPath(maximumEndpoint)
+            check(transport.toString().toByteArray(StandardCharsets.UTF_8).size <= MAXIMUM_ENDPOINT_PATH_BYTES)
+            return RuntimeSocketDirectory(transport.parent, physicalRun)
         }
-
-        private val PHYSICAL_SOCKET_ROOT = Path.of("/tmp")
-        private const val DIGEST_BYTES = 12
-        private const val ENDPOINT_TOKEN_CHARACTERS = 43
     }
 }
 
@@ -142,11 +143,9 @@ internal class Sha256RuntimeEndpointLocator(
             "${root.path}\n${runtimeId.value}",
             ENDPOINT_DIGEST_BYTES,
         )
-        return RuntimeEndpoint.at(
-            root,
-            runtimeId,
+        return RuntimeEndpoint.planned(root, runtimeId,
             socketDirectory.path.resolve("kast-$digest.sock"),
-        )
+            socketDirectory.physicalPath.resolve("kast-$digest.sock"))
     }
 
     private companion object {
@@ -167,8 +166,6 @@ internal fun RuntimeEndpoint.forSidecarCache(
     ) {
         return RuntimeEndpointResolution.Rejected(RuntimeEndpointFailure.INVALID_SOCKET_PATH)
     }
-    val socketDirectory = socketPath.parent
-        ?: return RuntimeEndpointResolution.Rejected(RuntimeEndpointFailure.INVALID_SOCKET_PATH)
     val exactToken = Base64.getUrlEncoder().withoutPadding().encodeToString(
         MessageDigest.getInstance("SHA-256").digest(
             "$cacheIdentity\n${semanticRuntimeId.value}\n$physicalCacheRoot".toByteArray(
@@ -176,13 +173,7 @@ internal fun RuntimeEndpoint.forSidecarCache(
             ),
         ),
     )
-    return RuntimeEndpoint.at(
-        root,
-        semanticRuntimeId,
-        socketDirectory.resolve(
-            "kast-$exactToken.sock",
-        ),
-    )
+    return withFileName("kast-$exactToken.sock", semanticRuntimeId)
 }
 
 private fun sha256Prefix(value: String, bytes: Int): String = HexFormat.of().formatHex(
@@ -239,6 +230,7 @@ class IndexerLaunchCommand private constructor(
     internal val arguments: List<String>,
     internal val runtime: InstalledIdeRuntime,
     internal val importEnvironment: GradleImportEnvironment,
+    internal val sidecarEnvironment: SidecarEnvironmentInputs,
     internal val startupLog: Path,
     internal val bootstrapState: Path,
     internal val bootstrapAttemptId: SemanticRuntimeBootstrapAttemptId,
@@ -283,6 +275,7 @@ class IndexerLaunchCommand private constructor(
                     ),
                     runtime = context.runtime,
                     importEnvironment = context.importEnvironment,
+                    sidecarEnvironment = context.sidecarEnvironment,
                     startupLog = context.logDirectory.resolve("startup.log"),
                     bootstrapState = context.cacheRoot.resolve(
                         SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME,
@@ -336,6 +329,10 @@ sealed interface RuntimeEndpointReachability {
 /** Proves endpoint reachability by completing a native UDS connection. */
 object JdkUnixDomainEndpointProbe : RuntimeEndpointProbe {
     override fun probe(endpoint: RuntimeEndpoint): RuntimeEndpointReachability {
+        val admitted = when (val admission = endpoint.observeTransport()) {
+            is RuntimeEndpointResolution.Resolved -> admission.endpoint
+            is RuntimeEndpointResolution.Rejected -> return RuntimeEndpointReachability.Unreachable
+        }
         val channel = try {
             SocketChannel.open(StandardProtocolFamily.UNIX)
         } catch (_: IOException) {
@@ -345,8 +342,11 @@ object JdkUnixDomainEndpointProbe : RuntimeEndpointProbe {
         }
         return channel.use { socket ->
             try {
-                socket.connect(UnixDomainSocketAddress.of(endpoint.socketPath))
-                RuntimeEndpointReachability.Reachable
+                socket.connect(UnixDomainSocketAddress.of(admitted.socketPath))
+                when (admitted.observeTransport()) {
+                    is RuntimeEndpointResolution.Resolved -> RuntimeEndpointReachability.Reachable
+                    is RuntimeEndpointResolution.Rejected -> RuntimeEndpointReachability.Unreachable
+                }
             } catch (_: IOException) {
                 RuntimeEndpointReachability.Unreachable
             } catch (_: SecurityException) {
@@ -360,6 +360,9 @@ sealed interface RuntimeAdmission {
     data class Ready(
         val endpoint: RuntimeEndpoint,
         val removed: Set<RuntimeEndpointArtifact> = emptySet(),
+        val workerBinding: io.github.amichne.kast.appserver.WorkerRouteBinding = io.github.amichne.kast.appserver.WorkerRouteBinding.EffectBoundary,
+        val deadline: RuntimeInvocationDeadline = RuntimeInvocationDeadline.EffectBoundary,
+        val wireAuthority: RuntimeWireAuthority = RuntimeWireAuthority.EffectBoundary,
     ) : RuntimeAdmission
 
     data class Rejected(
@@ -368,6 +371,7 @@ sealed interface RuntimeAdmission {
 }
 
 sealed interface RuntimeAdmissionFailure {
+    data class WorkerControlRejected(val failure: io.github.amichne.kast.appserver.WorkerControlFailure) : RuntimeAdmissionFailure
     data class GradleImportEnvironmentRejected(val failure: GradleImportEnvironmentFailure) : RuntimeAdmissionFailure
     data object ManifestInvalid : RuntimeAdmissionFailure
     data object SourceInvalid : RuntimeAdmissionFailure
@@ -437,6 +441,7 @@ internal fun RuntimeAdmissionFailure.outputReason(): String = when (this) {
     }
     is RuntimeAdmissionFailure.IntellijBootstrap -> state.failure.wireName
     RuntimeAdmissionFailure.ProcessObservationFailed -> "process-observation-failed"
+    is RuntimeAdmissionFailure.WorkerControlRejected -> "worker-control-${failure.name.lowercase().replace('_', '-')}"
     RuntimeAdmissionFailure.EndpointUnavailable -> "endpoint-unavailable"
     RuntimeAdmissionFailure.RuntimeIdentityMismatch -> "runtime-identity-mismatch"
     RuntimeAdmissionFailure.LegacySidecarActive -> "legacy-sidecar-active"
@@ -511,6 +516,7 @@ internal class RuntimeBootstrapProcessQuery private constructor(
     internal val endpoint: RuntimeEndpoint,
     internal val executable: IndexerExecutable,
     internal val bootstrapState: Path,
+    internal val maxHeap: io.github.amichne.kast.distribution.contract.IndexerHeapSize,
 ) {
     companion object {
         internal fun from(
@@ -521,6 +527,7 @@ internal class RuntimeBootstrapProcessQuery private constructor(
             endpoint,
             executable,
             launchContext.cacheRoot.resolve(SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME),
+            launchContext.maxHeap,
         )
     }
 }
@@ -561,10 +568,14 @@ internal class ExactRootProcessRuntimeDemander(
         if (endpoint.root != root) {
             return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
         }
+        val preparedEndpoint = when (val admission = endpoint.prepareTransport()) {
+            is RuntimeEndpointResolution.Resolved -> admission.endpoint
+            is RuntimeEndpointResolution.Rejected -> return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
+        }
         return when (val execution = SidecarBootstrapAttemptLock.withAcquired(
             launchContext.cacheRoot,
             RUNTIME_STARTUP_TIMEOUT,
-        ) { demandExclusively(root, endpoint) }) {
+        ) { demandExclusively(root, preparedEndpoint) }) {
             is SidecarBootstrapAttemptLockExecution.Executed -> execution.value
             SidecarBootstrapAttemptLockExecution.Interrupted -> RuntimeAdmission.Rejected(
                 RuntimeAdmissionFailure.Interrupted,

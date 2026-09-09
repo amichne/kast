@@ -69,7 +69,7 @@ class CodexHostExecutableTest {
             BrokerServiceLaunchCommandResolution.Resolved::class.java,
             resolution,
         ).command
-        assertEquals(upstream, command.codex.path)
+        assertEquals(upstream, (command.host as BrokerHostSelection.Selected).executable.path)
     }
 
     @Test

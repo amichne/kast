@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Routine CI: build, unit/contract tests, architecture, and packaging smoke."""
+"""Routine CI: build, unit/contract tests, architecture, packaging and required installed semantics."""
 from pathlib import Path
 import os
 import subprocess
@@ -16,6 +16,7 @@ def run(command: list[str], environment: dict[str, str]) -> None:
 def main() -> None:
     environment = os.environ.copy()
     environment["JAVA_HOME"] = environment["KAST_RELEASE_JDK_25"]
+    environment.setdefault("KAST_ACCEPTANCE_PROFILE", "ci-small")
     sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     run([
         "bash", ".github/scripts/release/admit-source.sh",

@@ -66,3 +66,13 @@ distributions.main {
         }
     }
 }
+
+// Final pure projection assembles declarations with values from protocol and broker owners.
+tasks.register<support.tasks.WriteJavaProcessOutputTask>("generateConfigurationCatalogue") {
+    group = "build"
+    description = "Generates the installed configuration schema from typed owner declarations."
+    dependsOn(tasks.named("classes"))
+    classpath.from(sourceSets.main.get().runtimeClasspath)
+    mainClass.set("io.github.amichne.kast.cli.InstalledConfigurationSchema")
+    outputFile.set(layout.buildDirectory.file("generated/configuration/configuration-schema.json"))
+}

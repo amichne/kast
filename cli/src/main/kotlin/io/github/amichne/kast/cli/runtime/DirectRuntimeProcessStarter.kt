@@ -14,7 +14,7 @@ internal object JdkRuntimeProcessStarter : RuntimeProcessStarter {
      */
     override fun start(command: IndexerLaunchCommand): RuntimeProcessStart {
         val environment = when (
-            val resolution = MacOsRuntimeProcessEnvironment.resolve(command.runtime, command.importEnvironment)
+            val resolution = MacOsRuntimeProcessEnvironment.resolve(command.runtime, command.importEnvironment, command.sidecarEnvironment.processVariables())
         ) {
             is MacOsRuntimeProcessEnvironmentResolution.Resolved -> resolution.environment
             is MacOsRuntimeProcessEnvironmentResolution.Rejected ->

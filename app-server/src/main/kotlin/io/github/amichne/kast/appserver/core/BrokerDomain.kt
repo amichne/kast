@@ -1,6 +1,8 @@
 package io.github.amichne.kast.appserver.core
 
 import io.github.amichne.kast.kernel.Refinement
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -133,7 +135,7 @@ internal class BrokerInvocationContext private constructor(
     val workingDirectory: CanonicalBrokerDirectory,
 ) {
     val invocationId: String
-        get() = "${threadId.value}:${turnId.value}:${callId.value}"
+        get() = JsonArray(listOf(threadId.value, turnId.value, callId.value).map(::JsonPrimitive)).toString()
 
     companion object {
         internal fun admit(

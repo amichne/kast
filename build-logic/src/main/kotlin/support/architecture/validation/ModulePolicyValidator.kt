@@ -367,8 +367,8 @@ private object ModuleRoleBoundaries {
             role,
             ModuleCost.RUNTIME_ORCHESTRATION,
             ModuleRoleConvention.INDEXER_HOST,
-            setOf(ModuleRole.COMPOSITION, ModuleRole.FILESYSTEM_WRITE_ADAPTER),
-            setOf(ModuleCost.RUNTIME_ORCHESTRATION, ModuleCost.PHYSICAL_EFFECT),
+            setOf(ModuleRole.COMPOSITION, ModuleRole.CONTRACT, ModuleRole.FILESYSTEM_WRITE_ADAPTER),
+            setOf(ModuleCost.RUNTIME_ORCHESTRATION, ModuleCost.HOST_NEUTRAL, ModuleCost.PHYSICAL_EFFECT),
             allowedEffects = setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,
                 ForbiddenEffect.FILESYSTEM_WRITE,

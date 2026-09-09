@@ -1,15 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ $# == 0 ]]; then
+  exec python3 "$(dirname "$0")/run-installed-product.py"
+fi
+[[ $# == 10 && "$1" == --isolated-fixture && "$3" == --product && "$5" == --control-archive &&
+   "$7" == --runtime-archive && "$9" == --report-directory ]] || exit 2
+fixture="$2"
+[[ "$HOME" == "$fixture/home" && "$KAST_RUNTIME_DIRECTORY" == "$fixture/product/state/run" ]] || exit 1
+
 fail() {
   printf 'installed-product: %s\n' "$*" >&2
   exit 1
 }
 
-product_root="${KAST_INSTALLED_PRODUCT:?KAST_INSTALLED_PRODUCT must name the staged product}"
-control_archive="${KAST_CONTROL_ARCHIVE:?KAST_CONTROL_ARCHIVE must name the control archive}"
-runtime_archive="${KAST_SEMANTIC_RUNTIME_ARCHIVE:?sidecar archive is required}"
-report_directory="${KAST_INSTALLED_REPORT_DIRECTORY:?report directory is required}"
+# Artifact paths belong to the harness invocation, never the production process environment.
+product_root="$4"
+control_archive="$6"
+runtime_archive="$8"
+report_directory="${10}"
 kast="${product_root}/bin/kast"
 
 [[ -x "$kast" ]] || fail "staged public command is missing"
@@ -41,28 +50,19 @@ grep -Fxq 'kast-indexer' < <(unzip -Z1 "$runtime_archive") ||
 grep -Eq '^private-plugins/kast-indexer/lib/.+' < <(unzip -Z1 "$runtime_archive") ||
   fail "private sidecar extension is missing"
 
-fixture="$(mktemp -d "${TMPDIR:-/tmp}/kast-sidecar-product.XXXXXX")"
-runtime_directory="$fixture/runtime"
-runtime_socket_directory="/tmp/kast-runtime-$(
-  printf '%s' "$runtime_directory" \
-    | sed -E 's:/+:/:g' \
-    | shasum -a 256 \
-    | awk '{ print substr($1, 1, 24) }'
-)"
-cleanup() {
-  rm -rf -- "$fixture"
-  rm -rf -- "$runtime_socket_directory"
-}
-trap cleanup EXIT
-mkdir -p "$fixture/home" "$fixture/runtime" "$fixture/repo"
+runtime_directory="$KAST_RUNTIME_DIRECTORY"
+runtime_socket_directory="$runtime_directory"
+# The Python owner removes only its exclusive fixture after successful validation.
+# A failed passive check retains evidence, including any unexpected socket state.
+mkdir -p "$fixture/repo"
 printf 'rootProject.name = "installed-product"\n' >"$fixture/repo/settings.gradle.kts"
 command_environment=(
   "HOME=$fixture/home"
   "JAVA_OPTS=-Duser.home=$fixture/home"
   "KAST_RUNTIME_ARCHIVE=$runtime_archive"
-  "KAST_RUNTIME_STORE=$fixture/store"
+  "KAST_RUNTIME_STORE=$product_root/runtime-payloads"
   "KAST_RUNTIME_DIRECTORY=$runtime_directory"
-  "KAST_CACHE_ROOT=$fixture/cache"
+  "KAST_CACHE_ROOT=$product_root/state/cache"
 )
 
 version="$(env "${command_environment[@]}" "$kast" --version)"
@@ -78,7 +78,7 @@ document = json.loads(sys.argv[1])
 registry = json.loads(Path(sys.argv[2]).read_text())
 assert document["operationRegistry"] == registry, document
 assert document["cliProjection"]["commands"], document
-assert document["cliProjection"]["localCommands"] == ["codex", "codex desktop", "app-server enable", "app-server status", "app-server stop", "app-server disable", "app-server control claim", "app-server control release"], document["cliProjection"]["localCommands"]
+assert document["cliProjection"]["localCommands"] == ["codex", "codex desktop", "app-server register", "app-server enable", "app-server status", "app-server stop", "app-server disable", "app-server control claim", "app-server control release"], document["cliProjection"]["localCommands"]
 projection = document["serverProjection"]
 bootstrap = projection["hostedBootstrap"]
 invocations = projection["cliInvocations"]["operations"]
@@ -130,7 +130,7 @@ PY
 
 passive_state_manifest() {
   for path in "$runtime_directory" "$runtime_socket_directory" \
-    "$fixture/store" "$fixture/cache"; do
+    "$product_root/runtime-payloads" "$product_root/state/cache"; do
     [[ ! -e "$path" ]] || find "$path" -print
   done | LC_ALL=C sort
 }

@@ -38,6 +38,7 @@ class GenerateControlMetadataTaskTest {
             this.runtimeDirectory.set(runtimeDirectory.toFile())
             this.licenseFile.set(license.toFile())
             this.operationRegistryFile.set(registry.toFile())
+            this.configurationCatalogueFile.set(write("configuration-schema.json", "{\"parameters\":[{\"key\":\"KAST_INDEXER_MAX_HEAP\"}]}\n").toFile())
             productVersion.set("1.0.\"quoted\\build")
             ideaBuild.set("262")
             kotlinPluginBuild.set("262.9437.185-IJ")
@@ -50,6 +51,10 @@ class GenerateControlMetadataTaskTest {
         assertArrayEquals(
             Files.readAllBytes(registry),
             Files.readAllBytes(output.resolve("operation-registry.json")),
+        )
+        assertArrayEquals(
+            Files.readAllBytes(task.configurationCatalogueFile.get().asFile.toPath()),
+            Files.readAllBytes(output.resolve("configuration-schema.json")),
         )
         val runtime = controlMetadataJson.decodeFromString(
             SemanticRuntimeDocument.serializer(),
@@ -94,6 +99,7 @@ class GenerateControlMetadataTaskTest {
             this.operationRegistryFile.set(
                 write("operation-registry.json", "{\"schemaVersion\":1}").toFile(),
             )
+            this.configurationCatalogueFile.set(write("configuration-schema.json", "{\"parameters\":[]}").toFile())
             productVersion.set("1.0.0")
             ideaBuild.set("262.9437.185")
             kotlinPluginBuild.set("262.9437.185-IJ")

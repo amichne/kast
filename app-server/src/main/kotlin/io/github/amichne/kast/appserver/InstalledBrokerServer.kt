@@ -1,5 +1,8 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOwner
+import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
+
 import io.github.amichne.kast.appserver.core.Broker
 import io.github.amichne.kast.appserver.core.BrokerLimits
 import io.github.amichne.kast.appserver.core.JsonLineBrokerInvocationActivitySink
@@ -97,11 +100,31 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     InstalledBrokerServerConfigurationFailure.KAST_EXECUTABLE_REJECTED,
                 )
             }
+            if (InstallationLifecycleFence.observe(kast.path.parent.parent) != InstallationLifecycleStartAdmission.AVAILABLE) {
+                return rejected(InstalledBrokerServerConfigurationFailure.STATE_DIRECTORY_REJECTED)
+            }
+            val admittedConfiguration = when (val admission = InstalledBrokerConfigurationIngress.admit(environment)) {
+                is Refinement.Refined -> admission.value
+                is Refinement.Rejected -> return rejected(when (val failure = admission.failure) {
+                    is BrokerConfigurationIngressRejection.Configuration -> when (failure.failure.key) {
+                        "CODEX_EXECUTABLE", "KAST_REAL_CODEX_EXECUTABLE" -> InstalledBrokerServerConfigurationFailure.CODEX_EXECUTABLE_REJECTED
+                        "CODEX_HOME" -> InstalledBrokerServerConfigurationFailure.CODEX_HOME_REJECTED
+                        else -> InstalledBrokerServerConfigurationFailure.PROVIDER_CONFIGURATION_REJECTED
+                    }
+                    is BrokerConfigurationIngressRejection.Owner, is BrokerConfigurationIngressRejection.Source -> InstalledBrokerServerConfigurationFailure.PROVIDER_CONFIGURATION_REJECTED
+                })
+            }
+            val configuration = admittedConfiguration.configuration
+            val ownerInputs = configuration.ownerInputs(ConfigurationOwner.APP_SERVER)
+            if (admittedConfiguration.toolingMode == AppServerToolingMode.DISABLED) {
+                return rejected(InstalledBrokerServerConfigurationFailure.APP_SERVER_DISABLED)
+            }
+            val toolSelection = admittedConfiguration.toolSelection
             val codexPath = when {
-                environment.containsKey("KAST_REAL_CODEX_EXECUTABLE") ->
-                    absoluteNormalizedPath(environment.getValue("KAST_REAL_CODEX_EXECUTABLE"))
-                environment.containsKey("CODEX_EXECUTABLE") ->
-                    absoluteNormalizedPath(environment.getValue("CODEX_EXECUTABLE"))
+                ownerInputs.containsKey("KAST_REAL_CODEX_EXECUTABLE") ->
+                    absoluteNormalizedPath(ownerInputs.getValue("KAST_REAL_CODEX_EXECUTABLE"))
+                ownerInputs.containsKey("CODEX_EXECUTABLE") ->
+                    absoluteNormalizedPath(ownerInputs.getValue("CODEX_EXECUTABLE"))
                 else -> resolveExecutable("codex", environment["PATH"].orEmpty())
             } ?: return rejected(
                 InstalledBrokerServerConfigurationFailure.CODEX_EXECUTABLE_REJECTED,
@@ -116,17 +139,16 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     InstalledBrokerServerConfigurationFailure.CODEX_EXECUTABLE_REJECTED,
                 )
             }
-            val codexHomeCandidate = environment["CODEX_HOME"]?.let(::absoluteNormalizedPath)
-                ?: canonicalUserHome.resolve(".codex")
+            val codexHomeCandidate = if (ownerInputs.containsKey("CODEX_HOME"))
+                absoluteNormalizedPath(ownerInputs.getValue("CODEX_HOME"))
+            else canonicalUserHome.resolve(".codex")
             if (codexHomeCandidate == null) {
                 return rejected(InstalledBrokerServerConfigurationFailure.CODEX_HOME_REJECTED)
             }
             val codexHome = createConfigurationDirectory(codexHomeCandidate)
                 ?: return rejected(InstalledBrokerServerConfigurationFailure.CODEX_HOME_REJECTED)
-            val stateDirectory = createBrokerOwnedDirectory(codexHome.resolve(when (clientTransport) {
-                BrokerClientTransport.LEGACY_CONTROL -> "broker"
-                BrokerClientTransport.INTEGRATION_OWNED -> "kast-integration"
-            }))
+            val installation = BrokerInstallationLayout.from(kast.path, codexHome)
+            val stateDirectory = createBrokerOwnedDirectory(installation.broker)
                 ?: return rejected(
                     InstalledBrokerServerConfigurationFailure.STATE_DIRECTORY_REJECTED,
                 )
@@ -135,17 +157,14 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     InstalledBrokerServerConfigurationFailure.STATE_DIRECTORY_REJECTED,
                 )
             val publicParent = createBrokerOwnedDirectory(
-                when (clientTransport) {
-                    BrokerClientTransport.LEGACY_CONTROL -> codexHome.resolve("app-server-control")
-                    BrokerClientTransport.INTEGRATION_OWNED -> stateDirectory.resolve("client")
-                },
+                installation.run,
             )
                 ?: return rejected(
                     InstalledBrokerServerConfigurationFailure.STATE_DIRECTORY_REJECTED,
                 )
             val publicSocket = when (
-                val admission = BrokerSocketPath.admit(
-                    publicParent.resolve("app-server-control.sock"),
+                val admission = BrokerSocketPath.prepareInstalled(
+                    publicParent.resolve("c.sock"),
                 )
             ) {
                 is Validation.Validated -> admission.value
@@ -154,7 +173,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
                 )
             }
             val privateSocket = when (
-                val admission = BrokerSocketPath.admit(stateDirectory.resolve("upstream.sock"))
+                val admission = BrokerSocketPath.prepareInstalled(publicParent.resolve("u.sock"))
             ) {
                 is Validation.Validated -> admission.value
                 is Validation.Rejected -> return rejected(
@@ -170,25 +189,6 @@ internal sealed interface InstalledBrokerServerConfiguration {
                 is BrokerServiceReadinessAdmission.Admitted -> admitted.readiness
                 BrokerServiceReadinessAdmission.Rejected -> return rejected(
                     InstalledBrokerServerConfigurationFailure.READINESS_REJECTED,
-                )
-            }
-            val toolingMode = when (
-                val admitted = AppServerToolingMode.admit(environment[APP_SERVER_ENABLE_ENVIRONMENT])
-            ) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return rejected(
-                    InstalledBrokerServerConfigurationFailure.PROVIDER_CONFIGURATION_REJECTED,
-                )
-            }
-            if (toolingMode == AppServerToolingMode.DISABLED) {
-                return rejected(InstalledBrokerServerConfigurationFailure.APP_SERVER_DISABLED)
-            }
-            val toolSelection = when (
-                val admitted = KastToolSelection.admit(environment[APP_SERVER_TOOLS_ENVIRONMENT])
-            ) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return rejected(
-                    InstalledBrokerServerConfigurationFailure.PROVIDER_CONFIGURATION_REJECTED,
                 )
             }
             val kastOptions = when (
@@ -249,9 +249,11 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     publicSocket = publicSocket,
                     readiness = readiness,
                     limits = BrokerLimits.defaults(),
-                    maximumConnections = 8,
+                    maximumConnections = BrokerOperationalLimits.maximumConnections,
                     maximumMessageBytes = MAXIMUM_MESSAGE_BYTES,
                     startupActivitySink = JsonLineBrokerStartupActivitySink(System.err),
+                    installationRoot = installation.root,
+                    configuration = configuration,
                 ),
             )
         }
@@ -316,8 +318,8 @@ internal sealed interface InstalledBrokerServerConfiguration {
             failure: InstalledBrokerServerConfigurationFailure,
         ): Rejected = Rejected(failure)
 
-        private const val MAXIMUM_MESSAGE_BYTES = 64 * 1_024 * 1_024
-        private const val UPSTREAM_STARTUP_TIMEOUT_MILLIS = 10_000L
+        private const val MAXIMUM_MESSAGE_BYTES = BrokerOperationalLimits.maximumMessageBytes
+        private val UPSTREAM_STARTUP_TIMEOUT_MILLIS: Long get() = BrokerOperationalLimits.upstreamStartup.value
     }
 }
 
@@ -332,6 +334,8 @@ internal data class InstalledBrokerServerOptions(
     val maximumConnections: Int,
     val maximumMessageBytes: Int,
     val startupActivitySink: BrokerStartupActivitySink,
+    val installationRoot: Path,
+    val configuration: ResolvedKastConfiguration,
 )
 
 internal enum class InstalledBrokerServerFailure {
@@ -418,105 +422,19 @@ internal class InstalledBrokerServer private constructor(
                 readiness?.reject(failure.serverFailure())
                 return rejected(failure)
             }
-            stage = BrokerStartupStage.KAST_QUALIFICATION
-            activity.started(stage)
-            val kastQualification = when (
-                val qualification = KastProviderQualifier.qualify(options.kastOptions)
-            ) {
-                is KastProviderQualification.Qualified -> qualification.also {
-                    activity.completed(stage)
+            val host = when (val prepared = InstalledBrokerHost.prepare(options)) {
+                is InstalledBrokerHostStart.Prepared -> prepared
+                is InstalledBrokerHostStart.Rejected -> {
+                    readiness?.reject(prepared.failure.serverFailure())
+                    return rejected(prepared.failure)
                 }
-                is KastProviderQualification.Rejected -> return rejectWithState(
-                    stage,
-                    InstalledBrokerServerFailure.KAST_QUALIFICATION_REJECTED,
-                )
             }
-            val kast = kastQualification.registration
-            stage = BrokerStartupStage.GRADLE_DEFINITION
-            activity.started(stage)
-            val gradle = when (val definition = GradleProvider.registration()) {
-                is Validation.Validated -> definition.value.also { activity.completed(stage) }
-                is Validation.Rejected -> return rejectWithState(
-                    stage,
-                    InstalledBrokerServerFailure.GRADLE_DEFINITION_REJECTED,
-                )
-            }
-            stage = BrokerStartupStage.CATALOG
-            activity.started(stage)
-            val broker = when (
-                val creation = Broker.create(
-                    listOf<ProviderDefinition>(gradle, kast),
-                    options.limits,
-                )
-            ) {
-                is Validation.Validated -> creation.value.also { activity.completed(stage) }
-                is Validation.Rejected -> return rejectWithState(
-                    stage,
-                    InstalledBrokerServerFailure.CATALOG_REJECTED,
-                )
-            }
-            stage = BrokerStartupStage.CODEX_QUALIFICATION
-            activity.started(stage)
-            val protocol = when (
-                val qualification = CodexProtocolQualifier.qualify(options.protocolOptions)
-            ) {
-                is CodexProtocolQualification.Qualified -> qualification.also {
-                    activity.completed(stage)
-                }
-                is CodexProtocolQualification.Rejected -> return rejectWithState(
-                    stage,
-                    InstalledBrokerServerFailure.CODEX_QUALIFICATION_REJECTED,
-                    BrokerStartupRejection.CodexQualification(qualification.failure),
-                )
-            }
-            stage = BrokerStartupStage.THREAD_STORE
-            activity.started(stage)
-            val store = when (val opened = FileThreadCatalogStore.open(options.threadStore)) {
-                is FileThreadCatalogStoreOpen.Opened -> opened.store.also {
-                    activity.completed(stage)
-                }
-                is FileThreadCatalogStoreOpen.Rejected -> return rejectWithState(
-                    stage,
-                    InstalledBrokerServerFailure.THREAD_STORE_REJECTED,
-                )
-            }
-            val enrollment = when (val read = WorkspaceEnrollmentStore(options.threadStore.parent.resolve("workspace.json")).read()) {
-                is EnrollmentRead.Read -> read.enrollment
-                is EnrollmentRead.Rejected -> return rejectWithState(stage, InstalledBrokerServerFailure.THREAD_STORE_REJECTED)
-            }
-            stage = BrokerStartupStage.UPSTREAM
-            activity.started(stage)
-            val upstream = when (
-                val started = ManagedCodexUpstream.start(options.upstreamOptions)
-            ) {
-                is ManagedCodexUpstreamStart.Started -> started.upstream.also {
-                    activity.completed(stage)
-                }
-                is ManagedCodexUpstreamStart.Rejected -> return rejectWithState(
-                    stage,
-                    InstalledBrokerServerFailure.UPSTREAM_REJECTED,
-                    BrokerStartupRejection.Upstream(started.failure),
-                )
-            }
+            val upstream = host.upstream
             stage = BrokerStartupStage.PUBLIC_SERVER
             activity.started(stage)
             val publicServer = when (
                 val started = KtorBrokerServer.start(
-                    KtorBrokerServerOptions(
-                        publicSocket = options.publicSocket,
-                        broker = broker,
-                        contracts = protocol.contracts,
-                        threadStore = store,
-                        upstream = upstream,
-                        maximumConnections = options.maximumConnections,
-                        maximumMessageBytes = options.maximumMessageBytes,
-                        activitySink = JsonLineBrokerInvocationActivitySink(System.err),
-                        sessionBootstrap = kastQualification.bootstrap,
-                        enrollment = enrollment,
-                        sessionActivitySink = io.github.amichne.kast.appserver.runtime.JsonLineSessionActivitySink(System.err),
-                        qualification = io.github.amichne.kast.appserver.runtime.BrokerQualification(options.readiness, protocol, broker.catalog.digest.value),
-                        invocationJournal = options.threadStore.parent.resolve("invocations.json"),
-                    ),
+                    host.options,
                 )
             ) {
                 is KtorBrokerServerStart.Started -> started.server.also {
@@ -559,48 +477,150 @@ internal class InstalledBrokerServer private constructor(
     }
 }
 
+internal sealed interface InstalledBrokerHostStart {
+    data class Prepared(val options: KtorBrokerServerOptions, val upstream: ManagedCodexUpstream) : InstalledBrokerHostStart
+    data class Rejected(val failure: InstalledBrokerServerFailure) : InstalledBrokerHostStart
+}
+
+internal object InstalledBrokerHost {
+    suspend fun prepare(options: InstalledBrokerServerOptions): InstalledBrokerHostStart {
+        val activity = BrokerStartupActivityPublisher(options.startupActivitySink)
+        var stage = BrokerStartupStage.KAST_QUALIFICATION
+        fun rejectHost(stage: BrokerStartupStage, failure: InstalledBrokerServerFailure,
+            rejection: BrokerStartupRejection = BrokerStartupRejection.Server(failure)): InstalledBrokerHostStart.Rejected {
+            activity.rejected(stage, rejection)
+            return InstalledBrokerHostStart.Rejected(failure)
+        }
+            stage = BrokerStartupStage.KAST_QUALIFICATION
+            activity.started(stage)
+            val kastQualification = when (
+                val qualification = KastProviderQualifier.qualify(options.kastOptions)
+            ) {
+                is KastProviderQualification.Qualified -> qualification.also {
+                    activity.completed(stage)
+                }
+                is KastProviderQualification.Rejected -> return rejectHost(
+                    stage,
+                    InstalledBrokerServerFailure.KAST_QUALIFICATION_REJECTED,
+                )
+            }
+            val kast = kastQualification.registration
+            stage = BrokerStartupStage.GRADLE_DEFINITION
+            activity.started(stage)
+            val gradle = when (val definition = GradleProvider.registration()) {
+                is Validation.Validated -> definition.value.also { activity.completed(stage) }
+                is Validation.Rejected -> return rejectHost(
+                    stage,
+                    InstalledBrokerServerFailure.GRADLE_DEFINITION_REJECTED,
+                )
+            }
+            stage = BrokerStartupStage.CATALOG
+            activity.started(stage)
+            val broker = when (
+                val creation = Broker.create(
+                    listOf<ProviderDefinition>(gradle, kast),
+                    options.limits,
+                )
+            ) {
+                is Validation.Validated -> creation.value.also { activity.completed(stage) }
+                is Validation.Rejected -> return rejectHost(
+                    stage,
+                    InstalledBrokerServerFailure.CATALOG_REJECTED,
+                )
+            }
+            stage = BrokerStartupStage.CODEX_QUALIFICATION
+            activity.started(stage)
+            val protocol = when (
+                val qualification = CodexProtocolQualifier.qualify(options.protocolOptions)
+            ) {
+                is CodexProtocolQualification.Qualified -> qualification.also {
+                    activity.completed(stage)
+                }
+                is CodexProtocolQualification.Rejected -> return rejectHost(
+                    stage,
+                    InstalledBrokerServerFailure.CODEX_QUALIFICATION_REJECTED,
+                    BrokerStartupRejection.CodexQualification(qualification.failure),
+                )
+            }
+            stage = BrokerStartupStage.THREAD_STORE
+            activity.started(stage)
+            val store = when (val opened = FileThreadCatalogStore.open(options.threadStore)) {
+                is FileThreadCatalogStoreOpen.Opened -> opened.store.also {
+                    activity.completed(stage)
+                }
+                is FileThreadCatalogStoreOpen.Rejected -> return rejectHost(
+                    stage,
+                    InstalledBrokerServerFailure.THREAD_STORE_REJECTED,
+                )
+            }
+            val enrollment = when (val read = WorkspaceEnrollmentStore(options.installationRoot.resolve("config/workspaces.json")).read()) {
+                is EnrollmentRead.Read -> read.enrollment
+                is EnrollmentRead.Rejected -> return rejectHost(stage, InstalledBrokerServerFailure.THREAD_STORE_REJECTED)
+            }
+            val owner = when (val admitted = BrokerInstallationState.admit(options.installationRoot)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return rejectHost(stage, InstalledBrokerServerFailure.THREAD_STORE_REJECTED)
+            }
+            stage = BrokerStartupStage.UPSTREAM
+            activity.started(stage)
+            val upstream = when (
+                val started = ManagedCodexUpstream.start(options.upstreamOptions)
+            ) {
+                is ManagedCodexUpstreamStart.Started -> started.upstream.also {
+                    activity.completed(stage)
+                }
+                is ManagedCodexUpstreamStart.Rejected -> return rejectHost(
+                    stage,
+                    InstalledBrokerServerFailure.UPSTREAM_REJECTED,
+                    BrokerStartupRejection.Upstream(started.failure),
+                )
+            }
+        return InstalledBrokerHostStart.Prepared(
+KtorBrokerServerOptions(
+                        publicSocket = options.publicSocket,
+                        broker = broker,
+                        contracts = protocol.contracts,
+                        threadStore = store,
+                        upstream = upstream,
+                        maximumConnections = options.maximumConnections,
+                        maximumMessageBytes = options.maximumMessageBytes,
+                        activitySink = JsonLineBrokerInvocationActivitySink(System.err),
+                        sessionBootstrap = kastQualification.bootstrap,
+                        enrollment = enrollment,
+                        bindingOwner = owner,
+                        sessionActivitySink = io.github.amichne.kast.appserver.runtime.JsonLineSessionActivitySink(System.err),
+                        qualification = io.github.amichne.kast.appserver.runtime.BrokerQualification(options.readiness, protocol, broker.catalog.digest.value),
+                        invocationJournal = options.threadStore.parent.resolve("invocations.json"),
+                    ), upstream,
+        )
+    }
+}
+
 class InstalledBrokerServerRunner(
     private val kastExecutable: Path,
     private val userHome: Path,
     private val environment: Map<String, String> = System.getenv(),
+    private val workerEffects: InstalledWorkerEffects = InstalledWorkerEffects.Unavailable,
 ) : BrokerServerRunner {
     override fun serve(): BrokerServerRun {
-        val configuration = when (
-            val admitted = InstalledBrokerServerConfiguration.admit(
-                kastExecutable,
-                userHome,
-                environment,
-            )
-        ) {
-            is InstalledBrokerServerConfiguration.Configured -> admitted.options
-            is InstalledBrokerServerConfiguration.Rejected -> return BrokerServerRun.Rejected(
-                admitted.failure.serverFailure(),
-            )
+        val options = when (val admission = InstalledCoordinatorConfiguration.admit(kastExecutable, userHome, environment)) {
+            is Refinement.Refined -> admission.value
+            is Refinement.Rejected -> return BrokerServerRun.Rejected(admission.failure.serverFailure())
         }
         return try {
-            runBlocking<BrokerServerRun> {
-                val running = when (val started = InstalledBrokerServer.start(configuration)) {
-                    is InstalledBrokerServerStart.Started -> started.server
-                    is InstalledBrokerServerStart.Rejected -> return@runBlocking BrokerServerRun
-                        .Rejected(started.failure.serverFailure())
+            runBlocking {
+                val running = when (val started = InstalledCoordinator.start(options, workerEffects)) {
+                    is InstalledCoordinatorStart.Started -> started.coordinator
+                    is InstalledCoordinatorStart.Rejected -> return@runBlocking BrokerServerRun.Rejected(started.failure)
                 }
-                val hook = Thread(
-                    { runBlocking { running.close() } },
-                    "kast-broker-shutdown",
-                )
+                val hook = Thread({ runBlocking { running.close() } }, "kast-coordinator-shutdown")
                 Runtime.getRuntime().addShutdownHook(hook)
                 try {
-                    when (running.awaitTermination()) {
-                        InstalledBrokerServerTermination.CLOSED -> BrokerServerRun.Stopped
-                        InstalledBrokerServerTermination.UPSTREAM_EXITED ->
-                            BrokerServerRun.Rejected(BrokerServerFailure.UPSTREAM_REJECTED)
-                    }
+                    running.awaitTermination()
+                    BrokerServerRun.Stopped
                 } finally {
-                    try {
-                        Runtime.getRuntime().removeShutdownHook(hook)
-                    } catch (_: IllegalStateException) {
-                        // The JVM has already entered shutdown; the registered hook owns closure.
-                    }
+                    try { Runtime.getRuntime().removeShutdownHook(hook) }
+                    catch (_: IllegalStateException) { /* Registered hook owns JVM shutdown. */ }
                     running.close()
                 }
             }
@@ -609,7 +629,6 @@ class InstalledBrokerServerRunner(
             BrokerServerRun.Rejected(BrokerServerFailure.INTERRUPTED)
         }
     }
-
 }
 
 private fun InstalledBrokerServerConfigurationFailure.serverFailure(): BrokerServerFailure =

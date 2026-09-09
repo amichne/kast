@@ -219,7 +219,7 @@ class KastCli(
                 boundaryExit(CliBoundaryExitStatus.RUNTIME, "root-mismatch"),
             )
         }
-        return CliRuntimeBoundaryResolution.Resolved(root, endpoint, removed = ready.removed)
+        return CliRuntimeBoundaryResolution.Resolved(root, endpoint, removed = ready.removed, workerBinding = ready.workerBinding, deadline = ready.deadline, wireAuthority = ready.wireAuthority)
     }
 
     private fun resolvePassiveRuntimeBoundary(
@@ -278,7 +278,17 @@ class KastCli(
         boundary: CliRuntimeBoundaryResolution.Resolved,
     ): CliExit {
         val response = when (
-            val exchange = wireClient.exchange(boundary.endpoint, request.document)
+            val exchange = when (val authority = boundary.wireAuthority) {
+                RuntimeWireAuthority.EffectBoundary -> if (boundary.deadline == RuntimeInvocationDeadline.EffectBoundary)
+                    wireClient.exchange(boundary.endpoint, request.document) else WireExchange.Rejected(WireTransportFailure.UNQUALIFIED_PEER)
+                is RuntimeWireAuthority.Qualified -> when (val deadline = boundary.deadline) {
+                    RuntimeInvocationDeadline.EffectBoundary -> WireExchange.Rejected(WireTransportFailure.UNQUALIFIED_PEER)
+                    is RuntimeInvocationDeadline.Running -> when (val remaining = deadline.remaining()) {
+                        is io.github.amichne.kast.kernel.Refinement.Refined -> wireClient.exchange(boundary.endpoint, request.document, authority.identity, remaining.value)
+                        is io.github.amichne.kast.kernel.Refinement.Rejected -> WireExchange.Rejected(remaining.failure)
+                    }
+                }
+            }
         ) {
             is WireExchange.Received -> exchange.document
             is WireExchange.Rejected -> return boundaryExit(
@@ -374,6 +384,9 @@ private sealed interface CliRuntimeBoundaryResolution {
         val endpoint: RuntimeEndpoint,
         val cache: RootSidecarCacheObservation = RootSidecarCacheObservation.Absent,
         val removed: Set<RuntimeEndpointArtifact> = emptySet(),
+        val workerBinding: io.github.amichne.kast.appserver.WorkerRouteBinding = io.github.amichne.kast.appserver.WorkerRouteBinding.EffectBoundary,
+        val deadline: RuntimeInvocationDeadline = RuntimeInvocationDeadline.EffectBoundary,
+        val wireAuthority: RuntimeWireAuthority = RuntimeWireAuthority.EffectBoundary,
     ) : CliRuntimeBoundaryResolution
 
     data class Rejected(

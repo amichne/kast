@@ -106,6 +106,7 @@ Usage:
              [--repository <owner/name>]
              [--release-base-url <https-or-file-url>]
              [--assets-directory <absolute-path>]
+             [--migrate-configuration <absolute-literal-configuration-file>]
   install.sh uninstall [--installation-only] [--install-root <absolute-path>]
              [--bin-dir <absolute-path>]
              [--runtime-store <absolute-path>]
@@ -116,16 +117,16 @@ Defaults:
   version       latest stable GitHub release
   install-root  ${XDG_DATA_HOME:-$HOME/.local/share}/kast
   bin-dir       $HOME/.local/bin
-  runtime-store $HOME/.cache/kast/semantic-runtimes
-  runtime-dir   ${TMPDIR:-/tmp}/kast-runtime
-  cache-root    $HOME/.cache/kast/intellij-caches
+  runtime-store <physical-release>/runtime-payloads
+  runtime-dir   <physical-release>/state/run
+  cache-root    <physical-release>/state/cache
   launchd       0 (direct process ownership)
   app server    1 (persistent Codex App Server integration enabled)
   server tools  query, source/semantic/impact, diagnostic, and change tools
   IDEA home     the sole IntelliJ IDEA found in standard macOS locations
   repository    amichne/kast
   release URL   https://github.com/<repository>/releases/download
-  config file   ${XDG_CONFIG_HOME:-$HOME/.config}/kast/environment
+  config file   <physical-release>/config/environment
 
 --local builds the current working directory (a Kast checkout). Session mode
 prints a Bash/Zsh activation file path on stdout; use:
@@ -134,8 +135,10 @@ It isolates configuration, caches and sockets and disables persistent services.
 Persistent mode installs into the configured KAST_* paths and enables the
 App Server login service for this workspace. This is a per-user installation,
 available across sessions, not an all-users /Library/LaunchDaemons service.
---refresh-app-server stops the previous installed App Server before activation
-and enables the new login service for the current workspace afterward.
+Activation always disables the previous physical App Server and its login entry.
+--refresh-app-server also enables the new login service for the current workspace.
+Saved configuration is imported only through --migrate-configuration; an old
+user-wide environment file is never implicitly selected.
 
 Environment equivalents:
   KAST_VERSION
@@ -164,27 +167,14 @@ The installer writes the six runtime settings to the config file as literal
 KEY=value records. Edit that file after installation or override any setting
 in the process environment; process values take precedence.
 
-uninstall is the destructive recovery operation. It removes current and
-historical Kast commands, installation roots, runtime caches and sockets,
-configuration, launchd services, indexer processes, Homebrew formula, and old
-Kast IDE plugins. It preserves repositories and non-Kast JetBrains state.
+uninstall and --installation-only remove only the current manifest-owned release
+through its bounded installation lifecycle command. Exact registered workers and
+service ownership must be retired before state, configuration, and payload are
+removed. Unproven legacy installations require explicit migration.
 
---installation-only removes only the selected installation, configuration,
-runtime store, and cache. First stop its workspaces with `kast stop`; this mode
-refuses active selected indexers and never signals another installation.
+--purge-existing performs that same bounded removal after release verification.
+The shared activation.lock remains in place and historical releases are retained.
 
---purge-existing runs that exact operation after the requested release has
-been downloaded and verified, but before any installation path is changed.
-
-The release intentionally has two matched payloads but installs one public
-command. The control distribution owns CLI parsing, schemas, lifecycle, and
-wire transport. The private semantic runtime owns the headless IntelliJ
-indexer and compiler integration. The control manifest pins the sidecar URL,
-size, and digest, so neither payload can be substituted or installed alone.
-The split keeps IntelliJ/compiler classes out of the always-available control
-and lets the semantic payload be realized and cached only on semantic demand.
-Neither payload contains an IDEA home or writes JetBrains plugin directories;
-Kast uses a release-line-compatible local IDEA and its bundled JBR.
 USAGE
 }
 
@@ -289,134 +279,49 @@ runtime_socket_directory_for() {
   printf '/tmp/kast-runtime-%s\n' "$namespace"
 }
 
-remove_owned_path() {
-  local path="$1"
-  if [[ -e "$path" || -L "$path" ]]; then
-    note "removing $path"
-    rm -rf -- "$path"
-  fi
-}
-
-remove_kast_launch_services() {
-  local launchctl_command service_table label extra
-  launchctl_command="$(command -v launchctl || true)"
-  [[ -n "$launchctl_command" ]] || return 0
-  service_table="$("$launchctl_command" list 2>/dev/null || true)"
-  while IFS=$' \t' read -r _ _ label extra; do
-    [[ -z "$extra" && "$label" == io.github.amichne.kast.indexer.* ]] || continue
-    note "removing launchd service $label"
-    "$launchctl_command" remove "$label"
-  done <<< "$service_table"
-}
-
-remove_orphaned_indexers() {
-  local process_table pid command alive
-  # Bash 3.2 treats an empty array as unset under nounset, so retain an empty
-  # sentinel and skip it at the process boundary.
-  local -a indexer_pids=("")
-  process_table="$("$process_table_command" -ax -o pid=,command=)"
-  while IFS=$' \t' read -r pid command; do
-    [[ "$pid" =~ ^[0-9]+$ ]] || continue
-    [[ "$pid" != "$$" && "$pid" != "$PPID" ]] || continue
-    case "$command" in
-      *io.github.amichne.kast.indexer.KastIndexerMainKt*)
-        indexer_pids+=("$pid")
-        note "stopping orphaned Kast indexer process $pid"
-        "$process_kill_command" -TERM "$pid" >/dev/null 2>&1 || true
-        ;;
-    esac
-  done <<< "$process_table"
-
-  for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
-    alive=false
-    for pid in "${indexer_pids[@]}"; do
-      [[ -n "$pid" ]] || continue
-      if "$process_kill_command" -0 "$pid" >/dev/null 2>&1; then
-        alive=true
-      fi
-    done
-    [[ "$alive" == true ]] || return 0
-    sleep 0.1
-  done
-  for pid in "${indexer_pids[@]}"; do
-    [[ -n "$pid" ]] || continue
-    "$process_kill_command" -KILL "$pid" >/dev/null 2>&1 || true
-  done
-}
-
-remove_homebrew_kast() {
-  local brew_command
-  brew_command="$(command -v brew || true)"
-  [[ -n "$brew_command" ]] || return 0
-  if "$brew_command" list --formula kast >/dev/null 2>&1; then
-    note "uninstalling Homebrew formula kast"
-    "$brew_command" uninstall --force kast
-  fi
-  if "$brew_command" list --cask kast >/dev/null 2>&1; then
-    note "uninstalling Homebrew cask kast"
-    "$brew_command" uninstall --cask --force kast
-  fi
-}
-
-remove_kast_children() {
-  local root pattern target
-  root="$1"
-  pattern="$2"
-  [[ -d "$root" ]] || return 0
-  while IFS= read -r target; do
-    remove_owned_path "$target"
-  done < <(find "$root" -path "$pattern" -prune -print)
-}
-
-validate_cleanup_plan() {
-  require_safe_cleanup_root "install root" "$install_root"
-  require_safe_cleanup_root "default install root" "$default_install_root"
-  require_safe_cleanup_root "legacy install root" "$legacy_install_root"
-  require_safe_cleanup_root "runtime cache root" "$runtime_cache_root"
-  require_safe_cleanup_root "runtime store" "$runtime_store"
-  require_safe_cleanup_root "sidecar cache root" "$cache_root"
-  require_safe_cleanup_root "runtime directory" "$runtime_directory"
-  require_safe_cleanup_root "default runtime directory" "$default_runtime_directory"
-  require_safe_cleanup_root "runtime socket directory" "$runtime_socket_directory"
-  require_safe_cleanup_root \
-    "default runtime socket directory" "$default_runtime_socket_directory"
-  require_safe_cleanup_root "configuration root" "$config_root"
-  require_safe_cleanup_root "legacy configuration root" "$legacy_config_root"
-  require_safe_cleanup_root "application support root" "$application_support_root"
-  require_absolute_path "binary directory" "$bin_dir"
-}
-
-purge_kast() {
-  validate_cleanup_plan
-  note "purging prior Kast installations"
-  remove_kast_launch_services
-  remove_orphaned_indexers
-  remove_homebrew_kast
-  remove_kast_children "$HOME/Library/LaunchAgents" \
-    "$HOME/Library/LaunchAgents/io.github.amichne.kast*.plist"
-  remove_kast_children "$HOME/Library/Application Support/JetBrains" "*/plugins/kast"
-  remove_kast_children "$HOME/Library/Application Support/JetBrains" "*/plugins/kast-indexer"
-  remove_kast_children "$HOME/Library/Application Support/Google" "*/plugins/kast"
-  remove_kast_children "$HOME/Library/Application Support/Google" "*/plugins/kast-indexer"
-  remove_owned_path "$bin_dir/kast"
-  remove_owned_path "$bin_dir/kast-codex"
-  remove_owned_path "$HOME/.local/bin/kast"
-  remove_owned_path "$HOME/.local/bin/kast-codex"
-  remove_owned_path "$HOME/.local/bin/_kastctl"
-  remove_owned_path "$install_root"
-  remove_owned_path "$default_install_root"
-  remove_owned_path "$legacy_install_root"
-  remove_owned_path "$runtime_store"
-  remove_owned_path "$cache_root"
-  remove_owned_path "$runtime_cache_root"
-  remove_owned_path "$runtime_directory"
-  remove_owned_path "$default_runtime_directory"
-  remove_owned_path "$runtime_socket_directory"
-  remove_owned_path "$default_runtime_socket_directory"
-  remove_owned_path "$config_root"
-  remove_owned_path "$legacy_config_root"
-  remove_owned_path "$application_support_root"
-  note "prior Kast installations removed"
+remove_selected_installation() {
+  require_command python3
+  require_absolute_path "install root" "$install_root"
+  [[ -e "$install_root" || -L "$install_root" ]] || return 0
+  python3 - "$install_root" <<'PYTHON_REMOVE'
+import hashlib, json, os, pathlib, stat, sys
+outer = pathlib.Path(sys.argv[1])
+def reject():
+    raise SystemExit("kast-install: selected installation has no admitted immutable ownership; explicit migration is required")
+try:
+    if outer.resolve(strict=True) != outer or not outer.is_dir(): reject()
+    current = outer / "current"
+    if not current.is_symlink(): reject()
+    root = current.resolve(strict=True)
+    if root.parent != outer / "versions" or os.readlink(current) != "versions/" + root.name: reject()
+    manifest = root / "installation.json"
+    if manifest.is_symlink() or not manifest.is_file() or manifest.stat().st_size > 1024 * 1024: reject()
+    document = json.loads(manifest.read_text())
+    if document.get("schemaVersion") != 1 or document.get("installationRoot") != str(root): reject()
+    expected = document.get("payloadFiles")
+    if not isinstance(expected, list) or not expected or len(expected) > 4096: reject()
+    observed, size = [], 0
+    for directory in ("bin", "lib", "share"):
+        if (root / directory).is_symlink(): reject()
+        for candidate in sorted((root / directory).rglob("*")):
+            if candidate.is_symlink(): reject()
+            if candidate.is_dir(): continue
+            if not candidate.is_file() or len(observed) >= 4096: reject()
+            size += candidate.stat().st_size
+            if size > 1024 * 1024 * 1024: reject()
+            digest = hashlib.sha256()
+            with candidate.open("rb") as stream:
+                for chunk in iter(lambda: stream.read(1024 * 1024), b""): digest.update(chunk)
+            observed.append({"path": candidate.relative_to(root).as_posix(),
+                             "sha256": "sha256:" + digest.hexdigest(), "mode": stat.S_IMODE(candidate.stat().st_mode)})
+    if observed != expected: reject()
+    script = root / "share/kast/installation-lifecycle.py"
+    if not any(item["path"] == "share/kast/installation-lifecycle.py" for item in observed): reject()
+    # The admitted lifecycle command takes the shared stable activation.lock before any mutation.
+    os.execv(sys.executable, [sys.executable, str(script), "--installation", str(root), "remove"])
+except (OSError, ValueError, TypeError, KeyError):
+    reject()
+PYTHON_REMOVE
 }
 
 validate_version() {
@@ -633,7 +538,9 @@ load_persisted_runtime_configuration() {
         persisted_indexer_max_heap="${line#*=}"
         persisted_indexer_max_heap_set=true
         ;;
-      *) fail "runtime configuration has an unsupported record: $line" ;;
+      # Additional declared keys are retained in the literal source and admitted against the
+      # selected payload's generated catalogue once that payload is available.
+      *) [[ "$line" == *=* ]] || fail "runtime configuration has a malformed record" ;;
     esac
   done < "$path"
 }
@@ -824,6 +731,73 @@ install_runtime_configuration() {
       printf 'KAST_INDEXER_MAX_HEAP=%s\n' "$indexer_max_heap"
     fi
   } > "$staged_configuration"
+  # Validate the original source too: an explicit invalid saved value cannot disappear beneath
+  # a process override while the final candidate is assembled.
+  if [[ -n "$migration_configuration" ]]; then
+    env -i HOME="$HOME" PATH="$PATH" JAVA_HOME="$java_home" \
+      "$target_root/bin/kast-complete" config validate --file "$migration_configuration" --json 9>&- >/dev/null
+  fi
+  # The original seven CLI options retain their existing precedence in the base candidate.
+  # Every other saved setting is selected from the staged typed catalogue, never a shell key list.
+  python3 - "$target_root/share/kast/configuration-schema.json" "$staged_configuration" "$migration_configuration" <<'PYTHON_CONFIGURATION'
+import json, os, pathlib, re, sys
+
+def reject():
+    raise SystemExit("kast-install: saved configuration catalogue projection rejected")
+
+def literal(path):
+    source = pathlib.Path(path)
+    if source.is_symlink() or not source.is_file() or source.stat().st_size > 65536:
+        reject()
+    raw = source.read_bytes()
+    if len(raw) > 65536:
+        reject()
+    result = {}
+    for line in raw.decode("utf-8", errors="strict").split("\n"):
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line or "\x00" in line or "\r" in line:
+            reject()
+        key, value = line.split("=", 1)
+        if key in result or not re.fullmatch(r"[A-Z][A-Z0-9_]*", key):
+            reject()
+        result[key] = value
+        if len(result) > 256:
+            reject()
+    return result
+
+try:
+    catalogue = pathlib.Path(sys.argv[1])
+    if catalogue.is_symlink() or not catalogue.is_file() or catalogue.stat().st_size > 262144:
+        reject()
+    parameters = json.loads(catalogue.read_text(encoding="utf-8"))["parameters"]
+    if not isinstance(parameters, list) or not 1 <= len(parameters) <= 256:
+        reject()
+    declarations = {}
+    for parameter in parameters:
+        key = parameter["key"]
+        if not isinstance(key, str) or key in declarations or not re.fullmatch(r"[A-Z][A-Z0-9_]*", key):
+            reject()
+        declarations[key] = parameter
+    allowed = {key for key, declaration in declarations.items()
+               if declaration.get("mutability") == "USER_SETTING" and "SAVED_INSTALLATION" in declaration.get("sources", [])}
+    candidate = literal(sys.argv[2])
+    migrated = literal(sys.argv[3]) if sys.argv[3] else {}
+    if not set(candidate).issubset(allowed) or not set(migrated).issubset(allowed):
+        reject()
+    for key in sorted(allowed - candidate.keys()):
+        if key in os.environ:
+            candidate[key] = os.environ[key]
+        elif key in migrated:
+            candidate[key] = migrated[key]
+    content = "# Kast literal configuration; process assignments take precedence.\n" + "".join(
+        key + "=" + value + "\n" for key, value in candidate.items())
+    if len(content.encode("utf-8")) > 65536 or any("\n" in value or "\r" in value or "\x00" in value for value in candidate.values()):
+        reject()
+    pathlib.Path(sys.argv[2]).write_text(content, encoding="utf-8")
+except (OSError, UnicodeError, ValueError, KeyError, TypeError):
+    reject()
+PYTHON_CONFIGURATION
   chmod 600 "$staged_configuration"
   mv -f "$staged_configuration" "$path"
   staged_configuration=""
@@ -850,91 +824,26 @@ install_complete_launcher() {
     printf '%s\n' '  esac'
     printf '%s\n' 'done'
     printf '%s\n' 'script_dir="$(CDPATH= cd -- "$(dirname -- "$script_path")" && pwd -P)"'
+    if [[ "$executable_name" == kast ]]; then
+      cat <<'INSTALLATION_DISPATCH'
+if [ "${1-}" = installation ]; then
+  shift
+  installation_root="$(dirname -- "$script_dir")"
+  lifecycle="$installation_root/share/kast/installation-lifecycle.py"
+  if [ ! -f "$lifecycle" ] || [ -L "$lifecycle" ]; then
+    echo "kast: installation lifecycle boundary is unavailable" >&2
+    exit 1
+  fi
+  exec python3 "$lifecycle" --installation "$installation_root" "$@"
+fi
+INSTALLATION_DISPATCH
+    fi
     printf 'config_file=%s\n' "$(shell_single_quote "$config_file")"
     cat <<'LAUNCHER_CONFIGURATION'
-saved_configuration_failure() {
-  if [ -z "${KAST_SAVED_CONFIGURATION_FAILURE+x}" ]; then
-    KAST_SAVED_CONFIGURATION_FAILURE=$1
-  fi
-  export KAST_SAVED_CONFIGURATION_FAILURE
-}
-if [ -e "$config_file" ] || [ -L "$config_file" ]; then
-  if [ ! -f "$config_file" ] || [ -L "$config_file" ] || [ ! -r "$config_file" ]; then
-    saved_configuration_failure unreadable
-  else
-    seen_runtime_store=false
-    seen_runtime_directory=false
-    seen_cache_root=false
-    seen_enable_launchd=false
-    seen_enable_app_server=false
-    seen_app_server_tools=false
-    seen_indexer_max_heap=false
-    while IFS= read -r config_line || [ -n "$config_line" ]; do
-      case "$config_line" in
-        ''|'#'*) ;;
-        KAST_RUNTIME_STORE=*)
-          if [ "$seen_runtime_store" = true ]; then
-            saved_configuration_failure duplicate-record
-            break
-          fi
-          seen_runtime_store=true
-          [ "${KAST_RUNTIME_STORE+x}" = x ] || KAST_RUNTIME_STORE=${config_line#*=}
-          ;;
-        KAST_RUNTIME_DIRECTORY=*)
-          if [ "$seen_runtime_directory" = true ]; then
-            saved_configuration_failure duplicate-record
-            break
-          fi
-          seen_runtime_directory=true
-          [ "${KAST_RUNTIME_DIRECTORY+x}" = x ] || KAST_RUNTIME_DIRECTORY=${config_line#*=}
-          ;;
-        KAST_CACHE_ROOT=*)
-          if [ "$seen_cache_root" = true ]; then
-            saved_configuration_failure duplicate-record
-            break
-          fi
-          seen_cache_root=true
-          [ "${KAST_CACHE_ROOT+x}" = x ] || KAST_CACHE_ROOT=${config_line#*=}
-          ;;
-        KAST_ENABLE_LAUNCHD=*)
-          if [ "$seen_enable_launchd" = true ]; then
-            saved_configuration_failure duplicate-record
-            break
-          fi
-          seen_enable_launchd=true
-          [ "${KAST_ENABLE_LAUNCHD+x}" = x ] || KAST_ENABLE_LAUNCHD=${config_line#*=}
-          ;;
-        KAST_ENABLE_APP_SERVER=*)
-          if [ "$seen_enable_app_server" = true ]; then
-            saved_configuration_failure duplicate-record
-            break
-          fi
-          seen_enable_app_server=true
-          [ "${KAST_ENABLE_APP_SERVER+x}" = x ] || KAST_ENABLE_APP_SERVER=${config_line#*=}
-          ;;
-        KAST_APP_SERVER_TOOLS=*)
-          if [ "$seen_app_server_tools" = true ]; then
-            saved_configuration_failure duplicate-record
-            break
-          fi
-          seen_app_server_tools=true
-          [ "${KAST_APP_SERVER_TOOLS+x}" = x ] || KAST_APP_SERVER_TOOLS=${config_line#*=}
-          ;;
-        KAST_INDEXER_MAX_HEAP=*)
-          if [ "$seen_indexer_max_heap" = true ]; then
-            saved_configuration_failure duplicate-record
-            break
-          fi
-          seen_indexer_max_heap=true
-          [ "${KAST_INDEXER_MAX_HEAP+x}" = x ] || KAST_INDEXER_MAX_HEAP=${config_line#*=}
-          ;;
-        *) saved_configuration_failure unsupported-record; break ;;
-      esac
-    done < "$config_file"
-    export KAST_RUNTIME_STORE KAST_RUNTIME_DIRECTORY KAST_CACHE_ROOT KAST_ENABLE_LAUNCHD
-    export KAST_ENABLE_APP_SERVER KAST_APP_SERVER_TOOLS KAST_INDEXER_MAX_HEAP
-  fi
+if [ -n "${KAST_CONFIGURATION_FILE+x}" ] && [ "$KAST_CONFIGURATION_FILE" != "$config_file" ]; then
+  export KAST_SAVED_CONFIGURATION_FAILURE=configuration-selector-conflict
 fi
+export KAST_CONFIGURATION_FILE="$config_file"
 LAUNCHER_CONFIGURATION
     # Releases before the integration entry point cannot consume typed saved-config failures.
     # Keep their admission fail-closed instead of forwarding an unknown environment field.
@@ -965,7 +874,7 @@ verify_control_root() {
   local expected_version="$2"
   local java_executable="$3"
   local java_home="$4"
-  local version_output link
+  local version_output link payload_directory
 
   [[ -x "$root/bin/kast" ]] || fail "control archive has no executable bin/kast"
   if [[ -e "$root/bin/kast-codex" || -L "$root/bin/kast-codex" ]]; then
@@ -979,8 +888,11 @@ verify_control_root() {
   [[ -f "$root/share/kast/wire-schema.json" ]] ||
     fail "control archive has no wire schema"
 
-  link="$(find "$root" -type l -print -quit)"
-  [[ -z "$link" ]] || fail "control archive contains a symbolic link: $link"
+  for payload_directory in bin lib share; do
+    [[ -e "$root/$payload_directory" ]] || continue
+    link="$(find "$root/$payload_directory" -type l -print -quit)"
+    [[ -z "$link" ]] || fail "control payload contains a symbolic link: $link"
+  done
   [[ ! -e "$root/kast-indexer" && ! -e "$root/idea-home" ]] ||
     fail "control archive contains semantic runtime content"
 
@@ -1042,7 +954,19 @@ persisted_app_server_tools=""
 persisted_app_server_tools_set=false
 persisted_indexer_max_heap=""
 persisted_indexer_max_heap_set=false
-load_persisted_runtime_configuration "$config_file"
+migration_configuration="${KAST_INSTALL_MIGRATE_CONFIGURATION:-}"
+configuration_arguments=("$@")
+for ((configuration_index=0; configuration_index<${#configuration_arguments[@]}; configuration_index++)); do
+  if [[ "${configuration_arguments[$configuration_index]}" == --migrate-configuration ]]; then
+    (( configuration_index + 1 < ${#configuration_arguments[@]} )) || fail "--migrate-configuration requires a path"
+    migration_configuration="${configuration_arguments[$((configuration_index + 1))]}"
+  fi
+done
+if [[ -n "$migration_configuration" ]]; then
+  require_absolute_path "migration configuration" "$migration_configuration"
+  [[ -f "$migration_configuration" && ! -L "$migration_configuration" ]] || fail "migration configuration must be a regular file"
+  load_persisted_runtime_configuration "$migration_configuration"
+fi
 
 if [[ -n "${KAST_INDEXER_MAX_HEAP+x}" ]]; then
   indexer_max_heap="$KAST_INDEXER_MAX_HEAP"
@@ -1062,24 +986,33 @@ release_base_url="${KAST_RELEASE_BASE_URL:-}"
 assets_directory=""
 install_root="${KAST_INSTALL_ROOT:-$default_install_root}"
 bin_dir="${KAST_BIN_DIR:-${HOME}/.local/bin}"
+runtime_store_explicit=false
+runtime_directory_explicit=false
+cache_root_explicit=false
 if [[ ${KAST_RUNTIME_STORE+x} == x ]]; then
   runtime_store="$KAST_RUNTIME_STORE"
+  runtime_store_explicit=true
 elif [[ "$persisted_runtime_store_set" == true ]]; then
   runtime_store="$persisted_runtime_store"
+  runtime_store_explicit=true
 else
   runtime_store="$runtime_cache_root/semantic-runtimes"
 fi
 if [[ ${KAST_RUNTIME_DIRECTORY+x} == x ]]; then
   runtime_directory="$KAST_RUNTIME_DIRECTORY"
+  runtime_directory_explicit=true
 elif [[ "$persisted_runtime_directory_set" == true ]]; then
   runtime_directory="$persisted_runtime_directory"
+  runtime_directory_explicit=true
 else
   runtime_directory="$default_runtime_directory"
 fi
 if [[ ${KAST_CACHE_ROOT+x} == x ]]; then
   cache_root="$KAST_CACHE_ROOT"
+  cache_root_explicit=true
 elif [[ "$persisted_cache_root_set" == true ]]; then
   cache_root="$persisted_cache_root"
+  cache_root_explicit=true
 else
   cache_root="$runtime_cache_root/intellij-caches"
 fi
@@ -1159,16 +1092,19 @@ while [[ $# -gt 0 ]]; do
     --runtime-store)
       [[ $# -ge 2 ]] || fail "--runtime-store requires a value"
       runtime_store="$2"
+      runtime_store_explicit=true
       shift 2
       ;;
     --runtime-directory)
       [[ $# -ge 2 ]] || fail "--runtime-directory requires a value"
       runtime_directory="$2"
+      runtime_directory_explicit=true
       shift 2
       ;;
     --cache-root)
       [[ $# -ge 2 ]] || fail "--cache-root requires a value"
       cache_root="$2"
+      cache_root_explicit=true
       shift 2
       ;;
     --enable-launchd)
@@ -1215,6 +1151,10 @@ while [[ $# -gt 0 ]]; do
       assets_directory="$(CDPATH='' cd -- "$assets_directory" && pwd -P)"
       shift 2
       ;;
+    --migrate-configuration)
+      [[ $# -ge 2 ]] || fail "--migrate-configuration requires a path"
+      shift 2
+      ;;
     *) fail "unknown argument: $1" ;;
   esac
 done
@@ -1234,41 +1174,8 @@ if [[ "$action" == "uninstall" ]]; then
     "$enable_app_server_option_set" == false && "$app_server_tools_option_set" == false && \
     "$idea_home_option_set" == false ]] ||
     fail "install configuration options are valid only with install"
-  require_command rm
-  require_command find
-  require_command shasum
-  require_command awk
-  require_command sed
-  require_command "$process_table_command"
-  require_command "$process_kill_command"
-  require_command sleep
-  runtime_socket_directory="$(runtime_socket_directory_for "$runtime_directory")"
-  default_runtime_socket_directory="$(
-    runtime_socket_directory_for "$default_runtime_directory"
-  )"
-  if [[ "$installation_only" == true ]]; then
-    validate_cleanup_plan
-    process_table="$("$process_table_command" -ax -o pid=,command=)"
-    while IFS=$' \t' read -r _selected_pid selected_command; do
-      case "$selected_command" in
-        *io.github.amichne.kast.indexer.KastIndexerMainKt*)
-          case "$selected_command" in
-            *"$runtime_directory/"*|*"$runtime_socket_directory/"*)
-              fail "selected installation has an active indexer; run kast stop in its workspace first"
-              ;;
-          esac
-          ;;
-      esac
-    done <<< "$process_table"
-    for selected_path in "$bin_dir/kast" "$bin_dir/kast-codex" "$install_root" "$runtime_store" \
-      "$cache_root" "$runtime_directory" "$runtime_socket_directory" "$config_root"; do
-      remove_owned_path "$selected_path"
-    done
-    note "uninstalled selected Kast installation"
-    exit 0
-  fi
-  purge_kast
-  note "uninstalled Kast"
+  remove_selected_installation
+  note "removed the selected manifest-owned Kast release"
   exit 0
 fi
 
@@ -1298,6 +1205,8 @@ require_command cp
 require_command chmod
 require_command ln
 require_command uname
+require_command python3
+require_command sleep
 
 [[ "$(uname -s)" == "Darwin" ]] || fail "only macOS is supported"
 case "$(uname -m)" in
@@ -1351,13 +1260,7 @@ runtime_socket_directory="$(runtime_socket_directory_for "$runtime_directory")"
 default_runtime_socket_directory="$(
   runtime_socket_directory_for "$default_runtime_directory"
 )"
-if [[ "$purge_existing" == true ]]; then
-  require_command rm
-  require_command "$process_table_command"
-  require_command "$process_kill_command"
-  require_command sleep
-  validate_cleanup_plan
-fi
+
 
 if [[ -z "$version" || "$version" == "latest" ]]; then
   [[ -z "$release_base_url" ]] ||
@@ -1389,6 +1292,108 @@ prior_command=""
 prior_codex_command=""
 prior_configuration="absent"
 staged_link=""
+activation_control_open=false
+
+acquire_activation_lock() {
+  local lock_path="$install_root/activation.lock"
+  [[ ! -L "$lock_path" ]] || fail "activation lock must not be a symlink"
+  [[ ! -e "$lock_path" || -f "$lock_path" ]] || fail "activation lock must be a regular file"
+  local prior_umask
+  prior_umask="$(umask)"
+  umask 077
+  exec 9<>"$lock_path"
+  umask "$prior_umask"
+  activation_control_open=true
+  # flock belongs to this shared open file description. Python admits/acquires it;
+  # the shell retains descriptor 9 until activation/rollback completes.
+  python3 - "$lock_path" <<'PYTHON_LOCK' || fail "activation lock ownership was not established"
+import fcntl, os, pathlib, stat, sys, time
+path = pathlib.Path(sys.argv[1])
+root = path.parent
+root_identity = root.lstat()
+if root.resolve() != root or root_identity.st_uid != os.getuid() or stat.S_IMODE(root_identity.st_mode) & 0o022:
+    sys.exit(1)
+identity = os.fstat(9)
+current = path.lstat()
+if (not stat.S_ISREG(identity.st_mode) or identity.st_uid != os.getuid()
+        or stat.S_IMODE(identity.st_mode) != 0o600
+        or (identity.st_dev, identity.st_ino) != (current.st_dev, current.st_ino)):
+    sys.exit(1)
+deadline = time.monotonic() + 30
+while True:
+    try:
+        fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        break
+    except BlockingIOError:
+        if time.monotonic() >= deadline:
+            sys.exit(1)
+        time.sleep(0.05)
+current = path.lstat()
+if (current.st_dev, current.st_ino) != (identity.st_dev, identity.st_ino):
+    sys.exit(1)
+PYTHON_LOCK
+}
+
+write_installation_manifest() {
+python3 - "$target_root" "$version" "$control_digest" "$runtime_digest" "$payload_digest" \
+  "$install_root" "$bin_dir" "$HOME" "${CODEX_HOME:-$HOME/.codex}" "$1" "$2" <<'PYTHON_MANIFEST'
+import hashlib, json, os, pathlib, sys, tempfile
+root = pathlib.Path(sys.argv[1])
+payload_root = pathlib.Path(sys.argv[10])
+manifest_mode = sys.argv[11]
+version, control, runtime, payload = sys.argv[2:6]
+install, bin_dir, home, codex_home = map(pathlib.Path, sys.argv[6:10])
+if not codex_home.is_absolute():
+    raise SystemExit("kast-install: declared Codex home must be absolute")
+label = "io.github.amichne.kast.broker." + hashlib.sha256(str(root).encode()).hexdigest()[:32]
+anchors = [
+    {"kind": "current", "path": str(install / "current"), "expectedLinkTarget": "versions/" + root.name},
+    {"kind": "command", "path": str(bin_dir / "kast"), "expectedLinkTarget": str(install / "current/bin/kast-complete"), "requiresCurrentTarget": "versions/" + root.name},
+    {"kind": "codex-command", "path": str(bin_dir / "kast-codex"), "expectedLinkTarget": str(install / "current/bin/kast-codex-complete"), "requiresCurrentTarget": "versions/" + root.name},
+    {"kind": "login", "path": str(home / "Library/LaunchAgents" / (label + ".login.plist")), "expectedExecutable": str(root / "bin/kast"), "expectedLabel": label + ".login"},
+]
+run = root / "state/run"
+if len(str(run / ("kast-" + "0" * 43 + ".sock")).encode()) >= 104:
+    anchors.append({"kind": "socket-alias", "path": "/tmp/kast-uds-" + hashlib.sha256(str(run).encode()).hexdigest()[:32],
+                    "expectedLinkTarget": str(run), "identityReceipt": str(run / "endpoint-alias.json")})
+for anchor in anchors:
+    anchor["ownership"] = "declared-not-observed"
+payload_files = []
+for directory in ("bin", "lib", "share"):
+    for candidate in sorted((payload_root / directory).rglob("*")):
+        if candidate.is_symlink():
+            raise SystemExit("kast-install: payload link identity is not admitted")
+        if candidate.is_file():
+            digest = hashlib.sha256()
+            with candidate.open("rb") as source:
+                for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            payload_files.append({"path": candidate.relative_to(payload_root).as_posix(),
+                                  "sha256": "sha256:" + digest.hexdigest(), "mode": candidate.stat().st_mode & 0o777})
+document = {
+    "schemaVersion": 1, "semanticVersion": version, "installationRoot": str(root),
+    "payloadIdentity": "sha256:" + payload, "controlSha256": "sha256:" + control,
+    "runtimeSha256": "sha256:" + runtime, "codexHome": str(codex_home),
+    "configuration": str(root / "config/environment"), "workspaceRegistry": str(root / "config/workspaces.json"),
+    "stateRoot": str(root / "state"), "externalAnchors": anchors, "payloadFiles": payload_files,
+    "retention": {"payload": "until-explicit-uninstall", "config": "until-explicit-uninstall",
+                  "state": "after-exact-process-retirement", "externalAnchors": "after-live-identity-match"},
+}
+path = payload_root / "installation.json"
+if path.is_symlink() or (path.exists() and json.loads(path.read_text()) != document):
+    raise SystemExit("kast-install: existing installation manifest identity differs")
+if not path.exists():
+    if manifest_mode != "create":
+        raise SystemExit("kast-install: existing payload has no ownership manifest")
+    fd, temporary = tempfile.mkstemp(prefix=".installation-", dir=payload_root)
+    with os.fdopen(fd, "w") as output:
+        json.dump(document, output, sort_keys=True, separators=(",", ":"))
+        output.write("\n")
+        output.flush()
+        os.fsync(output.fileno())
+    os.replace(temporary, path)
+PYTHON_MANIFEST
+}
 
 # The supported host is macOS. BSD mv -h replaces the link itself atomically;
 # the destination must never be followed into the selected version directory.
@@ -1434,6 +1439,10 @@ cleanup() {
   trap - EXIT HUP INT TERM
   if [[ "$activation_state" == "pending" ]]; then
     restore_activation
+  fi
+  if [[ "$activation_control_open" == true ]]; then
+    exec 9>&-
+    activation_control_open=false
   fi
   rm -rf "$temporary_root"
   if [[ -n "$staged_root" && -e "$staged_root" ]]; then
@@ -1501,38 +1510,52 @@ verify_runtime_manifest \
   fail "the requested payload does not support App Server integration"
 
 if [[ "$purge_existing" == true ]]; then
-  purge_kast
+  remove_selected_installation
 fi
 
 versions_root="$install_root/versions"
-target_root="$versions_root/$version"
+[[ ! -L "$install_root" ]] || fail "installation root must not be a symlink"
+mkdir -p "$install_root"
+install_root="$(CDPATH='' cd -- "$install_root" && pwd -P)"
+versions_root="$install_root/versions"
+payload_digest="$(printf '%s\n%s\n' "$control_digest" "$runtime_digest" | shasum -a 256 | awk '{print $1}')"
+release_directory="$version-$payload_digest"
+target_root="$versions_root/$release_directory"
 current_link="$install_root/current"
 command_link="$bin_dir/kast"
 codex_command_link="$bin_dir/kast-codex"
+acquire_activation_lock
+[[ ! -L "$versions_root" ]] || fail "versions directory must not be a symlink"
 mkdir -p "$versions_root" "$bin_dir"
+config_root="$target_root/config"
+config_file="$config_root/environment"
+[[ "$runtime_store_explicit" == true ]] || runtime_store="$target_root/runtime-payloads"
+[[ "$runtime_directory_explicit" == true ]] || runtime_directory="$target_root/state/run"
+[[ "$cache_root_explicit" == true ]] || cache_root="$target_root/state/cache"
+[[ "$runtime_store" == "$target_root/runtime-payloads" ]] || fail "runtime store must remain in the selected physical release"
+[[ "$runtime_directory" == "$target_root/state/run" ]] || fail "runtime directory must remain in the selected physical release"
+[[ "$cache_root" == "$target_root/state/cache" ]] || fail "cache root must remain in the selected physical release"
 
 if [[ -e "$target_root" || -L "$target_root" ]]; then
   [[ -d "$target_root" && ! -L "$target_root" ]] ||
     fail "existing version path is not a directory: $target_root"
-  [[ -f "$target_root/.kast-control-sha256" ]] ||
+  [[ -f "$target_root/.kast-control-sha256" && ! -L "$target_root/.kast-control-sha256" ]] ||
     fail "existing version has no control identity: $target_root"
   [[ "$(< "$target_root/.kast-control-sha256")" == "$control_digest" ]] ||
     fail "existing version does not match the immutable release: $target_root"
-  verify_control_root "$target_root" "$version" "$java_executable" "$java_home"
-  [[ -f "$target_root/.kast-runtime-sha256" ]] ||
+  write_installation_manifest "$target_root" verify
+  verify_control_root "$target_root" "$version" "$java_executable" "$java_home" 9>&-
+  [[ -f "$target_root/.kast-runtime-sha256" && ! -L "$target_root/.kast-runtime-sha256" ]] ||
     fail "existing version has no sidecar identity: $target_root"
   [[ "$(< "$target_root/.kast-runtime-sha256")" == "$runtime_digest" ]] ||
     fail "existing version sidecar does not match the immutable release: $target_root"
-  install_runtime_archive "$target_root" "$runtime_archive" "$runtime_checksum" "$runtime_digest"
-  install_complete_launcher \
-    "$target_root" "$java_executable" "$java_home" "$config_file"
-  if [[ -x "$target_root/bin/kast-codex" ]]; then
-    install_complete_launcher "$target_root" "$java_executable" "$java_home" "$config_file" kast-codex
-  fi
+  [[ -f "$target_root/share/kast/runtime/$runtime_name" &&
+     "$(shasum -a 256 "$target_root/share/kast/runtime/$runtime_name" | awk '{print $1}')" == "$runtime_digest" &&
+     -x "$target_root/bin/kast-complete" ]] || fail "existing immutable payload is incomplete or changed"
 else
   staged_root="$(mktemp -d "$versions_root/.install-${version}.XXXXXX")"
   tar -xzf "$archive" -C "$staged_root"
-  verify_control_root "$staged_root" "$version" "$java_executable" "$java_home"
+  verify_control_root "$staged_root" "$version" "$java_executable" "$java_home" 9>&-
   install_runtime_archive "$staged_root" "$runtime_archive" "$runtime_checksum" "$runtime_digest"
   install_complete_launcher \
     "$staged_root" "$java_executable" "$java_home" "$config_file"
@@ -1541,6 +1564,7 @@ else
   fi
   printf '%s\n' "$control_digest" > "$staged_root/.kast-control-sha256"
   printf '%s\n' "$runtime_digest" > "$staged_root/.kast-runtime-sha256"
+  write_installation_manifest "$staged_root" create
   mv "$staged_root" "$target_root"
   staged_root=""
 fi
@@ -1581,14 +1605,61 @@ if [[ -e "$config_file" || -L "$config_file" ]]; then
   prior_configuration="present"
 fi
 
-if [[ "$refresh_app_server" == true && -n "$prior_codex_command" ]]; then
-  note "stopping the previous installed App Server before activation"
-  "$command_link" app-server stop
+if [[ -n "$prior_current" ]]; then
+  prior_physical_root="$(CDPATH='' cd -- "$current_link" && pwd -P)" ||
+    fail "previous physical installation is unavailable"
+  case "$prior_physical_root" in
+    "$versions_root/"*) ;;
+    *) fail "previous physical installation is outside the owned versions directory" ;;
+  esac
+  [[ -x "$prior_physical_root/bin/kast-complete" && -f "$prior_physical_root/.kast-control-sha256" &&
+     -f "$prior_physical_root/.kast-runtime-sha256" ]] ||
+    fail "previous installation identity is incomplete"
+  prior_codex_home="$(python3 - "$prior_physical_root" <<'PYTHON_PRIOR'
+import hashlib, json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+manifest = root / "installation.json"
+if not manifest.is_file() or manifest.is_symlink():
+    raise SystemExit("kast-install: previous installation has no admitted ownership manifest")
+document = json.loads(manifest.read_text())
+if document.get("schemaVersion") != 1 or document.get("installationRoot") != str(root):
+    raise SystemExit("kast-install: previous installation root identity differs")
+expected = document.get("payloadFiles")
+if not isinstance(expected, list) or not expected:
+    raise SystemExit("kast-install: previous payload ownership is incomplete")
+observed = []
+for directory in ("bin", "lib", "share"):
+    for candidate in sorted((root / directory).rglob("*")):
+        if candidate.is_symlink():
+            raise SystemExit("kast-install: previous payload has an unproven link")
+        if candidate.is_file():
+            digest = hashlib.sha256()
+            with candidate.open("rb") as stream:
+                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            observed.append({"path": candidate.relative_to(root).as_posix(),
+                             "sha256": "sha256:" + digest.hexdigest(), "mode": candidate.stat().st_mode & 0o777})
+if observed != expected:
+    raise SystemExit("kast-install: previous payload bytes no longer establish ownership")
+codex_home = document.get("codexHome")
+if not isinstance(codex_home, str) or "\n" in codex_home or not pathlib.Path(codex_home).is_absolute():
+    raise SystemExit("kast-install: previous Codex profile identity is incomplete")
+print(codex_home)
+PYTHON_PRIOR
+)"
+  note "retiring the previous physical App Server and its login entry before activation"
+  env -u KAST_RUNTIME_STORE -u KAST_RUNTIME_DIRECTORY -u KAST_CACHE_ROOT \
+    -u KAST_ENABLE_LAUNCHD -u KAST_ENABLE_APP_SERVER -u KAST_APP_SERVER_TOOLS \
+    -u KAST_CONFIGURATION_FILE -u KAST_SAVED_CONFIGURATION_FAILURE \
+    CODEX_HOME="$prior_codex_home" "$prior_physical_root/bin/kast-complete" app-server disable 9>&-
 fi
 
 activation_state="pending"
 install_runtime_configuration "$config_file"
-replace_managed_link "$current_link" "versions/$version"
+
+env -i HOME="$HOME" PATH="$PATH" JAVA_HOME="$java_home" \
+  "$target_root/bin/kast-complete" config validate --file "$config_file" --json 9>&- >/dev/null
+replace_managed_link "$current_link" "versions/$release_directory"
 replace_managed_link "$command_link" "$install_root/current/bin/kast-complete"
 if [[ -x "$target_root/bin/kast-codex" ]]; then
   replace_managed_link "$codex_command_link" "$install_root/current/bin/kast-codex-complete"
@@ -1596,15 +1667,16 @@ else
   rm -f "$codex_command_link"
 fi
 
-verify_control_root "$target_root" "$version" "$java_executable" "$java_home"
-"$command_link" --version >/dev/null
+verify_control_root "$target_root" "$version" "$java_executable" "$java_home" 9>&-
+env -u KAST_CONFIGURATION_FILE -u KAST_SAVED_CONFIGURATION_FAILURE "$command_link" --version 9>&- >/dev/null
 activation_state="committed"
 
 if [[ "$refresh_app_server" == true ]]; then
   note "enabling the installed App Server login service for the current workspace"
   env -u KAST_RUNTIME_STORE -u KAST_RUNTIME_DIRECTORY -u KAST_CACHE_ROOT \
     -u KAST_ENABLE_LAUNCHD -u KAST_ENABLE_APP_SERVER -u KAST_APP_SERVER_TOOLS \
-    "$command_link" app-server enable ||
+    -u KAST_CONFIGURATION_FILE -u KAST_SAVED_CONFIGURATION_FAILURE \
+    "$command_link" app-server enable 9>&- ||
     fail "Kast is installed, but App Server enablement failed; resolve the reported failure and run kast app-server enable"
 fi
 

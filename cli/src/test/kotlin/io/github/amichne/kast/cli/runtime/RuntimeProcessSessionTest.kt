@@ -24,6 +24,39 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 class RuntimeProcessSessionTest {
+    @Test fun `bootstrap process authority retains admitted heap reservation`(@TempDir temporary: Path) {
+        val heap = (io.github.amichne.kast.distribution.contract.IndexerHeapSize.parse("2g") as Refinement.Refined).value
+        val query = RuntimeBootstrapProcessQuery.from(endpoint(temporary), executable(temporary), launchContext(temporary, heap = heap))
+        assertEquals(heap, query.maxHeap, "bootstrap process query erased selected heap reservation")
+    }
+
+    @Test
+    fun `saved sidecar settings survive launchd without unrelated ambient values`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        val settings = (io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration.resolve(
+            io.github.amichne.kast.distribution.contract.configuration.ConfigurationSources(
+                environment = mapOf("FIXTURE_SELECTED" to "selected-value", "FIXTURE_UNRELATED" to "must-not-forward"),
+                savedInstallation = listOf("KAST_IDE_CONFIG_HOME" to root.toString(), "KAST_GRADLE_IMPORT_VARIABLES" to "FIXTURE_SELECTED"),
+            ),
+        ) as Refinement.Refined).value
+        val inputs = SidecarEnvironmentInputs.from(settings)
+        val endpoint = endpoint(temporary)
+        val command = (IndexerLaunchCommand.create(executable(temporary), endpoint.root, endpoint,
+            launchContext(temporary, inputs), attempt()) as IndexerLaunchCommandConstruction.Created).command
+        var submission: List<String> = emptyList()
+        val session = MacOsRuntimeProcessSession.from(endpoint, LaunchctlInvoker { arguments, _ ->
+            when (arguments[1]) {
+                "list" -> LaunchctlInvocation.Absent
+                "submit" -> { submission = arguments; LaunchctlInvocation.Completed }
+                else -> error("unexpected fixture operation")
+            }
+        })
+        assertInstanceOf(RuntimeProcessStart.Started::class.java, session.start(command))
+        assertTrue("KAST_IDE_CONFIG_HOME=$root" in submission, submission.toString())
+        assertTrue("FIXTURE_SELECTED=selected-value" in submission, submission.toString())
+        assertTrue(submission.none { it.contains("must-not-forward") })
+    }
+
     @Test
     fun `ready progress requires endpoint reachability as well as owned ready document`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
@@ -710,7 +743,7 @@ class RuntimeProcessSessionTest {
         }
     }
 
-    private fun launchContext(temporary: Path): SidecarLaunchContext {
+    private fun launchContext(temporary: Path, inputs: SidecarEnvironmentInputs = SidecarEnvironmentInputs.Empty, heap: io.github.amichne.kast.distribution.contract.IndexerHeapSize = (io.github.amichne.kast.distribution.contract.IndexerHeapSize.parse("8g") as Refinement.Refined).value): SidecarLaunchContext {
         val ideaHome = Files.createDirectories(temporary.resolve("idea-home")).toRealPath()
         val java = Files.createDirectories(
             ideaHome.resolve("jbr/Contents/Home/bin"),
@@ -742,7 +775,9 @@ class RuntimeProcessSessionTest {
             config,
             log,
             plugins,
-            maxHeap = (io.github.amichne.kast.distribution.contract.IndexerHeapSize.parse("8g") as Refinement.Refined).value,
+            maxHeap = heap,
+            importEnvironment = (inputs.importEnvironment() as Refinement.Refined).value,
+            sidecarEnvironment = inputs,
         ).let { (it as SidecarLaunchContextAdmission.Admitted).context }
     }
 
