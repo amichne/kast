@@ -16,6 +16,30 @@ import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicInteger
 
 class BrokerSessionHubTest {
+    @Test fun `hub close waits for active execution cancellation to retire`(@TempDir root: Path) = runBlocking {
+        val cancellationRetirement = CompletableDeferred<Unit>()
+        val fixture = Fixture(root, cancellationRetirement = cancellationRetirement)
+        try {
+            val active = fixture.connect()
+            fixture.bind(active, "thread/start")
+            active.upstream.received.send(BrokerUpstreamFrame.Text(toolCall("thread-1", "active", 7)))
+            fixture.entered.await()
+
+            val closure = async { fixture.hub.close() }
+            fixture.cancelled.await()
+            assertNull(
+                withTimeoutOrNull(100) { closure.join() },
+                "hub close returned while owned execution cleanup was still active",
+            )
+            cancellationRetirement.complete(Unit)
+            withTimeout(1_000) { closure.await() }
+        } finally {
+            cancellationRetirement.complete(Unit)
+            fixture.allowExecution.complete(Unit)
+            fixture.hub.close()
+        }
+    }
+
     @Test fun `blocked semantic work in one workspace leaves another workspace serviceable`(@TempDir root: Path) = runBlocking {
         val fixture = Fixture(root)
         val other = java.nio.file.Files.createDirectory(root.resolve("other")).toRealPath()
@@ -349,7 +373,13 @@ class BrokerSessionHubTest {
         override suspend fun receive(): BrokerUpstreamFrame = received.receiveCatching().getOrNull() ?: BrokerUpstreamFrame.Closed
         override suspend fun close() { closed = true; received.close(); sent.close(); block?.cancel() }
     }
-    private class Fixture(root: Path, enrollment: WorkspaceEnrollment = WorkspaceEnrollment.ProtocolFixture, invocationJournal: Path? = null, executionPolicy: WorkspaceExecutionPolicy = WorkspaceExecutionPolicy.Default) {
+    private class Fixture(
+        root: Path,
+        enrollment: WorkspaceEnrollment = WorkspaceEnrollment.ProtocolFixture,
+        invocationJournal: Path? = null,
+        executionPolicy: WorkspaceExecutionPolicy = WorkspaceExecutionPolicy.Default,
+        private val cancellationRetirement: CompletableDeferred<Unit>? = null,
+    ) {
         val root = root.toRealPath()
         val invocations = AtomicInteger()
         val entered = CompletableDeferred<Unit>()
@@ -366,7 +396,15 @@ class BrokerSessionHubTest {
                 invocations.incrementAndGet()
                 if ((input as? JsonObject)?.get("independent") != JsonPrimitive(true)) {
                     entered.complete(Unit)
-                    try { allowExecution.await() } catch (failure: CancellationException) { cancelled.complete(Unit); throw failure }
+                    try {
+                        allowExecution.await()
+                    } catch (failure: CancellationException) {
+                        cancelled.complete(Unit)
+                        cancellationRetirement?.let { retirement ->
+                            withContext(NonCancellable) { retirement.await() }
+                        }
+                        throw failure
+                    }
                 }
                 ProviderCall.Completed(input)
             },

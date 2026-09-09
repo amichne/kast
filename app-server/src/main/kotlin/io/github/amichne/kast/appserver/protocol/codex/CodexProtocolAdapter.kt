@@ -38,6 +38,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -401,6 +402,15 @@ internal class CodexProtocolAdapter(
 
     override fun close() {
         invocationScope.cancel()
+        clearEphemeralState()
+    }
+
+    internal suspend fun closeAndJoin() {
+        invocationScope.coroutineContext[Job]?.cancelAndJoin()
+        clearEphemeralState()
+    }
+
+    private fun clearEphemeralState() {
         activeInvocations.clear()
         pendingResponses.clear()
         try {

@@ -349,7 +349,7 @@ internal class BrokerSessionHub(
                 }
             }
             handshake = Handshake.CLOSED; attached = false; output.close(); outgoing.close(); tasks.upstreamLost(id)
-            try { adapter.close(); withContext(NonCancellable) { withTimeoutOrNull(BrokerOperationalLimits.sessionClose.value) { upstream.close() } } }
+            try { adapter.closeAndJoin(); withContext(NonCancellable) { withTimeoutOrNull(BrokerOperationalLimits.sessionClose.value) { upstream.close() } } }
             finally { sessions.remove(id); admission.release() }
         }
     }
@@ -377,7 +377,9 @@ internal class BrokerSessionHub(
             sessions.values.toList()
         }
         try { retiring.forEach { try { it.close() } catch (_: Exception) { /* Retire all owned sessions. */ } } }
-        finally { scope.cancel() }
+        finally {
+            scope.coroutineContext[Job]?.cancelAndJoin()
+        }
     }
 
     private fun control(doc: JsonObject): String {
