@@ -8,6 +8,7 @@
     "app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkerClient.kt",
     "app-server/src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt",
     "app-server/src/main/kotlin/io/github/amichne/kast/appserver/PersistentBrokerService.kt",
+    "app-server/src/main/kotlin/io/github/amichne/kast/appserver/PublishedBrokerServiceCommand.kt",
     "app-server/src/main/kotlin/io/github/amichne/kast/appserver/host/InstalledCodexClientLauncher.kt",
     "build.gradle.kts",
     "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledKastCliComposition.kt",

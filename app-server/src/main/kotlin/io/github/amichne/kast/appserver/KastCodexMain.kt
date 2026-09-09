@@ -5,6 +5,7 @@ import io.github.amichne.kast.appserver.host.CodexIntegrationHost
 import io.github.amichne.kast.appserver.host.DesktopStdioHost
 import io.github.amichne.kast.appserver.host.admission.CodexServiceInvocation
 import io.github.amichne.kast.appserver.host.admission.CodexHostInvocation
+import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnector
 import io.github.amichne.kast.appserver.runtime.connectCodexUnixWebSocket
 import io.github.amichne.kast.kernel.Refinement
@@ -31,6 +32,7 @@ enum class CodexIntegrationFailure {
     STDIO_REJECTED,
     INTERRUPTED,
     ARGUMENTS_REJECTED,
+    WORKING_DIRECTORY_REJECTED,
     SHUTDOWN_REJECTED,
 }
 
@@ -59,11 +61,19 @@ suspend fun runInstalledCodex(arguments: List<String>, kast: Path): CodexIntegra
         is PersistentBrokerServiceAdmission.Rejected -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.BROKER_REJECTED)
     }
     val host: CodexIntegrationHost = when (invocation) {
-        is CodexServiceInvocation.Cli -> CliRemoteClientHost(
-            codex,
-            launch.publicSocket,
-            invocation.arguments,
-        )
+        is CodexServiceInvocation.Cli -> {
+            val workingDirectory = CanonicalBrokerDirectory.admit(
+                Path.of(System.getProperty("user.dir")),
+            ) ?: return CodexIntegrationRun.Rejected(
+                CodexIntegrationFailure.WORKING_DIRECTORY_REJECTED,
+            )
+            CliRemoteClientHost(
+                codex,
+                launch.publicSocket,
+                invocation.arguments,
+                workingDirectory,
+            )
+        }
         CodexServiceInvocation.Stdio -> DesktopStdioHost(
             System.`in`,
             System.out,

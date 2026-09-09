@@ -108,8 +108,17 @@ class InstalledAppServerManager(
                 }
                 AppServerAction.Status -> passiveStatus(command, enrollment)
                 AppServerAction.Stop, AppServerAction.Disable -> {
-                    val stopped = MacOsPersistentBrokerServiceHost().stop(command)
-                    if (stopped != PersistentBrokerServiceAdmission.Ready) return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
+                    val host = MacOsPersistentBrokerServiceHost()
+                    val first = host.stop(command)
+                    val stopped = if (first is PersistentBrokerServiceAdmission.Rejected) {
+                        PublishedBrokerServiceCommand.recover(command)?.let(host::stop) ?: first
+                    } else first
+                    if (stopped is PersistentBrokerServiceAdmission.Rejected) {
+                        return AppServerManagementResult.Rejected(
+                            AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN,
+                            stopped.failure,
+                        )
+                    }
                     if (action == AppServerAction.Disable) {
                         if (Files.exists(agent)) {
                             if (Files.isSymbolicLink(agent) || !Files.readString(agent).contains("<!-- Kast App Server login bootstrap v1 -->")) return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
@@ -138,6 +147,8 @@ class InstalledAppServerManager(
             is CoordinatorStatusRead.Rejected -> when (observed.failure) {
                 WorkerControlFailure.UNAVAILABLE, WorkerControlFailure.DEADLINE_EXCEEDED -> PassiveServiceState.UNAVAILABLE
                 WorkerControlFailure.INVALID_REQUEST, WorkerControlFailure.IDENTITY_REJECTED,
+                WorkerControlFailure.SERVICE_IDENTITY_REJECTED, WorkerControlFailure.WORKSPACE_CONFIGURATION_REJECTED,
+                WorkerControlFailure.COORDINATOR_IDENTITY_REJECTED, WorkerControlFailure.WORKER_BINDING_IDENTITY_REJECTED,
                 WorkerControlFailure.REGISTRATION_REJECTED, WorkerControlFailure.RECEIPT_REJECTED,
                 WorkerControlFailure.LIFECYCLE_TRANSITION, WorkerControlFailure.RECOVERY_REQUIRED,
                 WorkerControlFailure.CAPACITY_REJECTED, WorkerControlFailure.STARTUP_REJECTED,

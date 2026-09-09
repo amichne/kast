@@ -14,7 +14,7 @@ internal class BrokerInstallationLayout private constructor(
     val broker: Path = state.resolve("broker").resolve(hostProfile)
     val run: Path = state.resolve("run")
     val publicSocket: Path = BrokerEndpointAliases.transportPath(run.resolve("c.sock"))
-    val upstreamSocket: Path = BrokerEndpointAliases.transportPath(run.resolve("u.sock"))
+    val upstreamSocket: Path = BrokerUpstreamDirectories.transportPath(run.resolve("u.sock"))
 
     companion object {
         /** The caller has established the physical installed executable and selected host home. */

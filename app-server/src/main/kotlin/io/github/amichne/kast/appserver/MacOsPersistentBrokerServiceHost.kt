@@ -345,7 +345,7 @@ internal class MacOsPersistentBrokerServiceHost(
                 if (Files.isSymbolicLink(marker)) rejected(PersistentBrokerServiceFailure.STATE_DIRECTORY_REJECTED)
                 else {
                     Files.writeString(marker, "stopped\n", StandardOpenOption.CREATE, StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS)
-                    val removal = if (state == BrokerReadinessObservation.Missing) BrokerLaunchdServiceRetirement.Retired else retireService(command.serviceLabel)
+                    val removal = if (state == BrokerReadinessObservation.Missing) BrokerLaunchdServiceRetirement.Retired else retireService(command)
                     when (removal) {
                         BrokerLaunchdServiceRetirement.Retired ->
                             if (awaitRetirement(command,state) == BrokerLaunchdServiceRetirement.Retired) PersistentBrokerServiceAdmission.Ready
@@ -449,7 +449,7 @@ internal class MacOsPersistentBrokerServiceHost(
     private fun retireAndSubmit(
         command: BrokerServiceLaunchCommand,
         readiness: BrokerReadinessObservation.Published,
-    ): PersistentBrokerServiceAdmission = when (retireService(command.serviceLabel)) {
+    ): PersistentBrokerServiceAdmission = when (retireService(command)) {
         BrokerLaunchdServiceRetirement.Retired -> when (
             awaitRetirement(command, readiness)
         ) {
@@ -490,7 +490,7 @@ internal class MacOsPersistentBrokerServiceHost(
             )
         }
         BrokerLaunchdServiceObservation.Present -> when (
-            retireService(command.serviceLabel)
+            retireService(command)
         ) {
             BrokerLaunchdServiceRetirement.Retired -> when (
                 awaitRetirement(command, rejection)
@@ -622,7 +622,7 @@ internal class MacOsPersistentBrokerServiceHost(
             is BrokerReadinessObservation.Ready,
                 -> readiness
         }
-        return when (retireService(command.serviceLabel)) {
+        return when (retireService(command)) {
             BrokerLaunchdServiceRetirement.Retired -> when (
                 awaitRetirement(command, retiring)
             ) {
@@ -720,20 +720,29 @@ internal class MacOsPersistentBrokerServiceHost(
         LaunchctlInvocation.TimedOut -> BrokerLaunchdServiceObservation.TimedOut
     }
 
+    /** Retires the exact gui-domain service synchronously through launchctl's supported service target. */
     private fun retireService(
-        label: BrokerLaunchdServiceLabel,
-    ): BrokerLaunchdServiceRetirement = when (
-        launchctl.invoke(
-            listOf(LAUNCHCTL_EXECUTABLE, "remove", label.value),
+        command: BrokerServiceLaunchCommand,
+    ): BrokerLaunchdServiceRetirement {
+        val uid = try {
+            Files.getAttribute(command.userHome, "unix:uid") as? Number
+        } catch (_: IOException) {
+            null
+        } catch (_: SecurityException) {
+            null
+        } ?: return BrokerLaunchdServiceRetirement.Rejected
+        val target = "gui/${uid.toLong()}/${command.serviceLabel.value}"
+        return when (launchctl.invoke(
+            listOf(LAUNCHCTL_EXECUTABLE, "bootout", target),
             LaunchctlExitContract.CompletionOnly,
-        )
-    ) {
+        )) {
         LaunchctlInvocation.Completed -> BrokerLaunchdServiceRetirement.Retired
         LaunchctlInvocation.Interrupted -> BrokerLaunchdServiceRetirement.Interrupted
         LaunchctlInvocation.TimedOut -> BrokerLaunchdServiceRetirement.TimedOut
         LaunchctlInvocation.Absent,
         LaunchctlInvocation.Rejected,
             -> BrokerLaunchdServiceRetirement.Rejected
+        }
     }
 
     /** Waits for child-owned readiness retirement after socket close, fencing any replacement. */

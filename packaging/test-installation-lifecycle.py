@@ -21,7 +21,10 @@ class LifecycleTest(unittest.TestCase):
         self.workspace.mkdir()
         self.log = self.outer / 'commands'
         self.kast = self.root / 'bin/kast-complete'
-        self.kast.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "' + str(self.log) + '"\necho \'{"status":"complete"}\'\n')
+        self.kast.write_text('#!/bin/sh\n'
+            'if [ "$1 $2" = "app-server disable" ] && [ "${KAST_ENABLE_APP_SERVER-}" != 1 ]; then exit 9; fi\n'
+            'printf "%s\\n" "$*" >> "' + str(self.log) + '"\n'
+            'echo \'{"status":"complete"}\'\n')
         self.kast.chmod(0o700)
         self.epoch = {'schemaVersion': 1, 'installation': 'sha256:' + 'd' * 64, 'epoch': str(uuid.uuid4())}
         (self.root / 'state/epoch.json').write_text(json.dumps(self.epoch))
@@ -77,6 +80,29 @@ class LifecycleTest(unittest.TestCase):
         self.assertEqual(self.epoch['installation'], new_epoch['installation'])
         self.assertEqual('KAST_INDEXER_MAX_HEAP=8g\n', (self.root / 'config/environment').read_text())
         self.assertTrue(self.kast.exists())
+    def test_reset_removes_only_the_receipted_private_upstream_directory(self):
+        run = self.root / 'state/run'
+        upstream = Path('/tmp').resolve() / ('kast-codex-' + hashlib.sha256(str(run).encode()).hexdigest()[:32])
+        upstream.mkdir(mode=0o700)
+        def identity(path):
+            observed = path.lstat()
+            return {'device': observed.st_dev, 'inode': observed.st_ino, 'owner': observed.st_uid}
+        receipt = run / 'upstream-directory.json'
+        receipt.write_text(json.dumps({'schemaVersion': 1, 'directory': str(upstream),
+            'physicalDirectory': str(run), 'directoryIdentity': identity(upstream),
+            'physicalDirectoryIdentity': identity(run)}))
+        receipt.chmod(0o600)
+        self.manifest['externalAnchors'] = [{'kind': 'upstream-directory', 'path': str(upstream),
+            'expectedPhysicalDirectory': str(run), 'identityReceipt': str(receipt),
+            'ownership': 'declared-not-observed'}]
+        (self.root / 'installation.json').write_text(json.dumps(self.manifest))
+        try:
+            code, result = self.invoke('reset')
+            self.assertEqual(0, code, result)
+            self.assertFalse(upstream.exists())
+        finally:
+            if upstream.exists():
+                upstream.rmdir()
     def test_uncertain_journal_blocks_before_retirement(self):
         journal = self.root / 'state/broker/profile/invocations.json'
         journal.write_text(json.dumps({'schemaVersion': 1, 'records': {'a' * 64: {'fingerprint': 'b' * 64, 'phase': 'UNCERTAIN'}}}))
@@ -85,6 +111,59 @@ class LifecycleTest(unittest.TestCase):
         self.assertEqual('UNRESOLVED_INVOCATION', result['failure'])
         self.assertFalse(self.log.exists())
         self.assertTrue(journal.exists())
+
+    def test_recover_read_only_discards_only_a_structurally_matched_cancelled_query(self):
+        thread = 'thread-1'
+        turn = 'turn-1'
+        call = 'call-1'
+        identity = json.dumps([thread, turn, call], separators=(',', ':'))
+        key = hashlib.sha256(identity.encode()).hexdigest()
+        journal = self.root / 'state/broker/profile/invocations.json'
+        journal.write_text(json.dumps({'schemaVersion': 1, 'records': {
+            key: {'fingerprint': 'b' * 64, 'phase': 'UNCERTAIN'},
+            'c' * 64: {'fingerprint': 'd' * 64, 'phase': 'COMPLETED'}}}))
+        service_log = journal.with_name('service.log')
+        service_log.write_text('\n'.join((
+            json.dumps({'component': 'kast-broker', 'event': 'tool-call-started',
+                'threadId': thread, 'turnId': turn, 'callId': call, 'namespace': 'kast', 'tool': 'query'}),
+            json.dumps({'component': 'kast-broker', 'event': 'tool-call-finished',
+                'threadId': thread, 'turnId': turn, 'callId': call, 'namespace': 'kast', 'tool': 'query',
+                'completion': 'cancelled'}))) + '\n')
+
+        code, result = self.invoke('recover-read-only')
+
+        self.assertEqual(0, code, result)
+        self.assertEqual(1, result['recoveredInvocationCount'])
+        self.assertEqual({'c' * 64: {'fingerprint': 'd' * 64, 'phase': 'COMPLETED'}},
+                         json.loads(journal.read_text())['records'])
+        evidence = Path(result['evidence'])
+        self.assertTrue(evidence.is_file())
+        self.assertEqual(0o600, evidence.stat().st_mode & 0o777)
+        self.assertEqual(key, json.loads(evidence.read_text())['recoveries'][0]['invocationKey'])
+        self.assertEqual(['app-server disable', 'stop'], self.log.read_text().splitlines())
+        code, result = self.invoke('inspect')
+        self.assertEqual(0, code, result)
+
+    def test_recover_read_only_rejects_an_unmatched_or_mutating_invocation(self):
+        thread = 'thread-1'
+        turn = 'turn-1'
+        call = 'call-1'
+        identity = json.dumps([thread, turn, call], separators=(',', ':'))
+        key = hashlib.sha256(identity.encode()).hexdigest()
+        journal = self.root / 'state/broker/profile/invocations.json'
+        original = {'schemaVersion': 1, 'records': {
+            key: {'fingerprint': 'b' * 64, 'phase': 'UNCERTAIN'}}}
+        journal.write_text(json.dumps(original))
+        journal.with_name('service.log').write_text(json.dumps({
+            'component': 'kast-broker', 'event': 'tool-call-started', 'threadId': thread,
+            'turnId': turn, 'callId': call, 'namespace': 'kast', 'tool': 'mutate'}) + '\n')
+
+        code, result = self.invoke('recover-read-only')
+
+        self.assertNotEqual(0, code)
+        self.assertEqual('RECOVERY_REJECTED', result['failure'])
+        self.assertEqual(original, json.loads(journal.read_text()))
+        self.assertFalse(self.log.exists())
     def test_failed_retirement_preserves_state(self):
         self.kast.write_text('#!/bin/sh\nexit 7\n')
         self.manifest['payloadFiles'] = self.inventory()

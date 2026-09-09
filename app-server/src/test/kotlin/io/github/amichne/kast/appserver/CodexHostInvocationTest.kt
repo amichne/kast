@@ -5,10 +5,14 @@ import io.github.amichne.kast.appserver.host.admission.CodexAppServerArguments
 import io.github.amichne.kast.appserver.host.admission.CodexHostInvocation
 import io.github.amichne.kast.appserver.host.admission.CodexHostInvocationFailure
 import io.github.amichne.kast.appserver.host.admission.CodexHostMode
+import io.github.amichne.kast.appserver.host.admission.CodexArgumentFailure
+import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.kernel.Refinement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Path
 
 class CodexHostInvocationTest {
     @Test
@@ -53,6 +57,46 @@ class CodexHostInvocationTest {
 
         assertEquals(CodexHostMode.CLI_REMOTE_CLIENT, invocation.mode)
         assertEquals(listOf("--model", "gpt-5"), invocation.arguments.values)
+    }
+
+    @Test
+    fun `remote client cannot replace the host owned working directory`() {
+        listOf(
+            listOf("-C", "/tmp/other"),
+            listOf("-C/tmp/other"),
+            listOf("--cd", "/tmp/other"),
+            listOf("--cd=/tmp/other"),
+        ).forEach { arguments ->
+            assertEquals(
+                Refinement.Rejected(
+                    CodexHostInvocationFailure.ClientArguments(
+                        CodexArgumentFailure.WORKING_DIRECTORY_OVERRIDE,
+                    ),
+                ),
+                CodexHostInvocation.admit(arguments),
+            )
+        }
+    }
+
+    @Test
+    fun `remote client projection carries the canonical launch directory`(@TempDir temporary: Path) {
+        val invocation = refined(CodexHostInvocation.admit(listOf("--model", "gpt-5"))) as CodexHostInvocation.Cli
+        val workingDirectory = requireNotNull(CanonicalBrokerDirectory.admit(temporary.toRealPath()))
+
+        assertEquals(
+            listOf(
+                "--remote",
+                "unix:///tmp/kast.sock",
+                "--cd",
+                temporary.toRealPath().toString(),
+                "--model",
+                "gpt-5",
+            ),
+            invocation.arguments.withOwnedConnection(
+                "unix:///tmp/kast.sock",
+                workingDirectory,
+            ),
+        )
     }
 
     @Test

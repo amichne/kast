@@ -47,11 +47,15 @@ internal enum class BrokerSocketPathFailure {
     NOT_NORMALIZED,
     TOO_LONG,
     ALIAS_REJECTED,
+    UPSTREAM_DIRECTORY_REJECTED,
 }
 
 internal sealed interface BrokerSocketRoute {
     data object Canonical : BrokerSocketRoute
     data class Aliased(val receipt: io.github.amichne.kast.appserver.BrokerEndpointAliasReceipt) : BrokerSocketRoute
+    data class PrivateUpstream(
+        val receipt: io.github.amichne.kast.appserver.BrokerUpstreamDirectoryReceipt,
+    ) : BrokerSocketRoute
 }
 
 internal class BrokerSocketPath private constructor(
@@ -64,6 +68,10 @@ internal class BrokerSocketPath private constructor(
         is BrokerSocketRoute.Aliased -> when (proof.receipt.validate()) {
             is Validation.Validated -> Validation.validated(this)
             is Validation.Rejected -> Validation.rejected(BrokerSocketPathFailure.ALIAS_REJECTED)
+        }
+        is BrokerSocketRoute.PrivateUpstream -> when (proof.receipt.validate()) {
+            is Validation.Validated -> Validation.validated(this)
+            is Validation.Rejected -> Validation.rejected(BrokerSocketPathFailure.UPSTREAM_DIRECTORY_REJECTED)
         }
     }
 
@@ -91,6 +99,30 @@ internal class BrokerSocketPath private constructor(
             }
             if (physicalSocket.fileName.toString() !in setOf("c.sock", "u.sock")) {
                 return Validation.rejected(BrokerSocketPathFailure.ALIAS_REJECTED)
+            }
+            if (physicalSocket.fileName.toString() == "u.sock") {
+                return when (
+                    val directory = io.github.amichne.kast.appserver.BrokerUpstreamDirectories.prepare(
+                        physicalSocket.parent,
+                    )
+                ) {
+                    is Validation.Rejected -> Validation.rejected(
+                        BrokerSocketPathFailure.UPSTREAM_DIRECTORY_REJECTED,
+                    )
+                    is Validation.Validated -> {
+                        val path = directory.value.directory.path.resolve(physicalSocket.fileName)
+                        when (val admitted = admit(path)) {
+                            is Validation.Rejected -> admitted
+                            is Validation.Validated -> Validation.validated(
+                                BrokerSocketPath(
+                                    admitted.value.path,
+                                    admitted.value.physicalPath,
+                                    BrokerSocketRoute.PrivateUpstream(directory.value),
+                                ),
+                            )
+                        }
+                    }
+                }
             }
             return when (val alias = io.github.amichne.kast.appserver.BrokerEndpointAliases.prepare(physicalSocket.parent)) {
                 is Validation.Rejected -> Validation.rejected(BrokerSocketPathFailure.ALIAS_REJECTED)

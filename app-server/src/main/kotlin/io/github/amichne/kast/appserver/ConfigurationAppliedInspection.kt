@@ -44,6 +44,8 @@ object InstalledConfigurationAppliedInspection {
             is CoordinatorStatusRead.Rejected -> return unobserved(when (observed.failure) {
                 WorkerControlFailure.UNAVAILABLE, WorkerControlFailure.DEADLINE_EXCEEDED -> AppliedConfigurationUnavailable.COORDINATOR_UNAVAILABLE
                 WorkerControlFailure.INVALID_REQUEST, WorkerControlFailure.IDENTITY_REJECTED,
+                WorkerControlFailure.SERVICE_IDENTITY_REJECTED, WorkerControlFailure.WORKSPACE_CONFIGURATION_REJECTED,
+                WorkerControlFailure.COORDINATOR_IDENTITY_REJECTED, WorkerControlFailure.WORKER_BINDING_IDENTITY_REJECTED,
                 WorkerControlFailure.REGISTRATION_REJECTED, WorkerControlFailure.RECEIPT_REJECTED,
                 WorkerControlFailure.LIFECYCLE_TRANSITION, WorkerControlFailure.RECOVERY_REQUIRED,
                 WorkerControlFailure.CAPACITY_REJECTED, WorkerControlFailure.STARTUP_REJECTED,

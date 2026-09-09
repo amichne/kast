@@ -3,9 +3,11 @@ package io.github.amichne.kast.appserver
 import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.channels.FileChannel
+import java.nio.channels.OverlappingFileLockException
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
+import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.PosixFilePermissions
@@ -114,6 +116,32 @@ internal sealed interface WorkspaceRegistryRead {
     data class Rejected(val failure: EnrollmentFailure) : WorkspaceRegistryRead
 }
 
+enum class WorkspaceRegistryRetentionFailure {
+    SOURCE_REJECTED,
+    SOURCE_LOCKED,
+    DESTINATION_REJECTED,
+    WRITE_REJECTED,
+}
+
+sealed interface WorkspaceRegistryRetention {
+    data object Retained : WorkspaceRegistryRetention
+    data class Rejected(val failure: WorkspaceRegistryRetentionFailure) : WorkspaceRegistryRetention
+}
+
+/** Retains one admitted release-local workspace registry across installation activation. */
+object InstalledWorkspaceRegistryRetention {
+    /**
+     * Proof transition: `source Path + destination Path -> WorkspaceRegistryRetention`.
+     *
+     * Establishes that a non-empty, bounded, schema-valid source registry was read while holding
+     * its enrollment lock and materialized as the same admitted snapshot at one empty physical
+     * destination. [WorkspaceRegistryRetentionFailure] is the closed expected failure. Raw paths
+     * are permitted only at this installation filesystem boundary.
+     */
+    fun retain(source: Path, destination: Path): WorkspaceRegistryRetention =
+        WorkspaceEnrollmentStore(source).retainTo(destination)
+}
+
 /** Bounded desired workspace registrations, independent of runtime readiness or frontend lifetime. */
 internal class WorkspaceEnrollmentStore(private val file: Path) {
     fun read(): EnrollmentRead = when (val current = snapshot()) {
@@ -206,6 +234,123 @@ internal class WorkspaceEnrollmentStore(private val file: Path) {
                     }
                 }
             } catch (_: Exception) { Refinement.Rejected(EnrollmentFailure.WRITE_REJECTED) }
+        }
+    }
+
+    /**
+     * Proof transition: `source registry Path + destination Path -> WorkspaceRegistryRetention`.
+     *
+     * Establishes a lock-stable admitted source snapshot before delegating its exact materialization.
+     * [WorkspaceRegistryRetentionFailure] is the closed expected failure. Raw paths are permitted
+     * only at the installation filesystem boundary owned by [InstalledWorkspaceRegistryRetention].
+     */
+    internal fun retainTo(destination: Path): WorkspaceRegistryRetention {
+        val parent = file.parent
+            ?: return WorkspaceRegistryRetention.Rejected(WorkspaceRegistryRetentionFailure.SOURCE_REJECTED)
+        val lockPath = file.resolveSibling("${file.fileName}.lock")
+        val admittedSource = try {
+            file.isAbsolute && file.normalize() == file &&
+                Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS) && !Files.isSymbolicLink(file) &&
+                Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS) && !Files.isSymbolicLink(parent) &&
+                parent.toRealPath() == parent && !Files.isSymbolicLink(lockPath) &&
+                (!Files.exists(lockPath, LinkOption.NOFOLLOW_LINKS) ||
+                    Files.isRegularFile(lockPath, LinkOption.NOFOLLOW_LINKS))
+        } catch (_: Exception) {
+            false
+        }
+        if (!admittedSource) {
+            return WorkspaceRegistryRetention.Rejected(WorkspaceRegistryRetentionFailure.SOURCE_REJECTED)
+        }
+        return synchronized(locks.computeIfAbsent(file) { Any() }) {
+            try {
+                FileChannel.open(
+                    lockPath,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.WRITE,
+                    LinkOption.NOFOLLOW_LINKS,
+                ).use { channel ->
+                    Files.setPosixFilePermissions(lockPath, PosixFilePermissions.fromString("rw-------"))
+                    val lock = try {
+                        channel.tryLock()
+                    } catch (_: OverlappingFileLockException) {
+                        null
+                    } ?: return@synchronized WorkspaceRegistryRetention.Rejected(
+                        WorkspaceRegistryRetentionFailure.SOURCE_LOCKED,
+                    )
+                    lock.use {
+                        val retained = when (val read = snapshot()) {
+                            is WorkspaceRegistryRead.Read -> read.snapshot.takeIf { it.workspaces.isNotEmpty() }
+                            is WorkspaceRegistryRead.Rejected -> null
+                        } ?: return@synchronized WorkspaceRegistryRetention.Rejected(
+                            WorkspaceRegistryRetentionFailure.SOURCE_REJECTED,
+                        )
+                        retain(retained, destination)
+                    }
+                }
+            } catch (_: Exception) {
+                WorkspaceRegistryRetention.Rejected(WorkspaceRegistryRetentionFailure.WRITE_REJECTED)
+            }
+        }
+    }
+
+    /**
+     * Proof transition: `WorkspaceRegistrySnapshot + destination Path -> WorkspaceRegistryRetention`.
+     *
+     * Preserves the admitted snapshot as a mode-0600 registry in one physical destination parent.
+     * [WorkspaceRegistryRetentionFailure] is the closed expected failure. The destination path may
+     * be extracted only for the bounded atomic filesystem write performed here.
+     */
+    private fun retain(
+        snapshot: WorkspaceRegistrySnapshot,
+        destination: Path,
+    ): WorkspaceRegistryRetention {
+        val parent = destination.parent
+            ?: return WorkspaceRegistryRetention.Rejected(WorkspaceRegistryRetentionFailure.DESTINATION_REJECTED)
+        if (
+            !destination.isAbsolute || destination.normalize() != destination ||
+            Files.isSymbolicLink(destination) ||
+            !Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS) ||
+            Files.isSymbolicLink(parent) || parent.toRealPath() != parent
+        ) return WorkspaceRegistryRetention.Rejected(WorkspaceRegistryRetentionFailure.DESTINATION_REJECTED)
+        if (Files.exists(destination, LinkOption.NOFOLLOW_LINKS)) {
+            val existing = when (val read = WorkspaceEnrollmentStore(destination).snapshot()) {
+                is WorkspaceRegistryRead.Read -> read.snapshot
+                is WorkspaceRegistryRead.Rejected -> null
+            }
+            return if (existing == snapshot) {
+                WorkspaceRegistryRetention.Retained
+            } else {
+                WorkspaceRegistryRetention.Rejected(WorkspaceRegistryRetentionFailure.DESTINATION_REJECTED)
+            }
+        }
+        val document = buildJsonObject {
+            put("schemaVersion", 2)
+            put("revision", snapshot.revision.value)
+            put(
+                "roots",
+                JsonArray(snapshot.workspaces.map { it.root.path.toString() }.sorted().map(::JsonPrimitive)),
+            )
+        }.toString()
+        val temporary = Files.createTempFile(parent, ".workspace-retention-", ".json")
+        try {
+            Files.writeString(temporary, document)
+            Files.setPosixFilePermissions(temporary, PosixFilePermissions.fromString("rw-------"))
+            try {
+                Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE)
+            } catch (_: AtomicMoveNotSupportedException) {
+                Files.move(temporary, destination)
+            }
+        } finally {
+            Files.deleteIfExists(temporary)
+        }
+        val written = when (val read = WorkspaceEnrollmentStore(destination).snapshot()) {
+            is WorkspaceRegistryRead.Read -> read.snapshot
+            is WorkspaceRegistryRead.Rejected -> null
+        }
+        return if (written == snapshot) {
+            WorkspaceRegistryRetention.Retained
+        } else {
+            WorkspaceRegistryRetention.Rejected(WorkspaceRegistryRetentionFailure.WRITE_REJECTED)
         }
     }
 

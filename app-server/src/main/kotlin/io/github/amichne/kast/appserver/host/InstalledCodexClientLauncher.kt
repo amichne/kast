@@ -12,6 +12,7 @@ import io.github.amichne.kast.appserver.PersistentBrokerServiceFailure
 import io.github.amichne.kast.appserver.PersistentBrokerServiceHost
 import io.github.amichne.kast.appserver.host.admission.DesktopFacadeExecutable
 import io.github.amichne.kast.appserver.host.admission.UpstreamCodexExecutable
+import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.appserver.provider.BrokerExecutable
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
@@ -31,6 +32,7 @@ enum class CodexClientLaunchFailure {
     FACADE_UNAVAILABLE,
     DESKTOP_OVERRIDE_CONFLICT,
     PROCESS_REJECTED,
+    WORKING_DIRECTORY_REJECTED,
     INTERRUPTED,
 }
 
@@ -69,6 +71,7 @@ internal sealed interface CodexClientProcessRequest {
         val upstream: UpstreamCodexExecutable,
         val publicSocket: Path,
         val codexHome: Path,
+        val workingDirectory: CanonicalBrokerDirectory,
     ) : CodexClientProcessRequest
 
     data class Desktop(
@@ -122,11 +125,19 @@ internal class InstalledCodexClientLauncher(
             io.github.amichne.kast.appserver.BrokerHostSelection.NotConfigured -> return CodexClientLaunchRun.Rejected(CodexClientLaunchFailure.APP_SERVER_UNAVAILABLE)
         }
         val request = when (client) {
-            CodexClientLaunch.Cli -> CodexClientProcessRequest.Cli(
-                codex,
-                command.publicSocket,
-                command.codexHome,
-            )
+            CodexClientLaunch.Cli -> {
+                val workingDirectory = CanonicalBrokerDirectory.admit(
+                    Path.of(System.getProperty("user.dir")),
+                ) ?: return CodexClientLaunchRun.Rejected(
+                    CodexClientLaunchFailure.WORKING_DIRECTORY_REJECTED,
+                )
+                CodexClientProcessRequest.Cli(
+                    codex,
+                    command.publicSocket,
+                    command.codexHome,
+                    workingDirectory,
+                )
+            }
             CodexClientLaunch.Desktop -> when (val admission = desktopRequest(command, codex)) {
                 is Refinement.Refined -> admission.value
                 is Refinement.Rejected -> return CodexClientLaunchRun.Rejected(admission.failure)
@@ -195,6 +206,8 @@ private object JdkCodexClientProcessLauncher : CodexClientProcessLauncher {
                 request.upstream.path.toString(),
                 "--remote",
                 "unix://${request.publicSocket}",
+                "--cd",
+                request.workingDirectory.path.toString(),
             ).inheritIO().also { builder ->
                 builder.environment().remove("CODEX_CLI_PATH")
                 builder.environment().remove("KAST_REAL_CODEX_EXECUTABLE")

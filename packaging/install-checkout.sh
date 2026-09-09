@@ -54,6 +54,7 @@ done
 
 if [[ $mode == session ]]; then
   session_root=$(mktemp -d "${TMPDIR:-/tmp}/kast-session.XXXXXX")
+  session_root=$(CDPATH='' cd -- "$session_root" && pwd -P)
   # Ignore inherited persistent settings; the launcher captures its own config.
   export KAST_INSTALL_ROOT="$session_root/install" KAST_BIN_DIR="$session_root/bin"
   unset KAST_RUNTIME_STORE KAST_RUNTIME_DIRECTORY KAST_CACHE_ROOT
