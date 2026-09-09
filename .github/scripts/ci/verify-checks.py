@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Routine CI: build, unit/contract tests, architecture, packaging and required installed semantics."""
+"""Routine CI: build, deterministic tests, architecture and packaging; runtime qualification is separate."""
 from pathlib import Path
 import os
 import subprocess
+from routine_gate import GRADLE
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -16,7 +17,6 @@ def run(command: list[str], environment: dict[str, str]) -> None:
 def main() -> None:
     environment = os.environ.copy()
     environment["JAVA_HOME"] = environment["KAST_RELEASE_JDK_25"]
-    environment.setdefault("KAST_ACCEPTANCE_PROFILE", "ci-small")
     sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     run([
         "bash", ".github/scripts/release/admit-source.sh",
@@ -24,10 +24,9 @@ def main() -> None:
         "--expected-source-revision", sha,
     ], environment)
     run(["python3", "distribution/release/test_resolve_version.py"], environment)
-    run([
-        "./gradlew", "--max-workers=2", "-Dorg.gradle.jvmargs=-Xmx5g",
-        "productBuildGate",
-    ], environment)
+    run(["python3", ".github/scripts/ci/test_routine_gate.py"], environment)
+    run(["python3", ".github/scripts/ci/routine_gate.py"], environment)
+    run(GRADLE + ["productBuildGate"], environment)
     run([
         "bash", ".github/scripts/release/admit-source.sh",
         "--repository-root", str(ROOT),

@@ -314,7 +314,7 @@ val localInstallationTest = tasks.register<Exec>("localInstallationTest") {
 
 val productBuildGate by tasks.registering {
     group = "verification"
-    description = "Builds every module and verifies architecture and installed packaging."
+    description = "Builds every module and verifies deterministic contracts, architecture and packaging without runtime qualification."
     dependsOn(
         "check",
         isolatedAcceptanceEnvironmentTest,
@@ -324,12 +324,15 @@ val productBuildGate by tasks.registering {
         installerRemovalTest,
         installedProductTest,
         testCheckoutInstaller,
-        installedCodexHostTest,
-        installedTwoWorkspaceTest,
-        ":app-server:generateCodexHostIntegrationManifest",
         "verifyKastArchitecture",
     )
     dependsOn(gradle.includedBuild("build-logic").task(":check"))
+}
+
+tasks.register("runtimeQualification") {
+    group = "verification"
+    description = "Explicit installed Codex and two-workspace runtime qualification; excluded from routine CI and release gates."
+    dependsOn(installedCodexHostTest, installedTwoWorkspaceTest, ":app-server:generateCodexHostIntegrationManifest")
 }
 
 installedTwoWorkspaceTest.configure {

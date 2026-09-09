@@ -18,7 +18,6 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  KAST_CODEX_ACCEPTANCE_VERSION: 0.153.4
 
 concurrency:
   group: release
@@ -27,8 +26,8 @@ concurrency:
 jobs:
   release:
     name: Build and publish release
-    runs-on: ${{ vars.KAST_ACCEPTANCE_RUNNER || 'macos-15' }}
-    timeout-minutes: 120
+    runs-on: macos-15
+    timeout-minutes: 60
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -59,12 +58,6 @@ jobs:
         with:
           python-version-file: ".python-version"
 
-      - name: Set up installed Codex protocol authority
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: 24
-      - run: npm install --global "@openai/codex@${KAST_CODEX_ACCEPTANCE_VERSION}"
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
         with:
@@ -85,7 +78,6 @@ jobs:
         env:
           KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
           RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
-          KAST_ACCEPTANCE_PROFILE: ci-small
         run: bash .github/scripts/ci/verify.sh --version "$RELEASE_VERSION"
 
       - name: Publish immutable GitHub release

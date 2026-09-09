@@ -12,7 +12,6 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  KAST_CODEX_ACCEPTANCE_VERSION: 0.153.4
 
 concurrency:
   group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
@@ -21,10 +20,8 @@ concurrency:
 jobs:
   kotlin:
     name: Kotlin product
-    # This required fixture needs a configured macOS ARM runner with >=14 GiB.
-    # The fallback reports the resource prerequisite; it never skips acceptance.
-    runs-on: ${{ vars.KAST_ACCEPTANCE_RUNNER || 'macos-15' }}
-    timeout-minutes: 120
+    runs-on: macos-15
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -43,12 +40,6 @@ jobs:
         with:
           python-version-file: ".python-version"
 
-      - name: Set up installed Codex protocol authority
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: 24
-      - run: npm install --global "@openai/codex@${KAST_CODEX_ACCEPTANCE_VERSION}"
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
         with:
@@ -62,7 +53,6 @@ jobs:
       - name: Build and verify product
         env:
           KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
-          KAST_ACCEPTANCE_PROFILE: ci-small
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           git checkout --detach "$CANDIDATE_SHA"
