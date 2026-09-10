@@ -45,9 +45,9 @@ value class CanonicalWorkspaceRoot private constructor(
  * evidence generation.
  */
 data class SemanticReadLease(
-    val workspaceRoot: CanonicalWorkspaceRoot,
+    override val workspaceRoot: CanonicalWorkspaceRoot,
     val generation: EvidenceGeneration,
-)
+) : SemanticReadAuthority
 
 /**
  * Exact in-process serialization boundary shared by source invalidation and workspace publication.

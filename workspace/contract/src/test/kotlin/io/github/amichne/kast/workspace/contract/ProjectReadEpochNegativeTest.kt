@@ -116,11 +116,17 @@ class ProjectReadEpochNegativeTest {
     }
 
     @Test
-    fun `non-friend Kotlin callers cannot create an epoch source`(@TempDir directory: java.nio.file.Path) {
+    fun `non-friend callers cannot mint live authority or pass it to publication consumers`(@TempDir directory: java.nio.file.Path) {
         val source = directory.resolve("ForgeEpoch.kt")
         Files.writeString(source, """
-            import io.github.amichne.kast.workspace.contract.ProjectReadEpoch
+            import io.github.amichne.kast.workspace.contract.*
             fun forge() = ProjectReadEpoch.Source.create<Any> { error("forged") }
+            fun mint(ref: LiveSemanticReadReference, epoch: ProjectReadEpoch<*>) =
+                LiveSemanticReadAuthority.issue(ref, epoch)
+            fun publishedOnly(lease: SemanticReadLease) = lease.generation
+            fun weaken(live: LiveSemanticReadAuthority) = publishedOnly(live)
+            fun detached(ref: LiveSemanticReadReference): SemanticReadAuthority = ref
+            fun erased(authority: SemanticReadAuthority) = authority.generation
         """.trimIndent())
         val output = ByteArrayOutputStream()
         val exit = PrintStream(output).use { stream ->
@@ -136,5 +142,10 @@ class ProjectReadEpochNegativeTest {
         assertEquals(ExitCode.COMPILATION_ERROR, exit, diagnostics)
         assertTrue("cannot access" in diagnostics, diagnostics)
         assertTrue("Source" in diagnostics || "create" in diagnostics, diagnostics)
+        // One compiler invocation checks independent forbidden uses; each diagnostic must exist.
+        assertTrue("issue" in diagnostics, diagnostics)
+        assertTrue("actual type is 'LiveSemanticReadAuthority'" in diagnostics, diagnostics)
+        assertTrue("expected 'SemanticReadAuthority', actual 'LiveSemanticReadReference'" in diagnostics, diagnostics)
+        assertTrue("unresolved reference 'generation'" in diagnostics, diagnostics)
     }
 }

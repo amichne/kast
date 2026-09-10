@@ -2,6 +2,10 @@
 
 ## 2026-09-10
 
+- Added the closed published/live read-authority contract and original-owner live
+  reference restoration. Pure tests cover root, host, epoch and retirement; a
+  compiler-negative check keeps live authority out of published-only consumers.
+
 - Added qualified class selection through the existing full-class-name index,
   preserving unique selection and exact compiler identity through the same
   admitted supertype read and publication checks.
