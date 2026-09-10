@@ -32,6 +32,9 @@ enum class CliProductCommand(
     BROKER_SERVE("broker serve"),
     CODEX_CLI("codex", CliLocalExposure.PUBLIC),
     CODEX_DESKTOP("codex desktop", CliLocalExposure.PUBLIC),
+    IDE_STATUS("ide status [--root <path>]", CliLocalExposure.PUBLIC),
+    IDE_CLASSES("ide classes <name> [--root <path>]", CliLocalExposure.PUBLIC),
+    IDE_COMPLETION("ide generate-completion <shell>", CliLocalExposure.PUBLIC),
 }
 
 /** Process-local operator actions that do not extend the semantic wire protocol. */
@@ -62,6 +65,11 @@ sealed interface CliAction {
         data object CodexCli : Local
 
         data object CodexDesktop : Local
+
+        data class ExistingIde(
+            val operation: io.github.amichne.kast.cli.ide.ExistingIdeOperation,
+            val root: io.github.amichne.kast.cli.command.ide.ExistingIdeRootSelection,
+        ) : Local
     }
 
     data class Semantic(

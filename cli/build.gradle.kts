@@ -11,7 +11,7 @@ application {
 }
 
 dependencies {
-    testImplementation(libs.json.schema.validator)
+    implementation(libs.json.schema.validator)
     // Preserve the version previously selected by the broker's direct Ktor dependency.
     constraints {
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.11.0")
@@ -27,6 +27,14 @@ dependencies {
     implementation(project(":protocol:contract"))
     implementation(project(":protocol:registry"))
     implementation(project(":protocol:wire"))
+}
+
+// Hosted responses retain their separate, weaker publication contract.
+tasks.processResources {
+    from(rootProject.file("experiments/host-observation")) {
+        include("hosted-endpoint.schema.json", "hosted-query.schema.json")
+        into("ide-hosted")
+    }
 }
 
 tasks.named<Test>("test") {

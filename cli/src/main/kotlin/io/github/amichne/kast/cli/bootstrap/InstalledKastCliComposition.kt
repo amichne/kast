@@ -416,6 +416,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
                     endpointLocator,
                 ),
                 cacheLifecycle = cacheLifecycle,
+                existingIdeClient = io.github.amichne.kast.cli.ide.ExistingIdeSocketClient(userHome),
                 appServerManager = io.github.amichne.kast.appserver.InstalledAppServerManager(installedKastExecutable,userHome),
                 brokerServerRunner = InstalledBrokerServerRunner(
                     installedKastExecutable,

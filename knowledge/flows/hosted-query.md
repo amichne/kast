@@ -75,7 +75,8 @@ of output, and reject overflow. No index storage is copied or rebuilt by Kast.
 The [persistent endpoint](../../experiments/host-observation/HOSTED_ENDPOINT.md)
 is owned by the separate `runtime:hosted` plugin. Normal requests use a framed
 Unix socket and retain the same packaged compatibility policy and admitted epoch
-authority across requests. The client rejects missing hosts without opening an
-isolated workspace. Incremental creation, class renaming, and deletion were
-qualified against the same original IDE index. Production CLI/App Server routing
-and stronger workspace publication remain separate integration boundaries.
+authority across requests. The native `kast ide classes` command and Python
+acceptance client reject missing hosts without opening an isolated workspace.
+Incremental creation, class renaming, and deletion were qualified against the
+same original IDE index. Broader semantic CLI/App Server routing and stronger
+workspace publication remain separate integration boundaries.

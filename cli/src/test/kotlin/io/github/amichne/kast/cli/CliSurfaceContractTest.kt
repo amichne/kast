@@ -28,7 +28,7 @@ class CliSurfaceContractTest {
         )
         assertEquals(listOf(CliLifecycleCommand.START, CliLifecycleCommand.STOP), surface.lifecycleCommands)
         assertEquals(
-            listOf(CliProductCommand.CODEX_CLI, CliProductCommand.CODEX_DESKTOP, CliProductCommand.APP_SERVER_REGISTER,
+            listOf(CliProductCommand.CODEX_CLI, CliProductCommand.CODEX_DESKTOP, CliProductCommand.IDE_STATUS, CliProductCommand.IDE_CLASSES, CliProductCommand.IDE_COMPLETION, CliProductCommand.APP_SERVER_REGISTER,
                 CliProductCommand.APP_SERVER_ENABLE, CliProductCommand.APP_SERVER_REPAIR, CliProductCommand.APP_SERVER_STATUS, CliProductCommand.APP_SERVER_STOP, CliProductCommand.APP_SERVER_DISABLE, CliProductCommand.APP_SERVER_CLAIM, CliProductCommand.APP_SERVER_RELEASE),
             surface.localCommands,
         )
@@ -79,7 +79,7 @@ class CliSurfaceContractTest {
         assertFalse(boundaryTouched)
         assertTrue(
             helpText.contains(
-                "Inspect and change one exact Kotlin workspace through an isolated IntelliJ sidecar.",
+                "Query the existing IDEA index with ide commands",
             ),
         )
         assertTrue(helpText.contains("Show the installed IntelliJ sidecar product version"))

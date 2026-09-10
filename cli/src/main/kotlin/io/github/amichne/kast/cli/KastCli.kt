@@ -33,6 +33,9 @@ class KastCli(
     private val appServerManager: io.github.amichne.kast.appserver.AppServerManager = io.github.amichne.kast.appserver.UnavailableAppServerManager,
     private val brokerServerRunner: BrokerServerRunner = UnavailableBrokerServerRunner,
     private val codexClientLauncher: CodexClientLauncher = UnavailableCodexClientLauncher,
+    private val existingIdeClient: io.github.amichne.kast.cli.ide.ExistingIdeClient = io.github.amichne.kast.cli.ide.ExistingIdeClient { _, _ ->
+        io.github.amichne.kast.cli.ide.ExistingIdeExchange.Rejected(io.github.amichne.kast.cli.ide.ExistingIdeFailure.HOST_UNAVAILABLE)
+    },
 ) {
     constructor(
         commandGraphFactory: CliCommandGraphFactory,
@@ -106,6 +109,7 @@ class KastCli(
         }
         CliAction.Local.CodexCli -> launchCodex(CodexClientLaunch.Cli)
         CliAction.Local.CodexDesktop -> launchCodex(CodexClientLaunch.Desktop)
+        is CliAction.Local.ExistingIde -> io.github.amichne.kast.cli.ide.executeExistingIdeAction(action, start, rootDiscovery, existingIdeClient)
         is CliAction.Semantic -> executeSemantic(action.request, start)
         is CliAction.Lifecycle -> executeLifecycle(action, start)
     }

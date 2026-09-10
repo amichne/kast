@@ -19,6 +19,9 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
   - path: runtime/hosted/build.gradle.kts
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSocketClient.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/ide/IdeCommands.kt
 ---
 
 # Runtime and process hosts
@@ -34,5 +37,11 @@ Its project service owns a bounded local socket and delegates saved-content
 semantic reads to `workspace:intellij-read`. It has no project-opening, Gradle
 import, or worker-launch authority and is excluded from isolated runtime
 composition. See [hosted queries](../flows/hosted-query.md) for its current scope.
+
+The native `kast ide` command projects the same local Clikt family before
+isolated-product bootstrap. Its only runtime capability is an existing-IDE
+client; it cannot start a worker. The socket adapter validates the shared
+hosted schemas and exact root/name correlation before producing CLI output.
+General semantic commands and App Server requests keep their original assembly.
 
 Read [request dispatch](../flows/request-dispatch.md) for the cross-host path.
