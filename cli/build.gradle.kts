@@ -29,14 +29,6 @@ dependencies {
     implementation(project(":protocol:wire"))
 }
 
-// Hosted responses retain their separate, weaker publication contract.
-tasks.processResources {
-    from(rootProject.file("experiments/host-observation")) {
-        include("hosted-endpoint.schema.json", "hosted-query.schema.json")
-        into("ide-hosted")
-    }
-}
-
 tasks.named<Test>("test") {
     useJUnitPlatform {
         excludeTags("native")

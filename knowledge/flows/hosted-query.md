@@ -24,7 +24,8 @@ code_sources:
   - path: experiments/host-observation/hosted-query.kts.template
   - path: experiments/host-observation/hosted-plugin-unload.kts.template
   - path: experiments/host-observation/hosted-project-restoration.kts.template
-  - path: experiments/host-observation/hosted-query.schema.json
+  - path: protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json
+  - path: protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnection.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
@@ -94,3 +95,6 @@ workspace publication remain separate integration boundaries.
 `kast index supertype` uses the qualified selector. Both public indexing reads
 run before isolated bootstrap, require no Python, and leave index maintenance
 to IDEA. The earlier `kast ide` spelling shares the same implementation.
+The shared schemas and operation registry live in `protocol:contract`; the CLI
+loads those resources directly from its dependency. Production packaging no
+longer reads protocol assets or host properties from the acceptance experiment.

@@ -22,12 +22,11 @@ val ideBuild = if (hostedIdeaHome.isPresent) {
     (groovy.json.JsonSlurper().parseText(metadata) as Map<*, *>)["buildNumber"] as String
 } else pinnedBuild
 tasks.processResources {
-    val schema = rootProject.file("experiments/host-observation/hosted-query.schema.json")
-    val registry = rootProject.file("experiments/host-observation/hosted-query.operations.json")
+    val schema = rootProject.file("protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json")
+    val registry = rootProject.file("protocol/contract/src/main/resources/ide-hosted/hosted-query.operations.json")
     fun digest(file: File) = "sha256:" + MessageDigest.getInstance("SHA-256").digest(file.readBytes()).joinToString("") { "%02x".format(it) }
     val values = mapOf("ideBuild" to ideBuild, "kotlinBuild" to "$ideBuild-IJ", "schemaDigest" to digest(schema), "registryDigest" to digest(registry))
     inputs.properties(values)
-    from(rootProject.file("experiments/host-observation/hosted-plugin/kast-hosted-query.properties"))
     expand(values)
 }
 

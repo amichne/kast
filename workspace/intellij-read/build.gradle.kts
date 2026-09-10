@@ -103,10 +103,10 @@ val hostedQueryPluginJar by tasks.registering(Jar::class) {
         expand(
             "ideBuild" to ideHostBuild, "kotlinBuild" to "$ideHostBuild-IJ",
             "registryDigest" to "sha256:" + MessageDigest.getInstance("SHA-256").digest(
-                rootProject.file("experiments/host-observation/hosted-query.operations.json").readBytes(),
+                rootProject.file("protocol/contract/src/main/resources/ide-hosted/hosted-query.operations.json").readBytes(),
             ).joinToString("") { "%02x".format(it) },
             "schemaDigest" to "sha256:" + MessageDigest.getInstance("SHA-256").digest(
-                rootProject.file("experiments/host-observation/hosted-query.schema.json").readBytes(),
+                rootProject.file("protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json").readBytes(),
             ).joinToString("") { "%02x".format(it) },
         )
     }
