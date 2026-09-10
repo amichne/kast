@@ -105,8 +105,9 @@ request exact-symbol results; callers never insert candidate-refinement operatio
 
 ## Let Kast coordinate the work
 
-Kast starts or joins the exact-root runtime and establishes required workspace and
-derived evidence. Do not invoke lifecycle, synchronization or topology preparation
+Kast reads the existing IntelliJ project for the exact repository root. Save pending
+edits and let the IDE finish indexing before querying. An unavailable or unready host
+rejects the read. Do not invoke lifecycle, synchronization or topology preparation
 as query prerequisites. Existing bounded exhaustive intent remains qualified when
 work or result coverage is incomplete. A qualified empty result is not proof of
 zero matches. Preserve failure and limitation evidence.
