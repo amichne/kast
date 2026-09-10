@@ -1,0 +1,48 @@
+run {
+    val inputPath = java.nio.file.Path.of(String(java.util.Base64.getDecoder().decode("@INPUT_BASE64@"), Charsets.UTF_8))
+    val input = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(inputPath)).asJsonObject
+    val output = inputPath.parent
+    var stage = "HOST_ADMISSION"
+    try {
+        check(java.lang.ProcessHandle.current().pid() == input.get("hostPid").asLong)
+        val id = com.intellij.openapi.extensions.PluginId.getId("io.github.amichne.kast.ide-hosted")
+        val dynamicClass = Class.forName("com.intellij.ide.plugins.DynamicPlugins")
+        val descriptorClass = Class.forName("com.intellij.ide.plugins.PluginMainDescriptor")
+        val dynamic = dynamicClass.getField("INSTANCE").get(null)
+        val application = com.intellij.openapi.application.ApplicationManager.getApplication()
+        when (input.get("action").asString) {
+            "load" -> {
+                stage = "PLUGIN_LOAD"
+                check(com.intellij.ide.plugins.PluginManagerCore.getPlugin(id) == null)
+                val resolverClass = Class.forName("com.intellij.ide.plugins.PathResolver")
+                val resolver = Class.forName("com.intellij.ide.plugins.PluginXmlPathResolver").getField("DEFAULT_PATH_RESOLVER").get(null)
+                val descriptor = Class.forName("com.intellij.ide.plugins.PluginDescriptorLoader")
+                    .getMethod("loadDescriptor", java.nio.file.Path::class.java, Boolean::class.javaPrimitiveType, resolverClass)
+                    .invoke(null, java.nio.file.Path.of(input.get("pluginPath").asString), false, resolver)
+                checkNotNull(descriptor)
+                check(dynamicClass.getMethod("checkCanLoadWithoutRestart", descriptorClass).invoke(dynamic, descriptor) == true)
+                application.invokeAndWait { check(dynamicClass.getMethod("loadPlugin", descriptorClass).invoke(dynamic, descriptor) == true) }
+                stage = "ENDPOINT_START"
+                val project = com.intellij.openapi.project.ProjectManager.getInstance().openProjects.single { it.basePath == input.get("root").asString }
+                val plugin = com.intellij.ide.plugins.PluginManagerCore.getPlugin(id)!!
+                project.getService(plugin.pluginClassLoader!!.loadClass("io.github.amichne.kast.runtime.hosted.HostedEndpointService"))
+            }
+            "unload" -> {
+                stage = "PLUGIN_UNLOAD"
+                val plugin = com.intellij.ide.plugins.PluginManagerCore.getPlugin(id)!!
+                val options = com.intellij.ide.plugins.DynamicPlugins.UnloadPluginOptions()
+                    .withSave(false).withWaitForClassloaderUnload(true).withUnloadWaitTimeout(10000)
+                check(dynamicClass.getMethod("checkCanUnloadWithoutRestart", descriptorClass).invoke(dynamic, plugin) == true)
+                application.invokeAndWait {
+                    check(dynamicClass.getMethod("unloadPlugin", descriptorClass, options.javaClass).invoke(dynamic, plugin, options) == true)
+                }
+                check(com.intellij.ide.plugins.PluginManagerCore.loadedPlugins.none { it.pluginId == id })
+            }
+            else -> error("Unsupported management action")
+        }
+        java.nio.file.Files.writeString(output.resolve("management.json"), com.google.gson.Gson().toJson(mapOf("outcome" to "COMPLETED", "stage" to stage)))
+    } catch (failure: Throwable) {
+        java.nio.file.Files.writeString(output.resolve("management.json"), com.google.gson.Gson().toJson(mapOf("outcome" to "REJECTED", "stage" to stage)))
+        throw failure
+    }
+}

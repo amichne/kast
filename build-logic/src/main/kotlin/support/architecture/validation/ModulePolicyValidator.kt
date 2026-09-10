@@ -248,6 +248,7 @@ private object ModuleRoleBoundaries {
             ModuleCost.RUNTIME_ORCHESTRATION,
             ModuleRoleConvention.IDE_HOST,
             setOf(
+                ModuleRole.KERNEL,
                 ModuleRole.CONTRACT,
                 ModuleRole.IDE_READ_ONLY,
                 ModuleRole.INTELLIJ_READ_ADAPTER,
@@ -266,6 +267,7 @@ private object ModuleRoleBoundaries {
                 ForbiddenEffect.UDS_BIND,
                 ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE,
             ),
+            allowedScopedEffects = setOf(ForbiddenEffect.FILESYSTEM_WRITE, ForbiddenEffect.PHYSICAL_SOURCE_READ, ForbiddenEffect.SOURCE_CONTENT_HASH),
         )
         ModuleRole.INTELLIJ_READ_ADAPTER -> boundary(
             role,

@@ -27,7 +27,20 @@ class HostedQueryService private constructor(
     private val executor = HostedQueryExecutor(serviceScope)
     private val owner = Disposer.newDisposable("Kast hosted query epoch")
     private val session = AdmittedIdeProjectSession(owner)
+    // A policy is retained admission authority, not just equal metadata. Reuse its
+    // original proof for every request in this endpoint lifetime.
+    private val packagedCompatibility by lazy(::packagedHostedCompatibility)
     val endpoint: HostedQueryEndpoint get() = executor.endpoint
+
+    suspend fun lookup(endpoint: HostedQueryEndpoint, lookup: HostedClassLookup): HostedIndexResult = when (val compatibility = packagedCompatibility) {
+        is io.github.amichne.kast.kernel.Refinement.Refined -> lookup(endpoint, lookup, compatibility.value.candidate, compatibility.value.policy)
+        is io.github.amichne.kast.kernel.Refinement.Rejected -> HostedIndexResult.Rejected(compatibility.failure)
+    }
+
+    suspend fun query(endpoint: HostedQueryEndpoint, selection: HostedKotlinSelection): HostedQueryResult = when (val compatibility = packagedCompatibility) {
+        is io.github.amichne.kast.kernel.Refinement.Refined -> query(endpoint, selection, compatibility.value.candidate, compatibility.value.policy)
+        is io.github.amichne.kast.kernel.Refinement.Rejected -> HostedQueryResult.Rejected(compatibility.failure)
+    }
 
     /** Bounded exact-name discovery in the original IDE's already-maintained Kotlin index. */
     suspend fun lookup(

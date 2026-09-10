@@ -391,6 +391,23 @@ internal object KastCleanSlateModules {
         ),
         runtimeComposition(),
         target(
+            ModuleId.RUNTIME_HOSTED,
+            ModuleRole.IDE_HOST,
+            ModuleId.KERNEL,
+            ModuleId.PROTOCOL_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.WORKSPACE_INTELLIJ_READ,
+            effects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM, ForbiddenEffect.UDS_BIND, ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE),
+            scopedEffects = mapOf(ForbiddenEffect.FILESYSTEM_WRITE to setOf(
+                JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint"),
+                JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion"),
+            ),
+                // FileChannel only locks the private endpoint; the digest names the canonical root.
+                ForbiddenEffect.PHYSICAL_SOURCE_READ to setOf(JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion")),
+                ForbiddenEffect.SOURCE_CONTENT_HASH to setOf(JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion")),
+            ),
+        ),
+        target(
             ModuleId.INDEXER,
             ModuleRole.INDEXER_HOST,
             ModuleId.RUNTIME_COMPOSITION,
@@ -412,6 +429,7 @@ internal object KastCleanSlateModules {
             ModuleId.CLI,
             ModuleId.INDEXER,
             ModuleId.RUNTIME_COMPOSITION,
+            ModuleId.RUNTIME_HOSTED,
         )
         return target(
             ModuleId.RUNTIME_COMPOSITION,
@@ -486,6 +504,7 @@ internal object KastCleanSlateModules {
         ModuleId.EVIDENCE_CONTRACT,
         ModuleId.EVIDENCE_SQLITE,
         ModuleId.RUNTIME_SERVER,
+        ModuleId.RUNTIME_HOSTED,
         ModuleId.RUNTIME_TELEMETRY,
         ModuleId.RUNTIME_COMPOSITION,
         ModuleId.APP_SERVER,

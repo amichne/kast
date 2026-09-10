@@ -51,6 +51,7 @@ class KastCleanSlatePolicyTest {
                 ":evidence:contract",
                 ":evidence:sqlite",
                 ":runtime:server",
+                ":runtime:hosted",
                 ":runtime:telemetry",
                 ":runtime:composition",
                 ":app-server",
@@ -129,13 +130,14 @@ class KastCleanSlatePolicyTest {
                     ModuleId.CHANGE_INTELLIJ,
                     ModuleId.INDEXER,
                     ModuleId.WORKSPACE_INTELLIJ_READ,
+                    ModuleId.RUNTIME_HOSTED,
                 ),
                 ForbiddenEffect.PROJECT_FILE_INDEX_AUTHORITY to
                     setOf(ModuleId.WORKSPACE_INTELLIJ_READ),
                 ForbiddenEffect.PROJECT_READ_EPOCH_AUTHORITY to
                     setOf(ModuleId.WORKSPACE_INTELLIJ_READ),
-                ForbiddenEffect.UDS_BIND to setOf(ModuleId.INDEXER),
-                ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE to setOf(ModuleId.INDEXER),
+                ForbiddenEffect.UDS_BIND to setOf(ModuleId.INDEXER, ModuleId.RUNTIME_HOSTED),
+                ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE to setOf(ModuleId.INDEXER, ModuleId.RUNTIME_HOSTED),
                 ForbiddenEffect.PROJECT_OPEN to emptySet(),
                 ForbiddenEffect.INTELLIJ_WRITE to setOf(ModuleId.CHANGE_INTELLIJ),
                 ForbiddenEffect.FILESYSTEM_WRITE to setOf(
@@ -144,6 +146,7 @@ class KastCleanSlatePolicyTest {
                     ModuleId.EVIDENCE_SQLITE,
                     ModuleId.CLI,
                     ModuleId.RUNTIME_TELEMETRY,
+                    ModuleId.RUNTIME_HOSTED,
                     ModuleId.INDEXER,
                     ModuleId.WORKSPACE_INTELLIJ,
                 ),
@@ -156,8 +159,8 @@ class KastCleanSlatePolicyTest {
                     setOf(ModuleId.TOPOLOGY_INTELLIJ),
                 ForbiddenEffect.INDEXING_CYCLE to emptySet(),
                 ForbiddenEffect.REPOSITORY_TRAVERSAL to emptySet(),
-                ForbiddenEffect.PHYSICAL_SOURCE_READ to emptySet(),
-                ForbiddenEffect.SOURCE_CONTENT_HASH to emptySet(),
+                ForbiddenEffect.PHYSICAL_SOURCE_READ to setOf(ModuleId.RUNTIME_HOSTED),
+                ForbiddenEffect.SOURCE_CONTENT_HASH to setOf(ModuleId.RUNTIME_HOSTED),
                 ForbiddenEffect.NETWORK_ACCESS to emptySet(),
                 ForbiddenEffect.BLOCKING_WAIT to emptySet(),
                 ForbiddenEffect.WORKSPACE_TRANSITION to setOf(ModuleId.WORKSPACE_SERVICE),
@@ -205,6 +208,7 @@ class KastCleanSlatePolicyTest {
             ModuleId.CLI,
             ModuleId.INDEXER,
             ModuleId.RUNTIME_COMPOSITION,
+            ModuleId.RUNTIME_HOSTED,
         )
 
         assertEquals(ModuleRole.COMPOSITION, composition.role)

@@ -12,6 +12,9 @@
   bounded script-carrier outcomes independently of semantic query results.
 - Added exact class discovery from the existing IDE Kotlin index, sharing the
   admitted project, saved-content revalidation, deadline, and terminal owner.
+- Added a separate installed IDEA host and framed socket client. Qualified
+  repeated incremental index queries, retained compatibility authority, endpoint
+  retirement, and reattachment; preserved the production composition boundary.
 
 ## 2026-09-09
 

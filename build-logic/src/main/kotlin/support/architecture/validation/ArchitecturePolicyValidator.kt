@@ -65,6 +65,7 @@ object ArchitecturePolicyValidator {
                     ModuleId.CLI,
                     ModuleId.INDEXER,
                     ModuleId.RUNTIME_COMPOSITION,
+                    ModuleId.RUNTIME_HOSTED,
                 )
                 val expectedDependencies = modules.keys - excluded
                 val missing = expectedDependencies - composition.allowedProjectDependencies
@@ -105,8 +106,8 @@ object ArchitecturePolicyValidator {
             setOf(ModuleId.WORKSPACE_INTELLIJ_READ),
         ForbiddenEffect.PROJECT_READ_EPOCH_AUTHORITY to
             setOf(ModuleId.WORKSPACE_INTELLIJ_READ),
-        ForbiddenEffect.UDS_BIND to setOf(ModuleId.INDEXER),
-        ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE to setOf(ModuleId.INDEXER),
+        ForbiddenEffect.UDS_BIND to setOf(ModuleId.INDEXER, ModuleId.RUNTIME_HOSTED),
+        ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE to setOf(ModuleId.INDEXER, ModuleId.RUNTIME_HOSTED),
         ForbiddenEffect.TOPOLOGY_BUILD_AUTHORITY to setOf(ModuleId.TOPOLOGY_BUILD),
         ForbiddenEffect.TOPOLOGY_SOURCE_ROOT_VFS_SYNCHRONIZATION to
             setOf(ModuleId.TOPOLOGY_INTELLIJ),

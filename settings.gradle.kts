@@ -58,6 +58,7 @@ val cleanSlateProjects = listOf(
     ":evidence:contract",
     ":evidence:sqlite",
     ":runtime:server",
+    ":runtime:hosted",
     ":runtime:telemetry",
     ":runtime:composition",
     ":app-server",

@@ -1,7 +1,7 @@
 # Querying the Existing IDE Without a Second Workspace
 
-Status: proposed integration target, supported by repository foundations and
-platform APIs; not yet qualified end to end. The aim is to run Kast semantic
+Status: a bounded existing-IDE index endpoint is implemented and qualified;
+general production composition remains proposed. The aim is to run Kast semantic
 reads against an explicitly admitted open IDEA project and reuse that project's
 imported model, indexes, PSI, and Kotlin analysis services.
 
@@ -11,6 +11,12 @@ cancellation, project closure/restoration, and plugin-manager load/unload. Its
 [runbook](HOSTED_QUERY.md) records the exact host, typed results, test evidence,
 and remaining qualification limits. The broader production integration below
 remains a proposal.
+
+A separate `runtime:hosted` plugin now exposes class-name discovery and direct
+supertype reads through a persistent Unix socket. The [endpoint runbook](HOSTED_ENDPOINT.md)
+describes the direct client, same-host incremental indexing proof, ownership,
+and retirement. Normal queries no longer depend on the manual script carrier.
+The installed CLI/App Server have not yet changed their runtime selection.
 
 The practical architecture is a small semantic host inside IDEA. The existing
 CLI/App Server can remain outside the IDE and exchange detached requests and
