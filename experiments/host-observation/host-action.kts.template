@@ -1,0 +1,64 @@
+// Acceptance fixture only. Never loaded by the observer or its controller.
+run {
+    val input = java.nio.file.Path.of(String(java.util.Base64.getDecoder().decode("@INPUT_BASE64@"), Charsets.UTF_8))
+    val data = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(input)).asJsonObject
+    val base = data.get("project").asString
+    val manager = com.intellij.openapi.project.ex.ProjectManagerEx.getInstanceEx()
+    val app = com.intellij.openapi.application.ApplicationManager.getApplication()
+    val action = data.get("action").asString
+    fun stage(value: String) = java.nio.file.Files.writeString(input.resolveSibling("stage.json"),
+        com.google.gson.Gson().toJson(mapOf("type" to "FIXTURE_STAGE", "action" to action, "stage" to value)))
+    stage("ADMITTED")
+    if (action == "OPEN") {
+        check(com.intellij.openapi.project.ProjectManager.getInstance().openProjects.none { it.basePath == base })
+        // Trust only the empty fixture that this explicit acceptance invocation created.
+        com.intellij.ide.trustedProjects.TrustedProjects.setProjectTrusted(java.nio.file.Path.of(base), true)
+        stage("OPENING")
+        val project = manager.openProject(java.nio.file.Path.of(base), com.intellij.ide.impl.OpenProjectTask.build().asNewProject().withForceOpenInNewFrame(true))
+            ?: error("fixture open failed")
+        stage("MODEL")
+        app.invokeAndWait {
+            com.intellij.openapi.application.WriteAction.run<RuntimeException> {
+                val module = com.intellij.openapi.module.ModuleManager.getInstance(project).newModule("$base/fixture.iml", "JAVA_MODULE")
+                val model = com.intellij.openapi.roots.ModuleRootManager.getInstance(module).modifiableModel
+                model.addContentEntry("file://$base").addSourceFolder("file://$base/src", false)
+                model.commit()
+            }
+        }
+    } else if (action == "REFRESH") {
+        val root = com.intellij.openapi.vfs.LocalFileSystem.getInstance().refreshAndFindFileByPath(base) ?: error("fixture VFS absent")
+        com.intellij.openapi.vfs.VfsUtil.markDirtyAndRefresh(false, true, true, root)
+    } else if (action == "ADD_SOURCE") {
+        val project = com.intellij.openapi.project.ProjectManager.getInstance().openProjects.single { it.basePath == base }
+        val extra = "$base-external"
+        check(com.intellij.openapi.vfs.LocalFileSystem.getInstance().refreshAndFindFileByPath(extra) != null)
+        app.invokeAndWait {
+            com.intellij.openapi.application.WriteAction.run<RuntimeException> {
+                val module = com.intellij.openapi.module.ModuleManager.getInstance(project).modules.single()
+                val model = com.intellij.openapi.roots.ModuleRootManager.getInstance(module).modifiableModel
+                model.addContentEntry("file://$extra").addSourceFolder("file://$extra", false)
+                model.commit()
+            }
+        }
+    } else if (action == "BURST") {
+        val files = (0 until 32).map { com.intellij.openapi.vfs.LocalFileSystem.getInstance().findFileByPath("$base/src/Wave$it.java") ?: error("fixture file absent") }
+        val rounds = data.get("rounds").asInt
+        check(rounds in 1..1400)
+        stage("WRITING_FIXTURE")
+        for (round in 0 until rounds) app.invokeAndWait {
+            com.intellij.openapi.application.WriteAction.run<RuntimeException> {
+                files.forEachIndexed { index, file -> file.setBinaryContent("class Wave$index { int value = $round; }\n".toByteArray()) }
+            }
+        }
+    } else if (action == "CLOSE") {
+        val project = com.intellij.openapi.project.ProjectManager.getInstance().openProjects.single { it.basePath == base }
+        app.invokeAndWait { check(manager.forceCloseProject(project)) }
+    } else check(action == "INSPECT")
+    val project = com.intellij.openapi.project.ProjectManager.getInstance().openProjects.singleOrNull { it.basePath == base }
+    val prefix = data.get("threadPrefix").asString
+    val result = mapOf("type" to "FIXTURE", "pid" to ProcessHandle.current().pid(), "open" to (project != null && project.isOpen),
+        "identity" to if (project == null) 0 else System.identityHashCode(project),
+        "threads" to Thread.getAllStackTraces().keys.count { it.isAlive && it.name.startsWith(prefix) })
+    java.nio.file.Files.writeString(input.resolveSibling("result.json"), com.google.gson.Gson().toJson(result), java.nio.file.StandardOpenOption.CREATE_NEW)
+    stage("COMPLETED")
+}

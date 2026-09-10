@@ -1,0 +1,1015 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.michne.com/schemas/experiments/host-observation/protocol-v1.schema.json",
+  "title": "Manual IntelliJ host observation protocol, version 1",
+  "$comment": "Root validates receipts. Request, Observation, Session, Control and Evaluation are named contracts. Correlation, canonical paths/Instant, byte bounds, path character sum and VFS inspected count require boundary validation. No record is semantic authority.",
+  "$ref": "#/$defs/Receipt",
+  "$defs": {
+    "Host": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "HOST"
+          ]
+        },
+        "pid": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "startedAt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[^\\u0000-\\u001f]+$",
+          "format": "date-time"
+        },
+        "build": {
+          "enum": [
+            "262.10315.125"
+          ]
+        },
+        "jbr": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\u0000-\\u001f]+$"
+        }
+      },
+      "required": [
+        "type",
+        "pid",
+        "startedAt",
+        "build",
+        "jbr"
+      ],
+      "additionalProperties": false
+    },
+    "Engine": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "ENGINE"
+          ]
+        },
+        "factory": {
+          "enum": [
+            "org.jetbrains.kotlin.jsr223.Jsr223KotlincScriptEngineFactory"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\u0000-\\u001f]+$"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\u0000-\\u001f]+$"
+        },
+        "pluginVersion": {
+          "enum": [
+            "262.10315.125-IJ"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "factory",
+        "name",
+        "version",
+        "pluginVersion"
+      ],
+      "additionalProperties": false
+    },
+    "Project": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "PROJECT"
+          ]
+        },
+        "locationHash": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\u0000-\\u001f]+$"
+        },
+        "basePath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "pattern": "^/[^\\u0000-\\u001f]*$"
+        },
+        "contentRoots": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "pattern": "^/[^\\u0000-\\u001f]*$"
+          },
+          "maxItems": 256,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "type",
+        "locationHash",
+        "basePath",
+        "contentRoots"
+      ],
+      "additionalProperties": false
+    },
+    "PreflightRequest": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "PREFLIGHT"
+          ]
+        },
+        "version": {
+          "enum": [
+            1
+          ]
+        },
+        "requestId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "artifactSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "expectedBuild": {
+          "enum": [
+            "262.10315.125"
+          ]
+        },
+        "outputDirectory": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "pattern": "^/[^\\u0000-\\u001f]*$"
+        }
+      },
+      "required": [
+        "type",
+        "version",
+        "requestId",
+        "artifactSha256",
+        "expectedBuild",
+        "outputDirectory"
+      ],
+      "additionalProperties": false
+    },
+    "AttachRequest": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "ATTACH"
+          ]
+        },
+        "version": {
+          "enum": [
+            1
+          ]
+        },
+        "requestId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "artifactSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "expectedBuild": {
+          "enum": [
+            "262.10315.125"
+          ]
+        },
+        "outputDirectory": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "pattern": "^/[^\\u0000-\\u001f]*$"
+        },
+        "hostPid": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "hostStartedAt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[^\\u0000-\\u001f]+$",
+          "format": "date-time"
+        },
+        "targetBasePath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "pattern": "^/[^\\u0000-\\u001f]*$"
+        },
+        "targetLocationHash": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\u0000-\\u001f]+$"
+        },
+        "sessionId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "type",
+        "version",
+        "requestId",
+        "artifactSha256",
+        "expectedBuild",
+        "outputDirectory",
+        "hostPid",
+        "hostStartedAt",
+        "targetBasePath",
+        "targetLocationHash",
+        "sessionId"
+      ],
+      "additionalProperties": false
+    },
+    "Request": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/PreflightRequest"
+        },
+        {
+          "$ref": "#/$defs/AttachRequest"
+        }
+      ],
+      "discriminator": {
+        "propertyName": "type"
+      }
+    },
+    "PreflightReceipt": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "PREFLIGHT"
+          ]
+        },
+        "version": {
+          "enum": [
+            1
+          ]
+        },
+        "requestId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "artifactSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "host": {
+          "$ref": "#/$defs/Host"
+        },
+        "engine": {
+          "$ref": "#/$defs/Engine"
+        },
+        "projects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Project"
+          },
+          "maxItems": 64
+        },
+        "registrations": {
+          "enum": [
+            0
+          ]
+        },
+        "capability": {
+          "enum": [
+            "PREFLIGHT_ONLY"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "version",
+        "requestId",
+        "artifactSha256",
+        "host",
+        "engine",
+        "projects",
+        "registrations",
+        "capability"
+      ],
+      "additionalProperties": false
+    },
+    "AttachedReceipt": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "ATTACHED"
+          ]
+        },
+        "version": {
+          "enum": [
+            1
+          ]
+        },
+        "requestId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "artifactSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "sessionId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "host": {
+          "$ref": "#/$defs/Host"
+        },
+        "project": {
+          "$ref": "#/$defs/Project"
+        },
+        "sessionDirectory": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "pattern": "^/[^\\u0000-\\u001f]*$"
+        }
+      },
+      "required": [
+        "type",
+        "version",
+        "requestId",
+        "artifactSha256",
+        "sessionId",
+        "host",
+        "project",
+        "sessionDirectory"
+      ],
+      "additionalProperties": false
+    },
+    "RejectedReceipt": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "REJECTED"
+          ]
+        },
+        "version": {
+          "enum": [
+            1
+          ]
+        },
+        "requestId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "artifactSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "reason": {
+          "enum": [
+            "REQUEST_REJECTED",
+            "OUTPUT_REJECTED",
+            "HOST_UNSUPPORTED",
+            "ENGINE_UNAVAILABLE",
+            "API_UNAVAILABLE",
+            "TARGET_UNAVAILABLE",
+            "CAPACITY_EXCEEDED",
+            "OWNERSHIP_CONFLICT",
+            "RETIREMENT_UNCONFIRMED"
+          ]
+        },
+        "stage": {
+          "enum": [
+            "REQUEST",
+            "HOST",
+            "ENGINE",
+            "API",
+            "PROJECTS",
+            "OUTPUT",
+            "ATTACH"
+          ]
+        },
+        "ownership": {
+          "enum": [
+            "NOT_ACQUIRED",
+            "RETIREMENT_UNCONFIRMED"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "version",
+        "requestId",
+        "artifactSha256",
+        "reason",
+        "stage",
+        "ownership"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "reason": {
+                "enum": [
+                  "RETIREMENT_UNCONFIRMED"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "ownership": {
+                "enum": [
+                  "RETIREMENT_UNCONFIRMED"
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "ownership": {
+                "enum": [
+                  "NOT_ACQUIRED"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Receipt": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/PreflightReceipt"
+        },
+        {
+          "$ref": "#/$defs/AttachedReceipt"
+        },
+        {
+          "$ref": "#/$defs/RejectedReceipt"
+        }
+      ],
+      "discriminator": {
+        "propertyName": "type"
+      }
+    },
+    "VfsEvent": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "VFS"
+          ]
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "pattern": "^/[^\\u0000-\\u001f]*$"
+          },
+          "maxItems": 32,
+          "uniqueItems": true
+        },
+        "batchSize": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "inspected": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "PATH_LIMIT",
+              "BATCH_LIMIT"
+            ]
+          },
+          "maxItems": 2,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "type",
+        "paths",
+        "batchSize",
+        "inspected",
+        "limitations"
+      ],
+      "additionalProperties": false
+    },
+    "IndexingEvent": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "INDEXING"
+          ]
+        },
+        "activity": {
+          "enum": [
+            "SCAN_STARTED",
+            "SCAN_FINISHED",
+            "INDEX_STARTED",
+            "INDEX_FINISHED"
+          ]
+        },
+        "activityId": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9223372036854775807
+        },
+        "cancellation": {
+          "enum": [
+            "UNKNOWN",
+            "CANCELLED",
+            "NOT_CANCELLED"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "activity",
+        "activityId",
+        "cancellation"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "activity": {
+                "enum": [
+                  "SCAN_STARTED",
+                  "INDEX_STARTED"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cancellation": {
+                "enum": [
+                  "UNKNOWN"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "DumbEvent": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "DUMB"
+          ]
+        },
+        "transition": {
+          "enum": [
+            "ENTERED",
+            "EXITED"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "transition"
+      ],
+      "additionalProperties": false
+    },
+    "Event": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/VfsEvent"
+        },
+        {
+          "$ref": "#/$defs/IndexingEvent"
+        },
+        {
+          "$ref": "#/$defs/DumbEvent"
+        }
+      ],
+      "discriminator": {
+        "propertyName": "type"
+      }
+    },
+    "Observation": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "OBSERVATION"
+          ]
+        },
+        "version": {
+          "enum": [
+            1
+          ]
+        },
+        "sessionId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "event": {
+          "$ref": "#/$defs/Event"
+        }
+      },
+      "required": [
+        "type",
+        "version",
+        "sessionId",
+        "sequence",
+        "event"
+      ],
+      "additionalProperties": false
+    },
+    "Coverage": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "COVERAGE"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "INITIAL_GAP",
+              "QUEUE_OVERFLOW",
+              "PATH_LIMIT",
+              "BATCH_LIMIT",
+              "JOURNAL_ROTATED",
+              "OUTPUT_FAILURE",
+              "CONTROL_REJECTED"
+            ]
+          },
+          "maxItems": 7,
+          "uniqueItems": true,
+          "contains": {
+            "enum": [
+              "INITIAL_GAP"
+            ]
+          }
+        },
+        "dropped": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9223372036854775807,
+          "description": "Saturating incident counter for rejected callback admissions, discarded transport records, and output failures. This is not a count of changed files or source changes."
+        }
+      },
+      "required": [
+        "type",
+        "reasons",
+        "dropped"
+      ],
+      "additionalProperties": false
+    },
+    "Active": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "ACTIVE"
+          ]
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "Requested": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "REQUESTED"
+          ]
+        },
+        "cause": {
+          "enum": [
+            "REQUESTED",
+            "PROJECT_CLOSED",
+            "OUTPUT_FAILURE",
+            "CALLBACK_FAILURE",
+            "ATTACH_FAILURE"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "cause"
+      ],
+      "additionalProperties": false
+    },
+    "StopSignal": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Active"
+        },
+        {
+          "$ref": "#/$defs/Requested"
+        }
+      ],
+      "discriminator": {
+        "propertyName": "type"
+      }
+    },
+    "Session": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "SESSION"
+          ]
+        },
+        "version": {
+          "enum": [
+            1
+          ]
+        },
+        "sessionId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "host": {
+          "$ref": "#/$defs/Host"
+        },
+        "project": {
+          "$ref": "#/$defs/Project"
+        },
+        "state": {
+          "enum": [
+            "ATTACHING",
+            "OBSERVING",
+            "STOPPING",
+            "DETACHED",
+            "RETIREMENT_UNCONFIRMED"
+          ]
+        },
+        "stopSignal": {
+          "$ref": "#/$defs/StopSignal"
+        },
+        "coverage": {
+          "$ref": "#/$defs/Coverage"
+        },
+        "lastSequence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9223372036854775807
+        },
+        "callbackCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32
+        }
+      },
+      "required": [
+        "type",
+        "version",
+        "sessionId",
+        "host",
+        "project",
+        "state",
+        "stopSignal",
+        "coverage",
+        "lastSequence",
+        "callbackCount"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "enum": [
+                  "STOPPING",
+                  "DETACHED",
+                  "RETIREMENT_UNCONFIRMED"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "stopSignal": {
+                "$ref": "#/$defs/Requested"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "enum": [
+                  "DETACHED"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "callbackCount": {
+                "enum": [
+                  0
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Stop": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "STOP"
+          ]
+        },
+        "version": {
+          "enum": [
+            1
+          ]
+        },
+        "sessionId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "type",
+        "version",
+        "sessionId"
+      ],
+      "additionalProperties": false
+    },
+    "Retired": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "RETIRED"
+          ]
+        },
+        "version": {
+          "enum": [
+            1
+          ]
+        },
+        "sessionId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "type",
+        "version",
+        "sessionId"
+      ],
+      "additionalProperties": false
+    },
+    "Control": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Stop"
+        },
+        {
+          "$ref": "#/$defs/Retired"
+        }
+      ],
+      "discriminator": {
+        "propertyName": "type"
+      }
+    },
+    "Evaluation": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "EVALUATION"
+          ]
+        },
+        "stage": {
+          "enum": [
+            "CARRIER",
+            "ENGINE"
+          ]
+        },
+        "outcome": {
+          "enum": [
+            "PREFLIGHT_ONLY",
+            "ATTACHED",
+            "EXECUTION_UNCONFIRMED",
+            "REQUEST_REJECTED",
+            "OUTPUT_REJECTED",
+            "HOST_UNSUPPORTED",
+            "ENGINE_UNAVAILABLE",
+            "API_UNAVAILABLE",
+            "TARGET_UNAVAILABLE",
+            "CAPACITY_EXCEEDED",
+            "OWNERSHIP_CONFLICT",
+            "RETIREMENT_UNCONFIRMED",
+            "RESOURCE_EXHAUSTED"
+          ]
+        },
+        "artifactSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "requestId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "type",
+        "stage",
+        "outcome",
+        "artifactSha256",
+        "requestId"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "stage": {
+                "enum": [
+                  "ENGINE"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "outcome": {
+                "enum": [
+                  "RESOURCE_EXHAUSTED",
+                  "EXECUTION_UNCONFIRMED"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Owner": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "OWNER"
+          ]
+        },
+        "sessionId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "type",
+        "sessionId"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
