@@ -87,8 +87,10 @@ and checks its resolved compiler identity inside the same admitted read. Missing
 ambiguous, or mismatched declarations have distinct closed failures.
 All require the exact canonical `root`. Unknown operations, duplicate keys,
 extra fields, malformed UTF-8, and oversized frames fail closed. Descriptor and
-host responses use [the endpoint schema](hosted-endpoint.schema.json); semantic
-answers use [the query schema](hosted-query.schema.json).
+host responses use [the endpoint schema](../../protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json); semantic
+answers use [the query schema](../../protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json).
+The production contract module owns these assets; the CLI loads them directly
+from its dependency. The acceptance tools consume the same files.
 
 The service retains one packaged compatibility policy authority across repeated
 requests. Reconstructing an equal-looking policy per request would lose the

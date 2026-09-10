@@ -45,7 +45,7 @@ def strict_json(raw):
 
 
 def valid_schema(document, filename):
-    schema = json.loads((Path(__file__).parent / filename).read_text())
+    schema = json.loads((Path(__file__).resolve().parents[2] / "protocol/contract/src/main/resources/ide-hosted" / filename).read_text())
     return jsonschema.Draft202012Validator(schema).is_valid(document)
 
 

@@ -9,6 +9,9 @@
   response identity and detached stage with no Python runtime dependency.
 - Promoted supported existing-IDE reads to the public `kast index` family before
   runtime bootstrap; retained `kast ide` compatibility and internal-only sync.
+- Moved hosted schemas and the operation registry into `protocol:contract` and
+  hosted compatibility properties into the plugin's own resources. Production
+  CLI/plugin packaging no longer depends on experimental protocol files.
 
 - Added the compiled existing-project Kotlin direct-supertype query, bounded
   cancellation and retirement, and explicit request-local evidence limits.

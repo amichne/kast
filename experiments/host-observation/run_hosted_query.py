@@ -158,7 +158,7 @@ def run(idea, artifact, project, source_file, offset, check=AcceptanceCase.QUERY
     answer = json.loads((evidence / "result.json").read_text())
     identity = json.loads((evidence / "identity.json").read_text())
     import jsonschema
-    jsonschema.Draft202012Validator(json.loads((ROOT / "hosted-query.schema.json").read_text())).validate(answer)
+    jsonschema.Draft202012Validator(json.loads((ROOT.parents[1] / "protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json").read_text())).validate(answer)
     validation = validate_case(check, answer, identity, evidence, pids[0])
     report = dict(check=check.value, artifactSha256=hashlib.sha256(artifact_bytes).hexdigest(), identity=identity, result=answer)
     if isinstance(validation, EvidenceRejected):
