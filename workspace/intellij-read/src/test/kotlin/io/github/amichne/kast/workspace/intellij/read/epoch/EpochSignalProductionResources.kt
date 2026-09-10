@@ -57,7 +57,7 @@ private fun adapterEpochResources(): List<String> = listOf(
     "LiveProjectReadEpochSource\$observeState\$1.class",
     "LiveProjectReadEpochSource\$source\$1.class",
     "LiveProjectReadEpochSourceFactory.class",
-    "LiveProjectReadEpochSourceFactory\$create\$1.class",
+    "LiveProjectReadEpochSourceFactory\$createOwned\$1.class",
     "ObservedEpochGradleModel.class",
     "ProjectEpochRootIdentity.class",
     "ProjectEpochRootIdentity\$Companion.class",

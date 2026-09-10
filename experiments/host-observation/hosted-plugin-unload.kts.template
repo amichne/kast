@@ -1,0 +1,23 @@
+run {
+    val inputPath = java.nio.file.Path.of(String(java.util.Base64.getDecoder().decode("@INPUT_BASE64@"), Charsets.UTF_8))
+    val input = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(inputPath)).asJsonObject
+    check(java.lang.ProcessHandle.current().pid() == input.get("hostPid").asLong)
+    val id = com.intellij.openapi.extensions.PluginId.getId("io.github.amichne.kast.hosted-query")
+    val plugin = com.intellij.ide.plugins.PluginManagerCore.getPlugin(id)
+    var unloaded = false
+    if (plugin != null) {
+        val dynamicClass = Class.forName("com.intellij.ide.plugins.DynamicPlugins")
+        val descriptorClass = Class.forName("com.intellij.ide.plugins.PluginMainDescriptor")
+        val dynamic = dynamicClass.getField("INSTANCE").get(null)
+        val options = com.intellij.ide.plugins.DynamicPlugins.UnloadPluginOptions()
+            .withSave(false).withWaitForClassloaderUnload(true).withUnloadWaitTimeout(10000)
+        check(dynamicClass.getMethod("checkCanUnloadWithoutRestart", descriptorClass).invoke(dynamic, plugin) == true)
+        com.intellij.openapi.application.ApplicationManager.getApplication().invokeAndWait {
+            unloaded = dynamicClass.getMethod("unloadPlugin", descriptorClass, options.javaClass).invoke(dynamic, plugin, options) == true
+        }
+    }
+    val stillLoaded = com.intellij.ide.plugins.PluginManagerCore.loadedPlugins.any { it.pluginId == id }
+    java.nio.file.Files.writeString(inputPath.parent.resolve("plugin-unloaded.json"), com.google.gson.Gson().toJson(mapOf(
+        "unloaded" to unloaded, "stillLoaded" to stillLoaded,
+    )))
+}

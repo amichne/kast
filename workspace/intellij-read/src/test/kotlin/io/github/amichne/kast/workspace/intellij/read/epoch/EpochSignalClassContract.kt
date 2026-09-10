@@ -309,15 +309,15 @@ internal object EpochSignalClassContract {
     )
 
     private val PRODUCTION_FINGERPRINTS = mapOf(
-        PRODUCTION_FACTORY_RESOURCE to "d10ae3d1156b836f9f67104331fc4074243425a176fec3d8449c52c2021f4ee7",
-        PRODUCTION_WORKSPACE_LISTENER_RESOURCE to "4e80dba36f285d6b2541d877bf31e8bbec70ad7b4409ace4b5986fce4166ff20",
+        PRODUCTION_FACTORY_RESOURCE to "c4864914022a4559818dda0e73da8071c8d15cd9697d314732a91ac054a01afa",
+        PRODUCTION_WORKSPACE_LISTENER_RESOURCE to "ea7bd0dd3a64327a684c8db443f93be1b2d115a6fce315d8dd2a5eef39645f12",
         PRODUCTION_VFS_LISTENER_RESOURCE to "6ea25e676f77ddd65cfb7e6830ba67e8c8d926c9d7c2589dad148e58aa995ebb",
         PRODUCTION_REFINEMENT_RESOURCE to "0b3160c708bf5e77eb51e09747ac58f355c2f4a53f09605f166dee45f6549d4f",
     )
 
     private val PRODUCTION_LISTENER_MEMBERS: Map<String, Set<EpochMemberReference>> = mapOf(
         PRODUCTION_WORKSPACE_LISTENER_RESOURCE to setOf(
-            member(LOCAL + "LiveProjectReadEpochSourceFactory\$create\$1", "\$projectModelCounter"), member("java/lang/Object", "<init>"),
+            member(LOCAL + "LiveProjectReadEpochSourceFactory\$createOwned\$1", "\$projectModelCounter"), member("java/lang/Object", "<init>"),
             member(INTRINSICS, "checkNotNullParameter"), member(LOCAL + "ProjectReadEpochMetadataCounter", "advance"),
             member("com/intellij/platform/backend/workspace/WorkspaceModelChangeListener", "beforeChanged"),
         ),
@@ -361,7 +361,7 @@ internal object EpochSignalClassContract {
     private const val PRODUCTION_FACTORY_RESOURCE = LOCAL + "LiveProjectReadEpochSourceFactory.class"
     private const val PRODUCTION_PLATFORM_RESOURCE = LOCAL + "LiveProjectReadEpochPlatformPort.class"
     private const val PRODUCTION_EXECUTION_RESOURCE = LOCAL + "IdeaProjectReadEpochExecution.class"
-    private const val PRODUCTION_WORKSPACE_LISTENER_RESOURCE = LOCAL + "LiveProjectReadEpochSourceFactory\$create\$1.class"
+    private const val PRODUCTION_WORKSPACE_LISTENER_RESOURCE = LOCAL + "LiveProjectReadEpochSourceFactory\$createOwned\$1.class"
     private const val PRODUCTION_VFS_LISTENER_RESOURCE = LOCAL + "RootFilteredProjectEpochVfsListener.class"
     private const val PRODUCTION_REFINEMENT_RESOURCE = LOCAL + "ProjectReadEpochObservationKt.class"
     private val RESOURCES = listOf(

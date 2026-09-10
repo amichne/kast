@@ -1,3 +1,4 @@
+import java.security.MessageDigest
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -15,7 +16,13 @@ base {
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-private val ideHostBuild = catalog.findVersion("ide-host-build").get().requiredVersion
+private val hostedIdeaHome = providers.gradleProperty("hostedIdeaHome")
+private val ideHostBuild = if (hostedIdeaHome.isPresent) {
+    val metadata = providers.fileContents(layout.projectDirectory.file(
+        hostedIdeaHome.get() + "/Resources/product-info.json",
+    )).asText.get()
+    checkNotNull((groovy.json.JsonSlurper().parseText(metadata) as Map<*, *>)["buildNumber"]) as String
+} else catalog.findVersion("ide-host-build").get().requiredVersion
 
 val workspaceReadIdeaDistribution: Configuration by configurations.creating {
     isCanBeConsumed = false
@@ -36,7 +43,7 @@ val extractWorkspaceReadIdeaDistribution by tasks.registering(ExtractIdeaDistrib
 
 private fun extractedIdeaFiles(
     configure: ConfigurableFileTree.() -> Unit,
-) = files(
+) = if (hostedIdeaHome.isPresent) files(fileTree(hostedIdeaHome.get()) { configure() }) else files(
     extractedIdeaDistributionDirectory.map { directory ->
         fileTree(directory) { configure() }
     },
@@ -50,19 +57,22 @@ private val ideaLibraries: ConfigurableFileCollection = extractedIdeaFiles {
 }
 
 private val kotlinPluginLibraries: ConfigurableFileCollection = extractedIdeaFiles {
-    include("**/plugins/Kotlin/lib/kotlin-plugin.jar")
-    include("**/plugins/Kotlin/lib/kotlin-plugin-shared.jar")
+    include("**/plugins/Kotlin/lib/**/*.jar")
+    exclude("**/plugins/Kotlin/lib/jps/**")
+    exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
 }
 
 dependencies {
     implementation(project(":protocol:contract"))
     implementation(project(":workspace:contract"))
+    implementation(project(":symbol:contract"))
 
     workspaceReadIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideHostBuild@zip") {
         isTransitive = false
     }
     compileOnly(ideaLibraries)
     compileOnly(kotlinPluginLibraries)
+    compileOnly(extractedIdeaFiles { include("**/plugins/java/lib/**/*.jar") })
     testImplementation(ideaLibraries)
     testImplementation(kotlinPluginLibraries)
     testImplementation(catalog.findLibrary("serialization-json").get())
@@ -82,4 +92,37 @@ tasks.withType<KotlinCompile>().configureEach {
 
 tasks.withType<Test>().configureEach {
     exclude("**/EpochSignalApiContract.class")
+}
+
+// Opt-in manual semantic proof payload. The ordinary read library has no plugin descriptor.
+val hostedQueryPluginJar by tasks.registering(Jar::class) {
+    archiveBaseName.set("kast-hosted-query")
+    archiveVersion.set("0.1.0")
+    from(sourceSets.main.get().output)
+    from(rootProject.layout.projectDirectory.dir("experiments/host-observation/hosted-plugin")) {
+        expand(
+            "ideBuild" to ideHostBuild, "kotlinBuild" to "$ideHostBuild-IJ",
+            "registryDigest" to "sha256:" + MessageDigest.getInstance("SHA-256").digest(
+                rootProject.file("experiments/host-observation/hosted-query.operations.json").readBytes(),
+            ).joinToString("") { "%02x".format(it) },
+            "schemaDigest" to "sha256:" + MessageDigest.getInstance("SHA-256").digest(
+                rootProject.file("experiments/host-observation/hosted-query.schema.json").readBytes(),
+            ).joinToString("") { "%02x".format(it) },
+        )
+    }
+}
+
+val hostedQueryPlugin by tasks.registering(Zip::class) {
+    group = "distribution"
+    description = "Packages the manually activated existing-IDE semantic proof."
+    archiveBaseName.set("kast-hosted-query")
+    archiveVersion.set("0.1.0")
+    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
+    into("kast-hosted-query/lib") {
+        from(hostedQueryPluginJar)
+        from(configurations.runtimeClasspath) {
+            // Host owns Kotlin, coroutines, serialization, K2, IntelliJ, Java and Gradle libraries.
+            include("kernel-*.jar", "workspace-contract-*.jar", "symbol-contract-*.jar", "contract-*.jar")
+        }
+    }
 }

@@ -382,6 +382,7 @@ internal object KastCleanSlateModules {
             ModuleId.WORKSPACE_INTELLIJ_READ,
             ModuleId.PROTOCOL_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.SYMBOL_CONTRACT,
             lifecycle = ModuleLifecycle.ACTIVE,
             additionalEffects = setOf(
                 ForbiddenEffect.PROJECT_FILE_INDEX_AUTHORITY,

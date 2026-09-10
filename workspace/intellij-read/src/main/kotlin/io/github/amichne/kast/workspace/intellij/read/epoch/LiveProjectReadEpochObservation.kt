@@ -1,6 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.externalSystem.model.ExternalProjectInfo
 import com.intellij.openapi.externalSystem.model.ProjectSystemId
@@ -38,7 +39,14 @@ internal object LiveProjectReadEpochSourceFactory : ExistingProjectReadEpochSour
     ): Refinement<
         ProjectReadEpoch.Source<*>,
         ExistingProjectReadEpochSourceInstallationFailure,
-    > {
+    > = createOwned(project, root, project)
+
+    /** The host service supplies its own disposable so detach also disconnects epoch listeners. */
+    internal fun createOwned(
+        project: Project,
+        root: CanonicalWorkspaceRoot,
+        owner: Disposable,
+    ): Refinement<ProjectReadEpoch.Source<*>, ExistingProjectReadEpochSourceInstallationFailure> {
         if (project.isDisposed) {
             return Refinement.Rejected(
                 ExistingProjectReadEpochSourceInstallationFailure.ProjectDisposed,
@@ -48,7 +56,7 @@ internal object LiveProjectReadEpochSourceFactory : ExistingProjectReadEpochSour
         val vfsCounter = ProjectReadEpochMetadataCounter()
         val rootIdentity = ProjectReadEpochVfsRoot.from(root)
         return try {
-            val connection = project.messageBus.connect(project)
+            val connection = project.messageBus.connect(owner)
             connection.subscribe(
                 WorkspaceModelTopics.CHANGED,
                 object : WorkspaceModelChangeListener {

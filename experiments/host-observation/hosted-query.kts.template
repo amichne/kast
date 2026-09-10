@@ -1,0 +1,161 @@
+// Controller data is read only at this manual transport boundary. Semantic code is precompiled.
+run {
+    val inputPath = java.nio.file.Path.of(String(java.util.Base64.getDecoder().decode("@INPUT_BASE64@"), Charsets.UTF_8))
+    check(java.nio.file.Files.size(inputPath) <= 65536)
+    val input = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(inputPath)).asJsonObject
+    val output = inputPath.parent
+    java.nio.file.Files.writeString(output.resolve("script-entered.txt"), "ENTERED")
+    val scenario = input.get("check").asString
+    check(scenario in setOf("query", "dirty-document", "edit", "retire", "cancel", "project-close", "wrong-root", "plugin-lifecycle"))
+    var bootstrapStage = "PROJECT_SELECTION"
+    try {
+    val manager = com.intellij.openapi.project.ProjectManager.getInstance()
+    val initialProjects = manager.openProjects.toList()
+    check(initialProjects.size <= 32)
+    val project = initialProjects.single { it.basePath == input.get("project").asString }
+    check(java.lang.ProcessHandle.current().pid() == input.get("hostPid").asLong)
+    fun model() = if (project.isDisposed) emptyList() else com.intellij.openapi.externalSystem.service.project.ProjectDataManager.getInstance()
+        .getExternalProjectsData(project, com.intellij.openapi.externalSystem.model.ProjectSystemId("GRADLE"))
+        .map { mapOf("root" to it.externalProjectPath, "lastImport" to it.lastImportTimestamp,
+            "lastSuccessfulImport" to it.lastSuccessfulImportTimestamp, "hasStructure" to (it.externalProjectStructure != null)) }
+    val before = model()
+    val application = com.intellij.openapi.application.ApplicationManager.getApplication()
+    val documents = com.intellij.openapi.fileEditor.FileDocumentManager.getInstance()
+    val dirtyDocument = if (scenario == "dirty-document") {
+        check(documents.unsavedDocuments.isEmpty())
+        val file = com.intellij.openapi.vfs.LocalFileSystem.getInstance().refreshAndFindFileByNioFile(output.resolve("dirty.kt"))!!
+        com.intellij.openapi.application.ReadAction.compute<com.intellij.openapi.editor.Document, RuntimeException> {
+            documents.getDocument(file)!!
+        }
+    } else null
+    val originalText = "interface HostedDirtyFixture\n"
+    val dirtyText = originalText + "// owned acceptance edit\n"
+    fun restoreOwnedDocument() {
+        if (dirtyDocument != null) application.invokeAndWait {
+            application.runWriteAction {
+                check(dirtyDocument.text == dirtyText || dirtyDocument.text == originalText)
+                documents.reloadFromDisk(dirtyDocument)
+                check(dirtyDocument.text == originalText)
+            }
+        }
+        if (dirtyDocument != null) java.nio.file.Files.writeString(output.resolve("dirty-cleanup.txt"), "RESTORED")
+    }
+    val kotlinPlugin = com.intellij.ide.plugins.PluginManagerCore.getPlugin(com.intellij.openapi.extensions.PluginId.getId("org.jetbrains.kotlin"))!!
+    val urls = input.getAsJsonArray("jars").map { java.nio.file.Path.of(it.asString).toUri().toURL() }.toTypedArray()
+    check(urls.size == 5)
+    val loader = if (scenario == "plugin-lifecycle") {
+        val id = com.intellij.openapi.extensions.PluginId.getId("io.github.amichne.kast.hosted-query")
+        check(com.intellij.ide.plugins.PluginManagerCore.getPlugin(id) == null)
+        val descriptorClass = Class.forName("com.intellij.ide.plugins.PluginMainDescriptor")
+        bootstrapStage = "PLUGIN_DESCRIPTOR"
+        val resolverClass = Class.forName("com.intellij.ide.plugins.PathResolver")
+        val resolver = Class.forName("com.intellij.ide.plugins.PluginXmlPathResolver").getField("DEFAULT_PATH_RESOLVER").get(null)
+        val descriptor = Class.forName("com.intellij.ide.plugins.PluginDescriptorLoader")
+            .getMethod("loadDescriptor", java.nio.file.Path::class.java, Boolean::class.javaPrimitiveType, resolverClass)
+            .invoke(null, output.resolve("kast-hosted-query"), false, resolver)
+        checkNotNull(descriptor)
+        val dynamicClass = Class.forName("com.intellij.ide.plugins.DynamicPlugins")
+        val dynamic = dynamicClass.getField("INSTANCE").get(null)
+        bootstrapStage = "PLUGIN_LOAD"
+        check(dynamicClass.getMethod("checkCanLoadWithoutRestart", descriptorClass).invoke(dynamic, descriptor) == true)
+        application.invokeAndWait {
+            java.nio.file.Files.writeString(output.resolve("plugin-load-requested.txt"), "REQUESTED")
+            check(dynamicClass.getMethod("loadPlugin", descriptorClass).invoke(dynamic, descriptor) == true)
+        }
+        val plugin = com.intellij.ide.plugins.PluginManagerCore.getPlugin(id)!!
+        java.nio.file.Files.writeString(output.resolve("plugin-loaded.txt"), "LOADED")
+        plugin.pluginClassLoader!!
+    } else java.net.URLClassLoader(urls, kotlinPlugin.pluginClassLoader)
+    bootstrapStage = "SERVICE_CONSTRUCTION"
+    val klass = loader.loadClass("io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryProbe")
+    lateinit var probe: Any
+    val checkpoint = java.util.function.Consumer<String> { stage ->
+        check(stage == "SEMANTIC_READ_DETACHED")
+        check(!application.isReadAccessAllowed)
+        java.nio.file.Files.writeString(output.resolve("checkpoint.txt"), stage)
+        when (scenario) {
+            "retire" -> klass.getMethod("disposeOwner").invoke(probe)
+            "cancel" -> klass.getMethod("cancelRequest").invoke(probe)
+            "edit" -> {
+                check(documents.unsavedDocuments.isEmpty())
+                val file = com.intellij.openapi.vfs.LocalFileSystem.getInstance()
+                    .findFileByNioFile(java.nio.file.Path.of(project.basePath!!).resolve(input.get("file").asString))!!
+                val document = documents.getCachedDocument(file)!!
+                application.invokeAndWait {
+                    val original = document.text
+                    check(original.length <= 262144)
+                    val changed = original + "\n// owned hosted-query acceptance edit\n"
+                    com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(project, Runnable {
+                        try {
+                            document.setText(changed)
+                            com.intellij.psi.PsiDocumentManager.getInstance(project).commitDocument(document)
+                        } finally {
+                            check(document.text == changed)
+                            documents.reloadFromDisk(document)
+                            com.intellij.psi.PsiDocumentManager.getInstance(project).commitDocument(document)
+                            check(document.text == original && !documents.isFileModified(file))
+                        }
+                    })
+                }
+                java.nio.file.Files.writeString(output.resolve("edit-cleanup.txt"), "RESTORED")
+            }
+            "project-close" -> {
+                check(documents.unsavedDocuments.isEmpty())
+                java.nio.file.Files.writeString(output.resolve("project-close-requested.txt"), "REQUESTED")
+                application.invokeAndWait {
+                    check(manager.closeAndDispose(project))
+                    check(project.isDisposed)
+                }
+            }
+        }
+    }
+    probe = if (scenario == "plugin-lifecycle") {
+        klass.getMethod("installed", com.intellij.openapi.project.Project::class.java).invoke(null, project)
+    } else if (scenario in setOf("edit", "retire", "cancel", "project-close")) {
+        klass.getConstructor(com.intellij.openapi.project.Project::class.java, java.util.function.Consumer::class.java)
+            .newInstance(project, checkpoint)
+    } else klass.getConstructor(com.intellij.openapi.project.Project::class.java).newInstance(project)
+    fun retire() {
+        klass.getMethod("detach", java.util.function.Consumer::class.java).invoke(probe, java.util.function.Consumer<String> { state ->
+            java.nio.file.Files.writeString(output.resolve("retired.txt"), state)
+            if (scenario != "plugin-lifecycle") (loader as java.net.URLClassLoader).close()
+        })
+    }
+    val callback = java.util.function.Consumer<String> { answer ->
+        try {
+            check(answer.toByteArray(Charsets.UTF_8).size <= 65536)
+            val readHeld = com.intellij.openapi.application.ApplicationManager.getApplication().isReadAccessAllowed
+            val projects = manager.openProjects.toList()
+            java.nio.file.Files.writeString(output.resolve("identity.json"), com.google.gson.Gson().toJson(mapOf(
+                "hostPid" to java.lang.ProcessHandle.current().pid(), "sameProject" to projects.any { it === project },
+                "originalProjectDisposed" to project.isDisposed,
+                "newProjects" to projects.count { candidate -> initialProjects.none { it === candidate } },
+                "readLockDuringTransport" to readHeld, "modelBefore" to before, "modelAfter" to model(),
+                "ideBuild" to com.intellij.openapi.application.ApplicationInfo.getInstance().build.asStringWithoutProductCode(),
+                "kotlinBuild" to kotlinPlugin.version,
+            )))
+            java.nio.file.Files.writeString(output.resolve("result.json"), answer)
+        } finally { try { restoreOwnedDocument() } finally { retire() } }
+    }
+    try {
+        if (dirtyDocument != null) application.invokeAndWait {
+            application.runWriteAction {
+                check(dirtyDocument.text == originalText)
+                dirtyDocument.setText(dirtyText)
+            }
+        }
+        bootstrapStage = "REQUEST_DISPATCH"
+        klass.getMethod("query", String::class.java, String::class.java, Int::class.javaPrimitiveType, java.util.function.Consumer::class.java)
+            .invoke(probe, if (scenario == "wrong-root") project.basePath + "/kernel" else input.get("project").asString,
+                input.get("file").asString, input.get("offset").asInt, callback)
+    } catch (failure: Throwable) {
+        try { restoreOwnedDocument() } finally { retire() }
+        throw failure
+    }
+    } catch (failure: Throwable) {
+        java.nio.file.Files.writeString(output.resolve("bootstrap-failure.json"), com.google.gson.Gson().toJson(mapOf(
+            "stage" to bootstrapStage, "outcome" to "BOOTSTRAP_FAILED",
+        )))
+        throw failure
+    }
+}

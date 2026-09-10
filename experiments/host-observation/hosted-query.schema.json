@@ -1,0 +1,263 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Manual hosted Kotlin query result",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "outcome",
+        "failure",
+        "detail",
+        "stage"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "outcome": {
+          "const": "rejected"
+        },
+        "failure": {
+          "enum": [
+            "RETIRED",
+            "WRONG_ENDPOINT",
+            "WRONG_PROJECT",
+            "BUSY",
+            "STALE_REQUEST",
+            "INVALID_SELECTION",
+            "PROJECT_UNAVAILABLE",
+            "INDEXING",
+            "WRONG_THREAD",
+            "DIRTY_DOCUMENTS",
+            "UNCOMMITTED_DOCUMENTS",
+            "CONTENT_MOVED",
+            "MODEL_MOVED",
+            "UNSUPPORTED_MODEL",
+            "UNSUPPORTED_DECLARATION",
+            "UNRESOLVED_SUPERTYPE",
+            "FILE_UNAVAILABLE",
+            "FILE_TOO_LARGE",
+            "OUTSIDE_SCOPE",
+            "AMBIGUOUS_SCOPE",
+            "READ_PREEMPTED",
+            "CANCELLED",
+            "BUDGET_EXCEEDED",
+            "PLATFORM_FAILURE",
+            "PROJECT_ADMISSION_REJECTED",
+            "MODEL_CAPTURE_REJECTED",
+            "READ_EPOCH_REJECTED",
+            "FRESHNESS_REJECTED"
+          ]
+        },
+        "detail": {
+          "oneOf": [
+            {
+              "type": "string",
+              "maxLength": 128
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "stage": {
+                  "type": "string",
+                  "maxLength": 64
+                },
+                "cause": {
+                  "enum": [
+                    "OBSERVATION_FAILED",
+                    "RUNTIME",
+                    "LINKAGE"
+                  ]
+                },
+                "field": {
+                  "type": "string",
+                  "maxLength": 64
+                }
+              }
+            },
+            {
+              "type": "array",
+              "maxItems": 64,
+              "items": {
+                "type": "string",
+                "maxLength": 128
+              }
+            }
+          ]
+        },
+        "stage": {
+          "enum": [
+            "REQUEST_ADMISSION",
+            "PROJECT_ADMISSION",
+            "EPOCH_OBSERVATION",
+            "MODEL_CAPTURE",
+            "SEMANTIC_READ",
+            "CONTENT_REVALIDATION",
+            "RESULT_DETACHED"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "outcome",
+        "publication",
+        "content",
+        "scope",
+        "kind",
+        "supertype",
+        "inheritor",
+        "stage",
+        "workspaceRoot",
+        "host"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "outcome": {
+          "const": "published"
+        },
+        "publication": {
+          "const": "request_local_same_source_epoch"
+        },
+        "content": {
+          "const": "saved_committed_ide_vfs"
+        },
+        "scope": {
+          "const": "cached_gradle_source_folders"
+        },
+        "kind": {
+          "const": "inheritors"
+        },
+        "supertype": {
+          "$ref": "#/$defs/declaration"
+        },
+        "inheritor": {
+          "$ref": "#/$defs/declaration"
+        },
+        "stage": {
+          "enum": [
+            "REQUEST_ADMISSION",
+            "PROJECT_ADMISSION",
+            "EPOCH_OBSERVATION",
+            "MODEL_CAPTURE",
+            "SEMANTIC_READ",
+            "CONTENT_REVALIDATION",
+            "RESULT_DETACHED"
+          ]
+        },
+        "workspaceRoot": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "host": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ideBuild",
+            "kotlinBuild"
+          ],
+          "properties": {
+            "ideBuild": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "kotlinBuild": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "declaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "compilerIdentity",
+        "signature",
+        "canonicalSignature",
+        "documentStamp",
+        "vfsStamp",
+        "module",
+        "gradleBuildRoot",
+        "gradleProject",
+        "sourceRoot",
+        "sourceKind",
+        "provenanceAuthority"
+      ],
+      "properties": {
+        "file": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "compilerIdentity": {
+          "type": "string",
+          "pattern": "^canonical-signature-sha256-v1\\|[a-f0-9]{64}$"
+        },
+        "signature": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "qualifiedIdentity"
+          ],
+          "properties": {
+            "kind": {
+              "const": "class_like"
+            },
+            "qualifiedIdentity": {
+              "type": "string",
+              "maxLength": 4096
+            }
+          }
+        },
+        "canonicalSignature": {
+          "type": "string",
+          "maxLength": 8192
+        },
+        "documentStamp": {
+          "type": "integer"
+        },
+        "vfsStamp": {
+          "type": "integer"
+        },
+        "module": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "gradleBuildRoot": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "gradleProject": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "sourceRoot": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "sourceKind": {
+          "enum": [
+            "PRODUCTION",
+            "TEST"
+          ]
+        },
+        "provenanceAuthority": {
+          "const": "cached_source_folder_flag"
+        }
+      }
+    }
+  }
+}
