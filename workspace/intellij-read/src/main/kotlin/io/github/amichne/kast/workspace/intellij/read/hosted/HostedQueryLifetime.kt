@@ -62,6 +62,9 @@ sealed interface HostedQueryFailure {
     data object BUSY : HostedQueryFailure
     data object STALE_REQUEST : HostedQueryFailure
     data object INVALID_SELECTION : HostedQueryFailure
+    data object DECLARATION_NOT_FOUND : HostedQueryFailure
+    data object AMBIGUOUS_DECLARATION : HostedQueryFailure
+    data object DECLARATION_IDENTITY_MISMATCH : HostedQueryFailure
     data object PROJECT_UNAVAILABLE : HostedQueryFailure
     data object INDEXING : HostedQueryFailure
     data object WRONG_THREAD : HostedQueryFailure

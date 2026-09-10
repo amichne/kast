@@ -12,6 +12,15 @@ import kotlinx.coroutines.runBlocking
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 
 class HostedEndpointTest {
+    @Test fun `direct supertype accepts a qualified identity and rejects mixed selectors`() {
+        assertTrue(HostedRequests.decode("""{"type":"DIRECT_SUPERTYPE","root":"/workspace","qualifiedName":"example.Outer.Child"}""") is Refinement.Refined)
+        for (request in listOf(
+            """{"type":"DIRECT_SUPERTYPE","root":"/workspace","qualifiedName":"example..Child"}""",
+            """{"type":"DIRECT_SUPERTYPE","root":"/workspace","qualifiedName":"example.Child","file":"Child.kt","offset":0}""",
+            """{"type":"DIRECT_SUPERTYPE","root":"/workspace","qualifiedName":12}""",
+        )) assertEquals(Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST), HostedRequests.decode(request))
+    }
+
     @Test fun `request evidence distinguishes completed transport from rejected frames without semantic dispatch`() = runBlocking {
         val observations = mutableListOf<Pair<HostedEndpointStage, HostedEndpointOutcome>>()
         val observer = HostedEndpointObserver { stage, outcome -> observations += stage to outcome }

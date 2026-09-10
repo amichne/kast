@@ -2,6 +2,10 @@
 
 ## 2026-09-10
 
+- Added qualified class selection through the existing full-class-name index,
+  preserving unique selection and exact compiler identity through the same
+  admitted supertype read and publication checks.
+
 - Added the compiled existing-project Kotlin direct-supertype query, bounded
   cancellation and retirement, and explicit request-local evidence limits.
 - Recorded the read adapter's symbol-contract dependency and manual validation flow.

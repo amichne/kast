@@ -44,6 +44,8 @@ python3 -m venv /tmp/kast-hosted-query-venv
 /tmp/kast-hosted-query-venv/bin/python experiments/host-observation/kast_ide.py \
   --root /absolute/path/to/kast classes Refinement
 /tmp/kast-hosted-query-venv/bin/python experiments/host-observation/kast_ide.py \
+  --root /absolute/path/to/kast supertype-of io.github.amichne.kast.kernel.Refinement.Refined
+/tmp/kast-hosted-query-venv/bin/python experiments/host-observation/kast_ide.py \
   --root /absolute/path/to/kast supertype \
   kernel/src/main/kotlin/io/github/amichne/kast/kernel/Refinement.kt 383
 ```
@@ -74,7 +76,11 @@ Plugin unload and project disposal cancel the platform-injected service scope.
 No read lock spans socket I/O.
 
 Operations are `DESCRIBE`, `CLASS_LOOKUP` with an exact `name`, and
-`DIRECT_SUPERTYPE` with a relative `file` and nonnegative UTF-16 `offset`.
+`DIRECT_SUPERTYPE` with either an exact `qualifiedName`, or a relative `file`
+and nonnegative UTF-16 `offset`. Mixing the two selectors is rejected. Qualified
+selection uses the existing full-class-name index, requires exactly one candidate,
+and checks its resolved compiler identity inside the same admitted read. Missing,
+ambiguous, or mismatched declarations have distinct closed failures.
 All require the exact canonical `root`. Unknown operations, duplicate keys,
 extra fields, malformed UTF-8, and oversized frames fail closed. Descriptor and
 host responses use [the endpoint schema](hosted-endpoint.schema.json); semantic
@@ -99,6 +105,8 @@ means transport delivery, including delivery of a typed semantic rejection.
 /tmp/kast-hosted-query-venv/bin/python experiments/host-observation/qualify_hosted_index.py \
   --root /absolute/path/to/kast \
   --idea-contents '/path/to/IntelliJ IDEA.app/Contents'
+# Add --with-supertype to exercise qualified selection, renaming, ambiguity,
+# restoration, and removal through the same admitted relation read.
 ```
 
 The last command is an explicit acceptance effect for the Kast repository. It
@@ -119,6 +127,14 @@ The built native `kast ide` executable then described that same host and returne
 six compiler-resolved `Refinement` declarations. Portable command tests cover
 help, completion, exact-root routing, and unavailable hosts; native socket tests
 cover complete, oversized, truncated, and invalid-UTF-8 responses.
+
+Qualified selection also resolved `io.github.amichne.kast.kernel.Refinement.Refined`
+to `io.github.amichne.kast.kernel.Refinement` in that running host. Portable tests
+cover missing and duplicate candidates and compiler-identity mismatch. The new
+`--with-supertype` incremental acceptance sequence was attempted, but its script
+carrier did not confirm fixture refresh. Disk cleanup completed; the refresh
+receipt and expanded live sequence remain unqualified. This failure did not
+prevent direct socket queries from resolving the saved repository declaration.
 
 `manage_hosted_endpoint.py` and its script template provide explicit development
 load/unload of an already unpacked owned plugin. This management path uses

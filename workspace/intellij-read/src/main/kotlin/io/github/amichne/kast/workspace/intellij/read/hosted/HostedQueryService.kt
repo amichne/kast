@@ -37,7 +37,7 @@ class HostedQueryService private constructor(
         is io.github.amichne.kast.kernel.Refinement.Rejected -> HostedIndexResult.Rejected(compatibility.failure)
     }
 
-    suspend fun query(endpoint: HostedQueryEndpoint, selection: HostedKotlinSelection): HostedQueryResult = when (val compatibility = packagedCompatibility) {
+    suspend fun query(endpoint: HostedQueryEndpoint, selection: HostedSupertypeSelection): HostedQueryResult = when (val compatibility = packagedCompatibility) {
         is io.github.amichne.kast.kernel.Refinement.Refined -> query(endpoint, selection, compatibility.value.candidate, compatibility.value.policy)
         is io.github.amichne.kast.kernel.Refinement.Rejected -> HostedQueryResult.Rejected(compatibility.failure)
     }
@@ -76,7 +76,7 @@ class HostedQueryService private constructor(
     /** One bounded request, with a detached answer returned after all platform reads have ended. */
     suspend fun query(
         endpoint: HostedQueryEndpoint,
-        selection: HostedKotlinSelection,
+        selection: HostedSupertypeSelection,
         candidate: IdeHostCompatibilityCandidate,
         policy: IdeHostCompatibilityPolicy,
     ): HostedQueryResult {

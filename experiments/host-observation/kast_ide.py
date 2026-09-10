@@ -110,8 +110,14 @@ def exchange(root: Path, request: dict, home: Path) -> Answer | Rejected:
             if document["outcome"] == "published":
                 if request["type"] == "CLASS_LOOKUP" and (document["kind"] != "classes" or document["name"] != request["name"]):
                     return Rejected(Failure.RESPONSE_REJECTED)
-                if request["type"] == "DIRECT_SUPERTYPE" and (document["kind"] != "inheritors" or document["inheritor"]["file"] != str(root / request["file"])):
-                    return Rejected(Failure.RESPONSE_REJECTED)
+                if request["type"] == "DIRECT_SUPERTYPE":
+                    if document["kind"] != "inheritors":
+                        return Rejected(Failure.RESPONSE_REJECTED)
+                    if "qualifiedName" in request:
+                        if document["inheritor"]["signature"]["qualifiedIdentity"] != request["qualifiedName"]:
+                            return Rejected(Failure.RESPONSE_REJECTED)
+                    elif document["inheritor"]["file"] != str(root / request["file"]):
+                        return Rejected(Failure.RESPONSE_REJECTED)
         return Answer(document)
     except (socket.timeout, TimeoutError):
         return Rejected(Failure.DEADLINE_EXCEEDED)
@@ -131,11 +137,15 @@ def main():
     supertype = operations.add_parser("supertype")
     supertype.add_argument("file")
     supertype.add_argument("offset", type=int)
+    indexed_supertype = operations.add_parser("supertype-of")
+    indexed_supertype.add_argument("qualified_name")
     args = parser.parse_args()
     if args.operation == "status":
         request = dict(type="DESCRIBE")
     elif args.operation == "classes":
         request = dict(type="CLASS_LOOKUP", name=args.name)
+    elif args.operation == "supertype-of":
+        request = dict(type="DIRECT_SUPERTYPE", qualifiedName=args.qualified_name)
     else:
         request = dict(type="DIRECT_SUPERTYPE", file=args.file, offset=args.offset)
     result = exchange(args.root, request, Path.home())

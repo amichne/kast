@@ -67,6 +67,26 @@ class HostedClientTest(unittest.TestCase):
         result = dict(type="HOST_REJECTED", failure="WRONG_ROOT")
         self.assertEqual(Answer(result), self.reply(json.dumps(result).encode()))
 
+    def supertype_result(self):
+        def declaration(name):
+            canonical = "".join(f"{len(field.encode())}:{field}" for field in ("canonical-signature-v1", "class-like", name))
+            return dict(file=str(self.root / "Classes.kt"), compilerIdentity="canonical-signature-sha256-v1|" + hashlib.sha256(canonical.encode()).hexdigest(),
+                        signature=dict(kind="class_like", qualifiedIdentity=name), canonicalSignature=canonical,
+                        documentStamp=1, vfsStamp=1, module="fixture", gradleBuildRoot=str(self.root), gradleProject=":fixture",
+                        sourceRoot="src", sourceKind="PRODUCTION", provenanceAuthority="cached_source_folder_flag")
+        return dict(schemaVersion=1, outcome="published", publication="request_local_same_source_epoch",
+                    content="saved_committed_ide_vfs", scope="cached_gradle_source_folders", kind="inheritors",
+                    stage="RESULT_DETACHED", workspaceRoot=str(self.root), host=dict(ideBuild="test", kotlinBuild="test"),
+                    supertype=declaration("example.Parent"), inheritor=declaration("example.Child"))
+
+    def test_indexed_supertype_matches_the_requested_compiler_identity(self):
+        result = self.supertype_result()
+        self.assertEqual(Answer(result), self.reply(json.dumps(result).encode(), dict(type="DIRECT_SUPERTYPE", qualifiedName="example.Child")))
+
+    def test_indexed_supertype_rejects_another_compiler_identity(self):
+        result = self.supertype_result()
+        self.assertEqual(Rejected(Failure.RESPONSE_REJECTED), self.reply(json.dumps(result).encode(), dict(type="DIRECT_SUPERTYPE", qualifiedName="other.Child")))
+
     def test_duplicate_fields_and_non_json_numbers_are_rejected(self):
         for raw in ('{"type":"HOST_REJECTED","type":"HOST_REJECTED","failure":"WRONG_ROOT"}', '{"n":NaN}'):
             with self.assertRaises(ValueError):

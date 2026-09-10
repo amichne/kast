@@ -55,7 +55,7 @@ internal fun readHostedClassIndex(project: Project, lookup: HostedClassLookup, m
     )))
 }
 
-private class HostedIndexScope(project: Project, model: DetachedIdeWorkspaceModel) : GlobalSearchScope(project) {
+internal class HostedIndexScope(project: Project, model: DetachedIdeWorkspaceModel) : GlobalSearchScope(project) {
     private val root = Path.of(model.canonicalRoot.value)
     private val roots = model.modules.flatMap { module -> module.sourceRoots }.filter {
         it.kind in setOf(DetachedSourceRootKind.PRODUCTION, DetachedSourceRootKind.TEST) &&
