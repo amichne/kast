@@ -145,7 +145,11 @@ run {
             }
         }
         bootstrapStage = "REQUEST_DISPATCH"
-        klass.getMethod("query", String::class.java, String::class.java, Int::class.javaPrimitiveType, java.util.function.Consumer::class.java)
+        if (input.has("className")) {
+            klass.getMethod("lookup", String::class.java, String::class.java, java.util.function.Consumer::class.java)
+                .invoke(probe, if (scenario == "wrong-root") project.basePath + "/kernel" else input.get("project").asString,
+                    input.get("className").asString, callback)
+        } else klass.getMethod("query", String::class.java, String::class.java, Int::class.javaPrimitiveType, java.util.function.Consumer::class.java)
             .invoke(probe, if (scenario == "wrong-root") project.basePath + "/kernel" else input.get("project").asString,
                 input.get("file").asString, input.get("offset").asInt, callback)
     } catch (failure: Throwable) {

@@ -74,6 +74,7 @@ sealed interface HostedQueryFailure {
     data object UNRESOLVED_SUPERTYPE : HostedQueryFailure
     data object FILE_UNAVAILABLE : HostedQueryFailure
     data object FILE_TOO_LARGE : HostedQueryFailure
+    data object RESULT_LIMIT_EXCEEDED : HostedQueryFailure
     data object OUTSIDE_SCOPE : HostedQueryFailure
     data object AMBIGUOUS_SCOPE : HostedQueryFailure
     data object READ_PREEMPTED : HostedQueryFailure

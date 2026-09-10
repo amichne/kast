@@ -29,6 +29,37 @@ class HostedQueryService private constructor(
     private val session = AdmittedIdeProjectSession(owner)
     val endpoint: HostedQueryEndpoint get() = executor.endpoint
 
+    /** Bounded exact-name discovery in the original IDE's already-maintained Kotlin index. */
+    suspend fun lookup(
+        endpoint: HostedQueryEndpoint,
+        lookup: HostedClassLookup,
+        candidate: IdeHostCompatibilityCandidate,
+        policy: IdeHostCompatibilityPolicy,
+    ): HostedIndexResult {
+        if (ApplicationManager.getApplication().isReadAccessAllowed || ApplicationManager.getApplication().isDispatchThread) {
+            return HostedIndexResult.Rejected(HostedQueryFailure.WRONG_THREAD)
+        }
+        return when (val execution = executor.execute(endpoint) { progress ->
+            progress.advance(HostedQueryStage.PROJECT_ADMISSION)
+            when (val admission = session.admit(project, lookup.root, candidate, policy)) {
+                is ExistingProjectAdmission.Admitted -> admission.project.prepareHostedRead(
+                    lookup.root, progress, checkpoint,
+                    { retained, model -> readHostedClassIndex(retained, lookup, model) },
+                    { retained, evidence -> verifyHostedDeclarations(retained, evidence.declarations) },
+                )
+                is ExistingProjectAdmission.Rejected -> HostedReadPreparation.Rejected(HostedQueryFailure.ProjectAdmission(admission.failure))
+            }
+        }) {
+            is HostedExecution.Rejected -> HostedIndexResult.Rejected(execution.failure, execution.stage)
+            is HostedExecution.Completed -> when (val prepared = execution.value) {
+                is HostedReadPreparation.Prepared -> HostedIndexResult.Published(
+                    HostedIndexPublication(endpoint, prepared.epoch, prepared.model, prepared.evidence),
+                )
+                is HostedReadPreparation.Rejected -> HostedIndexResult.Rejected(prepared.failure, execution.stage)
+            }
+        }
+    }
+
     /** One bounded request, with a detached answer returned after all platform reads have ended. */
     suspend fun query(
         endpoint: HostedQueryEndpoint,

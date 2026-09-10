@@ -97,7 +97,7 @@ def restore_project(launcher, project, evidence, pid):
     raise RuntimeError(f"PROJECT_RESTORATION_UNCONFIRMED: {evidence}")
 
 
-def run(idea, artifact, project, source_file, offset, check=AcceptanceCase.QUERY):
+def run(idea, artifact, project, source_file, offset, check=AcceptanceCase.QUERY, class_name=None):
     launcher = idea / "MacOS/idea"
     processes = subprocess.check_output(["ps", "-ww", "-axo", "pid=,command="], text=True)
     pids = [int(row.split(maxsplit=1)[0]) for row in processes.splitlines()
@@ -105,7 +105,10 @@ def run(idea, artifact, project, source_file, offset, check=AcceptanceCase.QUERY
     if len(pids) != 1:
         raise RuntimeError("EXACT_RUNNING_HOST_UNAVAILABLE; the runner never launches an IDE for setup")
     project = project.resolve(strict=True)
-    if offset < 0 or not source_file.endswith(".kt") or PurePosixPath(source_file).is_absolute() or ".." in PurePosixPath(source_file).parts:
+    if class_name is not None:
+        if source_file is not None or not class_name or len(class_name.encode()) > 512 or check is AcceptanceCase.EDIT:
+            raise ValueError("INVALID_CLASS_LOOKUP")
+    elif source_file is None or offset < 0 or not source_file.endswith(".kt") or PurePosixPath(source_file).is_absolute() or ".." in PurePosixPath(source_file).parts:
         raise ValueError("INVALID_SELECTION")
     evidence = Path(tempfile.mkdtemp(prefix="kast-hosted-query-"))
     print(f"Evidence: {evidence}", flush=True)
@@ -124,7 +127,8 @@ def run(idea, artifact, project, source_file, offset, check=AcceptanceCase.QUERY
         raise ValueError("ARTIFACT_HOST_MISMATCH; rebuild with -PhostedIdeaHome pointing to this installation")
     if check is AcceptanceCase.DIRTY_DOCUMENT:
         (evidence / "dirty.kt").write_text("interface HostedDirtyFixture\n")
-    (evidence / "input.json").write_text(json.dumps(dict(project=str(project), file=source_file, offset=offset, hostPid=pids[0], jars=[str(path) for path in jars], check=check.value)))
+    selection = dict(className=class_name) if class_name is not None else dict(file=source_file, offset=offset)
+    (evidence / "input.json").write_text(json.dumps(dict(project=str(project), hostPid=pids[0], jars=[str(path) for path in jars], check=check.value, **selection)))
     template = (ROOT / "hosted-query.kts.template").read_text()
     script = template.replace("@INPUT_BASE64@", base64.b64encode(str(evidence / "input.json").encode()).decode())
     (evidence / "run.kts").write_text(script)
@@ -245,11 +249,13 @@ if __name__ == "__main__":
     parser.add_argument("--idea-contents", type=Path, required=True)
     parser.add_argument("--artifact", type=Path, required=True)
     parser.add_argument("--project", type=Path, required=True)
-    parser.add_argument("--file", required=True)
-    parser.add_argument("--offset", type=int, required=True, help="UTF-16 offset inside the class name")
+    selection = parser.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--file")
+    selection.add_argument("--class-name", help="Exact Kotlin class name looked up in the existing IDE index")
+    parser.add_argument("--offset", type=int, default=0, help="UTF-16 offset inside the class name")
     checks = parser.add_mutually_exclusive_group()
     checks.add_argument("--dirty-document-check", dest="check", action="store_const", const=AcceptanceCase.DIRTY_DOCUMENT, help="Check rejection with a temporary owned dirty document, then restore it")
     checks.add_argument("--check", type=AcceptanceCase, choices=list(AcceptanceCase), help="Controlled live acceptance case; project-close closes then reopens the selected project")
     parser.set_defaults(check=AcceptanceCase.QUERY)
     arguments = parser.parse_args()
-    raise SystemExit(run(arguments.idea_contents, arguments.artifact, arguments.project, arguments.file, arguments.offset, arguments.check))
+    raise SystemExit(run(arguments.idea_contents, arguments.artifact, arguments.project, arguments.file, arguments.offset, arguments.check, arguments.class_name))

@@ -9,6 +9,23 @@ import io.github.amichne.kast.workspace.intellij.read.ExistingProjectAdmissionFa
 
 /** Detached transport projection. Encoding may only run after the service has released its reads. */
 object HostedQueryWire {
+    fun encode(result: HostedIndexResult): String = when (result) {
+        is HostedIndexResult.Rejected -> encode(HostedQueryResult.Rejected(result.failure, result.stage))
+        is HostedIndexResult.Published -> Gson().toJson(mapOf(
+            "schemaVersion" to 1, "outcome" to "published", "stage" to HostedQueryStage.RESULT_DETACHED.name,
+            "publication" to "request_local_same_source_epoch", "workspaceRoot" to result.publication.model.canonicalRoot.value,
+            "host" to mapOf("ideBuild" to result.publication.model.compatibility.ideBuild.value,
+                "kotlinBuild" to result.publication.model.compatibility.kotlinPluginBuild.value),
+            "content" to "saved_committed_ide_vfs", "scope" to "cached_gradle_source_folders",
+            "kind" to "classes", "name" to result.publication.classes.lookup.name.value,
+            "indexAuthority" to "existing_ide_kotlin_stub_index",
+            "declarations" to result.publication.classes.declarations.map { it.document() },
+        )).let { document ->
+            if (document.toByteArray(Charsets.UTF_8).size <= 65_536) document
+            else encode(HostedQueryResult.Rejected(HostedQueryFailure.RESULT_LIMIT_EXCEEDED, HostedQueryStage.RESULT_DETACHED))
+        }
+    }
+
     fun encode(result: HostedQueryResult): String = Gson().toJson(when (result) {
         is HostedQueryResult.Rejected -> mapOf(
             "schemaVersion" to 1, "outcome" to "rejected", "failure" to result.failure.code(),
@@ -74,6 +91,7 @@ internal fun HostedQueryFailure.code(): String = when (this) {
     HostedQueryFailure.UNRESOLVED_SUPERTYPE -> "UNRESOLVED_SUPERTYPE"
     HostedQueryFailure.FILE_UNAVAILABLE -> "FILE_UNAVAILABLE"
     HostedQueryFailure.FILE_TOO_LARGE -> "FILE_TOO_LARGE"
+    HostedQueryFailure.RESULT_LIMIT_EXCEEDED -> "RESULT_LIMIT_EXCEEDED"
     HostedQueryFailure.OUTSIDE_SCOPE -> "OUTSIDE_SCOPE"
     HostedQueryFailure.AMBIGUOUS_SCOPE -> "AMBIGUOUS_SCOPE"
     HostedQueryFailure.READ_PREEMPTED -> "READ_PREEMPTED"

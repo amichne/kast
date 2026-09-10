@@ -33,7 +33,7 @@ internal fun readHostedKotlin(
     project: Project,
     selection: HostedKotlinSelection,
     model: DetachedIdeWorkspaceModel,
-): HostedSemanticRead {
+): HostedSemanticRead<HostedInheritorEvidence> {
     when (val saved = checkSavedDocuments(project)) {
         SavedDocuments.Clean -> Unit
         is SavedDocuments.Rejected -> return HostedSemanticRead.Rejected(saved.failure)
@@ -99,11 +99,15 @@ internal fun checkSavedDocuments(project: Project): SavedDocuments = when {
 }
 
 internal fun verifyHostedContent(project: Project, evidence: HostedInheritorEvidence): SavedDocuments {
+    return verifyHostedDeclarations(project, listOf(evidence.supertype, evidence.inheritor))
+}
+
+internal fun verifyHostedDeclarations(project: Project, declarations: List<HostedCompilerDeclaration>): SavedDocuments {
     when (val saved = checkSavedDocuments(project)) {
         SavedDocuments.Clean -> Unit
         is SavedDocuments.Rejected -> return saved
     }
-    for (declaration in listOf(evidence.supertype, evidence.inheritor)) {
+    for (declaration in declarations) {
         val file = LocalFileSystem.getInstance().findFileByPath(declaration.symbol.file.stableValue)
             ?: return SavedDocuments.Rejected(HostedQueryFailure.CONTENT_MOVED)
         val document = FileDocumentManager.getInstance().getCachedDocument(file)
@@ -115,7 +119,7 @@ internal fun verifyHostedContent(project: Project, evidence: HostedInheritorEvid
     return SavedDocuments.Clean
 }
 
-private fun detachDeclaration(
+internal fun detachDeclaration(
     project: Project,
     model: DetachedIdeWorkspaceModel,
     declaration: KtClassOrObject,

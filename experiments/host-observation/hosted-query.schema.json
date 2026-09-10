@@ -48,7 +48,8 @@
             "PROJECT_ADMISSION_REJECTED",
             "MODEL_CAPTURE_REJECTED",
             "READ_EPOCH_REJECTED",
-            "FRESHNESS_REJECTED"
+            "FRESHNESS_REJECTED",
+            "RESULT_LIMIT_EXCEEDED"
           ]
         },
         "detail": {
@@ -173,6 +174,92 @@
               "type": "string",
               "maxLength": 128
             }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "outcome",
+        "publication",
+        "content",
+        "scope",
+        "kind",
+        "stage",
+        "workspaceRoot",
+        "host",
+        "name",
+        "indexAuthority",
+        "declarations"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "outcome": {
+          "const": "published"
+        },
+        "publication": {
+          "const": "request_local_same_source_epoch"
+        },
+        "content": {
+          "const": "saved_committed_ide_vfs"
+        },
+        "scope": {
+          "const": "cached_gradle_source_folders"
+        },
+        "kind": {
+          "const": "classes"
+        },
+        "stage": {
+          "enum": [
+            "REQUEST_ADMISSION",
+            "PROJECT_ADMISSION",
+            "EPOCH_OBSERVATION",
+            "MODEL_CAPTURE",
+            "SEMANTIC_READ",
+            "CONTENT_REVALIDATION",
+            "RESULT_DETACHED"
+          ]
+        },
+        "workspaceRoot": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "host": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ideBuild",
+            "kotlinBuild"
+          ],
+          "properties": {
+            "ideBuild": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "kotlinBuild": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "indexAuthority": {
+          "const": "existing_ide_kotlin_stub_index"
+        },
+        "declarations": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/declaration"
           }
         }
       }
