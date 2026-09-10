@@ -1,7 +1,7 @@
 <idea-plugin>
   <id>io.github.amichne.kast.ide-hosted</id>
   <name>Kast Existing IDE Runtime</name>
-  <version>0.1.0</version>
+  <version>${pluginVersion}</version>
   <vendor>amichne</vendor>
   <description>Project-owned local access to the existing Kotlin index and bounded semantic reads.</description>
   <idea-version since-build="${ideBuild}" until-build="${ideBuild}"/>

@@ -60,6 +60,9 @@ fi
 assets_directory="$(cd "${assets_directory}" && pwd -P)"
 control="${assets_directory}/kast-control-v${version}-macos-aarch64.tar.gz"
 sidecar="${assets_directory}/kast-semantic-runtime-${version}-macos-aarch64.zip"
+plugins=("${assets_directory}"/kast-ide-hosted-v"${version}"-idea-*.zip)
+[[ "${#plugins[@]}" == 1 && -f "${plugins[0]}" ]] || fail "expected one IDEA-build-specific hosted plugin"
+plugin="${plugins[0]}"
 schema="${assets_directory}/kast-cli-schema-v${version}.json"
 knowledge="${assets_directory}/kast-module-knowledge-v${version}.json"
 sbom="${assets_directory}/kast-sbom-v${version}.cdx.json"
@@ -68,6 +71,8 @@ assets=(
   "${control}.sha256"
   "${sidecar}"
   "${sidecar}.sha256"
+  "${plugin}"
+  "${plugin}.sha256"
   "${schema}"
   "${schema}.sha256"
   "${knowledge}"
@@ -84,6 +89,8 @@ upload_assets=(
   "${control}.sha256"
   "${sidecar}#kast-semantic-runtime-v${version}-macos-aarch64"
   "${sidecar}.sha256"
+  "${plugin}#kast-ide-hosted-v${version}-idea-compatible"
+  "${plugin}.sha256"
   "${schema}"
   "${schema}.sha256"
   "${knowledge}"
@@ -93,10 +100,11 @@ upload_assets=(
 )
 release_notes="$(
   printf '%s\n' \
-    "Kast installs one public \`kast\` command from two matched payloads:" \
+    "Kast installs one public \`kast\` command from three matched payloads:" \
     '' \
     '- **Control:** CLI parsing, lifecycle, schemas, broker, and typed wire transport.' \
-    '- **Private semantic runtime:** the headless indexer and compiler integration loaded with the supported local IDEA.'
+    '- **Private semantic runtime:** the headless indexer and compiler integration loaded with the supported local IDEA.' \
+    '- **Existing-IDE plugin:** the exact-build plugin installed programmatically by the verified shell installer.'
 )"
 
 gh release create "${release}" "${upload_assets[@]}" \

@@ -2,6 +2,10 @@
 
 ## 2026-09-10
 
+- Bound stable release installation to a checksum-verified, release-versioned
+  hosted plugin for exact IDEA build 262.10315.125. The shell installer validates
+  the embedded descriptor, installs only the owned user plugin directory atomically,
+  and leaves dry-run free of plugin-directory writes.
 - Completed the stage 4 default route for all seven semantic reads before
   installed bootstrap, including Clikt's optional leading `--` delimiter.
   The delimiter bypass was reproduced and fixed with both command spellings
