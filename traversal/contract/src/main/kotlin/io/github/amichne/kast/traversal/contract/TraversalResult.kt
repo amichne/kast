@@ -56,7 +56,7 @@ data class TraversalRecord private constructor(
             if (fact.meaning != plan.meaning) {
                 return Refinement.Rejected(TraversalRecordFailure.MEANING_MISMATCH)
             }
-            if (fact.generation != plan.start.lease.generation) {
+            if (fact.authority != plan.start.lease.identity) {
                 return Refinement.Rejected(TraversalRecordFailure.GENERATION_MISMATCH)
             }
             if (fact.source.scope != plan.scope || fact.target.scope != plan.scope) {

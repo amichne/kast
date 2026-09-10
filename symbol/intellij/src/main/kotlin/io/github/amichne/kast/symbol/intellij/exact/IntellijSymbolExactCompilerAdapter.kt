@@ -6,17 +6,17 @@ import io.github.amichne.kast.symbol.contract.SymbolDescriptionCompilation
 import io.github.amichne.kast.symbol.contract.SymbolExactCompilerRejection
 import io.github.amichne.kast.symbol.contract.SymbolResolutionCompilation
 import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 
 /** Public native K2 boundary for exact selector resolution and description revalidation. */
-class IntellijSymbolExactCompilerAdapter private constructor(
+class IntellijSymbolExactCompilerAdapter internal constructor(
     private val resolver: IntellijSymbolSelectorResolver,
 ) {
     constructor() : this(IntellijSymbolSelectorResolver())
 
     /**
-     * Proof transition: `(Project, SemanticReadLease, SymbolResolutionRequest,
+     * Proof transition: `(Project, SemanticReadAuthority, SymbolResolutionRequest,
      * WorkspaceSearchScopeModelCompilation) -> SymbolResolutionCompilation`.
      *
      * A resolved compilation establishes current-lease admission, exact scope compilation, K2
@@ -26,7 +26,7 @@ class IntellijSymbolExactCompilerAdapter private constructor(
      */
     suspend fun resolve(
         project: Project,
-        currentLease: SemanticReadLease,
+        currentLease: SemanticReadAuthority,
         request: SymbolResolutionRequest,
         modelCompilation: WorkspaceSearchScopeModelCompilation,
     ): SymbolResolutionCompilation = when (
@@ -44,7 +44,7 @@ class IntellijSymbolExactCompilerAdapter private constructor(
     }
 
     /**
-     * Proof transition: `(Project, SemanticReadLease, ExactSymbolRequest,
+     * Proof transition: `(Project, SemanticReadAuthority, ExactSymbolRequest,
      * WorkspaceSearchScopeModelCompilation) -> SymbolDescriptionCompilation`.
      *
      * A described compilation establishes current-lease admission and identical K2 compiler
@@ -54,7 +54,7 @@ class IntellijSymbolExactCompilerAdapter private constructor(
      */
     suspend fun describe(
         project: Project,
-        currentLease: SemanticReadLease,
+        currentLease: SemanticReadAuthority,
         request: ExactSymbolRequest,
         modelCompilation: WorkspaceSearchScopeModelCompilation,
     ): SymbolDescriptionCompilation = when (

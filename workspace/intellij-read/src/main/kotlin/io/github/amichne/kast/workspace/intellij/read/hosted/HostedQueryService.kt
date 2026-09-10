@@ -2,6 +2,7 @@ package io.github.amichne.kast.workspace.intellij.read.hosted
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
@@ -10,6 +11,10 @@ import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
 import io.github.amichne.kast.workspace.intellij.read.AdmittedIdeProjectSession
 import io.github.amichne.kast.workspace.intellij.read.ExistingProjectAdmission
 import kotlinx.coroutines.CoroutineScope
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.workspace.contract.*
+import io.github.amichne.kast.workspace.intellij.read.IntellijSemanticSourceFileAdmission
+import java.util.UUID
 
 /** Explicit in-process endpoint. Construction never discovers, opens, repairs, or imports a project. */
 @Service(Service.Level.PROJECT)
@@ -27,10 +32,75 @@ class HostedQueryService private constructor(
     private val executor = HostedQueryExecutor(serviceScope)
     private val owner = Disposer.newDisposable("Kast hosted query epoch")
     private val session = AdmittedIdeProjectSession(owner)
+    val hostLifetime = IdeReadHostLifetime.fromBoundary(UUID.randomUUID())
+    private val liveAuthorities = HostedLiveReadAuthoritySession(hostLifetime)
     // A policy is retained admission authority, not just equal metadata. Reuse its
     // original proof for every request in this endpoint lifetime.
     private val packagedCompatibility by lazy(::packagedHostedCompatibility)
     val endpoint: HostedQueryEndpoint get() = executor.endpoint
+
+    /** One permit and deadline for the complete plan; each adapter owns its individual short read. */
+    suspend fun <Value> read(
+        endpoint: HostedQueryEndpoint,
+        root: CanonicalWorkspaceRoot,
+        evaluate: suspend (HostedSemanticReadContext) -> Value,
+    ): HostedSemanticReadResult<Value> {
+        if (ApplicationManager.getApplication().isReadAccessAllowed || ApplicationManager.getApplication().isDispatchThread) {
+            return HostedSemanticReadResult.Rejected(HostedQueryFailure.WRONG_THREAD, HostedQueryStage.REQUEST_ADMISSION)
+        }
+        return when (val execution = executor.execute(endpoint) { progress ->
+            val compatibility = when (val admitted = packagedCompatibility) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return@execute HostedSemanticRead.Rejected(admitted.failure)
+            }
+            progress.advance(HostedQueryStage.PROJECT_ADMISSION)
+            val admitted = when (val admission = session.admit(project, root, compatibility.candidate, compatibility.policy)) {
+                is ExistingProjectAdmission.Admitted -> admission.project
+                is ExistingProjectAdmission.Rejected -> return@execute HostedSemanticRead.Rejected(HostedQueryFailure.ProjectAdmission(admission.failure))
+            }
+            progress.advance(HostedQueryStage.EPOCH_OBSERVATION)
+            val epoch = when (val observed = admitted.observeReadEpoch()) {
+                is ProjectReadEpochObservation.Observed -> observed.epoch
+                is ProjectReadEpochObservation.Rejected -> return@execute HostedSemanticRead.Rejected(HostedQueryFailure.ReadEpoch(observed.failure))
+            }
+            progress.advance(HostedQueryStage.MODEL_CAPTURE)
+            val sourceScope = when (val captured = admitted.captureNamedGradleSourceScope()) {
+                is Refinement.Refined -> captured.value
+                is Refinement.Rejected -> return@execute HostedSemanticRead.Rejected(HostedQueryFailure.NamedSourceScope(captured.failure))
+            }
+            val freshness = when (val current = admitted.admitVfsPassiveRead(epoch)) {
+                is VfsPassiveReadAdmission.Admitted -> current.capability
+                is VfsPassiveReadAdmission.Rejected -> return@execute HostedSemanticRead.Rejected(HostedQueryFailure.Freshness(current.failure))
+            }
+            val authority = when (val current = liveAuthorities.admit(freshness)) {
+                is Refinement.Refined -> current.value
+                is Refinement.Rejected -> return@execute HostedSemanticRead.Rejected(HostedQueryFailure.LiveAuthority(current.failure))
+            }
+            val context = HostedSemanticReadContext(authority, sourceScope.model,
+                IntellijSemanticSourceFileAdmission(sourceScope::contains),
+            ) {
+                readAction {
+                    when (val saved = checkSavedDocuments(project)) {
+                        is SavedDocuments.Rejected -> return@readAction Refinement.Rejected(saved.failure)
+                        SavedDocuments.Clean -> Unit
+                    }
+                    when (val current = admitted.admitVfsPassiveRead(epoch)) {
+                        is VfsPassiveReadAdmission.Admitted -> Refinement.Refined(Unit)
+                        is VfsPassiveReadAdmission.Rejected -> Refinement.Rejected(HostedQueryFailure.Freshness(current.failure))
+                    }
+                }
+            }
+            try {
+                runHostedReadTransaction(progress, context::validate) { evaluate(context) }
+            } finally { context.end() }
+        }) {
+            is HostedExecution.Rejected -> HostedSemanticReadResult.Rejected(execution.failure, execution.stage)
+            is HostedExecution.Completed -> when (val result = execution.value) {
+                is HostedSemanticRead.Resolved -> HostedSemanticReadResult.Completed(result.evidence)
+                is HostedSemanticRead.Rejected -> HostedSemanticReadResult.Rejected(result.failure, execution.stage)
+            }
+        }
+    }
 
     suspend fun lookup(endpoint: HostedQueryEndpoint, lookup: HostedClassLookup): HostedIndexResult = when (val compatibility = packagedCompatibility) {
         is io.github.amichne.kast.kernel.Refinement.Refined -> lookup(endpoint, lookup, compatibility.value.candidate, compatibility.value.policy)
@@ -104,6 +174,7 @@ class HostedQueryService private constructor(
 
     /** Original owner only: completion proves all owned requests ended and listeners disconnected. */
     suspend fun detach(): HostedQueryRetirement {
+        liveAuthorities.retire()
         executor.retire()
         executor.drain()
         Disposer.dispose(owner)
@@ -111,6 +182,7 @@ class HostedQueryService private constructor(
     }
 
     override fun dispose() {
+        liveAuthorities.retire()
         executor.retire()
         Disposer.dispose(owner)
     }

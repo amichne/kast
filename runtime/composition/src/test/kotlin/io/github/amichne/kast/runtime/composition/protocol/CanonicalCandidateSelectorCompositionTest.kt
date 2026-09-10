@@ -1,5 +1,7 @@
 package io.github.amichne.kast.runtime.composition.protocol
 
+import io.github.amichne.kast.query.protocol.*
+
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome

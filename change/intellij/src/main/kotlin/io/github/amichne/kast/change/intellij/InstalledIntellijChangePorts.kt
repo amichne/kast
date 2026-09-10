@@ -103,7 +103,11 @@ internal fun compileIntent(
     selector: SymbolSelector,
     rawDeclaration: String,
 ): InstalledAddDeclarationIntentCompilation {
-    if (selector.lease.workspaceRoot != root) {
+    val published = when (val admission = selector.lease.requirePublished()) {
+        is Refinement.Refined -> admission.value
+        is Refinement.Rejected -> return rejected(InstalledAddDeclarationIntentFailure.GENERATION_MOVED)
+    }
+    if (published.workspaceRoot != root) {
         return rejected(InstalledAddDeclarationIntentFailure.GENERATION_MOVED)
     }
     val declaration = when (val parsed = AddDeclarationSourceText.parse(rawDeclaration)) {

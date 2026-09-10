@@ -49,7 +49,7 @@ class DiagnosticReadTest {
 
         val complete = assertInstanceOf(DiagnosticCompilation.Complete::class.java, collector.finish())
         assertEquals(scope.files, complete.coverage.analyzedFiles)
-        assertEquals(scope.lease.generation, complete.batch.facts.single().generation)
+        assertEquals(scope.lease.identity, complete.batch.facts.single().authority)
     }
 
     @Test

@@ -23,6 +23,7 @@ import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.source.contract.SourceDeclarationVisibility
 import io.github.amichne.kast.source.contract.SourceEntity
 import io.github.amichne.kast.source.contract.SourceReadOperations
 import io.github.amichne.kast.source.contract.SourceReadResult
@@ -247,14 +248,13 @@ class QueryService(
         is QueryPredicate.Visibility -> buildList {
             for (symbol in input) {
                 if (!state.consumeUnit()) break
-                when (val result = source.read(visibilityRequest(symbol.selector, predicate, state))) {
-                    is SourceReadResult.Complete -> if (
-                        result.entities.any { entity ->
-                            entity is SourceEntity.Declaration &&
-                                entity.visibility in predicate.values.values
+                when (val result = source.read(visibilityRequest(symbol.selector, state))) {
+                    is SourceReadResult.Complete -> when (val evidence = SourceDeclarationVisibility.admit(symbol.selector, result)) {
+                        is Refinement.Refined -> if (evidence.value.visibility in predicate.values.values) add(symbol)
+                        is Refinement.Rejected -> {
+                            state.failure(QueryItemFailure.PredicateUnproven(symbol.selector))
+                            state.limit(QueryLimitation.VISIBILITY_INCOMPLETE)
                         }
-                    ) {
-                        add(symbol)
                     }
                     is SourceReadResult.Qualified -> {
                         state.failure(QueryItemFailure.PredicateUnproven(symbol.selector))

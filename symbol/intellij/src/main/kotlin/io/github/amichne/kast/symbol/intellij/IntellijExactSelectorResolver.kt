@@ -11,7 +11,7 @@ import io.github.amichne.kast.symbol.contract.ExactDeclarationSelector
 import io.github.amichne.kast.symbol.contract.RevalidatedExactDeclaration
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 import java.util.concurrent.CancellationException
 
@@ -148,7 +148,7 @@ internal class IntellijExactSelectorQuery(
      * IntellijExactSelectorRevalidation.
      *
      * Establishes that a selector-only lookup resolved identical declaration evidence through the
-     * selector's original generation and native scope. Expected failures are the closed
+     * selector's original authority and native scope. Expected failures are the closed
      * [IntellijExactSelectorRejection] states. Platform cancellation propagates. Live PSI, files,
      * and scopes remain inside [lookup].
      */
@@ -235,17 +235,17 @@ internal class IntellijExactSelectorResolver(
 ) {
     /**
      * Proof transition:
-     * Project + current SemanticReadLease + SymbolDiscoverySelection +
+     * Project + current SemanticReadAuthority + SymbolDiscoverySelection +
      * WorkspaceSearchScopeModelCompilation to IntellijExactSelectorResolution.
      *
-     * Establishes that the selected root and generation are still current, then compiles the
+     * Establishes that the selected root and authority are still current, then compiles the
      * original discovery scope before one restartable, write-priority IntelliJ read issues an exact
      * selector. Root/generation, scope, environment, and native lookup failures are closed by
      * [IntellijExactSelectorResolution]. Platform cancellation propagates through [readAction].
      */
     suspend fun resolve(
         project: Project,
-        currentLease: SemanticReadLease,
+        currentLease: SemanticReadAuthority,
         selection: SymbolDiscoverySelection,
         modelCompilation: WorkspaceSearchScopeModelCompilation,
     ): IntellijExactSelectorResolution {
@@ -270,17 +270,17 @@ internal class IntellijExactSelectorResolver(
 
     /**
      * Proof transition:
-     * Project + current SemanticReadLease + ExactDeclarationSelector +
+     * Project + current SemanticReadAuthority + ExactDeclarationSelector +
      * WorkspaceSearchScopeModelCompilation to IntellijExactSelectorRevalidation.
      *
-     * Establishes current root/generation admission and identical native declaration evidence under
+     * Establishes current root/authority admission and identical native declaration evidence under
      * the selector's original compiled scope. Root/generation, scope, environment, movement, and
      * lookup failures are closed by [IntellijExactSelectorRevalidation]. Platform cancellation
      * propagates through [readAction].
      */
     suspend fun revalidate(
         project: Project,
-        currentLease: SemanticReadLease,
+        currentLease: SemanticReadAuthority,
         selector: ExactDeclarationSelector,
         modelCompilation: WorkspaceSearchScopeModelCompilation,
     ): IntellijExactSelectorRevalidation {
@@ -319,23 +319,23 @@ internal class IntellijExactSelectorResolver(
 
 /**
  * Proof transition:
- * expected SemanticReadLease + current SemanticReadLease to
+ * expected SemanticReadAuthority + current SemanticReadAuthority to
  * IntellijExactSelectorLeaseAdmission.
  *
- * [IntellijExactSelectorLeaseAdmission.Admitted] establishes exact root/generation equality;
+ * [IntellijExactSelectorLeaseAdmission.Admitted] establishes exact root/authority equality;
  * [IntellijExactSelectorLeaseAdmission.Rejected] distinguishes root drift from generation
  * movement. Both inputs are already strong detached lease values, and no raw extraction crosses
  * this admission boundary.
  */
 internal fun admitExactSelectorLease(
-    expected: SemanticReadLease,
-    current: SemanticReadLease,
+    expected: SemanticReadAuthority,
+    current: SemanticReadAuthority,
 ): IntellijExactSelectorLeaseAdmission = when {
     expected.workspaceRoot != current.workspaceRoot ->
         IntellijExactSelectorLeaseAdmission.Rejected(
             IntellijExactSelectorRejection.WORKSPACE_ROOT_MISMATCH,
         )
-    expected.generation != current.generation ->
+    expected != current ->
         IntellijExactSelectorLeaseAdmission.Rejected(
             IntellijExactSelectorRejection.GENERATION_MOVED,
         )

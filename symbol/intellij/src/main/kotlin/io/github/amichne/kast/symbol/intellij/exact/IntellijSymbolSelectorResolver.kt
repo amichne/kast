@@ -14,7 +14,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
 import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSelector
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 import java.util.concurrent.CancellationException
 
@@ -198,7 +198,7 @@ internal class IntellijSymbolSelectorResolver(
     private val scopeQuery: IntellijSearchScopeQueryAdapter = IntellijSearchScopeQueryAdapter(),
 ) {
     /**
-     * Proof transition: `(Project, SemanticReadLease, SymbolResolutionRequest,
+     * Proof transition: `(Project, SemanticReadAuthority, SymbolResolutionRequest,
      * WorkspaceSearchScopeModelCompilation) -> IntellijSymbolSelectorResolution`.
      *
      * Establishes exact current-lease admission, recompiles the retained discovery scope, and
@@ -208,7 +208,7 @@ internal class IntellijSymbolSelectorResolver(
      */
     suspend fun resolve(
         project: Project,
-        currentLease: SemanticReadLease,
+        currentLease: SemanticReadAuthority,
         request: SymbolResolutionRequest,
         modelCompilation: WorkspaceSearchScopeModelCompilation,
     ): IntellijSymbolSelectorResolution {
@@ -236,7 +236,7 @@ internal class IntellijSymbolSelectorResolver(
     }
 
     /**
-     * Proof transition: `(Project, SemanticReadLease, ExactSymbolRequest,
+     * Proof transition: `(Project, SemanticReadAuthority, ExactSymbolRequest,
      * WorkspaceSearchScopeModelCompilation) -> IntellijSymbolDescriptionResolution`.
      *
      * Establishes exact current-lease admission, recompiles only the selector's retained scope,
@@ -246,7 +246,7 @@ internal class IntellijSymbolSelectorResolver(
      */
     suspend fun describe(
         project: Project,
-        currentLease: SemanticReadLease,
+        currentLease: SemanticReadAuthority,
         request: ExactSymbolRequest,
         modelCompilation: WorkspaceSearchScopeModelCompilation,
     ): IntellijSymbolDescriptionResolution {
@@ -287,22 +287,22 @@ internal class IntellijSymbolSelectorResolver(
 }
 
 /**
- * Proof transition: `(SemanticReadLease, SemanticReadLease) ->
+ * Proof transition: `(SemanticReadAuthority, SemanticReadAuthority) ->
  * IntellijSymbolSelectorLeaseAdmission`.
  *
  * [IntellijSymbolSelectorLeaseAdmission.Admitted] establishes exact canonical root and generation
  * equality. [IntellijSymbolSelectorLeaseAdmission.Rejected] distinguishes root drift from
- * generation movement. No raw root or generation extraction crosses this adapter boundary.
+ * authority movement. No raw root or authority extraction crosses this adapter boundary.
  */
 internal fun admitSymbolSelectorLease(
-    expected: SemanticReadLease,
-    current: SemanticReadLease,
+    expected: SemanticReadAuthority,
+    current: SemanticReadAuthority,
 ): IntellijSymbolSelectorLeaseAdmission = when {
     expected.workspaceRoot != current.workspaceRoot ->
         IntellijSymbolSelectorLeaseAdmission.Rejected(
             IntellijSymbolSelectorRejection.WORKSPACE_ROOT_MISMATCH,
         )
-    expected.generation != current.generation ->
+    expected != current ->
         IntellijSymbolSelectorLeaseAdmission.Rejected(
             IntellijSymbolSelectorRejection.GENERATION_MOVED,
         )

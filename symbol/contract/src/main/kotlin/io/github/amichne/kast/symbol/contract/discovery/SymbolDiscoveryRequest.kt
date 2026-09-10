@@ -2,6 +2,7 @@ package io.github.amichne.kast.symbol.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
+import java.util.Collections
 
 private const val MAX_DISCOVERY_PATTERN_LENGTH = 256
 
@@ -214,7 +215,7 @@ class SymbolDiscoveryDeclarationKinds private constructor(
             if (raw.isEmpty()) {
                 Refinement.Rejected(SymbolDiscoveryDeclarationKindsFailure.EMPTY)
             } else {
-                Refinement.Refined(SymbolDiscoveryDeclarationKinds(raw.toSet()))
+                Refinement.Refined(SymbolDiscoveryDeclarationKinds(Collections.unmodifiableSet(raw.toSet())))
             }
     }
 
@@ -289,4 +290,24 @@ private fun SymbolDiscoveryKind.isDeclaration(): Boolean = when (this) {
     SymbolDiscoveryKind.FILE,
     SymbolDiscoveryKind.TEXT,
         -> false
+}
+
+/** Stable contract projection; unrestricted selectors preserve their historic fingerprint bytes. */
+fun SymbolDiscoveryConstraints.fingerprintFields(): List<String> = if (this == SymbolDiscoveryConstraints.None) emptyList() else buildList {
+    add("discovery-constraints-v1")
+    add(directory?.directory?.value ?: "")
+    add(directory?.containment?.name ?: "")
+    add(packageName?.packageName?.value ?: "")
+    add(packageName?.containment?.name ?: "")
+    val kinds = declarationKinds?.values?.map { it.name }?.sorted().orEmpty()
+    add(kinds.size.toString())
+    addAll(kinds)
+    when (val selected = sourceSets) {
+        SymbolDiscoverySourceSets.All -> add("all-source-sets")
+        is SymbolDiscoverySourceSets.Exact -> {
+            add("exact-source-sets")
+            add(selected.values.size.toString())
+            addAll(selected.values.map { it.value }.sorted())
+        }
+    }
 }

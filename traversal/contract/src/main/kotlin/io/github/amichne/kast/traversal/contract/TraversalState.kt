@@ -181,7 +181,7 @@ data class TraversalPendingRead private constructor(
                 Refinement.Rejected(TraversalPendingReadFailure.MEANING_MISMATCH)
             continuation.scope != RelationScopeFingerprint.from(entry.node.endpoint) ->
                 Refinement.Rejected(TraversalPendingReadFailure.SCOPE_MISMATCH)
-            continuation.generation != plan.start.lease.generation ->
+            continuation.authority != plan.start.lease.identity ->
                 Refinement.Rejected(TraversalPendingReadFailure.GENERATION_MISMATCH)
             else -> Refinement.Refined(TraversalPendingRead(entry, continuation))
         }

@@ -3,6 +3,11 @@ package io.github.amichne.kast.protocol.wire
 import io.github.amichne.kast.protocol.contract.ProtocolSourceText
 import io.github.amichne.kast.protocol.contract.SourceLineRangeDocument
 
+import io.github.amichne.kast.kernel.EvidenceBasis
+import io.github.amichne.kast.kernel.LiveReadContentView
+import io.github.amichne.kast.kernel.LiveReadEvidence
+import io.github.amichne.kast.protocol.contract.SourceSnapshotContextDocument
+import java.util.UUID
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
@@ -137,6 +142,22 @@ class CanonicalSourceReadWireBindingTest {
                 binding.decodeRequest(WireRequestEnvelope.admit(invalid).admittedRequest()),
             )
         }
+    }
+
+    @Test
+    fun `live source snapshot retains its epoch and rejects contradictory publication facts`() {
+        val evidence = LiveReadEvidence.create("/workspace", UUID.randomUUID(), 4,
+            LiveReadContentView.SAVED_PSI_COMMITTED, 1).refinedValue()
+        val prior = sourceReadResult()
+        val result = prior.copy(snapshot = prior.snapshot.copy(context = SourceSnapshotContextDocument.Live(evidence)))
+        val outcome = OperationOutcome.Complete(EvidenceEnvelope(
+            CanonicalOperationWireBindings.sourceRead.operation.id, EvidenceBasis.Live(evidence), result,
+        ))
+        val document = CanonicalOperationWireBindings.sourceRead.encodeOutcome(outcome).encodedDocument()
+        assertEquals(WireDecoding.Decoded(outcome), CanonicalOperationWireBindings.sourceRead.decodeOutcome(document))
+        val conflicting = document.replace("\"canonicalRoot\":\"/workspace\"", "\"canonicalRoot\":\"/workspace\",\"generation\":4")
+        assertEquals(WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.RESULT)),
+            CanonicalOperationWireBindings.sourceRead.decodeOutcome(conflicting))
     }
 
     private fun sourceReadRequest(): SourceReadRequest = SourceReadRequest(

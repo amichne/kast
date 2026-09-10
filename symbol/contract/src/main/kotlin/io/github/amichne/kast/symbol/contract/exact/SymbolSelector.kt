@@ -1,7 +1,7 @@
 package io.github.amichne.kast.symbol.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
@@ -218,13 +218,15 @@ enum class SymbolSelectorIssueFailure {
     FILE_MISMATCH,
     NAME_MISMATCH,
     START_OFFSET_MISMATCH,
+    DECLARATION_KIND_MISMATCH,
     FINGERPRINT_MISMATCH,
 }
 
 /** Compiler-grounded exact symbol authority bound to one root, generation, scope, and declaration. */
 class SymbolSelector private constructor(
-    val lease: SemanticReadLease,
+    val lease: SemanticReadAuthority,
     val scope: SymbolSearchScope,
+    val constraints: SymbolDiscoveryConstraints,
     val file: SymbolDiscoveryFileIdentity,
     val range: ExactDeclarationTextRange,
     val name: SymbolDiscoveryCandidateName,
@@ -259,23 +261,29 @@ class SymbolSelector private constructor(
             if (evidence.range.startInclusive != location.offset.value) {
                 return Refinement.Rejected(SymbolSelectorIssueFailure.START_OFFSET_MISMATCH)
             }
-            return Refinement.Refined(issue(selection.lease, selection.scope, evidence))
+            val kinds = selection.constraints.declarationKinds
+            if (kinds != null && evidence.kind !in kinds.values) {
+                return Refinement.Rejected(SymbolSelectorIssueFailure.DECLARATION_KIND_MISMATCH)
+            }
+            return Refinement.Refined(issue(selection.lease, selection.scope, evidence, selection.constraints))
         }
 
         /**
-         * Proof transition: `(SemanticReadLease, SymbolSearchScope,
+         * Proof transition: `(SemanticReadAuthority, SymbolSearchScope,
          * CompilerGroundedSymbolEvidence) -> SymbolSelector`.
          *
          * Issues exact selector authority from already compiler-grounded relation evidence. Raw
          * compiler values cannot enter this transition.
          */
         fun issue(
-            lease: SemanticReadLease,
+            lease: SemanticReadAuthority,
             scope: SymbolSearchScope,
             evidence: CompilerGroundedSymbolEvidence,
+            constraints: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints.None,
         ): SymbolSelector = SymbolSelector(
             lease = lease,
             scope = scope,
+            constraints = constraints,
             file = evidence.file,
             range = evidence.range,
             name = evidence.name,
@@ -283,11 +291,11 @@ class SymbolSelector private constructor(
             kind = evidence.kind,
             signature = evidence.signature,
             compilerIdentity = evidence.compilerIdentity,
-            fingerprint = symbolSelectorFingerprint(lease, scope, evidence),
+            fingerprint = symbolSelectorFingerprint(lease, scope, evidence, constraints),
         )
 
         /**
-         * Proof transition: `(SemanticReadLease, SymbolSearchScope,
+         * Proof transition: `(SemanticReadAuthority, SymbolSearchScope,
          * CompilerGroundedSymbolEvidence, SymbolSelectorFingerprint) ->
          * Refinement<SymbolSelector, SymbolSelectorIssueFailure>`.
          *
@@ -295,13 +303,14 @@ class SymbolSelector private constructor(
          * fingerprint. [SymbolSelectorIssueFailure] closes tampering and stale reconstruction.
          */
         fun restore(
-            lease: SemanticReadLease,
+            lease: SemanticReadAuthority,
             scope: SymbolSearchScope,
             evidence: CompilerGroundedSymbolEvidence,
             fingerprint: SymbolSelectorFingerprint,
+            constraints: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints.None,
         ): Refinement<SymbolSelector, SymbolSelectorIssueFailure> =
-            if (symbolSelectorFingerprint(lease, scope, evidence) == fingerprint) {
-                Refinement.Refined(issue(lease, scope, evidence))
+            if (symbolSelectorFingerprint(lease, scope, evidence, constraints) == fingerprint) {
+                Refinement.Refined(issue(lease, scope, evidence, constraints))
             } else {
                 Refinement.Rejected(SymbolSelectorIssueFailure.FINGERPRINT_MISMATCH)
             }
@@ -335,6 +344,7 @@ class RevalidatedSymbolSelector private constructor(
                     selector.lease,
                     selector.scope,
                     evidence,
+                    selector.constraints,
                 ) == selector.fingerprint
             ) {
                 Refinement.Refined(RevalidatedSymbolSelector(selector))
@@ -387,14 +397,16 @@ private fun CanonicalCompilerSignature.supports(kind: CompilerSymbolKind): Boole
 }
 
 private fun symbolSelectorFingerprint(
-    lease: SemanticReadLease,
+    lease: SemanticReadAuthority,
     scope: SymbolSearchScope,
     evidence: CompilerGroundedSymbolEvidence,
+    constraints: SymbolDiscoveryConstraints,
 ): SymbolSelectorFingerprint {
     val canonical = buildString {
         appendSelectorField(lease.workspaceRoot.value)
-        appendSelectorField(lease.generation.value.toString())
+        appendSelectorField(lease.identity.revisionKey.value)
         scope.appendSelectorFields(this)
+        constraints.fingerprintFields().forEach(::appendSelectorField)
         appendSelectorField(evidence.file.stableValue)
         appendSelectorField(evidence.range.startInclusive.toString())
         appendSelectorField(evidence.range.endExclusive.toString())

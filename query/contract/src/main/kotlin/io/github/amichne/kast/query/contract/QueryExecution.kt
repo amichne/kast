@@ -11,7 +11,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRejection
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
 import io.github.amichne.kast.symbol.contract.SymbolExactRejection
 import io.github.amichne.kast.symbol.contract.SymbolSelector
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 enum class QueryByteLimitFailure {
     NOT_POSITIVE,
@@ -43,13 +43,13 @@ enum class QueryExecutionRequestFailure {
 
 class QueryExecutionRequest private constructor(
     val plan: AdmittedQueryPlan,
-    val lease: SemanticReadLease,
+    val lease: SemanticReadAuthority,
     val budget: QueryBudget,
 ) {
     companion object {
         fun create(
             plan: AdmittedQueryPlan,
-            lease: SemanticReadLease,
+            lease: SemanticReadAuthority,
             budget: QueryBudget,
         ): Refinement<QueryExecutionRequest, QueryExecutionRequestFailure> {
             val referenceLeases = when (plan) {

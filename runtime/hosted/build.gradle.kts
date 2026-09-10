@@ -33,6 +33,24 @@ tasks.processResources {
 dependencies {
     implementation(project(":kernel"))
     implementation(project(":protocol:contract"))
+    implementation(project(":protocol:wire"))
+    implementation(project(":query:contract"))
+    implementation(project(":query:protocol"))
+    implementation(project(":query:service"))
+    implementation(project(":symbol:contract"))
+    implementation(project(":symbol:service"))
+    implementation(project(":symbol:intellij"))
+    implementation(project(":source:contract"))
+    implementation(project(":source:service"))
+    implementation(project(":source:intellij"))
+    implementation(project(":relation:contract"))
+    implementation(project(":relation:service"))
+    implementation(project(":relation:intellij"))
+    implementation(project(":diagnostic:contract"))
+    implementation(project(":diagnostic:service"))
+    implementation(project(":diagnostic:intellij"))
+    implementation(project(":traversal:contract"))
+    implementation(project(":traversal:service"))
     implementation(project(":workspace:contract"))
     implementation(project(":workspace:intellij-read"))
     compileOnly(platform)
@@ -48,7 +66,17 @@ val hostedPlugin by tasks.registering(Zip::class) {
         from(tasks.jar)
         from(project(":workspace:intellij-read").tasks.named("jar"))
         from(configurations.runtimeClasspath) {
-            include("kernel-*.jar", "workspace-contract-*.jar", "symbol-contract-*.jar", "contract-*.jar")
+            include(
+                "kernel-*.jar", "workspace-contract-*.jar", "symbol-contract-*.jar", "contract-*.jar",
+                "protocol-wire-*.jar", "protocol-registry-*.jar", "wire-*.jar", "registry-*.jar",
+                "query-contract-*.jar", "query-protocol-*.jar", "query-service-*.jar",
+                "symbol-service-*.jar", "symbol-intellij-*.jar",
+                "source-contract-*.jar", "source-service-*.jar", "source-intellij-*.jar",
+                "relation-contract-*.jar", "relation-service-*.jar", "relation-intellij-*.jar",
+                "traversal-contract-*.jar", "traversal-service-*.jar", "diagnostic-contract-*.jar",
+                "diagnostic-service-*.jar", "diagnostic-intellij-*.jar", "change-contract-*.jar",
+                "kotlinx-serialization-core-jvm-*.jar", "kotlinx-serialization-json-jvm-*.jar",
+            )
         }
     }
 }

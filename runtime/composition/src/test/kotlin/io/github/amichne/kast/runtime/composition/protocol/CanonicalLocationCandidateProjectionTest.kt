@@ -1,5 +1,7 @@
 package io.github.amichne.kast.runtime.composition.protocol
 
+import io.github.amichne.kast.query.protocol.*
+
 import io.github.amichne.kast.diagnostic.contract.DiagnosticBatch
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilation
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilerPort

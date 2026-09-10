@@ -11,6 +11,7 @@ import io.github.amichne.kast.source.contract.SourceEntityCount
 import io.github.amichne.kast.source.contract.SourceEntityLimit
 import io.github.amichne.kast.source.contract.SourceRange
 import io.github.amichne.kast.source.contract.SourceReadAnchor
+import io.github.amichne.kast.source.contract.SourceReadScope
 import io.github.amichne.kast.source.contract.SourceReadContext
 import io.github.amichne.kast.source.contract.SourceReadContinuation
 import io.github.amichne.kast.source.contract.SourceReadContinuationState
@@ -32,6 +33,7 @@ import io.github.amichne.kast.source.contract.TextProjection
 import io.github.amichne.kast.source.contract.Utf16CodeUnitCount
 import io.github.amichne.kast.source.contract.Utf16CodeUnitOffset
 import io.github.amichne.kast.source.contract.VisibilitySelection
+import io.github.amichne.kast.symbol.contract.fingerprintFields
 import io.github.amichne.kast.symbol.contract.CandidateSelector
 import io.github.amichne.kast.symbol.contract.RevalidatedSymbolSelector
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
@@ -40,7 +42,6 @@ import io.github.amichne.kast.symbol.contract.SymbolSelector
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.LinkedHashMap
-import java.util.concurrent.atomic.AtomicLong
 
 private const val MAX_INTELLIJ_SOURCE_ENTITY_WORK = 10_000
 private const val MAX_INTELLIJ_SOURCE_CONTINUATIONS = 1_024
@@ -299,8 +300,7 @@ internal class IntellijCommittedSourceCapture private constructor(
                 return Refinement.Rejected(IntellijSourceReadRejection.DECLARATION_MOVED_OR_CHANGED)
             }
             val snapshot = SourceSnapshot.create(
-                context.lease,
-                context.sourceState,
+                context,
                 file,
                 SourceTextIdentity.fromNormalizedCommittedText(normalizedDocumentText),
                 when (val length = Utf16CodeUnitCount.parse(normalizedDocumentText.length)) {
@@ -308,6 +308,7 @@ internal class IntellijCommittedSourceCapture private constructor(
                     is Refinement.Rejected ->
                         return Refinement.Rejected(IntellijSourceReadRejection.CONTRACT_VIOLATION)
                 },
+                SourceReadScope.Constrained(selector.scope, selector.constraints),
             )
             val start = when (val parsed = Utf16CodeUnitOffset.parse(selector.range.startInclusive)) {
                 is Refinement.Refined -> parsed.value
@@ -339,8 +340,8 @@ internal class IntellijCommittedSourceCapture private constructor(
 /** First native slice: exact symbol anchor to complete committed declaration text. */
 internal class IntellijSourceReadPort(
     private val regions: IntellijSourceRegionAccess,
+    private val continuations: IntellijSourceReadContinuations = IntellijSourceReadContinuations(),
 ) : SourceReadPort {
-    private val continuations = IntellijSourceContinuationAuthority()
 
     constructor(access: IntellijSourceReadAccess) : this(
         IntellijSourceRegionAccess { context, request, cursor ->
@@ -390,7 +391,7 @@ internal class IntellijSourceReadPort(
         context: SourceReadContext,
         request: SourceReadRequest,
     ): SourceReadResult {
-        val cursor = when (val admission = continuations.admit(request)) {
+        val cursor = when (val admission = continuations.admit(context, request)) {
             is IntellijSourceContinuationAdmission.Admitted -> admission.cursor
             IntellijSourceContinuationAdmission.Rejected ->
                 return rejected(SourceReadRejection.CONTRACT_VIOLATION)
@@ -470,9 +471,10 @@ internal class IntellijSourceReadPort(
         if (limitations.isNotEmpty()) {
             val continuation = when (val next = page.nextOrdinal) {
                 null -> SourceReadContinuationState.Unavailable
-                else -> SourceReadContinuationState.Available(
-                    continuations.issue(request, capture, next),
-                )
+                else -> when (val issued = continuations.issue(request, capture, next)) {
+                    is Refinement.Refined -> SourceReadContinuationState.Available(issued.value)
+                    is Refinement.Rejected -> return rejected(issued.failure)
+                }
             }
             val qualification = when (
                 val admitted = SourceReadQualification.create(
@@ -522,7 +524,11 @@ private val SOURCE_ENTITY_ORDER: Comparator<SourceEntity> = Comparator { left, r
 }
 
 private fun SourceEntity.matches(selection: EntitySelection.Matching): Boolean {
-    if (selection.containment == Containment.DIRECT && nestingDepth.value != 0) return false
+    when (selection.containment) {
+        Containment.SELF -> if (nestingDepth.value != 0 || selector.range != parentSelector.range) return false
+        Containment.DIRECT -> if (nestingDepth.value != 0) return false
+        Containment.DESCENDANTS -> Unit
+    }
     return selection.filters.any { filter ->
         when (filter) {
             is EntityFilter.Declarations -> this is SourceEntity.Declaration &&
@@ -546,54 +552,64 @@ private fun io.github.amichne.kast.source.contract.SourceEntityName.sortValue():
         is io.github.amichne.kast.source.contract.SourceEntityName.Present -> value
     }
 
-private sealed interface IntellijSourceContinuationAdmission {
+internal sealed interface IntellijSourceContinuationAdmission {
     data class Admitted(val cursor: IntellijSourceEntityCursor) :
         IntellijSourceContinuationAdmission
 
     data object Rejected : IntellijSourceContinuationAdmission
 }
 
-/** Runtime-local authority for opaque, exact-request-bound entity continuations. */
-private class IntellijSourceContinuationAuthority {
-    private val sequence = AtomicLong()
+/** Project-owned bounded registry. Entries retain detached source identity and scope only. */
+class IntellijSourceReadContinuations {
+    private enum class Lifetime { ACTIVE, RETIRED }
+
+    private var lifetime = Lifetime.ACTIVE
+    private var sequence = 0L
     private val entries = object : LinkedHashMap<String, Entry>(16, 0.75f, true) {
-        override fun removeEldestEntry(
-            eldest: MutableMap.MutableEntry<String, Entry>?,
-        ): Boolean = size > MAX_INTELLIJ_SOURCE_CONTINUATIONS
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Entry>?): Boolean =
+            size > MAX_INTELLIJ_SOURCE_CONTINUATIONS
     }
 
-    fun admit(request: SourceReadRequest): IntellijSourceContinuationAdmission =
-        when (val page = request.page) {
-            SourceReadPage.First -> IntellijSourceContinuationAdmission.Admitted(
-                IntellijSourceEntityCursor(0),
-            )
-            is SourceReadPage.Continue -> synchronized(entries) {
-                val entry = entries[page.continuation.value]
-                    ?: return@synchronized IntellijSourceContinuationAdmission.Rejected
-                if (entry.request != request.binding()) {
+    @Synchronized
+    fun retire() {
+        lifetime = Lifetime.RETIRED
+        entries.clear()
+    }
+
+    @Synchronized
+    internal fun admit(context: SourceReadContext, request: SourceReadRequest): IntellijSourceContinuationAdmission {
+        if (lifetime == Lifetime.RETIRED) return IntellijSourceContinuationAdmission.Rejected
+        return when (val page = request.page) {
+            SourceReadPage.First -> IntellijSourceContinuationAdmission.Admitted(IntellijSourceEntityCursor(0))
+            is SourceReadPage.Continue -> {
+                val entry = entries[page.continuation.value] ?: return IntellijSourceContinuationAdmission.Rejected
+                if (entry.snapshot.context != context || entry.request != request.binding()) {
                     IntellijSourceContinuationAdmission.Rejected
                 } else {
-                    IntellijSourceContinuationAdmission.Admitted(
-                        IntellijSourceEntityCursor(
-                            entry.nextOrdinal,
-                            entry.snapshot,
-                            entry.regionFingerprint,
-                        ),
-                    )
+                    IntellijSourceContinuationAdmission.Admitted(IntellijSourceEntityCursor(
+                        entry.nextOrdinal, entry.snapshot, entry.regionFingerprint,
+                    ))
                 }
             }
         }
+    }
 
-    fun issue(
+    @Synchronized
+    internal fun issue(
         request: SourceReadRequest,
         capture: IntellijSelectedSourceCapture,
         nextOrdinal: Int,
-    ): SourceReadContinuation {
+    ): Refinement<SourceReadContinuation, SourceReadRejection> {
+        if (lifetime == Lifetime.RETIRED || sequence == Long.MAX_VALUE) {
+            retire()
+            return Refinement.Rejected(SourceReadRejection.SOURCE_UNAVAILABLE)
+        }
+        sequence += 1
         val binding = request.binding()
         val predecessor = (request.page as? SourceReadPage.Continue)?.continuation?.value.orEmpty()
         val canonical = buildString {
             appendBoundedField("intellij-source-entity-page-v1")
-            appendBoundedField(sequence.incrementAndGet().toString())
+            appendBoundedField(sequence.toString())
             appendBoundedField(binding.toString())
             appendBoundedField(capture.snapshot.toString())
             appendBoundedField(capture.regionSelector.fingerprint.value)
@@ -602,24 +618,13 @@ private class IntellijSourceContinuationAuthority {
         }
         val digest = MessageDigest.getInstance("SHA-256")
             .digest(canonical.toByteArray(StandardCharsets.UTF_8))
-            .joinToString(separator = "") { byte ->
-                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-            }
-        val continuation = when (
-            val parsed = SourceReadContinuation.parse("source-read-continuation-v1|$digest")
-        ) {
+            .joinToString(separator = "") { byte -> (byte.toInt() and 0xff).toString(16).padStart(2, '0') }
+        val continuation = when (val parsed = SourceReadContinuation.parse("source-read-continuation-v1|$digest")) {
             is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> error("SHA-256 continuation construction must be valid")
+            is Refinement.Rejected -> return Refinement.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
         }
-        synchronized(entries) {
-            entries[continuation.value] = Entry(
-                binding,
-                capture.snapshot,
-                capture.regionSelector.fingerprint.value,
-                nextOrdinal,
-            )
-        }
-        return continuation
+        entries[continuation.value] = Entry(binding, capture.snapshot, capture.regionSelector.fingerprint.value, nextOrdinal)
+        return Refinement.Refined(continuation)
     }
 
     private data class Entry(
@@ -700,28 +705,31 @@ private fun EntitySelection.binding(): EntitySelectionBinding = when (this) {
 
 private fun CandidateSelector.canonical(): String = when (this) {
     is CandidateSelector.Declaration -> buildString {
-        appendCandidateLease(lease.workspaceRoot.value, lease.generation.value)
+        appendBoundedField(lease.identity.revisionKey.value)
+        appendBoundedField(lease.workspaceRoot.value)
         appendBoundedField("declaration")
         appendBoundedField(SymbolSearchScope.snapshot(selection.scope).toString())
+        selection.constraints.fingerprintFields().forEach { appendBoundedField(it) }
         appendBoundedField(selection.candidate.toString())
     }
     is CandidateSelector.File -> buildString {
-        appendCandidateLease(lease.workspaceRoot.value, lease.generation.value)
+        appendBoundedField(lease.identity.revisionKey.value)
+        appendBoundedField(lease.workspaceRoot.value)
         appendBoundedField("file")
+        appendBoundedField(SymbolSearchScope.snapshot(scope).toString())
+        constraints.fingerprintFields().forEach { appendBoundedField(it) }
         appendBoundedField(file.path.value)
     }
     is CandidateSelector.Range -> buildString {
-        appendCandidateLease(lease.workspaceRoot.value, lease.generation.value)
+        appendBoundedField(lease.identity.revisionKey.value)
+        appendBoundedField(lease.workspaceRoot.value)
         appendBoundedField("range")
+        appendBoundedField(SymbolSearchScope.snapshot(scope).toString())
+        constraints.fingerprintFields().forEach { appendBoundedField(it) }
         appendBoundedField(file.path.value)
         appendBoundedField(startInclusive.value.toString())
         appendBoundedField(endExclusive.value.toString())
     }
-}
-
-private fun StringBuilder.appendCandidateLease(root: String, generation: Long) {
-    appendBoundedField(root)
-    appendBoundedField(generation.toString())
 }
 
 private fun StringBuilder.appendBoundedField(value: String) {

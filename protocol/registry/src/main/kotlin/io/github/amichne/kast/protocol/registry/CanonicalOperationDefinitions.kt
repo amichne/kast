@@ -122,6 +122,7 @@ object CanonicalOperationDefinitions {
         OperationScope.WORKSPACE,
         CompletenessPolicy.QUALIFIED_ALLOWED,
         HostedExposure.PUBLIC,
+        schema = schema("kast.symbol.discover.v3"),
     )
 
     val symbolInspect = definition(
@@ -137,6 +138,7 @@ object CanonicalOperationDefinitions {
         OperationScope.SYMBOL,
         CompletenessPolicy.COMPLETE_REQUIRED,
         HostedExposure.PUBLIC,
+        schema = schema("kast.symbol.inspect.v3"),
     )
 
     val sourceRead = definition(
@@ -152,7 +154,7 @@ object CanonicalOperationDefinitions {
         OperationScope.SOURCE,
         CompletenessPolicy.QUALIFIED_ALLOWED,
         HostedExposure.PUBLIC,
-        schema = schema("kast.source.read.v3"),
+        schema = schema("kast.source.read.v4"),
     )
 
     val relationRead = definition(
@@ -168,6 +170,7 @@ object CanonicalOperationDefinitions {
         OperationScope.SYMBOL,
         CompletenessPolicy.QUALIFIED_ALLOWED,
         HostedExposure.PUBLIC,
+        schema = schema("kast.relation.read.v3"),
     )
 
     val traversalRun = definition(
@@ -183,6 +186,7 @@ object CanonicalOperationDefinitions {
         OperationScope.SYMBOL,
         CompletenessPolicy.QUALIFIED_ALLOWED,
         HostedExposure.PUBLIC,
+        schema = schema("kast.traversal.run.v3"),
     )
 
     val queryRun = definition(
@@ -198,7 +202,7 @@ object CanonicalOperationDefinitions {
         OperationScope.WORKSPACE,
         CompletenessPolicy.QUALIFIED_ALLOWED,
         HostedExposure.PUBLIC,
-        schema = schema("kast.query.run.v1"),
+        schema = schema("kast.query.run.v2"),
     )
 
     val diagnosticCheck = definition(
@@ -214,6 +218,7 @@ object CanonicalOperationDefinitions {
         OperationScope.PROJECT,
         CompletenessPolicy.QUALIFIED_ALLOWED,
         HostedExposure.PUBLIC,
+        schema = schema("kast.diagnostic.check.v3"),
     )
 
     val changePlan = definition(

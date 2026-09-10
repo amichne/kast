@@ -26,7 +26,7 @@ internal suspend fun resolveDiagnosticScope(
         return@readAction Refinement.Rejected(DiagnosticScopeResolutionFailure.WORKSPACE_NOT_READY)
     }
     val paths = when (val result = IntellijProjectSourceFiles.collect(
-        project, query.lease.workspaceRoot, query.path, scopeBudget,
+        project, query.lease.workspaceRoot, query.path, diagnosticScopeBudget,
     )) {
         is Refinement.Refined -> result.value
         is Refinement.Rejected -> return@readAction Refinement.Rejected(when (result.failure) {
@@ -42,7 +42,7 @@ internal suspend fun resolveDiagnosticScope(
     }
 }
 
-private val scopeBudget = ResourceBudget(
+internal val diagnosticScopeBudget = ResourceBudget(
     resultLimit = ResultLimit.parse(256).constant(),
     workUnitLimit = WorkUnitLimit.parse(20_000).constant(),
     elapsedTimeLimit = ElapsedTimeLimitMillis.parse(2_000).constant(),

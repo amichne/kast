@@ -34,6 +34,10 @@ import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackage
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackageConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
@@ -53,6 +57,33 @@ import org.junit.jupiter.api.Test
 import java.nio.file.Path
 
 class RelationReadTest {
+    @Test
+    fun `relation package admission uses detached post-collection evidence`() {
+        val restriction = SymbolDiscoveryPackageConstraint(
+            SymbolDiscoveryPackage.parse("sample.allowed").refined(), SymbolDiscoveryContainment.DIRECT,
+        )
+        assertEquals(IntellijRelationPackageAdmission.ADMITTED,
+            restriction.admitPackage { IntellijRelationPackageEvidence.Known("sample.allowed") })
+        assertEquals(IntellijRelationPackageAdmission.OUTSIDE_SCOPE,
+            restriction.admitPackage { IntellijRelationPackageEvidence.Known("sample.allowed.child") })
+        assertEquals(IntellijRelationPackageAdmission.UNSUPPORTED,
+            restriction.admitPackage { IntellijRelationPackageEvidence.Unavailable })
+        assertEquals(IntellijRelationPackageAdmission.ADMITTED,
+            SymbolDiscoveryConstraints.None.packageName.admitPackage { error("unrestricted relation must not inspect package PSI") })
+    }
+
+    @Test
+    fun `relation source policy requires a deepest readable owner`() {
+        val parent = Path.of("/workspace/src")
+        val nested = parent.resolve("test")
+        val authored = parent.resolve("Main.kt")
+        val foreign = nested.resolve("Test.kt")
+        val parentOnly = RelationPathPolicy.SourceRoots(listOf(parent), listOf(parent, nested))
+        val both = RelationPathPolicy.SourceRoots(listOf(parent, nested), listOf(parent, nested))
+        assertEquals(listOf(true, false), listOf(authored, foreign).map(parentOnly::contains))
+        assertEquals(listOf(true, true), listOf(authored, foreign).map(both::contains))
+    }
+
     @Test
     fun `only classlike callers select constructor ownership confirmation`() {
         assertEquals(
@@ -106,6 +137,25 @@ class RelationReadTest {
     }
 
     @Test
+    fun `native candidate overflow is bounded and cannot offer a non-progressing continuation`() {
+        val request = request(RelationMeaning.References, resultLimit = 1)
+        val collector = IntellijRelationCollector(request, clockNanoseconds = { 1L })
+        repeat(MAX_NATIVE_RELATION_CANDIDATES) {
+            assertEquals(IntellijRelationProviderEnumerationAdmission.READY, collector.admitProviderCandidate())
+        }
+        assertEquals(IntellijRelationProviderEnumerationAdmission.HALTED, collector.admitProviderCandidate())
+        val result = assertInstanceOf(RelationCompilation.Qualified::class.java, collector.finish(
+            IntellijRelationTermination.Resumable(setOf(RelationLimitation.PROVIDER_INCOMPLETE)),
+        ))
+        assertTrue(result.batch.facts.isEmpty())
+        assertTrue(RelationLimitation.WORK_LIMIT_REACHED in result.coverage.limitations)
+        assertInstanceOf(
+            io.github.amichne.kast.relation.contract.RelationIncompleteCoverage.TerminalIncomplete::class.java,
+            result.coverage,
+        )
+    }
+
+    @Test
     fun `all seven closed meanings retain exact oriented facts`() {
         assertEquals(7, RelationMeaning.all.size)
         RelationMeaning.all.forEach { meaning ->
@@ -119,7 +169,7 @@ class RelationReadTest {
 
             val complete = assertInstanceOf(RelationCompilation.Complete::class.java, result)
             assertEquals(listOf(fact), complete.batch.facts)
-            assertEquals(request.subject.lease.generation, fact.generation)
+            assertEquals(request.subject.lease.identity, fact.authority)
             assertEquals(RelationProvenance.K2_AUTHORED_SOURCE, fact.provenance)
             if (meaning == RelationMeaning.Callees) {
                 assertInstanceOf(RelationEndpoint.Subject::class.java, fact.source)

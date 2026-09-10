@@ -25,7 +25,7 @@ enum class PublicQueryInputFailure {
 }
 
 /** Public syntax authority, independent of the hosting provider.
- * Validation establishes syntax, not workspace/generation/compiler authority.
+ * Validation establishes syntax, not workspace/read-authority/compiler authority.
  */
 object PublicQueryContract {
     val parameters: JsonObject by lazy { resource("query.parameters.json") }
@@ -78,7 +78,7 @@ class AdmittedPublicQuery private constructor(
                 )
                 val request = syntax.toCanonicalQuery()
                 // Retain the canonical syntax proof (including the engine's UTF-16 name bound).
-                // Workspace, generation and compiler reference admission still belong to execution.
+                // Workspace, read authority and compiler reference admission still belong to execution.
                 PublicQueryContract.json.encodeToJsonElement(QueryRunRequest.serializer(), request)
                 Refinement.Refined(AdmittedPublicQuery(request, syntax))
             } catch (_: SerializationException) {

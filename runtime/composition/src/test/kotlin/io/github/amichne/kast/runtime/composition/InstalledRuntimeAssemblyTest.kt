@@ -97,12 +97,12 @@ class InstalledRuntimeAssemblyTest {
         assertTrue(Files.isRegularFile(state.resolve("workspace-publication.sqlite")))
         assertTrue(Files.isRegularFile(state.resolve("mutation-recovery.sqlite")))
         val first = discoverSymbols(created)
-        assertEquals(1L, first.generation.value)
+        assertEquals(1L, (first.basis as io.github.amichne.kast.kernel.EvidenceBasis.Published).generation.value)
 
         val restarted = InstalledKastRuntime.create(root, state, assembler) as
             InstalledKastRuntimeConstruction.Created
         val retained = discoverSymbols(restarted)
-        assertEquals(first.generation, retained.generation)
+        assertEquals((first.basis as io.github.amichne.kast.kernel.EvidenceBasis.Published).generation, (retained.basis as io.github.amichne.kast.kernel.EvidenceBasis.Published).generation)
 
         val changedRead = projectInstalledGradleModel(
             InstalledGradleModelBoundary(
@@ -130,7 +130,7 @@ class InstalledRuntimeAssemblyTest {
         val changed = InstalledKastRuntime.create(root, state, changedAssembler) as
             InstalledKastRuntimeConstruction.Created
 
-        assertEquals(2L, discoverSymbols(changed).generation.value)
+        assertEquals(2L, (discoverSymbols(changed).basis as io.github.amichne.kast.kernel.EvidenceBasis.Published).generation.value)
     }
 
     private fun discoverSymbols(

@@ -398,7 +398,7 @@ private fun traversalProjection(result: TraversalResult.Complete): String = buil
 private fun diagnosticProjection(result: DiagnosticCheckResult.Complete): String = buildString {
     val scope = result.batch.scope
     appendPlanningField(scope.lease.workspaceRoot.value)
-    appendPlanningField(scope.lease.generation.value.toString())
+    appendPlanningField(scope.lease.identity.revisionKey.value)
     scope.files.forEach { file -> appendPlanningField(file.value) }
     result.coverage.analyzedFiles.forEach { file -> appendPlanningField(file.value) }
     result.batch.facts

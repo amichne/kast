@@ -61,7 +61,7 @@ class CanonicalSourceReadHandlerTest {
         val returned = result.text as SourceTextProjectionDocument.Returned
 
         assertTrue(captured?.anchor is SourceReadAnchor.Source)
-        assertEquals(7, complete.evidence.generation.value)
+        assertEquals(7, (complete.evidence.basis as io.github.amichne.kast.kernel.EvidenceBasis.Published).generation.value)
         assertEquals(fixture.text, returned.text.value)
         assertEquals(1L, returned.lines.startInclusive.value)
         assertEquals(1L, returned.lines.endInclusive.value)

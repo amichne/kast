@@ -17,23 +17,28 @@ import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.relation.contract.RelationReadRejection
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
-import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
+import io.github.amichne.kast.workspace.contract.SemanticReadValidation
+import io.github.amichne.kast.workspace.contract.SemanticReadValidationPort
+import io.github.amichne.kast.workspace.contract.semanticReadValidation
 
-/** Current-generation admission owner for public `relation.read`. */
+/** Current-authority admission owner for public `relation.read`. */
 class RelationService(
-    private val workspaces: WorkspaceInspectionOperations,
+    private val authorities: SemanticReadValidationPort,
     private val compiler: RelationCompilerPort,
     private val observability: KastObservability = KastObservability.Disabled,
 ) : RelationOperations {
+    constructor(workspaces: WorkspaceInspectionOperations, compiler: RelationCompilerPort, observability: KastObservability = KastObservability.Disabled) :
+        this(workspaces.semanticReadValidation(), compiler, observability)
+
     /**
      * Proof transition: `(WorkspaceRuntimeState, RelationRequest, RelationCompilation) ->
      * RelationReadResult`.
      *
      * A complete or qualified result establishes that the exact subject remained current before
      * and after compiler work and the detached output retained request ownership, meaning,
-     * generation, exact fact coverage, and continuation binding. [RelationReadRejection] is the
+     * authority, exact fact coverage, and continuation binding. [RelationReadRejection] is the
      * closed expected failure. Workspace observation and compiler execution are the only effects.
      */
     override suspend fun read(request: RelationRequest): RelationReadResult =
@@ -87,38 +92,25 @@ class RelationService(
      * Proof transition: `(WorkspaceRuntimeState, SemanticReadLease, RelationAdmissionPhase) ->
      * RelationLeaseAdmission`.
      *
-     * [RelationLeaseAdmission.Admitted] establishes the exact ready root and generation.
-     * [RelationLeaseAdmission.Rejected] preserves unavailable, root-mismatch, and stale-generation
+     * [RelationLeaseAdmission.Admitted] establishes the exact ready root and authority.
+     * [RelationLeaseAdmission.Rejected] preserves unavailable, root-mismatch, and stale-authority
      * states as [RelationReadRejection]. Raw state extraction remains at workspace publication.
      */
-    private fun admitCurrentLease(
-        expected: SemanticReadLease,
+    private suspend fun admitCurrentLease(
+        expected: SemanticReadAuthority,
         phase: RelationAdmissionPhase,
-    ): RelationLeaseAdmission {
-        val current = when (val state = workspaces.inspect()) {
-            is WorkspaceRuntimeState.Ready -> state.workspace.readLease
-            WorkspaceRuntimeState.Absent,
-            WorkspaceRuntimeState.Starting,
-            WorkspaceRuntimeState.Reconciling,
-            is WorkspaceRuntimeState.Blocked,
-            WorkspaceRuntimeState.Stopping,
-                -> return RelationLeaseAdmission.Rejected(
-                when (phase) {
-                    RelationAdmissionPhase.INITIAL ->
-                        RelationReadRejection.WORKSPACE_NOT_READY
-                    RelationAdmissionPhase.REVALIDATION ->
-                        RelationReadRejection.STALE_GENERATION
-                },
-            )
-        }
-        return when {
-            expected.workspaceRoot != current.workspaceRoot ->
-                RelationLeaseAdmission.Rejected(RelationReadRejection.WORKSPACE_ROOT_MISMATCH)
-            expected.generation != current.generation ->
-                RelationLeaseAdmission.Rejected(RelationReadRejection.STALE_GENERATION)
-            else -> RelationLeaseAdmission.Admitted
-        }
+    ): RelationLeaseAdmission = when (authorities.validate(expected)) {
+        SemanticReadValidation.CURRENT -> RelationLeaseAdmission.Admitted
+        SemanticReadValidation.UNAVAILABLE -> RelationLeaseAdmission.Rejected(when (phase) {
+                    RelationAdmissionPhase.INITIAL -> RelationReadRejection.WORKSPACE_NOT_READY
+                    RelationAdmissionPhase.REVALIDATION -> RelationReadRejection.STALE_GENERATION
+                })
+        SemanticReadValidation.ROOT_MISMATCH ->
+            RelationLeaseAdmission.Rejected(RelationReadRejection.WORKSPACE_ROOT_MISMATCH)
+        SemanticReadValidation.MOVED ->
+            RelationLeaseAdmission.Rejected(RelationReadRejection.STALE_GENERATION)
     }
+
 }
 
 private fun RelationReadResult.traceObservation(): KastSpanObservation = when (this) {
@@ -228,7 +220,7 @@ private fun RelationCompilation.Qualified.admitFor(
         if (
             continuation.subject != request.subject.fingerprint ||
             continuation.meaning != request.meaning ||
-            continuation.generation != request.subject.lease.generation ||
+            continuation.authority != request.subject.lease.identity ||
             continuation.nextProviderCursor.provider != request.providerCursor.provider ||
             continuation.nextProviderCursor.nextPosition.value <
             request.providerCursor.nextPosition.value
@@ -246,11 +238,13 @@ private fun List<io.github.amichne.kast.relation.contract.RelationFact>.admitFor
     all { fact ->
         fact.subject === subject &&
         fact.meaning == request.meaning &&
-        fact.generation == subject.lease.generation &&
+        fact.authority == subject.lease.identity &&
         fact.source.lease == subject.lease &&
         fact.target.lease == subject.lease &&
         fact.source.scope == subject.scope &&
-        fact.target.scope == subject.scope
+        fact.target.scope == subject.scope &&
+        fact.source.constraints == subject.constraints &&
+        fact.target.constraints == subject.constraints
     }
 ) {
     RelationCompilerOutputAdmission.Admitted

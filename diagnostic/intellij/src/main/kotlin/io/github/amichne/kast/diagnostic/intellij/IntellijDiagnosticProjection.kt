@@ -22,7 +22,7 @@ internal sealed interface IntellijDiagnosticProjection {
  * IntellijDiagnosticProjection`.
  *
  * [IntellijDiagnosticProjection.Projected] establishes detached typed facts for every compiler
- * range, permanently bound to the exact scope generation. Rejected is the closed unsupported
+ * range, permanently bound to the exact scope authority. Rejected is the closed unsupported
  * compiler projection. Raw PSI, ranges, severity, code, and message remain inside this boundary.
  */
 internal fun projectDiagnostic(

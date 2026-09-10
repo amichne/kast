@@ -38,6 +38,34 @@ import java.nio.file.attribute.PosixFilePermissions
 
 class KastProviderTest {
     @Test
+    fun `zero exit host rejections retain details but never present successful observations`(
+        @TempDir temporary: Path,
+    ) = runTest {
+        val executable = executable(temporary.resolve("kast"))
+        val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+        for (rejection in listOf(
+            """{"type":"HOST_REJECTED","failure":"DEADLINE_EXCEEDED"}""",
+            """{"schemaVersion":1,"outcome":"rejected","failure":"DIRTY_DOCUMENTS","detail":"saved content required","stage":"EPOCH_OBSERVATION"}""",
+        )) {
+            val options = KastProviderOptions.admit(executable, cwd,
+                RecordingProcessExecutor(capabilitySchema(), invocationDocument = rejection),
+                toolSelection = KastToolSelection.admit("symbol_lookup").refinedValue()).refinedValue()
+            val qualified = assertInstanceOf(KastProviderQualification.Qualified::class.java,
+                KastProviderQualifier.qualify(options))
+            val broker = Broker.create(listOf(qualified.registration), BrokerLimits.defaults()).validatedValue()
+            val result = assertInstanceOf(BrokerDispatch.Completed::class.java, broker.dispatch(
+                BrokerDispatchRequest(ToolAddress(namespace("kast"), toolName("symbol_lookup")),
+                    buildJsonObject { put("query", "Thing") }, context(cwd))))
+            assertEquals(false, result.presentation.success)
+            assertEquals(ObserverPresentation.None, result.presentation.observer)
+            assertEquals(ToolContent("Kast · symbol.discover · rejected"), result.presentation.content.first())
+            val envelope = Json.parseToJsonElement(result.presentation.content.last().text).jsonObject
+            assertEquals(JsonPrimitive("completed"), envelope["status"])
+            assertEquals(Json.parseToJsonElement(rejection), envelope["document"])
+        }
+    }
+
+    @Test
     fun `applied change observer retains a typed native diff and rejects escaped paths`() {
         val presentation = observerPresentation("change.apply", KastObserverFixtures.changeApply)
         val changes = (presentation as ObserverPresentation.FileChanges).files.entries
@@ -95,6 +123,8 @@ class KastProviderTest {
     ) = runBlocking {
         val executable = executable(temporary.resolve("kast"))
         for ((schema, failure) in listOf(
+            capabilitySchema().replace("\"schemaVersion\": 9", "\"schemaVersion\": 8") to
+                KastQualificationFailure.SCHEMA_INCOMPATIBLE,
             capabilitySchema().replace("\"operationMillis\": 60000", "\"operationMillis\": 30000") to
                 KastQualificationFailure.SCHEMA_INCOMPATIBLE,
             capabilitySchema().replace("\"executionBudget\": {\"readinessMillis\": 1020000, \"operationMillis\": 60000},", "") to
@@ -594,6 +624,7 @@ class KastProviderTest {
         private val schema: String,
         private val replacementSchema: String = schema,
         private val invocationDelayMillis: Long = 0,
+        private val invocationDocument: String = """{"operation":"symbol.discover","status":"complete","items":[]}""",
     ) : BrokerProcessExecutor {
         val requests = mutableListOf<BrokerProcessRequest>()
         private var schemaReads = 0
@@ -626,7 +657,7 @@ class KastProviderTest {
                     delay(invocationDelayMillis)
                     BrokerProcessExecution.Completed(
                         0,
-                        """{"operation":"symbol.discover","status":"complete","items":[]}""",
+                        invocationDocument,
                         "",
                     )
                 }
@@ -646,7 +677,7 @@ class KastProviderTest {
         {
           "schemaVersion": 1,
           "serverProjection": {
-            "schemaVersion": 8,
+            "schemaVersion": 9,
             "namespace": "kast",
             "hostedBootstrap": {
               "schemaVersion": 1,

@@ -75,7 +75,7 @@ data class RelationBatch private constructor(
          * Proof transition: `(RelationRequest, List<RelationFact>, RelationByteCount,
          * RelationWorkCount) -> Refinement<RelationBatch, RelationBatchFailure>`.
          *
-         * Establishes exact request ownership, generation, meaning, individual edge coverage,
+         * Establishes exact request ownership, authority, meaning, individual edge coverage,
          * deterministic uniqueness, and request bounds for a detached one-hop page.
          * [RelationBatchFailure] is the closed expected failure. Raw collections and measures may
          * enter only at a bounded compiler collector or transport decoder.
@@ -93,7 +93,7 @@ data class RelationBatch private constructor(
             if (facts.any { it.meaning != request.meaning }) {
                 return Refinement.Rejected(RelationBatchFailure.MEANING_MISMATCH)
             }
-            if (facts.any { it.generation != request.subject.lease.generation }) {
+            if (facts.any { it.authority != request.subject.lease.identity }) {
                 return Refinement.Rejected(RelationBatchFailure.GENERATION_MISMATCH)
             }
             if (facts.any { it.coverage != RelationFactCoverage.EXACT_COMPILER_CONFIRMED }) {
@@ -185,7 +185,7 @@ sealed interface RelationIncompleteCoverage {
          * Refinement<RelationIncompleteCoverage, RelationIncompleteCoverageFailure>`.
          *
          * Establishes non-empty incomplete-coverage reasons, a known-minimum count, and a
-         * selector/scope/meaning/generation-bound continuation that strictly advances
+         * selector/scope/meaning/authority-bound continuation that strictly advances
          * enumeration.
          * [RelationIncompleteCoverageFailure] is the closed expected failure. Raw limitations and
          * provider positions may enter only from the bounded compiler collector.
@@ -373,7 +373,7 @@ fun interface RelationOperations {
     /**
      * Proof transition: `RelationRequest -> RelationReadResult`.
      *
-     * A complete or qualified result establishes current-generation, exact compiler-grounded
+     * A complete or qualified result establishes current-authority, exact compiler-grounded
      * one-hop evidence. [RelationReadRejection] is the closed expected failure. Raw selector,
      * endpoint, continuation, and budget inputs may enter only before [RelationRequest]
      * construction.

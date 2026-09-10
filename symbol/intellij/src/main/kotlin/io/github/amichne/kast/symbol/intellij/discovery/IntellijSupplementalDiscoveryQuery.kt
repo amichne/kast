@@ -12,6 +12,7 @@ import com.intellij.psi.search.PsiSearchHelper
 import com.intellij.psi.search.UsageSearchContext
 import com.intellij.psi.util.PsiUtilCore
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
@@ -38,7 +39,7 @@ internal class IntellijSupplementalDiscoveryQuery(
      * IntellijNativeDiscoveryExecution`.
      *
      * Establishes bounded location or indexed-text evidence under one compiled
-     * scope and semantic generation. Expected partial coverage remains a closed discovery
+     * scope and semantic authority. Expected partial coverage remains a closed discovery
      * qualification. Live PSI, VFS, and search helpers remain request-local.
      */
     fun discover(
@@ -64,14 +65,20 @@ internal class IntellijSupplementalDiscoveryQuery(
                 }
             }
             is SymbolDiscoveryTarget.Text -> {
-                PsiSearchHelper.getInstance(project).processElementsWithWord(
-                    { element, offsetInElement ->
-                        collector.acceptText(element, offsetInElement, target.pattern.value)
+                collectTextDiscoveryOccurrences(
+                    workLimit = request.budget.resources.workUnitLimit,
+                    observe = collector::observe,
+                    qualify = collector::qualify,
+                    process = { accept ->
+                        PsiSearchHelper.getInstance(project).processElementsWithWord(
+                            { element, offset -> accept(element, offset) },
+                            compiledScope.nativeScope,
+                            target.pattern.value,
+                            UsageSearchContext.ANY,
+                            true,
+                        )
                     },
-                    compiledScope.nativeScope,
-                    target.pattern.value,
-                    UsageSearchContext.ANY,
-                    true,
+                    project = { element, offset -> collector.acceptText(element, offset, target.pattern.value) },
                 )
             }
         }
@@ -87,6 +94,39 @@ internal class IntellijSupplementalDiscoveryQuery(
         val virtualFile = LocalFileSystem.getInstance().findFileByNioFile(path) ?: return null
         if (!scope.contains(virtualFile)) return null
         return PsiManager.getInstance(this).findFile(virtualFile)
+    }
+}
+
+private data class PendingTextOccurrence(val element: PsiElement, val offsetInElement: Int)
+
+/** Native callbacks capture bounded references only; PSI projection follows complete collection. */
+internal fun collectTextDiscoveryOccurrences(
+    workLimit: WorkUnitLimit,
+    observe: () -> Boolean,
+    qualify: (SymbolDiscoveryQualification) -> Unit,
+    process: ((PsiElement, Int) -> Boolean) -> Boolean,
+    project: (PsiElement, Int) -> Boolean,
+) {
+    val pending = ArrayList<PendingTextOccurrence>()
+    val nativeLimit = minOf(workLimit.value, MAX_NATIVE_DISCOVERY_CANDIDATES.toLong())
+    var stopped = false
+    val exhausted = process { element, offset ->
+        when {
+            !observe() -> { stopped = true; false }
+            pending.size.toLong() >= nativeLimit -> {
+                stopped = true
+                qualify(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
+                false
+            }
+            else -> {
+                pending += PendingTextOccurrence(element, offset)
+                true
+            }
+        }
+    }
+    if (!exhausted && !stopped) qualify(SymbolDiscoveryQualification.PROVIDER_FAILURE)
+    for (occurrence in pending) {
+        if (!observe() || !project(occurrence.element, occurrence.offsetInElement)) break
     }
 }
 
@@ -156,7 +196,7 @@ private class SupplementalCollector(
         return true
     }
 
-    private fun observe(): Boolean {
+    fun observe(): Boolean {
         ProgressManager.checkCanceled()
         if (halted) return false
         when (environmentState()) {
@@ -175,6 +215,10 @@ private class SupplementalCollector(
             halted = true
         }
         return !halted
+    }
+
+    fun qualify(qualification: SymbolDiscoveryQualification) {
+        qualifications += qualification
     }
 
     fun unsupported(): IntellijNativeDiscoveryExecution {

@@ -6,6 +6,8 @@ import io.github.amichne.kast.appserver.core.ObserverFileChangeSet
 import io.github.amichne.kast.appserver.core.ObserverMarkdown
 import io.github.amichne.kast.appserver.core.ObserverPresentation
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.LiveReadEvidence
+import io.github.amichne.kast.kernel.LiveReadContentView
 import io.github.amichne.kast.protocol.contract.SourceLineRangeDocument
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -53,6 +55,7 @@ internal object KastObserverProjector {
         val evidence = ObserverEvidence.admit(document) ?: return ObserverPresentation.None
         if (operation.value == CHANGE_APPLY) return projectAppliedChange(document)
         val markdown = when (operation.value) {
+            "query.run" -> projectQuery(document, evidence)
             SYMBOL_DISCOVER -> projectDiscovery(document, evidence, directory)
             SYMBOL_INSPECT -> projectInspection(document, evidence, directory)
             SOURCE_READ -> projectSource(document, evidence, directory)
@@ -137,6 +140,15 @@ internal object KastObserverProjector {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> null
         }
+    }
+
+    private fun projectQuery(document: JsonObject, evidence: ObserverEvidence): String? {
+        val items = document["items"] as? JsonArray ?: return null
+        val failures = document["failures"] as? JsonArray ?: return null
+        return observerDocument("query", evidence, buildString {
+            append("**${items.size} query result${if (items.size == 1) "" else "s"}**")
+            if (failures.isNotEmpty()) append(" · ${failures.size} item failure${if (failures.size == 1) "" else "s"}")
+        })
     }
 
     private fun projectDiscovery(
@@ -229,7 +241,7 @@ internal object KastObserverProjector {
             append(inlineCode(name))
             append(" · ")
             append(kind)
-            if (evidence == ObserverEvidence.Complete) append(" · compiler-confirmed")
+            if (evidence.coverage == ObserverCoverage.COMPLETE) append(" · compiler-confirmed")
         }
         val body = buildList {
             add(summary)
@@ -316,7 +328,7 @@ internal object KastObserverProjector {
         val meaning = relations.firstOrNull()?.meaning
         if (relations.any { relation -> relation.meaning != meaning }) return null
         val body = if (relations.isEmpty()) {
-            if (evidence == ObserverEvidence.Complete) {
+            if (evidence.coverage == ObserverCoverage.COMPLETE) {
                 "_No compiler-confirmed relations._"
             } else {
                 "_No known relations._"
@@ -325,7 +337,7 @@ internal object KastObserverProjector {
             buildString {
                 append("**")
                 append(relations.size)
-                append(if (evidence == ObserverEvidence.Complete) " compiler-confirmed " else " known ")
+                append(if (evidence.coverage == ObserverCoverage.COMPLETE) " compiler-confirmed " else " known ")
                 append(meaning!!.countedLabel(relations.size))
                 appendLine("**")
                 appendLine()
@@ -353,7 +365,10 @@ internal object KastObserverProjector {
         val graph = document["graph"] as? JsonObject ?: return null
         val snapshot = graph["snapshot"] as? JsonObject ?: return null
         val canonicalRoot = snapshot.strictString("canonicalRoot") ?: return null
-        val generation = snapshot.strictLong("generation")?.takeIf { it >= 0L } ?: return null
+        val revision = when (val basis = evidence.basis) {
+            ObserverBasis.Published -> "generation ${snapshot.strictLong("generation")?.takeIf { it >= 0L } ?: return null}"
+            is ObserverBasis.Live -> "live epoch ${basis.evidence.epoch}"
+        }
         val proofs = admitProofs(graph["proofs"] as? JsonArray ?: return null) ?: return null
         val nodes = (graph["nodes"] as? JsonArray)?.map { candidate ->
             admitTraversalNode(
@@ -392,7 +407,7 @@ internal object KastObserverProjector {
                 appendLine("**No affected symbols**")
                 appendLine()
                 appendLine(
-                    if (evidence == ObserverEvidence.Complete) {
+                    if (evidence.coverage == ObserverCoverage.COMPLETE) {
                         "_No compiler-confirmed relationships found._"
                     } else {
                         "_No known relationships found._"
@@ -426,11 +441,10 @@ internal object KastObserverProjector {
                 append(relationMeaning.displayLabel)
                 append(" · ")
             }
-            append("generation ")
-            append(generation)
+            append(revision)
             append(" · ")
             append(edges.size)
-            val evidenceLabel = if (evidence == ObserverEvidence.Complete) {
+            val evidenceLabel = if (evidence.coverage == ObserverCoverage.COMPLETE) {
                 "compiler-confirmed"
             } else {
                 "known"
@@ -554,8 +568,12 @@ internal object KastObserverProjector {
         append("**Kast · ")
         append(subject)
         append("**\n\n")
-        if (evidence == ObserverEvidence.Qualified) {
+        if (evidence.coverage == ObserverCoverage.QUALIFIED) {
             append("> Qualified — evidence incomplete\n\n")
+        }
+        when (val basis = evidence.basis) {
+            ObserverBasis.Published -> Unit
+            is ObserverBasis.Live -> append("> Live IDE evidence · saved, committed content · epoch ${basis.evidence.epoch}\n\n")
         }
         append(body)
     }
@@ -600,15 +618,46 @@ internal object KastObserverProjector {
         value.isNotBlank() && value.length <= MAXIMUM_LABEL_LENGTH &&
             value.none { character -> character == '\n' || character == '\r' || character == '\u0000' }
 
-    private sealed interface ObserverEvidence {
-        data object Complete : ObserverEvidence
-        data object Qualified : ObserverEvidence
+    private enum class ObserverCoverage { COMPLETE, QUALIFIED }
 
+    private sealed interface ObserverBasis {
+        data object Published : ObserverBasis
+        data class Live(val evidence: LiveReadEvidence) : ObserverBasis
+    }
+
+    private data class ObserverEvidence(val coverage: ObserverCoverage, val basis: ObserverBasis) {
         companion object {
-            fun admit(document: JsonObject): ObserverEvidence? = when (document.strictString("status")) {
-                "complete" -> Complete
-                "qualified" -> if (document.containsKey("qualification")) Qualified else null
-                else -> null
+            fun admit(document: JsonObject): ObserverEvidence? {
+                val coverage = when (document.strictString("status")) {
+                    "complete" -> ObserverCoverage.COMPLETE
+                    "qualified" -> if (document.containsKey("qualification")) ObserverCoverage.QUALIFIED else return null
+                    else -> return null
+                }
+                val snapshot = document["snapshot"] as? JsonObject
+                    ?: (document["graph"] as? JsonObject)?.get("snapshot") as? JsonObject
+                if (!document.containsKey("live")) {
+                    if (snapshot?.containsKey("live") == true) return null
+                    return ObserverEvidence(coverage, ObserverBasis.Published)
+                }
+                if (document.strictString("operation") !in setOf("query.run", SYMBOL_DISCOVER, SYMBOL_INSPECT,
+                        SOURCE_READ, RELATION_READ, TRAVERSAL_RUN, DIAGNOSTIC_CHECK)) return null
+                val raw = document["live"] as? JsonObject ?: return null
+                if (raw.keys != setOf("root", "host", "epoch", "contentView", "version")) return null
+                val root = raw.strictString("root") ?: return null
+                val hostText = raw.strictString("host") ?: return null
+                val host = try { java.util.UUID.fromString(hostText) } catch (_: IllegalArgumentException) { return null }
+                if (host.toString() != hostText) return null
+                val contentView = LiveReadContentView.entries.singleOrNull { it.name == raw.strictString("contentView") }
+                    ?: return null
+                val live = when (val admitted = LiveReadEvidence.create(root, host,
+                    raw.strictLong("epoch") ?: return null, contentView, raw.strictInt("version") ?: return null)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return null
+                }
+                if (document.containsKey("generation") || snapshot?.containsKey("generation") == true ||
+                    snapshot?.containsKey("sourceState") == true) return null
+                if (snapshot != null && (snapshot["live"] != raw || snapshot.strictString("canonicalRoot") != root)) return null
+                return ObserverEvidence(coverage, ObserverBasis.Live(live))
             }
         }
     }

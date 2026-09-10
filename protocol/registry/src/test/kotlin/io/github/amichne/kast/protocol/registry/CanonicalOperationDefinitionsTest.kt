@@ -32,8 +32,13 @@ class CanonicalOperationDefinitionsTest {
         assertEquals(12, definitions.map { it.schema }.toSet().size)
         definitions.forEach { definition ->
             val version = when (definition.operation) {
-                CanonicalOperation.SOURCE_READ -> 3
-                CanonicalOperation.QUERY_RUN -> 1
+                CanonicalOperation.SOURCE_READ -> 4
+                CanonicalOperation.QUERY_RUN -> 2
+                CanonicalOperation.SYMBOL_DISCOVER,
+                CanonicalOperation.SYMBOL_INSPECT,
+                CanonicalOperation.RELATION_READ,
+                CanonicalOperation.TRAVERSAL_RUN,
+                CanonicalOperation.DIAGNOSTIC_CHECK -> 3
                 else -> 2
             }
             assertEquals("kast.${definition.operation.id.value}.v$version", definition.schema.value)

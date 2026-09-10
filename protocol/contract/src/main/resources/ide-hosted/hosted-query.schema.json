@@ -52,7 +52,9 @@
             "MODEL_CAPTURE_REJECTED",
             "READ_EPOCH_REJECTED",
             "FRESHNESS_REJECTED",
-            "RESULT_LIMIT_EXCEEDED"
+            "RESULT_LIMIT_EXCEEDED",
+            "LIVE_AUTHORITY_REJECTED",
+            "NAMED_SOURCE_SCOPE_REJECTED"
           ]
         },
         "detail": {

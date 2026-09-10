@@ -1,5 +1,7 @@
 package io.github.amichne.kast.runtime.composition.protocol
 
+import io.github.amichne.kast.query.protocol.*
+
 import io.github.amichne.kast.change.contract.AddDeclarationPlanRequest
 import io.github.amichne.kast.change.contract.AddDeclarationPlanResult
 import io.github.amichne.kast.change.contract.AddFilePlanRequest

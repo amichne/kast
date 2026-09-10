@@ -1,7 +1,7 @@
 package io.github.amichne.kast.symbol.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 private const val MAX_EXACT_DECLARATION_IDENTITY_LENGTH = 1024
 private const val MAX_EXACT_DECLARATION_RUNTIME_TYPE_LENGTH = 512
@@ -19,8 +19,9 @@ enum class SymbolDiscoverySelectionFailure {
  * names, qualified names, file paths, or source offsets.
  */
 class SymbolDiscoverySelection private constructor(
-    val lease: SemanticReadLease,
+    val lease: SemanticReadAuthority,
     val scope: SymbolSearchScope,
+    val constraints: SymbolDiscoveryConstraints,
     val candidate: SymbolDiscoveryCandidate,
 ) {
     companion object {
@@ -54,13 +55,14 @@ class SymbolDiscoverySelection private constructor(
                 SymbolDiscoverySelection(
                     lease = batch.lease,
                     scope = batch.scope,
+                    constraints = batch.constraints,
                     candidate = candidate,
                 ),
             )
         }
 
         /**
-         * Proof transition: `(SemanticReadLease, SymbolSearchScope, SymbolDiscoveryCandidate) ->
+         * Proof transition: `(SemanticReadAuthority, SymbolSearchScope, SymbolDiscoveryCandidate) ->
          * Refinement<SymbolDiscoverySelection, SymbolDiscoverySelectionFailure>`.
          *
          * Restores a self-describing selector only when the candidate retains the exact lease and
@@ -68,15 +70,16 @@ class SymbolDiscoverySelection private constructor(
          * malformed or mismatched state. Decoded primitives may enter only at protocol authority.
          */
         fun restore(
-            lease: SemanticReadLease,
+            lease: SemanticReadAuthority,
             scope: SymbolSearchScope,
             candidate: SymbolDiscoveryCandidate,
+            constraints: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints.None,
         ): Refinement<SymbolDiscoverySelection, SymbolDiscoverySelectionFailure> = when {
             candidate.lease != lease ->
                 Refinement.Rejected(SymbolDiscoverySelectionFailure.LEASE_MISMATCH)
             candidate.location !is SymbolDiscoveryCandidateLocation.Declaration ->
                 Refinement.Rejected(SymbolDiscoverySelectionFailure.FILE_IS_NOT_A_DECLARATION)
-            else -> Refinement.Refined(SymbolDiscoverySelection(lease, scope, candidate))
+            else -> Refinement.Refined(SymbolDiscoverySelection(lease, scope, constraints, candidate))
         }
     }
 }
@@ -259,8 +262,9 @@ enum class ExactDeclarationSelectorIssueFailure {
  * range, name, qualified-identity state, and IntelliJ declaration implementation type.
  */
 class ExactDeclarationSelector private constructor(
-    val lease: SemanticReadLease,
+    val lease: SemanticReadAuthority,
     val scope: SymbolSearchScope,
+    val constraints: SymbolDiscoveryConstraints,
     val file: SymbolDiscoveryFileIdentity,
     val range: ExactDeclarationTextRange,
     val name: SymbolDiscoveryCandidateName,
@@ -299,6 +303,7 @@ class ExactDeclarationSelector private constructor(
                 ExactDeclarationSelector(
                     lease = selection.lease,
                     scope = selection.scope,
+                    constraints = selection.constraints,
                     file = evidence.file,
                     range = evidence.range,
                     name = evidence.name,
@@ -308,6 +313,7 @@ class ExactDeclarationSelector private constructor(
                         selection.lease,
                         selection.scope,
                         evidence,
+                        selection.constraints,
                     ),
                 ),
             )
@@ -345,6 +351,7 @@ class RevalidatedExactDeclaration private constructor(
                     selector.lease,
                     selector.scope,
                     evidence,
+                    selector.constraints,
                 ) == selector.fingerprint
             ) {
                 Refinement.Refined(RevalidatedExactDeclaration(selector))

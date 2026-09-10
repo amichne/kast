@@ -1,6 +1,6 @@
 package io.github.amichne.kast.diagnostic.contract
 
-import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
 import io.github.amichne.kast.kernel.Refinement
 
 private const val MAX_DIAGNOSTIC_CODE_LENGTH = 256
@@ -132,8 +132,8 @@ class DiagnosticFact private constructor(
     val code: DiagnosticCode,
     val message: DiagnosticMessage,
 ) {
-    val generation: EvidenceGeneration
-        get() = scope.lease.generation
+    val authority: SemanticReadIdentity
+        get() = scope.lease.identity
 
     companion object {
         /**

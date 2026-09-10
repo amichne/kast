@@ -1,7 +1,9 @@
-package io.github.amichne.kast.runtime.composition.protocol.graph
+package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
 import io.github.amichne.kast.relation.contract.RelationContinuation
 import io.github.amichne.kast.relation.contract.RelationContinuationFingerprint
@@ -16,32 +18,35 @@ import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Base64
 
-internal sealed interface CanonicalRelationContinuationDecoding {
+sealed interface CanonicalRelationContinuationDecoding {
     data class Decoded(val continuation: RelationContinuation) :
         CanonicalRelationContinuationDecoding
 
     data object Malformed : CanonicalRelationContinuationDecoding
+    data object AuthorityMismatch : CanonicalRelationContinuationDecoding
 }
 
 /** Pure self-contained codec for the public relation continuation capability. */
-internal object CanonicalRelationContinuationCodec {
+object CanonicalRelationContinuationCodec {
     fun encode(continuation: RelationContinuation): RelationContinuationDocument? {
         val payload = listOf(
             continuation.subject.value,
             continuation.meaning.tokenName(),
             continuation.scope.value,
-            continuation.generation.value.toString(),
+            continuation.authority.revisionKey.value,
             continuation.nextProviderCursor.provider.name,
             continuation.nextProviderCursor.nextPosition.value.toString(),
             continuation.nextProviderCursor.consumedPrefixDigest.value,
             continuation.fingerprint.value,
         ).joinToString("\n").toByteArray(StandardCharsets.UTF_8)
         val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
-        val raw = "relation-continuation:v1:$encoded:${payload.sha256()}"
+        val version = if (continuation.authority is SemanticReadIdentity.Published) "v1" else "v2"
+        val raw = "relation-continuation:$version:$encoded:${payload.sha256()}"
         return RelationContinuationDocument.parse(raw).refinedOrNull()
     }
 
-    fun decode(document: RelationContinuationDocument): CanonicalRelationContinuationDecoding {
+    fun decode(document: RelationContinuationDocument, current: SemanticReadAuthority): CanonicalRelationContinuationDecoding {
+        val authority = current.identity
         val encoded = document.value.split(':').getOrNull(2)
             ?: return CanonicalRelationContinuationDecoding.Malformed
         val fields = try {
@@ -58,10 +63,10 @@ internal object CanonicalRelationContinuationCodec {
             ?: return CanonicalRelationContinuationDecoding.Malformed
         val scope = RelationScopeFingerprint.parse(fields[2]).refinedOrNull()
             ?: return CanonicalRelationContinuationDecoding.Malformed
-        val generationRaw = fields[3].toLongOrNull()
-            ?: return CanonicalRelationContinuationDecoding.Malformed
-        val generation = EvidenceGeneration.parse(generationRaw).refinedOrNull()
-            ?: return CanonicalRelationContinuationDecoding.Malformed
+        val expectedVersion = if (authority is SemanticReadIdentity.Published) "v1" else "v2"
+        if (document.value.split(':')[1] != expectedVersion || fields[3] != authority.revisionKey.value) {
+            return CanonicalRelationContinuationDecoding.AuthorityMismatch
+        }
         val provider = RelationProviderKind.entries.singleOrNull { it.name == fields[4] }
             ?: return CanonicalRelationContinuationDecoding.Malformed
         val positionRaw = fields[5].toLongOrNull()
@@ -78,7 +83,7 @@ internal object CanonicalRelationContinuationCodec {
                 subject,
                 meaning,
                 scope,
-                generation,
+                authority,
                 cursor,
                 fingerprint,
             )

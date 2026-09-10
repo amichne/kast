@@ -1,5 +1,7 @@
 package io.github.amichne.kast.runtime.composition.protocol.graph
 
+import io.github.amichne.kast.query.protocol.*
+
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
@@ -37,7 +39,7 @@ import io.github.amichne.kast.runtime.composition.InstalledSymbolProtocolFixture
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalProtocolAuthority
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDiscoverHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolInspectHandler
-import io.github.amichne.kast.runtime.composition.protocol.RelationSubjectLookup
+import io.github.amichne.kast.query.protocol.RelationSubjectLookup
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -69,7 +71,7 @@ class RelationContinuationCodecTest {
         val document = checkNotNull(CanonicalRelationContinuationCodec.encode(continuation))
         val decoded = assertInstanceOf(
             CanonicalRelationContinuationDecoding.Decoded::class.java,
-            CanonicalRelationContinuationCodec.decode(document),
+            CanonicalRelationContinuationCodec.decode(document, selector.lease),
         ).continuation
         assertEquals(continuation.fingerprint, decoded.fingerprint)
         assertEquals(continuation.nextProviderCursor, decoded.nextProviderCursor)

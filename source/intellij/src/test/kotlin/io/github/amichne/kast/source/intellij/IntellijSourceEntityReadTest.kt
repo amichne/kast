@@ -177,6 +177,30 @@ class IntellijSourceEntityReadTest {
     }
 
     @Test
+    fun `project continuation owner survives rebinding and rejects changed context and retirement`() {
+        val fixture = fixture()
+        val continuations = IntellijSourceReadContinuations()
+        val selection = matching(
+            Containment.DESCENDANTS,
+            declarations(setOf(DeclarationKind.FUNCTION), setOf(DeclarationVisibility.PUBLIC)),
+        )
+        val first = read(port(fixture, continuations), fixture, selection, limit = 1) as SourceReadResult.Qualified
+        val token = (first.qualification.continuation as SourceReadContinuationState.Available).continuation
+        val page = SourceReadPage.Continue(token)
+        val rebound = port(fixture, continuations)
+        val final = read(rebound, fixture, selection, limit = 1, page = page) as SourceReadResult.Complete
+        assertEquals(listOf("nested"), final.entities.names())
+
+        val original = fixture.snapshot.context as SourceReadContext.Published
+        val changed = original.copy(sourceState = WorkspaceStateIdentity.parse("workspace-state-v1|changed").refined())
+        assertTrue(read(rebound, fixture, selection, limit = 1, page = page, readContext = changed) is SourceReadResult.Rejected)
+        assertTrue(read(port(fixture), fixture, selection, limit = 1, page = page) is SourceReadResult.Rejected)
+        continuations.retire()
+        assertTrue(read(rebound, fixture, selection, limit = 1, page = page) is SourceReadResult.Rejected)
+        assertTrue(read(rebound, fixture, selection, limit = 1) is SourceReadResult.Rejected)
+    }
+
+    @Test
     fun `supported call filters return a complete empty structural negative`() {
         val fixture = fixture()
         val result = read(
@@ -188,7 +212,10 @@ class IntellijSourceEntityReadTest {
         assertTrue(result.entities.isEmpty())
     }
 
-    private fun port(fixture: Fixture): IntellijSourceReadPort = IntellijSourceReadPort(
+    private fun port(
+        fixture: Fixture,
+        continuations: IntellijSourceReadContinuations = IntellijSourceReadContinuations(),
+    ): IntellijSourceReadPort = IntellijSourceReadPort(
         IntellijSourceRegionAccess { _, request, cursor ->
             val page = IntellijSourceEntityPage.select(
                 fixture.entities.asSequence(),
@@ -206,6 +233,7 @@ class IntellijSourceEntityReadTest {
                 ).refined(),
             )
         },
+        continuations,
     )
 
     private fun read(
@@ -214,9 +242,10 @@ class IntellijSourceEntityReadTest {
         entities: EntitySelection,
         limit: Int = 250,
         page: SourceReadPage = SourceReadPage.First,
+        readContext: SourceReadContext = context(fixture.snapshot),
     ): SourceReadResult = runSuspend {
         port.read(
-            context(fixture.snapshot),
+            readContext,
             SourceReadRequest(
                 SourceReadAnchor.Source(fixture.region),
                 RegionSelection.Anchor,
@@ -455,7 +484,7 @@ class IntellijSourceEntityReadTest {
         ).refined()
 
     private fun context(snapshot: SourceSnapshot): SourceReadContext =
-        SourceReadContext(snapshot.lease, snapshot.sourceState)
+        snapshot.context
 
     private fun List<SourceEntity>.names(): List<String> = map { entity ->
         (entity.selector.name as SourceEntityName.Present).value

@@ -6,7 +6,7 @@ import com.intellij.openapi.project.Project
 import io.github.amichne.kast.relation.contract.RelationCompilation
 import io.github.amichne.kast.relation.contract.RelationCompilerRejection
 import io.github.amichne.kast.relation.contract.RelationRequest
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 import kotlinx.coroutines.CancellationException
 
@@ -19,22 +19,22 @@ internal sealed interface IntellijRelationLeaseAdmission {
 }
 
 /**
- * Proof transition: `(SemanticReadLease, SemanticReadLease) ->
+ * Proof transition: `(SemanticReadAuthority, SemanticReadAuthority) ->
  * IntellijRelationLeaseAdmission`.
  *
- * Admitted proves exact canonical root and generation equality. Rejected preserves root mismatch
- * or generation movement as [RelationCompilerRejection]. Raw identity extraction stays at the
+ * Admitted proves exact canonical root and authority equality. Rejected preserves root mismatch
+ * or authority movement as [RelationCompilerRejection]. Raw identity extraction stays at the
  * workspace publication boundary.
  */
 internal fun admitRelationLease(
-    current: SemanticReadLease,
-    requested: SemanticReadLease,
+    current: SemanticReadAuthority,
+    requested: SemanticReadAuthority,
 ): IntellijRelationLeaseAdmission = when {
     current.workspaceRoot != requested.workspaceRoot ->
         IntellijRelationLeaseAdmission.Rejected(
             RelationCompilerRejection.WORKSPACE_ROOT_MISMATCH,
         )
-    current.generation != requested.generation ->
+    current != requested ->
         IntellijRelationLeaseAdmission.Rejected(RelationCompilerRejection.GENERATION_MOVED)
     else -> IntellijRelationLeaseAdmission.Admitted
 }
@@ -43,7 +43,7 @@ internal class IntellijRelationCompilerQuery(
     private val scopeCompiler: IntellijRelationScopeCompiler = IntellijRelationScopeCompiler(),
 ) {
     /**
-     * Proof transition: `(Project, SemanticReadLease, RelationRequest,
+     * Proof transition: `(Project, SemanticReadAuthority, RelationRequest,
      * WorkspaceSearchScopeModelCompilation) -> RelationCompilation`.
      *
      * A non-rejected result establishes current lease, exact retained scope, identical K2 subject,
@@ -53,7 +53,7 @@ internal class IntellijRelationCompilerQuery(
      */
     suspend fun read(
         project: Project,
-        currentLease: SemanticReadLease,
+        currentLease: SemanticReadAuthority,
         request: RelationRequest,
         modelCompilation: WorkspaceSearchScopeModelCompilation,
     ): RelationCompilation {
@@ -67,15 +67,15 @@ internal class IntellijRelationCompilerQuery(
                 RelationCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE,
             )
         }
-        val scope = when (
-            val compilation = scopeCompiler.compile(project, request, modelCompilation)
-        ) {
-            is IntellijRelationScopeCompilation.Compiled -> compilation.scope
-            is IntellijRelationScopeCompilation.Rejected ->
-                return RelationCompilation.Rejected(RelationCompilerRejection.SCOPE_REJECTED)
-        }
         return try {
             readAction {
+                val scope = when (
+                    val compilation = scopeCompiler.compile(project, request, modelCompilation)
+                ) {
+                    is IntellijRelationScopeCompilation.Compiled -> compilation.scope
+                    is IntellijRelationScopeCompilation.Rejected ->
+                        return@readAction RelationCompilation.Rejected(RelationCompilerRejection.SCOPE_REJECTED)
+                }
                 val projection = IntellijK2RelationProjection(
                     project,
                     request.subject.lease.workspaceRoot,
@@ -116,7 +116,7 @@ class IntellijRelationCompilerAdapter private constructor(
     constructor() : this(IntellijRelationCompilerQuery())
 
     /**
-     * Proof transition: `(Project, SemanticReadLease, RelationRequest,
+     * Proof transition: `(Project, SemanticReadAuthority, RelationRequest,
      * WorkspaceSearchScopeModelCompilation) -> RelationCompilation`.
      *
      * Complete or qualified output carries only detached exact facts and coverage from the current
@@ -125,7 +125,7 @@ class IntellijRelationCompilerAdapter private constructor(
      */
     suspend fun read(
         project: Project,
-        currentLease: SemanticReadLease,
+        currentLease: SemanticReadAuthority,
         request: RelationRequest,
         modelCompilation: WorkspaceSearchScopeModelCompilation,
     ): RelationCompilation = query.read(project, currentLease, request, modelCompilation)

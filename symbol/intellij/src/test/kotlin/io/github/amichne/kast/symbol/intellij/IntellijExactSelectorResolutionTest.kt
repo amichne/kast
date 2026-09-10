@@ -24,6 +24,10 @@ import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackage
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackageConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
@@ -33,6 +37,7 @@ import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
@@ -42,6 +47,24 @@ import org.junit.jupiter.api.assertThrows
 import java.nio.file.Path
 
 class IntellijExactSelectorResolutionTest {
+    @Test
+    fun `exact lookup retains package admission after native scope compilation`() {
+        val selected = SymbolDiscoverySelection.select(batch(7), 0).refined()
+        val constraints = SymbolDiscoveryConstraints(null,
+            SymbolDiscoveryPackageConstraint(SymbolDiscoveryPackage.parse("sample.allowed").refined(), SymbolDiscoveryContainment.DESCENDANTS))
+        val retained = SymbolDiscoverySelection.restore(selected.lease, selected.scope, selected.candidate, constraints).refined()
+
+        assertSame(constraints, retained.lookupKey().constraints)
+        assertEquals(IntellijDiscoveryItemAdmission.ADMITTED,
+            constraints.packageName.admitPackage { IntellijPackageEvidence.Known("sample.allowed.child") })
+        assertEquals(IntellijDiscoveryItemAdmission.FILTERED,
+            constraints.packageName.admitPackage { IntellijPackageEvidence.Known("sample.allowedSibling") })
+        assertEquals(IntellijDiscoveryItemAdmission.UNSUPPORTED,
+            constraints.packageName.admitPackage { IntellijPackageEvidence.Unavailable })
+        assertEquals(IntellijDiscoveryItemAdmission.ADMITTED,
+            SymbolDiscoveryConstraints.None.packageName.admitPackage { error("unrestricted lookup must not inspect package PSI") })
+    }
+
     @Test
     fun `same name collisions round trip only through their exact native declaration`() {
         val batch = batch(7, 41)
@@ -231,7 +254,7 @@ class IntellijExactSelectorResolutionTest {
         compiled(selector.lease, selector.scope)
 
     private fun compiled(
-        lease: SemanticReadLease,
+        lease: SemanticReadAuthority,
         scope: SymbolSearchScope,
     ): CompiledIntellijSearchScope = CompiledIntellijSearchScope(
         lease = lease,

@@ -2,6 +2,8 @@ package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.contract.SourceDeclarationKindDocument
 import io.github.amichne.kast.protocol.contract.SourceDeclarationVisibilityDocument
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -14,14 +16,16 @@ internal data class SourceReadResultWireDocument(
 )
 
 @Serializable
+@OptIn(ExperimentalSerializationApi::class)
 internal data class SourceSnapshotWireDocument(
     val canonicalRoot: String,
-    val generation: Long,
-    val sourceState: String,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val generation: Long? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val sourceState: String? = null,
     val file: String,
     val textIdentity: String,
     val coordinateUnit: SourceCoordinateUnitWireDocument,
     val length: Int,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val live: LiveEvidenceDocument? = null,
 )
 
 @Serializable

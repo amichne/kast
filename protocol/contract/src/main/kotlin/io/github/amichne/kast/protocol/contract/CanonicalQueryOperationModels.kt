@@ -496,6 +496,9 @@ enum class QueryReferenceRejectionReason {
     MALFORMED,
     INCOMPATIBLE_WORKSPACE,
     STALE_GENERATION,
+    STALE_AUTHORITY,
+    INCOMPATIBLE_AUTHORITY,
+    INCOMPATIBLE_REFERENCE_VERSION,
 }
 
 sealed interface QueryRunRejection : OperationRejection {

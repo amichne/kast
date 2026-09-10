@@ -2,6 +2,7 @@ package io.github.amichne.kast.symbol.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName
+import java.util.Collections
 
 /** Exact imported Gradle source-set identities, independent of production/test classification. */
 sealed interface SymbolDiscoverySourceSets {
@@ -16,7 +17,7 @@ sealed interface SymbolDiscoverySourceSets {
                 if (raw.isEmpty()) {
                     Refinement.Rejected(SymbolDiscoverySourceSetsFailure.EMPTY)
                 } else {
-                    Refinement.Refined(Exact(raw.sortedBy { it.value }.toSet()))
+                    Refinement.Refined(Exact(Collections.unmodifiableSet(raw.sortedBy { it.value }.toSet())))
                 }
         }
 

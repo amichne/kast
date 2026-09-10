@@ -36,6 +36,7 @@ import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
@@ -129,7 +130,7 @@ class IntellijExactSelectorTest {
     )
 
     private fun compiled(
-        lease: SemanticReadLease,
+        lease: SemanticReadAuthority,
         scope: SymbolSearchScope,
     ): CompiledIntellijSearchScope = CompiledIntellijSearchScope(
         lease = lease,

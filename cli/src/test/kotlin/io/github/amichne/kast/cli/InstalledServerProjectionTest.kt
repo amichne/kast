@@ -34,7 +34,7 @@ class InstalledServerProjectionTest {
             .jsonArray
             .map(JsonElement::jsonObject)
 
-        assertEquals(8, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(9, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertTrue(
             bootstrap.getValue("policy").jsonPrimitive.content
                 .contains("compiler-grounded Kotlin source intelligence"),
@@ -192,7 +192,7 @@ class InstalledServerProjectionTest {
             .map { it.operation.id.value }
 
         assertEquals(10, tools.size)
-        assertEquals(8, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(9, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
             expectedPublicOperations,
@@ -470,10 +470,13 @@ class InstalledServerProjectionTest {
             .jsonObject
             .getValue("document")
             .jsonObject
-            .getValue("anyOf")
-            .jsonArray
-            .first()
-            .jsonObject
+            .firstOutcomeVariant()
+
+    private fun JsonObject.firstOutcomeVariant(): JsonObject = when {
+        containsKey("anyOf") -> getValue("anyOf").jsonArray.first().jsonObject.firstOutcomeVariant()
+        containsKey("oneOf") -> getValue("oneOf").jsonArray.first().jsonObject.firstOutcomeVariant()
+        else -> this
+    }
 
     private fun JsonObject.completedDocumentRequiredProperties(): List<String> =
         completedDocumentSchema().getValue("required").jsonArray.map { it.jsonPrimitive.content }

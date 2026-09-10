@@ -3,10 +3,27 @@ package io.github.amichne.kast.source.contract
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDeclarationKinds
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectory
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectoryConstraint
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackage
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackageConstraint
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
+import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
+import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
+import io.github.amichne.kast.symbol.contract.SymbolSearchScope
+import io.github.amichne.kast.symbol.contract.SymbolSearchScopeKind
+import io.github.amichne.kast.symbol.contract.SymbolSearchScopeSnapshot
+import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
+import io.github.amichne.kast.symbol.contract.fingerprintFields
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
 import java.nio.charset.CharacterCodingException
 import java.nio.charset.StandardCharsets
 import java.nio.file.InvalidPathException
@@ -16,6 +33,8 @@ import java.util.Base64
 
 private const val SOURCE_SELECTOR_TOKEN_PREFIX = "source-selector-v1"
 private const val SOURCE_SELECTOR_PAYLOAD_VERSION = "source-selector-payload-v1"
+private const val LIVE_SOURCE_SELECTOR_TOKEN_PREFIX = "source-selector-v2"
+private const val LIVE_SOURCE_SELECTOR_PAYLOAD_VERSION = "source-selector-payload-v2"
 private const val SOURCE_SELECTOR_TOKEN_PARTS = 3
 private const val SOURCE_SELECTOR_TOKEN_DIGEST_LENGTH = 64
 private const val MAX_SOURCE_SELECTOR_TOKEN_LENGTH = 1_048_576
@@ -47,7 +66,7 @@ value class SourceSelectorToken private constructor(
             val parts = raw.split(':')
             if (
                 parts.size != SOURCE_SELECTOR_TOKEN_PARTS ||
-                parts[0] != SOURCE_SELECTOR_TOKEN_PREFIX ||
+                parts[0] !in setOf(SOURCE_SELECTOR_TOKEN_PREFIX, LIVE_SOURCE_SELECTOR_TOKEN_PREFIX) ||
                 parts[1].isEmpty() ||
                 parts[2].length != SOURCE_SELECTOR_TOKEN_DIGEST_LENGTH ||
                 parts[2].any { it !in '0'..'9' && it !in 'a'..'f' }
@@ -67,14 +86,20 @@ object SourceSelectorTokenCodec {
             "Source selector hierarchy exceeds contract depth"
         }
         val snapshot = selector.snapshot
+        val extended = snapshot.context is SourceReadContext.Live || snapshot.readScope is SourceReadScope.Constrained
         val fields = buildList {
-            add(SOURCE_SELECTOR_PAYLOAD_VERSION)
+            add(if (extended) LIVE_SOURCE_SELECTOR_PAYLOAD_VERSION else SOURCE_SELECTOR_PAYLOAD_VERSION)
+            if (extended) add(if (snapshot.context is SourceReadContext.Live) "live" else "published")
             add(snapshot.lease.workspaceRoot.value)
-            add(snapshot.lease.generation.value.toString())
-            add(snapshot.sourceState.value)
+            add(snapshot.lease.identity.revisionKey.value)
+            add(when (val context = snapshot.context) {
+                is SourceReadContext.Published -> context.sourceState.value
+                is SourceReadContext.Live -> context.lease.reference.contentView.name
+            })
             add(snapshot.file.path.value)
             add(snapshot.textIdentity.value)
             add(snapshot.length.value.toString())
+            if (extended) add(encodeReadScope(snapshot.readScope))
             add(hierarchy.size.toString())
             hierarchy.forEach { current ->
                 when (current) {
@@ -120,15 +145,43 @@ object SourceSelectorTokenCodec {
             "${field.length}:$field"
         }.toByteArray(StandardCharsets.UTF_8)
         val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
-        val raw = "$SOURCE_SELECTOR_TOKEN_PREFIX:$encoded:${sha256(payload)}"
+        val prefix = if (extended) LIVE_SOURCE_SELECTOR_TOKEN_PREFIX else SOURCE_SELECTOR_TOKEN_PREFIX
+        val raw = "$prefix:$encoded:${sha256(payload)}"
         return when (val parsed = SourceSelectorToken.parse(raw)) {
             is Refinement.Refined -> parsed.value
             is Refinement.Rejected -> error("Issued source selector token violated its contract")
         }
     }
 
+    fun decode(token: SourceSelectorToken): Refinement<SourceSelector, SourceSelectorTokenFailure> =
+        decodeWithAuthority(token, LiveSourceRestoration.Unavailable)
+
+    /** The owning caller supplies current imported model evidence for modeled scope restoration. */
     fun decode(
         token: SourceSelectorToken,
+        model: WorkspaceSearchScopeModel,
+    ): Refinement<SourceSelector, SourceSelectorTokenFailure> =
+        decodeWithAuthority(token, LiveSourceRestoration.Unavailable, SourceScopeRestoration.Current(model))
+
+    /** The original owner must freshly admit this authority before reference restoration. */
+    fun decode(
+        token: SourceSelectorToken,
+        admitted: LiveSemanticReadAuthority,
+    ): Refinement<SourceSelector, SourceSelectorTokenFailure> =
+        decodeWithAuthority(token, LiveSourceRestoration.Admitted(admitted))
+
+    /** Live references retain both original-owner freshness and current imported scope ownership. */
+    fun decode(
+        token: SourceSelectorToken,
+        admitted: LiveSemanticReadAuthority,
+        model: WorkspaceSearchScopeModel,
+    ): Refinement<SourceSelector, SourceSelectorTokenFailure> =
+        decodeWithAuthority(token, LiveSourceRestoration.Admitted(admitted), SourceScopeRestoration.Current(model))
+
+    private fun decodeWithAuthority(
+        token: SourceSelectorToken,
+        live: LiveSourceRestoration,
+        scopes: SourceScopeRestoration = SourceScopeRestoration.Unavailable,
     ): Refinement<SourceSelector, SourceSelectorTokenFailure> {
         val parts = token.value.split(':')
         val payloadBytes = try {
@@ -147,18 +200,29 @@ object SourceSelectorTokenCodec {
         } catch (_: CharacterCodingException) {
             return Refinement.Rejected(SourceSelectorTokenFailure.INVALID_PAYLOAD_ENCODING)
         }
-        return decodePayload(payload)
+        return decodePayload(payload, parts[0], live, scopes)
     }
 
     private fun decodePayload(
         payload: String,
+        prefix: String,
+        live: LiveSourceRestoration,
+        scopes: SourceScopeRestoration,
     ): Refinement<SourceSelector, SourceSelectorTokenFailure> {
         val fields = SourceSelectorFieldReader(payload)
-        if (fields.read() != SOURCE_SELECTOR_PAYLOAD_VERSION) {
+        val version = fields.read()
+        if ((prefix == SOURCE_SELECTOR_TOKEN_PREFIX && version != SOURCE_SELECTOR_PAYLOAD_VERSION) ||
+            (prefix == LIVE_SOURCE_SELECTOR_TOKEN_PREFIX && version != LIVE_SOURCE_SELECTOR_PAYLOAD_VERSION)) {
             return Refinement.Rejected(SourceSelectorTokenFailure.MALFORMED_PAYLOAD)
         }
+        val extended = version == LIVE_SOURCE_SELECTOR_PAYLOAD_VERSION
+        val authorityKind = if (extended) fields.read() else "published"
+        if (authorityKind !in setOf("published", "live")) return Refinement.Rejected(SourceSelectorTokenFailure.MALFORMED_PAYLOAD)
         val rootText = fields.read()
             ?: return Refinement.Rejected(SourceSelectorTokenFailure.MALFORMED_PAYLOAD)
+        if (scopes is SourceScopeRestoration.Current && scopes.model.workspaceRoot.value != rootText) {
+            return Refinement.Rejected(SourceSelectorTokenFailure.SNAPSHOT_REJECTED)
+        }
         val generationText = fields.read()
             ?: return Refinement.Rejected(SourceSelectorTokenFailure.MALFORMED_PAYLOAD)
         val sourceStateText = fields.read()
@@ -169,6 +233,10 @@ object SourceSelectorTokenCodec {
             ?: return Refinement.Rejected(SourceSelectorTokenFailure.MALFORMED_PAYLOAD)
         val lengthText = fields.read()
             ?: return Refinement.Rejected(SourceSelectorTokenFailure.MALFORMED_PAYLOAD)
+        val readScope = if (extended) {
+            decodeReadScope(rootText, fields.read() ?: return Refinement.Rejected(SourceSelectorTokenFailure.MALFORMED_PAYLOAD), scopes)
+                ?: return Refinement.Rejected(SourceSelectorTokenFailure.SNAPSHOT_REJECTED)
+        } else SourceReadScope.ExactFile
         val depthText = fields.read()
             ?: return Refinement.Rejected(SourceSelectorTokenFailure.MALFORMED_PAYLOAD)
 
@@ -179,6 +247,9 @@ object SourceSelectorTokenCodec {
             fileText,
             textIdentityText,
             lengthText,
+            if (authorityKind == "live") live else LiveSourceRestoration.Unavailable,
+            authorityKind == "live",
+            readScope,
         ) ?: return Refinement.Rejected(SourceSelectorTokenFailure.SNAPSHOT_REJECTED)
         val depth = depthText.toCanonicalIntOrNull()
             ?: return Refinement.Rejected(SourceSelectorTokenFailure.MALFORMED_PAYLOAD)
@@ -308,6 +379,9 @@ private fun admitSnapshot(
     rawFile: String,
     rawTextIdentity: String,
     rawLength: String,
+    live: LiveSourceRestoration,
+    isLive: Boolean,
+    readScope: SourceReadScope,
 ): SourceSnapshot? {
     val rootPath = try {
         Path.of(rawRoot)
@@ -318,15 +392,24 @@ private fun admitSnapshot(
         is Refinement.Refined -> parsed.value
         is Refinement.Rejected -> return null
     }
-    val generation = when (
-        val parsed = rawGeneration.toCanonicalLongOrNull()?.let(EvidenceGeneration::parse)
-    ) {
-        is Refinement.Refined -> parsed.value
-        else -> return null
-    }
-    val sourceState = when (val parsed = WorkspaceStateIdentity.parse(rawSourceState)) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> return null
+    val context = if (isLive) {
+        val admitted = when (live) {
+            LiveSourceRestoration.Unavailable -> return null
+            is LiveSourceRestoration.Admitted -> live.authority
+        }
+        if (admitted.workspaceRoot != root || admitted.identity.revisionKey.value != rawGeneration ||
+            admitted.reference.contentView.name != rawSourceState) return null
+        SourceReadContext.Live(admitted)
+    } else {
+        val generation = when (val parsed = rawGeneration.toCanonicalLongOrNull()?.let(EvidenceGeneration::parse)) {
+            is Refinement.Refined -> parsed.value
+            else -> return null
+        }
+        val sourceState = when (val parsed = WorkspaceStateIdentity.parse(rawSourceState)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> return null
+        }
+        SourceReadContext.Published(SemanticReadLease(root, generation), sourceState)
     }
     val filePath = try {
         Path.of(rawFile)
@@ -348,11 +431,11 @@ private fun admitSnapshot(
         else -> return null
     }
     return SourceSnapshot.create(
-        SemanticReadLease(root, generation),
-        sourceState,
+        context,
         file,
         textIdentity,
         length,
+        readScope,
     )
 }
 
@@ -415,3 +498,126 @@ private fun sha256(bytes: ByteArray): String =
     MessageDigest.getInstance("SHA-256").digest(bytes).joinToString(separator = "") { byte ->
         (byte.toInt() and 0xff).toString(16).padStart(2, '0')
     }
+
+private sealed interface LiveSourceRestoration {
+    data object Unavailable : LiveSourceRestoration
+    data class Admitted(val authority: LiveSemanticReadAuthority) : LiveSourceRestoration
+}
+
+private sealed interface SourceScopeRestoration {
+    data object Unavailable : SourceScopeRestoration
+    data class Current(val model: WorkspaceSearchScopeModel) : SourceScopeRestoration
+}
+
+private fun encodeReadScope(scope: SourceReadScope): String = when (scope) {
+    SourceReadScope.ExactFile -> ""
+    is SourceReadScope.Constrained -> {
+        val captured = SymbolSearchScope.snapshot(scope.scope)
+        val fields = listOf(captured.kind.name, captured.primary ?: "", captured.secondary ?: "",
+            captured.sourceKinds.name, captured.generatedSources.name, captured.libraries?.name ?: "") +
+            scope.constraints.fingerprintFields()
+        fields.joinToString("") { "${it.length}:$it" }
+    }
+}
+
+private fun decodeReadScope(rawRoot: String, raw: String, scopes: SourceScopeRestoration): SourceReadScope? {
+    if (raw.isEmpty()) return SourceReadScope.ExactFile
+    val fields = SourceSelectorFieldReader(raw)
+    val kind = fields.read()?.let { enumValueOrNull<SymbolSearchScopeKind>(it) } ?: return null
+    val primary = fields.read() ?: return null
+    val secondary = fields.read() ?: return null
+    val sourceKinds = fields.read()?.let { enumValueOrNull<SymbolSourceKindPolicy>(it) } ?: return null
+    val generated = fields.read()?.let { enumValueOrNull<SymbolGeneratedSourcePolicy>(it) } ?: return null
+    val libraries = fields.read() ?: return null
+    val libraryPolicy = if (libraries.isEmpty()) null else enumValueOrNull<SymbolLibraryPolicy>(libraries) ?: return null
+    val captured = SymbolSearchScopeSnapshot(
+        kind, primary.ifEmpty { null }, secondary.ifEmpty { null }, sourceKinds, generated, libraryPolicy,
+    )
+    val scope = when (scopes) {
+        is SourceScopeRestoration.Current -> when (val restored = SymbolSearchScope.restore(scopes.model, captured)) {
+            is Refinement.Refined -> restored.value
+            is Refinement.Rejected -> return null
+        }
+        SourceScopeRestoration.Unavailable -> when (kind) {
+        SymbolSearchScopeKind.WORKSPACE -> SymbolSearchScope.Workspace(sourceKinds, generated, libraryPolicy ?: return null)
+        SymbolSearchScopeKind.EXACT_FILE -> {
+            val rootPath = try { Path.of(rawRoot) } catch (_: InvalidPathException) { return null }
+            val root = when (val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(rootPath)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return null
+            }
+            val filePath = try { Path.of(primary) } catch (_: InvalidPathException) { return null }
+            val file = when (val admitted = CanonicalWorkspaceFilePath.fromCanonicalPath(root, filePath)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return null
+            }
+            SymbolSearchScope.ExactFile(file, sourceKinds, generated)
+        }
+        // These scopes require a current imported owner, not reconstructed model evidence.
+        SymbolSearchScopeKind.MODULE, SymbolSearchScopeKind.SOURCE_SET, SymbolSearchScopeKind.GRADLE_PROJECT -> return null
+        }
+    }
+    if (SymbolSearchScope.snapshot(scope) != captured) return null
+    val constraints = if (fields.exhausted) SymbolDiscoveryConstraints.None else decodeConstraints(fields) ?: return null
+    if (!fields.exhausted) return null
+    val result = SourceReadScope.Constrained(scope, constraints)
+    return result.takeIf { encodeReadScope(it) == raw }
+}
+
+private fun decodeConstraints(fields: SourceSelectorFieldReader): SymbolDiscoveryConstraints? {
+    if (fields.read() != "discovery-constraints-v1") return null
+    val directoryText = fields.read() ?: return null
+    val directoryContainment = fields.read() ?: return null
+    val packageText = fields.read() ?: return null
+    val packageContainment = fields.read() ?: return null
+    val directory = if (directoryText.isEmpty()) {
+        if (directoryContainment.isNotEmpty()) return null
+        null
+    } else {
+        val name = when (val parsed = SymbolDiscoveryDirectory.parse(directoryText)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> return null
+        }
+        SymbolDiscoveryDirectoryConstraint(name, enumValueOrNull(directoryContainment) ?: return null)
+    }
+    val packageName = if (packageText.isEmpty()) {
+        if (packageContainment.isNotEmpty()) return null
+        null
+    } else {
+        val name = when (val parsed = SymbolDiscoveryPackage.parse(packageText)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> return null
+        }
+        SymbolDiscoveryPackageConstraint(name, enumValueOrNull(packageContainment) ?: return null)
+    }
+    val kindCount = fields.read()?.toCanonicalIntOrNull() ?: return null
+    if (kindCount > CompilerSymbolKind.entries.size) return null
+    val kinds = buildSet {
+        repeat(kindCount) { add(fields.read()?.let { enumValueOrNull<CompilerSymbolKind>(it) } ?: return null) }
+    }
+    val declarationKinds = if (kindCount == 0) null else when (val parsed = SymbolDiscoveryDeclarationKinds.from(kinds)) {
+        is Refinement.Refined -> parsed.value
+        is Refinement.Rejected -> return null
+    }
+    val sourceSets = when (fields.read()) {
+        "all-source-sets" -> SymbolDiscoverySourceSets.All
+        "exact-source-sets" -> {
+            val count = fields.read()?.toCanonicalIntOrNull() ?: return null
+            if (count !in 1..MAX_SOURCE_SELECTOR_TOKEN_LENGTH) return null
+            val names = buildSet {
+                repeat(count) {
+                    when (val name = io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName.parse(fields.read() ?: return null)) {
+                        is Refinement.Refined -> add(name.value)
+                        is Refinement.Rejected -> return null
+                    }
+                }
+            }
+            when (val parsed = SymbolDiscoverySourceSets.Exact.from(names)) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return null
+            }
+        }
+        else -> return null
+    }
+    return SymbolDiscoveryConstraints(directory, packageName, declarationKinds, sourceSets)
+}

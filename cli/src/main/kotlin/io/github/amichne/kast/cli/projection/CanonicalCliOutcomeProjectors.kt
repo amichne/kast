@@ -120,10 +120,10 @@ internal fun <
     rejected: (Rejection) -> CliJsonDocument,
 ): ProjectedCliOutcome = when (outcome) {
     is OperationOutcome.Complete -> ProjectedCliOutcome.Complete(
-        complete(outcome.evidence.payload),
+        complete(outcome.evidence.payload).withEvidence(outcome.evidence.basis),
     )
     is OperationOutcome.Qualified -> ProjectedCliOutcome.Qualified(
-        qualified(outcome.evidence.payload, outcome.qualification),
+        qualified(outcome.evidence.payload, outcome.qualification).withEvidence(outcome.evidence.basis),
     )
     is OperationOutcome.Rejected -> ProjectedCliOutcome.Rejected(rejected(outcome.reason))
 }

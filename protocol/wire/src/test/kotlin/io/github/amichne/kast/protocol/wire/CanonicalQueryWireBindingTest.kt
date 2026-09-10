@@ -1,6 +1,7 @@
 package io.github.amichne.kast.protocol.wire
 
-import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.*
+import java.util.UUID
 import io.github.amichne.kast.protocol.contract.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -65,6 +66,29 @@ class CanonicalQueryWireBindingTest {
             WireRequestEnvelope.admit((encoded as WireEncoding.Encoded).document).admittedRequest(),
         )
         assertEquals(request, (decoded as WireDecoding.Decoded).value)
+    }
+
+    @Test
+    fun `live complete evidence round trips without a published generation`() {
+        val live = LiveReadEvidence.create(
+            "/workspace", UUID.fromString("b41c43b0-1f11-4ca9-9ec0-b6fc88cd31c4"),
+            7, LiveReadContentView.SAVED_PSI_COMMITTED, 1,
+        ).refinedValue()
+        val outcome = OperationOutcome.Complete(EvidenceEnvelope(
+            CanonicalOperation.QUERY_RUN.id, EvidenceBasis.Live(live),
+            QueryRunResult(bounded(emptyList()), bounded(emptyList())),
+        ))
+        val encoded = CanonicalOperationWireBindings.queryRun.encodeOutcome(outcome) as WireEncoding.Encoded
+        assertTrue(!encoded.document.contains("generation"))
+        assertEquals(outcome, (CanonicalOperationWireBindings.queryRun.decodeOutcome(encoded.document)
+            as WireDecoding.Decoded).value)
+        val ambiguous = encoded.document.replace("\"type\":\"complete\"", "\"type\":\"complete\",\"generation\":1")
+        assertTrue(CanonicalOperationWireBindings.queryRun.decodeOutcome(ambiguous) is WireDecoding.Rejected)
+    }
+
+    private fun <Value, Failure> Refinement<Value, Failure>.refinedValue(): Value = when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error(failure.toString())
     }
 
     private fun text(raw: String): ProtocolText = when (val value = ProtocolText.parse(raw)) {

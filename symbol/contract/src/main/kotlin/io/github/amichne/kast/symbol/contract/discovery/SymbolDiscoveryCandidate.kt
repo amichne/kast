@@ -2,7 +2,7 @@ package io.github.amichne.kast.symbol.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
@@ -206,7 +206,7 @@ sealed interface SymbolDiscoveryCandidateLocation {
 
 @ConsistentCopyVisibility
 data class SymbolDiscoveryCandidate private constructor(
-    val lease: SemanticReadLease,
+    val lease: SemanticReadAuthority,
     val kind: SymbolDiscoveryKind,
     val name: SymbolDiscoveryCandidateName,
     val location: SymbolDiscoveryCandidateLocation,
@@ -233,7 +233,7 @@ data class SymbolDiscoveryCandidate private constructor(
     private fun canonicalProjection(): String = buildString {
         append(lease.workspaceRoot.value)
         append('\u0000')
-        append(lease.generation.value)
+        append(lease.identity.revisionKey.value)
         append('\u0000')
         append(kind.name)
         append('\u0000')
@@ -258,7 +258,7 @@ data class SymbolDiscoveryCandidate private constructor(
     companion object {
         /**
          * Proof transition:
-         * SymbolDiscoveryKind + String + SemanticReadLease + Path? + String + Int? to
+         * SymbolDiscoveryKind + String + SemanticReadAuthority + Path? + String + Int? to
          * Refinement<SymbolDiscoveryCandidate, SymbolDiscoveryCandidateFailure>.
          *
          * Establishes a generation-bound detached candidate with a bounded name, exact file
@@ -270,7 +270,7 @@ data class SymbolDiscoveryCandidate private constructor(
         fun fromBoundary(
             kind: SymbolDiscoveryKind,
             rawName: String,
-            lease: SemanticReadLease,
+            lease: SemanticReadAuthority,
             nativePath: Path?,
             virtualFileUrl: String,
             rawOffset: Int?,
@@ -332,7 +332,7 @@ data class SymbolDiscoveryCandidate private constructor(
         private val DISCOVERY_CANDIDATE_ORDER =
             compareBy<SymbolDiscoveryCandidate>(
                 { it.lease.workspaceRoot.value },
-                { it.lease.generation.value },
+                { it.lease.identity.revisionKey.value },
                 { it.kind.ordinal },
                 { it.name.value },
                 { it.location.file.stableValue },

@@ -23,16 +23,19 @@ import io.github.amichne.kast.protocol.registry.HostedToolLoading
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 
-private const val SERVER_PROJECTION_SCHEMA_VERSION = 8
+private const val SERVER_PROJECTION_SCHEMA_VERSION = 9
 private const val HOSTED_BOOTSTRAP_SCHEMA_VERSION = 1
 private const val CLI_INVOCATIONS_SCHEMA_VERSION = 2
 private const val MAXIMUM_PROTOCOL_TEXT_LENGTH = 1_048_576
@@ -278,13 +281,37 @@ private data class ServerSchemaProperty(
 internal fun installedServerOutputSchema(operation: CanonicalOperation): JsonObject = unionSchema(
     objectSchema(
         ServerSchemaProperty("status", constantSchema("completed", "Process outcome.")),
-        ServerSchemaProperty("document", operationDocumentSchema(operation)),
+        ServerSchemaProperty("document", operationProcessDocumentSchema(operation)),
     ),
     objectSchema(
         ServerSchemaProperty("status", constantSchema("rejected", "Process outcome.")),
         ServerSchemaProperty("diagnostic", processDiagnosticSchema()),
     ),
 )
+
+private fun operationProcessDocumentSchema(operation: CanonicalOperation): JsonObject =
+    if (operation.supportsLiveReadEvidence()) {
+        unionSchema(operationDocumentSchema(operation), hostedEndpointRejectionSchema, hostedReadRejectionSchema)
+    } else {
+        operationDocumentSchema(operation)
+    }
+
+// Reuse only the packaged rejection branches. Legacy hosted demo successes are not canonical reads.
+private val hostedEndpointRejectionSchema: JsonObject by lazy {
+    packagedHostedSchema("hosted-endpoint").getValue("\$defs").jsonObject.getValue("rejected").jsonObject
+}
+
+private val hostedReadRejectionSchema: JsonObject by lazy {
+    packagedHostedSchema("hosted-query").getValue("oneOf").jsonArray.single { variant ->
+        variant.jsonObject.getValue("properties").jsonObject.getValue("outcome")
+            .jsonObject["const"] == JsonPrimitive("rejected")
+    }.jsonObject
+}
+
+private fun packagedHostedSchema(name: String): JsonObject =
+    requireNotNull(CanonicalOperation::class.java.getResourceAsStream("/ide-hosted/$name.schema.json")) {
+        "Missing packaged hosted schema: $name"
+    }.bufferedReader().use { Json.parseToJsonElement(it.readText()).jsonObject }
 
 private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject = when (operation) {
     CanonicalOperation.INDEX_SYNC -> outcomeSchema(
@@ -441,7 +468,7 @@ private fun queryOutputReferenceSchema(kind: String): JsonObject = objectSchema(
     ServerSchemaProperty(
         "token",
         patternTextSchema(
-            if (kind == "exact-symbol") "^exact:v2:" else "^candidate:v2:",
+            if (kind == "exact-symbol") "^exact:v[23]:" else "^candidate:v[23]:",
             "Reusable proof-carrying reference.",
         ),
     ),
@@ -688,10 +715,34 @@ private fun sourceReadQualificationSchema(): JsonObject = objectSchema(
     ),
 )
 
-private fun sourceSnapshotSchema(): JsonObject = objectSchema(
+private enum class ServerReadEvidenceShape { PUBLISHED, LIVE }
+
+private fun liveReadEvidenceSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("root", buildJsonObject {
+        put("type", "string"); put("pattern", "^/[^\\x00-\\x1F\\x7F]*$"); put("maxLength", 4096)
+        put("description", "Canonical root of the admitted live project.")
+    }),
+    ServerSchemaProperty("host", patternTextSchema(
+        "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        "Original live host incarnation.",
+    )),
+    ServerSchemaProperty("epoch", buildJsonObject {
+        put("type", "integer"); put("minimum", 1); put("maximum", Long.MAX_VALUE)
+        put("description", "Observed live content and model epoch, never a publication generation.")
+    }),
+    ServerSchemaProperty("contentView", constantSchema("SAVED_PSI_COMMITTED", "Saved and PSI-committed live content.")),
+    ServerSchemaProperty("version", integerSchema(1, 1, "Live evidence representation version.")),
+)
+
+private fun sourceSnapshotSchema(basis: ServerReadEvidenceShape = ServerReadEvidenceShape.PUBLISHED): JsonObject = objectSchema(
     ServerSchemaProperty("canonicalRoot", textSchema("Canonical workspace root.")),
-    ServerSchemaProperty("generation", integerSchema(0, description = "Semantic generation.")),
-    ServerSchemaProperty("sourceState", textSchema("Workspace source-state identity.")),
+    *when (basis) {
+        ServerReadEvidenceShape.PUBLISHED -> arrayOf(
+            ServerSchemaProperty("generation", integerSchema(0, description = "Semantic generation.")),
+            ServerSchemaProperty("sourceState", textSchema("Workspace source-state identity.")),
+        )
+        ServerReadEvidenceShape.LIVE -> arrayOf(ServerSchemaProperty("live", liveReadEvidenceSchema()))
+    },
     ServerSchemaProperty("file", textSchema("Exact workspace source file.")),
     ServerSchemaProperty("textIdentity", textSchema("Committed document text identity.")),
     ServerSchemaProperty(
@@ -914,14 +965,36 @@ private fun operationOutcomeVariant(
     operation: CanonicalOperation,
     status: String,
     vararg payload: ServerSchemaProperty,
-): JsonObject = objectSchema(
-    ServerSchemaProperty(
-        "operation",
-        constantSchema(operation.id.value, "Canonical operation identity."),
-    ),
-    ServerSchemaProperty("status", constantSchema(status, "Canonical operation outcome.")),
-    *payload,
-)
+): JsonObject {
+    val identity = arrayOf(
+        ServerSchemaProperty("operation", constantSchema(operation.id.value, "Canonical operation identity.")),
+        ServerSchemaProperty("status", constantSchema(status, "Canonical operation outcome.")),
+    )
+    val published = objectSchema(*identity, *payload)
+    if (!operation.supportsLiveReadEvidence() || status !in setOf("complete", "qualified")) return published
+    val livePayload = payload.map { property -> when {
+        operation == CanonicalOperation.SOURCE_READ && property.name == "snapshot" ->
+            ServerSchemaProperty("snapshot", sourceSnapshotSchema(ServerReadEvidenceShape.LIVE))
+        operation == CanonicalOperation.TRAVERSAL_RUN && property.name == "graph" ->
+            ServerSchemaProperty("graph", normalizedTraversalGraphSchema(ServerReadEvidenceShape.LIVE))
+        else -> property
+    } }.toTypedArray()
+    // The closed variants make top-level and nested Published/Live shapes mutually exclusive.
+    return buildJsonObject {
+        putJsonArray("oneOf") {
+            add(published)
+            add(objectSchema(*identity, *livePayload, ServerSchemaProperty("live", liveReadEvidenceSchema())))
+        }
+    }
+}
+
+private fun CanonicalOperation.supportsLiveReadEvidence(): Boolean = when (this) {
+    CanonicalOperation.QUERY_RUN, CanonicalOperation.SYMBOL_DISCOVER, CanonicalOperation.SYMBOL_INSPECT,
+    CanonicalOperation.SOURCE_READ, CanonicalOperation.RELATION_READ, CanonicalOperation.TRAVERSAL_RUN,
+    CanonicalOperation.DIAGNOSTIC_CHECK -> true
+    CanonicalOperation.INDEX_SYNC, CanonicalOperation.TOPOLOGY_BUILD, CanonicalOperation.CHANGE_PLAN,
+    CanonicalOperation.CHANGE_APPLY, CanonicalOperation.CHANGE_RECOVER -> false
+}
 
 private fun topologyBuildDocumentSchema(operation: CanonicalOperation): JsonObject {
     val result = arrayOf(
@@ -1159,7 +1232,7 @@ private fun relationFactSchema(): JsonObject = objectSchema(
     ),
 )
 
-private fun normalizedTraversalGraphSchema(): JsonObject = objectSchema(
+private fun normalizedTraversalGraphSchema(basis: ServerReadEvidenceShape = ServerReadEvidenceShape.PUBLISHED): JsonObject = objectSchema(
     ServerSchemaProperty(
         "snapshot",
         objectSchema(
@@ -1167,10 +1240,12 @@ private fun normalizedTraversalGraphSchema(): JsonObject = objectSchema(
                 "canonicalRoot",
                 textSchema("Exact canonical workspace root for the whole graph."),
             ),
-            ServerSchemaProperty(
-                "generation",
-                integerSchema(0, description = "Exact semantic evidence generation."),
-            ),
+            when (basis) {
+                ServerReadEvidenceShape.PUBLISHED -> ServerSchemaProperty(
+                    "generation", integerSchema(0, description = "Exact semantic evidence generation."),
+                )
+                ServerReadEvidenceShape.LIVE -> ServerSchemaProperty("live", liveReadEvidenceSchema())
+            },
         ),
     ),
     ServerSchemaProperty("nodes", arraySchema(normalizedTraversalNodeSchema())),

@@ -1,17 +1,17 @@
 package io.github.amichne.kast.diagnostic.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 
 /** A requested file or directory, not yet proof of source membership or completeness. */
 class DiagnosticScopeQuery private constructor(
-    val lease: SemanticReadLease,
+    val lease: SemanticReadAuthority,
     val path: Path,
 ) {
     companion object {
-        fun parse(lease: SemanticReadLease, raw: String): Refinement<DiagnosticScopeQuery, DiagnosticScopeResolutionFailure> {
+        fun parse(lease: SemanticReadAuthority, raw: String): Refinement<DiagnosticScopeQuery, DiagnosticScopeResolutionFailure> {
             val parsed = try { Path.of(raw) } catch (_: InvalidPathException) {
                 return Refinement.Rejected(DiagnosticScopeResolutionFailure.INVALID_SCOPE)
             }

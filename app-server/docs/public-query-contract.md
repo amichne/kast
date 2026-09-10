@@ -82,11 +82,12 @@ expansion have different meanings; the sequence is preserved, including repeated
 stages. Work stays under the existing exhaustive/interactive execution policy.
 Exhaustive intent is not an unbounded budget or a completeness guarantee.
 
-`REFS` copies tokens from `items[].ref.token`; an `exact:v2:` prefix proves syntax
-only. An expired or foreign-workspace reference can still be rejected by execution.
-Outputs remain unchanged in this revision: Complete/Qualified/Rejected, per-item
-failures, provenance, compiler evidence, and generation-bound reference checks are
-not suppressed. A qualified empty result never proves that no matches exist.
+`REFS` copies tokens from `items[].ref.token`; an `exact:v2:` or `exact:v3:` prefix
+proves syntax only. Live references retain the root, original host lifetime, epoch,
+content view, and scope; execution re-admits them against the current owner.
+Published references retain publication authority. Complete/Qualified/Rejected,
+per-item failures, provenance, and compiler evidence remain explicit. A qualified
+empty result never proves that no matches exist.
 
 Strict-target parameter projection requires declared controls and expresses
 the concrete default values for controls they do not customize. The native CLI/Codex
@@ -96,15 +97,20 @@ OpenAI acceptance or model-accuracy improvement follows from schema validation a
 
 ## Breaking change and retirement
 
-Installed server projection 8 replaces projection 7's public query grammar. A
-broker and executable with incompatible contracts fail qualification; restarting
+Installed server projection 9 retains projection 8's public query grammar and
+versions evidence for all seven semantic reads. Results carry either a published
+generation or live root/host/epoch evidence. Source and traversal snapshots retain
+the same evidence basis as their enclosing result. A broker and executable with incompatible contracts fail qualification; restarting
 or recreating sessions with the matched installed contract is required. Do not
 silently resume a persisted catalog under the new grammar. Existing catalog digests
 remain the authority for session compatibility.
 
 `query.run` still lowers to the canonical wire request, which is retained because
 it belongs to the evaluator and runtime modules. This is not a legacy public alias.
-The revision does not change result schemas or the specialist read/write tools.
+The seven read-result schemas accept exclusive published/live variants. Writes and
+recovery continue to require publication authority. Hosted admission rejections
+retain their typed reasons; process exit zero alone does not establish semantic
+success. Provider and direct CLI validate the same executable contract.
 
 ## Requirement-to-proof map
 

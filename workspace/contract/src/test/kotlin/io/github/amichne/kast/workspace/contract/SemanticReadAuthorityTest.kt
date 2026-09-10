@@ -77,6 +77,19 @@ class SemanticReadAuthorityTest {
         assertEquals(LiveSemanticReadFailure.RETIRED, owner.restore(old, freshness()).failure())
     }
 
+    @Test
+    fun `authority identity distinguishes live epochs and requires published refinement`() {
+        val published = SemanticReadLease(root, EvidenceGeneration.parse(7).value())
+        assertEquals("7", published.identity.revisionKey.value)
+        assertSame(published, published.requirePublished().value())
+        val live = admit()
+        assertEquals(PublishedReadAuthorityFailure.LIVE_AUTHORITY, live.requirePublished().failure())
+        val identity = live.identity
+        source.result = Refinement.Refined(FixtureEpochState.stable().copy(psi = 2))
+        org.junit.jupiter.api.Assertions.assertNotEquals(identity, admit().identity)
+        org.junit.jupiter.api.Assertions.assertNotEquals(published.identity.revisionKey, identity.revisionKey)
+    }
+
     private fun freshness() = VfsPassiveReadCapability.issue(root, source.observeEpoch())
     private fun admit() = owner.admit(freshness()).value()
     private fun <V, F> Refinement<V, F>.value(): V = when (this) {

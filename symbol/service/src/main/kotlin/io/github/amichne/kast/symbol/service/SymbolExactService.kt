@@ -14,15 +14,20 @@ import io.github.amichne.kast.symbol.contract.SymbolResolutionCompilation
 import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
 import io.github.amichne.kast.symbol.contract.SymbolResolutionResult
 import io.github.amichne.kast.symbol.contract.SymbolSelector
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
-import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
+import io.github.amichne.kast.workspace.contract.SemanticReadValidation
+import io.github.amichne.kast.workspace.contract.SemanticReadValidationPort
+import io.github.amichne.kast.workspace.contract.semanticReadValidation
 
 /** Current-generation admission owner for public `symbol.resolve` and `symbol.inspect`. */
 class SymbolExactService(
-    private val workspaces: WorkspaceInspectionOperations,
+    private val authorities: SemanticReadValidationPort,
     private val compiler: SymbolExactCompilerPort,
 ) : SymbolExactOperations {
+    constructor(workspaces: WorkspaceInspectionOperations, compiler: SymbolExactCompilerPort) :
+        this(workspaces.semanticReadValidation(), compiler)
+
     /**
      * Proof transition: `(WorkspaceRuntimeState, SymbolResolutionRequest,
      * SymbolResolutionCompilation) -> SymbolResolutionResult`.
@@ -121,29 +126,18 @@ class SymbolExactService(
      * unavailable, root-mismatch, or stale-generation failure as closed data. Raw root and
      * generation extraction remains inside workspace publication.
      */
-    private fun admitCurrentLease(
-        expected: SemanticReadLease,
+    private suspend fun admitCurrentLease(
+        expected: SemanticReadAuthority,
         unavailable: SymbolExactRejection,
-    ): SymbolExactLeaseAdmission {
-        val current = when (val state = workspaces.inspect()) {
-            is WorkspaceRuntimeState.Ready -> state.workspace.readLease
-            WorkspaceRuntimeState.Absent,
-            WorkspaceRuntimeState.Starting,
-            WorkspaceRuntimeState.Reconciling,
-            is WorkspaceRuntimeState.Blocked,
-            WorkspaceRuntimeState.Stopping,
-                -> return SymbolExactLeaseAdmission.Rejected(unavailable)
-        }
-        return when {
-            expected.workspaceRoot != current.workspaceRoot ->
-                SymbolExactLeaseAdmission.Rejected(
-                    SymbolExactRejection.WORKSPACE_ROOT_MISMATCH,
-                )
-            expected.generation != current.generation ->
-                SymbolExactLeaseAdmission.Rejected(SymbolExactRejection.STALE_GENERATION)
-            else -> SymbolExactLeaseAdmission.Admitted
-        }
+    ): SymbolExactLeaseAdmission = when (authorities.validate(expected)) {
+        SemanticReadValidation.CURRENT -> SymbolExactLeaseAdmission.Admitted
+        SemanticReadValidation.UNAVAILABLE -> SymbolExactLeaseAdmission.Rejected(unavailable)
+        SemanticReadValidation.ROOT_MISMATCH ->
+            SymbolExactLeaseAdmission.Rejected(SymbolExactRejection.WORKSPACE_ROOT_MISMATCH)
+        SemanticReadValidation.MOVED ->
+            SymbolExactLeaseAdmission.Rejected(SymbolExactRejection.STALE_GENERATION)
     }
+
 }
 
 private sealed interface SymbolExactLeaseAdmission {
@@ -174,6 +168,7 @@ private fun admitSelector(
     return if (
         selector.lease == selection.lease &&
         selector.scope == selection.scope &&
+        selector.constraints == selection.constraints &&
         selector.file == location.file &&
         selector.name == selection.candidate.name &&
         selector.range.startInclusive == location.offset.value

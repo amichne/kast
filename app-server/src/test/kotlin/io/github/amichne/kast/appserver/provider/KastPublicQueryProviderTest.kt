@@ -103,7 +103,7 @@ class KastPublicQueryProviderTest {
     }
 
     private fun capability(input: JsonObject = PublicQueryContract.parameters): String = """
-        {"schemaVersion":1,"serverProjection":{"schemaVersion":8,"namespace":"kast",
+        {"schemaVersion":1,"serverProjection":{"schemaVersion":9,"namespace":"kast",
         "hostedBootstrap":{"schemaVersion":1,"policy":${JsonPrimitive(CanonicalAgentToolDefinitions.policy.text)},
         "tools":[{"operationId":"query.run","name":"query",
         "description":${JsonPrimitive(CanonicalAgentToolDefinitions.query.description.value)},

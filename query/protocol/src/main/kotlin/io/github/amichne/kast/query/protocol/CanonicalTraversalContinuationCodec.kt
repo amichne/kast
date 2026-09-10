@@ -1,14 +1,17 @@
-package io.github.amichne.kast.runtime.composition.protocol.graph
+package io.github.amichne.kast.query.protocol
+
+import io.github.amichne.kast.query.protocol.*
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
 import io.github.amichne.kast.relation.contract.RelationEndpointFingerprint
 import io.github.amichne.kast.relation.contract.RelationLimitation
-import io.github.amichne.kast.runtime.composition.protocol.CanonicalProtocolAuthority
-import io.github.amichne.kast.runtime.composition.protocol.ExactSelectorIssuance
-import io.github.amichne.kast.runtime.composition.protocol.ExactSelectorLookup
-import io.github.amichne.kast.runtime.composition.protocol.RelationEndpointIssuance
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
+import io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority
+import io.github.amichne.kast.query.protocol.ExactSelectorIssuance
+import io.github.amichne.kast.query.protocol.ExactSelectorLookup
+import io.github.amichne.kast.query.protocol.RelationEndpointIssuance
 import io.github.amichne.kast.traversal.contract.TraversalBudget
 import io.github.amichne.kast.traversal.contract.TraversalCheckpoint
 import io.github.amichne.kast.traversal.contract.TraversalContinuation
@@ -27,11 +30,13 @@ import java.nio.charset.CharacterCodingException
 import java.security.MessageDigest
 import java.util.Base64
 
-internal sealed interface CanonicalTraversalContinuationDecoding {
+sealed interface CanonicalTraversalContinuationDecoding {
     data class Decoded(val continuation: TraversalContinuation) :
         CanonicalTraversalContinuationDecoding
 
     data object Malformed : CanonicalTraversalContinuationDecoding
+    data object SubjectMismatch : CanonicalTraversalContinuationDecoding
+    data object AuthorityMismatch : CanonicalTraversalContinuationDecoding
 }
 
 @Serializable
@@ -70,10 +75,10 @@ private val traversalContinuationJson = Json {
 }
 
 /** Pure, bounded, self-contained transport for an exact traversal checkpoint. */
-internal object CanonicalTraversalContinuationCodec {
+object CanonicalTraversalContinuationCodec {
     fun encode(
         continuation: TraversalContinuation,
-        authority: CanonicalProtocolAuthority,
+        authority: QueryReferenceAuthority,
     ): TraversalContinuationDocument? {
         val start = when (val issued = authority.issueExact(continuation.start)) {
             is ExactSelectorIssuance.Issued -> issued.selector.value
@@ -110,16 +115,20 @@ internal object CanonicalTraversalContinuationCodec {
             ),
         ).toByteArray(Charsets.UTF_8)
         val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
+        val version = if (continuation.start.lease is LiveSemanticReadAuthority) "v2" else "v1"
         return TraversalContinuationDocument.parse(
-            "traversal-continuation:v1:$encoded:${payload.sha256()}",
+            "traversal-continuation:$version:$encoded:${payload.sha256()}",
         ).refinedOrNull()
     }
 
     fun decode(
         document: TraversalContinuationDocument,
         budget: TraversalBudget,
-        authority: CanonicalProtocolAuthority,
+        authority: QueryReferenceAuthority,
+        current: SemanticReadAuthority,
     ): CanonicalTraversalContinuationDecoding {
+        val expectedVersion = if (current is LiveSemanticReadAuthority) "v2" else "v1"
+        if (document.value.split(':')[1] != expectedVersion) return CanonicalTraversalContinuationDecoding.AuthorityMismatch
         val encoded = document.value.split(':').getOrNull(2)
             ?: return CanonicalTraversalContinuationDecoding.Malformed
         val payloadText = try {
@@ -139,8 +148,14 @@ internal object CanonicalTraversalContinuationCodec {
         } catch (_: IllegalArgumentException) {
             return CanonicalTraversalContinuationDecoding.Malformed
         }
-        val start = authority.exact(payload.start.protocolTextOrNull() ?: return malformed())
-            .selectorOrNull() ?: return malformed()
+        val start = when (val lookup = authority.exact(payload.start.protocolTextOrNull() ?: return malformed(), current)) {
+            is ExactSelectorLookup.Found -> lookup.selector
+            is ExactSelectorLookup.Rejected -> return when (lookup.reason) {
+                SelectorLookupRejection.WORKSPACE_MISMATCH -> CanonicalTraversalContinuationDecoding.SubjectMismatch
+                SelectorLookupRejection.STALE -> CanonicalTraversalContinuationDecoding.AuthorityMismatch
+                SelectorLookupRejection.WRONG_KIND, SelectorLookupRejection.MALFORMED -> malformed()
+            }
+        }
         val meaning = payload.relation.relationMeaningOrNull() ?: return malformed()
         val plan = TraversalPlan.start(start, meaning, budget).refinedOrNull() ?: return malformed()
         val frontier = payload.frontier.map { entry ->
@@ -164,10 +179,11 @@ internal object CanonicalTraversalContinuationCodec {
                     .RelationContinuationDocument.parse(state.relationContinuation)
                     .refinedOrNull() ?: return malformed()
                 val relation = when (
-                    val decoded = CanonicalRelationContinuationCodec.decode(relationDocument)
+                    val decoded = CanonicalRelationContinuationCodec.decode(relationDocument, plan.start.lease)
                 ) {
                     is CanonicalRelationContinuationDecoding.Decoded -> decoded.continuation
                     CanonicalRelationContinuationDecoding.Malformed -> return malformed()
+                    CanonicalRelationContinuationDecoding.AuthorityMismatch -> return CanonicalTraversalContinuationDecoding.AuthorityMismatch
                 }
                 val read = TraversalPendingRead.create(plan, entry, relation).refinedOrNull()
                     ?: return malformed()
@@ -191,7 +207,7 @@ internal object CanonicalTraversalContinuationCodec {
 }
 
 private fun TraversalFrontierEntry.payload(
-    authority: CanonicalProtocolAuthority,
+    authority: QueryReferenceAuthority,
 ): TraversalFrontierPayload? {
     val selector = when (val issued = authority.issueEndpoint(node.endpoint)) {
         is RelationEndpointIssuance.Issued -> issued.selector.value
@@ -202,9 +218,9 @@ private fun TraversalFrontierEntry.payload(
 
 private fun TraversalFrontierPayload.restore(
     plan: TraversalPlan,
-    authority: CanonicalProtocolAuthority,
+    authority: QueryReferenceAuthority,
 ): TraversalFrontierEntry? {
-    val selector = authority.exact(selector.protocolTextOrNull() ?: return null)
+    val selector = authority.exact(selector.protocolTextOrNull() ?: return null, plan.start.lease)
         .selectorOrNull() ?: return null
     val node = TraversalNode.restore(plan, selector).refinedOrNull() ?: return null
     val traversalDepth = TraversalDepth.parse(depth).refinedOrNull() ?: return null

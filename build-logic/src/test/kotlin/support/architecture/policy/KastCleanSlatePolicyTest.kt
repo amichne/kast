@@ -34,6 +34,7 @@ class KastCleanSlatePolicyTest {
                 ":traversal:contract",
                 ":traversal:service",
                 ":query:contract",
+                ":query:protocol",
                 ":query:service",
                 ":topology:contract",
                 ":topology:build",

@@ -16,12 +16,14 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceOffset
 import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 import java.nio.file.Path
 
 internal data class IntellijExactDeclarationLookupKey(
     val file: SymbolDiscoveryFileIdentity,
     val offset: SymbolDiscoverySourceOffset,
     val name: SymbolDiscoveryCandidateName,
+    val constraints: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints.None,
 )
 
 internal enum class IntellijExactDeclarationLookupRejection {
@@ -115,6 +117,11 @@ internal class IntellijPsiExactDeclarationLookup(
         }
         val psiFile = PsiManager.getInstance(project).findFile(file)
                       ?: return liveRejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION)
+        when (key.constraints.packageName.admitPackage { psiFile.packageEvidence() }) {
+            IntellijDiscoveryItemAdmission.ADMITTED -> Unit
+            IntellijDiscoveryItemAdmission.FILTERED -> return liveRejected(IntellijExactDeclarationLookupRejection.OUTSIDE_SCOPE)
+            IntellijDiscoveryItemAdmission.UNSUPPORTED -> return liveRejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION)
+        }
         val leaf = psiFile.findElementAt(key.offset.value)
                    ?: return liveRejected(IntellijExactDeclarationLookupRejection.STALE_LOCATION)
         val matches = mutableListOf<Pair<PsiNamedElement, ExactDeclarationEvidence>>()
@@ -201,6 +208,7 @@ internal fun SymbolDiscoverySelection.lookupKey(): IntellijExactDeclarationLooku
         file = location.file,
         offset = location.offset,
         name = candidate.name,
+        constraints = constraints,
     )
 }
 
@@ -223,6 +231,7 @@ internal fun ExactDeclarationSelector.lookupKey(): IntellijExactDeclarationLooku
         file = file,
         offset = offset,
         name = name,
+        constraints = constraints,
     )
 }
 
@@ -241,6 +250,7 @@ internal fun SymbolSelector.lookupKey(): IntellijExactDeclarationLookupKey {
         file = file,
         offset = offset,
         name = name,
+        constraints = constraints,
     )
 }
 

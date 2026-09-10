@@ -53,10 +53,10 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 1048576,
-      "pattern": "^exact:v2:[\\s\\S]+$",
-      "description": "Copy items[].ref.token from an exact-symbol result verbatim. This prefix check is syntax only; Kast still validates workspace, generation and compiler identity.",
+      "pattern": "^exact:v[23]:[\\s\\S]+$",
+      "description": "Copy items[].ref.token from an exact-symbol result verbatim. This prefix check is syntax only; Kast still validates workspace, read authority and compiler identity.",
       "examples": [
-        "exact:v2:EXAMPLE_NOT_ISSUED"
+        "exact:v3:EXAMPLE_NOT_ISSUED"
       ]
     },
     "DirectoryPath": {
@@ -261,7 +261,7 @@
       "description": "Non-empty returned exact-symbol tokens. No candidate promotion, guessing or alias lookup.",
       "examples": [
         [
-          "exact:v2:EXAMPLE_NOT_ISSUED"
+          "exact:v3:EXAMPLE_NOT_ISSUED"
         ]
       ]
     },
@@ -431,7 +431,7 @@
         {
           "type": "REFS",
           "refs": [
-            "exact:v2:EXAMPLE_NOT_ISSUED"
+            "exact:v3:EXAMPLE_NOT_ISSUED"
           ]
         }
       ]
@@ -466,7 +466,7 @@
         {
           "type": "REFS",
           "refs": [
-            "exact:v2:EXAMPLE_NOT_ISSUED"
+            "exact:v3:EXAMPLE_NOT_ISSUED"
           ]
         }
       ]

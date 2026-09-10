@@ -100,7 +100,7 @@ def exchange(root: Path, request: dict, home: Path) -> Answer | Rejected:
             if not valid_schema(document, "hosted-endpoint.schema.json"):
                 return Rejected(Failure.RESPONSE_REJECTED)
         elif request["type"] == "DESCRIBE":
-            if not valid_schema(document, "hosted-endpoint.schema.json") or document.get("type") != "KAST_IDE_HOST" or document.get("root") != str(root) or document.get("hostPid") != metadata.get("hostPid"):
+            if not valid_schema(document, "hosted-endpoint.schema.json") or document.get("type") != "KAST_IDE_HOST" or document.get("root") != str(root) or document.get("hostPid") != metadata.get("hostPid") or document.get("host") != metadata.get("host"):
                 return Rejected(Failure.RESPONSE_REJECTED)
         else:
             if not valid_schema(document, "hosted-query.schema.json"):

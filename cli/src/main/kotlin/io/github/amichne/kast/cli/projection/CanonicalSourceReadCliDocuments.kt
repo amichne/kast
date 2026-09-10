@@ -75,15 +75,30 @@ private data class SourceReadQualifiedCliDocument(
 )
 
 @Serializable
-private data class SourceSnapshotCliDocument(
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+private data class SourceSnapshotCliDocument private constructor(
     val canonicalRoot: String,
-    val generation: Long,
-    val sourceState: String,
     val file: String,
     val textIdentity: String,
     val coordinateUnit: String,
     val length: Int,
-)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER) val generation: Long? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER) val sourceState: String? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER) val live: LiveReadCliEvidence? = null,
+) {
+    companion object {
+        fun from(snapshot: SourceSnapshotDocument): SourceSnapshotCliDocument = when (val context = snapshot.context) {
+            is io.github.amichne.kast.protocol.contract.SourceSnapshotContextDocument.Published -> SourceSnapshotCliDocument(
+                snapshot.canonicalRoot.value, snapshot.file.value, snapshot.textIdentity.value, snapshot.coordinateUnit.cliName(), snapshot.length.value,
+                generation = context.generation.value, sourceState = context.sourceState.value,
+            )
+            is io.github.amichne.kast.protocol.contract.SourceSnapshotContextDocument.Live -> SourceSnapshotCliDocument(
+                snapshot.canonicalRoot.value, snapshot.file.value, snapshot.textIdentity.value, snapshot.coordinateUnit.cliName(), snapshot.length.value,
+                live = LiveReadCliEvidence.from(context.evidence),
+            )
+        }
+    }
+}
 
 @Serializable
 private data class SourceRegionCliDocument(
@@ -206,15 +221,7 @@ private sealed interface SourceReadContinuationCliDocument {
     data class Available(val continuation: String) : SourceReadContinuationCliDocument
 }
 
-private fun SourceSnapshotDocument.toCliDocument() = SourceSnapshotCliDocument(
-    canonicalRoot.value,
-    generation,
-    sourceState.value,
-    file.value,
-    textIdentity.value,
-    coordinateUnit.cliName(),
-    length.value,
-)
+private fun SourceSnapshotDocument.toCliDocument() = SourceSnapshotCliDocument.from(this)
 
 private fun SourceRegionDocument.toCliDocument() = SourceRegionCliDocument(
     kind.cliName(),

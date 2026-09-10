@@ -29,6 +29,9 @@ import io.github.amichne.kast.query.contract.QueryStepSyntax
 import io.github.amichne.kast.query.contract.QuerySymbolField
 import io.github.amichne.kast.query.contract.QuerySymbolFields
 import io.github.amichne.kast.relation.contract.RelationOperations
+import io.github.amichne.kast.source.contract.*
+import io.github.amichne.kast.query.contract.QueryPredicate
+import io.github.amichne.kast.query.contract.QueryVisibilitySelection
 import io.github.amichne.kast.source.contract.SourceReadOperations
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
@@ -76,6 +79,80 @@ import org.junit.jupiter.api.Test
 import java.nio.file.Path
 
 class QueryServiceTest {
+    @Test
+    fun `visibility filters the selected public leaf and private parent rather than descendants`() = runTest {
+        val selected = selector(selection())
+        for (visibility in listOf(DeclarationVisibility.PUBLIC, DeclarationVisibility.PRIVATE)) {
+            val result = service(exact = exactOperations(
+                describe = { SymbolDescriptionResult.Described(SymbolDescription.from(it)) },
+                resolve = { error("No discovery expected") }), source = SourceReadOperations { read ->
+                val entities = read.entities as EntitySelection.Matching
+                assertEquals(Containment.SELF, entities.containment)
+                assertEquals(VisibilitySelection.Any, (entities.filters.single() as EntityFilter.Declarations).visibility)
+                selfRead(selected, visibility)
+            }).run(request(visibilityPlan(selected), 8L))
+            val complete = assertInstanceOf(QueryExecutionResult.Complete::class.java, result)
+            assertEquals(if (visibility == DeclarationVisibility.PUBLIC) 1 else 0,
+                (complete.result.items as QueryResultSet.Symbols).values.size)
+        }
+    }
+
+    @Test
+    fun `missing self evidence and public same-kind descendant never prove visibility`() = runTest {
+        val selected = selector(selection())
+        for (source in listOf(
+            selfRead(selected, DeclarationVisibility.PUBLIC, missing = true),
+            selfRead(selected, DeclarationVisibility.PUBLIC, child = true),
+            selfRead(selected, DeclarationVisibility.PUBLIC, foreignIdentity = true),
+        )) {
+            val result = service(exact = exactOperations(
+                describe = { SymbolDescriptionResult.Described(SymbolDescription.from(it)) },
+                resolve = { error("No discovery expected") }), source = SourceReadOperations { source })
+                .run(request(visibilityPlan(selected), 8L))
+            val qualified = assertInstanceOf(QueryExecutionResult.Qualified::class.java, result)
+            assertEquals(0, (qualified.result.items as QueryResultSet.Symbols).values.size)
+            assertTrue(QueryLimitation.VISIBILITY_INCOMPLETE in qualified.coverage.limitations)
+            assertTrue(qualified.result.failures.single() is QueryItemFailure.PredicateUnproven)
+        }
+    }
+
+    private fun visibilityPlan(selected: SymbolSelector): AdmittedQueryPlan = exactReferencePlan(
+        listOf(selected), listOf(QueryStepSyntax.Where(QueryPredicate.Visibility(
+            QueryVisibilitySelection.from(setOf(DeclarationVisibility.PUBLIC)).refined()))))
+
+    private fun selfRead(
+        selected: SymbolSelector,
+        visibility: DeclarationVisibility,
+        missing: Boolean = false,
+        child: Boolean = false,
+        foreignIdentity: Boolean = false,
+    ): SourceReadResult.Complete {
+        val snapshot = SourceSnapshot.create(
+            SourceReadContext.Published(selected.lease as SemanticReadLease,
+                io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity.parse("a".repeat(64)).refined()),
+            selected.file as io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity.Workspace,
+            SourceTextIdentity.fromNormalizedCommittedText(" ".repeat(64)), Utf16CodeUnitCount.parse(64).refined(),
+            SourceReadScope.Constrained(selected.scope, selected.constraints),
+        )
+        fun range(start: Int, end: Int) = SourceRange.create(snapshot,
+            Utf16CodeUnitOffset.parse(start).refined(), Utf16CodeUnitOffset.parse(end).refined()).refined()
+        val parent = SourceSelector.issueRoot(range(selected.range.startInclusive, selected.range.endExclusive), SourceRegionKind.DECLARATION)
+        val name = if (foreignIdentity) "WrongDeclaration" else if (child) "PublicNested" else selected.name.value
+        val start = selected.range.startInclusive + if (child) 2 else 0
+        val end = selected.range.endExclusive - if (child) 2 else 0
+        val entitySelector = SourceSelector.issueEntity(parent, NonEmptySourceRange.create(range(start, end)).refined(),
+            SourceEntityKind.DECLARATION_CLASSLIKE, SourceEntityName.present(name).refined()).refined()
+        val path = Path.of(selected.file.stableValue)
+        val candidate = SymbolDiscoveryCandidate.fromBoundary(SymbolDiscoveryKind.CLASS, name, selected.lease,
+            path, path.toUri().toString(), start).refined()
+        val candidateSelector = io.github.amichne.kast.symbol.contract.CandidateSelector.declaration(
+            SymbolDiscoverySelection.restore(selected.lease, selected.scope, candidate, selected.constraints).refined()).refined()
+        val entity = SourceEntity.Declaration.create(entitySelector, SourceNestingDepth.parse(0).refined(),
+            DeclarationKind.CLASSLIKE, visibility, DeclarationSemanticIdentity.Candidate(candidateSelector)).refined()
+        return SourceReadResult.Complete.create(snapshot, SourceRegion.create(SourceRegionKind.DECLARATION, parent).refined(),
+            if (missing) emptyList() else listOf(entity), SourceTextProjection.NotRequested).refined()
+    }
+
     @Test
     fun `source-set identity survives query discovery without source-kind inference`() = runTest {
         listOf("main", "test", "integrationTest").forEach { name ->
@@ -315,10 +392,11 @@ class QueryServiceTest {
             error("Exact refinement was not expected")
         },
         clock: QueryNanoClock = QueryNanoClock(System::nanoTime),
+        source: SourceReadOperations = SourceReadOperations { error("Source read was not expected") },
     ): QueryService = QueryService(
         discovery = discovery,
         exact = exact,
-        source = SourceReadOperations { error("Source read was not expected") },
+        source = source,
         relations = RelationOperations { error("Relation read was not expected") },
         clock = clock,
     )

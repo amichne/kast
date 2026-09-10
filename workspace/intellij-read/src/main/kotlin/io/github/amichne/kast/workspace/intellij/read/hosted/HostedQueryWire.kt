@@ -105,6 +105,8 @@ internal fun HostedQueryFailure.code(): String = when (this) {
     is HostedQueryFailure.ModelCapture -> "MODEL_CAPTURE_REJECTED"
     is HostedQueryFailure.ReadEpoch -> "READ_EPOCH_REJECTED"
     is HostedQueryFailure.Freshness -> "FRESHNESS_REJECTED"
+    is HostedQueryFailure.LiveAuthority -> "LIVE_AUTHORITY_REJECTED"
+    is HostedQueryFailure.NamedSourceScope -> "NAMED_SOURCE_SCOPE_REJECTED"
 }
 
 /** Closed, bounded diagnostic data; never exception text or compiler/source objects. */
@@ -135,7 +137,21 @@ private fun HostedQueryFailure.detail(): Any = when (this) {
     // These closed causes contain only repository-owned enum/object variants, never platform data.
     is HostedQueryFailure.ReadEpoch -> cause.wireCause()
     is HostedQueryFailure.Freshness -> cause.wireCause()
+    is HostedQueryFailure.LiveAuthority -> cause.name
+    is HostedQueryFailure.NamedSourceScope -> cause.wireCause()
     else -> emptyMap<String, String>()
+}
+
+private fun io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.wireCause(): Any = when (this) {
+    io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.MODEL_UNAVAILABLE -> "MODEL_UNAVAILABLE"
+    io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.IDE_ROOT_UNMAPPED -> "IDE_ROOT_UNMAPPED"
+    io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.IDE_ROOT_INCOHERENT -> "IDE_ROOT_INCOHERENT"
+    io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.OWNER_UNAVAILABLE -> "OWNER_UNAVAILABLE"
+    io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.CAPTURE_LIMIT -> "CAPTURE_LIMIT"
+    io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.PROJECT_UNAVAILABLE -> "PROJECT_UNAVAILABLE"
+    io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.INDEXING -> "INDEXING"
+    is io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.ModelRejected -> "MODEL_REJECTED"
+    is io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.ObservationFailed -> mapOf("stage" to stage.name)
 }
 
 private fun io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.wireCause(): Any = when (this) {

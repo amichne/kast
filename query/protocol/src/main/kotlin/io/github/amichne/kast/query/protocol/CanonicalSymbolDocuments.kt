@@ -1,4 +1,4 @@
-package io.github.amichne.kast.runtime.composition.protocol
+package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
@@ -26,7 +26,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 
-internal fun SymbolDiscoveryCandidate.protocolDocument(
+fun SymbolDiscoveryCandidate.protocolDocument(
     candidateSelector: ProtocolText,
 ): SymbolDiscoveryDocument? {
     val name = text(name.value) ?: return null
@@ -56,7 +56,7 @@ internal fun SymbolDiscoveryCandidate.protocolDocument(
     }
 }
 
-internal fun SymbolDescription.protocolDocument(
+fun SymbolDescription.protocolDocument(
     exactSelector: ProtocolText,
 ): SymbolDocument? = symbolDocument(
     exactSelector,
@@ -70,7 +70,7 @@ internal fun SymbolDescription.protocolDocument(
     compilerIdentity,
 )
 
-internal fun RelationEndpoint.protocolDocument(
+fun RelationEndpoint.protocolDocument(
     exactSelector: ProtocolText,
 ): SymbolDocument? = symbolDocument(
     exactSelector,

@@ -10,8 +10,29 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.protocol.contract.*
+import io.github.amichne.kast.protocol.wire.*
 
 class HostedEndpointTest {
+    private val host = io.github.amichne.kast.workspace.contract.IdeReadHostLifetime.fromBoundary(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
+
+    @Test fun `one hosted request retains the complete canonical query and exact schema`() {
+        fun <T> bounded(values: List<T>) = (BoundedProtocolList.create(values) as Refinement.Refined).value
+        fun text(value: String) = (ProtocolText.parse(value) as Refinement.Refined).value
+        val request = QueryRunRequest(
+            QueryFromDocument.Symbols(QueryDiscoveryDocument(QueryMatchDocument.All,
+                QueryScopeDocument(bounded(listOf(text("main"), text("test"))), null, null),
+                bounded(listOf(QueryDeclarationKindDocument.CLASS)))),
+            bounded(emptyList()), QueryOutputDocument.Symbols(bounded(emptyList())),
+            QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
+        )
+        val canonical = (CanonicalOperationWireBindings.queryRun.encodeRequest(request) as WireEncoding.Encoded).document
+        fun hosted(document: String) = com.google.gson.Gson().toJson(mapOf("type" to "QUERY_RUN", "root" to "/workspace", "document" to document))
+        val admitted = (HostedRequests.decode(hosted(canonical)) as Refinement.Refined).value as HostedRequest.Query
+        assertEquals(canonical, (CanonicalOperationWireBindings.queryRun.encodeRequest(admitted.request) as WireEncoding.Encoded).document)
+        assertEquals(Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST), HostedRequests.decode(hosted(canonical.replace("kast.query.run.v2", "kast.query.run.v1"))))
+        assertEquals(Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST), HostedRequests.decode(hosted(canonical.replace("query.run", "change.apply"))))
+    }
     @Test fun `direct supertype accepts a qualified identity and rejects mixed selectors`() {
         assertTrue(HostedRequests.decode("""{"type":"DIRECT_SUPERTYPE","root":"/workspace","qualifiedName":"example.Outer.Child"}""") is Refinement.Refined)
         for (request in listOf(
@@ -50,13 +71,13 @@ class HostedEndpointTest {
         // Keep the socket path within the platform limit independently of the JUnit temp prefix.
         val directory = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "khe-")
         try {
-            val owned = (OwnedHostedEndpoint.open(directory, root) as Refinement.Refined).value
-            assertEquals(Refinement.Rejected(HostedEndpointFailure.OWNERSHIP_CONFLICT), OwnedHostedEndpoint.open(directory, root))
+            val owned = (OwnedHostedEndpoint.open(directory, root, host) as Refinement.Refined).value
+            assertEquals(Refinement.Rejected(HostedEndpointFailure.OWNERSHIP_CONFLICT), OwnedHostedEndpoint.open(directory, root, host))
             assertTrue(Files.exists(owned.socket))
             owned.close()
             assertFalse(Files.exists(directory.resolve("endpoint.json")))
             assertFalse(Files.exists(owned.socket))
-            (OwnedHostedEndpoint.open(directory, root) as Refinement.Refined).value.close()
+            (OwnedHostedEndpoint.open(directory, root, host) as Refinement.Refined).value.close()
         } finally { Files.deleteIfExists(directory.resolve("owner.lock")); Files.delete(directory) }
     }
 
@@ -66,7 +87,7 @@ class HostedEndpointTest {
         try {
             val descriptor = directory.resolve("endpoint.json")
             Files.writeString(descriptor, "unowned")
-            assertEquals(Refinement.Rejected(HostedEndpointFailure.OWNERSHIP_CONFLICT), OwnedHostedEndpoint.open(directory, root))
+            assertEquals(Refinement.Rejected(HostedEndpointFailure.OWNERSHIP_CONFLICT), OwnedHostedEndpoint.open(directory, root, host))
             assertEquals("unowned", Files.readString(descriptor))
         } finally {
             Files.deleteIfExists(directory.resolve("endpoint.json")); Files.deleteIfExists(directory.resolve("owner.lock")); Files.delete(directory)

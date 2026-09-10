@@ -334,7 +334,7 @@ internal object KastProviderQualifier {
     private fun admitProjection(
         projection: KastServerProjectionBoundary,
     ): QualifiedKastProjection? {
-        if (projection.schemaVersion != 8 || projection.namespace != "kast") return null
+        if (projection.schemaVersion != 9 || projection.namespace != "kast") return null
         val bootstrap = projection.hostedBootstrap
         val cli = projection.cliInvocations
         if (bootstrap.schemaVersion != 1 || cli.schemaVersion != 2) return null
@@ -509,7 +509,7 @@ internal class KastRuntime(
         return ProviderCall.Completed(
             KastInvocationOutput(
                 document,
-                success = completed.exitCode == 0,
+                success = completed.exitCode == 0 && !payload.isHostedReadRejection(),
                 observerDirectory = context.workingDirectory,
             ),
         )
@@ -518,6 +518,13 @@ internal class KastRuntime(
     private companion object {
         const val MAXIMUM_OUTPUT_BYTES = BrokerOperationalLimits.maximumKastOutputBytes
     }
+}
+
+/** Hosted admission can fail before canonical read evidence exists, with a successful process exit. */
+private fun JsonElement.isHostedReadRejection(): Boolean {
+    val document = this as? JsonObject ?: return false
+    return document["type"] == JsonPrimitive("HOST_REJECTED") ||
+        document["outcome"] == JsonPrimitive("rejected")
 }
 
 

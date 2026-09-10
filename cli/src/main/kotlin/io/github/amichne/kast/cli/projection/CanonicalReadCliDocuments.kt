@@ -66,11 +66,11 @@ internal object CanonicalReadCliDocuments {
                     status = "complete",
                     graph = normalizeTraversalGraph(
                         outcome.evidence.payload.snapshotRoot,
-                        outcome.evidence.generation,
+                        outcome.evidence.basis,
                         outcome.evidence.payload.records.values,
                     ),
                 ),
-            ),
+            ).withEvidence(outcome.evidence.basis),
         )
         is OperationOutcome.Qualified -> ProjectedCliOutcome.Qualified(
             traversalQualifiedFactory.create(
@@ -79,12 +79,12 @@ internal object CanonicalReadCliDocuments {
                     status = "qualified",
                     graph = normalizeTraversalGraph(
                         outcome.evidence.payload.snapshotRoot,
-                        outcome.evidence.generation,
+                        outcome.evidence.basis,
                         outcome.evidence.payload.records.values,
                     ),
                     qualification = outcome.qualification.toCliDocument(),
                 ),
-            ),
+            ).withEvidence(outcome.evidence.basis),
         )
         is OperationOutcome.Rejected -> ProjectedCliOutcome.Rejected(
             canonicalRejectedDocument(

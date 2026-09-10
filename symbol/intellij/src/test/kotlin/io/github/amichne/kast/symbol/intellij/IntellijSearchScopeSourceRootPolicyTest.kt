@@ -8,6 +8,9 @@ import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
@@ -28,6 +31,76 @@ import java.nio.file.Path
 import java.util.IdentityHashMap
 
 class IntellijSearchScopeSourceRootPolicyTest {
+    @Test
+    fun `known absent source-set intersection is empty while policy excluded and unavailable models reject`() {
+        val model = model(boundary())
+        val absent = SymbolDiscoveryConstraints(directory = null, packageName = null, sourceSets = SymbolDiscoverySourceSets.Exact.from(
+            setOf(WorkspaceSourceSetName.parse("nonexistent").refined()),
+        ).refined())
+        val compiler = IntellijSearchScopeCompiler(absent)
+        val result = compiler.compile(
+            request(model).copy(scope = SymbolSearchScope.Workspace(
+                SymbolSourceKindPolicy.PRODUCTION_AND_TEST, SymbolGeneratedSourcePolicy.EXCLUDE,
+                SymbolLibraryPolicy.INCLUDE,
+            )), compiled(model), ALL_FILES,
+            { IntellijVirtualFilePath.classify(Path.of("/workspace/app/src/main/kotlin/Main.kt")) },
+            { IntellijLibraryMembership.LIBRARY },
+        )
+        assertTrue(result is IntellijSearchScopeCompilation.Compiled)
+        val capability = (result as IntellijSearchScopeCompilation.Compiled).capability
+        assertTrue(capability.sourceRoots.isEmpty())
+        assertEquals(false, capability.nativeScope.contains(LightVirtualFile("Main.kt")))
+        assertEquals(false, capability.nativeScope.isSearchInLibraries)
+
+        val excluded = model(boundary(provenance = WorkspaceSourceRootProvenance.GENERATED))
+        val unavailable = WorkspaceSearchScopeModel.compile(
+            workspaceRoot(), ImportedWorkspaceModelState.INCOMPLETE, emptyList(),
+        )
+        for ((request, modelCompilation) in listOf(
+            request(excluded) to compiled(excluded), request(model) to unavailable,
+            request(model).copy(scope = SymbolSearchScope.Workspace(
+                SymbolSourceKindPolicy.TEST_ONLY, SymbolGeneratedSourcePolicy.INCLUDE,
+                SymbolLibraryPolicy.EXCLUDE,
+            )) to compiled(model),
+        )) {
+            assertTrue(compiler.compile(request, modelCompilation, ALL_FILES,
+                { IntellijVirtualFilePath.Unavailable }, { IntellijLibraryMembership.NOT_LIBRARY },
+            ) is IntellijSearchScopeCompilation.Rejected)
+        }
+    }
+
+    @Test
+    fun `nested foreign owners cannot inherit a readable parent scope`() {
+        val model = model(
+            boundary(sourceRoot = "/workspace/src"),
+            boundary(ideaModuleName = "nested.test", gradleProjectPath = ":nested", sourceSetName = "test",
+                sourceRoot = "/workspace/src/test", sourceKind = WorkspaceSourceRootKind.TEST),
+        )
+        val parent = model.sourceRoots.single { it.sourceSet.value == "main" }
+        val scopes = listOf(
+            SymbolSearchScope.Workspace(SymbolSourceKindPolicy.PRODUCTION_ONLY,
+                SymbolGeneratedSourcePolicy.EXCLUDE, SymbolLibraryPolicy.EXCLUDE),
+            SymbolSearchScope.Module(parent.module, SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                SymbolGeneratedSourcePolicy.EXCLUDE),
+            SymbolSearchScope.SourceSet(parent.project, parent.sourceSet, SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                SymbolGeneratedSourcePolicy.EXCLUDE),
+            SymbolSearchScope.GradleProject(parent.project, SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                SymbolGeneratedSourcePolicy.EXCLUDE),
+        )
+        val main = LightVirtualFile("Main.kt")
+        val nested = LightVirtualFile("Nested.kt")
+        for (scope in scopes) {
+            val result = IntellijSearchScopeQueryAdapter().execute(
+                request(model).copy(scope = scope), compiled(model), ALL_FILES,
+                { file -> IntellijVirtualFilePath.classify(Path.of(
+                    if (file === main) "/workspace/src/Main.kt" else "/workspace/src/test/Nested.kt",
+                )) },
+                { IntellijLibraryMembership.NOT_LIBRARY },
+            ) { listOf(it.nativeScope.contains(main), it.nativeScope.contains(nested)) }
+            assertEquals(listOf(true, false), result.completedValue(), scope.toString())
+        }
+    }
+
     @Test
     fun `typed exact module source-set project workspace and library policies compile before query`() {
         val model = model(
@@ -96,6 +169,11 @@ class IntellijSearchScopeSourceRootPolicyTest {
         var queryInvocations = 0
 
         policies.forEach { (scope, expected) ->
+            assertEquals(
+                if (expected.last()) SymbolLibraryPolicy.INCLUDE else SymbolLibraryPolicy.EXCLUDE,
+                scope.libraryPolicy(),
+                "Name-filter admission must preserve the exact scope's library policy",
+            )
             val result = adapter.execute(
                 request = SymbolSearchScopeRequest(
                     lease = SemanticReadLease(model.workspaceRoot, EvidenceGeneration.parse(7).refined()),

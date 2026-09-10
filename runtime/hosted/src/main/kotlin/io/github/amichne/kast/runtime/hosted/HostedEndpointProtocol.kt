@@ -5,6 +5,8 @@ import com.google.gson.JsonObject
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.*
+import io.github.amichne.kast.protocol.wire.*
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedClassLookup
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedKotlinSelection
@@ -22,6 +24,7 @@ import java.nio.file.Path
 enum class HostedEndpointFailure {
     INVALID_REQUEST, REQUEST_TOO_LARGE, REQUEST_INCOMPLETE, IO_UNAVAILABLE, DEADLINE_EXCEEDED,
     WRONG_ROOT, OWNERSHIP_CONFLICT, DIRECTORY_REJECTED, SOCKET_UNAVAILABLE, PLATFORM_UNAVAILABLE,
+    RESPONSE_REJECTED, RESULT_TOO_LARGE,
 }
 
 internal sealed interface HostedRequest {
@@ -29,6 +32,14 @@ internal sealed interface HostedRequest {
     data class Describe(override val root: CanonicalWorkspaceRoot) : HostedRequest
     data class Classes(val lookup: HostedClassLookup) : HostedRequest { override val root get() = lookup.root }
     data class Supertype(val selection: HostedSupertypeSelection) : HostedRequest { override val root get() = selection.root }
+    sealed interface Read : HostedRequest
+    data class Query(override val root: CanonicalWorkspaceRoot, val request: QueryRunRequest) : Read
+    data class Discover(override val root: CanonicalWorkspaceRoot, val request: SymbolDiscoverRequest) : Read
+    data class Inspect(override val root: CanonicalWorkspaceRoot, val request: SymbolInspectRequest) : Read
+    data class Source(override val root: CanonicalWorkspaceRoot, val request: SourceReadRequest) : Read
+    data class Relation(override val root: CanonicalWorkspaceRoot, val request: RelationReadRequest) : Read
+    data class Traversal(override val root: CanonicalWorkspaceRoot, val request: TraversalRunRequest) : Read
+    data class Diagnostic(override val root: CanonicalWorkspaceRoot, val request: DiagnosticCheckRequest) : Read
 }
 
 internal object HostedRequests {
@@ -40,7 +51,7 @@ internal object HostedRequests {
             reader.beginObject()
             while (reader.hasNext()) {
                 val key = reader.nextName()
-                if (json.has(key) || key !in setOf("type", "root", "name", "file", "offset", "qualifiedName")) return rejected
+                if (json.has(key) || key !in setOf("type", "root", "name", "file", "offset", "qualifiedName", "document")) return rejected
                 if (key == "offset") {
                     if (reader.peek() != JsonToken.NUMBER) return rejected
                     val token = reader.nextString()
@@ -63,6 +74,23 @@ internal object HostedRequests {
                 is Refinement.Rejected -> return rejected
             }
             return when (text("type")) {
+                "QUERY_RUN", "SYMBOL_DISCOVER", "SYMBOL_INSPECT", "SOURCE_READ", "RELATION_READ", "TRAVERSAL_RUN", "DIAGNOSTIC_CHECK" -> {
+                    if (json.keySet() != setOf("type", "root", "document")) return rejected
+                    val envelope = when (val admitted = WireRequestEnvelope.admit(text("document"))) {
+                        is WireRequestAdmission.Admitted -> admitted.request
+                        is WireRequestAdmission.Rejected -> return rejected
+                    }
+                    when (text("type")) {
+                        "QUERY_RUN" -> decode(CanonicalOperationWireBindings.queryRun.decodeRequest(envelope)) { HostedRequest.Query(root, it) }
+                        "SYMBOL_DISCOVER" -> decode(CanonicalOperationWireBindings.symbolDiscover.decodeRequest(envelope)) { HostedRequest.Discover(root, it) }
+                        "SYMBOL_INSPECT" -> decode(CanonicalOperationWireBindings.symbolInspect.decodeRequest(envelope)) { HostedRequest.Inspect(root, it) }
+                        "SOURCE_READ" -> decode(CanonicalOperationWireBindings.sourceRead.decodeRequest(envelope)) { HostedRequest.Source(root, it) }
+                        "RELATION_READ" -> decode(CanonicalOperationWireBindings.relationRead.decodeRequest(envelope)) { HostedRequest.Relation(root, it) }
+                        "TRAVERSAL_RUN" -> decode(CanonicalOperationWireBindings.traversalRun.decodeRequest(envelope)) { HostedRequest.Traversal(root, it) }
+                        "DIAGNOSTIC_CHECK" -> decode(CanonicalOperationWireBindings.diagnosticCheck.decodeRequest(envelope)) { HostedRequest.Diagnostic(root, it) }
+                        else -> rejected
+                    }
+                }
                 "DESCRIBE" -> if (json.keySet() == setOf("type", "root")) Refinement.Refined(HostedRequest.Describe(root)) else rejected
                 "CLASS_LOOKUP" -> {
                     if (json.keySet() != setOf("type", "root", "name")) return rejected
@@ -90,6 +118,11 @@ internal object HostedRequests {
             }
         } catch (_: RuntimeException) { return rejected }
         catch (_: IOException) { return rejected }
+    }
+
+    private fun <Value> decode(value: WireDecoding<Value>, request: (Value) -> HostedRequest.Read): Refinement<HostedRequest, HostedEndpointFailure> = when (value) {
+        is WireDecoding.Decoded -> Refinement.Refined(request(value.value))
+        is WireDecoding.Rejected -> Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST)
     }
 
     fun rejected(failure: HostedEndpointFailure): String = Gson().toJson(mapOf("type" to "HOST_REJECTED", "failure" to failure.name))

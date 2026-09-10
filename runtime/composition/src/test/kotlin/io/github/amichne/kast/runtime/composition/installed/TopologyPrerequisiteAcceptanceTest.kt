@@ -1,5 +1,7 @@
 package io.github.amichne.kast.runtime.composition
 
+import io.github.amichne.kast.query.protocol.*
+
 import io.github.amichne.kast.change.plan.PureAddDeclarationPlanningService
 import io.github.amichne.kast.change.plan.PureAddFilePlanningService
 import io.github.amichne.kast.change.plan.PureRenameSymbolPlanningService
@@ -30,7 +32,7 @@ import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolInspec
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmission
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionFailure
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionOperations
-import io.github.amichne.kast.runtime.composition.protocol.ExactSelectorLookup
+import io.github.amichne.kast.query.protocol.ExactSelectorLookup
 import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalTraversalRunHandler
 import io.github.amichne.kast.runtime.composition.protocol.graph.TopologyBackedTraversalOperations
 import io.github.amichne.kast.symbol.contract.SymbolSelector

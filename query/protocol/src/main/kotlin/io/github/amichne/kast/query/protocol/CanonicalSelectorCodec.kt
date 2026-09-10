@@ -1,7 +1,10 @@
-package io.github.amichne.kast.runtime.composition.protocol
+package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.workspace.contract.*
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.symbol.contract.*
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 import io.github.amichne.kast.symbol.contract.CandidateSelector
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
@@ -13,27 +16,32 @@ import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Base64
 
-internal enum class CanonicalSelectorEncodingFailure {
+enum class CanonicalSelectorEncodingFailure {
     UNSUPPORTED_SCOPE,
     TOKEN_REJECTED,
 }
 
-internal sealed interface CanonicalSelectorEncoding {
+sealed interface CanonicalSelectorEncoding {
     data class Encoded(val token: ProtocolText) : CanonicalSelectorEncoding
     data class Rejected(
         val failure: CanonicalSelectorEncodingFailure,
     ) : CanonicalSelectorEncoding
 }
 
-internal enum class CanonicalSelectorDecodingFailure {
+enum class CanonicalSelectorDecodingFailure {
     INVALID_TOKEN_STRUCTURE,
     INVALID_PAYLOAD_ENCODING,
     PAYLOAD_DIGEST_MISMATCH,
     MALFORMED_DOCUMENT,
     INVALID_DOCUMENT,
+    INCOMPATIBLE_WORKSPACE,
+    INCOMPATIBLE_AUTHORITY,
+    STALE_AUTHORITY,
+    UNSUPPORTED_REFERENCE_VERSION,
+    LIVE_AUTHORITY_REQUIRED,
 }
 
-internal sealed interface CanonicalSelectorDecoding<out Value> {
+sealed interface CanonicalSelectorDecoding<out Value> {
     data class Decoded<Value>(val value: Value) : CanonicalSelectorDecoding<Value>
     data class Rejected(
         val failure: CanonicalSelectorDecodingFailure,
@@ -47,7 +55,7 @@ private val selectorJson = Json {
     isLenient = false
 }
 
-internal object CanonicalSelectorCodec {
+object CanonicalSelectorCodec {
     /**
      * Proof transition: `CandidateSelector -> CanonicalSelectorEncoding`.
      *
@@ -56,6 +64,20 @@ internal object CanonicalSelectorCodec {
      * public-text admission failure. Raw document text leaves only at the protocol-token edge.
      */
     fun encodeCandidate(selector: CandidateSelector): CanonicalSelectorEncoding {
+        val retainedScopeNeeded = when (selector) {
+            is CandidateSelector.Declaration -> false
+            is CandidateSelector.File -> !selector.hasHistoricalFileScope(selector.file)
+            is CandidateSelector.Range -> !selector.hasHistoricalFileScope(selector.file)
+        }
+        val retainedScope = if (retainedScopeNeeded) {
+            when (val projected = selector.scope.selectorDocumentProjection()) {
+                is SelectorScopeDocumentProjection.Projected -> SelectorReadScopeDocument(
+                    selector.scope.sourceKinds.name, selector.scope.generatedSources.name,
+                    projected.kind, projected.file, projected.libraries, selector.constraints.selectorDocument())
+                SelectorScopeDocumentProjection.Rejected -> return CanonicalSelectorEncoding.Rejected(
+                    CanonicalSelectorEncodingFailure.UNSUPPORTED_SCOPE)
+            }
+        } else null
         val document = when (selector) {
             is CandidateSelector.Declaration -> {
                 val selection = selector.selection
@@ -71,12 +93,14 @@ internal object CanonicalSelectorCodec {
                 val file = selection.candidate.location.file.selectorDocumentProjection()
                 CandidateSelectorDocument.Declaration(
                     root = selection.lease.workspaceRoot.value,
-                    generation = selection.lease.generation.value,
+                    generation = (selection.lease as? SemanticReadLease)?.generation?.value,
+                    live = (selection.lease as? LiveSemanticReadAuthority)?.reference?.selectorDocument(),
                     sourceKinds = selection.scope.sourceKinds.name,
                     generatedSources = selection.scope.generatedSources.name,
                     scope = scope.kind,
                     scopeFile = scope.file,
                     libraries = scope.libraries,
+                    constraints = selection.constraints.selectorDocument(),
                     kind = selection.candidate.kind.name,
                     name = selection.candidate.name.value,
                     fileType = file.kind,
@@ -86,20 +110,26 @@ internal object CanonicalSelectorCodec {
             }
             is CandidateSelector.File -> CandidateSelectorDocument.File(
                 root = selector.lease.workspaceRoot.value,
-                generation = selector.lease.generation.value,
+                generation = (selector.lease as? SemanticReadLease)?.generation?.value,
+                live = (selector.lease as? LiveSemanticReadAuthority)?.reference?.selectorDocument(),
                 file = selector.file.path.value,
+                readScope = retainedScope,
             )
             is CandidateSelector.Range -> CandidateSelectorDocument.Range(
                 root = selector.lease.workspaceRoot.value,
-                generation = selector.lease.generation.value,
+                generation = (selector.lease as? SemanticReadLease)?.generation?.value,
+                live = (selector.lease as? LiveSemanticReadAuthority)?.reference?.selectorDocument(),
                 file = selector.file.path.value,
                 startInclusive = selector.startInclusive.value,
                 endExclusive = selector.endExclusive.value,
+                readScope = retainedScope,
             )
         }
         return encodeToken(
             CANDIDATE_PREFIX,
-            CANDIDATE_TOKEN_VERSION,
+            if (selector.lease is LiveSemanticReadAuthority ||
+                selector.constraints != SymbolDiscoveryConstraints.None || retainedScope != null
+            ) LIVE_TOKEN_VERSION else CANDIDATE_TOKEN_VERSION,
             selectorJson.encodeToString(CandidateSelectorDocument.serializer(), document),
         )
     }
@@ -113,9 +143,10 @@ internal object CanonicalSelectorCodec {
      */
     fun decodeCandidate(
         token: ProtocolText,
+        current: SemanticReadAuthority? = null,
     ): CanonicalSelectorDecoding<CandidateSelector> {
         val payload = when (
-            val admission = parseToken(token, CANDIDATE_PREFIX, CANDIDATE_TOKEN_VERSION)
+            val admission = parseToken(token, CANDIDATE_PREFIX, tokenVersion(token, CANDIDATE_TOKEN_VERSION))
         ) {
             is SelectorTokenPayloadAdmission.Admitted -> admission.payload
             is SelectorTokenPayloadAdmission.Rejected -> return admission.failure.rejected()
@@ -131,7 +162,18 @@ internal object CanonicalSelectorCodec {
                 CanonicalSelectorDecodingFailure.MALFORMED_DOCUMENT,
             )
         }
-        return document.admitCandidateSelector().asDecoding()
+        if (token.value.split(':')[1] == CANDIDATE_TOKEN_VERSION &&
+            (document.live != null || when (document) {
+                is CandidateSelectorDocument.Declaration -> document.constraints != null
+                is CandidateSelectorDocument.File -> document.readScope != null
+                is CandidateSelectorDocument.Range -> document.readScope != null
+            })) {
+            return CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.UNSUPPORTED_REFERENCE_VERSION)
+        }
+        when (val identity = admitSelectorReference(document.root, document.generation, document.live, current)) {
+            is CanonicalSelectorDecoding.Rejected -> return identity
+            is CanonicalSelectorDecoding.Decoded -> return document.admitCandidateSelector(identity.value).asDecoding()
+        }
     }
 
     /**
@@ -152,12 +194,14 @@ internal object CanonicalSelectorCodec {
         val file = selector.file.selectorDocumentProjection()
         val document = ExactSelectorDocument(
             root = selector.lease.workspaceRoot.value,
-            generation = selector.lease.generation.value,
+            generation = (selector.lease as? SemanticReadLease)?.generation?.value,
+                live = (selector.lease as? LiveSemanticReadAuthority)?.reference?.selectorDocument(),
             sourceKinds = selector.scope.sourceKinds.name,
             generatedSources = selector.scope.generatedSources.name,
             scope = scope.kind,
             scopeFile = scope.file,
             libraries = scope.libraries,
+            constraints = selector.constraints.selectorDocument(),
             fileType = file.kind,
             file = file.value,
             start = selector.range.startInclusive,
@@ -174,7 +218,8 @@ internal object CanonicalSelectorCodec {
         )
         return encodeToken(
             EXACT_PREFIX,
-            EXACT_TOKEN_VERSION,
+            if (selector.lease is LiveSemanticReadAuthority || selector.constraints != SymbolDiscoveryConstraints.None)
+                LIVE_TOKEN_VERSION else EXACT_TOKEN_VERSION,
             selectorJson.encodeToString(ExactSelectorDocument.serializer(), document),
         )
     }
@@ -186,9 +231,9 @@ internal object CanonicalSelectorCodec {
      * exact compiler-evidence and fingerprint invariants. [CanonicalSelectorDecodingFailure] is
      * the closed expected failure. Raw token text is extracted only by this decoder boundary.
      */
-    fun decodeExact(token: ProtocolText): CanonicalSelectorDecoding<SymbolSelector> {
+    fun decodeExact(token: ProtocolText, current: SemanticReadAuthority? = null): CanonicalSelectorDecoding<SymbolSelector> {
         val payload = when (
-            val admission = parseToken(token, EXACT_PREFIX, EXACT_TOKEN_VERSION)
+            val admission = parseToken(token, EXACT_PREFIX, tokenVersion(token, EXACT_TOKEN_VERSION))
         ) {
             is SelectorTokenPayloadAdmission.Admitted -> admission.payload
             is SelectorTokenPayloadAdmission.Rejected -> return admission.failure.rejected()
@@ -204,7 +249,13 @@ internal object CanonicalSelectorCodec {
                 CanonicalSelectorDecodingFailure.MALFORMED_DOCUMENT,
             )
         }
-        return document.admitExactSelector().asDecoding()
+        if (token.value.split(':')[1] == EXACT_TOKEN_VERSION && (document.live != null || document.constraints != null)) {
+            return CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.UNSUPPORTED_REFERENCE_VERSION)
+        }
+        when (val identity = admitSelectorReference(document.root, document.generation, document.live, current)) {
+            is CanonicalSelectorDecoding.Rejected -> return identity
+            is CanonicalSelectorDecoding.Decoded -> return document.admitExactSelector(identity.value).asDecoding()
+        }
     }
 }
 
@@ -293,3 +344,17 @@ private const val EXACT_PREFIX = "exact"
 private const val CANDIDATE_TOKEN_VERSION = "v2"
 private const val EXACT_TOKEN_VERSION = "v2"
 private const val TOKEN_PART_COUNT = 4
+
+private const val LIVE_TOKEN_VERSION = "v3"
+
+private fun tokenVersion(token: ProtocolText, published: String): String =
+    if (token.value.split(':').getOrNull(1) == LIVE_TOKEN_VERSION) LIVE_TOKEN_VERSION
+    else published
+
+private fun LiveSemanticReadReference.selectorDocument() = LiveSelectorAuthorityDocument(
+    host.value.toString(), epoch.value, contentView.name, version,
+)
+
+private fun CandidateSelector.hasHistoricalFileScope(file: SymbolDiscoveryFileIdentity.Workspace): Boolean =
+    scope == SymbolSearchScope.ExactFile(file.path, SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+        SymbolGeneratedSourcePolicy.INCLUDE) && constraints == SymbolDiscoveryConstraints.None

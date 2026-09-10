@@ -80,17 +80,16 @@ internal fun constraints(
 
 internal fun visibilityRequest(
     symbol: SymbolSelector,
-    predicate: QueryPredicate.Visibility,
     state: QueryExecutionState,
 ): SourceReadRequest = SourceReadRequest(
     anchor = SourceReadAnchor.Symbol(symbol),
     region = RegionSelection.Anchor,
     entities = EntitySelection.matching(
-        Containment.DIRECT,
+        Containment.SELF,
         listOf(
             EntityFilter.Declarations(
                 DeclarationKindSelection.from(setOf(symbol.kind.toDeclarationKind())).refined(),
-                VisibilitySelection.exact(predicate.values.values.toSet()).refined(),
+                VisibilitySelection.Any,
             ),
         ),
     ).refined(),
@@ -121,6 +120,7 @@ internal fun RelationFact.toQuerySymbol(
             expanded.lease,
             expanded.scope,
             expanded.evidence,
+            expanded.constraints,
         )
     }
     return QuerySymbol(
@@ -176,7 +176,7 @@ internal fun QueryItemFailure.projectedUtf8Size(): Long = when (this) {
 private fun SymbolSelector.projectedUtf8Size(): Long = buildString {
     append(lease.workspaceRoot.value)
     append('\u0000')
-    append(lease.generation.value)
+    append(lease.identity.revisionKey.value)
     append('\u0000')
     append(file.stableValue)
     append('\u0000')

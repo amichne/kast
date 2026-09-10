@@ -42,6 +42,7 @@ val cleanSlateProjects = listOf(
     ":traversal:service",
     ":query:contract",
     ":query:service",
+    ":query:protocol",
     ":topology:contract",
     ":topology:build",
     ":topology:service",
