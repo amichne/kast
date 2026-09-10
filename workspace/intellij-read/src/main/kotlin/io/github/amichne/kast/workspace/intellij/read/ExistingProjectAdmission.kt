@@ -120,6 +120,10 @@ class AdmittedIdeProject private constructor(
         LiveDetachedModelCapture.observeAsync(liveProject.project, canonicalRoot),
     )
 
+    /** Query admission requires exact imported names; unavailable facts never trigger a sync. */
+    internal suspend fun captureNamedGradleSourceScope(): Refinement<NamedGradleSourceScope, NamedGradleSourceScopeFailure> =
+        LiveNamedGradleSourceScopeCapture.capture(liveProject.project, canonicalRoot)
+
     /**
      * `AdmittedIdeProject -> ProjectReadEpochObservation`; returns one opaque retained-source epoch
      * or [ProjectReadEpochObservationFailure], without exposing Project or raw signal values.
