@@ -1,0 +1,16 @@
+run {
+    val inputPath = java.nio.file.Path.of(String(java.util.Base64.getDecoder().decode("@INPUT_BASE64@"), Charsets.UTF_8))
+    val input = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(inputPath)).asJsonObject
+    check(java.lang.ProcessHandle.current().pid() == input.get("hostPid").asLong)
+    val projects = com.intellij.openapi.project.ProjectManager.getInstance().openProjects.filter { it.basePath == input.get("project").asString }
+    check(projects.size <= 1)
+    val project = projects.singleOrNull()
+    val ready = project != null && project.isInitialized && !project.isDisposed && !com.intellij.openapi.project.DumbService.isDumb(project)
+    val imported = if (ready) com.intellij.openapi.externalSystem.service.project.ProjectDataManager.getInstance()
+        .getExternalProjectsData(project!!, com.intellij.openapi.externalSystem.model.ProjectSystemId("GRADLE"))
+        .any { it.externalProjectPath == input.get("project").asString && it.lastSuccessfulImportTimestamp > 0 &&
+            it.lastSuccessfulImportTimestamp == it.lastImportTimestamp && it.externalProjectStructure?.isReady == true } else false
+    java.nio.file.Files.writeString(inputPath.parent.resolve("restored.json"), com.google.gson.Gson().toJson(mapOf(
+        "sameHost" to true, "projectOpen" to (project != null), "smart" to ready, "imported" to imported,
+    )))
+}

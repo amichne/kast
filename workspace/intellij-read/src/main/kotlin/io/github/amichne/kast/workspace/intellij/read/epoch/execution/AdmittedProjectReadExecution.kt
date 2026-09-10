@@ -2,6 +2,7 @@ package io.github.amichne.kast.workspace.intellij.read.epoch.execution
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
@@ -63,6 +64,23 @@ internal fun interface AdmittedProjectReadComputation<out Value : Any> {
 internal class AdmittedProjectReadExecution private constructor(
     private val project: Project,
 ) {
+    /** Coroutine-bound counterpart: writes and owner cancellation cancel the platform read. */
+    suspend fun <Value : Any> executeAsync(
+        computation: AdmittedProjectReadComputation<Value>,
+    ): AdmittedProjectReadExecutionResult<Value> {
+        when (val preflight = observePreflightState()) {
+            ProjectReadExecutionState.READY -> Unit
+            is ProjectReadExecutionState.REJECTED -> return preflight.result
+        }
+        return readAction {
+            ProgressManager.checkCanceled()
+            when (val current = observeLifecycleState()) {
+                ProjectReadExecutionState.READY ->
+                    AdmittedProjectReadExecutionResult.Completed(computation.compute(project))
+                is ProjectReadExecutionState.REJECTED -> current.result
+            }
+        }
+    }
     /**
      * Proof transition: `(AdmittedProjectReadExecution, AdmittedProjectReadComputation<Value>) ->
      * AdmittedProjectReadExecutionResult<Value>`.

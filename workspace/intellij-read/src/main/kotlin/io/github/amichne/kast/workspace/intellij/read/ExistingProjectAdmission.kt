@@ -1,6 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read
 
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.progress.ProcessCanceledException
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.AdmittedIdeHostCompatibility
@@ -234,7 +235,20 @@ internal fun interface ExistingProjectAdmissionOperations {
 }
 
 /** Project-service session that can install and retain at most one project-read epoch authority. */
-class AdmittedIdeProjectSession {
+class AdmittedIdeProjectSession private constructor(
+    private val admissions: ExistingProjectAdmissionOperations,
+) {
+    constructor() : this(AdmittedIdeProject::admit)
+
+    /** Service-owned listener lifetime for explicitly attached hosts. */
+    internal constructor(owner: Disposable) : this(ExistingProjectAdmissionOperations { project, root, candidate, policy ->
+        AdmittedIdeProject.admitObserved(
+            project, root, candidate, policy, LiveExistingProjectObservation,
+            ExistingProjectReadEpochSourceFactory { retained, retainedRoot ->
+                LiveProjectReadEpochSourceFactory.createOwned(retained, retainedRoot, owner)
+            },
+        )
+    })
     private var cached: CachedAdmittedIdeProject? = null
 
     fun admit(
@@ -247,7 +261,7 @@ class AdmittedIdeProjectSession {
         expectedRoot,
         compatibilityCandidate,
         compatibilityPolicy,
-        AdmittedIdeProject::admit,
+        admissions,
     )
 
     @Synchronized

@@ -28,6 +28,11 @@ The root [settings](../../settings.gradle.kts) declares the active Gradle projec
 - Runtime composition connects proven contracts to effectful adapters.
 - Server, indexer, App Server, and CLI modules expose transport and process boundaries.
 
+The IntelliJ read adapter also depends on symbol contracts for the experimental
+[hosted query](../flows/hosted-query.md). This permits detached compiler evidence
+without introducing an isolated workspace opener or importing implementation
+dependencies from semantic service modules.
+
 ## Verify
 
 ```shell

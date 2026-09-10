@@ -52,6 +52,8 @@ internal object LiveDetachedModelCapture {
             readAction { observeInsideRead(project, expectedRoot) }
         } catch (cancellation: ProcessCanceledException) {
             throw cancellation
+        } catch (cancellation: kotlinx.coroutines.CancellationException) {
+            throw cancellation
         } catch (_: RuntimeException) {
             rejected(DetachedModelCaptureFailure.OBSERVATION_FAILED)
         }
