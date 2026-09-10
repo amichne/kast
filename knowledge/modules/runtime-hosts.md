@@ -42,6 +42,8 @@ The indexer runs the semantic runtime inside the admitted IntelliJ environment. 
 These hosts communicate through protocol and distribution contracts; reachability alone does not establish readiness or semantic authority.
 
 `runtime:hosted` is a separate IDEA plugin for existing-project reads.
+Its release archive carries the Kast release version and exact IDEA build in its
+name and descriptor; the public installer admits both before activation.
 Its project service owns a bounded local socket and delegates saved-content
 semantic reads to `workspace:intellij-read`. It has no project-opening, Gradle
 import, or worker-launch authority and is excluded from isolated runtime

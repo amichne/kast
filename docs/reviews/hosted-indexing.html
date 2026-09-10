@@ -205,7 +205,7 @@ kast index generate-completion zsh</code></pre>
   <h2>Build once, query the open project</h2>
   <ol>
     <li>Use the branch checkout and an already-open supported Kotlin Gradle project in IDEA. Let IDEA complete its normal model import and indexing.</li>
-    <li>Build <code>:runtime:hosted:hostedPlugin</code> with <code>-PhostedIdeaHome</code> pointing to the exact running installation. Install the resulting <code>runtime/hosted/build/distributions/kast-ide-hosted-0.1.0.zip</code> through IDEA’s plugin installation workflow.</li>
+    <li>Build <code>:runtime:hosted:hostedPlugin</code> with <code>-PhostedIdeaHome</code> pointing to the exact running installation. The release shell installer verifies and installs the resulting versioned, exact-build archive into IDEA’s user plugin directory; restart IDEA to activate it.</li>
     <li>Build <code>:cli:installDist</code>. Run <code>cli/build/install/kast/bin/kast index status --root /absolute/root</code>.</li>
     <li>Use <code>index classes</code> to discover a class identity, then pass the qualified identity to <code>index supertype</code>. The latter performs fresh index selection and semantic proof within its own request.</li>
   </ol>

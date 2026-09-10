@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inventory the two release archives with checksum-pinned Syft."""
+"""Inventory the release archives with checksum-pinned Syft."""
 from __future__ import annotations
 
 import argparse
@@ -79,9 +79,13 @@ def scanner(root: Path) -> Path:
 
 
 def generate(root: Path, directory: Path, version: str, sha: str) -> None:
+    plugins = tuple(directory.glob(f"kast-ide-hosted-v{version}-idea-*.zip"))
+    if len(plugins) != 1:
+        raise SbomError("expected exactly one IDEA-build-specific hosted plugin")
     names = (
         f"kast-control-v{version}-macos-aarch64.tar.gz",
         f"kast-semantic-runtime-{version}-macos-aarch64.zip",
+        plugins[0].name,
     )
     inputs = {name: digest(directory / name) for name in names}
     output = directory / f"kast-sbom-v{version}.cdx.json"

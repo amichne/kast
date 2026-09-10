@@ -32,12 +32,12 @@ Kast currently supports this host contract:
 | --- | --- |
 | Platform | macOS on Apple silicon |
 | Repository | An on-disk Kotlin Gradle repository |
-| IntelliJ | IDEA and Kotlin plugin on JetBrains platform release line 262 |
+| IntelliJ | IDEA and bundled Kotlin plugin build `262.10315.125` |
 | Runtime | The Java 25 JBR bundled with the selected IDEA installation |
 
-The tested reference pair is IDEA `262.9437.185` with Kotlin plugin
-`262.9437.185-IJ`. Compatible patch builds on release line 262 are accepted.
-Kast uses the observed patch pair as part of runtime identity.
+The tested and packaged pair is IDEA `262.10315.125` with Kotlin plugin
+`262.10315.125-IJ`. The installer selects an exact-build plugin archive and
+rejects an IDEA build for which the release has no matching archive.
 
 The built-in Codex integration also requires an installed `codex` executable on
 `PATH`, or an absolute `CODEX_EXECUTABLE`.
@@ -50,8 +50,10 @@ Install the latest published release:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-The installer verifies the matched control and semantic-runtime payloads before
-activation. It does not install IDEA or write to an IDEA plugin directory.
+The installer verifies the matched control, semantic-runtime, and existing-IDE
+plugin payloads before activation. It installs the plugin into IDEA's user plugin
+directory. Restart IDEA after installation to activate it. The installer does
+not install IDEA itself or modify the application bundle.
 
 If more than one compatible IDEA installation is available, select it
 explicitly:

@@ -1,6 +1,7 @@
 """Checkout and public bootstrap tests; never touch real installed services."""
 
 import hashlib
+import io
 import json
 from pathlib import Path
 import platform
@@ -160,6 +161,10 @@ class BootstrapInstallTest(IsolatedInstallerTest):
         for child in ("Resources", "plugins/Kotlin", "jbr/Contents/Home/bin"):
             (self.idea / child).mkdir(parents=True)
         (self.idea / "Resources/build.txt").write_text("IU-262.1")
+        (self.idea / "Resources/product-info.json").write_text(json.dumps({
+            "buildNumber": "262.1",
+            "dataDirectoryName": "IntelliJIdea2026.2",
+        }))
         (self.idea / "jbr/Contents/Home/release").write_text('JAVA_VERSION="25"\nOS_ARCH="aarch64"\n')
         self.write_script(self.idea / "jbr/Contents/Home/bin/java", "#!/bin/bash\nexit 0\n")
         self.version = "1.2.3"
@@ -168,6 +173,9 @@ class BootstrapInstallTest(IsolatedInstallerTest):
         self.runtime = self.assets / f"kast-semantic-runtime-{self.version}-macos-aarch64.zip"
         with zipfile.ZipFile(self.runtime, "w") as archive:
             archive.writestr("kast-indexer", "fixture")
+        self.plugin = self.assets / f"kast-ide-hosted-v{self.version}-idea-262.1.zip"
+        self.write_plugin("262.1")
+
         product = self.root / "product"
         (product / "bin").mkdir(parents=True)
         self.write_script(product / "bin/kast", '''#!/bin/bash
@@ -183,7 +191,7 @@ PYTHON
         self.control = self.assets / f"kast-control-v{self.version}-macos-aarch64.tar.gz"
         with tarfile.open(self.control, "w:gz") as archive:
             archive.add(product / "bin", arcname="bin")
-        for asset in (self.control, self.runtime):
+        for asset in (self.control, self.runtime, self.plugin):
             asset.with_name(asset.name + ".sha256").write_text(
                 f"{hashlib.sha256(asset.read_bytes()).hexdigest()}  {asset.name}\n",
             )
@@ -193,6 +201,19 @@ PYTHON
             KAST_INSTALL_ROOT=str(self.root / "install"),
             KAST_BIN_DIR=str(self.root / "bin"),
         )
+
+    def write_plugin(self, until_build):
+        descriptor = """<idea-plugin>
+  <id>io.github.amichne.kast.ide-hosted</id>
+  <version>1.2.3</version>
+  <idea-version since-build="262.1" until-build="{}"/>
+</idea-plugin>
+""".format(until_build)
+        plugin_jar = io.BytesIO()
+        with zipfile.ZipFile(plugin_jar, "w") as archive:
+            archive.writestr("META-INF/plugin.xml", descriptor)
+        with zipfile.ZipFile(self.plugin, "w") as archive:
+            archive.writestr("kast-ide-hosted/lib/kast-ide-hosted-1.2.3.jar", plugin_jar.getvalue())
 
     def run_installer(self, *args):
         return subprocess.run(
@@ -211,6 +232,35 @@ PYTHON
         self.assertEqual(hashlib.sha256(self.control.read_bytes()).hexdigest(), contract["KAST_INSTALL_CONTROL_SHA256"])
         self.assertEqual(hashlib.sha256(self.runtime.read_bytes()).hexdigest(), contract["KAST_INSTALL_RUNTIME_SHA256"])
         self.assertEqual(str(self.idea), contract["KAST_INSTALL_IDEA_HOME"])
+        self.assertFalse((self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins").exists())
+
+    def test_programmatic_plugin_install_uses_verified_exact_build_archive(self):
+        result = self.run_installer()
+        self.assertEqual(0, result.returncode, result.stderr)
+        installed = self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted"
+        self.assertTrue((installed / "lib/kast-ide-hosted-1.2.3.jar").is_file())
+        self.assertIn("restart IntelliJ IDEA", result.stderr)
+
+    def test_programmatic_plugin_update_replaces_only_owned_directory(self):
+        plugin_root = self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins"
+        (plugin_root / "kast-ide-hosted").mkdir(parents=True)
+        (plugin_root / "kast-ide-hosted/old").write_text("old")
+        (plugin_root / "other-plugin").mkdir()
+        (plugin_root / "other-plugin/keep").write_text("keep")
+        result = self.run_installer()
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse((plugin_root / "kast-ide-hosted/old").exists())
+        self.assertEqual("keep", (plugin_root / "other-plugin/keep").read_text())
+
+    def test_plugin_build_mismatch_precedes_staged_installer(self):
+        self.write_plugin("262.2")
+        self.plugin.with_name(self.plugin.name + ".sha256").write_text(
+            f"{hashlib.sha256(self.plugin.read_bytes()).hexdigest()}  {self.plugin.name}\n",
+        )
+        result = self.run_installer()
+        self.assertNotEqual(0, result.returncode)
+        self.assertFalse((self.root / "calls").exists())
+        self.assertFalse((self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins").exists())
 
     def test_checksum_rejection_precedes_staged_installer(self):
         self.runtime.with_name(self.runtime.name + ".sha256").write_text(f"{'0' * 64}  {self.runtime.name}\n")

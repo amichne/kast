@@ -15,7 +15,7 @@ IDEA's **Install Plugin from Disk** action:
 ```shell
 ./gradlew :runtime:hosted:hostedPlugin \
   -PhostedIdeaHome='/path/to/IntelliJ IDEA.app/Contents'
-# Archive: runtime/hosted/build/distributions/kast-ide-hosted-0.1.0.zip
+# Archive: runtime/hosted/build/distributions/kast-ide-hosted-v<VERSION>-idea-<BUILD>.zip
 ./gradlew :cli:installDist
 cli/build/install/kast/bin/kast index status --root /absolute/path/to/kast
 cli/build/install/kast/bin/kast index classes Refinement --root /absolute/path/to/kast

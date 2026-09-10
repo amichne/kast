@@ -25,7 +25,13 @@ tasks.processResources {
     val schema = rootProject.file("protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json")
     val registry = rootProject.file("protocol/contract/src/main/resources/ide-hosted/hosted-query.operations.json")
     fun digest(file: File) = "sha256:" + MessageDigest.getInstance("SHA-256").digest(file.readBytes()).joinToString("") { "%02x".format(it) }
-    val values = mapOf("ideBuild" to ideBuild, "kotlinBuild" to "$ideBuild-IJ", "schemaDigest" to digest(schema), "registryDigest" to digest(registry))
+    val values = mapOf(
+        "ideBuild" to ideBuild,
+        "kotlinBuild" to "$ideBuild-IJ",
+        "pluginVersion" to project.version.toString(),
+        "schemaDigest" to digest(schema),
+        "registryDigest" to digest(registry),
+    )
     inputs.properties(values)
     expand(values)
 }
@@ -60,8 +66,10 @@ dependencies {
 val hostedPlugin by tasks.registering(Zip::class) {
     group = "distribution"
     description = "Packages the project-owned existing-IDE index endpoint."
-    archiveFileName.set("kast-ide-hosted-0.1.0.zip")
+    archiveFileName.set("kast-ide-hosted-v${project.version}-idea-$ideBuild.zip")
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
     into("kast-ide-hosted/lib") {
         from(tasks.jar)
         from(project(":workspace:intellij-read").tasks.named("jar"))

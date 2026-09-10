@@ -33,8 +33,8 @@ from pathlib import Path
 import sys
 
 document = json.loads(Path(sys.argv[1]).read_text())
-assert document["ideaBuild"] == "262.9437.185", document
-assert document["kotlinPluginBuild"] == "262.9437.185-IJ", document
+assert document["ideaBuild"] == "262.10315.125", document
+assert document["kotlinPluginBuild"] == "262.10315.125-IJ", document
 assert document["kastPluginSha256"].startswith("sha256:"), document
 PY
 if find "$product_root" \( -name 'kast-indexer' -o -name 'idea-home' \

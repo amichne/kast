@@ -191,6 +191,130 @@ with tarfile.open(archive, "r:gz") as source:
 PYTHON
 }
 
+read_idea_identity() {
+  local metadata="$1/Resources/product-info.json"
+  [[ -f "$metadata" && ! -L "$metadata" ]] || fail "IDEA product metadata is unavailable"
+  python3 - "$metadata" <<'PYTHON'
+import json
+from pathlib import Path
+import re
+import sys
+
+metadata = Path(sys.argv[1])
+value = json.loads(metadata.read_bytes())
+build = value.get("buildNumber")
+directory = value.get("dataDirectoryName")
+if not isinstance(build, str) or re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", build) is None:
+    raise SystemExit("kast-install: IDEA build identity is invalid")
+if not isinstance(directory, str) or re.fullmatch(r"[A-Za-z0-9._-]+", directory) is None:
+    raise SystemExit("kast-install: IDEA data-directory identity is invalid")
+print(f"{build}\t{directory}")
+PYTHON
+}
+
+extract_hosted_plugin() {
+  local archive="$1"
+  local destination="$2"
+  local version="$3"
+  local build="$4"
+  python3 - "$archive" "$destination" "$version" "$build" <<'PYTHON'
+import os
+from pathlib import Path, PurePosixPath
+import shutil
+import stat
+import sys
+import xml.etree.ElementTree as etree
+import zipfile
+
+archive, destination = Path(sys.argv[1]), Path(sys.argv[2])
+version, build = sys.argv[3], sys.argv[4]
+destination.mkdir(mode=0o700)
+with zipfile.ZipFile(archive) as source:
+    members = source.infolist()
+    if not members or len(members) > 4096 or sum(member.file_size for member in members) > 128 * 1024 * 1024:
+        raise SystemExit("kast-install: hosted plugin archive layout rejected")
+    for member in members:
+        path = PurePosixPath(member.filename)
+        mode = member.external_attr >> 16
+        if (path.is_absolute() or not path.parts or path.parts[0] != "kast-ide-hosted"
+                or any(part in ("", ".", "..") for part in path.parts)
+                or stat.S_ISLNK(mode)):
+            raise SystemExit("kast-install: hosted plugin archive path rejected")
+        if member.is_dir():
+            continue
+        target = destination.joinpath(*path.parts)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with source.open(member) as opened, os.fdopen(descriptor, "wb") as output:
+            shutil.copyfileobj(opened, output)
+
+plugin = destination / "kast-ide-hosted"
+library = plugin / "lib"
+if not library.is_dir():
+    raise SystemExit("kast-install: hosted plugin has no library directory")
+descriptors = []
+for jar in library.iterdir():
+    if not jar.is_file() or jar.is_symlink() or jar.suffix != ".jar":
+        continue
+    try:
+        with zipfile.ZipFile(jar) as candidate:
+            descriptors.append(candidate.read("META-INF/plugin.xml"))
+    except KeyError:
+        pass
+if len(descriptors) != 1:
+    raise SystemExit("kast-install: hosted plugin descriptor identity is ambiguous")
+root = etree.fromstring(descriptors[0])
+identity = root.findtext("id")
+plugin_version = root.findtext("version")
+compatibility = root.find("idea-version")
+since = None if compatibility is None else compatibility.get("since-build")
+until = None if compatibility is None else compatibility.get("until-build")
+if identity != "io.github.amichne.kast.ide-hosted":
+    raise SystemExit("kast-install: hosted plugin identity is invalid")
+if plugin_version != version:
+    raise SystemExit("kast-install: hosted plugin version is mismatched")
+if since != build or until != build:
+    raise SystemExit("kast-install: hosted plugin IDEA build is mismatched")
+PYTHON
+}
+
+activate_hosted_plugin() {
+  local staged="$1"
+  local plugin_root="$2"
+  python3 - "$staged" "$plugin_root" <<'PYTHON'
+from pathlib import Path
+import shutil
+import sys
+import uuid
+
+staged, root = Path(sys.argv[1]), Path(sys.argv[2])
+source = staged / "kast-ide-hosted"
+root.mkdir(parents=True, exist_ok=True)
+if root.is_symlink() or not root.is_dir():
+    raise SystemExit("kast-install: IDEA plugin directory is not a physical directory")
+destination = root / "kast-ide-hosted"
+if destination.is_symlink() or (destination.exists() and not destination.is_dir()):
+    raise SystemExit("kast-install: existing hosted plugin is not a physical directory")
+token = uuid.uuid4().hex
+candidate = root / f".kast-ide-hosted.install-{token}"
+backup = root / f".kast-ide-hosted.backup-{token}"
+shutil.copytree(source, candidate)
+replaced = destination.exists()
+try:
+    if replaced:
+        destination.replace(backup)
+    candidate.replace(destination)
+except BaseException:
+    if candidate.exists():
+        shutil.rmtree(candidate)
+    if replaced and backup.exists() and not destination.exists():
+        backup.replace(destination)
+    raise
+if backup.exists():
+    shutil.rmtree(backup)
+PYTHON
+}
+
 script_source="${BASH_SOURCE[0]:-}"
 if [[ "${1:-}" == "--local" ]]; then
   [[ -n "$script_source" && -f "$script_source" ]] ||
@@ -262,6 +386,9 @@ else
   idea_home="$(discover_idea_home)"
 fi
 java_home="$idea_home/jbr/Contents/Home"
+IFS=$'\t' read -r idea_build idea_data_directory < <(read_idea_identity "$idea_home")
+[[ -n "$idea_build" && -n "$idea_data_directory" ]] || fail "IDEA product identity is unavailable"
+idea_plugin_root="$HOME/Library/Application Support/JetBrains/$idea_data_directory/plugins"
 
 if [[ -z "$version" || "$version" == latest ]]; then
   [[ -z "${KAST_RELEASE_BASE_URL:-}" ]] || fail "KAST_RELEASE_BASE_URL requires KAST_VERSION"
@@ -276,6 +403,7 @@ release_url="${KAST_RELEASE_BASE_URL:-https://github.com/$REPOSITORY/releases/do
 release_url="${release_url%/}/$release"
 control_name="kast-control-v$version-macos-aarch64.tar.gz"
 runtime_name="kast-semantic-runtime-$version-macos-aarch64.zip"
+plugin_name="kast-ide-hosted-v$version-idea-$idea_build.zip"
 temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-install.XXXXXX")"
 temporary_root="$(CDPATH='' cd -- "$temporary_root" && pwd -P)"
 cleanup() { rm -rf -- "$temporary_root"; }
@@ -284,11 +412,15 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 note "preparing Kast $version"
-for name in "$control_name" "$control_name.sha256" "$runtime_name" "$runtime_name.sha256"; do
+for name in "$control_name" "$control_name.sha256" "$runtime_name" "$runtime_name.sha256" \
+  "$plugin_name" "$plugin_name.sha256"; do
   fetch_asset "$name" "$temporary_root/$name"
 done
 control_digest="$(verify_checksum "$temporary_root/$control_name" "$temporary_root/$control_name.sha256" "$control_name")"
 runtime_digest="$(verify_checksum "$temporary_root/$runtime_name" "$temporary_root/$runtime_name.sha256" "$runtime_name")"
+plugin_digest="$(verify_checksum "$temporary_root/$plugin_name" "$temporary_root/$plugin_name.sha256" "$plugin_name")"
+plugin_stage="$temporary_root/hosted-plugin"
+extract_hosted_plugin "$temporary_root/$plugin_name" "$plugin_stage" "$version" "$idea_build"
 control_root="$temporary_root/control"
 extract_control "$temporary_root/$control_name" "$control_root"
 [[ -x "$control_root/bin/kast" ]] || fail "control archive has no executable installer"
@@ -313,3 +445,9 @@ export JAVA="$java_home/bin/java"
 export JAVA_HOME="$java_home"
 
 "$control_root/bin/kast" installation install
+if [[ "$mode" == plan ]]; then
+  note "verified hosted plugin $plugin_digest for IDEA $idea_build; installation planned at $idea_plugin_root/kast-ide-hosted"
+else
+  activate_hosted_plugin "$plugin_stage" "$idea_plugin_root"
+  note "installed hosted plugin for IDEA $idea_build; restart IntelliJ IDEA to activate it"
+fi

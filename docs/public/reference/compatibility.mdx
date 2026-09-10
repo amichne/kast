@@ -15,9 +15,8 @@ keywords: ["compatibility", "upgrade", "preview", "rollback"]
 ---
 
 Kast supports Apple Silicon macOS, on-disk Kotlin Gradle repositories, and the
-IntelliJ platform line named in [Install and connect](/start). Linux, Intel
-macOS, other languages, and other IntelliJ platform lines are not currently
-promised.
+exact IntelliJ build named in [Install and connect](/start). Linux, Intel macOS,
+other languages, and other IntelliJ builds are not currently promised.
 
 ## Agent integration contract
 
@@ -43,9 +42,11 @@ version must not turn unknown or stale evidence into an unqualified success.
 
 ## Upgrades
 
-The installer downloads and verifies a matched control and semantic-runtime
-release before replacing the active Kast installation. Ordinary upgrades and
-uninstall preserve repository source and unrelated JetBrains state.
+The installer downloads and verifies a matched control, semantic-runtime, and
+exact-build existing-IDE plugin before replacing the active Kast installation
+and the Kast-owned IDEA user plugin directory. Restart IDEA after an install or
+upgrade to load that plugin. Ordinary upgrades and uninstall preserve repository
+source and unrelated JetBrains state.
 
 For reproducible environments, run the installer from the same explicit release
 tag passed to `--version`:
