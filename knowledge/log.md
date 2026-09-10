@@ -7,6 +7,8 @@
   admitted supertype read and publication checks.
 - Exposed qualified supertype selection in the native CLI, validating the exact
   response identity and detached stage with no Python runtime dependency.
+- Promoted supported existing-IDE reads to the public `kast index` family before
+  runtime bootstrap; retained `kast ide` compatibility and internal-only sync.
 
 - Added the compiled existing-project Kotlin direct-supertype query, bounded
   cancellation and retirement, and explicit request-local evidence limits.

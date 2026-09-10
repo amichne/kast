@@ -13,6 +13,44 @@ class ExistingIdeCliTest {
     private val root = CanonicalRoot(Path.of("/workspace"))
     private val descriptor = ExistingIdeDescriptor(123)
 
+    @Test fun `primary index commands route directly to the existing IDE`() {
+        for (arguments in listOf(listOf("status"), listOf("classes", "Refinement"), listOf("supertype", "example.Child"))) {
+            var calls = 0
+            val result = executeExistingIdeCli(listOf("index") + arguments, root.path,
+                CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) },
+                ExistingIdeClient { _, _ -> calls++; ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE) })
+            assertEquals(1, calls)
+            assertTrue(result.document.value.contains("ide-host-unavailable"))
+        }
+    }
+
+    @Test fun `index runtime selection fails closed before installed bootstrap`() {
+        for (argv in listOf(listOf("index"), listOf("index", "sync"), listOf("index", "unknown"), listOf("index", "--help"), listOf("ide", "classes", "C"))) {
+            assertEquals(CliRuntimePath.EXISTING_IDE, selectCliRuntimePath(argv))
+        }
+        for (argv in listOf(emptyList(), listOf("query"), listOf("start"), listOf("index-other"))) {
+            assertEquals(CliRuntimePath.INSTALLED, selectCliRuntimePath(argv))
+        }
+        val roots = CanonicalRootDiscoverer { fail("Internal sync reached root discovery") }
+        val client = ExistingIdeClient { _, _ -> fail("Internal sync reached host") }
+        assertNotEquals(0, executeExistingIdeCli(listOf("index", "sync"), root.path, roots, client).code)
+        assertEquals(0, executeExistingIdeCli(listOf("index", "--help"), root.path, roots, client).code)
+        for (shell in listOf("bash", "zsh", "fish")) {
+            val completion = executeExistingIdeCli(listOf("index", "generate-completion", shell), root.path, roots, client)
+            assertEquals(0, completion.code)
+            assertTrue(completion.document.value.contains("supertype"))
+        }
+    }
+
+    @Test fun `full command graph retains the same primary index action`() {
+        val factory = io.github.amichne.kast.cli.command.CliCommandGraphFactory.create(io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers())
+            as io.github.amichne.kast.cli.command.CliCommandGraphConstruction.Created
+        val parsed = factory.factory.parse(listOf("index", "supertype", "example.Child"))
+            as io.github.amichne.kast.cli.command.CliCommandParsing.Parsed
+        val action = parsed.action as io.github.amichne.kast.cli.command.CliAction.Local.ExistingIde
+        assertEquals("example.Child", (action.operation as ExistingIdeOperation.Supertype).name.value)
+    }
+
     @Test fun `hosted help resolves without root or socket effects`() {
         val roots = CanonicalRootDiscoverer { fail("Help attempted root discovery") }
         val client = ExistingIdeClient { _, _ -> fail("Help attempted socket access") }

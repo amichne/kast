@@ -1,7 +1,7 @@
 # Existing IDEA index endpoint
 
 The `runtime:hosted` plugin serves bounded semantic reads from an already open
-IDEA project over a local Unix socket. The regular executable's `kast ide`
+IDEA project over a local Unix socket. The regular executable's `kast index`
 command is the primary client for class indexing. Normal requests use the
 installed project service, the cached Gradle
 model, IDEA's Kotlin stub index, and K2. They do not invoke the script carrier,
@@ -17,16 +17,18 @@ IDEA's **Install Plugin from Disk** action:
   -PhostedIdeaHome='/path/to/IntelliJ IDEA.app/Contents'
 # Archive: runtime/hosted/build/distributions/kast-ide-hosted-0.1.0.zip
 ./gradlew :cli:installDist
-cli/build/install/kast/bin/kast ide status --root /absolute/path/to/kast
-cli/build/install/kast/bin/kast ide classes Refinement --root /absolute/path/to/kast
-cli/build/install/kast/bin/kast ide supertype io.github.amichne.kast.kernel.Refinement.Refined --root /absolute/path/to/kast
-cli/build/install/kast/bin/kast ide generate-completion zsh
+cli/build/install/kast/bin/kast index status --root /absolute/path/to/kast
+cli/build/install/kast/bin/kast index classes Refinement --root /absolute/path/to/kast
+cli/build/install/kast/bin/kast index supertype io.github.amichne.kast.kernel.Refinement.Refined --root /absolute/path/to/kast
+cli/build/install/kast/bin/kast index generate-completion zsh
 ```
 
 `--root` defaults to discovering the Gradle root from the current directory.
 The native CLI selects this command family before isolated-product bootstrap;
 it can query an installed hosted plugin without configuring a sidecar runtime.
-Help and completion for Bash, Zsh, and Fish run locally. The client validates
+The earlier `kast ide` spelling uses the same implementation. IDEA owns index
+updates; these reads require no Kast index-sync operation. Help and completion
+for Bash, Zsh, and Fish run locally. The client validates
 the shared schemas, exact response root and class name, and descriptor host
 identity, and rejects duplicate JSON fields and trailing documents. Following
 the CLI's existing outcome convention, received JSON goes to stdout with exit
@@ -125,7 +127,7 @@ counts `1, 0, 0, 1, 0` for creation, absent future name, old-name removal,
 new-name discovery, and final removal. The fixture was removed. Explicit
 plugin unload retired the socket and descriptor; a client then returned
 `HOST_UNAVAILABLE`. Reattachment in the same native process served queries again.
-The built native `kast ide` executable then described that same host and returned
+The built native `kast index` executable then described that same host and returned
 six compiler-resolved `Refinement` declarations. Portable command tests cover
 help, completion, exact-root routing, and unavailable hosts; native socket tests
 cover complete, oversized, truncated, and invalid-UTF-8 responses.

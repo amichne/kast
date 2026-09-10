@@ -15,13 +15,18 @@ readiness, workspace synchronization, and intermediate semantic operations.
 
 ## Existing IDEA index
 
-This checkout provides `kast ide classes <name>` for bounded compiler-resolved
+The primary indexing commands in this checkout are `kast index classes <name>`
+and `kast index supertype <qualified-name>`. They provide bounded compiler-resolved
 class discovery in an already open IDEA project. It uses that project's Kotlin
 index and saved content through the separate hosted plugin. Missing IDE state
 returns unavailability. Build and install the plugin following the
 [existing-IDE endpoint runbook](experiments/host-observation/HOSTED_ENDPOINT.md),
-then use `kast ide status --root /path/to/repository` and
-`kast ide classes Refinement --root /path/to/repository`.
+then use `kast index status --root /path/to/repository` and
+`kast index classes Refinement --root /path/to/repository`.
+
+IDEA owns index updates. These commands require no Kast index synchronization,
+separate workspace, copied index storage, or Python runtime. The earlier `kast ide`
+spelling remains available through the same command implementation.
 
 The hosted command runs before isolated-runtime bootstrap. General semantic
 commands and App Server queries retain their existing runtime and publication
