@@ -1,8 +1,9 @@
 package io.github.amichne.kast.relation.contract
 
-import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
+import io.github.amichne.kast.symbol.contract.fingerprintFields
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -258,12 +259,12 @@ enum class RelationContinuationRestorationFailure {
     INTEGRITY_MISMATCH,
 }
 
-/** Resume authority bound to one exact subject, scope, meaning, generation, and provider prefix. */
+/** Resume authority bound to one exact subject, scope, meaning, authority, and provider prefix. */
 class RelationContinuation private constructor(
     val subject: RelationEndpointFingerprint,
     val meaning: RelationMeaning,
     val scope: RelationScopeFingerprint,
-    val generation: EvidenceGeneration,
+    val authority: SemanticReadIdentity,
     val nextProviderCursor: RelationProviderCursor,
     val fingerprint: RelationContinuationFingerprint,
 ) {
@@ -272,7 +273,7 @@ class RelationContinuation private constructor(
          * Proof transition: `(RelationRequest, RelationProviderCursor) -> RelationContinuation`.
          *
          * Establishes an opaque continuation bound to the request's exact subject, closed
-         * meaning, and generation at the next native work position. Raw offset extraction is
+         * meaning, and authority at the next native work position. Raw offset extraction is
          * permitted only inside a bounded relation compiler or continuation transport codec.
          */
         fun issue(
@@ -285,13 +286,13 @@ class RelationContinuation private constructor(
                 subject = request.subject.fingerprint,
                 meaning = request.meaning,
                 scope = scope,
-                generation = request.subject.lease.generation,
+                authority = request.subject.lease.identity,
                 nextProviderCursor = nextProviderCursor,
                 fingerprint = relationContinuationFingerprint(
                     request.subject.fingerprint,
                     request.meaning,
                     scope,
-                    request.subject.lease.generation,
+                    request.subject.lease.identity,
                     nextProviderCursor,
                 ),
             )
@@ -302,7 +303,7 @@ class RelationContinuation private constructor(
             subject: RelationEndpointFingerprint,
             meaning: RelationMeaning,
             scope: RelationScopeFingerprint,
-            generation: EvidenceGeneration,
+            authority: SemanticReadIdentity,
             nextProviderCursor: RelationProviderCursor,
             fingerprint: RelationContinuationFingerprint,
         ): Refinement<RelationContinuation, RelationContinuationRestorationFailure> =
@@ -311,7 +312,7 @@ class RelationContinuation private constructor(
                     subject,
                     meaning,
                     scope,
-                    generation,
+                    authority,
                     nextProviderCursor,
                 )
             ) {
@@ -320,7 +321,7 @@ class RelationContinuation private constructor(
                         subject,
                         meaning,
                         scope,
-                        generation,
+                        authority,
                         nextProviderCursor,
                         fingerprint,
                     ),
@@ -387,7 +388,7 @@ class RelationRequest private constructor(
          * RelationRequest`.
          *
          * Establishes the initial page of the next closed semantic hop from an already exact,
-         * compiler-grounded related endpoint. The endpoint's root, generation, scope, declaration,
+         * compiler-grounded related endpoint. The endpoint's root, authority, scope, declaration,
          * and compiler identity remain sealed; primitive reconstruction is not permitted.
          */
         fun start(
@@ -406,7 +407,7 @@ class RelationRequest private constructor(
          * RelationContinuation) -> Refinement<RelationRequest, RelationResumeFailure>`.
          *
          * Establishes that continuation authority belongs to the exact selector subject, meaning,
-         * and generation of this one-hop read. [RelationResumeFailure] is the closed expected
+         * and authority of this one-hop read. [RelationResumeFailure] is the closed expected
          * failure. Raw continuation decoding may occur only before this admission boundary.
          */
         fun resume(
@@ -426,7 +427,7 @@ class RelationRequest private constructor(
          * RelationContinuation) -> Refinement<RelationRequest, RelationResumeFailure>`.
          *
          * Establishes that continuation authority belongs to the same exact resolved endpoint,
-         * meaning, and generation. [RelationResumeFailure] is the closed expected failure. Raw
+         * meaning, and authority. [RelationResumeFailure] is the closed expected failure. Raw
          * continuation decoding may occur only before this admission boundary.
          */
         fun resume(
@@ -445,7 +446,7 @@ class RelationRequest private constructor(
          * Proof transition: `(RelationEndpoint, RelationMeaning, RelationBudget,
          * RelationContinuation) -> Refinement<RelationRequest, RelationResumeFailure>`.
          *
-         * Establishes exact subject, meaning, and generation ownership for resumed one-hop work.
+         * Establishes exact subject, meaning, and authority ownership for resumed one-hop work.
          * [RelationResumeFailure] is the closed expected failure. Raw continuation extraction is
          * permitted only at the outer public start/resume or transport boundary.
          */
@@ -459,7 +460,7 @@ class RelationRequest private constructor(
                 Refinement.Rejected(RelationResumeFailure.SCOPE_MISMATCH)
             continuation.meaning != meaning ->
                 Refinement.Rejected(RelationResumeFailure.MEANING_MISMATCH)
-            continuation.generation != subject.lease.generation ->
+            continuation.authority != subject.lease.identity ->
                 Refinement.Rejected(RelationResumeFailure.GENERATION_MISMATCH)
             continuation.subject != subject.fingerprint ->
                 Refinement.Rejected(RelationResumeFailure.SUBJECT_MISMATCH)
@@ -497,14 +498,14 @@ private fun relationContinuationFingerprint(
     subject: RelationEndpointFingerprint,
     meaning: RelationMeaning,
     scope: RelationScopeFingerprint,
-    generation: EvidenceGeneration,
+    authority: SemanticReadIdentity,
     cursor: RelationProviderCursor,
 ): RelationContinuationFingerprint {
     val canonical = buildString {
         appendContinuationField(subject.value)
         appendContinuationField(meaning.canonicalName())
         appendContinuationField(scope.value)
-        appendContinuationField(generation.value.toString())
+        appendContinuationField(authority.revisionKey.value)
         appendContinuationField(cursor.provider.name)
         appendContinuationField(cursor.nextPosition.value.toString())
         appendContinuationField(cursor.consumedPrefixDigest.value)
@@ -521,6 +522,7 @@ private fun RelationEndpoint.selectorScopeCanonical(): String {
         appendContinuationField(snapshot.sourceKinds.name)
         appendContinuationField(snapshot.generatedSources.name)
         appendContinuationField(snapshot.libraries?.name ?: "")
+        constraints.fingerprintFields().forEach(::appendContinuationField)
     }
 }
 

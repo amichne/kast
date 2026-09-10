@@ -3,10 +3,25 @@ package io.github.amichne.kast.source.contract
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectory
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectoryConstraint
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
+import io.github.amichne.kast.symbol.contract.SymbolSearchScope
+import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
+import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
+import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import io.github.amichne.kast.workspace.contract.ImportedWorkspaceModelState
+import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
+import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -16,6 +31,32 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class SourceSelectorTokenContractTest {
+    @Test
+    fun `modeled source references restore only against matching current owner evidence`() {
+        val previous = snapshot("fun subject() = dependency()\n")
+        val model = model()
+        val owner = model.sourceRoots.single()
+        val scopes = listOf(
+            SymbolSearchScope.Module(owner.module, SymbolSourceKindPolicy.PRODUCTION_ONLY, SymbolGeneratedSourcePolicy.EXCLUDE),
+            SymbolSearchScope.SourceSet(owner.project, owner.sourceSet, SymbolSourceKindPolicy.PRODUCTION_ONLY, SymbolGeneratedSourcePolicy.EXCLUDE),
+            SymbolSearchScope.GradleProject(owner.project, SymbolSourceKindPolicy.PRODUCTION_ONLY, SymbolGeneratedSourcePolicy.EXCLUDE),
+        )
+        for (scope in scopes) {
+            val constrained = SourceReadScope.Constrained(scope, SymbolDiscoveryConstraints.None)
+            val scoped = SourceSnapshot.create(previous.context, previous.file, previous.textIdentity, previous.length, constrained)
+            val selector = SourceSelector.issueRoot(range(scoped, 0, scoped.length.value), SourceRegionKind.FILE)
+            val token = SourceSelectorTokenCodec.encode(selector)
+
+            assertEquals(SourceSelectorTokenFailure.SNAPSHOT_REJECTED, SourceSelectorTokenCodec.decode(token).rejected())
+            assertEquals(constrained, SourceSelectorTokenCodec.decode(token, model).refined().snapshot.readScope)
+            assertEquals(selector.fingerprint, SourceSelectorTokenCodec.decode(token, model).refined().fingerprint)
+            assertEquals(SourceSelectorTokenFailure.SNAPSHOT_REJECTED,
+                SourceSelectorTokenCodec.decode(token, model(owner = "other")).rejected())
+            assertEquals(SourceSelectorTokenFailure.SNAPSHOT_REJECTED,
+                SourceSelectorTokenCodec.decode(token, model(root = "/foreign/kast")).rejected())
+        }
+    }
+
     @Test
     fun `hierarchical selector token round trips every bound proof`() {
         val selector = entitySelector()
@@ -64,6 +105,34 @@ class SourceSelectorTokenContractTest {
         )
     }
 
+    @Test
+    fun `source reference preserves named source sets and directory scope`() {
+        val previous = snapshot("fun subject() = dependency()\n")
+        val scope = SourceReadScope.Constrained(
+            SymbolSearchScope.Workspace(SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                SymbolGeneratedSourcePolicy.EXCLUDE, SymbolLibraryPolicy.EXCLUDE),
+            SymbolDiscoveryConstraints(
+                SymbolDiscoveryDirectoryConstraint(SymbolDiscoveryDirectory.parse("src").refined(), SymbolDiscoveryContainment.DESCENDANTS),
+                null,
+                sourceSets = SymbolDiscoverySourceSets.Exact.from(setOf(
+                    io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName.parse("main").refined(),
+                )).refined(),
+            ),
+        )
+        val scoped = SourceSnapshot.create(previous.context, previous.file, previous.textIdentity, previous.length, scope)
+        val selector = SourceSelector.issueRoot(range(scoped, 0, scoped.length.value), SourceRegionKind.FILE)
+        val token = SourceSelectorTokenCodec.encode(selector)
+        kotlin.test.assertTrue(token.value.startsWith("source-selector-v2:"))
+        val restored = SourceSelectorTokenCodec.decode(token).refined()
+        assertEquals(scope, restored.snapshot.readScope)
+        assertEquals(selector.fingerprint, restored.fingerprint)
+        assertEquals(SourceSelectorRevalidationFailure.SOURCE_SCOPE_MISMATCH,
+            RevalidatedSourceSelector.validate(selector, previous).rejected())
+        val tampered = rewritePayload(token.value) { it.replace("4:main", "4:test") }
+        assertEquals(SourceSelectorTokenFailure.SELECTOR_REJECTED,
+            SourceSelectorTokenCodec.decode(SourceSelectorToken.parse(tampered).refined()).rejected())
+    }
+
     private fun entitySelector(): SourceSelector.Entity {
         val text = "fun subject() = dependency()\n"
         val snapshot = snapshot(text)
@@ -99,6 +168,14 @@ class SourceSelectorTokenContractTest {
             Utf16CodeUnitCount.parse(text.length).refined(),
         )
     }
+
+    private fun model(root: String = "/workspace/kast", owner: String = "main"): WorkspaceSearchScopeModel =
+        assertIs<WorkspaceSearchScopeModelCompilation.Compiled>(WorkspaceSearchScopeModel.compile(
+            CanonicalWorkspaceRoot.fromCanonicalPath(Path.of(root)).refined(),
+            ImportedWorkspaceModelState.COMPLETE,
+            listOf(WorkspaceSourceRootBoundary(owner, Path.of(root), ":$owner", owner,
+                Path.of(root, "src/main/kotlin"), WorkspaceSourceRootKind.PRODUCTION, WorkspaceSourceRootProvenance.AUTHORED)),
+        )).model
 
     private fun range(snapshot: SourceSnapshot, start: Int, end: Int): SourceRange =
         SourceRange.create(

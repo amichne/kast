@@ -1,7 +1,7 @@
 package io.github.amichne.kast.symbol.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 enum class SymbolDiscoveryMeasureFailure {
     NEGATIVE,
@@ -90,8 +90,9 @@ enum class SymbolDiscoveryBatchFailure {
 
 @ConsistentCopyVisibility
 data class SymbolDiscoveryBatch private constructor(
-    val lease: SemanticReadLease,
+    val lease: SemanticReadAuthority,
     val scope: SymbolSearchScope,
+    val constraints: SymbolDiscoveryConstraints,
     val candidates: List<SymbolDiscoveryCandidate>,
     val encodedBytes: SymbolDiscoveryByteCount,
     val examinedWorkUnits: SymbolDiscoveryWorkCount,
@@ -134,6 +135,7 @@ data class SymbolDiscoveryBatch private constructor(
                 SymbolDiscoveryBatch(
                     lease = request.scope.lease,
                     scope = request.scope.scope,
+                    constraints = request.constraints,
                     candidates = candidates.toList(),
                     encodedBytes = encodedBytes,
                     examinedWorkUnits = examinedWorkUnits,

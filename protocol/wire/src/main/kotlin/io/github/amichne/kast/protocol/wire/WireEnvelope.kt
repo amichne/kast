@@ -5,6 +5,8 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.CanonicalOperationResolution
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -134,6 +136,7 @@ internal data class WireEnvelopeDocument(
 )
 
 @Serializable
+@OptIn(ExperimentalSerializationApi::class)
 internal sealed interface WireBodyDocument {
     @Serializable
     @SerialName("request")
@@ -144,16 +147,18 @@ internal sealed interface WireBodyDocument {
     @Serializable
     @SerialName("complete")
     data class Complete(
-        val generation: Long,
+        @EncodeDefault(EncodeDefault.Mode.NEVER) val generation: Long? = null,
         val result: JsonElement,
+        @EncodeDefault(EncodeDefault.Mode.NEVER) val live: LiveEvidenceDocument? = null,
     ) : WireBodyDocument
 
     @Serializable
     @SerialName("qualified")
     data class Qualified(
-        val generation: Long,
+        @EncodeDefault(EncodeDefault.Mode.NEVER) val generation: Long? = null,
         val result: JsonElement,
         val qualification: JsonElement,
+        @EncodeDefault(EncodeDefault.Mode.NEVER) val live: LiveEvidenceDocument? = null,
     ) : WireBodyDocument
 
     @Serializable
@@ -176,3 +181,12 @@ internal fun WireBodyDocument.valueRole(): WireValueRole = when (this) {
     is WireBodyDocument.Qualified -> WireValueRole.RESULT
     is WireBodyDocument.Rejected -> WireValueRole.REJECTION
 }
+
+@Serializable
+internal data class LiveEvidenceDocument(
+    val root: String,
+    val host: String,
+    val epoch: Long,
+    val contentView: String,
+    val version: Int,
+)

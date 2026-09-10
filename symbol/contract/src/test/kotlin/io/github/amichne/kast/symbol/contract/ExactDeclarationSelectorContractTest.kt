@@ -16,6 +16,29 @@ import java.nio.file.Path
 
 class ExactDeclarationSelectorContractTest {
     @Test
+    fun `discovery scope constraints survive selection and exact fingerprints`() {
+        val constraints = SymbolDiscoveryConstraints(
+            SymbolDiscoveryDirectoryConstraint(SymbolDiscoveryDirectory.parse("src").refined(), SymbolDiscoveryContainment.DESCENDANTS),
+            SymbolDiscoveryPackageConstraint(SymbolDiscoveryPackage.parse("sample").refined(), SymbolDiscoveryContainment.DESCENDANTS),
+            sourceSets = SymbolDiscoverySourceSets.Exact.from(setOf(
+                io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName.parse("main").refined(),
+            )).refined(),
+        )
+        val candidate = candidate(offset = 7)
+        val restricted = batch(listOf(candidate), constraints = constraints)
+        val selection = SymbolDiscoverySelection.select(restricted, 0).refined()
+        val exact = ExactDeclarationSelector.issue(selection, evidence(start = 7, end = 17)).refined()
+        val broad = ExactDeclarationSelector.issue(
+            SymbolDiscoverySelection.select(batch(listOf(candidate)), 0).refined(),
+            evidence(start = 7, end = 17),
+        ).refined()
+        assertEquals(constraints, restricted.constraints)
+        assertEquals(constraints, selection.constraints)
+        assertEquals(constraints, exact.constraints)
+        assertNotEquals(broad.fingerprint, exact.fingerprint)
+    }
+
+    @Test
     fun `selection can only retain a declaration stored by the exact batch`() {
         val candidate = candidate(offset = 7)
         val batch = batch(listOf(candidate))
@@ -178,8 +201,9 @@ class ExactDeclarationSelectorContractTest {
         candidates: List<SymbolDiscoveryCandidate>,
         kind: SymbolDiscoveryKind = SymbolDiscoveryKind.SYMBOL,
         scope: SymbolSearchScope = workspaceScope(SymbolLibraryPolicy.EXCLUDE),
+        constraints: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints.None,
     ): SymbolDiscoveryBatch {
-        val request = request(kind, candidates.size, scope)
+        val request = request(kind, candidates.size, scope, constraints)
         return SymbolDiscoveryBatch.create(
             request = request,
             candidates = candidates,
@@ -198,7 +222,9 @@ class ExactDeclarationSelectorContractTest {
         kind: SymbolDiscoveryKind,
         resultLimit: Int,
         scope: SymbolSearchScope,
+        constraints: SymbolDiscoveryConstraints,
     ): SymbolDiscoveryRequest = SymbolDiscoveryRequest(
+        constraints = constraints,
         scope = SymbolSearchScopeRequest(
             lease = lease(),
             scope = scope,

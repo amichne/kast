@@ -1,10 +1,10 @@
 ---
 type: Runtime Flow
 title: Semantic query
-description: Query syntax is compiled into type-compatible stages, then evaluated under one lease and bounded resource accounting.
+description: Query syntax and restored references are admitted into compatible stages and evaluated under one published or live authority with bounded resource accounting.
 resource: file://query/service
 tags: [query, symbol, source, relation]
-timestamp: 2026-09-09T00:00:00Z
+timestamp: 2026-09-10T00:00:00Z
 code_sources:
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt
     symbols: [QueryPlanCompiler, AdmittedQueryPlan]
@@ -13,17 +13,70 @@ code_sources:
     symbols: [QueryExecutionState]
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryService.kt
     symbols: [QueryService]
+  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryServiceSupport.kt
+    symbols: [visibilityRequest]
+  - path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryServiceTest.kt
+  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceDeclarationVisibility.kt
+    symbols: [SourceDeclarationVisibility, SourceDeclarationVisibilityFailure]
+  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadRequest.kt
+    symbols: [Containment]
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/LiveIntellijSourceRead.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijExactNameIndexes.kt
+    symbols: [discoverNative]
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijNativeDiscoveryQuery.kt
+    symbols: [IntellijNativeDiscoveryQuery]
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijNativeDiscoveryAdapter.kt
+    symbols: [isAdmittedContributorName]
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
+    symbols: [CanonicalQueryProtocol]
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceAuthority.kt
+  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationRequest.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
 ---
 
 # Semantic query
 
 ```text
-query syntax -> plan admission -> candidate discovery -> exact refinement
-             -> optional predicates/relations -> bounded result projection
+host admission -> current authority + request budget
+              -> query protocol/reference admission -> typed plan
+              -> candidate discovery or restored references -> exact refinement
+              -> optional predicates/relations -> bounded result projection
 ```
 
-The pure plan compiler prevents candidate-only and exact-symbol stages from being combined incorrectly. Execution uses a single request state to track the semantic lease, time, work units, encoded bytes, result capacity, limitations, and item failures.
+The pure plan compiler prevents candidate-only and exact-symbol stages from being combined incorrectly. Execution uses a single request state to track `SemanticReadAuthority`, time, work units, encoded bytes, result capacity, limitations, and item failures. A live authority is supplied by its admitted host; decoding a reference never creates one.
 
 Discovery may remain a candidate result. Exact-only operations force refinement, and failed refinements remain visible as limitations. Relation continuations and child budgets are derived from remaining parent capacity.
 
-See [semantic read domains](../modules/semantic-reads.md) and [compiler identity](../glossary/compiler-identity.md).
+Broad native discovery now filters index names by the admitted scope's coarse
+project-content or project-plus-library ID policy before the name cap, then
+rechecks exact scope and constraints after collection. Its symbol provider set
+includes type aliases alongside classes, functions, and properties. This changes
+name admission and provider coverage without increasing query budgets or weakening
+overflow qualification. The packaged native rerun remains pending; no timing or
+complete `ALL` acceptance claim follows from the focused adapter checks.
+
+Directory, package, declaration-kind, and named source-set restrictions are
+retained through declaration, file, and text selection, exact fingerprints, and
+source snapshots. Native adapters re-establish file membership against the current
+model. Continuations retain the same authority identity, scope, and restrictions;
+they cannot silently resume under a broader request.
+
+A visibility predicate reads the selected declaration itself through internal
+`Containment.SELF` with `VisibilitySelection.Any`. Native enumeration projects
+that declaration once; it does not search its children for a matching visibility.
+`SourceDeclarationVisibility` then requires one declaration with the matching
+authority, file, scope, restrictions, exact range, kind, name, and candidate
+location. A private parent cannot satisfy the predicate through a public child,
+and a public leaf needs no children to satisfy it. Missing or mismatched evidence
+becomes `PredicateUnproven` with `VISIBILITY_INCOMPLETE`. Public source grammar
+continues to expose only direct-child and descendant containment.
+
+`CanonicalQueryProtocol` is shared by installed and existing-IDE composition.
+It preserves per-item failures and qualifications and projects the matching
+published or live evidence basis. `HostedCanonicalQuery` constructs the pure
+evaluator with project-bound symbol, source, and relation ports inside an admitted
+host read. The canonical hosted path is prepared; the default native cutover and
+packaged manual acceptance remain pending. Earlier class/supertype qualification
+does not establish either gate.
+
+See [query protocol](../modules/query-protocol.md), [semantic read domains](../modules/semantic-reads.md), and [compiler identity](../glossary/compiler-identity.md).

@@ -44,7 +44,7 @@ internal class IntellijNativeDiscoveryAdapter(
      * IntellijNativeDiscoveryResult.
      *
      * Establishes a write-priority cancellable IntelliJ read whose Choose-by-Name provider work can
-     * begin only after KIP-012 compiles exact model ownership into a generation-bound native scope.
+     * begin only after KIP-012 compiles exact model ownership into a authority-bound native scope.
      * File contributors remain scoped discovery providers; class and symbol contributors are limited
      * to Kotlin declarations that can refine into the product's K2 exact selector. [IntellijSearchScopeFailure], [IntellijNativeDiscoveryRejection], and
      * [io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification] are the closed expected
@@ -68,12 +68,7 @@ internal class IntellijNativeDiscoveryAdapter(
                         -> IntellijNativeDiscoveryQuery(
                         environmentState = { project.discoveryEnvironmentState() },
                         cancellationCheck = ProgressManager::checkCanceled,
-                    ).discover(
-                        compiledScope = compiledScope,
-                        request = request,
-                        contributors = target.discoveryKind().nativeContributors()
-                            .filter(target.discoveryKind()::isAdmittedContributor),
-                    )
+                    ).discoverNative(project, compiledScope, request)
                     is SymbolDiscoveryTarget.Location,
                     is SymbolDiscoveryTarget.Text,
                         -> IntellijSupplementalDiscoveryQuery(
@@ -211,12 +206,7 @@ class IntellijFastSymbolReadAdapter<Definition : NativeDetachedDefinition> priva
                 itemAdmission = itemAdmission,
             )
             when (
-                val execution = query.discover(
-                    compiledScope = compiledScope,
-                    request = request,
-                    contributors = target.kind.nativeContributors()
-                        .filter(target.kind::isAdmittedContributor),
-                )
+                val execution = query.discoverNative(project, compiledScope, request)
             ) {
                 is IntellijNativeDiscoveryExecution.Rejected ->
                     IntellijFastSymbolReadResult.Rejected(
@@ -359,7 +349,7 @@ class IntellijFastSymbolReadAdapter<Definition : NativeDetachedDefinition> priva
         elapsedSince(startedAt) >= elapsedLimitNanoseconds().value
 }
 
-private fun SymbolDiscoveryTarget.discoveryKind(): SymbolNameDiscoveryKind = when (this) {
+internal fun SymbolDiscoveryTarget.discoveryKind(): SymbolNameDiscoveryKind = when (this) {
     is SymbolDiscoveryTarget.All -> kind
     is SymbolDiscoveryTarget.Name -> kind
     is SymbolDiscoveryTarget.Location,
@@ -367,17 +357,20 @@ private fun SymbolDiscoveryTarget.discoveryKind(): SymbolNameDiscoveryKind = whe
         -> error("Supplemental discovery targets do not use Choose-by-Name contributors")
 }
 
-private fun SymbolNameDiscoveryKind.isAdmittedContributor(
+internal fun SymbolNameDiscoveryKind.isAdmittedContributor(
     contributor: ChooseByNameContributor,
-): Boolean = when (this) {
+): Boolean = isAdmittedContributorName(contributor.javaClass.name)
+
+internal fun SymbolNameDiscoveryKind.isAdmittedContributorName(className: String): Boolean = when (this) {
     SymbolNameDiscoveryKind.FILE -> true
-    SymbolNameDiscoveryKind.CLASS -> contributor.javaClass.name in setOf(
+    SymbolNameDiscoveryKind.CLASS -> className in setOf(
         "org.jetbrains.kotlin.idea.goto.KotlinGotoClassContributor",
     )
-    SymbolNameDiscoveryKind.SYMBOL -> contributor.javaClass.name in setOf(
+    SymbolNameDiscoveryKind.SYMBOL -> className in setOf(
         "org.jetbrains.kotlin.idea.goto.KotlinGotoClassSymbolContributor",
         "org.jetbrains.kotlin.idea.goto.KotlinGotoFunctionSymbolContributor",
         "org.jetbrains.kotlin.idea.goto.KotlinGotoPropertySymbolContributor",
+        "org.jetbrains.kotlin.idea.goto.KotlinGotoTypeAliasContributor",
     )
 }
 

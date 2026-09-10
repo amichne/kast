@@ -7,15 +7,20 @@ import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilerPort
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilerRejection
 import io.github.amichne.kast.diagnostic.contract.DiagnosticReadRejection
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScope
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
-import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
+import io.github.amichne.kast.workspace.contract.SemanticReadValidation
+import io.github.amichne.kast.workspace.contract.SemanticReadValidationPort
+import io.github.amichne.kast.workspace.contract.semanticReadValidation
 
 /** Current-generation admission owner for public `diagnostic.check`. */
 class DiagnosticService(
-    private val workspaces: WorkspaceInspectionOperations,
+    private val authorities: SemanticReadValidationPort,
     private val compiler: DiagnosticCompilerPort,
 ) : io.github.amichne.kast.diagnostic.contract.DiagnosticOperations {
+    constructor(workspaces: WorkspaceInspectionOperations, compiler: DiagnosticCompilerPort) :
+        this(workspaces.semanticReadValidation(), compiler)
+
     /**
      * Proof transition: `(WorkspaceRuntimeState, DiagnosticCheckRequest,
      * DiagnosticCompilation) -> DiagnosticCheckResult`.
@@ -66,36 +71,21 @@ class DiagnosticService(
      * [DiagnosticLeaseAdmission.Rejected] preserves unavailable, root-mismatch, and stale states
      * as [DiagnosticReadRejection]. Raw runtime state remains at workspace publication.
      */
-    private fun admitCurrentLease(
-        expected: SemanticReadLease,
+    private suspend fun admitCurrentLease(
+        expected: SemanticReadAuthority,
         phase: DiagnosticAdmissionPhase,
-    ): DiagnosticLeaseAdmission {
-        val current = when (val state = workspaces.inspect()) {
-            is WorkspaceRuntimeState.Ready -> state.workspace.readLease
-            WorkspaceRuntimeState.Absent,
-            WorkspaceRuntimeState.Starting,
-            WorkspaceRuntimeState.Reconciling,
-            is WorkspaceRuntimeState.Blocked,
-            WorkspaceRuntimeState.Stopping,
-                -> return DiagnosticLeaseAdmission.Rejected(
-                when (phase) {
-                    DiagnosticAdmissionPhase.INITIAL ->
-                        DiagnosticReadRejection.WORKSPACE_NOT_READY
-                    DiagnosticAdmissionPhase.REVALIDATION ->
-                        DiagnosticReadRejection.STALE_GENERATION
-                },
-            )
-        }
-        return when {
-            expected.workspaceRoot != current.workspaceRoot ->
-                DiagnosticLeaseAdmission.Rejected(
-                    DiagnosticReadRejection.WORKSPACE_ROOT_MISMATCH,
-                )
-            expected.generation != current.generation ->
-                DiagnosticLeaseAdmission.Rejected(DiagnosticReadRejection.STALE_GENERATION)
-            else -> DiagnosticLeaseAdmission.Admitted
-        }
+    ): DiagnosticLeaseAdmission = when (authorities.validate(expected)) {
+        SemanticReadValidation.CURRENT -> DiagnosticLeaseAdmission.Admitted
+        SemanticReadValidation.UNAVAILABLE -> DiagnosticLeaseAdmission.Rejected(when (phase) {
+                    DiagnosticAdmissionPhase.INITIAL -> DiagnosticReadRejection.WORKSPACE_NOT_READY
+                    DiagnosticAdmissionPhase.REVALIDATION -> DiagnosticReadRejection.STALE_GENERATION
+                })
+        SemanticReadValidation.ROOT_MISMATCH ->
+            DiagnosticLeaseAdmission.Rejected(DiagnosticReadRejection.WORKSPACE_ROOT_MISMATCH)
+        SemanticReadValidation.MOVED ->
+            DiagnosticLeaseAdmission.Rejected(DiagnosticReadRejection.STALE_GENERATION)
     }
+
 }
 
 private enum class DiagnosticAdmissionPhase {
@@ -130,7 +120,7 @@ private fun DiagnosticCompilation.Complete.admitFor(
     coverage.analyzedFiles == scope.files &&
     batch.facts.all { fact ->
         fact.scope === scope &&
-        fact.generation == scope.lease.generation &&
+        fact.authority == scope.lease.identity &&
         fact.location.file in scope.files
     }
 ) {
@@ -158,7 +148,7 @@ private fun DiagnosticCompilation.Qualified.admitFor(
         analyzed + limited == scope.files.toSet() &&
         batch.facts.all { fact ->
             fact.scope === scope &&
-            fact.generation == scope.lease.generation &&
+            fact.authority == scope.lease.identity &&
             fact.location.file in scope.files
         }
     ) {

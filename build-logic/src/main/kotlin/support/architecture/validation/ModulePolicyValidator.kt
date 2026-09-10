@@ -98,8 +98,8 @@ internal object ModulePolicyValidator {
      * Proof transition: `(ModulePolicy, declared ModulePolicy graph) -> ValidatedModulePolicy`.
      *
      * Establishes that the module's direct dependencies, registry direction, independent dependency
-     * costs, and allowed effects remain within its declared role boundary or the closed KCS-017 and
-     * KCS-018 collapsed-module edge set.
+     * costs, and allowed effects remain within its declared role boundary or the closed named
+     * collapsed-module and shared-read adapter edge set.
      * [ModulePolicyValidation.Invalid] is the closed expected failure. Raw module policy
      * construction is permitted only in the canonical architecture definition and policy tests.
      */
@@ -178,6 +178,8 @@ internal object KastCleanSlateCrossRoleDependencies {
         ProjectDependencyObservation(ModuleId.WORKSPACE_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
         ProjectDependencyObservation(ModuleId.EVIDENCE_SQLITE, ModuleId.CHANGE_APPLY),
         ProjectDependencyObservation(ModuleId.EVIDENCE_SQLITE, ModuleId.CHANGE_VERIFY),
+        ProjectDependencyObservation(ModuleId.SYMBOL_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
+        ProjectDependencyObservation(ModuleId.SOURCE_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
         ProjectDependencyObservation(ModuleId.RELATION_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
         ProjectDependencyObservation(ModuleId.TOPOLOGY_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
         ProjectDependencyObservation(ModuleId.DIAGNOSTIC_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
@@ -250,6 +252,7 @@ private object ModuleRoleBoundaries {
             setOf(
                 ModuleRole.KERNEL,
                 ModuleRole.CONTRACT,
+                ModuleRole.SERVICE,
                 ModuleRole.IDE_READ_ONLY,
                 ModuleRole.INTELLIJ_READ_ADAPTER,
                 ModuleRole.INTELLIJ_WRITE_ADAPTER,

@@ -88,6 +88,8 @@ sealed interface HostedQueryFailure {
     data class ModelCapture(val cause: io.github.amichne.kast.workspace.intellij.read.DetachedModelCapture.Rejected) : HostedQueryFailure
     data class ReadEpoch(val cause: io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure) : HostedQueryFailure
     data class Freshness(val cause: io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmissionFailure) : HostedQueryFailure
+    data class LiveAuthority(val cause: io.github.amichne.kast.workspace.contract.LiveSemanticReadFailure) : HostedQueryFailure
+    data class NamedSourceScope(val cause: io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure) : HostedQueryFailure
 }
 
 enum class HostedPlatformFailureCause { RUNTIME, LINKAGE }

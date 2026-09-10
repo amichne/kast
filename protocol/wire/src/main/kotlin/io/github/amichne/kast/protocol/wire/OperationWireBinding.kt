@@ -1,5 +1,9 @@
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.kernel.EvidenceBasis
+import io.github.amichne.kast.kernel.LiveReadContentView
+import io.github.amichne.kast.kernel.LiveReadEvidence
+import java.util.UUID
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
@@ -11,6 +15,9 @@ import io.github.amichne.kast.protocol.contract.OperationRejection
 import io.github.amichne.kast.protocol.contract.OperationRequest
 import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
+import io.github.amichne.kast.protocol.contract.SourceReadResult
+import io.github.amichne.kast.protocol.contract.SourceSnapshotContextDocument
+import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import io.github.amichne.kast.protocol.registry.OperationDefinition
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
@@ -142,11 +149,17 @@ class OperationWireBinding<
         if (mismatch is EvidenceOperationAdmission.Rejected) {
             return WireEncoding.Rejected(mismatch.failure)
         }
+        if (!evidence.payload.retainsEvidenceBasis(evidence.basis)) {
+            return WireEncoding.Rejected(WireFailure.InvalidPayload(WireValueRole.RESULT))
+        }
         return when (
             val result = serializers.result.encode(evidence.payload, WireValueRole.RESULT)
         ) {
             is WireValueEncoding.Encoded -> encodeEnvelope(
-                WireBodyDocument.Complete(evidence.generation.value, result.value),
+                when (val basis = evidence.basis) {
+                    is EvidenceBasis.Published -> WireBodyDocument.Complete(basis.generation.value, result.value)
+                    is EvidenceBasis.Live -> WireBodyDocument.Complete(result = result.value, live = basis.evidence.document())
+                },
             )
             is WireValueEncoding.Rejected -> WireEncoding.Rejected(result.failure)
         }
@@ -159,6 +172,9 @@ class OperationWireBinding<
         val mismatch = evidenceOperationMismatch(evidence)
         if (mismatch is EvidenceOperationAdmission.Rejected) {
             return WireEncoding.Rejected(mismatch.failure)
+        }
+        if (!evidence.payload.retainsEvidenceBasis(evidence.basis)) {
+            return WireEncoding.Rejected(WireFailure.InvalidPayload(WireValueRole.RESULT))
         }
         val result = when (
             val encoded = serializers.result.encode(evidence.payload, WireValueRole.RESULT)
@@ -173,7 +189,10 @@ class OperationWireBinding<
             )
         ) {
             is WireValueEncoding.Encoded -> encodeEnvelope(
-                WireBodyDocument.Qualified(evidence.generation.value, result, encoded.value),
+                when (val basis = evidence.basis) {
+                    is EvidenceBasis.Published -> WireBodyDocument.Qualified(basis.generation.value, result, encoded.value)
+                    is EvidenceBasis.Live -> WireBodyDocument.Qualified(result = result, qualification = encoded.value, live = basis.evidence.document())
+                },
             )
             is WireValueEncoding.Rejected -> WireEncoding.Rejected(encoded.failure)
         }
@@ -189,7 +208,7 @@ class OperationWireBinding<
     private fun decodeComplete(
         body: WireBodyDocument.Complete,
     ): WireDecoding<OperationOutcome<Result, Qualification, Rejection>> =
-        when (val evidence = decodeEvidence(body.generation, body.result)) {
+        when (val evidence = decodeEvidence(body.generation, body.live, body.result)) {
             is WireDecoding.Decoded ->
                 WireDecoding.Decoded(OperationOutcome.Complete(evidence.value))
             is WireDecoding.Rejected -> evidence
@@ -198,7 +217,7 @@ class OperationWireBinding<
     private fun decodeQualified(
         body: WireBodyDocument.Qualified,
     ): WireDecoding<OperationOutcome<Result, Qualification, Rejection>> {
-        val evidence = when (val decoded = decodeEvidence(body.generation, body.result)) {
+        val evidence = when (val decoded = decodeEvidence(body.generation, body.live, body.result)) {
             is WireDecoding.Decoded -> decoded.value
             is WireDecoding.Rejected -> return decoded
         }
@@ -233,19 +252,27 @@ class OperationWireBinding<
      * values do not escape this boundary.
      */
     private fun decodeEvidence(
-        rawGeneration: Long,
+        rawGeneration: Long?,
+        rawLive: LiveEvidenceDocument?,
         rawResult: JsonElement,
     ): WireDecoding<EvidenceEnvelope<Result>> {
-        val generation = when (val refined = EvidenceGeneration.parse(rawGeneration)) {
-            is Refinement.Refined -> refined.value
-            is Refinement.Rejected -> return WireDecoding.Rejected(
-                WireFailure.InvalidEvidenceGeneration(refined.failure),
-            )
+        val basis = when {
+            rawGeneration != null && rawLive == null -> when (val refined = EvidenceGeneration.parse(rawGeneration)) {
+                is Refinement.Refined -> EvidenceBasis.Published(refined.value)
+                is Refinement.Rejected -> return WireDecoding.Rejected(WireFailure.InvalidEvidenceGeneration(refined.failure))
+            }
+            rawGeneration == null && rawLive != null -> when (val admitted = rawLive.admit()) {
+                is Refinement.Refined -> EvidenceBasis.Live(admitted.value)
+                is Refinement.Rejected -> return WireDecoding.Rejected(WireFailure.MalformedEnvelope)
+            }
+            else -> return WireDecoding.Rejected(WireFailure.MalformedEnvelope)
         }
         return when (val result = serializers.result.decode(rawResult, WireValueRole.RESULT)) {
-            is WireDecoding.Decoded -> WireDecoding.Decoded(
-                EvidenceEnvelope(operation.id, generation, result.value),
-            )
+            is WireDecoding.Decoded -> if (result.value.retainsEvidenceBasis(basis)) {
+                WireDecoding.Decoded(EvidenceEnvelope(operation.id, basis, result.value))
+            } else {
+                WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.RESULT))
+            }
             is WireDecoding.Rejected -> result
         }
     }
@@ -299,6 +326,23 @@ class OperationWireBinding<
     }
 }
 
+/** Repeated snapshot evidence must preserve the exact admitted envelope, not just its shape. */
+private fun OperationResult.retainsEvidenceBasis(basis: EvidenceBasis): Boolean = when (this) {
+    is SourceReadResult -> when (val context = snapshot.context) {
+        is SourceSnapshotContextDocument.Published ->
+            basis is EvidenceBasis.Published && context.generation == basis.generation
+        is SourceSnapshotContextDocument.Live ->
+            basis is EvidenceBasis.Live && context.evidence == basis.evidence &&
+                snapshot.canonicalRoot.value == basis.evidence.workspaceRoot
+    }
+    // Traversal carries its root on the wire; the CLI derives its snapshot basis from the envelope.
+    is TraversalRunResult -> when (basis) {
+        is EvidenceBasis.Published -> true
+        is EvidenceBasis.Live -> snapshotRoot.value == basis.evidence.workspaceRoot
+    }
+    else -> true
+}
+
 private sealed interface BindingIdentityAdmission {
     data object Admitted : BindingIdentityAdmission
 
@@ -313,4 +357,19 @@ private sealed interface EvidenceOperationAdmission {
     data class Rejected(
         val failure: WireFailure,
     ) : EvidenceOperationAdmission
+}
+
+internal fun LiveReadEvidence.document() = LiveEvidenceDocument(
+    workspaceRoot, host.toString(), epoch, contentView.name, version,
+)
+
+internal fun LiveEvidenceDocument.admit(): Refinement<LiveReadEvidence, Unit> {
+    val hostIdentity = try { UUID.fromString(host).takeIf { it.toString() == host } }
+        catch (_: IllegalArgumentException) { null } ?: return Refinement.Rejected(Unit)
+    val view = LiveReadContentView.entries.singleOrNull { it.name == contentView }
+        ?: return Refinement.Rejected(Unit)
+    return when (val admitted = LiveReadEvidence.create(root, hostIdentity, epoch, view, version)) {
+        is Refinement.Refined -> admitted
+        is Refinement.Rejected -> Refinement.Rejected(Unit)
+    }
 }

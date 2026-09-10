@@ -12,7 +12,7 @@ import kotlinx.serialization.json.put
 internal fun installedKastCatalogFixture(): String = buildJsonObject {
     put("schemaVersion", 1)
     put("serverProjection", buildJsonObject {
-        put("schemaVersion", 8)
+        put("schemaVersion", 9)
         put("namespace", "kast")
         put("hostedBootstrap", buildJsonObject {
             put("schemaVersion", 1)

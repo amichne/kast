@@ -2,6 +2,49 @@
 
 ## 2026-09-10
 
+- Completed the stage 3 canonical host/client preparation for all seven semantic
+  reads, including current-model reference restoration, live evidence correlation,
+  bounded peer cancellation, and projection version 9 with mutually exclusive
+  published/live schemas. Default native cutover and packaged acceptance remain
+  pending; the earlier native class/supertype qualification history is unchanged.
+- Fixed visibility predicates to prove the selected declaration itself through
+  internal `Containment.SELF` and `SourceDeclarationVisibility`. Public leaves
+  no longer require children, private parents cannot match through public
+  descendants, and missing or mismatched self evidence remains qualified.
+  The focused GREEN run passed 61 checks: query service 12, source service 5,
+  source contract 14, source IntelliJ adapter 22, and query protocol 8.
+- Moved package evidence and semantic projection after bounded provider collection
+  or exact PSI lookup. Native symbol/relation scope predicates now use path,
+  current model and file-index evidence. Added typed known-empty source-set
+  population after owner and source-policy admission; libraries cannot broaden
+  that empty result. The focused GREEN run passed 53 adapter checks: discovery 23,
+  exact restoration 6, source-root policy 5, legacy native relation 6, and relation
+  reads 13. Missing package/collection seams and the absent-name rejection were
+  reproduced before the fixes. These checks and native-source compilation are
+  not packaged IntelliJ acceptance.
+- Migrated semantic read contracts and pure services to closed published/live
+  authority, preserving typed fingerprints, source content views, and explicit
+  current-read validation. Mutation, publication, and retained topology keep
+  published-only admission.
+- Retained declaration discovery scope and constraints through selection,
+  exact identity, relation endpoints, source snapshots, and continuations.
+  Candidate refinement now checks declaration kinds; retained kind/source-set
+  collections cannot mutate after fingerprinting. Focused pure tests reproduced
+  both invariant gaps before their fixes and passed afterward.
+- Added `query:protocol` ownership and source routing for shared canonical-read
+  admission, reference codecs, and outcome projection. Successful envelopes now
+  distinguish publication generation from detached live IDE provenance.
+- Recorded generalized hosted evaluator composition and exact named Gradle
+  scope integration without promoting pure checks or earlier class/supertype
+  qualification into new native acceptance. Hosted cutover and manual
+  qualification remain pending.
+- Extended file/text candidate contracts and batch issuance to retain scope and
+  constraints through source reads. Historical raw factories now declare their
+  exact-file policy explicitly. Added current-model source-token restoration for
+  module, project, and source-set scopes, rejecting absent/mismatched owners and
+  foreign roots. Focused symbol/source contract checks passed after the missing
+  API regressions were captured.
+
 - Added exact imported Gradle source-name admission for hosted query composition,
   with most-specific ownership and explicit rejection for unmapped IDE roots.
 

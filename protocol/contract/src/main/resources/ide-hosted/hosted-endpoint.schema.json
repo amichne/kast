@@ -1,39 +1,154 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kast.dev/experimental/hosted-endpoint/v1",
+  "$id": "https://kast.dev/experimental/hosted-endpoint/v2",
   "oneOf": [
-    {"$ref": "#/$defs/descriptor"},
-    {"$ref": "#/$defs/host"},
-    {"$ref": "#/$defs/rejected"}
+    {
+      "$ref": "#/$defs/descriptor"
+    },
+    {
+      "$ref": "#/$defs/host"
+    },
+    {
+      "$ref": "#/$defs/rejected"
+    }
   ],
   "$defs": {
-    "root": {"type": "string", "pattern": "^/", "maxLength": 4096},
-    "operations": {"type": "array", "const": ["DESCRIBE", "CLASS_LOOKUP", "DIRECT_SUPERTYPE"]},
+    "root": {
+      "type": "string",
+      "pattern": "^/",
+      "maxLength": 4096
+    },
+    "operations": {
+      "type": "array",
+      "const": [
+        "DESCRIBE",
+        "CLASS_LOOKUP",
+        "DIRECT_SUPERTYPE",
+        "QUERY_RUN",
+        "SYMBOL_DISCOVER",
+        "SYMBOL_INSPECT",
+        "SOURCE_READ",
+        "RELATION_READ",
+        "TRAVERSAL_RUN",
+        "DIAGNOSTIC_CHECK"
+      ]
+    },
     "descriptor": {
-      "type": "object", "additionalProperties": false,
-      "required": ["type", "protocol", "root", "socket", "hostPid", "operations"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "protocol",
+        "root",
+        "socket",
+        "hostPid",
+        "operations",
+        "host",
+        "querySchema"
+      ],
       "properties": {
-        "type": {"const": "KAST_IDE_ENDPOINT"}, "protocol": {"const": 1},
-        "root": {"$ref": "#/$defs/root"}, "socket": {"type": "string", "pattern": "^/", "maxLength": 100},
-        "hostPid": {"type": "integer", "minimum": 1}, "operations": {"$ref": "#/$defs/operations"}
+        "type": {
+          "const": "KAST_IDE_ENDPOINT"
+        },
+        "protocol": {
+          "const": 2
+        },
+        "root": {
+          "$ref": "#/$defs/root"
+        },
+        "socket": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 100
+        },
+        "hostPid": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "operations": {
+          "$ref": "#/$defs/operations"
+        },
+        "host": {
+          "$ref": "#/$defs/hostLifetime"
+        },
+        "querySchema": {
+          "const": "kast.query.run.v2"
+        }
       }
     },
     "host": {
-      "type": "object", "additionalProperties": false,
-      "required": ["type", "protocol", "root", "hostPid", "operations", "indexAuthority"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "protocol",
+        "root",
+        "hostPid",
+        "operations",
+        "indexAuthority",
+        "host",
+        "querySchema"
+      ],
       "properties": {
-        "type": {"const": "KAST_IDE_HOST"}, "protocol": {"const": 1},
-        "root": {"$ref": "#/$defs/root"}, "hostPid": {"type": "integer", "minimum": 1},
-        "operations": {"$ref": "#/$defs/operations"},
-        "indexAuthority": {"const": "existing_ide_kotlin_stub_index"}
+        "type": {
+          "const": "KAST_IDE_HOST"
+        },
+        "protocol": {
+          "const": 2
+        },
+        "root": {
+          "$ref": "#/$defs/root"
+        },
+        "hostPid": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "operations": {
+          "$ref": "#/$defs/operations"
+        },
+        "indexAuthority": {
+          "const": "existing_ide_kotlin_stub_index"
+        },
+        "host": {
+          "$ref": "#/$defs/hostLifetime"
+        },
+        "querySchema": {
+          "const": "kast.query.run.v2"
+        }
       }
     },
     "rejected": {
-      "type": "object", "additionalProperties": false, "required": ["type", "failure"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "failure"
+      ],
       "properties": {
-        "type": {"const": "HOST_REJECTED"},
-        "failure": {"enum": ["INVALID_REQUEST", "REQUEST_TOO_LARGE", "REQUEST_INCOMPLETE", "IO_UNAVAILABLE", "DEADLINE_EXCEEDED", "WRONG_ROOT", "OWNERSHIP_CONFLICT", "DIRECTORY_REJECTED", "SOCKET_UNAVAILABLE", "PLATFORM_UNAVAILABLE"]}
+        "type": {
+          "const": "HOST_REJECTED"
+        },
+        "failure": {
+          "enum": [
+            "INVALID_REQUEST",
+            "REQUEST_TOO_LARGE",
+            "REQUEST_INCOMPLETE",
+            "IO_UNAVAILABLE",
+            "DEADLINE_EXCEEDED",
+            "WRONG_ROOT",
+            "OWNERSHIP_CONFLICT",
+            "DIRECTORY_REJECTED",
+            "SOCKET_UNAVAILABLE",
+            "PLATFORM_UNAVAILABLE",
+            "RESPONSE_REJECTED",
+            "RESULT_TOO_LARGE"
+          ]
+        }
       }
+    },
+    "hostLifetime": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     }
   }
 }

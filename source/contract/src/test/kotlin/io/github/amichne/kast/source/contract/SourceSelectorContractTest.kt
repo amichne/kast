@@ -3,10 +3,18 @@ package io.github.amichne.kast.source.contract
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
+import io.github.amichne.kast.symbol.contract.CandidateSelector
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
+import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
+import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
+import io.github.amichne.kast.symbol.contract.SymbolSearchScope
+import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -14,6 +22,21 @@ import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
 
 class SourceSelectorContractTest {
+    @Test
+    fun `file and range source anchors retain their decoded scope constraints`() {
+        val snapshot = snapshot("fun x() = 1\n")
+        val scope = SymbolSearchScope.Workspace(SymbolSourceKindPolicy.PRODUCTION_ONLY,
+            SymbolGeneratedSourcePolicy.EXCLUDE, SymbolLibraryPolicy.EXCLUDE)
+        val constraints = SymbolDiscoveryConstraints(null, null,
+            sourceSets = SymbolDiscoverySourceSets.Exact.from(setOf(WorkspaceSourceSetName.parse("main").refined())).refined())
+        val file = CandidateSelector.restoreFile(snapshot.lease, snapshot.file, scope, constraints)
+        val range = CandidateSelector.restoreRange(snapshot.lease, snapshot.file, 0, 3, scope, constraints).refined()
+
+        for (candidate in listOf(file, range)) {
+            assertEquals(SourceReadScope.Constrained(scope, constraints), SourceReadAnchor.Candidate(candidate).readScope())
+        }
+    }
+
     @Test
     fun `committed document identity and ranges use exact UTF-16 code units`() {
         val normalizedText = "// 😀\nfun x() = 1\n"

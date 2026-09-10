@@ -25,8 +25,10 @@ private val extractedKotlinPluginDirectory = objects.directoryProperty().apply {
 }
 
 val extractRelationKotlinPlugin by tasks.registering(Sync::class) {
+    inputs.property("pluginLibrarySets", listOf("Kotlin", "java"))
     from({ zipTree(relationIdeaDistribution.singleFile) }) {
         include("**/plugins/Kotlin/lib/**/*.jar")
+        include("**/plugins/java/lib/**/*.jar")
         exclude("**/plugins/Kotlin/lib/jps/**")
         exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
         eachFile {
@@ -63,6 +65,7 @@ dependencies {
     }
 
     compileOnly("com.jetbrains.intellij.platform:core:$ideaPlatformBuild")
+    compileOnly("com.jetbrains.intellij.platform:core-impl:$ideaPlatformBuild")
     compileOnly("com.jetbrains.intellij.platform:analysis:$ideaPlatformBuild")
     compileOnly("com.jetbrains.intellij.platform:indexing:$ideaPlatformBuild")
     compileOnly("com.jetbrains.intellij.platform:lang:$ideaPlatformBuild")
