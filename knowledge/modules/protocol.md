@@ -6,6 +6,7 @@ resource: file://protocol
 tags: [kotlin, protocol, serialization]
 timestamp: 2026-09-10T00:00:00Z
 code_sources:
+  - path: docs/reviews/live-semantic-read-acceptance.md
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt
     symbols: [CanonicalOperation]
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationRegistry.kt
@@ -47,6 +48,8 @@ for symbol discovery, symbol inspection, relation reads, traversal, and diagnost
 The CLI's App Server projection is version 9, and provider qualification requires
 that version. Its successful read schemas carry mutually exclusive published and
 live variants, including the corresponding source snapshot shape. The hosted
-endpoint schema is version 2 and advertises the prepared canonical read routes.
-These schema revisions describe the prepared contracts; they do not establish a
-default routing change or packaged native acceptance.
+endpoint schema is version 2 and advertises the seven canonical read routes.
+The final provider-qualified CLI schema document is 290,635 bytes, below the
+unchanged 524,288-byte limit. Schema compatibility and native execution remain
+separate evidence: the [acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
+records the final default-route CLI matrix and actual provider invocation.
