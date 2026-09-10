@@ -3,6 +3,7 @@ package io.github.amichne.kast.runtime.hosted
 import com.google.gson.Gson
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.IdeReadHostLifetime
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.channels.FileChannel
@@ -47,7 +48,7 @@ internal class OwnedHostedEndpoint private constructor(
             return home.resolve(".kast/ide-hosted/$digest")
         }
 
-        fun open(directory: Path, root: CanonicalWorkspaceRoot): Refinement<OwnedHostedEndpoint, HostedEndpointFailure> {
+        fun open(directory: Path, root: CanonicalWorkspaceRoot, host: IdeReadHostLifetime): Refinement<OwnedHostedEndpoint, HostedEndpointFailure> {
             val socket = directory.resolve("host.sock")
             val descriptor = directory.resolve("endpoint.json")
             try {
@@ -79,9 +80,10 @@ internal class OwnedHostedEndpoint private constructor(
                     val socketKey = key(socket)
                     try {
                         Files.writeString(descriptor, Gson().toJson(mapOf(
-                            "type" to "KAST_IDE_ENDPOINT", "protocol" to 1, "root" to root.value,
+                            "type" to "KAST_IDE_ENDPOINT", "protocol" to 2, "root" to root.value,
                             "socket" to socket.toString(), "hostPid" to ProcessHandle.current().pid(),
-                            "operations" to listOf("DESCRIBE", "CLASS_LOOKUP", "DIRECT_SUPERTYPE"),
+                            "host" to host.value.toString(), "querySchema" to HostedReadCapabilities.querySchema,
+                            "operations" to HostedReadCapabilities.operations,
                         )), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
                         val descriptorKey = key(descriptor)
                         return Refinement.Refined(OwnedHostedEndpoint(server, socket, socketKey, descriptor, descriptorKey, lock, channel))

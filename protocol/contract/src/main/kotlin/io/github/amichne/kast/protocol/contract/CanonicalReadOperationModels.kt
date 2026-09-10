@@ -274,7 +274,7 @@ value class RelationContinuationDocument private constructor(val value: String) 
             }
             if (
                 parts.size != RELATION_CONTINUATION_TOKEN_PART_COUNT ||
-                parts[1] != RELATION_CONTINUATION_TOKEN_VERSION
+                parts[1] !in setOf(RELATION_CONTINUATION_TOKEN_VERSION, "v2")
             ) {
                 return Refinement.Rejected(
                     RelationContinuationDocumentFailure.INVALID_TOKEN_STRUCTURE,
@@ -491,7 +491,7 @@ value class TraversalContinuationDocument private constructor(val value: String)
             }
             if (
                 parts.size != TRAVERSAL_CONTINUATION_TOKEN_PART_COUNT ||
-                parts[1] != TRAVERSAL_CONTINUATION_TOKEN_VERSION
+                parts[1] !in setOf(TRAVERSAL_CONTINUATION_TOKEN_VERSION, "v2")
             ) {
                 return Refinement.Rejected(
                     TraversalContinuationDocumentFailure.INVALID_TOKEN_STRUCTURE,

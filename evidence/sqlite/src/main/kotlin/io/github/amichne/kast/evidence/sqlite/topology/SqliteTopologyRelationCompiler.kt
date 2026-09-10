@@ -18,6 +18,7 @@ import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationResultCount
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
@@ -82,8 +83,16 @@ class SqliteTopologyRelationCompiler private constructor(
         if (request.subject.lease.workspaceRoot != snapshot.identity.lease.workspaceRoot) {
             return RelationCompilation.Rejected(RelationCompilerRejection.WORKSPACE_ROOT_MISMATCH)
         }
-        if (request.subject.lease.generation != snapshot.identity.lease.generation) {
+        val published = when (val admission = request.subject.lease.requirePublished()) {
+            is Refinement.Refined -> admission.value
+            is Refinement.Rejected -> return RelationCompilation.Rejected(RelationCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE)
+        }
+        if (published.generation != snapshot.identity.lease.generation) {
             return RelationCompilation.Rejected(RelationCompilerRejection.GENERATION_MOVED)
+        }
+        // This retained topology does not establish request-local discovery constraints.
+        if (request.subject.constraints != SymbolDiscoveryConstraints.None) {
+            return RelationCompilation.Rejected(RelationCompilerRejection.SCOPE_REJECTED)
         }
         val subjects = content.symbols.asSequence()
             .filter { it.evidence.compilerIdentity == request.subject.compilerIdentity }

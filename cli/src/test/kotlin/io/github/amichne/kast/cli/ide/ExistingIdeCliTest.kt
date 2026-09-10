@@ -11,7 +11,21 @@ import org.junit.jupiter.api.io.TempDir
 class ExistingIdeCliTest {
     @TempDir lateinit var temporary: Path
     private val root = CanonicalRoot(Path.of("/workspace"))
-    private val descriptor = ExistingIdeDescriptor(123)
+    private val host = java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")
+    private val descriptor = ExistingIdeDescriptor(123, host)
+
+    @Test fun `query response evidence must belong to the admitted live host and root`() {
+        fun live(path: String, nonce: java.util.UUID) = io.github.amichne.kast.kernel.EvidenceBasis.Live(
+            (io.github.amichne.kast.kernel.LiveReadEvidence.create(path, nonce, 1,
+                io.github.amichne.kast.kernel.LiveReadContentView.SAVED_PSI_COMMITTED, 1) as Refinement.Refined).value,
+        )
+        assertEquals(Refinement.Refined(Unit), admitLiveEvidence(live("/workspace", host), root, descriptor))
+        for (basis in listOf(
+            live("/other", host),
+            live("/workspace", java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")),
+            io.github.amichne.kast.kernel.EvidenceBasis.Published((io.github.amichne.kast.kernel.EvidenceGeneration.parse(1) as Refinement.Refined).value),
+        )) assertEquals(Refinement.Rejected(ExistingIdeFailure.RESPONSE_REJECTED), admitLiveEvidence(basis, root, descriptor))
+    }
 
     @Test fun `primary index commands route directly to the existing IDE`() {
         for (arguments in listOf(listOf("status"), listOf("classes", "Refinement"), listOf("supertype", "example.Child"))) {
@@ -156,7 +170,7 @@ class ExistingIdeCliTest {
     }
 
     @Test fun `status binds the descriptor host identity and rejects unknown capabilities`() {
-        val valid = """{"type":"KAST_IDE_HOST","protocol":1,"root":"/workspace","hostPid":123,"operations":["DESCRIBE","CLASS_LOOKUP","DIRECT_SUPERTYPE"],"indexAuthority":"existing_ide_kotlin_stub_index"}"""
+        val valid = """{"type":"KAST_IDE_HOST","protocol":2,"root":"/workspace","hostPid":123,"host":"$host","querySchema":"kast.query.run.v2","operations":["DESCRIBE","CLASS_LOOKUP","DIRECT_SUPERTYPE","QUERY_RUN","SYMBOL_DISCOVER","SYMBOL_INSPECT","SOURCE_READ","RELATION_READ","TRAVERSAL_RUN","DIAGNOSTIC_CHECK"],"indexAuthority":"existing_ide_kotlin_stub_index"}"""
         assertTrue(ExistingIdeDocuments.response(valid.toByteArray(), root, ExistingIdeOperation.Status, descriptor) is ExistingIdeExchange.Received)
         for (invalid in listOf(valid.replace("123", "124"), valid.replace("CLASS_LOOKUP", "IMPORT"), valid.replace("KAST_IDE_HOST", "KAST_IDE_ENDPOINT"))) {
             assertTrue(ExistingIdeDocuments.response(invalid.toByteArray(), root, ExistingIdeOperation.Status, descriptor) is ExistingIdeExchange.Rejected)

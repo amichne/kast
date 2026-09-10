@@ -13,9 +13,11 @@ import com.intellij.psi.util.PsiUtilCore
 import com.intellij.util.Processor
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.NativeRelationFamily
+import io.github.amichne.kast.symbol.contract.NativeRelationBudget
 import io.github.amichne.kast.symbol.contract.NativeRelationLimitation
 import io.github.amichne.kast.symbol.contract.NativeRelationRequest
 import io.github.amichne.kast.symbol.contract.RevalidatedExactDeclaration
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 
 internal data class IntellijPsiRelationEvent(
     val related: PsiNamedElement,
@@ -128,6 +130,8 @@ internal class IntellijPsiNativeRelationSearch(
         val searchState = RelationSearchState(
             compiledScope = compiledScope,
             subject = subject,
+            constraints = request.selector.constraints,
+            budget = request.budget,
             consumer = consumer,
         )
         return when (request.family) {
@@ -145,29 +149,33 @@ internal class IntellijPsiNativeRelationSearch(
     private inner class RelationSearchState(
         private val compiledScope: CompiledIntellijSearchScope,
         private val subject: PsiNamedElement,
+        private val constraints: SymbolDiscoveryConstraints,
+        private val budget: NativeRelationBudget,
         private val consumer: (IntellijNativeRelationEvent) -> Boolean,
     ) {
         private val limitations = linkedSetOf<NativeRelationLimitation>()
+        private val startedAt = System.nanoTime()
+        private val nativeCandidateLimit = minOf(
+            budget.resources.workUnitLimit.value, MAX_NATIVE_DISCOVERY_CANDIDATES.toLong(),
+        )
         private var state = IntellijRelationStreamState.STREAMING
 
         fun references(invocationsOnly: Boolean): IntellijNativeRelationSearchResult {
-            val terminal = ReferencesSearch.search(
-                subject,
-                compiledScope.nativeScope,
-                false,
-            ).forEach(Processor { reference ->
+            val pending = mutableListOf<PsiReference>()
+            val terminal = ReferencesSearch.search(subject, compiledScope.nativeScope, false)
+                .forEach(Processor { reference -> collectCandidate(pending, reference) })
+            // Resolution and projection start only after the native search callback has returned.
+            for (reference in pending) {
                 ProgressManager.checkCanceled()
-                when (reference.subjectResolution(subject)) {
+                if (!admitPackage(reference.element)) continue
+                val continued = when (reference.subjectResolution(subject)) {
                     IntellijReferenceSubjectResolution.MISMATCH -> {
                         limitations += NativeRelationLimitation.UNRESOLVED_TARGET
                         true
                     }
                     IntellijReferenceSubjectResolution.MATCHES -> when (
-                        val admission = if (invocationsOnly) {
-                            semanticPolicy.invocation(reference)
-                        } else {
-                            IntellijInvocationReferenceAdmission.INVOCATION
-                        }
+                        if (invocationsOnly) semanticPolicy.invocation(reference)
+                        else IntellijInvocationReferenceAdmission.INVOCATION
                     ) {
                         IntellijInvocationReferenceAdmission.NON_INVOCATION -> true
                         IntellijInvocationReferenceAdmission.UNSUPPORTED -> {
@@ -181,53 +189,75 @@ internal class IntellijPsiNativeRelationSearch(
                                 limitations += NativeRelationLimitation.UNSUPPORTED_ITEM
                                 true
                             }
-                            is IntellijNamedRelationTarget.Found ->
-                                emit(reference, related.declaration)
+                            is IntellijNamedRelationTarget.Found -> emit(reference, related.declaration)
                         }
                     }
                 }
-            })
-            state = if (terminal) {
-                IntellijRelationStreamState.STREAMING
-            } else {
-                IntellijRelationStreamState.HALTED
+                if (!continued) return report()
             }
-            return report()
+            return finishProvider(terminal)
         }
 
         fun definitions(): IntellijNativeRelationSearchResult {
-            val terminal = DefinitionsScopedSearch.search(
-                subject,
-                compiledScope.nativeScope,
-                false,
-            ).forEach(Processor { definition ->
+            val pending = mutableListOf<PsiElement>()
+            val terminal = DefinitionsScopedSearch.search(subject, compiledScope.nativeScope, false)
+                .forEach(Processor { definition -> collectCandidate(pending, definition) })
+            for (definition in pending) {
                 ProgressManager.checkCanceled()
                 val related = definition as? PsiNamedElement
                 val file = PsiUtilCore.getVirtualFile(definition)
                 when {
-                    related == null || file == null -> {
-                        limitations += NativeRelationLimitation.UNSUPPORTED_ITEM
-                        true
-                    }
-                    !compiledScope.nativeScope.contains(file) -> true
-                    PsiManager.getInstance(project).areElementsEquivalent(subject, definition) -> true
-                    else -> emit(
-                        IntellijPsiRelationEvent(
-                            related = related,
-                            occurrenceFile = file,
-                            occurrenceStartInclusive = definition.textRange.startOffset,
-                            occurrenceEndExclusive = definition.textRange.endOffset,
-                        ),
-                    )
+                    related == null || file == null -> limitations += NativeRelationLimitation.UNSUPPORTED_ITEM
+                    !compiledScope.nativeScope.contains(file) -> Unit
+                    !admitPackage(definition) -> Unit
+                    PsiManager.getInstance(project).areElementsEquivalent(subject, definition) -> Unit
+                    else -> if (!emit(
+                            IntellijPsiRelationEvent(
+                                related = related,
+                                occurrenceFile = file,
+                                occurrenceStartInclusive = definition.textRange.startOffset,
+                                occurrenceEndExclusive = definition.textRange.endOffset,
+                            ),
+                        )
+                    ) return report()
                 }
-            })
-            state = if (terminal) {
-                IntellijRelationStreamState.STREAMING
-            } else {
-                IntellijRelationStreamState.HALTED
+            }
+            return finishProvider(terminal)
+        }
+
+        private fun <T> collectCandidate(pending: MutableList<T>, candidate: T): Boolean {
+            ProgressManager.checkCanceled()
+            if ((System.nanoTime() - startedAt).coerceAtLeast(0L) / 1_000_000L >= budget.resources.elapsedTimeLimit.value) {
+                limitations += NativeRelationLimitation.TIME_LIMIT_REACHED
+                return false
+            }
+            if (pending.size.toLong() >= nativeCandidateLimit) {
+                limitations += NativeRelationLimitation.WORK_LIMIT_REACHED
+                return false
+            }
+            pending += candidate
+            return true
+        }
+
+        private fun finishProvider(terminal: Boolean): IntellijNativeRelationSearchResult {
+            if (!terminal) {
+                state = IntellijRelationStreamState.HALTED
+                limitations += NativeRelationLimitation.PROVIDER_INCOMPLETE
             }
             return report()
         }
+
+        private fun admitPackage(element: PsiElement): Boolean =
+            when (constraints.packageName.admitPackage {
+                element.containingFile?.packageEvidence() ?: IntellijPackageEvidence.Unavailable
+            }) {
+                IntellijDiscoveryItemAdmission.ADMITTED -> true
+                IntellijDiscoveryItemAdmission.FILTERED -> false
+                IntellijDiscoveryItemAdmission.UNSUPPORTED -> {
+                    limitations += NativeRelationLimitation.UNSUPPORTED_ITEM
+                    false
+                }
+            }
 
         fun callees(): IntellijNativeRelationSearchResult {
             (subject as PsiElement).accept(
@@ -300,12 +330,12 @@ internal class IntellijPsiNativeRelationSearch(
             )
         }
 
-        private fun emit(event: IntellijPsiRelationEvent): Boolean =
-            consumer(event).also { keepGoing ->
-                if (!keepGoing) {
-                    state = IntellijRelationStreamState.HALTED
-                }
+        private fun emit(event: IntellijPsiRelationEvent): Boolean {
+            if (!admitPackage(event.related)) return true
+            return consumer(event).also { keepGoing ->
+                if (!keepGoing) state = IntellijRelationStreamState.HALTED
             }
+        }
 
         private fun report(): IntellijNativeRelationSearchResult =
             when (state) {

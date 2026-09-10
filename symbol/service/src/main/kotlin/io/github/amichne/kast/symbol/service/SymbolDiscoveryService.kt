@@ -18,14 +18,22 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryResult
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
-import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
+import io.github.amichne.kast.workspace.contract.SemanticReadValidation
+import io.github.amichne.kast.workspace.contract.SemanticReadValidationPort
+import io.github.amichne.kast.workspace.contract.semanticReadValidation
 
 /** Current-generation admission owner for the public `symbol.discover` operation. */
 class SymbolDiscoveryService(
-    private val workspaces: WorkspaceInspectionOperations,
+    private val authorities: SemanticReadValidationPort,
     private val compiler: SymbolCompilerPort,
     private val observability: KastObservability = KastObservability.Disabled,
 ) : SymbolDiscoveryOperations {
+    constructor(
+        workspaces: WorkspaceInspectionOperations,
+        compiler: SymbolCompilerPort,
+        observability: KastObservability = KastObservability.Disabled,
+    ) : this(workspaces.semanticReadValidation(), compiler, observability)
+
     /**
      * Proof transition: `(WorkspaceRuntimeState, SymbolDiscoveryRequest, SymbolCompilation) ->
      * SymbolDiscoveryResult`.
@@ -41,19 +49,13 @@ class SymbolDiscoveryService(
         }
 
     private suspend fun discoverObserved(request: SymbolDiscoveryRequest): SymbolDiscoveryResult {
-        val workspace = when (val state = workspaces.inspect()) {
-            is WorkspaceRuntimeState.Ready -> state.workspace
-            WorkspaceRuntimeState.Absent,
-            WorkspaceRuntimeState.Starting,
-            WorkspaceRuntimeState.Reconciling,
-            is WorkspaceRuntimeState.Blocked,
-            WorkspaceRuntimeState.Stopping,
-                -> return SymbolDiscoveryResult.Rejected(
+        when (authorities.validate(request.scope.lease)) {
+            SemanticReadValidation.CURRENT -> Unit
+            SemanticReadValidation.UNAVAILABLE -> return SymbolDiscoveryResult.Rejected(
                 SymbolDiscoveryRejection.WORKSPACE_NOT_READY,
             )
-        }
-        if (workspace.readLease != request.scope.lease) {
-            return SymbolDiscoveryResult.Rejected(
+            SemanticReadValidation.ROOT_MISMATCH,
+            SemanticReadValidation.MOVED -> return SymbolDiscoveryResult.Rejected(
                 SymbolDiscoveryRejection.STALE_GENERATION,
             )
         }
@@ -82,29 +84,21 @@ class SymbolDiscoveryService(
      * that lease, scope, kind, and work measures match the request. [SymbolDiscoveryRejection] is
      * the closed expected failure. The final workspace observation is the only effect boundary.
      */
-    private fun admitCompilation(
+    private suspend fun admitCompilation(
         request: SymbolDiscoveryRequest,
         outcome: SymbolDiscoveryOutcome,
     ): SymbolDiscoveryResult {
-        val currentLease = when (val state = workspaces.inspect()) {
-            is WorkspaceRuntimeState.Ready -> state.workspace.readLease
-            WorkspaceRuntimeState.Absent,
-            WorkspaceRuntimeState.Starting,
-            WorkspaceRuntimeState.Reconciling,
-            is WorkspaceRuntimeState.Blocked,
-            WorkspaceRuntimeState.Stopping,
-                -> return SymbolDiscoveryResult.Rejected(
-                SymbolDiscoveryRejection.STALE_GENERATION,
-            )
+        if (authorities.validate(request.scope.lease) != SemanticReadValidation.CURRENT) {
+            return SymbolDiscoveryResult.Rejected(SymbolDiscoveryRejection.STALE_GENERATION)
         }
         val batch = when (outcome) {
             is SymbolDiscoveryOutcome.Complete -> outcome.batch
             is SymbolDiscoveryOutcome.Qualified -> outcome.batch
         }
         val contractHolds =
-            currentLease == request.scope.lease &&
             batch.lease == request.scope.lease &&
             batch.scope == request.scope.scope &&
+            batch.constraints == request.constraints &&
             batch.examinedWorkUnits.value <= request.budget.resources.workUnitLimit.value &&
             batch.candidates.all { candidate -> request.target.admits(candidate.kind) }
         return if (contractHolds) {

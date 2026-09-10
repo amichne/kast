@@ -115,6 +115,38 @@ class SqliteTopologyTraversalTest {
         assertEquals(listOf("b", "c"), result.page.records.map { it.related.name.value })
     }
 
+    @Test
+    fun `published topology rejects discovery constraints it cannot establish`() {
+        val fixture = TraversalTestFixture()
+        val a = fixture.selector("a", 10)
+        val b = fixture.selector("b", 20)
+        val c = fixture.selector("c", 30)
+        val workspace = workspace(fixture, sourceRoot())
+        val generation = generation(workspace, listOf(a, b, c))
+        val store = store(tempDir.resolve("scoped-topology.sqlite"))
+        val snapshot = assertInstanceOf(TopologyPublicationResult.Published::class.java, store.publish(generation)).snapshot
+        val constrained = SymbolSelector.issue(
+            a.lease,
+            a.scope,
+            generation.symbols.first { it.evidence.name == a.name }.evidence,
+            io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints(
+                null, null,
+                sourceSets = io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets.Exact.from(setOf(
+                    io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName.parse("main").refined(),
+                )).refined(),
+            ),
+        )
+        val request = io.github.amichne.kast.relation.contract.RelationRequest.start(
+            constrained, io.github.amichne.kast.relation.contract.RelationMeaning.Callees, fixture.relationBudget(),
+        )
+        assertEquals(
+            io.github.amichne.kast.relation.contract.RelationCompilation.Rejected(
+                io.github.amichne.kast.relation.contract.RelationCompilerRejection.SCOPE_REJECTED,
+            ),
+            runSuspend { topologyRelationCompiler(snapshot, store).read(request) },
+        )
+    }
+
     private fun generation(
         workspace: PublishedWorkspace,
         selectors: List<SymbolSelector>,

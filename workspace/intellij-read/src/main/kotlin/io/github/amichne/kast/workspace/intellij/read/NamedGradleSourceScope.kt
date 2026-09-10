@@ -20,7 +20,7 @@ internal sealed interface NamedGradleModelObservation {
     ) : NamedGradleModelObservation
 }
 
-internal sealed interface NamedGradleSourceScopeFailure {
+sealed interface NamedGradleSourceScopeFailure {
     data object MODEL_UNAVAILABLE : NamedGradleSourceScopeFailure
     data object IDE_ROOT_UNMAPPED : NamedGradleSourceScopeFailure
     data object IDE_ROOT_INCOHERENT : NamedGradleSourceScopeFailure
@@ -32,7 +32,7 @@ internal sealed interface NamedGradleSourceScopeFailure {
     data class ObservationFailed(val stage: NamedGradleCaptureStage) : NamedGradleSourceScopeFailure
 }
 
-internal enum class NamedGradleCaptureStage { PROJECT, CACHE, MODULES, SOURCE_SETS, OWNERSHIP }
+enum class NamedGradleCaptureStage { PROJECT, CACHE, MODULES, SOURCE_SETS, OWNERSHIP }
 
 /**
  * Exact Gradle ownership intersected with the existing IDE's code roots. Admission happens before

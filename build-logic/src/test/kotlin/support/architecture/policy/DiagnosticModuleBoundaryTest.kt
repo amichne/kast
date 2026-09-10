@@ -28,6 +28,7 @@ class DiagnosticModuleBoundaryTest {
                 dependencies = setOf(
                     ModuleId.PROTOCOL_CONTRACT,
                     ModuleId.DIAGNOSTIC_CONTRACT,
+                    ModuleId.SYMBOL_CONTRACT,
                     ModuleId.WORKSPACE_CONTRACT,
                     ModuleId.WORKSPACE_INTELLIJ_READ,
                 ),

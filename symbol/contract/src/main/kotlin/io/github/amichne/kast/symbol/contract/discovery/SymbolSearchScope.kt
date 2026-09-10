@@ -3,10 +3,11 @@ package io.github.amichne.kast.symbol.contract
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.GradleProjectIdentity
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.SourceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceModuleIdentity
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName
+import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
 import java.nio.file.Path
 
 enum class SymbolSourceKindPolicy {
@@ -150,6 +151,31 @@ sealed interface SymbolSearchScope {
             root: CanonicalWorkspaceRoot,
             sourceRoot: SourceRoot,
             captured: SymbolSearchScopeSnapshot,
+        ): Refinement<SymbolSearchScope, SymbolSearchScopeRestorationFailure> = restore(
+            root, sourceRoot.owner.module, sourceRoot.owner.project, sourceRoot.owner.sourceSet, captured,
+        )
+
+        /** Restores modeled scope only through strong owner identities present in the current model. */
+        fun restore(
+            model: WorkspaceSearchScopeModel,
+            captured: SymbolSearchScopeSnapshot,
+        ): Refinement<SymbolSearchScope, SymbolSearchScopeRestorationFailure> {
+            val scopes = model.sourceRoots.mapNotNull { owner ->
+                when (val restored = restore(model.workspaceRoot, owner.module, owner.project, owner.sourceSet, captured)) {
+                    is Refinement.Refined -> restored.value
+                    is Refinement.Rejected -> null
+                }
+            }.distinct()
+            return if (scopes.size == 1) Refinement.Refined(scopes.single())
+            else Refinement.Rejected(SymbolSearchScopeRestorationFailure.MALFORMED)
+        }
+
+        private fun restore(
+            root: CanonicalWorkspaceRoot,
+            module: WorkspaceModuleIdentity,
+            project: GradleProjectIdentity,
+            sourceSet: WorkspaceSourceSetName,
+            captured: SymbolSearchScopeSnapshot,
         ): Refinement<SymbolSearchScope, SymbolSearchScopeRestorationFailure> {
             val scope = when (captured.kind) {
                 SymbolSearchScopeKind.EXACT_FILE -> {
@@ -171,11 +197,11 @@ sealed interface SymbolSearchScope {
                     ExactFile(file, captured.sourceKinds, captured.generatedSources)
                 }
                 SymbolSearchScopeKind.MODULE -> {
-                    if (captured.primary != sourceRoot.owner.module.value) {
+                    if (captured.primary != module.value) {
                         return Refinement.Rejected(SymbolSearchScopeRestorationFailure.MALFORMED)
                     }
                     Module(
-                        sourceRoot.owner.module,
+                        module,
                         captured.sourceKinds,
                         captured.generatedSources,
                     )
@@ -184,29 +210,29 @@ sealed interface SymbolSearchScope {
                     val parts = captured.secondary?.split('\u0000')
                         ?: return Refinement.Rejected(SymbolSearchScopeRestorationFailure.MALFORMED)
                     if (
-                        captured.primary != sourceRoot.owner.project.buildRoot.value ||
+                        captured.primary != project.buildRoot.value ||
                         parts.size != 2 ||
-                        parts[0] != sourceRoot.owner.project.projectPath.value ||
-                        parts[1] != sourceRoot.owner.sourceSet.value
+                        parts[0] != project.projectPath.value ||
+                        parts[1] != sourceSet.value
                     ) {
                         return Refinement.Rejected(SymbolSearchScopeRestorationFailure.MALFORMED)
                     }
                     SourceSet(
-                        sourceRoot.owner.project,
-                        sourceRoot.owner.sourceSet,
+                        project,
+                        sourceSet,
                         captured.sourceKinds,
                         captured.generatedSources,
                     )
                 }
                 SymbolSearchScopeKind.GRADLE_PROJECT -> {
                     if (
-                        captured.primary != sourceRoot.owner.project.buildRoot.value ||
-                        captured.secondary != sourceRoot.owner.project.projectPath.value
+                        captured.primary != project.buildRoot.value ||
+                        captured.secondary != project.projectPath.value
                     ) {
                         return Refinement.Rejected(SymbolSearchScopeRestorationFailure.MALFORMED)
                     }
                     GradleProject(
-                        sourceRoot.owner.project,
+                        project,
                         captured.sourceKinds,
                         captured.generatedSources,
                     )
@@ -254,6 +280,6 @@ enum class SymbolSearchScopeRestorationFailure {
  * readable authority and cannot grant edit or mutation authority.
  */
 data class SymbolSearchScopeRequest(
-    val lease: SemanticReadLease,
+    val lease: SemanticReadAuthority,
     val scope: SymbolSearchScope,
 )

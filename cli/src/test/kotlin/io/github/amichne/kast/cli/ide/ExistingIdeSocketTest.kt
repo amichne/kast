@@ -28,9 +28,9 @@ class ExistingIdeSocketTest {
             Files.createDirectories(directory)
             Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
             val socket = directory.resolve("host.sock")
-            val operations = JsonArray(listOf("DESCRIBE", "CLASS_LOOKUP", "DIRECT_SUPERTYPE").map(::JsonPrimitive))
+            val operations = JsonArray(listOf("DESCRIBE", "CLASS_LOOKUP", "DIRECT_SUPERTYPE", "QUERY_RUN", "SYMBOL_DISCOVER", "SYMBOL_INSPECT", "SOURCE_READ", "RELATION_READ", "TRAVERSAL_RUN", "DIAGNOSTIC_CHECK").map(::JsonPrimitive))
             Files.writeString(directory.resolve("endpoint.json"), buildJsonObject {
-                put("type", "KAST_IDE_ENDPOINT"); put("protocol", 1); put("root", home.toString());
+                put("type", "KAST_IDE_ENDPOINT"); put("protocol", 2); put("host", "00000000-0000-0000-0000-000000000001"); put("querySchema", "kast.query.run.v2"); put("root", home.toString());
                 put("socket", socket.toString()); put("hostPid", 123); put("operations", operations)
             }.toString())
             val executor = Executors.newSingleThreadExecutor()
@@ -38,7 +38,7 @@ class ExistingIdeSocketTest {
                 ServerSocketChannel.open(StandardProtocolFamily.UNIX).use { server ->
                     server.bind(UnixDomainSocketAddress.of(socket))
                     val response = buildJsonObject {
-                        put("type", "KAST_IDE_HOST"); put("protocol", 1); put("root", home.toString());
+                        put("type", "KAST_IDE_HOST"); put("protocol", 2); put("host", "00000000-0000-0000-0000-000000000001"); put("querySchema", "kast.query.run.v2"); put("root", home.toString());
                         put("hostPid", 123); put("operations", operations); put("indexAuthority", "existing_ide_kotlin_stub_index")
                     }.toString().toByteArray()
                     val task = executor.submit {
@@ -68,7 +68,8 @@ class ExistingIdeSocketTest {
                         (ExistingIdeQualifiedClassName.parse("example.Child") as io.github.amichne.kast.kernel.Refinement.Refined).value,
                     ) else ExistingIdeOperation.Status
                     val answer = ExistingIdeSocketClient(home).query(root, operation)
-                    if (scenario in listOf("valid", "supertype")) assertTrue(answer is ExistingIdeExchange.Received)
+                    if (scenario == "valid") assertTrue(answer is ExistingIdeExchange.Received)
+                    else if (scenario == "supertype") assertTrue(answer is ExistingIdeExchange.HostRejected)
                     else assertEquals(ExistingIdeExchange.Rejected(ExistingIdeFailure.RESPONSE_REJECTED), answer)
                     task.get(3, TimeUnit.SECONDS)
                 }

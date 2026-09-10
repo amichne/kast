@@ -6,7 +6,7 @@ import com.intellij.openapi.project.Project
 import io.github.amichne.kast.symbol.contract.NativeRelationOutcome
 import io.github.amichne.kast.symbol.contract.NativeRelationRequest
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 
 sealed interface IntellijNativeRelationResult {
@@ -32,10 +32,10 @@ class IntellijNativeRelationAdapter private constructor(
 
     /**
      * Proof transition:
-     * Project + current SemanticReadLease + NativeRelationRequest +
+     * Project + current SemanticReadAuthority + NativeRelationRequest +
      * WorkspaceSearchScopeModelCompilation to IntellijNativeRelationResult.
      *
-     * Establishes current exact root/generation admission, recompiles the selector's retained scope,
+     * Establishes current exact root/authority admission, recompiles the selector's retained scope,
      * and executes one bounded relation family inside a restartable write-priority IntelliJ read.
      * Root/generation, scope, subject identity, environment, and bounded coverage failures are
      * closed by [IntellijNativeRelationResult]. Platform cancellation propagates through
@@ -43,7 +43,7 @@ class IntellijNativeRelationAdapter private constructor(
      */
     suspend fun read(
         project: Project,
-        currentLease: SemanticReadLease,
+        currentLease: SemanticReadAuthority,
         request: NativeRelationRequest,
         modelCompilation: WorkspaceSearchScopeModelCompilation,
     ): IntellijNativeRelationResult {

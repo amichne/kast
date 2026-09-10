@@ -177,6 +177,9 @@ internal sealed interface QueryRunRejectionWireDocument {
     @SerialName("malformed") MALFORMED,
     @SerialName("incompatible-workspace") INCOMPATIBLE_WORKSPACE,
     @SerialName("stale-generation") STALE_GENERATION,
+    @SerialName("stale-authority") STALE_AUTHORITY,
+    @SerialName("incompatible-authority") INCOMPATIBLE_AUTHORITY,
+    @SerialName("incompatible-reference-version") INCOMPATIBLE_REFERENCE_VERSION,
 }
 
 internal object CanonicalQuerySerializers {

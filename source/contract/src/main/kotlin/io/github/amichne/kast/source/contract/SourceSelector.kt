@@ -272,6 +272,7 @@ enum class SourceSelectorRevalidationFailure {
     STALE_GENERATION,
     SOURCE_STATE_MISMATCH,
     SOURCE_FILE_MISMATCH,
+    SOURCE_SCOPE_MISMATCH,
     DOCUMENT_IDENTITY_MISMATCH,
     DOCUMENT_LENGTH_MISMATCH,
 }
@@ -296,10 +297,12 @@ class RevalidatedSourceSelector private constructor(
             val failure = when {
                 issued.lease.workspaceRoot != current.lease.workspaceRoot ->
                     SourceSelectorRevalidationFailure.WORKSPACE_ROOT_MISMATCH
-                issued.lease.generation != current.lease.generation ->
+                issued.lease != current.lease ->
                     SourceSelectorRevalidationFailure.STALE_GENERATION
-                issued.sourceState != current.sourceState ->
+                issued.context != current.context ->
                     SourceSelectorRevalidationFailure.SOURCE_STATE_MISMATCH
+                issued.readScope != current.readScope ->
+                    SourceSelectorRevalidationFailure.SOURCE_SCOPE_MISMATCH
                 issued.file != current.file ->
                     SourceSelectorRevalidationFailure.SOURCE_FILE_MISMATCH
                 issued.textIdentity != current.textIdentity ->
@@ -327,8 +330,12 @@ private fun sourceSelectorFingerprint(
     val snapshot = range.snapshot
     val canonical = buildString {
         appendSelectorField(snapshot.lease.workspaceRoot.value)
-        appendSelectorField(snapshot.lease.generation.value.toString())
-        appendSelectorField(snapshot.sourceState.value)
+        appendSelectorField(snapshot.lease.identity.revisionKey.value)
+        appendSelectorField(when (val context = snapshot.context) {
+            is SourceReadContext.Published -> context.sourceState.value
+            is SourceReadContext.Live -> context.lease.reference.contentView.name
+        })
+        snapshot.readScope.fingerprintFields().forEach(::appendSelectorField)
         appendSelectorField(snapshot.file.path.value)
         appendSelectorField(snapshot.textIdentity.value)
         appendSelectorField(snapshot.length.value.toString())

@@ -22,6 +22,7 @@ dependencies {
     implementation(project(":relation:service"))
     implementation(project(":relation:intellij"))
     implementation(project(":query:contract"))
+    implementation(project(":query:protocol"))
     implementation(project(":query:service"))
     implementation(project(":traversal:contract"))
     implementation(project(":traversal:service"))

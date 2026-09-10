@@ -71,6 +71,7 @@ fun main(args: Array<String>) {
         io.github.amichne.kast.cli.ide.executeExistingIdeCli(
             args.toList(), Path.of("").toAbsolutePath(), FilesystemCanonicalRootDiscovery,
             io.github.amichne.kast.cli.ide.ExistingIdeSocketClient(Path.of(System.getProperty("user.home"))),
+            CliRequestDocumentInput.Deferred(::readCanonicalRequestInput),
         )
     } else when (val installation = InstallationCliInspection.inspect(args.toList(), environment)) {
         is InstallationHandling.Handled -> installation.exit

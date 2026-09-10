@@ -4,7 +4,7 @@ title: Runtime and process hosts
 description: Runtime composition connects domain operations to adapters, while server, indexer, App Server, and CLI own distinct transport and process responsibilities.
 resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
-timestamp: 2026-09-09T00:00:00Z
+timestamp: 2026-09-10T00:00:00Z
 code_sources:
   - path: runtime/server/src/main/kotlin/io/github/amichne/kast/runtime/server/ServerDispatch.kt
     symbols: [ServerDispatch]
@@ -19,8 +19,16 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
   - path: runtime/hosted/build.gradle.kts
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointProtocol.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerCancellation.kt
+    symbols: [HostedPeerTermination, dispatchUntilPeerTermination]
+  - path: runtime/composition/build.gradle.kts
+  - path: query/protocol/build.gradle.kts
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSocketClient.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeQuery.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/ide/IdeCommands.kt
 ---
 
@@ -32,11 +40,18 @@ The indexer runs the semantic runtime inside the admitted IntelliJ environment. 
 
 These hosts communicate through protocol and distribution contracts; reachability alone does not establish readiness or semantic authority.
 
-`runtime:hosted` is a separate IDEA plugin for the existing-project index flow.
+`runtime:hosted` is a separate IDEA plugin for existing-project reads.
 Its project service owns a bounded local socket and delegates saved-content
 semantic reads to `workspace:intellij-read`. It has no project-opening, Gradle
 import, or worker-launch authority and is excluded from isolated runtime
-composition. See [hosted queries](../flows/hosted-query.md) for its current scope.
+composition. Its generalized evaluator composition consumes an admitted read
+context, pure semantic services, project-bound adapters, and the shared
+[`query:protocol`](query-protocol.md) module. All seven canonical read handlers
+and their existing-IDE client decoders are prepared. Peer termination cancels
+and joins owned work; the semantic executor retains its permit until cleanup.
+The default native cutover and packaged manual acceptance remain pending. See
+[hosted queries](../flows/hosted-query.md) for the distinction between this
+implementation and earlier qualified index reads.
 
 The primary `kast index` commands and compatible `kast ide` spelling project
 the same local Clikt implementation before
@@ -44,7 +59,12 @@ isolated-product bootstrap. Its only runtime capability is an existing-IDE
 client; it cannot start a worker. The socket adapter validates the shared
 hosted schemas and exact root/name correlation before producing CLI output.
 IDEA owns incremental index maintenance for this path. The internal `INDEX_SYNC`
-operation remains absent from the public command graph. General semantic commands
-and App Server requests keep their original assembly.
+operation remains absent from the public command graph. The generalized semantic
+CLI/host cutover is separate from these earlier index-read qualifications; this
+page does not claim that all semantic commands or App Server requests have moved
+to the existing IDE. The provider now requires App Server projection version 9,
+whose read schemas preserve published/live evidence and semantic qualification.
+It still qualifies and invokes its configured real CLI; the prepared client
+route alone does not establish a change to that CLI's default execution path.
 
 Read [request dispatch](../flows/request-dispatch.md) for the cross-host path.

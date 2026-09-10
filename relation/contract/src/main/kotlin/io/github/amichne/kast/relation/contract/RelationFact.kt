@@ -1,6 +1,6 @@
 package io.github.amichne.kast.relation.contract
 
-import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
@@ -11,9 +11,11 @@ import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateName
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
+import io.github.amichne.kast.symbol.contract.fingerprintFields
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSelector
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
@@ -58,8 +60,9 @@ enum class RelationEndpointResolutionFailure {
 
 /** Exact compiler-grounded endpoint detached from every live IntelliJ and K2 object. */
 sealed interface RelationEndpoint {
-    val lease: SemanticReadLease
+    val lease: SemanticReadAuthority
     val scope: SymbolSearchScope
+    val constraints: SymbolDiscoveryConstraints
     val file: SymbolDiscoveryFileIdentity
     val range: ExactDeclarationTextRange
     val name: SymbolDiscoveryCandidateName
@@ -73,8 +76,9 @@ sealed interface RelationEndpoint {
     data class Subject internal constructor(
         val selector: SymbolSelector,
     ) : RelationEndpoint {
-        override val lease: SemanticReadLease = selector.lease
+        override val lease: SemanticReadAuthority = selector.lease
         override val scope: SymbolSearchScope = selector.scope
+        override val constraints: SymbolDiscoveryConstraints = selector.constraints
         override val file: SymbolDiscoveryFileIdentity = selector.file
         override val range: ExactDeclarationTextRange = selector.range
         override val name: SymbolDiscoveryCandidateName = selector.name
@@ -89,8 +93,9 @@ sealed interface RelationEndpoint {
 
     @ConsistentCopyVisibility
     data class Resolved private constructor(
-        override val lease: SemanticReadLease,
+        override val lease: SemanticReadAuthority,
         override val scope: SymbolSearchScope,
+        override val constraints: SymbolDiscoveryConstraints,
         val evidence: CompilerGroundedSymbolEvidence,
         override val fingerprint: RelationEndpointFingerprint,
     ) : RelationEndpoint {
@@ -104,14 +109,16 @@ sealed interface RelationEndpoint {
 
         companion object {
             internal fun create(
-                lease: SemanticReadLease,
+                lease: SemanticReadAuthority,
                 scope: SymbolSearchScope,
                 evidence: CompilerGroundedSymbolEvidence,
+                constraints: SymbolDiscoveryConstraints,
             ): Resolved = Resolved(
                 lease,
                 scope,
+                constraints,
                 evidence,
-                relationEndpointFingerprint(lease, scope, evidence),
+                relationEndpointFingerprint(lease, scope, evidence, constraints),
             )
         }
     }
@@ -120,13 +127,13 @@ sealed interface RelationEndpoint {
         /**
          * Proof transition: `SymbolSelector -> RelationEndpoint.Subject`.
          *
-         * Preserves the selector's exact compiler-grounded root, generation, scope, declaration,
+         * Preserves the selector's exact compiler-grounded root, authority, scope, declaration,
          * and opaque identity without extracting a primitive subject.
          */
         fun subject(selector: SymbolSelector): Subject = Subject(selector)
 
         /**
-         * Proof transition: `(SemanticReadLease, SymbolSearchScope,
+         * Proof transition: `(SemanticReadAuthority, SymbolSearchScope,
          * CompilerGroundedSymbolEvidence) -> Refinement<RelationEndpoint.Resolved,
          * RelationEndpointResolutionFailure>`.
          *
@@ -135,9 +142,10 @@ sealed interface RelationEndpoint {
          * may enter only through compiler evidence at the request-local native adapter boundary.
          */
         fun resolve(
-            lease: SemanticReadLease,
+            lease: SemanticReadAuthority,
             scope: SymbolSearchScope,
             evidence: CompilerGroundedSymbolEvidence,
+            constraints: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints.None,
         ): Refinement<Resolved, RelationEndpointResolutionFailure> {
             if (
                 scope is SymbolSearchScope.ExactFile &&
@@ -147,7 +155,7 @@ sealed interface RelationEndpoint {
                     RelationEndpointResolutionFailure.FILE_OUTSIDE_EXACT_SCOPE,
                 )
             }
-            return Refinement.Refined(Resolved.create(lease, scope, evidence))
+            return Refinement.Refined(Resolved.create(lease, scope, evidence, constraints))
         }
     }
 }
@@ -166,7 +174,7 @@ class RevalidatedRelationEndpoint private constructor(
          * RevalidatedRelationEndpoint, RelationEndpointRevalidationFailure>`.
          *
          * Establishes identical detached file, range, name, qualified identity, kind, and compiler
-         * identity under the endpoint's retained root, generation, and scope.
+         * identity under the endpoint's retained root, authority, and scope.
          * [RelationEndpointRevalidationFailure] is the closed expected failure. Raw compiler
          * evidence may enter only from the request-local native relation adapter.
          */
@@ -248,7 +256,7 @@ data class RelationFact private constructor(
     val source: RelationEndpoint,
     val target: RelationEndpoint,
     val occurrence: RelationOccurrence,
-    val generation: EvidenceGeneration,
+    val authority: SemanticReadIdentity,
     val provenance: RelationProvenance,
     val coverage: RelationFactCoverage,
 ) : Comparable<RelationFact> {
@@ -261,7 +269,7 @@ data class RelationFact private constructor(
         appendFactField(occurrence.file.stableValue)
         appendFactField(occurrence.range.startInclusive.toString())
         appendFactField(occurrence.range.endExclusive.toString())
-        appendFactField(generation.value.toString())
+        appendFactField(authority.revisionKey.value)
         appendFactField(provenance.name)
         appendFactField(coverage.name)
     }
@@ -273,7 +281,7 @@ data class RelationFact private constructor(
          * RelationFactFailure>`.
          *
          * Establishes one exact compiler-confirmed edge with closed orientation, subject lease and
-         * scope, exact occurrence, generation, and provenance. [RelationFactFailure] is the closed
+         * scope, exact occurrence, authority, and provenance. [RelationFactFailure] is the closed
          * expected failure. Native values may enter only through already-detached endpoints and
          * occurrence evidence.
          */
@@ -287,7 +295,8 @@ data class RelationFact private constructor(
             if (source.lease != request.subject.lease || target.lease != request.subject.lease) {
                 return Refinement.Rejected(RelationFactFailure.ENDPOINT_LEASE_MISMATCH)
             }
-            if (source.scope != request.subject.scope || target.scope != request.subject.scope) {
+            if (source.scope != request.subject.scope || target.scope != request.subject.scope ||
+                source.constraints != request.subject.constraints || target.constraints != request.subject.constraints) {
                 return Refinement.Rejected(RelationFactFailure.ENDPOINT_SCOPE_MISMATCH)
             }
             val oriented = when (request.meaning) {
@@ -310,7 +319,7 @@ data class RelationFact private constructor(
                     source = source,
                     target = target,
                     occurrence = occurrence,
-                    generation = request.subject.lease.generation,
+                    authority = request.subject.lease.identity,
                     provenance = provenance,
                     coverage = RelationFactCoverage.EXACT_COMPILER_CONFIRMED,
                 ),
@@ -329,14 +338,16 @@ data class RelationFact private constructor(
 }
 
 private fun relationEndpointFingerprint(
-    lease: SemanticReadLease,
+    lease: SemanticReadAuthority,
     scope: SymbolSearchScope,
     evidence: CompilerGroundedSymbolEvidence,
+    constraints: SymbolDiscoveryConstraints,
 ): RelationEndpointFingerprint {
     val canonical = buildString {
         appendFactField(lease.workspaceRoot.value)
-        appendFactField(lease.generation.value.toString())
+        appendFactField(lease.identity.revisionKey.value)
         scope.appendEndpointFields(this)
+        constraints.fingerprintFields().forEach(::appendFactField)
         appendFactField(evidence.file.stableValue)
         appendFactField(evidence.range.startInclusive.toString())
         appendFactField(evidence.range.endExclusive.toString())
