@@ -1,0 +1,28 @@
+run {
+    val inputPath = java.nio.file.Path.of(String(java.util.Base64.getDecoder().decode("@INPUT_BASE64@"), Charsets.UTF_8))
+    val input = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(inputPath)).asJsonObject
+    val root = java.nio.file.Path.of(input.get("root").asString)
+    val path = java.nio.file.Path.of(input.get("file").asString)
+    check(path.parent == root.resolve("kernel/src/main/kotlin"))
+    check(path.fileName.toString().startsWith("KastHostedIndexAcceptance"))
+    val project = com.intellij.openapi.project.ProjectManager.getInstance().openProjects.single { it.basePath == root.toString() }
+    val fs = com.intellij.openapi.vfs.LocalFileSystem.getInstance()
+    val file = fs.findFileByNioFile(path) ?: fs.refreshAndFindFileByNioFile(path)
+    file?.refresh(false, false)
+    if (file != null && file.isValid) {
+        val documents = com.intellij.openapi.fileEditor.FileDocumentManager.getInstance()
+        val document = documents.getCachedDocument(file)
+        if (document != null) com.intellij.openapi.application.ApplicationManager.getApplication().invokeAndWait {
+            com.intellij.openapi.application.ApplicationManager.getApplication().runWriteAction {
+                check(!documents.isFileModified(file))
+                documents.reloadFromDisk(document)
+                com.intellij.psi.PsiDocumentManager.getInstance(project).commitDocument(document)
+            }
+        }
+    }
+    java.nio.file.Files.writeString(inputPath.parent.resolve("refreshed.json"), com.google.gson.Gson().toJson(mapOf(
+        "hostPid" to java.lang.ProcessHandle.current().pid(), "root" to project.basePath,
+        "openProjects" to com.intellij.openapi.project.ProjectManager.getInstance().openProjects.map { it.basePath },
+        "outcome" to "REFRESHED",
+    )))
+}

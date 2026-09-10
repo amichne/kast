@@ -1,7 +1,7 @@
 ---
 type: Runtime Flow
 title: Experimental hosted semantic query
-description: One saved Kotlin class query resolves a direct supertype in an admitted open IDEA project and returns detached compiler evidence.
+description: Bounded class discovery and direct-supertype reads use an admitted open IDEA project and return detached compiler evidence through an owned socket endpoint.
 resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-10T00:00:00Z
@@ -23,6 +23,11 @@ code_sources:
   - path: experiments/host-observation/hosted-plugin-unload.kts.template
   - path: experiments/host-observation/hosted-project-restoration.kts.template
   - path: experiments/host-observation/hosted-query.schema.json
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnection.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
+  - path: experiments/host-observation/kast_ide.py
+  - path: experiments/host-observation/qualify_hosted_index.py
 ---
 
 # Experimental hosted semantic query
@@ -52,7 +57,7 @@ no plugin descriptor. Opt-in checkpoints after semantic detachment qualify
 restored edits, cancellation, and original-owner disposal before publication.
 The project-close case explicitly restores the selected project after the old
 request retires. The plugin-manager case uses the actual injected project
-service and verifies dynamic unload. Unattended hosting and upgrades between
+service and verifies dynamic unload. Full restart startup and upgrades between
 different plugin versions remain unqualified.
 
 The controller refines acceptance evidence into typed verification or rejection
@@ -66,3 +71,11 @@ class and detaches its canonical compiler identity. The shared read boundary
 checks saved content and one epoch before publication. Queries are restricted
 to supported cached authored source folders, bounded to 32 candidates and 64 KiB
 of output, and reject overflow. No index storage is copied or rebuilt by Kast.
+
+The [persistent endpoint](../../experiments/host-observation/HOSTED_ENDPOINT.md)
+is owned by the separate `runtime:hosted` plugin. Normal requests use a framed
+Unix socket and retain the same packaged compatibility policy and admitted epoch
+authority across requests. The client rejects missing hosts without opening an
+isolated workspace. Incremental creation, class renaming, and deletion were
+qualified against the same original IDE index. Production CLI/App Server routing
+and stronger workspace publication remain separate integration boundaries.

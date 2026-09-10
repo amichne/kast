@@ -33,6 +33,12 @@ The IntelliJ read adapter also depends on symbol contracts for the experimental
 without introducing an isolated workspace opener or importing implementation
 dependencies from semantic service modules.
 
+The separate `runtime:hosted` IDEA host has scoped endpoint-file and socket
+effects and depends on the read adapter plus contracts. It is excluded from
+isolated runtime composition. The read adapter remains the sole admitted
+project-epoch authority; hosted transport adds no project-opening or import
+permission.
+
 ## Verify
 
 ```shell

@@ -54,11 +54,7 @@ class HostedQueryProbe private constructor(project: Project, binding: ProbeServi
                     return@launch
                 }
             }
-            val compatibility = packagedHostedCompatibility()
-            val answer = when (compatibility) {
-                is Refinement.Refined -> service.lookup(service.endpoint, lookup, compatibility.value.candidate, compatibility.value.policy)
-                is Refinement.Rejected -> HostedIndexResult.Rejected(compatibility.failure)
-            }
+            val answer = service.lookup(service.endpoint, lookup)
             check(!ApplicationManager.getApplication().isReadAccessAllowed)
             result.accept(HostedQueryWire.encode(answer))
         }
@@ -85,10 +81,7 @@ class HostedQueryProbe private constructor(project: Project, binding: ProbeServi
                     return@launch
                 }
             }
-            val answer = when (val compatibility = packagedHostedCompatibility()) {
-                is Refinement.Refined -> service.query(service.endpoint, selection, compatibility.value.candidate, compatibility.value.policy)
-                is Refinement.Rejected -> HostedQueryResult.Rejected(compatibility.failure)
-            }
+            val answer = service.query(service.endpoint, selection)
             check(!ApplicationManager.getApplication().isReadAccessAllowed)
             result.accept(HostedQueryWire.encode(answer))
         }

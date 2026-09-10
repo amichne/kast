@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.dev/experimental/hosted-endpoint/v1",
+  "oneOf": [
+    {"$ref": "#/$defs/descriptor"},
+    {"$ref": "#/$defs/host"},
+    {"$ref": "#/$defs/rejected"}
+  ],
+  "$defs": {
+    "root": {"type": "string", "pattern": "^/", "maxLength": 4096},
+    "operations": {"type": "array", "const": ["DESCRIBE", "CLASS_LOOKUP", "DIRECT_SUPERTYPE"]},
+    "descriptor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "protocol", "root", "socket", "hostPid", "operations"],
+      "properties": {
+        "type": {"const": "KAST_IDE_ENDPOINT"}, "protocol": {"const": 1},
+        "root": {"$ref": "#/$defs/root"}, "socket": {"type": "string", "pattern": "^/", "maxLength": 100},
+        "hostPid": {"type": "integer", "minimum": 1}, "operations": {"$ref": "#/$defs/operations"}
+      }
+    },
+    "host": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "protocol", "root", "hostPid", "operations", "indexAuthority"],
+      "properties": {
+        "type": {"const": "KAST_IDE_HOST"}, "protocol": {"const": 1},
+        "root": {"$ref": "#/$defs/root"}, "hostPid": {"type": "integer", "minimum": 1},
+        "operations": {"$ref": "#/$defs/operations"},
+        "indexAuthority": {"const": "existing_ide_kotlin_stub_index"}
+      }
+    },
+    "rejected": {
+      "type": "object", "additionalProperties": false, "required": ["type", "failure"],
+      "properties": {
+        "type": {"const": "HOST_REJECTED"},
+        "failure": {"enum": ["INVALID_REQUEST", "REQUEST_TOO_LARGE", "REQUEST_INCOMPLETE", "IO_UNAVAILABLE", "DEADLINE_EXCEEDED", "WRONG_ROOT", "OWNERSHIP_CONFLICT", "DIRECTORY_REJECTED", "SOCKET_UNAVAILABLE", "PLATFORM_UNAVAILABLE"]}
+      }
+    }
+  }
+}
