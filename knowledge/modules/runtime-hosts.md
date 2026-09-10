@@ -38,10 +38,13 @@ semantic reads to `workspace:intellij-read`. It has no project-opening, Gradle
 import, or worker-launch authority and is excluded from isolated runtime
 composition. See [hosted queries](../flows/hosted-query.md) for its current scope.
 
-The native `kast ide` command projects the same local Clikt family before
+The primary `kast index` commands and compatible `kast ide` spelling project
+the same local Clikt implementation before
 isolated-product bootstrap. Its only runtime capability is an existing-IDE
 client; it cannot start a worker. The socket adapter validates the shared
 hosted schemas and exact root/name correlation before producing CLI output.
-General semantic commands and App Server requests keep their original assembly.
+IDEA owns incremental index maintenance for this path. The internal `INDEX_SYNC`
+operation remains absent from the public command graph. General semantic commands
+and App Server requests keep their original assembly.
 
 Read [request dispatch](../flows/request-dispatch.md) for the cross-host path.

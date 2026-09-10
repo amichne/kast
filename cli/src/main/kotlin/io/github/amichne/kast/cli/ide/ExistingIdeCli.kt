@@ -5,6 +5,14 @@ import io.github.amichne.kast.cli.command.*
 import io.github.amichne.kast.cli.command.ide.ExistingIdeRootSelection
 import java.nio.file.Path
 
+internal enum class CliRuntimePath { EXISTING_IDE, INSTALLED }
+
+/** Raw command-family selection occurs at ingress, before any installed runtime effects. */
+internal fun selectCliRuntimePath(argv: List<String>): CliRuntimePath = when (argv.firstOrNull()) {
+    "index", "ide" -> CliRuntimePath.EXISTING_IDE
+    else -> CliRuntimePath.INSTALLED
+}
+
 /** Hosted reads are selected before bootstrap can demand an isolated product or worker. */
 internal fun executeExistingIdeCli(
     argv: List<String>, start: Path, roots: CanonicalRootDiscoverer, client: ExistingIdeClient,

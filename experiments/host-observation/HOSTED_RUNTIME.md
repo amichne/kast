@@ -16,9 +16,11 @@ A separate `runtime:hosted` plugin now exposes class-name discovery and direct
 supertype reads through a persistent Unix socket. The [endpoint runbook](HOSTED_ENDPOINT.md)
 describes the direct client, same-host incremental indexing proof, ownership,
 and retirement. Normal queries no longer depend on the manual script carrier.
-The native `kast ide` command now selects this path before isolated-product
+The primary native `kast index` commands (with compatible `kast ide` spelling)
+select this path before isolated-product
 bootstrap. General semantic CLI commands and App Server requests retain their
-existing runtime selection.
+existing runtime selection. Python remains optional acceptance tooling; it is not
+a runtime dependency of this indexing path.
 
 The practical architecture is a small semantic host inside IDEA. The existing
 CLI/App Server can remain outside the IDE and exchange detached requests and

@@ -1,6 +1,8 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
+import io.github.amichne.kast.cli.ide.CliRuntimePath
+import io.github.amichne.kast.cli.ide.selectCliRuntimePath
 import io.github.amichne.kast.cli.installation.InstallationCliInspection
 import io.github.amichne.kast.cli.installation.InstallationHandling
 import java.io.ByteArrayOutputStream
@@ -65,7 +67,7 @@ private sealed interface CliBootstrapFailure {
 /** Process entrypoint for the single Kotlin `kast` executable. */
 fun main(args: Array<String>) {
     val environment = System.getenv()
-    val exit = if (args.firstOrNull() == "ide") {
+    val exit = if (selectCliRuntimePath(args.toList()) == CliRuntimePath.EXISTING_IDE) {
         io.github.amichne.kast.cli.ide.executeExistingIdeCli(
             args.toList(), Path.of("").toAbsolutePath(), FilesystemCanonicalRootDiscovery,
             io.github.amichne.kast.cli.ide.ExistingIdeSocketClient(Path.of(System.getProperty("user.home"))),

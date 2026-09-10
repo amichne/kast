@@ -19,12 +19,23 @@ sealed interface ExistingIdeRootSelection {
     data class Explicit(val path: Path) : ExistingIdeRootSelection
 }
 
-internal fun ideCommandGroup(): LocalCommandFamily {
-    val commands = listOf(IdeStatusCommand(), IdeClassesCommand(), IdeSupertypeCommand(), IdeCompletionCommand())
-    return LocalCommandFamily(KastCommandGroup("ide", "Query indexes in the existing IDEA project. Missing IDE state remains unavailable.").subcommands(commands), commands)
+internal fun ideCommandGroup(): LocalCommandFamily = hostedCommandGroup(HostedCommandFamily.IDE)
+internal fun hostedIndexCommandGroup(): LocalCommandFamily = hostedCommandGroup(HostedCommandFamily.INDEX)
+
+private enum class HostedCommandFamily(
+    val group: String, val status: CliProductCommand, val classes: CliProductCommand,
+    val supertype: CliProductCommand, val completion: CliProductCommand,
+) {
+    INDEX("index", CliProductCommand.INDEX_STATUS, CliProductCommand.INDEX_CLASSES, CliProductCommand.INDEX_SUPERTYPE, CliProductCommand.INDEX_COMPLETION),
+    IDE("ide", CliProductCommand.IDE_STATUS, CliProductCommand.IDE_CLASSES, CliProductCommand.IDE_SUPERTYPE, CliProductCommand.IDE_COMPLETION),
 }
 
-private class IdeCompletionCommand : LocalKastCommand("generate-completion", CliProductCommand.IDE_COMPLETION) {
+private fun hostedCommandGroup(family: HostedCommandFamily): LocalCommandFamily {
+    val commands = listOf(IdeStatusCommand(family.status), IdeClassesCommand(family.classes), IdeSupertypeCommand(family.supertype), IdeCompletionCommand(family.completion))
+    return LocalCommandFamily(KastCommandGroup(family.group, "Read the existing IDEA index. IDEA owns updates; missing IDE state remains unavailable.").subcommands(commands), commands)
+}
+
+private class IdeCompletionCommand(command: CliProductCommand) : LocalKastCommand("generate-completion", command) {
     private val shell by argument("SHELL").choice("bash", "zsh", "fish")
     override fun help(context: Context) = "Generate shell completion for the IDEA command path without connecting."
     override fun resolveAction(): CliActionResolution {
@@ -40,12 +51,12 @@ private abstract class IdeCommand(name: String, command: CliProductCommand) : Lo
     ))
 }
 
-private class IdeStatusCommand : IdeCommand("status", CliProductCommand.IDE_STATUS) {
+private class IdeStatusCommand(command: CliProductCommand) : IdeCommand("status", command) {
     override fun help(context: Context) = "Describe the existing IDEA endpoint without starting a runtime."
     override fun resolveAction() = action(ExistingIdeOperation.Status)
 }
 
-private class IdeClassesCommand : IdeCommand("classes", CliProductCommand.IDE_CLASSES) {
+private class IdeClassesCommand(command: CliProductCommand) : IdeCommand("classes", command) {
     private val name by argument("NAME", help = "Exact Kotlin class short name.").convert {
         when (val parsed = ExistingIdeClassName.parse(it)) {
             is Refinement.Refined -> parsed.value
@@ -56,7 +67,7 @@ private class IdeClassesCommand : IdeCommand("classes", CliProductCommand.IDE_CL
     override fun resolveAction() = action(ExistingIdeOperation.Classes(name))
 }
 
-private class IdeSupertypeCommand : IdeCommand("supertype", CliProductCommand.IDE_SUPERTYPE) {
+private class IdeSupertypeCommand(command: CliProductCommand) : IdeCommand("supertype", command) {
     private val name by argument("QUALIFIED_NAME", help = "Exact Kotlin class identity, including enclosing classes.").convert {
         when (val parsed = ExistingIdeQualifiedClassName.parse(it)) {
             is Refinement.Refined -> parsed.value
