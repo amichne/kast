@@ -2,6 +2,9 @@
 
 ## 2026-09-10
 
+- Added exact imported Gradle source-name admission for hosted query composition,
+  with most-specific ownership and explicit rejection for unmapped IDE roots.
+
 - Added the closed published/live read-authority contract and original-owner live
   reference restoration. Pure tests cover root, host, epoch and retirement; a
   compiler-negative check keeps live authority out of published-only consumers.
