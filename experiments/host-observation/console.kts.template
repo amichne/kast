@@ -1,0 +1,51 @@
+// Evaluate this entire file in the bundled Kotlin IDE Scripting Console.
+// Paths are encoded data; no manifest field is interpolated into executable source.
+enum class KastEngineFailure { RESOURCE_EXHAUSTED, EXECUTION_UNCONFIRMED }
+fun kastEngineFailure(failure: Throwable): KastEngineFailure =
+    if (generateSequence(failure) { it.cause }.take(16).any { it is OutOfMemoryError })
+        KastEngineFailure.RESOURCE_EXHAUSTED else KastEngineFailure.EXECUTION_UNCONFIRMED
+
+// Evaluation boundary.
+run {
+    val request = java.nio.file.Path.of(String(java.util.Base64.getDecoder().decode("@REQUEST_PATH_BASE64@"), Charsets.UTF_8))
+    val carrier = java.nio.file.Path.of(String(java.util.Base64.getDecoder().decode("@CARRIER_PATH_BASE64@"), Charsets.UTF_8))
+    val requestId = String(java.util.Base64.getDecoder().decode("@REQUEST_ID_BASE64@"), Charsets.UTF_8)
+    val manager = com.intellij.ide.script.IdeScriptEngineManager.getInstance()
+    val candidates = manager.engineInfos.filter {
+        it.factoryClass == "org.jetbrains.kotlin.jsr223.Jsr223KotlincScriptEngineFactory"
+    }
+    if (candidates.size != 1) {
+        println("KAST_OBSERVATION:ENGINE_UNAVAILABLE")
+    } else {
+        val info = candidates.single()
+        val engine = manager.getEngine(info, null)
+        if (engine == null) {
+            println("KAST_OBSERVATION:ENGINE_UNAVAILABLE")
+        } else {
+            check(java.nio.file.Files.size(carrier) <= 256 * 1024) { "carrier byte limit" }
+            val bytes = java.nio.file.Files.readAllBytes(carrier)
+            check(bytes.size <= 256 * 1024) { "carrier byte limit" }
+            val digest = java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+            engine.setBinding("kast.observation.request", request.toString())
+            engine.setBinding("kast.observation.digest", digest)
+            engine.setBinding("kast.observation.engine", info)
+            try {
+                val outcome = engine.eval(String(bytes, Charsets.UTF_8) + "\nKastHostObservation.preflight(bindings)\n")
+                val acceptedOutcomes = setOf("PREFLIGHT_ONLY", "ATTACHED", "REQUEST_REJECTED", "OUTPUT_REJECTED", "HOST_UNSUPPORTED", "ENGINE_UNAVAILABLE", "API_UNAVAILABLE", "TARGET_UNAVAILABLE", "CAPACITY_EXCEEDED", "OWNERSHIP_CONFLICT", "RETIREMENT_UNCONFIRMED")
+                val label = if (outcome is String && outcome in acceptedOutcomes) outcome else "EXECUTION_UNCONFIRMED"
+                java.nio.file.Files.writeString(request.parent.resolve("evaluation.json"), com.google.gson.Gson().toJson(mapOf("type" to "EVALUATION", "requestId" to requestId, "stage" to "CARRIER", "outcome" to label, "artifactSha256" to digest)), java.nio.file.StandardOpenOption.CREATE_NEW)
+                println("KAST_OBSERVATION:" + label)
+            } catch (cancelled: java.util.concurrent.CancellationException) {
+                throw cancelled
+            } catch (failure: com.intellij.ide.script.IdeScriptException) {
+                val label = kastEngineFailure(failure).name
+                java.nio.file.Files.writeString(request.parent.resolve("evaluation.json"), com.google.gson.Gson().toJson(mapOf("type" to "EVALUATION", "requestId" to requestId, "stage" to "ENGINE", "outcome" to label, "artifactSha256" to digest)), java.nio.file.StandardOpenOption.CREATE_NEW)
+                println("KAST_OBSERVATION:" + label)
+            } finally {
+                engine.setBinding("kast.observation.request", null)
+                engine.setBinding("kast.observation.digest", null)
+                engine.setBinding("kast.observation.engine", null)
+            }
+        }
+    }
+}

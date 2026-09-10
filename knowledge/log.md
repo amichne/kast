@@ -6,3 +6,4 @@
 - Added the initial module, flow, contract, and glossary concepts.
 - Bound every concept to concrete repository sources for impact detection.
 - Enforced strict source-path and repository-relative navigation-link integrity.
+- Added the manually qualified host-observation experiment, including its advisory boundary and original-owner retirement flow.
