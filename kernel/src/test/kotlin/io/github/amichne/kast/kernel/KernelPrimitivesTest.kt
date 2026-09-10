@@ -65,7 +65,7 @@ class KernelPrimitivesTest {
             OperationOutcome.Rejected("not-ready")
 
         assertEquals("symbol.discover", complete.evidence().operation.value)
-        assertEquals(7, qualified.evidence().generation.value)
+        assertEquals(EvidenceBasis.Published(EvidenceGeneration.parse(7).refinedValue()), qualified.evidence().basis)
         assertEquals("not-ready", rejected.rejectionReason())
         assertEquals(
             EvidenceGenerationFailure.NEGATIVE,
