@@ -78,7 +78,16 @@ document = json.loads(sys.argv[1])
 registry = json.loads(Path(sys.argv[2]).read_text())
 assert document["operationRegistry"] == registry, document
 assert document["cliProjection"]["commands"], document
-assert document["cliProjection"]["localCommands"] == ["codex", "codex desktop", "app-server register", "app-server enable", "app-server repair --destructive", "app-server status", "app-server stop", "app-server disable", "app-server control claim", "app-server control release"], document["cliProjection"]["localCommands"]
+assert document["cliProjection"]["localCommands"] == [
+    "codex", "codex desktop",
+    "index status [--root <path>]", "index classes <name> [--root <path>]",
+    "index supertype <qualified-name> [--root <path>]", "index generate-completion <shell>",
+    "ide status [--root <path>]", "ide classes <name> [--root <path>]",
+    "ide supertype <qualified-name> [--root <path>]", "ide generate-completion <shell>",
+    "app-server register", "app-server enable", "app-server repair --destructive",
+    "app-server status", "app-server stop", "app-server disable",
+    "app-server control claim", "app-server control release",
+], document["cliProjection"]["localCommands"]
 projection = document["serverProjection"]
 bootstrap = projection["hostedBootstrap"]
 invocations = projection["cliInvocations"]["operations"]
@@ -104,10 +113,10 @@ assert all("invocation" not in tool and "cliUsage" not in tool for tool in boots
 PY
 
 help="$(env "${command_environment[@]}" "$kast" --help)"
-for command in symbol source relation traversal diagnostic change codex start stop; do
+for command in symbol source relation traversal diagnostic change codex index ide start stop; do
   grep -Eq "^  ${command}[[:space:]]" <<<"$help" || fail "public command is absent: $command"
 done
-for command in product status index topology broker; do
+for command in product status topology broker; do
   if grep -Eq "^  ${command}[[:space:]]" <<<"$help"; then
     fail "retired command is public: $command"
   fi
