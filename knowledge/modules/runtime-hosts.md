@@ -6,6 +6,7 @@ resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
 timestamp: 2026-09-10T00:00:00Z
 code_sources:
+  - path: docs/reviews/live-semantic-read-acceptance.md
   - path: runtime/server/src/main/kotlin/io/github/amichne/kast/runtime/server/ServerDispatch.kt
     symbols: [ServerDispatch]
   - path: runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/bootstrap/InstalledKastRuntime.kt
@@ -47,11 +48,11 @@ import, or worker-launch authority and is excluded from isolated runtime
 composition. Its generalized evaluator composition consumes an admitted read
 context, pure semantic services, project-bound adapters, and the shared
 [`query:protocol`](query-protocol.md) module. All seven canonical read handlers
-and their existing-IDE client decoders are prepared. Peer termination cancels
-and joins owned work; the semantic executor retains its permit until cleanup.
-The default native cutover and packaged manual acceptance remain pending. See
-[hosted queries](../flows/hosted-query.md) for the distinction between this
-implementation and earlier qualified index reads.
+and their existing-IDE client decoders serve the default semantic command path.
+Peer termination cancels and joins owned work; the semantic executor retains its
+permit until cleanup. See [hosted queries](../flows/hosted-query.md) and the
+[native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
+for the final CLI/provider results and their bounded coverage.
 
 The primary `kast index` commands and compatible `kast ide` spelling project
 the same local Clikt implementation before
@@ -59,12 +60,16 @@ isolated-product bootstrap. Its only runtime capability is an existing-IDE
 client; it cannot start a worker. The socket adapter validates the shared
 hosted schemas and exact root/name correlation before producing CLI output.
 IDEA owns incremental index maintenance for this path. The internal `INDEX_SYNC`
-operation remains absent from the public command graph. The generalized semantic
-CLI/host cutover is separate from these earlier index-read qualifications; this
-page does not claim that all semantic commands or App Server requests have moved
-to the existing IDE. The provider now requires App Server projection version 9,
-whose read schemas preserve published/live evidence and semantic qualification.
-It still qualifies and invokes its configured real CLI; the prepared client
-route alone does not establish a change to that CLI's default execution path.
+operation remains absent from the public command graph.
+
+`selectCliRuntimePath` now also routes `query`, `symbol`, `source`, `relation`,
+`traversal`, and `diagnostic` before installed bootstrap in `KastCliMain`. Their
+seven canonical reads use the admitted existing host and reject a missing host
+without fallback. The provider requires App Server projection version 9, whose
+read schemas preserve published/live evidence and semantic qualification. It
+qualifies and invokes its configured real CLI; manual production provider dispatch
+through the final distribution completed an exact `Child` query with evidence
+matching direct CLI execution. This establishes provider/process invocation,
+while full Codex WebSocket and multi-client acceptance remain separate.
 
 Read [request dispatch](../flows/request-dispatch.md) for the cross-host path.

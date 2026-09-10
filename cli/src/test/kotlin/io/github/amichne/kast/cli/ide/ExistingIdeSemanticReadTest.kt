@@ -30,7 +30,9 @@ class ExistingIdeSemanticReadTest {
     )
 
     @Test fun `all canonical reads parse before the sole existing-host capability is invoked`() {
-        for ((command, operation, document) in requests) {
+        for ((command, operation, document) in requests.flatMap { (command, operation, document) ->
+            listOf(Triple(command, operation, document), Triple("-- $command", operation, document))
+        }) {
             var calls = 0
             val result = executeExistingIdeCli(command.split(' '), root.path,
                 CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) },
