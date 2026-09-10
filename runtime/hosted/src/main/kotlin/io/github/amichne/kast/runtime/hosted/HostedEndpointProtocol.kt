@@ -8,6 +8,8 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedClassLookup
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedKotlinSelection
+import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSupertypeSelection
+import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQualifiedClassSelection
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.IOException
@@ -26,7 +28,7 @@ internal sealed interface HostedRequest {
     val root: CanonicalWorkspaceRoot
     data class Describe(override val root: CanonicalWorkspaceRoot) : HostedRequest
     data class Classes(val lookup: HostedClassLookup) : HostedRequest { override val root get() = lookup.root }
-    data class Supertype(val selection: HostedKotlinSelection) : HostedRequest { override val root get() = selection.root }
+    data class Supertype(val selection: HostedSupertypeSelection) : HostedRequest { override val root get() = selection.root }
 }
 
 internal object HostedRequests {
@@ -38,7 +40,7 @@ internal object HostedRequests {
             reader.beginObject()
             while (reader.hasNext()) {
                 val key = reader.nextName()
-                if (json.has(key) || key !in setOf("type", "root", "name", "file", "offset")) return rejected
+                if (json.has(key) || key !in setOf("type", "root", "name", "file", "offset", "qualifiedName")) return rejected
                 if (key == "offset") {
                     if (reader.peek() != JsonToken.NUMBER) return rejected
                     val token = reader.nextString()
@@ -70,6 +72,12 @@ internal object HostedRequests {
                     }
                 }
                 "DIRECT_SUPERTYPE" -> {
+                    if (json.keySet() == setOf("type", "root", "qualifiedName")) {
+                        return when (val selected = HostedQualifiedClassSelection.parse(root, text("qualifiedName"))) {
+                            is Refinement.Refined -> Refinement.Refined(HostedRequest.Supertype(selected.value))
+                            is Refinement.Rejected -> rejected
+                        }
+                    }
                     if (json.keySet() != setOf("type", "root", "file", "offset")) return rejected
                     val offset = json.get("offset").asJsonPrimitive
                     if (!offset.isNumber || !offset.asString.matches(Regex("0|[1-9][0-9]{0,9}"))) return rejected

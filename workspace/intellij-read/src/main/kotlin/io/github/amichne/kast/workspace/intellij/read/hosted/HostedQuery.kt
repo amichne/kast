@@ -13,10 +13,10 @@ import java.nio.file.Path
 
 /** Explicit saved Kotlin name selection; no ambient editor or project lookup. */
 class HostedKotlinSelection private constructor(
-    val root: CanonicalWorkspaceRoot,
+    override val root: CanonicalWorkspaceRoot,
     val file: SymbolDiscoveryFileIdentity.Workspace,
     val nameOffset: SymbolDiscoverySourceOffset,
-) {
+) : HostedSupertypeSelection {
     companion object {
         fun parse(root: CanonicalWorkspaceRoot, relativeFile: String, nameOffset: Int):
             Refinement<HostedKotlinSelection, HostedQueryFailure> {

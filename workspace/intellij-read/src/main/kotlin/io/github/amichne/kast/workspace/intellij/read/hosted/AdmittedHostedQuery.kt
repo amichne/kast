@@ -22,12 +22,15 @@ internal sealed interface HostedReadPreparation<out Evidence> {
 
 /** No isolated opener, import, refresh, or generic live-project escape is reachable here. */
 internal suspend fun AdmittedIdeProject.prepareHostedQuery(
-    selection: HostedKotlinSelection,
+    selection: HostedSupertypeSelection,
     progress: HostedQueryProgress,
     checkpoint: HostedReadCheckpoint,
 ): HostedReadPreparation<HostedInheritorEvidence> = prepareHostedRead(
     selection.root, progress, checkpoint,
-    { project, model -> readHostedKotlin(project, selection, model) }, ::verifyHostedContent,
+    { project, model -> when (selection) {
+        is HostedKotlinSelection -> readHostedKotlin(project, selection, model)
+        is HostedQualifiedClassSelection -> readHostedIndexedSupertype(project, selection, model)
+    } }, ::verifyHostedContent,
 )
 
 /** Shared read boundary; compiler/index values are detached before the checkpoint and transport. */

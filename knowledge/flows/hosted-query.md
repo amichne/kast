@@ -11,6 +11,8 @@ code_sources:
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/AdmittedHostedQuery.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/LiveHostedKotlinRead.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/LiveHostedClassIndex.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/LiveHostedIndexedSupertype.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQualifiedClassSelection.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedClassLookup.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedSourceScope.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
@@ -71,6 +73,14 @@ class and detaches its canonical compiler identity. The shared read boundary
 checks saved content and one epoch before publication. Queries are restricted
 to supported cached authored source folders, bounded to 32 candidates and 64 KiB
 of output, and reject overflow. No index storage is copied or rebuilt by Kast.
+
+Direct-supertype reads can select a class by its qualified identity through the
+existing full-class-name index. A bounded, complete collection must contain
+exactly one declaration before PSI and K2 resolution begin. Missing or duplicate
+declarations are closed failures; the detached compiler identity must match the
+requested class identity. Index selection and semantic proof share the same
+admitted read and final content/epoch checks. The explicit file/offset selector
+remains available for the manual acceptance harness.
 
 The [persistent endpoint](../../experiments/host-observation/HOSTED_ENDPOINT.md)
 is owned by the separate `runtime:hosted` plugin. Normal requests use a framed
