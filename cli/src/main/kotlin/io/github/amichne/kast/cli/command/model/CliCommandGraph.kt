@@ -127,6 +127,15 @@ class CliCommandGraphFactory private constructor(
     }
 
     companion object {
+        /** The same local family and parser, projected before isolated-product bootstrap. */
+        internal fun parseExistingIde(argv: List<String>): CliCommandParsing {
+            val family = io.github.amichne.kast.cli.command.ide.ideCommandGroup()
+            val graph = CliCommandGraph(KastRootCommand().subcommands(family.root), emptyList(), family.commands, emptyList())
+            return when (val admission = CliArgv.admit(argv)) {
+                is CliArgvAdmission.Admitted -> graph.parse(admission.argv)
+                is CliArgvAdmission.Rejected -> CliCommandParsing.Rejected(admission.failure.commandFailure(), graph.root.argvDiagnostic(admission.failure))
+            }
+        }
         /**
          * Proof transition: `CanonicalCliRequestPreparers -> CliCommandGraphConstruction`.
          *
@@ -237,6 +246,8 @@ private class CliCommandGraph(
             }
         } catch (local: CliLocalCommandMessage) {
             return CliCommandParsing.Parsed(CliAction.Local.Metadata(local.command))
+        } catch (completion: com.github.ajalt.clikt.core.PrintCompletionMessage) {
+            return CliCommandParsing.Help(completion.message.orEmpty().renderedHelpDocument())
         } catch (help: PrintHelpMessage) {
             val document = root.formatted(help)
             return if (help.error) {
@@ -333,7 +344,7 @@ private class KastRootCommand : KastCommand("kast") {
     }
 
     override fun help(context: Context): String =
-        "Inspect and change one exact Kotlin workspace through an isolated IntelliJ sidecar."
+        "Query the existing IDEA index with ide commands; inspect and change a workspace through the isolated sidecar."
 
     override fun helpEpilog(context: Context): String =
         "Semantic results are one JSON document on stdout. Diagnostics are one JSON document on stderr."
@@ -365,6 +376,7 @@ private fun canonicalGraph(
     val appServer = io.github.amichne.kast.cli.command.appserver.appServerCommandGroup()
     val broker = brokerCommandGroup()
     val codex = codexCommandGroup()
+    val ide = io.github.amichne.kast.cli.command.ide.ideCommandGroup()
     val index = indexCommandGroup(preparers, requestInput)
     val topology = topologyCommandGroup(preparers, requestInput)
     val symbol = symbolCommandGroup(preparers, requestInput)
@@ -378,7 +390,7 @@ private fun canonicalGraph(
     val families = listOf(index, topology, query, symbol, source, relation, traversal, diagnostic, change)
         .map { it.projectPublicDefinitions(CanonicalOperationDefinitions.all) }
     val semantic = families.flatMap(CommandFamily::semanticCommands)
-    val localFamilies = listOf(product, broker, codex).map { family ->
+    val localFamilies = listOf(product, broker, codex, ide).map { family ->
         val commands = family.commands.filter { it.command.exposure == CliLocalExposure.PUBLIC }
         val root = when (val candidate = family.root) {
             is LocalKastCommand -> if (candidate in commands) {

@@ -1,8 +1,9 @@
 # Existing IDEA index endpoint
 
 The `runtime:hosted` plugin serves bounded semantic reads from an already open
-IDEA project over a local Unix socket. `kast_ide.py` is the direct client for
-this flow. Normal requests use the installed project service, the cached Gradle
+IDEA project over a local Unix socket. The regular executable's `kast ide`
+command is the primary client for class indexing. Normal requests use the
+installed project service, the cached Gradle
 model, IDEA's Kotlin stub index, and K2. They do not invoke the script carrier,
 start an indexer process, open another project, or request a Gradle import.
 
@@ -15,6 +16,26 @@ IDEA's **Install Plugin from Disk** action:
 ./gradlew :runtime:hosted:hostedPlugin \
   -PhostedIdeaHome='/path/to/IntelliJ IDEA.app/Contents'
 # Archive: runtime/hosted/build/distributions/kast-ide-hosted-0.1.0.zip
+./gradlew :cli:installDist
+cli/build/install/kast/bin/kast ide status --root /absolute/path/to/kast
+cli/build/install/kast/bin/kast ide classes Refinement --root /absolute/path/to/kast
+cli/build/install/kast/bin/kast ide generate-completion zsh
+```
+
+`--root` defaults to discovering the Gradle root from the current directory.
+The native CLI selects this command family before isolated-product bootstrap;
+it can query an installed hosted plugin without configuring a sidecar runtime.
+Help and completion for Bash, Zsh, and Fish run locally. The client validates
+the shared schemas, exact response root and class name, and descriptor host
+identity, and rejects duplicate JSON fields and trailing documents. Following
+the CLI's existing outcome convention, received JSON goes to stdout with exit
+0; inspect `outcome` or `type` for semantic/host rejections. Client boundary
+failures go to stderr with a nonzero exit status.
+
+The Python acceptance client additionally exposes the manual direct-supertype
+operation:
+
+```shell
 python3 -m venv /tmp/kast-hosted-query-venv
 /tmp/kast-hosted-query-venv/bin/python -m pip install \
   -r experiments/host-observation/requirements-test.txt
@@ -30,7 +51,7 @@ python3 -m venv /tmp/kast-hosted-query-venv
 The `supertype` offset is a UTF-16 position in a class name. Recompute it after
 editing the source. `status` establishes endpoint identity and advertised
 operations; each semantic request must separately establish project readiness.
-Exit 0 means a schema-validated answer, 2 means a typed host or semantic
+For the Python client, exit 0 means a schema-validated answer, 2 means a typed host or semantic
 rejection, and 1 means client admission or transport failure. A missing IDE
 endpoint remains unavailable; this client has no isolated fallback.
 
@@ -71,6 +92,7 @@ means transport delivery, including delivery of a typed semantic rejection.
 ```shell
 ./gradlew :workspace:intellij-read:test :runtime:hosted:test verifyArchitecture \
   knowledgeImpact verifyKnowledgeBase
+./gradlew :cli:test :cli:nativeTest :cli:verifyMintlifyCallableReference
 ./gradlew -p build-logic test
 /tmp/kast-hosted-query-venv/bin/python -m unittest discover \
   -s experiments/host-observation -p 'test_*.py'
@@ -93,6 +115,10 @@ counts `1, 0, 0, 1, 0` for creation, absent future name, old-name removal,
 new-name discovery, and final removal. The fixture was removed. Explicit
 plugin unload retired the socket and descriptor; a client then returned
 `HOST_UNAVAILABLE`. Reattachment in the same native process served queries again.
+The built native `kast ide` executable then described that same host and returned
+six compiler-resolved `Refinement` declarations. Portable command tests cover
+help, completion, exact-root routing, and unavailable hosts; native socket tests
+cover complete, oversized, truncated, and invalid-UTF-8 responses.
 
 `manage_hosted_endpoint.py` and its script template provide explicit development
 load/unload of an already unpacked owned plugin. This management path uses
@@ -113,7 +139,7 @@ including a complete empty answer. Saved and PSI-committed content and one
 retained epoch are required. Results preserve cached source-folder provenance;
 they do not claim producer-attested source-set ownership or disk hashes.
 
-The installed `kast` CLI, App Server, and general workspace publication graph
+General semantic CLI commands, App Server, and the workspace publication graph
 still use their existing isolated assembly. Integrating those contracts needs
 explicit hosted routing and a proven model/publication mapping. This endpoint
 does not advertise broader production operations. Full IDE restart startup,

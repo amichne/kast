@@ -15,6 +15,9 @@
 - Added a separate installed IDEA host and framed socket client. Qualified
   repeated incremental index queries, retained compatibility authority, endpoint
   retirement, and reattachment; preserved the production composition boundary.
+- Added native `kast ide` status, class-index discovery, and local shell
+  completion before isolated-product bootstrap, with shared schema admission
+  and live existing-host evidence.
 
 ## 2026-09-09
 

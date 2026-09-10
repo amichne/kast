@@ -13,6 +13,20 @@ readiness, workspace synchronization, and intermediate semantic operations.
 [Troubleshoot Kast](https://kast.michne.com/troubleshooting/) ·
 [Explore the source-bound knowledge base](knowledge/index.md)
 
+## Existing IDEA index
+
+This checkout provides `kast ide classes <name>` for bounded compiler-resolved
+class discovery in an already open IDEA project. It uses that project's Kotlin
+index and saved content through the separate hosted plugin. Missing IDE state
+returns unavailability. Build and install the plugin following the
+[existing-IDE endpoint runbook](experiments/host-observation/HOSTED_ENDPOINT.md),
+then use `kast ide status --root /path/to/repository` and
+`kast ide classes Refinement --root /path/to/repository`.
+
+The hosted command runs before isolated-runtime bootstrap. General semantic
+commands and App Server queries retain their existing runtime and publication
+contracts; the hosted class answer explicitly carries its narrower provenance.
+
 ## Install
 
 Kast currently requires:

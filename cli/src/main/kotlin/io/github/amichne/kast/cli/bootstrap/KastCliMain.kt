@@ -65,7 +65,12 @@ private sealed interface CliBootstrapFailure {
 /** Process entrypoint for the single Kotlin `kast` executable. */
 fun main(args: Array<String>) {
     val environment = System.getenv()
-    val exit = when (val installation = InstallationCliInspection.inspect(args.toList(), environment)) {
+    val exit = if (args.firstOrNull() == "ide") {
+        io.github.amichne.kast.cli.ide.executeExistingIdeCli(
+            args.toList(), Path.of("").toAbsolutePath(), FilesystemCanonicalRootDiscovery,
+            io.github.amichne.kast.cli.ide.ExistingIdeSocketClient(Path.of(System.getProperty("user.home"))),
+        )
+    } else when (val installation = InstallationCliInspection.inspect(args.toList(), environment)) {
         is InstallationHandling.Handled -> installation.exit
         InstallationHandling.Unrelated -> when (val inspection = ConfigurationCliInspection.inspect(args.toList(), environment)) {
             is ConfigurationInspectionHandling.Handled -> inspection.exit
