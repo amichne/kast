@@ -20,7 +20,7 @@ sealed interface ExistingIdeRootSelection {
 }
 
 internal fun ideCommandGroup(): LocalCommandFamily {
-    val commands = listOf(IdeStatusCommand(), IdeClassesCommand(), IdeCompletionCommand())
+    val commands = listOf(IdeStatusCommand(), IdeClassesCommand(), IdeSupertypeCommand(), IdeCompletionCommand())
     return LocalCommandFamily(KastCommandGroup("ide", "Query indexes in the existing IDEA project. Missing IDE state remains unavailable.").subcommands(commands), commands)
 }
 
@@ -54,4 +54,15 @@ private class IdeClassesCommand : IdeCommand("classes", CliProductCommand.IDE_CL
     }
     override fun help(context: Context) = "Find up to 32 authored Kotlin classes through IDEA's existing index and K2."
     override fun resolveAction() = action(ExistingIdeOperation.Classes(name))
+}
+
+private class IdeSupertypeCommand : IdeCommand("supertype", CliProductCommand.IDE_SUPERTYPE) {
+    private val name by argument("QUALIFIED_NAME", help = "Exact Kotlin class identity, including enclosing classes.").convert {
+        when (val parsed = ExistingIdeQualifiedClassName.parse(it)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> fail("Expected a qualified Kotlin class name of at most 4096 UTF-8 bytes")
+        }
+    }
+    override fun help(context: Context) = "Resolve one class's explicit supertype through IDEA's existing index and K2."
+    override fun resolveAction() = action(ExistingIdeOperation.Supertype(name))
 }

@@ -34,6 +34,7 @@ enum class CliProductCommand(
     CODEX_DESKTOP("codex desktop", CliLocalExposure.PUBLIC),
     IDE_STATUS("ide status [--root <path>]", CliLocalExposure.PUBLIC),
     IDE_CLASSES("ide classes <name> [--root <path>]", CliLocalExposure.PUBLIC),
+    IDE_SUPERTYPE("ide supertype <qualified-name> [--root <path>]", CliLocalExposure.PUBLIC),
     IDE_COMPLETION("ide generate-completion <shell>", CliLocalExposure.PUBLIC),
 }
 
