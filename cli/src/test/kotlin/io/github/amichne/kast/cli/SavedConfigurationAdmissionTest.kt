@@ -41,12 +41,12 @@ class SavedConfigurationAdmissionTest {
     }
 
     @Test
-    fun `semantic entry point rejects saved configuration before runtime admission`(@TempDir temporary: Path) {
+    fun `installed mutation entry point rejects saved configuration before runtime admission`(@TempDir temporary: Path) {
         val root = workspace(temporary)
         for ((marker, _) in rejectionMarkers) {
             val result = launch(
                 temporary, root, "io.github.amichne.kast.cli.KastCliMainKt", marker,
-                listOf("symbol", "find", "Example"),
+                listOf("change", "plan"),
             )
 
             assertEquals(9, result.exitCode, result.stderr)
@@ -56,6 +56,21 @@ class SavedConfigurationAdmissionTest {
             assertFalse(Files.exists(temporary.resolve("runtime")))
             assertFalse(Files.exists(temporary.resolve("cache")))
         }
+    }
+
+    @Test
+    fun `live read entry point rejects a missing host without installed configuration admission`(@TempDir temporary: Path) {
+        val result = launch(
+            temporary, workspace(temporary), "io.github.amichne.kast.cli.KastCliMainKt", "unreadable",
+            listOf("query", "run"), """{"type":"QUERY","from":{"type":"SEARCH","query":"Example"}}""",
+        )
+
+        assertEquals(4, result.exitCode, result.stderr)
+        assertEquals("", result.stdout)
+        val document = Json.parseToJsonElement(result.stderr).jsonObject
+        assertEquals("ide-host-unavailable", document.getValue("reason").jsonPrimitive.content)
+        assertFalse(Files.exists(temporary.resolve("runtime")))
+        assertFalse(Files.exists(temporary.resolve("cache")))
     }
 
     @Test
@@ -107,6 +122,7 @@ class SavedConfigurationAdmissionTest {
         mainClass: String,
         rejection: String,
         arguments: List<String> = emptyList(),
+        input: String = "",
     ): ProcessEvidence {
         val stdout = Files.createTempFile(temporary, "stdout-", ".txt")
         val stderr = Files.createTempFile(temporary, "stderr-", ".txt")
@@ -131,6 +147,7 @@ class SavedConfigurationAdmissionTest {
                 )
             }.start()
         return try {
+            process.outputStream.use { stream -> stream.write(input.toByteArray(Charsets.UTF_8)) }
             assertTrue(process.waitFor(20, TimeUnit.SECONDS), "entry point failed to terminate")
             ProcessEvidence(process.exitValue(), Files.readString(stdout), Files.readString(stderr))
         } finally {
