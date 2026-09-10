@@ -18,3 +18,9 @@
    Prefer fewer states, fewer transitions, fewer representations, fewer execution paths, and fewer abstractions. Completion requires mechanical evidence that the intended invariant holds.
 9. Instrument as you investigate.
    When diagnosing an opaque failure requires source-level investigation, progressively make that boundary observable in the same change. Add bounded, structured, typed stage and outcome evidence at the narrowest effect boundary, and test both success and failure signals. Temporary probes may guide diagnosis, but completion replaces them with durable instrumentation. Never record secrets, source payloads, or unbounded data.
+
+## Repository Knowledge
+
+- Start repository-wide orientation at `knowledge/index.md`, then follow its module, flow, contract, or glossary indexes before broad source reads.
+- Treat knowledge pages as source-bound routing and explanation. Their `code_sources` identify authority and impact; source, schemas, generated contracts, tests, and verified Gradle architecture remain stronger evidence.
+- After changing cited source, run `./gradlew knowledgeImpact`, refresh affected concepts when their claims changed, and run `./gradlew verifyKnowledgeBase`.

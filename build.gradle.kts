@@ -378,4 +378,48 @@ val verifyConfigurationIngress = tasks.register<Exec>("verifyConfigurationIngres
         "--snapshot", layout.projectDirectory.file("packaging/configuration-schema.json"))
 }
 
-tasks.named("check") { dependsOn(verifyConfigurationIngress) }
+val knowledgeBaseTest = tasks.register<Exec>("knowledgeBaseTest") {
+    group = "verification"
+    description = "Exercises repository knowledge-base validation behavior."
+    inputs.files(
+        layout.projectDirectory.file(".github/scripts/code_kb.py"),
+        layout.projectDirectory.file(".github/scripts/test_code_kb.py"),
+    )
+    commandLine("python3", layout.projectDirectory.file(".github/scripts/test_code_kb.py"))
+}
+
+val verifyKnowledgeBase = tasks.register<Exec>("verifyKnowledgeBase") {
+    group = "verification"
+    description = "Strictly validates the source-bound OKF repository knowledge base."
+    dependsOn(knowledgeBaseTest)
+    inputs.dir(layout.projectDirectory.dir("knowledge"))
+    inputs.file(layout.projectDirectory.file(".github/scripts/code_kb.py"))
+    commandLine(
+        "python3",
+        layout.projectDirectory.file(".github/scripts/code_kb.py"),
+        "check",
+        "--repo",
+        layout.projectDirectory,
+        "--docs",
+        "knowledge",
+        "--strict",
+    )
+}
+
+tasks.register<Exec>("knowledgeImpact") {
+    group = "help"
+    description = "Reports knowledge concepts affected by current working-tree changes."
+    doNotTrackState("The report intentionally observes the live Git working tree.")
+    commandLine(
+        "python3",
+        layout.projectDirectory.file(".github/scripts/code_kb.py"),
+        "impact",
+        "--repo",
+        layout.projectDirectory,
+        "--docs",
+        "knowledge",
+        "--from-git",
+    )
+}
+
+tasks.named("check") { dependsOn(verifyConfigurationIngress, verifyKnowledgeBase) }

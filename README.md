@@ -10,7 +10,8 @@ readiness, workspace synchronization, and intermediate semantic operations.
 [Install and connect Kast](https://kast.michne.com/start/) ·
 [Search with Kast](https://kast.michne.com/search/) ·
 [Integrate an agent harness](https://kast.michne.com/agent-harnesses/) ·
-[Troubleshoot Kast](https://kast.michne.com/troubleshooting/)
+[Troubleshoot Kast](https://kast.michne.com/troubleshooting/) ·
+[Explore the source-bound knowledge base](knowledge/index.md)
 
 ## Install
 
