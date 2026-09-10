@@ -3,6 +3,8 @@
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.kernel.LiveReadEvidence
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.KeepGeneratedSerializer
 import kotlinx.serialization.SerialName
@@ -44,13 +46,13 @@ sealed interface SourceReadAnchorDocument {
         ): Refinement<SourceReadAnchorDocument, SourceReadAnchorDocumentFailure> {
             val parts = selector.value.split(':')
             val family = when {
-                parts.size == 4 && parts[0] == "candidate" && parts[1] == "v2" ->
+                parts.size == 4 && parts[0] == "candidate" && parts[1] in setOf("v2", "v3") ->
                     SourceReadAnchorFamily.CANDIDATE
-                parts.size == 4 && parts[0] == "exact" && parts[1] == "v2" ->
+                parts.size == 4 && parts[0] == "exact" && parts[1] in setOf("v2", "v3") ->
                     SourceReadAnchorFamily.SYMBOL
-                parts.size == 3 && parts[0] == "source-selector-v1" ->
+                parts.size == 3 && parts[0] in setOf("source-selector-v1", "source-selector-v2") ->
                     SourceReadAnchorFamily.SOURCE
-                parts.firstOrNull() in setOf("candidate", "exact", "source-selector-v1") ->
+                parts.firstOrNull() in setOf("candidate", "exact", "source-selector-v1", "source-selector-v2") ->
                     return Refinement.Rejected(
                         SourceReadAnchorDocumentFailure.INVALID_TOKEN_STRUCTURE,
                     )
@@ -435,15 +437,29 @@ value class SourceLengthDocument private constructor(val value: Int) {
     }
 }
 
+sealed interface SourceSnapshotContextDocument {
+    data class Published(val generation: EvidenceGeneration, val sourceState: ProtocolText) : SourceSnapshotContextDocument
+    data class Live(val evidence: LiveReadEvidence) : SourceSnapshotContextDocument
+}
+
 data class SourceSnapshotDocument(
     val canonicalRoot: ProtocolText,
-    val generation: Long,
-    val sourceState: ProtocolText,
+    val context: SourceSnapshotContextDocument,
     val file: ProtocolText,
     val textIdentity: ProtocolText,
     val coordinateUnit: SourceCoordinateUnitDocument,
     val length: SourceLengthDocument,
-)
+) {
+    constructor(canonicalRoot: ProtocolText, generation: Long, sourceState: ProtocolText,
+                file: ProtocolText, textIdentity: ProtocolText,
+                coordinateUnit: SourceCoordinateUnitDocument, length: SourceLengthDocument) : this(
+        canonicalRoot, SourceSnapshotContextDocument.Published(
+            when (val admitted = EvidenceGeneration.parse(generation)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> error("A source snapshot requires an admitted generation")
+            }, sourceState), file, textIdentity, coordinateUnit, length,
+    )
+}
 
 enum class SourceSelectionRangeDocumentFailure {
     REVERSED,

@@ -7,7 +7,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 
 /** Public native boundary that compiles scope before bounded IntelliJ index discovery. */
-class IntellijSymbolCompilerAdapter private constructor(
+class IntellijSymbolCompilerAdapter internal constructor(
     private val nativeDiscovery: IntellijNativeDiscoveryAdapter,
 ) {
     constructor() : this(IntellijNativeDiscoveryAdapter())
@@ -17,7 +17,7 @@ class IntellijSymbolCompilerAdapter private constructor(
      * WorkspaceSearchScopeModelCompilation) -> SymbolCompilation`.
      *
      * A compiled result establishes request-local scope compilation before bounded index access
-     * and detached generation-bound candidate projection. [SymbolCompilerRejection] is the closed
+     * and detached authority-bound candidate projection. [SymbolCompilerRejection] is the closed
      * expected failure. The live [Project], compiled scope, provider, VFS, and PSI values remain
      * inside this call.
      */

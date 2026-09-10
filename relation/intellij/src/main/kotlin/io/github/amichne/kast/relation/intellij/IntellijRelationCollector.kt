@@ -42,6 +42,7 @@ internal enum class IntellijRelationProviderEnumerationAdmission {
 private enum class IntellijRelationCollectionState {
     COLLECTING,
     HALTED,
+    ENUMERATION_LIMIT,
     CURSOR_MOVED,
     CONTRACT_REJECTED,
 }
@@ -59,6 +60,7 @@ internal class IntellijRelationCollector(
     private var nextProviderCursor = requestedCursor
     private var prefixVerified = requestedCursor.nextPosition.value == 0L
     private var pendingProviderItem: RelationProviderItemDescriptor? = null
+    private var nativeCandidates = 0
     private var examined = 0L
     private var retainedBytes = 0L
     private var state = IntellijRelationCollectionState.COLLECTING
@@ -72,9 +74,24 @@ internal class IntellijRelationCollector(
             IntellijRelationProviderEnumerationAdmission.READY
         }
         IntellijRelationCollectionState.HALTED,
+        IntellijRelationCollectionState.ENUMERATION_LIMIT,
         IntellijRelationCollectionState.CURSOR_MOVED,
         IntellijRelationCollectionState.CONTRACT_REJECTED,
             -> IntellijRelationProviderEnumerationAdmission.HALTED
+    }
+
+    /** Bounds the native buffers independently of semantic per-page work and result budgets. */
+    fun admitProviderCandidate(): IntellijRelationProviderEnumerationAdmission {
+        if (admitProviderEnumeration() != IntellijRelationProviderEnumerationAdmission.READY) {
+            return IntellijRelationProviderEnumerationAdmission.HALTED
+        }
+        if (nativeCandidates >= MAX_NATIVE_RELATION_CANDIDATES) {
+            limitations += RelationLimitation.WORK_LIMIT_REACHED
+            state = IntellijRelationCollectionState.ENUMERATION_LIMIT
+            return IntellijRelationProviderEnumerationAdmission.HALTED
+        }
+        nativeCandidates += 1
+        return IntellijRelationProviderEnumerationAdmission.READY
     }
 
     /**
@@ -88,6 +105,7 @@ internal class IntellijRelationCollector(
             IntellijRelationCollectionState.CURSOR_MOVED ->
                 return IntellijRelationProviderItemAdmission.CURSOR_MOVED
             IntellijRelationCollectionState.HALTED,
+            IntellijRelationCollectionState.ENUMERATION_LIMIT,
             IntellijRelationCollectionState.CONTRACT_REJECTED,
                 -> return IntellijRelationProviderItemAdmission.HALTED
             IntellijRelationCollectionState.COLLECTING -> Unit
@@ -178,7 +196,10 @@ internal class IntellijRelationCollector(
 
     /** Produces exact, resumable, terminal-incomplete, or typed moved-cursor output. */
     fun finish(termination: IntellijRelationTermination): RelationCompilation {
-        if (!prefixVerified || state == IntellijRelationCollectionState.CURSOR_MOVED) {
+        if (
+            !prefixVerified && state != IntellijRelationCollectionState.ENUMERATION_LIMIT ||
+            state == IntellijRelationCollectionState.CURSOR_MOVED
+        ) {
             return RelationCompilation.Rejected(
                 RelationCompilerRejection.CONTINUATION_CURSOR_MOVED,
             )
@@ -213,8 +234,9 @@ internal class IntellijRelationCollector(
         val batch = RelationBatch.create(request, orderedFacts, bytes, work, results)
             .refinedOrReject() ?: return contractRejected()
 
-        val resumable = termination is IntellijRelationTermination.Resumable ||
-            state == IntellijRelationCollectionState.HALTED
+        // Canonical order is unproven after overflow; a continuation cannot promise progress.
+        val resumable = state != IntellijRelationCollectionState.ENUMERATION_LIMIT &&
+            (termination is IntellijRelationTermination.Resumable || state == IntellijRelationCollectionState.HALTED)
         if (!resumable && limitations.isEmpty()) {
             return RelationCompilation.complete(batch)
         }
@@ -256,3 +278,5 @@ internal class IntellijRelationCollector(
         const val NANOS_PER_MILLISECOND = 1_000_000L
     }
 }
+
+internal const val MAX_NATIVE_RELATION_CANDIDATES = 10_000

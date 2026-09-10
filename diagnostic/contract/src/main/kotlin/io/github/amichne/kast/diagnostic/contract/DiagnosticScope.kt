@@ -1,7 +1,7 @@
 package io.github.amichne.kast.diagnostic.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import java.nio.file.Path
 
 enum class DiagnosticScopeFailure {
@@ -23,14 +23,14 @@ value class DiagnosticSourceFile internal constructor(
  * Non-empty deterministic Kotlin-file scope permanently bound to one semantic read lease.
  */
 class DiagnosticScope private constructor(
-    val lease: SemanticReadLease,
+    val lease: SemanticReadAuthority,
     files: List<DiagnosticSourceFile>,
 ) {
     val files: List<DiagnosticSourceFile> = files.toList()
 
     companion object {
         /**
-         * Proof transition: `(SemanticReadLease, Iterable<Path>) ->
+         * Proof transition: `(SemanticReadAuthority, Iterable<Path>) ->
          * Refinement<DiagnosticScope, Set<DiagnosticScopeFailure>>`.
          *
          * Establishes a non-empty, duplicate-free, canonical, deterministically ordered set of
@@ -40,7 +40,7 @@ class DiagnosticScope private constructor(
          * IntelliJ VFS lookup boundary.
          */
         fun fromCanonicalPaths(
-            lease: SemanticReadLease,
+            lease: SemanticReadAuthority,
             paths: Iterable<Path>,
         ): Refinement<DiagnosticScope, Set<DiagnosticScopeFailure>> {
             val candidates = paths.toList()

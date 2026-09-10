@@ -1,117 +1,96 @@
 package io.github.amichne.kast.source.service
 
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.source.contract.readScope
+import io.github.amichne.kast.source.contract.Containment
+import io.github.amichne.kast.source.contract.EntitySelection
+import io.github.amichne.kast.source.contract.RegionSelection
+import io.github.amichne.kast.source.contract.SourceDeclarationVisibility
 import io.github.amichne.kast.source.contract.SourceReadAnchor
 import io.github.amichne.kast.source.contract.SourceReadContext
+import io.github.amichne.kast.source.contract.SourceReadContextPort
 import io.github.amichne.kast.source.contract.SourceReadOperations
 import io.github.amichne.kast.source.contract.SourceReadPort
 import io.github.amichne.kast.source.contract.SourceReadRejection
 import io.github.amichne.kast.source.contract.SourceReadRequest
 import io.github.amichne.kast.source.contract.SourceReadResult
-import io.github.amichne.kast.source.contract.SourceSnapshot
-import io.github.amichne.kast.workspace.contract.PublishedWorkspace
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 
-/** Publication-admission and stale-evidence owner for public `source.read`. */
+/** Admits source reads and revalidates the exact content context before publishing detached output. */
 class SourceReadService(
-    private val workspaces: WorkspaceInspectionOperations,
+    private val contexts: SourceReadContextPort,
     private val source: SourceReadPort,
 ) : SourceReadOperations {
+    constructor(workspaces: WorkspaceInspectionOperations, source: SourceReadPort) :
+        this(workspaces.sourceContexts(), source)
+
     override suspend fun read(request: SourceReadRequest): SourceReadResult {
-        val initial = readyWorkspace()
-            ?: return SourceReadResult.Rejected(SourceReadRejection.WORKSPACE_NOT_READY)
-        val expected = request.anchor.lease()
-        when (val admission = admitAnchor(request.anchor, expected, initial)) {
-            SourceReadAdmission.Admitted -> Unit
-            is SourceReadAdmission.Rejected -> return SourceReadResult.Rejected(admission.reason)
+        val anchor = request.anchor
+        val expected = anchor.lease()
+        val initial = when (val admitted = contexts.admit(expected)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return SourceReadResult.Rejected(
+                if (admitted.failure == SourceReadRejection.STALE_GENERATION) when (anchor) {
+                    is SourceReadAnchor.Candidate -> SourceReadRejection.CANDIDATE_STALE
+                    is SourceReadAnchor.Symbol -> SourceReadRejection.STALE_GENERATION
+                    is SourceReadAnchor.Source -> SourceReadRejection.SOURCE_SELECTOR_STALE
+                } else admitted.failure,
+            )
         }
-
-        val result = source.read(
-            SourceReadContext(initial.readLease, initial.sourceState),
-            request,
-        )
-
-        val after = readyWorkspace()
-            ?: return SourceReadResult.Rejected(SourceReadRejection.STALE_GENERATION)
-        when (val movement = admitUnmoved(initial, after)) {
-            SourceReadAdmission.Admitted -> Unit
-            is SourceReadAdmission.Rejected -> return SourceReadResult.Rejected(movement.reason)
+        if (initial.lease != expected) return SourceReadResult.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
+        if (anchor is SourceReadAnchor.Source && anchor.selector.snapshot.context != initial) {
+            return SourceReadResult.Rejected(SourceReadRejection.SOURCE_STATE_MISMATCH)
         }
-        return if (result.admittedFor(request.anchor, initial)) {
-            result
-        } else {
-            SourceReadResult.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
+        val result = source.read(initial, request)
+        val current = when (val admitted = contexts.admit(expected)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return SourceReadResult.Rejected(
+                if (admitted.failure == SourceReadRejection.WORKSPACE_NOT_READY) SourceReadRejection.STALE_GENERATION
+                else admitted.failure,
+            )
         }
-    }
-
-    private fun readyWorkspace(): PublishedWorkspace? = when (val state = workspaces.inspect()) {
-        is WorkspaceRuntimeState.Ready -> state.workspace
-        WorkspaceRuntimeState.Absent,
-        WorkspaceRuntimeState.Starting,
-        WorkspaceRuntimeState.Reconciling,
-        is WorkspaceRuntimeState.Blocked,
-        WorkspaceRuntimeState.Stopping,
-            -> null
+        if (initial != current) return SourceReadResult.Rejected(SourceReadRejection.SOURCE_STATE_MISMATCH)
+        val snapshot = when (result) {
+            is SourceReadResult.Complete -> result.snapshot
+            is SourceReadResult.Qualified -> result.snapshot
+            is SourceReadResult.Rejected -> return result
+        }
+        if ((request.entities as? EntitySelection.Matching)?.containment == Containment.SELF) {
+            if (anchor !is SourceReadAnchor.Symbol || request.region != RegionSelection.Anchor) {
+                return SourceReadResult.Rejected(SourceReadRejection.REGION_NOT_APPLICABLE)
+            }
+            if (result is SourceReadResult.Complete && SourceDeclarationVisibility.admit(anchor.selector, result) is Refinement.Rejected) {
+                return SourceReadResult.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
+            }
+        }
+        return if (
+            snapshot.context == initial &&
+            snapshot.readScope == anchor.readScope() &&
+            (anchor !is SourceReadAnchor.Source || snapshot == anchor.selector.snapshot)
+        ) result else SourceReadResult.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
     }
 }
 
-private sealed interface SourceReadAdmission {
-    data object Admitted : SourceReadAdmission
-    data class Rejected(val reason: SourceReadRejection) : SourceReadAdmission
-}
-
-private fun SourceReadAnchor.lease(): SemanticReadLease = when (this) {
+private fun SourceReadAnchor.lease(): SemanticReadAuthority = when (this) {
     is SourceReadAnchor.Candidate -> selector.lease
     is SourceReadAnchor.Symbol -> selector.lease
     is SourceReadAnchor.Source -> selector.snapshot.lease
 }
 
-private fun admitAnchor(
-    anchor: SourceReadAnchor,
-    expected: SemanticReadLease,
-    current: PublishedWorkspace,
-): SourceReadAdmission = when {
-    expected.workspaceRoot != current.root ->
-        SourceReadAdmission.Rejected(SourceReadRejection.WORKSPACE_ROOT_MISMATCH)
-    expected.generation != current.generation -> SourceReadAdmission.Rejected(
-        when (anchor) {
-            is SourceReadAnchor.Candidate -> SourceReadRejection.CANDIDATE_STALE
-            is SourceReadAnchor.Symbol -> SourceReadRejection.STALE_GENERATION
-            is SourceReadAnchor.Source -> SourceReadRejection.SOURCE_SELECTOR_STALE
-        },
-    )
-    anchor is SourceReadAnchor.Source &&
-        anchor.selector.snapshot.sourceState != current.sourceState ->
-        SourceReadAdmission.Rejected(SourceReadRejection.SOURCE_STATE_MISMATCH)
-    else -> SourceReadAdmission.Admitted
-}
-
-private fun admitUnmoved(
-    before: PublishedWorkspace,
-    after: PublishedWorkspace,
-): SourceReadAdmission = when {
-    before.root != after.root ->
-        SourceReadAdmission.Rejected(SourceReadRejection.WORKSPACE_ROOT_MISMATCH)
-    before.generation != after.generation ->
-        SourceReadAdmission.Rejected(SourceReadRejection.STALE_GENERATION)
-    before.sourceState != after.sourceState ->
-        SourceReadAdmission.Rejected(SourceReadRejection.SOURCE_STATE_MISMATCH)
-    else -> SourceReadAdmission.Admitted
-}
-
-private fun SourceReadResult.admittedFor(
-    anchor: SourceReadAnchor,
-    publication: PublishedWorkspace,
-): Boolean {
-    val snapshot = when (this) {
-        is SourceReadResult.Complete -> snapshot
-        is SourceReadResult.Qualified -> snapshot
-        is SourceReadResult.Rejected -> return true
+private fun WorkspaceInspectionOperations.sourceContexts(): SourceReadContextPort = SourceReadContextPort { expected ->
+    when (val state = inspect()) {
+        is WorkspaceRuntimeState.Ready -> when {
+            state.workspace.root != expected.workspaceRoot ->
+                Refinement.Rejected(SourceReadRejection.WORKSPACE_ROOT_MISMATCH)
+            state.workspace.readLease != expected -> Refinement.Rejected(SourceReadRejection.STALE_GENERATION)
+            else -> Refinement.Refined(SourceReadContext.Published(state.workspace.readLease, state.workspace.sourceState))
+        }
+        WorkspaceRuntimeState.Absent,
+        WorkspaceRuntimeState.Starting,
+        WorkspaceRuntimeState.Reconciling,
+        is WorkspaceRuntimeState.Blocked,
+        WorkspaceRuntimeState.Stopping -> Refinement.Rejected(SourceReadRejection.WORKSPACE_NOT_READY)
     }
-    if (!snapshot.belongsTo(publication)) return false
-    return anchor !is SourceReadAnchor.Source || snapshot == anchor.selector.snapshot
 }
-
-private fun SourceSnapshot.belongsTo(publication: PublishedWorkspace): Boolean =
-    lease == publication.readLease && sourceState == publication.sourceState

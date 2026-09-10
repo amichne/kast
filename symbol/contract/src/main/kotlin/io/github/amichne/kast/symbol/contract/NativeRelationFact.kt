@@ -1,7 +1,7 @@
 package io.github.amichne.kast.symbol.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import java.nio.charset.StandardCharsets
 
 /**
@@ -10,8 +10,9 @@ import java.nio.charset.StandardCharsets
  */
 @ConsistentCopyVisibility
 data class ExactRelationEndpoint private constructor(
-    val lease: SemanticReadLease,
+    val lease: SemanticReadAuthority,
     val scope: SymbolSearchScope,
+    val constraints: SymbolDiscoveryConstraints,
     val evidence: ExactDeclarationEvidence,
     val fingerprint: ExactDeclarationFingerprint,
 ) {
@@ -30,11 +31,13 @@ data class ExactRelationEndpoint private constructor(
         ): ExactRelationEndpoint = ExactRelationEndpoint(
             lease = subject.lease,
             scope = subject.scope,
+            constraints = subject.constraints,
             evidence = evidence,
             fingerprint = exactDeclarationFingerprint(
                 subject.lease,
                 subject.scope,
                 evidence,
+                subject.constraints,
             ),
         )
     }
@@ -135,7 +138,7 @@ data class NativeRelationFact private constructor(
             if (related.lease != subject.lease) {
                 return Refinement.Rejected(NativeRelationFactFailure.ENDPOINT_LEASE_MISMATCH)
             }
-            if (related.scope != subject.scope) {
+            if (related.scope != subject.scope || related.constraints != subject.constraints) {
                 return Refinement.Rejected(NativeRelationFactFailure.ENDPOINT_SCOPE_MISMATCH)
             }
             return Refinement.Refined(

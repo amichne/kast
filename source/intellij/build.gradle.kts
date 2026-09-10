@@ -52,6 +52,7 @@ dependencies {
     implementation(project(":source:contract"))
     implementation(project(":symbol:contract"))
     implementation(project(":workspace:contract"))
+    implementation(project(":workspace:intellij-read"))
 
     sourceIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
         isTransitive = false

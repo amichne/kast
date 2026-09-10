@@ -6,6 +6,17 @@ import java.util.UUID
 /** Read authority is either a published workspace lease or an original-owner live IDE admission. */
 sealed interface SemanticReadAuthority {
     val workspaceRoot: CanonicalWorkspaceRoot
+
+    val identity: SemanticReadIdentity
+        get() = when (this) {
+            is SemanticReadLease -> SemanticReadIdentity.Published(this)
+            is LiveSemanticReadAuthority -> SemanticReadIdentity.Live(reference)
+        }
+
+    fun requirePublished(): Refinement<SemanticReadLease, PublishedReadAuthorityFailure> = when (this) {
+        is SemanticReadLease -> Refinement.Refined(this)
+        is LiveSemanticReadAuthority -> Refinement.Rejected(PublishedReadAuthorityFailure.LIVE_AUTHORITY)
+    }
 }
 
 /** Detached identity, never a capability to find, open, or execute against an IDE. */
@@ -151,3 +162,56 @@ internal class LiveSemanticReadOwner(
 
     private fun rejected(failure: LiveSemanticReadFailure) = Refinement.Rejected(failure)
 }
+
+/** Detached read identity. A live reference remains data until its original owner re-admits it. */
+sealed interface SemanticReadIdentity {
+    val workspaceRoot: CanonicalWorkspaceRoot
+    val revisionKey: SemanticReadRevisionKey
+
+    data class Published(val lease: SemanticReadLease) : SemanticReadIdentity {
+        override val workspaceRoot get() = lease.workspaceRoot
+        override val revisionKey get() = SemanticReadRevisionKey.published(lease)
+    }
+
+    data class Live(val reference: LiveSemanticReadReference) : SemanticReadIdentity {
+        override val workspaceRoot get() = reference.workspaceRoot
+        override val revisionKey get() = SemanticReadRevisionKey.live(reference)
+    }
+}
+
+/** Canonical revision field for fingerprints which separately retain the exact workspace root. */
+@JvmInline
+value class SemanticReadRevisionKey private constructor(val value: String) {
+    companion object {
+        internal fun published(lease: SemanticReadLease) = SemanticReadRevisionKey(lease.generation.value.toString())
+        internal fun live(reference: LiveSemanticReadReference) = SemanticReadRevisionKey(
+            "live-ide-v${reference.version}:${reference.host.value}:${reference.epoch.value}:${reference.contentView.name}",
+        )
+    }
+}
+
+enum class PublishedReadAuthorityFailure { LIVE_AUTHORITY }
+
+/** Request-local freshness effect, implemented by the owner of the admitted authority. */
+fun interface SemanticReadValidationPort {
+    suspend fun validate(expected: SemanticReadAuthority): SemanticReadValidation
+}
+
+enum class SemanticReadValidation { CURRENT, UNAVAILABLE, ROOT_MISMATCH, MOVED }
+
+/** Published observation adapter; a live authority can never pass a publication observation. */
+fun WorkspaceInspectionOperations.semanticReadValidation(): SemanticReadValidationPort =
+    SemanticReadValidationPort { expected ->
+        when (val state = inspect()) {
+            is WorkspaceRuntimeState.Ready -> when {
+                state.workspace.root != expected.workspaceRoot -> SemanticReadValidation.ROOT_MISMATCH
+                state.workspace.readLease != expected -> SemanticReadValidation.MOVED
+                else -> SemanticReadValidation.CURRENT
+            }
+            WorkspaceRuntimeState.Absent,
+            WorkspaceRuntimeState.Starting,
+            WorkspaceRuntimeState.Reconciling,
+            is WorkspaceRuntimeState.Blocked,
+            WorkspaceRuntimeState.Stopping -> SemanticReadValidation.UNAVAILABLE
+        }
+    }

@@ -3,7 +3,7 @@
   "from": {
     "type": "REFS",
     "refs": [
-      "exact:v2:EXAMPLE_NOT_ISSUED"
+      "exact:v3:EXAMPLE_NOT_ISSUED"
     ]
   },
   "select": []

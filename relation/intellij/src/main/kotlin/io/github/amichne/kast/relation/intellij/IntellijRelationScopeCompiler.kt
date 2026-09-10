@@ -1,7 +1,11 @@
 package io.github.amichne.kast.relation.intellij
 
 import com.intellij.openapi.project.Project
+import io.github.amichne.kast.workspace.intellij.read.IntellijProjectSourceMembership
 import com.intellij.openapi.vfs.VirtualFile
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
 import com.intellij.psi.search.DelegatingGlobalSearchScope
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.ProjectScope
@@ -65,7 +69,9 @@ internal class CompiledRelationScope internal constructor(
     val nativeScope: GlobalSearchScope,
 )
 
-internal class IntellijRelationScopeCompiler {
+internal class IntellijRelationScopeCompiler(
+    private val fileAdmission: (Path) -> Boolean = { true },
+) {
     /**
      * Proof transition: `(Project, RelationRequest, WorkspaceSearchScopeModelCompilation) ->
      * IntellijRelationScopeCompilation`.
@@ -105,7 +111,11 @@ internal class IntellijRelationScopeCompiler {
         }
         val readableRoots = ownedRoots.filter { root ->
             request.subject.scope.sourceKinds.includes(root.sourceKind) &&
-            request.subject.scope.generatedSources.includes(root.provenance)
+            request.subject.scope.generatedSources.includes(root.provenance) &&
+            when (val selected = request.subject.constraints.sourceSets) {
+                SymbolDiscoverySourceSets.All -> true
+                is SymbolDiscoverySourceSets.Exact -> root.sourceSet in selected.values
+            }
         }
         if (readableRoots.isEmpty()) {
             return rejected(IntellijRelationScopeFailure.NoReadableSourceRoots)
@@ -119,6 +129,7 @@ internal class IntellijRelationScopeCompiler {
                     .map { Path.of(it.sourceRoot.value) }
                     .distinct()
                     .sortedBy(Path::toString),
+                model.sourceRoots.map { Path.of(it.sourceRoot.value) }.distinct(),
             )
         }
         val libraryPolicy = request.subject.scope.libraryPolicy()
@@ -132,6 +143,12 @@ internal class IntellijRelationScopeCompiler {
                     pathPolicy,
                     libraryPolicy,
                     libraryMembership = libraryScope::contains,
+                    sourceMembership = { file ->
+                        IntellijProjectSourceMembership.contains(project, file)
+                    },
+                    fileAdmission = { path ->
+                        fileAdmission(path) && matchesDirectory(path, request.subject.lease.workspaceRoot.value, request.subject.constraints)
+                    },
                 ),
             ),
         )
@@ -161,15 +178,19 @@ internal class IntellijRelationScopeCompiler {
         IntellijRelationScopeCompilation.Rejected(setOf(failure))
 }
 
-private sealed interface RelationPathPolicy {
+internal sealed interface RelationPathPolicy {
     fun contains(path: Path): Boolean
 
     data class ExactFile(val file: Path) : RelationPathPolicy {
         override fun contains(path: Path): Boolean = path == file
     }
 
-    data class SourceRoots(val roots: List<Path>) : RelationPathPolicy {
-        override fun contains(path: Path): Boolean = roots.any(path::startsWith)
+    data class SourceRoots(val roots: List<Path>, val ownershipRoots: List<Path>) : RelationPathPolicy {
+        override fun contains(path: Path): Boolean {
+            val owners = ownershipRoots.filter(path::startsWith)
+            val depth = owners.maxOfOrNull(Path::getNameCount) ?: return false
+            return owners.any { it.nameCount == depth && it in roots }
+        }
     }
 }
 
@@ -178,12 +199,15 @@ private class RelationModelScope(
     private val paths: RelationPathPolicy,
     private val libraries: SymbolLibraryPolicy,
     private val libraryMembership: (VirtualFile) -> Boolean,
+    private val sourceMembership: (VirtualFile) -> Boolean,
+    private val fileAdmission: (Path) -> Boolean,
 ) : DelegatingGlobalSearchScope(base, paths) {
     override fun contains(file: VirtualFile): Boolean {
         if (!super.contains(file)) return false
         if (libraries == SymbolLibraryPolicy.INCLUDE && libraryMembership(file)) return true
         return when (val path = relationNativePath(file)) {
-            is IntellijRelationNativePath.Absolute -> paths.contains(path.value)
+            is IntellijRelationNativePath.Absolute -> sourceMembership(file) &&
+                fileAdmission(path.value) && paths.contains(path.value)
             IntellijRelationNativePath.Relative,
             IntellijRelationNativePath.Unavailable,
                 -> false
@@ -223,4 +247,13 @@ private fun SymbolSearchScope.libraryPolicy(): SymbolLibraryPolicy = when (this)
     is SymbolSearchScope.Module,
     is SymbolSearchScope.SourceSet,
         -> SymbolLibraryPolicy.EXCLUDE
+}
+
+private fun matchesDirectory(path: Path, root: String, constraints: SymbolDiscoveryConstraints): Boolean {
+    val restriction = constraints.directory ?: return true
+    val requested = Path.of(root).resolve(restriction.directory.value).normalize()
+    return when (restriction.containment) {
+        SymbolDiscoveryContainment.DIRECT -> path.parent == requested
+        SymbolDiscoveryContainment.DESCENDANTS -> path.startsWith(requested)
+    }
 }

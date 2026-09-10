@@ -92,7 +92,7 @@ filters callers, not the declarations that were initially matched.
 ## Reuse exact references
 
 ```json
-{"type":"QUERY","from":{"type":"REFS","refs":["exact:v2:EXAMPLE_NOT_ISSUED"]}}
+{"type":"QUERY","from":{"type":"REFS","refs":["exact:v3:EXAMPLE_NOT_ISSUED"]}}
 ```
 
 The example token demonstrates shape only. Copy real `items[].ref.token` values
@@ -111,7 +111,8 @@ as query prerequisites. Existing bounded exhaustive intent remains qualified whe
 work or result coverage is incomplete. A qualified empty result is not proof of
 zero matches. Preserve failure and limitation evidence.
 
-Installed server projection 8 retires the prior candidate/inspect query syntax.
+Installed server projection 9 retains the declaration query syntax introduced in
+projection 8 and adds explicit live read evidence.
 Unchanged canonical wire/evaluator models are internal, not a second public CLI mode.
 See `app-server/docs/public-query-contract.md` for ownership, enforcement and the
 requirement-to-proof map. The installed `--schema` remains the executable's public

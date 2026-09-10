@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli.projection
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
@@ -29,10 +30,19 @@ internal data class NormalizedTraversalGraphCliDocument(
 )
 
 @Serializable
-internal data class TraversalGraphSnapshotCliDocument(
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+internal data class TraversalGraphSnapshotCliDocument private constructor(
     val canonicalRoot: String,
-    val generation: Long,
-)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER) val generation: Long? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER) val live: LiveReadCliEvidence? = null,
+) {
+    companion object {
+        fun from(root: ProtocolText, basis: EvidenceBasis) = when (basis) {
+            is EvidenceBasis.Published -> TraversalGraphSnapshotCliDocument(root.value, generation = basis.generation.value)
+            is EvidenceBasis.Live -> TraversalGraphSnapshotCliDocument(root.value, live = LiveReadCliEvidence.from(basis.evidence))
+        }
+    }
+}
 
 @Serializable
 internal data class NormalizedTraversalNodeCliDocument(
@@ -79,6 +89,12 @@ internal fun normalizeTraversalGraph(
     snapshotRoot: ProtocolText,
     generation: EvidenceGeneration,
     records: List<TraversalRecordDocument>,
+): NormalizedTraversalGraphCliDocument = normalizeTraversalGraph(snapshotRoot, EvidenceBasis.Published(generation), records)
+
+internal fun normalizeTraversalGraph(
+    snapshotRoot: ProtocolText,
+    basis: EvidenceBasis,
+    records: List<TraversalRecordDocument>,
 ): NormalizedTraversalGraphCliDocument {
     val nodes = mutableListOf<NormalizedTraversalNodeCliDocument>()
     val edges = mutableListOf<NormalizedTraversalEdgeCliDocument>()
@@ -118,10 +134,7 @@ internal fun normalizeTraversalGraph(
         )
     }
     return NormalizedTraversalGraphCliDocument(
-        snapshot = TraversalGraphSnapshotCliDocument(
-            canonicalRoot = snapshotRoot.value,
-            generation = generation.value,
-        ),
+        snapshot = TraversalGraphSnapshotCliDocument.from(snapshotRoot, basis),
         nodes = nodes.toList(),
         edges = edges.toList(),
         proofs = proofs.toList(),

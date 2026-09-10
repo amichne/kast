@@ -1,13 +1,41 @@
 ---
 type: Runtime Flow
 title: Experimental hosted semantic query
-description: Bounded class discovery and direct-supertype reads use an admitted open IDEA project and return detached compiler evidence through an owned socket endpoint.
+description: An existing IDEA project owns bounded read admission; all seven canonical read routes are prepared, with default cutover and packaged acceptance still pending.
 resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-10T00:00:00Z
 code_sources:
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryService.kt
     symbols: [HostedQueryService]
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedSemanticReadContext.kt
+    symbols: [HostedSemanticReadContext, HostedLiveReadAuthoritySession]
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt
+    symbols: [runHostedReadTransaction]
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijProjectSourceMembership.kt
+    symbols: [IntellijProjectSourceMembership]
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireBinding.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
+    symbols: [evaluateHostedCanonicalQuery]
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointProtocol.kt
+    symbols: [HostedRequest, HostedRequests]
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerCancellation.kt
+    symbols: [HostedPeerTermination, dispatchUntilPeerTermination]
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerCancellationTest.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalDiscoveryAdmission.kt
+    symbols: [admitDiscoveryRequest, specialistDiscoveryWorkspaceScope]
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/ProjectBoundIntellijSymbolPorts.kt
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/ProjectBoundIntellijSourceReadPort.kt
+  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/ProjectBoundIntellijRelationPort.kt
+  - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/ProjectBoundIntellijDiagnosticPorts.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijSearchScopeCompiler.kt
+    symbols: [CompiledIntellijSearchScope, IntellijScopePopulation]
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijDiscoveryPackageAdmission.kt
+  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationScopeCompiler.kt
+  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationPackageAdmission.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeQuery.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSocketClient.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/AdmittedHostedQuery.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/LiveHostedKotlinRead.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/LiveHostedClassIndex.kt
@@ -37,14 +65,74 @@ code_sources:
 
 # Experimental hosted semantic query
 
+## Canonical read path prepared
+
 The ordinary-query scope gate now has a separate project-bound capture for exact
 imported Gradle names. It reads `ExternalProjectDataCache` and joins explicit
 `ExternalSourceSet.name` facts with the current IDE source folders. Missing or
 inconsistent ownership rejects before name filtering. Most-specific roots win,
 including generated, excluded and resource roots; an unknown nested source-folder
 kind rejects rather than inheriting an allowed parent. This gate performs no import
-or sync. The evaluator route has not yet been connected to it. Cached folder
-classification used by the demonstration commands remains the weaker scope below.
+or sync.
+
+The symbol scope compiler retains a typed `IntellijScopePopulation`. After valid
+owner and source/generated-policy roots have been established, an exact source-set
+name absent from all roots of that owner produces `KNOWN_EMPTY` and an empty native
+scope. Unknown ownership and policy-excluded roots still reject; library inclusion
+cannot broaden the known-empty intersection. Symbol and relation native scope
+membership checks use paths, model ownership, and the file index.
+`IntellijProjectSourceMembership` keeps source membership and exclusion observation
+in the workspace adapter; semantic adapters consume that native predicate. Package evidence
+is read after bounded provider collection or exact PSI lookup, outside native index
+callbacks. Exact restoration and relation subjects and targets reapply the retained
+package restriction at that point.
+
+`HostedQueryService` can now provide an owner-bound `HostedSemanticReadContext`
+with current live authority, captured model, exact source-file admission, and
+validation. The generalized read transaction checks authority before and after
+evaluation, and ends its context before returning. Saved documents and committed
+PSI remain live obligations. Original-owner retirement and epoch movement reject
+references instead of falling back to a publication or another IDE.
+
+`HostedCanonicalQuery` composes all seven public canonical reads: `query.run`,
+`symbol.discover`, `symbol.inspect`, `source.read`, `relation.read`,
+`traversal.run`, and `diagnostic.check`. It supplies pure services, project-bound
+ports, current-model reference restoration, and explicit budgets to the reusable
+[`query:protocol`](../modules/query-protocol.md) boundary. Query evaluation keeps
+one request budget across its stages; specialist request limits intersect bounded
+host caps. Evaluation and wire projection share the admitted read lifetime and
+the executor's whole-request deadline. Output carries live evidence without a
+workspace generation.
+
+Specialist `symbol.discover` name and workspace-text requests under live authority
+use authored production and test roots from the admitted project, excluding
+generated sources and libraries. Published authority retains its existing
+library-inclusive scope policy. This explicit distinction keeps supported live
+requests executable without claiming library-read parity; wider native library
+coverage remains a separate qualification boundary.
+
+`HostedPeerCancellation` races request dispatch against peer disconnection or
+additional input after the one admitted frame. Both jobs are cancelled and joined
+before the request leaves its scope. The semantic executor separately drains its
+work before releasing the permit, so cancellation cannot leave an earlier request
+running beside its replacement.
+
+The prepared existing-IDE client decodes each response through its canonical
+operation binding, preserves complete, qualified, and rejected outcomes, and
+requires successful live evidence to match the requested root and descriptor host.
+Source snapshots must repeat the exact enclosing live evidence or published
+generation; live traversal roots must match the enclosing root. Both encoding and
+decoding reject contradictory evidence before CLI projection.
+It rejects a publication envelope on this path. Typed host rejection remains
+available when admission fails before operation authority exists.
+
+The default native cutover and packaged manual qualification of this generalized
+path are pending. Pure contract and adapter checks do not establish an installed
+native IDE result. The qualification history below concerns the earlier bounded
+class-discovery and direct-supertype routes; it is not acceptance evidence for
+all canonical read operations or new default CLI/App Server routing.
+
+## Earlier qualified hosted reads
 
 The project-level service retains one admitted existing Project, an owner-scoped
 epoch source, and a terminal endpoint lifetime. It captures the cached Gradle

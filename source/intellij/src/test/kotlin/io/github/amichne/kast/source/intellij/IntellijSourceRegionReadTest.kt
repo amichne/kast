@@ -258,7 +258,7 @@ class IntellijSourceRegionReadTest {
     }
 
     private fun context(snapshot: SourceSnapshot): SourceReadContext =
-        SourceReadContext(snapshot.lease, snapshot.sourceState)
+        snapshot.context
 
     private fun range(snapshot: SourceSnapshot, start: Int, end: Int): SourceRange =
         SourceRange.create(

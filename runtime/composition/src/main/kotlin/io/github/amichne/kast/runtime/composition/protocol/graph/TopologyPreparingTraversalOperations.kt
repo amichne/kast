@@ -1,5 +1,7 @@
 package io.github.amichne.kast.runtime.composition.protocol.graph
 
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.RelationReadRejection
 import io.github.amichne.kast.topology.contract.TopologyBuildOperations
 import io.github.amichne.kast.topology.contract.TopologyBuildResult
 import io.github.amichne.kast.traversal.contract.TraversalOperations
@@ -19,8 +21,14 @@ internal class TopologyPreparingTraversalOperations(
     private val topology: TopologyBuildOperations,
     private val traversal: TraversalOperations,
 ) : TraversalOperations {
-    override suspend fun run(plan: TraversalPlan): TraversalResult =
-        when (val preparation = topology.build()) {
+    override suspend fun run(plan: TraversalPlan): TraversalResult {
+        when (plan.start.lease.requirePublished()) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return TraversalResult.Rejected(
+                TraversalRejection.OneHopRejected(RelationReadRejection.SCOPE_REJECTED),
+            )
+        }
+        return when (val preparation = topology.build()) {
             is TopologyBuildResult.Published,
             is TopologyBuildResult.Reused,
                 -> traversal.run(plan)
@@ -33,4 +41,5 @@ internal class TopologyPreparingTraversalOperations(
                 TraversalRejection.RequiredEvidenceUnavailable,
             )
         }
+    }
 }

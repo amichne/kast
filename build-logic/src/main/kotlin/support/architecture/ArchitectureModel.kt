@@ -84,6 +84,7 @@ enum class ModuleId(val projectPath: String) {
     TRAVERSAL_SERVICE(":traversal:service"),
     QUERY_CONTRACT(":query:contract"),
     QUERY_SERVICE(":query:service"),
+    QUERY_PROTOCOL(":query:protocol"),
     TOPOLOGY_CONTRACT(":topology:contract"),
     TOPOLOGY_BUILD(":topology:build"),
     TOPOLOGY_SERVICE(":topology:service"),

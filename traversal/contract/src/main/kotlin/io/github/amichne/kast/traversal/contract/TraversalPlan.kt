@@ -159,7 +159,7 @@ class TraversalPlan private constructor(
         ): Refinement<TraversalPlan, TraversalPlanResumeFailure> {
             val identity = traversalIdentity(selector, meaning)
             val resumeFailure = when {
-                selector.lease.generation != continuation.start.lease.generation ->
+                selector.lease != continuation.start.lease ->
                     TraversalResumeFailure.GENERATION_MISMATCH
                 selector.scope != continuation.start.scope ->
                     TraversalResumeFailure.SCOPE_MISMATCH

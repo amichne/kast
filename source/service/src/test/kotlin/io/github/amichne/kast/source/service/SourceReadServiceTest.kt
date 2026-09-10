@@ -58,7 +58,7 @@ class SourceReadServiceTest {
         assertEquals(expected, result)
         assertEquals(listOf(request), port.requests)
         assertEquals(workspace.readLease, port.contexts.single().lease)
-        assertEquals(workspace.sourceState, port.contexts.single().sourceState)
+        assertEquals(workspace.sourceState, (port.contexts.single() as SourceReadContext.Published).sourceState)
     }
 
     @Test
@@ -118,6 +118,24 @@ class SourceReadServiceTest {
             SourceReadResult.Rejected(SourceReadRejection.CONTRACT_VIOLATION),
             runSuspend { service.read(request) },
         )
+    }
+
+    @Test
+    fun `request context owner revalidates before returning detached evidence`() {
+        val workspace = published(7, "source-state")
+        val request = request(workspace, "fun subject() = 1\n")
+        var admissions = 0
+        val contexts = io.github.amichne.kast.source.contract.SourceReadContextPort { authority ->
+            assertEquals(workspace.readLease, authority)
+            admissions += 1
+            if (admissions == 1) Refinement.Refined(SourceReadContext.Published(workspace.readLease, workspace.sourceState))
+            else Refinement.Rejected(SourceReadRejection.STALE_GENERATION)
+        }
+        val port = RecordingSourceReadPort { _, _ -> complete(request) }
+        val service = SourceReadService(contexts, port)
+        assertEquals(SourceReadResult.Rejected(SourceReadRejection.STALE_GENERATION), runSuspend { service.read(request) })
+        assertEquals(2, admissions)
+        assertEquals(1, port.requests.size)
     }
 
     private fun request(workspace: PublishedWorkspace, text: String): SourceReadRequest {

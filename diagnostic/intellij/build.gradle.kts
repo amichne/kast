@@ -56,6 +56,7 @@ dependencies {
     implementation(catalog.findLibrary("serialization-json").get())
     implementation(project(":protocol:contract"))
     implementation(project(":diagnostic:contract"))
+    implementation(project(":symbol:contract"))
     implementation(project(":workspace:contract"))
     implementation(project(":workspace:intellij-read"))
 

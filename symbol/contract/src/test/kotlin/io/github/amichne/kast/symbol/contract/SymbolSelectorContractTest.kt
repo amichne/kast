@@ -10,6 +10,8 @@ import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName
+import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -269,6 +271,91 @@ class SymbolSelectorContractTest {
         assertEquals(
             SymbolSelectorRevalidationFailure.DECLARATION_MOVED_OR_CHANGED,
             RevalidatedSymbolSelector.validate(first, secondEvidence).rejected(),
+        )
+    }
+
+    @Test
+    fun `restored selection rejects compiler evidence outside retained declaration kinds`() {
+        val original = selection()
+        val constraints = SymbolDiscoveryConstraints(
+            directory = null,
+            packageName = null,
+            declarationKinds = SymbolDiscoveryDeclarationKinds.from(setOf(CompilerSymbolKind.FUNCTION)).refined(),
+        )
+        val restored = SymbolDiscoverySelection.restore(
+            original.lease,
+            original.scope,
+            original.candidate,
+            constraints,
+        ).refined()
+        val location = restored.candidate.location as SymbolDiscoveryCandidateLocation.Declaration
+        val property = CompilerGroundedSymbolEvidence.fromBoundary(
+            location.file,
+            location.offset.value,
+            location.offset.value + 10,
+            restored.candidate.name.value,
+            "sample.Service.call",
+            CompilerSymbolKind.PROPERTY,
+            CanonicalCompilerSignature.property(
+                rawQualifiedIdentity = "sample.Service.call",
+                rawReceiverType = null,
+                rawContextReceiverTypes = emptyList(),
+                rawReturnType = "kotlin.Int",
+            ).refined(),
+        ).refined()
+
+        assertEquals(
+            "DECLARATION_KIND_MISMATCH",
+            SymbolSelector.issue(restored, property).rejected().name,
+        )
+        assertEquals(
+            constraints,
+            SymbolSelector.issue(restored, evidence(restored, "kotlin.Int")).refined().constraints,
+        )
+        assertEquals(
+            CompilerSymbolKind.PROPERTY,
+            SymbolSelector.issue(original, property).refined().kind,
+        )
+        assertEquals(
+            CompilerSymbolKind.PROPERTY,
+            SymbolSelector.issue(restored.lease, restored.scope, property, constraints).kind,
+        )
+    }
+
+    @Test
+    fun `retained constraints cannot mutate after selector fingerprinting`() {
+        val original = selection()
+        val main = WorkspaceSourceSetName.parse("main").refined()
+        val test = WorkspaceSourceSetName.parse("test").refined()
+        val rawSourceSets = linkedSetOf(main, test)
+        val rawKinds = linkedSetOf(CompilerSymbolKind.FUNCTION, CompilerSymbolKind.PROPERTY)
+        val sourceSets = SymbolDiscoverySourceSets.Exact.from(rawSourceSets).refined()
+        val kinds = SymbolDiscoveryDeclarationKinds.from(rawKinds).refined()
+        val constraints = SymbolDiscoveryConstraints(null, null, kinds, sourceSets)
+        val restored = SymbolDiscoverySelection.restore(
+            original.lease, original.scope, original.candidate, constraints,
+        ).refined()
+        val evidence = evidence(restored, "kotlin.Int")
+        val selector = SymbolSelector.issue(restored, evidence).refined()
+        val fields = constraints.fingerprintFields()
+        rawSourceSets.clear()
+        rawKinds.clear()
+
+        assertAll(
+            {
+                assertThrows(UnsupportedOperationException::class.java) {
+                    (sourceSets.values as MutableSet<WorkspaceSourceSetName>).remove(main)
+                }
+            },
+            {
+                assertThrows(UnsupportedOperationException::class.java) {
+                    (kinds.values as MutableSet<CompilerSymbolKind>).clear()
+                }
+            },
+            { assertEquals(setOf(main, test), sourceSets.values) },
+            { assertEquals(setOf(CompilerSymbolKind.FUNCTION, CompilerSymbolKind.PROPERTY), kinds.values) },
+            { assertEquals(fields, selector.constraints.fingerprintFields()) },
+            { assertEquals(selector, RevalidatedSymbolSelector.validate(selector, evidence).refined().selector) },
         )
     }
 

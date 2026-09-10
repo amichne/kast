@@ -101,6 +101,8 @@ sealed interface VisibilitySelection {
 enum class Containment {
     DIRECT,
     DESCENDANTS,
+    /** Internal exact-declaration predicate evidence; not part of the public source grammar. */
+    SELF,
 }
 
 sealed interface EntityFilter {

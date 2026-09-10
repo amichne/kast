@@ -1,5 +1,7 @@
 package io.github.amichne.kast.runtime.composition.protocol.graph
 
+import io.github.amichne.kast.query.protocol.*
+
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
@@ -25,7 +27,7 @@ import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
 import io.github.amichne.kast.runtime.composition.InstalledSymbolProtocolFixture
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalProtocolAuthority
-import io.github.amichne.kast.runtime.composition.protocol.RelationSubjectLookup
+import io.github.amichne.kast.query.protocol.RelationSubjectLookup
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationContinuation
@@ -101,7 +103,7 @@ class TraversalContinuationCodecTest {
         )
         val decoded = assertInstanceOf(
             CanonicalTraversalContinuationDecoding.Decoded::class.java,
-            CanonicalTraversalContinuationCodec.decode(document, budget, authority),
+            CanonicalTraversalContinuationCodec.decode(document, budget, authority, continuation.start.lease),
         ).continuation
         val decodedPending = assertInstanceOf(
             TraversalPendingState.Active::class.java,

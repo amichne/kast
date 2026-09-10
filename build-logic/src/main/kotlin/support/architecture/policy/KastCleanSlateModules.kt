@@ -3,6 +3,19 @@ package support.architecture
 internal object KastCleanSlateModules {
     val all: List<ModulePolicy> = listOf(
         target(ModuleId.KERNEL, ModuleRole.KERNEL),
+        target(
+            ModuleId.QUERY_PROTOCOL,
+            ModuleRole.SERVICE,
+            ModuleId.KERNEL,
+            ModuleId.PROTOCOL_CONTRACT,
+            ModuleId.QUERY_CONTRACT,
+            ModuleId.SYMBOL_CONTRACT,
+            ModuleId.SOURCE_CONTRACT,
+            ModuleId.RELATION_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.TRAVERSAL_CONTRACT,
+            ModuleId.DIAGNOSTIC_CONTRACT,
+        ),
         target(ModuleId.DISTRIBUTION_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
         target(
             ModuleId.DISTRIBUTION_MANAGED,
@@ -129,6 +142,7 @@ internal object KastCleanSlateModules {
             ModuleRole.INTELLIJ_READ_ADAPTER,
             ModuleId.SYMBOL_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.WORKSPACE_INTELLIJ_READ,
             effects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM),
         ),
         target(
@@ -150,6 +164,7 @@ internal object KastCleanSlateModules {
             ModuleId.SOURCE_CONTRACT,
             ModuleId.SYMBOL_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.WORKSPACE_INTELLIJ_READ,
             effects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM),
         ),
         target(
@@ -209,6 +224,7 @@ internal object KastCleanSlateModules {
         target(
             ModuleId.DIAGNOSTIC_INTELLIJ,
             ModuleRole.INTELLIJ_READ_ADAPTER,
+            ModuleId.SYMBOL_CONTRACT,
             ModuleId.PROTOCOL_CONTRACT,
             ModuleId.DIAGNOSTIC_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
@@ -395,8 +411,26 @@ internal object KastCleanSlateModules {
             ModuleRole.IDE_HOST,
             ModuleId.KERNEL,
             ModuleId.PROTOCOL_CONTRACT,
+            ModuleId.PROTOCOL_WIRE,
+            ModuleId.QUERY_CONTRACT,
+            ModuleId.QUERY_PROTOCOL,
+            ModuleId.QUERY_SERVICE,
+            ModuleId.SYMBOL_CONTRACT,
+            ModuleId.SYMBOL_SERVICE,
+            ModuleId.SYMBOL_INTELLIJ,
+            ModuleId.SOURCE_CONTRACT,
+            ModuleId.SOURCE_SERVICE,
+            ModuleId.SOURCE_INTELLIJ,
+            ModuleId.RELATION_CONTRACT,
+            ModuleId.RELATION_SERVICE,
+            ModuleId.RELATION_INTELLIJ,
             ModuleId.WORKSPACE_CONTRACT,
             ModuleId.WORKSPACE_INTELLIJ_READ,
+            ModuleId.DIAGNOSTIC_CONTRACT,
+            ModuleId.DIAGNOSTIC_SERVICE,
+            ModuleId.DIAGNOSTIC_INTELLIJ,
+            ModuleId.TRAVERSAL_CONTRACT,
+            ModuleId.TRAVERSAL_SERVICE,
             effects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM, ForbiddenEffect.UDS_BIND, ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE),
             scopedEffects = mapOf(ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                 JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint"),
@@ -468,6 +502,7 @@ internal object KastCleanSlateModules {
 
     private fun targetIds(): Set<ModuleId> = setOf(
         ModuleId.KERNEL,
+        ModuleId.QUERY_PROTOCOL,
         ModuleId.DISTRIBUTION_CONTRACT,
         ModuleId.DISTRIBUTION_MANAGED,
         ModuleId.PROTOCOL_CONTRACT,

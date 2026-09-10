@@ -5,6 +5,7 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
+import com.intellij.psi.search.PsiElementProcessor
 import com.intellij.psi.search.searches.DefinitionsScopedSearch
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
@@ -70,7 +71,7 @@ internal class IntellijK2RelationSearch(
             val providerExhausted = ReferencesSearch.search(subject, scope.nativeScope, false)
                 .forEach(Processor { reference ->
                     cancellationCheck()
-                    if (!providerEnumerationReady()) return@Processor false
+                    if (!providerCandidateReady()) return@Processor false
                     references += reference
                     true
                 })
@@ -92,6 +93,11 @@ internal class IntellijK2RelationSearch(
                     ProviderItemDisposition.SKIPPED -> continue
                     ProviderItemDisposition.HALTED ->
                         return termination(ProviderTermination.HALTED)
+                }
+                when (packageDisposition(reference.element)) {
+                    ProviderItemDisposition.READY -> Unit
+                    ProviderItemDisposition.SKIPPED -> continue
+                    ProviderItemDisposition.HALTED -> return termination(ProviderTermination.HALTED)
                 }
                 val kotlinReference = reference as? KtReference
                 if (kotlinReference == null) {
@@ -151,7 +157,7 @@ internal class IntellijK2RelationSearch(
             val providerExhausted = DefinitionsScopedSearch.search(subject, scope.nativeScope, false)
                 .forEach(Processor { definition ->
                     cancellationCheck()
-                    if (!providerEnumerationReady()) return@Processor false
+                    if (!providerCandidateReady()) return@Processor false
                     definitions += definition
                     true
                 })
@@ -173,6 +179,11 @@ internal class IntellijK2RelationSearch(
                     ProviderItemDisposition.SKIPPED -> continue
                     ProviderItemDisposition.HALTED ->
                         return termination(ProviderTermination.HALTED)
+                }
+                when (packageDisposition(definition)) {
+                    ProviderItemDisposition.READY -> Unit
+                    ProviderItemDisposition.SKIPPED -> continue
+                    ProviderItemDisposition.HALTED -> return termination(ProviderTermination.HALTED)
                 }
                 val candidate = definition as? KtNamedDeclaration
                 if (candidate == null) {
@@ -199,13 +210,22 @@ internal class IntellijK2RelationSearch(
         }
 
         fun callees(): IntellijRelationTermination {
-            val calls = PsiTreeUtil.findChildrenOfType(subject, KtCallElement::class.java)
-                .filter { call ->
-                    when (val containing = call.nearestDeclaration()) {
-                        is ContainingDeclaration.Found -> containing.declaration === subject
-                        ContainingDeclaration.Unsupported -> false
-                    }
+            val calls = mutableListOf<KtCallElement>()
+            val callsExhausted = PsiTreeUtil.processElements(subject, PsiElementProcessor<PsiElement> { element ->
+                cancellationCheck()
+                if (!providerEnumerationReady()) return@PsiElementProcessor false
+                val call = element as? KtCallElement ?: return@PsiElementProcessor true
+                val belongsToSubject = when (val containing = call.nearestDeclaration()) {
+                    is ContainingDeclaration.Found -> containing.declaration === subject
+                    ContainingDeclaration.Unsupported -> false
                 }
+                if (belongsToSubject) {
+                    if (!providerCandidateReady()) return@PsiElementProcessor false
+                    calls += call
+                }
+                true
+            })
+            if (!callsExhausted) return termination(ProviderTermination.HALTED)
             val candidates = mutableListOf<CalleeProviderItem>()
             for (call in calls) {
                 cancellationCheck()
@@ -214,10 +234,13 @@ internal class IntellijK2RelationSearch(
                 }
                 when (val resolved = call.calleeReferences()) {
                     is KotlinCallReferences.Found -> resolved.references.forEach { reference ->
+                        if (!providerCandidateReady()) return termination(ProviderTermination.HALTED)
                         candidates += CalleeProviderItem.Reference(reference)
                     }
-                    KotlinCallReferences.Unresolved ->
+                    KotlinCallReferences.Unresolved -> {
+                        if (!providerCandidateReady()) return termination(ProviderTermination.HALTED)
                         candidates += CalleeProviderItem.Unresolved(call)
+                    }
                 }
             }
             if (!providerEnumerationReady()) {
@@ -252,14 +275,20 @@ internal class IntellijK2RelationSearch(
                                 if (!incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)) {
                                     return termination(ProviderTermination.HALTED)
                                 }
-                            } else if (
-                                !emit(
-                                    resolved.declaration,
-                                    candidate.reference.element,
-                                    candidate.reference.rangeInElement,
-                                )
-                            ) {
-                                return termination(ProviderTermination.HALTED)
+                            } else {
+                                when (packageDisposition(resolved.declaration)) {
+                                    ProviderItemDisposition.READY -> Unit
+                                    ProviderItemDisposition.SKIPPED -> continue
+                                    ProviderItemDisposition.HALTED -> return termination(ProviderTermination.HALTED)
+                                }
+                                if (!emit(
+                                        resolved.declaration,
+                                        candidate.reference.element,
+                                        candidate.reference.rangeInElement,
+                                    )
+                                ) {
+                                    return termination(ProviderTermination.HALTED)
+                                }
                             }
                         }
                     }
@@ -268,9 +297,27 @@ internal class IntellijK2RelationSearch(
             return termination(ProviderTermination.TERMINAL)
         }
 
+        private fun packageDisposition(element: PsiElement): ProviderItemDisposition =
+            when (request.subject.constraints.packageName.admitPackage { element.relationPackageEvidence() }) {
+                IntellijRelationPackageAdmission.ADMITTED -> ProviderItemDisposition.READY
+                IntellijRelationPackageAdmission.OUTSIDE_SCOPE ->
+                    if (collector.dismissProviderItem()) ProviderItemDisposition.SKIPPED else ProviderItemDisposition.HALTED
+                IntellijRelationPackageAdmission.UNSUPPORTED ->
+                    if (incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)) {
+                        ProviderItemDisposition.SKIPPED
+                    } else {
+                        ProviderItemDisposition.HALTED
+                    }
+            }
+
         private fun providerEnumerationReady(): Boolean = when (
             collector.admitProviderEnumeration()
         ) {
+            IntellijRelationProviderEnumerationAdmission.READY -> true
+            IntellijRelationProviderEnumerationAdmission.HALTED -> false
+        }
+
+        private fun providerCandidateReady(): Boolean = when (collector.admitProviderCandidate()) {
             IntellijRelationProviderEnumerationAdmission.READY -> true
             IntellijRelationProviderEnumerationAdmission.HALTED -> false
         }
@@ -307,6 +354,7 @@ internal class IntellijK2RelationSearch(
                     request.subject.lease,
                     request.subject.scope,
                     related.evidence,
+                    request.subject.constraints,
                 )
             ) {
                 is Refinement.Refined -> resolved.value

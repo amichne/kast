@@ -102,6 +102,13 @@ internal class IntellijK2RelationProjection(
         }
         val psiFile = PsiManager.getInstance(project).findFile(file)
                       ?: return rejected(IntellijRelationSubjectFailure.STALE_SELECTOR)
+        when (subject.constraints.packageName.admitPackage { psiFile.relationPackageEvidence() }) {
+            IntellijRelationPackageAdmission.ADMITTED -> Unit
+            IntellijRelationPackageAdmission.OUTSIDE_SCOPE ->
+                return rejected(IntellijRelationSubjectFailure.OUTSIDE_SCOPE)
+            IntellijRelationPackageAdmission.UNSUPPORTED ->
+                return rejected(IntellijRelationSubjectFailure.UNSUPPORTED_SUBJECT)
+        }
         val candidates = generateSequence(psiFile.findElementAt(subject.range.startInclusive)) {
             it.parent
         }

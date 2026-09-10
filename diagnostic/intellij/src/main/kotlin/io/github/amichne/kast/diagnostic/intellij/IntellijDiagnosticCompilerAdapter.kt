@@ -1,5 +1,6 @@
 package io.github.amichne.kast.diagnostic.intellij
 
+import java.nio.file.Path
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.DumbService
@@ -11,7 +12,7 @@ import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilerRejection
 import io.github.amichne.kast.diagnostic.contract.DiagnosticLimitationReason
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScope
 import io.github.amichne.kast.diagnostic.contract.DiagnosticSourceFile
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.intellij.read.IntellijProjectFileClassification
 import io.github.amichne.kast.workspace.intellij.read.IntellijProjectFileIndexClassifier
 import kotlinx.coroutines.CancellationException
@@ -28,29 +29,31 @@ internal sealed interface IntellijDiagnosticLeaseAdmission {
 }
 
 /**
- * Proof transition: `(SemanticReadLease, SemanticReadLease) ->
+ * Proof transition: `(SemanticReadAuthority, SemanticReadAuthority) ->
  * IntellijDiagnosticLeaseAdmission`.
  *
- * Admitted proves exact canonical root and generation equality. Rejected preserves root mismatch
- * or generation movement as [DiagnosticCompilerRejection]. Raw identity extraction stays at the
+ * Admitted proves exact canonical root and authority equality. Rejected preserves root mismatch
+ * or authority movement as [DiagnosticCompilerRejection]. Raw identity extraction stays at the
  * workspace publication boundary.
  */
 internal fun admitDiagnosticLease(
-    current: SemanticReadLease,
-    requested: SemanticReadLease,
+    current: SemanticReadAuthority,
+    requested: SemanticReadAuthority,
 ): IntellijDiagnosticLeaseAdmission = when {
     current.workspaceRoot != requested.workspaceRoot ->
         IntellijDiagnosticLeaseAdmission.Rejected(
             DiagnosticCompilerRejection.WORKSPACE_ROOT_MISMATCH,
         )
-    current.generation != requested.generation ->
+    current != requested ->
         IntellijDiagnosticLeaseAdmission.Rejected(DiagnosticCompilerRejection.GENERATION_MOVED)
     else -> IntellijDiagnosticLeaseAdmission.Admitted
 }
 
-internal class IntellijDiagnosticCompilerQuery {
+internal class IntellijDiagnosticCompilerQuery(
+    private val fileAdmission: (Path) -> Boolean = { true },
+) {
     /**
-     * Proof transition: `(Project, SemanticReadLease, DiagnosticScope) ->
+     * Proof transition: `(Project, SemanticReadAuthority, DiagnosticScope) ->
      * DiagnosticCompilation`.
      *
      * A non-rejected result establishes current lease equality, exact-file VFS and source-content
@@ -60,7 +63,7 @@ internal class IntellijDiagnosticCompilerQuery {
      */
     suspend fun read(
         project: Project,
-        currentLease: SemanticReadLease,
+        currentLease: SemanticReadAuthority,
         scope: DiagnosticScope,
     ): DiagnosticCompilation {
         when (val admission = admitDiagnosticLease(currentLease, scope.lease)) {
@@ -105,6 +108,10 @@ internal class IntellijDiagnosticCompilerQuery {
         val virtualFile = LocalFileSystem.getInstance().findFileByPath(file.value)
         if (virtualFile == null || !virtualFile.isValid || virtualFile.isDirectory) {
             collector.recordLimitation(file, DiagnosticLimitationReason.FILE_UNAVAILABLE)
+            return
+        }
+        if (!fileAdmission(Path.of(file.value))) {
+            collector.recordLimitation(file, DiagnosticLimitationReason.OUTSIDE_SOURCE_CONTENT)
             return
         }
         when (IntellijProjectFileIndexClassifier.classify(project, virtualFile)) {
@@ -174,24 +181,24 @@ internal class IntellijDiagnosticCompilerQuery {
     }
 }
 
-/** Public native K2 boundary for exact-scope generation-bound diagnostic compilation. */
-class IntellijDiagnosticCompilerAdapter private constructor(
+/** Public native K2 boundary for exact-scope authority-bound diagnostic compilation. */
+class IntellijDiagnosticCompilerAdapter internal constructor(
     private val query: IntellijDiagnosticCompilerQuery,
     private val observer: IntellijDiagnosticCompilationObserver,
 ) {
     constructor() : this(IntellijDiagnosticCompilerQuery(), LoggingIntellijDiagnosticCompilationObserver)
 
     /**
-     * Proof transition: `(Project, SemanticReadLease, DiagnosticScope) ->
+     * Proof transition: `(Project, SemanticReadAuthority, DiagnosticScope) ->
      * DiagnosticCompilation`.
      *
      * Complete or qualified output carries only detached exact-scope diagnostics and coverage for
-     * the requested generation. [DiagnosticCompilerRejection] is the closed expected failure.
+     * the requested authority. [DiagnosticCompilerRejection] is the closed expected failure.
      * Project, VFS, PSI, read-action, and K2 values never cross this boundary.
      */
     suspend fun read(
         project: Project,
-        currentLease: SemanticReadLease,
+        currentLease: SemanticReadAuthority,
         scope: DiagnosticScope,
     ): DiagnosticCompilation = try {
         query.read(project, currentLease, scope).also { result -> observer.observe(result.observation()) }

@@ -186,7 +186,7 @@ class IntellijSourceCallReferenceReadTest {
         page: SourceReadPage = SourceReadPage.First,
     ): SourceReadResult = runSuspend {
         port.read(
-            SourceReadContext(fixture.snapshot.lease, fixture.snapshot.sourceState),
+            fixture.snapshot.context,
             SourceReadRequest(
                 SourceReadAnchor.Source(fixture.region),
                 RegionSelection.Anchor,

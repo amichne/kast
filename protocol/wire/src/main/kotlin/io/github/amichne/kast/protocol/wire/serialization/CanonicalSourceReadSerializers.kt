@@ -1,6 +1,8 @@
 package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.protocol.contract.SourceSnapshotContextDocument
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolSourceText
@@ -121,34 +123,46 @@ private fun SourceReadResultWireDocument.isCoherent(
     }
 }
 
-private fun SourceSnapshotDocument.toWireDocument(): SourceSnapshotWireDocument =
-    SourceSnapshotWireDocument(
-        canonicalRoot.value,
-        generation,
-        sourceState.value,
-        file.value,
-        textIdentity.value,
-        coordinateUnit.toWireDocument(),
-        length.value,
+private fun SourceSnapshotDocument.toWireDocument(): SourceSnapshotWireDocument = when (val value = context) {
+    is SourceSnapshotContextDocument.Published -> SourceSnapshotWireDocument(
+        canonicalRoot.value, value.generation.value, value.sourceState.value,
+        file.value, textIdentity.value, coordinateUnit.toWireDocument(), length.value,
     )
+    is SourceSnapshotContextDocument.Live -> SourceSnapshotWireDocument(
+        canonicalRoot = canonicalRoot.value, file = file.value, textIdentity = textIdentity.value,
+        coordinateUnit = coordinateUnit.toWireDocument(), length = length.value, live = value.evidence.document(),
+    )
+}
 
 private fun SourceSnapshotWireDocument.toContract(): WireDocumentConversion<SourceSnapshotDocument> {
-    if (generation < 0L) return WireDocumentConversion.Rejected
+    val context = when {
+        generation != null && sourceState != null && live == null -> {
+            val admittedGeneration = when (val parsed = EvidenceGeneration.parse(generation)) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return WireDocumentConversion.Rejected
+            }
+            val admittedState = when (val parsed = ProtocolText.parse(sourceState)) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return WireDocumentConversion.Rejected
+            }
+            SourceSnapshotContextDocument.Published(admittedGeneration, admittedState)
+        }
+        generation == null && sourceState == null && live != null -> {
+            val evidence = when (val parsed = live.admit()) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return WireDocumentConversion.Rejected
+            }
+            if (evidence.workspaceRoot != canonicalRoot) return WireDocumentConversion.Rejected
+            SourceSnapshotContextDocument.Live(evidence)
+        }
+        else -> return WireDocumentConversion.Rejected
+    }
     return canonicalRoot.protocolText().flatMapConverted { admittedRoot ->
-        sourceState.protocolText().flatMapConverted { admittedState ->
-            file.protocolText().flatMapConverted { admittedFile ->
-                textIdentity.protocolText().flatMapConverted { admittedIdentity ->
-                    length.sourceLength().mapConverted { admittedLength ->
-                        SourceSnapshotDocument(
-                            admittedRoot,
-                            generation,
-                            admittedState,
-                            admittedFile,
-                            admittedIdentity,
-                            coordinateUnit.toContract(),
-                            admittedLength,
-                        )
-                    }
+        file.protocolText().flatMapConverted { admittedFile ->
+            textIdentity.protocolText().flatMapConverted { admittedIdentity ->
+                length.sourceLength().mapConverted { admittedLength ->
+                    SourceSnapshotDocument(admittedRoot, context, admittedFile, admittedIdentity,
+                        coordinateUnit.toContract(), admittedLength)
                 }
             }
         }

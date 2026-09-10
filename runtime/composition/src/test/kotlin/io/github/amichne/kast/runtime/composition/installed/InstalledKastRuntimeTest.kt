@@ -195,7 +195,7 @@ class InstalledKastRuntimeTest {
             fixture.resolutionRequest?.selection?.candidate?.name,
             fixture.descriptionRequest?.selector?.name,
         )
-        assertEquals(11, inspected.evidence.generation.value)
+        assertEquals(11, (inspected.evidence.basis as io.github.amichne.kast.kernel.EvidenceBasis.Published).generation.value)
         assertEquals(
             "sample.Sample.sample",
             (inspected.evidence.payload.symbol.qualifiedIdentity as
@@ -296,7 +296,7 @@ class InstalledKastRuntimeTest {
             )
         } as OperationOutcome.Complete
 
-        assertEquals(11, outcome.evidence.generation.value)
+        assertEquals(11, (outcome.evidence.basis as io.github.amichne.kast.kernel.EvidenceBasis.Published).generation.value)
         val diagnostic = outcome.evidence.payload.diagnostics.values.single()
         assertEquals("KAST001", diagnostic.code.value)
         assertEquals(

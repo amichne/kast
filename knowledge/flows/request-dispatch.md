@@ -4,7 +4,7 @@ title: Request dispatch
 description: A host request is qualified against the canonical registry, decoded by its wire binding, dispatched through runtime composition, and projected without weakening its semantic outcome.
 resource: file://runtime/server
 tags: [runtime, protocol, dispatch]
-timestamp: 2026-09-09T00:00:00Z
+timestamp: 2026-09-10T00:00:00Z
 code_sources:
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationRegistry.kt
     symbols: [OperationRegistry]
@@ -14,6 +14,13 @@ code_sources:
     symbols: [ServerDispatch]
   - path: runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/KastOperationHandlerFactory.kt
     symbols: [KastOperationHandlerFactory]
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceAuthority.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointProtocol.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeQuery.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSocketClient.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt
     symbols: [CodexProtocolAdapter]
 ---
@@ -31,5 +38,22 @@ host request
 ```
 
 Registry construction proves that every canonical operation has one definition. Wire-table construction proves that each has one serializer binding. Server dispatch uses those typed bindings; runtime composition supplies the owning domain handler. Host adapters may change presentation, but they must preserve qualification and rejection.
+
+Canonical semantic-read handlers delegate request admission, reference codecs,
+and outcome projection to [`query:protocol`](../modules/query-protocol.md).
+The host remains responsible for current workspace or live IDE authority and
+budgets. Shared protocol code does not launch workers or admit projects.
+
+The prepared hosted dispatch has a closed request case and canonical wire binding
+for each of the seven public semantic reads. The existing-IDE client uses the same
+operation-specific decoders, rejects published evidence, and checks a successful
+live envelope against the requested root and admitted descriptor host. A typed host
+rejection can be returned before read authority exists; it does not become a
+successful canonical payload.
+
+App Server provider qualification requires projection version 9 and its exact
+operation schemas and budgets. Invocation continues through the configured CLI
+process. The canonical host/client path is prepared, while default native routing
+and packaged manual acceptance remain separate pending work.
 
 See [protocol](../modules/protocol.md) and [operation outcomes](../contracts/operation-outcomes.md).
