@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Implementation review of Kast's transition to the existing IntelliJ IDEA index: shipped code, evidence, contracts, and remaining migration work.">
+<title>Kast · Hosted indexing review</title>
+<style>
+:root{--paper:#f4f2eb;--panel:#fffefa;--ink:#182d30;--muted:#536569;--line:#ccd3cd;--green:#17664e;--pale:#e3eee4;--amber:#835619;--amberbg:#f6ebd5;--blue:#235d86;--bluebg:#e4edf4;--mono:ui-monospace,SFMono-Regular,Consolas,monospace}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:30px}body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}a{color:var(--green);text-underline-offset:3px}a:hover{text-decoration-thickness:2px}button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:3px solid var(--blue);outline-offset:4px}#progress{height:4px;background:var(--green);position:fixed;top:0;left:0;width:0;z-index:5}.layout{max-width:1510px;margin:auto;display:grid;grid-template-columns:265px minmax(0,1fr);gap:64px;padding:54px 56px 100px}aside{position:sticky;top:36px;align-self:start;max-height:calc(100vh - 70px);overflow:auto}.brand{font-size:21px;font-weight:800;letter-spacing:-1px;margin-bottom:8px}.brand span{color:var(--green)}.edition{font:11px/1.6 var(--mono);text-transform:uppercase;letter-spacing:1.4px;color:var(--muted)}nav{margin:35px 0}nav a{display:block;text-decoration:none;padding:8px 0;color:var(--muted);font-size:14px;line-height:1.45}nav a:hover{color:var(--green)}nav b{display:inline-block;width:28px;font:11px var(--mono);color:var(--green)}.print{border:1px solid var(--line);background:transparent;border-radius:5px;padding:8px 13px;font-size:13px;color:var(--ink)}main{max-width:990px;min-width:0}.eyebrow{font:12px var(--mono);text-transform:uppercase;letter-spacing:1.8px;color:var(--green)}h1{font-size:clamp(40px,5vw,66px);line-height:1.03;letter-spacing:-3px;max-width:800px;margin:22px 0 28px;font-weight:750}h2{font-size:30px;line-height:1.2;letter-spacing:-.8px;margin:0 0 24px}h3{font-size:21px;line-height:1.3;letter-spacing:-.3px;margin:28px 0 12px}h4{font-size:17px;margin:20px 0 8px}p{margin:0 0 19px}.lead{font-size:23px;line-height:1.5;max-width:860px}.subtle{color:var(--muted)}.meta{font:12px/1.8 var(--mono);color:var(--muted);overflow-wrap:anywhere}.hero{padding-bottom:45px;border-bottom:2px solid var(--ink)}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin:30px 0 0}.metric{background:var(--panel);padding:23px}.metric strong{display:block;font-size:30px;line-height:1.2;letter-spacing:-1px}.metric span{font-size:13px;color:var(--muted)}section{padding:48px 0;border-bottom:1px solid var(--line)}.number{font:12px var(--mono);color:var(--green);display:block;margin-bottom:12px}.callout{border-left:4px solid var(--green);background:var(--pale);padding:23px 26px;margin:26px 0}.callout p:last-child{margin-bottom:0}.callout.pending{background:var(--amberbg);border-color:var(--amber)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:25px 0}.card{border:1px solid var(--line);background:var(--panel);padding:25px;min-width:0}.card h3{margin-top:13px}.card p:last-child{margin-bottom:0}.badge{display:inline-block;font:11px/1.5 var(--mono);letter-spacing:.4px;padding:4px 7px;border-radius:3px;background:var(--pale);color:var(--green);text-transform:uppercase}.badge.pending{background:var(--amberbg);color:var(--amber)}.badge.proposal{background:var(--bluebg);color:var(--blue)}.table-wrap{overflow:auto;margin:23px 0;border:1px solid var(--line)}table{border-collapse:collapse;width:100%;font-size:14px;line-height:1.55;background:var(--panel)}th{text-align:left;background:#e9ece5;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}th,td{padding:15px 17px;border-bottom:1px solid var(--line);vertical-align:top}tr:last-child td{border-bottom:0}td:first-child{font-weight:650}code{font: .83em/1.5 var(--mono);overflow-wrap:anywhere}p code,td code,li code{background:#e8ece6;padding:2px 4px;border-radius:3px}pre{background:#162b2e;color:#d9ebe2;padding:24px 26px;overflow:auto;border-radius:4px;font:13px/1.75 var(--mono);margin:22px 0}pre code{font:inherit;overflow-wrap:normal}ul,ol{padding-left:23px;margin:15px 0 25px}li{margin:8px 0}.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:26px 0}.flow div{position:relative;border-top:3px solid var(--green);background:var(--panel);padding:20px 16px;border-bottom:1px solid var(--line)}.flow div:not(:last-child):after{content:'→';position:absolute;right:-13px;top:45px;z-index:1;font-size:23px;color:var(--green)}.flow b{font-size:15px;display:block}.flow small{font-size:12px;color:var(--muted);line-height:1.5;display:block;margin-top:9px}.flow .step{font:10px var(--mono);color:var(--green);margin-bottom:10px;display:block}.source{font-size:13px;line-height:1.6;color:var(--muted);margin:12px 0 20px}.source a{overflow-wrap:anywhere}details{border:1px solid var(--line);background:var(--panel);margin:16px 0;padding:17px 21px}summary{cursor:pointer;font-weight:650}details[open] summary{margin-bottom:18px}.filters{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0}.filters button{font-size:13px;background:transparent;border:1px solid var(--line);border-radius:20px;padding:7px 13px;color:var(--muted)}.filters button[aria-pressed=true]{color:white;background:var(--ink);border-color:var(--ink)}.milestone{padding:23px 0;border-top:1px solid var(--line)}.milestone h3{margin:13px 0}.milestone[hidden]{display:none}.commit{font:12px var(--mono);white-space:nowrap}.footer{padding-top:28px;font-size:13px;color:var(--muted)}.narrow{max-width:800px}
+@media(max-width:1100px){.layout{padding:38px 30px;gap:35px;grid-template-columns:210px minmax(0,1fr)}.flow{grid-template-columns:1fr 1fr}.flow div:nth-child(2):after{display:none}}
+@media(max-width:780px){.layout{display:block;padding:26px 21px}aside{position:static;max-height:none;border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:38px}nav{display:none}.print{margin-top:18px}h1{font-size:46px;letter-spacing:-2px}.lead{font-size:21px}.grid{grid-template-columns:1fr}.metrics{grid-template-columns:1fr}.metric{padding:15px 20px}.metric strong{font-size:26px}.flow{grid-template-columns:1fr}.flow div:after{display:none}section{padding:36px 0}th,td{padding:12px;min-width:135px}}
+@media print{body{font-size:11pt;background:white;color:#111}.layout{display:block;padding:0;max-width:none}aside,#progress,.filters{display:none}main{max-width:none}h1{font-size:38pt}h2{font-size:23pt}h3{font-size:15pt}section{padding:24px 0}pre{white-space:pre-wrap;color:#111;background:#eee}.card,.callout,table{background:white}.milestone[hidden]{display:block}a{color:#111}.hero,.grid,.flow,tr,pre{break-inside:avoid}details{display:block}details>*{display:block}nav{display:none}}
+</style>
+</head>
+<body>
+<div id="progress" aria-hidden="true"></div>
+<div class="layout">
+<aside>
+  <div class="brand">kast<span> /</span> engineering</div>
+  <div class="edition">Implementation review<br>10 September 2026</div>
+  <nav aria-label="Review sections">
+    <a href="#decision"><b>01</b>What changed</a>
+    <a href="#architecture"><b>02</b>Runtime architecture</a>
+    <a href="#proof"><b>03</b>Proof and query execution</a>
+    <a href="#contract"><b>04</b>Protocol and limits</a>
+    <a href="#python"><b>05</b>Python and index ownership</a>
+    <a href="#evidence"><b>06</b>Verification evidence</a>
+    <a href="#migration"><b>07</b>Full transition plan</a>
+    <a href="#operations"><b>08</b>Build and operate</a>
+    <a href="#commits"><b>09</b>Atomic commit history</a>
+    <a href="#review"><b>10</b>Review priorities</a>
+    <a href="#sources"><b>11</b>Source map</a>
+  </nav>
+  <button type="button" class="print" onclick="window.print()">Print / save as PDF</button>
+  <p class="meta" style="margin-top:23px">Standalone review.<br>No external assets or services.<br>Implementation and proposals are labeled separately.</p>
+</aside>
+<main>
+<header class="hero">
+  <div class="eyebrow">Existing IDEA → primary index path</div>
+  <h1>One IDE.<br>One live index owner.</h1>
+  <p class="lead">Kast now reads the existing IDEA index through <code>kast index</code>. The supported flow selects declarations, resolves compiler identities, and proves a direct supertype without starting another workspace or maintaining a second index.</p>
+  <p class="subtle narrow">This review records the implemented path, the evidence collected against the running Kast project, and the work still required to move general semantic queries and App Server onto the same host.</p>
+  <p class="meta">Branch: <a href="https://github.com/amichne/kast/tree/feature/hosted-semantic-query">feature/hosted-semantic-query</a><br>Delivery: atomic commits; pushed for review; no merge.</p>
+  <div class="metrics">
+    <div class="metric"><strong>3 commands</strong><span>Status, class discovery, direct supertype</span></div>
+    <div class="metric"><strong>0 extra indexers</strong><span>For the implemented hosted request path</span></div>
+    <div class="metric"><strong>0 Python runtime</strong><span>Native JVM CLI → compiled IDEA plugin</span></div>
+  </div>
+</header>
+
+<section id="decision">
+  <span class="number">01 / IMPLEMENTED DECISION</span>
+  <h2>The primary indexing interface is now <code>kast index</code></h2>
+  <p>The command family is selected in the executable before installed-runtime composition. Its only runtime capability is an <code>ExistingIdeClient</code>. It cannot request the isolated worker used by the older product graph. A missing or unready IDE produces an explicit failure.</p>
+  <pre><code>kast index status --root /path/to/kast
+kast index classes Refinement --root /path/to/kast
+kast index supertype io.github.amichne.kast.kernel.Refinement.Refined \
+  --root /path/to/kast
+kast index generate-completion zsh</code></pre>
+  <p>The older <code>kast ide</code> spelling remains available through the same command implementation. <code>--root</code> can be omitted to discover the current directory’s Gradle root. Help and completion do not access a socket, discover a root, or start a runtime.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Command</th><th>Authority and result</th><th>Supported boundary</th></tr></thead>
+    <tbody>
+      <tr><td><code>index status</code></td><td>Describes the selected host, root, PID, and operation list.</td><td>Endpoint identity; each semantic query separately establishes readiness.</td></tr>
+      <tr><td><code>index classes NAME</code></td><td>IDEA’s Kotlin short-name index routes discovery; K2 resolves canonical class identities.</td><td>Exact short name, saved Kotlin classes in supported cached authored source folders; at most 32 candidates.</td></tr>
+      <tr><td><code>index supertype QUALIFIED_NAME</code></td><td>The full-class-name index selects exactly one class; K2 proves its direct supertype.</td><td>Exactly one explicit supertype, with both declarations supported by the saved Kotlin source scope.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout"><p><strong>Index updates belong to IDEA.</strong> These commands never ask the user to run a Kast index sync. They reuse the imported project model, the live Kotlin index, PSI, and analysis services in their owning process.</p></div>
+  <p><code>INDEX_SYNC</code> was already internal-only in the canonical registry. The new public index commands do not replace a public sync command. General semantic commands, workspace publication, and App Server still use the existing assembly; changing the indexing entry point does not silently reinterpret those contracts.</p>
+  <p class="source">Authority: <a href="../../cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt">process entry point</a>, <a href="../../cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt">runtime selection and client capability</a>, <a href="../../protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalOperationDefinitions.kt">canonical operation exposure</a>.</p>
+</section>
+
+<section id="architecture">
+  <span class="number">02 / ACTUAL RUNTIME</span>
+  <h2>A small semantic host inside the existing project</h2>
+  <div class="flow" role="img" aria-label="Native CLI sends a framed request to the project service, which reads the existing Kotlin index and K2, then returns detached evidence after revalidation.">
+    <div><span class="step">01 · OUTSIDE IDEA</span><b>Native Kast CLI</b><small>Typed arguments, root discovery, descriptor admission, bounded socket exchange.</small></div>
+    <div><span class="step">02 · PROJECT SERVICE</span><b>Owned local endpoint</b><small>One admitted root and host, private Unix socket, closed request decoder.</small></div>
+    <div><span class="step">03 · EXISTING IDE</span><b>Kotlin index + K2</b><small>Cached model, scoped discovery, short cancellable read, canonical identities.</small></div>
+    <div><span class="step">04 · BACK TO CLI</span><b>Detached evidence</b><small>Content and epoch revalidated; shared schema and request correlation checked.</small></div>
+  </div>
+  <p><code>runtime:hosted</code> is a separate plugin with a project-level service. It is not the isolated indexer descriptor installed into a developer IDE. The service owns a coroutine scope and socket lifetime, and delegates semantic work to <code>workspace:intellij-read</code>.</p>
+  <div class="grid">
+    <article class="card"><span class="badge">IDEA owns</span><h3>The live workspace</h3><p>Project identity, imported Gradle model, VFS, document commitment, Kotlin indexes, dumb mode, and K2 analysis services. IDEA continues to perform its normal synchronization and indexing when the build or sources change.</p></article>
+    <article class="card"><span class="badge">Kast owns</span><h3>The proof boundary</h3><p>Exact root admission, compatible host policy, finite operations and failures, bounded work, epoch checks, source-scope admission, detached result contracts, and endpoint retirement.</p></article>
+  </div>
+  <p>The host retains its packaged compatibility-policy authority across requests. Reconstructing equal-looking policy data had previously lost the original admission authority and caused <code>RETAINED_AUTHORITY_MISMATCH</code>. Retaining the original value preserves the proof rather than comparing only primitive fields.</p>
+  <p>The endpoint directory is <code>~/.kast/ide-hosted/&lt;root-digest&gt;</code>, where the key is the first 16 SHA-256 bytes of the canonical root. The owner holds an exclusive lock and records the filesystem identity of its socket and descriptor. Retirement removes only the artifacts that still match that ownership. Unknown leftovers fail closed.</p>
+  <p class="source">Authority: <a href="../../runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt">HostedEndpointService</a>, <a href="../../runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt">OwnedHostedEndpoint</a>, <a href="../../workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryService.kt">HostedQueryService</a>.</p>
+</section>
+
+<section id="proof">
+  <span class="number">03 / INFORMATION ONLY GETS STRONGER</span>
+  <h2>Index discovery becomes compiler-proven identity</h2>
+  <p>The new qualified selector removes the manual file-and-offset handoff. It carries a <code>CanonicalCompilerSignature.ClassLike</code> after input admission. Qualified names are bounded and each component must satisfy the admitted Kotlin name subset. Escaped or otherwise unsupported identifiers are rejected.</p>
+  <ol>
+    <li><strong>Admit the request.</strong> Match the exact canonical root and original host service. Establish compatible existing-project authority, readiness, and a current read epoch.</li>
+    <li><strong>Capture the cached model.</strong> Detach bounded model facts from the open project without linking or importing a Gradle build. Restrict reads to supported production/test source folders classified as authored by cached model evidence.</li>
+    <li><strong>Collect index candidates.</strong> Query <code>KotlinFullClassNameIndex</code> using the qualified identity. The callback only checks cancellation and collects candidates. Candidate collection finishes before declaration PSI traversal or K2 analysis begins.</li>
+    <li><strong>Prove uniqueness.</strong> A complete empty result becomes <code>DECLARATION_NOT_FOUND</code>. Multiple candidates become <code>AMBIGUOUS_DECLARATION</code>. Overflow or incomplete enumeration is a failure. Only a unique complete collection yields <code>HostedUniqueDeclaration</code>.</li>
+    <li><strong>Resolve in the same admitted read.</strong> Locate the selected class name in its supported file and reuse the existing direct-supertype reader. Index routing and K2 analysis share one admitted read and epoch.</li>
+    <li><strong>Verify compiler identity.</strong> Compare the detached inheritor signature with the requested class-like signature. A same-spelling type alias or a class in another namespace cannot satisfy that proof.</li>
+    <li><strong>Revalidate and publish.</strong> Verify content stamps, saved/committed state, and epoch freshness. Emit detached data only after the platform read has ended.</li>
+  </ol>
+  <p>The legacy file/offset selector remains a closed alternative at the endpoint for acceptance tooling. A request cannot combine that selector with <code>qualifiedName</code>. Both alternatives pass through the same query service, deadline, freshness checks, and result contract.</p>
+  <div class="callout pending"><p><strong>The scope of the relation is intentionally narrow.</strong> This proves one explicit direct supertype for a selected supported Kotlin class. It does not enumerate every inheritor, resolve an arbitrary inheritance graph, admit Java/library endpoints, or establish a complete workspace publication.</p></div>
+  <h3>What never crosses the boundary</h3>
+  <p>Live PSI elements, K2 sessions, compiler symbols, and IntelliJ search scopes stay inside the read lifetime. The response contains canonical signature data, compiler identity, file/model provenance, and saved-content stamps. Transport does not hold a platform read lock.</p>
+  <p class="source">Authority: <a href="../../workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQualifiedClassSelection.kt">qualified selection and uniqueness</a>, <a href="../../workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/LiveHostedIndexedSupertype.kt">index-to-analysis bridge</a>, <a href="../../workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/AdmittedHostedQuery.kt">shared read and publication boundary</a>, <a href="../../workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/LiveHostedKotlinRead.kt">supertype proof</a>.</p>
+</section>
+
+<section id="contract">
+  <span class="number">04 / WIRE CONTRACT</span>
+  <h2>Small requests, bounded work, finite failures</h2>
+  <p>The shared schemas and hosted operation registry now belong to <code>protocol:contract</code>. The CLI loads the schema resources from that dependency; the plugin owns its compatibility properties. Production CLI/plugin packaging no longer pulls protocol assets or host properties from the Python experiment directory.</p>
+  <pre><code>{
+  "type": "DIRECT_SUPERTYPE",
+  "root": "/canonical/workspace/root",
+  "qualifiedName": "example.Outer.Child"
+}</code></pre>
+  <div class="table-wrap"><table><thead><tr><th>Boundary</th><th>Implemented limit or invariant</th></tr></thead><tbody>
+    <tr><td>Transport</td><td>One request per connection; four-byte big-endian length followed by strict UTF-8 JSON.</td></tr>
+    <tr><td>Request / response</td><td>16 KiB maximum request; 64 KiB maximum response. Duplicate keys, extra fields, malformed encoding, and oversized frames are rejected.</td></tr>
+    <tr><td>Index collection</td><td>At most 32 candidates. A truncated collection cannot masquerade as a complete answer or unique declaration.</td></tr>
+    <tr><td>Name admission</td><td>Short-name components: 1–512 UTF-8 bytes. Qualified selector: 1–4096 UTF-8 bytes, with every component admitted.</td></tr>
+    <tr><td>Time</td><td>Two-second cooperative semantic deadline inside a five-second host connection budget; six-second client transport deadline.</td></tr>
+    <tr><td>Concurrency</td><td>One active semantic permit; cancellation drains original work before releasing ownership. The endpoint admits socket connections serially.</td></tr>
+    <tr><td>Content</td><td>Saved and PSI-committed IDE content. Dirty documents, indexing, changed stamps, and lost freshness reject publication.</td></tr>
+    <tr><td>Client correlation</td><td>Exact response root; exact short name for class lookup; exact qualified inheritor identity for supertype; detached publication stage; status PID must match the descriptor.</td></tr>
+  </tbody></table></div>
+  <p>The semantic deadline is cooperative, not a promise of hard real-time preemption. The six-second client deadline bounds waiting independently. No published latency or throughput claim is based on the small live qualification.</p>
+  <h3>Preserved evidence is narrower than canonical publication</h3>
+  <p>Hosted answers explicitly identify <code>request_local_same_source_epoch</code>, <code>saved_committed_ide_vfs</code>, <code>cached_gradle_source_folders</code>, and <code>cached_source_folder_flag</code>. Those values are meaningful limitations. Document/VFS stamps are observations of IDE content, not disk hashes. Cached folder classification is not producer-attested source-set ownership.</p>
+  <p>The three new semantic failures are <code>DECLARATION_NOT_FOUND</code>, <code>AMBIGUOUS_DECLARATION</code>, and <code>DECLARATION_IDENTITY_MISMATCH</code>. They join the existing closed outcomes for lifecycle, indexing, content, cancellation, and scope failures. No fuzzy fallback selects the first candidate.</p>
+  <p>Following the CLI’s existing convention, received host or semantic JSON is printed on stdout with exit status 0. Callers must inspect <code>type</code> or <code>outcome</code>. Client admission/transport failures use stderr and a nonzero exit. An HTTP-style success assumption based only on the process exit code would be incorrect.</p>
+  <p class="source">Authority: <a href="../../protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json">semantic response schema</a>, <a href="../../protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json">endpoint schema</a>, <a href="../../runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointProtocol.kt">closed request decoder</a>, <a href="../../cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSocketClient.kt">client admission and correlation</a>.</p>
+</section>
+
+<section id="python">
+  <span class="number">05 / DEPENDENCIES AND OWNERSHIP</span>
+  <h2>Python can leave the product path</h2>
+  <p><strong>It already has.</strong> The native CLI sends the socket request, admits the shared schema, checks correlation, and prints the result. The compiled Kotlin plugin performs discovery and analysis. Neither requires the Python interpreter, <code>jsonschema</code>, an <code>ideScript</code> invocation, or a generated Kotlin script for normal queries.</p>
+  <div class="table-wrap"><table><thead><tr><th>Component</th><th>Current role</th><th>Retirement decision</th></tr></thead><tbody>
+    <tr><td>Python socket client</td><td>Optional experiment and acceptance utility; duplicates a subset of the native client.</td><td>Not a runtime dependency. Remove after the remaining acceptance callers are ported.</td></tr>
+    <tr><td>Fixture/management scripts</td><td>Explicit development plugin load/unload, fixture refresh, and older lifecycle qualification.</td><td>Replace with durable Kotlin/IDE integration tests and normal plugin delivery. Do not make scripts part of production requests.</td></tr>
+    <tr><td>Historical experiments</td><td>Source and regression evidence for cancellation, restoration, and retirement behavior.</td><td>Keep until equivalent executable coverage preserves those claims. Deletion alone would discard evidence.</td></tr>
+    <tr><td>Shared JSON schemas</td><td>Production protocol contracts in the Kotlin contract module.</td><td>Keep. Schema validation is independent of the language used by a client.</td></tr>
+  </tbody></table></div>
+  <h3>What “no indexes of our own” means here</h3>
+  <p>The implemented hosted path creates no Kast-owned semantic index store. It reads IDEA’s existing Kotlin indexes. Source edits are incorporated by IDEA’s indexing lifecycle; Kast observes readiness and fails while required state is unproven.</p>
+  <p>The older isolated implementation also uses IntelliJ’s native discovery machinery. Its extra burden is a separately owned runtime, workspace/import lifecycle, index readiness, and publication machinery. The migration removes the need to operate that second environment for supported hosted reads; it does not replace a hand-written search engine with a new one.</p>
+  <p>Kast still needs epoch observation, request budgets, endpoint ownership, and evidence validation. These are the proof and transport responsibilities around a live index. Removing them would allow stale or cross-workspace results even if IDEA’s index itself were correct.</p>
+  <p class="source">Authority: <a href="../../symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijNativeDiscoveryQuery.kt">existing native symbol discovery</a>, <a href="../../runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/bootstrap/InstalledRuntimeAssembly.kt">isolated assembly and refresh ownership</a>.</p>
+</section>
+
+<section id="evidence">
+  <span class="number">06 / OBSERVED, NOT ASSUMED</span>
+  <h2>The proof collected so far</h2>
+  <p>Live queries ran against IDEA <code>262.10315.125</code> with bundled Kotlin <code>262.10315.125-IJ</code>, using the existing Kast project and original native host process <code>77390</code>. The plugin was rebuilt against that installation and loaded into the existing IDE.</p>
+  <div class="table-wrap"><table><thead><tr><th>Claim</th><th>Evidence</th><th>Status</th></tr></thead><tbody>
+    <tr><td>Primary native path works</td><td>Built <code>kast index status</code> described the existing host. <code>classes Refinement</code> returned six compiler-resolved declarations. <code>supertype …Refinement.Refined</code> returned <code>…Refinement</code>.</td><td><span class="badge">Observed live</span></td></tr>
+    <tr><td>IDE maintains incremental class discovery</td><td>Earlier same-host acceptance created, renamed, and removed one owned fixture. Counts were <code>1, 0, 0, 1, 0</code>; cleanup was confirmed.</td><td><span class="badge">Prior live proof</span></td></tr>
+    <tr><td>New qualified selector is finite</td><td>Endpoint test failed before implementation, then passed. Unit checks cover invalid/mixed selectors, complete unique candidate admission, empty/duplicate results, and mismatched compiler signatures.</td><td><span class="badge">Executable proof</span></td></tr>
+    <tr><td>CLI admission and routing</td><td>Native-supertype and primary-index routing tests were observed red then green. Full command graph, help, completion, root routing, invalid names, internal sync rejection, and unavailable-host behavior are checked.</td><td><span class="badge">Executable proof</span></td></tr>
+    <tr><td>Socket boundary</td><td>Native Unix-socket tests cover request shape and complete, oversized, truncated, and invalid-UTF-8 responses. Schema tests cover exact correlation and malformed JSON.</td><td><span class="badge">Executable proof</span></td></tr>
+    <tr><td>Lifecycle and freshness</td><td>Earlier hosted qualification covers restored edits, cancellation, original-owner retirement, project closure/restoration, and actual plugin-manager unload.</td><td><span class="badge">Prior live proof</span></td></tr>
+    <tr><td>Expanded supertype incremental sequence</td><td>The optional script carrier did not confirm fixture refresh. The fixture was removed from disk; the refresh receipt and new rename/ambiguity sequence did not complete.</td><td><span class="badge pending">Unqualified</span></td></tr>
+    <tr><td>Broad product parity</td><td>App Server, arbitrary semantic queries, complete publication, full restart startup, and multi-root operation have not been established by this slice.</td><td><span class="badge pending">Remaining</span></td></tr>
+  </tbody></table></div>
+  <h3>Validation commands</h3>
+  <pre><code>./gradlew :workspace:intellij-read:test :runtime:hosted:test \
+  verifyArchitecture knowledgeImpact verifyKnowledgeBase
+./gradlew :cli:test :cli:nativeTest :cli:verifyMintlifyCallableReference
+./gradlew :cli:clean :cli:test :cli:nativeTest :cli:installDist \
+  :cli:verifyMintlifyCallableReference
+./gradlew :runtime:hosted:hostedPlugin :workspace:intellij-read:hostedQueryPlugin \
+  -PhostedIdeaHome='/path/to/IntelliJ IDEA.app/Contents'</code></pre>
+  <p>The final reports contain 214 CLI tests, 9 native CLI tests, 79 read-adapter tests, and 6 host-endpoint tests, with no failures, errors, or skips. The clean CLI build checks that moving schemas into the contract dependency does not accidentally rely on stale copied resources. Both installed-host and manual-proof archives are built against the selected IDE. Architecture and knowledge checks pass. The retained Python experiment suite passes 35 tests after the schema move.</p>
+  <details><summary>The failed fixture carrier is a separate boundary</summary><p>The script launcher returned, but the expected <code>refreshed.json</code> receipt never appeared. The harness records <code>FIXTURE_REFRESH / UNCONFIRMED</code> and distinguishes disk removal from confirmed IDE refresh. Direct socket queries still returned the correct saved repository relationship. A later native class lookup returned a complete empty result for the removed fixture’s name.</p><p>No new qualified-supertype rename or ambiguity live proof is claimed from that run. The exact cause of the missing script receipt remains unresolved. The earlier archive-cache failure is a historical management issue and is not asserted as the cause of this run.</p></details>
+  <p class="source">Tests: <a href="../../workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQualifiedClassSelectionTest.kt">selection proof</a>, <a href="../../runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointTest.kt">host request boundary</a>, <a href="../../cli/src/test/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCliTest.kt">native CLI contracts</a>, <a href="../../cli/src/test/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSocketTest.kt">native socket tests</a>.</p>
+</section>
+
+<section id="migration">
+  <span class="number">07 / TRANSITION PLAN</span>
+  <h2>Retire the second workspace one proven capability at a time</h2>
+  <p>The intended destination is an existing-project semantic host used by the normal agent flow, with IDEA owning import and index maintenance. Reaching that destination requires contract work beyond changing a command name. The sequence below separates delivered behavior from proposals.</p>
+  <div class="filters" aria-label="Filter migration milestones">
+    <button type="button" data-filter="all" aria-pressed="true">All milestones</button>
+    <button type="button" data-filter="implemented" aria-pressed="false">Implemented</button>
+    <button type="button" data-filter="remaining" aria-pressed="false">Remaining</button>
+  </div>
+  <article class="milestone" data-state="implemented"><span class="badge">Implemented · 1</span><h3>Use the existing IDE for primary indexing reads</h3><p>Compiled project service, retained admission, bounded socket endpoint, class discovery, qualified supertype proof, native CLI, primary <code>kast index</code> routing, and production-owned protocol assets are present. No automatic isolated fallback exists in this path.</p></article>
+  <article class="milestone" data-state="remaining"><span class="badge proposal">Proposed · 2</span><h3>Turn the remaining manual qualification into Kotlin tests</h3><p>Port the lifecycle and controlled-fixture effects to supported IntelliJ test infrastructure or a narrowly owned development test adapter. Preserve wrong-root, dirty content, edit-during-read, cancellation, rename, ambiguity, disposal, and retirement evidence before deleting the Python harnesses. Normal queries should continue to have no mutation or refresh capability.</p><p><strong>Exit evidence:</strong> a repeatable Kotlin acceptance command exercises the live/plugin boundary, cleans up only owned fixtures, and records bounded stages on both success and failure.</p></article>
+  <article class="milestone" data-state="remaining"><span class="badge proposal">Proposed · 3</span><h3>Choose the hosted publication contract explicitly</h3><p>The cached IDEA model proves less than the current canonical workspace publication expects. Existing isolated import uses a Gradle producer model to retain project/source-set identity and authored/generated provenance. A normal already-open project may lack those nodes.</p><p>There are two valid directions: retain a separately typed hosted read publication for consumers that accept its evidence, or obtain the missing producer facts through an explicitly selected same-project integration/sync and refine them into the stronger publication type. Do not fabricate source-set ownership from directory names or module suffixes.</p><p><strong>Exit evidence:</strong> source-backed supported-build mappings, closed rejections for unsupported/ambiguous roots, and tests proving that weaker cached evidence cannot construct stronger canonical authority.</p></article>
+  <article class="milestone" data-state="remaining"><span class="badge proposal">Proposed · 4</span><h3>Expose the hosted capability through App Server</h3><p>Add an explicit existing-IDE host selection and client capability at coordinator composition. Advertise only hosted operations whose input, result, and publication contracts are supported. A closed/missing IDE should yield unavailability, not trigger worker demand. Keep headless isolated operation an explicit policy if that product requirement remains.</p><p><strong>Exit evidence:</strong> agent requests bind the exact root and original host, missing/retired hosts never reach worker-launch code, and endpoint/schema mismatches remain finite rejections.</p></article>
+  <article class="milestone" data-state="remaining"><span class="badge proposal">Proposed · 5</span><h3>Expand discovery, source reads, relations, and query composition</h3><p>Current exact class lookup is not equivalent to the general search/query surface. Add needed declaration kinds and bounded discovery modes, exact source selection, supported relations, then query-plan composition. Every step must retain compiler identity, source scope, content semantics, cancellation, and explicit completeness limits.</p><p><strong>Exit evidence:</strong> operation-specific parity checks against the existing IDE, including exclusions and failure semantics. Avoid mapping a partial result to a complete canonical answer merely to reuse a serializer.</p></article>
+  <article class="milestone" data-state="remaining"><span class="badge proposal">Proposed · 6</span><h3>Complete delivery and retire obsolete hosted-mode ownership</h3><p>Qualify full IDE startup, plugin upgrades, simultaneous roots, endpoint crash leftovers, and client disconnects under sustained work. Then remove isolated worker/import/index-maintenance dependencies from the hosted production composition. Delete obsolete Python and duplicate index-lifecycle plumbing only once callers and equivalent tests have moved.</p><p><strong>Exit evidence:</strong> the normal hosted agent path operates end to end without Python, a second project, a separate indexer, or manual Kast index synchronization; closed IDE state produces the documented unavailable outcome.</p></article>
+  <p class="source">Contract gap: <a href="../../workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/provenance/GradleSourceRootBridge.kt">producer source-root evidence</a>, <a href="../../evidence/contract/src/main/kotlin/io/github/amichne/kast/evidence/contract/WorkspacePublication.kt">publication authority</a>, <a href="../../knowledge/flows/workspace-publication.md">current publication lifecycle</a>.</p>
+</section>
+
+<section id="operations">
+  <span class="number">08 / USING THIS BRANCH</span>
+  <h2>Build once, query the open project</h2>
+  <ol>
+    <li>Use the branch checkout and an already-open supported Kotlin Gradle project in IDEA. Let IDEA complete its normal model import and indexing.</li>
+    <li>Build <code>:runtime:hosted:hostedPlugin</code> with <code>-PhostedIdeaHome</code> pointing to the exact running installation. Install the resulting <code>runtime/hosted/build/distributions/kast-ide-hosted-0.1.0.zip</code> through IDEA’s plugin installation workflow.</li>
+    <li>Build <code>:cli:installDist</code>. Run <code>cli/build/install/kast/bin/kast index status --root /absolute/root</code>.</li>
+    <li>Use <code>index classes</code> to discover a class identity, then pass the qualified identity to <code>index supertype</code>. The latter performs fresh index selection and semantic proof within its own request.</li>
+  </ol>
+  <p><strong>Use matched artifacts.</strong> The operation list remains <code>DESCRIBE</code>, <code>CLASS_LOOKUP</code>, and <code>DIRECT_SUPERTYPE</code>; the qualified selector extends the last operation. An older plugin may reject the new selector. The semantic failure set also grew, so older schema-strict clients may reject newly typed failures. This branch is not a claim of arbitrary cross-version compatibility.</p>
+  <p>For development reloads, unload the owned plugin and atomically replace the owned JAR files before reattachment. Do not modify loaded archives in place: script compiler processes may retain open archive mappings. The management script is optional development tooling, not part of normal query delivery.</p>
+  <p>Dependency verification remains temporarily disabled by the earlier explicit request. That pre-existing branch decision has not been reversed or presented as production release hardening. Restore and requalify it as a separate delivery change when requested.</p>
+  <div class="callout pending"><p><strong>Known delivery limits:</strong> full IDE restart startup, multi-root qualification, crash-left endpoint recovery, and unattended script-free lifecycle acceptance remain open. Unknown endpoint artifacts are preserved and rejected rather than deleted speculatively.</p></div>
+  <p class="source">Detailed commands and management history: <a href="../../experiments/host-observation/HOSTED_ENDPOINT.md">endpoint runbook</a>, <a href="../../experiments/host-observation/HOSTED_RUNTIME.md">hosted runtime design</a>.</p>
+</section>
+
+<section id="commits">
+  <span class="number">09 / REVIEWABLE UNITS</span>
+  <h2>Atomic implementation history</h2>
+  <p>Each unit is committed independently. The branch was pushed at the first new backend milestone and again after the remaining implementation and review document. No merge was performed.</p>
+  <div class="table-wrap"><table><thead><tr><th>Commit</th><th>Unit</th><th>Review focus</th></tr></thead><tbody>
+    <tr><td class="commit"><a href="https://github.com/amichne/kast/commit/faa7b6cf3">faa7b6cf3</a></td><td>Temporary dependency-verification exception</td><td>Earlier requested build setting; separate from the hosted design.</td></tr>
+    <tr><td class="commit"><a href="https://github.com/amichne/kast/commit/630324df4">630324df4</a></td><td>Existing-project semantic query</td><td>Admission, saved-source relation proof, cancellation, and original-owner retirement.</td></tr>
+    <tr><td class="commit"><a href="https://github.com/amichne/kast/commit/c5d482231">c5d482231</a></td><td>IDE Kotlin class-index discovery</td><td>Bounded candidates, scope admission, and K2 detachment.</td></tr>
+    <tr><td class="commit"><a href="https://github.com/amichne/kast/commit/9f18f4c5a">9f18f4c5a</a></td><td>Owned local endpoint</td><td>Separate plugin, framed transport, filesystem ownership, lifetime.</td></tr>
+    <tr><td class="commit"><a href="https://github.com/amichne/kast/commit/ccf46ef51">ccf46ef51</a></td><td>Native IDE client</td><td>Pre-bootstrap routing, schema admission, help and completion.</td></tr>
+    <tr><td class="commit"><a href="https://github.com/amichne/kast/commit/a32395c3b">a32395c3b</a></td><td>Indexed supertype selection</td><td>Qualified class-like proof, complete unique index result, compiler identity match.</td></tr>
+    <tr><td class="commit"><a href="https://github.com/amichne/kast/commit/01de3db8c">01de3db8c</a></td><td>Native supertype command</td><td>Typed selection, exact result correlation, native wire request shape.</td></tr>
+    <tr><td class="commit"><a href="https://github.com/amichne/kast/commit/e2424d28f">e2424d28f</a></td><td>Primary <code>kast index</code> route</td><td>Same implementation under primary and compatibility spellings; no installed bootstrap.</td></tr>
+    <tr><td class="commit" id="asset-commit"><a href="https://github.com/amichne/kast/commit/86b547c84">86b547c84</a></td><td>Production hosted protocol assets</td><td>Contract resources loaded from the dependency; plugin-owned compatibility properties.</td></tr>
+    <tr><td class="commit">This document</td><td>HTML implementation review</td><td>Observed evidence, unresolved gaps, migration plan, and source map.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section id="review">
+  <span class="number">10 / REVIEW PRIORITIES</span>
+  <h2>The decisions that matter next</h2>
+  <ol>
+    <li><strong>Hosted evidence versus canonical publication.</strong> Decide which consumers can accept the explicitly typed cached-model publication, and which need additional producer evidence. This determines the App Server integration shape.</li>
+    <li><strong>Coverage needed for the normal agent loop.</strong> Prioritize the next operation by real usage. Exact class lookup and one direct supertype are proven; arbitrary search, source reads, diagnostics, and change operations are not automatically covered.</li>
+    <li><strong>Headless behavior.</strong> The hosted path fails unavailable when IDEA is absent. Retaining an explicitly selected headless isolated mode is a separate product decision; automatic fallback would reintroduce the second indexer unexpectedly.</li>
+    <li><strong>Qualification ownership.</strong> Replace fragile script-based acceptance with supported compiled tests before deleting the remaining Python evidence tooling. Preserve closed stage/outcome observations at the effect boundary.</li>
+    <li><strong>Release readiness.</strong> Treat startup, upgrades, multi-root behavior, stale artifacts, and dependency verification as concrete qualification tasks before presenting this as a fully migrated production release.</li>
+  </ol>
+  <p>The implemented result is useful now: primary indexing reads operate through the existing IDE, and the new relation query no longer requires manually maintained file offsets. The next migration step should extend the same authority chain rather than create a second index abstraction.</p>
+</section>
+
+<section id="sources">
+  <span class="number">11 / SOURCE-BOUND REVIEW MAP</span>
+  <h2>Where to read the implementation</h2>
+  <p>Links below are relative to this checked-in HTML file and work from the repository checkout. The code, schemas, and executable checks are stronger authority than this explanatory page.</p>
+  <div class="table-wrap"><table><thead><tr><th>Area</th><th>Authoritative source</th></tr></thead><tbody>
+    <tr><td>Command graph</td><td><a href="../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/ide/IdeCommands.kt">IdeCommands.kt</a> · <a href="../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/model/CliCommandGraph.kt">CliCommandGraph.kt</a></td></tr>
+    <tr><td>Client types and transport</td><td><a href="../../cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeQuery.kt">ExistingIdeQuery.kt</a> · <a href="../../cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSocketClient.kt">ExistingIdeSocketClient.kt</a></td></tr>
+    <tr><td>Host framing and request execution</td><td><a href="../../runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointProtocol.kt">HostedEndpointProtocol.kt</a> · <a href="../../runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnection.kt">HostedConnection.kt</a></td></tr>
+    <tr><td>Admission and lifecycle</td><td><a href="../../workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/ExistingProjectAdmission.kt">ExistingProjectAdmission.kt</a> · <a href="../../workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt">HostedQueryExecutor.kt</a></td></tr>
+    <tr><td>Discovery and relation proof</td><td><a href="../../workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/LiveHostedClassIndex.kt">LiveHostedClassIndex.kt</a> · <a href="../../workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/LiveHostedIndexedSupertype.kt">LiveHostedIndexedSupertype.kt</a></td></tr>
+    <tr><td>Schema and registry</td><td><a href="../../protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json">Hosted semantic schema</a> · <a href="../../protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json">Endpoint schema</a> · <a href="../../protocol/contract/src/main/resources/ide-hosted/hosted-query.operations.json">Hosted operation registry</a></td></tr>
+    <tr><td>Knowledge and broader architecture</td><td><a href="../../knowledge/index.md">Knowledge index</a> · <a href="../../knowledge/flows/hosted-query.md">Hosted query flow</a> · <a href="../../knowledge/modules/runtime-hosts.md">Runtime hosts</a> · <a href="../../knowledge/flows/semantic-query.md">General semantic query flow</a></td></tr>
+  </tbody></table></div>
+</section>
+<footer class="footer">Kast · Engineering review · 10 September 2026<br>Implemented behavior, observed evidence, and future proposals are kept distinct. No external scripts, fonts, analytics, or services are used by this page.</footer>
+</main>
+</div>
+<script>
+const filters = [...document.querySelectorAll('[data-filter]')];
+filters.forEach(button => button.addEventListener('click', () => {
+  filters.forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+  document.querySelectorAll('[data-state]').forEach(item => { item.hidden = button.dataset.filter !== 'all' && item.dataset.state !== button.dataset.filter; });
+}));
+function updateProgress() { const total = document.documentElement.scrollHeight - innerHeight; document.getElementById('progress').style.width = (total > 0 ? scrollY / total * 100 : 0) + '%'; }
+addEventListener('scroll', updateProgress, {passive:true}); addEventListener('resize', updateProgress); updateProgress();
+</script>
+</body>
+</html>

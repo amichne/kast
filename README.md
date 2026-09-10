@@ -32,6 +32,9 @@ The hosted command runs before isolated-runtime bootstrap. General semantic
 commands and App Server queries retain their existing runtime and publication
 contracts; the hosted class answer explicitly carries its narrower provenance.
 
+Read the [detailed HTML implementation review](docs/reviews/hosted-indexing.html)
+for the architecture, qualification evidence, and remaining migration work.
+
 ## Install
 
 Kast currently requires:
