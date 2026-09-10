@@ -24,6 +24,7 @@ import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -287,7 +288,61 @@ internal fun installedServerOutputSchema(operation: CanonicalOperation): JsonObj
         ServerSchemaProperty("status", constantSchema("rejected", "Process outcome.")),
         ServerSchemaProperty("diagnostic", processDiagnosticSchema()),
     ),
-)
+).withLocalOutputDefinitions()
+
+/** Exact schema reuse keeps each advertised schema standalone and within the provider byte budget. */
+private fun JsonObject.withLocalOutputDefinitions(): JsonObject {
+    val names = reusableServerOutputSchemas.entries.associate { (name, schema) -> schema to name }
+    val used = linkedSetOf<String>()
+    val pending = ArrayDeque<String>()
+    fun rewrite(value: JsonElement, allowReference: Boolean = true): JsonElement = when (value) {
+        is JsonArray -> JsonArray(value.map { rewrite(it) })
+        is JsonObject -> {
+            val name = if (allowReference) names[value] else null
+            if (name == null) {
+                JsonObject(value.mapValues { (_, child) -> rewrite(child) })
+            } else {
+                if (used.add(name)) pending.addLast(name)
+                buildJsonObject { put("\$ref", "#/\$defs/$name") }
+            }
+        }
+        else -> value
+    }
+    val root = rewrite(this, allowReference = false).jsonObject
+    val definitions = linkedMapOf<String, JsonElement>()
+    while (pending.isNotEmpty()) {
+        val name = pending.removeFirst()
+        definitions[name] = rewrite(reusableServerOutputSchemas.getValue(name), allowReference = false)
+    }
+    return if (definitions.isEmpty()) root else JsonObject(root + ("\$defs" to JsonObject(definitions)))
+}
+
+// Names are stable schema addresses; every referenced definition retains the exact existing shape.
+private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
+    linkedMapOf(
+        "liveReadEvidence" to liveReadEvidenceSchema(),
+        "hostedEndpointRejection" to hostedEndpointRejectionSchema,
+        "hostedReadRejection" to hostedReadRejectionSchema,
+        "queryResultItem" to queryResultItemSchema(),
+        "queryItemFailure" to queryItemFailureSchema(),
+        "symbol" to symbolSchema(),
+        "symbolDiscovery" to symbolDiscoverySchema(),
+        "relationFact" to relationFactSchema(),
+        "publishedSourceSnapshot" to sourceSnapshotSchema(ServerReadEvidenceShape.PUBLISHED),
+        "liveSourceSnapshot" to sourceSnapshotSchema(ServerReadEvidenceShape.LIVE),
+        "sourceSelection" to sourceSelectionSchema(),
+        "sourceRegion" to sourceRegionSchema(),
+        "sourceEntity" to sourceEntitySchema(),
+        "sourceTextProjection" to sourceTextProjectionSchema(),
+        "publishedTraversalGraph" to normalizedTraversalGraphSchema(ServerReadEvidenceShape.PUBLISHED),
+        "liveTraversalGraph" to normalizedTraversalGraphSchema(ServerReadEvidenceShape.LIVE),
+        "diagnostic" to diagnosticSchema(),
+        "gradleJvmObservation" to gradleJvmSelectionObservationSchema(),
+        "gradleJvmReport" to gradleJvmSelectionReportSchema(),
+        "gradleJvmCandidate" to gradleJvmCandidateSchema(),
+        "gradleJvmOutcome" to gradleJvmSelectionOutcomeSchema(),
+    )
+}
 
 private fun operationProcessDocumentSchema(operation: CanonicalOperation): JsonObject =
     if (operation.supportsLiveReadEvidence()) {
