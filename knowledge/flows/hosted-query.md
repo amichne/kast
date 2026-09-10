@@ -20,6 +20,8 @@ code_sources:
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryProbe.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryWire.kt
   - path: workspace/intellij-read/build.gradle.kts
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/NamedGradleSourceScope.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/LiveNamedGradleSourceScopeCapture.kt
   - path: experiments/host-observation/run_hosted_query.py
   - path: experiments/host-observation/hosted-query.kts.template
   - path: experiments/host-observation/hosted-plugin-unload.kts.template
@@ -34,6 +36,15 @@ code_sources:
 ---
 
 # Experimental hosted semantic query
+
+The ordinary-query scope gate now has a separate project-bound capture for exact
+imported Gradle names. It reads `ExternalProjectDataCache` and joins explicit
+`ExternalSourceSet.name` facts with the current IDE source folders. Missing or
+inconsistent ownership rejects before name filtering. Most-specific roots win,
+including generated, excluded and resource roots; an unknown nested source-folder
+kind rejects rather than inheriting an allowed parent. This gate performs no import
+or sync. The evaluator route has not yet been connected to it. Cached folder
+classification used by the demonstration commands remains the weaker scope below.
 
 The project-level service retains one admitted existing Project, an owner-scoped
 epoch source, and a terminal endpoint lifetime. It captures the cached Gradle
