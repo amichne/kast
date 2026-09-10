@@ -5,6 +5,8 @@
 - Added qualified class selection through the existing full-class-name index,
   preserving unique selection and exact compiler identity through the same
   admitted supertype read and publication checks.
+- Exposed qualified supertype selection in the native CLI, validating the exact
+  response identity and detached stage with no Python runtime dependency.
 
 - Added the compiled existing-project Kotlin direct-supertype query, bounded
   cancellation and retirement, and explicit request-local evidence limits.

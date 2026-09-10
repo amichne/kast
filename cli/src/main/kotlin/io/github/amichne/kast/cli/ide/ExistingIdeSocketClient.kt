@@ -51,6 +51,7 @@ class ExistingIdeSocketClient(private val home: Path) : ExistingIdeClient {
                 when (operation) {
                     ExistingIdeOperation.Status -> put("type", "DESCRIBE")
                     is ExistingIdeOperation.Classes -> { put("type", "CLASS_LOOKUP"); put("name", operation.name.value) }
+                    is ExistingIdeOperation.Supertype -> { put("type", "DIRECT_SUPERTYPE"); put("qualifiedName", operation.name.value) }
                 }
             }.toString().toByteArray(Charsets.UTF_8)
             if (request.size > 16_384) return rejected(ExistingIdeFailure.REQUEST_TOO_LARGE)
@@ -131,6 +132,9 @@ internal object ExistingIdeDocuments {
                     operation is ExistingIdeOperation.Classes && node.path("kind").asString() == "classes" &&
                         node.path("stage").asString() == "RESULT_DETACHED" &&
                         node.path("name").asString() == operation.name.value && node.path("workspaceRoot").asString() == root.path.toString() -> received(node.toString())
+                    operation is ExistingIdeOperation.Supertype && node.path("kind").asString() == "inheritors" &&
+                        node.path("stage").asString() == "RESULT_DETACHED" && node.path("workspaceRoot").asString() == root.path.toString() &&
+                        node.path("inheritor").path("signature").path("qualifiedIdentity").asString() == operation.name.value -> received(node.toString())
                     else -> ExistingIdeExchange.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
                 }
             }

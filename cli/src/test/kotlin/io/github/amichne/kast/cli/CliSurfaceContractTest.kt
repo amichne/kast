@@ -28,7 +28,7 @@ class CliSurfaceContractTest {
         )
         assertEquals(listOf(CliLifecycleCommand.START, CliLifecycleCommand.STOP), surface.lifecycleCommands)
         assertEquals(
-            listOf(CliProductCommand.CODEX_CLI, CliProductCommand.CODEX_DESKTOP, CliProductCommand.IDE_STATUS, CliProductCommand.IDE_CLASSES, CliProductCommand.IDE_COMPLETION, CliProductCommand.APP_SERVER_REGISTER,
+            listOf(CliProductCommand.CODEX_CLI, CliProductCommand.CODEX_DESKTOP, CliProductCommand.IDE_STATUS, CliProductCommand.IDE_CLASSES, CliProductCommand.IDE_SUPERTYPE, CliProductCommand.IDE_COMPLETION, CliProductCommand.APP_SERVER_REGISTER,
                 CliProductCommand.APP_SERVER_ENABLE, CliProductCommand.APP_SERVER_REPAIR, CliProductCommand.APP_SERVER_STATUS, CliProductCommand.APP_SERVER_STOP, CliProductCommand.APP_SERVER_DISABLE, CliProductCommand.APP_SERVER_CLAIM, CliProductCommand.APP_SERVER_RELEASE),
             surface.localCommands,
         )

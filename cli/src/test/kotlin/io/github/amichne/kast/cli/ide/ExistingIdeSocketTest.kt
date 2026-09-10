@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test
 @Tag("native")
 class ExistingIdeSocketTest {
     @Test fun `native framed client accepts the exact host and rejects oversized and invalid UTF8 responses`() {
-        for (scenario in listOf("valid", "oversized", "utf8", "truncated")) {
+        for (scenario in listOf("valid", "supertype", "oversized", "utf8", "truncated")) {
             val home = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kc-")
             val root = CanonicalRoot(home)
             val digest = MessageDigest.getInstance("SHA-256").digest(home.toString().toByteArray())
@@ -45,10 +45,18 @@ class ExistingIdeSocketTest {
                         server.accept().use { client ->
                             val input = java.io.DataInputStream(Channels.newInputStream(client))
                             val request = Json.parseToJsonElement(String(input.readNBytes(input.readInt()))).jsonObject
-                            assertEquals("DESCRIBE", request["type"]?.jsonPrimitive?.content)
+                            if (scenario == "supertype") {
+                                assertEquals(setOf("root", "type", "qualifiedName"), request.keys)
+                                assertEquals("DIRECT_SUPERTYPE", request["type"]?.jsonPrimitive?.content)
+                                assertEquals("example.Child", request["qualifiedName"]?.jsonPrimitive?.content)
+                            } else assertEquals("DESCRIBE", request["type"]?.jsonPrimitive?.content)
                             val output = java.io.DataOutputStream(Channels.newOutputStream(client))
                             when (scenario) {
                                 "valid" -> { output.writeInt(response.size); output.write(response) }
+                                "supertype" -> {
+                                    val rejected = """{"type":"HOST_REJECTED","failure":"WRONG_ROOT"}""".toByteArray()
+                                    output.writeInt(rejected.size); output.write(rejected)
+                                }
                                 "oversized" -> output.writeInt(65_537)
                                 "utf8" -> { output.writeInt(2); output.write(byteArrayOf(0xC3.toByte(), 0x28)) }
                                 "truncated" -> { output.writeInt(10); output.writeByte(0) }
@@ -56,8 +64,11 @@ class ExistingIdeSocketTest {
                             output.flush()
                         }
                     }
-                    val answer = ExistingIdeSocketClient(home).query(root, ExistingIdeOperation.Status)
-                    if (scenario == "valid") assertTrue(answer is ExistingIdeExchange.Received)
+                    val operation = if (scenario == "supertype") ExistingIdeOperation.Supertype(
+                        (ExistingIdeQualifiedClassName.parse("example.Child") as io.github.amichne.kast.kernel.Refinement.Refined).value,
+                    ) else ExistingIdeOperation.Status
+                    val answer = ExistingIdeSocketClient(home).query(root, operation)
+                    if (scenario in listOf("valid", "supertype")) assertTrue(answer is ExistingIdeExchange.Received)
                     else assertEquals(ExistingIdeExchange.Rejected(ExistingIdeFailure.RESPONSE_REJECTED), answer)
                     task.get(3, TimeUnit.SECONDS)
                 }

@@ -16,7 +16,7 @@ class ExistingIdeCliTest {
     @Test fun `hosted help resolves without root or socket effects`() {
         val roots = CanonicalRootDiscoverer { fail("Help attempted root discovery") }
         val client = ExistingIdeClient { _, _ -> fail("Help attempted socket access") }
-        for (argv in listOf(listOf("ide", "--help"), listOf("ide", "classes", "--help"), listOf("ide", "status", "--help"))) {
+        for (argv in listOf(listOf("ide", "--help"), listOf("ide", "classes", "--help"), listOf("ide", "supertype", "--help"), listOf("ide", "status", "--help"))) {
             val answer = executeExistingIdeCli(argv, Path.of("/missing"), roots, client)
             assertEquals(0, answer.code)
             assertTrue(answer.document.value.contains("IDEA"))
@@ -43,6 +43,7 @@ class ExistingIdeCliTest {
             assertEquals(0, result.code)
             assertTrue(result.document.value.contains("classes"))
             assertTrue(result.document.value.contains("status"))
+            assertTrue(result.document.value.contains("supertype"))
             assertTrue(result.document.value.contains(if (shell == "fish") "-l root" else "--root"))
         }
         assertNotEquals(0, executeExistingIdeCli(listOf("ide", "generate-completion", "unknown"), root.path, roots, client).code)
@@ -67,6 +68,43 @@ class ExistingIdeCliTest {
         val result = ExistingIdeSocketClient(temporary).query(root, ExistingIdeOperation.Status)
         assertEquals(ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE), result)
         assertFalse(Files.exists(temporary.resolve(".kast")))
+    }
+
+    @Test fun `qualified supertype command reaches only the existing host capability`() {
+        var calls = 0
+        val result = executeExistingIdeCli(listOf("ide", "supertype", "example.Outer.Child", "--root", "/workspace"), Path.of("/other"),
+            CanonicalRootDiscoverer { assertEquals(root.path, it); CanonicalRootDiscovery.Discovered(root) },
+            ExistingIdeClient { exact, operation ->
+                assertSame(root, exact)
+                assertEquals("example.Outer.Child", (operation as ExistingIdeOperation.Supertype).name.value)
+                calls++
+                ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
+            })
+        assertEquals(1, calls)
+        assertNotEquals(0, result.code)
+        assertTrue(result.document.value.contains("ide-host-unavailable"))
+    }
+
+    @Test fun `qualified names reject invalid components before reaching host effects`() {
+        val roots = CanonicalRootDiscoverer { fail("Invalid selection reached root discovery") }
+        val client = ExistingIdeClient { _, _ -> fail("Invalid selection reached socket") }
+        for (name in listOf(".Child", "example..Child", "example.Child.", "example.*", "example.0Child", "x".repeat(513), "a.".repeat(2048) + "C")) {
+            assertNotEquals(0, executeExistingIdeCli(listOf("ide", "supertype", name), root.path, roots, client).code)
+        }
+    }
+
+    @Test fun `supertype replies correlate exact compiler identity and detached publication`() {
+        val operation = ExistingIdeOperation.Supertype((ExistingIdeQualifiedClassName.parse("example.Child") as Refinement.Refined).value)
+        fun declaration(name: String): String {
+            val signature = listOf("canonical-signature-v1", "class-like", name).joinToString("") { "${it.toByteArray().size}:$it" }
+            val identity = java.security.MessageDigest.getInstance("SHA-256").digest(signature.toByteArray()).joinToString("") { "%02x".format(it) }
+            return """{"file":"/workspace/Classes.kt","compilerIdentity":"canonical-signature-sha256-v1|$identity","canonicalSignature":"$signature","signature":{"kind":"class_like","qualifiedIdentity":"$name"},"documentStamp":1,"vfsStamp":1,"module":"fixture","gradleBuildRoot":"/workspace","gradleProject":":fixture","sourceRoot":"src","sourceKind":"PRODUCTION","provenanceAuthority":"cached_source_folder_flag"}"""
+        }
+        val valid = """{"schemaVersion":1,"outcome":"published","publication":"request_local_same_source_epoch","content":"saved_committed_ide_vfs","scope":"cached_gradle_source_folders","kind":"inheritors","stage":"RESULT_DETACHED","workspaceRoot":"/workspace","host":{"ideBuild":"test","kotlinBuild":"test"},"supertype":${declaration("example.Parent")},"inheritor":${declaration("example.Child")}}"""
+        assertTrue(ExistingIdeDocuments.response(valid.toByteArray(), root, operation, descriptor) is ExistingIdeExchange.Received)
+        for (invalid in listOf(valid.replace("example.Child", "other.Child"), valid.replace("/workspace", "/other"), valid.replace("RESULT_DETACHED", "SEMANTIC_READ"))) {
+            assertEquals(ExistingIdeExchange.Rejected(ExistingIdeFailure.RESPONSE_REJECTED), ExistingIdeDocuments.response(invalid.toByteArray(), root, operation, descriptor))
+        }
     }
 
     @Test fun `schema admits empty index evidence and rejects wrong names roots and duplicate fields`() {

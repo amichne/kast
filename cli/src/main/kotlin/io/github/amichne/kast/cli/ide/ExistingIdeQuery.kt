@@ -22,6 +22,17 @@ class ExistingIdeClassName private constructor(val value: String) {
 sealed interface ExistingIdeOperation {
     data object Status : ExistingIdeOperation
     data class Classes(val name: ExistingIdeClassName) : ExistingIdeOperation
+    data class Supertype(val name: ExistingIdeQualifiedClassName) : ExistingIdeOperation
+}
+
+class ExistingIdeQualifiedClassName private constructor(val value: String) {
+    companion object {
+        fun parse(raw: String): Refinement<ExistingIdeQualifiedClassName, ExistingIdeFailure> =
+            if (raw.toByteArray(Charsets.UTF_8).size in 1..4096 &&
+                raw.split('.').all { ExistingIdeClassName.parse(it) is Refinement.Refined }) {
+                Refinement.Refined(ExistingIdeQualifiedClassName(raw))
+            } else Refinement.Rejected(ExistingIdeFailure.INVALID_NAME)
+    }
 }
 
 /** The only runtime capability this path receives; it cannot demand an isolated worker. */

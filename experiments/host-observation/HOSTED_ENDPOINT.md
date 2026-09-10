@@ -19,6 +19,7 @@ IDEA's **Install Plugin from Disk** action:
 ./gradlew :cli:installDist
 cli/build/install/kast/bin/kast ide status --root /absolute/path/to/kast
 cli/build/install/kast/bin/kast ide classes Refinement --root /absolute/path/to/kast
+cli/build/install/kast/bin/kast ide supertype io.github.amichne.kast.kernel.Refinement.Refined --root /absolute/path/to/kast
 cli/build/install/kast/bin/kast ide generate-completion zsh
 ```
 
@@ -32,8 +33,9 @@ the CLI's existing outcome convention, received JSON goes to stdout with exit
 0; inspect `outcome` or `type` for semantic/host rejections. Client boundary
 failures go to stderr with a nonzero exit status.
 
-The Python acceptance client additionally exposes the manual direct-supertype
-operation:
+The native `supertype` command requires the exact qualified class identity and
+uses the IDE index to select it. Python is not a runtime dependency. The optional
+Python acceptance client retains the manual file/offset operation:
 
 ```shell
 python3 -m venv /tmp/kast-hosted-query-venv
