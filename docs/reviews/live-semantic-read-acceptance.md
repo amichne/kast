@@ -164,6 +164,16 @@ The manual harness exercised the production provider and real CLI executor. It
 did not exercise full stock Codex WebSocket framing, thread persistence, or
 multi-client routing. Those remain separate acceptance boundaries.
 
+The original `/Users/amichne/code/kast` project also returned a complete
+`QueryPlanCompiler` query through both the direct CLI and production provider.
+Their item and live evidence matched exactly: original host
+`39b1e8ff-5d91-427e-8c8a-ae3d7d23f2d0`, epoch 1, saved and committed PSI.
+IntelliJ-index MCP independently found the declaration in
+`query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt`.
+The local receipts are `original-repository-query.json` and
+`original-repository-provider.json`. The temporary fixture was closed afterward;
+the original project remains open and indexed.
+
 ## Verification boundary
 
 Routine CI retains its existing [Kotlin product job](../../.github/workflows/ci.yml)
@@ -181,6 +191,10 @@ native matrix.
 The rebuilt packaged CLI also returned identical complete results for ordinary
 and leading-delimiter queries (`leading-delimiter.json`); the production provider
 rerun used that rebuilt distribution and retained matching live evidence.
+The saved-configuration process checks separately preserve installed mutation
+admission and prove that a live query reports a missing host without creating
+installed runtime/cache directories. An old test using the removed `symbol find`
+spelling was updated to exercise those current ownership boundaries.
 
 CI timing varied. In #707 the product job took 10 minutes 25 seconds; its Gradle
 product build reported 5 minutes 9 seconds, compared with 4 minutes 43 seconds in
