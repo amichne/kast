@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.cli.command.CliAction
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
@@ -204,32 +203,6 @@ class CliBoundaryContractTest {
         assertEquals(
             CanonicalRootDiscovery.Rejected(CanonicalRootFailure.ROOT_MARKER_NOT_FOUND),
             FilesystemCanonicalRootDiscovery.discover(temporary.resolve("outside").also(Files::createDirectory)),
-        )
-    }
-
-    @Test
-    fun `indexer launch command rejects callers without private sidecar context`(
-        @TempDir temporary: Path,
-    ) {
-        val rootPath = Files.createDirectories(temporary.resolve("repo"))
-        Files.writeString(rootPath.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
-        val executablePath = Files.writeString(temporary.resolve("kast-indexer"), "#!/bin/sh\n")
-        assertTrue(executablePath.toFile().setExecutable(true))
-        val root = FilesystemCanonicalRootDiscovery.discover(rootPath).discoveredRoot()
-        val executable = IndexerExecutable.admit(executablePath).refinedValue()
-        val runtimeId = SemanticRuntimeId.parse("sha256:${"a".repeat(64)}").refinedValue()
-        val endpoint = when (
-            val resolution = RuntimeEndpoint.at(root, runtimeId, temporary.resolve("runtime.sock"))
-        ) {
-            is RuntimeEndpointResolution.Resolved -> resolution.endpoint
-            is RuntimeEndpointResolution.Rejected -> error("Expected endpoint, got ${resolution.failure}")
-        }
-
-        assertEquals(
-            IndexerLaunchCommandConstruction.Rejected(
-                RuntimeEndpointFailure.LAUNCH_CONTEXT_REQUIRED,
-            ),
-            IndexerLaunchCommand.create(executable, root, endpoint),
         )
     }
 

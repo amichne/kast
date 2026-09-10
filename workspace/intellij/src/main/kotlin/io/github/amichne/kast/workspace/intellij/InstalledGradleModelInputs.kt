@@ -308,7 +308,7 @@ internal class InstalledGradleModelInputs private constructor(
         }
 
         private val modelInputDirectories = setOf("gradle", "buildSrc", "build-logic")
-        private val excludedDirectories = setOf(".git", ".gradle", ".idea", ".agent-turn", "build", "out")
+        private val excludedDirectories = setOf(".git", ".gradle", ".idea", ".kotlin", ".agent-turn", "build", "out")
     }
 }
 

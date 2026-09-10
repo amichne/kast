@@ -100,7 +100,6 @@ sealed interface RuntimeEndpointResolution {
 enum class RuntimeEndpointFailure {
     ROOT_MISMATCH,
     INVALID_SOCKET_PATH,
-    LAUNCH_CONTEXT_REQUIRED,
     STARTUP_LOG_INVALID,
 }
 
@@ -294,14 +293,6 @@ class IndexerLaunchCommand private constructor(
             )
         }
 
-        /** Legacy callers cannot manufacture a launch without the new sidecar authority. */
-        fun create(
-            executable: IndexerExecutable,
-            root: CanonicalRoot,
-            endpoint: RuntimeEndpoint,
-        ): IndexerLaunchCommandConstruction = IndexerLaunchCommandConstruction.Rejected(
-            RuntimeEndpointFailure.LAUNCH_CONTEXT_REQUIRED,
-        )
     }
 }
 

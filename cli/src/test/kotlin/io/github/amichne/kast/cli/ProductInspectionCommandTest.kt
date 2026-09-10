@@ -125,7 +125,7 @@ class ProductInspectionCommandTest {
         commandGraphFactory = commandGraphFactory(),
         rootDiscovery = FilesystemCanonicalRootDiscovery,
         endpointLocator = RuntimeEndpointLocator {
-            RuntimeEndpointResolution.Rejected(RuntimeEndpointFailure.LAUNCH_CONTEXT_REQUIRED)
+            RuntimeEndpointResolution.Rejected(RuntimeEndpointFailure.INVALID_SOCKET_PATH)
         },
         runtimeDemander = RuntimeDemander { _, _ ->
             semanticBoundaryTouched()

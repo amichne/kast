@@ -8,6 +8,7 @@ import io.github.amichne.kast.distribution.contract.IndexerHeapSize
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapAttemptId
 import io.github.amichne.kast.kernel.Refinement
 import kotlinx.coroutines.*
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -15,8 +16,10 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 class WorkspaceWorkerAdmissionTest {
-    @Test fun `concurrent demand shares one reservation and waiter cancellation preserves startup`(@TempDir root: Path) = runBlocking {
+    @Test fun `concurrent demand shares one reservation and waiter cancellation preserves startup`(@TempDir root: Path) = runTest {
         val fixture = Fixture(root)
+        // This assertion needs actual simultaneous callers; virtual scheduling alone cannot
+        // exercise the coordinator's synchronized admission boundary.
         val requests = List(24) { async(Dispatchers.Default) { fixture.coordinator.request(fixture.first, fixture.memory) } }.awaitAll()
         assertEquals(1, requests.filterIsInstance<WorkerDemand.Start>().size, "concurrent root demand must produce exactly one launch reservation")
         val start = requests.filterIsInstance<WorkerDemand.Start>().single()
@@ -27,7 +30,7 @@ class WorkspaceWorkerAdmissionTest {
         val surviving = async { start.readiness.await() }
         val permit = fixture.coordinator.consume(start.reservation.id, fixture.first).refined()
         val ready = fixture.coordinator.publishReady(permit, fixture.attempt).refined()
-        assertSame(ready, (withTimeout(1_000) { surviving.await() } as WorkerReadiness.Ready).route)
+        assertSame(ready, (surviving.await() as WorkerReadiness.Ready).route)
         assertSame(ready, (fixture.coordinator.request(fixture.first, fixture.memory) as WorkerDemand.Ready).route)
         assertEquals(1, fixture.coordinator.snapshot().workers.size)
         assertEquals(0, fixture.coordinator.snapshot().starting)
@@ -66,7 +69,7 @@ class WorkspaceWorkerAdmissionTest {
         assertEquals(fixture.attempt, route.bootstrapAttempt)
     }
 
-    @Test fun `uncertain startup keeps capacity reserved until exact retirement`(@TempDir root: Path): Unit = runBlocking {
+    @Test fun `uncertain startup keeps capacity reserved until exact retirement`(@TempDir root: Path) = runTest {
         val fixture = Fixture(root)
         val start = fixture.coordinator.request(fixture.first, fixture.memory) as WorkerDemand.Start
         fixture.coordinator.consume(start.reservation.id, fixture.first).refined()
@@ -85,11 +88,11 @@ class WorkspaceWorkerAdmissionTest {
         assertInstanceOf(WorkerDemand.Start::class.java, fixture.coordinator.request(fixture.second, fixture.memory))
     }
 
-    @Test fun `ready quarantine keeps resident accounting without blocking unrelated startup`(@TempDir root: Path) = runBlocking {
+    @Test fun `ready quarantine keeps resident accounting without blocking unrelated startup`(@TempDir root: Path) = runTest {
         val fixture = Fixture(root)
         val start = fixture.coordinator.request(fixture.first, fixture.memory) as WorkerDemand.Start
         fixture.coordinator.publishReady(fixture.coordinator.consume(start.reservation.id, fixture.first).refined(), fixture.attempt).refined()
-        fixture.coordinator.quarantine(start.reservation, WorkerAdmissionFailure.WORKER_LOST).refined()
+        fixture.coordinator.quarantine(start.reservation, WorkerAdmissionFailure.RECOVERY_REQUIRED).refined()
         assertEquals(0, fixture.coordinator.snapshot().starting)
         assertInstanceOf(WorkerDemand.Start::class.java, fixture.coordinator.request(fixture.second, fixture.memory))
         assertEquals(2, fixture.coordinator.snapshot().workers.size)
