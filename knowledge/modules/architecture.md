@@ -6,6 +6,7 @@ resource: file://settings.gradle.kts
 tags: [kotlin, gradle, architecture]
 timestamp: 2026-09-10T00:00:00Z
 code_sources:
+  - path: docs/reviews/live-semantic-read-acceptance.md
   - path: settings.gradle.kts
   - path: build-logic/src/main/kotlin/kast.architecture.gradle.kts
   - path: build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt
@@ -32,7 +33,7 @@ The root [settings](../../settings.gradle.kts) declares the active Gradle projec
 - Runtime composition connects proven contracts to effectful adapters.
 - Server, indexer, App Server, and CLI modules expose transport and process boundaries.
 
-The IntelliJ read adapter also depends on symbol contracts for the experimental
+The IntelliJ read adapter also depends on symbol contracts for the existing-IDE
 [hosted query](../flows/hosted-query.md). This permits detached compiler evidence
 without introducing an isolated workspace opener or importing implementation
 dependencies from semantic service modules.
@@ -43,8 +44,9 @@ services, project-bound read adapters, and `query:protocol`. Runtime composition
 also uses `query:protocol`, which depends only on contracts. Hosted composition
 is excluded from isolated runtime composition. The workspace read adapter
 remains the admitted project-epoch authority; transport adds no project-opening
-or import permission. These dependency declarations do not establish native
-cutover or manual acceptance of the new route.
+or import permission. These declarations establish capability boundaries;
+[native acceptance](../../docs/reviews/live-semantic-read-acceptance.md) separately
+records the installed plugin and final default-route CLI/provider observations.
 
 ## Verify
 

@@ -6,6 +6,10 @@ resource: file://runtime/server
 tags: [runtime, protocol, dispatch]
 timestamp: 2026-09-10T00:00:00Z
 code_sources:
+  - path: docs/reviews/live-semantic-read-acceptance.md
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
+    symbols: [selectCliRuntimePath]
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationRegistry.kt
     symbols: [OperationRegistry]
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireTable.kt
@@ -44,7 +48,7 @@ and outcome projection to [`query:protocol`](../modules/query-protocol.md).
 The host remains responsible for current workspace or live IDE authority and
 budgets. Shared protocol code does not launch workers or admit projects.
 
-The prepared hosted dispatch has a closed request case and canonical wire binding
+The default hosted dispatch has a closed request case and canonical wire binding
 for each of the seven public semantic reads. The existing-IDE client uses the same
 operation-specific decoders, rejects published evidence, and checks a successful
 live envelope against the requested root and admitted descriptor host. A typed host
@@ -53,7 +57,11 @@ successful canonical payload.
 
 App Server provider qualification requires projection version 9 and its exact
 operation schemas and budgets. Invocation continues through the configured CLI
-process. The canonical host/client path is prepared, while default native routing
-and packaged manual acceptance remain separate pending work.
+process. `selectCliRuntimePath` now selects the seven existing-IDE reads before
+installed bootstrap in `KastCliMain`; a missing host rejects. The
+[native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
+records the final distribution's complete/qualified native matrix and a successful
+production provider invocation with direct CLI evidence equality. The provider
+harness does not establish full Codex WebSocket or multi-client acceptance.
 
 See [protocol](../modules/protocol.md) and [operation outcomes](../contracts/operation-outcomes.md).

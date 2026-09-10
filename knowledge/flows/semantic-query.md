@@ -6,6 +6,10 @@ resource: file://query/service
 tags: [query, symbol, source, relation]
 timestamp: 2026-09-10T00:00:00Z
 code_sources:
+  - path: docs/reviews/live-semantic-read-acceptance.md
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
+    symbols: [selectCliRuntimePath]
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt
     symbols: [QueryPlanCompiler, AdmittedQueryPlan]
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt
@@ -52,8 +56,11 @@ project-content or project-plus-library ID policy before the name cap, then
 rechecks exact scope and constraints after collection. Its symbol provider set
 includes type aliases alongside classes, functions, and properties. This changes
 name admission and provider coverage without increasing query budgets or weakening
-overflow qualification. The packaged native rerun remains pending; no timing or
-complete `ALL` acceptance claim follows from the focused adapter checks.
+overflow qualification. The final packaged native rerun returned a qualified
+minimum of 11 declarations for default/package `ALL`, including `helper` and the
+`PublicChild` type alias. An exact property query completed although that property
+was absent from `ALL`. This establishes partial native coverage, not exhaustive
+enumeration or a general timing improvement.
 
 Directory, package, declaration-kind, and named source-set restrictions are
 retained through declaration, file, and text selection, exact fingerprints, and
@@ -75,8 +82,11 @@ continues to expose only direct-child and descendant containment.
 It preserves per-item failures and qualifications and projects the matching
 published or live evidence basis. `HostedCanonicalQuery` constructs the pure
 evaluator with project-bound symbol, source, and relation ports inside an admitted
-host read. The canonical hosted path is prepared; the default native cutover and
-packaged manual acceptance remain pending. Earlier class/supertype qualification
-does not establish either gate.
+host read. `selectCliRuntimePath` chooses this existing-IDE path before installed
+bootstrap for the seven public semantic reads. The
+[native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
+records the final CLI and production provider observations, including their
+complete/qualified distinctions. Earlier class/supertype qualification remains
+separate evidence.
 
 See [query protocol](../modules/query-protocol.md), [semantic read domains](../modules/semantic-reads.md), and [compiler identity](../glossary/compiler-identity.md).

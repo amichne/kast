@@ -176,8 +176,10 @@ object CanonicalAgentToolDefinitions {
             only when their narrower contract is specifically required. Preserve returned refs
             rather than reconstructing identities from source text.
 
-            Kast operations establish their own runtime, workspace, and required derived evidence.
-            Do not invoke lifecycle, index synchronization, or topology preparation as prerequisites.
+            Semantic reads use the existing IntelliJ project for the current repository and
+            require its saved, indexed source state. An unavailable or unready host rejects the
+            read. Do not invoke lifecycle, index synchronization, or topology preparation as
+            query prerequisites.
             """.trimIndent(),
         ),
     )

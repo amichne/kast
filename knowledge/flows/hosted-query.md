@@ -1,11 +1,15 @@
 ---
 type: Runtime Flow
-title: Experimental hosted semantic query
-description: An existing IDEA project owns bounded read admission; all seven canonical read routes are prepared, with default cutover and packaged acceptance still pending.
+title: Existing-IDE semantic query
+description: An existing IDEA project owns the default seven canonical reads, with bounded live authority and scoped native CLI/provider acceptance.
 resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-10T00:00:00Z
 code_sources:
+  - path: docs/reviews/live-semantic-read-acceptance.md
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
+    symbols: [selectCliRuntimePath]
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryService.kt
     symbols: [HostedQueryService]
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedSemanticReadContext.kt
@@ -63,11 +67,17 @@ code_sources:
   - path: experiments/host-observation/qualify_hosted_index.py
 ---
 
-# Experimental hosted semantic query
+# Existing-IDE semantic query
 
-## Canonical read path prepared
+## Default canonical read path
 
-The ordinary-query scope gate now has a separate project-bound capture for exact
+`selectCliRuntimePath` selects the semantic command families before installed
+bootstrap in `KastCliMain`, including the optional leading `--` command
+delimiter. The default path sends all seven canonical reads to
+the existing project endpoint; an absent host rejects without opening a workspace,
+importing Gradle, or starting an isolated worker.
+
+The ordinary-query scope gate has a separate project-bound capture for exact
 imported Gradle names. It reads `ExternalProjectDataCache` and joins explicit
 `ExternalSourceSet.name` facts with the current IDE source folders. Missing or
 inconsistent ownership rejects before name filtering. Most-specific roots win,
@@ -117,7 +127,7 @@ before the request leaves its scope. The semantic executor separately drains its
 work before releasing the permit, so cancellation cannot leave an earlier request
 running beside its replacement.
 
-The prepared existing-IDE client decodes each response through its canonical
+The existing-IDE client decodes each response through its canonical
 operation binding, preserves complete, qualified, and rejected outcomes, and
 requires successful live evidence to match the requested root and descriptor host.
 Source snapshots must repeat the exact enclosing live evidence or published
@@ -126,11 +136,17 @@ decoding reject contradictory evidence before CLI projection.
 It rejects a publication envelope on this path. Typed host rejection remains
 available when admission fails before operation authority exists.
 
-The default native cutover and packaged manual qualification of this generalized
-path are pending. Pure contract and adapter checks do not establish an installed
-native IDE result. The qualification history below concerns the earlier bounded
-class-discovery and direct-supertype routes; it is not acceptance evidence for
-all canonical read operations or new default CLI/App Server routing.
+The [native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
+records the installed plugin and final default-route CLI matrix on IDEA
+262.10315.125. Exact queries, specialist discovery/inspection, source, relations,
+and diagnostics completed. Broad `ALL` remained work-limit qualified and traversal
+retained its depth qualification. A real production provider invocation completed
+`SEARCH Child` with the same item and live evidence as direct CLI execution.
+Saved edits, stale references, peer disconnection, project retirement and actual
+plugin unload have separate native receipts. Full Codex WebSocket integration,
+complete broad enumeration and library parity remain unqualified. The history
+below concerns the earlier bounded class/supertype routes; it is retained as a
+separate qualification record.
 
 ## Earlier qualified hosted reads
 

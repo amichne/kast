@@ -6,6 +6,7 @@ resource: file://query
 tags: [kotlin, semantic, query, compiler]
 timestamp: 2026-09-10T00:00:00Z
 code_sources:
+  - path: docs/reviews/live-semantic-read-acceptance.md
   - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactDeclarationSelector.kt
     symbols: [ExactDeclarationSelector]
   - path: symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolDiscoveryService.kt
@@ -86,8 +87,13 @@ The broad symbol contributor set includes Kotlin classes, functions, properties,
 and type aliases. Class-only discovery retains its class contributor. Exact-name
 reads continue to use direct index keys. The focused name-filter and scope-policy
 run passed 30 adapter checks, including filter forwarding before name capacity
-and type-alias contributor admission. The packaged native rerun is pending; these
-checks do not establish a timing improvement or complete native `ALL` coverage.
+and type-alias contributor admission. The final packaged rerun returned a
+qualified minimum of 11 declarations, including the top-level helper and type
+alias; exact property lookup completed separately. The
+[native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
+records the remaining work/discovery limitations. Neither these adapter checks
+nor that partial native result establish complete `ALL` coverage or a general
+timing improvement.
 
 The symbol scope compiler distinguishes `MODEL_OWNED` from `KNOWN_EMPTY`.
 Known-empty discovery requires valid owned roots and readable source/generated

@@ -2,11 +2,41 @@
 
 ## 2026-09-10
 
+- Completed the stage 4 default route for all seven semantic reads before
+  installed bootstrap, including Clikt's optional leading `--` delimiter.
+  The delimiter bypass was reproduced and fixed with both command spellings
+  checked across all seven reads. Added the [native acceptance review](../docs/reviews/live-semantic-read-acceptance.md)
+  for IDEA 262.10315.125, the packaged plugin digest, final CLI matrix, and actual
+  production provider invocation. Direct CLI and provider `Child` results retained
+  identical live root/host/epoch evidence without a publication generation.
+  Exact reads completed; `ALL` remained work-limit qualified and traversal retained
+  its depth qualification. Complete enumeration, library parity and full Codex
+  WebSocket integration remain unqualified.
+- Recorded native saved edits, dirty-content rejection, stale references, peer
+  disconnection, project retirement, and actual plugin unload with artifact/run
+  boundaries intact. The final missing-host CLI rejected without creating runtime
+  files. Sampled direct execution created no new relevant process; pre-existing
+  workers were present. Capability and architecture proof remains stronger than
+  that process sample.
+- Stage 3 at `55aae3688` passed the local 252-task product gate, knowledge and
+  architecture checks, and exact-head CI run `34509994681` for #707. Stage 4 focused
+  checks passed 72 tests: CLI 21, native Unix socket 9, registry 14, and provider 28.
+  The final provider-qualified projection 9 schema was 290,635 bytes within the
+  unchanged 524,288-byte cap. The final CLI includes stage 4 working-tree changes
+  despite parent-revision version metadata. Existing CI jobs remain unchanged;
+  native IDEA qualification remains a separate manual boundary.
+- Added a policy-matched coarse project ID filter before native broad name
+  collection and admitted the Kotlin type-alias contributor. Focused adapter
+  checks passed 30 tests; the final packaged rerun retained bounded qualification
+  and included the helper and type alias. No budget increase, exhaustive `ALL`
+  claim or general timing claim follows from that result.
+
 - Completed the stage 3 canonical host/client preparation for all seven semantic
   reads, including current-model reference restoration, live evidence correlation,
   bounded peer cancellation, and projection version 9 with mutually exclusive
-  published/live schemas. Default native cutover and packaged acceptance remain
-  pending; the earlier native class/supertype qualification history is unchanged.
+  published/live schemas. At this stage, default native cutover and packaged
+  acceptance were still pending; the earlier native class/supertype qualification
+  history remains unchanged.
 - Fixed visibility predicates to prove the selected declaration itself through
   internal `Containment.SELF` and `SourceDeclarationVisibility`. Public leaves
   no longer require children, private parents cannot match through public
@@ -37,7 +67,7 @@
 - Recorded generalized hosted evaluator composition and exact named Gradle
   scope integration without promoting pure checks or earlier class/supertype
   qualification into new native acceptance. Hosted cutover and manual
-  qualification remain pending.
+  qualification were pending at that stage.
 - Extended file/text candidate contracts and batch issuance to retain scope and
   constraints through source reads. Historical raw factories now declare their
   exact-file policy explicitly. Added current-model source-token restoration for

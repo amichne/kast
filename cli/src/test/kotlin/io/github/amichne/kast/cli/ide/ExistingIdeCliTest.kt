@@ -42,7 +42,7 @@ class ExistingIdeCliTest {
         for (argv in listOf(listOf("index"), listOf("index", "sync"), listOf("index", "unknown"), listOf("index", "--help"), listOf("ide", "classes", "C"))) {
             assertEquals(CliRuntimePath.EXISTING_IDE, selectCliRuntimePath(argv))
         }
-        for (argv in listOf(emptyList(), listOf("query"), listOf("start"), listOf("index-other"))) {
+        for (argv in listOf(emptyList(), listOf("start"), listOf("index-other"))) {
             assertEquals(CliRuntimePath.INSTALLED, selectCliRuntimePath(argv))
         }
         val roots = CanonicalRootDiscoverer { fail("Internal sync reached root discovery") }
@@ -53,6 +53,14 @@ class ExistingIdeCliTest {
             val completion = executeExistingIdeCli(listOf("index", "generate-completion", shell), root.path, roots, client)
             assertEquals(0, completion.code)
             assertTrue(completion.document.value.contains("supertype"))
+        }
+    }
+
+    @Test fun `normal semantic read families select the existing IDE before bootstrap`() {
+        for (arguments in listOf(listOf("query", "run"), listOf("symbol", "discover"), listOf("symbol", "inspect"),
+            listOf("source", "read"), listOf("relation", "read"), listOf("traversal", "run"), listOf("diagnostic", "check"))) {
+            assertEquals(CliRuntimePath.EXISTING_IDE, selectCliRuntimePath(arguments))
+            assertEquals(CliRuntimePath.EXISTING_IDE, selectCliRuntimePath(listOf("--") + arguments))
         }
     }
 

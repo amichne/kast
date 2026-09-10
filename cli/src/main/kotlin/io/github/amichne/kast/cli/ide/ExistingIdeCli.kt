@@ -10,9 +10,13 @@ import java.nio.file.Path
 internal enum class CliRuntimePath { EXISTING_IDE, INSTALLED }
 
 /** Raw command-family selection occurs at ingress, before any installed runtime effects. */
-internal fun selectCliRuntimePath(argv: List<String>): CliRuntimePath = when (argv.firstOrNull()) {
-    "index", "ide" -> CliRuntimePath.EXISTING_IDE
-    else -> CliRuntimePath.INSTALLED
+internal fun selectCliRuntimePath(argv: List<String>): CliRuntimePath {
+    // Clikt accepts a root option terminator before the subcommand; retain argv for its parser.
+    val command = if (argv.firstOrNull() == "--") argv.getOrNull(1) else argv.firstOrNull()
+    return when (command) {
+        "index", "ide", "query", "symbol", "source", "relation", "traversal", "diagnostic" -> CliRuntimePath.EXISTING_IDE
+        else -> CliRuntimePath.INSTALLED
+    }
 }
 
 /** Hosted reads are selected before bootstrap can demand an isolated product or worker. */
