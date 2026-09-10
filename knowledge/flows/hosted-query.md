@@ -10,6 +10,8 @@ code_sources:
     symbols: [HostedQueryService]
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/AdmittedHostedQuery.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/LiveHostedKotlinRead.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/LiveHostedClassIndex.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedClassLookup.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedSourceScope.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadCheckpoint.kt
@@ -57,3 +59,10 @@ The controller refines acceptance evidence into typed verification or rejection
 outcomes even under Python optimization. It records bounded carrier outcomes
 separately from semantic results, so a script that never enters the host cannot
 be mistaken for query completion or owner retirement.
+
+Exact class-name discovery reads the existing Kotlin short-name stub index in
+the same admitted project. Candidate collection ends before K2 resolves each
+class and detaches its canonical compiler identity. The shared read boundary
+checks saved content and one epoch before publication. Queries are restricted
+to supported cached authored source folders, bounded to 32 candidates and 64 KiB
+of output, and reject overflow. No index storage is copied or rebuilt by Kast.

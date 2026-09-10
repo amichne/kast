@@ -1,5 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read.hosted
 
+import com.intellij.openapi.project.Project
+import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.ProjectReadEpoch
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservation
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure
@@ -13,9 +15,9 @@ import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedPr
 import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadExecutionFailure
 import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadExecutionResult
 
-internal sealed interface HostedReadPreparation {
-    data class Prepared(val epoch: ProjectReadEpoch<*>, val model: DetachedIdeWorkspaceModel, val evidence: HostedInheritorEvidence) : HostedReadPreparation
-    data class Rejected(val failure: HostedQueryFailure) : HostedReadPreparation
+internal sealed interface HostedReadPreparation<out Evidence> {
+    data class Prepared<Evidence>(val epoch: ProjectReadEpoch<*>, val model: DetachedIdeWorkspaceModel, val evidence: Evidence) : HostedReadPreparation<Evidence>
+    data class Rejected(val failure: HostedQueryFailure) : HostedReadPreparation<Nothing>
 }
 
 /** No isolated opener, import, refresh, or generic live-project escape is reachable here. */
@@ -23,8 +25,20 @@ internal suspend fun AdmittedIdeProject.prepareHostedQuery(
     selection: HostedKotlinSelection,
     progress: HostedQueryProgress,
     checkpoint: HostedReadCheckpoint,
-): HostedReadPreparation {
-    if (canonicalRoot != selection.root) return rejected(HostedQueryFailure.WRONG_PROJECT)
+): HostedReadPreparation<HostedInheritorEvidence> = prepareHostedRead(
+    selection.root, progress, checkpoint,
+    { project, model -> readHostedKotlin(project, selection, model) }, ::verifyHostedContent,
+)
+
+/** Shared read boundary; compiler/index values are detached before the checkpoint and transport. */
+internal suspend fun <Evidence : Any> AdmittedIdeProject.prepareHostedRead(
+    root: CanonicalWorkspaceRoot,
+    progress: HostedQueryProgress,
+    checkpoint: HostedReadCheckpoint,
+    read: (Project, DetachedIdeWorkspaceModel) -> HostedSemanticRead<Evidence>,
+    verify: (Project, Evidence) -> SavedDocuments,
+): HostedReadPreparation<Evidence> {
+    if (canonicalRoot != root) return rejected(HostedQueryFailure.WRONG_PROJECT)
     progress.advance(HostedQueryStage.EPOCH_OBSERVATION)
     val epoch = when (val observation = observeReadEpoch()) {
         is ProjectReadEpochObservation.Observed -> observation.epoch
@@ -49,7 +63,7 @@ internal suspend fun AdmittedIdeProject.prepareHostedQuery(
     progress.advance(HostedQueryStage.SEMANTIC_READ)
     val evidence = when (val read = execution.executeAsync { project ->
         when (val current = admitVfsPassiveRead(epoch)) {
-            is VfsPassiveReadAdmission.Admitted -> readHostedKotlin(project, selection, model)
+            is VfsPassiveReadAdmission.Admitted -> read(project, model)
             is VfsPassiveReadAdmission.Rejected -> HostedSemanticRead.Rejected(HostedQueryFailure.Freshness(current.failure))
         }
     }) {
@@ -62,7 +76,7 @@ internal suspend fun AdmittedIdeProject.prepareHostedQuery(
     progress.advance(HostedQueryStage.CONTENT_REVALIDATION)
     checkpoint.afterSemanticRead()
     // Reacquire a short read after asynchronous analysis and recheck all saved dependencies and stamps.
-    when (val verified = execution.executeAsync { project -> verifyHostedContent(project, evidence) }) {
+    when (val verified = execution.executeAsync { project -> verify(project, evidence) }) {
         is AdmittedProjectReadExecutionResult.Completed -> when (val saved = verified.value) {
             SavedDocuments.Clean -> Unit
             is SavedDocuments.Rejected -> return rejected(saved.failure)

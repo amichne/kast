@@ -10,6 +10,8 @@
   the last observed request stage through retirement.
 - Hardened manual acceptance against disabled Python assertions and recorded
   bounded script-carrier outcomes independently of semantic query results.
+- Added exact class discovery from the existing IDE Kotlin index, sharing the
+  admitted project, saved-content revalidation, deadline, and terminal owner.
 
 ## 2026-09-09
 

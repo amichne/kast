@@ -39,6 +39,14 @@ In the current `Refinement.kt`, offset 383 selects `Refined`. Recompute it after
 editing the file. The expected compiler-resolved relationship is
 `Refinement.Refined` directly inheriting `Refinement`.
 
+To discover classes using IDEA's existing Kotlin index, replace `--file` and
+`--offset` with `--class-name Refinement`. This returns all matching supported
+authored-source classes with compiler identities, source ownership, and content
+revisions. The result states `indexAuthority: existing_ide_kotlin_stub_index`.
+The exact short name is bounded to 512 UTF-8 bytes; up to 32 candidates and
+65,536 output bytes are supported. Overflow rejects the entire result. Index
+candidates are collected before K2 analysis begins, and no PSI escapes the read.
+
 The runner requires one existing native IDEA process and the exact selected
 open project. By default it loads the five compiled payload JARs through the
 existing Kotlin plugin loader, invokes the project-owned service implementation,
@@ -163,6 +171,12 @@ After stopping that identified idle daemon, IDEA recreated it and the same
 native host published the known relationship and retired the query owner.
 The runner reports carrier unavailability; it does not automatically restart
 processes. This remains a limitation of the manual script carrier.
+
+The class-index acceptance resolved six distinct `Refinement` declarations in
+the open Kast project, including the kernel declaration and nested protocol
+types. It used the same native host and Project with unchanged Gradle import
+timestamps. This extends the semantic read surface; routing the installed CLI
+and App Server through a persistent IDE endpoint remains the next integration.
 
 The project currently sets `org.gradle.dependency.verification=off` in
 `gradle.properties`, as requested to unblock IDE source downloads. The existing

@@ -36,6 +36,34 @@ class HostedQueryProbe private constructor(project: Project, binding: ProbeServi
         @JvmStatic fun installed(project: Project) = HostedQueryProbe(project, ProbeServiceBinding.Platform)
     }
 
+    fun lookup(canonicalRoot: String, name: String, result: Consumer<String>) {
+        scope.launch {
+            val path = try { Path.of(canonicalRoot) } catch (_: java.nio.file.InvalidPathException) {
+                result.accept(HostedQueryWire.encode(HostedIndexResult.Rejected(HostedQueryFailure.INVALID_SELECTION)))
+                return@launch
+            }
+            val parsed = CanonicalWorkspaceRoot.fromCanonicalPath(path)
+            if (parsed !is Refinement.Refined) {
+                result.accept(HostedQueryWire.encode(HostedIndexResult.Rejected(HostedQueryFailure.INVALID_SELECTION)))
+                return@launch
+            }
+            val lookup = when (val admitted = HostedClassLookup.parse(parsed.value, name)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> {
+                    result.accept(HostedQueryWire.encode(HostedIndexResult.Rejected(admitted.failure)))
+                    return@launch
+                }
+            }
+            val compatibility = packagedHostedCompatibility()
+            val answer = when (compatibility) {
+                is Refinement.Refined -> service.lookup(service.endpoint, lookup, compatibility.value.candidate, compatibility.value.policy)
+                is Refinement.Rejected -> HostedIndexResult.Rejected(compatibility.failure)
+            }
+            check(!ApplicationManager.getApplication().isReadAccessAllowed)
+            result.accept(HostedQueryWire.encode(answer))
+        }
+    }
+
     /** Result callback runs after read access has been released; caller owns transport and storage. */
     fun query(canonicalRoot: String, relativeFile: String, nameOffset: Int, result: Consumer<String>) {
         scope.launch {
@@ -57,22 +85,10 @@ class HostedQueryProbe private constructor(project: Project, binding: ProbeServi
                     return@launch
                 }
             }
-            val metadata = Properties().apply {
-                HostedQueryProbe::class.java.getResourceAsStream("/kast-hosted-query.properties").use { input ->
-                    checkNotNull(input) { "Hosted plugin metadata is missing" }
-                    load(input)
-                }
+            val answer = when (val compatibility = packagedHostedCompatibility()) {
+                is Refinement.Refined -> service.query(service.endpoint, selection, compatibility.value.candidate, compatibility.value.policy)
+                is Refinement.Rejected -> HostedQueryResult.Rejected(compatibility.failure)
             }
-            val candidate = IdeHostCompatibilityCandidate(
-                metadata.getProperty("ideBuild"), metadata.getProperty("kotlinBuild"),
-                metadata.getProperty("version"), "kast.ide-hosted.runtime.v1",
-                metadata.getProperty("registryDigest"), metadata.getProperty("schemaDigest"), emptyList(),
-            )
-            val policy = when (val defined = IdeHostCompatibilityPolicy.define(candidate)) {
-                is Refinement.Refined -> defined.value
-                is Refinement.Rejected -> error("Packaged compatibility metadata is invalid")
-            }
-            val answer = service.query(service.endpoint, selection, candidate, policy)
             check(!ApplicationManager.getApplication().isReadAccessAllowed)
             result.accept(HostedQueryWire.encode(answer))
         }
@@ -95,6 +111,25 @@ class HostedQueryProbe private constructor(project: Project, binding: ProbeServi
                 retirement.cancel()
             }
         }
+    }
+}
+
+internal class HostedCompatibility(val candidate: IdeHostCompatibilityCandidate, val policy: IdeHostCompatibilityPolicy)
+
+internal fun packagedHostedCompatibility(): Refinement<HostedCompatibility, HostedQueryFailure> {
+    val unavailable = Refinement.Rejected(HostedQueryFailure.Platform(HostedPlatformFailureCause.LINKAGE))
+    val metadata = Properties()
+    try {
+        val input = HostedQueryProbe::class.java.getResourceAsStream("/kast-hosted-query.properties") ?: return unavailable
+        input.use(metadata::load)
+    } catch (_: java.io.IOException) { return unavailable }
+    val candidate = IdeHostCompatibilityCandidate(
+        metadata.getProperty("ideBuild"), metadata.getProperty("kotlinBuild"), metadata.getProperty("version"),
+        "kast.ide-hosted.runtime.v1", metadata.getProperty("registryDigest"), metadata.getProperty("schemaDigest"), emptyList(),
+    )
+    return when (val policy = IdeHostCompatibilityPolicy.define(candidate)) {
+        is Refinement.Refined -> Refinement.Refined(HostedCompatibility(candidate, policy.value))
+        is Refinement.Rejected -> unavailable
     }
 }
 

@@ -83,7 +83,7 @@ sealed interface HostedQueryResult {
     data class Rejected(val failure: HostedQueryFailure, val stage: HostedQueryStage = HostedQueryStage.REQUEST_ADMISSION) : HostedQueryResult
 }
 
-internal sealed interface HostedSemanticRead {
-    data class Resolved(val evidence: HostedInheritorEvidence) : HostedSemanticRead
-    data class Rejected(val failure: HostedQueryFailure) : HostedSemanticRead
+internal sealed interface HostedSemanticRead<out Evidence> {
+    data class Resolved<Evidence>(val evidence: Evidence) : HostedSemanticRead<Evidence>
+    data class Rejected(val failure: HostedQueryFailure) : HostedSemanticRead<Nothing>
 }
