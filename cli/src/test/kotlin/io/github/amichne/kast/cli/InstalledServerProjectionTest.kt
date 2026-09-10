@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli
 import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
@@ -10,6 +11,7 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.registry.HostedApprovalPolicy
 import io.github.amichne.kast.protocol.registry.HostedOperationProjection
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
+import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -23,6 +25,19 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class InstalledServerProjectionTest {
+    @Test
+    fun `full generated capability document fits the production provider schema byte budget`() {
+        val document = installedSchema(
+            operationRegistry = CanonicalOperationWireBindings.operationRegistryDocument,
+            // Exact v1 metadata emitted by the build-owned CanonicalWireSchema.
+            wireSchema = """{"schemaVersion":1,"wireSchemaId":"kast-wire-v1"}""",
+            commandSurface = commandGraphFactory().surface,
+        ).constructedDocument()
+        val emittedBytes = (document.value + "\n").toByteArray(Charsets.UTF_8).size
+        assertTrue(emittedBytes <= BrokerOperationalLimits.maximumKastSchemaBytes,
+            "Full --schema output is $emittedBytes bytes; provider accepts ${BrokerOperationalLimits.maximumKastSchemaBytes}")
+    }
+
     @Test
     fun `installed schema separates hosted bootstrap from whole document cli invocations`() {
         val projection = installedProjection()

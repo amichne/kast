@@ -125,7 +125,7 @@ class MutationTargetAdmissionTest {
         selector = selector,
         expectedOwner = expectedOwner,
         observedState = ObservedMutationTargetState(
-            lease = selector.lease,
+            lease = selector.lease.requirePublished().refined(),
             file = selector.file,
             content = contentHash(),
         ),

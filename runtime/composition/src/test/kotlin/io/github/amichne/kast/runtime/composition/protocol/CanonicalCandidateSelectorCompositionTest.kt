@@ -75,8 +75,9 @@ class CanonicalCandidateSelectorCompositionTest {
 
         val tokens = (authority.issueCandidates(fixture.batch) as
             CandidateSelectorIssuance.Issued).selectors
-        val restored = tokens.map { token ->
-            assertTrue(token.value.startsWith("candidate:v2:"))
+        val restored = tokens.mapIndexed { ordinal, token ->
+            val version = if (ordinal == 1) 2 else 3
+            assertTrue(token.value.startsWith("candidate:v$version:"))
             (CanonicalProtocolAuthority().candidate(token) as CandidateSelectorLookup.Found).selector
         }
 
@@ -86,6 +87,10 @@ class CanonicalCandidateSelectorCompositionTest {
         assertEquals(fixture.lease, restored[0].lease)
         assertEquals(fixture.lease, restored[1].lease)
         assertEquals(fixture.lease, restored[2].lease)
+        restored.forEach { candidate ->
+            assertEquals(fixture.batch.scope, candidate.scope)
+            assertEquals(fixture.batch.constraints, candidate.constraints)
+        }
     }
 
     @Test

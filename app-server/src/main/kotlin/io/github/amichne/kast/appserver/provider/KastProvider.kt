@@ -102,6 +102,7 @@ internal enum class KastQualificationFailure {
     VERSION_UNAVAILABLE,
     VERSION_INVALID,
     SCHEMA_UNAVAILABLE,
+    SCHEMA_SIZE_LIMIT,
     SCHEMA_INVALID,
     SCHEMA_INCOMPATIBLE,
 }
@@ -204,8 +205,18 @@ internal object KastProviderQualifier {
             listOf("--schema"),
             MAXIMUM_SCHEMA_BYTES,
         )
-        val schemaOutput = schemaExecution as? BrokerProcessExecution.Completed
-            ?: return KastContractQualification.Rejected(KastQualificationFailure.SCHEMA_UNAVAILABLE)
+        val schemaOutput = when (schemaExecution) {
+            is BrokerProcessExecution.Completed -> schemaExecution
+            is BrokerProcessExecution.Rejected -> return KastContractQualification.Rejected(
+                when (schemaExecution.failure) {
+                    BrokerProcessFailure.OUTPUT_LIMIT -> KastQualificationFailure.SCHEMA_SIZE_LIMIT
+                    BrokerProcessFailure.IO_REJECTED,
+                    BrokerProcessFailure.SPAWN_FAILED,
+                    BrokerProcessFailure.TERMINATED,
+                    BrokerProcessFailure.TIMED_OUT -> KastQualificationFailure.SCHEMA_UNAVAILABLE
+                },
+            )
+        }
         if (schemaOutput.exitCode != 0) {
             return KastContractQualification.Rejected(KastQualificationFailure.SCHEMA_UNAVAILABLE)
         }

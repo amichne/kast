@@ -40,9 +40,12 @@ class MintlifyCallableReferenceTest {
         assertFalse(installed.hostedBootstrap.tools.any { it.operationId in internalOperationIds })
         assertEquals(installed.hostedBootstrap.tools.size * 2, components.size)
 
-        components.values.flatMap { schema -> schema.localReferences() }.forEach { reference ->
-            assertTrue(reference.startsWith("#/components/schemas/"))
-            assertTrue(reference.substringAfter("#/components/schemas/").substringBefore('/') in components)
+        components.values.flatMap { schema -> schema.localReferences() }.forEach { schemaReference ->
+            assertTrue(schemaReference.startsWith("#/components/schemas/"))
+            assertTrue(schemaReference.substringAfter("#/components/schemas/").substringBefore('/') in components)
+            schemaReference.removePrefix("#/").split('/').fold(reference as JsonElement) { value, key ->
+                checkNotNull((value as? JsonObject)?.get(key)) { "Dangling callable schema reference: $schemaReference" }
+            }
         }
 
         installed.hostedBootstrap.tools.forEach { tool ->

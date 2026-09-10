@@ -1,6 +1,7 @@
 package io.github.amichne.kast.appserver.provider
 
 import io.github.amichne.kast.appserver.KastToolSelection
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.core.Broker
 import io.github.amichne.kast.appserver.core.BrokerDispatch
 import io.github.amichne.kast.appserver.core.BrokerDispatchRequest
@@ -37,6 +38,30 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 
 class KastProviderTest {
+    @Test
+    fun `schema qualification retains typed output overflow without changing its byte bound`(
+        @TempDir temporary: Path,
+    ) = runTest {
+        val executable = executable(temporary.resolve("kast"))
+        for (failure in BrokerProcessFailure.entries) {
+            val executor = BrokerProcessExecutor { request -> when (request.arguments) {
+                listOf("--version") -> BrokerProcessExecution.Completed(0, "kast 9.9.9\n", "")
+                listOf("--schema") -> {
+                    assertEquals(BrokerOperationalLimits.maximumKastSchemaBytes, request.maximumOutputBytes)
+                    BrokerProcessExecution.Rejected(failure)
+                }
+                else -> error("Unexpected qualification operation")
+            } }
+            val options = KastProviderOptions.admit(executable, temporary.toRealPath(), executor).refinedValue()
+            assertEquals(KastProviderQualification.Rejected(
+                if (failure == BrokerProcessFailure.OUTPUT_LIMIT) KastQualificationFailure.SCHEMA_SIZE_LIMIT
+                else KastQualificationFailure.SCHEMA_UNAVAILABLE), KastProviderQualifier.qualify(options))
+        }
+        val valid = KastProviderOptions.admit(executable, temporary.toRealPath(),
+            RecordingProcessExecutor(capabilitySchema())).refinedValue()
+        assertInstanceOf(KastProviderQualification.Qualified::class.java, KastProviderQualifier.qualify(valid))
+    }
+
     @Test
     fun `zero exit host rejections retain details but never present successful observations`(
         @TempDir temporary: Path,
