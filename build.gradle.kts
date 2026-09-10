@@ -422,4 +422,11 @@ tasks.register<Exec>("knowledgeImpact") {
     )
 }
 
-tasks.named("check") { dependsOn(verifyConfigurationIngress, verifyKnowledgeBase) }
+val hostObservationTest = tasks.register<Exec>("hostObservationTest") {
+    group = "verification"
+    description = "Checks the launch-free experimental host-observation controller."
+    inputs.dir(layout.projectDirectory.dir("experiments/host-observation"))
+    commandLine("python3", "-m", "unittest", "discover", "-s", "experiments/host-observation", "-p", "test_*.py")
+}
+
+tasks.named("check") { dependsOn(verifyConfigurationIngress, verifyKnowledgeBase, hostObservationTest) }
