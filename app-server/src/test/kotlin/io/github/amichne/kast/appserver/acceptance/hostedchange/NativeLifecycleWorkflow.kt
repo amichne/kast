@@ -26,6 +26,7 @@ internal class NativeLifecycleWorkflow(
     }
 
     private suspend fun concurrentSamePlan(peer: NativeChangePeer, preimage: ByteArray, postimage: ByteArray) {
+        evidence.record("concurrent-same-plan-single-effect", NativeCaseOutcome.UNQUALIFIED)
         val arguments = plan(peer)
         val second = session.connect()
         val firstReady = CompletableDeferred<Unit>()
@@ -53,6 +54,7 @@ internal class NativeLifecycleWorkflow(
             }
             listOf(first.await(), other.await())
         }
+        evidence.concurrentResults(receipts)
         demand(
             receipts.all { !it.rejected() && it.document()["state"] == JsonPrimitive("verified") },
             NativeFailure.VERIFIED_RECEIPT_MISSING,

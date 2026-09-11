@@ -148,6 +148,16 @@ internal class NativeChangeEvidence(private val report: Path) {
         System.out.flush()
     }
 
+    fun concurrentResults(results: List<NativeToolResult>) {
+        privateWrite(
+            report.resolveSibling("concurrent-results.private.json"),
+            Json.encodeToString(
+                NativeConcurrentObservation.serializer(),
+                NativeConcurrentObservation(results.map { it.concurrentObservation() }),
+            ),
+        )
+    }
+
     fun contractRejected(document: NativeContractFailureDocument) {
         metadata =
             JsonObject(

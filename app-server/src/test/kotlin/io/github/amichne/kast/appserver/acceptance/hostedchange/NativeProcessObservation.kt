@@ -47,6 +47,7 @@ private data class NativeCompletedProcessObservation(
     val shape: NativeProcessShape,
     val fields: List<NativeOutputField>,
     val boundaryRejection: NativeBoundaryRejection,
+    val change: NativeSemanticChangeObservation? = null,
 )
 
 @Serializable
@@ -84,6 +85,10 @@ private fun completedObservation(result: BrokerProcessExecution.Completed): Json
                 shape = if (document == null) NativeProcessShape.NON_OBJECT else NativeProcessShape.OBJECT,
                 fields = document?.keys?.map(NativeOutputField::observe)?.distinct()?.sortedBy { it.name }.orEmpty(),
                 boundaryRejection = nativeBoundaryRejection(result),
+                change =
+                    document?.let(::nativeSemanticChangeObservation)?.takeIf {
+                        it.operation != NativeObservedChangeOperation.UNCLASSIFIED
+                    },
             ),
         )
         .jsonObject
