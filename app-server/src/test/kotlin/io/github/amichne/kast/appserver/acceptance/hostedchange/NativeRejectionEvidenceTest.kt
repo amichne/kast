@@ -25,6 +25,47 @@ class NativeRejectionEvidenceTest {
     }
 
     @Test
+    fun `CLI rejection projection uses hyphens while internal wire spelling is not accepted`() {
+        for ((reason, expected) in
+            listOf(
+                "exact-symbol-required" to NativeExpectedRejection.EXACT_SYMBOL_REQUIRED,
+                "workspace-not-ready" to NativeExpectedRejection.WORKSPACE_NOT_READY,
+                "content-changed" to NativeExpectedRejection.CONTENT_CHANGED,
+                "exact_symbol_required" to NativeExpectedRejection.OTHER_REJECTION,
+            )) {
+            val result =
+                NativeToolResult.Document(
+                    buildJsonObject {
+                        put("status", "rejected")
+                        put("reason", reason)
+                    },
+                    NativeToolSuccess.SUCCEEDED,
+                )
+            assertEquals(expected, result.rejectionObservation())
+        }
+    }
+
+    @Test
+    fun `manual recovery qualification requires exact CLI status state and qualification`() {
+        val payload = buildJsonObject {
+            put("status", "qualified")
+            put("state", "recovery-required")
+            put("qualification", "manual-recovery-required")
+        }
+        assertEquals(
+            NativeRecoveryObservation.MANUAL_RECOVERY_REQUIRED,
+            NativeToolResult.Document(payload, NativeToolSuccess.SUCCEEDED).recoveryObservation(),
+        )
+        for (field in listOf("status", "state", "qualification")) {
+            val changed = kotlinx.serialization.json.JsonObject(payload + (field to JsonPrimitive("unknown")))
+            assertEquals(
+                NativeRecoveryObservation.OTHER_RESULT,
+                NativeToolResult.Document(changed, NativeToolSuccess.SUCCEEDED).recoveryObservation(),
+            )
+        }
+    }
+
+    @Test
     fun `failed native expectation retains case and finite observed condition without payload`() {
         val report = directory.resolve("report.json")
         val evidence = NativeChangeEvidence(report)

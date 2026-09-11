@@ -30,9 +30,10 @@ internal class NativeProbeWorkflow(
     }
 
     suspend fun divergentLoadedDocument(peer: NativeChangePeer, arguments: JsonObject, postimage: ByteArray) {
+        evidence.record("recovery-preserves-divergent-document", NativeCaseOutcome.UNQUALIFIED)
         val dirty = controls.probe(NativeProbeCommand.DIRTY_UNCOMMITTED, sha256(postimage))
         val rejected = peer.call("change_recover", arguments)
-        demand(rejected.rejected(), NativeFailure.EXPECTED_REJECTION_MISSING)
+        evidence.expectRecoveryRequired("recovery-preserves-divergent-document", rejected)
         val after = controls.probe(NativeProbeCommand.OBSERVE, sha256(postimage))
         demand(after.documentSha256 == dirty.documentSha256, NativeFailure.SOURCE_CHANGED)
         unchanged(postimage)

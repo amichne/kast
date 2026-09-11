@@ -6,6 +6,9 @@ import kotlinx.serialization.json.put
 
 internal enum class NativeExpectedRejection {
     BROKER_INVALID_ARGUMENTS,
+    APPROVAL_DECLINED,
+    APPROVAL_CANCELLED,
+    APPROVAL_CONTROLLER_REJECTED,
     EXACT_SYMBOL_REQUIRED,
     WORKSPACE_NOT_READY,
     CONTENT_CHANGED,
@@ -38,15 +41,19 @@ internal fun NativeToolResult.rejectionObservation(): NativeExpectedRejection =
         is NativeToolResult.BrokerRejected ->
             when (failure) {
                 NativeBrokerRejection.INVALID_ARGUMENTS -> NativeExpectedRejection.BROKER_INVALID_ARGUMENTS
+                NativeBrokerRejection.PLAN_APPROVAL_DECLINED -> NativeExpectedRejection.APPROVAL_DECLINED
+                NativeBrokerRejection.PLAN_APPROVAL_CANCELLED -> NativeExpectedRejection.APPROVAL_CANCELLED
+                NativeBrokerRejection.PLAN_APPROVAL_CONTROLLER_REJECTED ->
+                    NativeExpectedRejection.APPROVAL_CONTROLLER_REJECTED
                 NativeBrokerRejection.OTHER -> NativeExpectedRejection.OTHER_REJECTION
             }
         is NativeToolResult.Document ->
             when {
                 !rejected() -> NativeExpectedRejection.NOT_REJECTED
-                payload["reason"] == JsonPrimitive("exact_symbol_required") ->
+                payload["reason"] == JsonPrimitive("exact-symbol-required") ->
                     NativeExpectedRejection.EXACT_SYMBOL_REQUIRED
-                payload["reason"] == JsonPrimitive("workspace_not_ready") -> NativeExpectedRejection.WORKSPACE_NOT_READY
-                payload["reason"] == JsonPrimitive("content_changed") -> NativeExpectedRejection.CONTENT_CHANGED
+                payload["reason"] == JsonPrimitive("workspace-not-ready") -> NativeExpectedRejection.WORKSPACE_NOT_READY
+                payload["reason"] == JsonPrimitive("content-changed") -> NativeExpectedRejection.CONTENT_CHANGED
                 else -> NativeExpectedRejection.OTHER_REJECTION
             }
         NativeToolResult.ResponseLost -> NativeExpectedRejection.RESPONSE_LOST

@@ -130,8 +130,8 @@ internal class NativeLifecycleWorkflow(
             !recovered.rejected() &&
                 recovered.document()["state"] in
                     setOf(
-                        JsonPrimitive("rolled_back"),
-                        JsonPrimitive("prior_state"),
+                        JsonPrimitive("rolled-back"),
+                        JsonPrimitive("prior-state"),
                     ),
             NativeFailure.RECOVERY_FAILED,
         )

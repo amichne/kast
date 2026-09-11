@@ -192,8 +192,10 @@ def bounded_native_report(path: Path, workspace: Path) -> dict:
                      or (field == 'referencePassedUnchanged' and item is True)
                      or (field in ('indexingState', 'afterIndexingState') and item in ('DUMB', 'SMART'))
                      or (field in ('expectedRejection', 'observedRejection') and item in (
+                         'APPROVAL_DECLINED', 'APPROVAL_CANCELLED', 'APPROVAL_CONTROLLER_REJECTED',
                          'BROKER_INVALID_ARGUMENTS', 'EXACT_SYMBOL_REQUIRED', 'WORKSPACE_NOT_READY',
                          'CONTENT_CHANGED', 'OTHER_REJECTION', 'NOT_REJECTED', 'RESPONSE_LOST'))
+                     or (field in ('expectedRecovery', 'observedRecovery') and item in ('MANUAL_RECOVERY_REQUIRED', 'OTHER_RESULT'))
                      or (field == 'postPlanAdmission' and item == 'SAVED_PSI_COMMITTED')
                      or (field == 'retrievedState' and item in ('verified', 'applied_unverified', 'recovery_required')))
             if field in ('before', 'after'):

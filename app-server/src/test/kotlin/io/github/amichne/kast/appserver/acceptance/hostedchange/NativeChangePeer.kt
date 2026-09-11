@@ -48,6 +48,9 @@ internal sealed interface NativeToolResult {
 
 internal enum class NativeBrokerRejection {
     INVALID_ARGUMENTS,
+    PLAN_APPROVAL_DECLINED,
+    PLAN_APPROVAL_CANCELLED,
+    PLAN_APPROVAL_CONTROLLER_REJECTED,
     OTHER,
 }
 
@@ -209,8 +212,8 @@ internal class NativeChangePeer(
                     NativeControllerProgress.CONTINUE
                 }
                 NativeApprovalAftermath.DropResponse -> {
-                    session.detach()
                     trace.completedEffects.receive()
+                    session.detach()
                     NativeControllerProgress.RESPONSE_LOST
                 }
             }
@@ -225,9 +228,9 @@ internal class NativeChangePeer(
     private fun rejectedBroker(document: JsonObject): NativeToolResult.BrokerRejected {
         val observation = protocolObservation(document.toString())
         val failure =
-            if (observation["failure"] == JsonPrimitive("INVALID_ARGUMENTS")) {
-                NativeBrokerRejection.INVALID_ARGUMENTS
-            } else NativeBrokerRejection.OTHER
+            NativeBrokerRejection.entries.firstOrNull {
+                observation["failure"] == JsonPrimitive(it.name)
+            } ?: NativeBrokerRejection.OTHER
         return NativeToolResult.BrokerRejected(failure)
     }
 

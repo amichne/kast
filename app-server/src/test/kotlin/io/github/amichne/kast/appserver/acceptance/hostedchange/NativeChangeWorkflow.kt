@@ -47,7 +47,7 @@ internal class NativeChangeWorkflow(
         NativeModelMovementWorkflow(controls, source, evidence).run(peer)
         probes.dirtyAdmission(peer, nativePlanArguments(reference(searchClass()), DECLARATION), original)
         prepare(reference(searchClass()))
-        controllerRefusals()
+        NativeApprovalRefusals(peer, source, evidence).run(identity(), ::preview)
         editedPreimage()
         applyAndVerify()
         recoverAfterOwnerRestart()
@@ -57,22 +57,6 @@ internal class NativeChangeWorkflow(
         session.close()
         val replay = controls.replaceBroker(lostPlanIdentity, sha256(Files.readAllBytes(source)))
         evidence.record("broker-process-restart-no-replay", NativeCaseOutcome.PASSED, replay)
-    }
-
-    private suspend fun controllerRefusals() {
-        for (decision in listOf(NativeDecision.DECLINE, NativeDecision.CANCEL, NativeDecision.MALFORMED)) {
-            evidence.record("approval-${decision.name.lowercase()}", NativeCaseOutcome.UNQUALIFIED)
-            val result =
-                peer.call(
-                    tool = "change_apply",
-                    arguments = identity(),
-                    decision = decision,
-                    beforeApproval = ::preview,
-                )
-            demand(result.rejected(), NativeFailure.EXPECTED_REJECTION_MISSING)
-            unchanged(original)
-            evidence.record("approval-${decision.name.lowercase()}", NativeCaseOutcome.PASSED)
-        }
     }
 
     private suspend fun editedPreimage() {
@@ -217,10 +201,7 @@ internal class NativeChangeWorkflow(
         val divergent = postimage + "\n// acceptance-owned user content\n".toByteArray()
         Files.write(source, divergent)
         val unsafe = peer.call("change_recover", identity())
-        demand(
-            unsafe.rejected() || unsafe.document()["state"] == JsonPrimitive("recovery_required"),
-            NativeFailure.EXPECTED_REJECTION_MISSING,
-        )
+        evidence.expectRecoveryRequired("recovery-preserves-divergent-content", unsafe)
         unchanged(divergent)
         evidence.record("recovery-preserves-divergent-content", NativeCaseOutcome.PASSED)
         Files.write(source, postimage)
@@ -228,7 +209,7 @@ internal class NativeChangeWorkflow(
         val recovered = peer.call("change_recover", identity())
         demand(
             !recovered.rejected() &&
-                recovered.document()["state"] in setOf(JsonPrimitive("rolled_back"), JsonPrimitive("prior_state")),
+                recovered.document()["state"] in setOf(JsonPrimitive("rolled-back"), JsonPrimitive("prior-state")),
             NativeFailure.RECOVERY_FAILED,
         )
         unchanged(original)

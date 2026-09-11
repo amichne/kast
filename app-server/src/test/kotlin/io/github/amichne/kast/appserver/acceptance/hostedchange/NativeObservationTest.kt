@@ -63,7 +63,7 @@ class NativeObservationTest {
                                 buildJsonObject {
                                     put(
                                         "text",
-                                        """{"document":{"status":"rejected","reason":"exact_symbol_required"}}""",
+                                        """{"document":{"status":"rejected","reason":"exact-symbol-required"}}""",
                                     )
                                 }
                             )
