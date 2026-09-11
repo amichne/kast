@@ -63,6 +63,7 @@ private constructor(
             directory: Path,
             root: CanonicalWorkspaceRoot,
             host: IdeReadHostLifetime,
+            observer: HostedEndpointObserver = HostedEndpointObserver { _, _ -> },
         ): Refinement<OwnedHostedEndpoint, HostedEndpointFailure> {
             val socket = directory.resolve("host.sock")
             val descriptor = directory.resolve("endpoint.json")
@@ -104,7 +105,7 @@ private constructor(
                     channel.close()
                     return Refinement.Rejected(HostedEndpointFailure.OWNERSHIP_CONFLICT)
                 }
-                if (Files.exists(socket, NOFOLLOW_LINKS) || Files.exists(descriptor, NOFOLLOW_LINKS)) {
+                if (HostedEndpointReclamation.prepare(directory, root, lock, observer) is Refinement.Rejected) {
                     lock.release()
                     channel.close()
                     return Refinement.Rejected(HostedEndpointFailure.OWNERSHIP_CONFLICT)

@@ -453,12 +453,14 @@ internal object KastCleanSlateModules {
             effects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM, ForbiddenEffect.UDS_BIND, ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE),
             scopedEffects = mapOf(ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                 JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint"),
+                JvmClassName("io/github/amichne/kast/runtime/hosted/DeadHostedEndpoint"),
                 JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion"),
             ),
-                // FileChannel only locks the private endpoint; the digest names the canonical root.
+                // Reads are confined to endpoint ownership and approval artifacts; the digest names the canonical root.
                 ForbiddenEffect.PHYSICAL_SOURCE_READ to setOf(
                     JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion"),
                     JvmClassName("io/github/amichne/kast/runtime/hosted/HostedChangeApprovalsKt"),
+                    JvmClassName("io/github/amichne/kast/runtime/hosted/DeadHostedEndpointOwner\$Companion"),
                 ),
                 ForbiddenEffect.SOURCE_CONTENT_HASH to setOf(JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion")),
             ),

@@ -18,6 +18,8 @@ import kotlinx.coroutines.*
 
 internal enum class HostedEndpointStage {
     BIND,
+    RECLAMATION_ADMISSION,
+    RECLAMATION_RETIREMENT,
     ACCEPT,
     REQUEST,
     RETIREMENT,
@@ -91,9 +93,10 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                 when (
                     val opened =
                         OwnedHostedEndpoint.open(
-                            OwnedHostedEndpoint.directory(Path.of(System.getProperty("user.home")), root),
-                            root,
-                            query.hostLifetime,
+                            directory = OwnedHostedEndpoint.directory(Path.of(System.getProperty("user.home")), root),
+                            root = root,
+                            host = query.hostLifetime,
+                            observer = observer,
                         )
                 ) {
                     is Refinement.Refined -> opened.value
