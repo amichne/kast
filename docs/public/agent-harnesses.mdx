@@ -1,7 +1,7 @@
 ---
 type: "Integration Guide"
 title: "Integrate an agent harness"
-description: "Expose the exact installed Kast tool contract without duplicating its CLI or schemas."
+description: "Load installed tool schemas, bind invocations by name, and preserve evidence and approval."
 resource: "file://docs/public/agent-harnesses.mdx"
 tags: ["agents", "harness", "server projection", "search"]
 timestamp: "2026-09-11T00:00:00-04:00"
@@ -22,166 +22,104 @@ icon: "bot"
 keywords: ["agent harness", "serverProjection", "query", "tool schemas"]
 ---
 
-Kast ships a turnkey Codex integration. Other agent hosts can integrate Kast by
-consuming the exact installed server projection. That projection is the contract;
-copied command tables or handwritten tool definitions are not.
+A harness should load the contract from the Kast executable it will invoke.
+Run `kast --schema`, then consume `serverProjection`. This supplies the tool
+catalog and argument vectors for that installation.
 
-## Prefer the included Codex integration
+For the included integration, run `kast codex` from your repository root and
+continue with [Search declarations](/search). The rest of this page is for
+implementing another harness.
 
-From the Kotlin repository root, run:
-
-```console
-kast codex
-```
-
-The integration ensures a launchd-owned App Server at Codex's standard local
-daemon socket, qualifies the installed Kast and Codex contracts, and registers
-the configured tools. `kast codex desktop` launches Desktop against that same
-socket without substituting its Codex executable.
-
-## Consume the installed projection
-
-A custom harness has one integration path:
+## Bind the catalog once at startup
 
 <Steps>
-  <Step title="Read the exact installed contract">
-    Invoke `kast --schema` and read its `serverProjection`. Treat an absent,
-    malformed, unsupported, or contradictory projection as startup failure.
+  <Step title="Admit the installed projection">
+    Validate the projection and its versions. Missing, malformed, unsupported,
+    or contradictory data must stop catalog registration. The current server
+    projection is version 10; CLI invocation bindings are version 3. A version
+    number alone does not prove the rest of the contract.
   </Step>
-  <Step title="Qualify the hosted bootstrap">
-    Preserve the namespace, policy, tool order, names, descriptions, input and
-    output schemas, effects, approval policies, loading hints, and execution
-    budgets. Do not infer any of them from a version string.
+  <Step title="Join by tool name">
+    Match `hostedBootstrap.tools` with `cliInvocations.operations` by `toolName`,
+    then verify the canonical operation ID. Require exactly one binding per
+    tool. Multiple search tools intentionally share `query.run`, so operation
+    identity alone cannot identify an invocation.
   </Step>
-  <Step title="Join tools to invocation bindings">
-    Match `hostedBootstrap.tools` to `cliInvocations.operations` by tool name,
-    then verify the canonical operation ID. Require a unique, complete match
-    before advertising a tool.
+  <Step title="Register the complete tool definition">
+    Preserve namespace, policy, order, name, description, input/output schemas,
+    effect, approval policy, deferred-loading hint, and execution budget. Use the
+    admitted argument vector and repository root when invoking the executable;
+    do not interpolate input into a shell command.
   </Step>
-  <Step title="Invoke from the repository root">
-    Execute the declared argument vector without a shell. Send one tool-input
-    JSON object on standard input and validate the result against the declared
-    output schema.
+  <Step title="Validate and return the whole result">
+    Send one JSON input on stdin. Admit the output against that tool's output
+    schema and preserve both result layers. Give the model the semantic status,
+    payload, qualification, item failures, and unchanged references.
+    [Read a response](/reference/responses) describes the dispatch rules.
   </Step>
 </Steps>
 
-The harness should requalify the installed projection when the provider starts.
-If the executable or projection has changed, construct a new catalog instead of
-reusing stale metadata.
+Requalify when the provider starts. If the executable or projection changes,
+construct a new catalog instead of keeping bindings from the prior installation.
 
-## Make search the default
+## Choose what the agent sees
 
-`search_classes`, `search_functions`, `search_declarations` and `check_diagnostics`
-are eager. Prefer the specific search when its declaration kind is known; use
-`query_symbols` for enumeration, returned references and ordered pipelines.
+| Availability | Tools | Why |
+| --- | --- | --- |
+| Eager defaults | `search_classes`, `search_functions`, `search_declarations`, `check_diagnostics` | Directly express common reader intent |
+| Deferred defaults | `query_symbols`, `source_read`, `semantic_query`, `impact_analyze` | Add pipelines, source, relations, and traversal when needed |
+| Deferred changes | `change_plan`, `change_apply`, `change_recover` | Keep planning and approval attached to stored changes |
+| Explicit opt-in | `symbol_lookup`, `symbol_inspect` | Expose candidate discovery and refinement when required |
 
-The advanced query, source, semantic, impact and change tools are deferred.
-Direct `symbol_lookup` and `symbol_inspect` remain opt-in. Change planning does
-not require approval; apply and recovery require approval of the exact stored
-plan. Several tool names bind to `query.run`; join
-installed CLI invocations by `toolName`, not just `operationId`. Projection 10
-and CLI invocation version 3 require the matched installed contract.
+Keep lifecycle, synchronization, topology setup, status, and broker administration
+outside the agent tool catalog. Reads use the existing saved IDEA project and
+report a typed blocker when its evidence cannot be admitted.
 
-The harness must also preserve returned references verbatim. It must not rebuild
-selectors from names, file paths, or source text.
+## Preserve approval as an operation
 
-## Let operations own readiness
+`change_plan` needs no approval. `change_apply` and `change_recover` each need
+approval of the exact stored plan. A plan ID or an `EXPLICIT` catalog field does
+not constitute approval.
 
-Do not expose lifecycle, index synchronization, topology preparation, status,
-or broker administration as agent tools. Semantic reads use the existing saved, indexed IntelliJ project and reject an
-unavailable host. Operations retain their own evidence and readiness boundaries.
+The included integration loads the stored preview, emits a native file-change
+preview, and requests approval from the current controller. Decline,
+cancellation, lost control, and expiration reject before writing. A custom
+harness must implement the approval integration specified by the installed
+contract; an ordinary CLI invocation cannot substitute for it.
 
-This keeps the agent contract task-oriented and prevents a harness from creating
-an invalid prerequisite sequence.
+Follow [Change source](/change) for broker trust, plan lifetime, apply states,
+and recovery. Preserve qualified mutation outcomes: `applied_unverified` and
+`recovery_required` cannot be rendered as verified success.
 
-## Preserve the failure layers
+## Configuration and migration
 
-There are two result layers:
+<AccordionGroup>
+  <Accordion title="Configure the selected catalog">
+    `KAST_APP_SERVER_TOOLS` accepts an exact, non-empty, duplicate-free,
+    comma-separated subset of installed tool names. Unknown names reject startup.
+    Its default selection is:
 
-- An outer `completed` result means the declared invocation ran and produced a
-  schema-admitted semantic document.
-- An outer `rejected` result carries a `diagnostic` for a process, runtime,
-  protocol, or output-boundary failure.
+    ```text
+    search_classes,search_functions,search_declarations,query_symbols,source_read,semantic_query,impact_analyze,check_diagnostics,change_plan,change_apply,change_recover
+    ```
 
-Inside a completed invocation, the semantic document can still be `complete`,
-`qualified`, or `rejected`. Keep its status, limitations, item failures, and
-proof-carrying references available to the model. Never flatten a qualified or
-rejected semantic outcome into ordinary success.
+    Catalog selection does not grant mutation authority. Direct candidate tools
+    remain opt-in. Set `KAST_ENABLE_APP_SERVER=0` to disable the integration.
+  </Accordion>
+  <Accordion title="Find the configuration used by a launch">
+    The installer saves App Server settings in the selected release's
+    `config/environment`, normally reached through
+    `~/.local/share/kast/current/config/environment`. Process values override
+    saved values. Fresh installations materialize defaults, including `KAST_DEBUG=0`.
 
-## Configure the App Server catalog
-
-The installer writes App Server settings beside `KAST_ENABLE_LAUNCHD` in the
-selected release's `config/environment` file. By default, the selected file is
-available through `~/.local/share/kast/current/config/environment`. Disable the
-integration without removing Kast with a process override:
-
-```shell
-KAST_ENABLE_APP_SERVER=0
-```
-
-Fresh installations materialize every saved-installation default in this file,
-including `KAST_DEBUG=0`. Each App Server launch also atomically writes the full
-resolved non-secret snapshot to the `launchEnvironment` path reported by
-`kast app-server status`. Use `KAST_DEBUG=1` to stream bounded launch diagnostics
-to stderr in addition to the persistent service log.
-
-Set `KAST_APP_SERVER_TOOLS` to an exact, non-empty comma-separated subset of the
-names in `kast --schema`. Process values override the saved file. Unknown,
-duplicate, or empty names reject startup. The default value is:
-
-```text
-search_classes,search_functions,search_declarations,query_symbols,source_read,semantic_query,impact_analyze,check_diagnostics,change_plan,change_apply,change_recover
-```
-
-Change tools are deferred defaults. Tool selection does not grant live mutation
-authority or bypass the separate approval required by apply and recovery.
-
-## Use a stored change plan
-
-See [Add a Kotlin declaration](/change) for the user workflow and recovery states.
-
-The existing-IDE change path currently supports `AddDeclaration` in one existing,
-authored Kotlin source file. Keep the saved project open in IntelliJ with the
-matched Kast plugin. Missing hosts, unsupported intents and stale references
-reject without starting an isolated workspace.
-
-Enroll the local broker explicitly before applying or recovering a plan:
-
-```console
-kast ide trust-broker
-```
-
-This creates an Ed25519 key pair in `~/.kast/approval`, or preserves an existing
-matching pair. The approval directory and keys are private to the local user.
-Unsafe paths, incomplete keys and mismatched keys reject. Apply does not create
-keys or enroll trust automatically.
-
-1. Use a Kast search and pass its returned `symbol_ref` unchanged to
-   `change_plan` as the exact target. Use the installed tool schema for the
-   `add-declaration` request.
-2. Keep the returned immutable plan identity and review its file preview.
-   Planning does not change source or grant write permission.
-3. Invoke `change_apply` with that identity. The included Codex integration loads
-   the stored preview, emits a separate native `fileChange` preview item, and
-   requests approval from the current controller. The original dynamic-tool item
-   keeps its identity and content. Decline, cancellation, lost control and expired
-   approval reject before writing.
-4. Preserve the complete semantic result. `Verified` includes a durable receipt;
-   `AppliedUnverified` means the write occurred but verification or receipt
-   persistence did not complete; `RecoveryRequired` retains an uncertain attempt.
-   The latter two are qualified outcomes, not verified success.
-
-Apply rechecks the plan's exact root, IDE owner, epoch, project model and saved
-preimage at the write boundary. Repeating an already verified plan returns its
-stored receipt without repeating the write. An interrupted attempt requires
-recovery. `change_recover` requests a new exact-plan approval and uses durable
-records plus a fresh source observation to establish the prior state or roll
-back an exact matching postimage. Divergent or unavailable evidence remains
-recovery-required.
-
-A custom harness must provide the approval integration required by the installed
-contract. A plan identity, catalog approval policy or ordinary CLI invocation
-cannot substitute for controller approval.
-
-For operational symptoms and safe status collection, see
-[Troubleshooting](/troubleshooting).
+    `kast app-server status` reports the resolved `launchEnvironment` snapshot,
+    saved configuration, and service log paths. `KAST_DEBUG=1` also streams
+    bounded launch diagnostics to stderr.
+  </Accordion>
+  <Accordion title="Migrate an older query integration">
+    Recreate persisted catalogs with the matched executable and broker.
+    `kast.query` and `kast.diagnostic_check` are not aliases in the new agent
+    catalog. Use the intent tools. The explicit legacy `kast query run` CLI
+    grammar still exists; it is distinct from the new agent registration.
+  </Accordion>
+</AccordionGroup>

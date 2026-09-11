@@ -1,0 +1,44 @@
+---
+type: "API Contract"
+title: "Follow relationships and reuse symbols"
+description: "Compose ordered queries without losing symbol identity or completeness evidence."
+timestamp: "2026-09-11T00:00:00-04:00"
+code_sources:
+  - path: "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json"
+  - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt"
+---
+
+`kast.query_symbols` handles ordered pipelines. This example filters functions before finding their callers:
+
+```json
+{
+  "source": {
+    "type": "all_declarations",
+    "declaration_kinds": ["function"],
+    "scope": null
+  },
+  "steps": [
+    {"type":"filter_visibility","visibilities":["public"]},
+    {"type":"expand_relation","relation":"callers"}
+  ],
+  "return_fields": ["name","location","signature"]
+}
+```
+
+Sources are `search_declarations`, `all_declarations` and `symbol_refs`. Steps are `filter_visibility`, `expand_relation` and `distinct_symbols`. Their order is meaningful: filtering before expansion selects callers of public functions; filtering after expansion selects public callers. Kast does not reorder steps or insert deduplication. Diagnostics are a separate tool.
+
+`steps: null` and `steps: []` both mean no transformations. `return_fields: null` selects name and location; `return_fields: []` requests mandatory identity and kind only. Duplicate projection fields reject.
+
+To reuse a result, copy its `symbol_ref` verbatim into `source: {"type":"symbol_refs","symbol_refs":["<returned token>"]}`. Schema admission does not authenticate a token. The original owner re-admits its workspace, lifetime, epoch and scope. Do not construct or shorten references. Use `semantic_query` for occurrence-oriented relation facts, including use-site locations; query expansion returns related declaration symbols.
+
+
+## Decide whether to continue
+
+Read the result's qualification and item failures after each query. An expansion
+may cover only part of the relation. Narrow discovery before expanding when the
+result reaches a bound. Source-set restrictions apply to discovery and do not
+restrict expansion destinations.
+
+Use [Symbol results](/reference/symbols) to distinguish related declarations from
+occurrence-oriented `connections`. Use [Read a response](/reference/responses)
+before interpreting an empty pipeline result.

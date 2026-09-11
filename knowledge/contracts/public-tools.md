@@ -6,6 +6,9 @@ resource: file://app-server/src/main/resources/io/github/amichne/kast/appserver/
 tags: [tools, query, protocol, agents]
 timestamp: 2026-09-11T00:00:00Z
 code_sources:
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/MintlifyCallableReferenceTest.kt
+  - path: docs/public/docs.json
   - path: app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
   - path: packaging/generate-public-query.py
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
@@ -37,3 +40,20 @@ Installed projection 10 and CLI invocation version 3 join by tool name. Repeated
 The 32-example corpus, typed lowering, duplicate/path rejection, CLI wire parity and production provider routing are deterministic proofs. Codex schemas omit the Responses-only `strict` field and retain separate stronger admission constraints. These checks do not by themselves establish live API acceptance or improved model first-call accuracy.
 
 See the [public search guide](../../docs/public/search.mdx) and [semantic query flow](../flows/semantic-query.md).
+
+## Human-readable callable contracts
+
+The [response walkthrough](../../docs/public/reference/responses.mdx) separates
+process completion, semantic outcome, payload, and coverage. The
+[symbol guide](../../docs/public/reference/symbols.mdx) distinguishes candidate
+and exact-symbol evidence and documents the closed signature variants, nullable
+projections, and compiler-rendered type-string boundary.
+
+`MintlifyCallableReference` derives the OpenAPI reference from installed bindings.
+It promotes document-local definitions into tool-qualified `components.schemas`
+addresses and labels variants from their existing discriminants. Schema-model
+pages reference those generated components; authored prose does not replace the
+machine contract. The focused test compares resolved validation assertions with
+every installed input and output schema, ignoring only definition placement and
+display titles. Synthetic callable paths remain documentation routes, with no
+HTTP server or interactive playground advertised.

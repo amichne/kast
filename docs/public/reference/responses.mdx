@@ -1,0 +1,127 @@
+---
+type: "API Contract"
+title: "Read a tool response"
+description: "Separate invocation success from semantic evidence, then choose the next action."
+timestamp: "2026-09-11T00:00:00-04:00"
+code_sources:
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt"
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt"
+---
+
+Read a Kast response in this order: **invocation → semantic outcome → payload →
+coverage**. A completed process is only the first step.
+
+## 1. Did the invocation produce a document?
+
+| Outer `status` | Required field | What to do |
+| --- | --- | --- |
+| `completed` | `document` | Decode the document's operation or hosted rejection variant. |
+| `rejected` | `diagnostic` | Read its `boundary` and `reason`; use [Troubleshooting](/troubleshooting). |
+
+A completed invocation can contain a rejected semantic document. Do not use the
+outer status as a success badge for the answer.
+
+<Accordion title="Hosted rejection documents have their own shape">
+  A host-admission failure can be a `document` variant from the hosted endpoint
+  or hosted read schema. These variants use their own fields, including
+  `outcome: "rejected"`; they are not required to have the canonical
+  `operation` / `status` pair. Match the full installed union. Unknown variants
+  must fail admission, not fall through to an empty successful result.
+</Accordion>
+
+## 2. What did the operation establish?
+
+Canonical operation documents carry `operation` and `status`:
+
+| Semantic `status` | Interpretation | Next action |
+| --- | --- | --- |
+| `complete` | The operation met its scope and completeness contract. | Use the payload within that scope; inspect any item failures. |
+| `qualified` | Results carry incomplete coverage or another explicit limitation. | Keep the qualification with the answer; narrow the request when useful. |
+| `rejected` | The operation could not establish successful semantic evidence. | Read its typed `rejection` or `reason` and correct that boundary. |
+
+For example, this **illustrative published query response** is a complete empty
+answer. It is schema-valid; it is not a record of a live search in your repository.
+Live reads additionally carry `live` evidence.
+
+```json
+{
+  "status": "completed",
+  "document": {
+    "operation": "query.run",
+    "status": "complete",
+    "items": [],
+    "failures": []
+  }
+}
+```
+
+This answer establishes absence only in the requested scope. By contrast, the
+following schema-valid illustration cannot establish absence:
+
+```json
+{
+  "status": "completed",
+  "document": {
+    "operation": "query.run",
+    "status": "qualified",
+    "items": [],
+    "failures": [],
+    "qualification": {
+      "knownMinimum": 0,
+      "limitations": ["discovery-incomplete"]
+    }
+  }
+}
+```
+
+## 3. Open the payload for your tool
+
+These are typed collections and objects. Choose the model you need before
+expanding the complete callable schema.
+
+| Tool family | Canonical operation | Payload to inspect |
+| --- | --- | --- |
+| `search_classes`, `search_functions`, `search_declarations`, `query_symbols` | `query.run` | `items[]`: candidate or exact symbol; `failures[]`: per-item failures |
+| `source_read` | `source.read` | `snapshot`, `region`, `entities[]`, `text` |
+| `semantic_query` | `relation.read` | `relations[]`: occurrence-oriented relation facts |
+| `impact_analyze` | `traversal.run` | The graph, traversal coverage, and continuation state in the callable schema |
+| `check_diagnostics` | `diagnostic.check` | `diagnostics[]`: severity, message, and source location |
+| `change_plan`, `change_apply`, `change_recover` | Corresponding `change.*` operation | Plan, application, or recovery state; see [Change source](/change) |
+
+Start with [Symbol results](/reference/symbols), [the query-item model](/reference/models/query-item),
+[relation facts](/reference/models/relation-fact), or [diagnostic entries](/reference/models/diagnostic).
+Each callable in the reference retains its complete request and response contract.
+
+## 4. Retain coverage and failures
+
+For queries, `qualification.knownMinimum` is a known returned count, not an
+estimate of all matches. `qualification.limitations` is a non-empty list of
+finite reasons. Result, byte, work, and time limits differ from incomplete
+discovery, refinement, visibility, and relation coverage.
+
+`failures[]` is also typed. Its `type` is one of `refinement`, `exact-reference`,
+`predicate`, or `relation`; it retains the affected `ref` and finite `reason`.
+A relation failure additionally names the `relation`. Successful items remain
+usable, but an item failure cannot be silently discarded from a completeness claim.
+
+<AccordionGroup>
+  <Accordion title="When is an empty answer meaningful?">
+    Require semantic `complete`, the intended scope, and no relevant item
+    failures. An empty `qualified` answer only says no match was returned under
+    the reported limits. A rejected request answers no semantic question.
+  </Accordion>
+  <Accordion title="What does live evidence bind?">
+    `live.root` identifies the admitted repository, `live.host` the original IDE
+    host incarnation, and `live.epoch` the observed content/model epoch.
+    `contentView` is `SAVED_PSI_COMMITTED`. These are live coordinates, not a
+    published generation or proof of unsaved editor content. See the
+    [live evidence model](/reference/models/live-evidence).
+  </Accordion>
+  <Accordion title="Why does the callable reference show POST and 200?">
+    The OpenAPI document is a documentation projection. `/callables/...` paths
+    identify reference pages; they are not HTTP endpoints. Use the declared
+    tool or CLI invocation. The playground is disabled, no server is advertised,
+    and the displayed `200` groups the process outcome schema rather than
+    promising semantic success.
+  </Accordion>
+</AccordionGroup>

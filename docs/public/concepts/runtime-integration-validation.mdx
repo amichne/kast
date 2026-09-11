@@ -1,57 +1,24 @@
 ---
 type: "Runtime Flow"
-title: "Runtime integration and validation"
+title: "Runtime ownership and validation"
 sidebarTitle: "Runtime integration"
-description: "How the version-owned coordinator isolates workspaces and how the feature branch proves that behavior without touching live Kast or Codex state."
+description: "Locate compiler authority, distinguish live reads from workers, and assess validation evidence."
 resource: "file://docs/public/concepts/runtime-integration-validation.mdx"
 tags:
   - "runtime"
   - "workspaces"
   - "validation"
   - "installation"
-timestamp: "2026-09-08T00:00:00-04:00"
+timestamp: "2026-09-11T00:00:00-04:00"
 code_sources:
-  - path: "plan-follow-up-0.36.1.md"
-  - path: "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt"
-    symbols:
-      - "ConfigurationParameter"
-      - "KastConfigurationCatalogue"
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt"
   - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinator.kt"
-    symbols:
-      - "InstalledCoordinator"
-      - "InstalledCoordinatorConfiguration"
   - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceEnrollment.kt"
-    symbols:
-      - "WorkspaceEnrollmentStore"
   - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/ThreadCatalogStore.kt"
-    symbols:
-      - "FileThreadCatalogStore"
   - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceRuntimeControl.kt"
-    symbols:
-      - "WorkspaceRuntimeControl"
-  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceWorkerAdmission.kt"
-    symbols:
-      - "WorkspaceWorkerAdmission"
-  - path: "distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/endpoint/InstalledEndpointAlias.kt"
-    symbols:
-      - "InstalledEndpointAliasReceipt"
-      - "InstalledEndpointAliases"
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/UnixDomainWireClient.kt"
-    symbols:
-      - "UnixDomainWireClient"
-  - path: "indexer/src/main/kotlin/io/github/amichne/kast/indexer/InstalledIndexerTransport.kt"
-    symbols:
-      - "InstalledIndexerTransport"
   - path: "packaging/acceptance_environment.py"
-    symbols:
-      - "AcceptanceEnvironment"
-  - path: "packaging/test-model-input-startup.py"
-    symbols:
-      - "main"
-  - path: "packaging/installation-lifecycle.py"
-  - path: "build.gradle.kts"
-    symbols:
-      - "productBuildGate"
+  - path: "docs/reviews/live-semantic-read-acceptance.md"
+  - path: "docs/reviews/hosted-semantic-reproduction.md"
 icon: "network"
 keywords:
   - "multi-workspace"
@@ -61,63 +28,75 @@ keywords:
   - "runtime ownership"
 ---
 
-> This page describes the pre-release `feature/plan-0.36.1-runtime-integration` work. It separates source that exists, focused proof that has been observed, and gates that still need to run. It is not a release receipt.
+Ordinary semantic tools read the repository already open in IDEA. The installed
+broker owns agent connections and routing; the IDEA project owns live compiler
+evidence. Use this distinction when a request fails or when validating a harness.
 
-## Runtime model
-
-One installed coordinator owns service identity, connection admission, workspace registration, resource reservations, and worker retirement. Each resident workspace still runs in its own IntelliJ sidecar.
+## Follow a read
 
 ```mermaid
-flowchart TD
-  F[Agent frontends] --> C[InstalledCoordinator]
-  C --> R[WorkspaceEnrollmentStore]
-  C --> T[FileThreadCatalogStore]
-  C --> W[WorkspaceRuntimeControl]
-  W --> A[WorkspaceWorkerAdmission]
-  A --> S1[IntelliJ sidecar: workspace A]
-  A --> S2[IntelliJ sidecar: workspace B]
-  C --> I[Version-owned installation state]
+flowchart LR
+  A[Agent tool] --> B[Installed binding]
+  B --> C[Existing IDEA project]
+  C --> D[Saved compiler evidence]
+  D --> E[Typed result and coverage]
 ```
 
-The coordinator is installation-owned. Its readiness proof carries the installation identity, state epoch, service generation, configuration identity, and registry revision. A worker route must match those coordinates before a caller can reuse it.
+A missing or unready host rejects. This path does not open a workspace, import
+Gradle, synchronize an index, or start an isolated worker as a hidden prerequisite.
+Save source and finish indexing before requesting evidence.
 
-The workspace registry records canonical roots and a monotonically increasing revision. Thread bindings retain their workspace and installation owner. Ambiguous roots, reused thread identifiers with different owners, stale epochs, and stale service generations reject instead of selecting a likely workspace.
+Each live result retains its canonical root, original host incarnation, and
+content/model epoch. Those coordinates distinguish the evidence from an answer
+for another repository or a retired owner. See [Live evidence](/reference/models/live-evidence).
 
-Worker admission is partitioned by workspace. Startup requests for the same workspace and lifecycle intent can share one in-flight launch. A conflicting reuse, rebuild, or seed intent rejects. The default policy admits one resident worker and one heavy startup; the installed two-workspace fixture opts into two resident workers while retaining one startup lane.
+## Understand broker ownership
 
-## Version-owned state
+The installation-owned coordinator retains service identity, connection
+admission, workspace registration, resource admission, and worker retirement.
+Thread bindings retain workspace and installation owners. Ambiguous roots,
+contradictory thread reuse, stale epochs, and stale service generations reject.
 
-The version root owns configuration, the workspace registry, mutable runtime state, runtime payloads, caches, and socket endpoints. Installation reset and removal use the manifest and exact ownership receipts. They do not scan for vaguely related processes or remove unrelated caches.
+Explicit isolated-runtime workflows use per-workspace IntelliJ sidecars. Their
+startup and resource policies are distinct from ordinary existing-IDE reads.
+Coalesced startup applies only to the same workspace and lifecycle intent;
+conflicting reuse, rebuild, or seed requests reject.
 
-Unix socket aliases retain an inode and owner receipt for the physical `state/run` directory. The broker, CLI, and indexer revalidate that receipt around bind, probe, publication, and cleanup. If another actor replaces an alias or socket, cleanup retains the unproven object and reports recovery required.
+<Accordion title="Version-owned state and endpoint cleanup">
+  The version root owns configuration, workspace registration, mutable runtime
+  state, payloads, caches, and socket endpoints. Reset and removal use exact
+  manifests and ownership receipts. Socket aliases retain inode and owner
+  evidence; bind, probe, publication, and cleanup revalidate it. Replaced or
+  otherwise unproven objects remain in place with a recovery-required result.
+</Accordion>
 
-## Self-contained validation environment
+## Choose evidence for a validation claim
 
-The acceptance harness gives each run one private `0700` root and a private copy of the staged product. Writable HOME, JVM user home, CODEX_HOME, Gradle home, XDG directories, temporary files, configuration, runtime state, caches, and runtime payloads stay inside that root.
+| Check | What it can establish |
+| --- | --- |
+| Generated contract and schema tests | Request shapes, response variants, invocation bindings, and rejection of invalid values |
+| Focused coordinator and transport tests | Routing, ownership, deadlines, and bounded failure handling |
+| Existing-IDE semantic acceptance | Compiler results in the admitted project, source state, host, and workload tested |
+| Installed multi-workspace acceptance | Separation, reconnection, lifecycle, and cleanup for the specific fixture |
+| Product build gates | Agreement of the required checks at the tested source revision |
 
-Children receive an explicit executable and environment allowlist. Ambient credentials and controls are absent. The default network policy points cooperative clients at a closed localhost proxy; the Gradle acceptance case deliberately permits dependency downloads into its empty private Gradle home.
+A source implementation is not a passed acceptance run. A small fixture is not a
+capacity guarantee. Consult the repository's
+[existing-IDE acceptance record](https://github.com/amichne/kast/blob/main/docs/reviews/live-semantic-read-acceptance.md)
+and [semantic reproduction record](https://github.com/amichne/kast/blob/main/docs/reviews/hosted-semantic-reproduction.md)
+for the observed boundary.
 
-The harness tracks the process handles it starts and retires only those handles. It also validates any endpoint-alias receipt before unlinking the alias. A successful run removes the private root. A failed run retains the fixture and writes a bounded outcome document so the failure can be inspected without recording tool or source payloads.
+<Accordion title="How isolated acceptance avoids changing live installations">
+  The acceptance harness creates a private writable root and staged product,
+  with separate homes, configuration, caches, runtime payloads, and temporary
+  files. Children receive explicit executable and environment inputs. It tracks
+  and retires only its own processes and checks endpoint ownership before cleanup.
 
-This is self-contained writable state and process ownership, not an operating-system sandbox. The staged product, semantic runtime archive, compatible IDEA installation, and admitted tool binaries are explicit read-only inputs. Dependency downloads are an explicit exception for the two Gradle workspaces.
+  This isolates writable state and process ownership; it is not an OS sandbox.
+  Dependency downloads are an explicit exception in the Gradle fixture. Failed
+  runs retain bounded outcome evidence for diagnosis. Run one Gradle invocation
+  at a time per checkout.
+</Accordion>
 
-## Validation layers
-
-| Layer | Executable proof | Claim |
-| --- | --- | --- |
-| Offline environment | `python3 packaging/test-acceptance-environment.py` | Ambient credentials are excluded; products, homes, state, aliases, and owned processes stay isolated. |
-| Lifecycle | `python3 packaging/test-installation-lifecycle.py` | Reset and remove use exact manifests and receipts; unresolved work blocks deletion. |
-| Focused transport | `./gradlew :cli:nativeTest --tests '*WireDeadlineTest' :indexer:test --tests '*IndexerRequestLifetimeTest' --tests '*InstalledIndexerLaunchTest'` | Silent or partial peers terminate within the admitted budget, and uncertain retirement stays local. |
-| Coordinator | `./gradlew :app-server:test` | Workspace registration, immutable routing, startup coalescing, resource admission, status, and retirement remain typed and bounded. |
-| Installed two-workspace | `python3 packaging/test-model-input-startup.py --product /absolute/staged-product --runtime /absolute/semantic-runtime.zip --idea-home '/absolute/IntelliJ IDEA.app/Contents' --report /absolute/report.json` | Two independent Gradle workspaces return their own semantic symbols, reconnect to the same workers, stop independently, and reset owned state while preserving configuration. |
-| Product | `./gradlew productBuildGate` | Module checks, architecture, generated configuration, packaging, fixture isolation, installer behavior, and installed host integration agree at one source head. |
-
-Run one Gradle invocation at a time in a checkout. The two-workspace script prints `model-input-startup: two workspaces passed; <report>` only after every assertion and cleanup command succeeds.
-
-## Feature-branch status
-
-As of 2026-09-08, the source branch contains the typed configuration catalogue, version-owned coordinator and worker receipts, workspace registry and thread bindings, per-workspace admission, elapsed wire budgets, indexer retirement handling, lifecycle tooling, and the isolated acceptance harness.
-
-Focused indexer alias, request-lifetime, passive coordinator status, unpublished-startup recovery, and offline lifecycle checks have been observed passing during implementation. Those focused results do not establish the entire product. The installed two-workspace script and final `productBuildGate` have not yet been observed at the final implementation head.
-
-Completion requires all R1-R7 acceptance evidence from the plan at one final source revision, including a clean-checkout build and required CI. Representative heavy-monolith qualification remains a separate, explicitly authorized gate; the small fixtures establish routing and lifecycle behavior, not universal capacity.
+For operational failures, use [Troubleshooting](/troubleshooting); for field-level
+handling, use [Read a response](/reference/responses).

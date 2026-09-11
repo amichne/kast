@@ -1,81 +1,60 @@
 ---
 type: "Documentation Index"
 title: "Kast"
-description: "Compiler-grounded Kotlin search for coding agents."
+description: "Find Kotlin declarations, interpret compiler evidence, and make approved source changes."
 resource: "file://docs/public/index.mdx"
 tags: ["Kotlin", "compiler", "agents", "search"]
-timestamp: "2026-09-07T00:00:00-04:00"
+timestamp: "2026-09-11T00:00:00-04:00"
 code_sources:
   - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt"
     symbols: ["CanonicalAgentToolDefinitions"]
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/provider/KastProvider.kt"
+  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt"
     symbols: ["KastProviderQualifier", "KastRuntime"]
 mode: "wide"
 icon: "scan-search"
 keywords: ["Kotlin", "compiler", "coding agents", "semantic search"]
 ---
 
-Kast gives coding agents compiler-grounded search over one exact Kotlin
-repository. Developers install it and connect a harness; the agent asks the
-questions and Kast manages the runtime and intermediate evidence.
+Kast lets an agent find Kotlin declarations, follow compiler-resolved relationships,
+read source, check diagnostics, and plan an approved declaration change in your
+open IntelliJ project.
 
-## Start with the agent
+## What do you need to do?
 
-<CardGroup cols={2}>
-  <Card title="Search with Kast" icon="scan-search" href="/search">
-    See how the agent discovers exact Kotlin declarations and relationships.
-  </Card>
-  <Card title="Install and connect" icon="rocket" href="/start">
-    Install the matched release and connect the included Codex integration.
-  </Card>
-  <Card title="Integrate another harness" icon="bot" href="/agent-harnesses">
-    Consume the exact installed tool projection without copying Kast's CLI contract.
-  </Card>
-  <Card title="Troubleshoot a failure" icon="life-buoy" href="/troubleshooting">
-    Read the reported boundary, collect passive status, and choose a bounded recovery.
-  </Card>
-  <Card title="Judge an answer" icon="shield-check" href="/concepts/evidence-boundaries">
-    Understand complete, qualified, and rejected semantic outcomes.
-  </Card>
-</CardGroup>
+| Task | Start here | You get |
+| --- | --- | --- |
+| Connect a Kotlin repository | [Install and connect](/start) | A working agent tool catalog |
+| Find a class, function, or property | [Search declarations](/search) | Separate matches, compiler signatures, and reusable references |
+| Follow callers or implementations | [Compose a query](/query-pipelines) | Related declarations from an ordered query |
+| Decide what an answer proves | [Read a response](/reference/responses) | Status, coverage, item failures, and the next action |
+| Add a declaration | [Plan and apply a change](/change) | A file preview, exact-plan approval, and verification evidence |
+| Integrate your own agent host | [Harness contract](/agent-harnesses) | Installed schemas and executable bindings |
 
-## Search is the main surface
+## Make one useful request
 
-Use `kast.search_classes` or `kast.search_functions` when the declaration kind
-is known, and `kast.search_declarations` for unknown or mixed kinds. Searches
-return exact references, names, locations and signatures. Diagnostics use the
-separate `kast.check_diagnostics` tool.
+After [setup](/start), ask your agent to find a declaration by its simple name.
+For a class named `OrderService`, the tool input is:
 
-The deferred `kast.query_symbols` composes enumeration, returned references,
-filters and semantic expansion. Keep the returned references intact rather
-than rebuilding identities from text.
-
-## Kast owns readiness
-
-An agent does not need to start Kast, synchronize the repository, or build a
-topology before asking a semantic question. Semantic reads use the existing saved, indexed IntelliJ project. An unavailable
-or unready host rejects the read without a hidden import or worker startup.
-
-Kast returns a typed limitation or rejection when it cannot establish current
-evidence. It does not manufacture readiness or silently weaken a result.
-
-## The compiler resolves what text cannot
-
-```kotlin
-import billing.PricePolicy as BillingPricePolicy
-
-class Checkout(private val policy: BillingPricePolicy) {
-    fun total(order: Order): Money = policy.price(order)
-}
+```json
+{"class_name":"OrderService","name_match":null,"scope":null}
 ```
 
-Text search can find `PricePolicy`, `policy`, and `price`. Compiler evidence can
-establish which declaration the alias names and which overload receives
-`order`, while retaining the repository root, semantic generation, scope, and
-limits behind the answer.
+`kast.search_classes` searches exact, case-sensitive names in the imported `main`
+and `test` source sets by default. `null` is an explicit default; keep all three
+fields. Use your project's declaration name when trying this example.
 
-<Info>
-  The human-facing contract is intentionally small. Harness authors can read the
-  exact installed schemas and invocation bindings from `serverProjection` when
-  they need to integrate Kast.
-</Info>
+Read the returned semantic status before the matches. A **complete** search can
+establish absence within its scope. A **qualified** search carries limits that
+must accompany the answer. A **rejected** search needs the reported problem
+resolved before it can answer the question.
+
+## Keep the compiler evidence
+
+A result's `symbol_ref` is the reusable identity. Copy it into later tools;
+`name`, file location, and a printed signature help a person understand the match
+but cannot replace that reference. [Inspect a symbol result](/reference/symbols)
+for the fields, signature variants, and reuse rules.
+
+Semantic reads use saved, indexed project state. Open the repository in IDEA,
+finish import and indexing, and save edits before asking again. An unavailable
+host returns a blocker; a search does not open or import the project for you.

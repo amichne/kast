@@ -14,54 +14,66 @@ icon: "shield-check"
 keywords: ["compatibility", "upgrade", "preview", "rollback"]
 ---
 
-Kast supports Apple Silicon macOS, on-disk Kotlin Gradle repositories, and the
-IntelliJ `262` release line described in [Install and connect](/start). Linux,
-Intel macOS, other languages, and other IntelliJ release lines are not currently
-supported. IDEA and its bundled Kotlin plugin may have different patch builds
-within `262`; their exact observed identities remain in runtime evidence.
-Protocol, schema, and artifact integrity checks remain exact.
+Check host admission, tool-schema compatibility, and evidence lifetime
+separately. Passing one does not establish the others.
 
-## Agent integration contract
+## Supported host
 
-The exact installed `serverProjection` is the harness compatibility boundary.
-It versions the hosted bootstrap and invocation bindings and supplies the tool
-names, schemas, loading hints, effects, approval policies, and budgets.
+| Boundary | Current policy |
+| --- | --- |
+| Platform | macOS on Apple silicon |
+| Repository | On-disk Kotlin Gradle repository |
+| IDEA and bundled Kotlin plugin | Both in the `262` release line; patch builds may differ |
+| JBR | Java 25 bundled with the selected IDEA |
+| Native acceptance baseline | IDEA `262.10315.125`, Kotlin `262.10315.125-IJ` |
 
-Harnesses should qualify that projection at startup. They must not infer
-compatibility from a version string or reuse a catalog from another installation.
+Other `262` builds are admitted by policy; the baseline remains the recorded
+native acceptance evidence. Other release lines, Linux, Intel macOS, and other
+languages are outside the current support contract. Full observed build
+identities remain in runtime evidence. Protocol, schema, and artifact integrity
+checks remain exact.
 
-The Codex App Server integration remains a preview while its upstream protocol
-is experimental. Failure of that integration does not weaken or change the
-installed Kast semantic contract.
+## Installed agent contract
 
-## Evidence lifetime
+Load `serverProjection` from the executable's `kast --schema` output. The current
+projection is version 10 and its CLI-invocation projection is version 3. Validate
+the complete catalog, schemas, policies, and bindings at provider startup.
+Several tool names share a canonical operation; bind invocations by tool name.
+[Harness integration](/agent-harnesses) gives the sequence.
 
-Tool names and schemas can remain compatible while repository evidence moves.
-A source or imported-model change may invalidate a returned reference. The safe
-response is a new Kast declaration search, not reinterpretation of the stale value.
+The Codex App Server integration is a preview while its upstream protocol is
+experimental. Full Desktop UI compatibility remains unqualified. Consult the
+[source-backed compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md)
+for the exact tested boundary.
 
-Complete, qualified, and rejected retain their documented meanings. A new
-version must not turn unknown or stale evidence into an unqualified success.
+## Upgrade a matched installation
 
-## Upgrades
+Run the [installer](/start) for the selected release, then restart IDEA so the
+matched plugin loads. The installer verifies the control, semantic-runtime, and
+IDEA plugin payloads before activation. Repository source and unrelated
+JetBrains state are preserved.
 
-The installer downloads and verifies a matched control, semantic-runtime, and
-existing-IDE plugin for the selected release line before replacing the active Kast installation
-and the Kast-owned IDEA user plugin directory. Restart IDEA after an install or
-upgrade to load that plugin. Ordinary upgrades and uninstall preserve repository
-source and unrelated JetBrains state.
+<Accordion title="Pin an approved release">
+  Run the installer from the same explicit tag passed to `--version`:
 
-For reproducible environments, run the installer from the same explicit release
-tag passed to `--version`:
+  ```shell
+  release_tag="v0.35.0"
+  /bin/bash -c "$(curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh")" \
+    -- --version "$release_tag"
+  ```
 
-```shell
-release_tag="v0.35.0"
-/bin/bash -c "$(curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh")" \
-  -- --version "$release_tag"
-```
+  Replace the example with your approved, published release. The example is a
+  pinning pattern, not a recommendation to downgrade.
+</Accordion>
 
-Replace the example tag with the release your environment has approved. Do not
-assume that a future release exists.
+Requalify the agent catalog after an executable upgrade. Do not reuse metadata
+from a different installation. If startup or repository admission fails, retain
+the reported boundary and use [Troubleshooting](/troubleshooting).
 
-If an upgrade cannot start the integration or admit the repository, follow
-[Troubleshooting](/troubleshooting) and retain the reported boundary evidence.
+## Refresh evidence after changes
+
+Compatible tool schemas do not keep a reference alive indefinitely. Saved source,
+imported-model changes, and owner replacement can invalidate old references.
+Search again when a reference rejects. Never reinterpret its token to make it fit
+new evidence. [Evidence outcomes](/concepts/evidence-boundaries) explains the
+claims retained by complete, qualified, and rejected results.

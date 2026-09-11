@@ -1,0 +1,115 @@
+---
+type: "API Contract"
+title: "Understand a symbol result"
+description: "Read exact identity, source coordinates, signature variants, and relation evidence."
+timestamp: "2026-09-11T00:00:00-04:00"
+code_sources:
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt"
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt"
+---
+
+A query item describes either a discovered **candidate** or an **exact symbol**.
+Read `type` first. Ordinary intent searches refine to exact symbols; the shared
+query schema also preserves candidate results for lower-level query use.
+
+## Inspect an exact symbol
+
+| Field | Contract | Use it for |
+| --- | --- | --- |
+| `type` | `exact-symbol` | Selecting the exact-symbol variant |
+| `symbol_ref` | Opaque token, byte-for-byte equal to `ref.token` | Passing the same declaration to another tool |
+| `ref.kind` | `exact-symbol` | Retaining the evidence family |
+| `kind` | `classlike`, `constructor`, `function`, `property`, or `type-alias` | Identifying the compiler declaration family |
+| `name` | String or `null` | Displaying the projected name |
+| `location` | File and range, or `null` | Navigating to the projected declaration |
+| `signature` | A closed signature variant, or `null` | Distinguishing compiler identities and callable shapes |
+| `connections` | Array of relation facts | Reading projected semantic relationships |
+
+These fields are required by the exact-symbol schema even when a projection is
+`null`. A missing projection is not an empty name, an empty signature, or failed
+identity. `return_fields: []` requests mandatory identity and kind only; the
+nullable projection fields remain represented in the wire document.
+
+[Open the complete query-item model](/reference/models/query-item).
+
+## Read a compiler signature
+
+Dispatch on `signature.type`. The wire vocabulary differs from `item.kind`:
+`class-like` is the signature tag; `classlike` is the item kind.
+
+<Tabs>
+  <Tab title="Function">
+    `qualifiedIdentity` is the compiler-qualified callable identity.
+    `valueParameters` is an ordered array of compiler type strings;
+    `contextReceivers` is an ordered array of compiler type strings.
+    `typeParameterCount` is a nonnegative integer.
+
+    `receiver` is `{ "type": "absent" }` or a `present` variant with
+    `compilerType`. The signature does not expose a function return-type field.
+    Do not infer parameter names or default values from the type array.
+
+    This illustrative signature preserves a function's ordered parameter types:
+
+    ```json
+    {
+      "type": "function",
+      "qualifiedIdentity": "com.example.orders.submitOrder",
+      "receiver": {"type": "absent"},
+      "contextReceivers": [],
+      "valueParameters": ["com.example.orders.Order", "kotlin.Int"],
+      "typeParameterCount": 0
+    }
+    ```
+  </Tab>
+  <Tab title="Property">
+    A property signature has `qualifiedIdentity`, the same receiver variants,
+    `contextReceivers`, and `returnType`, a compiler-rendered type string.
+    Preserve the string as returned rather than parsing it as a full type AST.
+  </Tab>
+  <Tab title="Class or type alias">
+    `class-like` and `type-alias` signatures carry `qualifiedIdentity`.
+    The absence of callable fields is part of these variants; it does not mean
+    the response has an arbitrary shape. Use related-symbol queries or source
+    reads for further detail.
+  </Tab>
+</Tabs>
+
+Compiler type strings are the deliberate textual boundary here. The enclosing
+signature, receiver, item, failure, and relation variants remain structured.
+Neither a rendered type nor a qualified name can replace `symbol_ref`.
+
+## Reuse identity
+
+Copy a returned `symbol_ref` unchanged into the `symbol_refs` source of
+`query_symbols`. Keep overloads separate even when their names and files match.
+See [Query pipelines](/query-pipelines) for the request shape.
+
+References are re-admitted by the runtime against workspace, owner lifetime,
+epoch, and scope. After saved source or imported-model changes, a stale token
+may reject. Repeat discovery; do not edit the token or reconstruct it from the
+location. A syntactically valid token is not proof that the runtime will admit it.
+
+## Read locations and relationships
+
+An exact location contains a workspace-relative `file` and a half-open `range`:
+`startInclusive` belongs to the range; `endExclusive` does not. Treat these as
+source offsets, not line numbers. Use them only with the corresponding source
+state. A candidate location has an `offset` rather than the exact-symbol range.
+
+A query `expand_relation` step returns related **declarations**. A relation fact
+can describe a particular **use site**. Use `semantic_query` for occurrence-oriented
+facts and inspect its tagged [relation model](/reference/models/relation-fact).
+Do not turn every relation into an unlabelled pair of names: keep its relation
+kind, endpoints, use-site location, and any unavailable evidence represented by
+that variant.
+
+<Accordion title="Candidate results carry weaker evidence">
+  The candidate variant has `ref.kind: "declaration-candidate"`, candidate
+  `kind: "class"` or `"symbol"`, and nullable name and location. It does not carry
+  the exact symbol's `symbol_ref`, compiler signature, or connections. Refine the
+  candidate through the supported lower-level operation before using it where
+  an exact symbol is required. Candidate discovery alone does not establish
+  overload identity.
+</Accordion>
+
+Before judging the whole answer, return to [response outcomes](/reference/responses).

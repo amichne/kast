@@ -1,10 +1,10 @@
 ---
 type: "Runbook"
 title: "Troubleshoot Kast"
-description: "Diagnose agent integration, runtime, and semantic failures without manually operating Kast."
+description: "Use the reported failure layer to choose a bounded corrective action."
 resource: "file://docs/public/troubleshooting.mdx"
 tags: ["troubleshooting", "failures", "runtime", "support"]
-timestamp: "2026-09-08T00:00:00-04:00"
+timestamp: "2026-09-11T00:00:00-04:00"
 code_sources:
   - path: "workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledGradleModelInputs.kt"
     symbols: ["InstalledGradleModelInputs"]
@@ -26,103 +26,92 @@ icon: "life-buoy"
 keywords: ["errors", "rejected", "qualified", "bootstrap", "support"]
 ---
 
-Start with the failure already reported by the agent or harness. Use the Kast
-binary directly only for passive status collection or a corrective action named
-by that evidence.
+Start with the reported result. Select the failing boundary before changing
+runtime state. For response field names, see [Read a response](/reference/responses).
 
-## Identify the failing layer
+## Choose the next action
 
-| Symptom | Meaning | Next action |
-| --- | --- | --- |
-| Kast tools are absent from a new thread | The App Server is disabled or did not qualify and publish the installed catalog. | Check the saved App Server configuration and broker readiness document. |
-| The tool invocation is outer `rejected` | Process, runtime, protocol, timeout, output, or schema admission failed. | Preserve its `diagnostic`, then collect passive status from the same repository root. |
-| The invocation is outer `completed`, but the semantic document is `rejected` | Kast ran the operation but could not establish successful semantic evidence. | Follow the typed semantic reason. Do not restart the runtime by default. |
-| The semantic document is `qualified` | The evidence is usable only within its attached limitations. | Narrow the question, increase an admitted bound, or report the limitation. |
-| Some query items have failures | The query returned per-item evidence and retained the items it could not refine. | Keep the successful items and inspect each typed item failure separately. |
+| Symptom | First action |
+| --- | --- |
+| Tools are missing | Check `kast app-server status` and the selected catalog. Confirm `KAST_ENABLE_APP_SERVER` is enabled. |
+| Outer `status: rejected` | Preserve `diagnostic.boundary` and `diagnostic.reason`; collect status below. |
+| The document rejects | Follow its finite reason. Open the intended IDEA project or correct the named input as appropriate. |
+| The answer is qualified | Read limitations and item failures. Narrow scope or relation expansion before increasing bounds. |
+| A reference is stale | Search again and reuse the new token unchanged. |
+| A change response is lost or uncertain | Keep the plan ID and durable records; follow [Change recovery](/change#recover-an-interrupted-change). |
 
-An empty complete result is a valid negative answer. An empty qualified result is
-not proof that nothing matched.
-
-## Collect passive status
-
-When the integration or outer invocation rejects, run bare `kast` from the exact
-repository root:
+## Collect status from the same repository
 
 ```console
 cd /path/to/kotlin-repository
 kast
+kast app-server status
 ```
 
-This command does not start, repair, or synchronize the runtime. Its JSON report
-can identify:
+Bare `kast` is passive: it does not start, repair, or synchronize the runtime.
+Keep its repository root, runtime identity, host/JBR observation, bootstrap state,
+and any `bootstrap.correctiveAction`. App Server status adds exact paths for
+`serviceLog`, `launchEnvironment`, `savedConfiguration`, and `workspaceRegistry`.
 
-- the installed control version and compatible IDEA/JBR observation;
-- the exact repository root and runtime identity;
-- cache and bootstrap state, including a bounded corrective action when one is
-  available;
-- admitted network configuration or its blocker; and
-- the private trace destination and enabled state.
+If startup itself fails, `kast codex` writes a finite reason to stderr.
+`KAST_DEBUG=1` enables bounded launch-stage output alongside the service log.
 
-Attach this report to an internal support request only after removing host paths
-that your organization treats as sensitive.
+## Resolve the common boundaries
 
-## Resolve common cases
+<AccordionGroup>
+  <Accordion title="The Codex integration cannot start">
+    Verify `kast` and `codex` in the launching environment and run from the
+    intended Kotlin Gradle root. If set, `CODEX_EXECUTABLE` must be absolute and
+    executable. `KAST_ENABLE_APP_SERVER` must be `0` or `1`.
 
-### The integration does not start
+    Validate `KAST_APP_SERVER_TOOLS` against `kast --schema`: it must contain
+    exact, non-empty, unique names. Recreate an obsolete catalog using the
+    matched broker and executable. Do not bypass admission with handwritten
+    definitions. See [Harness configuration](/agent-harnesses#configuration-and-migration).
+  </Accordion>
+  <Accordion title="The IDE host is unavailable or source is unready">
+    Open the exact repository in the compatible IDEA installation, ensure the
+    Kast plugin is loaded, finish import and indexing, and save edited files.
+    Search does not open a project or run an import as a hidden prerequisite.
+    Follow the reported host or source reason if readiness still rejects.
+  </Accordion>
+  <Accordion title="A search is incomplete">
+    Inspect `qualification.limitations` and `failures[]`. A smaller directory,
+    explicit source set, or narrower discovery before expansion can reduce work.
+    Change a bound only through the admitted configuration or request schema;
+    increasing it does not guarantee complete coverage.
+  </Accordion>
+  <Accordion title="The broker reports WORKSPACE_RECOVERY_REQUIRED">
+    The workspace is blocked, including recovery calls. Replace the broker while
+    retaining its invocation journal and thread store, then request fresh
+    exact-plan recovery approval. Retain the IDE's durable change records.
+    Replacement does not undo an effect or permit replay of an attempted plan.
+    Follow the [change workflow](/change#recover-an-interrupted-change).
+  </Accordion>
+</AccordionGroup>
 
-`kast codex` writes one finite reason to standard error. Check these boundaries
-in order:
+## Advanced runtime maintenance
 
-1. `kast` and `codex` are available to the launching environment.
-2. The command runs from the intended Kotlin Gradle repository.
-3. `CODEX_EXECUTABLE`, when set, is an absolute executable path.
-4. `KAST_ENABLE_APP_SERVER` is `0` or `1`.
-5. `KAST_APP_SERVER_TOOLS` is a non-empty, duplicate-free subset of exact names
-   returned by `kast --schema`.
+These controls concern installation state or the isolated sidecar. They are not
+prerequisites for an ordinary search in an open IDEA project.
 
-The broker rejects startup if it cannot prove the installed projection, the
-Codex protocol, the tool catalog, or an executable route. Do not work around
-that rejection with handwritten tool definitions.
+<AccordionGroup>
+  <Accordion title="Repair installation-owned broker state">
+    `kast codex` already recovers stale or malformed owned readiness as part of
+    ordinary launch. Only use the following reset when the diagnosed problem
+    calls for discarding owned state:
 
-`kast codex` automatically enrolls the current workspace, refreshes the owned
-login bootstrap, and recovers stale or malformed owned broker readiness before
-launching the client. `kast app-server status` reports exact paths under `paths`,
-including `serviceLog`, `launchEnvironment`, `savedConfiguration`, and
-`workspaceRegistry`. Set `KAST_DEBUG=1` to stream bounded, payload-free launch
-stages and those diagnostic paths to the calling process's stderr.
+    ```console
+    kast app-server repair --destructive
+    ```
 
-If ordinary recovery cannot establish a healthy service, explicitly request the
-destructive mode:
-
-```console
-kast app-server repair --destructive
-```
-
-This retires the exact launchd label for the active physical installation,
-deletes that installation's runtime, cache, broker, and workspace-registry state,
-re-enrolls the current workspace, rewrites the login bootstrap, and starts clean.
-It does not follow symlinks found inside the owned state tree. The operation is
-intentionally unavailable without `--destructive` because cached indexes and
-durable invocation evidence are discarded.
-
-### A stale reference rejects
-
-Source or imported-model changes can move the semantic generation. Ask the agent
-to repeat its Kast declaration search and preserve the newly returned references.
-Do not edit or reconstruct an old reference.
-
-### Startup reports a host or import blocker
-
-Follow `bootstrap.correctiveAction` when the passive status report provides it.
-Typical blockers concern the supported IDEA/JBR pair, Gradle project import, or
-an explicitly configured network policy.
-
-Do not rebuild private state as a generic first response. A rebuild discards a
-reusable cache and should be used only when the reported corrective action or a
-confirmed cache problem requires it.
-
-### Gradle input links reject during startup
-
+    This retires the active installation's launchd label, deletes its runtime,
+    cache, broker and workspace-registry state, then re-enrolls the workspace and
+    starts clean. It discards cached indexes and durable invocation evidence.
+    Do not use it as recovery for an uncertain source change whose records must
+    be retained. It does not follow symlinks inside the owned state tree.
+  </Accordion>
+  <Accordion title="Gradle model input links reject">
 Kast admits conventional Gradle model inputs through symbolic links when each
 link resolves inside the canonical workspace. File contents, stored link targets,
 resolved entry kinds, and selected descendants beneath directory aliases are
@@ -136,9 +125,8 @@ again. Kast does not materialize links or delete dangling inputs. The previously
 selected Gradle JVM remains recorded in the bootstrap report. A JVM property
 input can reject earlier during `selecting-gradle-jvm`, before a selected JVM
 has been established.
-
-### The sidecar runs out of heap
-
+  </Accordion>
+  <Accordion title="An isolated sidecar runs out of heap">
 Set one maximum heap for the next IntelliJ sidecar launch:
 
 ```console
@@ -168,29 +156,16 @@ The private cache's `log/startup.log` contains a `kast-indexer-heap` record with
 confirm the active process heap; current caller configuration cannot change a
 running JVM. A higher cap addresses a memory limit but does not establish the
 cause of memory pressure or guarantee that every workload fits.
+  </Accordion>
+</AccordionGroup>
 
-### A query reaches a limit
+## Report a reproducible defect
 
-Qualified query output retains its limitations and item failures. Narrow the
-scope or relationship expansion first. Increase a result, work, byte, or elapsed
-limit only when the larger request is intentional and remains within the
-harness-provided schema.
+Include the Kast version and source revision; observed macOS architecture, IDEA,
+Kotlin plugin and JBR versions; outer diagnostic; semantic status and finite
+reasons; and the passive status report. Add a minimal reproduction. Remove host
+paths or source your organization treats as sensitive before sharing.
 
-## Escalate with bounded evidence
-
-For a reproducible product defect, include:
-
-- the Kast version and source revision;
-- macOS architecture and the observed IDEA, Kotlin plugin, and JBR versions;
-- the outer invocation status and diagnostic, if present;
-- the inner semantic status, limitations, and rejection codes;
-- the passive `kast` report; and
-- a minimal reproduction that does not include proprietary source.
-
-Broker activity records contain bounded identities and completion states, not
-tool arguments, results, or source. Semantic trace paths come from the passive
-status report; apply your host's retention and access policy before sharing them.
-
-Report security issues through [GitHub private vulnerability
-reporting](https://github.com/amichne/kast/security/advisories/new), not a public
-issue.
+Broker activity records contain bounded identities and completion states rather
+than tool arguments or source. Apply your host's retention policy to trace files.
+Report security issues through [private vulnerability reporting](https://github.com/amichne/kast/security/advisories/new).

@@ -2,7 +2,7 @@
 type: "Workflow Guide"
 title: "Add a Kotlin declaration"
 sidebarTitle: "Change source"
-description: "Plan, approve, apply and recover a declaration change in your existing IntelliJ project."
+description: "Review a stored preview, approve one exact plan, and act on the returned apply state."
 resource: "file://docs/public/change.mdx"
 tags: ["change", "approval", "verification", "recovery"]
 timestamp: "2026-09-11T00:00:00-04:00"
@@ -21,11 +21,11 @@ Kast can add a declaration to one existing, authored Kotlin source file through
 the project already open in IntelliJ. The workflow keeps the search reference,
 stored plan, approval and verification evidence together.
 
-The supported intent is `AddDeclaration`. Adding files, replacing declarations,
+The supported wire intent is `add-declaration` (`AddDeclaration` in the domain). Adding files, replacing declarations,
 multi-file renames and arbitrary text edits are outside this hosted workflow.
 Unsupported requests reject without starting another workspace.
 
-## Prepare the project
+## Before planning
 
 [Install and connect Kast](/start), open the repository in IntelliJ, and let its
 initial import and indexing finish. The project must use the matched Kast
@@ -43,11 +43,12 @@ existing matching pair. Applying a plan does not enroll trust automatically.
 The three change tools are available as deferred defaults. Use the
 [installed harness contract](/agent-harnesses) for catalog configuration.
 
-## Search, plan and approve
+## Plan, review, and apply
 
 1. [Search](/search) for the target declaration. Pass the returned `symbol_ref`
-   unchanged to `change_plan`. Use the installed callable schema for the
-   `add-declaration` request and placement.
+   unchanged to `change_plan` as `intent.exactTarget`. The request also supplies
+   `intent.kind: "add-declaration"` and the Kotlin declaration text in
+   `intent.declaration`. The stored preview is where you check the resulting placement.
 2. Review the returned file preview and retain the immutable plan identity.
    Planning leaves source bytes and document state unchanged.
 3. Call `change_apply` with that identity. The included integration shows the
@@ -55,6 +56,23 @@ The three change tools are available as deferred defaults. Use the
    cancelling approval leaves source unchanged.
 4. Read the complete apply result. Apply performs semantic verification before
    returning; no separate verification call is needed.
+
+The planning request has this shape. Replace the placeholder with an actual
+returned token and the example declaration with the intended Kotlin source:
+
+```json
+{
+  "intent": {
+    "kind": "add-declaration",
+    "exactTarget": "<returned symbol_ref>",
+    "declaration": "fun retryLimit(): Int = 3"
+  }
+}
+```
+
+Apply and recovery each take `{ "planIdentity": "<returned plan identity>" }`.
+The placeholders describe the schema; they are not admitted identities. Review
+the preview and obtain the separate exact-plan approval before either effect.
 
 Approval applies to the stored intent, target, source preimage and write set.
 If any of those must change, create a new plan and approve it. A plan identity
@@ -65,13 +83,17 @@ at the write boundary. A stale plan rejects before mutation. Closing or unloadin
 the original project owner invalidates its references and unapplied plans; search
 again after reopening.
 
-## Interpret the result
+## Decide what happened from the response
 
-| Apply state | Meaning | Next action |
+| `document.state` | Meaning | Next action |
 | --- | --- | --- |
-| `Verified` | The write and required semantic obligations are recorded in a durable receipt. | Keep the receipt; obtain fresh references for further work. |
-| `AppliedUnverified` | A write occurred, but verification or receipt persistence did not complete. | Preserve the result and use approved recovery. |
-| `RecoveryRequired` | An attempted effect remains uncertain or needs reconciliation. | Preserve the result and use approved recovery. |
+| `verified` | The write and required semantic obligations are recorded in a durable receipt. | Keep the receipt; obtain fresh references for further work. |
+| `applied_unverified` | A write occurred, but verification or receipt persistence did not complete. | Preserve the result and use approved recovery. |
+| `recovery_required` | An attempted effect remains uncertain or needs reconciliation. | Preserve the result and use approved recovery. |
+
+Read the outer invocation status first, then `document.status` and
+`document.state`. A verified apply is `complete`; the two uncertain states are
+`qualified`. [Read a response](/reference/responses) explains the layers.
 
 A rejection before mutation establishes that this attempt wrote nothing. A lost
 response does not. Keep qualified outcomes visible to the agent instead of

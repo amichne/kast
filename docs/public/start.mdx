@@ -9,128 +9,92 @@ timestamp: "2026-09-11T00:00:00-04:00"
 code_sources:
   - path: "install.sh"
   - path: "gradle/libs.versions.toml"
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/KastCodexMain.kt"
+  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt"
     symbols: ["KastCodexMain"]
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/InstalledBrokerServer.kt"
+  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledBrokerServer.kt"
     symbols: ["InstalledBrokerServerConfiguration"]
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/host/InstalledCodexClientLauncher.kt"
+  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/host/InstalledCodexClientLauncher.kt"
     symbols: ["InstalledCodexClientLauncher"]
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/PersistentBrokerService.kt"
+  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/PersistentBrokerService.kt"
     symbols: ["BrokerServiceLaunchCommand"]
 icon: "rocket"
 keywords: ["install", "Codex", "IntelliJ", "agent integration"]
 ---
 
-Install Kast once, then start it through the agent integration for the repository
-you want the agent to inspect. Semantic requests manage readiness automatically.
+Get one Kotlin repository answering semantic questions through the included Codex
+integration. You need macOS on Apple silicon, an on-disk Kotlin Gradle repository,
+IntelliJ IDEA in the `262` release line with its bundled Kotlin plugin and Java 25
+JBR, and a `codex` executable on `PATH`.
 
-## Requirements
+<Steps>
+  <Step title="Install the matched release">
+    Run:
 
-Kast currently supports this host contract:
+    ```shell
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
+    ```
 
-| Requirement | Supported value |
-| --- | --- |
-| Platform | macOS on Apple silicon |
-| Repository | An on-disk Kotlin Gradle repository |
-| IntelliJ | IDEA and bundled Kotlin plugin in the `262` release line |
-| Runtime | The Java 25 JBR bundled with the selected IDEA installation |
+    The installer verifies and installs Kast and its IDEA plugin. It does not
+    install IDEA. If prompted, add `~/.local/bin` to `PATH`.
+  </Step>
+  <Step title="Prepare IDEA">
+    Restart IDEA to load the plugin, open your repository, and wait for Gradle
+    import and indexing to finish. Save edited files. Reads use the existing
+    saved project; they do not start an import or isolated worker for you.
+  </Step>
+  <Step title="Connect from the repository root">
+    ```console
+    cd /path/to/kotlin-repository
+    kast codex
+    ```
 
-The build baseline remains IDEA `262.10315.125` with Kotlin plugin
-`262.10315.125-IJ`. The plugin accepts other builds in the `262` release line,
-and the installer selects the shared `idea-262.zip` archive. Other release lines
-are excluded. This is an intentionally broad compatibility policy; native
-acceptance evidence remains limited to the recorded baseline.
+    This enrolls the workspace, qualifies the installed catalog, and starts the
+    included integration. A separate App Server enable command is unnecessary.
+  </Step>
+  <Step title="Ask for a declaration">
+    Ask the agent to find a class or function that exists in your project. It
+    should use `kast.search_classes` or `kast.search_functions`. Expand the tool
+    result and check its semantic status, matches, and `symbol_ref` values.
 
-The built-in Codex integration also requires an installed `codex` executable on
-`PATH`, or an absolute `CODEX_EXECUTABLE`.
+    Continue with [Search declarations](/search) or [Read a response](/reference/responses).
+  </Step>
+</Steps>
 
-## Install Kast
+## Setup alternatives
 
-Install the latest published release:
+<AccordionGroup>
+  <Accordion title="Choose among multiple IDEA installations">
+    ```shell
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
+      -- --idea-home "/Applications/IntelliJ IDEA.app"
+    ```
 
-```shell
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
-```
+    The build baseline is IDEA `262.10315.125` and Kotlin plugin
+    `262.10315.125-IJ`. Other `262` builds are admitted by policy; recorded native
+    acceptance is limited to the baseline. See [Compatibility](/reference/compatibility).
+  </Accordion>
+  <Accordion title="Connect Codex Desktop">
+    Quit any running Desktop instance, then run `kast codex desktop` from the
+    repository root. Kast launches Desktop with its installed App Server façade;
+    the façade connects to the same persistent broker as the terminal integration.
+    Closing Desktop leaves the broker running. Full Desktop UI compatibility
+    remains unqualified in the [compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md).
+  </Accordion>
+  <Accordion title="Use an explicit Codex executable or another harness">
+    Set `CODEX_EXECUTABLE` to an absolute executable path if `codex` is not on
+    `PATH`. For another agent host, consume `kast --schema` as described in the
+    [harness contract](/agent-harnesses).
+  </Accordion>
+  <Accordion title="Uninstall Kast">
+    ```shell
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
+      -- uninstall
+    ```
 
-The installer verifies the matched control, semantic-runtime, and existing-IDE
-plugin payloads before activation. It installs the plugin into IDEA's user plugin
-directory. Restart IDEA after installation to activate it. The installer does
-not install IDEA itself or modify the application bundle.
+    Uninstall removes Kast-owned commands, installations, runtime state,
+    configuration, and services. Repositories and unrelated JetBrains state remain.
+  </Accordion>
+</AccordionGroup>
 
-If more than one compatible IDEA installation is available, select it
-explicitly:
-
-```shell
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
-  -- --idea-home "/Applications/IntelliJ IDEA.app"
-```
-
-The installer creates the public commands in `~/.local/bin` by default. Add that
-directory to `PATH` if the installer reports that it is not already available.
-
-## Connect Codex
-
-Start the included integration from the repository root:
-
-```console
-cd /path/to/kotlin-repository
-kast codex
-```
-
-The integration ensures a launchd-owned App Server at Codex's standard local
-daemon socket, enrolls the current workspace, refreshes the login bootstrap,
-qualifies the exact installed Kast projection, and starts Codex through its
-supported remote transport. A separate `kast app-server enable` step is not
-required. The default catalog includes deferred change planning, apply and
-recovery. Apply and recovery require exact-plan approval; see
-[Add a Kotlin declaration](/change). Direct symbol lookup and inspection require
-explicit selection.
-
-To launch Codex Desktop through the same qualified integration:
-
-```console
-kast codex desktop
-```
-
-Quit an already running Desktop before launching it this way. Kast sets
-`CODEX_CLI_PATH` for the new Desktop process to its installed `kast-codex` façade.
-Desktop exchanges the native App Server protocol over stdio; the façade connects
-to the same persistent broker and catalog used by the CLI. Closing Desktop leaves
-the broker running. Full desktop UI compatibility remains unqualified; see the
-[compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md).
-
-Ask the agent a question about the Kotlin repository. Its first Kast read should
-normally use `kast.search_classes`, `kast.search_functions` or `kast.search_declarations`. A successful tool row can be expanded to inspect the
-compiler-grounded result.
-
-<Info>
-  You do not need to run a separate start, sync, or topology command. The tool
-  invocation owns those prerequisites and either returns current evidence or a
-  typed blocker.
-</Info>
-
-## Connect another harness
-
-Use the installed `serverProjection` as the integration contract for a different
-agent host. It contains the exact tool names, schemas, policy, loading hints,
-approval requirements, execution budgets, and invocation bindings for that
-installation.
-
-[Integrate an agent harness](/agent-harnesses) explains the boundary without
-requiring application developers to learn the underlying CLI operations.
-
-## Uninstall
-
-Run the current installer in uninstall mode:
-
-```shell
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
-  -- uninstall
-```
-
-Uninstall removes Kast-owned commands, installations, runtime state,
-configuration, and services. It preserves repositories and unrelated JetBrains
-state.
-
-If installation or the first agent request fails, continue with
-[Troubleshooting](/troubleshooting).
+If tools are absent or the first request rejects, use [Troubleshooting](/troubleshooting).
+For source changes, complete the separate broker-trust step in [Change source](/change).

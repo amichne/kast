@@ -8663,26 +8663,6 @@
     },
     {
       "fingerprint": {
-        "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt",
-        "scope": "fun:rebaseLocalDefinitions(29:MintlifyCallableComponentName)11:JsonElement",
-        "kind": "JSON_ARRAY",
-        "sha256": "6738e42ebd98f30b5946f8e1603d6e0e926d855100936584a11fcbdde0059429"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt",
-        "scope": "fun:rebaseLocalDefinitions(29:MintlifyCallableComponentName)11:JsonElement",
-        "kind": "JSON_OBJECT",
-        "sha256": "e206ce37f8820c7020aceb6a5504091768ef8dc4485c99bc07776485900507dc"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSocketClient.kt",
         "scope": "type:ExistingIdeSocketClient/fun:query(13:CanonicalRoot,20:ExistingIdeOperation)/val:request",
         "kind": "JSON_BUILDER",
@@ -9577,26 +9557,6 @@
         "scope": "type:LiveReadOutputSchemaTest/fun:with(6:String,11:JsonElement)10:JsonObject",
         "kind": "JSON_OBJECT",
         "sha256": "948810b4f4285cc8fff66ff7c878a63869ef51ba16ced34eff950fa4379c443e"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/MintlifyCallableReferenceTest.kt",
-        "scope": "type:MintlifyCallableReferenceTest/fun:rebaseLocalDefinitions(6:String)11:JsonElement",
-        "kind": "JSON_ARRAY",
-        "sha256": "6738e42ebd98f30b5946f8e1603d6e0e926d855100936584a11fcbdde0059429"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/MintlifyCallableReferenceTest.kt",
-        "scope": "type:MintlifyCallableReferenceTest/fun:rebaseLocalDefinitions(6:String)11:JsonElement",
-        "kind": "JSON_OBJECT",
-        "sha256": "35aada5ee1ffa9c59c1622b8db7b49c15528b1bdd509aa59f79358afbe96547e"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."

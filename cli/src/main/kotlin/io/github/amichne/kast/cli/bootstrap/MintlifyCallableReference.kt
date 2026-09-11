@@ -6,10 +6,13 @@ import io.github.amichne.kast.cli.command.CliCommandSurface
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
 
 /** Build entry point for the generated public callable reference. */
 internal object MintlifyCallableReference {
@@ -43,12 +46,8 @@ internal fun mintlifyCallableReference(commandSurface: CliCommandSurface): CliJs
     val components =
         bindings
             .flatMap { binding ->
-                listOf(
-                    binding.requestComponentName().value to
-                        binding.tool.inputSchema.rebaseLocalDefinitions(binding.requestComponentName()),
-                    binding.responseComponentName().value to
-                        binding.tool.outputSchema.rebaseLocalDefinitions(binding.responseComponentName()),
-                )
+                binding.tool.inputSchema.documentationComponents(binding.requestComponentName()) +
+                    binding.tool.outputSchema.documentationComponents(binding.responseComponentName())
             }
             .toMap(linkedMapOf())
     return mintlifyCallableReferenceFactory.create(
@@ -76,7 +75,9 @@ private fun InstalledServerBinding.operationDocument(): MintlifyCallableOperatio
         summary = tool.name.replace('_', ' '),
         description =
             "${tool.description}\n\nThis callable is not an HTTP endpoint. " +
-                "Invoke it with the Kast CLI command shown in the example.",
+                "Invoke it with the Kast CLI command shown in the example.\n\n" +
+                "Read [response outcomes](/reference/responses) before using the payload. " +
+                "For compiler fields and reference reuse, see [symbol results](/reference/symbols).",
         requestBody =
             MintlifyCallableRequestBodyDocument(
                 required = true,
@@ -92,7 +93,10 @@ private fun InstalledServerBinding.operationDocument(): MintlifyCallableOperatio
             mapOf(
                 "200" to
                     MintlifyCallableResponseDocument(
-                        description = "Canonical Kast process outcome.",
+                        description =
+                            "Invocation envelope: completed contains a semantic document; " +
+                                "rejected contains a boundary diagnostic. A completed invocation may still contain " +
+                                "a qualified or rejected semantic outcome.",
                         content =
                             mapOf(
                                 "application/json" to
@@ -131,25 +135,56 @@ private fun InstalledServerBinding.requestComponentName(): MintlifyCallableCompo
 private fun InstalledServerBinding.responseComponentName(): MintlifyCallableComponentName =
     MintlifyCallableComponentName.response(tool.name)
 
-/** Rebinds one schema resource's document-local definitions after OpenAPI component embedding. */
-private fun JsonElement.rebaseLocalDefinitions(componentName: MintlifyCallableComponentName): JsonElement =
+/**
+ * Documentation projection of an admitted, dynamic JSON Schema resource. Lift local definitions into direct OpenAPI
+ * components; retain every assertion and annotate variants for human navigation. Schema keyword maps are dynamic schema
+ * data, never a manually assembled invocation payload.
+ */
+private fun JsonElement.documentationComponents(
+    componentName: MintlifyCallableComponentName
+): List<Pair<String, JsonElement>> {
+    val schema = this as? JsonObject ?: error("A callable schema must be an object")
+    val definitions = schema["\$defs"] as? JsonObject
+    return listOf(componentName.value to schema.documentationSchema(componentName)) +
+        definitions.orEmpty().map { (name, definition) ->
+            "${componentName.value}_$name" to definition.documentationSchema(componentName, name)
+        }
+}
+
+private fun JsonElement.documentationSchema(
+    componentName: MintlifyCallableComponentName,
+    title: String? = null,
+): JsonElement =
     when (this) {
-        is JsonArray -> JsonArray(map { element -> element.rebaseLocalDefinitions(componentName) })
-        is JsonObject ->
-            JsonObject(
-                mapValues { (name, value) ->
+        is JsonArray -> Json.encodeToJsonElement(map { it.documentationSchema(componentName) })
+        is JsonObject -> {
+            val properties = this["properties"] as? JsonObject
+            val tag =
+                listOf("status", "type", "kind").firstNotNullOfOrNull { key ->
+                    ((properties?.get(key) as? JsonObject)?.get("const") as? JsonPrimitive)?.content
+                }
+            val label = title ?: tag
+            val keywords = filterKeys {
+                it != "\$defs"
+            }
+                .mapValues { (name, value) ->
                     if (
                         name == "\$ref" &&
                             value is JsonPrimitive &&
                             value.isString &&
                             value.content.startsWith("#/\$defs/")
                     ) {
-                        JsonPrimitive("#/components/schemas/${componentName.value}/${value.content.removePrefix("#/")}")
-                    } else {
-                        value.rebaseLocalDefinitions(componentName)
-                    }
+                        JsonPrimitive(
+                            "#/components/schemas/${componentName.value}_${value.content.removePrefix("#/\$defs/")}"
+                        )
+                    } else value.documentationSchema(componentName)
                 }
-            )
+            Json.encodeToJsonElement(
+                    if (label != null && "title" !in keywords) keywords + ("title" to JsonPrimitive(label))
+                    else keywords
+                )
+                .jsonObject
+        }
         else -> this
     }
 

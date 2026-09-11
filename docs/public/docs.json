@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "maple",
   "name": "Kast",
-  "description": "Compiler-grounded Kotlin search for coding agents.",
+  "description": "Compiler-grounded Kotlin tools: find declarations, read evidence, and make approved changes.",
   "colors": {
     "primary": "#3154C7",
     "light": "#27439F",
@@ -32,45 +32,91 @@
         "tab": "Use Kast",
         "groups": [
           {
-            "group": "Start here",
-            "icon": "rocket",
+            "group": "Start",
             "pages": [
               "index",
               "start"
             ]
           },
           {
-            "group": "Search",
-            "icon": "scan-search",
+            "group": "Work with Kotlin",
             "pages": [
-              "search"
-            ]
-          },
-          {
-            "group": "Change source",
-            "icon": "file-pen-line",
-            "pages": [
+              "search",
+              "query-pipelines",
               "change"
             ]
           },
           {
-            "group": "Integrate",
-            "icon": "bot",
+            "group": "Interpret an answer",
+            "pages": [
+              "reference/responses",
+              "reference/symbols",
+              "concepts/evidence-boundaries"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Tool contracts",
+        "openapi": "reference/callables.openapi.json",
+        "groups": [
+          {
+            "group": "Integration",
             "pages": [
               "agent-harnesses"
             ]
           },
           {
-            "group": "Callable reference",
-            "icon": "square-function",
-            "openapi": "reference/callables.openapi.json"
+            "group": "Search and diagnostics",
+            "pages": [
+              "POST /callables/search_classes",
+              "POST /callables/search_functions",
+              "POST /callables/search_declarations",
+              "POST /callables/check_diagnostics"
+            ]
           },
           {
+            "group": "Read and explore",
+            "pages": [
+              "POST /callables/query_symbols",
+              "POST /callables/source_read",
+              "POST /callables/semantic_query",
+              "POST /callables/impact_analyze"
+            ]
+          },
+          {
+            "group": "Change source",
+            "pages": [
+              "POST /callables/change_plan",
+              "POST /callables/change_apply",
+              "POST /callables/change_recover"
+            ]
+          },
+          {
+            "group": "Compiler models",
+            "pages": [
+              "reference/models/query-item",
+              "reference/models/relation-fact",
+              "reference/models/diagnostic",
+              "reference/models/live-evidence"
+            ]
+          },
+          {
+            "group": "Candidate tools (opt-in)",
+            "pages": [
+              "POST /callables/symbol_lookup",
+              "POST /callables/symbol_inspect"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Operate Kast",
+        "groups": [
+          {
             "group": "Support",
-            "icon": "life-buoy",
             "pages": [
               "troubleshooting",
-              "concepts/evidence-boundaries",
               "reference/compatibility",
               "concepts/runtime-integration-validation"
             ]
@@ -163,7 +209,7 @@
     }
   },
   "search": {
-    "prompt": "Search setup, harnesses, and errors"
+    "prompt": "Search tasks, fields, and failure reasons"
   },
   "errors": {
     "404": {

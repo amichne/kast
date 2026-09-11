@@ -8,7 +8,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -37,7 +37,7 @@ class MintlifyCallableReferenceTest {
         )
         assertEquals(publicOperationIds.toSet(), installed.hostedBootstrap.tools.map { it.operationId }.toSet())
         assertFalse(installed.hostedBootstrap.tools.any { it.operationId in internalOperationIds })
-        assertEquals(installed.hostedBootstrap.tools.size * 2, components.size)
+        assertTrue(components.size > installed.hostedBootstrap.tools.size * 2)
 
         components.values
             .flatMap { schema -> schema.localReferences() }
@@ -91,12 +91,12 @@ class MintlifyCallableReferenceTest {
                 kastMetadata.getValue("approvalPolicy").jsonPrimitive.content,
             )
             assertEquals(
-                tool.inputSchema.rebaseLocalDefinitions(requestReference),
-                components.getValue(requestReference),
+                tool.inputSchema.expandSchema(tool.inputSchema),
+                components.getValue(requestReference).expandSchema(reference),
             )
             assertEquals(
-                tool.outputSchema.rebaseLocalDefinitions(responseReference),
-                components.getValue(responseReference),
+                tool.outputSchema.expandSchema(tool.outputSchema),
+                components.getValue(responseReference).expandSchema(reference),
             )
             assertEquals("bash", sample.getValue("lang").jsonPrimitive.content)
             assertEquals(
@@ -104,6 +104,26 @@ class MintlifyCallableReferenceTest {
                 sample.getValue("source").jsonPrimitive.content,
             )
         }
+    }
+
+    @Test
+    fun `compiler arrays resolve to named OpenAPI components instead of nested definitions`() {
+        val reference =
+            Json.parseToJsonElement(mintlifyCallableReference(commandGraphFactory().surface).value).jsonObject
+        val components = reference.getValue("components").jsonObject.getValue("schemas").jsonObject
+        assertTrue(components.values.none { "\$defs" in it.jsonObject })
+        val item = components.getValue("search_classesResponse_queryResultItem").jsonObject
+        assertEquals("queryResultItem", item.getValue("title").jsonPrimitive.content)
+        val variants = item.getValue("anyOf").jsonArray
+        assertEquals(
+            listOf("candidate", "exact-symbol"),
+            variants.map { it.jsonObject.getValue("title").jsonPrimitive.content },
+        )
+        components.values
+            .flatMap { it.localReferences() }
+            .forEach { ref ->
+                assertEquals(3, ref.removePrefix("#/").split('/').size, ref)
+            }
     }
 
     private fun JsonObject.reference(): String = getValue("\$ref").jsonPrimitive.content.substringAfterLast('/')
@@ -118,21 +138,26 @@ class MintlifyCallableReferenceTest {
             else -> emptyList()
         }
 
-    private fun JsonElement.rebaseLocalDefinitions(componentName: String): JsonElement =
+    /** Compare resolved validation assertions independently of definition placement and UI annotations. */
+    private fun JsonElement.expandSchema(root: JsonElement): JsonElement =
         when (this) {
-            is JsonArray -> JsonArray(map { element -> element.rebaseLocalDefinitions(componentName) })
-            is JsonObject ->
-                JsonObject(
-                    mapValues { (name, value) ->
-                        if (name == "\$ref" && value.jsonPrimitive.content.startsWith("#/\$defs/")) {
-                            JsonPrimitive(
-                                "#/components/schemas/$componentName/${value.jsonPrimitive.content.removePrefix("#/")}"
-                            )
-                        } else {
-                            value.rebaseLocalDefinitions(componentName)
+            is JsonArray -> Json.encodeToJsonElement(map { it.expandSchema(root) })
+            is JsonObject -> {
+                val ref = get("\$ref")
+                if (ref != null) {
+                    ref.jsonPrimitive.content
+                        .removePrefix("#/")
+                        .split('/')
+                        .fold(root) { node, key ->
+                            node.jsonObject.getValue(key)
                         }
-                    }
-                )
+                        .expandSchema(root)
+                } else
+                    Json.encodeToJsonElement(
+                        filterKeys { it != "\$defs" && it != "title" }
+                            .mapValues { (_, value) -> value.expandSchema(root) }
+                    )
+            }
             else -> this
         }
 

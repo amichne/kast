@@ -2,6 +2,12 @@
 
 ## 2026-09-11
 
+- Reorganized the public docs into task guides, tool contracts, and operations.
+  Added response decoding, symbol/signature guidance, and generated model pages.
+  The callable projection promotes local schema definitions and labels variants
+  while preserving the installed validation assertions. Updated setup and apply
+  guidance to match existing-IDE readiness and wire-state names.
+
 - Matched traversal continuation input/output schemas to the existing published
   version-1 and live version-2 codecs, retaining authority/version admission.
 - Preserved qualified manual-recovery evidence from a retained live plan after

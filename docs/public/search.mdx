@@ -1,7 +1,7 @@
 ---
 type: "Usage Guide"
-title: "Search with Kast"
-description: "How an agent should use Kast's primary query surface to discover and connect Kotlin declarations."
+title: "Find Kotlin declarations"
+description: "Choose a search tool, narrow its scope, and reuse the exact compiler result."
 resource: "file://docs/public/search.mdx"
 tags: ["search", "query", "agents", "Kotlin"]
 timestamp: "2026-09-11T00:00:00-04:00"
@@ -30,7 +30,7 @@ Use the tool that names your intent. Every search uses the session workspace's s
 | Compiler diagnostics for a file or directory | `kast.check_diagnostics` |
 | Enumeration, returned references or ordered transformations | `kast.query_symbols` (deferred) |
 
-## Search with defaults
+## Find your first declaration
 
 Call `kast.search_classes` with:
 
@@ -55,7 +55,7 @@ For a property or an unknown declaration kind, call `search_declarations`:
 
 `declaration_kinds: null` includes the supported `class`, `function`, `property` and `type_alias` families. Empty or duplicate kind selections reject. Constructor discovery is not advertised.
 
-## Choose one scope
+## Narrow the search
 
 A directory scope uses paths relative to the session workspace root:
 
@@ -99,35 +99,22 @@ Call `kast.check_diagnostics`:
 
 A path may name a file or directory. Use `.` explicitly for the workspace root. Null selects at most 100 returned entries; the positive maximum is 1000. This request does not build the project. It is independent of diagnostic logging detail and bounded by the host's diagnostic scope policy.
 
-## Compose an advanced query
+## Use the result
 
-`kast.query_symbols` handles ordered pipelines. This example filters functions before finding their callers:
+1. Read the outer `status`, then the semantic outcome in `document`.
+2. Inspect each match's `kind`, `name`, `location`, and `signature`. Keep overloads separate.
+3. Retain `symbol_ref` verbatim for a follow-up query or change plan.
+4. Read `failures` and any `qualification` before making a completeness claim.
 
-```json
-{
-  "source": {
-    "type": "all_declarations",
-    "declaration_kinds": ["function"],
-    "scope": null
-  },
-  "steps": [
-    {"type":"filter_visibility","visibilities":["public"]},
-    {"type":"expand_relation","relation":"callers"}
-  ],
-  "return_fields": ["name","location","signature"]
-}
-```
+[Read a response](/reference/responses) explains the layers.
+[Symbol results](/reference/symbols) explains the compiler fields.
 
-Sources are `search_declarations`, `all_declarations` and `symbol_refs`. Steps are `filter_visibility`, `expand_relation` and `distinct_symbols`. Their order is meaningful: filtering before expansion selects callers of public functions; filtering after expansion selects public callers. Kast does not reorder steps or insert deduplication. Diagnostics are a separate tool.
+For callers, implementations, enumeration, or returned-reference input, continue
+with [Query pipelines](/query-pipelines). A query expansion returns declarations;
+use `semantic_query` when you need individual use-site facts.
 
-`steps: null` and `steps: []` both mean no transformations. `return_fields: null` selects name and location; `return_fields: []` requests mandatory identity and kind only. Duplicate projection fields reject.
-
-To reuse a result, copy its `symbol_ref` verbatim into `source: {"type":"symbol_refs","symbol_refs":["<returned token>"]}`. Schema admission does not authenticate a token. The original owner re-admits its workspace, lifetime, epoch and scope. Do not construct or shorten references. Use `semantic_query` for occurrence-oriented relation facts, including use-site locations; query expansion returns related declaration symbols.
-
-## Read completeness evidence
-
-`complete`, `qualified`, and `rejected` have different meanings. Keep item failures, coverage, provenance and compiler signatures. A qualified empty result does not prove absence. Larger configured budgets do not guarantee complete coverage.
-
-Save edits and let IDEA finish indexing before a semantic read. An unavailable or unready host rejects without opening a project, importing Gradle or starting a worker as a hidden prerequisite.
-
-Installed server projection 10 and CLI-invocation projection 3 bind each tool name to its schema and executable command. Older persisted catalogs are incompatible and must be recreated with a matched broker/executable. The explicit legacy `kast query run` CLI grammar remains available; `kast.query` and `kast.diagnostic_check` are not aliases in the new agent catalog.
+<Accordion title="Why did a search miss a saved edit?">
+  Save the file and let IDEA finish indexing. Kast reads the saved, indexed
+  project, not an unsaved editor buffer. If the host is unready, follow its typed
+  blocker. If a reference is stale, repeat discovery and use the new token.
+</Accordion>
