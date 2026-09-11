@@ -128,3 +128,10 @@ tasks.register<Zip>("nativeFixturePlugin") {
         }
     }
 }
+
+// Keep the same checks while avoiding the alpha analyzer's concurrent PSI traversal race in the probe source sets.
+tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
+    if (name == "detektNativeFixture" || name == "detektNativeFixtureTest") {
+        parallel.set(false)
+    }
+}

@@ -65,7 +65,7 @@ class ProbeClientTest(unittest.TestCase):
                 probe.validate_barrier({**result, key: value}, "id", "a" * 64, "b" * 64)
 
     def test_setup_and_reopen_distinguish_observed_import_from_persisted_model(self):
-        readiness = {"smartMode": "SMART", "externalTasks": "IDLE", "gradleModule": "OBSERVED",
+        readiness = {"smartMode": "SMART", "externalTasks": "IDLE", "gradleModule": "OBSERVED", "sourceProvenance": "AUTHORED",
                      "import": "FINAL_TASKS_OBSERVED", "vfsRefresh": "COMPLETED", "quietWindowMillis": 2000,
                      "scope": "OBSERVED_SETUP_ONLY"}
         first = {**self.response(command="AWAIT_SETUP_READY"), "outcome": "SETUP_READY", "readiness": readiness}
@@ -79,6 +79,29 @@ class ProbeClientTest(unittest.TestCase):
                            ("quietWindowMillis", 1), ("scope", "FUTURE_STABILITY")):
             with self.assertRaises(probe.NativeFixtureProbeError):
                 probe.validate_response({**first, "readiness": {**readiness, key: value}}, "id", "AWAIT_SETUP_READY")
+
+    def test_indexing_variants_require_actual_named_state_and_exact_bound(self):
+        for command, outcome, state in (
+            ("HOLD_INDEXING", "INDEXING_HELD", {"state": "DUMB", "maximumHoldMillis": 10000}),
+            ("RELEASE_INDEXING", "INDEXING_RELEASED", {"state": "SMART"}),
+        ):
+            result = {**self.response(command=command), "outcome": outcome, "indexing": state}
+            self.assertEqual(result, probe.validate_response(result, "id", command))
+            with self.assertRaises(probe.NativeFixtureProbeError):
+                probe.validate_response(self.response(command=command), "id", command)
+            with self.assertRaises(probe.NativeFixtureProbeError):
+                probe.validate_response({**result, "indexing": {"state": "UNKNOWN"}}, "id", command)
+
+    def test_reimport_guard_is_required_and_cannot_be_sent_to_other_commands(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            (root / "workspace").mkdir()
+            client = probe.NativeFixtureProbe(root, root / "workspace")
+            with self.assertRaisesRegex(probe.NativeFixtureProbeError, "BUILD_IMAGE_GUARD_REQUIRED"):
+                client.request("REIMPORT_GRADLE", "a" * 64)
+            with self.assertRaisesRegex(probe.NativeFixtureProbeError, "MALFORMED_REQUEST"):
+                client.request("OBSERVE", "a" * 64, expected_build_sha256="b" * 64)
+            self.assertFalse((root / "native-probe").exists())
 
     def test_atomic_private_request_roundtrip(self):
         with tempfile.TemporaryDirectory() as directory:

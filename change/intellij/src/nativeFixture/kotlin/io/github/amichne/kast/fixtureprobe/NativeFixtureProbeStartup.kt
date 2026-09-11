@@ -80,6 +80,7 @@ private class ProbeWorker(private val project: Project, private val sandbox: Pro
     private val spool = sandbox.root.resolve("native-probe")
     private val requests = spool.resolve("requests")
     private val responses = spool.resolve("responses")
+    private val indexing = ProbeIndexingControl(project, sandbox)
     private val readiness = ProbeSetupReadiness(project, sandbox)
     private val controls = NativeFixtureProbeControls(project, sandbox)
     private val watcher = sandbox.root.fileSystem.newWatchService()
@@ -169,6 +170,16 @@ private class ProbeWorker(private val project: Project, private val sandbox: Pro
             NativeFixtureProbeExecution(project, sandbox, controls).execute(request)
         }
 
+    override fun controlIndexing(request: ProbeRequest): ProbeExecution =
+        indexing.execute(request) {
+            NativeFixtureProbeExecution(project, sandbox, controls).execute(request)
+        }
+
+    override fun reimport(request: ProbeRequest): ProbeExecution =
+        readiness.reimport(request) {
+            NativeFixtureProbeExecution(project, sandbox, controls).execute(request)
+        }
+
     private fun publish(path: Path, body: String) {
         val bytes = body.toByteArray(Charsets.UTF_8)
         if (bytes.size > MAXIMUM_RESPONSE_BYTES) return
@@ -180,6 +191,7 @@ private class ProbeWorker(private val project: Project, private val sandbox: Pro
 
     override fun dispose() {
         stopped = true
+        indexing.dispose()
         readiness.dispose()
         controls.dispose()
         watcher.close()

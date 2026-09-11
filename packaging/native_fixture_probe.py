@@ -8,9 +8,9 @@ import re
 import time
 import uuid
 
-COMMANDS = frozenset({"OBSERVE", "DIRTY_UNCOMMITTED", "COMMIT_DOCUMENT", "RESTORE_SAVED", "UNDO_PRODUCTION_CHANGE", "ARM_POST_SAVE_BARRIER", "UNLOAD_PRODUCTION_PLUGIN", "AWAIT_SETUP_READY", "AWAIT_REOPEN_READY"})
+COMMANDS = frozenset({"OBSERVE", "DIRTY_UNCOMMITTED", "COMMIT_DOCUMENT", "RESTORE_SAVED", "UNDO_PRODUCTION_CHANGE", "ARM_POST_SAVE_BARRIER", "UNLOAD_PRODUCTION_PLUGIN", "AWAIT_SETUP_READY", "AWAIT_REOPEN_READY", "HOLD_INDEXING", "RELEASE_INDEXING", "REIMPORT_GRADLE"})
 DIGEST = re.compile(r"[0-9a-f]{64}\Z")
-FAILURES = frozenset({"NOT_ENABLED", "SANDBOX_REJECTED", "PROJECT_MISMATCH", "SPOOL_REJECTED", "REQUEST_TOO_LARGE", "MALFORMED_REQUEST", "REQUEST_ID_MISMATCH", "UNKNOWN_COMMAND", "IMAGE_GUARD_REQUIRED", "TARGET_UNAVAILABLE", "SOURCE_TOO_LARGE", "SOURCE_ENCODING_REJECTED", "SAVED_IMAGE_CHANGED", "DOCUMENT_IMAGE_CHANGED", "DOCUMENT_STATE_REJECTED", "PSI_UNAVAILABLE", "PSI_LIMIT_EXCEEDED", "UNDO_UNAVAILABLE", "UNDO_COMMAND_MISMATCH", "UNDO_CONFIRMATION_REQUIRED", "UNDO_IMAGE_MISMATCH", "SAVE_REJECTED", "NATIVE_UNAVAILABLE", "RESPONSE_UNAVAILABLE", "BARRIER_ALREADY_ARMED", "BARRIER_IMAGE_MISMATCH", "PLUGIN_UNAVAILABLE", "PLUGIN_UNLOAD_UNSUPPORTED", "PLUGIN_UNLOAD_REJECTED", "SETUP_MOVING", "SETUP_IMPORT_PENDING", "SETUP_IMPORT_NOT_OBSERVED", "SETUP_IMPORT_FAILED", "SETUP_TIMEOUT", "SETUP_REFRESH_TIMEOUT", "SETUP_CANCELLED"})
+FAILURES = frozenset({"NOT_ENABLED", "SANDBOX_REJECTED", "PROJECT_MISMATCH", "SPOOL_REJECTED", "REQUEST_TOO_LARGE", "MALFORMED_REQUEST", "REQUEST_ID_MISMATCH", "UNKNOWN_COMMAND", "IMAGE_GUARD_REQUIRED", "TARGET_UNAVAILABLE", "SOURCE_TOO_LARGE", "SOURCE_ENCODING_REJECTED", "SAVED_IMAGE_CHANGED", "DOCUMENT_IMAGE_CHANGED", "DOCUMENT_STATE_REJECTED", "PSI_UNAVAILABLE", "PSI_LIMIT_EXCEEDED", "UNDO_UNAVAILABLE", "UNDO_COMMAND_MISMATCH", "UNDO_CONFIRMATION_REQUIRED", "UNDO_IMAGE_MISMATCH", "SAVE_REJECTED", "NATIVE_UNAVAILABLE", "RESPONSE_UNAVAILABLE", "BARRIER_ALREADY_ARMED", "BARRIER_IMAGE_MISMATCH", "PLUGIN_UNAVAILABLE", "PLUGIN_UNLOAD_UNSUPPORTED", "PLUGIN_UNLOAD_REJECTED", "SETUP_MOVING", "SETUP_IMPORT_PENDING", "SETUP_IMPORT_NOT_OBSERVED", "SETUP_IMPORT_FAILED", "SETUP_TIMEOUT", "SETUP_REFRESH_TIMEOUT", "SETUP_CANCELLED", "INDEXING_ALREADY_REQUESTED", "INDEXING_NOT_OWNED", "INDEXING_START_TIMEOUT", "INDEXING_RELEASE_TIMEOUT", "INDEXING_UNAVAILABLE", "BUILD_IMAGE_GUARD_REQUIRED", "BUILD_IMAGE_CHANGED", "BUILD_IMAGE_UNAVAILABLE", "REIMPORT_UNAVAILABLE"})
 
 
 class NativeFixtureProbeError(RuntimeError):
@@ -26,13 +26,19 @@ class NativeFixtureProbe:
         self.spool = self.root / "native-probe"
 
     def request(self, command: str, expected_preimage_sha256: str,
-                expected_postimage_sha256: str | None = None, timeout: float = 30) -> dict:
+                expected_postimage_sha256: str | None = None, timeout: float = 30, *,
+                expected_build_sha256: str | None = None) -> dict:
         if command not in COMMANDS or not DIGEST.fullmatch(expected_preimage_sha256):
             raise NativeFixtureProbeError("MALFORMED_REQUEST")
         if expected_postimage_sha256 is not None and (not DIGEST.fullmatch(expected_postimage_sha256) or expected_postimage_sha256 == expected_preimage_sha256):
             raise NativeFixtureProbeError("IMAGE_GUARD_REQUIRED")
         if command in {"UNDO_PRODUCTION_CHANGE", "ARM_POST_SAVE_BARRIER"} and expected_postimage_sha256 is None:
             raise NativeFixtureProbeError("IMAGE_GUARD_REQUIRED")
+        if command == "REIMPORT_GRADLE":
+            if expected_build_sha256 is None or not DIGEST.fullmatch(expected_build_sha256):
+                raise NativeFixtureProbeError("BUILD_IMAGE_GUARD_REQUIRED")
+        elif expected_build_sha256 is not None:
+            raise NativeFixtureProbeError("MALFORMED_REQUEST")
         if not 0 < timeout <= 300:
             raise NativeFixtureProbeError("MALFORMED_REQUEST")
         deadline = time.monotonic() + timeout
@@ -47,6 +53,8 @@ class NativeFixtureProbe:
                 "expectedPreimageSha256": expected_preimage_sha256}
         if expected_postimage_sha256 is not None:
             body["expectedPostimageSha256"] = expected_postimage_sha256
+        if expected_build_sha256 is not None:
+            body["expectedBuildSha256"] = expected_build_sha256
         target = self.spool / "requests" / f"{request_id}.json"
         temporary = target.with_suffix(".tmp")
         descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -109,11 +117,20 @@ def validate_response(result: object, request_id: str, command: str) -> dict:
         fields.add("lifecycle")
         if outcome != "LIFECYCLE_COMPLETED" or result.get("lifecycle") != "UNLOADED":
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")
-    elif command in {"AWAIT_SETUP_READY", "AWAIT_REOPEN_READY"}:
+    elif command in {"HOLD_INDEXING", "RELEASE_INDEXING"}:
+        fields.add("indexing")
+        expected_outcome = "INDEXING_HELD" if command == "HOLD_INDEXING" else "INDEXING_RELEASED"
+        expected_state = {"state": "DUMB", "maximumHoldMillis": 10000} if command == "HOLD_INDEXING" else {"state": "SMART"}
+        if outcome != expected_outcome or result.get("indexing") != expected_state:
+            raise NativeFixtureProbeError("MALFORMED_RESPONSE")
+    elif command in {"AWAIT_SETUP_READY", "AWAIT_REOPEN_READY", "REIMPORT_GRADLE"}:
         fields.add("readiness")
         readiness = result.get("readiness")
-        expected_imports = {"FINAL_TASKS_OBSERVED"} if command == "AWAIT_SETUP_READY" else {"FINAL_TASKS_OBSERVED", "NOT_OBSERVED_PERSISTED_MODEL"}
-        if outcome != "SETUP_READY" or not isinstance(readiness, dict) or set(readiness) != {"smartMode", "externalTasks", "gradleModule", "import", "vfsRefresh", "quietWindowMillis", "scope"}:
+        expected_imports = {"FINAL_TASKS_OBSERVED"} if command != "AWAIT_REOPEN_READY" else {"FINAL_TASKS_OBSERVED", "NOT_OBSERVED_PERSISTED_MODEL"}
+        if outcome != "SETUP_READY" or not isinstance(readiness, dict) or set(readiness) != {"smartMode", "externalTasks", "gradleModule", "sourceProvenance", "import", "vfsRefresh", "quietWindowMillis", "scope"}:
+            raise NativeFixtureProbeError("MALFORMED_RESPONSE")
+        expected_provenance = {"AUTHORED", "GENERATED"} if command == "REIMPORT_GRADLE" else {"AUTHORED"}
+        if readiness["sourceProvenance"] not in expected_provenance:
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")
         if readiness["smartMode"] != "SMART" or readiness["externalTasks"] != "IDLE" or readiness["gradleModule"] != "OBSERVED" or readiness["import"] not in expected_imports or readiness["vfsRefresh"] != "COMPLETED" or readiness["quietWindowMillis"] != 2000 or readiness["scope"] != "OBSERVED_SETUP_ONLY":
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")

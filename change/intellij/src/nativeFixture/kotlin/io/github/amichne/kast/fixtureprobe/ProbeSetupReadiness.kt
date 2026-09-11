@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 internal class ProbeSetupReadiness(private val project: Project, private val sandbox: ProbeSandbox) : Disposable {
-    private val import = AtomicReference(ProbeImportState.NOT_OBSERVED)
+    private val import = AtomicReference(ProbeImportProgress(ProbeImportState.NOT_OBSERVED, 0))
     private val workspaceChanges = AtomicLong()
     private val connection = project.messageBus.connect()
     private val disposed = CountDownLatch(1)
@@ -54,23 +54,76 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
                 override fun onImportFailed(path: String?, error: Throwable) = update(path, ProbeImportState.FAILED)
 
                 override fun onFinalTasksStarted(path: String?) {
-                    if (matches(path))
-                        import.compareAndSet(ProbeImportState.IMPORT_FINISHED, ProbeImportState.FINALIZING)
+                    if (matches(path)) transition(ProbeImportState.IMPORT_FINISHED, ProbeImportState.FINALIZING)
                 }
 
                 override fun onFinalTasksFinished(path: String?) {
-                    if (matches(path))
-                        import.compareAndSet(ProbeImportState.FINALIZING, ProbeImportState.FINAL_TASKS_FINISHED)
+                    if (matches(path)) transition(ProbeImportState.FINALIZING, ProbeImportState.FINAL_TASKS_FINISHED)
                 }
             },
         )
     }
 
-    fun await(request: ProbeRequest, observeSource: () -> ProbeExecution): ProbeExecution {
+    fun await(request: ProbeRequest, observeSource: () -> ProbeExecution): ProbeExecution =
+        awaitObserved(
+            request = request,
+            deadline = System.nanoTime() + SETUP_TIMEOUT_NANOS,
+            requirement = ProbeImportRequirement.Current,
+            observeSource = observeSource,
+        )
+
+    fun reimport(request: ProbeRequest, observeSource: () -> ProbeExecution): ProbeExecution {
         val deadline = System.nanoTime() + SETUP_TIMEOUT_NANOS
         return try {
+            val previous = import.get()
+            val admitted =
+                onEdt(deadline) {
+                    when (val source = observeSource()) {
+                        is ProbeExecution.Completed ->
+                            if (source.evidence.documentState == ProbeDocumentState.SAVED_COMMITTED) {
+                                NativeFixtureGradleReimport.begin(project, sandbox, request)
+                            } else ProbeResult.Rejected(ProbeFailure.DOCUMENT_STATE_REJECTED)
+                        else -> ProbeResult.Rejected(ProbeFailure.REIMPORT_UNAVAILABLE)
+                    }
+                }
+            when (admitted) {
+                is ProbeResult.Rejected -> ProbeExecution.Rejected(admitted.failure)
+                is ProbeResult.Accepted ->
+                    awaitObserved(
+                            request = request,
+                            deadline = deadline,
+                            requirement = ProbeImportRequirement.After(previous.sequence),
+                        ) {
+                            when (val image = NativeFixtureGradleReimport.validateBuild(sandbox, request)) {
+                                is ProbeResult.Accepted -> observeSource()
+                                is ProbeResult.Rejected -> ProbeExecution.Rejected(image.failure)
+                            }
+                        }
+                        .afterReimportStarted()
+            }
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+            ProbeExecution.EffectUncertain(ProbeFailure.SETUP_CANCELLED)
+        } catch (_: Exception) {
+            ProbeExecution.EffectUncertain(ProbeFailure.REIMPORT_UNAVAILABLE)
+        }
+    }
+
+    private fun awaitObserved(
+        request: ProbeRequest,
+        deadline: Long,
+        requirement: ProbeImportRequirement,
+        observeSource: () -> ProbeExecution,
+    ): ProbeExecution {
+        return try {
             when (val refresh = refresh(deadline)) {
-                is ProbeResult.Accepted -> awaitQuiet(request, deadline, observeSource)
+                is ProbeResult.Accepted ->
+                    awaitQuiet(
+                        request = request,
+                        deadline = deadline,
+                        requirement = requirement,
+                        observeSource = observeSource,
+                    )
                 is ProbeResult.Rejected -> ProbeExecution.Rejected(refresh.failure)
             }
         } catch (_: TimeoutException) {
@@ -83,13 +136,18 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
         }
     }
 
-    private fun awaitQuiet(request: ProbeRequest, deadline: Long, observeSource: () -> ProbeExecution): ProbeExecution {
-        var candidate = onEdt(deadline) { sample(request.command) }
+    private fun awaitQuiet(
+        request: ProbeRequest,
+        deadline: Long,
+        requirement: ProbeImportRequirement,
+        observeSource: () -> ProbeExecution,
+    ): ProbeExecution {
+        var candidate = onEdt(deadline) { sample(request.command, requirement) }
         var candidateSince = System.nanoTime()
         while (System.nanoTime() < deadline) {
             if (disposed.await(SETUP_POLL_MILLIS, TimeUnit.MILLISECONDS))
                 return ProbeExecution.Rejected(ProbeFailure.SETUP_CANCELLED)
-            val current = onEdt(deadline) { sample(request.command) }
+            val current = onEdt(deadline) { sample(request.command, requirement) }
             val now = System.nanoTime()
             if (current != candidate || current.status != ProbeSetupStatus.CANDIDATE) {
                 candidate = current
@@ -103,6 +161,7 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
                             request = request,
                             expected = current,
                             proof = proof.value,
+                            requirement = requirement,
                             observeSource = observeSource,
                         )
                     }
@@ -115,9 +174,10 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
         request: ProbeRequest,
         expected: ProbeSetupSample,
         proof: ProbeSetupObservation,
+        requirement: ProbeImportRequirement,
         observeSource: () -> ProbeExecution,
     ): ProbeExecution {
-        if (sample(request.command) != expected) return ProbeExecution.Rejected(ProbeFailure.SETUP_MOVING)
+        if (sample(request.command, requirement) != expected) return ProbeExecution.Rejected(ProbeFailure.SETUP_MOVING)
         return when (val source = observeSource()) {
             is ProbeExecution.Completed ->
                 if (source.evidence.documentState == ProbeDocumentState.SAVED_COMMITTED) {
@@ -142,9 +202,11 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
         return ProbeResult.Accepted(Unit)
     }
 
-    private fun sample(command: ProbeCommand): ProbeSetupSample {
+    private fun sample(command: ProbeCommand, requirement: ProbeImportRequirement): ProbeSetupSample {
         val dumb = DumbService.getInstance(project)
-        val state = import.get()
+        val progress = import.get()
+        val state = progress.state
+        val provenance = observeGradleSourceModule()
         val status =
             when {
                 !sandbox.valid(project) -> ProbeSetupStatus.GRADLE_MODULE_UNAVAILABLE
@@ -153,41 +215,47 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
                 ExternalSystemTaskType.entries.any {
                     ExternalSystemProcessingManager.getInstance().hasTaskOfTypeInProgress(it, project)
                 } -> ProbeSetupStatus.EXTERNAL_TASKS_ACTIVE
-                !importReady(state, command) -> ProbeSetupStatus.IMPORT_PENDING
-                !hasGradleSourceModule() -> ProbeSetupStatus.GRADLE_MODULE_UNAVAILABLE
+                !requirement.ready(progress, command) -> ProbeSetupStatus.IMPORT_PENDING
+                (provenance == ProbeSourceProvenance.UNAVAILABLE ||
+                    (provenance == ProbeSourceProvenance.GENERATED && command != ProbeCommand.REIMPORT_GRADLE)) ->
+                    ProbeSetupStatus.GRADLE_MODULE_UNAVAILABLE
                 else -> ProbeSetupStatus.CANDIDATE
             }
         return ProbeSetupSample(
-            status,
-            ProbeSetupGeneration(
-                roots = ProjectRootModificationTracker.getInstance(project).modificationCount,
-                workspace = workspaceChanges.get(),
-                vfs = VirtualFileManager.getInstance().modificationCount,
-                psi = PsiModificationTracker.getInstance(project).modificationCount,
-                dumb = dumb.modificationTracker.modificationCount,
-            ),
-            state,
+            status = status,
+            generation =
+                ProbeSetupGeneration(
+                    imports = progress.sequence,
+                    roots = ProjectRootModificationTracker.getInstance(project).modificationCount,
+                    workspace = workspaceChanges.get(),
+                    vfs = VirtualFileManager.getInstance().modificationCount,
+                    psi = PsiModificationTracker.getInstance(project).modificationCount,
+                    dumb = dumb.modificationTracker.modificationCount,
+                ),
+            import = state,
+            provenance = provenance,
         )
     }
 
-    private fun hasGradleSourceModule(): Boolean {
+    private fun observeGradleSourceModule(): ProbeSourceProvenance {
         val file =
             LocalFileSystem.getInstance().findFileByNioFile(sandbox.project.resolve("src/main/kotlin/Fixture.kt"))
-                ?: return false
+                ?: return ProbeSourceProvenance.UNAVAILABLE
         val index = ProjectFileIndex.getInstance(project)
-        if (!index.isInSource(file) || index.isInGeneratedSources(file)) return false
+        if (!index.isInSource(file)) return ProbeSourceProvenance.UNAVAILABLE
         val modules = index.getModulesForFile(file, false)
-        if (modules.size != 1) return false
+        if (modules.size != 1) return ProbeSourceProvenance.UNAVAILABLE
         val module = modules.single()
         val properties = ExternalSystemModulePropertyManager.getInstance(module)
-        return !module.isDisposed &&
-            properties.getExternalSystemId() == "GRADLE" &&
-            matches(properties.getRootProjectPath().orEmpty())
+        if (
+            module.isDisposed ||
+                properties.getExternalSystemId() != "GRADLE" ||
+                !matches(properties.getRootProjectPath().orEmpty())
+        ) {
+            return ProbeSourceProvenance.UNAVAILABLE
+        }
+        return if (index.isInGeneratedSources(file)) ProbeSourceProvenance.GENERATED else ProbeSourceProvenance.AUTHORED
     }
-
-    private fun importReady(state: ProbeImportState, command: ProbeCommand): Boolean =
-        state == ProbeImportState.FINAL_TASKS_FINISHED ||
-            (command == ProbeCommand.AWAIT_REOPEN_READY && state == ProbeImportState.NOT_OBSERVED)
 
     private fun <Value> onEdt(deadline: Long, observe: () -> Value): Value {
         val future =
@@ -204,7 +272,18 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
     }
 
     private fun update(path: String?, state: ProbeImportState) {
-        if (matches(path)) import.set(state)
+        if (matches(path))
+            import.updateAndGet { previous ->
+                ProbeImportProgress(
+                    state,
+                    if (state == ProbeImportState.IMPORTING) Math.incrementExact(previous.sequence)
+                    else previous.sequence,
+                )
+            }
+    }
+
+    private fun transition(expected: ProbeImportState, next: ProbeImportState) {
+        import.updateAndGet { previous -> if (previous.state == expected) previous.copy(state = next) else previous }
     }
 
     private fun matches(path: String?): Boolean =
@@ -215,7 +294,7 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
         }
 
     private fun timeoutFailure(): ProbeFailure =
-        when (import.get()) {
+        when (import.get().state) {
             ProbeImportState.NOT_OBSERVED -> ProbeFailure.SETUP_IMPORT_NOT_OBSERVED
             ProbeImportState.FAILED -> ProbeFailure.SETUP_IMPORT_FAILED
             ProbeImportState.IMPORTING,
@@ -232,3 +311,6 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
 
 private const val SETUP_TIMEOUT_NANOS = 60000000000L
 private const val SETUP_POLL_MILLIS = 100L
+
+private fun ProbeExecution.afterReimportStarted(): ProbeExecution =
+    if (this is ProbeExecution.Rejected) ProbeExecution.EffectUncertain(failure) else this

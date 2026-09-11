@@ -5,9 +5,14 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
 class ProbeSetupObservationTest {
-    private val generation = ProbeSetupGeneration(roots = 1, workspace = 1, vfs = 2, psi = 3, dumb = 4)
+    private val generation = ProbeSetupGeneration(imports = 1, roots = 1, workspace = 1, vfs = 2, psi = 3, dumb = 4)
     private val completed =
-        ProbeSetupSample(ProbeSetupStatus.CANDIDATE, generation, ProbeImportState.FINAL_TASKS_FINISHED)
+        ProbeSetupSample(
+            status = ProbeSetupStatus.CANDIDATE,
+            generation = generation,
+            import = ProbeImportState.FINAL_TASKS_FINISHED,
+            provenance = ProbeSourceProvenance.AUTHORED,
+        )
 
     @Test
     fun unchangedReadySampleRetainsObservedImport() {

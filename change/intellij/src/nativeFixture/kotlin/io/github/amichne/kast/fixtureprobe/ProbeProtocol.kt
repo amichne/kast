@@ -65,6 +65,15 @@ internal enum class ProbeFailure {
     SETUP_TIMEOUT,
     SETUP_REFRESH_TIMEOUT,
     SETUP_CANCELLED,
+    INDEXING_ALREADY_REQUESTED,
+    INDEXING_NOT_OWNED,
+    INDEXING_START_TIMEOUT,
+    INDEXING_RELEASE_TIMEOUT,
+    INDEXING_UNAVAILABLE,
+    BUILD_IMAGE_GUARD_REQUIRED,
+    BUILD_IMAGE_CHANGED,
+    BUILD_IMAGE_UNAVAILABLE,
+    REIMPORT_UNAVAILABLE,
 }
 
 internal enum class ProbeCommand {
@@ -77,6 +86,9 @@ internal enum class ProbeCommand {
     UNLOAD_PRODUCTION_PLUGIN,
     AWAIT_SETUP_READY,
     AWAIT_REOPEN_READY,
+    HOLD_INDEXING,
+    RELEASE_INDEXING,
+    REIMPORT_GRADLE,
 }
 
 @JvmInline
@@ -113,6 +125,7 @@ private constructor(
     val id: UUID,
     val command: ProbeCommand,
     val images: ProbeExpectedImages,
+    val build: ProbeBuildGuard,
 ) {
     val expectedCurrentSaved: ProbeDigest
         get() = if (command == ProbeCommand.ARM_POST_SAVE_BARRIER) images.preimage else images.currentSaved
@@ -125,6 +138,10 @@ private constructor(
         when (val retained = images) {
             is ProbeExpectedImages.Unchanged -> Unit
             is ProbeExpectedImages.Changed -> put("expectedPostimageSha256", retained.postimage.value)
+        }
+        when (val retained = build) {
+            ProbeBuildGuard.Absent -> Unit
+            is ProbeBuildGuard.Expected -> put("expectedBuildSha256", retained.digest.value)
         }
     }
         .toString()
@@ -158,7 +175,19 @@ private constructor(
                     is ProbeResult.Accepted -> parsed.value
                     is ProbeResult.Rejected -> return parsed
                 }
-            val request = ProbeRequest(id, command, images)
+            val build =
+                when (
+                    val parsed =
+                        ProbeBuildGuard.decode(
+                            command,
+                            body.string("expectedBuildSha256"),
+                            "expectedBuildSha256" in body,
+                        )
+                ) {
+                    is ProbeResult.Accepted -> parsed.value
+                    is ProbeResult.Rejected -> return parsed
+                }
+            val request = ProbeRequest(id = id, command = command, images = images, build = build)
             // Exact canonical encoding rejects duplicate/unknown keys, coercions, and alternate id encodings.
             return if (request.encode() == raw) ProbeResult.Accepted(request)
             else ProbeResult.Rejected(ProbeFailure.MALFORMED_REQUEST)
@@ -243,6 +272,10 @@ internal data class ProbeEvidence(
 internal sealed interface ProbeExecution {
     data class Completed(val evidence: ProbeEvidence) : ProbeExecution
 
+    data class IndexingHeld(val evidence: ProbeEvidence) : ProbeExecution
+
+    data class IndexingReleased(val evidence: ProbeEvidence) : ProbeExecution
+
     data class SetupReady(val evidence: ProbeEvidence, val readiness: ProbeSetupObservation) : ProbeExecution
 
     data class BarrierArmed(val evidence: ProbeEvidence, val barrierId: UUID) : ProbeExecution
@@ -256,4 +289,23 @@ internal sealed interface ProbeExecution {
 
 internal enum class ProbePluginLifecycle {
     UNLOADED
+}
+
+internal sealed interface ProbeBuildGuard {
+    data object Absent : ProbeBuildGuard
+
+    data class Expected(val digest: ProbeDigest) : ProbeBuildGuard
+
+    companion object {
+        fun decode(command: ProbeCommand, digest: String, present: Boolean): ProbeResult<ProbeBuildGuard> {
+            if (command != ProbeCommand.REIMPORT_GRADLE)
+                return if (present) ProbeResult.Rejected(ProbeFailure.MALFORMED_REQUEST)
+                else ProbeResult.Accepted(Absent)
+            if (!present) return ProbeResult.Rejected(ProbeFailure.BUILD_IMAGE_GUARD_REQUIRED)
+            return when (val parsed = ProbeDigest.parse(digest)) {
+                is ProbeResult.Accepted -> ProbeResult.Accepted(Expected(parsed.value))
+                is ProbeResult.Rejected -> parsed
+            }
+        }
+    }
 }

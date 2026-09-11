@@ -85,9 +85,10 @@ class ProbeResponseDispatchTest {
     private fun ready(): ProbeExecution.SetupReady {
         val sample =
             ProbeSetupSample(
-                ProbeSetupStatus.CANDIDATE,
-                ProbeSetupGeneration(roots = 1, workspace = 1, vfs = 1, psi = 1, dumb = 1),
-                ProbeImportState.FINAL_TASKS_FINISHED,
+                status = ProbeSetupStatus.CANDIDATE,
+                generation = ProbeSetupGeneration(imports = 1, roots = 1, workspace = 1, vfs = 1, psi = 1, dumb = 1),
+                import = ProbeImportState.FINAL_TASKS_FINISHED,
+                provenance = ProbeSourceProvenance.AUTHORED,
             )
         val proof =
             assertInstanceOf(
@@ -106,6 +107,10 @@ private class RecordingPorts(private val readiness: ProbeExecution, private val 
 
     var readinessCalls = 0
         private set
+
+    override fun controlIndexing(request: ProbeRequest): ProbeExecution = native
+
+    override fun reimport(request: ProbeRequest): ProbeExecution = readiness
 
     override fun executeNative(request: ProbeRequest): ProbeExecution {
         nativeCalls++

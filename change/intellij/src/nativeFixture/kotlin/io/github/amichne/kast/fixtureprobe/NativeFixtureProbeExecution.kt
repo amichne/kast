@@ -51,23 +51,20 @@ internal class NativeFixtureProbeExecution(
             is ProbeResult.Accepted -> Unit
             is ProbeResult.Rejected -> return ProbeExecution.Rejected(admission.failure)
         }
-        if (
-            request.command == ProbeCommand.OBSERVE ||
-                request.command == ProbeCommand.AWAIT_SETUP_READY ||
-                request.command == ProbeCommand.AWAIT_REOPEN_READY
-        )
-            return when (val observed = evidence(target)) {
-                is ProbeResult.Accepted -> ProbeExecution.Completed(observed.value)
-                is ProbeResult.Rejected -> ProbeExecution.Rejected(observed.failure)
-            }
         if (!gate.valid(project)) return ProbeExecution.Rejected(ProbeFailure.SANDBOX_REJECTED)
-        if (
-            request.command == ProbeCommand.ARM_POST_SAVE_BARRIER ||
-                request.command == ProbeCommand.UNLOAD_PRODUCTION_PLUGIN
-        ) {
-            return executeControl(target, request)
+        return when (request.command.nativeOperation) {
+            ProbeNativeOperation.OBSERVE ->
+                when (val observed = evidence(target)) {
+                    is ProbeResult.Accepted -> ProbeExecution.Completed(observed.value)
+                    is ProbeResult.Rejected -> ProbeExecution.Rejected(observed.failure)
+                }
+            ProbeNativeOperation.CONTROL -> executeControl(target, request)
+            ProbeNativeOperation.MUTATE -> executeMutation(target, request)
         }
-        return try {
+    }
+
+    private fun executeMutation(target: ProbeTarget, request: ProbeRequest): ProbeExecution =
+        try {
             when (val mutated = mutate(target, request)) {
                 is ProbeResult.Accepted -> completedEffect(target, request)
                 is ProbeResult.Rejected -> ProbeExecution.EffectUncertain(mutated.failure)
@@ -77,7 +74,6 @@ internal class NativeFixtureProbeExecution(
         } catch (_: Exception) {
             ProbeExecution.EffectUncertain(ProbeFailure.NATIVE_UNAVAILABLE)
         }
-    }
 
     private fun executeControl(target: ProbeTarget, request: ProbeRequest): ProbeExecution {
         val observed =
@@ -90,6 +86,9 @@ internal class NativeFixtureProbeExecution(
 
     private fun mutate(target: ProbeTarget, request: ProbeRequest): ProbeResult<Unit> {
         when (request.command) {
+            ProbeCommand.HOLD_INDEXING,
+            ProbeCommand.RELEASE_INDEXING,
+            ProbeCommand.REIMPORT_GRADLE,
             ProbeCommand.AWAIT_SETUP_READY,
             ProbeCommand.AWAIT_REOPEN_READY,
             ProbeCommand.OBSERVE,
@@ -142,6 +141,9 @@ internal class NativeFixtureProbeExecution(
                 ProbeCommand.COMMIT_DOCUMENT -> ProbeDocumentState.DIRTY_COMMITTED
                 ProbeCommand.RESTORE_SAVED,
                 ProbeCommand.UNDO_PRODUCTION_CHANGE,
+                ProbeCommand.HOLD_INDEXING,
+                ProbeCommand.RELEASE_INDEXING,
+                ProbeCommand.REIMPORT_GRADLE,
                 ProbeCommand.AWAIT_SETUP_READY,
                 ProbeCommand.AWAIT_REOPEN_READY,
                 ProbeCommand.OBSERVE,
@@ -195,6 +197,9 @@ internal class NativeFixtureProbeExecution(
         val state = documentState(target.document)
         return when (request.command) {
             ProbeCommand.OBSERVE,
+            ProbeCommand.HOLD_INDEXING,
+            ProbeCommand.RELEASE_INDEXING,
+            ProbeCommand.REIMPORT_GRADLE,
             ProbeCommand.AWAIT_SETUP_READY,
             ProbeCommand.AWAIT_REOPEN_READY -> ProbeResult.Accepted(Unit)
             ProbeCommand.DIRTY_UNCOMMITTED,
@@ -322,3 +327,26 @@ private fun declarationKind(declaration: KtDeclaration): ProbeDeclarationKind =
 
 private const val MAXIMUM_NAME_LENGTH = 128
 private const val MAXIMUM_CONTAINER_LENGTH = 512
+
+private enum class ProbeNativeOperation {
+    OBSERVE,
+    CONTROL,
+    MUTATE,
+}
+
+private val ProbeCommand.nativeOperation: ProbeNativeOperation
+    get() =
+        when (this) {
+            ProbeCommand.OBSERVE,
+            ProbeCommand.AWAIT_SETUP_READY,
+            ProbeCommand.AWAIT_REOPEN_READY,
+            ProbeCommand.HOLD_INDEXING,
+            ProbeCommand.RELEASE_INDEXING,
+            ProbeCommand.REIMPORT_GRADLE -> ProbeNativeOperation.OBSERVE
+            ProbeCommand.ARM_POST_SAVE_BARRIER,
+            ProbeCommand.UNLOAD_PRODUCTION_PLUGIN -> ProbeNativeOperation.CONTROL
+            ProbeCommand.DIRTY_UNCOMMITTED,
+            ProbeCommand.COMMIT_DOCUMENT,
+            ProbeCommand.RESTORE_SAVED,
+            ProbeCommand.UNDO_PRODUCTION_CHANGE -> ProbeNativeOperation.MUTATE
+        }

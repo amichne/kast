@@ -18,21 +18,20 @@ internal fun encodeProbeResponse(id: UUID, command: String, result: ProbeExecuti
             put("outcome", "EFFECT_UNCERTAIN")
             put("failure", result.failure.name)
         }
+        is ProbeExecution.IndexingHeld -> {
+            put("outcome", "INDEXING_HELD")
+            put("evidence", evidenceDocument(result.evidence))
+            put("indexing", heldIndexingDocument())
+        }
+        is ProbeExecution.IndexingReleased -> {
+            put("outcome", "INDEXING_RELEASED")
+            put("evidence", evidenceDocument(result.evidence))
+            put("indexing", buildJsonObject { put("state", "SMART") })
+        }
         is ProbeExecution.SetupReady -> {
             put("outcome", "SETUP_READY")
             put("evidence", evidenceDocument(result.evidence))
-            put(
-                "readiness",
-                buildJsonObject {
-                    put("smartMode", "SMART")
-                    put("externalTasks", "IDLE")
-                    put("gradleModule", "OBSERVED")
-                    put("import", result.readiness.import.name)
-                    put("vfsRefresh", "COMPLETED")
-                    put("quietWindowMillis", SETUP_QUIET_WINDOW_MILLIS)
-                    put("scope", "OBSERVED_SETUP_ONLY")
-                },
-            )
+            put("readiness", readinessDocument(result.readiness))
         }
         is ProbeExecution.Completed -> {
             put("outcome", "COMPLETED")
@@ -51,6 +50,22 @@ internal fun encodeProbeResponse(id: UUID, command: String, result: ProbeExecuti
     }
 }
     .toString()
+
+private fun heldIndexingDocument() = buildJsonObject {
+    put("state", "DUMB")
+    put("maximumHoldMillis", MAXIMUM_INDEXING_HOLD_MILLIS)
+}
+
+private fun readinessDocument(readiness: ProbeSetupObservation) = buildJsonObject {
+    put("smartMode", "SMART")
+    put("externalTasks", "IDLE")
+    put("gradleModule", "OBSERVED")
+    put("sourceProvenance", readiness.provenance.name)
+    put("import", readiness.import.name)
+    put("vfsRefresh", "COMPLETED")
+    put("quietWindowMillis", SETUP_QUIET_WINDOW_MILLIS)
+    put("scope", "OBSERVED_SETUP_ONLY")
+}
 
 private fun evidenceDocument(evidence: ProbeEvidence) = buildJsonObject {
     put("savedSha256", evidence.saved.value)
