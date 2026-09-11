@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Offline checks for input admission and redacted reports; these do not qualify native behavior."""
 import copy
+from dataclasses import asdict, dataclass
 import hashlib
 import json
 from pathlib import Path
@@ -14,6 +15,12 @@ from hosted_change_process import NativeProcesses
 from native_fixture_probe import NativeFixtureProbeError
 from hosted_change_acceptance import (AcceptanceRejected, admit_event, admit_harness, admitted_live,
     CASE_NAMES, admit_contract_failure, bounded_native_report, event_observation, native_workflow_qualified, pending_readiness, StartupDiscoveryState, receipt_scope_observation, remaining_matrix_gates, tree_identity)
+
+
+@dataclass(frozen=True)
+class StartupFailureDocument:
+    failure: str
+    detail: str
 
 
 class HostedChangeAcceptanceTest(unittest.TestCase):
@@ -84,6 +91,25 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
                                 ('READ_EPOCH_REJECTED', 'UNKNOWN'),
                                 ('PROJECT_ADMISSION_REJECTED', 'READ_PREEMPTED')):
             self.assertFalse(pending_readiness({'failure': failure, 'detail': detail}))
+
+    def test_startup_freshness_movement_is_pending_only_for_the_exact_pair(self):
+        self.assertTrue(pending_readiness(asdict(StartupFailureDocument('FRESHNESS_REJECTED', 'MOVED'))))
+        for failure, detail in (('FRESHNESS_REJECTED', 'UNKNOWN'),
+                                ('FRESHNESS_REJECTED', 'UNAVAILABLE'),
+                                ('FRESHNESS_REJECTED', 'READ_PREEMPTED'),
+                                ('READ_EPOCH_REJECTED', 'MOVED'),
+                                ('PROJECT_ADMISSION_REJECTED', 'MOVED'),
+                                ('UNKNOWN', 'MOVED')):
+            self.assertFalse(pending_readiness(asdict(StartupFailureDocument(failure, detail))))
+
+    def test_startup_freshness_observation_preserves_exact_cause_and_bounded_count(self):
+        processes = NativeProcesses(SimpleNamespace(), SimpleNamespace(), Path('/unused'), 60)
+        processes.generation = 2
+        processes.observe_discovery(StartupDiscoveryState.FRESHNESS_MOVED_PENDING)
+        processes.observe_discovery(StartupDiscoveryState.FRESHNESS_MOVED_PENDING)
+        self.assertEqual(json.loads(
+            '[{"generation":2,"stage":"STARTUP_DISCOVERY","outcome":"PENDING",'
+            '"condition":"FRESHNESS_MOVED_PENDING","count":2}]'), processes.readiness_observations)
 
     def test_startup_discovery_observations_are_bounded_and_counted_by_finite_condition(self):
         processes = NativeProcesses(SimpleNamespace(), SimpleNamespace(), Path('/unused'), 60)

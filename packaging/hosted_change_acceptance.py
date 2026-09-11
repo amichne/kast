@@ -92,13 +92,15 @@ class StartupDiscoveryState(Enum):
     DUMB_PENDING = 'DUMB_PENDING'
     INDEXING_PENDING = 'INDEXING_PENDING'
     READ_PREEMPTED_PENDING = 'READ_PREEMPTED_PENDING'
+    FRESHNESS_MOVED_PENDING = 'FRESHNESS_MOVED_PENDING'
     READ_EPOCH_REJECTED = 'READ_EPOCH_REJECTED'
     OTHER_REJECTION = 'OTHER_REJECTION'
     OBSERVED = 'OBSERVED'
 
     @property
     def pending(self):
-        return self in (self.MODEL_PENDING, self.DUMB_PENDING, self.INDEXING_PENDING, self.READ_PREEMPTED_PENDING)
+        return self in (self.MODEL_PENDING, self.DUMB_PENDING, self.INDEXING_PENDING,
+                        self.READ_PREEMPTED_PENDING, self.FRESHNESS_MOVED_PENDING)
 
 
 def startup_discovery_state(document: dict) -> StartupDiscoveryState:
@@ -109,6 +111,8 @@ def startup_discovery_state(document: dict) -> StartupDiscoveryState:
         return StartupDiscoveryState.DUMB_PENDING
     if failure == 'INDEXING':
         return StartupDiscoveryState.INDEXING_PENDING
+    if failure == 'FRESHNESS_REJECTED' and detail == 'MOVED':
+        return StartupDiscoveryState.FRESHNESS_MOVED_PENDING
     if failure == 'READ_EPOCH_REJECTED':
         return (StartupDiscoveryState.READ_PREEMPTED_PENDING if detail == 'READ_PREEMPTED'
                 else StartupDiscoveryState.READ_EPOCH_REJECTED)
