@@ -1,0 +1,105 @@
+---
+type: "Workflow Guide"
+title: "Add a Kotlin declaration"
+sidebarTitle: "Change source"
+description: "Plan, approve, apply and recover a declaration change in your existing IntelliJ project."
+resource: "file://docs/public/change.mdx"
+tags: ["change", "approval", "verification", "recovery"]
+timestamp: "2026-09-11T00:00:00-04:00"
+code_sources:
+  - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt"
+  - path: "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangePlanning.kt"
+  - path: "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt"
+  - path: "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeVerification.kt"
+  - path: "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeRecovery.kt"
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/ide/BrokerTrustEnrollment.kt"
+  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt"
+icon: "file-pen-line"
+---
+
+Kast can add a declaration to one existing, authored Kotlin source file through
+the project already open in IntelliJ. The workflow keeps the search reference,
+stored plan, approval and verification evidence together.
+
+The supported intent is `AddDeclaration`. Adding files, replacing declarations,
+multi-file renames and arbitrary text edits are outside this hosted workflow.
+Unsupported requests reject without starting another workspace.
+
+## Prepare the project
+
+[Install and connect Kast](/start), open the repository in IntelliJ, and let its
+initial import and indexing finish. The project must use the matched Kast
+plugin. Save your work before planning: Kast requires saved documents and
+committed PSI, and does not save unrelated buffers for you.
+
+Enroll the local broker once before applying or recovering a plan:
+
+```console
+kast ide trust-broker
+```
+
+This creates a private approval key pair in `~/.kast/approval`, or preserves an
+existing matching pair. Applying a plan does not enroll trust automatically.
+Use the [installed harness contract](/agent-harnesses) to select and expose tools;
+native change qualification currently gates their default availability.
+
+## Search, plan and approve
+
+1. [Search](/search) for the target declaration. Pass the returned `symbol_ref`
+   unchanged to `change_plan`. Use the installed callable schema for the
+   `add-declaration` request and placement.
+2. Review the returned file preview and retain the immutable plan identity.
+   Planning leaves source bytes and document state unchanged.
+3. Call `change_apply` with that identity. The included integration shows the
+   stored file preview and requests approval for that exact plan. Declining or
+   cancelling approval leaves source unchanged.
+4. Read the complete apply result. Apply performs semantic verification before
+   returning; no separate verification call is needed.
+
+Approval applies to the stored intent, target, source preimage and write set.
+If any of those must change, create a new plan and approve it. A plan identity
+alone does not authorize a write.
+
+Apply checks the current IDE owner, epoch, project model and saved source again
+at the write boundary. A stale plan rejects before mutation. Closing or unloading
+the original project owner invalidates its references and unapplied plans; search
+again after reopening.
+
+## Interpret the result
+
+| Apply state | Meaning | Next action |
+| --- | --- | --- |
+| `Verified` | The write and required semantic obligations are recorded in a durable receipt. | Keep the receipt; obtain fresh references for further work. |
+| `AppliedUnverified` | A write occurred, but verification or receipt persistence did not complete. | Preserve the result and use approved recovery. |
+| `RecoveryRequired` | An attempted effect remains uncertain or needs reconciliation. | Preserve the result and use approved recovery. |
+
+A rejection before mutation establishes that this attempt wrote nothing. A lost
+response does not. Keep qualified outcomes visible to the agent instead of
+treating them as ordinary success or no-effect rejection.
+
+A verified receipt records the admitted before and after live evidence, exact
+source postimage and discharged verification scope. It is historical evidence
+for that change. Scoped diagnostics do not establish a whole-project build.
+
+## Recover an interrupted change
+
+Repeating a verified apply returns its stored receipt without inserting the
+declaration again. An attempted plan without a verified receipt cannot be
+replayed as a fresh mutation.
+
+Call `change_recover` with the stored plan identity and approve the recovery
+separately. Recovery reads durable records and observes the current source. It
+can confirm the exact preimage or roll back an exact matching postimage. Dirty
+documents, divergent saved content, missing records and incomplete observations
+remain recovery-required; recovery does not overwrite subsequent user edits.
+
+A newly opened project owner may perform this separately admitted recovery. It
+does not regain permission to apply the retired owner's plan.
+
+If the broker reports `WORKSPACE_RECOVERY_REQUIRED`, it blocks further operations
+for that workspace, including recovery. Replace the broker while retaining its
+invocation journal and thread store, then request fresh recovery approval. Keep
+the IDE's durable change records: broker replacement does not erase an effect
+or revive an attempted plan. See [Troubleshooting](/troubleshooting) for status
+collection and the [compatibility record](/reference/compatibility) for the
+qualified integration boundary.

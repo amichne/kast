@@ -47,6 +47,13 @@
             ]
           },
           {
+            "group": "Change source",
+            "icon": "file-pen-line",
+            "pages": [
+              "change"
+            ]
+          },
+          {
             "group": "Integrate",
             "icon": "bot",
             "pages": [

@@ -29,6 +29,7 @@ code_sources:
   - path: change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt
   - path: change/protocol/src/main/kotlin/io/github/amichne/kast/change/protocol/CanonicalLiveChangePlanProtocol.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeCoordinator.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeVerification.kt
 ---
 
 # Semantic change
@@ -42,7 +43,14 @@ model evidence. `LiveMutationAuthority` requires fresh matching evidence, exact
 source preconditions and verified plan approval before admitting a write.
 Neither detached plan basis grants current authority.
 
-Planning is pure. Application first derives a deterministic postimage from the observed preimage and rejects stale roots, generations, content, provenance, overlaps, or mismatched expected text. Verification establishes the resulting semantic state before publication. Recovery consumes durable evidence rather than guessing what an interrupted write accomplished.
+Planning is pure. Application first derives a deterministic postimage from the
+observed preimage and rejects stale roots, generations or live evidence, content,
+provenance, overlaps, or mismatched expected text. Published verification
+establishes the resulting semantic state before successor publication. Hosted
+verification reacquires live evidence, discharges the required obligations and
+persists a receipt with historical before/after evidence; it does not publish a
+workspace generation. Recovery consumes durable evidence rather than guessing
+what an interrupted write accomplished.
 
 Read [change lifecycle](../flows/change-lifecycle.md) for the phase sequence.
 
