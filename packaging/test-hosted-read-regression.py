@@ -131,6 +131,20 @@ class HostedReadRegressionTest(unittest.TestCase):
         self.assertNotIn(str(self.workspace), json.dumps(first))
         self.assertNotIn('private-token', json.dumps(first))
 
+    def test_traversal_qualification_keeps_finite_limits_without_checkpoint_payload(self):
+        response = {'status': 'qualified', 'qualification': {
+            'type': 'resumable', 'limitations': ['work-limit-reached'],
+            'relationLimitations': [], 'continuation': 'private-checkpoint'}}
+        observed = _read_observation(response)
+        self.assertEqual({'type': 'resumable', 'limitations': ['work-limit-reached'],
+                          'relationLimitations': [], 'continuationPresent': True},
+                         observed['traversalQualification'])
+        self.assertNotIn('private-checkpoint', json.dumps(observed))
+        response['qualification']['limitations'] = ['private unknown reason']
+        rejected = _read_observation(response)
+        self.assertEqual({'outcome': 'unadmitted'}, rejected['traversalQualification'])
+        self.assertNotIn('private unknown reason', json.dumps(rejected))
+
     def test_provider_rejection_preserves_closed_failure_without_payload(self):
         with self.assertRaises(ReadTransportRejected) as rejected:
             _provider_result({'kind': 'rejected', 'failure': 'OUTPUT_CONTRACT_REJECTED',

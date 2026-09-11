@@ -186,6 +186,9 @@ def _read_observation(response):
     status = response.get('status')
     result = {'outcome': 'observed', 'status': status if status in ('complete', 'qualified', 'rejected')
               else 'unrecognized'}
+    qualification = response.get('qualification')
+    if isinstance(qualification, dict) and 'relationLimitations' in qualification:
+        result['traversalQualification'] = _traversal_qualification_observation(qualification)
     live = response.get('live')
     if (isinstance(live, dict) and set(live) == {'root', 'host', 'epoch', 'contentView', 'version'}
             and type(live['epoch']) is int and 1 <= live['epoch'] <= 2**63 - 1
@@ -197,3 +200,23 @@ def _read_observation(response):
     else:
         result['live'] = 'absent-or-unadmitted'
     return result
+
+
+_TRAVERSAL_LIMITATIONS = frozenset(('record-limit-reached', 'byte-limit-reached', 'work-limit-reached',
+    'time-limit-reached', 'depth-limit-reached', 'frontier-limit-reached', 'one-hop-incomplete'))
+_RELATION_LIMITATIONS = frozenset(('result-limit-reached', 'byte-limit-reached', 'work-limit-reached',
+    'time-limit-reached', 'dumb-mode-transition', 'unresolved-target', 'unsupported-item',
+    'provider-failure', 'provider-incomplete'))
+
+
+def _traversal_qualification_observation(qualification):
+    kind = qualification.get('type')
+    limits, relations = qualification.get('limitations'), qualification.get('relationLimitations')
+    if (kind not in ('resumable', 'terminal_incomplete')
+            or not isinstance(limits, list) or not 1 <= len(limits) <= len(_TRAVERSAL_LIMITATIONS)
+            or not all(isinstance(value, str) and value in _TRAVERSAL_LIMITATIONS for value in limits)
+            or not isinstance(relations, list) or len(relations) > len(_RELATION_LIMITATIONS)
+            or not all(isinstance(value, str) and value in _RELATION_LIMITATIONS for value in relations)):
+        return {'outcome': 'unadmitted'}
+    return {'type': kind, 'limitations': limits, 'relationLimitations': relations,
+            'continuationPresent': isinstance(qualification.get('continuation'), str)}
