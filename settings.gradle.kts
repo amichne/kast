@@ -52,6 +52,7 @@ val cleanSlateProjects = listOf(
     ":diagnostic:intellij",
     ":change:contract",
     ":change:plan",
+    ":change:protocol",
     ":change:apply",
     ":change:verify",
     ":change:recovery",

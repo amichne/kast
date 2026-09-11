@@ -1,5 +1,6 @@
 package io.github.amichne.kast.runtime.composition.protocol
 
+import io.github.amichne.kast.change.protocol.protocolPreview
 import io.github.amichne.kast.change.apply.AddDeclarationApplyFailure
 import io.github.amichne.kast.change.apply.AddDeclarationApplyResult
 import io.github.amichne.kast.change.apply.AppliedUnverified

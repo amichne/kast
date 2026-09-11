@@ -4,6 +4,14 @@ internal object KastCleanSlateModules {
     val all: List<ModulePolicy> = listOf(
         target(ModuleId.KERNEL, ModuleRole.KERNEL),
         target(
+            ModuleId.CHANGE_PROTOCOL,
+            ModuleRole.SERVICE,
+            ModuleId.KERNEL,
+            ModuleId.PROTOCOL_CONTRACT,
+            ModuleId.CHANGE_CONTRACT,
+            ModuleId.CHANGE_VERIFY,
+        ),
+        target(
             ModuleId.QUERY_PROTOCOL,
             ModuleRole.SERVICE,
             ModuleId.KERNEL,
@@ -532,6 +540,7 @@ internal object KastCleanSlateModules {
         ModuleId.DIAGNOSTIC_INTELLIJ,
         ModuleId.CHANGE_CONTRACT,
         ModuleId.CHANGE_PLAN,
+        ModuleId.CHANGE_PROTOCOL,
         ModuleId.CHANGE_APPLY,
         ModuleId.CHANGE_VERIFY,
         ModuleId.CHANGE_RECOVERY,

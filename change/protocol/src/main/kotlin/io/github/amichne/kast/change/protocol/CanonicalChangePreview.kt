@@ -1,4 +1,4 @@
-package io.github.amichne.kast.runtime.composition.protocol
+package io.github.amichne.kast.change.protocol
 
 import io.github.amichne.kast.change.contract.ChangePlan
 import io.github.amichne.kast.change.contract.PlannedSourcePrecondition
@@ -13,7 +13,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import java.nio.file.Path
 
 /** Pure projection of a compiler-grounded change plan into bounded human diff fragments. */
-internal fun ChangePlan.protocolPreview(): ChangeFilePreviewSet {
+fun ChangePlan.protocolPreview(): ChangeFilePreviewSet {
     val root = Path.of(priorLease.workspaceRoot.value)
     val previews = writes.entries.map { write ->
         val relative = when (val admitted = WorkspaceSourcePath.parse(

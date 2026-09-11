@@ -40,7 +40,7 @@ import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolInspec
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDiscoverHandler
 import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalRelationReadHandler
 import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalTraversalRunHandler
-import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmission
+import io.github.amichne.kast.change.protocol.ChangePlanAdmission
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionOperations
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations

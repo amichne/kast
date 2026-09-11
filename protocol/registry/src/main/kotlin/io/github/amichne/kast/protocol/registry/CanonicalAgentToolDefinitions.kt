@@ -153,9 +153,10 @@ object CanonicalAgentToolDefinitions {
         changeRecover,
     )
 
-    /** Standard App Server surface; direct symbol refinement stays available only by opt-in. */
+    /** Qualified read surface. Change tools remain explicit opt-ins until installed hosted acceptance passes. */
     val defaultAppServerTools: List<AgentToolDefinition> = all.filter { definition ->
-        definition !== symbolLookup && definition !== symbolInspect
+        definition !== symbolLookup && definition !== symbolInspect &&
+            definition !== changePlan && definition !== changeApply && definition !== changeRecover
     }
 
     val policy: AgentToolPolicy = refined(

@@ -16,7 +16,7 @@ import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalKastOperationHandlerFactory
-import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmission
+import io.github.amichne.kast.change.protocol.ChangePlanAdmission
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionOperations
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test

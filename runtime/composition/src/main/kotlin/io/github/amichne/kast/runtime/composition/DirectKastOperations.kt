@@ -27,13 +27,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.IndexSynchronizationOperations
 import io.github.amichne.kast.workspace.service.WorkspaceTransitionOwner
 
-/** The four closed intent planners consumed by the single public `change.plan` operation. */
-class ChangePlanningOperations internal constructor(
-    val addFile: AddFilePlanOperations,
-    val addDeclaration: AddDeclarationPlanOperations,
-    val replaceDeclaration: ReplaceDeclarationPlanOperations,
-    val renameSymbol: RenameSymbolPlanOperations,
-)
+typealias ChangePlanningOperations = io.github.amichne.kast.change.protocol.ChangePlanningOperations
 
 /** Physical application plus mandatory successor-generation verification for `change.apply`. */
 class VerifiedChangeApplyOperations internal constructor(

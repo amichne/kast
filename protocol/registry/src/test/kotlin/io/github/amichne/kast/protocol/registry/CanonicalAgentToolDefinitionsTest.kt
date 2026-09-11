@@ -79,9 +79,6 @@ class CanonicalAgentToolDefinitionsTest {
                 "semantic_query",
                 "impact_analyze",
                 "check_diagnostics",
-                "change_plan",
-                "change_apply",
-                "change_recover",
             ),
             CanonicalAgentToolDefinitions.defaultAppServerTools.map { it.name.value },
         )
