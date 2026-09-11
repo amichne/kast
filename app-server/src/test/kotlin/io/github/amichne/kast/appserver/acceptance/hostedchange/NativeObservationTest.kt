@@ -50,6 +50,18 @@ class NativeObservationTest {
     }
 
     @Test
+    fun `CLI response admission failure retains exact closed boundary without JVM banners`() {
+        val raw =
+            "Picked up _JAVA_OPTIONS: private-options\n" +
+                """{"status":"rejected","boundary":"runtime","reason":"ide-response-rejected"}"""
+        val observed = processObservation(BrokerProcessExecution.Completed(1, "", raw))
+        assertEquals(JsonPrimitive("IDE_RESPONSE_REJECTED"), observed["boundaryRejection"])
+        assertEquals(JsonPrimitive("object"), observed["shape"])
+        assertEquals(Json.parseToJsonElement("""["BOUNDARY","REASON","STATUS"]"""), observed["fields"])
+        assertFalse(observed.toString().contains("private-options"))
+    }
+
+    @Test
     fun `protocol rejection retains finite reason when presentation has multiple content items`() {
         val document = buildJsonObject {
             put(
