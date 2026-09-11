@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-11 | hash: c2f0e404ad37 -->
+<!-- generated: 2026-09-11 | hash: fcb11456c9d0 -->
 
 # app-server
 
@@ -16,6 +16,8 @@ Owns the persistent broker/coordinator, host attachment, workspace runtime super
 - [src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinator.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinator.kt) - installed coordinator assembly.
 - [src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceRuntimeControl.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceRuntimeControl.kt) - workspace runtime lifecycle and admission control.
 - [src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt](src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt) - Codex protocol boundary.
+
+- [src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt](src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt) - intent-tool admission and schema identity.
 
 ## Subdirectories
 
@@ -37,4 +39,4 @@ Owns the persistent broker/coordinator, host attachment, workspace runtime super
 
 - For transport/session faults, read `README.md`, then `core`, `host`, and protocol tests.
 - For workspace concurrency or readiness, start in `runtime` and follow types into `workspace` and `distribution`.
-- For tool shape or qualification, start in `protocol/codex` and then `protocol/registry`.
+- For public tool shape, begin with [public tool contracts](../knowledge/contracts/public-tools.md), then `query/PublicToolContract.kt` and the schema generator. For Codex projection, follow `protocol/codex`.

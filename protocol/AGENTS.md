@@ -16,6 +16,8 @@ Defines canonical operation models, authoritative operation/tool registries, and
 - [wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireTable.kt](wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireTable.kt) - operation-to-wire binding table.
 - [wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/WireEnvelope.kt](wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/WireEnvelope.kt) - wire envelope.
 
+- [registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt](registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt) - closed public tool identity vocabulary.
+
 ## Subdirectories
 
 - `contract` - transport-independent operation and compatibility models.
