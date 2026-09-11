@@ -151,3 +151,7 @@
   source effect; exact saved/document observation is required for prior state.
 - Live planning, mutation admission, and native change acceptance remain
   unimplemented; published verification is still the retained execution path.
+- Reconciled formatting PR 712 through `38519c5d0`, split provider test fixtures
+  without expanding lint baselines, and passed the repository product gate.
+- Recorded the remaining approval integration gap: explicit catalog metadata is
+  retained, but Codex dynamic-tool dispatch has no exact-plan approval result.

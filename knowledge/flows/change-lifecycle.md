@@ -20,6 +20,10 @@ code_sources:
     symbols: [ConfirmedRecoveryPreimage, RecoveryPreWriteObservationPort]
   - path: change/protocol/src/main/kotlin/io/github/amichne/kast/change/protocol/CanonicalChangePlanProtocol.kt
   - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/ChangePlanIssuance.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/AgentSessionBootstrap.kt
+    symbols: [HostedToolDefinition]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexSessionProjection.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt
 ---
 
 # Semantic change lifecycle
@@ -49,3 +53,11 @@ preimage for every recorded source. Dirty, unavailable, divergent, duplicate, or
 incomplete observations reject. Legacy empty preimages remain ambiguous because
 the record cannot distinguish an absent file from an existing empty file. The
 default observation port is unavailable, so unobserved records fail closed.
+
+The current broker retains `HostedApprovalPolicy.EXPLICIT` as catalog metadata.
+The Codex session projection does not turn that metadata into an approval request,
+and its dynamic-tool dispatch does not consume an exact-plan approval result.
+Controller correlation for upstream native approval requests is a separate
+mechanism. A hosted mutation path must establish approval tied to the immutable
+plan before issuing write authority; a plan identity or catalog entry is
+insufficient. This integration remains unimplemented.

@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "serverProjection": {
+    "schemaVersion": 10,
+    "namespace": "kast",
+    "hostedBootstrap": {
+      "schemaVersion": 1,
+      "policy": @POLICY@,
+      "tools": [
+      {
+        "operationId": "symbol.discover",
+        "name": "symbol_lookup",
+        "description": @SYMBOL_DESCRIPTION@,
+        "deferLoading": true,
+        "effect": "intellij_read",
+        "approvalPolicy": "none",
+        "executionBudget": {"readinessMillis": 1020000, "operationMillis": 60000},
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["query"],
+          "properties": { "query": { "type": "string", "minLength": 1 } }
+        },
+        "outputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "document"],
+          "properties": {
+            "status": { "const": "completed" },
+            "document": { "type": "object" }
+          }
+        }
+      },
+      {
+        "operationId": "change.apply",
+        "name": "change_apply",
+        "description": @CHANGE_DESCRIPTION@,
+        "deferLoading": true,
+        "effect": "intellij_write",
+        "approvalPolicy": "explicit",
+        "executionBudget": {"readinessMillis": 1020000, "operationMillis": 60000},
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["plan"],
+          "properties": { "plan": { "type": "string", "minLength": 1 } }
+        },
+        "outputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "document"],
+          "properties": {
+            "status": { "const": "completed" },
+            "document": { "type": "object" }
+          }
+        }
+      }
+      ]
+    },
+    "cliInvocations": {
+      "schemaVersion": 3,
+      "operations": [
+        {
+          "operationId": "symbol.discover",
+          "toolName": "symbol_lookup",
+          "cliUsage": "symbol discover < request.json",
+          "invocation": {
+            "type": "CLI",
+            "command": ["symbol", "discover"]
+          }
+        },
+        {
+          "operationId": "change.apply",
+          "toolName": "change_apply",
+          "cliUsage": "change apply < request.json",
+          "invocation": {
+            "type": "CLI",
+            "command": ["change", "apply"]
+          }
+        }
+      ]
+    }
+  }
+}

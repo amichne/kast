@@ -17,12 +17,10 @@ import io.github.amichne.kast.appserver.core.ToolContent
 import io.github.amichne.kast.appserver.core.ToolName
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
-import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
@@ -64,9 +62,9 @@ class KastProviderTest {
             }
             val valid =
                 KastProviderOptions.admit(
-                        executable,
-                        temporary.toRealPath(),
-                        RecordingProcessExecutor(capabilitySchema()),
+                        executable = executable,
+                        qualificationDirectory = temporary.toRealPath(),
+                        processExecutor = RecordingProcessExecutor(capabilitySchema()),
                         toolSelection = KastToolSelection.admit("symbol_lookup").refinedValue(),
                     )
                     .refinedValue()
@@ -254,78 +252,56 @@ class KastProviderTest {
     @Test
     fun `explicit change selection removes direct symbol routes and retains selected change routes`(
         @TempDir temporary: Path
-    ) = runBlocking {
-        val executable = executable(temporary.resolve("kast"))
-        val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
-        val executor = RecordingProcessExecutor(schema = capabilitySchema())
-        val options =
-            KastProviderOptions.admit(
-                    executable,
-                    cwd,
-                    executor,
-                    toolSelection = KastToolSelection.admit("change_apply").refinedValue(),
+    ) =
+        runBlocking<Unit> {
+            val executable = executable(temporary.resolve("kast"))
+            val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+            val executor = RecordingProcessExecutor(schema = capabilitySchema())
+            val options =
+                KastProviderOptions.admit(
+                        executable = executable,
+                        qualificationDirectory = cwd,
+                        processExecutor = executor,
+                        toolSelection = KastToolSelection.admit("change_apply").refinedValue(),
+                    )
+                    .refinedValue()
+            val qualification =
+                assertInstanceOf(
+                    KastProviderQualification.Qualified::class.java,
+                    KastProviderQualifier.qualify(options),
                 )
-                .refinedValue()
-        val qualification =
+            val broker =
+                Broker.create(
+                        listOf(qualification.registration),
+                        BrokerLimits.defaults(),
+                    )
+                    .validatedValue()
+
+            assertSelectedChangeCatalog(qualification, broker)
+            val completed =
+                broker.dispatch(
+                    BrokerDispatchRequest(
+                        ToolAddress(namespace("kast"), toolName("change_apply")),
+                        buildJsonObject { put("plan", "plan-1") },
+                        context(cwd),
+                    )
+                )
+            val explicit =
+                broker.dispatch(
+                    BrokerDispatchRequest(
+                        ToolAddress(namespace("kast"), toolName("symbol_lookup")),
+                        buildJsonObject { put("query", "Thing") },
+                        context(cwd),
+                    )
+                )
+
+            assertCompletedChangeDispatch(completed)
+            assertChangeProcessRequests(executor)
             assertInstanceOf(
-                KastProviderQualification.Qualified::class.java,
-                KastProviderQualifier.qualify(options),
+                BrokerFailure.UnknownTool::class.java,
+                (explicit as BrokerDispatch.Rejected).failure,
             )
-        val broker =
-            Broker.create(
-                    listOf(qualification.registration),
-                    BrokerLimits.defaults(),
-                )
-                .validatedValue()
-
-        assertEquals(
-            listOf("change_apply"),
-            broker.catalog.namespaces.single().tools.map { tool -> tool.name.value },
-        )
-        assertEquals(
-            setOf("change_apply"),
-            qualification.bootstrap.tools.definitions.mapTo(linkedSetOf()) { it.name.value },
-        )
-        val completed =
-            broker.dispatch(
-                BrokerDispatchRequest(
-                    ToolAddress(namespace("kast"), toolName("change_apply")),
-                    buildJsonObject { put("plan", "plan-1") },
-                    context(cwd),
-                )
-            )
-        val explicit =
-            broker.dispatch(
-                BrokerDispatchRequest(
-                    ToolAddress(namespace("kast"), toolName("symbol_lookup")),
-                    buildJsonObject { put("query", "Thing") },
-                    context(cwd),
-                )
-            )
-
-        assertEquals(true, (completed as BrokerDispatch.Completed).presentation.success)
-        assertEquals(
-            listOf(
-                ToolContent("Kast · change.apply · complete"),
-                ToolContent(
-                    "{\"document\":{\"changes\":[],\"operation\":\"change.apply\"," +
-                        "\"status\":\"complete\"},\"status\":\"completed\"}"
-                ),
-            ),
-            completed.presentation.content,
-        )
-        assertEquals(ObserverPresentation.None, completed.presentation.observer)
-        assertEquals(
-            listOf(listOf("change", "apply")),
-            executor.requests.filterNot { it.arguments.first().startsWith("--") }.map(BrokerProcessRequest::arguments),
-        )
-        assertInstanceOf(
-            BrokerFailure.UnknownTool::class.java,
-            (explicit as BrokerDispatch.Rejected).failure,
-        )
-        assertEquals(2, executor.requests.count { it.arguments == listOf("--version") })
-        assertEquals(2, executor.requests.count { it.arguments == listOf("--schema") })
-    }
+        }
 
     @Test
     fun `explicit mutation opt in publishes all qualified tools`(@TempDir temporary: Path) = runBlocking {
@@ -730,146 +706,39 @@ class KastProviderTest {
         )
     }
 
-    private class RecordingProcessExecutor(
-        private val schema: String,
-        private val replacementSchema: String = schema,
-        private val invocationDelayMillis: Long = 0,
-        private val invocationDocument: String = """{"operation":"symbol.discover","status":"complete","items":[]}""",
-    ) : BrokerProcessExecutor {
-        val requests = mutableListOf<BrokerProcessRequest>()
-        private var schemaReads = 0
-
-        override suspend fun execute(request: BrokerProcessRequest): BrokerProcessExecution {
-            requests += request
-            return when (request.arguments) {
-                listOf("--version") -> BrokerProcessExecution.Completed(0, "kast 9.9.9\n", "")
-                listOf("--schema") -> {
-                    schemaReads += 1
-                    BrokerProcessExecution.Completed(
-                        0,
-                        if (schemaReads == 1) schema else replacementSchema,
-                        "",
-                    )
-                }
-                listOf("start") -> {
-                    delay(invocationDelayMillis)
-                    BrokerProcessExecution.Completed(
-                        0,
-                        """{"command":"start","status":"complete","runtime":"running"}""",
-                        "",
-                    )
-                }
-                listOf("change", "apply") -> {
-                    delay(invocationDelayMillis)
-                    BrokerProcessExecution.Completed(
-                        0,
-                        """{"operation":"change.apply","status":"complete","changes":[]}""",
-                        "",
-                    )
-                }
-                else -> {
-                    delay(invocationDelayMillis)
-                    BrokerProcessExecution.Completed(
-                        0,
-                        invocationDocument,
-                        "",
-                    )
-                }
-            }
-        }
+    private fun assertChangeProcessRequests(executor: RecordingProcessExecutor) {
+        assertEquals(
+            listOf(listOf("change", "apply")),
+            executor.requests.filterNot { it.arguments.first().startsWith("--") }.map(BrokerProcessRequest::arguments),
+        )
+        assertEquals(2, executor.requests.count { it.arguments == listOf("--version") })
+        assertEquals(2, executor.requests.count { it.arguments == listOf("--schema") })
     }
 
-    private fun capabilitySchema(): String {
-        val policy = JsonPrimitive(CanonicalAgentToolDefinitions.policy.text)
-        val symbolDescription = JsonPrimitive(CanonicalAgentToolDefinitions.symbolLookup.description.value)
-        val changeDescription = JsonPrimitive(CanonicalAgentToolDefinitions.changeApply.description.value)
-        return """
-        {
-          "schemaVersion": 1,
-          "serverProjection": {
-            "schemaVersion": 10,
-            "namespace": "kast",
-            "hostedBootstrap": {
-              "schemaVersion": 1,
-              "policy": $policy,
-              "tools": [
-              {
-                "operationId": "symbol.discover",
-                "name": "symbol_lookup",
-                "description": $symbolDescription,
-                "deferLoading": true,
-                "effect": "intellij_read",
-                "approvalPolicy": "none",
-                "executionBudget": {"readinessMillis": 1020000, "operationMillis": 60000},
-                "inputSchema": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": ["query"],
-                  "properties": { "query": { "type": "string", "minLength": 1 } }
-                },
-                "outputSchema": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": ["status", "document"],
-                  "properties": {
-                    "status": { "const": "completed" },
-                    "document": { "type": "object" }
-                  }
-                }
-              },
-              {
-                "operationId": "change.apply",
-                "name": "change_apply",
-                "description": $changeDescription,
-                "deferLoading": true,
-                "effect": "intellij_write",
-                "approvalPolicy": "explicit",
-                "executionBudget": {"readinessMillis": 1020000, "operationMillis": 60000},
-                "inputSchema": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": ["plan"],
-                  "properties": { "plan": { "type": "string", "minLength": 1 } }
-                },
-                "outputSchema": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": ["status", "document"],
-                  "properties": {
-                    "status": { "const": "completed" },
-                    "document": { "type": "object" }
-                  }
-                }
-              }
-              ]
-            },
-            "cliInvocations": {
-              "schemaVersion": 3,
-              "operations": [
-                {
-                  "operationId": "symbol.discover",
-                  "toolName": "symbol_lookup",
-                  "cliUsage": "symbol discover < request.json",
-                  "invocation": {
-                    "type": "CLI",
-                    "command": ["symbol", "discover"]
-                  }
-                },
-                {
-                  "operationId": "change.apply",
-                  "toolName": "change_apply",
-                  "cliUsage": "change apply < request.json",
-                  "invocation": {
-                    "type": "CLI",
-                    "command": ["change", "apply"]
-                  }
-                }
-              ]
-            }
-          }
-        }
-        """
-            .trimIndent()
+    private fun assertSelectedChangeCatalog(qualification: KastProviderQualification.Qualified, broker: Broker) {
+        assertEquals(
+            listOf("change_apply"),
+            broker.catalog.namespaces.single().tools.map { tool -> tool.name.value },
+        )
+        assertEquals(
+            setOf("change_apply"),
+            qualification.bootstrap.tools.definitions.mapTo(linkedSetOf()) { it.name.value },
+        )
+    }
+
+    private fun assertCompletedChangeDispatch(completed: BrokerDispatch) {
+        assertEquals(true, (completed as BrokerDispatch.Completed).presentation.success)
+        assertEquals(
+            listOf(
+                ToolContent("Kast · change.apply · complete"),
+                ToolContent(
+                    "{\"document\":{\"changes\":[],\"operation\":\"change.apply\"," +
+                        "\"status\":\"complete\"},\"status\":\"completed\"}"
+                ),
+            ),
+            completed.presentation.content,
+        )
+        assertEquals(ObserverPresentation.None, completed.presentation.observer)
     }
 
     private fun executable(path: Path): Path {

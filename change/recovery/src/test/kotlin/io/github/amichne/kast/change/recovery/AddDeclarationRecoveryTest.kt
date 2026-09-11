@@ -208,14 +208,37 @@ class AddDeclarationRecoveryTest {
     }
 
     @Test
+    fun `legacy empty preimage cannot distinguish absence from an empty existing file`() {
+        val original = request()
+        val empty = RecoveryPreimage.fromBoundary(ByteArray(0))
+        val preparation =
+            AddDeclarationRecoveryPreparation.admit(
+                    planId = original.planId,
+                    source = original.source,
+                    precondition = PlannedSourcePrecondition.Absent,
+                    preimage = empty,
+                )
+                .refined()
+        val service = AddDeclarationRecoveryService(InMemoryMutationRecoveryEvidenceStore())
+        val record = service.prepare(preparation).prepared().record
+        assertEquals(
+            Refinement.Rejected(RecoveryPreWriteObservationFailure.AMBIGUOUS_PREIMAGE),
+            ConfirmedRecoveryPreimage.admit(
+                record,
+                listOf(RecoverySourceObservation(original.source, empty, RecoveryDocumentObservation.NotLoaded)),
+            ),
+        )
+    }
+
+    @Test
     fun `observation of another recovery record cannot confirm this plan`() {
         val store = InMemoryMutationRecoveryEvidenceStore()
         val otherRequest =
             AddDeclarationRecoveryPreparation.admit(
-                    AddDeclarationPlanId.parse("b".repeat(64)).refined(),
-                    request().source,
-                    request().precondition,
-                    request().preimage,
+                    planId = AddDeclarationPlanId.parse("b".repeat(64)).refined(),
+                    source = request().source,
+                    precondition = request().precondition,
+                    preimage = request().preimage,
                 )
                 .refined()
         val other = AddDeclarationRecoveryService(store).prepare(otherRequest).prepared().record
