@@ -183,6 +183,9 @@ unqualified. The receipt separates native observations from deterministic tests
 and stock Codex desktop compatibility. Fixture setup and retirement stay outside
 the measured change operations.
 
+The [build and release reuse audit](docs/reviews/build-release-cache-audit.md) records
+artifact retrieval, cache policy and deferred promotion work.
+
 Validate the public documentation with `mint validate` from `docs/public`.
 
 ## Security and license
