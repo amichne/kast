@@ -15,6 +15,16 @@ import io.github.amichne.kast.appserver.core.ProviderNamespace
 import io.github.amichne.kast.appserver.core.ToolAddress
 import io.github.amichne.kast.appserver.core.ToolContent
 import io.github.amichne.kast.appserver.core.ToolName
+import io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval
+import io.github.amichne.kast.appserver.runtime.ClientConnectionId
+import io.github.amichne.kast.appserver.runtime.ExactPlanApprovalOutcome
+import io.github.amichne.kast.appserver.runtime.ExactPlanApprovalResolution
+import io.github.amichne.kast.appserver.runtime.ExactPlanApprovalSubject
+import io.github.amichne.kast.appserver.runtime.HostedApprovalOwnerId
+import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalGrant
+import io.github.amichne.kast.appserver.runtime.PendingExactPlanApproval
+import io.github.amichne.kast.appserver.runtime.SharedTaskSessions
+import io.github.amichne.kast.appserver.runtime.document
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import java.nio.file.Files
@@ -36,6 +46,103 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class KastProviderTest {
+    @Test
+    fun `approved exact plan reaches private transport and substitution never invokes process`(
+        @TempDir temporary: Path
+    ) =
+        runBlocking<Unit> {
+            val cwd = temporary.toRealPath()
+            val executor = RecordingProcessExecutor(capabilitySchema().replace("\"plan\"", "\"planIdentity\""))
+            val broker = approvedBroker(temporary, executor)
+            val grant = approvedGrant(cwd)
+            val approved =
+                BrokerInvocationContext.admit(
+                        threadId = "thread-1",
+                        turnId = "turn-1",
+                        callId = "call-1",
+                        workingDirectory = cwd,
+                        approval = BrokerInvocationApproval.Granted(grant),
+                    )
+                    .refinedValue()
+            val arguments = buildJsonObject { put("planIdentity", "plan:${"a".repeat(64)}") }
+            assertInstanceOf(
+                BrokerDispatch.Completed::class.java,
+                broker.dispatch(
+                    BrokerDispatchRequest(ToolAddress(namespace("kast"), toolName("change_apply")), arguments, approved)
+                ),
+            )
+            val process = executor.requests.last()
+            assertEquals(listOf("change", "apply", "--hosted-approved-invocation"), process.arguments)
+            assertEquals(
+                buildJsonObject {
+                    put("arguments", arguments)
+                    put("approval", grant.assertion)
+                },
+                Json.parseToJsonElement((process.input as BrokerProcessInput.Document).value),
+            )
+            val count = executor.requests.size
+            val substituted =
+                broker.dispatch(
+                    BrokerDispatchRequest(
+                        ToolAddress(namespace("kast"), toolName("change_apply")),
+                        buildJsonObject { put("planIdentity", "plan:${"c".repeat(64)}") },
+                        approved,
+                    )
+                )
+            assertInstanceOf(BrokerDispatch.Rejected::class.java, substituted)
+            assertEquals(count, executor.requests.size)
+            assertGrantContext(cwd, grant)
+        }
+
+    private fun assertGrantContext(cwd: Path, grant: HostedPlanApprovalGrant) {
+        assertInstanceOf(
+            Refinement.Rejected::class.java,
+            BrokerInvocationContext.admit(
+                threadId = "thread-1",
+                turnId = "turn-other",
+                callId = "call-1",
+                workingDirectory = cwd,
+                approval = BrokerInvocationApproval.Granted(grant),
+            ),
+        )
+    }
+
+    private suspend fun approvedBroker(temporary: Path, executor: RecordingProcessExecutor): Broker {
+        val cwd = temporary.toRealPath()
+        val options =
+            KastProviderOptions.admit(
+                    executable = executable(temporary.resolve("kast")),
+                    qualificationDirectory = cwd,
+                    processExecutor = executor,
+                    toolSelection = KastToolSelection.admit("change_apply").refinedValue(),
+                )
+                .refinedValue()
+        val qualification = KastProviderQualifier.qualify(options) as KastProviderQualification.Qualified
+        return Broker.create(listOf(qualification.registration), BrokerLimits.defaults()).validatedValue()
+    }
+
+    private fun approvedGrant(cwd: Path): HostedPlanApprovalGrant {
+        val original = context(cwd)
+        val subject =
+            ExactPlanApprovalSubject.admit(
+                    planIdentity = "a".repeat(64),
+                    hostedChallenge = "b".repeat(64),
+                    root = original.workingDirectory,
+                    host = HostedApprovalOwnerId.admit("11111111-1111-1111-1111-111111111111").refinedValue(),
+                )
+                .refinedValue()
+        val tasks = SharedTaskSessions()
+        val controller = ClientConnectionId.fresh()
+        tasks.connect(controller)
+        tasks.attach(original.threadId, controller)
+        val pending = PendingExactPlanApproval.open(subject, original, tasks).refinedValue()
+        val resolution =
+            pending.respond(controller, buildJsonObject { put("decision", "accept") })
+                as ExactPlanApprovalResolution.Resolved
+        val proof = (resolution.outcome as ExactPlanApprovalOutcome.Approved).proof
+        return HostedPlanApprovalGrant.fromSignedControllerApproval(proof, "e30.${"a".repeat(86)}").refinedValue()
+    }
+
     @Test
     fun `schema qualification retains typed output overflow without changing its byte bound`(@TempDir temporary: Path) =
         runTest {
@@ -250,7 +357,7 @@ class KastProviderTest {
         }
 
     @Test
-    fun `explicit change selection removes direct symbol routes and retains selected change routes`(
+    fun `explicit change selection retains route but cannot invoke change without controller approval`(
         @TempDir temporary: Path
     ) =
         runBlocking<Unit> {
@@ -295,8 +402,10 @@ class KastProviderTest {
                     )
                 )
 
-            assertCompletedChangeDispatch(completed)
-            assertChangeProcessRequests(executor)
+            val rejected = assertInstanceOf(BrokerDispatch.Rejected::class.java, completed)
+            val failure = assertInstanceOf(BrokerFailure.ProviderInvocationRejected::class.java, rejected.failure)
+            assertEquals(ProviderFailureCode.APPROVAL_REQUIRED, failure.code)
+            assertTrue(executor.requests.none { it.arguments.firstOrNull() == "change" })
             assertInstanceOf(
                 BrokerFailure.UnknownTool::class.java,
                 (explicit as BrokerDispatch.Rejected).failure,
@@ -706,15 +815,6 @@ class KastProviderTest {
         )
     }
 
-    private fun assertChangeProcessRequests(executor: RecordingProcessExecutor) {
-        assertEquals(
-            listOf(listOf("change", "apply")),
-            executor.requests.filterNot { it.arguments.first().startsWith("--") }.map(BrokerProcessRequest::arguments),
-        )
-        assertEquals(2, executor.requests.count { it.arguments == listOf("--version") })
-        assertEquals(2, executor.requests.count { it.arguments == listOf("--schema") })
-    }
-
     private fun assertSelectedChangeCatalog(qualification: KastProviderQualification.Qualified, broker: Broker) {
         assertEquals(
             listOf("change_apply"),
@@ -724,21 +824,6 @@ class KastProviderTest {
             setOf("change_apply"),
             qualification.bootstrap.tools.definitions.mapTo(linkedSetOf()) { it.name.value },
         )
-    }
-
-    private fun assertCompletedChangeDispatch(completed: BrokerDispatch) {
-        assertEquals(true, (completed as BrokerDispatch.Completed).presentation.success)
-        assertEquals(
-            listOf(
-                ToolContent("Kast · change.apply · complete"),
-                ToolContent(
-                    "{\"document\":{\"changes\":[],\"operation\":\"change.apply\"," +
-                        "\"status\":\"complete\"},\"status\":\"completed\"}"
-                ),
-            ),
-            completed.presentation.content,
-        )
-        assertEquals(ObserverPresentation.None, completed.presentation.observer)
     }
 
     private fun executable(path: Path): Path {

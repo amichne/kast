@@ -138,7 +138,7 @@ def prepare_hosted_fixture(isolation: AcceptanceEnvironment, repo: Path,
     (workspace / 'gradle.properties').write_text('org.gradle.jvmargs=-Xmx1g\n')
     source = workspace / 'src/main/kotlin/Fixture.kt'
     source.parent.mkdir(parents=True)
-    source.write_text('package fixture\n\nclass NativeChangeTarget(val value: String)\n')
+    source.write_text('package fixture\n\nclass NativeChangeTarget(val value: String) {\n}\n')
     (workspace / 'gradle/wrapper').mkdir(parents=True)
     for name in ('gradle-wrapper.jar', 'gradle-wrapper.properties'):
         shutil.copyfile(repo / 'gradle/wrapper' / name, workspace / 'gradle/wrapper' / name)
