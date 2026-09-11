@@ -153,20 +153,44 @@ class _ReadReplay:
         self.traversal(token, expected, helper)
 
     def traversal(self, token, expected, helper):
-        response = self.transport.invoke(self.surface, 'impact_analyze', {
-            'exactSelector': token, 'relation': 'callers', 'maximumDepth': 4, 'maximumResults': 100,
-            'position': {'type': 'start'}})
-        graph = response.get('graph', {})
-        nodes = {n['id']: n for n in graph.get('nodes', [])}
-        edges = graph.get('edges', [])
+        # The relation-backed adapter charges each hop its full authorized time.
+        # Consume its actual checkpoints; each request retains the original limits.
+        position, seen, callers = {'type': 'start'}, set(), Counter()
+        complete, valid_pages, response = False, True, None
+        for page in range(sum(expected.values()) + 1):
+            response = self.transport.invoke(self.surface, 'impact_analyze', {
+                'exactSelector': token, 'relation': 'callers', 'maximumDepth': 4, 'maximumResults': 100,
+                'position': position})
+            graph = response.get('graph', {})
+            nodes = {node['id']: node for node in graph.get('nodes', [])}
+            edges = graph.get('edges', [])
+            continuation = _next_traversal_page(response, seen)
+            terminal = response.get('status') == 'complete' and 'qualification' not in response
+            checks = {
+                'completeOrResumableTimeBound': terminal or continuation is not None,
+                'sameLiveAuthority': response.get('live') == self.live,
+                'nestedLiveRetained': graph.get('snapshot', {}).get('live') == self.live,
+                'distinctNodes': len(nodes) == len(graph.get('nodes', [])),
+                'exactTarget': all(nodes.get(edge.get('target'), {}).get('qualifiedIdentity') == helper
+                                   for edge in edges),
+                'compilerCoverage': all(edge.get('coverage') == 'exact-compiler-confirmed' and
+                    edge.get('provenance') == 'k2-authored-source' for edge in edges),
+                'compilerProofs': (not edges or bool(graph.get('proofs'))) and
+                    all(proof.get('identity') for proof in graph.get('proofs', [])),
+            }
+            self.record('transitive-callers-page-' + str(page + 1), 'impact_analyze', checks, len(edges), response)
+            valid_pages = valid_pages and all(checks.values())
+            if not valid_pages:
+                break
+            callers.update(nodes.get(edge.get('source'), {}).get('qualifiedIdentity') for edge in edges)
+            if terminal:
+                complete = True
+                break
+            seen.add(continuation)
+            position = {'type': 'resume', 'continuation': continuation}
         self.record('transitive-callers-five', 'impact_analyze', {
-            **self.completed(response), 'nestedLiveRetained': graph.get('snapshot', {}).get('live') == self.live,
-            'exactCallers': Counter(nodes.get(e.get('source'), {}).get('qualifiedIdentity') for e in edges) == expected,
-            'exactTarget': all(nodes.get(e.get('target'), {}).get('qualifiedIdentity') == helper for e in edges),
-            'compilerCoverage': all(e.get('coverage') == 'exact-compiler-confirmed' and
-                e.get('provenance') == 'k2-authored-source' for e in edges),
-            'compilerProofs': bool(graph.get('proofs')) and all(p.get('identity') for p in graph.get('proofs', [])),
-        }, len(edges), response)
+            'complete': complete, 'allPagesProven': valid_pages, 'exactCallers': callers == expected,
+        }, sum(callers.values()), response)
 
     def completed(self, response):
         return {'complete': response.get('status') == 'complete', 'sameLiveAuthority': response.get('live') == self.live}
@@ -220,3 +244,16 @@ def _traversal_qualification_observation(qualification):
         return {'outcome': 'unadmitted'}
     return {'type': kind, 'limitations': limits, 'relationLimitations': relations,
             'continuationPresent': isinstance(qualification.get('continuation'), str)}
+
+
+def _next_traversal_page(response, seen):
+    qualification = response.get('qualification')
+    if response.get('status') != 'qualified' or not isinstance(qualification, dict):
+        return None
+    token = qualification.get('continuation')
+    if (qualification.get('type') != 'resumable'
+            or qualification.get('limitations') != ['time-limit-reached']
+            or qualification.get('relationLimitations') != []
+            or not isinstance(token, str) or not 1 <= len(token) <= 1048576 or token in seen):
+        return None
+    return token

@@ -6,6 +6,8 @@ from pathlib import Path
 import tempfile
 import unittest
 from types import SimpleNamespace
+from collections import Counter
+from unittest.mock import Mock
 from unittest.mock import patch
 
 from hosted_read_fixture import ReadFixtureRejected, prepare_read_fixture
@@ -130,6 +132,50 @@ class HostedReadRegressionTest(unittest.TestCase):
         self.assertNotEqual(first['authoritySha256'], second['authoritySha256'])
         self.assertNotIn(str(self.workspace), json.dumps(first))
         self.assertNotIn('private-token', json.dumps(first))
+
+    def traversal_page(self, status, continuation=None, edges=True):
+        live = {'root': str(self.workspace), 'host': 'fixture-owner', 'epoch': 1,
+                'contentView': 'SAVED_PSI_COMMITTED', 'version': 1}
+        graph = {'snapshot': {'live': live}, 'nodes': [
+            {'id': 'h', 'qualifiedIdentity': 'helper'}, {'id': 'c', 'qualifiedIdentity': 'caller'}],
+            'edges': [{'source': 'c', 'target': 'h', 'coverage': 'exact-compiler-confirmed',
+                       'provenance': 'k2-authored-source'}] if edges else [],
+            'proofs': [{'identity': 'proof'}] if edges else []}
+        if not edges:
+            graph['nodes'] = []
+        result = {'status': status, 'live': live, 'graph': graph}
+        if continuation is not None:
+            result['qualification'] = {'type': 'resumable', 'limitations': ['time-limit-reached'],
+                'relationLimitations': [], 'continuation': continuation}
+        return result
+
+    def test_traversal_consumes_returned_checkpoint_with_unchanged_request_and_requires_completion(self):
+        first = self.traversal_page('qualified', 'private-checkpoint')
+        transport = Mock()
+        transport.invoke.side_effect = [first, self.traversal_page('complete', edges=False)]
+        replay = _ReadReplay(None, None, first['live'], transport, 'cli', [])
+        replay.traversal('original-reference', Counter({'caller': 1}), 'helper')
+        self.assertEqual(2, transport.invoke.call_count)
+        initial, resumed = [call.args[2] for call in transport.invoke.call_args_list]
+        self.assertEqual({'type': 'start'}, initial['position'])
+        self.assertEqual({'type': 'resume', 'continuation': 'private-checkpoint'}, resumed['position'])
+        self.assertEqual({k: v for k, v in initial.items() if k != 'position'},
+                         {k: v for k, v in resumed.items() if k != 'position'})
+        self.assertTrue(all(row['passed'] for row in replay.rows))
+        self.assertEqual('complete', replay.rows[-1]['observation']['status'])
+        self.assertNotIn('private-checkpoint', json.dumps(replay.rows))
+
+    def test_repeated_or_foreign_traversal_checkpoint_never_becomes_complete(self):
+        first = self.traversal_page('qualified', 'private-checkpoint')
+        for second in (self.traversal_page('qualified', 'private-checkpoint', edges=False),
+                       self.traversal_page('qualified', 'different-checkpoint', edges=False),
+                       {**self.traversal_page('complete', edges=False), 'live': {**first['live'], 'epoch': 2}}):
+            transport = Mock()
+            transport.invoke.side_effect = [first, second]
+            replay = _ReadReplay(None, None, first['live'], transport, 'provider', [])
+            replay.traversal('original-reference', Counter({'caller': 1}), 'helper')
+            self.assertEqual(2, transport.invoke.call_count)
+            self.assertFalse(replay.rows[-1]['passed'])
 
     def test_traversal_qualification_keeps_finite_limits_without_checkpoint_payload(self):
         response = {'status': 'qualified', 'qualification': {
