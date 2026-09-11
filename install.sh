@@ -6,7 +6,6 @@ readonly PROGRAM="kast-install"
 readonly REPOSITORY="amichne/kast"
 readonly INSTALL_DOWNLOAD_RETRIES=5
 readonly INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS=2000
-readonly DEFAULT_APP_SERVER_TOOLS="query,source_read,semantic_query,impact_analyze,diagnostic_check,change_plan,change_apply,change_recover"
 
 fail() {
   printf '%s: %s\n' "$PROGRAM" "$*" >&2
@@ -450,7 +449,6 @@ export KAST_INSTALL_ROOT="$install_root"
 export KAST_BIN_DIR="$bin_directory"
 export KAST_ENABLE_LAUNCHD="${KAST_ENABLE_LAUNCHD:-0}"
 export KAST_ENABLE_APP_SERVER="${KAST_ENABLE_APP_SERVER:-1}"
-export KAST_APP_SERVER_TOOLS="${KAST_APP_SERVER_TOOLS:-$DEFAULT_APP_SERVER_TOOLS}"
 export KAST_INSTALL_REFRESH_APP_SERVER="${KAST_INSTALL_REFRESH_APP_SERVER:-0}"
 export KAST_INSTALL_MODE="$mode"
 export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"

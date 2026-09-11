@@ -2,6 +2,8 @@
 
 ## 2026-09-11
 
+- Removed the shell installer's retired tool-name defaults. Typed installation admission now selects the canonical catalog on absence and rejects retired, unknown, empty, or duplicate explicit selections before writing configuration.
+
 - Restored raw tool-result display through the standard expandable App Server MCP
   item shape while preserving dynamic-tool execution. Live and reloaded results
   share the same schema-checked projection; payload-free `tool_display` evidence

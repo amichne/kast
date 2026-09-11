@@ -198,7 +198,7 @@ keys = ["KAST_INSTALL_CONTROL_ROOT", "KAST_INSTALL_CONTROL_SHA256", "KAST_INSTAL
         "KAST_INSTALL_RUNTIME_SHA256", "KAST_INSTALL_VERSION", "KAST_INSTALL_IDEA_HOME",
         "KAST_INSTALL_JAVA_HOME", "KAST_INSTALL_ROOT", "KAST_BIN_DIR", "KAST_INSTALL_MODE"]
 with open(os.environ["TEST_LOG"], "w") as output:
-    json.dump({key: os.environ[key] for key in keys}, output)
+    json.dump({**{key: os.environ[key] for key in keys}, "KAST_APP_SERVER_TOOLS": os.environ.get("KAST_APP_SERVER_TOOLS")}, output)
 PYTHON
 ''')
         self.control = self.assets / f"kast-control-v{self.version}-macos-aarch64.tar.gz"
@@ -253,6 +253,20 @@ PYTHON
         installed = self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted"
         self.assertTrue((installed / "lib/kast-ide-hosted-1.2.3.jar").is_file())
         self.assertIn("restart IntelliJ IDEA", result.stderr)
+
+    def test_default_tool_selection_is_owned_by_the_staged_installer(self):
+        self.env.pop("KAST_APP_SERVER_TOOLS", None)
+        result = self.run_installer("--dry-run")
+        self.assertEqual(0, result.returncode, result.stderr)
+        contract = json.loads((self.root / "calls").read_text())
+        self.assertIsNone(contract["KAST_APP_SERVER_TOOLS"])
+
+    def test_explicit_tool_selection_reaches_the_staged_installer(self):
+        self.env["KAST_APP_SERVER_TOOLS"] = "search_classes,check_diagnostics"
+        result = self.run_installer("--dry-run")
+        self.assertEqual(0, result.returncode, result.stderr)
+        contract = json.loads((self.root / "calls").read_text())
+        self.assertEqual(self.env["KAST_APP_SERVER_TOOLS"], contract["KAST_APP_SERVER_TOOLS"])
 
     def test_other_262_patch_uses_the_same_release_line_archive(self):
         (self.idea / "Resources/product-info.json").write_text(json.dumps({
