@@ -47,7 +47,9 @@ copilot-session-*.html
 copilot-session-*.md
 .claude/
 skills-lock.json
-/AGENTS.local.md
+# Agent instructions and navigation are checked in; only turn state stays local.
+/OUTDATED.local.md
+/.agent-turn/
 /.kast/
 /.graphify/
 /.agents/mintlify*/*
