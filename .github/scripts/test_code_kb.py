@@ -48,6 +48,34 @@ class KnowledgeBaseValidatorTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode, result.stdout)
         self.assertIn("link target does not exist: missing.md", result.stdout)
 
+    def test_generated_disclosure_fixture_passes_existing_okf_check(self) -> None:
+        import api_knowledge
+        from test_api_knowledge import encode, payload
+
+        generated = api_knowledge.generate(encode(payload()))
+        self.assertIsInstance(generated, api_knowledge.Generated)
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = Path(temporary)
+            knowledge = repository / "knowledge"
+            for path, data in generated.files:
+                target = knowledge / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(data)
+            result = subprocess.run(
+                [sys.executable, str(VALIDATOR), "check", "--repo", str(repository),
+                 "--docs", "knowledge", "--strict"],
+                capture_output=True, text=True, check=False,
+            )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+
+def load_tests(loader: unittest.TestLoader, suite: unittest.TestSuite, pattern: str | None) -> unittest.TestSuite:
+    # Keep the existing Gradle knowledgeBaseTest entry point as the gate owner.
+    from test_api_knowledge import DisclosureTest
+
+    suite.addTests(loader.loadTestsFromTestCase(DisclosureTest))
+    return suite
+
 
 if __name__ == "__main__":
     unittest.main()
