@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.acceptance.hostedchange
 
+import io.github.amichne.kast.appserver.runtime.WorkspaceExecutionFailure
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -13,6 +14,10 @@ internal sealed interface NativeConcurrentResultObservation {
     @SerialName("broker-rejected")
     data class BrokerRejected(val failure: NativeBrokerRejection) : NativeConcurrentResultObservation
 
+    @Serializable
+    @SerialName("workspace-rejected")
+    data class WorkspaceRejected(val failure: WorkspaceExecutionFailure) : NativeConcurrentResultObservation
+
     @Serializable @SerialName("response-lost") data object ResponseLost : NativeConcurrentResultObservation
 }
 
@@ -23,5 +28,6 @@ internal fun NativeToolResult.concurrentObservation(): NativeConcurrentResultObs
         is NativeToolResult.Document ->
             NativeConcurrentResultObservation.Document(nativeSemanticChangeObservation(payload))
         is NativeToolResult.BrokerRejected -> NativeConcurrentResultObservation.BrokerRejected(failure)
+        is NativeToolResult.WorkspaceRejected -> NativeConcurrentResultObservation.WorkspaceRejected(failure)
         NativeToolResult.ResponseLost -> NativeConcurrentResultObservation.ResponseLost
     }

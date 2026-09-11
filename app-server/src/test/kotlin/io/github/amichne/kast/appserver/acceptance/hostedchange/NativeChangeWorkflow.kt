@@ -51,7 +51,7 @@ internal class NativeChangeWorkflow(
         editedPreimage()
         applyAndVerify()
         recoverAfterOwnerRestart()
-        NativeLifecycleWorkflow(session, source, evidence, controls).run(peer, original, postimage)
+        peer = NativeLifecycleWorkflow(session, source, evidence, controls).run(peer, original, postimage)
         lostResponse()
         probes.undoProductionChange(peer)
         NativeDivergentRecoveryWorkflow(controls, source, evidence).run(peer)
@@ -222,6 +222,7 @@ internal class NativeChangeWorkflow(
             /* old completed subprocesses are not this attempt */
         }
         peer.call("change_apply", arguments, aftermath = NativeApprovalAftermath.DropResponse)
+        val retained = session.replaceBroker(NativeBrokerRetentionExpectation.SETTLED)
         evidence.record("provider-routing", NativeCaseOutcome.UNQUALIFIED)
         peer = session.connect()
         val recovered = peer.call("change_apply", arguments)
@@ -235,6 +236,7 @@ internal class NativeChangeWorkflow(
                 ),
             NativeFailure.RESULT_SHAPE_REJECTED,
         )
+        session.requireRetained(retained)
         val after = Files.readAllBytes(source)
         demand(occurrences(after, "fun acceptanceLostResponse") <= 1, NativeFailure.DUPLICATE_DECLARATION)
         evidence.record(

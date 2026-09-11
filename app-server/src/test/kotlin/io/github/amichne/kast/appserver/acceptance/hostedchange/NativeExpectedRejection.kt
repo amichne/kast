@@ -38,6 +38,7 @@ internal fun NativeChangeEvidence.expectRejection(
 
 internal fun NativeToolResult.rejectionObservation(): NativeExpectedRejection =
     when (this) {
+        is NativeToolResult.WorkspaceRejected -> throw NativeRejected(NativeFailure.PROVIDER_REJECTED)
         is NativeToolResult.BrokerRejected ->
             when (failure) {
                 NativeBrokerRejection.INVALID_ARGUMENTS -> NativeExpectedRejection.BROKER_INVALID_ARGUMENTS

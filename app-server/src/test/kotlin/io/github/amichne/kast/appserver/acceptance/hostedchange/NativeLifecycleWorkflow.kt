@@ -1,10 +1,12 @@
 package io.github.amichne.kast.appserver.acceptance.hostedchange
 
+import io.github.amichne.kast.appserver.runtime.WorkspaceExecutionFailure
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -18,11 +20,12 @@ internal class NativeLifecycleWorkflow(
     private val evidence: NativeChangeEvidence,
     private val controls: NativeFixtureControls,
 ) {
-    suspend fun run(peer: NativeChangePeer, preimage: ByteArray, postimage: ByteArray) {
+    suspend fun run(peer: NativeChangePeer, preimage: ByteArray, postimage: ByteArray): NativeChangePeer {
         concurrentSamePlan(peer, preimage, postimage)
-        postSaveInterruption(peer, preimage, postimage)
-        unloadWithPendingApproval(peer)
+        val replacement = postSaveInterruption(peer, preimage, postimage)
+        unloadWithPendingApproval(replacement)
         controls.restart()
+        return replacement
     }
 
     private suspend fun concurrentSamePlan(peer: NativeChangePeer, preimage: ByteArray, postimage: ByteArray) {
@@ -69,7 +72,12 @@ internal class NativeLifecycleWorkflow(
         second.session.detach()
     }
 
-    private suspend fun postSaveInterruption(peer: NativeChangePeer, preimage: ByteArray, postimage: ByteArray) {
+    private suspend fun postSaveInterruption(
+        peer: NativeChangePeer,
+        preimage: ByteArray,
+        postimage: ByteArray,
+    ): NativeChangePeer {
+        evidence.record("post-save-interruption-no-replay", NativeCaseOutcome.UNQUALIFIED)
         val arguments = plan(peer)
         val before = sha256(preimage)
         val after = sha256(postimage)
@@ -80,28 +88,38 @@ internal class NativeLifecycleWorkflow(
             aftermath = NativeApprovalAftermath.Interrupt { controls.interruptAfterSave(before, after, barrier) },
         )
         unchanged(postimage)
+        val invocationsBeforeRetry = session.trace.approvedInvocationCount()
         val retry = peer.call("change_apply", arguments)
         demand(
-            !retry.rejected() &&
-                retry.document()["state"] in
-                    setOf(
-                        JsonPrimitive("verified"),
-                        JsonPrimitive("applied_unverified"),
-                        JsonPrimitive("recovery_required"),
-                    ),
+            retry == NativeToolResult.WorkspaceRejected(WorkspaceExecutionFailure.WORKSPACE_RECOVERY_REQUIRED),
             NativeFailure.RESULT_SHAPE_REJECTED,
         )
+        demand(session.trace.approvedInvocationCount() == invocationsBeforeRetry, NativeFailure.DUPLICATE_DECLARATION)
         unchanged(postimage)
+        val retained = session.replaceBroker()
+        val replacement = session.connect()
+        val recovered = recover(replacement, arguments, preimage)
+        demand(recovered == NativeObservedChangeState.ROLLED_BACK, NativeFailure.RECOVERY_FAILED)
+        session.requireRetained(retained)
         evidence.record(
             "post-save-interruption-no-replay",
             NativeCaseOutcome.PASSED,
-            buildJsonObject {
-                put("sourcePreimageSha256", before)
-                put("sourcePostimageSha256", after)
-                put("retrievedState", retry.document().getValue("state"))
-            },
+            Json.encodeToJsonElement(
+                    NativePostSaveObservation.serializer(),
+                    NativePostSaveObservation(
+                        sourcePreimageSha256 = before,
+                        sourcePostimageSha256 = after,
+                        brokerFailure = WorkspaceExecutionFailure.WORKSPACE_RECOVERY_REQUIRED,
+                        retryInvocationCount = 0,
+                        invocationJournalSha256 = retained.invocationJournalSha256,
+                        threadStoreSha256 = retained.threadStoreSha256,
+                        brokerReplacement = NativeBrokerReplacement.STORES_RETAINED,
+                        recoveryState = recovered,
+                    ),
+                )
+                .jsonObject,
         )
-        recover(peer, arguments, preimage)
+        return replacement
     }
 
     suspend fun unloadWithPendingApproval(peer: NativeChangePeer) {
@@ -126,7 +144,11 @@ internal class NativeLifecycleWorkflow(
         return buildJsonObject { put("planIdentity", planned.document().textAt("planIdentity")) }
     }
 
-    private suspend fun recover(peer: NativeChangePeer, arguments: JsonObject, preimage: ByteArray) {
+    private suspend fun recover(
+        peer: NativeChangePeer,
+        arguments: JsonObject,
+        preimage: ByteArray,
+    ): NativeObservedChangeState {
         val recovered = peer.call("change_recover", arguments)
         demand(
             !recovered.rejected() &&
@@ -139,6 +161,7 @@ internal class NativeLifecycleWorkflow(
         )
         unchanged(preimage)
         NativeChangeRead(peer).searchFunction("acceptanceAdded", 0)
+        return nativeSemanticChangeObservation(recovered.document()).state
     }
 
     private fun unchanged(bytes: ByteArray) =

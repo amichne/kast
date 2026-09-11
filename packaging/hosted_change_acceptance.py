@@ -140,7 +140,8 @@ CASE_NAMES = frozenset(('indexing-policy-refusal', 'foreign-root-refusal', 'gene
     'complete-workflow', 'repeat-apply-reuses-receipt', 'owner-retirement-invalidates-reference-and-plan',
     'recovery-preserves-divergent-content', 'fresh-owner-exact-image-recovery', 'lost-response-no-replay', 'provider-routing'))
 DIGEST_FIELDS = frozenset(('referenceSha256', 'planIdentitySha256', 'receiptIdentitySha256',
-                         'sourcePreimageSha256', 'sourcePostimageSha256', 'sourceSha256', 'savedSha256', 'documentSha256'))
+                         'sourcePreimageSha256', 'sourcePostimageSha256', 'sourceSha256', 'savedSha256', 'documentSha256',
+                         'invocationJournalSha256', 'threadStoreSha256'))
 COUNT_FIELDS = frozenset(('rejectedIntentCount', 'candidateCount', 'declarationCount', 'processCount', 'isolatedStartupCommandCount',
                         'approvalPrepareCount', 'approvedInvocationCount'))
 
@@ -293,6 +294,10 @@ def bounded_native_report(path: Path, workspace: Path) -> dict:
                          'CONTENT_CHANGED', 'OTHER_REJECTION', 'NOT_REJECTED', 'RESPONSE_LOST'))
                      or (field in ('expectedRecovery', 'observedRecovery') and item in ('MANUAL_RECOVERY_REQUIRED', 'OTHER_RESULT'))
                      or (field == 'postPlanAdmission' and item == 'SAVED_PSI_COMMITTED')
+                     or (field == 'brokerFailure' and item == 'WORKSPACE_RECOVERY_REQUIRED')
+                     or (field == 'retryInvocationCount' and type(item) is int and item == 0)
+                     or (field == 'brokerReplacement' and item == 'STORES_RETAINED')
+                     or (field == 'recoveryState' and item == 'ROLLED_BACK')
                      or (field == 'retrievedState' and item in ('verified', 'applied_unverified', 'recovery_required')))
             if field in ('before', 'after'):
                 admitted_live(item, workspace)

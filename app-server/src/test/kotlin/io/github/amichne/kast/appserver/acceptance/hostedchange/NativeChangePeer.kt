@@ -2,6 +2,7 @@ package io.github.amichne.kast.appserver.acceptance.hostedchange
 
 import io.github.amichne.kast.appserver.runtime.BrokerSessionHub
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamFrame
+import io.github.amichne.kast.appserver.runtime.WorkspaceExecutionFailure
 import java.nio.file.Path
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withTimeout
@@ -29,12 +30,15 @@ internal sealed interface NativeToolResult {
 
     data class BrokerRejected(val failure: NativeBrokerRejection) : NativeToolResult
 
+    data class WorkspaceRejected(val failure: WorkspaceExecutionFailure) : NativeToolResult
+
     data object ResponseLost : NativeToolResult
 
     fun document(): JsonObject =
         when (this) {
             is Document -> payload
             is BrokerRejected,
+            is WorkspaceRejected,
             ResponseLost -> throw NativeRejected(NativeFailure.RESULT_SHAPE_REJECTED)
         }
 
@@ -42,6 +46,7 @@ internal sealed interface NativeToolResult {
         when (this) {
             is Document -> success == NativeToolSuccess.FAILED || payload["status"] == JsonPrimitive("rejected")
             is BrokerRejected,
+            is WorkspaceRejected,
             ResponseLost -> true
         }
 }
@@ -225,8 +230,13 @@ internal class NativeChangePeer(
         session.output.onReceive { NativeControllerFrame.Notification(it) }
     }
 
-    private fun rejectedBroker(document: JsonObject): NativeToolResult.BrokerRejected {
+    private fun rejectedBroker(document: JsonObject): NativeToolResult {
         val observation = protocolObservation(document.toString())
+        WorkspaceExecutionFailure.entries
+            .firstOrNull { observation["failure"] == JsonPrimitive(it.name) }
+            ?.let {
+                return NativeToolResult.WorkspaceRejected(it)
+            }
         val failure =
             NativeBrokerRejection.entries.firstOrNull {
                 observation["failure"] == JsonPrimitive(it.name)

@@ -31,13 +31,16 @@ import kotlinx.serialization.json.jsonObject
 /** Scripted native client/upstream transport; broker, schemas, provider, subprocesses and hosted plugin are real. */
 internal class NativeChangeSession
 private constructor(
-    val hub: BrokerSessionHub,
+    private val reopenHub: () -> BrokerSessionHub,
     val trace: NativeProcessTrace,
     private val connecting: Channel<NativeUpstream>,
     private val workspace: Path,
     private val privateDirectory: Path,
     val foreignRoot: NativeForeignRootBoundary,
 ) {
+    var hub: BrokerSessionHub = reopenHub()
+        private set
+
     private val sequence = java.util.concurrent.atomic.AtomicInteger(10)
     private var peerCount = 0
 
@@ -70,6 +73,18 @@ private constructor(
         return peer
     }
 
+    suspend fun replaceBroker(
+        expectation: NativeBrokerRetentionExpectation = NativeBrokerRetentionExpectation.UNCERTAIN
+    ): NativeBrokerStoreSnapshot {
+        hub.close()
+        val retained = NativeBrokerStoreSnapshot.capture(privateDirectory, expectation)
+        hub = reopenHub()
+        retained.requireUnchanged(privateDirectory)
+        return retained
+    }
+
+    fun requireRetained(snapshot: NativeBrokerStoreSnapshot) = snapshot.requireRecordsRetained(privateDirectory)
+
     suspend fun close() = hub.close()
 
     companion object {
@@ -86,36 +101,38 @@ private constructor(
             val qualification =
                 KastProviderQualifier.qualify(options) as? KastProviderQualification.Qualified
                     ?: throw NativeRejected(NativeFailure.PROVIDER_QUALIFICATION_REJECTED)
-            val broker = Broker.create(listOf(qualification.registration), BrokerLimits.defaults()).nativeValue()
             val contracts = NativeControllerProtocol.contracts(schemas, workspace)
-            val threads =
-                FileThreadCatalogStore.open(privateDirectory.resolve("threads.json"))
-                    as? FileThreadCatalogStoreOpen.Opened ?: throw NativeRejected(NativeFailure.INPUT_REJECTED)
             val connecting = Channel<NativeUpstream>(4)
+            val activities = activitySink(privateDirectory)
+            val reopen = {
+                val threads =
+                    FileThreadCatalogStore.open(privateDirectory.resolve("threads.json"))
+                        as? FileThreadCatalogStoreOpen.Opened ?: throw NativeRejected(NativeFailure.INPUT_REJECTED)
+                BrokerSessionHub(
+                    KtorBrokerServerOptions(
+                        publicSocket = BrokerSocketPath.admit(privateDirectory.resolve("native.sock")).nativeValue(),
+                        broker =
+                            Broker.create(listOf(qualification.registration), BrokerLimits.defaults()).nativeValue(),
+                        contracts = contracts,
+                        threadStore = threads.store,
+                        upstream =
+                            BrokerUpstreamConnector {
+                                BrokerUpstreamConnectionAdmission.Connected(connecting.receive())
+                            },
+                        maximumConnections = 4,
+                        maximumMessageBytes = 4 * 1024 * 1024,
+                        enrollment =
+                            WorkspaceEnrollment.Enrolled(checkNotNull(CanonicalBrokerDirectory.admit(workspace))),
+                        sessionBootstrap = qualification.bootstrap,
+                        bindingOwner = BrokerInstallationState.admit(product).nativeValue(),
+                        planApprovalGateway = KastHostedPlanApprovalGateway(options, home),
+                        invocationJournal = privateDirectory.resolve("invocations.json"),
+                        sessionActivitySink = activities,
+                    )
+                )
+            }
             return NativeChangeSession(
-                hub =
-                    BrokerSessionHub(
-                        KtorBrokerServerOptions(
-                            publicSocket =
-                                BrokerSocketPath.admit(privateDirectory.resolve("native.sock")).nativeValue(),
-                            broker = broker,
-                            contracts = contracts,
-                            threadStore = threads.store,
-                            upstream =
-                                BrokerUpstreamConnector {
-                                    BrokerUpstreamConnectionAdmission.Connected(connecting.receive())
-                                },
-                            maximumConnections = 4,
-                            maximumMessageBytes = 4 * 1024 * 1024,
-                            enrollment =
-                                WorkspaceEnrollment.Enrolled(checkNotNull(CanonicalBrokerDirectory.admit(workspace))),
-                            sessionBootstrap = qualification.bootstrap,
-                            bindingOwner = BrokerInstallationState.admit(product).nativeValue(),
-                            planApprovalGateway = KastHostedPlanApprovalGateway(options, home),
-                            invocationJournal = privateDirectory.resolve("invocations.json"),
-                            sessionActivitySink = activitySink(privateDirectory),
-                        )
-                    ),
+                reopenHub = reopen,
                 trace = trace,
                 connecting = connecting,
                 workspace = workspace,

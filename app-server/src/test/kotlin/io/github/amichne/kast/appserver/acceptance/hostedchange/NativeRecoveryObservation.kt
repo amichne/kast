@@ -11,6 +11,7 @@ internal enum class NativeRecoveryObservation {
 
 internal fun NativeToolResult.recoveryObservation(): NativeRecoveryObservation =
     when (this) {
+        is NativeToolResult.WorkspaceRejected -> throw NativeRejected(NativeFailure.PROVIDER_REJECTED)
         is NativeToolResult.Document ->
             if (rejected()) NativeRecoveryObservation.OTHER_RESULT
             else if (

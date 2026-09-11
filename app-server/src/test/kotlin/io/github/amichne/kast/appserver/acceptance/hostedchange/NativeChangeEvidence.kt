@@ -94,6 +94,8 @@ internal class NativeProcessTrace(private val privateDirectory: Path) : BrokerPr
     val plannedReferenceDigests = CopyOnWriteArrayList<String>()
     val boundaryRejections = CopyOnWriteArrayList<NativeBoundaryRejection>()
 
+    fun approvedInvocationCount(): Int = routes.count { it.lastOrNull() == "--hosted-approved-invocation" }
+
     fun isolatedStartupCount(): Int = routes.count { it.firstOrNull() in setOf("start", "prepare", "worker") }
 
     override suspend fun execute(request: BrokerProcessRequest): BrokerProcessExecution {
