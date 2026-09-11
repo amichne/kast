@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from hosted_read_fixture import ReadFixtureRejected, prepare_read_fixture
 from hosted_read_regression import _ReadReplay, _read_observation, _reproduction
-from hosted_read_transport import HostedReadTransport, ReadTransportRejected, _admit_cli_invocations
+from hosted_read_transport import HostedReadTransport, ReadTransportRejected, _admit_cli_invocations, _provider_result
 from hosted_generated_fixture import (GENERATED_FILE, GENERATED_SOURCE, MOVEMENT_FILE, MOVEMENT_SOURCE,
     prepare_generated_fixture, finalize_generated_fixture, amend_generated_provenance)
 
@@ -129,6 +129,20 @@ class HostedReadRegressionTest(unittest.TestCase):
         self.assertNotEqual(first['authoritySha256'], second['authoritySha256'])
         self.assertNotIn(str(self.workspace), json.dumps(first))
         self.assertNotIn('private-token', json.dumps(first))
+
+    def test_provider_rejection_preserves_closed_failure_without_payload(self):
+        with self.assertRaises(ReadTransportRejected) as rejected:
+            _provider_result({'kind': 'rejected', 'failure': 'OUTPUT_CONTRACT_REJECTED',
+                              'privatePayload': 'must not be retained'})
+        self.assertEqual({'reason': 'READ_PROVIDER_REJECTED', 'providerFailure': 'OUTPUT_CONTRACT_REJECTED'},
+                         rejected.exception.evidence())
+        with self.assertRaises(ReadTransportRejected) as unknown:
+            _provider_result({'kind': 'rejected', 'failure': 'arbitrary private contents'})
+        self.assertEqual({'reason': 'READ_PROVIDER_PROTOCOL_REJECTED'}, unknown.exception.evidence())
+        self.assertEqual({'failure': 'INVALID_ARGUMENTS'},
+                         _provider_result({'kind': 'rejected', 'failure': 'INVALID_ARGUMENTS'}))
+        self.assertEqual({'status': 'complete'}, _provider_result({
+            'kind': 'completed', 'envelope': {'document': {'status': 'complete'}}}))
 
     def generated_fixture(self):
         original = prepare_read_fixture(self.workspace, REPO)

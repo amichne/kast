@@ -1,5 +1,6 @@
 """Owned, bounded result transport for the native read regression; payloads never become log files."""
 from contextlib import contextmanager
+from enum import Enum
 import json
 import os
 import re
@@ -8,8 +9,69 @@ import subprocess
 import time
 
 
+class ReadTransportFailure(str, Enum):
+    CLI_SCHEMA = 'READ_CLI_SCHEMA_REJECTED'
+    CLI_TOOL = 'READ_CLI_TOOL_REJECTED'
+    CLI_OUTPUT = 'READ_CLI_OUTPUT_REJECTED'
+    SURFACE = 'READ_SURFACE_REJECTED'
+    PROVIDER = 'READ_PROVIDER_REJECTED'
+    PROVIDER_PROTOCOL = 'READ_PROVIDER_PROTOCOL_REJECTED'
+    DISCONNECTED = 'READ_PROVIDER_DISCONNECTED'
+    OUTPUT_BOUND = 'READ_PROVIDER_OUTPUT_BOUND'
+    EXTRA_OUTPUT = 'READ_PROVIDER_EXTRA_OUTPUT'
+    TIMEOUT = 'READ_PROVIDER_TIMEOUT'
+
+
+class ReadProviderFailure(str, Enum):
+    INVALID_ARGUMENTS = 'INVALID_ARGUMENTS'
+    UNKNOWN_NAMESPACE = 'UNKNOWN_NAMESPACE'
+    UNKNOWN_TOOL = 'UNKNOWN_TOOL'
+    OUTPUT_CONTRACT = 'OUTPUT_CONTRACT_REJECTED'
+    CANCELLED = 'INVOCATION_CANCELLED'
+    OVERLOADED = 'OVERLOADED'
+    UNEXPECTED = 'UNEXPECTED_FAILURE'
+    TIMED_OUT = 'TIMED_OUT'
+    IO = 'IO_REJECTED'
+    OUTPUT_LIMIT = 'OUTPUT_LIMIT'
+    SPAWN_FAILED = 'SPAWN_FAILED'
+    TERMINATED = 'TERMINATED'
+    QUALIFICATION = 'KAST_QUALIFICATION_FAILED'
+    CONTRACT_CHANGED = 'KAST_CONTRACT_CHANGED'
+    ARGUMENT = 'KAST_ARGUMENT_NOT_SCALAR'
+    MALFORMED_OUTPUT = 'MALFORMED_KAST_OUTPUT'
+    APPROVAL_REQUIRED = 'APPROVAL_REQUIRED'
+    APPROVAL_BINDING = 'APPROVAL_BINDING_REJECTED'
+    GRADLE_WRAPPER = 'GRADLE_WRAPPER_UNAVAILABLE'
+
+
 class ReadTransportRejected(ValueError):
-    pass
+    def __init__(self, reason, provider_failure=None):
+        self.reason = ReadTransportFailure(reason)
+        self.provider_failure = provider_failure
+        self.invocation = None
+        super().__init__(self.reason.value)
+
+    def evidence(self):
+        result = {'reason': self.reason.value}
+        if self.provider_failure is not None:
+            result['providerFailure'] = self.provider_failure.value
+        if self.invocation is not None:
+            result['surface'], result['tool'] = self.invocation
+        return result
+
+
+def _provider_result(response):
+    if response.get('kind') == 'completed':
+        return response['envelope']['document']
+    if response.get('kind') != 'rejected':
+        raise ReadTransportRejected('READ_PROVIDER_PROTOCOL_REJECTED')
+    try:
+        failure = ReadProviderFailure(response.get('failure'))
+    except (ValueError, TypeError):
+        raise ReadTransportRejected('READ_PROVIDER_PROTOCOL_REJECTED') from None
+    if failure is ReadProviderFailure.INVALID_ARGUMENTS:
+        return {'failure': failure.value}
+    raise ReadTransportRejected('READ_PROVIDER_REJECTED', failure)
 
 
 MAXIMUM_RESPONSE_BYTES = 4 * 1024 * 1024
@@ -79,6 +141,14 @@ class HostedReadTransport:
             self.provider.stdout.close()
 
     def invoke(self, surface, tool, arguments):
+        try:
+            return self._invoke(surface, tool, arguments)
+        except ReadTransportRejected as error:
+            if surface in ('cli', 'provider') and tool in self.cli_commands:
+                error.invocation = (surface, tool)
+            raise
+
+    def _invoke(self, surface, tool, arguments):
         if surface == 'cli':
             if tool not in self.cli_commands:
                 raise ReadTransportRejected('READ_CLI_TOOL_REJECTED')
@@ -93,12 +163,7 @@ class HostedReadTransport:
         payload = json.dumps({'tool': tool, 'arguments': arguments}).encode() + b'\n'
         self.provider.stdin.write(payload)
         self.provider.stdin.flush()
-        response = json.loads(self._response())
-        if response.get('kind') == 'completed':
-            return response['envelope']['document']
-        if response.get('kind') == 'rejected' and response.get('failure') == 'INVALID_ARGUMENTS':
-            return {'failure': 'INVALID_ARGUMENTS'}
-        raise ReadTransportRejected('READ_PROVIDER_REJECTED')
+        return _provider_result(json.loads(self._response()))
 
     def _response(self):
         deadline, response = time.monotonic() + 90, b''
