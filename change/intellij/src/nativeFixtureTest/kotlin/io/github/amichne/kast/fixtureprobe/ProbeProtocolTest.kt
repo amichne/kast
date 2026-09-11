@@ -16,6 +16,54 @@ class ProbeProtocolTest {
     private fun decode(raw: String) = ProbeRequest.decode(raw.toByteArray(), id)
 
     @Test
+    fun barrierRetainsFuturePostimageWhileGuardingCurrentPreimage() {
+        assertIs<ProbeResult.Rejected>(decode(request("ARM_POST_SAVE_BARRIER")))
+        val admitted =
+            assertIs<ProbeResult.Accepted<ProbeRequest>>(
+                    decode(request("ARM_POST_SAVE_BARRIER", ",\"expectedPostimageSha256\":\"$postimage\""))
+                )
+                .value
+        assertEquals(preimage, admitted.expectedCurrentSaved.value)
+        assertEquals(postimage, assertIs<ProbeExpectedImages.Changed>(admitted.images).postimage.value)
+    }
+
+    @Test
+    fun saveBarrierRequiresExactSavedCommittedPostimage() {
+        val before = assertIs<ProbeResult.Accepted<ProbeDigest>>(ProbeDigest.parse(preimage)).value
+        val after = assertIs<ProbeResult.Accepted<ProbeDigest>>(ProbeDigest.parse(postimage)).value
+        val images = ProbeExpectedImages.Changed(before, after)
+        assertIs<ProbeResult.Accepted<ProbeSavedBarrierEvidence>>(
+            ProbeSavedBarrierEvidence.admit(
+                images = images,
+                saved = after,
+                document = after,
+                state = ProbeDocumentState.SAVED_COMMITTED,
+            )
+        )
+        for (state in ProbeDocumentState.entries.filter { it != ProbeDocumentState.SAVED_COMMITTED }) {
+            assertIs<ProbeResult.Rejected>(
+                ProbeSavedBarrierEvidence.admit(images = images, saved = after, document = after, state = state)
+            )
+        }
+        assertIs<ProbeResult.Rejected>(
+            ProbeSavedBarrierEvidence.admit(
+                images = images,
+                saved = before,
+                document = after,
+                state = ProbeDocumentState.SAVED_COMMITTED,
+            )
+        )
+        assertIs<ProbeResult.Rejected>(
+            ProbeSavedBarrierEvidence.admit(
+                images = images,
+                saved = after,
+                document = before,
+                state = ProbeDocumentState.SAVED_COMMITTED,
+            )
+        )
+    }
+
+    @Test
     fun canonicalObservationsRetainExactRequestAndImageProof() {
         val raw = request("OBSERVE")
         val admitted = assertIs<ProbeResult.Accepted<ProbeRequest>>(decode(raw)).value

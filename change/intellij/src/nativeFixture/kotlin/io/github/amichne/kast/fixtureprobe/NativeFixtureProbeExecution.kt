@@ -27,7 +27,11 @@ import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtTypeAlias
 
-internal class NativeFixtureProbeExecution(private val project: Project, private val gate: ProbeSandbox) {
+internal class NativeFixtureProbeExecution(
+    private val project: Project,
+    private val gate: ProbeSandbox,
+    private val controls: NativeFixtureProbeControls,
+) {
     fun execute(request: ProbeRequest): ProbeExecution =
         try {
             if (!gate.valid(project)) ProbeExecution.Rejected(ProbeFailure.SANDBOX_REJECTED)
@@ -53,6 +57,12 @@ internal class NativeFixtureProbeExecution(private val project: Project, private
                 is ProbeResult.Rejected -> ProbeExecution.Rejected(observed.failure)
             }
         if (!gate.valid(project)) return ProbeExecution.Rejected(ProbeFailure.SANDBOX_REJECTED)
+        if (
+            request.command == ProbeCommand.ARM_POST_SAVE_BARRIER ||
+                request.command == ProbeCommand.UNLOAD_PRODUCTION_PLUGIN
+        ) {
+            return executeControl(target, request)
+        }
         return try {
             when (val mutated = mutate(target, request)) {
                 is ProbeResult.Accepted -> completedEffect(target, request)
@@ -65,9 +75,20 @@ internal class NativeFixtureProbeExecution(private val project: Project, private
         }
     }
 
+    private fun executeControl(target: ProbeTarget, request: ProbeRequest): ProbeExecution {
+        val observed =
+            when (val result = evidence(target)) {
+                is ProbeResult.Accepted -> result.value
+                is ProbeResult.Rejected -> return ProbeExecution.Rejected(result.failure)
+            }
+        return controls.execute(request, target.document, observed)
+    }
+
     private fun mutate(target: ProbeTarget, request: ProbeRequest): ProbeResult<Unit> {
         when (request.command) {
-            ProbeCommand.OBSERVE -> return ProbeResult.Rejected(ProbeFailure.UNKNOWN_COMMAND)
+            ProbeCommand.OBSERVE,
+            ProbeCommand.ARM_POST_SAVE_BARRIER,
+            ProbeCommand.UNLOAD_PRODUCTION_PLUGIN -> return ProbeResult.Rejected(ProbeFailure.UNKNOWN_COMMAND)
             ProbeCommand.DIRTY_UNCOMMITTED ->
                 WriteCommandAction.runWriteCommandAction(
                     project,
@@ -107,7 +128,7 @@ internal class NativeFixtureProbeExecution(private val project: Project, private
             }
         val expected =
             if (request.command == ProbeCommand.UNDO_PRODUCTION_CHANGE) request.images.preimage
-            else request.images.currentSaved
+            else request.expectedCurrentSaved
         if (observed.saved != expected) return ProbeExecution.EffectUncertain(ProbeFailure.SAVE_REJECTED)
         val state =
             when (request.command) {
@@ -115,7 +136,9 @@ internal class NativeFixtureProbeExecution(private val project: Project, private
                 ProbeCommand.COMMIT_DOCUMENT -> ProbeDocumentState.DIRTY_COMMITTED
                 ProbeCommand.RESTORE_SAVED,
                 ProbeCommand.UNDO_PRODUCTION_CHANGE,
-                ProbeCommand.OBSERVE -> ProbeDocumentState.SAVED_COMMITTED
+                ProbeCommand.OBSERVE,
+                ProbeCommand.ARM_POST_SAVE_BARRIER,
+                ProbeCommand.UNLOAD_PRODUCTION_PLUGIN -> ProbeDocumentState.SAVED_COMMITTED
             }
         return if (observed.documentState == state) ProbeExecution.Completed(observed)
         else ProbeExecution.EffectUncertain(ProbeFailure.DOCUMENT_STATE_REJECTED)
@@ -130,7 +153,7 @@ internal class NativeFixtureProbeExecution(private val project: Project, private
                 is ProbeResult.Accepted -> observed.value
                 is ProbeResult.Rejected -> return observed
             }
-        if (ProbeDigest.observe(bytes) != request.images.currentSaved)
+        if (ProbeDigest.observe(bytes) != request.expectedCurrentSaved)
             return ProbeResult.Rejected(ProbeFailure.SAVED_IMAGE_CHANGED)
         val text =
             try {
@@ -165,7 +188,9 @@ internal class NativeFixtureProbeExecution(private val project: Project, private
         return when (request.command) {
             ProbeCommand.OBSERVE -> ProbeResult.Accepted(Unit)
             ProbeCommand.DIRTY_UNCOMMITTED,
-            ProbeCommand.UNDO_PRODUCTION_CHANGE ->
+            ProbeCommand.UNDO_PRODUCTION_CHANGE,
+            ProbeCommand.ARM_POST_SAVE_BARRIER,
+            ProbeCommand.UNLOAD_PRODUCTION_PLUGIN ->
                 when {
                     target.document.text != target.savedText ->
                         ProbeResult.Rejected(ProbeFailure.DOCUMENT_IMAGE_CHANGED)

@@ -41,6 +41,29 @@ class ProbeClientTest(unittest.TestCase):
             result = {"version": 1, "id": "id", "command": "OBSERVE", "outcome": outcome, "failure": "DOCUMENT_STATE_REJECTED"}
             self.assertEqual(result, probe.validate_response(result, "id", "OBSERVE"))
 
+    def test_control_variants_cannot_be_confused_with_source_completion(self):
+        for command, outcome, extra in (
+            ("ARM_POST_SAVE_BARRIER", "BARRIER_ARMED", {"barrierId": "id"}),
+            ("UNLOAD_PRODUCTION_PLUGIN", "LIFECYCLE_COMPLETED", {"lifecycle": "UNLOADED"}),
+        ):
+            result = {**self.response(command=command), "outcome": outcome, **extra}
+            self.assertEqual(result, probe.validate_response(result, "id", command))
+            with self.assertRaises(probe.NativeFixtureProbeError):
+                probe.validate_response(self.response(command=command), "id", command)
+            with self.assertRaises(probe.NativeFixtureProbeError):
+                probe.validate_response({**result, "command": "OBSERVE"}, "id", "OBSERVE")
+
+    def test_save_barrier_requires_exact_postimage_and_committed_document(self):
+        result = {"version": 1, "id": "id", "command": "ARM_POST_SAVE_BARRIER", "outcome": "REACHED",
+                  "expectedPreimageSha256": "a" * 64, "expectedPostimageSha256": "b" * 64,
+                  "savedSha256": "b" * 64, "documentSha256": "b" * 64,
+                  "documentState": "SAVED_COMMITTED", "maximumWaitMillis": 10000}
+        self.assertEqual(result, probe.validate_barrier(result, "id", "a" * 64, "b" * 64))
+        for key, value in (("savedSha256", "a" * 64), ("documentSha256", "a" * 64),
+                           ("documentState", "DIRTY_COMMITTED"), ("maximumWaitMillis", 20000)):
+            with self.assertRaises(probe.NativeFixtureProbeError):
+                probe.validate_barrier({**result, key: value}, "id", "a" * 64, "b" * 64)
+
     def test_atomic_private_request_roundtrip(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()

@@ -8,9 +8,9 @@ import re
 import time
 import uuid
 
-COMMANDS = frozenset({"OBSERVE", "DIRTY_UNCOMMITTED", "COMMIT_DOCUMENT", "RESTORE_SAVED", "UNDO_PRODUCTION_CHANGE"})
+COMMANDS = frozenset({"OBSERVE", "DIRTY_UNCOMMITTED", "COMMIT_DOCUMENT", "RESTORE_SAVED", "UNDO_PRODUCTION_CHANGE", "ARM_POST_SAVE_BARRIER", "UNLOAD_PRODUCTION_PLUGIN"})
 DIGEST = re.compile(r"[0-9a-f]{64}\Z")
-FAILURES = frozenset({"NOT_ENABLED", "SANDBOX_REJECTED", "PROJECT_MISMATCH", "SPOOL_REJECTED", "REQUEST_TOO_LARGE", "MALFORMED_REQUEST", "REQUEST_ID_MISMATCH", "UNKNOWN_COMMAND", "IMAGE_GUARD_REQUIRED", "TARGET_UNAVAILABLE", "SOURCE_TOO_LARGE", "SOURCE_ENCODING_REJECTED", "SAVED_IMAGE_CHANGED", "DOCUMENT_IMAGE_CHANGED", "DOCUMENT_STATE_REJECTED", "PSI_UNAVAILABLE", "PSI_LIMIT_EXCEEDED", "UNDO_UNAVAILABLE", "UNDO_COMMAND_MISMATCH", "UNDO_CONFIRMATION_REQUIRED", "UNDO_IMAGE_MISMATCH", "SAVE_REJECTED", "NATIVE_UNAVAILABLE", "RESPONSE_UNAVAILABLE"})
+FAILURES = frozenset({"NOT_ENABLED", "SANDBOX_REJECTED", "PROJECT_MISMATCH", "SPOOL_REJECTED", "REQUEST_TOO_LARGE", "MALFORMED_REQUEST", "REQUEST_ID_MISMATCH", "UNKNOWN_COMMAND", "IMAGE_GUARD_REQUIRED", "TARGET_UNAVAILABLE", "SOURCE_TOO_LARGE", "SOURCE_ENCODING_REJECTED", "SAVED_IMAGE_CHANGED", "DOCUMENT_IMAGE_CHANGED", "DOCUMENT_STATE_REJECTED", "PSI_UNAVAILABLE", "PSI_LIMIT_EXCEEDED", "UNDO_UNAVAILABLE", "UNDO_COMMAND_MISMATCH", "UNDO_CONFIRMATION_REQUIRED", "UNDO_IMAGE_MISMATCH", "SAVE_REJECTED", "NATIVE_UNAVAILABLE", "RESPONSE_UNAVAILABLE", "BARRIER_ALREADY_ARMED", "BARRIER_IMAGE_MISMATCH", "PLUGIN_UNAVAILABLE", "PLUGIN_UNLOAD_UNSUPPORTED", "PLUGIN_UNLOAD_REJECTED"})
 
 
 class NativeFixtureProbeError(RuntimeError):
@@ -31,7 +31,7 @@ class NativeFixtureProbe:
             raise NativeFixtureProbeError("MALFORMED_REQUEST")
         if expected_postimage_sha256 is not None and (not DIGEST.fullmatch(expected_postimage_sha256) or expected_postimage_sha256 == expected_preimage_sha256):
             raise NativeFixtureProbeError("IMAGE_GUARD_REQUIRED")
-        if command == "UNDO_PRODUCTION_CHANGE" and expected_postimage_sha256 is None:
+        if command in {"UNDO_PRODUCTION_CHANGE", "ARM_POST_SAVE_BARRIER"} and expected_postimage_sha256 is None:
             raise NativeFixtureProbeError("IMAGE_GUARD_REQUIRED")
         if not 0 < timeout <= 300:
             raise NativeFixtureProbeError("MALFORMED_REQUEST")
@@ -58,6 +58,23 @@ class NativeFixtureProbe:
         result = self._wait(self.spool / "responses" / f"{request_id}.json", deadline)
         return validate_response(result, request_id, command)
 
+    def await_save_barrier(self, barrier_id: str, expected_preimage_sha256: str,
+                           expected_postimage_sha256: str, timeout: float = 30) -> dict:
+        try:
+            canonical = str(uuid.UUID(barrier_id))
+        except (ValueError, TypeError, AttributeError):
+            raise NativeFixtureProbeError("MALFORMED_REQUEST") from None
+        if canonical != barrier_id or not 0 < timeout <= 300:
+            raise NativeFixtureProbeError("MALFORMED_REQUEST")
+        if not DIGEST.fullmatch(expected_preimage_sha256) or not DIGEST.fullmatch(expected_postimage_sha256) or expected_preimage_sha256 == expected_postimage_sha256:
+            raise NativeFixtureProbeError("IMAGE_GUARD_REQUIRED")
+        directory = self.spool / "barriers"
+        result = self._wait(directory / f"{barrier_id}.json", time.monotonic() + timeout)
+        validated = validate_barrier(result, barrier_id, expected_preimage_sha256, expected_postimage_sha256)
+        if (directory / f"{barrier_id}.released.json").exists():
+            raise NativeFixtureProbeError("BARRIER_ALREADY_RELEASED")
+        return validated
+
     def _wait(self, path: Path, deadline: float) -> dict:
         while time.monotonic() < deadline:
             if path.exists():
@@ -83,7 +100,18 @@ def validate_response(result: object, request_id: str, command: str) -> dict:
         if set(result) != {"version", "id", "command", "outcome", "failure"} or result["failure"] not in FAILURES:
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")
         return result
-    if outcome != "COMPLETED" or set(result) != {"version", "id", "command", "outcome", "evidence"}:
+    fields = {"version", "id", "command", "outcome", "evidence"}
+    if command == "ARM_POST_SAVE_BARRIER":
+        fields.add("barrierId")
+        if outcome != "BARRIER_ARMED" or result.get("barrierId") != request_id:
+            raise NativeFixtureProbeError("MALFORMED_RESPONSE")
+    elif command == "UNLOAD_PRODUCTION_PLUGIN":
+        fields.add("lifecycle")
+        if outcome != "LIFECYCLE_COMPLETED" or result.get("lifecycle") != "UNLOADED":
+            raise NativeFixtureProbeError("MALFORMED_RESPONSE")
+    elif outcome != "COMPLETED":
+        raise NativeFixtureProbeError("MALFORMED_RESPONSE")
+    if set(result) != fields:
         raise NativeFixtureProbeError("MALFORMED_RESPONSE")
     evidence = result["evidence"]
     if not isinstance(evidence, dict) or set(evidence) != {"savedSha256", "documentSha256", "documentState", "syntax", "undo", "declarations"}:
@@ -101,4 +129,16 @@ def validate_response(result: object, request_id: str, command: str) -> dict:
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")
         if not isinstance(declaration["name"], str) or len(declaration["name"]) > 128 or not isinstance(declaration["container"], str) or len(declaration["container"]) > 512 or declaration["kind"] not in {"CLASS", "OBJECT", "FUNCTION", "PROPERTY", "TYPE_ALIAS", "OTHER"}:
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")
+    return result
+
+
+def validate_barrier(result: object, barrier_id: str, preimage: str, postimage: str) -> dict:
+    if not isinstance(result, dict) or result.get("version") != 1 or result.get("id") != barrier_id or result.get("command") != "ARM_POST_SAVE_BARRIER":
+        raise NativeFixtureProbeError("RESPONSE_CORRELATION_REJECTED")
+    if result.get("outcome") == "REJECTED" and set(result) == {"version", "id", "command", "outcome", "failure"} and result["failure"] in FAILURES:
+        raise NativeFixtureProbeError(result["failure"])
+    if set(result) != {"version", "id", "command", "outcome", "expectedPreimageSha256", "expectedPostimageSha256", "savedSha256", "documentSha256", "documentState", "maximumWaitMillis"}:
+        raise NativeFixtureProbeError("MALFORMED_RESPONSE")
+    if result["outcome"] != "REACHED" or result["expectedPreimageSha256"] != preimage or result["expectedPostimageSha256"] != postimage or result["savedSha256"] != postimage or result["documentSha256"] != postimage or result["documentState"] != "SAVED_COMMITTED" or result["maximumWaitMillis"] != 10000:
+        raise NativeFixtureProbeError("BARRIER_IMAGE_MISMATCH")
     return result

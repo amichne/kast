@@ -53,6 +53,11 @@ internal enum class ProbeFailure {
     SAVE_REJECTED,
     NATIVE_UNAVAILABLE,
     RESPONSE_UNAVAILABLE,
+    BARRIER_ALREADY_ARMED,
+    BARRIER_IMAGE_MISMATCH,
+    PLUGIN_UNAVAILABLE,
+    PLUGIN_UNLOAD_UNSUPPORTED,
+    PLUGIN_UNLOAD_REJECTED,
 }
 
 internal enum class ProbeCommand {
@@ -61,6 +66,8 @@ internal enum class ProbeCommand {
     COMMIT_DOCUMENT,
     RESTORE_SAVED,
     UNDO_PRODUCTION_CHANGE,
+    ARM_POST_SAVE_BARRIER,
+    UNLOAD_PRODUCTION_PLUGIN,
 }
 
 @JvmInline
@@ -98,6 +105,9 @@ private constructor(
     val command: ProbeCommand,
     val images: ProbeExpectedImages,
 ) {
+    val expectedCurrentSaved: ProbeDigest
+        get() = if (command == ProbeCommand.ARM_POST_SAVE_BARRIER) images.preimage else images.currentSaved
+
     fun encode(): String = buildJsonObject {
         put("version", PROBE_VERSION)
         put("id", id.toString())
@@ -152,7 +162,9 @@ private constructor(
                     is ProbeResult.Rejected -> return parsed
                 }
             if ("expectedPostimageSha256" !in body) {
-                return if (command == ProbeCommand.UNDO_PRODUCTION_CHANGE)
+                return if (
+                    (command == ProbeCommand.UNDO_PRODUCTION_CHANGE || command == ProbeCommand.ARM_POST_SAVE_BARRIER)
+                )
                     ProbeResult.Rejected(ProbeFailure.IMAGE_GUARD_REQUIRED)
                 else ProbeResult.Accepted(ProbeExpectedImages.Unchanged(preimage))
             }
@@ -222,7 +234,15 @@ internal data class ProbeEvidence(
 internal sealed interface ProbeExecution {
     data class Completed(val evidence: ProbeEvidence) : ProbeExecution
 
+    data class BarrierArmed(val evidence: ProbeEvidence, val barrierId: UUID) : ProbeExecution
+
+    data class LifecycleCompleted(val evidence: ProbeEvidence, val lifecycle: ProbePluginLifecycle) : ProbeExecution
+
     data class Rejected(val failure: ProbeFailure) : ProbeExecution
 
     data class EffectUncertain(val failure: ProbeFailure) : ProbeExecution
+}
+
+internal enum class ProbePluginLifecycle {
+    UNLOADED
 }

@@ -83,6 +83,7 @@ private class ProbeWorker(private val project: Project, private val sandbox: Pro
     private val spool = sandbox.root.resolve("native-probe")
     private val requests = spool.resolve("requests")
     private val responses = spool.resolve("responses")
+    private val controls = NativeFixtureProbeControls(project, sandbox)
     private val watcher = sandbox.root.fileSystem.newWatchService()
     @Volatile private var stopped = false
 
@@ -150,7 +151,7 @@ private class ProbeWorker(private val project: Project, private val sandbox: Pro
                 ApplicationManager.getApplication()
                     .invokeAndWait(
                         {
-                            result = NativeFixtureProbeExecution(project, sandbox).execute(request.value)
+                            result = NativeFixtureProbeExecution(project, sandbox, controls).execute(request.value)
                         },
                         ModalityState.nonModal(),
                     )
@@ -170,6 +171,7 @@ private class ProbeWorker(private val project: Project, private val sandbox: Pro
 
     override fun dispose() {
         stopped = true
+        controls.dispose()
         watcher.close()
     }
 }
@@ -189,31 +191,40 @@ private fun response(id: UUID, command: String, result: ProbeExecution): String 
         }
         is ProbeExecution.Completed -> {
             put("outcome", "COMPLETED")
-            put(
-                "evidence",
-                buildJsonObject {
-                    put("savedSha256", result.evidence.saved.value)
-                    put("documentSha256", result.evidence.document.value)
-                    put("documentState", result.evidence.documentState.name)
-                    put("syntax", result.evidence.syntax.name)
-                    put("undo", result.evidence.undo.name)
-                    put(
-                        "declarations",
-                        JsonArray(
-                            result.evidence.declarations.map { declaration ->
-                                buildJsonObject {
-                                    put("name", declaration.name)
-                                    put("container", declaration.container)
-                                    put("kind", declaration.kind.name)
-                                }
-                            }
-                        ),
-                    )
-                },
-            )
+            put("evidence", evidenceDocument(result.evidence))
+        }
+        is ProbeExecution.BarrierArmed -> {
+            put("outcome", "BARRIER_ARMED")
+            put("barrierId", result.barrierId.toString())
+            put("evidence", evidenceDocument(result.evidence))
+        }
+        is ProbeExecution.LifecycleCompleted -> {
+            put("outcome", "LIFECYCLE_COMPLETED")
+            put("lifecycle", result.lifecycle.name)
+            put("evidence", evidenceDocument(result.evidence))
         }
     }
 }
     .toString()
+
+private fun evidenceDocument(evidence: ProbeEvidence) = buildJsonObject {
+    put("savedSha256", evidence.saved.value)
+    put("documentSha256", evidence.document.value)
+    put("documentState", evidence.documentState.name)
+    put("syntax", evidence.syntax.name)
+    put("undo", evidence.undo.name)
+    put(
+        "declarations",
+        JsonArray(
+            evidence.declarations.map { declaration ->
+                buildJsonObject {
+                    put("name", declaration.name)
+                    put("container", declaration.container)
+                    put("kind", declaration.kind.name)
+                }
+            }
+        ),
+    )
+}
 
 private const val MAXIMUM_BATCH_REQUESTS = 16
