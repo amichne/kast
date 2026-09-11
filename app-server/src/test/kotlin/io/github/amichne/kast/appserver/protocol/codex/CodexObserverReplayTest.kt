@@ -24,7 +24,7 @@ import java.nio.file.Path
 
 class CodexObserverReplayTest {
     @Test
-    fun `applied Kast change retains its original native dynamic item`(
+    fun `applied Kast change retains raw evidence in the expandable tool display`(
         @TempDir temporary: Path,
     ) {
         val namespace = when (val admitted = ProviderNamespace.admit("kast")) {
@@ -57,7 +57,7 @@ class CodexObserverReplayTest {
 
         val projected = CodexThreadHistoryProjector.project(history, setOf(namespace))
         check(projected is CodexThreadHistoryProjection.Projected)
-        assertEquals(history, projected.result)
+        assertRawToolDisplay(toolItem(history), toolItem(projected.result))
 
         val escaped = Json.parseToJsonElement(
             history.toString().replace(
@@ -67,7 +67,7 @@ class CodexObserverReplayTest {
         ).jsonObject
         val rejected = CodexThreadHistoryProjector.project(escaped, setOf(namespace))
         check(rejected is CodexThreadHistoryProjection.Projected)
-        assertEquals(escaped, rejected.result)
+        assertRawToolDisplay(toolItem(escaped), toolItem(rejected.result))
     }
 
     @Test
@@ -112,8 +112,10 @@ class CodexObserverReplayTest {
             }
             val projected = CodexThreadHistoryProjector.project(history, setOf(namespace))
             check(projected is CodexThreadHistoryProjection.Projected)
-            assertEquals(history, projected.result)
-            assertEquals(projected, CodexThreadHistoryProjector.project(projected.result, setOf(namespace)))
+            assertRawToolDisplay(toolItem(history), toolItem(projected.result))
+            assertEquals(CodexThreadHistoryProjection.Unchanged, CodexThreadHistoryProjector.project(projected.result, setOf(namespace)))
         }
     }
+    private fun toolItem(history: JsonObject): JsonObject = history.getValue("thread").jsonObject
+        .getValue("turns").jsonArray.single().jsonObject.getValue("items").jsonArray.single().jsonObject
 }

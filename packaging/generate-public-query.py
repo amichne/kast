@@ -220,11 +220,152 @@ def project(schema: dict, *, strict: bool) -> dict:
     return result
 
 
+def referenced_schema(root: dict, definitions: dict) -> dict:
+    """Retain exactly the reachable schema definitions in each tool prompt."""
+    reached = set()
+    def visit(node):
+        if isinstance(node, dict):
+            reference = node.get('$ref')
+            if reference is not None:
+                prefix = '#/$defs/'
+                if not reference.startswith(prefix) or reference[len(prefix):] not in definitions:
+                    raise ValueError('Unsupported public tool schema reference')
+                name = reference[len(prefix):]
+                if name not in reached:
+                    reached.add(name)
+                    visit(definitions[name])
+            for value in node.values():
+                visit(value)
+        elif isinstance(node, list):
+            for value in node:
+                visit(value)
+    visit(root)
+    return dict(root, **({'$defs': {name: schema for name, schema in definitions.items() if name in reached}} if reached else {}))
+
+
+def render_tools(authority: dict) -> dict[Path, str]:
+    """Generate this closed facade slice, including nullable untagged scope syntax."""
+    import copy
+    definitions = copy.deepcopy(authority['$defs'])
+    roots = {''.join(part.title() for part in tool['name'].split('_')): tool['schema'] for tool in authority['tools']}
+    objects = {**definitions, **roots}
+    enums = {}
+    unions = {'Scope': ['DirectoryScope', 'PackageScope'],
+              'Source': ['SearchSource', 'AllSource', 'ReferenceSource'],
+              'Step': ['FilterVisibility', 'ExpandRelation', 'DistinctSymbols']}
+    parents = {child: parent for parent, children in unions.items() for child in children}
+    def typ(spec, prop):
+        if '$ref' in spec:
+            return 'PublicTool' + spec['$ref'].split('/')[-1]
+        if 'anyOf' in spec:
+            branches = [s['$ref'].split('/')[-1] for s in spec['anyOf'] if '$ref' in s]
+            union = next(key for key, values in unions.items() if values == branches)
+            return 'PublicTool' + union + ('?' if any(s.get('type') == 'null' for s in spec['anyOf']) else '')
+        nullable_suffix = '?' if nullable(spec) else ''
+        if 'enum' in spec:
+            key = ''.join(part.title() for part in prop.split('_'))
+            values = [item for item in spec['enum'] if item is not None]
+            if key in enums and enums[key] != values:
+                raise ValueError(f'Conflicting facade enum {key}')
+            enums[key] = values
+            return 'PublicTool' + key + nullable_suffix
+        if tagged_type(spec, 'array'):
+            return 'BoundedProtocolList<' + typ(spec['items'], prop) + '>' + nullable_suffix
+        for kind, kotlin in [('string', 'ProtocolText'), ('boolean', 'Boolean'), ('integer', 'Int')]:
+            if tagged_type(spec, kind): return kotlin + nullable_suffix
+        raise ValueError(f'Unsupported facade schema {spec}')
+    lines = [HEADER.replace('query.schema.json', 'tools.schema.json'),
+             'import io.github.amichne.kast.protocol.registry.PublicToolIdentity\n',
+             'import kotlinx.serialization.json.*\n\n',
+             'internal sealed interface PublicToolDocument\n\n']
+    body = []
+    for key, spec in objects.items():
+        props = [(p,s) for p,s in spec['properties'].items() if p != 'type']
+        parent = parents.get(key)
+        suffix = ' : PublicTool' + parent if parent else ' : PublicToolDocument'
+        annotation = '@Serializable\n'
+        if parent and parent != 'Scope':
+            annotation += '@SerialName(' + json.dumps(spec['properties']['type']['enum'][0]) + ')\n'
+        if not props:
+            body.append(annotation + f'internal data object PublicTool{key}{suffix}\n\n')
+        else:
+            body.append(annotation + f'internal data class PublicTool{key}(\n')
+            for prop, value in props:
+                body.append(f'    val {prop}: {typ(value, prop)},\n')
+            body.append(')' + suffix + '\n\n')
+    for key, values in enums.items():
+        lines.append(f'@Serializable\ninternal enum class PublicTool{key} {{\n')
+        for value in values:
+            lines.append(f'    @SerialName({json.dumps(value)}) {enum_entry(value)},\n')
+        lines.append('}\n\n')
+    for union in unions:
+        annotation = '@Serializable(with = PublicToolScopeSerializer::class)' if union == 'Scope' else '@Serializable'
+        lines.append(f'{annotation}\ninternal sealed interface PublicTool{union}\n\n')
+    lines += body
+    lines.append('''internal object PublicToolScopeSerializer : JsonContentPolymorphicSerializer<PublicToolScope>(PublicToolScope::class) {
+    override fun selectDeserializer(element: JsonElement): kotlinx.serialization.DeserializationStrategy<PublicToolScope> = when {
+        "relative_directory_path" in element.jsonObject -> PublicToolDirectoryScope.serializer()
+        "package_name" in element.jsonObject -> PublicToolPackageScope.serializer()
+        else -> throw SerializationException("scope requires a directory or package target")
+    }
+}
+
+''')
+    # Defaults are data in the authority and are compiled here, never copied into a provider.
+    defaults = authority['defaults']
+    def text_value(value): return 'toolDefault(ProtocolText.parse(' + json.dumps(value) + '))'
+    def bounded(values): return 'toolDefault(BoundedProtocolList.create(listOf(' + ', '.join(values) + ')))'
+    lines.append('internal object PublicToolDefaults {\n')
+    lines.append('    val nameMatch = PublicToolNameMatch.' + enum_entry(defaults['name_match']) + '\n')
+    lines.append('    val sourceSets = ' + bounded([text_value(s) for s in defaults['source_set_names']]) + '\n')
+    lines.append('    val declarationKinds = ' + bounded(['PublicToolDeclarationKinds.' + enum_entry(s) for s in defaults['declaration_kinds']]) + '\n')
+    lines.append('    val returnFields = ' + bounded(['PublicToolReturnFields.' + enum_entry(s) for s in defaults['return_fields']]) + '\n')
+    lines.append('    val searchFields = ' + bounded(['PublicToolReturnFields.' + enum_entry(s) for s in defaults['search_fields']]) + '\n')
+    lines.append('    val steps: BoundedProtocolList<PublicToolStep> = toolDefault(BoundedProtocolList.create(emptyList()))\n')
+    if defaults['steps'] != []: raise ValueError('Only empty default transformations are supported')
+    lines.append(f'    const val maxDiagnostics = {defaults["max_diagnostics"]}\n')
+    scope = defaults['scope']
+    if scope['source_set_names'] != defaults['source_set_names']: raise ValueError('Default scope source sets disagree')
+    lines.append('    val scope: PublicToolScope = PublicToolDirectoryScope(' + text_value(scope['relative_directory_path']) + ', ' + str(scope['include_subdirectories']).lower() + ', sourceSets)\n}\n\n')
+    lines.append('internal fun decodePublicTool(identity: PublicToolIdentity, raw: JsonElement, json: Json): PublicToolDocument = when (identity) {\n')
+    for tool, key in zip(authority['tools'], roots):
+        lines.append(f'    PublicToolIdentity.{enum_entry(tool["name"])} -> json.decodeFromJsonElement(PublicTool{key}.serializer(), raw)\n')
+    lines.append('}\n\ninternal fun encodePublicTool(value: PublicToolDocument, json: Json): JsonElement = when (value) {\n')
+    for key in roots:
+        lines.append(f'    is PublicTool{key} -> json.encodeToJsonElement(PublicTool{key}.serializer(), value)\n')
+    lines.append('}\n\nprivate fun <T> toolDefault(value: Refinement<T, *>): T = when (value) {\n    is Refinement.Refined -> value.value\n    is Refinement.Rejected -> error("Invalid authored public tool default")\n}\n')
+    outputs = {KOTLIN / 'PublicToolDocuments.kt': ''.join(lines)}
+    identity_lines = ['// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n',
+                      'package io.github.amichne.kast.protocol.registry\n\n',
+                      'import io.github.amichne.kast.protocol.contract.CanonicalOperation\n\n',
+                      '/** Closed presentation identities; canonical operations retain effect and budget ownership. */\n',
+                      'enum class PublicToolIdentity(val toolName: String, val operation: CanonicalOperation, val description: String, val loading: HostedToolLoading) {\n']
+    operations = {'query.run': 'QUERY_RUN', 'diagnostic.check': 'DIAGNOSTIC_CHECK'}
+    for tool in authority['tools']:
+        identity_lines.append(f'    {enum_entry(tool["name"])}({json.dumps(tool["name"])}, CanonicalOperation.{operations[tool["operation"]]},\n        {json.dumps(tool["description"])}, HostedToolLoading.{"DEFERRED" if tool["deferLoading"] else "EAGER"}),\n')
+    identity_lines.append('}\n')
+    outputs[ROOT / 'protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt'] = ''.join(identity_lines)
+    registrations = []
+    responses = []
+    for tool in authority['tools']:
+        schema = referenced_schema(tool['schema'], definitions)
+        full = project(schema, strict=False)
+        strict = project(schema, strict=True)
+        outputs[RESOURCES / (tool['name'] + '.parameters.json')] = json.dumps(full, indent=2) + '\n'
+        outputs[RESOURCES / (tool['name'] + '.openai-parameters.json')] = json.dumps(strict, indent=2) + '\n'
+        registrations.append(dict(type='function', name=tool['name'], description=tool['description'], inputSchema=strict, deferLoading=tool['deferLoading']))
+        responses.append(dict(type='function', name='kast_' + tool['name'], description=tool['description'], parameters=strict, strict=True))
+    outputs[RESOURCES / 'tools.app-server.json'] = json.dumps(dict(type='namespace', name='kast', tools=registrations), indent=2) + '\n'
+    outputs[RESOURCES / 'tools.responses.json'] = json.dumps(responses, indent=2) + '\n'
+    return outputs
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check', action='store_true', help='Reject stale generated artifacts without modifying files.')
     args = parser.parse_args()
     outputs = render(json.loads(SCHEMA.read_text()))
+    outputs.update(render_tools(json.loads((RESOURCES / "tools.schema.json").read_text())))
     stale = []
     for path, content in outputs.items():
         if args.check:

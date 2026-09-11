@@ -14,7 +14,7 @@ internal fun selectCliRuntimePath(argv: List<String>): CliRuntimePath {
     // Clikt accepts a root option terminator before the subcommand; retain argv for its parser.
     val command = if (argv.firstOrNull() == "--") argv.getOrNull(1) else argv.firstOrNull()
     return when (command) {
-        "index", "ide", "query", "symbol", "source", "relation", "traversal", "diagnostic" -> CliRuntimePath.EXISTING_IDE
+        "index", "ide", "tool", "query", "symbol", "source", "relation", "traversal", "diagnostic" -> CliRuntimePath.EXISTING_IDE
         else -> CliRuntimePath.INSTALLED
     }
 }

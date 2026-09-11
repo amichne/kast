@@ -56,7 +56,7 @@ touch "build/distributions/kast-semantic-runtime-$version-macos-aarch64.zip"
 for arg in "$@"; do
   if [[ $arg == :runtime:hosted:hostedPlugin ]]; then
     mkdir -p runtime/hosted/build/distributions
-    touch "runtime/hosted/build/distributions/kast-ide-hosted-v$version-idea-262.1.zip"
+    touch "runtime/hosted/build/distributions/kast-ide-hosted-v$version-idea-262.zip"
   fi
 done
 ''')
@@ -68,7 +68,7 @@ done
         self.write_script(self.installer, '''#!/bin/bash
 set -eu
 echo install >> "$TEST_LOG"
-plugin="kast-ide-hosted-v$KAST_VERSION-idea-262.1.zip"
+plugin="kast-ide-hosted-v$KAST_VERSION-idea-262.zip"
 [[ -f "$KAST_INSTALL_ASSETS_DIRECTORY/$plugin" && -f "$KAST_INSTALL_ASSETS_DIRECTORY/$plugin.sha256" ]] || exit 32
 (cd "$KAST_INSTALL_ASSETS_DIRECTORY" && shasum -a 256 -c "$plugin.sha256") >&2
 bin=${KAST_BIN_DIR:-$HOME/.local/bin}
@@ -186,8 +186,8 @@ class BootstrapInstallTest(IsolatedInstallerTest):
         self.runtime = self.assets / f"kast-semantic-runtime-{self.version}-macos-aarch64.zip"
         with zipfile.ZipFile(self.runtime, "w") as archive:
             archive.writestr("kast-indexer", "fixture")
-        self.plugin = self.assets / f"kast-ide-hosted-v{self.version}-idea-262.1.zip"
-        self.write_plugin("262.1")
+        self.plugin = self.assets / f"kast-ide-hosted-v{self.version}-idea-262.zip"
+        self.write_plugin("262.*")
 
         product = self.root / "product"
         (product / "bin").mkdir(parents=True)
@@ -198,7 +198,7 @@ keys = ["KAST_INSTALL_CONTROL_ROOT", "KAST_INSTALL_CONTROL_SHA256", "KAST_INSTAL
         "KAST_INSTALL_RUNTIME_SHA256", "KAST_INSTALL_VERSION", "KAST_INSTALL_IDEA_HOME",
         "KAST_INSTALL_JAVA_HOME", "KAST_INSTALL_ROOT", "KAST_BIN_DIR", "KAST_INSTALL_MODE"]
 with open(os.environ["TEST_LOG"], "w") as output:
-    json.dump({key: os.environ[key] for key in keys}, output)
+    json.dump({**{key: os.environ[key] for key in keys}, "KAST_APP_SERVER_TOOLS": os.environ.get("KAST_APP_SERVER_TOOLS")}, output)
 PYTHON
 ''')
         self.control = self.assets / f"kast-control-v{self.version}-macos-aarch64.tar.gz"
@@ -215,13 +215,13 @@ PYTHON
             KAST_BIN_DIR=str(self.root / "bin"),
         )
 
-    def write_plugin(self, until_build):
+    def write_plugin(self, until_build, since_build="262"):
         descriptor = """<idea-plugin>
   <id>io.github.amichne.kast.ide-hosted</id>
   <version>1.2.3</version>
-  <idea-version since-build="262.1" until-build="{}"/>
+  <idea-version since-build="{since}" until-build="{until}"/>
 </idea-plugin>
-""".format(until_build)
+""".format(since=since_build, until=until_build)
         plugin_jar = io.BytesIO()
         with zipfile.ZipFile(plugin_jar, "w") as archive:
             archive.writestr("META-INF/plugin.xml", descriptor)
@@ -247,12 +247,53 @@ PYTHON
         self.assertEqual(str(self.idea), contract["KAST_INSTALL_IDEA_HOME"])
         self.assertFalse((self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins").exists())
 
-    def test_programmatic_plugin_install_uses_verified_exact_build_archive(self):
+    def test_programmatic_plugin_install_uses_verified_release_line_archive(self):
         result = self.run_installer()
         self.assertEqual(0, result.returncode, result.stderr)
         installed = self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted"
         self.assertTrue((installed / "lib/kast-ide-hosted-1.2.3.jar").is_file())
         self.assertIn("restart IntelliJ IDEA", result.stderr)
+
+    def test_default_tool_selection_is_owned_by_the_staged_installer(self):
+        self.env.pop("KAST_APP_SERVER_TOOLS", None)
+        result = self.run_installer("--dry-run")
+        self.assertEqual(0, result.returncode, result.stderr)
+        contract = json.loads((self.root / "calls").read_text())
+        self.assertIsNone(contract["KAST_APP_SERVER_TOOLS"])
+
+    def test_explicit_tool_selection_reaches_the_staged_installer(self):
+        self.env["KAST_APP_SERVER_TOOLS"] = "search_classes,check_diagnostics"
+        result = self.run_installer("--dry-run")
+        self.assertEqual(0, result.returncode, result.stderr)
+        contract = json.loads((self.root / "calls").read_text())
+        self.assertEqual(self.env["KAST_APP_SERVER_TOOLS"], contract["KAST_APP_SERVER_TOOLS"])
+
+    def test_other_262_patch_uses_the_same_release_line_archive(self):
+        (self.idea / "Resources/product-info.json").write_text(json.dumps({
+            "buildNumber": "262.20000.200",
+            "dataDirectoryName": "IntelliJIdea2026.2",
+        }))
+        result = self.run_installer()
+        self.assertEqual(0, result.returncode, result.stderr)
+        installed = self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted"
+        self.assertTrue((installed / "lib/kast-ide-hosted-1.2.3.jar").is_file())
+
+    def test_other_release_lines_reject_the_262_descriptor_before_installation(self):
+        for line in ("261", "263"):
+            with self.subTest(line=line):
+                (self.idea / "Resources/product-info.json").write_text(json.dumps({
+                    "buildNumber": line + ".10315.125",
+                    "dataDirectoryName": "IntelliJIdea2026.2",
+                }))
+                wrong_asset = self.assets / f"kast-ide-hosted-v{self.version}-idea-{line}.zip"
+                wrong_asset.write_bytes(self.plugin.read_bytes())
+                wrong_asset.with_name(wrong_asset.name + ".sha256").write_text(
+                    f"{hashlib.sha256(wrong_asset.read_bytes()).hexdigest()}  {wrong_asset.name}\n",
+                )
+                result = self.run_installer()
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn("hosted plugin IDEA release line is mismatched", result.stderr)
+                self.assertFalse((self.root / "calls").exists())
 
     def test_programmatic_plugin_update_replaces_only_owned_directory(self):
         plugin_root = self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins"
@@ -266,12 +307,13 @@ PYTHON
         self.assertEqual("keep", (plugin_root / "other-plugin/keep").read_text())
 
     def test_plugin_build_mismatch_precedes_staged_installer(self):
-        self.write_plugin("262.2")
+        self.write_plugin("263.*", since_build="263")
         self.plugin.with_name(self.plugin.name + ".sha256").write_text(
             f"{hashlib.sha256(self.plugin.read_bytes()).hexdigest()}  {self.plugin.name}\n",
         )
         result = self.run_installer()
         self.assertNotEqual(0, result.returncode)
+        self.assertIn("hosted plugin IDEA release line is mismatched", result.stderr)
         self.assertFalse((self.root / "calls").exists())
         self.assertFalse((self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins").exists())
 

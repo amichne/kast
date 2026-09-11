@@ -21,6 +21,7 @@ internal data class HostedToolDefinition(
     val approval: HostedApprovalPolicy,
     val executionBudget: OperationExecutionBudget,
     val loading: HostedToolLoading,
+    val generationSchema: kotlinx.serialization.json.JsonObject = inputSchema.document,
 )
 
 /** Exact ordered hosted surface whose members all have executable installed routes. */
@@ -37,10 +38,12 @@ internal class HostedToolCatalog private constructor(
                     HostedToolCatalogFailure.EMPTY,
                 )
             }
-            if (definitions.map(HostedToolDefinition::operation).toSet().size != definitions.size) {
-                return HostedToolCatalogQualification.Rejected(
-                    HostedToolCatalogFailure.DUPLICATE_OPERATION,
-                )
+            if (definitions.groupBy(HostedToolDefinition::operation).values.any { presentations ->
+                val owner = presentations.first()
+                presentations.any { it.effect != owner.effect || it.approval != owner.approval ||
+                    it.executionBudget != owner.executionBudget || it.outputSchema.digest != owner.outputSchema.digest }
+            }) {
+                return HostedToolCatalogQualification.Rejected(HostedToolCatalogFailure.INCONSISTENT_OPERATION_METADATA)
             }
             if (definitions.map { it.name.value }.toSet().size != definitions.size) {
                 return HostedToolCatalogQualification.Rejected(
@@ -64,7 +67,7 @@ internal class HostedToolCatalog private constructor(
 
 internal enum class HostedToolCatalogFailure {
     EMPTY,
-    DUPLICATE_OPERATION,
+    INCONSISTENT_OPERATION_METADATA,
     DUPLICATE_NAME,
     ADVERTISED_ROUTE_MISSING,
     UNADVERTISED_ROUTE_PRESENT,

@@ -222,7 +222,7 @@ class InstallationWorkflowTest {
                 InstallationEnvironment.CODEX_HOME.key to codexHome.toString(),
                 InstallationEnvironment.ENABLE_LAUNCHD.key to "0",
                 InstallationEnvironment.ENABLE_APP_SERVER.key to "0",
-                InstallationEnvironment.APP_SERVER_TOOLS.key to "query,source_read",
+                InstallationEnvironment.APP_SERVER_TOOLS.key to "query_symbols,source_read",
                 InstallationEnvironment.REFRESH_APP_SERVER.key to "0",
                 InstallationEnvironment.MODE.key to "apply",
             ),

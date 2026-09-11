@@ -5,7 +5,7 @@ import io.github.amichne.kast.appserver.protocol.codex.ProtocolCloseFailure
 import kotlinx.serialization.json.*
 import java.io.PrintStream
 
-internal enum class SessionStage { ADMISSION, HANDSHAKE, TRANSPORT, SUBSCRIPTION, INVOCATION, RECONCILIATION }
+internal enum class SessionStage { ADMISSION, HANDSHAKE, TRANSPORT, SUBSCRIPTION, INVOCATION, TOOL_DISPLAY, RECONCILIATION }
 internal enum class SessionOutcome { STARTED, READY, DETACHED, COMPLETED, REJECTED, UNCERTAIN, RETIRED }
 internal data class SessionActivity(
     val connection: ClientConnectionId,
@@ -37,4 +37,7 @@ internal fun SessionActivity.document(): JsonObject = buildJsonObject {
     put("stage",stage.name.lowercase())
     put("outcome",outcome.name.lowercase())
     protocolFailure?.let { put("failure",it.javaClass.simpleName) }
+    if (protocolFailure is ProtocolCloseFailure.ToolCallProjectionRejected) {
+        put("reason", protocolFailure.failure.name)
+    }
 }

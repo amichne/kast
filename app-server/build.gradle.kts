@@ -46,6 +46,12 @@ dependencies {
     implementation(project(":protocol:registry"))
 }
 
+tasks.named<Test>("test") {
+    val installedSchemas = providers.environmentVariable("KAST_CODEX_SCHEMA_DIRECTORY")
+    inputs.property("installedCodexSchemaDirectory", installedSchemas.orElse(""))
+    inputs.dir(installedSchemas).optional().withPropertyName("installedCodexSchemas")
+}
+
 val kastObserverSnapshotManifest = layout.buildDirectory.file(
     "observer-snapshots/kast-observer-presentations.json",
 )

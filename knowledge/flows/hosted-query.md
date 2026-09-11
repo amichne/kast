@@ -4,7 +4,7 @@ title: Existing-IDE semantic query
 description: An existing IDEA project owns the default seven canonical reads, with bounded live authority and scoped native CLI/provider acceptance.
 resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted
 tags: [intellij, kotlin, semantic-query, lifecycle]
-timestamp: 2026-09-10T00:00:00Z
+timestamp: 2026-09-11T00:00:00Z
 code_sources:
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt
   - path: docs/hosted-read-configuration.md
@@ -172,10 +172,13 @@ permit and a cooperative deadline; cancellation drains before releasing the
 permit. Detachment invalidates the original endpoint, drains its requests, and
 disposes its listener owner. No opener, importer, or isolated worker is used.
 
-The versioned, exact-build plugin archive contains compiled adapter code and its contract
-dependencies. Stable release installation verifies the archive checksum, plugin identity,
-release version, and exact IDEA build before atomically activating it in the selected IDEA
-user plugin directory. The [manual runner](../../experiments/host-observation/HOSTED_QUERY.md)
+The versioned production plugin archive contains compiled adapter code and its
+contract dependencies. Stable release installation verifies the archive checksum,
+plugin identity, release version, and IDEA `262` release line before atomically
+activating it in the selected IDEA user plugin directory. Runtime admission accepts
+IDEA and bundled Kotlin patch builds within that line and retains their full
+observed identities. This broader policy does not expand the recorded native
+acceptance evidence. The earlier manual proof archive still targets its exact build. The [manual runner](../../experiments/host-observation/HOSTED_QUERY.md)
 loads that artifact into an existing native IDEA process and records project,
 model, read-lock, result, and retirement evidence. Ordinary library builds have
 no plugin descriptor. Opt-in checkpoints after semantic detachment qualify
@@ -228,3 +231,6 @@ The opt-in [semantic reproduction runner](../../experiments/host-observation/SEM
 The subsequent [semantic reproduction review](../../docs/reviews/hosted-semantic-reproduction.md) records complete fixture `ALL` queries under unchanged default budgets. Scoped Kotlin file indexes supply declarations directly; exact names retain their direct indexes and fuzzy discovery retains bounded contributors. Constructor properties refine through their generated K2 property symbol. Query `EXPAND` retains the original selected subject while admitting related endpoints in the workspace search boundary. Java references resolve through K2 identity, and explicitly excluded library calls do not make project-only callee coverage incomplete. The earlier acceptance limitations above remain historical evidence.
 
 The read policy is immutable per host service and rejects invalid settings. CLI/provider transport capacities use the same typed parameter catalogue. See [read configuration](../../docs/hosted-read-configuration.md).
+
+
+The new `tool` CLI family lowers the five [public intent tools](../contracts/public-tools.md) into the existing canonical operations before taking this same existing-IDE path. Native semantics and reference authority remain here; tool syntax is not compiler evidence.

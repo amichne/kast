@@ -6,7 +6,6 @@ readonly PROGRAM="kast-install"
 readonly REPOSITORY="amichne/kast"
 readonly INSTALL_DOWNLOAD_RETRIES=5
 readonly INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS=2000
-readonly DEFAULT_APP_SERVER_TOOLS="query,source_read,semantic_query,impact_analyze,diagnostic_check,change_plan,change_apply,change_recover"
 
 fail() {
   printf '%s: %s\n' "$PROGRAM" "$*" >&2
@@ -273,8 +272,9 @@ if identity != "io.github.amichne.kast.ide-hosted":
     raise SystemExit("kast-install: hosted plugin identity is invalid")
 if plugin_version != version:
     raise SystemExit("kast-install: hosted plugin version is mismatched")
-if since != build or until != build:
-    raise SystemExit("kast-install: hosted plugin IDEA build is mismatched")
+release_line = build.split(".", 1)[0]
+if since != release_line or until != release_line + ".*":
+    raise SystemExit("kast-install: hosted plugin IDEA release line is mismatched")
 PYTHON
 }
 
@@ -415,7 +415,7 @@ release_url="${KAST_RELEASE_BASE_URL:-https://github.com/$REPOSITORY/releases/do
 release_url="${release_url%/}/$release"
 control_name="kast-control-v$version-macos-aarch64.tar.gz"
 runtime_name="kast-semantic-runtime-$version-macos-aarch64.zip"
-plugin_name="kast-ide-hosted-v$version-idea-$idea_build.zip"
+plugin_name="kast-ide-hosted-v$version-idea-${idea_build%%.*}.zip"
 temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-install.XXXXXX")"
 temporary_root="$(CDPATH='' cd -- "$temporary_root" && pwd -P)"
 cleanup() { rm -rf -- "$temporary_root"; }
@@ -449,7 +449,6 @@ export KAST_INSTALL_ROOT="$install_root"
 export KAST_BIN_DIR="$bin_directory"
 export KAST_ENABLE_LAUNCHD="${KAST_ENABLE_LAUNCHD:-0}"
 export KAST_ENABLE_APP_SERVER="${KAST_ENABLE_APP_SERVER:-1}"
-export KAST_APP_SERVER_TOOLS="${KAST_APP_SERVER_TOOLS:-$DEFAULT_APP_SERVER_TOOLS}"
 export KAST_INSTALL_REFRESH_APP_SERVER="${KAST_INSTALL_REFRESH_APP_SERVER:-0}"
 export KAST_INSTALL_MODE="$mode"
 export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"

@@ -128,12 +128,12 @@ class KtorBrokerServerTest {
 
                 val first = Json.parseToJsonElement((incoming.receive() as Frame.Text).readText())
                     .jsonObject.getValue("params").jsonObject.getValue("item").jsonObject
-                assertEquals("dynamicToolCall", first.getValue("type").jsonPrimitive.content)
+                assertEquals("mcpToolCall", first.getValue("type").jsonPrimitive.content)
                 assertEquals("exact:v2:opaque", first.getValue("arguments").jsonObject
                     .getValue("selector").jsonPrimitive.content)
                 assertEquals(
                     "exact model result",
-                    first.getValue("contentItems").jsonArray
+                    first.getValue("result").jsonObject.getValue("content").jsonArray
                         .single().jsonObject.getValue("text").jsonPrimitive.content,
                 )
             }

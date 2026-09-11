@@ -101,6 +101,7 @@ internal class BrokerTool<Runtime, Input, Output, InputFailure>(
     internal val encode: (Output) -> JsonElement,
     internal val present: (Output) -> ToolPresentation,
     internal val invocationBudget: ElapsedTimeLimitMillis = OperationExecutionBudget.SEMANTIC_READ.operation,
+    internal val inputGuidance: (io.github.amichne.kast.appserver.schema.JsonDomainAdmissionFailure<InputFailure>) -> List<ToolDescription> = { emptyList() },
 )
 
 internal sealed interface ProviderDefinitionFailure {
@@ -241,7 +242,7 @@ internal data class BrokerDispatchRequest(
 internal sealed interface BrokerFailure {
     data class UnknownNamespace(val namespace: ProviderNamespace) : BrokerFailure
     data class UnknownTool(val address: ToolAddress) : BrokerFailure
-    data class InvalidArguments(val address: ToolAddress, val failureCount: Int) : BrokerFailure
+    data class InvalidArguments(val address: ToolAddress, val failureCount: Int, val guidance: List<ToolDescription> = emptyList()) : BrokerFailure
     data class ProviderStartupRejected(
         val namespace: ProviderNamespace,
         val code: ProviderFailureCode,
@@ -363,7 +364,8 @@ private class TypedProviderRoute<Runtime>(
             val input = when (admitted) {
                 is Validation.Validated -> admitted.value
                 is Validation.Rejected -> return BrokerDispatch.Rejected(
-                    BrokerFailure.InvalidArguments(request.address, admitted.failures.size),
+                    BrokerFailure.InvalidArguments(request.address, admitted.failures.size,
+                        admitted.failures.take(3).flatMap(tool.inputGuidance).distinct().take(3)) ,
                 )
             }
             if (!invocationCapacity.tryAcquire()) {

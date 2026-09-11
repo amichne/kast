@@ -1,5 +1,22 @@
 # Knowledge-base update log
 
+## 2026-09-11
+
+- Removed the shell installer's retired tool-name defaults. Typed installation admission now selects the canonical catalog on absence and rejects retired, unknown, empty, or duplicate explicit selections before writing configuration.
+
+- Restored raw tool-result display through the standard expandable App Server MCP
+  item shape while preserving dynamic-tool execution. Live and reloaded results
+  share the same schema-checked projection; payload-free `tool_display` evidence
+  distinguishes completed projection from rejected lifecycle data.
+
+- Added [public intent tools](contracts/public-tools.md), generated nullable-control contracts and distinct tool/operation identity. Installed catalog version 10 and CLI binding version 3 retain exact schema routing and existing canonical semantics. Live IDEA validation on Kast completed class, function and property searches, exact-reference reuse, case-sensitive absence, invalid-reference rejection, and file diagnostics after explicit VFS synchronization.
+- Broadened the existing-IDE plugin to the `262` release line. The descriptor,
+  installer archive selection, release packaging, and runtime IDEA/Kotlin
+  admission now agree on that line. Full observed build identities and exact
+  product, protocol, digest, and capability checks remain intact. The build
+  baseline and native acceptance evidence remain `262.10315.125`; other `262`
+  builds are accepted as a deliberate compatibility risk.
+
 ## 2026-09-10
 
 - Bound stable release installation to a checksum-verified, release-versioned

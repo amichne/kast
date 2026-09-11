@@ -1,0 +1,126 @@
+{
+  "type": "object",
+  "properties": {
+    "declaration_name": {
+      "type": "string",
+      "description": "Simple declaration name, such as createOrder. Not a qualified name, signature, regex, glob, or natural-language request. Use package_name in scope for package qualification. All matching declarations remain separate results."
+    },
+    "name_match": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "exact",
+        "fuzzy",
+        null
+      ],
+      "description": "null means exact, case-sensitive declaration-name matching. Exact matching returns every matching overload; it does not select one overload. Fuzzy matching requires explicit opt-in."
+    },
+    "scope": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DirectoryScope"
+        },
+        {
+          "$ref": "#/$defs/PackageScope"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
+    },
+    "declaration_kinds": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string",
+        "enum": [
+          "class",
+          "function",
+          "property",
+          "type_alias"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 4,
+      "description": "null includes all four supported declaration families. Supply a non-empty, non-duplicate list to restrict them. The class family means Kast's supported class-like declarations. Constructors are not included."
+    }
+  },
+  "required": [
+    "declaration_name",
+    "name_match",
+    "scope",
+    "declaration_kinds"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "DirectoryScope": {
+      "type": "object",
+      "properties": {
+        "relative_directory_path": {
+          "type": "string",
+          "description": "Directory relative to the session workspace root, such as services/orders. Use '.' for the root. Not a file path, absolute path, glob, or package name. Parent traversal and non-canonical paths are rejected by server admission."
+        },
+        "include_subdirectories": {
+          "type": "boolean",
+          "description": "true includes the named directory and nested directories; false selects only the named directory."
+        },
+        "source_set_names": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "description": "Exact imported Gradle source-set name, such as main, integrationTest, or commonMain."
+          },
+          "minItems": 1,
+          "maxItems": 1000,
+          "description": "null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission."
+        }
+      },
+      "required": [
+        "relative_directory_path",
+        "include_subdirectories",
+        "source_set_names"
+      ],
+      "additionalProperties": false
+    },
+    "PackageScope": {
+      "type": "object",
+      "properties": {
+        "package_name": {
+          "type": "string",
+          "description": "Semantic Kotlin package name, such as com.example.orders. Not a filesystem path. Uses Kast's supported package-name grammar."
+        },
+        "include_subpackages": {
+          "type": "boolean",
+          "description": "true includes the named package and subpackages; false selects only the named package."
+        },
+        "source_set_names": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "description": "Exact imported Gradle source-set name, such as main, integrationTest, or commonMain."
+          },
+          "minItems": 1,
+          "maxItems": 1000,
+          "description": "null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission."
+        }
+      },
+      "required": [
+        "package_name",
+        "include_subpackages",
+        "source_set_names"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -16,6 +16,28 @@ import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicInteger
 
 class BrokerSessionHubTest {
+    @Test fun `tool display records bounded success and rejection evidence without payloads`(@TempDir root: Path) = runBlocking {
+        val fixture = Fixture(root)
+        try {
+            val peer = fixture.connect()
+            val completed = """{"method":"item/completed","params":{"threadId":"thread-1","turnId":"turn-1","completedAtMs":20,"item":{"type":"dynamicToolCall","id":"call-1","namespace":"kast","tool":"query","arguments":{"private":"do-not-log"},"status":"completed","success":true,"contentItems":[{"type":"inputText","text":"private-result"}]}}}"""
+            peer.upstream.received.send(BrokerUpstreamFrame.Text(completed))
+            val displayed = Json.parseToJsonElement(withTimeout(1_000) { peer.session.output.receive() }).jsonObject
+            assertEquals("mcpToolCall", displayed.getValue("params").jsonObject.getValue("item").jsonObject.getValue("type").jsonPrimitive.content)
+            assertEquals(listOf(SessionOutcome.COMPLETED), fixture.activities.filter { it.stage.name == "TOOL_DISPLAY" }.map { it.outcome })
+
+            peer.upstream.received.send(BrokerUpstreamFrame.Text(completed.replace("\"success\":true", "\"success\":false")))
+            assertTrue(withTimeout(1_000) { peer.session.output.receiveCatching() }.isClosed)
+            val evidence = fixture.activities.filter { it.stage.name == "TOOL_DISPLAY" }
+            assertEquals(listOf(SessionOutcome.COMPLETED, SessionOutcome.REJECTED), evidence.map { it.outcome })
+            assertInstanceOf(ProtocolCloseFailure.ToolCallProjectionRejected::class.java, evidence.last().protocolFailure)
+            val log = evidence.joinToString { it.document().toString() }
+            assertFalse(log.contains("do-not-log"))
+            assertFalse(log.contains("private-result"))
+            assertTrue(log.contains("COMPLETION_SUCCESS_CONFLICT"))
+        } finally { fixture.hub.close() }
+    }
+
     @Test fun `hub close waits for active execution cancellation to retire`(@TempDir root: Path) = runBlocking {
         val cancellationRetirement = CompletableDeferred<Unit>()
         val fixture = Fixture(root, cancellationRetirement = cancellationRetirement)
@@ -381,6 +403,7 @@ class BrokerSessionHubTest {
         private val cancellationRetirement: CompletableDeferred<Unit>? = null,
     ) {
         val root = root.toRealPath()
+        val activities = java.util.concurrent.CopyOnWriteArrayList<SessionActivity>()
         val invocations = AtomicInteger()
         val entered = CompletableDeferred<Unit>()
         val cancelled = CompletableDeferred<Unit>()
@@ -419,6 +442,7 @@ class BrokerSessionHubTest {
                 if (it == CodexOwnedSchema.TURN_INTERRUPT_PARAMS) Json.parseToJsonElement("""{"type":"object","required":["threadId","turnId"]}""").jsonObject else objectSchema
             }).validated(),MemoryThreadCatalogStore(),BrokerUpstreamConnector { BrokerUpstreamConnectionAdmission.Connected(connecting.receive()) },
             4,4 * 1_024 * 1_024,enrollment = enrollment, invocationJournal = invocationJournal,
+            sessionActivitySink = SessionActivitySink { activities.add(it) },
         ), executionPolicy)
         suspend fun connect(): Peer {
             val upstream = FakeUpstream(); connecting.send(upstream)

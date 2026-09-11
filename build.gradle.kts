@@ -181,7 +181,8 @@ val localHostedIdeaBuild = providers.gradleProperty("hostedIdeaHome").map { home
     (groovy.json.JsonSlurper().parseText(metadata) as Map<*, *>)["buildNumber"] as String
 }.orElse(libs.versions.ide.host.build)
 val localHostedPluginArchive = localHostedIdeaBuild.map { build ->
-    layout.projectDirectory.file("runtime/hosted/build/distributions/kast-ide-hosted-v${project.version}-idea-$build.zip")
+    val releaseLine = build.substringBefore('.')
+    layout.projectDirectory.file("runtime/hosted/build/distributions/kast-ide-hosted-v${project.version}-idea-$releaseLine.zip")
 }
 
 tasks.register<Exec>("installLocal") {

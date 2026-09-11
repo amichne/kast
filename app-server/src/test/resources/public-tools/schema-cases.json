@@ -1,0 +1,418 @@
+[
+  {
+    "id": "class-defaults",
+    "tool": "search_classes",
+    "arguments": {
+      "class_name": "OrderService",
+      "name_match": null,
+      "scope": null
+    },
+    "schema_valid": true
+  },
+  {
+    "id": "function-defaults",
+    "tool": "search_functions",
+    "arguments": {
+      "function_name": "createOrder",
+      "name_match": null,
+      "scope": null
+    },
+    "schema_valid": true
+  },
+  {
+    "id": "generic-defaults",
+    "tool": "search_declarations",
+    "arguments": {
+      "declaration_name": "OrderService",
+      "name_match": null,
+      "scope": null,
+      "declaration_kinds": null
+    },
+    "schema_valid": true
+  },
+  {
+    "id": "property-search",
+    "tool": "search_declarations",
+    "arguments": {
+      "declaration_name": "retryCount",
+      "name_match": "exact",
+      "scope": null,
+      "declaration_kinds": [
+        "property"
+      ]
+    },
+    "schema_valid": true
+  },
+  {
+    "id": "class-directory",
+    "tool": "search_classes",
+    "arguments": {
+      "class_name": "OrderService",
+      "name_match": null,
+      "scope": {
+        "relative_directory_path": "services/orders",
+        "include_subdirectories": true,
+        "source_set_names": [
+          "main"
+        ]
+      }
+    },
+    "schema_valid": true
+  },
+  {
+    "id": "function-package",
+    "tool": "search_functions",
+    "arguments": {
+      "function_name": "createOrder",
+      "name_match": null,
+      "scope": {
+        "package_name": "com.example.orders",
+        "include_subpackages": false,
+        "source_set_names": null
+      }
+    },
+    "schema_valid": true
+  },
+  {
+    "id": "custom-source-set",
+    "tool": "search_functions",
+    "arguments": {
+      "function_name": "createOrder",
+      "name_match": null,
+      "scope": {
+        "relative_directory_path": "services/orders",
+        "include_subdirectories": true,
+        "source_set_names": [
+          "integrationTest"
+        ]
+      }
+    },
+    "schema_valid": true
+  },
+  {
+    "id": "fuzzy-explicit",
+    "tool": "search_classes",
+    "arguments": {
+      "class_name": "OrderService",
+      "name_match": "fuzzy",
+      "scope": null
+    },
+    "schema_valid": true
+  },
+  {
+    "id": "wrong-name-key",
+    "tool": "search_classes",
+    "arguments": {
+      "function_name": "createOrder",
+      "name_match": null,
+      "scope": null
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "diagnostic-field-in-search",
+    "tool": "search_classes",
+    "arguments": {
+      "class_name": "OrderService",
+      "name_match": null,
+      "scope": null,
+      "max_diagnostics": 10
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "no-redundant-root-type",
+    "tool": "search_classes",
+    "arguments": {
+      "class_name": "OrderService",
+      "name_match": null,
+      "scope": null,
+      "type": "QUERY"
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "no-canonical-scope-envelope",
+    "tool": "search_classes",
+    "arguments": {
+      "class_name": "OrderService",
+      "name_match": null,
+      "scope": {
+        "type": "DIRECTORY",
+        "value": "."
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "no-mixed-scope",
+    "tool": "search_classes",
+    "arguments": {
+      "class_name": "OrderService",
+      "name_match": null,
+      "scope": {
+        "relative_directory_path": "services/orders",
+        "include_subdirectories": true,
+        "source_set_names": [
+          "main"
+        ],
+        "package_name": "com.example"
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "no-empty-source-set-selection",
+    "tool": "search_classes",
+    "arguments": {
+      "class_name": "OrderService",
+      "name_match": null,
+      "scope": {
+        "relative_directory_path": "services/orders",
+        "include_subdirectories": true,
+        "source_set_names": []
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "no-search-file-scope",
+    "tool": "search_classes",
+    "arguments": {
+      "class_name": "OrderService",
+      "name_match": null,
+      "scope": {
+        "relative_file_path": "src/Main.kt"
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "null-name-rejected",
+    "tool": "search_classes",
+    "arguments": {
+      "class_name": null,
+      "name_match": null,
+      "scope": null
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "unknown-match-rejected",
+    "tool": "search_classes",
+    "arguments": {
+      "class_name": "OrderService",
+      "name_match": "regex",
+      "scope": null
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "strict-presence-required",
+    "tool": "search_classes",
+    "arguments": {
+      "class_name": "OrderService"
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "diagnostic-file",
+    "tool": "check_diagnostics",
+    "arguments": {
+      "relative_path": "src/Main.kt",
+      "max_diagnostics": null
+    },
+    "schema_valid": true
+  },
+  {
+    "id": "diagnostic-root",
+    "tool": "check_diagnostics",
+    "arguments": {
+      "relative_path": ".",
+      "max_diagnostics": 100
+    },
+    "schema_valid": true
+  },
+  {
+    "id": "diagnostic-zero-limit-rejected",
+    "tool": "check_diagnostics",
+    "arguments": {
+      "relative_path": ".",
+      "max_diagnostics": 0
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "diagnostic-limit-bound",
+    "tool": "check_diagnostics",
+    "arguments": {
+      "relative_path": ".",
+      "max_diagnostics": 1001
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "diagnostic-no-query-controls",
+    "tool": "check_diagnostics",
+    "arguments": {
+      "relative_path": ".",
+      "max_diagnostics": null,
+      "scope": null
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "diagnostic-no-assumed-severity-filter",
+    "tool": "check_diagnostics",
+    "arguments": {
+      "relative_path": ".",
+      "max_diagnostics": null,
+      "severity": "error"
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "advanced-enumeration",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "all_declarations",
+        "declaration_kinds": null,
+        "scope": null
+      },
+      "steps": null,
+      "return_fields": null
+    },
+    "schema_valid": true
+  },
+  {
+    "id": "empty-projection-meaningful",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "all_declarations",
+        "declaration_kinds": null,
+        "scope": null
+      },
+      "steps": null,
+      "return_fields": []
+    },
+    "schema_valid": true
+  },
+  {
+    "id": "ordered-pipeline",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "all_declarations",
+        "declaration_kinds": null,
+        "scope": null
+      },
+      "steps": [
+        {
+          "type": "filter_visibility",
+          "visibilities": [
+            "public"
+          ]
+        },
+        {
+          "type": "expand_relation",
+          "relation": "callers"
+        },
+        {
+          "type": "distinct_symbols"
+        }
+      ],
+      "return_fields": null
+    },
+    "schema_valid": true
+  },
+  {
+    "id": "advanced-reference-source-shape",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "symbol_refs",
+        "symbol_refs": [
+          "NON_ISSUED_SCHEMA_TEST_ONLY"
+        ]
+      },
+      "steps": null,
+      "return_fields": null
+    },
+    "schema_valid": true
+  },
+  {
+    "id": "no-diagnostics-pipeline-step",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "all_declarations",
+        "declaration_kinds": null,
+        "scope": null
+      },
+      "steps": [
+        {
+          "type": "check_diagnostics",
+          "relative_path": "."
+        }
+      ],
+      "return_fields": null
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "no-expand-filter-mixing",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "all_declarations",
+        "declaration_kinds": null,
+        "scope": null
+      },
+      "steps": [
+        {
+          "type": "expand_relation",
+          "relation": "callers",
+          "visibilities": [
+            "public"
+          ]
+        }
+      ],
+      "return_fields": null
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "no-unknown-relation",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "all_declarations",
+        "declaration_kinds": null,
+        "scope": null
+      },
+      "steps": [
+        {
+          "type": "expand_relation",
+          "relation": "dependencies"
+        }
+      ],
+      "return_fields": null
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "no-empty-references",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "symbol_refs",
+        "symbol_refs": []
+      },
+      "steps": null,
+      "return_fields": null
+    },
+    "schema_valid": false
+  }
+]

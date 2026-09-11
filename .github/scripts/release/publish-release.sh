@@ -61,7 +61,7 @@ assets_directory="$(cd "${assets_directory}" && pwd -P)"
 control="${assets_directory}/kast-control-v${version}-macos-aarch64.tar.gz"
 sidecar="${assets_directory}/kast-semantic-runtime-${version}-macos-aarch64.zip"
 plugins=("${assets_directory}"/kast-ide-hosted-v"${version}"-idea-*.zip)
-[[ "${#plugins[@]}" == 1 && -f "${plugins[0]}" ]] || fail "expected one IDEA-build-specific hosted plugin"
+[[ "${#plugins[@]}" == 1 && -f "${plugins[0]}" ]] || fail "expected one IDEA-release-line hosted plugin"
 plugin="${plugins[0]}"
 schema="${assets_directory}/kast-cli-schema-v${version}.json"
 knowledge="${assets_directory}/kast-module-knowledge-v${version}.json"
@@ -104,7 +104,7 @@ release_notes="$(
     '' \
     '- **Control:** CLI parsing, lifecycle, schemas, broker, and typed wire transport.' \
     '- **Private semantic runtime:** the headless indexer and compiler integration loaded with the supported local IDEA.' \
-    '- **Existing-IDE plugin:** the exact-build plugin installed programmatically by the verified shell installer.'
+    '- **Existing-IDE plugin:** the release-line plugin installed programmatically by the verified shell installer.'
 )"
 
 gh release create "${release}" "${upload_assets[@]}" \

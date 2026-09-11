@@ -4,7 +4,7 @@ title: "Compatibility and upgrades"
 description: "Supported hosts, installed agent contracts, and upgrade behavior."
 resource: "file://docs/public/reference/compatibility.mdx"
 tags: ["compatibility", "releases", "upgrades", "hosts"]
-timestamp: "2026-09-07T00:00:00-04:00"
+timestamp: "2026-09-11T00:00:00-04:00"
 code_sources:
   - path: "gradle/libs.versions.toml"
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt"
@@ -15,8 +15,11 @@ keywords: ["compatibility", "upgrade", "preview", "rollback"]
 ---
 
 Kast supports Apple Silicon macOS, on-disk Kotlin Gradle repositories, and the
-exact IntelliJ build named in [Install and connect](/start). Linux, Intel macOS,
-other languages, and other IntelliJ builds are not currently promised.
+IntelliJ `262` release line described in [Install and connect](/start). Linux,
+Intel macOS, other languages, and other IntelliJ release lines are not currently
+supported. IDEA and its bundled Kotlin plugin may have different patch builds
+within `262`; their exact observed identities remain in runtime evidence.
+Protocol, schema, and artifact integrity checks remain exact.
 
 ## Agent integration contract
 
@@ -35,7 +38,7 @@ installed Kast semantic contract.
 
 Tool names and schemas can remain compatible while repository evidence moves.
 A source or imported-model change may invalidate a returned reference. The safe
-response is a new `kast.query` search, not reinterpretation of the stale value.
+response is a new Kast declaration search, not reinterpretation of the stale value.
 
 Complete, qualified, and rejected retain their documented meanings. A new
 version must not turn unknown or stale evidence into an unqualified success.
@@ -43,7 +46,7 @@ version must not turn unknown or stale evidence into an unqualified success.
 ## Upgrades
 
 The installer downloads and verifies a matched control, semantic-runtime, and
-exact-build existing-IDE plugin before replacing the active Kast installation
+existing-IDE plugin for the selected release line before replacing the active Kast installation
 and the Kast-owned IDEA user plugin directory. Restart IDEA after an install or
 upgrade to load that plugin. Ordinary upgrades and uninstall preserve repository
 source and unrelated JetBrains state.

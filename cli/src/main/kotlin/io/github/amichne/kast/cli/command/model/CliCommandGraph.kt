@@ -75,6 +75,7 @@ internal class CliCommandSurface internal constructor(
     val localCommands: List<CliProductCommand>,
     val lifecycleCommands: List<CliLifecycleCommand>,
     val semanticCommands: List<CliSemanticCommandSurface>,
+    val toolCommands: List<io.github.amichne.kast.cli.command.tool.CliToolCommandSurface>,
 )
 
 internal sealed interface CliCommandGraphFailure {
@@ -208,6 +209,7 @@ private class CliCommandGraph(
     private val semantic: List<SemanticKastCommand<*>>,
     private val local: List<LocalKastCommand>,
     private val lifecycle: List<LifecycleKastCommand>,
+    private val tools: List<io.github.amichne.kast.cli.command.tool.CliToolCommandSurface> = emptyList(),
 ) {
     /**
      * Proof transition: `CliArgv -> CliCommandParsing`.
@@ -307,6 +309,7 @@ private class CliCommandGraph(
     }
 
     fun surface(): CliCommandSurface = CliCommandSurface(
+        toolCommands = tools,
         localFlags = listOf("--help", "--version", "--schema"),
         localCommands = local.map(LocalKastCommand::command),
         lifecycleCommands = lifecycle.map(LifecycleKastCommand::command),
@@ -347,7 +350,7 @@ private class KastRootCommand : KastCommand("kast") {
         "Query the existing IDEA index with index commands; inspect and change a workspace through the isolated sidecar."
 
     override fun helpEpilog(context: Context): String =
-        "Semantic results are one JSON document on stdout. Diagnostics are one JSON document on stderr."
+        "Semantic results are one JSON document on stdout. Diagnostics are one JSON document on stderr. Use kast config --help for configuration inspection."
 
     override fun resolveAction(): CliNodeResolution = if (currentContext.invokedSubcommand == null) {
         CliActionResolution.Selected(CliAction.Local.Inspect)
@@ -372,6 +375,7 @@ private fun canonicalGraph(
     preparers: CanonicalCliRequestPreparers,
     requestInput: CliRequestDocumentInput,
 ): CliCommandGraph {
+    val tools = io.github.amichne.kast.cli.command.tool.publicToolCommands(preparers, requestInput)
     val product = productCommandGroup()
     val appServer = io.github.amichne.kast.cli.command.appserver.appServerCommandGroup()
     val broker = brokerCommandGroup()
@@ -405,9 +409,9 @@ private fun canonicalGraph(
     }.filter { it.commands.isNotEmpty() }
     val root = KastRootCommand().subcommands(
         families.filter { it.semanticCommands.isNotEmpty() }.map { it.root } +
-            localFamilies.map { it.root } + appServer.root + lifecycle,
+            localFamilies.map { it.root } + appServer.root + tools.root + lifecycle,
     )
-    return CliCommandGraph(root, semantic, localFamilies.flatMap { it.commands } + appServer.commands, lifecycle)
+    return CliCommandGraph(root, semantic, localFamilies.flatMap { it.commands } + appServer.commands, lifecycle, tools.surface)
 }
 
 internal class CommandFamily(
