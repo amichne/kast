@@ -147,7 +147,7 @@ class LiveReadOutputSchemaTest {
                         complete(
                             CanonicalOperation.TRAVERSAL_RUN,
                             basis,
-                            TraversalRunResult(text("/workspace"), empty()),
+                            traversalResult(),
                         )
                     )
                     .document(),
@@ -227,7 +227,7 @@ class LiveReadOutputSchemaTest {
                             EvidenceEnvelope(
                                 CanonicalOperation.TRAVERSAL_RUN.id,
                                 basis,
-                                TraversalRunResult(text("/workspace"), empty()),
+                                traversalResult(),
                             ),
                             TraversalRunQualification.terminalIncomplete(
                                     listOf(TraversalLimitationDocument.DEPTH_LIMIT_REACHED),
@@ -288,6 +288,32 @@ class LiveReadOutputSchemaTest {
             SourceTextProjectionDocument.NotRequested,
         )
     }
+
+    private fun traversalResult(): TraversalRunResult =
+        TraversalRunResult(
+            text("/workspace"),
+            BoundedProtocolList.create(
+                    listOf(
+                        TraversalRecordDocument(
+                            TraversalDepthDocument.parse(1).refined(),
+                            RelationFactDocument(
+                                meaning = RelationKindDocument.CALLERS,
+                                source = symbol(),
+                                target = symbol(),
+                                occurrence =
+                                    RelationOccurrenceDocument(
+                                        text("candidate:occurrence"),
+                                        text("src/Example.kt"),
+                                        SourceRangeDocument.create(offset(0), offset(1)).refined(),
+                                    ),
+                                provenance = RelationProvenanceDocument.K2_AUTHORED_SOURCE,
+                                coverage = RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
+                            ),
+                        )
+                    )
+                )
+                .refined(),
+        )
 
     private fun symbol(): SymbolDocument =
         SymbolDocument.create(
