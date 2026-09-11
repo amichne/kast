@@ -32,6 +32,8 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeVerification.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeRecovery.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt
+    symbols: [WorkspaceExecution]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/HostedPlanApprovalGateway.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexPlanApprovalProjection.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/BrokerTrustEnrollment.kt
@@ -84,6 +86,12 @@ source content, then persists the verified receipt. `Verified` carries the
 receipt identity. `AppliedUnverified` retains a write whose verification or
 receipt persistence failed. `RecoveryRequired` retains an uncertain or previously
 attempted write. The latter two remain qualified results.
+
+An uncertain broker invocation leaves its workspace in `WORKSPACE_RECOVERY_REQUIRED`.
+The broker rejects further operations for that workspace, including recovery.
+Replace the broker while retaining its invocation journal and thread store before
+requesting separately approved recovery. The IDE's durable mutation records remain
+authoritative; replacing the broker does not make an attempted plan executable again.
 
 A repeated verified apply returns its stored receipt without another write,
 including when the current IDE owner differs from the historical receipt.
