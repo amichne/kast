@@ -13,6 +13,7 @@ import io.github.amichne.kast.appserver.core.ToolName
 import io.github.amichne.kast.appserver.provider.KastProviderOptions
 import io.github.amichne.kast.appserver.provider.KastProviderQualification
 import io.github.amichne.kast.appserver.provider.KastProviderQualifier
+import io.github.amichne.kast.appserver.schema.JsonSchemaViolationEvidenceDocument
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import io.github.amichne.kast.protocol.registry.OperationEffect
 import java.io.BufferedInputStream
@@ -20,11 +21,13 @@ import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.put
 
 /** Test-only pipe transport: production provider results are assessed in memory, never written as diagnostic logs. */
 object NativeHostedReadMain {
@@ -38,7 +41,7 @@ object NativeHostedReadMain {
             val input = BufferedInputStream(System.`in`)
             while (true) {
                 val request = boundedReadRequest(input) ?: break
-                println(transport.invoke(request))
+                println(readResponseJson.encodeToString(transport.invoke(request)))
                 System.out.flush()
             }
         } catch (_: Exception) {
@@ -48,10 +51,26 @@ object NativeHostedReadMain {
     }
 }
 
+@Serializable
+private sealed interface NativeReadResponse {
+    @Serializable
+    @SerialName("completed")
+    data class Completed(val success: Boolean, val envelope: JsonElement) : NativeReadResponse
+
+    @Serializable
+    @SerialName("rejected")
+    data class Rejected(
+        val failure: String,
+        val outputViolationEvidence: JsonSchemaViolationEvidenceDocument? = null,
+    ) : NativeReadResponse
+}
+
+private val readResponseJson = Json { classDiscriminator = "kind" }
+
 private class NativeHostedReadTransport(private val broker: Broker, private val workspace: Path) {
     private var sequence = 0
 
-    suspend fun invoke(document: JsonObject): JsonObject {
+    suspend fun invoke(document: JsonObject): NativeReadResponse {
         val tool = document.textAt("tool")
         demand(document.keys == setOf("tool", "arguments") && tool in readToolNames, NativeFailure.INPUT_REJECTED)
         val context =
@@ -72,16 +91,18 @@ private class NativeHostedReadTransport(private val broker: Broker, private val 
             )
         return when (result) {
             is BrokerDispatch.Completed ->
-                buildJsonObject {
-                    put("kind", "completed")
-                    put("success", result.presentation.success)
-                    put("envelope", Json.parseToJsonElement(result.presentation.content.last().text))
-                }
+                NativeReadResponse.Completed(
+                    result.presentation.success,
+                    Json.parseToJsonElement(result.presentation.content.last().text),
+                )
             is BrokerDispatch.Rejected ->
-                buildJsonObject {
-                    put("kind", "rejected")
-                    put("failure", readBrokerFailure(result.failure))
-                }
+                NativeReadResponse.Rejected(
+                    readBrokerFailure(result.failure),
+                    when (val failure = result.failure) {
+                        is BrokerFailure.OutputContractRejected -> failure.violationEvidence.toDocument()
+                        else -> null
+                    },
+                )
         }
     }
 

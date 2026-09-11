@@ -44,10 +44,95 @@ class ReadProviderFailure(str, Enum):
     GRADLE_WRAPPER = 'GRADLE_WRAPPER_UNAVAILABLE'
 
 
+class ReadViolationKeyword(str, Enum):
+    TYPE = 'TYPE'
+    REQUIRED = 'REQUIRED'
+    ENUM = 'ENUM'
+    CONST = 'CONST'
+    PATTERN = 'PATTERN'
+    ADDITIONAL_PROPERTIES = 'ADDITIONAL_PROPERTIES'
+    ONE_OF = 'ONE_OF'
+    ANY_OF = 'ANY_OF'
+    MINIMUM = 'MINIMUM'
+    MAXIMUM = 'MAXIMUM'
+    MIN_LENGTH = 'MIN_LENGTH'
+    MAX_LENGTH = 'MAX_LENGTH'
+    MIN_ITEMS = 'MIN_ITEMS'
+    MAX_ITEMS = 'MAX_ITEMS'
+    UNKNOWN = 'UNKNOWN'
+
+
+class ReadViolationField(str, Enum):
+    DOCUMENT = 'DOCUMENT'
+    STATUS = 'STATUS'
+    OPERATION = 'OPERATION'
+    LIVE = 'LIVE'
+    ROOT = 'ROOT'
+    HOST = 'HOST'
+    EPOCH = 'EPOCH'
+    CONTENT_VIEW = 'CONTENT_VIEW'
+    VERSION = 'VERSION'
+    GRAPH = 'GRAPH'
+    SNAPSHOT = 'SNAPSHOT'
+    CANONICAL_ROOT = 'CANONICAL_ROOT'
+    GENERATION = 'GENERATION'
+    NODES = 'NODES'
+    EDGES = 'EDGES'
+    PROOFS = 'PROOFS'
+    ID = 'ID'
+    SELECTOR = 'SELECTOR'
+    KIND = 'KIND'
+    NAME = 'NAME'
+    QUALIFIED_IDENTITY = 'QUALIFIED_IDENTITY'
+    FILE = 'FILE'
+    RANGE = 'RANGE'
+    START_INCLUSIVE = 'START_INCLUSIVE'
+    END_EXCLUSIVE = 'END_EXCLUSIVE'
+    PROOF = 'PROOF'
+    DEPTH = 'DEPTH'
+    MEANING = 'MEANING'
+    SOURCE = 'SOURCE'
+    TARGET = 'TARGET'
+    OCCURRENCE = 'OCCURRENCE'
+    CANDIDATE_SELECTOR = 'CANDIDATE_SELECTOR'
+    PROVENANCE = 'PROVENANCE'
+    COVERAGE = 'COVERAGE'
+    IDENTITY = 'IDENTITY'
+    QUALIFICATION = 'QUALIFICATION'
+    LIMITATIONS = 'LIMITATIONS'
+    RELATION_LIMITATIONS = 'RELATION_LIMITATIONS'
+    CONTINUATION = 'CONTINUATION'
+    REASON = 'REASON'
+    DIAGNOSTIC = 'DIAGNOSTIC'
+    UNKNOWN = 'UNKNOWN'
+
+
+def _admit_output_violation_evidence(raw):
+    """Mirror the closed JsonSchemaViolationEvidence boundary, never validator text."""
+    if (not isinstance(raw, dict) or set(raw) != {'observations'}
+            or not isinstance(raw['observations'], list) or not 1 <= len(raw['observations']) <= 4096):
+        raise ReadTransportRejected('READ_PROVIDER_PROTOCOL_REJECTED')
+    observed = set()
+    admitted = []
+    for row in raw['observations']:
+        if not isinstance(row, dict) or set(row) != {'keyword', 'field'}:
+            raise ReadTransportRejected('READ_PROVIDER_PROTOCOL_REJECTED')
+        try:
+            pair = (ReadViolationKeyword(row['keyword']), ReadViolationField(row['field']))
+        except (ValueError, TypeError):
+            raise ReadTransportRejected('READ_PROVIDER_PROTOCOL_REJECTED') from None
+        if pair in observed:
+            raise ReadTransportRejected('READ_PROVIDER_PROTOCOL_REJECTED')
+        observed.add(pair)
+        admitted.append({'keyword': pair[0].value, 'field': pair[1].value})
+    return {'observations': admitted}
+
+
 class ReadTransportRejected(ValueError):
-    def __init__(self, reason, provider_failure=None):
+    def __init__(self, reason, provider_failure=None, output_violation_evidence=None):
         self.reason = ReadTransportFailure(reason)
         self.provider_failure = provider_failure
+        self.output_violation_evidence = output_violation_evidence
         self.invocation = None
         super().__init__(self.reason.value)
 
@@ -55,6 +140,8 @@ class ReadTransportRejected(ValueError):
         result = {'reason': self.reason.value}
         if self.provider_failure is not None:
             result['providerFailure'] = self.provider_failure.value
+        if self.output_violation_evidence is not None:
+            result['outputViolationEvidence'] = self.output_violation_evidence
         if self.invocation is not None:
             result['surface'], result['tool'] = self.invocation
         return result
@@ -69,9 +156,14 @@ def _provider_result(response):
         failure = ReadProviderFailure(response.get('failure'))
     except (ValueError, TypeError):
         raise ReadTransportRejected('READ_PROVIDER_PROTOCOL_REJECTED') from None
+    evidence = None
+    if 'outputViolationEvidence' in response:
+        if failure is not ReadProviderFailure.OUTPUT_CONTRACT:
+            raise ReadTransportRejected('READ_PROVIDER_PROTOCOL_REJECTED')
+        evidence = _admit_output_violation_evidence(response['outputViolationEvidence'])
     if failure is ReadProviderFailure.INVALID_ARGUMENTS:
         return {'failure': failure.value}
-    raise ReadTransportRejected('READ_PROVIDER_REJECTED', failure)
+    raise ReadTransportRejected('READ_PROVIDER_REJECTED', failure, evidence)
 
 
 MAXIMUM_RESPONSE_BYTES = 4 * 1024 * 1024

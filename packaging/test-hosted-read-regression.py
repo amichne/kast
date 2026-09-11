@@ -10,7 +10,8 @@ from unittest.mock import patch
 
 from hosted_read_fixture import ReadFixtureRejected, prepare_read_fixture
 from hosted_read_regression import _ReadReplay, _read_observation, _reproduction
-from hosted_read_transport import HostedReadTransport, ReadTransportRejected, _admit_cli_invocations, _provider_result
+from hosted_read_transport import (HostedReadTransport, ReadTransportRejected, _admit_cli_invocations,
+    _admit_output_violation_evidence, _provider_result)
 from hosted_generated_fixture import (GENERATED_FILE, GENERATED_SOURCE, MOVEMENT_FILE, MOVEMENT_SOURCE,
     prepare_generated_fixture, finalize_generated_fixture, amend_generated_provenance)
 
@@ -143,6 +144,26 @@ class HostedReadRegressionTest(unittest.TestCase):
                          _provider_result({'kind': 'rejected', 'failure': 'INVALID_ARGUMENTS'}))
         self.assertEqual({'status': 'complete'}, _provider_result({
             'kind': 'completed', 'envelope': {'document': {'status': 'complete'}}}))
+
+    def test_output_violation_evidence_preserves_only_closed_field_keyword_pairs(self):
+        evidence = {'observations': [{'keyword': 'REQUIRED', 'field': 'PROOFS'}]}
+        with self.assertRaises(ReadTransportRejected) as failure:
+            _provider_result({'kind': 'rejected', 'failure': 'OUTPUT_CONTRACT_REJECTED',
+                              'outputViolationEvidence': evidence})
+        self.assertEqual(evidence, failure.exception.evidence()['outputViolationEvidence'])
+        for malformed in (
+                {'observations': []},
+                {'observations': [{'keyword': 'private validator text', 'field': 'PROOFS'}]},
+                {'observations': [{'keyword': 'REQUIRED', 'field': 'private field value'}]},
+                {'observations': [{'keyword': 'REQUIRED', 'field': 'PROOFS', 'message': 'payload'}]},
+                {'observations': evidence['observations'] * 2},
+                {'observations': evidence['observations'] * 4097},
+                {'observations': evidence['observations'], 'payload': 'private'}):
+            with self.assertRaises(ReadTransportRejected):
+                _admit_output_violation_evidence(malformed)
+        with self.assertRaises(ReadTransportRejected):
+            _provider_result({'kind': 'rejected', 'failure': 'TIMED_OUT',
+                              'outputViolationEvidence': evidence})
 
     def generated_fixture(self):
         original = prepare_read_fixture(self.workspace, REPO)
