@@ -41,7 +41,7 @@ Kast currently requires:
 
 - macOS on Apple silicon;
 - an on-disk Kotlin Gradle repository; and
-- IntelliJ IDEA build `262.10315.125` with its bundled Java 25 JBR.
+- IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
 
 Install the latest published release:
 
@@ -50,7 +50,7 @@ Install the latest published release:
 ```
 
 The installer discovers the supported IntelliJ runtime, verifies the matched
-Kast payloads, installs the exact-build existing-IDE plugin, and installs the
+Kast payloads, installs the existing-IDE plugin for the `262` release line, and installs the
 integration entrypoints. Restart IDEA after installation to activate the plugin. If discovery is
 ambiguous, select IDEA explicitly:
 

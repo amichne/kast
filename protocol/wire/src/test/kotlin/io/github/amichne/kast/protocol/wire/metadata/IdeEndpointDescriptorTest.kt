@@ -17,6 +17,20 @@ import org.junit.jupiter.api.Test
 
 class IdeEndpointDescriptorTest {
     @Test
+    fun `compatible 262 descriptor round trip retains the observed patch builds`() {
+        val policy = fixtureEndpointPolicy()
+        val candidate = fixtureEndpointCandidate().copy(
+            ideBuild = "262.20000.200",
+            kotlinPluginBuild = "262.20001.201-IJ",
+        )
+        val encoded = IdeEndpointDescriptorV2.create(candidate, policy).admittedDescriptor().encode()
+        val decoded = IdeEndpointDescriptorV2.admit(encoded.document, policy).admittedDescriptor()
+        assertEquals(candidate.ideBuild, decoded.compatibility.ideBuild.value)
+        assertEquals(candidate.kotlinPluginBuild, decoded.compatibility.kotlinPluginBuild.value)
+        assertEquals(encoded.document, decoded.encode().document)
+    }
+
+    @Test
     fun `the exact v2 descriptor retains every refined endpoint authority`() {
         val descriptor = IdeEndpointDescriptorV2.create(
             fixtureEndpointCandidate(),

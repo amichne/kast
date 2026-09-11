@@ -172,10 +172,13 @@ permit and a cooperative deadline; cancellation drains before releasing the
 permit. Detachment invalidates the original endpoint, drains its requests, and
 disposes its listener owner. No opener, importer, or isolated worker is used.
 
-The versioned, exact-build plugin archive contains compiled adapter code and its contract
-dependencies. Stable release installation verifies the archive checksum, plugin identity,
-release version, and exact IDEA build before atomically activating it in the selected IDEA
-user plugin directory. The [manual runner](../../experiments/host-observation/HOSTED_QUERY.md)
+The versioned production plugin archive contains compiled adapter code and its
+contract dependencies. Stable release installation verifies the archive checksum,
+plugin identity, release version, and IDEA `262` release line before atomically
+activating it in the selected IDEA user plugin directory. Runtime admission accepts
+IDEA and bundled Kotlin patch builds within that line and retains their full
+observed identities. This broader policy does not expand the recorded native
+acceptance evidence. The earlier manual proof archive still targets its exact build. The [manual runner](../../experiments/host-observation/HOSTED_QUERY.md)
 loads that artifact into an existing native IDEA process and records project,
 model, read-lock, result, and retirement evidence. Ordinary library builds have
 no plugin descriptor. Opt-in checkpoints after semantic detachment qualify

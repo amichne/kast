@@ -273,8 +273,9 @@ if identity != "io.github.amichne.kast.ide-hosted":
     raise SystemExit("kast-install: hosted plugin identity is invalid")
 if plugin_version != version:
     raise SystemExit("kast-install: hosted plugin version is mismatched")
-if since != build or until != build:
-    raise SystemExit("kast-install: hosted plugin IDEA build is mismatched")
+release_line = build.split(".", 1)[0]
+if since != release_line or until != release_line + ".*":
+    raise SystemExit("kast-install: hosted plugin IDEA release line is mismatched")
 PYTHON
 }
 
@@ -415,7 +416,7 @@ release_url="${KAST_RELEASE_BASE_URL:-https://github.com/$REPOSITORY/releases/do
 release_url="${release_url%/}/$release"
 control_name="kast-control-v$version-macos-aarch64.tar.gz"
 runtime_name="kast-semantic-runtime-$version-macos-aarch64.zip"
-plugin_name="kast-ide-hosted-v$version-idea-$idea_build.zip"
+plugin_name="kast-ide-hosted-v$version-idea-${idea_build%%.*}.zip"
 temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-install.XXXXXX")"
 temporary_root="$(CDPATH='' cd -- "$temporary_root" && pwd -P)"
 cleanup() { rm -rf -- "$temporary_root"; }

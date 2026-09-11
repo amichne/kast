@@ -61,7 +61,7 @@ for name in "kast-control-v$version-macos-aarch64.tar.gz" "kast-semantic-runtime
   cp "$checkout/build/distributions/$name" "$scratch/$name"
   (cd "$scratch" && shasum -a 256 "$name" > "$name.sha256")
 done
-plugin_name="kast-ide-hosted-v$version-idea-$idea_build.zip"
+plugin_name="kast-ide-hosted-v$version-idea-${idea_build%%.*}.zip"
 cp "$checkout/runtime/hosted/build/distributions/$plugin_name" "$scratch/$plugin_name"
 (cd "$scratch" && shasum -a 256 "$plugin_name" > "$plugin_name.sha256")
 

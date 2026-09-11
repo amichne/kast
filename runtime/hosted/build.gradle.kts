@@ -21,12 +21,14 @@ val ideBuild = if (hostedIdeaHome.isPresent) {
     val metadata = providers.fileContents(layout.projectDirectory.file(hostedIdeaHome.get() + "/Resources/product-info.json")).asText.get()
     (groovy.json.JsonSlurper().parseText(metadata) as Map<*, *>)["buildNumber"] as String
 } else pinnedBuild
+val ideReleaseLine = ideBuild.substringBefore('.')
 tasks.processResources {
     val schema = rootProject.file("protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json")
     val registry = rootProject.file("protocol/contract/src/main/resources/ide-hosted/hosted-query.operations.json")
     fun digest(file: File) = "sha256:" + MessageDigest.getInstance("SHA-256").digest(file.readBytes()).joinToString("") { "%02x".format(it) }
     val values = mapOf(
         "ideBuild" to ideBuild,
+        "ideReleaseLine" to ideReleaseLine,
         "kotlinBuild" to "$ideBuild-IJ",
         "pluginVersion" to project.version.toString(),
         "schemaDigest" to digest(schema),
@@ -66,7 +68,7 @@ dependencies {
 val hostedPlugin by tasks.registering(Zip::class) {
     group = "distribution"
     description = "Packages the project-owned existing-IDE index endpoint."
-    archiveFileName.set("kast-ide-hosted-v${project.version}-idea-$ideBuild.zip")
+    archiveFileName.set("kast-ide-hosted-v${project.version}-idea-$ideReleaseLine.zip")
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
