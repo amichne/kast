@@ -165,6 +165,24 @@ Development requires Java 25 or newer and the Python version in
 ./gradlew assembleSidecarRelease
 ```
 
+The opt-in native change acceptance task stages the matched CLI, broker and
+plugin, then creates and imports a private Kotlin fixture. Supply an IDEA
+installation, the generated JSON schema directory from the installed Codex
+version, and a new report path:
+
+```shell
+./gradlew hostedChangeAcceptance \
+  -PhostedIdeaHome=/absolute/path/to/idea \
+  -PhostedCodexSchemas=/absolute/path/to/codex-schemas \
+  -PhostedChangeReport=/absolute/path/to/new-change-receipt.json
+```
+
+Release qualification requires a clean source checkout. The diagnostic option
+`-PhostedDiagnosticDirty=true` permits development runs and records them as
+unqualified. The receipt separates native observations from deterministic tests
+and stock Codex desktop compatibility. Fixture setup and retirement stay outside
+the measured change operations.
+
 Validate the public documentation with `mint validate` from `docs/public`.
 
 ## Security and license

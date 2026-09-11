@@ -442,3 +442,80 @@ val hostObservationTest = tasks.register<Exec>("hostObservationTest") {
 }
 
 tasks.named("check") { dependsOn(verifyConfigurationIngress, verifyKnowledgeBase, hostObservationTest) }
+
+// Native change acceptance is explicit and never part of the build-classpath verification gate.
+val hostedChangeAcceptanceTest = tasks.register<Exec>("hostedChangeAcceptanceTest") {
+    group = "verification"
+    description = "Checks native change fixture admission and bounded receipt projection without launching an IDE."
+    inputs.files(fileTree("packaging") { include("hosted_change_*.py", "test-hosted-change-acceptance.py") })
+    commandLine("python3", layout.projectDirectory.file("packaging/test-hosted-change-acceptance.py"))
+}
+
+tasks.register<Exec>("hostedChangeAcceptance") {
+    group = "verification"
+    description = "Runs the opt-in change matrix against staged artifacts in a private imported IntelliJ fixture."
+    dependsOn(
+        stageKastControlProduct,
+        ":runtime:hosted:hostedPlugin",
+        ":app-server:hostedChangeHarnessJar",
+        ":change:intellij:nativeFixturePlugin",
+    )
+    val ideaHome = providers.gradleProperty("hostedIdeaHome")
+    val schemas = providers.gradleProperty("hostedCodexSchemas")
+    val report = providers.gradleProperty("hostedChangeReport")
+    val diagnostic = providers.gradleProperty("hostedDiagnosticDirty").map(String::toBooleanStrict).orElse(false)
+    val plugin = project(":runtime:hosted").tasks.named<Zip>("hostedPlugin").flatMap(Zip::getArchiveFile)
+    val harness = project(":app-server").tasks.named<Jar>("hostedChangeHarnessJar").flatMap(Jar::getArchiveFile)
+    val probe = project(":change:intellij").tasks.named<Zip>("nativeFixturePlugin").flatMap(Zip::getArchiveFile)
+    val runner = layout.projectDirectory.file("packaging/run-hosted-change-acceptance.py").asFile.absolutePath
+    val productDirectory = layout.buildDirectory.dir("control-product")
+    doFirst {
+        require(ideaHome.isPresent && schemas.isPresent && report.isPresent) {
+            "Native acceptance requires -PhostedIdeaHome, -PhostedCodexSchemas, and a new -PhostedChangeReport path."
+        }
+        commandLine(
+            listOf(
+                "python3", runner,
+                "--idea-home", ideaHome.get(), "--schemas", schemas.get(), "--report", report.get(),
+                "--plugin", plugin.get().asFile.absolutePath,
+                "--product", productDirectory.get().asFile.absolutePath,
+                "--harness", harness.get().asFile.absolutePath,
+                "--probe", probe.get().asFile.absolutePath,
+            ) + if (diagnostic.get()) listOf("--diagnostic-dirty") else emptyList()
+        )
+    }
+}
+
+val hostedRuntimeObservationTest = tasks.register<Exec>("hostedRuntimeObservationTest") {
+    group = "verification"
+    description = "Checks bounded observations of the private native fixture runtime."
+    inputs.files("packaging/hosted_runtime_observation.py", "packaging/test-hosted-runtime-observation.py")
+    commandLine("python3", layout.projectDirectory.file("packaging/test-hosted-runtime-observation.py"))
+}
+
+val hostedReadRegressionTest = tasks.register<Exec>("hostedReadRegressionTest") {
+    group = "verification"
+    description = "Checks the native read fixture oracle and bounded result receipt."
+    inputs.files(
+        "packaging/hosted_read_fixture.py", "packaging/hosted_read_regression.py",
+        "packaging/hosted_read_transport.py", "packaging/test-hosted-read-regression.py",
+    )
+    commandLine("python3", layout.projectDirectory.file("packaging/test-hosted-read-regression.py"))
+}
+
+val nativeFixtureProbeTest = tasks.register<Exec>("nativeFixtureProbeTest") {
+    group = "verification"
+    description = "Checks the private native probe client without launching an IDE."
+    inputs.files("packaging/native_fixture_probe.py", "packaging/test-native-fixture-probe.py")
+    commandLine("python3", layout.projectDirectory.file("packaging/test-native-fixture-probe.py"))
+}
+
+tasks.named("check") {
+    dependsOn(
+        hostedChangeAcceptanceTest,
+        hostedRuntimeObservationTest,
+        hostedReadRegressionTest,
+        nativeFixtureProbeTest,
+        ":change:intellij:nativeFixtureTest",
+    )
+}

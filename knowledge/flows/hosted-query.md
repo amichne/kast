@@ -24,6 +24,8 @@ code_sources:
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijProjectSourceMembership.kt
     symbols: [IntellijProjectSourceMembership]
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireBinding.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointReclamation.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
     symbols: [evaluateHostedCanonicalQuery]
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointProtocol.kt
@@ -215,6 +217,13 @@ is owned by the separate `runtime:hosted` plugin. Normal requests use a framed
 Unix socket and retain the same packaged compatibility policy and admitted epoch
 authority across requests. The primary native `kast index classes` command and Python
 acceptance client reject missing hosts without opening an isolated workspace.
+After an IDE crash, the next endpoint owner may reclaim the paired socket and
+descriptor while holding the exclusive ownership lock. Reclamation requires the
+recorded PID to be absent, the descriptor to match this root and current protocol,
+and both protected artifacts to retain their admitted physical identities. Live
+or reused PIDs, malformed descriptors, symlinks and unpaired artifacts fail closed.
+Admission and retirement emit bounded stage/outcome observations.
+
 Incremental creation, class renaming, and deletion were qualified against the
 same original IDE index. Broader semantic CLI/App Server routing and stronger
 workspace publication remain separate integration boundaries.
