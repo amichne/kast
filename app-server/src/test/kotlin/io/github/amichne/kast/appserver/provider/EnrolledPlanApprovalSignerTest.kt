@@ -21,6 +21,7 @@ import java.security.Signature
 import java.util.Base64
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertSame
@@ -59,7 +60,11 @@ class EnrolledPlanApprovalSignerTest {
                 java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(keys.public.encoded)),
             )
         }
-        assertEquals(expected.toString(), payload.toString(Charsets.UTF_8))
+        assertArrayEquals(expected.toString().toByteArray(Charsets.UTF_8), payload)
+        assertEquals(
+            grant.assertion,
+            (EnrolledPlanApprovalSigner(home).sign(proof) as Refinement.Refined).value.assertion,
+        )
     }
 
     @Test

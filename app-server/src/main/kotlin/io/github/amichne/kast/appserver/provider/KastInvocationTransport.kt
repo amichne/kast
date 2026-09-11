@@ -6,9 +6,9 @@ import io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.registry.HostedApprovalPolicy
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 /** Only this subprocess boundary projects a trusted grant; the model's public arguments remain unchanged. */
 internal class KastInvocationTransport private constructor(val command: List<String>, val document: JsonElement) {
@@ -37,12 +37,14 @@ internal class KastInvocationTransport private constructor(val command: List<Str
             return Refinement.Refined(
                 KastInvocationTransport(
                     tool.command + APPROVED_INVOCATION_FLAG,
-                    buildJsonObject {
-                        put("arguments", arguments)
-                        put("approval", approval.grant.assertion)
-                    },
+                    Json.encodeToJsonElement(
+                        ApprovedInvocationEnvelope.serializer(),
+                        ApprovedInvocationEnvelope(arguments, approval.grant.assertion),
+                    ),
                 )
             )
         }
     }
 }
+
+@Serializable private data class ApprovedInvocationEnvelope(val arguments: JsonElement, val approval: String)

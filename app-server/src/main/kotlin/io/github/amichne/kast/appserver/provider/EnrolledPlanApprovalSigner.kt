@@ -19,8 +19,8 @@ import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
 import java.util.Base64
 import java.util.HexFormat
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 /** Reads explicitly enrolled keys. Request handling never creates or replaces signing authority. */
 internal class EnrolledPlanApprovalSigner(private val userHome: Path) {
@@ -38,23 +38,25 @@ internal class EnrolledPlanApprovalSigner(private val userHome: Path) {
                 is Refinement.Rejected -> return loaded
                 is Refinement.Refined -> loaded.value
             }
-        val payload = buildJsonObject {
-            put("version", 1)
-            put("operation", approval.subject.operation.canonical.name)
-            put("root", approval.subject.root.path.toString())
-            put("host", approval.subject.host.value.toString())
-            put("planId", approval.subject.planIdentity)
-            put("challenge", approval.subject.hostedChallenge)
-            put("threadId", approval.invocation.threadId.value)
-            put("turnId", approval.invocation.turnId.value)
-            put("callId", approval.invocation.callId.value)
-            put(
-                "keyId",
-                HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(keys.publicKey.encoded)),
-            )
-        }
-            .toString()
-            .toByteArray(Charsets.UTF_8)
+        val payload =
+            json
+                .encodeToString(
+                    SignedPlanApprovalPayload.serializer(),
+                    SignedPlanApprovalPayload(
+                        operation = approval.subject.operation.canonical.name,
+                        root = approval.subject.root.path.toString(),
+                        host = approval.subject.host.value.toString(),
+                        planId = approval.subject.planIdentity,
+                        challenge = approval.subject.hostedChallenge,
+                        threadId = approval.invocation.threadId.value,
+                        turnId = approval.invocation.turnId.value,
+                        callId = approval.invocation.callId.value,
+                        keyId =
+                            HexFormat.of()
+                                .formatHex(MessageDigest.getInstance("SHA-256").digest(keys.publicKey.encoded)),
+                    ),
+                )
+                .toByteArray(Charsets.UTF_8)
         return try {
             val signed =
                 Signature.getInstance("Ed25519").run {
@@ -137,5 +139,20 @@ internal class EnrolledPlanApprovalSigner(private val userHome: Path) {
 
     private companion object {
         const val MAXIMUM_KEY_BYTES = 4096
+        val json = Json { encodeDefaults = true }
     }
 }
+
+@Serializable
+private data class SignedPlanApprovalPayload(
+    val version: Int = 1,
+    val operation: String,
+    val root: String,
+    val host: String,
+    val planId: String,
+    val challenge: String,
+    val threadId: String,
+    val turnId: String,
+    val callId: String,
+    val keyId: String,
+)

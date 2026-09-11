@@ -77,8 +77,9 @@ class KastProviderTest {
                 buildJsonObject {
                     put("arguments", arguments)
                     put("approval", grant.assertion)
-                },
-                Json.parseToJsonElement((process.input as BrokerProcessInput.Document).value),
+                }
+                    .toString(),
+                (process.input as BrokerProcessInput.Document).value,
             )
             val count = executor.requests.size
             val substituted =
