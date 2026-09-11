@@ -29,6 +29,7 @@ private data class ProbeSetupReadinessDocument(
     val sourceProvenance: ProbeSourceProvenance,
     val import: ProbeSetupImportEvidence,
     val vfsRefresh: String = "COMPLETED",
+    val vfsRefreshScope: ProbeSetupRefreshScope = ProbeSetupRefreshScope.ALL_CACHED_ROOTS,
     val quietWindowMillis: Long = SETUP_QUIET_WINDOW_MILLIS,
     val scope: String = "OBSERVED_SETUP_ONLY",
     val pushedPropertiesDrain: ProbeSetupDrainState,
@@ -38,3 +39,8 @@ private data class ProbeSetupReadinessDocument(
     val generationBefore: ProbeSetupGeneration,
     val generationAfter: ProbeSetupGeneration,
 )
+
+@Serializable
+private enum class ProbeSetupRefreshScope {
+    ALL_CACHED_ROOTS
+}

@@ -12,8 +12,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.PlatformVirtualFileManager
 import com.intellij.openapi.vfs.VirtualFileManager
-import com.intellij.openapi.vfs.newvfs.RefreshQueue
 import com.intellij.platform.backend.workspace.WorkspaceModelChangeListener
 import com.intellij.platform.backend.workspace.WorkspaceModelTopics
 import com.intellij.platform.workspace.storage.VersionedStorageChange
@@ -208,11 +208,14 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
 
     private fun refresh(deadline: Long): ProbeResult<ProbeSetupDrainState> {
         if (!sandbox.valid(project)) return ProbeResult.Rejected(ProbeFailure.SANDBOX_REJECTED)
-        val root =
-            LocalFileSystem.getInstance().findFileByNioFile(sandbox.project)
-                ?: return ProbeResult.Rejected(ProbeFailure.TARGET_UNAVAILABLE)
+        if (LocalFileSystem.getInstance().findFileByNioFile(sandbox.project) == null)
+            return ProbeResult.Rejected(ProbeFailure.TARGET_UNAVAILABLE)
+        val manager =
+            VirtualFileManager.getInstance() as? PlatformVirtualFileManager
+                ?: return ProbeResult.Rejected(ProbeFailure.SETUP_NATIVE_TASKS_UNAVAILABLE)
         val finished = CountDownLatch(1)
-        RefreshQueue.getInstance().refresh(true, true, Runnable { finished.countDown() }, root)
+        // The platform manager scans every cached root after consuming global watcher changes.
+        manager.asyncRefresh { finished.countDown() }
         val remaining = deadline - System.nanoTime()
         if (remaining <= 0 || !finished.await(remaining, TimeUnit.NANOSECONDS))
             return ProbeResult.Rejected(ProbeFailure.SETUP_REFRESH_TIMEOUT)

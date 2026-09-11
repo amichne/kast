@@ -66,7 +66,7 @@ class ProbeClientTest(unittest.TestCase):
 
     def test_setup_and_reopen_distinguish_observed_import_from_persisted_model(self):
         readiness = {"smartMode": "SMART", "externalTasks": "IDLE", "gradleModule": "OBSERVED", "sourceProvenance": "AUTHORED",
-                     "import": "FINAL_TASKS_OBSERVED", "vfsRefresh": "COMPLETED", "quietWindowMillis": 2000,
+                     "import": "FINAL_TASKS_OBSERVED", "vfsRefresh": "COMPLETED", "vfsRefreshScope": "ALL_CACHED_ROOTS", "quietWindowMillis": 2000,
                      "scope": "OBSERVED_SETUP_ONLY", "pushedPropertiesDrain": "COMPLETED", "indexing": "IDLE",
                      "refreshScanning": "IDLE", "refreshEventProcessing": "IDLE",
                      "generationBefore": dict.fromkeys(("imports", "roots", "workspace", "vfs", "psi", "dumb"), 1),
@@ -79,7 +79,7 @@ class ProbeClientTest(unittest.TestCase):
         reopened = {**first, "command": "AWAIT_REOPEN_READY", "readiness": persisted}
         self.assertEqual(reopened, probe.validate_response(reopened, "id", "AWAIT_REOPEN_READY"))
         for key, value in (("smartMode", "DUMB"), ("externalTasks", "ACTIVE"), ("vfsRefresh", "PENDING"),
-                           ("quietWindowMillis", 1), ("scope", "FUTURE_STABILITY"),
+                           ("quietWindowMillis", 1), ("scope", "FUTURE_STABILITY"), ("vfsRefreshScope", "WORKSPACE_ONLY"),
                            ("pushedPropertiesDrain", "PENDING"), ("indexing", "SCHEDULED"),
                            ("refreshScanning", "ACTIVE"), ("refreshEventProcessing", "ACTIVE")):
             with self.assertRaises(probe.NativeFixtureProbeError):
@@ -91,7 +91,7 @@ class ProbeClientTest(unittest.TestCase):
             with self.assertRaises(probe.NativeFixtureProbeError):
                 probe.validate_response({**first, "readiness": {**readiness, "generationAfter": counters}},
                                         "id", "AWAIT_SETUP_READY")
-        for key in ("pushedPropertiesDrain", "indexing", "refreshScanning", "refreshEventProcessing",
+        for key in ("vfsRefreshScope", "pushedPropertiesDrain", "indexing", "refreshScanning", "refreshEventProcessing",
                     "generationBefore", "generationAfter"):
             with self.assertRaises(probe.NativeFixtureProbeError):
                 probe.validate_response({**first, "readiness": {k: v for k, v in readiness.items() if k != key}},

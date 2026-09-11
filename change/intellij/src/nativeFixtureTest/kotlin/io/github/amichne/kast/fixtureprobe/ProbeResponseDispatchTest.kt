@@ -34,6 +34,7 @@ class ProbeResponseDispatchTest {
             assertEquals(command.name, encoded.getValue("command").jsonPrimitive.content)
             assertEquals(id.toString(), encoded.getValue("id").jsonPrimitive.content)
             val readiness = encoded.getValue("readiness").jsonObject
+            assertEquals("ALL_CACHED_ROOTS", readiness.getValue("vfsRefreshScope").jsonPrimitive.content)
             assertEquals("COMPLETED", readiness.getValue("pushedPropertiesDrain").jsonPrimitive.content)
             assertEquals("IDLE", readiness.getValue("indexing").jsonPrimitive.content)
             assertEquals("IDLE", readiness.getValue("refreshScanning").jsonPrimitive.content)
