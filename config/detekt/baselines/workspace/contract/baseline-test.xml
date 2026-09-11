@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>LongMethod:WorkspaceSearchScopeSourceRootPolicyTest.kt:WorkspaceSearchScopeSourceRootPolicyTest$@Test fun `incomplete unknown and ambiguous model ownership fail closed`</ID>
+  </CurrentIssues>
+</SmellBaseline>

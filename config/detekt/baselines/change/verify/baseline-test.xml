@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ImplicitDefaultLocale:VerifiedMutationFixture.kt:VerifiedMutationFixture$"%02x".format(byte)</ID>
+    <ID>LargeClass:VerifiedMutationFixture.kt:VerifiedMutationFixture</ID>
+    <ID>LongMethod:VerifiedMutationFixture.kt:VerifiedMutationFixture$private fun selector: SymbolSelector</ID>
+    <ID>LongMethod:VerifiedMutationTest.kt:VerifiedMutationTest$@Test fun `verification records exact finite terminal stage while preserving result`</ID>
+    <ID>NamedArguments:AddFileVerificationFixture.kt:AddFileVerificationEvidence( applied.source, applied.postimage, listOf(DiagnosticCheckResult.Complete(complete.batch, complete.coverage)), ObservedAddFileDelta.fromCompilerBoundary(applied.source, 1).refined(), )</ID>
+    <ID>NamedArguments:AppliedMutationFixture.kt:AddDeclarationApplyService( AddDeclarationRecoveryService(InMemoryVerificationRecoveryStore()), adapter, adapter, adapter, )</ID>
+    <ID>NamedArguments:RenameSymbolVerificationTest.kt:RenameSymbolVerificationTest$fromCompilerBoundary( complete.observedDelta.oldName, complete.observedDelta.newName, 1, 1, 0, 1, )</ID>
+    <ID>NamedArguments:ReplaceDeclarationVerificationFixture.kt:ReplaceDeclarationVerificationEvidence( applied.source, applied.postimage, listOf(DiagnosticCheckResult.Complete(complete.batch, complete.coverage)), ObservedReplaceDeclarationDelta.fromCompilerBoundary( observedSource, ExactDeclarationTextRange.parse( plan.target.range.startInclusive, plan.target.range.startInclusive + observedSource.length, ) .refined(), 1, ) .refined(), )</ID>
+    <ID>NamedArguments:VerifiedMutationFixture.kt:VerifiedMutationFixture$GradleSourceRootEvidence( "app", ".", ":app", "main", "app/src/main/kotlin", SourceRootProvenance.Authored, )</ID>
+    <ID>NamedArguments:VerifiedMutationFixture.kt:VerifiedMutationFixture$MutationTargetObservation( workspace, selector(workspace), sourceRoot.owner, ObservedMutationTargetState( workspace.readLease, selector(workspace).file, WorkspaceSourceContentHash.parse(sha256(sourceText.toByteArray())).refined(), ), )</ID>
+    <ID>NamedArguments:VerifiedMutationFixture.kt:VerifiedMutationFixture$RenameSymbolPlanRequest( request.target, KotlinIdentifier.parse("renamedService").refined(), RenameSymbolOccurrenceSet.admit( request.target, listOf(occurrence, reference), ) .refined(), request.evidence, )</ID>
+    <ID>NamedArguments:VerifiedMutationFixture.kt:VerifiedMutationFixture$RenameSymbolVerificationEvidence( applied.source, applied.postimage, listOf(completeResultingDiagnostics()), ObservedRenameSymbolDelta.fromCompilerBoundary( KotlinIdentifier.parse("service").refined(), KotlinIdentifier.parse("renamedService").refined(), 0, 1, 0, 1, ) .refined(), )</ID>
+    <ID>NamedArguments:VerifiedMutationFixture.kt:VerifiedMutationFixture$TraversalBudget( ResultLimit.parse(8).refined(), TraversalByteLimit.parse(10_000L).refined(), WorkUnitLimit.parse(8L).refined(), ElapsedTimeLimitMillis.parse(1_000L).refined(), TraversalDepthLimit.parse(2).refined(), TraversalFrontierLimit.parse(8).refined(), relationBudget(), )</ID>
+    <ID>NamedArguments:VerifiedMutationFixture.kt:VerifiedMutationFixture$admit( request.target.file, ExactDeclarationTextRange.parse( referenceStart, referenceStart + "service".length, ) .refined(), KotlinIdentifier.parse("service").refined(), RenameSymbolOccurrenceRole.REFERENCE, )</ID>
+    <ID>NamedArguments:VerifiedMutationFixture.kt:VerifiedMutationFixture$admit( request.target.file, ExactDeclarationTextRange.parse(start, start + "service".length).refined(), KotlinIdentifier.parse("service").refined(), RenameSymbolOccurrenceRole.DECLARATION, )</ID>
+    <ID>NamedArguments:VerifiedMutationFixture.kt:VerifiedMutationFixture$create( request, listOf(candidate), candidate.projectedUtf8Size(), SymbolDiscoveryWorkCount.parse(1L).refined(), SymbolDiscoveryTimings( SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), ), )</ID>
+    <ID>NamedArguments:VerifiedMutationFixture.kt:VerifiedMutationFixture$create( request, listOf(fact), RelationByteCount.parse(fact.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()) .refined(), RelationWorkCount.parse(1L).refined(), RelationResultCount.parse(1).refined(), )</ID>
+    <ID>NamedArguments:VerifiedMutationFixture.kt:VerifiedMutationFixture$create( request, source, request.subject, occurrence, RelationProvenance.K2_AUTHORED_SOURCE, )</ID>
+    <ID>NamedArguments:VerifiedMutationFixture.kt:VerifiedMutationFixture$fromBoundary( SymbolDiscoveryKind.SYMBOL, "service", workspace.readLease, targetPath, "file://$targetPath", anchorStart, )</ID>
+    <ID>NamedArguments:VerifiedMutationFixture.kt:VerifiedMutationFixture$fromBoundary( location.file, anchorStart, anchorEnd, "service", "sample.service", CompilerSymbolKind.FUNCTION, CanonicalCompilerSignature.function( "sample.service", null, emptyList(), emptyList(), 0, ) .refined(), )</ID>
+    <ID>NamedArguments:VerifiedMutationFixture.kt:VerifiedMutationFixture$fromBoundary( scope, scope.files.single(), 0, 1, DiagnosticSeverity.ERROR, "COMPILER_ERROR", "verification error", )</ID>
+    <ID>NamedArguments:VerifiedMutationFixture.kt:VerifiedMutationFixture$fromBoundary( selector.file, selector.range.startInclusive, selector.range.endExclusive, selector.name.value, qualifiedIdentity, selector.kind, selector.signature, )</ID>
+    <ID>NamedArguments:VerifiedMutationFixture.kt:VerifiedMutationFixture$fromBoundary(traversal, emptyList(), 0L, 0L, 0L, 0)</ID>
+    <ID>NamedArguments:VerifiedMutationFixture.kt:VerifiedMutationFixture$fromCompilerBoundary( packageName, declarationName, kind, 1, )</ID>
+    <ID>NamedArguments:VerifiedMutationTest.kt:VerifiedMutationTest$fromCompilerBoundary( "sample", "added", AddDeclarationKind.FUNCTION, 2, )</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -1,0 +1,54 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:CanonicalCompilerSignature.kt:private fun decodeCanonicalFields: List&lt;String>?</ID>
+    <ID>CognitiveComplexMethod:SymbolSearchScope.kt:SymbolSearchScope.Companion$private fun restore: Refinement&lt;SymbolSearchScope, SymbolSearchScopeRestorationFailure></ID>
+    <ID>ComplexCondition:SymbolSearchScope.kt:SymbolSearchScope.Companion$captured.primary != project.buildRoot.value || parts.size != 2 || parts[0] != project.projectPath.value || parts[1] != sourceSet.value</ID>
+    <ID>CyclomaticComplexMethod:SymbolSearchScope.kt:SymbolSearchScope.Companion$private fun restore: Refinement&lt;SymbolSearchScope, SymbolSearchScopeRestorationFailure></ID>
+    <ID>InvalidPackageDeclaration:SymbolDiscoveryCandidate.kt:package io.github.amichne.kast.symbol.contract</ID>
+    <ID>InvalidPackageDeclaration:SymbolDiscoveryOperations.kt:package io.github.amichne.kast.symbol.contract</ID>
+    <ID>InvalidPackageDeclaration:SymbolDiscoveryOutcome.kt:package io.github.amichne.kast.symbol.contract</ID>
+    <ID>InvalidPackageDeclaration:SymbolDiscoveryRequest.kt:package io.github.amichne.kast.symbol.contract</ID>
+    <ID>InvalidPackageDeclaration:SymbolDiscoverySourceSets.kt:package io.github.amichne.kast.symbol.contract</ID>
+    <ID>InvalidPackageDeclaration:SymbolExactOperations.kt:package io.github.amichne.kast.symbol.contract</ID>
+    <ID>InvalidPackageDeclaration:SymbolSearchScope.kt:package io.github.amichne.kast.symbol.contract</ID>
+    <ID>InvalidPackageDeclaration:SymbolSelector.kt:package io.github.amichne.kast.symbol.contract</ID>
+    <ID>LongMethod:SymbolDiscoveryCandidate.kt:SymbolDiscoveryCandidate.Companion$fun fromBoundary: Refinement&lt;SymbolDiscoveryCandidate, SymbolDiscoveryCandidateFailure></ID>
+    <ID>LongMethod:SymbolSearchScope.kt:SymbolSearchScope.Companion$private fun restore: Refinement&lt;SymbolSearchScope, SymbolSearchScopeRestorationFailure></ID>
+    <ID>LongParameterList:CandidateSelector.kt:CandidateSelector.Companion$fun restoreRange: Refinement&lt;Range, CandidateSelectorFailure></ID>
+    <ID>LongParameterList:ExactDeclarationSelector.kt:ExactDeclarationEvidence.Companion$fun fromBoundary: Refinement&lt;ExactDeclarationEvidence, ExactDeclarationEvidenceFailure></ID>
+    <ID>LongParameterList:ExactDeclarationSelector.kt:ExactDeclarationSelector</ID>
+    <ID>LongParameterList:SymbolDiscoveryCandidate.kt:SymbolDiscoveryCandidate.Companion$fun fromBoundary: Refinement&lt;SymbolDiscoveryCandidate, SymbolDiscoveryCandidateFailure></ID>
+    <ID>LongParameterList:SymbolSelector.kt:CompilerGroundedSymbolEvidence.Companion$fun fromBoundary: Refinement&lt;CompilerGroundedSymbolEvidence, CompilerGroundedSymbolEvidenceFailure></ID>
+    <ID>LongParameterList:SymbolSelector.kt:CompilerGroundedSymbolEvidence.Companion$fun restoreBoundary: Refinement&lt;CompilerGroundedSymbolEvidence, CompilerGroundedSymbolEvidenceFailure></ID>
+    <ID>LongParameterList:SymbolSelector.kt:SymbolSelector</ID>
+    <ID>MagicNumber:ExactDeclarationFingerprint.kt:0xff</ID>
+    <ID>MultilineLambdaItParameter:SymbolDiscoveryCandidate.kt:SymbolDiscoveryCandidate.Companion${ when (val location = it.location) { is SymbolDiscoveryCandidateLocation.File -> -1 is SymbolDiscoveryCandidateLocation.Declaration -> location.offset.value is SymbolDiscoveryCandidateLocation.Text -> location.range.startInclusive.value } }</ID>
+    <ID>NamedArguments:CandidateSelector.kt:CandidateSelector.Companion$Range(lease, file, start, end, scope, constraints)</ID>
+    <ID>NamedArguments:CandidateSelector.kt:CandidateSelector.Companion$restoreFile(batch.lease, file, batch.scope, batch.constraints)</ID>
+    <ID>NamedArguments:CandidateSelector.kt:CandidateSelector.Companion$restoreRange( batch.lease, file, location.range.startInclusive.value, location.range.endExclusive.value, batch.scope, batch.constraints, )</ID>
+    <ID>NamedArguments:CandidateSelector.kt:CandidateSelector.Companion$restoreRange( candidate.lease, file, location.range.startInclusive.value, location.range.endExclusive.value, )</ID>
+    <ID>NamedArguments:CanonicalCompilerSignature.kt:CanonicalCompilerSignature.Companion$property( qualifiedIdentity, receiverType, contextReceivers, returnType, )</ID>
+    <ID>NamedArguments:CanonicalCompilerSignature.kt:String(bytes, lengthStart, offset - lengthStart, StandardCharsets.US_ASCII)</ID>
+    <ID>NamedArguments:ExactDeclarationSelector.kt:ExactDeclarationSelector.Companion$exactDeclarationFingerprint( selection.lease, selection.scope, evidence, selection.constraints, )</ID>
+    <ID>NamedArguments:ExactDeclarationSelector.kt:RevalidatedExactDeclaration.Companion$exactDeclarationFingerprint( selector.lease, selector.scope, evidence, selector.constraints, )</ID>
+    <ID>NamedArguments:NativeRelationFact.kt:ExactRelationEndpoint.Companion$exactDeclarationFingerprint( subject.lease, subject.scope, evidence, subject.constraints, )</ID>
+    <ID>NamedArguments:NativeRelationOutcome.kt:NativeRelationBatch.Companion$NativeRelationBatch( request, facts.toList(), encodedBytes, examinedWorkUnits, timings, )</ID>
+    <ID>NamedArguments:SymbolDiscoveryRequest.kt:SymbolDiscoveryRequest.Companion$SymbolDiscoveryRequest( scope, target, budget, SymbolDiscoveryConstraints.None, )</ID>
+    <ID>NamedArguments:SymbolSearchScope.kt:SymbolSearchScope.Companion$SourceSet( project, sourceSet, captured.sourceKinds, captured.generatedSources, )</ID>
+    <ID>NamedArguments:SymbolSearchScope.kt:SymbolSearchScope.Companion$SymbolSearchScopeSnapshot( SymbolSearchScopeKind.EXACT_FILE, scope.file.value, null, scope.sourceKinds, scope.generatedSources, null, )</ID>
+    <ID>NamedArguments:SymbolSearchScope.kt:SymbolSearchScope.Companion$SymbolSearchScopeSnapshot( SymbolSearchScopeKind.GRADLE_PROJECT, scope.project.buildRoot.value, scope.project.projectPath.value, scope.sourceKinds, scope.generatedSources, null, )</ID>
+    <ID>NamedArguments:SymbolSearchScope.kt:SymbolSearchScope.Companion$SymbolSearchScopeSnapshot( SymbolSearchScopeKind.MODULE, scope.module.value, null, scope.sourceKinds, scope.generatedSources, null, )</ID>
+    <ID>NamedArguments:SymbolSearchScope.kt:SymbolSearchScope.Companion$SymbolSearchScopeSnapshot( SymbolSearchScopeKind.SOURCE_SET, scope.project.buildRoot.value, "${scope.project.projectPath.value}\u0000${scope.sourceSet.value}", scope.sourceKinds, scope.generatedSources, null, )</ID>
+    <ID>NamedArguments:SymbolSearchScope.kt:SymbolSearchScope.Companion$SymbolSearchScopeSnapshot( SymbolSearchScopeKind.WORKSPACE, null, null, scope.sourceKinds, scope.generatedSources, scope.libraries, )</ID>
+    <ID>NamedArguments:SymbolSearchScope.kt:SymbolSearchScope.Companion$restore( root, sourceRoot.owner.module, sourceRoot.owner.project, sourceRoot.owner.sourceSet, captured, )</ID>
+    <ID>NamedArguments:SymbolSearchScope.kt:SymbolSearchScope.Companion$restore(model.workspaceRoot, owner.module, owner.project, owner.sourceSet, captured)</ID>
+    <ID>NamedArguments:SymbolSelector.kt:RevalidatedSymbolSelector.Companion$symbolSelectorFingerprint( selector.lease, selector.scope, evidence, selector.constraints, )</ID>
+    <ID>NamedArguments:SymbolSelector.kt:SymbolSelector.Companion$issue(selection.lease, selection.scope, evidence, selection.constraints)</ID>
+    <ID>UseOrEmpty:SymbolDiscoveryRequest.kt:directory?.containment?.name ?: ""</ID>
+    <ID>UseOrEmpty:SymbolDiscoveryRequest.kt:directory?.directory?.value ?: ""</ID>
+    <ID>UseOrEmpty:SymbolDiscoveryRequest.kt:packageName?.containment?.name ?: ""</ID>
+    <ID>UseOrEmpty:SymbolDiscoveryRequest.kt:packageName?.packageName?.value ?: ""</ID>
+  </CurrentIssues>
+</SmellBaseline>

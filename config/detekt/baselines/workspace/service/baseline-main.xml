@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:WorkspaceIndexSynchronizationService.kt:WorkspaceIndexSynchronizationService$override fun ready: IndexSynchronizationResult</ID>
+    <ID>CognitiveComplexMethod:WorkspaceIndexSynchronizationService.kt:WorkspaceIndexSynchronizationService$private fun synchronizeExclusively: IndexSynchronizationResult</ID>
+    <ID>CognitiveComplexMethod:WorkspacePublicationCoordinator.kt:WorkspacePublicationCoordinator$fun reconcileAfterIndexRefresh: WorkspacePublicationRun</ID>
+    <ID>CognitiveComplexMethod:WorkspaceResourceAdmissionController.kt:WorkspaceResourceAdmissionController$private fun claim: WorkspaceInitiationClaim</ID>
+    <ID>CognitiveComplexMethod:WorkspaceTransitionCoordinator.kt:WorkspaceTransitionCoordinator$private fun publish: TransitionRun</ID>
+    <ID>CyclomaticComplexMethod:WorkspaceTransitionCoordinator.kt:WorkspaceTransitionCoordinator$private fun publish: TransitionRun</ID>
+    <ID>LargeClass:WorkspacePublicationCoordinator.kt:WorkspacePublicationCoordinator : WorkspaceInspectionOperationsWorkspaceInvalidationSinkSemanticReadLeaseGuardWorkspaceRefreshBasisOperations</ID>
+    <ID>LargeClass:WorkspaceTransitionCoordinator.kt:WorkspaceTransitionCoordinator</ID>
+    <ID>LongMethod:WorkspaceIndexSynchronizationService.kt:WorkspaceIndexSynchronizationService$override fun ready: IndexSynchronizationResult</ID>
+    <ID>LongMethod:WorkspaceIndexSynchronizationService.kt:WorkspaceIndexSynchronizationService$private fun synchronizeExclusively: IndexSynchronizationResult</ID>
+    <ID>LongMethod:WorkspacePublicationCoordinator.kt:WorkspacePublicationCoordinator$private fun reconcileExclusively: WorkspacePublicationRun</ID>
+    <ID>LongMethod:WorkspaceResourceAdmissionController.kt:WorkspaceResourceAdmissionController$private fun await: WorkspaceEntryWait</ID>
+    <ID>LongMethod:WorkspaceTransitionCoordinator.kt:WorkspaceTransitionCoordinator$fun reconcilePending: TransitionRun</ID>
+    <ID>LongMethod:WorkspaceTransitionCoordinator.kt:WorkspaceTransitionCoordinator$private fun publish: TransitionRun</ID>
+    <ID>LongParameterList:WorkspaceIndexSynchronizationService.kt:WorkspaceIndexSynchronizationService</ID>
+    <ID>LongParameterList:WorkspaceTransitionCoordinator.kt:WorkspaceTransitionCoordinator</ID>
+    <ID>MatchingDeclarationName:WorkspaceTransitionExecution.kt:TransitionCycle</ID>
+    <ID>NamedArguments:WorkspaceResourceAdmissionController.kt:WorkspaceResourceAdmissionController$initiate(claim.entry, initiation, requestedAt, queueDuration)</ID>
+    <ID>NamedArguments:WorkspaceResourceAdmissionController.kt:WorkspaceResourceAdmissionController$rejected( WorkspaceResourceBlocker.InitiationFailed(entry.key.kind), WorkspaceResourceAdmissionAction.RETRY_AFTER_RELEASE, requestedAt, waited.queueDuration, )</ID>
+    <ID>NamedArguments:WorkspaceResourceAdmissionController.kt:WorkspaceResourceAdmissionController$rejected( WorkspaceResourceBlocker.QueueFull(policy.queuedWaiters), WorkspaceResourceAdmissionAction.RETRY_AFTER_RELEASE, requestedAt, queueDuration, )</ID>
+    <ID>NamedArguments:WorkspaceResourceAdmissionController.kt:WorkspaceResourceAdmissionController$rejected( WorkspaceResourceBlocker.WaitInterrupted, WorkspaceResourceAdmissionAction.RETRY_AFTER_RELEASE, requestedAt, queueDuration.plus(WorkspaceResourceDurationNanos.elapsed(waitStarted, clock.nowNanos())), )</ID>
+    <ID>NamedArguments:WorkspaceResourceAdmissionController.kt:WorkspaceResourceAdmissionController$rejected( WorkspaceResourceBlocker.WaitTimedOut(policy.waitTimeout), WorkspaceResourceAdmissionAction.RETRY_AFTER_RELEASE, requestedAt, accumulated, )</ID>
+    <ID>NamedArguments:WorkspaceResourceAdmissionController.kt:WorkspaceResourceAdmissionController$rejected( WorkspaceResourceBlocker.WaitTimedOut(policy.waitTimeout), WorkspaceResourceAdmissionAction.RETRY_AFTER_RELEASE, requestedAt, queueDuration, )</ID>
+    <ID>NamedArguments:WorkspaceResourceAdmissionController.kt:WorkspaceResourceAdmissionController$rejected(claim.blocker, claim.action, requestedAt, queueDuration)</ID>
+    <ID>NamedArguments:WorkspaceTransitionCoordinator.kt:WorkspaceTransitionCoordinator$discardThenBlock(open, TransitionPhase.Publishing, preparationFailure, cycle)</ID>
+    <ID>NamedArguments:WorkspaceTransitionCoordinator.kt:WorkspaceTransitionCoordinator$discardThenBlock(open, TransitionPhase.Reconciling, reconciliationFailure, cycle)</ID>
+    <ID>NamedArguments:WorkspaceTransitionCoordinator.kt:WorkspaceTransitionCoordinator$discardThenBlock(open, TransitionPhase.Verifying, verificationFailure, cycle)</ID>
+    <ID>TooGenericExceptionCaught:WorkspacePublicationCoordinator.kt:WorkspacePublicationCoordinator$cleanupFailure: Throwable</ID>
+    <ID>TooGenericExceptionCaught:WorkspaceResourceAdmissionController.kt:WorkspaceResourceAdmissionController$failure: Throwable</ID>
+    <ID>TooGenericExceptionCaught:WorkspaceTransitionCoordinator.kt:WorkspaceTransitionCoordinator$failure: Throwable</ID>
+    <ID>UnnecessaryLet:WorkspaceTransitionCoordinator.kt:WorkspaceTransitionCoordinator$let { notifyBlocked(checkNotNull(failedBlocker)) }</ID>
+  </CurrentIssues>
+</SmellBaseline>

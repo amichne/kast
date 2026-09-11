@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>LargeClass:SqliteTopologySnapshotStoreTest.kt:SqliteTopologySnapshotStoreTest</ID>
+    <ID>LongMethod:SqliteMutationRecoveryJournalTest.kt:SqliteMutationRecoveryJournalTest$private fun crashAt: CrashObservation</ID>
+    <ID>NamedArguments:SqliteTopologyCorruptPathTest.kt:SqliteTopologyCorruptPathTest$GradleSourceRootEvidence( "root.main", ".", ":", "main", "src/main/kotlin", SourceRootProvenance.Authored, )</ID>
+    <ID>NamedArguments:SqliteTopologyCorruptPathTest.kt:SqliteTopologyCorruptPathTest$admit( workspace, sourceRoot, WorkspaceSourcePath.parse("src/main/kotlin/Source.kt").refined(), WorkspaceSourceContentHash.parse("a".repeat(64)).refined(), )</ID>
+    <ID>NamedArguments:SqliteTopologySnapshotStoreTest.kt:SqliteTopologySnapshotStoreTest$GradleSourceRootEvidence( "root.main", ".", ":", "main", "src/main/kotlin", SourceRootProvenance.Authored, )</ID>
+    <ID>NamedArguments:SqliteTopologySnapshotStoreTest.kt:SqliteTopologySnapshotStoreTest$admit( workspace, sourceRoot, WorkspaceSourcePath.parse(path).refined(), WorkspaceSourceContentHash.parse(hash.repeat(64)).refined(), )</ID>
+    <ID>NamedArguments:SqliteTopologySnapshotStoreTest.kt:SqliteTopologySnapshotStoreTest$fromBoundary( TopologyEdgeKind.CALL, source, target, 6, 12, )</ID>
+    <ID>NamedArguments:SqliteTopologySnapshotStoreTest.kt:SqliteTopologySnapshotStoreTest$fromBoundary( fileIdentity, start, end, name, identity, CompilerSymbolKind.CLASSLIKE, CanonicalCompilerSignature.classLike(identity).refined(), )</ID>
+    <ID>NamedArguments:SqliteTopologySnapshotStoreTest.kt:SqliteTopologySnapshotStoreTest$sourceFile(workspace, root, "src/main/kotlin/Source.kt", "a")</ID>
+    <ID>NamedArguments:SqliteTopologySnapshotStoreTest.kt:SqliteTopologySnapshotStoreTest$sourceFile(workspace, root, "src/main/kotlin/Source.kt", sourceHash)</ID>
+    <ID>NamedArguments:SqliteTopologySnapshotStoreTest.kt:SqliteTopologySnapshotStoreTest$sourceFile(workspace, root, "src/main/kotlin/Target.kt", "b")</ID>
+    <ID>NamedArguments:SqliteTopologySnapshotStoreTest.kt:SqliteTopologySnapshotStoreTest$sourceFile(workspace, root, "src/main/kotlin/Target.kt", targetHash)</ID>
+    <ID>NamedArguments:SqliteTopologySnapshotStoreTest.kt:SqliteTopologySnapshotStoreTest$symbol(sourceFile, "Source", "sample.Source", 0, 12)</ID>
+    <ID>NamedArguments:SqliteTopologySnapshotStoreTest.kt:SqliteTopologySnapshotStoreTest$symbol(sourceFile, "shared", "sample.Shared", 0, 12)</ID>
+    <ID>NamedArguments:SqliteTopologySnapshotStoreTest.kt:SqliteTopologySnapshotStoreTest$symbol(targetFile, "Target", "sample.Target", 0, 12)</ID>
+    <ID>NamedArguments:SqliteTopologySnapshotStoreTest.kt:SqliteTopologySnapshotStoreTest$symbol(targetFile, "shared", "sample.Shared", 20, 32)</ID>
+  </CurrentIssues>
+</SmellBaseline>

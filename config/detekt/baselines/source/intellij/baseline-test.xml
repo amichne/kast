@@ -1,0 +1,78 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>LargeClass:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest</ID>
+    <ID>LargeClass:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest</ID>
+    <ID>LongMethod:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$private fun fixture: Fixture</ID>
+    <ID>LongMethod:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$private fun fixture: Fixture</ID>
+    <ID>LongMethod:IntellijSourceReadPortTest.kt:IntellijSourceReadPortTest$private fun fixture: Fixture</ID>
+    <ID>LongMethod:IntellijSourceRegionReadTest.kt:IntellijSourceRegionReadTest$@Test fun `window is whole-line clipped to enclosing region and round trips`</ID>
+    <ID>LongParameterList:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$private fun call: SourceEntity.Call</ID>
+    <ID>LongParameterList:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$private fun entitySelector: SourceSelector.Entity</ID>
+    <ID>LongParameterList:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$private fun reference: SourceEntity.Reference</ID>
+    <ID>LongParameterList:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$private fun declarationAt: SourceEntity.Declaration</ID>
+    <ID>LongParameterList:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$private fun read: SourceReadResult</ID>
+    <ID>NamedArguments:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$Fixture( text, snapshot, region, listOf( call( snapshot, region, text, directGlobalStart, "globalTarget", 0, SourceEntityTarget.Candidate(globalSelector), ), call( snapshot, region, text, consumeStart, "consume", 0, SourceEntityTarget.Unresolved(CompilerUnresolvedReason.NAME_NOT_FOUND), ), reference( snapshot, region, localReferenceStart, "local", 0, SourceEntityTarget.Local(localDeclaration), ), reference( snapshot, region, missingStart, "missing", 0, SourceEntityTarget.Unresolved(CompilerUnresolvedReason.NAME_NOT_FOUND), ), call( snapshot, lambda, text, nestedGlobalStart, "globalTarget", 1, SourceEntityTarget.Candidate(globalSelector), ), ), )</ID>
+    <ID>NamedArguments:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$SourceReadRequest( SourceReadAnchor.Source(fixture.region), RegionSelection.Anchor, entities, TextProjection.None, SourceEntityLimit.parse(limit).refined(), SourceTextByteLimit.parse(65_536).refined(), page, )</ID>
+    <ID>NamedArguments:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$create( SemanticReadLease(root, EvidenceGeneration.parse(42).refined()), WorkspaceStateIdentity.parse("workspace-state-v1|source").refined(), SymbolDiscoveryFileIdentity.Workspace(path), SourceTextIdentity.fromNormalizedCommittedText(text), Utf16CodeUnitCount.parse(text.length).refined(), )</ID>
+    <ID>NamedArguments:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$create( callSelector, SourceNestingDepth.parse(depth).refined(), calleeSelector, target, )</ID>
+    <ID>NamedArguments:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$create( fixture.snapshot, fixture.region, fixture.region, fixture.text, page, )</ID>
+    <ID>NamedArguments:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$create( fixture.snapshot, fixture.region, fixture.region, fixture.text, selected.copy( limitations = selected.limitations + SourceReadLimitation.SEMANTIC_RESOLUTION_INCOMPLETE ), )</ID>
+    <ID>NamedArguments:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$entitySelector( snapshot, callSelector, start, start + name.length, SourceEntityKind.CALLEE, name, )</ID>
+    <ID>NamedArguments:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$entitySelector( snapshot, parent, start, start + name.length, SourceEntityKind.REFERENCE, name, )</ID>
+    <ID>NamedArguments:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$entitySelector( snapshot, parent, start, text.indexOf(')', start) + 1, SourceEntityKind.CALL, name, )</ID>
+    <ID>NamedArguments:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$entitySelector( snapshot, region, localStart, text.indexOf('\n', localStart), SourceEntityKind.DECLARATION_PROPERTY, "local", )</ID>
+    <ID>NamedArguments:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$fromBoundary( SymbolDiscoveryKind.SYMBOL, "globalTarget", snapshot.lease, Path.of(snapshot.file.path.value), "file://${snapshot.file.path.value}", 0, )</ID>
+    <ID>NamedArguments:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$issueEntity( parent, NonEmptySourceRange.create(range(snapshot, start, end)).refined(), kind, SourceEntityName.present(name).refined(), )</ID>
+    <ID>NamedArguments:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$read( port, fixture, selection, limit = 2, page = SourceReadPage.Continue(continuation), )</ID>
+    <ID>NamedArguments:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$read(port, fixture, selection, limit = 2)</ID>
+    <ID>NamedArguments:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$select( fixture.entities.asSequence(), request.entities, cursor, request.entityLimit, )</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$Fixture( text, snapshot, region, listOf( direct, directParameter, nested, nestedParameter, hidden, holder, constructor, itemProperty, itemParameter, ), )</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$SourceReadRequest( SourceReadAnchor.Source(fixture.region), RegionSelection.Anchor, entities, TextProjection.None, SourceEntityLimit.parse(limit).refined(), SourceTextByteLimit.parse(65_536).refined(), page, )</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$candidate(snapshot, name, start, kind)</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$create( SemanticReadLease(root, EvidenceGeneration.parse(42).refined()), WorkspaceStateIdentity.parse("workspace-state-v1|source").refined(), SymbolDiscoveryFileIdentity.Workspace(path), SourceTextIdentity.fromNormalizedCommittedText(text), Utf16CodeUnitCount.parse(text.length).refined(), )</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$create( fixture.snapshot, fixture.region, fixture.region, fixture.text, page, )</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$create( selector, SourceNestingDepth.parse(depth).refined(), kind, visibility, DeclarationSemanticIdentity.Candidate(candidate), )</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$declarationAt( snapshot, direct.selector, nestedStart, "nested", DeclarationKind.FUNCTION, DeclarationVisibility.PUBLIC, 1, range(snapshot, nestedStart, nestedEnd), )</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$declarationAt( snapshot, holder.selector, constructorStart, "Holder", DeclarationKind.CONSTRUCTOR, DeclarationVisibility.PUBLIC, 1, range(snapshot, constructorStart, constructorEnd), )</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$declarationAt( snapshot, holder.selector, itemStart, "item", DeclarationKind.PROPERTY, DeclarationVisibility.PUBLIC, 1, itemRange, )</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$declarationAt( snapshot, region, directStart, "direct", DeclarationKind.FUNCTION, DeclarationVisibility.PUBLIC, 0, range(snapshot, directStart, directEnd), )</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$declarationAt( snapshot, region, hiddenStart, "hidden", DeclarationKind.PROPERTY, DeclarationVisibility.PRIVATE, 0, range(snapshot, hiddenStart, text.indexOf('\n', hiddenStart)), )</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$declarationAt( snapshot, region, holderStart, "Holder", DeclarationKind.CLASSLIKE, DeclarationVisibility.PUBLIC, 0, range(snapshot, holderStart, holderEnd), )</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$fromBoundary( if (kind == DeclarationKind.CLASSLIKE) { SymbolDiscoveryKind.CLASS } else { SymbolDiscoveryKind.SYMBOL }, name, snapshot.lease, Path.of(snapshot.file.path.value), Path.of(snapshot.file.path.value).toUri().toString(), offset, )</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$issueEntity( parent, NonEmptySourceRange.create(entityRange).refined(), SourceEntityKind.VALUE_PARAMETER, SourceEntityName.present(name).refined(), )</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$issueEntity( parent, NonEmptySourceRange.create(entityRange).refined(), kind.entityKind(), SourceEntityName.present(name).refined(), )</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$parameter(snapshot, direct.selector, text, "p", 1)</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$parameter(snapshot, nested.selector, text, "q", 2)</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$parameterAt( constructor.selector, itemRange, "item", 2, )</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$parameterAt(parent, range(snapshot, start, start + name.length), name, depth)</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$read( port, fixture, matching(Containment.DESCENDANTS, EntityFilter.Parameters), limit = 1, page = SourceReadPage.Continue(continuation), )</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$read( port, fixture, selection, limit = 1, page = SourceReadPage.Continue(continuation), )</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$read(port(fixture), fixture, selection, limit = 1, page = page)</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$read(port(fixture, continuations), fixture, selection, limit = 1)</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$read(port, fixture, selection, limit = 1)</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$read(rebound, fixture, selection, limit = 1)</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$read(rebound, fixture, selection, limit = 1, page = page)</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$read(rebound, fixture, selection, limit = 1, page = page, readContext = changed)</ID>
+    <ID>NamedArguments:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$select( fixture.entities.asSequence(), request.entities, cursor, request.entityLimit, )</ID>
+    <ID>NamedArguments:IntellijSourceReadPortTest.kt:IntellijSourceReadPortTest$SourceReadRequest( SourceReadAnchor.Symbol(selector), RegionSelection.Anchor, EntitySelection.None, TextProjection.Complete, SourceEntityLimit.parse(250).refined(), SourceTextByteLimit.parse(byteLimit).refined(), SourceReadPage.First, )</ID>
+    <ID>NamedArguments:IntellijSourceReadPortTest.kt:IntellijSourceReadPortTest$create( discoveryRequest, listOf(candidate), SymbolDiscoveryByteCount.parse(candidate.projectedUtf8Size().value).refined(), SymbolDiscoveryWorkCount.parse(1).refined(), SymbolDiscoveryTimings( SymbolDiscoveryElapsedNanoseconds.parse(1).refined(), SymbolDiscoveryElapsedNanoseconds.parse(1).refined(), ), )</ID>
+    <ID>NamedArguments:IntellijSourceReadPortTest.kt:IntellijSourceReadPortTest$fromBoundary( SymbolDiscoveryKind.SYMBOL, "subject", lease, Path.of("/workspace/src/Subject.kt"), "file:///workspace/src/Subject.kt", 0, )</ID>
+    <ID>NamedArguments:IntellijSourceReadPortTest.kt:IntellijSourceReadPortTest$fromBoundary( candidate.location.file, 0, text.length, "subject", "sample.subject", CompilerSymbolKind.FUNCTION, CanonicalCompilerSignature.function( "sample.subject", null, emptyList(), emptyList(), 0, ) .refined(), )</ID>
+    <ID>NamedArguments:IntellijSourceRegionReadTest.kt:IntellijSourceRegionReadTest$SourceReadRequest( anchor, region, EntitySelection.None, text, SourceEntityLimit.parse(250).refined(), SourceTextByteLimit.parse(65_536).refined(), SourceReadPage.First, )</ID>
+    <ID>NamedArguments:IntellijSourceRegionReadTest.kt:IntellijSourceRegionReadTest$create( SemanticReadLease(root, EvidenceGeneration.parse(42).refined()), WorkspaceStateIdentity.parse("workspace-state-v1|source").refined(), SymbolDiscoveryFileIdentity.Workspace(path), SourceTextIdentity.fromNormalizedCommittedText(text), Utf16CodeUnitCount.parse(text.length).refined(), )</ID>
+    <ID>NamedArguments:IntellijSourceRegionReadTest.kt:IntellijSourceRegionReadTest$create( snapshot, anchorSelector, anchorSelector, text, )</ID>
+    <ID>NamedArguments:IntellijSourceRegionReadTest.kt:IntellijSourceRegionReadTest$create( snapshot, fileSelector, fileSelector, text, )</ID>
+    <ID>NamedArguments:IntellijSourceRegionReadTest.kt:IntellijSourceRegionReadTest$create( snapshot, returned.selector, returned.selector, text, )</ID>
+    <ID>NamedArguments:IntellijSourceRegionReadTest.kt:IntellijSourceRegionReadTest$create(snapshot, file, file, "")</ID>
+    <ID>NamedArguments:IntellijSourceRegionReadTest.kt:IntellijSourceRegionReadTest$create(snapshot, selector, selector, text)</ID>
+    <ID>NamedArguments:IntellijSourceRegionReadTest.kt:IntellijSourceRegionReadTest$create(snapshot, target, body, text)</ID>
+    <ID>NamedArguments:IntellijSourceRegionReadTest.kt:IntellijSourceRegionReadTest$issueEntity( body, NonEmptySourceRange.create(targetRange).refined(), SourceEntityKind.REFERENCE, SourceEntityName.present("target").refined(), )</ID>
+    <ID>NamedArguments:IntellijSourceRegionReadTest.kt:IntellijSourceRegionReadTest$restoreRange( snapshot.lease, snapshot.file, start, end, )</ID>
+    <ID>NamedArguments:IntellijSourceScopeAdmissionTest.kt:IntellijSourceScopeAdmissionTest$SourceSet( owner.project, owner.sourceSet, SymbolSourceKindPolicy.PRODUCTION_AND_TEST, SymbolGeneratedSourcePolicy.INCLUDE, )</ID>
+    <ID>NamedArguments:IntellijSourceScopeAdmissionTest.kt:IntellijSourceScopeAdmissionTest$WorkspaceSourceRootBoundary( "app.main", Path.of("/workspace"), ":app", "generatedMain", Path.of("/workspace/src/generated"), WorkspaceSourceRootKind.PRODUCTION, WorkspaceSourceRootProvenance.GENERATED, )</ID>
+    <ID>NamedArguments:IntellijSourceScopeAdmissionTest.kt:IntellijSourceScopeAdmissionTest$WorkspaceSourceRootBoundary( "app.main", Path.of("/workspace"), ":app", "main", Path.of("/workspace/src"), WorkspaceSourceRootKind.PRODUCTION, WorkspaceSourceRootProvenance.AUTHORED, )</ID>
+    <ID>NamedArguments:IntellijSourceScopeAdmissionTest.kt:IntellijSourceScopeAdmissionTest$WorkspaceSourceRootBoundary( "app.test", Path.of("/workspace"), ":app", "test", Path.of("/workspace/src/test"), WorkspaceSourceRootKind.TEST, WorkspaceSourceRootProvenance.AUTHORED, )</ID>
+  </CurrentIssues>
+</SmellBaseline>

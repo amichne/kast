@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>LargeClass:RelationContractTest.kt:RelationContractTest</ID>
+    <ID>LongMethod:RelationContractTest.kt:RelationContractTest$private fun selector: SymbolSelector</ID>
+    <ID>NamedArguments:RelationContractTest.kt:RelationContractTest$create( expanded, emptyList(), RelationByteCount.parse(0).refined(), RelationWorkCount.parse(0).refined(), RelationResultCount.parse(0).refined(), )</ID>
+    <ID>NamedArguments:RelationContractTest.kt:RelationContractTest$create( request, emptyList(), RelationByteCount.parse(0L).refined(), RelationWorkCount.parse(0L).refined(), RelationResultCount.parse(0).refined(), )</ID>
+    <ID>NamedArguments:RelationContractTest.kt:RelationContractTest$create( request, listOf(candidate), SymbolDiscoveryByteCount.parse(candidate.projectedUtf8Size().value).refined(), SymbolDiscoveryWorkCount.parse(1L).refined(), SymbolDiscoveryTimings( SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), ), )</ID>
+    <ID>NamedArguments:RelationContractTest.kt:RelationContractTest$create( request, request.subject, endpoint, RelationOccurrence.fromBoundary(selector.file, 41, 42).refined(), RelationProvenance.K2_AUTHORED_SOURCE, )</ID>
+    <ID>NamedArguments:RelationContractTest.kt:RelationContractTest$fromBoundary( SymbolDiscoveryKind.SYMBOL, "other", selector.lease, Path.of("/workspace/other/Other.kt"), "file:///workspace/other/Other.kt", 0, )</ID>
+    <ID>NamedArguments:RelationContractTest.kt:RelationContractTest$fromBoundary( SymbolDiscoveryKind.SYMBOL, "run", lease, Path.of("/workspace/src/Subject.kt"), "file:///workspace/src/Subject.kt", 41, )</ID>
+    <ID>NamedArguments:RelationContractTest.kt:RelationContractTest$fromBoundary( endpoint.file, endpoint.range.startInclusive, endpoint.range.endExclusive, endpoint.name.value, "sample.Related.run", endpoint.kind, CanonicalCompilerSignature.function( "sample.Related.run", null, emptyList(), emptyList(), 1, ) .refined(), )</ID>
+    <ID>NamedArguments:RelationContractTest.kt:RelationContractTest$fromBoundary( location.file, location.offset.value, location.offset.value + 10, selection.candidate.name.value, "sample.Subject.run", CompilerSymbolKind.FUNCTION, CanonicalCompilerSignature.function( "sample.Subject.run", null, emptyList(), emptyList(), 0, ) .refined(), )</ID>
+    <ID>NamedArguments:RelationContractTest.kt:RelationContractTest$fromBoundary( otherFile, 0, 10, "other", "other.Other.other", CompilerSymbolKind.FUNCTION, CanonicalCompilerSignature.function("other.Other.other", null, emptyList(), emptyList(), 0) .refined(), )</ID>
+    <ID>NamedArguments:RelationContractTest.kt:RelationContractTest$fromBoundary( selector.file, selector.range.startInclusive, selector.range.endExclusive, selector.name.value, "sample.Subject.run", selector.kind, description.signature, )</ID>
+    <ID>NamedArguments:RelationContractTest.kt:RelationContractTest$fromBoundary( subject.file, 71, 82, "related", "sample.Related.run", CompilerSymbolKind.FUNCTION, CanonicalCompilerSignature.function( "sample.Related.run", null, emptyList(), emptyList(), 0, ) .refined(), )</ID>
+    <ID>NamedArguments:RelationContractTest.kt:RelationContractTest$resolve(selector.lease, request.searchScope, evidence, request.searchConstraints)</ID>
+    <ID>NamedArguments:RelationContractTest.kt:RelationContractTest$resume( (request.subject as RelationEndpoint.Subject).selector, RelationMeaning.Callers, request.budget, resumableCoverage.continuation, )</ID>
+    <ID>NamedArguments:RelationContractTest.kt:RelationContractTest$resume(selector, expanded.meaning, expanded.budget, continuation)</ID>
+    <ID>NamedArguments:RelationContractTest.kt:RelationContractTest$start( selector, RelationMeaning.Callees, request(RelationMeaning.Callees).budget, RelationSearchBoundary.WORKSPACE_EXPANSION, )</ID>
+    <ID>NamedArguments:RelationContractTest.kt:RelationContractTest$start( selector, retained.meaning, retained.budget, RelationSearchBoundary.WORKSPACE_EXPANSION, )</ID>
+  </CurrentIssues>
+</SmellBaseline>

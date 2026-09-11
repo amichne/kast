@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:CanonicalCompilerSignature.kt:private fun decodeCanonicalFields: List&lt;String>?</ID>
+    <ID>CognitiveComplexMethod:SymbolSearchScope.kt:SymbolSearchScope.Companion$private fun restore: Refinement&lt;SymbolSearchScope, SymbolSearchScopeRestorationFailure></ID>
+    <ID>ComplexCondition:SymbolSearchScope.kt:SymbolSearchScope.Companion$captured.primary != project.buildRoot.value || parts.size != 2 || parts[0] != project.projectPath.value || parts[1] != sourceSet.value</ID>
+    <ID>CyclomaticComplexMethod:SymbolSearchScope.kt:SymbolSearchScope.Companion$private fun restore: Refinement&lt;SymbolSearchScope, SymbolSearchScopeRestorationFailure></ID>
+    <ID>InvalidPackageDeclaration:SymbolDiscoveryCandidate.kt:package io.github.amichne.kast.symbol.contract</ID>
+    <ID>InvalidPackageDeclaration:SymbolDiscoveryOperations.kt:package io.github.amichne.kast.symbol.contract</ID>
+    <ID>InvalidPackageDeclaration:SymbolDiscoveryOutcome.kt:package io.github.amichne.kast.symbol.contract</ID>
+    <ID>InvalidPackageDeclaration:SymbolDiscoveryRequest.kt:package io.github.amichne.kast.symbol.contract</ID>
+    <ID>InvalidPackageDeclaration:SymbolDiscoverySourceSets.kt:package io.github.amichne.kast.symbol.contract</ID>
+    <ID>InvalidPackageDeclaration:SymbolExactOperations.kt:package io.github.amichne.kast.symbol.contract</ID>
+    <ID>InvalidPackageDeclaration:SymbolSearchScope.kt:package io.github.amichne.kast.symbol.contract</ID>
+    <ID>InvalidPackageDeclaration:SymbolSelector.kt:package io.github.amichne.kast.symbol.contract</ID>
+    <ID>LargeClass:SymbolSelectorContractTest.kt:SymbolSelectorContractTest</ID>
+    <ID>LongMethod:CandidateSelectorContractTest.kt:CandidateSelectorContractTest$private fun batch: SymbolDiscoveryBatch</ID>
+    <ID>LongMethod:NativeRelationContractTest.kt:NativeRelationContractTest$@Test fun `batch rejects wrong subject family order and byte claims`</ID>
+    <ID>LongMethod:NativeRelationContractTest.kt:NativeRelationContractTest$private fun selector: ExactDeclarationSelector</ID>
+    <ID>LongMethod:SymbolDiscoveryCandidate.kt:SymbolDiscoveryCandidate.Companion$fun fromBoundary: Refinement&lt;SymbolDiscoveryCandidate, SymbolDiscoveryCandidateFailure></ID>
+    <ID>LongMethod:SymbolDiscoveryContractTest.kt:SymbolDiscoveryContractTest$@Test fun `batch construction rejects overflow reordered candidates and false byte evidence`</ID>
+    <ID>LongMethod:SymbolDiscoveryContractTest.kt:SymbolDiscoveryContractTest$@Test fun `candidate transition distinguishes workspace files external files and declarations`</ID>
+    <ID>LongMethod:SymbolSearchScope.kt:SymbolSearchScope.Companion$private fun restore: Refinement&lt;SymbolSearchScope, SymbolSearchScopeRestorationFailure></ID>
+    <ID>LongMethod:SymbolSelectorContractTest.kt:SymbolSelectorContractTest$@Test fun `compiler evidence cannot escape the selected file name or offset`</ID>
+    <ID>LongMethod:SymbolSelectorContractTest.kt:SymbolSelectorContractTest$@Test fun `compiler evidence retains canonical signature and rejects mismatched restored identity`</ID>
+    <ID>LongMethod:SymbolSelectorContractTest.kt:SymbolSelectorContractTest$@Test fun `restored selection rejects compiler evidence outside retained declaration kinds`</ID>
+    <ID>LongMethod:SymbolSelectorContractTest.kt:SymbolSelectorContractTest$private fun selection: SymbolDiscoverySelection</ID>
+    <ID>MagicNumber:ExactDeclarationFingerprint.kt:0xff</ID>
+  </CurrentIssues>
+</SmellBaseline>

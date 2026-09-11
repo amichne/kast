@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:AddDeclarationCompilerContext.kt:AddDeclarationCompilerContextFile.Companion$canonical == null || !canonical.isAbsolute || canonical.normalize().toString() != path || (!path.endsWith(".kt") &amp;&amp; !path.endsWith(".java"))</ID>
+    <ID>ComplexCondition:AddDeclarationOwnership.kt:AddDeclarationSourceOwner.Companion$!canonicalName(sourceSetName) || '/' in sourceSetName || '\\' in sourceSetName || ':' in sourceSetName</ID>
+    <ID>ComplexCondition:AddDeclarationPlanningEvidence.kt:DurableAddDeclarationPlanningEvidence.Companion$relationProjections.any(String::isBlank) || traversalProjections.any(String::isBlank) || diagnosticProjections.any(String::isBlank) || relations.any { !SHA_256.matches(it.stableDigest.value) } || !SHA_256.matches(fingerprint.value)</ID>
+    <ID>CyclomaticComplexMethod:AddDeclarationPlanCodec.kt:private fun PlannedAddDeclaration.revalidatedOrNull: PlannedAddDeclaration?</ID>
+    <ID>CyclomaticComplexMethod:AddDeclarationPlanningEvidence.kt:CompleteChangePlanningEvidence.Companion$internal fun admit: Refinement&lt;CompleteChangePlanningEvidence, ChangePlanningFailure></ID>
+    <ID>CyclomaticComplexMethod:AddDeclarationPlanningEvidence.kt:DurableAddDeclarationPlanningEvidence.Companion$internal fun restore: Refinement&lt;DurableAddDeclarationPlanningEvidence, DurablePlanningEvidenceFailure></ID>
+    <ID>CyclomaticComplexMethod:HostedAddDeclarationPlanCodec.kt:HostedAddDeclarationPlanCodec$fun decode: Refinement&lt;AddDeclarationChangePlan, HostedAddDeclarationPlanDecodeFailure></ID>
+    <ID>InvalidPackageDeclaration:AddDeclarationChangePlan.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:AddDeclarationFileProof.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:AddDeclarationOwnership.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:AddDeclarationPlanInput.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:AddDeclarationPlanningEvidence.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:AddDeclarationRevalidation.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:AddFileChangePlan.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:ChangeIntent.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:EditableMutationTarget.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:RenameSymbolChangePlan.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:ReplaceDeclarationChangePlan.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>LongMethod:AddDeclarationPlanCodec.kt:private fun PlannedAddDeclaration.revalidatedOrNull: PlannedAddDeclaration?</ID>
+    <ID>LongMethod:AddDeclarationPlanningEvidence.kt:CompleteChangePlanningEvidence.Companion$internal fun admit: Refinement&lt;CompleteChangePlanningEvidence, ChangePlanningFailure></ID>
+    <ID>LongMethod:AddDeclarationRevalidationContractTest.kt:AddDeclarationRevalidationContractTest$private fun plan: PlannedAddDeclaration</ID>
+    <ID>LongMethod:ChangeIntent.kt:RenameSymbolOccurrenceSet.Companion$fun admit: Refinement&lt;RenameSymbolOccurrenceSet, RenameSymbolOccurrenceSetFailure></ID>
+    <ID>LongMethod:EditableMutationTarget.kt:EditableMutationTarget.Companion$fun admit: Refinement&lt;EditableMutationTarget, MutationTargetAdmissionFailure></ID>
+    <ID>LongMethod:HostedAddDeclarationPlanCodec.kt:HostedAddDeclarationPlanCodec$fun decode: Refinement&lt;AddDeclarationChangePlan, HostedAddDeclarationPlanDecodeFailure></ID>
+    <ID>LongMethod:PlannedAddDeclarationTest.kt:PlannedAddDeclarationTest$private fun evidence: AddDeclarationPlanningEvidence</ID>
+    <ID>LongMethod:RenameSymbolChangePlan.kt:RenameSymbolChangePlan.Companion$fun issue: RenameSymbolChangePlan</ID>
+  </CurrentIssues>
+</SmellBaseline>

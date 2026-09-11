@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>LongMethod:QualificationProofContractTest.kt:QualificationProofContractTest$@Test fun `traversal request and qualification distinguish resumable from terminal state`</ID>
+    <ID>NamedArguments:QualificationProofContractTest.kt:QualificationProofContractTest$RelationReadRequest( text("exact:Target"), RelationKindDocument.CALLERS, ProtocolCount.parse(2).refined(), RelationReadPositionDocument.Start, )</ID>
+    <ID>NamedArguments:QualificationProofContractTest.kt:QualificationProofContractTest$TraversalRunRequest( text("exact:Target"), RelationKindDocument.CALLEES, ProtocolCount.parse(2).refined(), ProtocolCount.parse(4).refined(), TraversalRunPositionDocument.Start, )</ID>
+    <ID>NamedArguments:QualificationProofContractTest.kt:QualificationProofContractTest$create( DiagnosticKnownCountDocument.parse(3).refined(), resultLimitReached = true, analyzedFiles = listOf(text("src/A.kt")), limitations = listOf( DiagnosticLimitationDocument( text("src/B.kt"), DiagnosticLimitationReasonDocument.INDEXING, ) ), )</ID>
+  </CurrentIssues>
+</SmellBaseline>

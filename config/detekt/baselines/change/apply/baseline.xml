@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:MutationAdmission.kt:DerivedMutationPostimage.Companion$private fun deriveExisting: Refinement&lt;DerivedMutationPostimage, MutationAdmissionFailure></ID>
+    <ID>CognitiveComplexMethod:MutationAdmission.kt:MutationAdmissionService$fun admit: Refinement&lt;AdmittedMutation, MutationAdmissionFailure></ID>
+    <ID>CyclomaticComplexMethod:MutationAdmission.kt:DerivedMutationPostimage.Companion$private fun deriveExisting: Refinement&lt;DerivedMutationPostimage, MutationAdmissionFailure></ID>
+    <ID>CyclomaticComplexMethod:MutationAdmission.kt:MutationAdmissionService$fun admit: Refinement&lt;AdmittedMutation, MutationAdmissionFailure></ID>
+    <ID>LargeClass:ApplyTestFixture.kt:ApplyTestFixture</ID>
+    <ID>LongMethod:ApplyTestFixture.kt:ApplyTestFixture$private fun selector: SymbolSelector</ID>
+    <ID>LongMethod:MutationAdmission.kt:DerivedMutationPostimage.Companion$private fun deriveExisting: Refinement&lt;DerivedMutationPostimage, MutationAdmissionFailure></ID>
+    <ID>LongMethod:MutationAdmission.kt:MutationAdmissionService$fun admit: Refinement&lt;AdmittedMutation, MutationAdmissionFailure></ID>
+    <ID>LongMethod:MutationAuthority.kt:MutationAuthority.Companion$fun restore: Refinement&lt;MutationAuthority, MutationAuthorityRestorationFailure></ID>
+  </CurrentIssues>
+</SmellBaseline>

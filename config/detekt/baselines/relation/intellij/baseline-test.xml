@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>LargeClass:RelationReadTest.kt:RelationReadTest</ID>
+    <ID>NamedArguments:RelationReadTest.kt:RelationReadTest$create( request, emptyList(), io.github.amichne.kast.relation.contract.RelationByteCount.parse(0L).refined(), io.github.amichne.kast.relation.contract.RelationWorkCount.parse(0L).refined(), io.github.amichne.kast.relation.contract.RelationResultCount.parse(0).refined(), )</ID>
+    <ID>NamedArguments:RelationReadTest.kt:RelationReadTest$create( request, listOf(candidate), SymbolDiscoveryByteCount.parse(candidate.projectedUtf8Size().value).refined(), SymbolDiscoveryWorkCount.parse(1L).refined(), SymbolDiscoveryTimings( SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), ), )</ID>
+    <ID>NamedArguments:RelationReadTest.kt:RelationReadTest$create( request, source, target, occurrence, RelationProvenance.K2_AUTHORED_SOURCE, )</ID>
+    <ID>NamedArguments:RelationReadTest.kt:RelationReadTest$fromBoundary( SymbolDiscoveryKind.SYMBOL, "run", request.scope.lease, Path.of("/workspace/src/Subject.kt"), "file:///workspace/src/Subject.kt", 41, )</ID>
+    <ID>NamedArguments:RelationReadTest.kt:RelationReadTest$fromBoundary( location.file, location.offset.value, location.offset.value + 10, selection.candidate.name.value, "sample.Subject.run", CompilerSymbolKind.FUNCTION, CanonicalCompilerSignature.function( "sample.Subject.run", null, emptyList(), emptyList(), 0, ) .refined(), )</ID>
+    <ID>NamedArguments:RelationReadTest.kt:RelationReadTest$fromBoundary( subject.file, 71, 82, "run", "sample.Related.run", CompilerSymbolKind.FUNCTION, CanonicalCompilerSignature.function( "sample.Related.run", null, emptyList(), listOf(identity), 0, ) .refined(), )</ID>
+    <ID>NamedArguments:RelationReadTest.kt:RelationReadTest$resume( (request.subject as RelationEndpoint.Subject).selector, request.meaning, request.budget, continuation, )</ID>
+    <ID>NamedArguments:RelationReadTest.kt:RelationReadTest$resume( selector, meaning, start.budget, coverage.continuation, )</ID>
+    <ID>NestedBlockDepth:RelationReadTest.kt:RelationReadTest$private fun compileStableProviderPage: RelationCompilation</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -1,0 +1,114 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$fun auditMutationState: HostedDurableMutationAudit</ID>
+    <ID>CognitiveComplexMethod:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$override fun loadApplication: ChangeApplicationLookup</ID>
+    <ID>CognitiveComplexMethod:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$override fun loadPlan: ChangePlanLookup</ID>
+    <ID>CognitiveComplexMethod:SqliteHostedWorkspaceGenerationAuthority.kt:SqliteHostedWorkspaceGenerationAuthority$fun advance: HostedWorkspaceGenerationIssuance</ID>
+    <ID>CognitiveComplexMethod:SqliteHostedWorkspaceGenerationAuthority.kt:SqliteHostedWorkspaceGenerationAuthority$fun resume: HostedWorkspaceGenerationResumption</ID>
+    <ID>CognitiveComplexMethod:SqliteHostedWorkspaceGenerationAuthority.kt:SqliteHostedWorkspaceGenerationAuthority$private fun readLineageHead: LineageRow</ID>
+    <ID>CognitiveComplexMethod:SqliteMutationRecoveryJournal.kt:SqliteMutationRecoveryJournal$override fun &lt;Record : MutationRecoveryRecord.Terminal> recordTerminal: MutationRecoveryPersistResult&lt;Record></ID>
+    <ID>CognitiveComplexMethod:SqliteMutationRecoveryJournal.kt:SqliteMutationRecoveryJournal$override fun recordApplied: MutationRecoveryPersistResult&lt;MutationRecoveryRecord.AppliedWritesDurable></ID>
+    <ID>CognitiveComplexMethod:SqliteMutationRecoveryRows.kt:internal fun Connection.loadMutationRecovery: MutationRecoveryLoadResult</ID>
+    <ID>CognitiveComplexMethod:SqliteMutationRecoveryRows.kt:private fun Connection.loadPreparation: Refinement&lt;MutationRecoveryPreparation, SqlMutationRecoveryDecodeFailure></ID>
+    <ID>CognitiveComplexMethod:SqliteMutationRecoveryRows.kt:private fun Connection.reconstructApplied: Refinement&lt;MutationRecoveryRecord.AppliedWritesDurable, SqlMutationRecoveryDecodeFailure></ID>
+    <ID>CognitiveComplexMethod:SqliteTopologyRelationCompiler.kt:SqliteTopologyRelationCompiler$private fun page: RelationCompilation</ID>
+    <ID>CognitiveComplexMethod:SqliteTopologySnapshotStore.kt:SqliteTopologySnapshotStore$override fun eligible: TopologySnapshotEligibility</ID>
+    <ID>CognitiveComplexMethod:SqliteTopologySnapshotStore.kt:SqliteTopologySnapshotStore$override fun publish: TopologyPublicationResult</ID>
+    <ID>ComplexCondition:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$application.planId != supported.planId || application.source != plannedWrite.source || application.publication.plannedLease != supported.priorLease || application.publication.plannedState != supported.workspaceState || application.publication.source != plannedWrite.source || application.publication.sourceRoot != plannedWrite.sourceRoot || application.publication.precondition != plannedWrite.precondition</ID>
+    <ID>ComplexCondition:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$row.planIdentity == planIdentity.value &amp;&amp; row.planId == supported.planId.value &amp;&amp; row.postimage == application.postimage.value &amp;&amp; row.recoveryBinding == application.recoveryBinding.value &amp;&amp; row.applicationRoot == application.priorLease.workspaceRoot.value &amp;&amp; row.applicationGeneration == application.priorLease.generation.value &amp;&amp; row.applicationSourceState == application.publication.applicationState.value &amp;&amp; row.digest == digest</ID>
+    <ID>CyclomaticComplexMethod:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$override fun issueApplication: ChangeApplicationIssuance</ID>
+    <ID>CyclomaticComplexMethod:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$override fun loadApplication: ChangeApplicationLookup</ID>
+    <ID>CyclomaticComplexMethod:SqliteDurableChangeAuthority.kt:private fun Connection.migrateLegacyApplicationPublicationProof</ID>
+    <ID>CyclomaticComplexMethod:SqliteHostedWorkspaceGenerationAuthority.kt:SqliteHostedWorkspaceGenerationAuthority$fun advance: HostedWorkspaceGenerationIssuance</ID>
+    <ID>CyclomaticComplexMethod:SqliteHostedWorkspaceGenerationAuthority.kt:SqliteHostedWorkspaceGenerationAuthority$fun resume: HostedWorkspaceGenerationResumption</ID>
+    <ID>CyclomaticComplexMethod:SqliteMutationRecoveryRows.kt:internal fun Connection.loadMutationRecovery: MutationRecoveryLoadResult</ID>
+    <ID>CyclomaticComplexMethod:SqliteTopologyRelationCompiler.kt:SqliteTopologyRelationCompiler$private fun page: RelationCompilation</ID>
+    <ID>InstanceOfCheckForException:SqliteTopologySnapshotStore.kt:SqliteTopologySnapshotStore$failure is SqliteTopologyCorruption</ID>
+    <ID>InstanceOfCheckForException:SqliteWorkspacePublicationDatabase.kt:SqliteWorkspacePublicationDatabase.Companion$failure is CancellationException</ID>
+    <ID>InvalidPackageDeclaration:SqliteTopologyContentWriter.kt:package io.github.amichne.kast.evidence.sqlite</ID>
+    <ID>InvalidPackageDeclaration:SqliteTopologyRelationCompiler.kt:package io.github.amichne.kast.evidence.sqlite</ID>
+    <ID>InvalidPackageDeclaration:SqliteTopologyRows.kt:package io.github.amichne.kast.evidence.sqlite</ID>
+    <ID>InvalidPackageDeclaration:SqliteTopologySchema.kt:package io.github.amichne.kast.evidence.sqlite</ID>
+    <ID>InvalidPackageDeclaration:SqliteTopologySnapshotStore.kt:package io.github.amichne.kast.evidence.sqlite</ID>
+    <ID>LargeClass:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority : DurableChangeAuthority</ID>
+    <ID>LargeClass:SqliteHostedWorkspaceGenerationAuthority.kt:SqliteHostedWorkspaceGenerationAuthority</ID>
+    <ID>LongMethod:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$fun auditMutationState: HostedDurableMutationAudit</ID>
+    <ID>LongMethod:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$override fun issueApplication: ChangeApplicationIssuance</ID>
+    <ID>LongMethod:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$override fun loadApplication: ChangeApplicationLookup</ID>
+    <ID>LongMethod:SqliteDurableChangeAuthority.kt:private fun Connection.migrateLegacyApplicationPublicationProof</ID>
+    <ID>LongMethod:SqliteDurableChangeAuthority.kt:private fun InitializedSqliteMutationRecoveryConnections.initializeAuthority</ID>
+    <ID>LongMethod:SqliteHostedWorkspaceGenerationAuthority.kt:SqliteHostedWorkspaceGenerationAuthority$fun advance: HostedWorkspaceGenerationIssuance</ID>
+    <ID>LongMethod:SqliteHostedWorkspaceGenerationAuthority.kt:SqliteHostedWorkspaceGenerationAuthority$fun resume: HostedWorkspaceGenerationResumption</ID>
+    <ID>LongMethod:SqliteMutationRecoveryRows.kt:internal fun Connection.loadMutationRecovery: MutationRecoveryLoadResult</ID>
+    <ID>LongMethod:SqliteTopologyRelationCompiler.kt:SqliteTopologyRelationCompiler$override suspend fun read: RelationCompilation</ID>
+    <ID>LongMethod:SqliteTopologyRelationCompiler.kt:SqliteTopologyRelationCompiler$private fun page: RelationCompilation</ID>
+    <ID>LongMethod:SqliteTopologySchema.kt:internal fun initializeTopologySchema</ID>
+    <ID>LongMethod:SqliteTopologySnapshotStore.kt:SqliteTopologySnapshotStore$override fun publish: TopologyPublicationResult</ID>
+    <ID>LongParameterList:SqliteDurableChangeAuthority.kt:private fun applicationDigest: String</ID>
+    <ID>MagicNumber:SqliteDurableChangeAuthority.kt:0xff</ID>
+    <ID>MagicNumber:SqliteDurableChangeAuthority.kt:16</ID>
+    <ID>MagicNumber:SqliteDurableChangeAuthority.kt:3</ID>
+    <ID>MagicNumber:SqliteDurableChangeAuthority.kt:4</ID>
+    <ID>MagicNumber:SqliteDurableChangeAuthority.kt:5</ID>
+    <ID>MagicNumber:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$3</ID>
+    <ID>MagicNumber:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$4</ID>
+    <ID>MagicNumber:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$5</ID>
+    <ID>MagicNumber:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$6</ID>
+    <ID>MagicNumber:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$7</ID>
+    <ID>MagicNumber:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$8</ID>
+    <ID>MagicNumber:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$9</ID>
+    <ID>MagicNumber:SqliteMutationRecoveryJournal.kt:SqliteMutationRecoveryJournal$3</ID>
+    <ID>MagicNumber:SqliteMutationRecoveryRows.kt:3</ID>
+    <ID>MagicNumber:SqliteMutationRecoveryRows.kt:4</ID>
+    <ID>MagicNumber:SqliteMutationRecoveryRows.kt:5</ID>
+    <ID>MagicNumber:SqliteTopologyContentWriter.kt:3</ID>
+    <ID>MagicNumber:SqliteTopologyContentWriter.kt:4</ID>
+    <ID>MagicNumber:SqliteTopologyContentWriter.kt:5</ID>
+    <ID>MagicNumber:SqliteTopologyContentWriter.kt:6</ID>
+    <ID>MagicNumber:SqliteTopologyContentWriter.kt:7</ID>
+    <ID>MagicNumber:SqliteTopologyContentWriter.kt:8</ID>
+    <ID>MagicNumber:SqliteTopologyContentWriter.kt:9</ID>
+    <ID>MagicNumber:SqliteTopologyRows.kt:3</ID>
+    <ID>MagicNumber:SqliteTopologyRows.kt:4</ID>
+    <ID>MagicNumber:SqliteTopologyRows.kt:5</ID>
+    <ID>MagicNumber:SqliteTopologyRows.kt:6</ID>
+    <ID>MagicNumber:SqliteTopologyRows.kt:7</ID>
+    <ID>NamedArguments:SqliteDurableChangeAuthority.kt:ApplicationRow( rows.getString("plan_identity"), rows.getString("plan_id"), rows.getString("postimage_sha256"), rows.getString("recovery_binding"), rows.getString("application_root"), rows.getLong("application_generation"), rows.getString("application_source_state"), rows.getString("record_digest"), )</ID>
+    <ID>NamedArguments:SqliteDurableChangeAuthority.kt:LegacyApplicationMigrationRow( result.getString("identity"), result.getString("plan_identity"), result.getString("plan_id"), result.getString("postimage_sha256"), result.getString("recovery_binding"), result.getString("record_digest"), result.getString("document"), result.getString("document_sha256"), )</ID>
+    <ID>NamedArguments:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$applicationDigest( planIdentity, row.planId, row.postimage, row.recoveryBinding, row.applicationRoot, row.applicationGeneration, row.applicationSourceState, )</ID>
+    <ID>NamedArguments:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$applicationDigest( planIdentity, supported.planId.value, application.postimage.value, application.recoveryBinding.value, application.priorLease.workspaceRoot.value, application.priorLease.generation.value, application.publication.applicationState.value, )</ID>
+    <ID>NamedArguments:SqliteDurableChangeAuthority.kt:SqliteDurableChangeAuthority$restore( plan, applicationLease, applicationState, postimage, binding, )</ID>
+    <ID>NamedArguments:SqliteDurableChangeAuthority.kt:applicationDigest( parsedPlanIdentity, row.planId, row.postimage, row.recoveryBinding, plan.priorLease.workspaceRoot.value, plan.priorLease.generation.value, plan.workspaceState.value, )</ID>
+    <ID>NamedArguments:SqliteDurableChangeAuthority.kt:legacyApplicationDigest( parsedPlanIdentity, row.planId, row.postimage, row.recoveryBinding, )</ID>
+    <ID>NamedArguments:SqliteTopologyContentWriter.kt:insertEdge( snapshotId, edge, symbolIds.getValue(edge.source.nodeIdentity), symbolIds.getValue(edge.target.nodeIdentity), )</ID>
+    <ID>NamedArguments:SqliteTopologyRelationCompiler.kt:SqliteTopologyRelationCompiler$create( request, page, byteCount, workCount, RelationResultCount.parse(page.size).refinedOrNull() ?: return contractRejected(), )</ID>
+    <ID>NamedArguments:SqliteTopologyRelationCompiler.kt:SqliteTopologyRelationCompiler$create( request, sourceEndpoint, targetEndpoint, occurrence, provenance, )</ID>
+    <ID>NamedArguments:SqliteTopologyRows.kt:GradleSourceRootEvidence( rows.getString("module_name"), rows.getString("build_root"), rows.getString("project_path"), rows.getString("source_set"), rows.getString("source_root"), rows.getString("provenance").sourceRootProvenance(), )</ID>
+    <ID>NamedArguments:SqliteTopologyRows.kt:restore( digest, getInt("file_count"), getInt("symbol_count"), getInt("edge_count"), )</ID>
+    <ID>NamedArguments:SqliteTopologyRows.kt:restore( enumValue&lt;TopologyEdgeKind>(rows.getString("edge_kind")), source, target, occurrenceFile, rows.getInt("start_offset"), rows.getInt("end_offset"), )</ID>
+    <ID>NamedArguments:SqliteTopologyRows.kt:restore( record.snapshot.identity, sourceRoot, path, hash, )</ID>
+    <ID>NamedArguments:SqliteTopologyRows.kt:restoreBoundary( fileIdentity, rows.getInt("start_offset"), rows.getInt("end_offset"), rows.getString("symbol_name"), rows.getString("qualified_identity"), enumValue&lt;CompilerSymbolKind>(rows.getString("symbol_kind")), compilerSignature, compilerIdentity, )</ID>
+    <ID>NestedBlockDepth:SqliteHostedWorkspaceGenerationAuthority.kt:SqliteHostedWorkspaceGenerationAuthority$fun advance: HostedWorkspaceGenerationIssuance</ID>
+    <ID>NestedBlockDepth:SqliteHostedWorkspaceGenerationAuthority.kt:SqliteHostedWorkspaceGenerationAuthority$fun issue: HostedWorkspaceGenerationIssuance</ID>
+    <ID>NestedBlockDepth:SqliteHostedWorkspaceGenerationAuthority.kt:SqliteHostedWorkspaceGenerationAuthority$fun resume: HostedWorkspaceGenerationResumption</ID>
+    <ID>NestedBlockDepth:SqliteHostedWorkspaceGenerationAuthority.kt:SqliteHostedWorkspaceGenerationAuthority$private fun issueInside: GenerationRow</ID>
+    <ID>NestedBlockDepth:SqliteMutationRecoveryRows.kt:private fun Connection.loadPreparation: Refinement&lt;MutationRecoveryPreparation, SqlMutationRecoveryDecodeFailure></ID>
+    <ID>NestedBlockDepth:SqliteMutationRecoveryRows.kt:private fun Connection.reconstructApplied: Refinement&lt;MutationRecoveryRecord.AppliedWritesDurable, SqlMutationRecoveryDecodeFailure></ID>
+    <ID>NestedBlockDepth:SqliteTopologySnapshotStore.kt:SqliteTopologySnapshotStore$override fun eligible: TopologySnapshotEligibility</ID>
+    <ID>NestedBlockDepth:SqliteTopologySnapshotStore.kt:SqliteTopologySnapshotStore$override fun publish: TopologyPublicationResult</ID>
+    <ID>NestedBlockDepth:SqliteWorkspacePublicationDatabase.kt:SqliteWorkspacePublicationDatabase$internal fun begin: SqliteWorkspacePublicationSession</ID>
+    <ID>NestedBlockDepth:SqliteWorkspacePublicationDatabase.kt:SqliteWorkspacePublicationDatabase$internal fun current: SqliteWorkspacePublicationRecord?</ID>
+    <ID>NestedScopeFunctions:SqliteHostedWorkspaceGenerationAuthority.kt:SqliteHostedWorkspaceGenerationAuthority$also { next -> connection .prepareStatement( "INSERT INTO hosted_workspace_generation(source_state, generation) VALUES (?, ?)" ) .use { statement -> statement.setString(1, state.value) statement.setLong(2, next) statement.executeUpdate() } }</ID>
+    <ID>TooGenericExceptionCaught:SqliteCanonicalWorkspacePublicationTransaction.kt:SqliteCanonicalWorkspacePublicationTransaction$failure: Exception</ID>
+    <ID>TooGenericExceptionCaught:SqliteDurableChangeAuthority.kt:failure: Exception</ID>
+    <ID>TooGenericExceptionCaught:SqliteHostedWorkspaceGenerationAuthority.kt:SqliteHostedWorkspaceGenerationAuthority$failure: Exception</ID>
+    <ID>TooGenericExceptionCaught:SqliteMutationRecoveryJournal.kt:SqliteMutationRecoveryJournal$failure: Throwable</ID>
+    <ID>TooGenericExceptionCaught:SqliteTopologySnapshotStore.kt:SqliteTopologySnapshotStore$failure: Exception</ID>
+    <ID>TooGenericExceptionCaught:SqliteTopologySnapshotStore.kt:SqliteTopologySnapshotStore.Companion$failure: Exception</ID>
+    <ID>TooGenericExceptionCaught:SqliteWorkspacePublicationDatabase.kt:SqliteWorkspacePublicationDatabase$failure: Exception</ID>
+    <ID>TooGenericExceptionCaught:SqliteWorkspacePublicationDatabase.kt:SqliteWorkspacePublicationDatabase.Companion$failure: Exception</ID>
+    <ID>TooGenericExceptionCaught:SqliteWorkspacePublicationDatabase.kt:SqliteWorkspacePublicationSession$failure: Exception</ID>
+  </CurrentIssues>
+</SmellBaseline>

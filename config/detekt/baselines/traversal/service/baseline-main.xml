@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:TraversalService.kt:TraversalService$override suspend fun run: TraversalResult</ID>
+    <ID>CyclomaticComplexMethod:TraversalService.kt:TraversalService$override suspend fun run: TraversalResult</ID>
+    <ID>LargeClass:TraversalService.kt:TraversalService : TraversalOperations</ID>
+    <ID>LongMethod:TraversalService.kt:TraversalService$override suspend fun run: TraversalResult</ID>
+    <ID>NamedArguments:RelationBackedTraversal.kt:resume( subject, meaning, budget, oneHopPosition.continuation, )</ID>
+    <ID>NamedArguments:RelationBackedTraversal.kt:resume( subject.selector, meaning, budget, oneHopPosition.continuation, )</ID>
+    <ID>NamedArguments:TraversalEngineState.kt:MutableTraversalState.Companion$MutableTraversalState( checkpoint.frontier.toMutableList(), checkpoint.visited.toMutableSet(), checkpoint.pending, checkpoint.terminalRelationLimitations.toMutableSet(), )</ID>
+    <ID>NamedArguments:TraversalEngineState.kt:TraversalAccounting$fromBoundary( plan, records.sorted(), encodedBytes, examinedWorkUnits, elapsedMillis, expandedFrontier, )</ID>
+    <ID>NamedArguments:TraversalService.kt:TraversalService$attenuatedBudget( plan.budget.oneHop, remainingRecords, remainingBytes, remainingWork, remainingTime, )</ID>
+    <ID>NamedArguments:TraversalService.kt:TraversalService$create( plan, entry.node.fingerprint, nextDepth, fact, )</ID>
+    <ID>NamedArguments:TraversalService.kt:TraversalService$create( plan, state.frontier.sorted(), state.visited, state.pending, state.terminalRelationLimitations, )</ID>
+    <ID>NamedArguments:TraversalService.kt:TraversalService$resumable( plan, state, accounting, setOf(TraversalLimitation.ONE_HOP_INCOMPLETE), state.terminalRelationLimitations + relationResult.coverage.limitations, )</ID>
+    <ID>NamedArguments:TraversalService.kt:TraversalService$resumable( plan, state, accounting, state.limitationsWith(admission.limitation), state.terminalRelationLimitations, )</ID>
+    <ID>NamedArguments:TraversalService.kt:TraversalService$terminalIncomplete( plan, accounting, setOf(TraversalLimitation.ONE_HOP_INCOMPLETE), state.terminalRelationLimitations, )</ID>
+    <ID>NamedArguments:TraversalService.kt:TraversalService$terminalIncomplete( plan, accounting, state.limitationsWith(TraversalLimitation.DEPTH_LIMIT_REACHED), state.terminalRelationLimitations, )</ID>
+    <ID>NamedArguments:TraversalService.kt:TraversalService$terminalIncomplete( plan, accounting, state.limitationsWith(admission.limitation), state.terminalRelationLimitations, )</ID>
+    <ID>NestedBlockDepth:TraversalService.kt:TraversalService$override suspend fun run: TraversalResult</ID>
+  </CurrentIssues>
+</SmellBaseline>

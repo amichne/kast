@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>LongMethod:AddDeclarationPlanFixture.kt:AddDeclarationPlanFixture$private fun selector: SymbolSelector</ID>
+    <ID>LongMethod:HostedChangeAuthorityRestartTest.kt:HostedChangeAuthorityRestartTest$@Test fun `legacy exact application rows are refined without changing public identity`</ID>
+    <ID>LongMethod:HostedChangeAuthorityRestartTest.kt:HostedChangeAuthorityRestartTest$@Test fun `plan and application identities survive authority reopen`</ID>
+    <ID>LongMethod:MutationTargetAdmissionTest.kt:MutationTargetAdmissionTest$private fun selector: SymbolSelector</ID>
+  </CurrentIssues>
+</SmellBaseline>

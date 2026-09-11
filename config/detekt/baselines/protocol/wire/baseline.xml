@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>InvalidPackageDeclaration:CanonicalChangeDocuments.kt:package io.github.amichne.kast.protocol.wire</ID>
+    <ID>InvalidPackageDeclaration:CanonicalChangeMappings.kt:package io.github.amichne.kast.protocol.wire</ID>
+    <ID>InvalidPackageDeclaration:CanonicalChangeSerializers.kt:package io.github.amichne.kast.protocol.wire</ID>
+    <ID>InvalidPackageDeclaration:CanonicalIndexDocuments.kt:package io.github.amichne.kast.protocol.wire</ID>
+    <ID>InvalidPackageDeclaration:CanonicalIndexSerializers.kt:package io.github.amichne.kast.protocol.wire</ID>
+    <ID>InvalidPackageDeclaration:CanonicalOperationWireBindings.kt:package io.github.amichne.kast.protocol.wire</ID>
+    <ID>InvalidPackageDeclaration:CanonicalQueryDocuments.kt:package io.github.amichne.kast.protocol.wire</ID>
+    <ID>InvalidPackageDeclaration:CanonicalReadDocuments.kt:package io.github.amichne.kast.protocol.wire</ID>
+    <ID>InvalidPackageDeclaration:CanonicalReadEnumMappings.kt:package io.github.amichne.kast.protocol.wire</ID>
+    <ID>InvalidPackageDeclaration:CanonicalReadSerializers.kt:package io.github.amichne.kast.protocol.wire</ID>
+    <ID>InvalidPackageDeclaration:CanonicalSourceReadDocuments.kt:package io.github.amichne.kast.protocol.wire</ID>
+    <ID>InvalidPackageDeclaration:CanonicalSourceReadSerializers.kt:package io.github.amichne.kast.protocol.wire</ID>
+    <ID>InvalidPackageDeclaration:CanonicalSymbolSerializers.kt:package io.github.amichne.kast.protocol.wire</ID>
+    <ID>InvalidPackageDeclaration:TopologyBuildRejectionDocument.kt:package io.github.amichne.kast.protocol.wire</ID>
+    <ID>InvalidPackageDeclaration:TopologyCoverageDocuments.kt:package io.github.amichne.kast.protocol.wire</ID>
+    <ID>LargeClass:CanonicalOperationWireBindingsTest.kt:CanonicalOperationWireBindingsTest</ID>
+    <ID>LongMethod:CanonicalOperationWireBindingsTest.kt:CanonicalOperationWireBindingsTest$@Test fun `all production bindings round trip requests and every outcome variant`</ID>
+    <ID>LongMethod:CanonicalReadGeneratedSerializationTest.kt:CanonicalReadGeneratedSerializationTest$@Test fun `proof carrying qualifications round trip and malformed claims fail closed`</ID>
+    <ID>LongMethod:CanonicalSourceReadSerializers.kt:private fun SourceEntityWireDocument.toContract: WireDocumentConversion&lt;SourceEntityDocument></ID>
+    <ID>LongMethod:CanonicalTopologyRejectionWireTest.kt:CanonicalTopologyRejectionWireTest$@Test fun `generated coverage rejection preserves every exact mismatch`</ID>
+    <ID>LongMethod:CanonicalTopologyRejectionWireTest.kt:CanonicalTopologyRejectionWireTest$@Test fun `generated topology rejection preserves every specific extraction failure and path`</ID>
+    <ID>LongMethod:IdeEndpointDescriptorNegativeTest.kt:IdeEndpointDescriptorNegativeTest$@Test fun `unknown unsupported duplicate missing and reordered capabilities fail closed`</ID>
+    <ID>LongMethod:IdeEndpointDescriptorV2.kt:IdeEndpointDescriptorV2.Companion$fun create: IdeEndpointDescriptorAdmission</ID>
+    <ID>LongMethod:SymbolPublicSurfaceWireTest.kt:SymbolPublicSurfaceWireTest$@Test fun `describe and relation share one structured symbol document`</ID>
+    <ID>MagicNumber:TopologyCoverageDocuments.kt:3</ID>
+    <ID>MagicNumber:TopologyCoverageDocuments.kt:4</ID>
+    <ID>MaxLineLength:CanonicalChangeGeneratedSerializationTest.kt:CanonicalChangeGeneratedSerializationTest$"""{"intent":{"kind":"add-declaration","exactTarget":"exact:Target","declaration":"fun added() = Unit"}}"""</ID>
+    <ID>MaxLineLength:CanonicalChangeGeneratedSerializationTest.kt:CanonicalChangeGeneratedSerializationTest$"""{"intent":{"kind":"replace-declaration","exactTarget":"exact:Target","replacement":"class Target"}}"""</ID>
+    <ID>MaxLineLength:CanonicalChangeGeneratedSerializationTest.kt:CanonicalChangeGeneratedSerializationTest$"""{"receiptIdentity":"receipt:1","changes":[{"path":"src/Target.kt","kind":"update","diff":"-old\n+new"}]}"""</ID>
+    <ID>MaxLineLength:CanonicalReadGeneratedSerializationTest.kt:CanonicalReadGeneratedSerializationTest$"""{"diagnostics":[{"severity":"unknown","code":"UNUSED","message":"unused","location":{"file":"src/A.kt","range":{"startInclusive":7,"endExclusive":7}}}]}"""</ID>
+    <ID>MaxLineLength:CanonicalReadGeneratedSerializationTest.kt:CanonicalReadGeneratedSerializationTest$"""{"diagnostics":[{"severity":"warning","code":"UNUSED","message":"unused","location":{"candidateSelector":"candidate:v2:diagnostic","file":"src/A.kt","range":{"startInclusive":7,"endExclusive":7}}}]}"""</ID>
+    <ID>MaxLineLength:CanonicalReadGeneratedSerializationTest.kt:CanonicalReadGeneratedSerializationTest$"""{"exactSelector":"exact:Target","relation":"callees","maximumDepth":3,"maximumResults":25,"position":{"type":"resume","continuation":"${continuation.value}"}}"""</ID>
+    <ID>MaxLineLength:CanonicalReadGeneratedSerializationTest.kt:CanonicalReadGeneratedSerializationTest$"""{"exactSelector":"exact:Target","relation":"callees","maximumDepth":3,"maximumResults":25,"position":{"type":"resume","continuation":"bad"}}"""</ID>
+    <ID>MaxLineLength:CanonicalReadGeneratedSerializationTest.kt:CanonicalReadGeneratedSerializationTest$"""{"exactSelector":"exact:Target","relation":"callees","maximumDepth":3,"maximumResults":25,"position":{"type":"start"}}"""</ID>
+    <ID>MaxLineLength:CanonicalReadGeneratedSerializationTest.kt:CanonicalReadGeneratedSerializationTest$"""{"exactSelector":"exact:Target","relation":"callers","limit":25,"position":{"type":"resume","continuation":"${continuation.value}"}}"""</ID>
+    <ID>MaxLineLength:CanonicalReadGeneratedSerializationTest.kt:CanonicalReadGeneratedSerializationTest$"""{"exactSelector":"exact:Target","relation":"callers","limit":25,"position":{"type":"start"},"extra":true}"""</ID>
+    <ID>MaxLineLength:CanonicalReadGeneratedSerializationTest.kt:CanonicalReadGeneratedSerializationTest$"""{"knownDiagnosticCount":3,"resultLimitReached":true,"analyzedFiles":["src/A.kt"],"limitations":[{"file":"src/A.kt","reason":"indexing"}]}"""</ID>
+    <ID>MaxLineLength:CanonicalReadGeneratedSerializationTest.kt:CanonicalReadGeneratedSerializationTest$"""{"knownDiagnosticCount":3,"resultLimitReached":true,"analyzedFiles":["src/A.kt"],"limitations":[{"file":"src/B.kt","reason":"indexing"}]}"""</ID>
+    <ID>MaxLineLength:CanonicalReadGeneratedSerializationTest.kt:CanonicalReadGeneratedSerializationTest$"""{"type":"resumable","knownMinimum":2,"limitations":["provider_incomplete","result_limit_reached"],"continuation":"${continuation.value}"}"""</ID>
+    <ID>MaxLineLength:CanonicalReadGeneratedSerializationTest.kt:CanonicalReadGeneratedSerializationTest$"""{"type":"resumable","knownMinimum":2,"limitations":["result_limit_reached","provider_incomplete"],"continuation":"${continuation.value}"}"""</ID>
+    <ID>MaxLineLength:CanonicalReadGeneratedSerializationTest.kt:CanonicalReadGeneratedSerializationTest$"""{"type":"resumable","limitations":["one_hop_incomplete"],"relationLimitations":[],"continuation":"${traversalContinuation.value}"}"""</ID>
+    <ID>MaxLineLength:CanonicalReadGeneratedSerializationTest.kt:CanonicalReadGeneratedSerializationTest$"""{"type":"resumable","limitations":["record_limit_reached","one_hop_incomplete"],"relationLimitations":["provider_incomplete"],"continuation":"${traversalContinuation.value}"}"""</ID>
+    <ID>MaxLineLength:CanonicalReadGeneratedSerializationTest.kt:CanonicalReadGeneratedSerializationTest$"""{"type":"terminal_incomplete","limitations":["one_hop_incomplete"],"relationLimitations":["unresolved_target"]}"""</ID>
+    <ID>MaxLineLength:CanonicalSelectableLocationWireTest.kt:CanonicalSelectableLocationWireTest$"""{"diagnostics":[{"severity":"warning","code":"INSERTION_POINT","message":"insert here","location":{"file":"src/A.kt","range":{"startInclusive":7,"endExclusive":7}}}]}"""</ID>
+    <ID>MaxLineLength:CanonicalSelectableLocationWireTest.kt:CanonicalSelectableLocationWireTest$"""{"relations":[{"meaning":"references","source":${symbolJson()},"target":${symbolJson()},"occurrence":{"file":"src/A.kt","range":{"startInclusive":4,"endExclusive":8}},"provenance":"k2-authored-source","coverage":"exact-compiler-confirmed"}]}"""</ID>
+    <ID>MaxLineLength:CanonicalSymbolGeneratedSerializationTest.kt:CanonicalSymbolGeneratedSerializationTest$"""{"symbol":{"selector":"exact:v1:sample","kind":"type-alias","name":"Sample","qualifiedIdentity":"sample.Sample","file":"src/Sample.kt","range":{"startInclusive":4,"endExclusive":10},"compilerEvidence":{"identity":"${evidence.identity.value}","signature":{"type":"type-alias","qualifiedIdentity":"sample.Sample"}}}}"""</ID>
+    <ID>MaxLineLength:CanonicalSymbolGeneratedSerializationTest.kt:CanonicalSymbolGeneratedSerializationTest$"""{"symbol":{"selector":"exact:v1:sample","kind":"type-alias","name":"sample","file":"src/Sample.kt","range":{"startInclusive":4,"endExclusive":10},"compilerEvidence":{"identity":"identity","signature":{"type":"type-alias","qualifiedIdentity":"sample.Sample"}}}}"""</ID>
+    <ID>MaxLineLength:CanonicalSymbolGeneratedSerializationTest.kt:CanonicalSymbolGeneratedSerializationTest$"""{"symbol":{"selector":"exact:v1:sample","kind":"type-alias","name":"sample","qualifiedIdentity":null,"file":"src/Sample.kt","range":{"startInclusive":10,"endExclusive":4},"compilerEvidence":{"identity":"identity","signature":{"type":"type-alias","qualifiedIdentity":"sample.Sample"}}}}"""</ID>
+    <ID>MaxLineLength:CanonicalSymbolGeneratedSerializationTest.kt:CanonicalSymbolGeneratedSerializationTest$"""{"target":{"type":"name","query":"Controller","kind":"symbol","match":"exact-name"},"limit":25,"extra":true}"""</ID>
+    <ID>WildcardImport:CanonicalQueryDocuments.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:CanonicalQueryWireBindingTest.kt:import io.github.amichne.kast.kernel.*</ID>
+    <ID>WildcardImport:CanonicalQueryWireBindingTest.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:SnapshotEvidenceWireBindingTest.kt:import io.github.amichne.kast.kernel.*</ID>
+    <ID>WildcardImport:SnapshotEvidenceWireBindingTest.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:SnapshotEvidenceWireBindingTest.kt:import kotlinx.serialization.json.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

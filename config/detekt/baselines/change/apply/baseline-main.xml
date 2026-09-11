@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:MutationAdmission.kt:DerivedMutationPostimage.Companion$private fun deriveExisting: Refinement&lt;DerivedMutationPostimage, MutationAdmissionFailure></ID>
+    <ID>CognitiveComplexMethod:MutationAdmission.kt:MutationAdmissionService$fun admit: Refinement&lt;AdmittedMutation, MutationAdmissionFailure></ID>
+    <ID>CyclomaticComplexMethod:MutationAdmission.kt:DerivedMutationPostimage.Companion$private fun deriveExisting: Refinement&lt;DerivedMutationPostimage, MutationAdmissionFailure></ID>
+    <ID>CyclomaticComplexMethod:MutationAdmission.kt:MutationAdmissionService$fun admit: Refinement&lt;AdmittedMutation, MutationAdmissionFailure></ID>
+    <ID>LongMethod:MutationAdmission.kt:DerivedMutationPostimage.Companion$private fun deriveExisting: Refinement&lt;DerivedMutationPostimage, MutationAdmissionFailure></ID>
+    <ID>LongMethod:MutationAdmission.kt:MutationAdmissionService$fun admit: Refinement&lt;AdmittedMutation, MutationAdmissionFailure></ID>
+    <ID>LongMethod:MutationAuthority.kt:MutationAuthority.Companion$fun restore: Refinement&lt;MutationAuthority, MutationAuthorityRestorationFailure></ID>
+    <ID>LongParameterList:MutationAdmission.kt:MutationPlanPublication</ID>
+    <ID>LongParameterList:MutationAuthority.kt:MutationAuthority</ID>
+    <ID>MultilineLambdaItParameter:MutationAdmission.kt:DerivedMutationPostimage.Companion${ it.startInclusive &lt; 0 || it.endExclusive &lt; it.startInclusive || it.endExclusive > preimage.text.length }</ID>
+    <ID>NamedArguments:AddDeclarationApplyService.kt:AppliedUnverified.Companion$AppliedUnverified( authority.planId, authority.source, authority.publication, write.content, recovery.record.binding, )</ID>
+    <ID>NamedArguments:AddDeclarationApplyService.kt:AppliedUnverified.Companion$AppliedUnverified( plan.planId, source, publication, postimage, recoveryBinding, )</ID>
+    <ID>NamedArguments:MutationAdmission.kt:MutationAdmissionService$AdmittedMutation( request, observed, currentRoot, write, publication, )</ID>
+    <ID>NamedArguments:MutationAdmission.kt:MutationPlanPublication.Companion$MutationPlanPublication( plan.priorLease, plan.workspaceState, applicationLease, applicationState, relationship, write.source, write.sourceRoot, write.precondition, )</ID>
+    <ID>NamedArguments:MutationAdmission.kt:MutationPlanPublication.Companion$MutationPlanPublication( plan.priorLease, plan.workspaceState, request.workspace.readLease, request.workspace.sourceState, relationship, plannedWrite.source, plannedWrite.sourceRoot, plannedWrite.precondition, )</ID>
+    <ID>NamedArguments:MutationAuthority.kt:MutationAuthority.Companion$MutationAuthority( admitted.request.plan.planId, recovery.record.binding, admitted.write.source, admitted.request.plan.intent, admitted.publication, admitted.write.preimage, admitted.write.postimage, )</ID>
+    <ID>NamedArguments:MutationAuthority.kt:MutationAuthority.Companion$MutationAuthority( plan.planId, record.binding, write.source, plan.intent, publication, precondition, postimage, )</ID>
+    <ID>NamedArguments:MutationObservation.kt:ObservedMutationSource.Companion$ObservedMutationSource(source, content, access, text, preimage)</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:WorkspaceSearchScopeModel.kt:WorkspaceSearchScopeModel.Companion$private fun refineBoundary: Refinement&lt;ModelOwnedSourceRoot, Set&lt;WorkspaceSearchScopeModelFailure>></ID>
+    <ID>ComplexCondition:SourceRoot.kt:SourceRoot.Companion$raw == "." || raw.isNotEmpty() &amp;&amp; !path.isAbsolute &amp;&amp; segments.none { it.isEmpty() || it == "." || it == ".." }</ID>
+    <ID>CyclomaticComplexMethod:WorkspaceSearchScopeModel.kt:WorkspaceSearchScopeModel.Companion$private fun refineBoundary: Refinement&lt;ModelOwnedSourceRoot, Set&lt;WorkspaceSearchScopeModelFailure>></ID>
+    <ID>InvalidPackageDeclaration:ProjectReadEpoch.kt:package io.github.amichne.kast.workspace.contract</ID>
+    <ID>InvalidPackageDeclaration:SemanticReadAuthority.kt:package io.github.amichne.kast.workspace.contract</ID>
+    <ID>InvalidPackageDeclaration:SemanticReadLease.kt:package io.github.amichne.kast.workspace.contract</ID>
+    <ID>InvalidPackageDeclaration:VfsPassiveReadCapability.kt:package io.github.amichne.kast.workspace.contract</ID>
+    <ID>LongMethod:SourceRoot.kt:SourceRoot.Companion$fun admit: Refinement&lt;SourceRoot, Set&lt;SourceRootAdmissionFailure>></ID>
+    <ID>LongMethod:WorkspaceSearchScopeModel.kt:WorkspaceSearchScopeModel.Companion$private fun refineBoundary: Refinement&lt;ModelOwnedSourceRoot, Set&lt;WorkspaceSearchScopeModelFailure>></ID>
+    <ID>MagicNumber:WorkspaceResourcePolicy.kt:WorkspaceCriticalHeapPercent.Companion$100</ID>
+    <ID>MagicNumber:WorkspaceResourcePolicy.kt:WorkspaceHeapUtilizationPercent.Companion$100</ID>
+    <ID>MaxLineLength:SemanticReadAuthority.kt:SemanticReadRevisionKey.Companion$"live-ide-v${reference.version}:${reference.host.value}:${reference.epoch.value}:${reference.contentView.name}"</ID>
+    <ID>NamedArguments:SemanticReadAuthority.kt:LiveSemanticReadOwner$LiveSemanticReadReference( root, host, revision, IdeReadContentView.SAVED_PSI_COMMITTED, LiveSemanticReadReference.VERSION, )</ID>
+  </CurrentIssues>
+</SmellBaseline>

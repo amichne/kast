@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:ReadLimits.kt:ReadLimits.Companion$fun resolve: Refinement&lt;ReadLimits, ReadLimitFailure></ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.CLIENT_EXCHANGE_MILLIS$6_000</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.DIAGNOSTIC_COUNT$1_000_000_000</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.DIAGNOSTIC_FAILURES$16</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.DIAGNOSTIC_FRAMES$8</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.DIAGNOSTIC_SCOPE_FILES$256</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.DIAGNOSTIC_SCOPE_MILLIS$2_000</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.DIAGNOSTIC_SCOPE_WORK$20_000</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.DIAGNOSTIC_TEXT_CHARACTERS$256</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.DISCOVERY_CANDIDATES$10_000</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.DISCOVERY_NAMES$10_000</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.EPOCH_CACHED_GRADLE_MODELS$16</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.EPOCH_PATH_BYTES$8_192</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.EPOCH_PATH_CHARACTERS$4_096</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.EPOCH_VFS_EVENTS$4_096</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.HOST_CLASS_CANDIDATES$32</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.HOST_CONNECTION_MILLIS$5_000</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.HOST_DESCRIPTOR_BYTES$16_384</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.HOST_DESCRIPTOR_BYTES$256</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.HOST_FILE_CHARACTERS$262_144</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.HOST_QUERY_MILLIS$2_000</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.HOST_REQUEST_BYTES$16_384</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.HOST_REQUEST_BYTES$256</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.HOST_RESPONSE_BYTES$256</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.HOST_RESPONSE_BYTES$65_536</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.MODEL_CACHED_GRADLE_MODELS$8</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.MODEL_CLASSPATH_ENTRIES_PER_MODULE$2_048</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.MODEL_CLASSPATH_URL_CHARACTERS$8_192</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.MODEL_IDENTITY_CHARACTERS$512</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.MODEL_MODULES$256</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.MODEL_PATH_CHARACTERS$4_096</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE$256</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.PROCESS_INPUT_BYTES$1_024</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.PROCESS_INPUT_BYTES$256</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.PROCESS_INPUT_BYTES$4</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.PROCESS_OUTPUT_BYTES$1_024</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.PROCESS_OUTPUT_BYTES$256</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.PROCESS_OUTPUT_BYTES$64</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.PROCESS_TIMEOUT_MILLIS$1_260_000</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.PROVIDER_GRAPH_INVOCATION_MILLIS$1_260_000</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.PROVIDER_INVOCATION_MILLIS$1_080_000</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.PROVIDER_OUTPUT_BYTES$1_024</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.PROVIDER_OUTPUT_BYTES$256</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.PROVIDER_OUTPUT_BYTES$512</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.RELATION_CANDIDATES$10_000</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.SEMANTIC_MILLIS$2_000</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.SEMANTIC_RESULTS$128</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.SEMANTIC_RETURNED_BYTES$49_152</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.SEMANTIC_WORK$100_000</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.SOURCE_CONTINUATIONS$1_024</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.SOURCE_ENTITIES$128</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.SOURCE_ENTITY_WORK$10_000</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.SOURCE_RETURNED_BYTES$49_152</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.TRAVERSAL_DEPTH$16</ID>
+    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.TRAVERSAL_FRONTIER$128</ID>
+    <ID>WildcardImport:ReadLimitsTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

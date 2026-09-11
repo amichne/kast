@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>IteratorNotThrowingNoSuchElementException:AdmittedSourceRootEnumeratorTest.kt:AdmittedSourceRootEnumeratorTest$&lt;no name provided> : Iterator</ID>
+    <ID>LongMethod:TopologyVfsSynchronizationTest.kt:TopologyVfsSynchronizationTest$@Test fun `all admitted roots synchronize before authored and generated candidates are hashed`</ID>
+    <ID>NamedArguments:AdmittedSourceRootEnumeratorTest.kt:AdmittedSourceRootEnumeratorTest$GradleSourceRootEvidence( module, ".", project, "main", location, SourceRootProvenance.Authored, )</ID>
+    <ID>NamedArguments:HostedWorkspaceSourceStateTest.kt:HostedWorkspaceSourceStateTest$GradleSourceRootEvidence( module, ".", project, "main", location, provenance, )</ID>
+    <ID>NamedArguments:HostedWorkspaceSourceStateTest.kt:HostedWorkspaceSourceStateTest$sourceRoot( "root.main", ":", "src/main/kotlin", SourceRootProvenance.Generated, )</ID>
+    <ID>NamedArguments:TopologyIdentityResolutionTest.kt:TopologyIdentityResolutionTest$admit( workspace, root, WorkspaceSourcePath.parse("src/main/kotlin/Example.kt").refined(), WorkspaceSourceContentHash.parse("a".repeat(64)).refined(), )</ID>
+    <ID>NamedArguments:TopologyIdentityResolutionTest.kt:TopologyIdentityResolutionTest$fromBoundary( fileIdentity, 0, 7, "example", "sample.example", kind, signature, )</ID>
+    <ID>NamedArguments:TopologyProjectionRegistryCacheTest.kt:TopologyProjectionRegistryCacheTest$TopologyIdentityMismatchEvidence( TopologyIdentityStage.REFERENCE_TARGET, file, evidence.range, file, evidence.range, TopologyBindingFailure.DECLARATION_MISMATCH, )</ID>
+    <ID>NamedArguments:TopologyProjectionRegistryCacheTest.kt:TopologyProjectionRegistryCacheTest$admit( workspace, root, WorkspaceSourcePath.parse("src/main/kotlin/Example.kt").refined(), WorkspaceSourceContentHash.parse(contentHash).refined(), )</ID>
+    <ID>NamedArguments:TopologyProjectionRegistryCacheTest.kt:TopologyProjectionRegistryCacheTest$fromBoundary( fileIdentity, 0, 7, "example", "sample.example", CompilerSymbolKind.FUNCTION, CanonicalCompilerSignature.function( rawQualifiedIdentity = "sample.example", rawReceiverType = null, rawContextReceiverTypes = emptyList(), rawValueParameterTypes = listOf(compilerIdentity), rawTypeParameterCount = 0, ) .refined(), )</ID>
+    <ID>NamedArguments:TopologyVfsSynchronizationTest.kt:TopologyVfsSynchronizationTest$GradleSourceRootEvidence(module, ".", ":", "main", location, provenance)</ID>
+  </CurrentIssues>
+</SmellBaseline>

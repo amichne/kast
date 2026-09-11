@@ -1,0 +1,86 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:GradleImportEnvironment.kt:GradleImportEnvironment.Companion$fun admit: Refinement&lt;GradleImportEnvironment, GradleImportEnvironmentFailure></ID>
+    <ID>CognitiveComplexMethod:KastConfigurationCatalogue.kt:ConfigurationParameter$private fun baseDeclaration: ConfigurationDeclaration</ID>
+    <ID>CognitiveComplexMethod:KastConfigurationResolution.kt:ResolvedKastConfiguration$private fun childProjection: Map&lt;String, String></ID>
+    <ID>CognitiveComplexMethod:KastConfigurationResolution.kt:ResolvedKastConfiguration.Companion$fun resolve: Refinement&lt;ResolvedKastConfiguration, ConfigurationRejection></ID>
+    <ID>CognitiveComplexMethod:KastConfigurationResolution.kt:private fun parse: Refinement&lt;ConfigurationValue, ConfigurationRejection></ID>
+    <ID>CognitiveComplexMethod:NetworkConfiguration.kt:NetworkConfiguration.Companion$fun parse: Refinement&lt;NetworkConfiguration, NetworkConfigurationFailure></ID>
+    <ID>CognitiveComplexMethod:SemanticRuntimeContract.kt:private fun ManifestDocument.admit: SemanticRuntimeManifestAdmission</ID>
+    <ID>ComplexCondition:GradleImportEnvironment.kt:GradleImportExecutableDirectory.Companion$raw.isNotBlank() &amp;&amp; raw.length &lt;= 4096 &amp;&amp; ':' !in raw &amp;&amp; '\n' !in raw &amp;&amp; '\r' !in raw &amp;&amp; path.isAbsolute &amp;&amp; path.normalize() == path</ID>
+    <ID>ComplexCondition:KastConfigurationResolution.kt:ResolvedKastConfiguration$child in assignment.parameter.children &amp;&amp; (!reloadSaved || assignment.source != ConfigurationSource.DEFAULT) &amp;&amp; !(reloadInstallation &amp;&amp; assignment.source == ConfigurationSource.SAVED_INSTALLATION)</ID>
+    <ID>ComplexCondition:KastConfigurationResolution.kt:raw.isBlank() || raw.length > 4096 || !path.isAbsolute || path.normalize() != path</ID>
+    <ID>ComplexCondition:KastConfigurationResolution.kt:raw.length > 32 * 1024 || raw.any { it == '\u0000' || it == '\n' || it == '\r' }</ID>
+    <ID>ComplexCondition:NetworkConfiguration.kt:NetworkConfiguration.Companion$(NetworkProperty.HTTP_PORT in values &amp;&amp; NetworkProperty.HTTP_HOST !in values) || (NetworkProperty.HTTPS_PORT in values &amp;&amp; NetworkProperty.HTTPS_HOST !in values)</ID>
+    <ID>ComplexCondition:NetworkConfiguration.kt:NetworkConfiguration.Companion$value.length > 8192 || value.any { it == '\u0000' || it == '\n' || it == '\r' }</ID>
+    <ID>ComplexCondition:SemanticRuntimeContract.kt:schemaVersion != MANIFEST_SCHEMA_VERSION || platform != RuntimePlatform.MACOS.wireValue || architecture != RuntimeArchitecture.AARCH64.wireValue || layout.requiredEntries.isEmpty() || layout.executableEntries.isEmpty()</ID>
+    <ID>ComplexCondition:SemanticRuntimeValues.kt:RuntimeLayoutEntry.Companion$normalized.isNotBlank() &amp;&amp; SAFE_ENTRY_PATTERN.matches(raw) &amp;&amp; !raw.startsWith('/') &amp;&amp; normalized.split('/').none { it.isBlank() || it == "." || it == ".." }</ID>
+    <ID>CyclomaticComplexMethod:KastConfigurationResolution.kt:ResolvedKastConfiguration$private fun childProjection: Map&lt;String, String></ID>
+    <ID>CyclomaticComplexMethod:KastConfigurationResolution.kt:ResolvedKastConfiguration.Companion$fun resolve: Refinement&lt;ResolvedKastConfiguration, ConfigurationRejection></ID>
+    <ID>CyclomaticComplexMethod:KastConfigurationResolution.kt:private fun parse: Refinement&lt;ConfigurationValue, ConfigurationRejection></ID>
+    <ID>CyclomaticComplexMethod:NetworkConfiguration.kt:NetworkConfiguration.Companion$fun parse: Refinement&lt;NetworkConfiguration, NetworkConfigurationFailure></ID>
+    <ID>CyclomaticComplexMethod:SemanticRuntimeContract.kt:private fun ManifestDocument.admit: SemanticRuntimeManifestAdmission</ID>
+    <ID>LongMethod:KastConfigurationCatalogue.kt:ConfigurationParameter$private fun baseDeclaration: ConfigurationDeclaration</ID>
+    <ID>LongMethod:KastConfigurationResolution.kt:ResolvedKastConfiguration.Companion$fun resolve: Refinement&lt;ResolvedKastConfiguration, ConfigurationRejection></ID>
+    <ID>LongMethod:KastConfigurationResolution.kt:private fun parse: Refinement&lt;ConfigurationValue, ConfigurationRejection></ID>
+    <ID>LongMethod:NetworkConfiguration.kt:NetworkConfiguration.Companion$fun parse: Refinement&lt;NetworkConfiguration, NetworkConfigurationFailure></ID>
+    <ID>LongMethod:SemanticRuntimeContract.kt:private fun ManifestDocument.admit: SemanticRuntimeManifestAdmission</ID>
+    <ID>LongParameterList:KastConfigurationCatalogue.kt:ConfigurationParameter</ID>
+    <ID>LongParameterList:KastConfigurationResolution.kt:ResolvedKastConfiguration</ID>
+    <ID>LongParameterList:SemanticRuntimeContract.kt:SemanticRuntimeManifest</ID>
+    <ID>MagicNumber:ConfigurationMetadata.kt:32</ID>
+    <ID>MagicNumber:ConfigurationMetadata.kt:64</ID>
+    <ID>MagicNumber:GradleImportEnvironment.kt:0xff</ID>
+    <ID>MagicNumber:GradleImportEnvironment.kt:16</ID>
+    <ID>MagicNumber:GradleImportEnvironment.kt:GradleImportEnvironment.Companion$32</ID>
+    <ID>MagicNumber:GradleImportEnvironment.kt:GradleImportEnvironment.Companion$64</ID>
+    <ID>MagicNumber:GradleImportEnvironment.kt:GradleImportEnvironment.Companion$65536</ID>
+    <ID>MagicNumber:GradleImportEnvironment.kt:GradleImportExecutableDirectory.Companion$4096</ID>
+    <ID>MagicNumber:GradleJvmSelectionReport.kt:GradleJvmSelectionReport$32</ID>
+    <ID>MagicNumber:GradleJvmSelectionReport.kt:GradleJvmSelectionReport$99</ID>
+    <ID>MagicNumber:KastConfigurationResolution.kt:1024</ID>
+    <ID>MagicNumber:KastConfigurationResolution.kt:128</ID>
+    <ID>MagicNumber:KastConfigurationResolution.kt:32</ID>
+    <ID>MagicNumber:KastConfigurationResolution.kt:4096</ID>
+    <ID>MagicNumber:KastConfigurationResolution.kt:64</ID>
+    <ID>MagicNumber:ModelInputFailure.kt:ModelInputPath.Companion$127</ID>
+    <ID>MagicNumber:ModelInputFailure.kt:ModelInputPath.Companion$32</ID>
+    <ID>MagicNumber:ModelInputFailure.kt:ModelInputPath.Companion$4096</ID>
+    <ID>MagicNumber:NetworkConfiguration.kt:NetworkConfiguration.Companion$65535</ID>
+    <ID>MagicNumber:NetworkConfiguration.kt:NetworkConfiguration.Companion$8192</ID>
+    <ID>MaxLineLength:SemanticRuntimeBootstrapPhase.kt:SemanticRuntimeBootstrapCorrectiveAction.CORRECT_MODEL_INPUTS$"Repair the reported Gradle input: targets must exist, remain inside the workspace, be readable, and contain no link cycles; then run kast start again."</ID>
+    <ID>MaxLineLength:SemanticRuntimeBootstrapPhase.kt:SemanticRuntimeBootstrapCorrectiveAction.VERIFY_GRADLE_TOOLING_PAYLOAD$"Update Kast to a build with Gradle tooling payloads compatible with the project JVM, then run kast start again."</ID>
+    <ID>MaxLineLength:SemanticRuntimeBootstrapPhase.kt:SemanticRuntimeBootstrapCorrectiveAction.VERIFY_NETWORK_CACHE$"Verify that the private Kast cache is writable and contains no conflicting network artifacts, then run kast start again."</ID>
+    <ID>MaxLineLength:SemanticRuntimeBootstrapPhase.kt:SemanticRuntimeBootstrapCorrectiveAction.VERIFY_TRUST_DONOR$"Verify that the configured donor Java home contains a readable jssecacerts or cacerts trust store with certificates; do not disable TLS verification."</ID>
+    <ID>MultilineLambdaItParameter:KastConfigurationResolution.kt:ResolvedKastConfiguration${ it.parameter == ConfigurationParameter.GRADLE_IMPORT_PATH &amp;&amp; it.source == ConfigurationSource.SAVED_INSTALLATION }</ID>
+    <ID>MultilineLambdaItParameter:KastConfigurationResolution.kt:ResolvedKastConfiguration${ it.parameter == ConfigurationParameter.GRADLE_IMPORT_VARIABLES &amp;&amp; it.source == ConfigurationSource.SAVED_INSTALLATION }</ID>
+    <ID>NamedArguments:ConfigurationMetadata.kt:DerivedConfigurationDeclarations$derived( "BROKER_READINESS_FILE", ":app-server", ConfigurationSyntax.ABSOLUTE_PATH, ConfigurationSource.PROCESS_ENVIRONMENT, )</ID>
+    <ID>NamedArguments:ConfigurationMetadata.kt:DerivedConfigurationDeclarations$derived( "BROKER_SERVICE_IDENTITY", ":app-server", ConfigurationSyntax.OWNER_INPUT, ConfigurationSource.PROCESS_ENVIRONMENT, )</ID>
+    <ID>NamedArguments:ConfigurationMetadata.kt:DerivedConfigurationDeclarations$derived( "kast.bootstrap.attempt.id", ":indexer", ConfigurationSyntax.OWNER_INPUT, ConfigurationSource.JVM_PROPERTY, )</ID>
+    <ID>NamedArguments:ConfigurationMetadata.kt:DerivedConfigurationDeclarations$derived( "kast.bootstrap.state.path", ":indexer", ConfigurationSyntax.ABSOLUTE_PATH, ConfigurationSource.JVM_PROPERTY, )</ID>
+    <ID>NamedArguments:ConfigurationMetadata.kt:DerivedConfigurationDeclarations$derived( "kast.cache.state.path", ":indexer", ConfigurationSyntax.ABSOLUTE_PATH, ConfigurationSource.JVM_PROPERTY, )</ID>
+    <ID>NamedArguments:ConfigurationMetadata.kt:DerivedConfigurationDeclarations$derived( "kast.network.cache.root", ":workspace:intellij", ConfigurationSyntax.ABSOLUTE_PATH, ConfigurationSource.JVM_PROPERTY, )</ID>
+    <ID>NamedArguments:ConfigurationMetadata.kt:DerivedConfigurationDeclarations$derived( "kast.network.workspace.root", ":workspace:intellij", ConfigurationSyntax.ABSOLUTE_PATH, ConfigurationSource.JVM_PROPERTY, )</ID>
+    <ID>NamedArguments:ConfigurationMetadata.kt:DerivedConfigurationDeclarations$derived( KastNetworkPropertyNamespace.DAEMON_PREFIX + property.key, ":workspace:intellij", ConfigurationSyntax.OWNER_INPUT, ConfigurationSource.JVM_PROPERTY, )</ID>
+    <ID>NamedArguments:InstallationOperationalLimits.kt:InstallationOperationalLimits$ConfigurationOperationalLimit( key, ":distribution:contract", value, unit, ConfigurationScope.INSTALLATION, "InstallationOperationalLimits.$member" + if (projected) "; standalone projections verified by configuration_ingress.py" else "", )</ID>
+    <ID>NamedArguments:InstallationOperationalLimits.kt:InstallationOperationalLimits$limit( "installation.activation.lock_poll", activationLockPollMillis, ConfigurationUnit.MILLISECONDS, "activationLockPollMillis", )</ID>
+    <ID>NamedArguments:InstallationOperationalLimits.kt:InstallationOperationalLimits$limit( "installation.activation.lock_timeout", activationLockTimeoutMillis, ConfigurationUnit.MILLISECONDS, "activationLockTimeoutMillis", )</ID>
+    <ID>NamedArguments:InstallationOperationalLimits.kt:InstallationOperationalLimits$limit( "installation.download.retries", downloadRetries, ConfigurationUnit.COUNT, "downloadRetries", projected = true, )</ID>
+    <ID>NamedArguments:InstallationOperationalLimits.kt:InstallationOperationalLimits$limit( "installation.download.retry_delay", downloadRetryDelayMillis, ConfigurationUnit.MILLISECONDS, "downloadRetryDelayMillis", projected = true, )</ID>
+    <ID>NamedArguments:InstallationOperationalLimits.kt:InstallationOperationalLimits$limit( "installation.retirement.child_timeout", retirementChildTimeoutMillis, ConfigurationUnit.MILLISECONDS, "retirementChildTimeoutMillis", projected = true, )</ID>
+    <ID>NamedArguments:InstallationOperationalLimits.kt:InstallationOperationalLimits$limit( "installation.state.maximum_entries", stateMaximumEntries, ConfigurationUnit.COUNT, "stateMaximumEntries", projected = true, )</ID>
+    <ID>NamedArguments:KastConfigurationCatalogue.kt:ConfigurationParameter$ConfigurationDeclaration( key, owner, when (this) { RUNTIME_STORE -> "Verified runtime payload store; defaults to the physical installation runtime-payloads directory." RUNTIME_DIRECTORY -> "Worker socket namespace owned by the physical installation state/run directory." CACHE_ROOT -> "Private sidecar cache; defaults to the physical installation state/cache directory." else -> key.lowercase().replace('_', ' ') }, syntax, scope, if (this == INDEXER_MAX_HEAP) "${IndexerHeapSize.Default.mebibytes}m" else defaultValue, when (this) { INDEXER_MAX_HEAP -> "IndexerHeapSize.Default" APP_SERVER_TOOLS -> "CanonicalAgentToolDefinitions.defaultAppServerTools" else -> if (defaultValue == null) "owning boundary; no catalogue fallback" else "declared literal" }, when (scope) { ConfigurationScope.INSTALLATION -> ConfigurationBoundary.NEXT_INSTALLATION_ACTIVATION ConfigurationScope.HOST_PROFILE -> ConfigurationBoundary.NEXT_CONNECTION ConfigurationScope.WORKSPACE -> ConfigurationBoundary.NEXT_WORKER_LAUNCH ConfigurationScope.REQUEST -> ConfigurationBoundary.REQUEST ConfigurationScope.BUILD -> ConfigurationBoundary.BUILD ConfigurationScope.TEST -> ConfigurationBoundary.TEST }, when (this) { GRADLE_JAVA_HOME, GRADLE_IMPORT_VARIABLES, GRADLE_IMPORT_PATH, GRADLE_USER_HOME, NETWORK_CONFIG, TRUST_DONOR_JAVA_HOME, IDE_CONFIG_HOME -> ConfigurationImpact.MODEL APP_SERVER_TOOLS, CODEX_HOME -> ConfigurationImpact.ROUTING else -> ConfigurationImpact.LAUNCH_ONLY }, disclosure, mutability, if (mutability == ConfigurationMutability.DERIVED) listOf(ConfigurationSource.PROCESS_ENVIRONMENT) else listOf(ConfigurationSource.COMMAND_LINE, ConfigurationSource.PROCESS_ENVIRONMENT) + (if (scope == ConfigurationScope.WORKSPACE) listOf(ConfigurationSource.SAVED_WORKSPACE) else emptyList()) + (if (mutability == ConfigurationMutability.USER_SETTING) listOf(ConfigurationSource.SAVED_INSTALLATION) else emptyList()) + ConfigurationSource.DEFAULT, children.sortedBy { it.name }, )</ID>
+    <ID>NamedArguments:KastConfigurationResolution.kt:ResolvedKastConfiguration$ConfigurationInspection( declaration.key, assignment.source, when (declaration.disclosure) { ConfigurationDisclosure.PUBLIC -> assignment.value.boundaryValue() ConfigurationDisclosure.SENSITIVE_PATH -> "&lt;path>" ConfigurationDisclosure.SECRET_PRESENCE -> "&lt;present>" }, assignment.overriddenSources, declaration.applicationBoundary, when (assignment.value) { is ConfigurationValue.OwnerInput -> ConfigurationSemanticAdmission.OWNER_REQUIRED is ConfigurationValue.Directory -> ConfigurationSemanticAdmission.PHYSICAL_REQUIRED is ConfigurationValue.ReadLimit, is ConfigurationValue.Heap, is ConfigurationValue.Switch, is ConfigurationValue.WorkerCount, is ConfigurationValue.Memory -> ConfigurationSemanticAdmission.ADMITTED }, )</ID>
+    <ID>NamedArguments:KastConfigurationResolution.kt:ResolvedKastConfiguration.Companion$ResolvedAssignment(parameter, value, ConfigurationSource.DEFAULT, emptyList())</ID>
+    <ID>NamedArguments:KastConfigurationResolution.kt:ResolvedKastConfiguration.Companion$ResolvedAssignment(parameter, value, source, emptyList())</ID>
+    <ID>NamedArguments:KastConfigurationResolution.kt:ResolvedKastConfiguration.Companion$ResolvedKastConfiguration( resolved.sortedBy { it.parameter.key }, admitted.values.flatten().toList(), heap, launchd, debug, capacity, readLimits, delegated, )</ID>
+    <ID>NamedArguments:KastConfigurationResolution.kt:ResolvedKastConfiguration.Companion$WorkerCapacityConfiguration( count(ConfigurationParameter.WORKER_RESIDENT_LIMIT), count(ConfigurationParameter.WORKER_STARTUP_LIMIT), memory(ConfigurationParameter.WORKER_AGGREGATE_MIB), memory(ConfigurationParameter.WORKER_NATIVE_MIB), memory(ConfigurationParameter.WORKER_GRADLE_MIB), )</ID>
+    <ID>NamedArguments:NetworkConfiguration.kt:NetworkConfiguration$Explicit( Path.of(raw), values[NetworkProperty.TRUST_STORE_TYPE] ?: "JKS", values[NetworkProperty.TRUST_STORE_PROVIDER], values[NetworkProperty.TRUST_STORE_PASSWORD]?.let(TrustStorePassword::fromBoundary) ?: TrustStorePassword.Unspecified, )</ID>
+    <ID>NamedArguments:SemanticRuntimeContract.kt:SemanticRuntimeManifest( runtime, product, RuntimePlatform.MACOS, RuntimeArchitecture.AARCH64, idea, kotlinPlugin, pluginDigest, schema, SemanticRuntimeArchive(archiveName, uri, archiveDigest, archiveSize), SemanticRuntimeLayout(executable, requiredEntries, executableEntries), CanonicalRuntimeManifestJson(canonical), )</ID>
+    <ID>NestedBlockDepth:KastConfigurationResolution.kt:ResolvedKastConfiguration.Companion$fun resolve: Refinement&lt;ResolvedKastConfiguration, ConfigurationRejection></ID>
+    <ID>UnreachableCode:SemanticRuntimeContract.kt:SemanticRuntimeManifest.Companion$return document.admit(json)</ID>
+    <ID>UnreachableCode:SemanticRuntimeContract.kt:SemanticRuntimeManifest.Companion$val document = try { json.decodeFromString(ManifestDocument.serializer(), rawJson) } catch (_: RuntimeException) { return SemanticRuntimeManifestAdmission.Rejected(SemanticRuntimeFailure.MANIFEST_INVALID) }</ID>
+  </CurrentIssues>
+</SmellBaseline>

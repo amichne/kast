@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:HostedConnection.kt:internal suspend fun serveHostedConnection</ID>
+    <ID>CognitiveComplexMethod:HostedEndpointProtocol.kt:HostedRequests$fun decode: Refinement&lt;HostedRequest, HostedEndpointFailure></ID>
+    <ID>CognitiveComplexMethod:OwnedHostedEndpoint.kt:OwnedHostedEndpoint.Companion$fun open: Refinement&lt;OwnedHostedEndpoint, HostedEndpointFailure></ID>
+    <ID>CyclomaticComplexMethod:HostedEndpointProtocol.kt:HostedRequests$fun decode: Refinement&lt;HostedRequest, HostedEndpointFailure></ID>
+    <ID>CyclomaticComplexMethod:OwnedHostedEndpoint.kt:OwnedHostedEndpoint.Companion$fun open: Refinement&lt;OwnedHostedEndpoint, HostedEndpointFailure></ID>
+    <ID>LongMethod:HostedCanonicalQuery.kt:internal suspend fun evaluateHostedCanonicalQuery: String</ID>
+    <ID>LongMethod:HostedEndpointProtocol.kt:HostedRequests$fun decode: Refinement&lt;HostedRequest, HostedEndpointFailure></ID>
+    <ID>LongMethod:OwnedHostedEndpoint.kt:OwnedHostedEndpoint.Companion$fun open: Refinement&lt;OwnedHostedEndpoint, HostedEndpointFailure></ID>
+    <ID>MagicNumber:OwnedHostedEndpoint.kt:OwnedHostedEndpoint.Companion$100</ID>
+    <ID>MaxLineLength:HostedEndpointTest.kt:HostedEndpointTest$"""{"type":"DIRECT_SUPERTYPE","root":"/workspace","qualifiedName":"example.Child","file":"Child.kt","offset":0}"""</ID>
+    <ID>NestedBlockDepth:HostedEndpointProtocol.kt:HostedRequests$fun decode: Refinement&lt;HostedRequest, HostedEndpointFailure></ID>
+    <ID>NestedBlockDepth:OwnedHostedEndpoint.kt:OwnedHostedEndpoint$override fun close</ID>
+    <ID>NestedBlockDepth:OwnedHostedEndpoint.kt:OwnedHostedEndpoint.Companion$fun open: Refinement&lt;OwnedHostedEndpoint, HostedEndpointFailure></ID>
+    <ID>TooGenericExceptionCaught:OwnedHostedEndpoint.kt:OwnedHostedEndpoint.Companion$failure: Exception</ID>
+    <ID>WildcardImport:HostedCanonicalQuery.kt:import io.github.amichne.kast.kernel.*</ID>
+    <ID>WildcardImport:HostedCanonicalQuery.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:HostedCanonicalQuery.kt:import io.github.amichne.kast.protocol.wire.*</ID>
+    <ID>WildcardImport:HostedCanonicalQuery.kt:import io.github.amichne.kast.query.contract.*</ID>
+    <ID>WildcardImport:HostedCanonicalQuery.kt:import io.github.amichne.kast.query.protocol.*</ID>
+    <ID>WildcardImport:HostedCanonicalQuery.kt:import io.github.amichne.kast.source.contract.*</ID>
+    <ID>WildcardImport:HostedCanonicalQuery.kt:import io.github.amichne.kast.traversal.contract.*</ID>
+    <ID>WildcardImport:HostedEndpointProtocol.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:HostedEndpointProtocol.kt:import io.github.amichne.kast.protocol.wire.*</ID>
+    <ID>WildcardImport:HostedEndpointService.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:HostedEndpointTest.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:HostedEndpointTest.kt:import io.github.amichne.kast.protocol.wire.*</ID>
+    <ID>WildcardImport:HostedEndpointTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:HostedPeerCancellation.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:HostedPeerCancellationTest.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:HostedPeerCancellationTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

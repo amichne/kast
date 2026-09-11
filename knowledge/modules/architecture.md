@@ -10,6 +10,8 @@ code_sources:
   - path: build-logic/src/main/kotlin/kast.kotlin-library.gradle.kts
   - path: build-logic/src/main/kotlin/kast.kotlin-quality.gradle.kts
   - path: build-logic/src/main/kotlin/conventions/KotlinFileLengthTask.kt
+  - path: build-logic/src/main/kotlin/conventions/KotlinFileLengthBaseline.kt
+  - path: config/kotlin/file-length-baseline.tsv
   - path: config/detekt/detekt.yml
   - path: settings.gradle.kts
   - path: build-logic/src/main/kotlin/kast.architecture.gradle.kts
@@ -66,6 +68,12 @@ Module `check` tasks depend on Spotless, type-resolved Detekt for production
 and test source sets, and file-length checks with 400-line production and
 600-line test limits. The Detekt configuration defines the structural rules.
 These gates are independent of accepted module-dependency evidence.
+
+Checked-in [baselines](../../config/README.md) admit existing Detekt findings
+and fixed per-file ceilings for oversized files. New Detekt finding identities,
+growth beyond recorded file ceilings, and new files exceeding the default
+limits fail. Baseline changes require deliberate review; checks never regenerate
+them. Detekt's finding identities do not bound growth within an existing finding.
 
 Spotless uses ktfmt Kotlinlang style at 120 columns for authored Kotlin and
 module Gradle scripts. The public-query generator owns `PublicQueryDocuments.kt`,

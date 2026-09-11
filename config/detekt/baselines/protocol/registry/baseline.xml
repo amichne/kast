@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>LongMethod:CanonicalAgentToolDefinitionsTest.kt:CanonicalAgentToolDefinitionsTest$@Test fun `agent tools preserve canonical hosted semantics and lifecycle free policy`</ID>
+    <ID>LongMethod:OperationRegistryContractTest.kt:OperationRegistryContractTest$@Test fun `lookup and outcome binding preserve canonical identity`</ID>
+    <ID>MagicNumber:CanonicalOperationDefinitions.kt:CanonicalOperationDefinitions$10_000</ID>
+    <ID>MagicNumber:CanonicalOperationDefinitions.kt:CanonicalOperationDefinitions$250</ID>
+    <ID>MagicNumber:CanonicalOperationDefinitions.kt:CanonicalOperationDefinitions$5_000</ID>
+    <ID>MagicNumber:OperationExecutionBudget.kt:OperationExecutionBudget.GRAPH_BUILD$240_000</ID>
+    <ID>MagicNumber:OperationExecutionBudget.kt:OperationExecutionBudget.SEMANTIC_READ$60_000</ID>
+    <ID>MaxLineLength:PublicToolIdentity.kt:PublicToolIdentity$enum</ID>
+    <ID>MaxLineLength:PublicToolIdentity.kt:PublicToolIdentity.CHECK_DIAGNOSTICS$"Check compiler diagnostics for a file or recursively beneath a directory in the session workspace. Use '.' explicitly for the workspace root. This is not symbol search and does not build the project. Results retain incomplete-coverage evidence; an incomplete empty result does not establish that the scope is clean. Requires the saved, indexed IntelliJ state."</ID>
+    <ID>MaxLineLength:PublicToolIdentity.kt:PublicToolIdentity.QUERY_SYMBOLS$"Advanced ordered symbol pipelines: search or enumerate declarations, start from returned references, filter visibility, expand semantic relations, and explicitly deduplicate. Prefer the dedicated search tools for ordinary name searches. Source restrictions do not constrain expansion destinations. Compiler identity, bounded work, and completeness remain owned by Kast. Does not accept diagnostic steps."</ID>
+    <ID>MaxLineLength:PublicToolIdentity.kt:PublicToolIdentity.SEARCH_CLASSES$"Find named class-like declarations supported by Kast. This searches declaration names, not use sites or source text. Constructors are not included. Returns names, locations, signatures, opaque symbol references, and completeness evidence. Uses the session workspace's saved, indexed IntelliJ state; unavailable or unready hosts reject the read. No hidden fuzzy retry or scope widening."</ID>
+    <ID>MaxLineLength:PublicToolIdentity.kt:PublicToolIdentity.SEARCH_DECLARATIONS$"Find named declarations when the kind is unknown or when searching properties or type aliases. Prefer search_classes or search_functions when that kind is known. Not a source-text or usage search. Returns names, locations, signatures, opaque symbol references, and completeness evidence. Uses the session workspace's saved, indexed IntelliJ state; unavailable or unready hosts reject the read. No hidden fuzzy retry or scope widening."</ID>
+    <ID>MaxLineLength:PublicToolIdentity.kt:PublicToolIdentity.SEARCH_FUNCTIONS$"Find named functions and methods. This searches declaration names, not call sites or source text. Returns every matching overload separately. Returns names, locations, signatures, opaque symbol references, and completeness evidence. Uses the session workspace's saved, indexed IntelliJ state; unavailable or unready hosts reject the read. No hidden fuzzy retry or scope widening."</ID>
+  </CurrentIssues>
+</SmellBaseline>

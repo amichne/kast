@@ -1,0 +1,326 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:CliCommandGraph.kt:CliCommandGraph$fun parse: CliCommandParsing</ID>
+    <ID>CognitiveComplexMethod:ConfigurationInspection.kt:ConfigurationCliInspection$fun inspect: ConfigurationInspectionHandling</ID>
+    <ID>CognitiveComplexMethod:CoordinatedRootRuntimeDemander.kt:CoordinatedRootRuntimeDemander$override fun demand: RuntimeAdmission</ID>
+    <ID>CognitiveComplexMethod:ExistingIdeSocketClient.kt:ExistingIdeDocuments$fun response: ExistingIdeExchange</ID>
+    <ID>CognitiveComplexMethod:ExistingIdeSocketClient.kt:ExistingIdeSocketClient$override fun query: ExistingIdeExchange</ID>
+    <ID>CognitiveComplexMethod:ExistingIdeSocketTest.kt:ExistingIdeSocketTest$@Test fun `native framed client accepts the exact host and rejects oversized and invalid UTF8 responses`</ID>
+    <ID>CognitiveComplexMethod:IndexSeedFilesystemService.kt:IndexSeedFilesystemService$private fun seedIntoStaging: IndexSeedExecution</ID>
+    <ID>CognitiveComplexMethod:InstallationRequest.kt:InstallationRequest.Companion$fun parse: Refinement&lt;InstallationRequest, InstallationRequestFailure></ID>
+    <ID>CognitiveComplexMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun apply: InstallationOutcome</ID>
+    <ID>CognitiveComplexMethod:InstallationWorkflow.kt:private fun payloadFiles: List&lt;PayloadFile></ID>
+    <ID>CognitiveComplexMethod:InstallationWorkflow.kt:private fun verifyControlLayout: Boolean</ID>
+    <ID>CognitiveComplexMethod:InstalledKastCliComposition.kt:InstalledKastCliComposition$override fun create: KastCliCompositionConstruction</ID>
+    <ID>CognitiveComplexMethod:InstalledRuntimeWorkerEffects.kt:InstalledRuntimeWorkerEffects$override suspend fun start: InstalledWorkerStart</ID>
+    <ID>CognitiveComplexMethod:InstalledServerProjectionDocuments.kt:private fun JsonObject.withLocalOutputDefinitions: JsonObject</ID>
+    <ID>CognitiveComplexMethod:InstalledSidecarRuntimeDemand.kt:FilesystemSidecarCachePreparer$private fun prepareExistingOrFresh: SidecarCachePreparation</ID>
+    <ID>CognitiveComplexMethod:InstalledSidecarRuntimeDemand.kt:InstalledSidecarRootRuntimeDemander$private fun demandExclusively: RuntimeAdmission</ID>
+    <ID>CognitiveComplexMethod:KastCli.kt:KastCli$private fun executeRequest: CliExit</ID>
+    <ID>CognitiveComplexMethod:MacOsRuntimeProcessAuthority.kt:JdkRuntimeBootstrapProcessSearch$override fun find: RuntimeBootstrapProcessSearchResult</ID>
+    <ID>CognitiveComplexMethod:MacOsRuntimeProcessAuthority.kt:JdkRuntimeProcessSearch$override fun find: RuntimeProcessSearchResult</ID>
+    <ID>CognitiveComplexMethod:MacOsRuntimeProcessEnvironment.kt:private fun canonicalJavaHome: CanonicalEnvironmentDirectory</ID>
+    <ID>CognitiveComplexMethod:RuntimeBoundary.kt:ExactRootProcessRuntimeDemander$private fun awaitBootstrapAttempt: RuntimeAdmission</ID>
+    <ID>CognitiveComplexMethod:RuntimeBoundary.kt:ExactRootProcessRuntimeDemander$private fun demandExclusively: RuntimeAdmission</ID>
+    <ID>CognitiveComplexMethod:RuntimeEndpointArtifacts.kt:PosixRuntimeEndpointArtifacts$override fun clean: RuntimeEndpointArtifactCleaning</ID>
+    <ID>CognitiveComplexMethod:SidecarBootstrapAttemptLock.kt:SidecarBootstrapAttemptLock$fun &lt;Value> withAcquired: SidecarBootstrapAttemptLockExecution&lt;Value></ID>
+    <ID>CognitiveComplexMethod:SidecarCacheLifecycle.kt:private fun readIdentity: CacheIdentityRead</ID>
+    <ID>ComplexCondition:ExistingIdeQuery.kt:ExistingIdeClassName.Companion$raw.toByteArray(Charsets.UTF_8).size in 1..512 &amp;&amp; (raw.first().isLetter() || raw.first() == '_') &amp;&amp; raw.all { it.isLetterOrDigit() || it == '_' }</ID>
+    <ID>ComplexCondition:ExistingIdeSocketClient.kt:ExistingIdeDocuments$operation == ExistingIdeOperation.Status &amp;&amp; node.path("type").asString() == "KAST_IDE_HOST" &amp;&amp; node.path("root").asString() == root.path.toString() &amp;&amp; node.path("hostPid").asLong() == descriptor.hostPid &amp;&amp; node.path("host").asString() == descriptor.host.toString()</ID>
+    <ID>ComplexCondition:IndexSeedFilesystemService.kt:Intellij262IndexSeedLayout$!source.startsWith(sourceSystem) || Files.isSymbolicLink(source) || (!Files.isDirectory(source, LinkOption.NOFOLLOW_LINKS) &amp;&amp; !Files.isRegularFile(source, LinkOption.NOFOLLOW_LINKS))</ID>
+    <ID>ComplexCondition:InstallationRequest.kt:SemanticVersion.Companion$parts.size != 3 || parts.any { it.isEmpty() || (it.length > 1 &amp;&amp; it.startsWith('0')) }</ID>
+    <ID>ComplexCondition:InstallationWorkflow.kt:!regularExecutable(root.resolve("bin/kast")) || !regularFile(root.resolve("share/kast/semantic-runtime.json")) || !regularFile(root.resolve("share/kast/operation-registry.json")) || !regularFile(root.resolve("share/kast/wire-schema.json")) || !regularFile(root.resolve("share/kast/installation-lifecycle.py"))</ID>
+    <ID>ComplexCondition:InstallationWorkflow.kt:InstallationWorkflow$!physicalDirectory(idea) || !physicalDirectory(java) || !regularExecutable(java.resolve("bin/java")) || !regularFile(idea.resolve("Resources/build.txt")) || !physicalDirectory(idea.resolve("plugins/Kotlin")) || idea.resolve("jbr/Contents/Home").normalize() != java</ID>
+    <ID>ComplexCondition:InstallationWorkflow.kt:InstallationWorkflow$manifest.productVersion.value != request.version.toString() || manifest.archive.digest.value != "sha256:${request.runtimeDigest.value}" || manifest.archive.size.bytes != fileSize(request.runtimeArchive.value) || manifest.archive.fileName.value != request.runtimeArchive.value.fileName.toString()</ID>
+    <ID>ComplexCondition:InstallationWorkflow.kt:name.isBlank() || name.startsWith('/') || path.isAbsolute || path.toString() != name.trimEnd('/') || name.split('/').any { it == ".." } || name == "idea-home" || name.startsWith("idea-home/") || name.endsWith("/product-info.json") || name.contains("/plugins/Kotlin/") || name.contains("/plugins/gradle/")</ID>
+    <ID>ComplexCondition:InstalledSidecarRuntimeDemand.kt:values.getProperty("format") == INDEX_SEED_RECEIPT_FORMAT &amp;&amp; values.getProperty("cache.key") == identity.key &amp;&amp; values.getProperty("project.root") == identity.canonicalProjectRoot.toString() &amp;&amp; values.getProperty("idea.build") == identity.runtimeIdentity.supportedPair.ideaBuild &amp;&amp; values.getProperty("kotlin.plugin.build") == identity.runtimeIdentity.supportedPair.kotlinPluginBuild &amp;&amp; values.getProperty("jbr.identity") == identity.runtimeIdentity.jbrIdentity &amp;&amp; values.getProperty("kast.payload.digest") == identity.runtimeIdentity.kastPayloadDigest &amp;&amp; validSeedCategoryProof(values)</ID>
+    <ID>ComplexCondition:LifecycleCommands.kt:ideaHome is CliOptionValue.Absent &amp;&amp; cacheMode == StartCacheMode.REUSE &amp;&amp; sourceIdeaSystem is CliOptionValue.Absent &amp;&amp; !acceptGlobalIndexCopy</ID>
+    <ID>ComplexCondition:MacOsRuntimeProcessEnvironment.kt:!javaExecutable.isAbsolute || javaExecutable.normalize() != javaExecutable || Files.isSymbolicLink(javaExecutable) || !Files.isRegularFile(javaExecutable, LinkOption.NOFOLLOW_LINKS) || !Files.isExecutable(javaExecutable) || javaExecutable.fileName.toString() != "java" || javaExecutable.parent?.fileName?.toString() != "bin"</ID>
+    <ID>ComplexCondition:MacOsRuntimeProcessEnvironment.kt:gradleHome.isBlank() || gradleHome.length > 4096 || !path.isAbsolute || path.normalize() != path</ID>
+    <ID>ComplexCondition:MintlifyCallableReference.kt:name == "\$ref" &amp;&amp; value is JsonPrimitive &amp;&amp; value.isString &amp;&amp; value.content.startsWith("#/\$defs/")</ID>
+    <ID>ComplexCondition:SidecarBootstrapStateFile.kt:SidecarBootstrapStateFile$!isAbsolute || normalize() != this || fileName?.toString() != SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME || Files.isSymbolicLink(this)</ID>
+    <ID>CyclomaticComplexMethod:CliCommandGraph.kt:CliCommandGraph$fun parse: CliCommandParsing</ID>
+    <ID>CyclomaticComplexMethod:ConfigurationInspection.kt:ConfigurationCliInspection$fun inspect: ConfigurationInspectionHandling</ID>
+    <ID>CyclomaticComplexMethod:ExistingIdeSocketClient.kt:ExistingIdeDocuments$fun response: ExistingIdeExchange</ID>
+    <ID>CyclomaticComplexMethod:ExistingIdeSocketClient.kt:ExistingIdeSocketClient$override fun query: ExistingIdeExchange</ID>
+    <ID>CyclomaticComplexMethod:ExistingIdeSocketTest.kt:ExistingIdeSocketTest$@Test fun `native framed client accepts the exact host and rejects oversized and invalid UTF8 responses`</ID>
+    <ID>CyclomaticComplexMethod:IndexSeedFilesystemService.kt:IndexSeedFilesystemService$private fun seedIntoStaging: IndexSeedExecution</ID>
+    <ID>CyclomaticComplexMethod:InstallationRequest.kt:InstallationRequest.Companion$fun parse: Refinement&lt;InstallationRequest, InstallationRequestFailure></ID>
+    <ID>CyclomaticComplexMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun apply: InstallationOutcome</ID>
+    <ID>CyclomaticComplexMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun verify: PlanVerification</ID>
+    <ID>CyclomaticComplexMethod:InstallationWorkflow.kt:private fun verifyControlLayout: Boolean</ID>
+    <ID>CyclomaticComplexMethod:InstallationWorkflow.kt:private fun verifyRuntimeArchive: Boolean</ID>
+    <ID>CyclomaticComplexMethod:InstalledKastCliComposition.kt:InstalledKastCliComposition$override fun create: KastCliCompositionConstruction</ID>
+    <ID>CyclomaticComplexMethod:InstalledRuntimeWorkerEffects.kt:InstalledRuntimeWorkerEffects$override suspend fun start: InstalledWorkerStart</ID>
+    <ID>CyclomaticComplexMethod:InstalledSidecarRuntimeDemand.kt:FilesystemSidecarCachePreparer$private fun prepareExistingOrFresh: SidecarCachePreparation</ID>
+    <ID>CyclomaticComplexMethod:InstalledSidecarRuntimeDemand.kt:InstalledSidecarRootRuntimeDemander$private fun demandExclusively: RuntimeAdmission</ID>
+    <ID>CyclomaticComplexMethod:InstalledSidecarRuntimeDemand.kt:private fun admitSeedReceipt: SeedReceiptPresence</ID>
+    <ID>CyclomaticComplexMethod:MacOsRuntimeProcessAuthority.kt:JdkRuntimeBootstrapProcessSearch$override fun find: RuntimeBootstrapProcessSearchResult</ID>
+    <ID>CyclomaticComplexMethod:MacOsRuntimeProcessAuthority.kt:JdkRuntimeProcessSearch$override fun find: RuntimeProcessSearchResult</ID>
+    <ID>CyclomaticComplexMethod:MacOsRuntimeProcessEnvironment.kt:private fun canonicalJavaHome: CanonicalEnvironmentDirectory</ID>
+    <ID>CyclomaticComplexMethod:SidecarBootstrapAttemptLock.kt:SidecarBootstrapAttemptLock$fun &lt;Value> withAcquired: SidecarBootstrapAttemptLockExecution&lt;Value></ID>
+    <ID>CyclomaticComplexMethod:SidecarCacheLifecycle.kt:SidecarCacheIdentityFile$fun record: CacheIdentityTransition</ID>
+    <ID>CyclomaticComplexMethod:SidecarCacheLifecycle.kt:private fun readIdentity: CacheIdentityRead</ID>
+    <ID>FunctionOnlyReturningConstant:CliNativeTransportTest.kt:CliNativeTransportTest$private fun symbolDiscoverDocument: String</ID>
+    <ID>InvalidPackageDeclaration:CliCommandGraph.kt:package io.github.amichne.kast.cli.command</ID>
+    <ID>InvalidPackageDeclaration:CliCommandModel.kt:package io.github.amichne.kast.cli.command</ID>
+    <ID>InvalidPackageDeclaration:CliNativeTransportTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:CliOperationalLimits.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:ConfigurationInspection.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:CoordinatedRootRuntimeDemander.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:CoordinatedRootRuntimeDemanderTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:DirectRuntimeProcessStarter.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:FrontendWorkerSeedConsent.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:IndexSeedActivity.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:IndexSeedActivityTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:IndexSeedFilesystemService.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:IndexSeedFilesystemServiceTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:IndexSeedProtocol.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:IndexSeedProtocolTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledConfigurationSchema.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledIdeRuntimeDiscovery.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledIdeRuntimeDiscoveryTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledKastCliComposition.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledProtocolResources.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledRuntimeWorkerEffects.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledSchemaDocuments.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledSchemaSerializationTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledServerProjectionDocuments.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledSidecarCacheRootTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledSidecarRuntimeDemand.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledSidecarRuntimeDemanderTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:KastCliMain.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:KastCodexMain.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:KotlinxRequestJsonSchema.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:MacOsRuntimeProcessAuthority.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:MacOsRuntimeProcessEnvironment.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:MacOsRuntimeProcessSession.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:MintlifyCallableReference.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:ProductInspection.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RootRuntimeDemand.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeBootstrapObservation.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeBoundary.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeEndpointAliasTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeEndpointArtifacts.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeInvocationDeadline.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeLifecycle.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeLifecycleTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeProcessMode.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeProcessModeTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeProcessSessionTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeSocketDirectoryTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeStartupProgress.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeStartupProgressTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeStartupProtocol.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:SavedConfigurationIngress.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:SeedProjectCompatibilityTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:SidecarBootstrapStateFileTest.kt:package io.github.amichne.kast.cli.runtime.bootstrap</ID>
+    <ID>InvalidPackageDeclaration:SidecarCacheInventory.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:SidecarCacheLifecycle.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:SidecarCacheLifecycleTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:SidecarCacheRecoveryTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:SidecarEnvironmentInputs.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:SidecarStartupProtocolTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>LargeClass:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest</ID>
+    <ID>LargeClass:GeneratedCliProjectionTest.kt:GeneratedCliProjectionTest</ID>
+    <ID>LargeClass:IndexSeedFilesystemServiceTest.kt:IndexSeedFilesystemServiceTest</ID>
+    <ID>LargeClass:InstallationWorkflow.kt:InstallationWorkflow</ID>
+    <ID>LargeClass:InstalledKastCliComposition.kt:InstalledKastCliComposition : KastCliComposition</ID>
+    <ID>LargeClass:InstalledServerProjectionTest.kt:InstalledServerProjectionTest</ID>
+    <ID>LargeClass:InstalledSidecarRuntimeDemanderTest.kt:InstalledSidecarRuntimeDemanderTest</ID>
+    <ID>LargeClass:KastCli.kt:KastCli</ID>
+    <ID>LargeClass:LiveReadOutputSchemaTest.kt:LiveReadOutputSchemaTest</ID>
+    <ID>LargeClass:RuntimeProcessSessionTest.kt:RuntimeProcessSessionTest</ID>
+    <ID>LargeClass:SidecarCacheLifecycleTest.kt:SidecarCacheLifecycleTest</ID>
+    <ID>LongMethod:BrokerOperationalCatalogueTest.kt:BrokerOperationalCatalogueTest$@Test fun `inspection exposes broker admission queues persistence and qualification bounds`</ID>
+    <ID>LongMethod:CanonicalCliProjections.kt:internal fun canonicalCliRequestPreparers: CanonicalCliRequestPreparers</ID>
+    <ID>LongMethod:CliBoundaryContractTest.kt:CliBoundaryContractTest$@Test fun `every public command projection parses to its canonical operation`</ID>
+    <ID>LongMethod:CliCommandGraph.kt:CliCommandGraph$fun parse: CliCommandParsing</ID>
+    <ID>LongMethod:CliCommandGraph.kt:private fun canonicalGraph: CliCommandGraph</ID>
+    <ID>LongMethod:CliNativeTransportTest.kt:CliNativeTransportTest$@Test fun `semantic runtime admission rejection prevents wire exchange`</ID>
+    <ID>LongMethod:CliNativeTransportTest.kt:CliNativeTransportTest$@Test fun `symbol discovery traverses exact root UDS and typed wire`</ID>
+    <ID>LongMethod:CliSurfaceContractTest.kt:CliSurfaceContractTest$@Test fun `local metadata returns before root or runtime demand`</ID>
+    <ID>LongMethod:ConfigurationInspection.kt:ConfigurationCliInspection$fun inspect: ConfigurationInspectionHandling</ID>
+    <ID>LongMethod:CoordinatedRootRuntimeDemander.kt:CoordinatedRootRuntimeDemander$override fun demand: RuntimeAdmission</ID>
+    <ID>LongMethod:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$@Test fun `each successful read binding requires the original live host and rejects published evidence`</ID>
+    <ID>LongMethod:ExistingIdeSocketClient.kt:ExistingIdeDocuments$fun response: ExistingIdeExchange</ID>
+    <ID>LongMethod:ExistingIdeSocketClient.kt:ExistingIdeSocketClient$override fun query: ExistingIdeExchange</ID>
+    <ID>LongMethod:ExistingIdeSocketTest.kt:ExistingIdeSocketTest$@Test fun `native framed client accepts the exact host and rejects oversized and invalid UTF8 responses`</ID>
+    <ID>LongMethod:GeneratedCliProjectionTest.kt:GeneratedCliProjectionTest$@Test fun `qualified read outputs retain structured proof instead of one reason label`</ID>
+    <ID>LongMethod:GeneratedCliProjectionTest.kt:GeneratedCliProjectionTest$@Test fun `traversal graph normalizes repeated nodes and retains compact proof references`</ID>
+    <ID>LongMethod:IndexSeedFilesystemService.kt:IndexSeedFilesystemService$fun seed: IndexSeedExecution</ID>
+    <ID>LongMethod:IndexSeedFilesystemService.kt:IndexSeedFilesystemService$private fun seedIntoStaging: IndexSeedExecution</ID>
+    <ID>LongMethod:IndexSeedFilesystemService.kt:private fun writeReceipt: Boolean</ID>
+    <ID>LongMethod:InstallationRequest.kt:InstallationRequest.Companion$fun parse: Refinement&lt;InstallationRequest, InstallationRequestFailure></ID>
+    <ID>LongMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun apply: InstallationOutcome</ID>
+    <ID>LongMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun verify: PlanVerification</ID>
+    <ID>LongMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun writeLauncher</ID>
+    <ID>LongMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun writeManifest</ID>
+    <ID>LongMethod:InstallationWorkflowTest.kt:InstallationWorkflowTest$private fun releaseRequest: InstallationRequest</ID>
+    <ID>LongMethod:InstalledKastCliComposition.kt:InstalledKastCliComposition$fun retireUnreserved: io.github.amichne.kast.appserver.InstalledWorkerRetirement</ID>
+    <ID>LongMethod:InstalledKastCliComposition.kt:InstalledKastCliComposition$fun sidecarDemander: RootRuntimeDemander</ID>
+    <ID>LongMethod:InstalledKastCliComposition.kt:InstalledKastCliComposition$override fun create: KastCliCompositionConstruction</ID>
+    <ID>LongMethod:InstalledRuntimeWorkerEffects.kt:InstalledRuntimeWorkerEffects$override suspend fun start: InstalledWorkerStart</ID>
+    <ID>LongMethod:InstalledServerProjectionDocuments.kt:private fun operationDocumentSchema: JsonObject</ID>
+    <ID>LongMethod:InstalledServerProjectionDocuments.kt:private fun queryRejectionSchema: JsonObject</ID>
+    <ID>LongMethod:InstalledServerProjectionDocuments.kt:private fun queryResultItemSchema: JsonObject</ID>
+    <ID>LongMethod:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$@Test fun `installed schema owns broker tool shapes and exact whole document cli invocations`</ID>
+    <ID>LongMethod:InstalledSidecarRuntimeDemand.kt:FilesystemSidecarCachePreparer$private fun prepareExistingOrFresh: SidecarCachePreparation</ID>
+    <ID>LongMethod:InstalledSidecarRuntimeDemand.kt:InstalledSidecarRootRuntimeDemander$private fun demandExclusively: RuntimeAdmission</ID>
+    <ID>LongMethod:InstalledSidecarRuntimeDemanderTest.kt:InstalledSidecarRuntimeDemanderTest$private fun demanderFixture: DemanderFixture</ID>
+    <ID>LongMethod:LiveReadOutputSchemaTest.kt:LiveReadOutputSchemaTest$private fun qualifiedDocuments: List&lt;Pair&lt;CanonicalOperation, JsonObject>></ID>
+    <ID>LongMethod:MacOsRuntimeProcessAuthority.kt:JdkRuntimeBootstrapProcessSearch$override fun find: RuntimeBootstrapProcessSearchResult</ID>
+    <ID>LongMethod:MacOsRuntimeProcessEnvironment.kt:MacOsRuntimeProcessEnvironment.Companion$fun resolve: MacOsRuntimeProcessEnvironmentResolution</ID>
+    <ID>LongMethod:MintlifyCallableReference.kt:private fun InstalledServerBinding.operationDocument: MintlifyCallableOperationDocument</ID>
+    <ID>LongMethod:MintlifyCallableReferenceTest.kt:MintlifyCallableReferenceTest$@Test fun `reference preserves every public callable without claiming an HTTP server`</ID>
+    <ID>LongMethod:ProductInspectionCommandTest.kt:ProductInspectionCommandTest$@Test fun `product inspection reports sidecar cache and per-socket telemetry without runtime demand`</ID>
+    <ID>LongMethod:RuntimeBoundary.kt:ExactRootProcessRuntimeDemander$private fun demandExclusively: RuntimeAdmission</ID>
+    <ID>LongMethod:RuntimeBoundary.kt:internal fun RuntimeAdmissionFailure.outputReason: String</ID>
+    <ID>LongMethod:RuntimeProcessSessionTest.kt:RuntimeProcessSessionTest$@Test fun `detached exact attempt is joined after cli exit without refreshing or relaunching`</ID>
+    <ID>LongMethod:SemanticRuntimeDemandTest.kt:SemanticRuntimeDemandTest$@Test fun `semantic requests carry their original demand through admission before exchange`</ID>
+    <ID>LongMethod:SidecarBootstrapAttemptLock.kt:SidecarBootstrapAttemptLock$fun &lt;Value> withAcquired: SidecarBootstrapAttemptLockExecution&lt;Value></ID>
+    <ID>LongMethod:SidecarCacheLifecycle.kt:SidecarCacheIdentityFile$fun record: CacheIdentityTransition</ID>
+    <ID>LongMethod:SidecarCacheLifecycle.kt:private fun readIdentity: CacheIdentityRead</ID>
+    <ID>LongMethod:SidecarCacheLifecycleTest.kt:SidecarCacheLifecycleTest$@Test fun `cache identity and state survive restart and exact cache is quarantined`</ID>
+    <ID>LongMethod:SidecarCacheLifecycleTest.kt:SidecarCacheLifecycleTest$@Test fun `current release cache is selected while valid stale payload caches coexist`</ID>
+    <ID>LongMethod:SidecarCacheLifecycleTest.kt:SidecarCacheLifecycleTest$@Test fun `fresh cache root refines an authorized parent alias to physical ownership`</ID>
+    <ID>LongMethod:SidecarCacheLifecycleTest.kt:SidecarCacheLifecycleTest$@Test fun `project-specific seed requires current identity proof after restart`</ID>
+    <ID>LongMethod:SidecarStartupProtocolTest.kt:SidecarStartupProtocolTest$@Test fun `launch command retains every installed runtime and private cache proof`</ID>
+    <ID>LongMethod:TopologyBuildCliProjectorTest.kt:TopologyBuildCliProjectorTest$@Test fun `coverage rejection retains all exact mismatch evidence`</ID>
+    <ID>LongMethod:UnixDomainWireClient.kt:UnixDomainWireClient$fun open: WireSessionOpening</ID>
+    <ID>MagicNumber:ExistingIdeQuery.kt:ExistingIdeClassName.Companion$512</ID>
+    <ID>MagicNumber:ExistingIdeQuery.kt:ExistingIdeQualifiedClassName.Companion$4096</ID>
+    <ID>MagicNumber:IndexSeedFilesystemService.kt:Intellij262IndexSeedLayout$4096L</ID>
+    <ID>MagicNumber:InstallationRequest.kt:SemanticVersion.Companion$3</ID>
+    <ID>MagicNumber:InstallationRequest.kt:Sha256.Companion$64</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:0b000_000_100</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:0b000_001_000</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:0b000_010_000</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:0b000_100_000</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:0b001_000_000</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:0b010_000_000</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:0b100_000_000</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:0b110_000_000</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:420</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:493</ID>
+    <ID>MagicNumber:InstalledServerProjectionDocuments.kt:4096</ID>
+    <ID>MagicNumber:InstalledServerProjectionDocuments.kt:7</ID>
+    <ID>MagicNumber:InstalledServerProjectionDocuments.kt:99</ID>
+    <ID>MagicNumber:KastCli.kt:CliBoundaryExitStatus.BOOTSTRAP$9</ID>
+    <ID>MagicNumber:KastCli.kt:CliBoundaryExitStatus.PROTOCOL$6</ID>
+    <ID>MagicNumber:KastCli.kt:CliBoundaryExitStatus.ROOT$3</ID>
+    <ID>MagicNumber:KastCli.kt:CliBoundaryExitStatus.RUNTIME$4</ID>
+    <ID>MagicNumber:KastCli.kt:CliBoundaryExitStatus.TRANSPORT$5</ID>
+    <ID>MagicNumber:KastCodexMain.kt:KastCodexMain$64</ID>
+    <ID>MagicNumber:MacOsRuntimeProcessEnvironment.kt:4096</ID>
+    <ID>MagicNumber:RuntimeStartupProtocol.kt:SidecarLaunchContext.Companion$3</ID>
+    <ID>MagicNumber:TopologyCoverageCliDocuments.kt:3</ID>
+    <ID>MagicNumber:TopologyCoverageCliDocuments.kt:4</ID>
+    <ID>MatchingDeclarationName:CanonicalCliProjections.kt:CanonicalCliRequestPreparers</ID>
+    <ID>MatchingDeclarationName:CliOptions.kt:CliOptionValue&lt;out Value></ID>
+    <ID>MatchingDeclarationName:DirectRuntimeProcessStarter.kt:JdkRuntimeProcessStarter : RuntimeProcessStarter</ID>
+    <ID>MatchingDeclarationName:ExistingIdeCli.kt:CliRuntimePath</ID>
+    <ID>MatchingDeclarationName:IdeCommands.kt:ExistingIdeRootSelection</ID>
+    <ID>MatchingDeclarationName:SavedConfigurationIngress.kt:SavedConfigurationIngressCompositionFailure : KastCliCompositionFailure</ID>
+    <ID>MaxLineLength:AppServerCommands.kt:AppServerRepairLeaf$"Delete this installation's owned broker, runtime, cache, and workspace-registry state before rebuilding it."</ID>
+    <ID>MaxLineLength:CliBoundaryContractTest.kt:CliBoundaryContractTest$"""{"anchor":{"type":"symbol","selector":"$selector"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"complete"},"entityLimit":250,"textByteLimit":65536,"page":{"type":"first"}}"""</ID>
+    <ID>MaxLineLength:CliBoundaryContractTest.kt:CliBoundaryContractTest$"""{"exactSelector":"selector","relation":"callees","maximumDepth":2,"maximumResults":10,"position":{"type":"resume","continuation":"${traversalContinuationToken()}"}}"""</ID>
+    <ID>MaxLineLength:CliBoundaryContractTest.kt:CliBoundaryContractTest$"""{"exactSelector":"selector","relation":"callees","maximumDepth":2,"maximumResults":10,"position":{"type":"resume","continuation":"bad"}}"""</ID>
+    <ID>MaxLineLength:CliBoundaryContractTest.kt:CliBoundaryContractTest$"""{"exactSelector":"selector","relation":"callers","maximumDepth":2,"maximumResults":10,"position":{"type":"start"}}"""</ID>
+    <ID>MaxLineLength:CliBoundaryContractTest.kt:CliBoundaryContractTest$"""{"type":"QUERY","from":{"type":"ALL","kinds":["CLASS"],"scope":{"type":"DIRECTORY","value":".","sourceSets":["main"]}}}"""</ID>
+    <ID>MaxLineLength:ExistingIdeCliTest.kt:ExistingIdeCliTest$return """{"file":"/workspace/Classes.kt","compilerIdentity":"canonical-signature-sha256-v1|$identity","canonicalSignature":"$signature","signature":{"kind":"class_like","qualifiedIdentity":"$name"},"documentStamp":1,"vfsStamp":1,"module":"fixture","gradleBuildRoot":"/workspace","gradleProject":":fixture","sourceRoot":"src","sourceKind":"PRODUCTION","provenanceAuthority":"cached_source_folder_flag"}"""</ID>
+    <ID>MaxLineLength:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$"""{"anchor":{"type":"symbol","selector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"complete"},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}"""</ID>
+    <ID>MaxLineLength:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$"""{"exactSelector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","relation":"references","limit":10}"""</ID>
+    <ID>MaxLineLength:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$"""{"exactSelector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","relation":"references","maximumDepth":1,"maximumResults":10}"""</ID>
+    <ID>MaxLineLength:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$"""{"target":{"type":"exact","selector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"}}"""</ID>
+    <ID>MaxLineLength:InstallationWorkflowTest.kt:InstallationWorkflowTest$"""{"schemaVersion":1,"runtimeId":"sha256:$runtimeIdentity","productVersion":"$version","platform":"macos","architecture":"aarch64","ideaBuild":"261.1","kotlinPluginBuild":"2.4.10","kastPluginSha256":"$pluginDigest","wireSchemaId":"kast-wire-v1","archive":{"fileName":"${runtime.fileName}","url":"https://example.invalid/${runtime.fileName}","sha256":"$archiveDigest","bytes":${Files.size(runtime)}},"layout":{"executable":"kast-indexer","requiredEntries":["kast-indexer"],"executableEntries":["kast-indexer"]}}"""</ID>
+    <ID>MaxLineLength:InstalledConfigurationSchema.kt:InstalledConfigurationSchema$"CoordinatorStatusProtocol.maximumMessageBytes; generated maximum scalar widths and admitted worker count"</ID>
+    <ID>MaxLineLength:InstalledServerProjectionDocuments.kt:"Opaque exact-symbol token. Copy verbatim into query_symbols source.symbol_refs; identical to ref.token."</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":[{"type":"check_diagnostics"}],"return_fields":null}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":null,"return_fields":[]}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"source":{"type":"search_declarations","declaration_name":"OrderService","name_match":null,"declaration_kinds":null,"scope":null},"steps":null,"return_fields":null}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"source":{"type":"symbol_refs","symbol_refs":["NON_ISSUED_SCHEMA_TEST_ONLY"]},"steps":null,"return_fields":null}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"status":"completed","document":{"operation":"change.apply","status":"complete","receiptIdentity":"receipt:opaque",$preview}}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"status":"completed","document":{"operation":"change.plan","status":"complete","planIdentity":"plan:opaque",$preview}}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"status":"completed","document":{"operation":"diagnostic.check","status":"complete","diagnostics":[]}}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"status":"completed","document":{"operation":"query.run","status":"complete","items":[],"failures":[]}}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"status":"completed","document":{"operation":"query.run","status":"qualified","items":[],"failures":[],"qualification":{"knownMinimum":0,"limitations":["discovery-incomplete"]}}}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"type":"property","qualifiedIdentity":"sample.Controller","receiver":{"type":"present","compilerType":"kotlin.String"},"contextReceivers":["sample.Context"],"returnType":"kotlin.Int"}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$",\"compilerEvidence\":{\"identity\":\"$compilerIdentity\",\"signature\":{\"type\":\"class-like\",\"qualifiedIdentity\":\"sample.Alpha\"}}"</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"Full --schema output is $emittedBytes bytes; provider accepts ${BrokerOperationalLimits.maximumKastSchemaBytes}"</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"\"selection\":{\"selector\":\"source-selector-v1:payload:digest\",\"range\":{\"startInclusive\":0,\"endExclusive\":0}},"</ID>
+    <ID>MaxLineLength:LiveReadOutputSchemaTest.kt:LiveReadOutputSchemaTest$"""{"schemaVersion":1,"outcome":"rejected","failure":"DIRTY_DOCUMENTS","detail":"saved content required","stage":"EPOCH_OBSERVATION"}"""</ID>
+    <ID>MaxLineLength:PublicToolCommandTest.kt:PublicToolCommandTest$"""{"declaration_name":"order","name_match":null,"scope":null,"declaration_kinds":["property","type_alias"]}"""</ID>
+    <ID>MaxLineLength:PublicToolCommandTest.kt:PublicToolCommandTest$"""{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":null,"return_fields":[]}"""</ID>
+    <ID>MaxLineLength:RuntimeBoundary.kt:IndexerLaunchCommand.Companion$"--bootstrap-state-path=${context.cacheRoot.resolve(SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME)}"</ID>
+    <ID>MaxLineLength:SourceReadCliContractTest.kt:SourceReadCliContractTest$"""{"anchor":{"type":"candidate","selector":"$token"},"region":{"type":"anchor"},"entities":{"type":"matching","containment":"direct","filters":[]},"text":{"type":"complete"},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}"""</ID>
+    <ID>MaxLineLength:SourceReadCliContractTest.kt:SourceReadCliContractTest$"""{"anchor":{"type":"candidate","selector":"$token"},"region":{"type":"anchor"},"entities":{"type":"matching","containment":"direct","filters":[{"type":"declaration","kinds":["function","function"],"visibility":{"type":"any"}}]},"text":{"type":"complete"},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}"""</ID>
+    <ID>MaxLineLength:SourceReadCliContractTest.kt:SourceReadCliContractTest$"""{"anchor":{"type":"candidate","selector":"$token"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"window","beforeLines":-1,"afterLines":0},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}"""</ID>
+    <ID>MaxLineLength:SourceReadCliContractTest.kt:SourceReadCliContractTest$"""{"anchor":{"type":"candidate","selector":"unknown:selector"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"complete"},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}"""</ID>
+    <ID>MaxLineLength:WireIoDeadline.kt:JsonLineWireActivitySink$"{\"component\":\"kast-wire\",\"stage\":\"${activity.stage.name.lowercase()}\",\"outcome\":\"${activity.outcome.name.lowercase()}\"}"</ID>
+    <ID>NestedBlockDepth:CliCommandGraph.kt:CliCommandGraph$fun parse: CliCommandParsing</ID>
+    <ID>NestedBlockDepth:DirectRuntimeProcessStarter.kt:private fun Process.retireLaunchTree</ID>
+    <ID>NestedBlockDepth:ExistingIdeSocketClient.kt:ExistingIdeSocketClient$override fun query: ExistingIdeExchange</ID>
+    <ID>NestedBlockDepth:ExistingIdeSocketTest.kt:ExistingIdeSocketTest$@Test fun `native framed client accepts the exact host and rejects oversized and invalid UTF8 responses`</ID>
+    <ID>NestedBlockDepth:IndexSeedFilesystemService.kt:private fun deleteUnpublishedStaging</ID>
+    <ID>NestedBlockDepth:IndexSeedFilesystemServiceTest.kt:CopyingTestCloner$override fun clone: IndexSeedCopyResult</ID>
+    <ID>NestedBlockDepth:InstallationWorkflow.kt:InstallationWorkflow$private fun apply: InstallationOutcome</ID>
+    <ID>NestedBlockDepth:InstallationWorkflow.kt:private fun digest: Sha256?</ID>
+    <ID>NestedBlockDepth:InstallationWorkflow.kt:private fun payloadFiles: List&lt;PayloadFile></ID>
+    <ID>NestedBlockDepth:InstallationWorkflow.kt:private fun verifyControlLayout: Boolean</ID>
+    <ID>NestedBlockDepth:InstallationWorkflow.kt:private fun verifyRuntimeArchive: Boolean</ID>
+    <ID>NestedBlockDepth:KastCli.kt:KastCli$private fun executeRequest: CliExit</ID>
+    <ID>NestedBlockDepth:MacOsRuntimeProcessAuthority.kt:JdkRuntimeBootstrapProcessSearch$override fun find: RuntimeBootstrapProcessSearchResult</ID>
+    <ID>NestedBlockDepth:MacOsRuntimeProcessAuthority.kt:JdkRuntimeProcessSearch$override fun find: RuntimeProcessSearchResult</ID>
+    <ID>NestedBlockDepth:RuntimeBoundary.kt:ExactRootProcessRuntimeDemander$private fun awaitBootstrapAttempt: RuntimeAdmission</ID>
+    <ID>NestedBlockDepth:RuntimeBoundary.kt:ExactRootProcessRuntimeDemander$private fun demandExclusively: RuntimeAdmission</ID>
+    <ID>NestedBlockDepth:WireDeadlineTest.kt:WireDeadlineTest$@Test fun `successful frame preserves its reusable connection and reports completion`</ID>
+    <ID>NestedBlockDepth:WireDeadlineTest.kt:WireDeadlineTest$private fun stalledPeer</ID>
+    <ID>NestedBlockDepth:WireQualificationTest.kt:WireQualificationTest$private fun fixture</ID>
+    <ID>ThrowsCount:InstallationWorkflow.kt:private fun payloadFiles: List&lt;PayloadFile></ID>
+    <ID>VariableNaming:CanonicalQueryCliDocuments.kt:QueryResultItemCliDocument.ExactSymbol$// Migration alias is derived from the retained exact reference, never an independent input. val symbol_ref: String = ref.token</ID>
+    <ID>WildcardImport:AppServerCommands.kt:import io.github.amichne.kast.appserver.*</ID>
+    <ID>WildcardImport:AppServerCommands.kt:import io.github.amichne.kast.cli.command.*</ID>
+    <ID>WildcardImport:BrokerOperationalCatalogueTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:CanonicalQueryCliDocuments.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:CliBoundaryDocumentsTest.kt:import io.github.amichne.kast.distribution.contract.bootstrap.*</ID>
+    <ID>WildcardImport:CoordinatedRootRuntimeDemander.kt:import io.github.amichne.kast.appserver.*</ID>
+    <ID>WildcardImport:CoordinatedRootRuntimeDemanderTest.kt:import io.github.amichne.kast.appserver.*</ID>
+    <ID>WildcardImport:CoordinatedRootRuntimeDemanderTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:ExistingIdeCli.kt:import io.github.amichne.kast.cli.*</ID>
+    <ID>WildcardImport:ExistingIdeCli.kt:import io.github.amichne.kast.cli.command.*</ID>
+    <ID>WildcardImport:ExistingIdeCliTest.kt:import io.github.amichne.kast.cli.*</ID>
+    <ID>WildcardImport:ExistingIdeCliTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:ExistingIdeSemanticReadTest.kt:import io.github.amichne.kast.cli.*</ID>
+    <ID>WildcardImport:ExistingIdeSemanticReadTest.kt:import io.github.amichne.kast.kernel.*</ID>
+    <ID>WildcardImport:ExistingIdeSemanticReadTest.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:ExistingIdeSemanticReadTest.kt:import io.github.amichne.kast.protocol.wire.*</ID>
+    <ID>WildcardImport:ExistingIdeSemanticReadTest.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:ExistingIdeSemanticReadTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:ExistingIdeSocketClient.kt:import io.github.amichne.kast.cli.*</ID>
+    <ID>WildcardImport:ExistingIdeSocketClient.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:ExistingIdeSocketTest.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:ExistingIdeSocketTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:FrontendWorkerSeedConsent.kt:import io.github.amichne.kast.appserver.*</ID>
+    <ID>WildcardImport:GeneratedCliProjectionTest.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:IdeCommands.kt:import io.github.amichne.kast.cli.command.*</ID>
+    <ID>WildcardImport:IdeCommands.kt:import io.github.amichne.kast.cli.ide.*</ID>
+    <ID>WildcardImport:InstalledRuntimeWorkerEffects.kt:import io.github.amichne.kast.appserver.*</ID>
+    <ID>WildcardImport:KastCodexMain.kt:import io.github.amichne.kast.appserver.*</ID>
+    <ID>WildcardImport:LiveReadCliEvidence.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:LiveReadOutputSchemaTest.kt:import io.github.amichne.kast.kernel.*</ID>
+    <ID>WildcardImport:LiveReadOutputSchemaTest.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:LiveReadOutputSchemaTest.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:PublicToolCommandTest.kt:import io.github.amichne.kast.appserver.query.*</ID>
+    <ID>WildcardImport:PublicToolCommandTest.kt:import io.github.amichne.kast.cli.command.*</ID>
+    <ID>WildcardImport:PublicToolCommandTest.kt:import io.github.amichne.kast.protocol.wire.*</ID>
+    <ID>WildcardImport:PublicToolCommandTest.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:PublicToolCommandTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:PublicToolCommands.kt:import io.github.amichne.kast.cli.command.*</ID>
+    <ID>WildcardImport:RuntimeEndpointAliasTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:WireDeadlineTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:WireQualificationTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

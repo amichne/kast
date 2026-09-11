@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>MaxLineLength:SemanticRuntimeBootstrapTest.kt:SemanticRuntimeBootstrapTest$"""{"schemaVersion":1,"bootstrap":{"state":"starting","attemptId":"123e4567-e89b-42d3-a456-426614174000"}}"""</ID>
+    <ID>MaxLineLength:SemanticRuntimeBootstrapTest.kt:SemanticRuntimeBootstrapTest$"""{"schemaVersion":3,"bootstrap":{"state":"rejected","attemptId":"123e4567-e89b-42d3-a456-426614174000","phase":"capturing-model-inputs","cause":{"state":"standard","failure":"model-input-rejected"}}}"""</ID>
+    <ID>MaxLineLength:SemanticRuntimeBootstrapTest.kt:SemanticRuntimeBootstrapTest$"""{"schemaVersion":3,"bootstrap":{"state":"starting","attemptId":"123e4567-e89b-42d3-a456-426614174000","phase":"discovering-runtime","gradleJvm":{"state":"io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionObservation.Unobserved"}}}"""</ID>
+    <ID>MaxLineLength:SemanticRuntimeBootstrapTest.kt:SemanticRuntimeBootstrapTest$"""{"schemaVersion":3,"bootstrap":{"state":"starting","attemptId":"123e4567-e89b-42d3-a456-426614174000","phase":"unproven-phase"}}"""</ID>
+    <ID>MaxLineLength:SemanticRuntimeBootstrapTest.kt:SemanticRuntimeBootstrapTest$"""{"schemaVersion":3,"bootstrap":{"state":"starting","attemptId":"123e4567-e89b-42d3-a456-426614174000"}}"""</ID>
+    <ID>MaxLineLength:SemanticRuntimeBootstrapTest.kt:SemanticRuntimeBootstrapTest$"""{"schemaVersion":3,"bootstrap":{"state":"unknown","attemptId":"123e4567-e89b-42d3-a456-426614174000"}}"""</ID>
+    <ID>WildcardImport:GradleImportEnvironmentTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:ReadLimitConfigurationTest.kt:import io.github.amichne.kast.kernel.*</ID>
+    <ID>WildcardImport:ReadLimitConfigurationTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:WorkerCapacityConfigurationTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

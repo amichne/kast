@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:IntellijSourceReadPort.kt:IntellijSourceEntityPage.Companion$fun select: IntellijSourceEntityPage</ID>
+    <ID>CognitiveComplexMethod:IntellijSourceReadPort.kt:IntellijSourceReadPort$override suspend fun read: SourceReadResult</ID>
+    <ID>CognitiveComplexMethod:IntellijSourceScopeAdmission.kt:internal fun admitsSourceReadScope: Boolean</ID>
+    <ID>CognitiveComplexMethod:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess$private fun liveDocument: LiveSourceDocumentAdmission</ID>
+    <ID>CognitiveComplexMethod:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$private fun visit</ID>
+    <ID>CognitiveComplexMethod:LiveIntellijSourceRead.kt:private fun projectEntities: NativeSourceEntityProjection</ID>
+    <ID>CognitiveComplexMethod:ProjectBoundIntellijSourceReadPort.kt:ProjectBoundIntellijSourceReadPort$fun create: SourceReadPort</ID>
+    <ID>ComplexCondition:IntellijSourceReadPort.kt:IntellijSelectedSourceCapture.Companion$anchorSelector.snapshot != snapshot || regionSelector.snapshot != snapshot || '\r' in normalizedDocumentText || normalizedDocumentText.length != snapshot.length.value || SourceTextIdentity.fromNormalizedCommittedText(normalizedDocumentText) != snapshot.textIdentity</ID>
+    <ID>ComplexCondition:IntellijSourceReadPort.kt:IntellijSelectedSourceCapture.Companion$entityPage.knownMinimumEntityCount &lt; entityPage.entities.size || entityPage.entities.any { entity -> entity.selector.snapshot != snapshot || entity.selector.range.startInclusive &lt; regionSelector.range.startInclusive || entity.selector.range.endExclusive > regionSelector.range.endExclusive } || (entityPage.nextOrdinal == null &amp;&amp; SourceReadLimitation.ENTITY_LIMIT_REACHED in entityPage.limitations) || (entityPage.nextOrdinal != null &amp;&amp; SourceReadLimitation.ENTITY_LIMIT_REACHED !in entityPage.limitations)</ID>
+    <ID>ComplexCondition:IntellijSourceReadPort.kt:IntellijSourceReadPort$request.region != RegionSelection.Anchor || request.entities != EntitySelection.None || request.text != TextProjection.Complete || request.page != SourceReadPage.First || cursor.startOrdinal != 0</ID>
+    <ID>ComplexCondition:LiveIntellijSourceRead.kt:declaration != null &amp;&amp; declaration.name == candidate.name.value &amp;&amp; declaration.textRange.startOffset == location.offset.value &amp;&amp; declaration.matches(candidate.kind) &amp;&amp; declaration.matchesCompilerKinds(selector.selection.constraints)</ID>
+    <ID>ComplexCondition:LiveIntellijSourceRead.kt:declaration != null &amp;&amp; declaration.name == selector.name.value &amp;&amp; declaration.textRange.startOffset == selector.range.startInclusive &amp;&amp; declaration.textRange.endOffset == selector.range.endExclusive</ID>
+    <ID>CyclomaticComplexMethod:IntellijSourceReadPort.kt:IntellijSelectedSourceCapture.Companion$fun create: Refinement&lt;IntellijSelectedSourceCapture, IntellijSourceReadRejection></ID>
+    <ID>CyclomaticComplexMethod:IntellijSourceReadPort.kt:IntellijSourceReadPort$override suspend fun read: SourceReadResult</ID>
+    <ID>CyclomaticComplexMethod:IntellijSourceScopeAdmission.kt:internal fun admitsSourceReadScope: Boolean</ID>
+    <ID>CyclomaticComplexMethod:LiveIntellijSourceRead.kt:LiveIntellijSourceReadAccess$private fun captureInReadAction: IntellijSourceReadAccessResult</ID>
+    <ID>CyclomaticComplexMethod:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess$private fun liveDocument: LiveSourceDocumentAdmission</ID>
+    <ID>CyclomaticComplexMethod:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$private fun visit</ID>
+    <ID>CyclomaticComplexMethod:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$private fun visitParameter</ID>
+    <ID>LargeClass:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator</ID>
+    <ID>LongMethod:IntellijSourceReadPort.kt:IntellijSourceEntityPage.Companion$fun select: IntellijSourceEntityPage</ID>
+    <ID>LongMethod:IntellijSourceReadPort.kt:IntellijSourceReadPort$override suspend fun read: SourceReadResult</ID>
+    <ID>LongMethod:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess$private fun admitCandidateAnchor: LiveSourceAnchorResult</ID>
+    <ID>LongMethod:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess$private fun liveDocument: LiveSourceDocumentAdmission</ID>
+    <ID>LongMethod:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess$private fun selectInReadAction: IntellijSourceRegionAccessResult</ID>
+    <ID>LongMethod:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$private fun visitParameter</ID>
+    <ID>LongMethod:LiveIntellijSourceRead.kt:private fun KtNamedDeclaration.candidateSelector: CandidateSelector.Declaration?</ID>
+    <ID>LongMethod:LiveIntellijSourceRead.kt:private fun deriveRegion: NativeSourceRegion?</ID>
+    <ID>LongMethod:LiveIntellijSourceRead.kt:private fun projectEntities: NativeSourceEntityProjection</ID>
+    <ID>LongParameterList:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator</ID>
+    <ID>LongParameterList:LiveIntellijSourceRead.kt:private fun projectEntities: NativeSourceEntityProjection</ID>
+    <ID>LongParameterList:ProjectBoundIntellijSourceReadPort.kt:ProjectBoundIntellijSourceReadPort$fun create: SourceReadPort</ID>
+    <ID>LoopWithTooManyJumpStatements:IntellijSourceReadPort.kt:IntellijSourceEntityPage.Companion$while</ID>
+    <ID>MatchingDeclarationName:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess : IntellijSourceRegionAccess</ID>
+    <ID>NamedArguments:IntellijSourceReadPort.kt:IntellijCommittedSourceCapture.Companion$IntellijCommittedSourceCapture( revalidated, snapshot, range, normalizedDocumentText.substring(start.value, end.value), )</ID>
+    <ID>NamedArguments:IntellijSourceReadPort.kt:IntellijCommittedSourceCapture.Companion$create( context, file, SourceTextIdentity.fromNormalizedCommittedText(normalizedDocumentText), when (val length = Utf16CodeUnitCount.parse(normalizedDocumentText.length)) { is Refinement.Refined -> length.value is Refinement.Rejected -> return Refinement.Rejected(IntellijSourceReadRejection.CONTRACT_VIOLATION) }, SourceReadScope.Constrained(selector.scope, selector.constraints), )</ID>
+    <ID>NamedArguments:IntellijSourceReadPort.kt:IntellijSourceEntityPage.Companion$Prefix( page.toList(), next + 1, baseLimitations + SourceReadLimitation.ENTITY_LIMIT_REACHED, next, )</ID>
+    <ID>NamedArguments:IntellijSourceReadPort.kt:IntellijSourceReadContinuations$Entry(binding, capture.snapshot, capture.regionSelector.fingerprint.value, nextOrdinal)</ID>
+    <ID>NamedArguments:IntellijSourceReadPort.kt:IntellijSourceReadPort$create( capture.snapshot, region, page.entities, projectedText, )</ID>
+    <ID>NamedArguments:IntellijSourceReadPort.kt:IntellijSourceReadPort$create( capture.snapshot, region, page.entities, projectedText, qualification, )</ID>
+    <ID>NamedArguments:IntellijSourceReadPort.kt:IntellijSourceReadPort$create( capture.snapshot, sourceSelector, sourceSelector, capture.snapshotText(capture.declarationText), )</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess$create( context, fileIdentity, SourceTextIdentity.fromNormalizedCommittedText(text), length, readScope, )</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess$create( document.snapshot, admittedAnchor.selector, regionSelector, document.text, entityPage, )</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess$projectEntities( document, selected, regionSelector, request, cursor, limits, )</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$create( callSelector, sourceNestingDepth(parent.depth), calleeSelector, (callee as? KtNameReferenceExpression)?.let(target) ?: SourceEntityTarget.Unresolved(CompilerUnresolvedReason.UNSUPPORTED_TARGET), )</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$create( propertySelector, sourceNestingDepth(propertyParent.depth), DeclarationKind.PROPERTY, semanticVisibility, DeclarationSemanticIdentity.Candidate(candidate), )</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$create( selector, sourceNestingDepth(parent.depth), kind, semanticVisibility, DeclarationSemanticIdentity.Candidate(candidate), )</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$issueEntity(parent, nonEmpty, kind, name)</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$issueEntitySelector( call.textRange, SourceEntityKind.CALL, entityName, parent.selector, )</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$issueEntitySelector( callee.textRange, SourceEntityKind.CALLEE, entityName, callSelector, )</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$issueEntitySelector( parameter.textRange, SourceEntityKind.DECLARATION_PROPERTY, name, propertyParent.selector, )</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$issueEntitySelector( parameter.textRange, SourceEntityKind.VALUE_PARAMETER, name, parent.selector, )</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$issueEntitySelector( reference.textRange, SourceEntityKind.REFERENCE, name, parent.selector, )</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$issueEntitySelector(declaration.textRange, kind.entityKind(), name, parent.selector)</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$issueEntitySelector(textRange, kind, admitted.value, parent)</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$visitDeclaration(declaration, kind, rootParent, classParent)</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$visitDeclaration(element, kind, parent, classPropertyParent)</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator( document, region, regionSelector, includeDeclarations, includeParameters, includeCalls, includeReferences, matching.containment, limits, visibility = { declaration, target -> val visibility = when (target) { NativeVisibilityTarget.DECLARATION -> declaration.symbol.visibility NativeVisibilityTarget.PRIMARY_CONSTRUCTOR_PROPERTY -> ((declaration as? KtParameter)?.symbol as? KaValueParameterSymbol) ?.generatedPrimaryConstructorProperty ?.visibility } visibility?.sourceVisibility() }, target = { reference -> val targets = reference.mainReference.resolveToSymbols().toList() when (targets.size) { 0 -> SourceEntityTarget.Unresolved(CompilerUnresolvedReason.NAME_NOT_FOUND) 1 -> targets.single().sourceEntityTarget(document) else -> SourceEntityTarget.Unresolved(CompilerUnresolvedReason.AMBIGUOUS) } }, )</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator( document, region, regionSelector, includeDeclarations, includeParameters, includeCalls, includeReferences, matching.containment, limits, { _, _ -> null }, { SourceEntityTarget.Unresolved(CompilerUnresolvedReason.UNSUPPORTED_TARGET) }, )</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:fromBoundary( if (kind == DeclarationKind.CLASSLIKE) { SymbolDiscoveryKind.CLASS } else { SymbolDiscoveryKind.SYMBOL }, name, snapshot.lease, nativePath, file.url, textRange.startOffset, )</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:function( identity, receiverParameter?.returnType?.toString(), contextReceivers.map { it.type.toString() }, valueParameters.map { it.returnType.toString() }, (this as? KaNamedFunctionSymbol)?.typeParameters?.size ?: 0, )</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:property( identity, receiverParameter?.returnType?.toString(), contextReceivers.map { it.type.toString() }, returnType.toString(), )</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:restore(snapshot.lease, scope, candidate, constraints)</ID>
+    <ID>NamedArguments:LiveIntellijSourceRead.kt:select( enumeration.entities.asSequence(), request.entities, cursor, request.entityLimit, limits, )</ID>
+    <ID>TooGenericExceptionCaught:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess$failure: RuntimeException</ID>
+    <ID>UnusedPrivateClass:LiveIntellijSourceRead.kt:LiveIntellijSourceReadAccess : IntellijSourceReadAccess</ID>
+    <ID>UnusedPrivateFunction:LiveIntellijSourceRead.kt:private fun KtNamedDeclaration.localSourceTarget: SourceEntityTarget</ID>
+    <ID>UnusedPrivateProperty:IntellijSourceReadPort.kt:IntellijSourceReadContinuations$private val limits: ReadLimits = ReadLimits.Default</ID>
+  </CurrentIssues>
+</SmellBaseline>
