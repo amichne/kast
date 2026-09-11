@@ -42,6 +42,7 @@ internal fun interface HostedEndpointObserver {
 @Service(Service.Level.PROJECT)
 class HostedEndpointService(private val project: Project, private val scope: CoroutineScope) : Disposable {
     private val query = project.getService(HostedQueryService::class.java)
+    private val changes = HostedChangeCoordinator(project, query)
     private val observer =
         object : HostedEndpointObserver {
             override fun observe(stage: HostedEndpointStage, outcome: HostedEndpointOutcome) {
@@ -139,6 +140,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                     observer.observe(HostedEndpointStage.RETIREMENT, HostedEndpointOutcome.STARTED)
                     try {
                         try {
+                            changes.close()
                             query.detach()
                         } finally {
                             continuations.retire()
@@ -163,22 +165,26 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
             return HostedRequests.rejected(HostedEndpointFailure.WRONG_ROOT)
         }
         return when (request) {
+            is HostedRequest.PrepareApproval -> changes.prepare(request)
+            is HostedRequest.ApplyChange -> changes.apply(request)
+            is HostedRequest.RecoverChange -> changes.recover(request)
             is HostedRequest.Describe ->
                 Gson()
                     .toJson(
                         mapOf(
                             "type" to "KAST_IDE_HOST",
-                            "protocol" to 2,
+                            "protocol" to HostedEndpointCapabilities.protocol,
                             "root" to root.value,
                             "hostPid" to ProcessHandle.current().pid(),
                             "indexAuthority" to "existing_ide_kotlin_stub_index",
                             "host" to query.hostLifetime.value.toString(),
                             "querySchema" to HostedReadCapabilities.querySchema,
-                            "operations" to HostedReadCapabilities.operations,
+                            "operations" to HostedEndpointCapabilities.operations,
                         )
                     )
             is HostedRequest.Classes -> HostedQueryWire.encode(query.lookup(query.endpoint, request.lookup), limits)
             is HostedRequest.Supertype -> HostedQueryWire.encode(query.query(query.endpoint, request.selection))
+            is HostedRequest.PlanChange -> planHostedChange(project, query, request)
             is HostedRequest.Read ->
                 when (
                     val result =
@@ -194,6 +200,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
     }
 
     override fun dispose() {
+        changes.close()
         query.dispose()
         job.cancel()
     }

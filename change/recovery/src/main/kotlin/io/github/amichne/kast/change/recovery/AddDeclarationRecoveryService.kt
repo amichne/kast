@@ -101,6 +101,32 @@ class AddDeclarationRecoveryService(
     private val evidence: MutationRecoveryEvidenceStore,
     private val preWriteObservation: RecoveryPreWriteObservationPort = RecoveryPreWriteObservationPort.Unavailable,
 ) {
+    /** Records an independently observed postimage after interruption, never a repeated source mutation. */
+    fun recordObservedApplied(
+        observation: ConfirmedRecoveryPostimage
+    ): MutationRecoveryPersistResult<MutationRecoveryRecord.AppliedWritesDurable> {
+        val prior = observation.record
+        val writes =
+            when (
+                val admitted =
+                    AppliedRecoveryWriteSet.admit(
+                        prior.preparation.plannedWrites,
+                        prior.preparation.plannedWrites.map(PlannedRecoveryWrite::source),
+                    )
+            ) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected ->
+                    return MutationRecoveryPersistResult.Rejected(MutationRecoveryEvidenceFailure.PRIOR_STATE_MISMATCH)
+            }
+        val applied =
+            when (val transitioned = MutationRecoveryRecord.recordApplied(prior, writes)) {
+                is Refinement.Refined -> transitioned.value
+                is Refinement.Rejected ->
+                    return MutationRecoveryPersistResult.Rejected(MutationRecoveryEvidenceFailure.PRIOR_STATE_MISMATCH)
+            }
+        return evidence.recordApplied(prior, applied)
+    }
+
     /**
      * Proof transition: `AddDeclarationRecoveryPreparation -> PrepareAddDeclarationRecoveryResult`.
      *

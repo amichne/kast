@@ -373,7 +373,7 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
 }
 
 private fun operationProcessDocumentSchema(operation: CanonicalOperation): JsonObject =
-    if (operation.supportsLiveReadEvidence()) {
+    if (operation.supportsLiveEvidence()) {
         unionSchema(operationDocumentSchema(operation), hostedEndpointRejectionSchema, hostedReadRejectionSchema)
     } else {
         operationDocumentSchema(operation)
@@ -1136,50 +1136,37 @@ internal fun operationOutcomeVariant(
     operation: CanonicalOperation,
     status: String,
     vararg payload: ServerSchemaProperty,
+): JsonObject = operationOutcomeVariant(operation, status, payload.toList())
+
+internal fun operationOutcomeVariant(
+    operation: CanonicalOperation,
+    status: String,
+    payload: List<ServerSchemaProperty>,
 ): JsonObject {
     val identity =
-        arrayOf(
+        listOf(
             ServerSchemaProperty("operation", constantSchema(operation.id.value, "Canonical operation identity.")),
             ServerSchemaProperty("status", constantSchema(status, "Canonical operation outcome.")),
         )
-    val published = objectSchema(*identity, *payload)
-    if (!operation.supportsLiveReadEvidence() || status !in setOf("complete", "qualified")) return published
-    val livePayload =
-        payload
-            .map { property ->
-                when {
-                    operation == CanonicalOperation.SOURCE_READ && property.name == "snapshot" ->
-                        ServerSchemaProperty("snapshot", sourceSnapshotSchema(ServerReadEvidenceShape.LIVE))
-                    operation == CanonicalOperation.TRAVERSAL_RUN && property.name == "graph" ->
-                        ServerSchemaProperty("graph", normalizedTraversalGraphSchema(ServerReadEvidenceShape.LIVE))
-                    else -> property
-                }
-            }
-            .toTypedArray()
+    val published = objectSchema(identity + payload)
+    if (!operation.supportsLiveEvidence() || status !in setOf("complete", "qualified")) return published
+    val livePayload = payload.map { property ->
+        when {
+            operation == CanonicalOperation.SOURCE_READ && property.name == "snapshot" ->
+                ServerSchemaProperty("snapshot", sourceSnapshotSchema(ServerReadEvidenceShape.LIVE))
+            operation == CanonicalOperation.TRAVERSAL_RUN && property.name == "graph" ->
+                ServerSchemaProperty("graph", normalizedTraversalGraphSchema(ServerReadEvidenceShape.LIVE))
+            else -> property
+        }
+    }
     // The closed variants make top-level and nested Published/Live shapes mutually exclusive.
     return buildJsonObject {
         putJsonArray("oneOf") {
             add(published)
-            add(objectSchema(*identity, *livePayload, ServerSchemaProperty("live", liveReadEvidenceSchema())))
+            add(objectSchema(identity + livePayload + ServerSchemaProperty("live", liveReadEvidenceSchema())))
         }
     }
 }
-
-private fun CanonicalOperation.supportsLiveReadEvidence(): Boolean =
-    when (this) {
-        CanonicalOperation.QUERY_RUN,
-        CanonicalOperation.SYMBOL_DISCOVER,
-        CanonicalOperation.SYMBOL_INSPECT,
-        CanonicalOperation.SOURCE_READ,
-        CanonicalOperation.RELATION_READ,
-        CanonicalOperation.TRAVERSAL_RUN,
-        CanonicalOperation.DIAGNOSTIC_CHECK -> true
-        CanonicalOperation.INDEX_SYNC,
-        CanonicalOperation.TOPOLOGY_BUILD,
-        CanonicalOperation.CHANGE_PLAN,
-        CanonicalOperation.CHANGE_APPLY,
-        CanonicalOperation.CHANGE_RECOVER -> false
-    }
 
 private fun topologyBuildDocumentSchema(operation: CanonicalOperation): JsonObject {
     val result =

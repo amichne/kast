@@ -3,18 +3,36 @@ package io.github.amichne.kast.runtime.hosted
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.diagnostic.intellij.ProjectBoundIntellijDiagnosticPorts
 import io.github.amichne.kast.diagnostic.service.DiagnosticService
-import io.github.amichne.kast.kernel.*
-import io.github.amichne.kast.protocol.contract.*
-import io.github.amichne.kast.protocol.wire.*
-import io.github.amichne.kast.query.contract.*
-import io.github.amichne.kast.query.protocol.*
+import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.ReadLimitParameter
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResourceBudget
+import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.kernel.WorkUnitLimit
+import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
+import io.github.amichne.kast.protocol.wire.WireEncoding
+import io.github.amichne.kast.query.contract.QueryBudget
+import io.github.amichne.kast.query.contract.QueryByteLimit
+import io.github.amichne.kast.query.protocol.CanonicalDiagnosticCheckProtocol
+import io.github.amichne.kast.query.protocol.CanonicalQueryProtocol
+import io.github.amichne.kast.query.protocol.CanonicalQueryReferences
+import io.github.amichne.kast.query.protocol.CanonicalRelationReadProtocol
+import io.github.amichne.kast.query.protocol.CanonicalSourceReadProtocol
+import io.github.amichne.kast.query.protocol.CanonicalSymbolDiscoverProtocol
+import io.github.amichne.kast.query.protocol.CanonicalSymbolInspectProtocol
+import io.github.amichne.kast.query.protocol.CanonicalTraversalRunProtocol
+import io.github.amichne.kast.query.protocol.SourceProtocolBudget
 import io.github.amichne.kast.query.service.QueryService
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.intellij.ProjectBoundIntellijRelationPort
 import io.github.amichne.kast.relation.service.RelationService
-import io.github.amichne.kast.source.contract.*
+import io.github.amichne.kast.source.contract.SourceEntityLimit
+import io.github.amichne.kast.source.contract.SourceReadContext
+import io.github.amichne.kast.source.contract.SourceReadContextPort
 import io.github.amichne.kast.source.contract.SourceReadRejection
+import io.github.amichne.kast.source.contract.SourceTextByteLimit
 import io.github.amichne.kast.source.intellij.IntellijSourceReadContinuations
 import io.github.amichne.kast.source.intellij.ProjectBoundIntellijSourceReadPort
 import io.github.amichne.kast.source.service.SourceReadService
@@ -23,7 +41,10 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.symbol.intellij.ProjectBoundIntellijSymbolPorts
 import io.github.amichne.kast.symbol.service.SymbolDiscoveryService
 import io.github.amichne.kast.symbol.service.SymbolExactService
-import io.github.amichne.kast.traversal.contract.*
+import io.github.amichne.kast.traversal.contract.TraversalBudget
+import io.github.amichne.kast.traversal.contract.TraversalByteLimit
+import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
+import io.github.amichne.kast.traversal.contract.TraversalFrontierLimit
 import io.github.amichne.kast.traversal.service.traversalOperations
 import io.github.amichne.kast.workspace.contract.SemanticReadValidation
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadContext
@@ -72,12 +93,12 @@ internal suspend fun evaluateHostedCanonicalQuery(
         RelationService(
             context.validation,
             ProjectBoundIntellijRelationPort.create(
-                project,
-                context.authority,
-                context.model,
-                context.sourceFiles,
-                context.observation,
-                context.limits,
+                project = project,
+                authority = context.authority,
+                model = context.model,
+                fileAdmission = context.sourceFiles,
+                observation = context.observation,
+                limits = context.limits,
             ),
         )
     val references = CanonicalQueryReferences(context.model)
@@ -115,11 +136,11 @@ internal suspend fun evaluateHostedCanonicalQuery(
             is HostedRequest.Diagnostic -> {
                 val diagnostics =
                     ProjectBoundIntellijDiagnosticPorts.create(
-                        project,
-                        context.authority,
-                        context.model,
-                        context.sourceFiles,
-                        context.limits,
+                        project = project,
+                        authority = context.authority,
+                        model = context.model,
+                        fileAdmission = context.sourceFiles,
+                        limits = context.limits,
                     )
                 CanonicalOperationWireBindings.diagnosticCheck.encodeOutcome(
                     CanonicalDiagnosticCheckProtocol(
@@ -144,7 +165,7 @@ internal suspend fun evaluateHostedCanonicalQuery(
 }
 
 /** Budgets are projected only from an admitted, immutable policy. */
-private class HostedSemanticBudgets(private val limits: ReadLimits) {
+internal class HostedSemanticBudgets(private val limits: ReadLimits) {
     val hostedQueryBudget =
         QueryBudget(
             ResourceBudget(

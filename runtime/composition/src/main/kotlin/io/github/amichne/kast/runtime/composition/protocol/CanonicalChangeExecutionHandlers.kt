@@ -220,6 +220,7 @@ private fun AddDeclarationApplyFailure.protocolRejection(): ChangeApplyRejection
                 SourceObservationFailure.TARGET_NOT_FOUND,
                 SourceObservationFailure.TARGET_INVALIDATED,
                 SourceObservationFailure.SOURCE_BYTES_UNAVAILABLE,
+                SourceObservationFailure.SOURCE_LIMIT_EXCEEDED,
                 SourceObservationFailure.INVALID_SOURCE_CONTENT -> ChangeApplyRejection.CONTENT_CHANGED
                 SourceObservationFailure.TARGET_NOT_KOTLIN,
                 SourceObservationFailure.DOCUMENT_UNAVAILABLE -> ChangeApplyRejection.WRITE_SCOPE_REJECTED

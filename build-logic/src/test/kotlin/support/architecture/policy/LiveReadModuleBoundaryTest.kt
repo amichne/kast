@@ -58,7 +58,7 @@ class LiveReadModuleBoundaryTest {
     }
 
     @Test
-    fun `hosted semantic read closure excludes isolated runtime and write owners`() {
+    fun `hosted composition includes explicit changes but excludes isolated runtime owners`() {
         val architecture = canonical()
         val closure = linkedSetOf<ModuleId>()
         fun visit(id: ModuleId) {
@@ -70,16 +70,37 @@ class LiveReadModuleBoundaryTest {
             ModuleId.QUERY_PROTOCOL, ModuleId.QUERY_SERVICE,
             ModuleId.SYMBOL_INTELLIJ, ModuleId.SOURCE_INTELLIJ, ModuleId.RELATION_INTELLIJ,
             ModuleId.DIAGNOSTIC_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ,
+            ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_PLAN, ModuleId.CHANGE_APPLY,
+            ModuleId.CHANGE_VERIFY, ModuleId.CHANGE_RECOVERY, ModuleId.EVIDENCE_SQLITE,
         ).all(closure::contains))
         assertEquals(emptySet<ModuleId>(), closure.intersect(setOf(
             ModuleId.RUNTIME_COMPOSITION, ModuleId.INDEXER, ModuleId.RUNTIME_TELEMETRY,
-            ModuleId.WORKSPACE_INTELLIJ, ModuleId.WORKSPACE_SERVICE, ModuleId.EVIDENCE_SQLITE,
+            ModuleId.WORKSPACE_INTELLIJ, ModuleId.WORKSPACE_SERVICE,
             ModuleId.DISTRIBUTION_MANAGED, ModuleId.TOPOLOGY_BUILD, ModuleId.TOPOLOGY_INTELLIJ,
-            ModuleId.TOPOLOGY_SERVICE, ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_PLAN,
-            ModuleId.CHANGE_APPLY, ModuleId.CHANGE_VERIFY, ModuleId.CHANGE_RECOVERY,
+            ModuleId.TOPOLOGY_SERVICE,
+        )))
+    }
+
+    @Test
+    fun `shared semantic read adapters cannot acquire writers or durable mutation stores`() {
+        val architecture = canonical()
+        val closure = linkedSetOf<ModuleId>()
+        fun visit(id: ModuleId) {
+            if (closure.add(id)) architecture.modules.getValue(id).allowedProjectDependencies.forEach(::visit)
+        }
+        setOf(ModuleId.QUERY_PROTOCOL, ModuleId.QUERY_SERVICE, ModuleId.SYMBOL_INTELLIJ,
+            ModuleId.SOURCE_INTELLIJ, ModuleId.RELATION_INTELLIJ, ModuleId.DIAGNOSTIC_INTELLIJ,
+            ModuleId.WORKSPACE_INTELLIJ_READ).forEach(::visit)
+        assertEquals(emptySet<ModuleId>(), closure.intersect(setOf(
+            ModuleId.RUNTIME_HOSTED, ModuleId.RUNTIME_COMPOSITION, ModuleId.INDEXER,
+            ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_PLAN, ModuleId.CHANGE_APPLY,
+            ModuleId.CHANGE_VERIFY, ModuleId.CHANGE_RECOVERY, ModuleId.EVIDENCE_SQLITE,
+            ModuleId.WORKSPACE_INTELLIJ, ModuleId.WORKSPACE_SERVICE,
         )))
     }
 
     private fun canonical(): ValidatedArchitecturePolicy =
-        assertInstanceOf<ArchitecturePolicyValidation.Valid>(KastArchitecturePolicy.validate()).architecture
+        KastArchitecturePolicy.validate().let { result ->
+            assertInstanceOf<ArchitecturePolicyValidation.Valid>(result, result.toString()).architecture
+        }
 }

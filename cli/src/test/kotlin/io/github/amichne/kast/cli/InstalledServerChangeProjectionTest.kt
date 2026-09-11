@@ -82,6 +82,29 @@ class InstalledServerChangeProjectionTest {
             )
     }
 
+    @Test
+    fun `hosted change output schemas admit live provenance and reject malformed provenance`() {
+        val live =
+            """"live":{"root":"/workspace","host":"00000000-0000-0000-0000-000000000001",
+            "epoch":8,"contentView":"SAVED_PSI_COMMITTED","version":1}"""
+        val preview = """"changes":[{"path":"src/Target.kt","kind":"update","diff":"+fun added() = 1"}]"""
+        val cases =
+            mapOf(
+                "change_plan" to """"operation":"change.plan","planIdentity":"plan:opaque",$preview""",
+                "change_apply" to
+                    """"operation":"change.apply","state":"verified","receiptIdentity":"receipt:opaque",$preview""",
+                "change_recover" to """"operation":"change.recover","state":"rolled-back"""",
+            )
+        val tools = projectionTools()
+        for ((tool, payload) in cases) {
+            val schema = tools.tool(tool).outputSchema()
+            val document = """{"status":"completed","document":{"status":"complete",$payload,$live}}"""
+            schema.assertAdmits(document)
+            assertTrue(schema.validate(document.replace("\"version\":1", "\"version\":2")).isNotEmpty())
+            assertTrue(schema.validate(document.replace("\"epoch\":8,", "")).isNotEmpty())
+        }
+    }
+
     private fun commandGraphFactory(): CliCommandGraphFactory =
         when (val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())) {
             is CliCommandGraphConstruction.Created -> construction.factory

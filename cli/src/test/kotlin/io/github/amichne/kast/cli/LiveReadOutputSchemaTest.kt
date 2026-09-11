@@ -89,14 +89,21 @@ class LiveReadOutputSchemaTest {
     }
 
     @Test
-    fun `every read admits only packaged pre-authority rejection shapes`() {
+    fun `every hosted operation admits only packaged pre-authority rejection shapes`() {
         val endpoint = Json.parseToJsonElement("""{"type":"HOST_REJECTED","failure":"DEADLINE_EXCEEDED"}""").jsonObject
         val hosted =
             Json.parseToJsonElement(
                     """{"schemaVersion":1,"outcome":"rejected","failure":"DIRTY_DOCUMENTS","detail":"saved content required","stage":"EPOCH_OBSERVATION"}"""
                 )
                 .jsonObject
-        for ((operation) in completeDocuments(live)) {
+        val operations =
+            completeDocuments(live).map { it.first } +
+                listOf(
+                    CanonicalOperation.CHANGE_PLAN,
+                    CanonicalOperation.CHANGE_APPLY,
+                    CanonicalOperation.CHANGE_RECOVER,
+                )
+        for (operation in operations) {
             assertAdmits(operation, endpoint)
             assertAdmits(operation, hosted)
             assertRejects(operation, endpoint.with("failure", JsonPrimitive("UNKNOWN")))
@@ -104,8 +111,8 @@ class LiveReadOutputSchemaTest {
             assertRejects(operation, hosted.with("outcome", JsonPrimitive("published")))
             assertRejects(operation, hosted.with("live", completeDocuments(live).first().second.getValue("live")))
         }
-        assertRejects(CanonicalOperation.CHANGE_APPLY, endpoint)
-        assertRejects(CanonicalOperation.CHANGE_APPLY, hosted)
+        assertRejects(CanonicalOperation.TOPOLOGY_BUILD, endpoint)
+        assertRejects(CanonicalOperation.TOPOLOGY_BUILD, hosted)
     }
 
     private fun completeDocuments(basis: EvidenceBasis): List<Pair<CanonicalOperation, JsonObject>> =

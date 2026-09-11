@@ -7,39 +7,30 @@ import kotlinx.serialization.json.JsonObject
 
 /** Schema projection preserves every write-effect state and its finite failure vocabulary. */
 internal fun changeApplicationDocumentSchema(operation: CanonicalOperation): JsonObject {
-    val variants =
-        listOf(verifiedApplicationProperties(), unverifiedApplicationProperties(), recoveryApplicationProperties())
-    val outcomes = variants.flatMap { payload ->
-        listOf(
-            applicationOutcome(operation, "complete", payload),
-            applicationOutcome(
-                operation,
-                "qualified",
-                payload + ServerSchemaProperty("qualification", textSchema("Closed qualification reason.")),
-            ),
-        )
-    }
     return unionSchema(
-        outcomes +
-            applicationOutcome(
-                operation,
-                "rejected",
-                listOf(ServerSchemaProperty("reason", textSchema("Closed rejection reason."))),
-            )
+        operationOutcomeVariant(operation, "complete", verifiedApplicationProperties()),
+        operationOutcomeVariant(
+            operation,
+            "qualified",
+            unverifiedApplicationProperties() +
+                ServerSchemaProperty(
+                    "qualification",
+                    constantSchema("applied-unverified", "Observed unverified write."),
+                ),
+        ),
+        operationOutcomeVariant(
+            operation,
+            "qualified",
+            recoveryApplicationProperties() +
+                ServerSchemaProperty("qualification", constantSchema("recovery-required", "Write requires recovery.")),
+        ),
+        operationOutcomeVariant(
+            operation,
+            "rejected",
+            ServerSchemaProperty("reason", textSchema("Closed rejection reason.")),
+        ),
     )
 }
-
-private fun applicationOutcome(
-    operation: CanonicalOperation,
-    status: String,
-    payload: List<ServerSchemaProperty>,
-): JsonObject =
-    objectSchema(
-        listOf(
-            ServerSchemaProperty("operation", constantSchema(operation.id.value, "Canonical operation identity.")),
-            ServerSchemaProperty("status", constantSchema(status, "Canonical operation outcome.")),
-        ) + payload
-    )
 
 private fun verifiedApplicationProperties(): List<ServerSchemaProperty> =
     listOf(

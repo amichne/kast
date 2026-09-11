@@ -1,6 +1,8 @@
 package io.github.amichne.kast.change.protocol
 
 import io.github.amichne.kast.change.contract.ChangePlan
+import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
+import io.github.amichne.kast.change.contract.PlannedMutationWriteSet
 import io.github.amichne.kast.change.contract.PlannedSourcePrecondition
 import io.github.amichne.kast.change.contract.SourceTextMutation
 import io.github.amichne.kast.kernel.Refinement
@@ -9,38 +11,43 @@ import io.github.amichne.kast.protocol.contract.ChangeFilePreviewKind
 import io.github.amichne.kast.protocol.contract.ChangeFilePreviewSet
 import io.github.amichne.kast.protocol.contract.ChangePreviewDiff
 import io.github.amichne.kast.protocol.contract.ChangePreviewPath
+import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import java.nio.file.Path
 
 /** Pure projection of a compiler-grounded change plan into bounded human diff fragments. */
-fun ChangePlan.protocolPreview(): ChangeFilePreviewSet {
-    val root = Path.of(priorLease.workspaceRoot.value)
-    val previews =
-        writes.entries.map { write ->
-            val relative =
-                when (
-                    val admitted =
-                        WorkspaceSourcePath.parse(
-                            root.relativize(Path.of(write.source.path.value)).toString().replace('\\', '/')
-                        )
-                ) {
+fun ChangePlan.protocolPreview(): ChangeFilePreviewSet = writes.protocolPreview(priorLease.workspaceRoot)
+
+fun LiveAddDeclarationChangePlan.protocolPreview(): ChangeFilePreviewSet =
+    writes.protocolPreview(basis.observation.reference.workspaceRoot)
+
+private fun PlannedMutationWriteSet.protocolPreview(workspaceRoot: CanonicalWorkspaceRoot): ChangeFilePreviewSet {
+    val root = Path.of(workspaceRoot.value)
+    val previews = entries.map { write ->
+        val relative =
+            when (
+                val admitted =
+                    WorkspaceSourcePath.parse(
+                        root.relativize(Path.of(write.source.path.value)).toString().replace('\\', '/')
+                    )
+            ) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> error("planned write escaped its proven workspace root")
+            }
+        ChangeFilePreview(
+            path =
+                when (val admitted = ChangePreviewPath.parse(relative.value)) {
                     is Refinement.Refined -> admitted.value
-                    is Refinement.Rejected -> error("planned write escaped its proven workspace root")
-                }
-            ChangeFilePreview(
-                path =
-                    when (val admitted = ChangePreviewPath.parse(relative.value)) {
-                        is Refinement.Refined -> admitted.value
-                        is Refinement.Rejected -> error("workspace-relative preview path was rejected")
-                    },
-                kind =
-                    when (write.precondition) {
-                        PlannedSourcePrecondition.Absent -> ChangeFilePreviewKind.ADD
-                        is PlannedSourcePrecondition.Existing -> ChangeFilePreviewKind.UPDATE
-                    },
-                diff = write.mutations.joinToString("\n") { mutation -> mutation.diffFragment() }.protocolPreviewDiff(),
-            )
-        }
+                    is Refinement.Rejected -> error("workspace-relative preview path was rejected")
+                },
+            kind =
+                when (write.precondition) {
+                    PlannedSourcePrecondition.Absent -> ChangeFilePreviewKind.ADD
+                    is PlannedSourcePrecondition.Existing -> ChangeFilePreviewKind.UPDATE
+                },
+            diff = write.mutations.joinToString("\n") { mutation -> mutation.diffFragment() }.protocolPreviewDiff(),
+        )
+    }
     return when (val admitted = ChangeFilePreviewSet.admit(previews)) {
         is Refinement.Refined -> admitted.value
         is Refinement.Rejected -> error("semantic change plan must contain unique non-empty writes")

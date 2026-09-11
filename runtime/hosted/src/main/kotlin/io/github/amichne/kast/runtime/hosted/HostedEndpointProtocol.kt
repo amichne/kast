@@ -7,8 +7,20 @@ import com.google.gson.stream.JsonToken
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.*
-import io.github.amichne.kast.protocol.wire.*
+import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
+import io.github.amichne.kast.protocol.contract.ChangePlanRequest
+import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
+import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
+import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.RelationReadRequest
+import io.github.amichne.kast.protocol.contract.SourceReadRequest
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.TraversalRunRequest
+import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
+import io.github.amichne.kast.protocol.wire.WireDecoding
+import io.github.amichne.kast.protocol.wire.WireRequestAdmission
+import io.github.amichne.kast.protocol.wire.WireRequestEnvelope
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedClassLookup
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedKotlinSelection
@@ -36,6 +48,8 @@ enum class HostedEndpointFailure {
     PLATFORM_UNAVAILABLE,
     RESPONSE_REJECTED,
     RESULT_TOO_LARGE,
+    APPROVAL_UNAVAILABLE,
+    APPROVAL_REJECTED,
 }
 
 internal sealed interface HostedRequest {
@@ -52,6 +66,29 @@ internal sealed interface HostedRequest {
         override val root
             get() = selection.root
     }
+
+    /** Effect-aware requests never enter the read-only dispatch set. */
+    sealed interface Change : HostedRequest
+
+    data class PlanChange(override val root: CanonicalWorkspaceRoot, val request: ChangePlanRequest) : Change
+
+    data class PrepareApproval(
+        override val root: CanonicalWorkspaceRoot,
+        val effect: io.github.amichne.kast.change.apply.LiveChangeEffect,
+        val identity: io.github.amichne.kast.change.contract.ChangePlanIdentity,
+    ) : Change
+
+    data class ApplyChange(
+        override val root: CanonicalWorkspaceRoot,
+        val request: ChangeApplyRequest,
+        val approval: String,
+    ) : Change
+
+    data class RecoverChange(
+        override val root: CanonicalWorkspaceRoot,
+        val request: ChangeRecoverRequest,
+        val approval: String,
+    ) : Change
 
     sealed interface Read : HostedRequest
 
@@ -81,7 +118,7 @@ internal object HostedRequests {
                 val key = reader.nextName()
                 if (
                     json.has(key) ||
-                        key !in setOf("type", "root", "name", "file", "offset", "qualifiedName", "document")
+                        key !in setOf("type", "root", "name", "file", "offset", "qualifiedName", "document", "approval")
                 )
                     return rejected
                 if (key == "offset") {
@@ -107,13 +144,37 @@ internal object HostedRequests {
                     is Refinement.Rejected -> return rejected
                 }
             return when (text("type")) {
+                "CHANGE_APPROVAL_PREPARE" -> {
+                    if (json.keySet() != setOf("type", "root", "document")) return rejected
+                    decodeHostedApprovalPreparation(root, text("document"))
+                }
+                "CHANGE_APPLY",
+                "CHANGE_RECOVER" -> {
+                    if (json.keySet() != setOf("type", "root", "document", "approval")) return rejected
+                    val assertion = text("approval")
+                    if (assertion.length !in 1..MAX_HOSTED_ASSERTION_LENGTH) return rejected
+                    val envelope =
+                        when (val admitted = WireRequestEnvelope.admit(text("document"))) {
+                            is WireRequestAdmission.Admitted -> admitted.request
+                            is WireRequestAdmission.Rejected -> return rejected
+                        }
+                    if (text("type") == "CHANGE_APPLY")
+                        decode(CanonicalOperationWireBindings.changeApply.decodeRequest(envelope)) {
+                            HostedRequest.ApplyChange(root, it, assertion)
+                        }
+                    else
+                        decode(CanonicalOperationWireBindings.changeRecover.decodeRequest(envelope)) {
+                            HostedRequest.RecoverChange(root, it, assertion)
+                        }
+                }
                 "QUERY_RUN",
                 "SYMBOL_DISCOVER",
                 "SYMBOL_INSPECT",
                 "SOURCE_READ",
                 "RELATION_READ",
                 "TRAVERSAL_RUN",
-                "DIAGNOSTIC_CHECK" -> {
+                "DIAGNOSTIC_CHECK",
+                "CHANGE_PLAN" -> {
                     if (json.keySet() != setOf("type", "root", "document")) return rejected
                     val envelope =
                         when (val admitted = WireRequestEnvelope.admit(text("document"))) {
@@ -121,6 +182,10 @@ internal object HostedRequests {
                             is WireRequestAdmission.Rejected -> return rejected
                         }
                     when (text("type")) {
+                        "CHANGE_PLAN" ->
+                            decode(CanonicalOperationWireBindings.changePlan.decodeRequest(envelope)) {
+                                HostedRequest.PlanChange(root, it)
+                            }
                         "QUERY_RUN" ->
                             decode(CanonicalOperationWireBindings.queryRun.decodeRequest(envelope)) {
                                 HostedRequest.Query(root, it)
@@ -188,7 +253,7 @@ internal object HostedRequests {
 
     private fun <Value> decode(
         value: WireDecoding<Value>,
-        request: (Value) -> HostedRequest.Read,
+        request: (Value) -> HostedRequest,
     ): Refinement<HostedRequest, HostedEndpointFailure> =
         when (value) {
             is WireDecoding.Decoded -> Refinement.Refined(request(value.value))
@@ -243,3 +308,5 @@ internal object HostedFrames {
         return Refinement.Refined(Unit)
     }
 }
+
+private const val MAX_HOSTED_ASSERTION_LENGTH = 16384

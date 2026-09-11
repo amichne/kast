@@ -2,12 +2,9 @@ package io.github.amichne.kast.symbol.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
-import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
 
 private const val MAX_COMPILER_SYMBOL_IDENTITY_LENGTH = 4096
 private const val SYMBOL_SELECTOR_FINGERPRINT_HEX_LENGTH = 64
-private const val SELECTOR_HEX_RADIX = 16
 
 enum class CompilerSymbolIdentityFailure {
     BLANK,
@@ -68,6 +65,18 @@ private constructor(
     val compilerIdentity: CompilerSymbolIdentity,
 ) {
     companion object {
+        /** Preserves already compiler-grounded facts while dropping the request-local read capability. */
+        fun fromSelector(selector: SymbolSelector): CompilerGroundedSymbolEvidence =
+            CompilerGroundedSymbolEvidence(
+                file = selector.file,
+                range = selector.range,
+                name = selector.name,
+                qualifiedIdentity = selector.qualifiedIdentity,
+                kind = selector.kind,
+                signature = selector.signature,
+                compilerIdentity = selector.compilerIdentity,
+            )
+
         /**
          * Proof transition: `(SymbolDiscoveryFileIdentity, Int, Int, String, String?, CompilerSymbolKind,
          * CanonicalCompilerSignature) -> Refinement< CompilerGroundedSymbolEvidence,
@@ -274,7 +283,13 @@ private constructor(
                 kind = evidence.kind,
                 signature = evidence.signature,
                 compilerIdentity = evidence.compilerIdentity,
-                fingerprint = symbolSelectorFingerprint(lease, scope, evidence, constraints),
+                fingerprint =
+                    symbolSelectorFingerprint(
+                        identity = lease.identity,
+                        scope = scope,
+                        evidence = evidence,
+                        constraints = constraints,
+                    ),
             )
 
         /**
@@ -291,7 +306,14 @@ private constructor(
             fingerprint: SymbolSelectorFingerprint,
             constraints: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints.None,
         ): Refinement<SymbolSelector, SymbolSelectorIssueFailure> =
-            if (symbolSelectorFingerprint(lease, scope, evidence, constraints) == fingerprint) {
+            if (
+                symbolSelectorFingerprint(
+                    identity = lease.identity,
+                    scope = scope,
+                    evidence = evidence,
+                    constraints = constraints,
+                ) == fingerprint
+            ) {
                 Refinement.Refined(issue(lease, scope, evidence, constraints))
             } else {
                 Refinement.Rejected(SymbolSelectorIssueFailure.FINGERPRINT_MISMATCH)
@@ -320,10 +342,10 @@ class RevalidatedSymbolSelector private constructor(val selector: SymbolSelector
         ): Refinement<RevalidatedSymbolSelector, SymbolSelectorRevalidationFailure> =
             if (
                 symbolSelectorFingerprint(
-                    selector.lease,
-                    selector.scope,
-                    evidence,
-                    selector.constraints,
+                    identity = selector.lease.identity,
+                    scope = selector.scope,
+                    evidence = evidence,
+                    constraints = selector.constraints,
                 ) == selector.fingerprint
             ) {
                 Refinement.Refined(RevalidatedSymbolSelector(selector))
@@ -375,68 +397,3 @@ private fun CanonicalCompilerSignature.supports(kind: CompilerSymbolKind): Boole
         is CanonicalCompilerSignature.TypeAlias -> kind == CompilerSymbolKind.TYPE_ALIAS
         is CanonicalCompilerSignature.ClassLike -> kind == CompilerSymbolKind.CLASSLIKE
     }
-
-private fun symbolSelectorFingerprint(
-    lease: SemanticReadAuthority,
-    scope: SymbolSearchScope,
-    evidence: CompilerGroundedSymbolEvidence,
-    constraints: SymbolDiscoveryConstraints,
-): SymbolSelectorFingerprint {
-    val canonical = buildString {
-        appendSelectorField(lease.workspaceRoot.value)
-        appendSelectorField(lease.identity.revisionKey.value)
-        scope.appendSelectorFields(this)
-        constraints.fingerprintFields().forEach(::appendSelectorField)
-        appendSelectorField(evidence.file.stableValue)
-        appendSelectorField(evidence.range.startInclusive.toString())
-        appendSelectorField(evidence.range.endExclusive.toString())
-        appendSelectorField(evidence.name.value)
-        appendSelectorField(evidence.kind.name)
-        appendSelectorField(evidence.compilerIdentity.value)
-    }
-    val digest = MessageDigest.getInstance("SHA-256").digest(canonical.toByteArray(StandardCharsets.UTF_8))
-    val raw =
-        digest.joinToString(separator = "") { byte ->
-            (byte.toInt() and 0xff).toString(SELECTOR_HEX_RADIX).padStart(2, '0')
-        }
-    return when (val parsed = SymbolSelectorFingerprint.parse(raw)) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> error("SHA-256 projection is a canonical selector fingerprint")
-    }
-}
-
-private fun SymbolSearchScope.appendSelectorFields(target: StringBuilder) {
-    when (this) {
-        is SymbolSearchScope.ExactFile -> {
-            target.appendSelectorField("exact-file")
-            target.appendSelectorField(file.value)
-        }
-        is SymbolSearchScope.Module -> {
-            target.appendSelectorField("module")
-            target.appendSelectorField(module.value)
-        }
-        is SymbolSearchScope.SourceSet -> {
-            target.appendSelectorField("source-set")
-            target.appendSelectorField(project.buildRoot.value)
-            target.appendSelectorField(project.projectPath.value)
-            target.appendSelectorField(sourceSet.value)
-        }
-        is SymbolSearchScope.GradleProject -> {
-            target.appendSelectorField("gradle-project")
-            target.appendSelectorField(project.buildRoot.value)
-            target.appendSelectorField(project.projectPath.value)
-        }
-        is SymbolSearchScope.Workspace -> {
-            target.appendSelectorField("workspace")
-            target.appendSelectorField(libraries.name)
-        }
-    }
-    target.appendSelectorField(sourceKinds.name)
-    target.appendSelectorField(generatedSources.name)
-}
-
-private fun StringBuilder.appendSelectorField(value: String) {
-    append(value.toByteArray(StandardCharsets.UTF_8).size)
-    append(':')
-    append(value)
-}

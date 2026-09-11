@@ -31,20 +31,6 @@ class CanonicalOperationDefinitionsTest {
         assertEquals(12, definitions.map { it.qualificationType }.toSet().size)
         assertEquals(12, definitions.map { it.rejectionType }.toSet().size)
         assertEquals(12, definitions.map { it.schema }.toSet().size)
-        definitions.forEach { definition ->
-            val version =
-                when (definition.operation) {
-                    CanonicalOperation.SOURCE_READ -> 4
-                    CanonicalOperation.QUERY_RUN -> 2
-                    CanonicalOperation.SYMBOL_DISCOVER,
-                    CanonicalOperation.SYMBOL_INSPECT,
-                    CanonicalOperation.RELATION_READ,
-                    CanonicalOperation.TRAVERSAL_RUN,
-                    CanonicalOperation.DIAGNOSTIC_CHECK -> 3
-                    else -> 2
-                }
-            assertEquals("kast.${definition.operation.id.value}.v$version", definition.schema.value)
-        }
         assertEquals(definitions, CanonicalOperationDefinitions.registry.definitions)
         assertEquals(OperationLane.REGISTERED_LONG_WORK, CanonicalOperationDefinitions.topologyBuild.lane)
         assertEquals(
@@ -56,5 +42,25 @@ class CanonicalOperationDefinitionsTest {
             OperationEffect.INTELLIJ_READ_AND_PERSISTENCE_WRITE,
             CanonicalOperationDefinitions.indexSync.effect,
         )
+    }
+
+    @Test
+    fun `canonical definitions advertise their exact schema revisions`() {
+        val definitions = CanonicalOperationDefinitions.all
+        definitions.forEach { definition ->
+            val version =
+                when (definition.operation) {
+                    CanonicalOperation.SOURCE_READ -> 4
+                    CanonicalOperation.QUERY_RUN -> 2
+                    CanonicalOperation.SYMBOL_DISCOVER,
+                    CanonicalOperation.SYMBOL_INSPECT,
+                    CanonicalOperation.RELATION_READ,
+                    CanonicalOperation.TRAVERSAL_RUN,
+                    CanonicalOperation.DIAGNOSTIC_CHECK,
+                    CanonicalOperation.CHANGE_APPLY -> 3
+                    else -> 2
+                }
+            assertEquals("kast.${definition.operation.id.value}.v$version", definition.schema.value)
+        }
     }
 }

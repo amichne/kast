@@ -83,7 +83,7 @@ assert document["cliProjection"]["localCommands"] == [
     "index status [--root <path>]", "index classes <name> [--root <path>]",
     "index supertype <qualified-name> [--root <path>]", "index generate-completion <shell>",
     "ide status [--root <path>]", "ide classes <name> [--root <path>]",
-    "ide supertype <qualified-name> [--root <path>]", "ide generate-completion <shell>",
+    "ide supertype <qualified-name> [--root <path>]", "ide generate-completion <shell>", "ide trust-broker",
     "app-server register", "app-server enable", "app-server repair --destructive",
     "app-server status", "app-server stop", "app-server disable",
     "app-server control claim", "app-server control release",

@@ -1,7 +1,6 @@
 package io.github.amichne.kast.change.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
@@ -116,17 +115,10 @@ private constructor(
     override val writes: PlannedMutationWriteSet =
         PlannedMutationWriteSet.singleton(
             PlannedMutationWrite(
-                target.file,
-                target.sourceRoot,
-                PlannedSourcePrecondition.Existing(sourceSnapshot.content),
-                listOf(
-                    when (val edit = plannedEdits.single()) {
-                        is AddDeclarationPlannedEdit.InsertAfterDeclaration ->
-                            SourceTextMutation.InsertAfterDeclaration(edit.anchor, edit.declaration)
-                        is AddDeclarationPlannedEdit.InsertIntoClassBody ->
-                            SourceTextMutation.InsertIntoClassBody(edit.anchor, edit.declaration)
-                    }
-                ),
+                source = target.file,
+                sourceRoot = target.sourceRoot,
+                precondition = PlannedSourcePrecondition.Existing(sourceSnapshot.content),
+                mutations = listOf(plannedEdits.single().sourceMutation()),
             )
         )
 
@@ -181,19 +173,12 @@ private constructor(
             verification: AddDeclarationVerificationContract,
         ): AddDeclarationChangePlan {
             val edit =
-                if (target.selector.kind == CompilerSymbolKind.CLASSLIKE) {
-                    AddDeclarationPlannedEdit.InsertIntoClassBody(
-                        target.file,
-                        target.range,
-                        declaration,
-                    )
-                } else {
-                    AddDeclarationPlannedEdit.InsertAfterDeclaration(
-                        target.file,
-                        target.range,
-                        declaration,
-                    )
-                }
+                planAddDeclarationInsertion(
+                    file = target.file,
+                    range = target.range,
+                    kind = target.selector.kind,
+                    declaration = declaration,
+                )
             val canonical = buildString {
                 appendTarget(target)
                 appendPlanningField(declaration.value)

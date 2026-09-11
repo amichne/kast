@@ -8,6 +8,8 @@ import org.junit.jupiter.api.assertInstanceOf
 class VerifiedMutationModuleBoundaryTest {
     private val exactDependencies = setOf(
         ModuleId.CHANGE_APPLY,
+        ModuleId.CHANGE_RECOVERY,
+        ModuleId.EVIDENCE_CONTRACT,
         ModuleId.CHANGE_CONTRACT,
         ModuleId.DIAGNOSTIC_CONTRACT,
         ModuleId.RELATION_CONTRACT,

@@ -127,13 +127,13 @@ private constructor(
                                 .toJson(
                                     mapOf(
                                         "type" to "KAST_IDE_ENDPOINT",
-                                        "protocol" to 2,
+                                        "protocol" to HostedEndpointCapabilities.protocol,
                                         "root" to root.value,
                                         "socket" to socket.toString(),
                                         "hostPid" to ProcessHandle.current().pid(),
                                         "host" to host.value.toString(),
                                         "querySchema" to HostedReadCapabilities.querySchema,
-                                        "operations" to HostedReadCapabilities.operations,
+                                        "operations" to HostedEndpointCapabilities.operations,
                                     )
                                 ),
                             StandardOpenOption.CREATE_NEW,

@@ -142,7 +142,6 @@ object CanonicalAgentToolDefinitions {
             "change_plan",
             "Derive a bounded change plan from an exact target without writing source. Preserve the " +
                 "returned plan identity for apply or recovery.",
-            HostedApprovalPolicy.EXPLICIT,
         )
     val changeApply =
         tool(

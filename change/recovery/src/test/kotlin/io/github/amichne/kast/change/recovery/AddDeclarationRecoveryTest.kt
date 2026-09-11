@@ -20,6 +20,59 @@ import org.junit.jupiter.api.Test
 
 class AddDeclarationRecoveryTest {
     @Test
+    fun `observed interrupted postimage advances durability without replaying source mutation`() {
+        val store = InMemoryMutationRecoveryEvidenceStore()
+        val service = AddDeclarationRecoveryService(store)
+        val prior = service.prepare(request()).prepared().record
+        val source = prior.preparation.plannedWrites.single().source
+        val postimage = RecoveryPreimage.fromBoundary("after".toByteArray())
+        val proof =
+            ConfirmedRecoveryPostimage.admit(
+                    prior,
+                    listOf(ExpectedRecoveryPostimage(source, postimage)),
+                    listOf(
+                        RecoverySourceObservation(
+                            source,
+                            postimage,
+                            RecoveryDocumentObservation.SavedAndCommitted(postimage),
+                        )
+                    ),
+                )
+                .refined()
+        val persisted = service.recordObservedApplied(proof)
+        val applied = assertInstanceOf(MutationRecoveryPersistResult.Durable::class.java, persisted).record
+        assertEquals(
+            prior.digest,
+            assertInstanceOf(MutationRecoveryRecord.AppliedWritesDurable::class.java, applied).priorDigest,
+        )
+        assertInstanceOf(MutationRecoveryRecord.AppliedWritesDurable::class.java, store.current())
+    }
+
+    @Test
+    fun `interrupted postimage proof rejects dirty divergent missing and borrowed observations`() {
+        val store = InMemoryMutationRecoveryEvidenceStore()
+        val prior = AddDeclarationRecoveryService(store).prepare(request()).prepared().record
+        val source = prior.preparation.plannedWrites.single().source
+        val postimage = RecoveryPreimage.fromBoundary("after".toByteArray())
+        val changed = RecoveryPreimage.fromBoundary("user edit".toByteArray())
+        val expected = listOf(ExpectedRecoveryPostimage(source, postimage))
+        val cases =
+            listOf(
+                emptyList<RecoverySourceObservation>(),
+                listOf(RecoverySourceObservation(source, postimage, RecoveryDocumentObservation.DirtyOrUncommitted)),
+                listOf(RecoverySourceObservation(source, postimage, RecoveryDocumentObservation.Unavailable)),
+                listOf(
+                    RecoverySourceObservation(source, postimage, RecoveryDocumentObservation.SavedAndCommitted(changed))
+                ),
+                listOf(RecoverySourceObservation(source, changed, RecoveryDocumentObservation.NotLoaded)),
+            )
+        cases.forEach {
+            assertInstanceOf(Refinement.Rejected::class.java, ConfirmedRecoveryPostimage.admit(prior, expected, it))
+        }
+        assertEquals(prior.digest, store.current().digest)
+    }
+
+    @Test
     fun `pre-write evidence is durable before an applied write can exist`() {
         val store = InMemoryMutationRecoveryEvidenceStore()
         val service = AddDeclarationRecoveryService(store)

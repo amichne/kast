@@ -258,6 +258,8 @@ internal object KastCleanSlateModules {
         target(
             ModuleId.CHANGE_VERIFY,
             ModuleRole.SERVICE,
+            ModuleId.CHANGE_RECOVERY,
+            ModuleId.EVIDENCE_CONTRACT,
             ModuleId.CHANGE_APPLY,
             ModuleId.CHANGE_CONTRACT,
             ModuleId.DIAGNOSTIC_CONTRACT,
@@ -375,6 +377,7 @@ internal object KastCleanSlateModules {
             scopedEffects = mapOf(
                 ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                     JvmClassName("io/github/amichne/kast/cli/ApfsCoWIndexSeedCloner"),
+                    JvmClassName("io/github/amichne/kast/cli/ide/FilesystemBrokerTrustRegistrar"),
                     JvmClassName("io/github/amichne/kast/cli/FilesystemRootSidecarCacheLifecycle"),
                     JvmClassName("io/github/amichne/kast/cli/FilesystemSidecarCachePreparer"),
                     JvmClassName("io/github/amichne/kast/cli/IndexSeedFilesystemService"),
@@ -416,6 +419,15 @@ internal object KastCleanSlateModules {
         target(
             ModuleId.RUNTIME_HOSTED,
             ModuleRole.IDE_HOST,
+            ModuleId.CHANGE_CONTRACT,
+            ModuleId.CHANGE_PLAN,
+            ModuleId.CHANGE_PROTOCOL,
+            ModuleId.CHANGE_APPLY,
+            ModuleId.CHANGE_VERIFY,
+            ModuleId.CHANGE_RECOVERY,
+            ModuleId.CHANGE_INTELLIJ,
+            ModuleId.EVIDENCE_CONTRACT,
+            ModuleId.EVIDENCE_SQLITE,
             ModuleId.KERNEL,
             ModuleId.PROTOCOL_CONTRACT,
             ModuleId.PROTOCOL_WIRE,
@@ -444,7 +456,10 @@ internal object KastCleanSlateModules {
                 JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion"),
             ),
                 // FileChannel only locks the private endpoint; the digest names the canonical root.
-                ForbiddenEffect.PHYSICAL_SOURCE_READ to setOf(JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion")),
+                ForbiddenEffect.PHYSICAL_SOURCE_READ to setOf(
+                    JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion"),
+                    JvmClassName("io/github/amichne/kast/runtime/hosted/HostedChangeApprovalsKt"),
+                ),
                 ForbiddenEffect.SOURCE_CONTENT_HASH to setOf(JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion")),
             ),
         ),

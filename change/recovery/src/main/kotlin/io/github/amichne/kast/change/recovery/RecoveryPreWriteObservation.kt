@@ -86,3 +86,39 @@ fun interface RecoveryPreWriteObservationPort {
         }
     }
 }
+
+data class ExpectedRecoveryPostimage(val source: RecoverySourcePath, val content: RecoveryPreimage)
+
+/** An observed exact postimage can strengthen an interrupted pre-write record without replaying the mutation. */
+class ConfirmedRecoveryPostimage private constructor(val record: MutationRecoveryRecord.PreWriteDurable) {
+    companion object {
+        fun admit(
+            record: MutationRecoveryRecord.PreWriteDurable,
+            expected: List<ExpectedRecoveryPostimage>,
+            sources: List<RecoverySourceObservation>,
+        ): Refinement<ConfirmedRecoveryPostimage, RecoveryPreWriteObservationFailure> {
+            val paths = record.preparation.plannedWrites.map { it.source }.toSet()
+            if (sources.size != paths.size || expected.size != paths.size)
+                return Refinement.Rejected(RecoveryPreWriteObservationFailure.WRITE_SET_MISMATCH)
+            if (sources.map { it.source }.toSet() != paths || expected.map { it.source }.toSet() != paths) {
+                return Refinement.Rejected(RecoveryPreWriteObservationFailure.WRITE_SET_MISMATCH)
+            }
+            for (image in expected) {
+                val observed = sources.single { it.source == image.source }
+                if (observed.savedContent != image.content)
+                    return Refinement.Rejected(RecoveryPreWriteObservationFailure.SAVED_CONTENT_DIVERGED)
+                when (val document = observed.document) {
+                    RecoveryDocumentObservation.NotLoaded -> Unit
+                    is RecoveryDocumentObservation.SavedAndCommitted ->
+                        if (document.content != image.content) {
+                            return Refinement.Rejected(RecoveryPreWriteObservationFailure.DOCUMENT_CONTENT_DIVERGED)
+                        }
+                    RecoveryDocumentObservation.DirtyOrUncommitted,
+                    RecoveryDocumentObservation.Unavailable ->
+                        return Refinement.Rejected(RecoveryPreWriteObservationFailure.DOCUMENT_NOT_READY)
+                }
+            }
+            return Refinement.Refined(ConfirmedRecoveryPostimage(record))
+        }
+    }
+}

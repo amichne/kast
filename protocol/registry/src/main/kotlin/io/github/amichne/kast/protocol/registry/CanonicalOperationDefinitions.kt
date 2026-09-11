@@ -249,18 +249,18 @@ object CanonicalOperationDefinitions {
 
     val changeApply =
         definition(
-            CanonicalOperation.CHANGE_APPLY,
-            ChangeApplyRequest::class,
-            ChangeApplyResult::class,
-            ChangeApplyQualification::class,
-            ChangeApplyRejection::class,
-            ChangeApplyCapability::class,
-            OperationLane.SOURCE_WRITE,
-            OperationEffect.INTELLIJ_WRITE,
-            OperationCost.PHYSICAL_EFFECT,
-            OperationScope.FILE,
-            CompletenessPolicy.COMPLETE_REQUIRED,
-            HostedExposure.PUBLIC,
+            operation = CanonicalOperation.CHANGE_APPLY,
+            requestType = ChangeApplyRequest::class,
+            resultType = ChangeApplyResult::class,
+            qualificationType = ChangeApplyQualification::class,
+            rejectionType = ChangeApplyRejection::class,
+            capabilityType = ChangeApplyCapability::class,
+            lane = OperationLane.SOURCE_WRITE,
+            effect = OperationEffect.INTELLIJ_WRITE,
+            cost = OperationCost.PHYSICAL_EFFECT,
+            scope = OperationScope.FILE,
+            completeness = CompletenessPolicy.COMPLETE_REQUIRED,
+            hostedExposure = HostedExposure.PUBLIC,
             schema = schema("kast.change.apply.v3"),
         )
 

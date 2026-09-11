@@ -69,13 +69,13 @@ class CanonicalChangePlanProtocol(
         }
 }
 
-private fun io.github.amichne.kast.change.contract.ChangePlanIdentity.protocolText(): ProtocolText =
+internal fun io.github.amichne.kast.change.contract.ChangePlanIdentity.protocolText(): ProtocolText =
     when (val parsed = ProtocolText.parse(value)) {
         is Refinement.Refined -> parsed.value
         is Refinement.Rejected -> error("canonical change plan identity is protocol text")
     }
 
-private fun ChangePlanAdmissionFailure.protocol(): ChangePlanRejection =
+internal fun ChangePlanAdmissionFailure.protocol(): ChangePlanRejection =
     when (this) {
         ChangePlanAdmissionFailure.WORKSPACE_NOT_READY -> ChangePlanRejection.WORKSPACE_NOT_READY
         ChangePlanAdmissionFailure.EXACT_SYMBOL_REQUIRED -> ChangePlanRejection.EXACT_SYMBOL_REQUIRED
@@ -87,7 +87,7 @@ private fun ChangePlanAdmissionFailure.protocol(): ChangePlanRejection =
         ChangePlanAdmissionFailure.INTENT_REJECTED -> ChangePlanRejection.INTENT_REJECTED
     }
 
-private fun ChangePlanningFailure.protocol(): ChangePlanRejection =
+internal fun ChangePlanningFailure.protocol(): ChangePlanRejection =
     when (this) {
         ChangePlanningFailure.RELATION_EVIDENCE_REQUIRED,
         ChangePlanningFailure.RELATION_EVIDENCE_INCOMPLETE -> ChangePlanRejection.RELATION_READ_REQUIRED

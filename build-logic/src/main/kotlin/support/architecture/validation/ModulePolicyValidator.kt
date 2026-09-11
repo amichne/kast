@@ -171,6 +171,8 @@ internal object KastCleanSlateCrossRoleDependencies {
     val all: Set<ProjectDependencyObservation> = setOf(
         ProjectDependencyObservation(ModuleId.CHANGE_APPLY, ModuleId.CHANGE_RECOVERY),
         ProjectDependencyObservation(ModuleId.CHANGE_VERIFY, ModuleId.CHANGE_APPLY),
+        ProjectDependencyObservation(ModuleId.CHANGE_VERIFY, ModuleId.CHANGE_RECOVERY),
+        ProjectDependencyObservation(ModuleId.RUNTIME_HOSTED, ModuleId.EVIDENCE_SQLITE),
         ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_APPLY),
         ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_RECOVERY),
         ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_VERIFY),

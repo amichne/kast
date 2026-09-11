@@ -5,10 +5,22 @@ import io.github.amichne.kast.change.contract.AddDeclarationPlanOperations
 import io.github.amichne.kast.change.contract.AddDeclarationPlanRequest
 import io.github.amichne.kast.change.contract.AddDeclarationPlanResult
 import io.github.amichne.kast.change.contract.AdmittedAddDeclarationPlanInput
+import io.github.amichne.kast.change.contract.AdmittedLiveAddDeclarationPlanInput
+import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
+import io.github.amichne.kast.change.contract.LiveAddDeclarationPlanRequest
+import io.github.amichne.kast.change.contract.LiveAddDeclarationPlanResult
 import io.github.amichne.kast.kernel.Refinement
 
 /** Pure AddDeclaration planner; it owns no physical capability or mutable state. */
 class PureAddDeclarationPlanningService : AddDeclarationPlanOperations {
+    /** Consumes live admission only to produce detached proof; no published lease or write capability is created. */
+    fun plan(request: LiveAddDeclarationPlanRequest): LiveAddDeclarationPlanResult =
+        when (val admitted = AdmittedLiveAddDeclarationPlanInput.admit(request)) {
+            is Refinement.Refined ->
+                LiveAddDeclarationPlanResult.Planned(LiveAddDeclarationChangePlan.issue(admitted.value))
+            is Refinement.Rejected -> LiveAddDeclarationPlanResult.Rejected(admitted.failure)
+        }
+
     /**
      * Proof transition: `AddDeclarationPlanRequest -> AddDeclarationPlanResult`.
      *

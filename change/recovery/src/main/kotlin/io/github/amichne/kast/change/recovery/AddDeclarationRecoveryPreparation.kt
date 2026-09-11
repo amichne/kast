@@ -2,6 +2,7 @@ package io.github.amichne.kast.change.recovery
 
 import io.github.amichne.kast.change.contract.AddDeclarationPlanId
 import io.github.amichne.kast.change.contract.ChangePlan
+import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
 import io.github.amichne.kast.change.contract.PlannedSourcePrecondition
 import io.github.amichne.kast.evidence.contract.MutationPlanBinding
 import io.github.amichne.kast.evidence.contract.RecoveryPreimage
@@ -26,6 +27,22 @@ private constructor(
     val preimage: RecoveryPreimage,
 ) {
     companion object {
+        fun fromPlan(
+            plan: LiveAddDeclarationChangePlan,
+            preimage: RecoveryPreimage,
+        ): Refinement<AddDeclarationRecoveryPreparation, AddDeclarationRecoveryPreparationFailure> {
+            val write =
+                plan.writes.entries.singleOrNull()
+                    ?: return Refinement.Rejected(AddDeclarationRecoveryPreparationFailure.WRITE_SET_NOT_SINGLETON)
+            val source =
+                when (val parsed = RecoverySourcePath.parse(write.source.path.value)) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected ->
+                        return Refinement.Rejected(AddDeclarationRecoveryPreparationFailure.SOURCE_PATH_INVALID)
+                }
+            return admit(plan.planId, source, write.precondition, preimage)
+        }
+
         /**
          * Proof transition: `(AddDeclarationPlanId, RecoverySourcePath, PlannedSourcePrecondition, RecoveryPreimage) ->
          * Refinement< AddDeclarationRecoveryPreparation, AddDeclarationRecoveryPreparationFailure>`.
