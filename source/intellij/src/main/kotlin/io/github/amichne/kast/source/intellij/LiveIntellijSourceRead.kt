@@ -5,6 +5,8 @@
 
 package io.github.amichne.kast.source.intellij
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProcessCanceledException
@@ -98,10 +100,10 @@ import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtTypeAlias
 import org.jetbrains.kotlin.psi.KtTypeParameter
 
-private const val MAX_NATIVE_SOURCE_ENTITY_WORK = 10_000
-
 internal class LiveIntellijSourceRegionAccess(
     private val project: Project,
+    private val limits: ReadLimits = ReadLimits.Default,
+    private val observation: io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation = io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation.None,
     private val fileAdmission: (Path) -> Boolean = { true },
 ) : IntellijSourceRegionAccess {
     override suspend fun select(
@@ -121,7 +123,8 @@ internal class LiveIntellijSourceRegionAccess(
             throw cancelled
         } catch (_: IndexNotReadyException) {
             regionRejected(IntellijSourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE)
-        } catch (_: RuntimeException) {
+        } catch (failure: RuntimeException) {
+            observation.unexpected(io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure.capture(io.github.amichne.kast.workspace.intellij.read.IntellijReadStage.SOURCE, failure, limits))
             regionRejected(IntellijSourceReadRejection.PROVIDER_FAILURE)
         }
     }
@@ -171,6 +174,7 @@ internal class LiveIntellijSourceRegionAccess(
                 regionSelector,
                 request,
                 cursor,
+                limits,
             )
         ) {
             is NativeSourceEntityProjection.Projected -> projected.page
@@ -567,6 +571,7 @@ private fun projectEntities(
     regionSelector: SourceSelector,
     request: SourceReadRequest,
     cursor: IntellijSourceEntityCursor,
+    limits: ReadLimits,
 ): NativeSourceEntityProjection {
     if (request.entities == EntitySelection.None) {
         return NativeSourceEntityProjection.Projected(IntellijSourceEntityPage.empty())
@@ -588,6 +593,7 @@ private fun projectEntities(
                 includeCalls,
                 includeReferences,
                 matching.containment,
+                limits,
                 visibility = { declaration, target ->
                     val visibility = when (target) {
                         NativeVisibilityTarget.DECLARATION ->
@@ -623,6 +629,7 @@ private fun projectEntities(
             includeCalls,
             includeReferences,
             matching.containment,
+            limits,
             { _, _ -> null },
             { SourceEntityTarget.Unresolved(CompilerUnresolvedReason.UNSUPPORTED_TARGET) },
         ).enumerate()
@@ -636,6 +643,7 @@ private fun projectEntities(
                 request.entities,
                 cursor,
                 request.entityLimit,
+                limits,
             ),
         )
         is NativeSourceEntityEnumeration.Qualified -> NativeSourceEntityProjection.Projected(
@@ -644,6 +652,7 @@ private fun projectEntities(
                 request.entities,
                 cursor,
                 request.entityLimit,
+                limits,
             ).withLimitation(enumeration.limitation),
         )
     }
@@ -658,6 +667,7 @@ private class NativeSourceEntityEnumerator(
     private val includeCalls: Boolean,
     private val includeReferences: Boolean,
     private val containment: io.github.amichne.kast.source.contract.Containment,
+    private val limits: ReadLimits,
     private val visibility: (KtNamedDeclaration, NativeVisibilityTarget) -> DeclarationVisibility?,
     private val target: (KtNameReferenceExpression) -> SourceEntityTarget,
 ) {
@@ -981,7 +991,7 @@ private class NativeSourceEntityEnumerator(
     }
 
     private fun examine(): Boolean {
-        if (examined == MAX_NATIVE_SOURCE_ENTITY_WORK) {
+        if (examined == limits[ReadLimitParameter.SOURCE_ENTITY_WORK].value) {
             limitation = SourceReadLimitation.WORK_LIMIT_REACHED
             return false
         }

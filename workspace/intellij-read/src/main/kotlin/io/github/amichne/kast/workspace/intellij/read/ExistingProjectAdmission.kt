@@ -1,5 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.progress.ProcessCanceledException
@@ -100,10 +102,11 @@ class AdmittedIdeProject private constructor(
      * `AdmittedIdeProject -> DetachedModelCapture`; returns an exact detached model or closed
      * [DetachedModelCaptureFailure]. Raw extraction stays inside [LiveDetachedModelCapture].
      */
-    fun captureDetachedModel(): DetachedModelCapture = DetachedIdeWorkspaceModel.admit(
+    fun captureDetachedModel(limits: ReadLimits = ReadLimits.Default): DetachedModelCapture = DetachedIdeWorkspaceModel.admit(
         canonicalRoot,
         compatibility,
-        LiveDetachedModelCapture.observe(liveProject.project, canonicalRoot),
+        LiveDetachedModelCapture.observe(liveProject.project, canonicalRoot, limits),
+        limits,
     )
 
     /**
@@ -114,15 +117,16 @@ class AdmittedIdeProject private constructor(
      * Expected model failures remain [DetachedModelCaptureFailure]; raw Project extraction stays
      * inside [LiveDetachedModelCapture].
      */
-    suspend fun captureDetachedModelAsync(): DetachedModelCapture = DetachedIdeWorkspaceModel.admit(
+    suspend fun captureDetachedModelAsync(limits: ReadLimits = ReadLimits.Default): DetachedModelCapture = DetachedIdeWorkspaceModel.admit(
         canonicalRoot,
         compatibility,
-        LiveDetachedModelCapture.observeAsync(liveProject.project, canonicalRoot),
+        LiveDetachedModelCapture.observeAsync(liveProject.project, canonicalRoot, limits),
+        limits,
     )
 
     /** Query admission requires exact imported names; unavailable facts never trigger a sync. */
-    internal suspend fun captureNamedGradleSourceScope(): Refinement<NamedGradleSourceScope, NamedGradleSourceScopeFailure> =
-        LiveNamedGradleSourceScopeCapture.capture(liveProject.project, canonicalRoot)
+    internal suspend fun captureNamedGradleSourceScope(observation: IntellijReadObservation = IntellijReadObservation.None, limits: io.github.amichne.kast.kernel.ReadLimits = io.github.amichne.kast.kernel.ReadLimits.Default): Refinement<NamedGradleSourceScope, NamedGradleSourceScopeFailure> =
+        LiveNamedGradleSourceScopeCapture.capture(liveProject.project, canonicalRoot, observation, limits)
 
     /**
      * `AdmittedIdeProject -> ProjectReadEpochObservation`; returns one opaque retained-source epoch
@@ -245,11 +249,11 @@ class AdmittedIdeProjectSession private constructor(
     constructor() : this(AdmittedIdeProject::admit)
 
     /** Service-owned listener lifetime for explicitly attached hosts. */
-    internal constructor(owner: Disposable) : this(ExistingProjectAdmissionOperations { project, root, candidate, policy ->
+    internal constructor(owner: Disposable, limits: ReadLimits = ReadLimits.Default) : this(ExistingProjectAdmissionOperations { project, root, candidate, policy ->
         AdmittedIdeProject.admitObserved(
             project, root, candidate, policy, LiveExistingProjectObservation,
             ExistingProjectReadEpochSourceFactory { retained, retainedRoot ->
-                LiveProjectReadEpochSourceFactory.createOwned(retained, retainedRoot, owner)
+                LiveProjectReadEpochSourceFactory.createOwned(retained, retainedRoot, owner, limits)
             },
         )
     })

@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaTypeAliasSymbol
@@ -48,6 +49,8 @@ internal enum class IntellijSymbolIdentityComparison {
  * state. Raw K2 values remain inside the analysis-session receiver.
  */
 internal fun KaSymbol.compilerProjection(): IntellijCompilerProjectionResult = when (this) {
+    is KaValueParameterSymbol -> generatedPrimaryConstructorProperty?.compilerProjection()
+        ?: IntellijCompilerProjectionResult.Unsupported
     is KaConstructorSymbol -> {
         val owner = containingClassId?.asSingleFqName()?.asString()
                     ?: return IntellijCompilerProjectionResult.Unsupported

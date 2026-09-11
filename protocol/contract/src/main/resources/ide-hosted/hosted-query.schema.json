@@ -54,7 +54,8 @@
             "FRESHNESS_REJECTED",
             "RESULT_LIMIT_EXCEEDED",
             "LIVE_AUTHORITY_REJECTED",
-            "NAMED_SOURCE_SCOPE_REJECTED"
+            "NAMED_SOURCE_SCOPE_REJECTED",
+            "CONFIGURATION_REJECTED"
           ]
         },
         "detail": {

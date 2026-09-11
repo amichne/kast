@@ -1,5 +1,12 @@
 package io.github.amichne.kast.relation.intellij
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
+
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
+
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationBatch
 import io.github.amichne.kast.relation.contract.RelationByteCount
@@ -51,6 +58,8 @@ private enum class IntellijRelationCollectionState {
 internal class IntellijRelationCollector(
     private val request: RelationRequest,
     private val clockNanoseconds: () -> Long = System::nanoTime,
+    private val observation: IntellijReadObservation = IntellijReadObservation.None,
+    private val limits: ReadLimits = ReadLimits.Default,
 ) {
     private val startedAt = clockNanoseconds()
     private val facts = mutableListOf<RelationFact>()
@@ -85,12 +94,14 @@ internal class IntellijRelationCollector(
         if (admitProviderEnumeration() != IntellijRelationProviderEnumerationAdmission.READY) {
             return IntellijRelationProviderEnumerationAdmission.HALTED
         }
-        if (nativeCandidates >= MAX_NATIVE_RELATION_CANDIDATES) {
+        if (nativeCandidates >= limits[ReadLimitParameter.RELATION_CANDIDATES].value) {
+            observation.terminated(IntellijReadTermination.CANDIDATE_CAP)
             limitations += RelationLimitation.WORK_LIMIT_REACHED
             state = IntellijRelationCollectionState.ENUMERATION_LIMIT
             return IntellijRelationProviderEnumerationAdmission.HALTED
         }
         nativeCandidates += 1
+        observation.count(IntellijReadCounter.RELATION_CANDIDATES)
         return IntellijRelationProviderEnumerationAdmission.READY
     }
 
@@ -171,12 +182,14 @@ internal class IntellijRelationCollector(
         examined += 1L
         retainedBytes += factBytes
         facts += fact
+        observation.count(IntellijReadCounter.RELATION_FACTS)
         return true
     }
 
     /** Records one explicit compiler/provider coverage loss without manufacturing a fact. */
     fun qualify(limitation: RelationLimitation) {
         limitations += limitation
+        observation.terminated(limitation.observedTermination())
     }
 
     /** Records semantic work that could not produce an exact detached fact. */
@@ -191,6 +204,7 @@ internal class IntellijRelationCollector(
         pendingProviderItem = null
         examined += 1L
         limitations += limitation
+        observation.terminated(limitation.observedTermination())
         return true
     }
 
@@ -238,6 +252,7 @@ internal class IntellijRelationCollector(
         val resumable = state != IntellijRelationCollectionState.ENUMERATION_LIMIT &&
             (termination is IntellijRelationTermination.Resumable || state == IntellijRelationCollectionState.HALTED)
         if (!resumable && limitations.isEmpty()) {
+            observation.terminated(IntellijReadTermination.COMPLETE)
             return RelationCompilation.complete(batch)
         }
         val qualified = if (resumable) {
@@ -256,6 +271,7 @@ internal class IntellijRelationCollector(
 
     private fun halt(limitation: RelationLimitation): Boolean {
         limitations += limitation
+        observation.terminated(limitation.observedTermination())
         state = IntellijRelationCollectionState.HALTED
         return false
     }
@@ -280,3 +296,15 @@ internal class IntellijRelationCollector(
 }
 
 internal const val MAX_NATIVE_RELATION_CANDIDATES = 10_000
+
+private fun RelationLimitation.observedTermination(): IntellijReadTermination = when (this) {
+    RelationLimitation.RESULT_LIMIT_REACHED -> IntellijReadTermination.RESULT_LIMIT
+    RelationLimitation.BYTE_LIMIT_REACHED -> IntellijReadTermination.BYTE_LIMIT
+    RelationLimitation.WORK_LIMIT_REACHED -> IntellijReadTermination.WORK_LIMIT
+    RelationLimitation.TIME_LIMIT_REACHED -> IntellijReadTermination.TIME_LIMIT
+    RelationLimitation.DUMB_MODE_TRANSITION -> IntellijReadTermination.INDEXING
+    RelationLimitation.UNRESOLVED_TARGET -> IntellijReadTermination.RELATION_UNRESOLVED_TARGET
+    RelationLimitation.UNSUPPORTED_ITEM -> IntellijReadTermination.RELATION_UNSUPPORTED_ITEM
+    RelationLimitation.PROVIDER_FAILURE -> IntellijReadTermination.PROVIDER_FAILURE
+    RelationLimitation.PROVIDER_INCOMPLETE -> IntellijReadTermination.RELATION_PROVIDER_INCOMPLETE
+}

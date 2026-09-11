@@ -1,5 +1,8 @@
 package io.github.amichne.kast.workspace.intellij.read
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
+
 /** The live IDE authority that established a detached concrete-file fact. */
 enum class IntellijFileFactAuthority { PROJECT_FILE_INDEX }
 
@@ -102,8 +105,9 @@ internal sealed interface ProjectFileIndexSourceObservation {
  */
 internal fun classifyProjectFileIndexObservation(
     observation: ProjectFileIndexSourceObservation,
-): IntellijProjectFileClassification {
-    val file = when (val identity = refineFileIdentity(observation.fileUrl)) {
+    limits: ReadLimits = ReadLimits.Default,
+    ): IntellijProjectFileClassification {
+    val file = when (val identity = refineFileIdentity(observation.fileUrl, limits = limits)) {
         is IdentityRefinement.Refined -> identity.value
         is IdentityRefinement.Rejected -> return rejected(identity.failure)
     }
@@ -112,17 +116,18 @@ internal fun classifyProjectFileIndexObservation(
             IntellijProjectFileClassification.NotSource(file)
         is ProjectFileIndexSourceObservation.Library ->
             IntellijProjectFileClassification.Library(file)
-        is ProjectFileIndexSourceObservation.Source -> classifySourceObservation(file, observation)
+        is ProjectFileIndexSourceObservation.Source -> classifySourceObservation(file, observation, limits = limits)
     }
 }
 
 private fun classifySourceObservation(
     file: IntellijFileIdentity,
     observation: ProjectFileIndexSourceObservation.Source,
-): IntellijProjectFileClassification {
+    limits: ReadLimits = ReadLimits.Default,
+    ): IntellijProjectFileClassification {
     val moduleName = observation.moduleName
         ?: return rejected(ProjectFileClassificationFailure.MODULE_OWNER_UNAVAILABLE)
-    val module = when (val identity = refineModuleIdentity(moduleName)) {
+    val module = when (val identity = refineModuleIdentity(moduleName, limits = limits)) {
         is IdentityRefinement.Refined -> identity.value
         is IdentityRefinement.Rejected -> return rejected(identity.failure)
     }
@@ -131,7 +136,7 @@ private fun classifySourceObservation(
     val contentRoot = when (
         val identity = refineFileIdentity(
             contentRootUrl,
-            ProjectFileClassificationFailure.INVALID_CONTENT_ROOT_IDENTITY,
+            ProjectFileClassificationFailure.INVALID_CONTENT_ROOT_IDENTITY, limits = limits,
         )
     ) {
         is IdentityRefinement.Refined -> identity.value
@@ -142,7 +147,7 @@ private fun classifySourceObservation(
     val sourceRoot = when (
         val identity = refineFileIdentity(
             sourceRootUrl,
-            ProjectFileClassificationFailure.INVALID_SOURCE_ROOT_IDENTITY,
+            ProjectFileClassificationFailure.INVALID_SOURCE_ROOT_IDENTITY, limits = limits,
         )
     ) {
         is IdentityRefinement.Refined -> identity.value
@@ -177,8 +182,9 @@ private fun refineFileIdentity(
     raw: String,
     failure: ProjectFileClassificationFailure =
         ProjectFileClassificationFailure.INVALID_FILE_IDENTITY,
-): IdentityRefinement<IntellijFileIdentity> =
-    if (raw.isNotBlank() && raw.length <= MAX_FILE_IDENTITY_CHARS) {
+    limits: ReadLimits = ReadLimits.Default,
+        ): IdentityRefinement<IntellijFileIdentity> =
+    if (raw.isNotBlank() && raw.length <= limits[ReadLimitParameter.MODEL_CLASSPATH_URL_CHARACTERS].value) {
         IdentityRefinement.Refined(IntellijFileIdentity(raw))
     } else {
         IdentityRefinement.Rejected(failure)
@@ -186,8 +192,9 @@ private fun refineFileIdentity(
 
 private fun refineModuleIdentity(
     raw: String,
-): IdentityRefinement<IntellijModuleIdentity> =
-    if (raw.isNotBlank() && raw.length <= MAX_MODULE_IDENTITY_CHARS) {
+    limits: ReadLimits = ReadLimits.Default,
+    ): IdentityRefinement<IntellijModuleIdentity> =
+    if (raw.isNotBlank() && raw.length <= limits[ReadLimitParameter.MODEL_IDENTITY_CHARACTERS].value) {
         IdentityRefinement.Refined(IntellijModuleIdentity(raw))
     } else {
         IdentityRefinement.Rejected(ProjectFileClassificationFailure.INVALID_MODULE_IDENTITY)

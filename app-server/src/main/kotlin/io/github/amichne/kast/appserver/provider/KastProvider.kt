@@ -1,5 +1,7 @@
 package io.github.amichne.kast.appserver.provider
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.query.PublicQueryContract
 import io.github.amichne.kast.appserver.core.AgentSessionBootstrap
@@ -61,6 +63,7 @@ internal class KastProviderOptions private constructor(
     val processExecutor: BrokerProcessExecutor,
     val qualificationTimeoutMillis: Long,
     val toolSelection: KastToolSelection,
+    val readLimits: ReadLimits,
 ) {
     companion object {
         internal fun admit(
@@ -69,6 +72,7 @@ internal class KastProviderOptions private constructor(
             processExecutor: BrokerProcessExecutor = JdkBrokerProcessExecutor,
             qualificationTimeoutMillis: Long = OperationExecutionBudget.LOCAL_QUALIFICATION.value,
             toolSelection: KastToolSelection = KastToolSelection.defaults(),
+            readLimits: ReadLimits = ReadLimits.Default,
         ): Refinement<KastProviderOptions, KastProviderOptionsFailure> {
             val admittedExecutable = when (val admission = BrokerExecutable.admit(executable)) {
                 is Refinement.Refined -> admission.value
@@ -92,6 +96,7 @@ internal class KastProviderOptions private constructor(
                     processExecutor,
                     qualificationTimeoutMillis,
                     toolSelection,
+                    readLimits,
                 ),
             )
         }
@@ -464,7 +469,7 @@ internal class KastRuntime(
             is Refinement.Refined -> encoded.value
             is Refinement.Rejected -> return ProviderCall.Rejected(ProviderFailureCode.UNEXPECTED_FAILURE)
         }
-        val requestInput = when (val admission = BrokerProcessInput.Document.admit(arguments.toString())) {
+        val requestInput = when (val admission = BrokerProcessInput.Document.admit(arguments.toString(), options.readLimits)) {
             is Refinement.Refined -> admission.value
             is Refinement.Rejected -> return ProviderCall.Rejected(
                 ProviderFailureCode.UNEXPECTED_FAILURE,
@@ -475,9 +480,13 @@ internal class KastRuntime(
                 options.executable,
                 tool.command,
                 context.workingDirectory,
-                MAXIMUM_OUTPUT_BYTES,
-                tool.executionBudget.invocation.value,
+                options.readLimits[ReadLimitParameter.PROVIDER_OUTPUT_BYTES].value,
+                options.readLimits[when (tool.executionBudget) {
+                    OperationExecutionBudget.SEMANTIC_READ -> ReadLimitParameter.PROVIDER_INVOCATION_MILLIS
+                    OperationExecutionBudget.GRAPH_BUILD -> ReadLimitParameter.PROVIDER_GRAPH_INVOCATION_MILLIS
+                }].value.toLong(),
                 input = requestInput,
+                limits = options.readLimits,
             )
         ) {
             is Refinement.Refined -> admission.value

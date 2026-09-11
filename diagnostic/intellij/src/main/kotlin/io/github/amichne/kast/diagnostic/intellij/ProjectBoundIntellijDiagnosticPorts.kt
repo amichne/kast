@@ -1,5 +1,7 @@
 package io.github.amichne.kast.diagnostic.intellij
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilation
@@ -28,6 +30,7 @@ class ProjectBoundIntellijDiagnosticPorts private constructor(
             authority: SemanticReadAuthority,
             model: WorkspaceSearchScopeModel,
             fileAdmission: IntellijSemanticSourceFileAdmission,
+            limits: ReadLimits = ReadLimits.Default,
         ): ProjectBoundIntellijDiagnosticPorts {
             fun admits(path: Path): Boolean = model.workspaceRoot == authority.workspaceRoot &&
                 model.sourceRoots.any { path.startsWith(Path.of(it.sourceRoot.value)) } &&
@@ -47,7 +50,7 @@ class ProjectBoundIntellijDiagnosticPorts private constructor(
                         return@readAction Refinement.Rejected(DiagnosticScopeResolutionFailure.WORKSPACE_NOT_READY)
                     }
                     val paths = when (val result = IntellijProjectSourceFiles.collect(
-                        project, authority.workspaceRoot, query.path, diagnosticScopeBudget,
+                        project, authority.workspaceRoot, query.path, diagnosticScopeBudget(limits), limits,
                     )) {
                         is Refinement.Refined -> result.value
                         is Refinement.Rejected -> return@readAction Refinement.Rejected(when (result.failure) {

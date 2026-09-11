@@ -1,5 +1,7 @@
 package io.github.amichne.kast.source.intellij
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.source.contract.readScope
 import io.github.amichne.kast.source.contract.SourceReadPort
@@ -20,6 +22,8 @@ object ProjectBoundIntellijSourceReadPort {
         model: WorkspaceSearchScopeModel,
         fileAdmission: IntellijSemanticSourceFileAdmission,
         continuations: IntellijSourceReadContinuations,
+        limits: ReadLimits = ReadLimits.Default,
+        observation: io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation = io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation.None,
     ): SourceReadPort {
         return IntellijSourceReadPort(IntellijSourceRegionAccess { context, request, cursor ->
             when {
@@ -41,7 +45,7 @@ object ProjectBoundIntellijSourceReadPort {
                         SourceReadScope.ExactFile -> SymbolDiscoverySourceSets.All
                         is SourceReadScope.Constrained -> scope.constraints.sourceSets
                     }
-                    LiveIntellijSourceRegionAccess(project) { path ->
+                    LiveIntellijSourceRegionAccess(project, limits, observation) { path ->
                         admitsSourceReadScope(model, readScope, path) && fileAdmission.admits(path, sourceSets)
                     }
                         .select(context, request, cursor)

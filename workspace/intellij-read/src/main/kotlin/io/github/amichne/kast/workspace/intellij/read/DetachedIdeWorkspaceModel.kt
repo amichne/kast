@@ -1,5 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.protocol.contract.AdmittedIdeHostCompatibility
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import java.util.Collections
@@ -167,12 +169,13 @@ class DetachedIdeWorkspaceModel private constructor(
             expectedRoot: CanonicalWorkspaceRoot,
             compatibility: AdmittedIdeHostCompatibility,
             observation: DetachedModelObservation,
+            limits: ReadLimits = ReadLimits.Default,
         ): DetachedModelCapture {
             val boundary = when (observation) {
                 is DetachedModelObservation.Observed -> observation.boundary
                 is DetachedModelObservation.Rejected -> return rejected(observation.failure)
             }
-            return refineDetachedModel(expectedRoot, compatibility, boundary)
+            return refineDetachedModel(expectedRoot, compatibility, boundary, limits = limits)
         }
 
         /**

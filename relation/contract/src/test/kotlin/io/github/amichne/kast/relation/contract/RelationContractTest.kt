@@ -34,12 +34,46 @@ import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
 
 class RelationContractTest {
+    @Test
+    fun `workspace expansion retains subject proof while admitting a different file endpoint`() {
+        val selector = selector(exactFile = true)
+        val request = RelationRequest.start(selector, RelationMeaning.Callees, request(RelationMeaning.Callees).budget, RelationSearchBoundary.WORKSPACE_EXPANSION)
+        assertSame(selector, (request.subject as RelationEndpoint.Subject).selector)
+        assertSame(selector.scope, request.subject.scope)
+        assertInstanceOf(SymbolSearchScope.Workspace::class.java, request.searchScope)
+        val otherFile = (SymbolDiscoveryCandidate.fromBoundary(SymbolDiscoveryKind.SYMBOL, "other", selector.lease,
+            Path.of("/workspace/other/Other.kt"), "file:///workspace/other/Other.kt", 0).refined().location as SymbolDiscoveryCandidateLocation.Declaration).file
+        val evidence = CompilerGroundedSymbolEvidence.fromBoundary(otherFile, 0, 10, "other", "other.Other.other",
+            CompilerSymbolKind.FUNCTION, CanonicalCompilerSignature.function("other.Other.other", null, emptyList(), emptyList(), 0).refined()).refined()
+        val endpoint = RelationEndpoint.resolve(selector.lease, request.searchScope, evidence, request.searchConstraints).refined()
+        val fact = RelationFact.create(request, request.subject, endpoint,
+            RelationOccurrence.fromBoundary(selector.file, 41, 42).refined(), RelationProvenance.K2_AUTHORED_SOURCE).refined()
+        assertSame(request.subject, fact.source)
+        assertSame(endpoint, fact.target)
+    }
+
+    @Test
+    fun `a continuation cannot change its search boundary even with the same subject`() {
+        val selector = selector(exactFile = true)
+        val retained = RelationRequest.start(selector, RelationMeaning.References, request(RelationMeaning.References).budget)
+        val expanded = RelationRequest.start(selector, retained.meaning, retained.budget, RelationSearchBoundary.WORKSPACE_EXPANSION)
+        assertNotEquals(retained.scopeFingerprint, expanded.scopeFingerprint)
+        val batch = RelationBatch.create(expanded, emptyList(), RelationByteCount.parse(0).refined(), RelationWorkCount.parse(0).refined(), RelationResultCount.parse(0).refined()).refined()
+        val cursor = expanded.providerCursor.advance(RelationProviderItemDescriptor.parse("first").refined())
+        val compiled = RelationCompilation.qualifiedResumable(batch, setOf(RelationLimitation.RESULT_LIMIT_REACHED), cursor).refined()
+        val continuation = (compiled.coverage as RelationIncompleteCoverage.Resumable).continuation
+        val resumed = RelationRequest.resume(selector, expanded.meaning, expanded.budget, continuation)
+        assertEquals(RelationResumeFailure.SCOPE_MISMATCH, (resumed as Refinement.Rejected).failure)
+    }
+
     @Test
     fun `related endpoint preserves the exact compiler identity fingerprint`() {
         val selector = selector()
@@ -230,7 +264,7 @@ class RelationContractTest {
         ),
     )
 
-    private fun selector(): SymbolSelector {
+    private fun selector(exactFile: Boolean = false): SymbolSelector {
         val lease = SemanticReadLease(
             CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
             EvidenceGeneration.parse(19L).refined(),
@@ -238,7 +272,11 @@ class RelationContractTest {
         val request = SymbolDiscoveryRequest(
             SymbolSearchScopeRequest(
                 lease,
-                SymbolSearchScope.Workspace(
+                if (exactFile) SymbolSearchScope.ExactFile(
+                    io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath.fromCanonicalPath(lease.workspaceRoot, Path.of("/workspace/src/Subject.kt")).refined(),
+                    SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                    SymbolGeneratedSourcePolicy.INCLUDE,
+                ) else SymbolSearchScope.Workspace(
                     SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
                     SymbolGeneratedSourcePolicy.INCLUDE,
                     SymbolLibraryPolicy.EXCLUDE,

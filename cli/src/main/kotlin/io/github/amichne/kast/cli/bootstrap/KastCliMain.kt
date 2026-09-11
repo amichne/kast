@@ -70,7 +70,7 @@ fun main(args: Array<String>) {
     val exit = if (selectCliRuntimePath(args.toList()) == CliRuntimePath.EXISTING_IDE) {
         io.github.amichne.kast.cli.ide.executeExistingIdeCli(
             args.toList(), Path.of("").toAbsolutePath(), FilesystemCanonicalRootDiscovery,
-            io.github.amichne.kast.cli.ide.ExistingIdeSocketClient(Path.of(System.getProperty("user.home"))),
+            io.github.amichne.kast.cli.ide.configuredExistingIdeClient(Path.of(System.getProperty("user.home")), environment),
             CliRequestDocumentInput.Deferred(::readCanonicalRequestInput),
         )
     } else when (val installation = InstallationCliInspection.inspect(args.toList(), environment)) {

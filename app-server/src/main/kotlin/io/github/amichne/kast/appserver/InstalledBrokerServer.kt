@@ -197,6 +197,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     canonicalUserHome,
                     processExecutor,
                     toolSelection = toolSelection,
+                    readLimits = configuration.readLimits,
                 )
             ) {
                 is Refinement.Refined -> admission.value

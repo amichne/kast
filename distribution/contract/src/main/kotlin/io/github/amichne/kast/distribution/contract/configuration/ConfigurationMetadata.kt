@@ -5,7 +5,7 @@ import io.github.amichne.kast.distribution.contract.network.NetworkProperty
 import io.github.amichne.kast.distribution.contract.network.KastNetworkPropertyNamespace
 import kotlinx.serialization.Serializable
 
-@Serializable enum class ConfigurationUnit { NONE, MEBIBYTES, COUNT, BYTES, MILLISECONDS, PATH }
+@Serializable enum class ConfigurationUnit { NONE, MEBIBYTES, COUNT, CHARACTERS, BYTES, MILLISECONDS, PATH }
 @Serializable enum class ConfigurationRequiredState { DEFAULT_AVAILABLE, OWNER_DECIDES, DERIVED_REQUIRED }
 @Serializable data class ConfigurationAdmittedRange(
     val minimum: Long? = null,

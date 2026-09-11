@@ -29,6 +29,7 @@
     "packaging/test-acceptance-environment.py",
     "packaging/test-installed-codex-host.py",
     "packaging/test-installed-product.sh",
+    "workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/HostedReadConfiguration.kt",
     "workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledIntellijWorkspace.kt",
     "workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/network/KastGradleNetworkPolicyExtension.kt"
   ]

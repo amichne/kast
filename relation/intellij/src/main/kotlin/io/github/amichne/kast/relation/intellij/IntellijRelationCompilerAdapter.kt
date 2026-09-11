@@ -1,5 +1,14 @@
 package io.github.amichne.kast.relation.intellij
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
+
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure
+
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
@@ -41,6 +50,8 @@ internal fun admitRelationLease(
 
 internal class IntellijRelationCompilerQuery(
     private val scopeCompiler: IntellijRelationScopeCompiler = IntellijRelationScopeCompiler(),
+    private val observation: IntellijReadObservation = IntellijReadObservation.None,
+    private val limits: ReadLimits = ReadLimits.Default,
 ) {
     /**
      * Proof transition: `(Project, SemanticReadAuthority, RelationRequest,
@@ -76,12 +87,20 @@ internal class IntellijRelationCompilerQuery(
                     is IntellijRelationScopeCompilation.Rejected ->
                         return@readAction RelationCompilation.Rejected(RelationCompilerRejection.SCOPE_REJECTED)
                 }
+                val subjectScope = when (val compilation = scopeCompiler.compile(
+                    project, request, modelCompilation, request.subject.scope, request.subject.constraints,
+                )) {
+                    is IntellijRelationScopeCompilation.Compiled -> compilation.scope
+                    is IntellijRelationScopeCompilation.Rejected -> return@readAction RelationCompilation.Rejected(
+                        RelationCompilerRejection.SCOPE_REJECTED,
+                    )
+                }
                 val projection = IntellijK2RelationProjection(
                     project,
-                    request.subject.lease.workspaceRoot,
+                    request.subject.lease.workspaceRoot, observation,
                 )
                 val subject = when (
-                    val lookup = projection.subject(scope, request.subject)
+                    val lookup = projection.subject(subjectScope, request.subject)
                 ) {
                     is IntellijRelationSubjectLookup.Found -> lookup
                     is IntellijRelationSubjectLookup.Rejected ->
@@ -89,11 +108,11 @@ internal class IntellijRelationCompilerQuery(
                             lookup.reason.compilerRejection(),
                         )
                 }
-                val collector = IntellijRelationCollector(request)
+                val collector = IntellijRelationCollector(request, observation = observation, limits = limits)
                 val termination = IntellijK2RelationSearch(
                     project,
                     scope,
-                    projection,
+                    projection, observation = observation, limits = limits,
                 ).read(request, subject.plan(request), collector)
                 collector.finish(termination)
             }
@@ -101,9 +120,11 @@ internal class IntellijRelationCompilerQuery(
             throw cancelled
         } catch (cancelled: CancellationException) {
             throw cancelled
-        } catch (_: RuntimeException) {
+        } catch (failure: RuntimeException) {
+            observation.unexpected(IntellijReadUnexpectedFailure.capture(IntellijReadStage.RELATION, failure, limits))
             RelationCompilation.Rejected(RelationCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE)
-        } catch (_: LinkageError) {
+        } catch (failure: LinkageError) {
+            observation.unexpected(IntellijReadUnexpectedFailure.capture(IntellijReadStage.RELATION, failure, limits))
             RelationCompilation.Rejected(RelationCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE)
         }
     }

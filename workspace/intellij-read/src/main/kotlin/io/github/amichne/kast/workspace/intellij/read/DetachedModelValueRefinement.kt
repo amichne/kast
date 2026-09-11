@@ -1,5 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import java.nio.charset.StandardCharsets
@@ -36,8 +38,9 @@ internal class ExactObservedWorkspaceRoot private constructor(
         internal fun refineObservedRoot(
             raw: String?,
             expectedRoot: CanonicalWorkspaceRoot,
+            limits: ReadLimits = ReadLimits.Default,
         ): Refinement<ExactObservedWorkspaceRoot, DetachedModelCaptureFailure> {
-            val path = when (val value = parseNormalizedAbsolutePath(raw)) {
+            val path = when (val value = parseNormalizedAbsolutePath(raw, limits = limits)) {
                 is Refinement.Refined -> value.value.value
                 is Refinement.Rejected -> return value.failure.pathRejection(
                     DetachedModelCaptureFailure.ROOT_UNAVAILABLE,
@@ -57,8 +60,8 @@ internal class ExactObservedWorkspaceRoot private constructor(
  * nonblank, trimmed, control-free identity. [TextFailure] closes invalid and oversized input. Raw
  * identity extraction is permitted only at the live IntelliJ, SDK, or Gradle adapter boundary.
  */
-internal fun refineIdentity(raw: String): Refinement<BoundedIdentity, TextFailure> =
-    when (val value = refineBoundedText(raw, DetachedModelLimits.MAX_IDENTITY_CHARS)) {
+internal fun refineIdentity(raw: String, limits: ReadLimits = ReadLimits.Default): Refinement<BoundedIdentity, TextFailure> =
+    when (val value = refineBoundedText(raw, limits[ReadLimitParameter.MODEL_IDENTITY_CHARACTERS].value)) {
         is Refinement.Refined -> Refinement.Refined(BoundedIdentity(value.value.value))
         is Refinement.Rejected -> value
     }
@@ -74,10 +77,11 @@ internal fun refineIdentity(raw: String): Refinement<BoundedIdentity, TextFailur
  */
 internal fun refineClasspathUrl(
     raw: String,
-): Refinement<DetachedClasspathEntryUrl, DetachedModelCaptureFailure> {
+    limits: ReadLimits = ReadLimits.Default,
+    ): Refinement<DetachedClasspathEntryUrl, DetachedModelCaptureFailure> {
     if (
-        raw.length > DetachedModelLimits.MAX_CLASSPATH_URL_CHARS ||
-        raw.toByteArray(StandardCharsets.UTF_8).size > DetachedModelLimits.MAX_CLASSPATH_URL_CHARS
+        raw.length > limits[ReadLimitParameter.MODEL_CLASSPATH_URL_CHARACTERS].value ||
+        raw.toByteArray(StandardCharsets.UTF_8).size > limits[ReadLimitParameter.MODEL_CLASSPATH_URL_CHARACTERS].value
     ) {
         return Refinement.Rejected(DetachedModelCaptureFailure.CLASSPATH_IDENTITY_TOO_LONG)
     }
@@ -132,8 +136,9 @@ internal fun refineWorkspacePath(
     root: Path,
     invalidFailure: DetachedModelCaptureFailure,
     outsideFailure: DetachedModelCaptureFailure,
-): Refinement<DetachedWorkspaceRelativePath, DetachedModelCaptureFailure> {
-    val path = when (val value = parseNormalizedAbsolutePath(raw)) {
+    limits: ReadLimits = ReadLimits.Default,
+    ): Refinement<DetachedWorkspaceRelativePath, DetachedModelCaptureFailure> {
+    val path = when (val value = parseNormalizedAbsolutePath(raw, limits = limits)) {
         is Refinement.Refined -> value.value.value
         is Refinement.Rejected -> return value.failure.pathRejection(invalidFailure)
     }
@@ -150,13 +155,14 @@ internal fun refineWorkspacePath(
  */
 private fun parseNormalizedAbsolutePath(
     raw: String?,
-): Refinement<NormalizedAbsolutePath, PathFailure> {
+    limits: ReadLimits = ReadLimits.Default,
+    ): Refinement<NormalizedAbsolutePath, PathFailure> {
     if (raw == null) {
         return Refinement.Rejected(PathFailure.INVALID)
     }
     if (
-        raw.length > DetachedModelLimits.MAX_PATH_CHARS ||
-        raw.toByteArray(StandardCharsets.UTF_8).size > DetachedModelLimits.MAX_PATH_CHARS
+        raw.length > limits[ReadLimitParameter.MODEL_PATH_CHARACTERS].value ||
+        raw.toByteArray(StandardCharsets.UTF_8).size > limits[ReadLimitParameter.MODEL_PATH_CHARACTERS].value
     ) {
         return Refinement.Rejected(PathFailure.TOO_LONG)
     }

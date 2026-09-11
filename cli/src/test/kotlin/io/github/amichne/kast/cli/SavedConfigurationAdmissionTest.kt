@@ -59,7 +59,7 @@ class SavedConfigurationAdmissionTest {
     }
 
     @Test
-    fun `live read entry point rejects a missing host without installed configuration admission`(@TempDir temporary: Path) {
+    fun `live read entry point rejects unreadable saved read settings before opening a host`(@TempDir temporary: Path) {
         val result = launch(
             temporary, workspace(temporary), "io.github.amichne.kast.cli.KastCliMainKt", "unreadable",
             listOf("query", "run"), """{"type":"QUERY","from":{"type":"SEARCH","query":"Example"}}""",
@@ -68,7 +68,7 @@ class SavedConfigurationAdmissionTest {
         assertEquals(4, result.exitCode, result.stderr)
         assertEquals("", result.stdout)
         val document = Json.parseToJsonElement(result.stderr).jsonObject
-        assertEquals("ide-host-unavailable", document.getValue("reason").jsonPrimitive.content)
+        assertEquals("ide-configuration-rejected", document.getValue("reason").jsonPrimitive.content)
         assertFalse(Files.exists(temporary.resolve("runtime")))
         assertFalse(Files.exists(temporary.resolve("cache")))
     }

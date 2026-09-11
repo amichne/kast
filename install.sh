@@ -316,12 +316,20 @@ PYTHON
 }
 
 script_source="${BASH_SOURCE[0]:-}"
+checkout_mode=""
 if [[ "${1:-}" == "--local" ]]; then
   [[ -n "$script_source" && -f "$script_source" ]] ||
     fail "--local requires an installer file from a Kast checkout"
   installer_directory="$(CDPATH='' cd -- "$(dirname -- "$script_source")" && pwd -P)"
-  shift
-  exec bash "$installer_directory/packaging/install-checkout.sh" "$installer_directory/install.sh" "$@"
+  checkout_mode="${2:-}"
+  case "$checkout_mode" in session|persistent) ;; *) fail '--local requires session or persistent' ;; esac
+  shift 2
+  # Checkout builds admit only the IDE selection option, before resolving or building anything.
+  case "$#" in
+    0) ;;
+    2) [[ $1 == --idea-home && -n $2 ]] || fail 'unsupported checkout installation option' ;;
+    *) fail 'unsupported checkout installation option' ;;
+  esac
 fi
 
 action=install
@@ -388,6 +396,10 @@ fi
 java_home="$idea_home/jbr/Contents/Home"
 IFS=$'\t' read -r idea_build idea_data_directory < <(read_idea_identity "$idea_home")
 [[ -n "$idea_build" && -n "$idea_data_directory" ]] || fail "IDEA product identity is unavailable"
+if [[ -n "$checkout_mode" ]]; then
+  export KAST_INSTALL_IDEA_HOME="$idea_home"
+  exec bash "$installer_directory/packaging/install-checkout.sh" "$installer_directory/install.sh" "$checkout_mode" --idea-home "$idea_home"
+fi
 idea_plugin_root="$HOME/Library/Application Support/JetBrains/$idea_data_directory/plugins"
 
 if [[ -z "$version" || "$version" == latest ]]; then

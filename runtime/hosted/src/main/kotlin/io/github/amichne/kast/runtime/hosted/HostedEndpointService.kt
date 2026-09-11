@@ -18,18 +18,34 @@ import java.nio.file.Path
 
 internal enum class HostedEndpointStage { BIND, ACCEPT, REQUEST, RETIREMENT }
 internal enum class HostedEndpointOutcome { STARTED, COMPLETED, REJECTED, CANCELLED }
-internal fun interface HostedEndpointObserver { fun observe(stage: HostedEndpointStage, outcome: HostedEndpointOutcome) }
+internal fun interface HostedEndpointObserver {
+    fun observe(stage: HostedEndpointStage, outcome: HostedEndpointOutcome)
+    fun rejected(stage: HostedEndpointStage, failure: HostedEndpointFailure) { observe(stage, HostedEndpointOutcome.REJECTED) }
+}
 
 /** Platform-owned carrier; it opens no project, imports no model, and creates no isolated worker. */
 @Service(Service.Level.PROJECT)
 class HostedEndpointService(private val project: Project, private val scope: CoroutineScope) : Disposable {
     private val query = project.getService(HostedQueryService::class.java)
-    private val continuations = io.github.amichne.kast.source.intellij.IntellijSourceReadContinuations()
-    private val observer = HostedEndpointObserver { stage, outcome ->
-        Logger.getInstance(HostedEndpointService::class.java).info("kast_hosted stage=${stage.name} outcome=${outcome.name}")
+    private val observer = object : HostedEndpointObserver {
+        override fun observe(stage: HostedEndpointStage, outcome: HostedEndpointOutcome) {
+            Logger.getInstance(HostedEndpointService::class.java).info("kast_hosted stage=${stage.name} outcome=${outcome.name}")
+        }
+        override fun rejected(stage: HostedEndpointStage, failure: HostedEndpointFailure) {
+            Logger.getInstance(HostedEndpointService::class.java).info("kast_hosted stage=${stage.name} outcome=REJECTED failure=${failure.name}")
+        }
     }
     private val job = scope.launch(Dispatchers.IO) {
         observer.observe(HostedEndpointStage.BIND, HostedEndpointOutcome.STARTED)
+        val limits = when (val configuration = query.readConfiguration) {
+            is Refinement.Refined -> configuration.value
+            is Refinement.Rejected -> {
+                Logger.getInstance(HostedEndpointService::class.java).info("kast_hosted stage=CONFIGURATION outcome=REJECTED failure=${configuration.failure}")
+                observer.observe(HostedEndpointStage.BIND, HostedEndpointOutcome.REJECTED)
+                return@launch
+            }
+        }
+        val continuations = io.github.amichne.kast.source.intellij.IntellijSourceReadContinuations(limits)
         val root = try {
             val basePath = project.basePath
             if (basePath == null) {
@@ -49,7 +65,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
         }
         val owner = when (val opened = OwnedHostedEndpoint.open(OwnedHostedEndpoint.directory(Path.of(System.getProperty("user.home")), root), root, query.hostLifetime)) {
             is Refinement.Refined -> opened.value
-            is Refinement.Rejected -> { observer.observe(HostedEndpointStage.BIND, HostedEndpointOutcome.REJECTED); return@launch }
+            is Refinement.Rejected -> { observer.rejected(HostedEndpointStage.BIND, opened.failure); return@launch }
         }
         observer.observe(HostedEndpointStage.BIND, HostedEndpointOutcome.COMPLETED)
         try {
@@ -59,8 +75,8 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                     is Refinement.Rejected -> break
                 }
                 connection.use { client ->
-                    serveHostedConnection(Channels.newInputStream(client), Channels.newOutputStream(client), observer) {
-                        when (val result = dispatchUntilPeerTermination(client::awaitHostedPeerTermination) { dispatch(root, it) }) {
+                    serveHostedConnection(Channels.newInputStream(client), Channels.newOutputStream(client), observer, limits) {
+                        when (val result = dispatchUntilPeerTermination(client::awaitHostedPeerTermination) { dispatch(root, it, continuations, limits) }) {
                             is HostedPeerDispatch.Completed -> result.response
                             is HostedPeerDispatch.Rejected -> HostedRequests.rejected(when (result.termination) {
                                 HostedPeerTermination.DISCONNECTED -> HostedEndpointFailure.IO_UNAVAILABLE
@@ -83,8 +99,11 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
         }
     }
 
-    private suspend fun dispatch(root: CanonicalWorkspaceRoot, request: HostedRequest): String {
-        if (request.root != root) return HostedRequests.rejected(HostedEndpointFailure.WRONG_ROOT)
+    private suspend fun dispatch(root: CanonicalWorkspaceRoot, request: HostedRequest, continuations: io.github.amichne.kast.source.intellij.IntellijSourceReadContinuations, limits: io.github.amichne.kast.kernel.ReadLimits): String {
+        if (request.root != root) {
+            observer.rejected(HostedEndpointStage.REQUEST, HostedEndpointFailure.WRONG_ROOT)
+            return HostedRequests.rejected(HostedEndpointFailure.WRONG_ROOT)
+        }
         return when (request) {
             is HostedRequest.Describe -> Gson().toJson(mapOf(
                 "type" to "KAST_IDE_HOST", "protocol" to 2, "root" to root.value,
@@ -92,7 +111,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                 "host" to query.hostLifetime.value.toString(), "querySchema" to HostedReadCapabilities.querySchema,
                 "operations" to HostedReadCapabilities.operations,
             ))
-            is HostedRequest.Classes -> HostedQueryWire.encode(query.lookup(query.endpoint, request.lookup))
+            is HostedRequest.Classes -> HostedQueryWire.encode(query.lookup(query.endpoint, request.lookup), limits)
             is HostedRequest.Supertype -> HostedQueryWire.encode(query.query(query.endpoint, request.selection))
             is HostedRequest.Read -> when (val result = query.read(query.endpoint, root) { context ->
                 evaluateHostedCanonicalQuery(project, context, request, continuations)
@@ -103,7 +122,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
         }
     }
 
-    override fun dispose() { query.dispose(); continuations.retire(); job.cancel() }
+    override fun dispose() { query.dispose(); job.cancel() }
 }
 
 class HostedEndpointStartup : ProjectActivity {

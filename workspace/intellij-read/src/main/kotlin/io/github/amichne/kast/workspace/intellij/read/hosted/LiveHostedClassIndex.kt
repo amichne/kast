@@ -2,6 +2,8 @@
 
 package io.github.amichne.kast.workspace.intellij.read.hosted
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
@@ -18,12 +20,12 @@ import org.jetbrains.kotlin.psi.KtClassOrObject
 import java.nio.file.Path
 
 /** IDEA maintains this index incrementally; Kast only reads its exact source scope in smart mode. */
-internal fun readHostedClassIndex(project: Project, lookup: HostedClassLookup, model: DetachedIdeWorkspaceModel): HostedSemanticRead<HostedIndexedClasses> {
+internal fun readHostedClassIndex(project: Project, lookup: HostedClassLookup, model: DetachedIdeWorkspaceModel, limits: ReadLimits = ReadLimits.Default): HostedSemanticRead<HostedIndexedClasses> {
     when (val saved = checkSavedDocuments(project)) {
         SavedDocuments.Clean -> Unit
         is SavedDocuments.Rejected -> return HostedSemanticRead.Rejected(saved.failure)
     }
-    val candidates = HostedIndexCandidates<KtClassOrObject>()
+    val candidates = HostedIndexCandidates<KtClassOrObject>(limits)
     // Finish the index callback before invoking K2, which may itself consult indexes.
     val complete = KotlinClassShortNameIndex.processElements(lookup.name.value, project, HostedIndexScope(project, model)) { declaration ->
         ProgressManager.checkCanceled()
@@ -43,7 +45,7 @@ internal fun readHostedClassIndex(project: Project, lookup: HostedClassLookup, m
         val result = analyze(declaration) {
             val symbol = declaration.symbol as? KaNamedClassSymbol
                 ?: return@analyze Refinement.Rejected(HostedQueryFailure.UNSUPPORTED_DECLARATION)
-            detachDeclaration(project, model, declaration, symbol)
+            detachDeclaration(project, model, declaration, symbol, limits = limits)
         }
         when (result) {
             is Refinement.Refined -> detached += result.value

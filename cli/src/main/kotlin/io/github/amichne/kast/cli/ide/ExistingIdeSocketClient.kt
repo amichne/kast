@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli.ide
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.cli.*
@@ -25,7 +27,7 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 
 /** Read-only descriptor admission and one exact-socket exchange. No runtime startup dependency. */
-class ExistingIdeSocketClient(private val home: Path) : ExistingIdeClient {
+class ExistingIdeSocketClient(private val home: Path, private val limits: ReadLimits = ReadLimits.Default) : ExistingIdeClient {
     override fun query(root: CanonicalRoot, operation: ExistingIdeOperation): ExistingIdeExchange {
         val rejected = { failure: ExistingIdeFailure -> ExistingIdeExchange.Rejected(failure) }
         try {
@@ -40,8 +42,8 @@ class ExistingIdeSocketClient(private val home: Path) : ExistingIdeClient {
             val descriptor = directory.resolve("endpoint.json")
             if (!Files.exists(descriptor, NOFOLLOW_LINKS)) return rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
             if (!Files.isRegularFile(descriptor, NOFOLLOW_LINKS)) return rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
-            val metadata = Files.newInputStream(descriptor, NOFOLLOW_LINKS).use { it.readNBytes(16_385) }
-            if (metadata.size > 16_384) return rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
+            val metadata = Files.newInputStream(descriptor, NOFOLLOW_LINKS).use { it.readNBytes(limits[ReadLimitParameter.HOST_DESCRIPTOR_BYTES].value + 1) }
+            if (metadata.size > limits[ReadLimitParameter.HOST_DESCRIPTOR_BYTES].value) return rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
             val socket = directory.resolve("host.sock")
             val admitted = when (val answer = ExistingIdeDocuments.descriptor(metadata, root, socket)) {
                 is Refinement.Refined -> answer.value
@@ -59,9 +61,9 @@ class ExistingIdeSocketClient(private val home: Path) : ExistingIdeClient {
                     is ExistingIdeOperation.Read -> { put("type", operation.kind.name); put("document", operation.request.document) }
                 }
             }.toString().toByteArray(Charsets.UTF_8)
-            if (request.size > 16_384) return rejected(ExistingIdeFailure.REQUEST_TOO_LARGE)
+            if (request.size > limits[ReadLimitParameter.HOST_REQUEST_BYTES].value) return rejected(ExistingIdeFailure.REQUEST_TOO_LARGE)
             SocketChannel.open(StandardProtocolFamily.UNIX).use { channel ->
-                val deadline = WireIoDeadline(channel, (ElapsedTimeLimitMillis.parse(6_000) as Refinement.Refined).value)
+                val deadline = WireIoDeadline(channel, (ElapsedTimeLimitMillis.parse(limits[ReadLimitParameter.CLIENT_EXCHANGE_MILLIS].value.toLong()) as Refinement.Refined).value)
                 val answer = try {
                     channel.connect(UnixDomainSocketAddress.of(socket))
                     if (Files.readAttributes(socket, BasicFileAttributes::class.java, NOFOLLOW_LINKS).fileKey() != key) {
@@ -70,7 +72,7 @@ class ExistingIdeSocketClient(private val home: Path) : ExistingIdeClient {
                         java.io.DataOutputStream(Channels.newOutputStream(channel)).apply { writeInt(request.size); write(request); flush() }
                         val input = java.io.DataInputStream(Channels.newInputStream(channel))
                         val size = input.readInt()
-                        if (size !in 1..65_536) rejected(ExistingIdeFailure.RESPONSE_REJECTED)
+                        if (size !in 1..limits[ReadLimitParameter.HOST_RESPONSE_BYTES].value) rejected(ExistingIdeFailure.RESPONSE_REJECTED)
                         else {
                             val bytes = input.readNBytes(size)
                             if (bytes.size != size) rejected(ExistingIdeFailure.RESPONSE_REJECTED)

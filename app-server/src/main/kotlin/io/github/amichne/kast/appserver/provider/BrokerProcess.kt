@@ -4,6 +4,8 @@ import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.appserver.core.ProviderFailureCode
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -60,9 +62,9 @@ internal sealed interface BrokerProcessInput {
         internal val value: String,
     ) : BrokerProcessInput {
         companion object {
-            internal fun admit(document: String): Refinement<Document, BrokerProcessRequestFailure> {
+            internal fun admit(document: String, limits: ReadLimits = ReadLimits.Default): Refinement<Document, BrokerProcessRequestFailure> {
                 val bytes = document.toByteArray(Charsets.UTF_8)
-                return if (document.isBlank() || bytes.size > MAXIMUM_INPUT_BYTES) {
+                return if (document.isBlank() || bytes.size > limits[ReadLimitParameter.PROCESS_INPUT_BYTES].value) {
                     Refinement.Rejected(BrokerProcessRequestFailure.INVALID_INPUT)
                 } else {
                     Refinement.Refined(Document(document))
@@ -92,11 +94,12 @@ internal class BrokerProcessRequest private constructor(
             timeoutMillis: Long,
             input: BrokerProcessInput = BrokerProcessInput.Empty,
             environment: Map<String, String> = emptyMap(),
+            limits: ReadLimits = ReadLimits.Default,
         ): Refinement<BrokerProcessRequest, BrokerProcessRequestFailure> = when {
-            maximumOutputBytes !in 1..MAXIMUM_OUTPUT_BYTES -> Refinement.Rejected(
+            maximumOutputBytes !in 1..limits[ReadLimitParameter.PROCESS_OUTPUT_BYTES].value -> Refinement.Rejected(
                 BrokerProcessRequestFailure.INVALID_OUTPUT_BUDGET,
             )
-            timeoutMillis !in 1..MAXIMUM_TIMEOUT_MILLIS -> Refinement.Rejected(
+            timeoutMillis !in 1..limits[ReadLimitParameter.PROCESS_TIMEOUT_MILLIS].value.toLong() -> Refinement.Rejected(
                 BrokerProcessRequestFailure.INVALID_TIMEOUT,
             )
             else -> Refinement.Refined(

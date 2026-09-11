@@ -290,7 +290,7 @@ class QueryService(
                     break@symbolLoop
                 }
                 val relationRequest = if (continuation == null) {
-                    RelationRequest.start(symbol.selector, meaning, budget)
+                    RelationRequest.start(symbol.selector, meaning, budget, io.github.amichne.kast.relation.contract.RelationSearchBoundary.WORKSPACE_EXPANSION)
                 } else {
                     when (
                         val resumed = RelationRequest.resume(
@@ -298,6 +298,7 @@ class QueryService(
                             meaning,
                             budget,
                             continuation,
+                            io.github.amichne.kast.relation.contract.RelationSearchBoundary.WORKSPACE_EXPANSION,
                         )
                     ) {
                         is Refinement.Refined -> resumed.value

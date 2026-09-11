@@ -75,3 +75,5 @@ matching direct CLI execution. This establishes provider/process invocation,
 while full Codex WebSocket and multi-client acceptance remain separate.
 
 Read [request dispatch](../flows/request-dispatch.md) for the cross-host path.
+
+Hosted project services retain an immutable read-limit policy admitted from the IDE process environment and JVM properties. The CLI/provider retain the corresponding policy from their configuration boundary, including saved installation values. Invalid configuration rejects before native execution. Default hosted logs include the selected capacities and provenance. See [configuration](../../docs/hosted-read-configuration.md).

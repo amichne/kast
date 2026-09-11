@@ -14,12 +14,14 @@ require_command() {
 install_prefix="${KAST_LOCAL_PREFIX:-}"
 control_product="${KAST_LOCAL_CONTROL_PRODUCT:-}"
 runtime_archive="${KAST_LOCAL_RUNTIME_ARCHIVE:-}"
+plugin_archive="${KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE:-}"
 java_executable="${KAST_LOCAL_JAVA_EXECUTABLE:-}"
 java_home="${KAST_LOCAL_JAVA_HOME:-}"
 
 [[ -n "${install_prefix}" ]] || fail "KAST_LOCAL_PREFIX is required"
 [[ -n "${control_product}" ]] || fail "KAST_LOCAL_CONTROL_PRODUCT is required"
 [[ -n "${runtime_archive}" ]] || fail "KAST_LOCAL_RUNTIME_ARCHIVE is required"
+[[ -f "$plugin_archive" && ! -L "$plugin_archive" ]] || fail "KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE must be a regular file"
 [[ -n "${java_executable}" ]] || fail "KAST_LOCAL_JAVA_EXECUTABLE is required"
 [[ -n "${java_home}" ]] || fail "KAST_LOCAL_JAVA_HOME is required"
 
@@ -70,7 +72,10 @@ control_name="kast-control-v${version}-macos-aarch64.tar.gz"
 # member that the release installer's traversal-safe extractor correctly rejects.
 tar -czf "$assets/$control_name" -C "$control_product" bin lib share
 cp "$runtime_archive" "$assets/$runtime_name"
-for name in "$control_name" "$runtime_name"; do
+plugin_name="${plugin_archive##*/}"
+case "$plugin_name" in "kast-ide-hosted-v$version-idea-"*.zip) ;; *) fail 'hosted plugin archive and control version differ' ;; esac
+cp "$plugin_archive" "$assets/$plugin_name"
+for name in "$control_name" "$runtime_name" "$plugin_name"; do
   (cd "$assets" && shasum -a 256 "$name" > "$name.sha256")
 done
 KAST_VERSION="$version" \

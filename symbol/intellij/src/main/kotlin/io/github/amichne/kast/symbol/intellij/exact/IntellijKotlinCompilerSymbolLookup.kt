@@ -5,12 +5,22 @@
 
 package io.github.amichne.kast.symbol.intellij
 
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
+
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignatureFailure
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.analysis.api.projectStructure.kaModule
+import org.jetbrains.kotlin.analysis.api.javaInterop.namedClassSymbol
+import org.jetbrains.kotlin.analysis.api.javaInterop.callableSymbol
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiMember
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
@@ -18,6 +28,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaTypeAliasSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
 internal sealed interface IntellijCompilerSymbolLookupResult {
@@ -48,6 +59,7 @@ internal fun interface IntellijCompilerSymbolLookup {
 /** Request-local K2 exact-symbol lookup; no analysis-session value crosses [find]. */
 internal class IntellijKotlinCompilerSymbolLookup(
     private val psiLookup: IntellijPsiExactDeclarationLookup,
+    private val observation: IntellijReadObservation = IntellijReadObservation.None,
 ) : IntellijCompilerSymbolLookup {
     /**
      * Proof transition: `(CompiledIntellijSearchScope, IntellijExactDeclarationLookupKey) ->
@@ -69,16 +81,22 @@ internal class IntellijKotlinCompilerSymbolLookup(
                     lookup.reason.toSymbolSelectorRejection(),
                 )
         }
-        val declaration = live.declaration as? KtNamedDeclaration
-                          ?: return rejected(
-                              IntellijSymbolSelectorRejection.UNSUPPORTED_DECLARATION,
-                          )
-        val projection = when (val result = analyze(declaration) {
-            declaration.symbol.toCompilerProjection()
+        val declaration = live.declaration
+        observation.count(IntellijReadCounter.COMPILER_REFINEMENTS)
+        val projection = when (val result = analyze(declaration.kaModule(null)) {
+            val symbol = when (declaration) {
+                is KtNamedDeclaration -> declaration.symbol
+                is PsiClass -> declaration.namedClassSymbol
+                is PsiMember -> declaration.callableSymbol
+                else -> null
+            }
+            symbol?.toCompilerProjection() ?: compilerProjectionRejected()
         }) {
             is IntellijCompilerSymbolProjectionResult.Projected -> result.projection
-            is IntellijCompilerSymbolProjectionResult.Rejected ->
+            is IntellijCompilerSymbolProjectionResult.Rejected -> {
+                observation.count(IntellijReadCounter.COMPILER_REFINEMENTS_REJECTED)
                 return rejected(result.reason)
+            }
         }
         return when (
             val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
@@ -125,6 +143,8 @@ private sealed interface IntellijCompilerSymbolProjectionResult {
  */
 private fun KaSymbol.toCompilerProjection(): IntellijCompilerSymbolProjectionResult {
     return when (this) {
+        is KaValueParameterSymbol -> generatedPrimaryConstructorProperty?.toCompilerProjection()
+            ?: compilerProjectionRejected()
         is KaConstructorSymbol -> {
             val owner = containingClassId?.asSingleFqName()?.asString()
                         ?: return compilerProjectionRejected()

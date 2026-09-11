@@ -49,7 +49,8 @@ The CLI's App Server projection is version 9, and provider qualification require
 that version. Its successful read schemas carry mutually exclusive published and
 live variants, including the corresponding source snapshot shape. The hosted
 endpoint schema is version 2 and advertises the seven canonical read routes.
-The final provider-qualified CLI schema document is 290,635 bytes, below the
-unchanged 524,288-byte limit. Schema compatibility and native execution remain
+The earlier provider-qualified CLI schema document was 290,635 bytes, below its
+524,288-byte qualification cap. Hosted read admission now also has a closed
+`CONFIGURATION_REJECTED` outcome; canonical semantic outcome schemas retain their existing identities. Schema compatibility and native execution remain
 separate evidence: the [acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
 records the final default-route CLI matrix and actual provider invocation.

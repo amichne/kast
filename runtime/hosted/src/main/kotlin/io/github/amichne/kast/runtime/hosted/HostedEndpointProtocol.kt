@@ -1,5 +1,7 @@
 package io.github.amichne.kast.runtime.hosted
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.stream.JsonReader
@@ -130,10 +132,10 @@ internal object HostedRequests {
 
 /** Four-byte network-order length followed by bounded strict UTF-8 JSON; no line ambiguity. */
 internal object HostedFrames {
-    fun read(input: InputStream): Refinement<String, HostedEndpointFailure> = try {
+    fun read(input: InputStream, limits: ReadLimits = ReadLimits.Default): Refinement<String, HostedEndpointFailure> = try {
         val stream = DataInputStream(input)
         val length = stream.readInt()
-        if (length !in 1..16_384) Refinement.Rejected(HostedEndpointFailure.REQUEST_TOO_LARGE)
+        if (length !in 1..limits[ReadLimitParameter.HOST_REQUEST_BYTES].value) Refinement.Rejected(HostedEndpointFailure.REQUEST_TOO_LARGE)
         else {
             val bytes = stream.readNBytes(length)
             if (bytes.size != length) Refinement.Rejected(HostedEndpointFailure.REQUEST_INCOMPLETE)
@@ -144,9 +146,10 @@ internal object HostedFrames {
     catch (_: java.nio.charset.CharacterCodingException) { Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST) }
     catch (_: IOException) { Refinement.Rejected(HostedEndpointFailure.IO_UNAVAILABLE) }
 
-    fun write(output: OutputStream, value: String) {
+    fun write(output: OutputStream, value: String, limits: ReadLimits = ReadLimits.Default): Refinement<Unit, HostedEndpointFailure> {
         val bytes = value.toByteArray(Charsets.UTF_8)
-        check(bytes.size <= 65_536)
+        if (bytes.size > limits[ReadLimitParameter.HOST_RESPONSE_BYTES].value) return Refinement.Rejected(HostedEndpointFailure.RESULT_TOO_LARGE)
         DataOutputStream(output).apply { writeInt(bytes.size); write(bytes); flush() }
+        return Refinement.Refined(Unit)
     }
 }

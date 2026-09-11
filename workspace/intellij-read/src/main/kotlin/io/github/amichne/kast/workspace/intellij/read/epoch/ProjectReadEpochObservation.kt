@@ -1,5 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure
@@ -71,9 +73,10 @@ internal class ProjectReadEpochVfsPath private constructor(private val path: Pat
          */
         fun admit(
             raw: String,
+            limits: ReadLimits = ReadLimits.Default,
         ): Refinement<ProjectReadEpochVfsPath, ProjectReadEpochObservationFailure> {
-            if (raw.isEmpty() || raw.length > PROJECT_READ_EPOCH_MAX_PATH_CHARACTERS ||
-                raw.toByteArray(Charsets.UTF_8).size > PROJECT_READ_EPOCH_MAX_PATH_UTF8_BYTES
+            if (raw.isEmpty() || raw.length > limits[ReadLimitParameter.EPOCH_PATH_CHARACTERS].value ||
+                raw.toByteArray(Charsets.UTF_8).size > limits[ReadLimitParameter.EPOCH_PATH_BYTES].value
             ) return Refinement.Rejected(ProjectReadEpochObservationFailure.VfsPathMalformed)
             val path = try {
                 Path.of(raw)
@@ -137,8 +140,9 @@ internal class ProjectReadEpochMetadataCounter {
 internal fun observeProjectReadEpochVfsBatch(
     root: ProjectReadEpochVfsRoot,
     events: List<ProjectReadEpochVfsEvent>,
-): ProjectReadEpochVfsBatchObservation {
-    if (events.size > PROJECT_READ_EPOCH_MAX_VFS_EVENTS_PER_BATCH) {
+    limits: ReadLimits = ReadLimits.Default,
+    ): ProjectReadEpochVfsBatchObservation {
+    if (events.size > limits[ReadLimitParameter.EPOCH_VFS_EVENTS].value) {
         return ProjectReadEpochVfsBatchObservation.Rejected(
             ProjectReadEpochObservationFailure.VfsBatchLimitExceeded,
         )
@@ -150,7 +154,7 @@ internal fun observeProjectReadEpochVfsBatch(
             is ProjectReadEpochVfsEvent.Move -> listOf(event.oldPath, event.newPath)
             is ProjectReadEpochVfsEvent.Rename -> listOf(event.oldPath, event.newPath)
         }
-        for (raw in rawPaths) when (val refined = ProjectReadEpochVfsPath.admit(raw)) {
+        for (raw in rawPaths) when (val refined = ProjectReadEpochVfsPath.admit(raw, limits)) {
             is Refinement.Refined -> if (root.contains(refined.value)) touchesRoot = true
             is Refinement.Rejected -> return ProjectReadEpochVfsBatchObservation.Rejected(
                 refined.failure,
@@ -208,6 +212,7 @@ internal class ProjectReadEpochState private constructor(
          */
         fun admit(
             boundary: ProjectReadEpochBoundary,
+            limits: ReadLimits = ReadLimits.Default,
         ): Refinement<ProjectReadEpochState, ProjectReadEpochObservationFailure> {
             if (boundary.dumb) {
                 return Refinement.Rejected(ProjectReadEpochObservationFailure.DumbMode)
@@ -285,6 +290,7 @@ private class EpochSignalCount<Authority : EpochSignalAuthority> private constru
          */
         fun <Authority : EpochSignalAuthority> admit(
             value: Long,
+            limits: ReadLimits = ReadLimits.Default,
         ): Refinement<EpochSignalCount<Authority>, ProjectReadEpochObservationFailure> =
             if (value >= 0) {
                 Refinement.Refined(EpochSignalCount<Authority>(value))
@@ -315,6 +321,7 @@ private class EpochImportState private constructor(
         fun admit(
             lastImport: Long,
             lastSuccessful: Long,
+            limits: ReadLimits = ReadLimits.Default,
         ): Refinement<EpochImportState, ProjectReadEpochObservationFailure> =
             if (lastImport >= 0 && lastSuccessful >= 0 && lastSuccessful <= lastImport) {
                 Refinement.Refined(EpochImportState(lastImport, lastSuccessful))

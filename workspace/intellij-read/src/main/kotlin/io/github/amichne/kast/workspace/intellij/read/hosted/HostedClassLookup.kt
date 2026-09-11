@@ -1,5 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read.hosted
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.ProjectReadEpoch
@@ -32,7 +34,7 @@ internal const val HOSTED_MAX_INDEX_CANDIDATES = 32
 internal enum class HostedIndexCollection { CONTINUE, STOP }
 
 /** Complete bounded index candidates or one terminal overflow; never silently truncated. */
-internal class HostedIndexCandidates<Value> {
+internal class HostedIndexCandidates<Value>(private val limits: ReadLimits = ReadLimits.Default) {
     private sealed interface State<out Value> {
         data class Collecting<Value>(val values: MutableList<Value>) : State<Value>
         data object Overflow : State<Nothing>
@@ -41,7 +43,7 @@ internal class HostedIndexCandidates<Value> {
 
     fun accept(value: Value): HostedIndexCollection = when (val current = state) {
         State.Overflow -> HostedIndexCollection.STOP
-        is State.Collecting -> if (current.values.size == HOSTED_MAX_INDEX_CANDIDATES) {
+        is State.Collecting -> if (current.values.size == limits[ReadLimitParameter.HOST_CLASS_CANDIDATES].value) {
             state = State.Overflow
             HostedIndexCollection.STOP
         } else {

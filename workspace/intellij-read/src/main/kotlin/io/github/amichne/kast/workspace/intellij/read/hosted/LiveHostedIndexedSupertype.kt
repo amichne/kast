@@ -1,5 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read.hosted
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.kernel.Refinement
@@ -13,12 +15,13 @@ internal fun readHostedIndexedSupertype(
     project: Project,
     selection: HostedQualifiedClassSelection,
     model: DetachedIdeWorkspaceModel,
-): HostedSemanticRead<HostedInheritorEvidence> {
+    limits: ReadLimits = ReadLimits.Default,
+    ): HostedSemanticRead<HostedInheritorEvidence> {
     when (val saved = checkSavedDocuments(project)) {
         SavedDocuments.Clean -> Unit
         is SavedDocuments.Rejected -> return HostedSemanticRead.Rejected(saved.failure)
     }
-    val candidates = HostedIndexCandidates<KtClassOrObject>()
+    val candidates = HostedIndexCandidates<KtClassOrObject>(limits)
     val complete = KotlinFullClassNameIndex.processElements(selection.signature.qualifiedIdentity.value, project, HostedIndexScope(project, model)) {
         ProgressManager.checkCanceled()
         candidates.accept(it) == HostedIndexCollection.CONTINUE
@@ -46,7 +49,7 @@ internal fun readHostedIndexedSupertype(
         is Refinement.Refined -> result.value
         is Refinement.Rejected -> return HostedSemanticRead.Rejected(result.failure)
     }
-    return when (val result = readHostedKotlin(project, located, model)) {
+    return when (val result = readHostedKotlin(project, located, model, limits = limits)) {
         is HostedSemanticRead.Rejected -> result
         is HostedSemanticRead.Resolved -> when (val verified = selection.verify(result.evidence.inheritor.symbol.signature)) {
             is Refinement.Refined -> result

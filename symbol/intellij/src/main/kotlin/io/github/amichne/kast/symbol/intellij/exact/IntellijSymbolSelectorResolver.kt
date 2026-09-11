@@ -1,5 +1,13 @@
 package io.github.amichne.kast.symbol.intellij
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
+
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
@@ -75,6 +83,8 @@ internal class IntellijSymbolSelectorQuery(
     private val lookup: IntellijCompilerSymbolLookup,
     private val environmentState: () -> IntellijDiscoveryEnvironmentState,
     private val cancellationCheck: () -> Unit,
+    private val observation: IntellijReadObservation = IntellijReadObservation.None,
+    private val limits: ReadLimits = ReadLimits.Default,
 ) {
     /**
      * Proof transition: `(CompiledIntellijSearchScope, SymbolDiscoverySelection) ->
@@ -166,7 +176,8 @@ internal class IntellijSymbolSelectorQuery(
         throw cancelled
     } catch (_: IndexNotReadyException) {
         IntellijCompilerSymbolLookupResult.Rejected(IntellijSymbolSelectorRejection.DUMB_MODE)
-    } catch (_: RuntimeException) {
+    } catch (failure: RuntimeException) {
+        observation.unexpected(IntellijReadUnexpectedFailure.capture(IntellijReadStage.EXACT_REFINEMENT, failure, limits))
         IntellijCompilerSymbolLookupResult.Rejected(IntellijSymbolSelectorRejection.NATIVE_FAILURE)
     }
 
@@ -196,6 +207,8 @@ internal class IntellijSymbolSelectorQuery(
 
 internal class IntellijSymbolSelectorResolver(
     private val scopeQuery: IntellijSearchScopeQueryAdapter = IntellijSearchScopeQueryAdapter(),
+    private val observation: IntellijReadObservation = IntellijReadObservation.None,
+    private val limits: ReadLimits = ReadLimits.Default,
 ) {
     /**
      * Proof transition: `(Project, SemanticReadAuthority, SymbolResolutionRequest,
@@ -274,7 +287,7 @@ internal class IntellijSymbolSelectorResolver(
     }
 
     private fun Project.query(): IntellijSymbolSelectorQuery = IntellijSymbolSelectorQuery(
-        lookup = IntellijKotlinCompilerSymbolLookup(IntellijPsiExactDeclarationLookup(this)),
+        lookup = IntellijKotlinCompilerSymbolLookup(IntellijPsiExactDeclarationLookup(this), observation),
         environmentState = {
             when {
                 isDisposed -> IntellijDiscoveryEnvironmentState.DISPOSED
@@ -283,6 +296,8 @@ internal class IntellijSymbolSelectorResolver(
             }
         },
         cancellationCheck = ProgressManager::checkCanceled,
+        observation = observation,
+        limits = limits,
     )
 }
 

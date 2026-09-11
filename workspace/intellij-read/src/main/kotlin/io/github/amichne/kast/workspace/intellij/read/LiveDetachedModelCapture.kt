@@ -1,5 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.readAction
@@ -26,7 +28,17 @@ import org.jetbrains.jps.model.java.JavaSourceRootType
 import org.jetbrains.jps.model.java.JavaSourceRootProperties
 
 /** Live IDEA 262 adapter for one bounded detached-model observation. */
-internal object LiveDetachedModelCapture {
+internal class LiveDetachedModelCapture private constructor(private val limits: ReadLimits) {
+    companion object {
+        internal fun observeLocalSourceRootPath(url: String): Refinement<String, DetachedModelCaptureFailure> =
+            LiveDetachedModelCapture(ReadLimits.Default).observeLocalSourceRootPath(url)
+
+        fun observe(project: Project, expectedRoot: CanonicalWorkspaceRoot, limits: ReadLimits = ReadLimits.Default): DetachedModelObservation =
+            LiveDetachedModelCapture(limits).capture(project, expectedRoot)
+        suspend fun observeAsync(project: Project, expectedRoot: CanonicalWorkspaceRoot, limits: ReadLimits = ReadLimits.Default): DetachedModelObservation =
+            LiveDetachedModelCapture(limits).captureAsync(project, expectedRoot)
+    }
+
     private sealed interface LiveModuleObservation {
         data class Captured(val module: DetachedModuleBoundary) : LiveModuleObservation
         data object Aggregator : LiveModuleObservation
@@ -41,7 +53,7 @@ internal object LiveDetachedModelCapture {
      * for a read action; lifecycle, model, and observation failures remain finite
      * [DetachedModelCaptureFailure]. Raw Project values remain inside [observeInsideRead].
      */
-    suspend fun observeAsync(
+    private suspend fun captureAsync(
         project: Project,
         expectedRoot: CanonicalWorkspaceRoot,
     ): DetachedModelObservation {
@@ -69,7 +81,7 @@ internal object LiveDetachedModelCapture {
      * [ProcessCanceledException] instances remain cancellation and are rethrown.
      */
     @Suppress("IncorrectCancellationExceptionHandling")
-    fun observe(
+    private fun capture(
         project: Project,
         expectedRoot: CanonicalWorkspaceRoot,
     ): DetachedModelObservation {
@@ -126,7 +138,7 @@ internal object LiveDetachedModelCapture {
         }
         val liveModules = ModuleManager.getInstance(project).modules
         if (liveModules.isEmpty()) return rejected(DetachedModelCaptureFailure.NO_MODULES)
-        if (liveModules.size > DetachedModelLimits.MAX_MODULES) {
+        if (liveModules.size > limits[ReadLimitParameter.MODEL_MODULES].value) {
             return rejected(DetachedModelCaptureFailure.TOO_MANY_MODULES)
         }
         val modules = ArrayList<DetachedModuleBoundary>(liveModules.size)
@@ -162,7 +174,7 @@ internal object LiveDetachedModelCapture {
     ): Refinement<ExistingProjectGradleModelState, DetachedModelCaptureFailure> {
         val infos = ProjectDataManager.getInstance()
             .getExternalProjectsData(project, ProjectSystemId("GRADLE"))
-        if (infos.size > DetachedModelLimits.MAX_CACHED_GRADLE_MODELS) {
+        if (infos.size > limits[ReadLimitParameter.MODEL_CACHED_GRADLE_MODELS].value) {
             return Refinement.Rejected(DetachedModelCaptureFailure.TOO_MANY_GRADLE_MODELS)
         }
         val observations = ArrayList<ExistingProjectGradleModelObservation>(infos.size)
@@ -239,7 +251,7 @@ internal object LiveDetachedModelCapture {
         rootManager: ModuleRootManager,
     ): Refinement<List<DetachedSourceRootBoundary>, DetachedModelCaptureFailure> {
         val entries = rootManager.contentEntries
-        if (entries.size > DetachedModelLimits.MAX_SOURCE_ROOTS_PER_MODULE) {
+        if (entries.size > limits[ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE].value) {
             return Refinement.Rejected(DetachedModelCaptureFailure.TOO_MANY_SOURCE_ROOTS)
         }
         val roots = ArrayList<DetachedSourceRootBoundary>()
@@ -247,7 +259,7 @@ internal object LiveDetachedModelCapture {
             ProgressManager.checkCanceled()
             for (folder in entry.sourceFolders) {
                 ProgressManager.checkCanceled()
-                if (roots.size == DetachedModelLimits.MAX_SOURCE_ROOTS_PER_MODULE) {
+                if (roots.size == limits[ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE].value) {
                     return Refinement.Rejected(DetachedModelCaptureFailure.TOO_MANY_SOURCE_ROOTS)
                 }
                 val path = when (val observed = observeLocalSourceRootPath(folder.url)) {
@@ -308,7 +320,7 @@ internal object LiveDetachedModelCapture {
         rootManager: ModuleRootManager,
     ): Refinement<List<DetachedClasspathBoundary>, DetachedModelCaptureFailure> {
         val entries = ArrayList<DetachedClasspathBoundary>(
-            DetachedModelLimits.MAX_CLASSPATH_ENTRIES_PER_MODULE,
+            limits[ReadLimitParameter.MODEL_CLASSPATH_ENTRIES_PER_MODULE].value,
         )
         var traversal = ClasspathTraversal.OPEN
         rootManager.orderEntries().forEach(
@@ -316,7 +328,7 @@ internal object LiveDetachedModelCapture {
                 ProgressManager.checkCanceled()
                 for (root in orderEntry.getFiles(OrderRootType.CLASSES)) {
                     ProgressManager.checkCanceled()
-                    if (entries.size == DetachedModelLimits.MAX_CLASSPATH_ENTRIES_PER_MODULE) {
+                    if (entries.size == limits[ReadLimitParameter.MODEL_CLASSPATH_ENTRIES_PER_MODULE].value) {
                         traversal = ClasspathTraversal.LIMIT_EXCEEDED
                         break
                     }

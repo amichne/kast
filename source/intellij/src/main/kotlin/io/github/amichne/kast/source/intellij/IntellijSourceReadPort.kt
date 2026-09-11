@@ -1,5 +1,7 @@
 package io.github.amichne.kast.source.intellij
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.source.contract.Containment
 import io.github.amichne.kast.source.contract.DeclarationVisibility
@@ -43,8 +45,6 @@ import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.LinkedHashMap
 
-private const val MAX_INTELLIJ_SOURCE_ENTITY_WORK = 10_000
-private const val MAX_INTELLIJ_SOURCE_CONTINUATIONS = 1_024
 
 internal enum class IntellijSourceReadRejection {
     WORKSPACE_ROOT_MISMATCH,
@@ -154,6 +154,7 @@ internal sealed interface IntellijSourceEntityPage {
             selection: EntitySelection,
             cursor: IntellijSourceEntityCursor,
             limit: SourceEntityLimit,
+            limits: ReadLimits = ReadLimits.Default,
         ): IntellijSourceEntityPage {
             if (selection == EntitySelection.None) {
                 return if (cursor.startOrdinal == 0) {
@@ -170,7 +171,7 @@ internal sealed interface IntellijSourceEntityPage {
             var matched = 0
             var previous: SourceEntity? = null
             while (iterator.hasNext()) {
-                if (examined == MAX_INTELLIJ_SOURCE_ENTITY_WORK) {
+                if (examined == limits[ReadLimitParameter.SOURCE_ENTITY_WORK].value) {
                     return Complete(
                         page.toList(),
                         cursor.startOrdinal + page.size,
@@ -560,14 +561,14 @@ internal sealed interface IntellijSourceContinuationAdmission {
 }
 
 /** Project-owned bounded registry. Entries retain detached source identity and scope only. */
-class IntellijSourceReadContinuations {
+class IntellijSourceReadContinuations(private val limits: ReadLimits = ReadLimits.Default) {
     private enum class Lifetime { ACTIVE, RETIRED }
 
     private var lifetime = Lifetime.ACTIVE
     private var sequence = 0L
     private val entries = object : LinkedHashMap<String, Entry>(16, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Entry>?): Boolean =
-            size > MAX_INTELLIJ_SOURCE_CONTINUATIONS
+            size > limits[ReadLimitParameter.SOURCE_CONTINUATIONS].value
     }
 
     @Synchronized

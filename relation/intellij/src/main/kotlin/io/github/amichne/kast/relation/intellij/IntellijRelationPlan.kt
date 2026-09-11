@@ -1,6 +1,7 @@
 package io.github.amichne.kast.relation.intellij
 
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationMeaning
@@ -65,20 +66,20 @@ internal sealed interface IntellijRelationPlanKind {
 }
 
 internal sealed interface IntellijRelationPlan {
-    val subject: KtNamedDeclaration
+    val subject: PsiNamedElement
 
     data class References(
-        override val subject: KtNamedDeclaration,
+        override val subject: PsiNamedElement,
         val endpoint: RelationEndpoint,
         val confirmation: IntellijReferenceConfirmationPlan,
     ) : IntellijRelationPlan
 
     data class Callees(
-        override val subject: KtNamedDeclaration,
+        override val subject: PsiNamedElement,
     ) : IntellijRelationPlan
 
     data class Definitions(
-        override val subject: KtNamedDeclaration,
+        override val subject: PsiNamedElement,
         val relation: IntellijDefinitionRelation,
     ) : IntellijRelationPlan
 }
@@ -104,7 +105,7 @@ internal sealed interface IntellijRelationReferenceAdmission {
 
         class ClassConstruction private constructor(
             override val reference: KtReference,
-            val selectedClass: KtNamedDeclaration,
+            val selectedClass: PsiNamedElement,
         ) : Admitted {
             companion object {
                 /**
@@ -117,7 +118,7 @@ internal sealed interface IntellijRelationReferenceAdmission {
                  */
                 fun admit(
                     reference: KtReference,
-                    selectedClass: KtNamedDeclaration,
+                    selectedClass: PsiNamedElement,
                 ): IntellijRelationReferenceAdmission = if (reference.element.isCallCallee()) {
                     ClassConstruction(reference, selectedClass)
                 } else {
@@ -186,4 +187,26 @@ private fun IntellijExactReferenceShape.admits(element: PsiElement): Boolean = w
 private fun PsiElement.isCallCallee(): Boolean {
     val call = PsiTreeUtil.getParentOfType(this, KtCallElement::class.java, false) ?: return false
     return call.calleeExpression?.textRange?.contains(textRange) == true
+}
+
+/** Shape filtering remains separate from Java resolution and K2 identity confirmation. */
+internal fun IntellijRelationPlan.References.admitsJava(reference: com.intellij.psi.PsiReference): Boolean =
+    when (val plan = confirmation) {
+        IntellijReferenceConfirmationPlan.ClassConstruction -> reference.element.isJavaCallCallee()
+        is IntellijReferenceConfirmationPlan.ExactSymbol -> when (plan.shape) {
+            IntellijExactReferenceShape.ANY -> true
+            IntellijExactReferenceShape.CALL -> reference.element.isJavaCallCallee()
+            IntellijExactReferenceShape.TYPE ->
+                PsiTreeUtil.getParentOfType(reference.element, com.intellij.psi.PsiTypeElement::class.java, false) != null
+        }
+    }
+
+private fun PsiElement.isJavaCallCallee(): Boolean {
+    val call = PsiTreeUtil.getParentOfType(this, com.intellij.psi.PsiCallExpression::class.java, false) ?: return false
+    val callee = when (call) {
+        is com.intellij.psi.PsiNewExpression -> call.classReference
+        is com.intellij.psi.PsiMethodCallExpression -> call.methodExpression
+        else -> null
+    }
+    return callee?.textRange?.contains(textRange) == true
 }

@@ -1,5 +1,13 @@
 package io.github.amichne.kast.symbol.intellij
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
+
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
+
 import com.intellij.navigation.ChooseByNameContributor
 import com.intellij.navigation.ChooseByNameRegistry
 import com.intellij.openapi.application.readAction
@@ -37,6 +45,8 @@ internal sealed interface IntellijNativeDiscoveryResult {
 
 internal class IntellijNativeDiscoveryAdapter(
     private val scopeQuery: IntellijSearchScopeQueryAdapter = IntellijSearchScopeQueryAdapter(),
+    private val observation: IntellijReadObservation = IntellijReadObservation.None,
+    private val limits: ReadLimits = ReadLimits.Default,
 ) {
     /**
      * Proof transition:
@@ -68,11 +78,13 @@ internal class IntellijNativeDiscoveryAdapter(
                         -> IntellijNativeDiscoveryQuery(
                         environmentState = { project.discoveryEnvironmentState() },
                         cancellationCheck = ProgressManager::checkCanceled,
+                        observation = observation, limits = limits,
                     ).discoverNative(project, compiledScope, request)
                     is SymbolDiscoveryTarget.Location,
                     is SymbolDiscoveryTarget.Text,
                         -> IntellijSupplementalDiscoveryQuery(
                         project = project,
+                        limits = limits,
                         environmentState = { project.discoveryEnvironmentState() },
                     ).discover(compiledScope, request)
                 }

@@ -2,6 +2,7 @@ package io.github.amichne.kast.distribution.contract.configuration
 
 import io.github.amichne.kast.distribution.contract.IndexerHeapSize
 import kotlinx.serialization.Serializable
+import io.github.amichne.kast.kernel.ReadLimitParameter
 
 @Serializable enum class ConfigurationScope { INSTALLATION, HOST_PROFILE, WORKSPACE, REQUEST, BUILD, TEST }
 @Serializable enum class ConfigurationSource { COMMAND_LINE, PROCESS_ENVIRONMENT, SAVED_WORKSPACE, SAVED_INSTALLATION, DEFAULT, JVM_PROPERTY }
@@ -44,6 +45,51 @@ enum class ConfigurationParameter(
     internal val mutability: ConfigurationMutability = ConfigurationMutability.USER_SETTING,
     internal val children: Set<ConfigurationChild> = emptySet(),
 ) {
+    READ_MODEL_CACHED_GRADLE_MODELS(ReadLimitParameter.MODEL_CACHED_GRADLE_MODELS),
+    READ_MODEL_MODULES(ReadLimitParameter.MODEL_MODULES),
+    READ_MODEL_SOURCE_ROOTS_PER_MODULE(ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE),
+    READ_MODEL_CLASSPATH_ENTRIES_PER_MODULE(ReadLimitParameter.MODEL_CLASSPATH_ENTRIES_PER_MODULE),
+    READ_MODEL_IDENTITY_CHARACTERS(ReadLimitParameter.MODEL_IDENTITY_CHARACTERS),
+    READ_MODEL_PATH_CHARACTERS(ReadLimitParameter.MODEL_PATH_CHARACTERS),
+    READ_MODEL_CLASSPATH_URL_CHARACTERS(ReadLimitParameter.MODEL_CLASSPATH_URL_CHARACTERS),
+    READ_EPOCH_CACHED_GRADLE_MODELS(ReadLimitParameter.EPOCH_CACHED_GRADLE_MODELS),
+    READ_EPOCH_VFS_EVENTS(ReadLimitParameter.EPOCH_VFS_EVENTS),
+    READ_EPOCH_PATH_CHARACTERS(ReadLimitParameter.EPOCH_PATH_CHARACTERS),
+    READ_EPOCH_PATH_BYTES(ReadLimitParameter.EPOCH_PATH_BYTES),
+    READ_HOST_QUERY_MILLIS(ReadLimitParameter.HOST_QUERY_MILLIS),
+    READ_SEMANTIC_MILLIS(ReadLimitParameter.SEMANTIC_MILLIS),
+    READ_SEMANTIC_WORK(ReadLimitParameter.SEMANTIC_WORK),
+    READ_SEMANTIC_RESULTS(ReadLimitParameter.SEMANTIC_RESULTS),
+    READ_SEMANTIC_RETURNED_BYTES(ReadLimitParameter.SEMANTIC_RETURNED_BYTES),
+    READ_DISCOVERY_NAMES(ReadLimitParameter.DISCOVERY_NAMES),
+    READ_DISCOVERY_CANDIDATES(ReadLimitParameter.DISCOVERY_CANDIDATES),
+    READ_RELATION_CANDIDATES(ReadLimitParameter.RELATION_CANDIDATES),
+    READ_SOURCE_ENTITY_WORK(ReadLimitParameter.SOURCE_ENTITY_WORK),
+    READ_SOURCE_CONTINUATIONS(ReadLimitParameter.SOURCE_CONTINUATIONS),
+    READ_SOURCE_ENTITIES(ReadLimitParameter.SOURCE_ENTITIES),
+    READ_SOURCE_RETURNED_BYTES(ReadLimitParameter.SOURCE_RETURNED_BYTES),
+    READ_TRAVERSAL_DEPTH(ReadLimitParameter.TRAVERSAL_DEPTH),
+    READ_TRAVERSAL_FRONTIER(ReadLimitParameter.TRAVERSAL_FRONTIER),
+    READ_HOST_REQUEST_BYTES(ReadLimitParameter.HOST_REQUEST_BYTES),
+    READ_HOST_RESPONSE_BYTES(ReadLimitParameter.HOST_RESPONSE_BYTES),
+    READ_HOST_DESCRIPTOR_BYTES(ReadLimitParameter.HOST_DESCRIPTOR_BYTES),
+    READ_HOST_CONNECTION_MILLIS(ReadLimitParameter.HOST_CONNECTION_MILLIS),
+    READ_CLIENT_EXCHANGE_MILLIS(ReadLimitParameter.CLIENT_EXCHANGE_MILLIS),
+    READ_HOST_FILE_CHARACTERS(ReadLimitParameter.HOST_FILE_CHARACTERS),
+    READ_HOST_CLASS_CANDIDATES(ReadLimitParameter.HOST_CLASS_CANDIDATES),
+    READ_DIAGNOSTIC_COUNT(ReadLimitParameter.DIAGNOSTIC_COUNT),
+    READ_DIAGNOSTIC_FAILURES(ReadLimitParameter.DIAGNOSTIC_FAILURES),
+    READ_PROVIDER_OUTPUT_BYTES(ReadLimitParameter.PROVIDER_OUTPUT_BYTES),
+    READ_PROVIDER_INVOCATION_MILLIS(ReadLimitParameter.PROVIDER_INVOCATION_MILLIS),
+    READ_DIAGNOSTIC_FRAMES(ReadLimitParameter.DIAGNOSTIC_FRAMES),
+    READ_DIAGNOSTIC_TEXT_CHARACTERS(ReadLimitParameter.DIAGNOSTIC_TEXT_CHARACTERS),
+    READ_PROVIDER_GRAPH_INVOCATION_MILLIS(ReadLimitParameter.PROVIDER_GRAPH_INVOCATION_MILLIS),
+    READ_PROCESS_INPUT_BYTES(ReadLimitParameter.PROCESS_INPUT_BYTES),
+    READ_PROCESS_OUTPUT_BYTES(ReadLimitParameter.PROCESS_OUTPUT_BYTES),
+    READ_PROCESS_TIMEOUT_MILLIS(ReadLimitParameter.PROCESS_TIMEOUT_MILLIS),
+    READ_DIAGNOSTIC_SCOPE_FILES(ReadLimitParameter.DIAGNOSTIC_SCOPE_FILES),
+    READ_DIAGNOSTIC_SCOPE_WORK(ReadLimitParameter.DIAGNOSTIC_SCOPE_WORK),
+    READ_DIAGNOSTIC_SCOPE_MILLIS(ReadLimitParameter.DIAGNOSTIC_SCOPE_MILLIS),
     INSTALL_ROOT("KAST_INSTALL_ROOT", ConfigurationSyntax.ABSOLUTE_PATH, ConfigurationScope.INSTALLATION, children = setOf(ConfigurationChild.BROKER)),
     CONFIGURATION_FILE("KAST_CONFIGURATION_FILE", ConfigurationSyntax.ABSOLUTE_PATH, ConfigurationScope.INSTALLATION,
         ":distribution:contract", disclosure = ConfigurationDisclosure.SENSITIVE_PATH,
@@ -111,6 +157,7 @@ enum class ConfigurationParameter(
     RUNTIME_BASE_URL("KAST_RUNTIME_BASE_URL", ConfigurationSyntax.OWNER_INPUT, ConfigurationScope.BUILD, ":build-logic", mutability = ConfigurationMutability.BUILD_SETTING),
     LOCAL_PREFIX("KAST_LOCAL_PREFIX", ConfigurationSyntax.ABSOLUTE_PATH, ConfigurationScope.BUILD, ":build-logic", mutability = ConfigurationMutability.BUILD_SETTING),
     LOCAL_CONTROL_PRODUCT("KAST_LOCAL_CONTROL_PRODUCT", ConfigurationSyntax.ABSOLUTE_PATH, ConfigurationScope.BUILD, ":build-logic", mutability = ConfigurationMutability.BUILD_SETTING),
+    LOCAL_HOSTED_PLUGIN_ARCHIVE("KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE", ConfigurationSyntax.ABSOLUTE_PATH, ConfigurationScope.BUILD, ":build-logic", mutability = ConfigurationMutability.BUILD_SETTING),
     LOCAL_RUNTIME_ARCHIVE("KAST_LOCAL_RUNTIME_ARCHIVE", ConfigurationSyntax.ABSOLUTE_PATH, ConfigurationScope.BUILD, ":build-logic", mutability = ConfigurationMutability.BUILD_SETTING),
     LOCAL_JAVA_EXECUTABLE("KAST_LOCAL_JAVA_EXECUTABLE", ConfigurationSyntax.ABSOLUTE_PATH, ConfigurationScope.BUILD, ":build-logic", mutability = ConfigurationMutability.BUILD_SETTING),
     LOCAL_JAVA_HOME("KAST_LOCAL_JAVA_HOME", ConfigurationSyntax.ABSOLUTE_PATH, ConfigurationScope.BUILD, ":build-logic", mutability = ConfigurationMutability.BUILD_SETTING),
@@ -128,7 +175,25 @@ enum class ConfigurationParameter(
     OBSERVER_PANDOC("KAST_OBSERVER_PANDOC", ConfigurationSyntax.ABSOLUTE_PATH, ConfigurationScope.BUILD, ":build-logic", mutability = ConfigurationMutability.BUILD_SETTING),
     ;
 
-    fun declaration(): ConfigurationDeclaration = ConfigurationDeclaration(
+    constructor(parameter: ReadLimitParameter) : this(
+        parameter.environmentKey, ConfigurationSyntax.OWNER_INPUT, ConfigurationScope.INSTALLATION,
+        ":kernel", parameter.defaultValue.toString(), children = setOf(ConfigurationChild.BROKER, ConfigurationChild.SIDECAR),
+    )
+
+    val readLimit: ReadLimitParameter? get() = ReadLimitParameter.entries.singleOrNull { it.environmentKey == key }
+
+    fun declaration(): ConfigurationDeclaration {
+        val base = baseDeclaration()
+        val limit = readLimit ?: return base
+        return base.copy(
+            description = "${limit.name.lowercase().replace('_', ' ')}; also available to the IDE as ${limit.propertyKey}.",
+            defaultAuthority = "ReadLimitParameter.${limit.name}",
+            unit = ConfigurationUnit.valueOf(limit.unit.name),
+            admittedRange = ConfigurationAdmittedRange(limit.minimum.toLong(), limit.maximum.toLong(), ownerAdmission = "ReadLimitValue.admit; ReadLimits.admit cross-limit bounds"),
+        )
+    }
+
+    private fun baseDeclaration(): ConfigurationDeclaration = ConfigurationDeclaration(
         key, owner, when (this) {
             RUNTIME_STORE -> "Verified runtime payload store; defaults to the physical installation runtime-payloads directory."
             RUNTIME_DIRECTORY -> "Worker socket namespace owned by the physical installation state/run directory."

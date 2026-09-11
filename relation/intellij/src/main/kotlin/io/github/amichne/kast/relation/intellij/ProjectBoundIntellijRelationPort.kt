@@ -1,5 +1,12 @@
 package io.github.amichne.kast.relation.intellij
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
+
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
+
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.relation.contract.RelationCompilerPort
 import io.github.amichne.kast.relation.contract.RelationCompilation
@@ -19,6 +26,8 @@ object ProjectBoundIntellijRelationPort {
         authority: SemanticReadAuthority,
         model: WorkspaceSearchScopeModel,
         fileAdmission: IntellijSemanticSourceFileAdmission,
+        observation: IntellijReadObservation = IntellijReadObservation.None,
+        limits: ReadLimits = ReadLimits.Default,
     ): RelationCompilerPort {
         val compiledModel = WorkspaceSearchScopeModelCompilation.Compiled(model)
         return RelationCompilerPort { request ->
@@ -29,8 +38,8 @@ object ProjectBoundIntellijRelationPort {
                 return@RelationCompilerPort RelationCompilation.Rejected(RelationCompilerRejection.SCOPE_REJECTED)
             }
             val query = IntellijRelationCompilerQuery(IntellijRelationScopeCompiler { path ->
-                fileAdmission.admits(path, request.subject.constraints.sourceSets)
-            })
+                fileAdmission.admits(path, request.searchConstraints.sourceSets)
+            }, observation, limits)
             query.read(project, authority, request, compiledModel)
         }
     }

@@ -1,5 +1,7 @@
 package io.github.amichne.kast.symbol.intellij
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -33,6 +35,7 @@ internal class IntellijSupplementalDiscoveryQuery(
     private val project: Project,
     private val environmentState: () -> IntellijDiscoveryEnvironmentState,
     private val clock: IntellijDiscoveryNanoClock = SystemIntellijDiscoveryNanoClock,
+    private val limits: ReadLimits = ReadLimits.Default,
 ) {
     /**
      * Proof transition: `CompiledIntellijSearchScope + SymbolDiscoveryRequest ->
@@ -67,6 +70,7 @@ internal class IntellijSupplementalDiscoveryQuery(
             is SymbolDiscoveryTarget.Text -> {
                 collectTextDiscoveryOccurrences(
                     workLimit = request.budget.resources.workUnitLimit,
+                    limits = limits,
                     observe = collector::observe,
                     qualify = collector::qualify,
                     process = { accept ->
@@ -106,9 +110,10 @@ internal fun collectTextDiscoveryOccurrences(
     qualify: (SymbolDiscoveryQualification) -> Unit,
     process: ((PsiElement, Int) -> Boolean) -> Boolean,
     project: (PsiElement, Int) -> Boolean,
+    limits: ReadLimits = ReadLimits.Default,
 ) {
     val pending = ArrayList<PendingTextOccurrence>()
-    val nativeLimit = minOf(workLimit.value, MAX_NATIVE_DISCOVERY_CANDIDATES.toLong())
+    val nativeLimit = minOf(workLimit.value, limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value.toLong())
     var stopped = false
     val exhausted = process { element, offset ->
         when {

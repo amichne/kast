@@ -6,6 +6,9 @@ import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironme
 import io.github.amichne.kast.distribution.contract.gradle.GradleImportExecutableDirectory
 import io.github.amichne.kast.distribution.contract.gradle.GradleImportVariableName
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ReadLimitValue
+import io.github.amichne.kast.kernel.ReadLimitSource
+import io.github.amichne.kast.kernel.ReadLimits
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import kotlinx.serialization.Serializable
@@ -72,6 +75,7 @@ sealed interface ConfigurationPathSelection {
 }
 
 internal sealed interface ConfigurationValue {
+    class ReadLimit(val value: ReadLimitValue) : ConfigurationValue
     class WorkerCount(val value: WorkerCountLimit) : ConfigurationValue
     class Memory(val value: WorkerMemoryReservationMiB) : ConfigurationValue
     class Heap(val value: IndexerHeapSize) : ConfigurationValue
@@ -121,6 +125,7 @@ class ResolvedKastConfiguration private constructor(
     val launchd: ConfigurationSwitch,
     val debug: ConfigurationSwitch,
     val workerCapacity: WorkerCapacityConfiguration,
+    val readLimits: ReadLimits,
     private val delegatedEnvironment: GradleImportEnvironment,
 ) {
     val runtimeArchive: ConfigurationPathSelection get() = path(ConfigurationParameter.RUNTIME_ARCHIVE)
@@ -151,7 +156,7 @@ class ResolvedKastConfiguration private constructor(
             when (assignment.value) {
                 is ConfigurationValue.OwnerInput -> ConfigurationSemanticAdmission.OWNER_REQUIRED
                 is ConfigurationValue.Directory -> ConfigurationSemanticAdmission.PHYSICAL_REQUIRED
-                is ConfigurationValue.Heap, is ConfigurationValue.Switch, is ConfigurationValue.WorkerCount, is ConfigurationValue.Memory -> ConfigurationSemanticAdmission.ADMITTED
+                is ConfigurationValue.ReadLimit, is ConfigurationValue.Heap, is ConfigurationValue.Switch, is ConfigurationValue.WorkerCount, is ConfigurationValue.Memory -> ConfigurationSemanticAdmission.ADMITTED
             },
         )
     }
@@ -232,7 +237,7 @@ class ResolvedKastConfiguration private constructor(
                     if (parameter.mutability == ConfigurationMutability.BUILD_SETTING) return rejected(rawKey, ConfigurationFailure.BUILD_ONLY_INPUT)
                     if (source !in parameter.declaration().sources) return rejected(rawKey, ConfigurationFailure.UNSUPPORTED_SOURCE)
                     if (parameter == ConfigurationParameter.SAVED_CONFIGURATION_FAILURE) return rejected(rawKey, ConfigurationFailure.SAVED_CONFIGURATION_REJECTED)
-                    val value = when (val parsed = parse(parameter, rawValue)) {
+                    val value = when (val parsed = parse(parameter, rawValue, source)) {
                         is Refinement.Refined -> parsed.value
                         is Refinement.Rejected -> return parsed
                     }
@@ -272,12 +277,17 @@ class ResolvedKastConfiguration private constructor(
                 count(ConfigurationParameter.WORKER_STARTUP_LIMIT), memory(ConfigurationParameter.WORKER_AGGREGATE_MIB),
                 memory(ConfigurationParameter.WORKER_NATIVE_MIB), memory(ConfigurationParameter.WORKER_GRADLE_MIB))
             if (capacity.startup.value > capacity.resident.value) return rejected(ConfigurationParameter.WORKER_STARTUP_LIMIT.key, ConfigurationFailure.INVALID_VALUE)
-            return Refinement.Refined(ResolvedKastConfiguration(resolved.sortedBy { it.parameter.key }, admitted.values.flatten().toList(), heap, launchd, debug, capacity, delegated))
+            val readLimits = when (val policy = ReadLimits.admit(resolved.mapNotNull { (it.value as? ConfigurationValue.ReadLimit)?.value })) {
+                is Refinement.Refined -> policy.value
+                is Refinement.Rejected -> return rejected("KAST_READ_", ConfigurationFailure.INVALID_VALUE)
+            }
+            return Refinement.Refined(ResolvedKastConfiguration(resolved.sortedBy { it.parameter.key }, admitted.values.flatten().toList(), heap, launchd, debug, capacity, readLimits, delegated))
         }
     }
 }
 
 private fun ConfigurationValue.boundaryValue(): String = when (this) {
+    is ConfigurationValue.ReadLimit -> value.value.toString()
     is ConfigurationValue.WorkerCount -> value.value.toString()
     is ConfigurationValue.Memory -> value.value.toString()
     is ConfigurationValue.Heap -> "${value.mebibytes}m"
@@ -286,8 +296,20 @@ private fun ConfigurationValue.boundaryValue(): String = when (this) {
     is ConfigurationValue.OwnerInput -> value
 }
 
-private fun parse(parameter: ConfigurationParameter, raw: String): Refinement<ConfigurationValue, ConfigurationRejection> {
+private fun parse(parameter: ConfigurationParameter, raw: String, source: ConfigurationSource = ConfigurationSource.DEFAULT): Refinement<ConfigurationValue, ConfigurationRejection> {
     if (raw.length > 32 * 1024 || raw.any { it == '\u0000' || it == '\n' || it == '\r' }) return rejected(parameter.key, ConfigurationFailure.INVALID_VALUE)
+    val limit = parameter.readLimit
+    if (limit != null) return when (val value = ReadLimitValue.admit(limit, raw, when (source) {
+        ConfigurationSource.DEFAULT -> ReadLimitSource.DEFAULT
+        ConfigurationSource.COMMAND_LINE -> ReadLimitSource.COMMAND_LINE
+        ConfigurationSource.PROCESS_ENVIRONMENT -> ReadLimitSource.ENVIRONMENT
+        ConfigurationSource.JVM_PROPERTY -> ReadLimitSource.JVM_PROPERTY
+        ConfigurationSource.SAVED_WORKSPACE -> ReadLimitSource.SAVED_WORKSPACE
+        ConfigurationSource.SAVED_INSTALLATION -> ReadLimitSource.SAVED_INSTALLATION
+    })) {
+        is Refinement.Refined -> Refinement.Refined(ConfigurationValue.ReadLimit(value.value))
+        is Refinement.Rejected -> rejected(parameter.key, ConfigurationFailure.INVALID_VALUE)
+    }
     return when (parameter.syntax) {
         ConfigurationSyntax.WORKER_COUNT -> when (val value = raw.toIntOrNull()?.let(WorkerCountLimit::admit)) {
             is Refinement.Refined -> Refinement.Refined(ConfigurationValue.WorkerCount(value.value))

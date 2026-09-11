@@ -85,6 +85,8 @@ internal class IntellijRelationScopeCompiler(
         project: Project,
         request: RelationRequest,
         modelCompilation: WorkspaceSearchScopeModelCompilation,
+        selectedScope: SymbolSearchScope = request.searchScope,
+        constraints: SymbolDiscoveryConstraints = request.searchConstraints,
     ): IntellijRelationScopeCompilation {
         val model = when (modelCompilation) {
             is WorkspaceSearchScopeModelCompilation.Compiled -> modelCompilation.model
@@ -96,23 +98,23 @@ internal class IntellijRelationScopeCompiler(
         if (model.workspaceRoot != request.subject.lease.workspaceRoot) {
             return rejected(IntellijRelationScopeFailure.LeaseRootMismatch)
         }
-        val ownedRoots = rootsFor(request.subject.scope, model.sourceRoots)
+        val ownedRoots = rootsFor(selectedScope, model.sourceRoots)
         if (ownedRoots.isEmpty()) {
             return rejected(
-                if (request.subject.scope is SymbolSearchScope.ExactFile) {
+                if (selectedScope is SymbolSearchScope.ExactFile) {
                     IntellijRelationScopeFailure.TargetProvenanceUnknown
                 } else {
                     IntellijRelationScopeFailure.OwnerNotInModel
                 },
             )
         }
-        if (request.subject.scope is SymbolSearchScope.ExactFile && ownedRoots.size != 1) {
+        if (selectedScope is SymbolSearchScope.ExactFile && ownedRoots.size != 1) {
             return rejected(IntellijRelationScopeFailure.TargetOwnershipAmbiguous)
         }
         val readableRoots = ownedRoots.filter { root ->
-            request.subject.scope.sourceKinds.includes(root.sourceKind) &&
-            request.subject.scope.generatedSources.includes(root.provenance) &&
-            when (val selected = request.subject.constraints.sourceSets) {
+            selectedScope.sourceKinds.includes(root.sourceKind) &&
+            selectedScope.generatedSources.includes(root.provenance) &&
+            when (val selected = constraints.sourceSets) {
                 SymbolDiscoverySourceSets.All -> true
                 is SymbolDiscoverySourceSets.Exact -> root.sourceSet in selected.values
             }
@@ -121,7 +123,7 @@ internal class IntellijRelationScopeCompiler(
             return rejected(IntellijRelationScopeFailure.NoReadableSourceRoots)
         }
 
-        val pathPolicy = when (val scope = request.subject.scope) {
+        val pathPolicy = when (val scope = selectedScope) {
             is SymbolSearchScope.ExactFile ->
                 RelationPathPolicy.ExactFile(Path.of(scope.file.value))
             else -> RelationPathPolicy.SourceRoots(
@@ -132,7 +134,7 @@ internal class IntellijRelationScopeCompiler(
                 model.sourceRoots.map { Path.of(it.sourceRoot.value) }.distinct(),
             )
         }
-        val libraryPolicy = request.subject.scope.libraryPolicy()
+        val libraryPolicy = selectedScope.libraryPolicy()
         val libraryScope = ProjectScope.getLibrariesScope(project)
         return IntellijRelationScopeCompilation.Compiled(
             CompiledRelationScope(
@@ -147,7 +149,7 @@ internal class IntellijRelationScopeCompiler(
                         IntellijProjectSourceMembership.contains(project, file)
                     },
                     fileAdmission = { path ->
-                        fileAdmission(path) && matchesDirectory(path, request.subject.lease.workspaceRoot.value, request.subject.constraints)
+                        fileAdmission(path) && matchesDirectory(path, request.subject.lease.workspaceRoot.value, constraints)
                     },
                 ),
             ),

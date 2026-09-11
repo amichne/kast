@@ -9,6 +9,8 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.workspace.contract.*
 import kotlinx.coroutines.CancellationException
 import org.jetbrains.jps.model.java.JavaSourceRootProperties
@@ -23,6 +25,8 @@ internal object LiveNamedGradleSourceScopeCapture {
     suspend fun capture(
         project: Project,
         root: CanonicalWorkspaceRoot,
+        observation: IntellijReadObservation = IntellijReadObservation.None,
+        limits: ReadLimits = ReadLimits.Default,
     ): Refinement<NamedGradleSourceScope, NamedGradleSourceScopeFailure> {
         var stage = NamedGradleCaptureStage.PROJECT
         return try {
@@ -41,14 +45,18 @@ internal object LiveNamedGradleSourceScopeCapture {
                     ProgressManager.checkCanceled()
                     val current = pending.removeFirst()
                     projects += current
-                    if (projects.size + pending.size + current.childProjects.size > DetachedModelLimits.MAX_MODULES) {
+                    observation.count(IntellijReadCounter.IMPORTED_PROJECTS)
+                    if (projects.size + pending.size + current.childProjects.size > limits[ReadLimitParameter.MODEL_MODULES].value) {
+                        observation.terminated(IntellijReadTermination.MODULE_ADMISSION_LIMIT)
                         return@readAction rejected(NamedGradleSourceScopeFailure.CAPTURE_LIMIT)
                     }
                     pending.addAll(current.childProjects.values)
                 }
                 stage = NamedGradleCaptureStage.MODULES
                 val modules = ModuleManager.getInstance(project).modules
-                if (modules.size > DetachedModelLimits.MAX_MODULES) {
+                observation.count(IntellijReadCounter.IDEA_MODULES, amount = modules.size)
+                if (modules.size > limits[ReadLimitParameter.MODEL_MODULES].value) {
+                    observation.terminated(IntellijReadTermination.MODULE_ADMISSION_LIMIT)
                     return@readAction rejected(NamedGradleSourceScopeFailure.CAPTURE_LIMIT)
                 }
                 val entries = ArrayList<WorkspaceSourceRootBoundary>()
@@ -58,7 +66,9 @@ internal object LiveNamedGradleSourceScopeCapture {
                     ProgressManager.checkCanceled()
                     if (module.isDisposed) return@readAction rejected(NamedGradleSourceScopeFailure.PROJECT_UNAVAILABLE)
                     val folders = ModuleRootManager.getInstance(module).contentEntries.flatMap { it.sourceFolders.toList() }
-                    if (folders.size > DetachedModelLimits.MAX_SOURCE_ROOTS_PER_MODULE) {
+                    observation.count(IntellijReadCounter.SOURCE_ROOTS, amount = folders.size)
+                    if (folders.size > limits[ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE].value) {
+                        observation.terminated(IntellijReadTermination.SOURCE_ROOT_ADMISSION_LIMIT)
                         return@readAction rejected(NamedGradleSourceScopeFailure.CAPTURE_LIMIT)
                     }
                     for (folder in folders) {
@@ -95,7 +105,7 @@ internal object LiveNamedGradleSourceScopeCapture {
                     stage = NamedGradleCaptureStage.SOURCE_SETS
                     val sourceSets = cache.findExternalProject(imported, module)
                     if (sourceSets.isEmpty()) return@readAction rejected(NamedGradleSourceScopeFailure.MODEL_UNAVAILABLE)
-                    if (sourceSets.size > DetachedModelLimits.MAX_SOURCE_ROOTS_PER_MODULE) {
+                    if (sourceSets.size > limits[ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE].value) {
                         return@readAction rejected(NamedGradleSourceScopeFailure.CAPTURE_LIMIT)
                     }
                     var moduleRoots = 0
@@ -104,7 +114,7 @@ internal object LiveNamedGradleSourceScopeCapture {
                         if (name != sourceSet.name) return@readAction rejected(NamedGradleSourceScopeFailure.IDE_ROOT_INCOHERENT)
                         for ((type, directories) in sourceSet.sources) {
                             for (path in directories.srcDirs) {
-                                if (++moduleRoots > DetachedModelLimits.MAX_SOURCE_ROOTS_PER_MODULE) {
+                                if (++moduleRoots > limits[ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE].value) {
                                     return@readAction rejected(NamedGradleSourceScopeFailure.CAPTURE_LIMIT)
                                 }
                                 if (type.isResource || type.isExcluded) excludedRoots.add(path.toPath())
@@ -124,7 +134,8 @@ internal object LiveNamedGradleSourceScopeCapture {
             throw cancelled
         } catch (cancelled: ProcessCanceledException) {
             throw cancelled
-        } catch (_: RuntimeException) {
+        } catch (failure: RuntimeException) {
+            observation.unexpected(IntellijReadUnexpectedFailure.capture(IntellijReadStage.MODEL_CAPTURE, failure, limits))
             rejected(NamedGradleSourceScopeFailure.ObservationFailed(stage))
         }
     }

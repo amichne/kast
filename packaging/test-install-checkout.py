@@ -53,11 +53,24 @@ for arg in "$@"; do case "$arg" in -Pversion=*) version=${arg#*=} ;; esac; done
 mkdir -p build/distributions
 touch "build/distributions/kast-control-v$version-macos-aarch64.tar.gz"
 touch "build/distributions/kast-semantic-runtime-$version-macos-aarch64.zip"
+for arg in "$@"; do
+  if [[ $arg == :runtime:hosted:hostedPlugin ]]; then
+    mkdir -p runtime/hosted/build/distributions
+    touch "runtime/hosted/build/distributions/kast-ide-hosted-v$version-idea-262.1.zip"
+  fi
+done
 ''')
+        self.idea = self.root / "IDEA.app/Contents"
+        (self.idea / "Resources").mkdir(parents=True)
+        (self.idea / "Resources/product-info.json").write_text(json.dumps({"buildNumber": "262.1"}))
+        self.env["KAST_INSTALL_IDEA_HOME"] = str(self.idea)
         self.installer = self.root / "installer"
         self.write_script(self.installer, '''#!/bin/bash
 set -eu
 echo install >> "$TEST_LOG"
+plugin="kast-ide-hosted-v$KAST_VERSION-idea-262.1.zip"
+[[ -f "$KAST_INSTALL_ASSETS_DIRECTORY/$plugin" && -f "$KAST_INSTALL_ASSETS_DIRECTORY/$plugin.sha256" ]] || exit 32
+(cd "$KAST_INSTALL_ASSETS_DIRECTORY" && shasum -a 256 -c "$plugin.sha256") >&2
 bin=${KAST_BIN_DIR:-$HOME/.local/bin}
 [[ ${KAST_INSTALL_REFRESH_APP_SERVER:-0} == 1 ]] && echo refresh-requested >> "$TEST_LOG"
 [[ -n ${KAST_VERSION:-} && -n ${KAST_RELEASE_BASE_URL:-} && -n ${KAST_INSTALL_ASSETS_DIRECTORY:-} ]] || exit 31

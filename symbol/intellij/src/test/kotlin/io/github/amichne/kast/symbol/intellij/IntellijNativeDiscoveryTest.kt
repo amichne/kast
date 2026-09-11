@@ -1,6 +1,7 @@
 package io.github.amichne.kast.symbol.intellij
 
 import com.intellij.navigation.ChooseByNameContributor
+import io.github.amichne.kast.workspace.intellij.read.*
 import com.intellij.navigation.ChooseByNameContributorEx
 import com.intellij.navigation.ItemPresentation
 import com.intellij.navigation.NavigationItem
@@ -55,6 +56,37 @@ import org.junit.jupiter.api.assertThrows
 import java.nio.file.Path
 
 class SymbolDiscoveryTest {
+    @Test
+    fun `name capacity is observable separately from scoped candidates and semantic work`() {
+        val observation = RecordingNativeRead()
+        val scenario = fixture(all = true, leadingMatchingNames = MAX_NATIVE_DISCOVERY_NAMES + 1, observation = observation)
+        val outcome = scenario.execute().outcome()
+        assertTrue(outcome is SymbolDiscoveryOutcome.Qualified)
+        assertTrue(IntellijReadTermination.NAME_CAP in observation.reasons)
+        assertEquals(false, IntellijReadTermination.WORK_LIMIT in observation.reasons)
+        assertEquals(MAX_NATIVE_DISCOVERY_NAMES + 1, observation.counts[IntellijReadCounter.NAMES_VISITED])
+        assertEquals(0, observation.counts[IntellijReadCounter.CANDIDATES_COLLECTED] ?: 0)
+    }
+
+    @Test
+    fun `scope exclusions are counted after native candidates were collected`() {
+        val observation = RecordingNativeRead()
+        val scenario = fixture(all = true, observation = observation)
+        assertTrue(scenario.execute().outcome() is SymbolDiscoveryOutcome.Complete)
+        assertEquals(4, observation.counts[IntellijReadCounter.CANDIDATES_COLLECTED])
+        assertEquals(1, observation.counts[IntellijReadCounter.SCOPE_FILTERED])
+        assertEquals(3, observation.counts[IntellijReadCounter.CANDIDATES_PROJECTED])
+    }
+
+    private class RecordingNativeRead : IntellijReadObservation {
+        val counts = mutableMapOf<IntellijReadCounter, Int>()
+        val reasons = mutableSetOf<IntellijReadTermination>()
+        override fun count(counter: IntellijReadCounter, contributor: IntellijReadContributor, amount: Int) {
+            counts[counter] = (counts[counter] ?: 0) + amount
+        }
+        override fun terminated(reason: IntellijReadTermination, contributor: IntellijReadContributor) { reasons += reason }
+    }
+
     @Test
     fun `broad name scan uses supplied project id filter before name capacity`() {
         val scenario = fixture(all = true, leadingMatchingNames = MAX_NATIVE_DISCOVERY_NAMES + 1)
@@ -588,6 +620,7 @@ class SymbolDiscoveryTest {
         ownershipRoots: List<ModelOwnedSourceRoot> = sourceRoots,
         beforeProjection: () -> Unit = {},
         repeatedItems: Int = 1,
+        observation: IntellijReadObservation = IntellijReadObservation.None,
     ): Fixture {
         val request = request(
             kind = kind,
@@ -642,6 +675,7 @@ class SymbolDiscoveryTest {
         )
         val projectedNames = mutableListOf<String>()
         val query = IntellijNativeDiscoveryQuery(
+            observation = observation,
             itemFile = { item ->
                 files[item as FakeItem]
                     ?.let(IntellijDiscoveryItemFileResult::Found)

@@ -1,5 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
@@ -22,6 +24,7 @@ object IntellijProjectSourceFiles {
         root: CanonicalWorkspaceRoot,
         scope: Path,
         budget: ResourceBudget,
+        limits: ReadLimits = ReadLimits.Default,
     ): Refinement<List<Path>, ProjectSourceFileFailure> {
         if (project.isDisposed) return Refinement.Rejected(ProjectSourceFileFailure.UNAVAILABLE)
         val workspace = Path.of(root.value)
@@ -39,7 +42,7 @@ object IntellijProjectSourceFiles {
             val collector = BoundedSourceFileCollector(scope, budget)
             val visit = ContentIterator { file ->
                 ProgressManager.checkCanceled()
-                collector.accept(classify(project, file), System.nanoTime() - start)
+                collector.accept(classify(project, file, limits = limits), System.nanoTime() - start)
             }
             if (requested.isDirectory) {
                 index.iterateContentUnderDirectory(requested, visit)
@@ -58,10 +61,10 @@ object IntellijProjectSourceFiles {
         }
     }
 
-    private fun classify(project: Project, file: VirtualFile): ProjectSourceEntry {
+    private fun classify(project: Project, file: VirtualFile, limits: ReadLimits = ReadLimits.Default): ProjectSourceEntry {
         if (!file.isValid) return ProjectSourceEntry.Rejected(ProjectSourceFileFailure.UNAVAILABLE)
         if (file.isDirectory || file.extension !in setOf("kt", "kts")) return ProjectSourceEntry.Ignored
-        return when (IntellijProjectFileIndexClassifier.classify(project, file)) {
+        return when (IntellijProjectFileIndexClassifier.classify(project, file, limits = limits)) {
             is IntellijProjectFileClassification.Source -> {
                 val path = Path.of(file.path)
                 if (file.canonicalPath?.let(Path::of) == path) ProjectSourceEntry.Source(path)

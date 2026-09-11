@@ -2,6 +2,8 @@
 
 package io.github.amichne.kast.workspace.intellij.read.hosted
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
@@ -33,7 +35,8 @@ internal fun readHostedKotlin(
     project: Project,
     selection: HostedKotlinSelection,
     model: DetachedIdeWorkspaceModel,
-): HostedSemanticRead<HostedInheritorEvidence> {
+    limits: ReadLimits = ReadLimits.Default,
+    ): HostedSemanticRead<HostedInheritorEvidence> {
     when (val saved = checkSavedDocuments(project)) {
         SavedDocuments.Clean -> Unit
         is SavedDocuments.Rejected -> return HostedSemanticRead.Rejected(saved.failure)
@@ -41,11 +44,11 @@ internal fun readHostedKotlin(
     ProgressManager.checkCanceled()
     val virtualFile = LocalFileSystem.getInstance().findFileByPath(selection.file.path.value)
         ?: return rejected(HostedQueryFailure.FILE_UNAVAILABLE)
-    if (virtualFile.length > HOSTED_MAX_FILE_CHARACTERS * 4L) return rejected(HostedQueryFailure.FILE_TOO_LARGE)
+    if (virtualFile.length > limits[ReadLimitParameter.HOST_FILE_CHARACTERS].value * 4L) return rejected(HostedQueryFailure.FILE_TOO_LARGE)
     if (virtualFile.canonicalPath != virtualFile.path) return rejected(HostedQueryFailure.OUTSIDE_SCOPE)
     val document = FileDocumentManager.getInstance().getDocument(virtualFile)
         ?: return rejected(HostedQueryFailure.FILE_UNAVAILABLE)
-    if (document.textLength > HOSTED_MAX_FILE_CHARACTERS) return rejected(HostedQueryFailure.FILE_TOO_LARGE)
+    if (document.textLength > limits[ReadLimitParameter.HOST_FILE_CHARACTERS].value) return rejected(HostedQueryFailure.FILE_TOO_LARGE)
     val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile
         ?: return rejected(HostedQueryFailure.UNSUPPORTED_DECLARATION)
     val element = file.findElementAt(selection.nameOffset.value)
@@ -69,11 +72,11 @@ internal fun readHostedKotlin(
         ) return@analyze rejected(HostedQueryFailure.UNRESOLVED_SUPERTYPE)
         val parentDeclaration = parent.psi as? KtClassOrObject
             ?: return@analyze rejected(HostedQueryFailure.UNSUPPORTED_DECLARATION)
-        val child = when (val result = detachDeclaration(project, model, declaration, subject)) {
+        val child = when (val result = detachDeclaration(project, model, declaration, subject, limits = limits)) {
             is Refinement.Refined -> result.value
             is Refinement.Rejected -> return@analyze rejected(result.failure)
         }
-        val base = when (val result = detachDeclaration(project, model, parentDeclaration, parent)) {
+        val base = when (val result = detachDeclaration(project, model, parentDeclaration, parent, limits = limits)) {
             is Refinement.Refined -> result.value
             is Refinement.Rejected -> return@analyze rejected(result.failure)
         }
@@ -124,7 +127,8 @@ internal fun detachDeclaration(
     model: DetachedIdeWorkspaceModel,
     declaration: KtClassOrObject,
     symbol: KaNamedClassSymbol,
-): Refinement<HostedCompilerDeclaration, HostedQueryFailure> {
+    limits: ReadLimits = ReadLimits.Default,
+    ): Refinement<HostedCompilerDeclaration, HostedQueryFailure> {
     val virtualFile = declaration.containingFile.virtualFile
         ?: return Refinement.Rejected(HostedQueryFailure.FILE_UNAVAILABLE)
     if (virtualFile.canonicalPath != virtualFile.path) return Refinement.Rejected(HostedQueryFailure.OUTSIDE_SCOPE)
@@ -139,10 +143,10 @@ internal fun detachDeclaration(
         is Refinement.Refined -> admitted.value
         is Refinement.Rejected -> return admitted
     }
-    if (virtualFile.length > HOSTED_MAX_FILE_CHARACTERS * 4L) return Refinement.Rejected(HostedQueryFailure.FILE_TOO_LARGE)
+    if (virtualFile.length > limits[ReadLimitParameter.HOST_FILE_CHARACTERS].value * 4L) return Refinement.Rejected(HostedQueryFailure.FILE_TOO_LARGE)
     val document = FileDocumentManager.getInstance().getDocument(virtualFile)
         ?: return Refinement.Rejected(HostedQueryFailure.FILE_UNAVAILABLE)
-    if (document.textLength > HOSTED_MAX_FILE_CHARACTERS) return Refinement.Rejected(HostedQueryFailure.FILE_TOO_LARGE)
+    if (document.textLength > limits[ReadLimitParameter.HOST_FILE_CHARACTERS].value) return Refinement.Rejected(HostedQueryFailure.FILE_TOO_LARGE)
     if (FileDocumentManager.getInstance().isFileModified(virtualFile)) return Refinement.Rejected(HostedQueryFailure.DIRTY_DOCUMENTS)
     if (!PsiDocumentManager.getInstance(project).isCommitted(document)) return Refinement.Rejected(HostedQueryFailure.UNCOMMITTED_DOCUMENTS)
     val qualifiedName = symbol.classId?.asSingleFqName()?.asString()

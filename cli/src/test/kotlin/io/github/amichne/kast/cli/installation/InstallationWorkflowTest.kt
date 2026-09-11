@@ -17,6 +17,29 @@ import org.junit.jupiter.api.io.TempDir
 
 class InstallationWorkflowTest {
     @Test
+    fun `installation child logs bounded success and rejection outcomes`() {
+        val observations = mutableListOf<InstallationChildObservation>()
+        for ((executable, expected) in listOf(
+            "/usr/bin/true" to InstallationChildOutcome.COMPLETED,
+            "/usr/bin/false" to InstallationChildOutcome.EXIT_REJECTED,
+            "/missing-secret-installation-command" to InstallationChildOutcome.IO_REJECTED,
+        )) {
+            assertEquals(expected, executeInstallationChild(
+                InstallationChildStage.PRIOR_RETIREMENT,
+                listOf(executable),
+                mapOf("PRIVATE_SETTING" to "secret-input"),
+                observations::add,
+            ))
+        }
+        assertEquals(3, observations.size)
+        assertEquals(
+            """{"event":"kast_installation","stage":"PRIOR_RETIREMENT","outcome":"IO_REJECTED"}""",
+            observations.last().toJson(),
+        )
+        assertTrue(observations.none { "secret" in it.toJson() })
+    }
+
+    @Test
     fun `fresh installation materializes every saved default in its environment file`(
         @TempDir temporary: Path,
     ) {
