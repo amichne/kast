@@ -29,6 +29,10 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt
     symbols: [CodexProtocolAdapter]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexToolCallProjection.kt
+    symbols: [CodexToolCallProjector, CodexThreadHistoryProjector]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionActivity.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHub.kt
 ---
 
 # Request dispatch
@@ -65,6 +69,17 @@ installed bootstrap in `KastCliMain`; saved read settings are admitted before th
 records the final distribution's complete/qualified native matrix and a successful
 production provider invocation with direct CLI evidence equality. The provider
 harness does not establish full Codex WebSocket or multi-client acceptance.
+
+Broker-owned dynamic tools retain their execution protocol and upstream history.
+At the downstream display boundary, `CodexToolCallProjector` uses the standard
+`mcpToolCall` item with raw arguments and `result.content` text because the desktop
+client's generic dynamic-tool row omits result content. The same projection covers
+live notifications and reloaded history, retains the original outcome fields, and
+rejects contradictory status/success evidence. Qualification admits both shapes
+against the selected binary's generated schemas. `tool_display` session activity
+records projection completion or rejection without source payloads. See the
+[App Server presentation contract](../../app-server/README.md#presentation-and-evidence)
+for the raw display and its verification limits.
 
 See [protocol](../modules/protocol.md) and [operation outcomes](../contracts/operation-outcomes.md).
 

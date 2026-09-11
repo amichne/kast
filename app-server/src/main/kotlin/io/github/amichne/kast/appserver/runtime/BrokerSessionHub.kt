@@ -273,6 +273,21 @@ internal class BrokerSessionHub(
                 if (doc.containsKey("error") || returnedTurn != null || command !in setOf("turn/start","thread/queue/start","review/start")) tasks.resolved(ownedThread,key)
             } }
             val routing = adapter.fromUpstream(message)
+            val lifecycleItem = params?.get("item") as? JsonObject
+            if (method in setOf("item/started", "item/completed") &&
+                lifecycleItem?.text("type") == "dynamicToolCall" &&
+                lifecycleItem.text("namespace") in options.broker.catalog.namespaces.map { it.name.value }
+            ) {
+                when (routing) {
+                    is ProtocolRouting.ForwardDownstream -> activity.publish(
+                        SessionActivity(id, SessionStage.TOOL_DISPLAY, SessionOutcome.COMPLETED),
+                    )
+                    is ProtocolRouting.Close -> activity.publish(
+                        SessionActivity(id, SessionStage.TOOL_DISPLAY, SessionOutcome.REJECTED, routing.failure),
+                    )
+                    else -> Unit
+                }
+            }
             val pending = doc["id"]?.toString()?.let(pendingThreads::remove)
             if (pending != null && !doc.containsKey("error")) {
                 val result = doc["result"] as? JsonObject

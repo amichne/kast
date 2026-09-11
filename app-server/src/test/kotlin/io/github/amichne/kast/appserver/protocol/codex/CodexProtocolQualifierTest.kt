@@ -20,6 +20,21 @@ import java.nio.file.attribute.PosixFilePermissions
 
 class CodexProtocolQualifierTest {
     @Test
+    @org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable(named = "KAST_CODEX_SCHEMA_DIRECTORY", matches = ".+")
+    fun `installed schemas admit raw display in every lifecycle and history carrier`() {
+        val root = Path.of(System.getenv("KAST_CODEX_SCHEMA_DIRECTORY"))
+        val files = Files.walk(root).use { paths -> paths.filter { Files.isRegularFile(it) }.toList() }
+        val documents = CodexOwnedSchema.entries.associateWith { schema ->
+            val path = files.single { it.fileName.toString() == schema.fileName }
+            Json.parseToJsonElement(Files.readString(path)).jsonObject
+        }
+        assertInstanceOf(
+            io.github.amichne.kast.kernel.Validation.Validated::class.java,
+            CodexProtocolContracts.define(documents),
+        )
+    }
+
+    @Test
     fun `contracts reject an initialize schema incompatible with broker refinement`() {
         val objectSchema = Json.parseToJsonElement("""{"type":"object"}""").jsonObject
         val closedInitialize = Json.parseToJsonElement(
@@ -49,7 +64,7 @@ class CodexProtocolQualifierTest {
     }
 
     @Test
-    fun `contracts accept native dynamic lifecycle schemas`() {
+    fun `contracts reject lifecycle schemas without the expandable display`() {
         val objectSchema = Json.parseToJsonElement("""{"type":"object"}""").jsonObject
         val dynamicOnlyNotification = Json.parseToJsonElement(
             """
@@ -79,13 +94,13 @@ class CodexProtocolQualifierTest {
         )
 
         assertInstanceOf(
-            io.github.amichne.kast.kernel.Validation.Validated::class.java,
+            io.github.amichne.kast.kernel.Validation.Rejected::class.java,
             definition,
         )
     }
 
     @Test
-    fun `contracts accept native dynamic item containers`() {
+    fun `contracts reject history schemas without the expandable display`() {
         val objectSchema = Json.parseToJsonElement("""{"type":"object"}""").jsonObject
         val dynamicOnlyTurnsResponse = Json.parseToJsonElement(
             """{"type":"object","required":["data"],"properties":{"data":{"type":"array","items":{"type":"object","required":["items"],"properties":{"items":{"type":"array","items":{"type":"object","required":["type"],"properties":{"type":{"const":"dynamicToolCall"}}}}}}}}}""",
@@ -102,7 +117,7 @@ class CodexProtocolQualifierTest {
         )
 
         assertInstanceOf(
-            io.github.amichne.kast.kernel.Validation.Validated::class.java,
+            io.github.amichne.kast.kernel.Validation.Rejected::class.java,
             definition,
         )
     }
