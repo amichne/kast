@@ -24,6 +24,8 @@ code_sources:
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijProjectSourceMembership.kt
     symbols: [IntellijProjectSourceMembership]
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireBinding.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedEpochVfsDiagnostics.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedVfsObservation.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointReclamation.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
@@ -223,6 +225,12 @@ recorded PID to be absent, the descriptor to match this root and current protoco
 and both protected artifacts to retain their admitted physical identities. Live
 or reused PIDs, malformed descriptors, symlinks and unpaired artifacts fail closed.
 Admission and retirement emit bounded stage/outcome observations.
+
+The hosted service also records bounded VFS observations under its own lifetime.
+Receipts contain event kind, IDE-versus-refresh origin, syntactic path categories,
+counts and the existing host correlation. They contain no file paths or source
+payloads. These diagnostic categories do not change source membership or epoch
+admission; the original epoch listeners remain authoritative.
 
 Incremental creation, class renaming, and deletion were qualified against the
 same original IDE index. Broader semantic CLI/App Server routing and stronger

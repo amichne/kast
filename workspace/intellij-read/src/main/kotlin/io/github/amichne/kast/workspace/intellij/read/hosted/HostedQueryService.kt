@@ -48,6 +48,7 @@ private constructor(
         }
     val hostLifetime = IdeReadHostLifetime.fromBoundary(UUID.randomUUID())
     private val liveAuthorities = HostedLiveReadAuthoritySession(hostLifetime)
+    private val epochDiagnostics = HostedEpochVfsDiagnostics(project, owner, hostLifetime)
     private val freshnessOwner = HostedReadFreshnessOwner(project, owner, liveAuthorities)
     // A policy is retained admission authority, not just equal metadata. Reuse its
     // original proof for every request in this endpoint lifetime.
@@ -100,6 +101,7 @@ private constructor(
                                     HostedQueryFailure.ProjectAdmission(admission.failure)
                                 )
                         }
+                    epochDiagnostics.bind(admitted, progress.limits)
                     progress.advance(HostedQueryStage.EPOCH_OBSERVATION)
                     val epoch =
                         when (val observed = admitted.observeReadEpoch()) {
