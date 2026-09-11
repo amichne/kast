@@ -13,9 +13,6 @@ import java.nio.file.StandardOpenOption
 import java.nio.file.StandardWatchEventKinds
 import java.nio.file.attribute.PosixFilePermissions
 import java.util.UUID
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 class NativeFixtureProbeStartup : ProjectActivity, com.intellij.openapi.project.DumbAware {
     override suspend fun execute(project: Project) {
@@ -79,7 +76,7 @@ internal class ProbeSandbox private constructor(val root: Path, val project: Pat
 }
 
 private class ProbeWorker(private val project: Project, private val sandbox: ProbeSandbox) :
-    Runnable, com.intellij.openapi.Disposable {
+    Runnable, com.intellij.openapi.Disposable, ProbeDispatchPorts {
     private val spool = sandbox.root.resolve("native-probe")
     private val requests = spool.resolve("requests")
     private val responses = spool.resolve("responses")
@@ -149,17 +146,28 @@ private class ProbeWorker(private val project: Project, private val sandbox: Pro
             is ProbeResult.Rejected -> result = ProbeExecution.Rejected(request.failure)
             is ProbeResult.Accepted -> {
                 command = request.value.command.name
-                ApplicationManager.getApplication()
-                    .invokeAndWait(
-                        {
-                            result = NativeFixtureProbeExecution(project, sandbox, controls).execute(request.value)
-                        },
-                        ModalityState.nonModal(),
-                    )
+                result = ProbeRequestDispatch.dispatch(request.value, this)
             }
         }
-        publish(responses.resolve("$id.json"), response(id, command, result))
+        publish(responses.resolve("$id.json"), encodeProbeResponse(id, command, result))
     }
+
+    override fun executeNative(request: ProbeRequest): ProbeExecution {
+        var result: ProbeExecution = ProbeExecution.Rejected(ProbeFailure.NATIVE_UNAVAILABLE)
+        ApplicationManager.getApplication()
+            .invokeAndWait(
+                {
+                    result = NativeFixtureProbeExecution(project, sandbox, controls).execute(request)
+                },
+                ModalityState.nonModal(),
+            )
+        return result
+    }
+
+    override fun awaitReadiness(request: ProbeRequest): ProbeExecution =
+        readiness.await(request) {
+            NativeFixtureProbeExecution(project, sandbox, controls).execute(request)
+        }
 
     private fun publish(path: Path, body: String) {
         val bytes = body.toByteArray(Charsets.UTF_8)
@@ -176,73 +184,6 @@ private class ProbeWorker(private val project: Project, private val sandbox: Pro
         controls.dispose()
         watcher.close()
     }
-}
-
-private fun response(id: UUID, command: String, result: ProbeExecution): String = buildJsonObject {
-    put("version", PROBE_VERSION)
-    put("id", id.toString())
-    put("command", command)
-    when (result) {
-        is ProbeExecution.Rejected -> {
-            put("outcome", "REJECTED")
-            put("failure", result.failure.name)
-        }
-        is ProbeExecution.EffectUncertain -> {
-            put("outcome", "EFFECT_UNCERTAIN")
-            put("failure", result.failure.name)
-        }
-        is ProbeExecution.SetupReady -> {
-            put("outcome", "SETUP_READY")
-            put("evidence", evidenceDocument(result.evidence))
-            put(
-                "readiness",
-                buildJsonObject {
-                    put("smartMode", "SMART")
-                    put("externalTasks", "IDLE")
-                    put("gradleModule", "OBSERVED")
-                    put("import", result.readiness.import.name)
-                    put("vfsRefresh", "COMPLETED")
-                    put("quietWindowMillis", SETUP_QUIET_WINDOW_MILLIS)
-                    put("scope", "OBSERVED_SETUP_ONLY")
-                },
-            )
-        }
-        is ProbeExecution.Completed -> {
-            put("outcome", "COMPLETED")
-            put("evidence", evidenceDocument(result.evidence))
-        }
-        is ProbeExecution.BarrierArmed -> {
-            put("outcome", "BARRIER_ARMED")
-            put("barrierId", result.barrierId.toString())
-            put("evidence", evidenceDocument(result.evidence))
-        }
-        is ProbeExecution.LifecycleCompleted -> {
-            put("outcome", "LIFECYCLE_COMPLETED")
-            put("lifecycle", result.lifecycle.name)
-            put("evidence", evidenceDocument(result.evidence))
-        }
-    }
-}
-    .toString()
-
-private fun evidenceDocument(evidence: ProbeEvidence) = buildJsonObject {
-    put("savedSha256", evidence.saved.value)
-    put("documentSha256", evidence.document.value)
-    put("documentState", evidence.documentState.name)
-    put("syntax", evidence.syntax.name)
-    put("undo", evidence.undo.name)
-    put(
-        "declarations",
-        JsonArray(
-            evidence.declarations.map { declaration ->
-                buildJsonObject {
-                    put("name", declaration.name)
-                    put("container", declaration.container)
-                    put("kind", declaration.kind.name)
-                }
-            }
-        ),
-    )
 }
 
 private const val MAXIMUM_BATCH_REQUESTS = 16
