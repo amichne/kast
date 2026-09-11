@@ -1,6 +1,5 @@
 package io.github.amichne.kast.fixtureprobe
 
-import com.intellij.idea.ActionsBundle
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.command.undo.UndoManager
 import com.intellij.openapi.editor.Document
@@ -165,8 +164,17 @@ internal class NativeFixtureProbeExecution(
             }
             ProbeCommand.UNDO_PRODUCTION_CHANGE -> {
                 UndoManager.getInstance(project).undo(target.editor)
-                if (digest(target.document.text) != request.images.preimage)
-                    return ProbeResult.Rejected(ProbeFailure.UNDO_IMAGE_MISMATCH)
+                when (
+                    val observed =
+                        verifyProbeUndoDocument(
+                            expected = request.images.preimage,
+                            observed = digest(target.document.text),
+                            record = ::logProbeUndoDocumentObservation,
+                        )
+                ) {
+                    is ProbeResult.Accepted -> Unit
+                    is ProbeResult.Rejected -> return observed
+                }
                 PsiDocumentManager.getInstance(project).commitDocument(target.document)
                 FileDocumentManager.getInstance().saveDocumentAsIs(target.document)
             }
@@ -260,7 +268,7 @@ internal class NativeFixtureProbeExecution(
                         ProbeResult.Rejected(ProbeFailure.DOCUMENT_IMAGE_CHANGED)
                     state != ProbeDocumentState.SAVED_COMMITTED ->
                         ProbeResult.Rejected(ProbeFailure.DOCUMENT_STATE_REJECTED)
-                    request.command == ProbeCommand.UNDO_PRODUCTION_CHANGE -> validateUndo(target.editor)
+                    request.command == ProbeCommand.UNDO_PRODUCTION_CHANGE -> validateProbeUndo(project, target.editor)
                     else -> ProbeResult.Accepted(Unit)
                 }
             ProbeCommand.COMMIT_DOCUMENT,
@@ -272,17 +280,6 @@ internal class NativeFixtureProbeExecution(
                         ProbeResult.Rejected(ProbeFailure.DOCUMENT_STATE_REJECTED)
                     else -> ProbeResult.Accepted(Unit)
                 }
-        }
-    }
-
-    private fun validateUndo(editor: FileEditor): ProbeResult<Unit> {
-        val manager = UndoManager.getInstance(project)
-        return when {
-            !manager.isUndoAvailable(editor) -> ProbeResult.Rejected(ProbeFailure.UNDO_UNAVAILABLE)
-            undoState(editor) != ProbeUndoState.PRODUCTION_CHANGE ->
-                ProbeResult.Rejected(ProbeFailure.UNDO_COMMAND_MISMATCH)
-            manager.isNextUndoAskConfirmation(editor) -> ProbeResult.Rejected(ProbeFailure.UNDO_CONFIRMATION_REQUIRED)
-            else -> ProbeResult.Accepted(Unit)
         }
     }
 
@@ -314,22 +311,10 @@ internal class NativeFixtureProbeExecution(
                 syntax =
                     if (psi == null) ProbeSyntaxState.UNCOMMITTED
                     else if (PsiTreeUtil.hasErrorElements(psi)) ProbeSyntaxState.ERRORS else ProbeSyntaxState.CLEAN,
-                undo = undoState(target.editor),
+                undo = probeUndoState(project, target.editor),
                 declarations = declarations,
             )
         )
-    }
-
-    private fun undoState(editor: FileEditor): ProbeUndoState {
-        val manager = UndoManager.getInstance(project)
-        if (!manager.isUndoAvailable(editor)) return ProbeUndoState.UNAVAILABLE
-        val label = manager.getUndoActionNameAndDescription(editor)
-        return if (
-            label.first == ActionsBundle.message("action.undo.text", PRODUCTION_COMMAND).trim() &&
-                label.second == ActionsBundle.message("action.undo.description", PRODUCTION_COMMAND).trim()
-        )
-            ProbeUndoState.PRODUCTION_CHANGE
-        else ProbeUndoState.OTHER
     }
 
     private fun documentState(document: Document): ProbeDocumentState =

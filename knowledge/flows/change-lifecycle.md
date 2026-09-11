@@ -79,6 +79,10 @@ that proof and the approved write set. A pre-write observation guards the
 IntelliJ write command; the adapter receives only the admitted single-file effect.
 Durable pre-write and applied records retain recovery evidence across effects.
 
+The IntelliJ command group belongs to one document mutation session. Mutation
+and any local restoration share that group; separate admitted attempts have
+distinct group identities, so consecutive changes remain separate Undo steps.
+
 The IDE save can enqueue an asynchronous VFS write. Before reading the physical
 postimage, the adapter calls the pinned platform's per-file
 `ManagingFS.flushPendingUpdates(file)` outside EDT. A failed completion prevents

@@ -18,6 +18,7 @@ import io.github.amichne.kast.workspace.intellij.read.hosted.HostedPreWriteObser
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
 import org.jetbrains.kotlin.psi.KtFile
 
@@ -38,6 +39,7 @@ internal class LiveIntellijDocumentSession(
     private val changedPaths: Set<String>,
     private val freshness: IntellijWriteFreshness = IntellijWriteFreshness.Published,
 ) : IntellijDocumentMutationSession {
+    private val commandGroup = IntellijMutationCommandGroup()
     private var mutationCheckpoint: IntellijMutationCheckpoint = IntellijMutationCheckpoint.Pending
 
     override fun currentText(): String = prepared.document.text
@@ -47,7 +49,7 @@ internal class LiveIntellijDocumentSession(
             onEdt {
                 WriteCommandAction.writeCommandAction(project, prepared.target)
                     .withName("Kast semantic change")
-                    .withGroupId("kast.change.semantic")
+                    .withGroupId(commandGroup.atPlatformBoundary())
                     .compute<IntellijDocumentMutationResult, RuntimeException> {
                         mutateAtBoundary(input)
                     } ?: IntellijDocumentMutationResult.EffectUncertain(SourceWriteFailure.MUTATION_FAILED)
@@ -276,7 +278,7 @@ internal class LiveIntellijDocumentSession(
             onEdt {
                 WriteCommandAction.writeCommandAction(project, prepared.target)
                     .withName("Kast semantic change")
-                    .withGroupId("kast.change.semantic")
+                    .withGroupId(commandGroup.atPlatformBoundary())
                     .compute<IntellijSessionStepResult, RuntimeException>(action)
                     ?: IntellijSessionStepResult.Rejected(SourceWriteFailure.MUTATION_FAILED)
             }
@@ -285,6 +287,13 @@ internal class LiveIntellijDocumentSession(
         } catch (_: Exception) {
             IntellijSessionStepResult.Rejected(SourceWriteFailure.MUTATION_FAILED)
         }
+}
+
+/** One attempt may group its local restoration; separate sessions must remain separate Undo steps. */
+private class IntellijMutationCommandGroup {
+    private val identity = UUID.randomUUID()
+
+    fun atPlatformBoundary(): String = "kast.change.semantic:$identity"
 }
 
 internal enum class IntellijSaveOutcome {
