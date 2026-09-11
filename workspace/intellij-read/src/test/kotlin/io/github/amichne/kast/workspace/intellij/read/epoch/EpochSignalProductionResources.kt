@@ -59,6 +59,7 @@ private fun adapterEpochResources(): List<String> =
             "LiveProjectReadEpochSource.class",
             "LiveProjectReadEpochSource\$observeState\$1.class",
             "LiveProjectReadEpochSource\$source\$1.class",
+            "LiveProjectReadEpochSource\$source\$2.class",
             "LiveProjectReadEpochSourceFactory.class",
             "LiveProjectReadEpochSourceFactory\$createOwned\$1.class",
             "ObservedEpochGradleModel.class",

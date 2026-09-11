@@ -20,31 +20,6 @@ import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedPr
 import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadExecutionAdmission
 import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadExecutionAdmissionFailure
 
-/** Ordered observation boundary used by existing-Project admission. */
-internal interface ExistingProjectObservationPort {
-    fun isDisposed(project: Project): Boolean
-
-    fun isOpen(project: Project): Boolean
-
-    fun isInitialized(project: Project): Boolean
-
-    fun root(
-        project: Project,
-        expectedRoot: CanonicalWorkspaceRoot,
-    ): ExistingProjectRootObservation
-
-    fun gradleModel(
-        project: Project,
-        expectedRoot: CanonicalWorkspaceRoot,
-    ): ExistingProjectGradleModelState
-
-    fun indexing(project: Project): ExistingProjectIndexingState
-
-    fun kotlinMode(): ExistingProjectKotlinMode
-
-    fun hostIdentity(): ExistingProjectHostIdentityObservation
-}
-
 /** Exact existing-Project policy proof with no retained read authority or listener installation. */
 sealed interface ExistingProjectValidation {
     data object Validated : ExistingProjectValidation
@@ -158,6 +133,10 @@ private constructor(
             expectedEpoch,
             readEpochSource.observe(),
         )
+
+    /** Checks the same source identity inside the actual write action, without invoking ordinary read execution. */
+    internal fun admitPreWriteState(expectedEpoch: ProjectReadEpoch<*>): VfsPassiveReadAdmission =
+        admitVfsPassiveReadObservation(canonicalRoot, expectedEpoch, readEpochSource.observeBeforeWrite())
 
     /**
      * `(AdmittedIdeProject, VfsPassiveReadCapability) -> execution admission`; one observation issues authority only

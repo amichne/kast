@@ -2,7 +2,6 @@ package io.github.amichne.kast.workspace.intellij.read.hosted
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
@@ -49,6 +48,7 @@ private constructor(
         }
     val hostLifetime = IdeReadHostLifetime.fromBoundary(UUID.randomUUID())
     private val liveAuthorities = HostedLiveReadAuthoritySession(hostLifetime)
+    private val freshnessOwner = HostedReadFreshnessOwner(project, owner, liveAuthorities)
     // A policy is retained admission authority, not just equal metadata. Reuse its
     // original proof for every request in this endpoint lifetime.
     private val packagedCompatibility by lazy(::packagedHostedCompatibility)
@@ -139,24 +139,13 @@ private constructor(
                     progress.diagnostics?.bind(authority.reference)
                     val context =
                         HostedSemanticReadContext(
-                            authority,
-                            sourceScope.model,
-                            IntellijSemanticSourceFileAdmission(sourceScope::contains),
-                            progress.observation,
-                            progress.limits,
-                        ) {
-                            readAction {
-                                when (val saved = checkSavedDocuments(project)) {
-                                    is SavedDocuments.Rejected -> return@readAction Refinement.Rejected(saved.failure)
-                                    SavedDocuments.Clean -> Unit
-                                }
-                                when (val current = admitted.admitVfsPassiveRead(epoch)) {
-                                    is VfsPassiveReadAdmission.Admitted -> Refinement.Refined(Unit)
-                                    is VfsPassiveReadAdmission.Rejected ->
-                                        Refinement.Rejected(HostedQueryFailure.Freshness(current.failure))
-                                }
-                            }
-                        }
+                            authority = authority,
+                            model = sourceScope.model,
+                            sourceFiles = IntellijSemanticSourceFileAdmission(sourceScope::contains),
+                            observation = progress.observation,
+                            limits = progress.limits,
+                            freshness = freshnessOwner.capture(admitted, epoch, authority),
+                        )
                     try {
                         runHostedReadTransaction(progress, context::validate) { evaluate(context) }
                     } finally {
