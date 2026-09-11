@@ -13,7 +13,7 @@ import zipfile
 from hosted_change_process import NativeProcesses
 from native_fixture_probe import NativeFixtureProbeError
 from hosted_change_acceptance import (AcceptanceRejected, admit_event, admit_harness, admitted_live,
-    bounded_native_report, event_observation, pending_readiness, receipt_scope_observation, remaining_matrix_gates, tree_identity)
+    CASE_NAMES, bounded_native_report, event_observation, native_workflow_qualified, pending_readiness, receipt_scope_observation, remaining_matrix_gates, tree_identity)
 
 
 class HostedChangeAcceptanceTest(unittest.TestCase):
@@ -190,6 +190,23 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
         self.assertIn('foreign-root-generated-ambiguous-and-model-movement', names)
         names = {item['scenario'] for item in remaining_matrix_gates(native, {'outcome': 'passed', 'sourceUnchanged': False})}
         self.assertIn('complete-hosted-read-regression', names)
+
+    def test_cleanup_qualification_requires_clean_source_and_complete_read_and_mutation_evidence(self):
+        evidence = {'status': 'observed-with-unqualified-matrix', 'source': {'clean': True},
+                    'native': {'metadata': {'status': 'observed'},
+                               'cases': {name: {'outcome': 'passed'} for name in CASE_NAMES}},
+                    'readRegression': {'outcome': 'passed', 'sourceUnchanged': True},
+                    'events': [{'event': 'stage', 'stage': name, 'outcome': 'completed'} for name in (
+                        'post-save-interrupted', 'plugin-owner-retired', 'fixture-broker-process-replaced')]}
+        self.assertTrue(native_workflow_qualified(evidence))
+        for path, value in ((('readRegression', 'outcome'), 'rejected'),
+                            (('source', 'clean'), False), (('native', 'metadata', 'status'), 'rejected')):
+            invalid = copy.deepcopy(evidence)
+            destination = invalid
+            for key in path[:-1]:
+                destination = destination[key]
+            destination[path[-1]] = value
+            self.assertFalse(native_workflow_qualified(invalid))
 
     def test_missing_matrix_evidence_never_becomes_passed(self):
         self.assertTrue(remaining_matrix_gates())

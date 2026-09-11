@@ -307,3 +307,10 @@ def remaining_matrix_gates(native: dict | None = None, read_regression: dict | N
     )
     return [dict(scenario=name, outcome='unqualified', reason=reason)
             for name, observed, reason in checks if not observed]
+
+
+def native_workflow_qualified(evidence: dict) -> bool:
+    return (evidence.get('status') != 'rejected' and evidence.get('source', {}).get('clean') is True
+            and evidence.get('native', {}).get('metadata', {}).get('status') == 'observed'
+            and not remaining_matrix_gates(evidence.get('native'), evidence.get('readRegression'),
+                                           evidence.get('events', [])))

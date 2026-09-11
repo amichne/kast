@@ -11,7 +11,7 @@ from acceptance_environment import AcceptanceEnvironment, NetworkPolicy, admitte
 from acceptance_idea import digest
 from hosted_acceptance_fixture import admit_hosted_idea, prepare_hosted_fixture
 from hosted_change_acceptance import (AcceptanceFailure, AcceptanceRejected, source_identity,
-    tree_identity, admit_harness, bounded_native_report, durable_receipt_scopes, remaining_matrix_gates)
+    tree_identity, admit_harness, bounded_native_report, durable_receipt_scopes, remaining_matrix_gates, native_workflow_qualified)
 from hosted_change_process import NativeProcesses, private_file
 from hosted_runtime_observation import OwnedRuntimeObserver
 from hosted_change_probe import stage_native_probe
@@ -121,16 +121,15 @@ def main():
                         evidence['native'] = bounded_native_report(native_report, fixture.workspace)
                     except AcceptanceRejected as error:
                         evidence['nativeReportFailure'] = error.failure.value
-            isolation.mark_passed()
+            if native_workflow_qualified(evidence):
+                isolation.mark_passed()
     except AcceptanceRejected as error:
         evidence['status'], evidence['failure'] = 'rejected', error.failure.value
     except (OSError, ValueError, TypeError, KeyError, subprocess.SubprocessError, NativeFixtureProbeError):
         evidence['status'], evidence['failure'] = 'rejected', AcceptanceFailure.INPUT.value
     finally:
         evidence['remainingMatrix'] = remaining_matrix_gates(evidence.get('native'), evidence.get('readRegression'), evidence['events'])
-        qualified = (evidence['status'] != 'rejected' and evidence.get('source', {}).get('clean') is True
-                     and evidence.get('native', {}).get('metadata', {}).get('status') == 'observed'
-                     and not evidence['remainingMatrix'])
+        qualified = native_workflow_qualified(evidence)
         evidence['passed'] = qualified
         evidence['releaseQualified'] = qualified
         if qualified:
