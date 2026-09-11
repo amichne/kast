@@ -112,11 +112,35 @@ inside the state tree are deleted as links and never followed.
 
 ## Presentation and evidence
 
-Kast returns two native text content entries: an operation/status summary and the
-complete bounded structured outcome. `dynamicToolCall`, arguments, correlation,
-status, duration, and content remain native in live events and history. There are
-no fabricated MCP, file-change, or commentary items. Existing native tools and
-client-owned responders keep their protocol identities.
+Kast executes through `item/tool/call` and returns native dynamic-tool text
+content: an operation/status summary and the complete bounded structured outcome.
+For display, the broker projects its owned `dynamicToolCall` items into the standard
+expandable `mcpToolCall` shape, with the provider namespace as `server`, unchanged
+arguments, and raw text in `result.content`. This is a display adaptation, not an
+MCP execution backend. The installed desktop client's generic dynamic-tool row
+only displays a name and discards result content.
+
+The same pure projection handles live events and every supported history carrier,
+so reloading does not depend on a presentation cache. Call IDs, tool names, status,
+duration, original content, and additional upstream fields are retained. Failed
+calls keep their result and a native error marker. Media descriptors display as raw
+JSON text. There is no custom Markdown, file-change item, or companion commentary.
+Unowned tools pass through unchanged. Both input and projected output must satisfy
+the selected Codex binary's generated schemas.
+
+The `tool_display` service-log stage records projection completion or rejection
+without arguments or results. A contradictory lifecycle includes its finite failure
+reason. Display qualification is covered by the App Server tests; the optional
+installed-schema check also exercises every lifecycle/history projection witness:
+
+```shell
+codex app-server generate-json-schema --experimental --out /tmp/kast-codex-schemas
+KAST_CODEX_SCHEMA_DIRECTORY=/tmp/kast-codex-schemas ./gradlew :app-server:test
+```
+
+The raw shape has been validated against schemas from Codex CLI 0.154.0 and the
+desktop-bundled Codex 0.153.4. Desktop renderer source inspection established the missing dynamic content; this does not
+constitute a live visual acceptance test of an installed Kast build.
 
 Status separates transport, protocol, catalog, semantic readiness, and desktop
 qualification. Startup and invocation logs contain typed stage/outcome evidence.
