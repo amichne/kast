@@ -1,0 +1,13 @@
+<idea-plugin>
+  <id>io.github.amichne.kast.native-fixture-probe</id>
+  <name>Kast Native Acceptance Probe (Test Only)</name>
+  <version>1</version>
+  <vendor>kast</vendor>
+  <description>Optional private-sandbox acceptance instrumentation. Never bundled with Kast releases.</description>
+  <idea-version since-build="262" until-build="262.*"/>
+  <depends>com.intellij.modules.platform</depends>
+  <depends>org.jetbrains.kotlin</depends>
+  <extensions defaultExtensionNs="com.intellij">
+    <postStartupActivity implementation="io.github.amichne.kast.fixtureprobe.NativeFixtureProbeStartup"/>
+  </extensions>
+</idea-plugin>
