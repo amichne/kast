@@ -11,8 +11,17 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 
-internal class NativeNegativeWorkflow(private val source: Path, private val evidence: NativeChangeEvidence) {
+internal class NativeNegativeWorkflow(
+    private val source: Path,
+    private val evidence: NativeChangeEvidence,
+    private val foreignRoot: NativeForeignRootBoundary,
+    private val trace: NativeProcessTrace,
+) {
     suspend fun run(peer: NativeChangePeer, reference: String) {
+        val original = Files.readAllBytes(source)
+        foreignRoot.reject(nativePlanArguments(reference, "fun foreignRefusal() = value"))
+        demand(Files.readAllBytes(source).contentEquals(original), NativeFailure.SOURCE_CHANGED)
+        evidence.record("foreign-root-refusal", NativeCaseOutcome.PASSED)
         unsupportedIntents(peer, reference)
         ambiguousName(peer)
     }
@@ -31,7 +40,8 @@ internal class NativeNegativeWorkflow(private val source: Path, private val evid
                 Json.encodeToJsonElement(ChangePlanRequest.serializer(), ChangePlanRequest(intent)).jsonObject
             val rejected = peer.call("change_plan", arguments)
             demand(
-                rejected.rejected() && rejected.document()["reason"] == JsonPrimitive("unsupported-hosted-intent"),
+                rejected.rejected() &&
+                    trace.boundaryRejections.last() == NativeBoundaryRejection.IDE_OPERATION_UNSUPPORTED,
                 NativeFailure.EXPECTED_REJECTION_MISSING,
             )
             demand(

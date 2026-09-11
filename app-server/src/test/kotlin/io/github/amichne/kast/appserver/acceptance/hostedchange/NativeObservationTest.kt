@@ -36,6 +36,20 @@ class NativeObservationTest {
     }
 
     @Test
+    fun `owned JVM banners cannot hide a closed CLI root refusal or leak into observation`() {
+        val raw =
+            "Picked up JAVA_TOOL_OPTIONS: private-options\n" +
+                """{"status":"rejected","boundary":"runtime","reason":"ide-host-unavailable"}"""
+        val result = BrokerProcessExecution.Completed(1, "", raw)
+        assertEquals(NativeBoundaryRejection.IDE_HOST_UNAVAILABLE, nativeBoundaryRejection(result))
+        assertFalse(processObservation(result).toString().contains("private-options"))
+        assertEquals(
+            NativeBoundaryRejection.UNCLASSIFIED,
+            nativeBoundaryRejection(BrokerProcessExecution.Completed(1, "", "unknown prefix\n$raw")),
+        )
+    }
+
+    @Test
     fun `protocol rejection retains finite reason when presentation has multiple content items`() {
         val document = buildJsonObject {
             put(

@@ -36,6 +36,7 @@ private constructor(
     private val connecting: Channel<NativeUpstream>,
     private val workspace: Path,
     private val privateDirectory: Path,
+    val foreignRoot: NativeForeignRootBoundary,
 ) {
     private val sequence = java.util.concurrent.atomic.AtomicInteger(10)
     private var peerCount = 0
@@ -119,6 +120,7 @@ private constructor(
                 connecting = connecting,
                 workspace = workspace,
                 privateDirectory = privateDirectory,
+                foreignRoot = NativeForeignRootBoundary(product, workspace, trace),
             )
         }
 

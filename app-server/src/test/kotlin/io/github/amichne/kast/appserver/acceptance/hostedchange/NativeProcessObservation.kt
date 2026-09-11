@@ -11,6 +11,7 @@ import kotlinx.serialization.json.put
 
 private enum class NativeOutputField(val wire: String) {
     OPERATION("operation"),
+    BOUNDARY("boundary"),
     STATUS("status"),
     LIVE("live"),
     PLAN_IDENTITY("planIdentity"),
@@ -48,6 +49,7 @@ private fun completedObservation(result: BrokerProcessExecution.Completed): Json
     val document = processDocument(if (result.exitCode == 0) result.stdout else result.stderr)
     put("shape", if (document == null) "non-object" else "object")
     put("fields", observedFields(document))
+    put("boundaryRejection", nativeBoundaryRejection(result).name)
 }
 
 private fun processDocument(raw: String): JsonObject? =
@@ -68,4 +70,33 @@ private fun observedFields(document: JsonObject?) = buildJsonArray {
         ?.forEach { field ->
             add(JsonPrimitive(field.name))
         }
+}
+
+internal enum class NativeBoundaryRejection {
+    NONE,
+    IDE_HOST_UNAVAILABLE,
+    IDE_OPERATION_UNSUPPORTED,
+    UNCLASSIFIED,
+}
+
+internal fun nativeBoundaryRejection(result: BrokerProcessExecution): NativeBoundaryRejection {
+    if (result !is BrokerProcessExecution.Completed || result.exitCode == 0) return NativeBoundaryRejection.NONE
+    val raw =
+        result.stderr
+            .lineSequence()
+            .filterNot {
+                it.startsWith("Picked up JAVA_TOOL_OPTIONS:") || it.startsWith("Picked up _JAVA_OPTIONS:")
+            }
+            .joinToString("\n")
+    val document = processDocument(raw) ?: return NativeBoundaryRejection.UNCLASSIFIED
+    if (document.keys != setOf("status", "boundary", "reason") || document["status"] != JsonPrimitive("rejected"))
+        return NativeBoundaryRejection.UNCLASSIFIED
+    return when {
+        document["boundary"] == JsonPrimitive("runtime") &&
+            document["reason"] == JsonPrimitive("ide-host-unavailable") -> NativeBoundaryRejection.IDE_HOST_UNAVAILABLE
+        document["boundary"] == JsonPrimitive("usage") &&
+            document["reason"] == JsonPrimitive("ide-operation-unsupported") ->
+            NativeBoundaryRejection.IDE_OPERATION_UNSUPPORTED
+        else -> NativeBoundaryRejection.UNCLASSIFIED
+    }
 }

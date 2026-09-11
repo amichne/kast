@@ -92,6 +92,7 @@ internal class NativeProcessTrace(private val privateDirectory: Path) : BrokerPr
     private val sequence = java.util.concurrent.atomic.AtomicInteger()
     val completedEffects = Channel<Unit>(32)
     val plannedReferenceDigests = CopyOnWriteArrayList<String>()
+    val boundaryRejections = CopyOnWriteArrayList<NativeBoundaryRejection>()
 
     fun isolatedStartupCount(): Int = routes.count { it.firstOrNull() in setOf("start", "prepare", "worker") }
 
@@ -108,6 +109,7 @@ internal class NativeProcessTrace(private val privateDirectory: Path) : BrokerPr
         }
         val number = sequence.incrementAndGet()
         val result = JdkBrokerProcessExecutor.execute(request)
+        boundaryRejections += nativeBoundaryRejection(result)
         privateWrite(privateDirectory.resolve("process-$number.private.json"), processObservation(result).toString())
         if (request.arguments.lastOrNull() == "--hosted-approved-invocation") completedEffects.send(Unit)
         return result

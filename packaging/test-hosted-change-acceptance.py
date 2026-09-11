@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Offline checks for input admission and redacted reports; these do not qualify native behavior."""
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -10,7 +11,7 @@ import zipfile
 
 from hosted_change_process import NativeProcesses
 from hosted_change_acceptance import (AcceptanceRejected, admit_event, admit_harness, admitted_live,
-    bounded_native_report, event_observation, pending_readiness, remaining_matrix_gates, tree_identity)
+    bounded_native_report, event_observation, pending_readiness, receipt_scope_observation, remaining_matrix_gates, tree_identity)
 
 
 class HostedChangeAcceptanceTest(unittest.TestCase):
@@ -115,6 +116,34 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
                 processes.reject_failed_bind()
             self.assertEqual([{'generation': 0, 'stage': 'BIND', 'outcome': 'REJECTED',
                                'failure': 'OWNERSHIP_CONFLICT'}], processes.readiness_observations)
+
+    def test_receipt_projection_preserves_root_epoch_and_complete_obligations_without_payload(self):
+        repo = Path(__file__).resolve().parent.parent
+        plan = json.loads((repo / 'change/verify/src/test/resources/live-add-declaration-plan-v1.json').read_text())
+        workspace = Path(plan['workspaceRoot'])
+        body = {'plan': plan, 'after': {'root': str(workspace), 'owner': plan['owner'],
+            'epoch': plan['epoch'] + 1, 'contentView': plan['contentView'], 'version': plan['referenceVersion']},
+            'semanticObligations': plan['semanticObligations'], 'liveObligations': plan['liveObligations'],
+            'source': 'private-source-payload', 'approval': 'private-approval'}
+        observed = receipt_scope_observation(body, 'a' * 64, workspace)
+        self.assertEqual(plan['epoch'] + 1, observed['afterEpoch'])
+        self.assertEqual(11, len(observed['dischargedObligations']))
+        self.assertNotIn('private-source-payload', json.dumps(observed))
+        self.assertNotIn('private-approval', json.dumps(observed))
+        for field, value in (('root', '/foreign'), ('owner', '11111111-1111-1111-1111-111111111111'),
+                             ('epoch', plan['epoch'])):
+            invalid = copy.deepcopy(body)
+            invalid['after'][field] = value
+            with self.assertRaises(AcceptanceRejected):
+                receipt_scope_observation(invalid, 'a' * 64, workspace)
+        invalid = copy.deepcopy(body)
+        invalid['semanticObligations'] = invalid['semanticObligations'][:-1]
+        with self.assertRaises(AcceptanceRejected):
+            receipt_scope_observation(invalid, 'a' * 64, workspace)
+        invalid = copy.deepcopy(body)
+        invalid['plan']['verificationScope']['diagnostics'] = [['/foreign/Source.kt']]
+        with self.assertRaises(AcceptanceRejected):
+            receipt_scope_observation(invalid, 'a' * 64, workspace)
 
     def test_matrix_clears_only_scenarios_with_complete_named_native_evidence(self):
         native = {'cases': {'psi-structure': {'outcome': 'passed'}}}

@@ -30,7 +30,13 @@ internal class NativeChangeWorkflow(
         val first = searchClass()
         initialLive = first.objectAt("live")
         returnedReference = reference(first)
-        NativeNegativeWorkflow(source, evidence).run(peer, returnedReference)
+        NativeNegativeWorkflow(
+                source = source,
+                evidence = evidence,
+                foreignRoot = session.foreignRoot,
+                trace = session.trace,
+            )
+            .run(peer, returnedReference)
         val invalid = peer.call("change_plan", nativePlanArguments(returnedReference + "invalid", DECLARATION))
         demand(invalid.rejected(), NativeFailure.EXPECTED_REJECTION_MISSING)
         unchanged(original)

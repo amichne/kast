@@ -208,19 +208,53 @@ def durable_receipt_scopes(home: Path, workspace: Path) -> list[dict]:
     for raw, expected in rows:
         if len(raw.encode()) > 4 * 1024 * 1024 or hashlib.sha256(raw.encode()).hexdigest() != expected:
             raise AcceptanceRejected(AcceptanceFailure.RECEIPT)
-        body = json.loads(raw)['content']['body']
-        scope = body['plan']['verificationScope']
-        obligations = body['semanticObligations'] + body['liveObligations']
-        if not obligations or len(obligations) > 64 or any(not re.fullmatch('[A-Z_]{1,80}', item) for item in obligations):
+        document = json.loads(raw)
+        if (set(document) != {'identity', 'content'} or not re.fullmatch(r'receipt:[0-9a-f]{64}', document['identity'])
+                or document['content'].get('version') != 1 or document['content'].get('kind') != 'LIVE_ADD_DECLARATION_RECEIPT'):
             raise AcceptanceRejected(AcceptanceFailure.RECEIPT)
-        result.append({'receiptDocumentSha256': expected,
-            'verificationScopeSha256': hashlib.sha256(json.dumps(scope, separators=(',', ':'), sort_keys=True).encode()).hexdigest(),
-            'relationScopeCount': len(scope['relations']), 'traversalScopeCount': len(scope['traversals']),
-            'diagnosticFileCounts': [len(files) for files in scope['diagnostics']],
-            'dischargedObligations': obligations,
-            'beforeOwner': body['plan']['owner'], 'beforeEpoch': body['plan']['epoch'],
-            'afterOwner': body['after']['owner'], 'afterEpoch': body['after']['epoch']})
+        result.append(receipt_scope_observation(document['content']['body'], expected, workspace))
     return result
+
+
+SEMANTIC_OBLIGATIONS = (
+    'TARGET_PREIMAGE_UNCHANGED', 'OWNER_AND_PROVENANCE_UNCHANGED', 'DECLARED_WRITE_SET_CLOSED',
+    'EXPECTED_POSTIMAGE_OBSERVED', 'DECLARATION_IDENTITY_OBSERVED', 'COMPILER_COLLISION_REMAINS_ABSENT',
+    'OUTBOUND_BINDINGS_PRESERVED', 'EXISTING_BINDINGS_PRESERVED', 'COMPILER_DIAGNOSTICS_CLEAR',
+)
+LIVE_OBLIGATIONS = ('ORIGINAL_OWNER_EPOCH_MODEL_UNCHANGED_BEFORE_WRITE', 'RESULT_SAVED_COMMITTED_LIVE_STATE_OBSERVED')
+
+
+def receipt_scope_observation(body: dict, document_digest: str, workspace: Path) -> dict:
+    plan, after = body['plan'], body['after']
+    before_live = {'root': plan['workspaceRoot'], 'host': plan['owner'], 'epoch': plan['epoch'],
+                   'contentView': plan['contentView'], 'version': plan['referenceVersion']}
+    after_live = {'root': after['root'], 'host': after['owner'], 'epoch': after['epoch'],
+                  'contentView': after['contentView'], 'version': after['version']}
+    admitted_live(before_live, workspace)
+    admitted_live(after_live, workspace)
+    if (after['owner'] != plan['owner'] or after['epoch'] <= plan['epoch']
+            or tuple(body['semanticObligations']) != SEMANTIC_OBLIGATIONS
+            or tuple(body['liveObligations']) != LIVE_OBLIGATIONS
+            or body['semanticObligations'] != plan['semanticObligations']
+            or body['liveObligations'] != plan['liveObligations']):
+        raise AcceptanceRejected(AcceptanceFailure.RECEIPT)
+    scope = plan['verificationScope']
+    if set(scope) != {'relations', 'traversals', 'diagnostics'}:
+        raise AcceptanceRejected(AcceptanceFailure.RECEIPT)
+    if any(not isinstance(scope[key], list) or not 1 <= len(scope[key]) <= 64 for key in scope):
+        raise AcceptanceRejected(AcceptanceFailure.RECEIPT)
+    for files in scope['diagnostics']:
+        if (not isinstance(files, list) or not 1 <= len(files) <= 256
+                or any(not isinstance(name, str) or not Path(name).is_relative_to(workspace)
+                       or '..' in Path(name).parts for name in files)):
+            raise AcceptanceRejected(AcceptanceFailure.RECEIPT)
+    return {'receiptDocumentSha256': document_digest,
+        'verificationScopeSha256': hashlib.sha256(json.dumps(scope, separators=(',', ':'), sort_keys=True).encode()).hexdigest(),
+        'relationScopeCount': len(scope['relations']), 'traversalScopeCount': len(scope['traversals']),
+        'diagnosticFileCounts': [len(files) for files in scope['diagnostics']],
+        'dischargedObligations': list(SEMANTIC_OBLIGATIONS + LIVE_OBLIGATIONS),
+        'beforeOwner': plan['owner'], 'beforeEpoch': plan['epoch'],
+        'afterOwner': after['owner'], 'afterEpoch': after['epoch']}
 
 
 def remaining_matrix_gates(native: dict | None = None, read_regression: dict | None = None,
