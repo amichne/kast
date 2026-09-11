@@ -4,7 +4,7 @@
   <version>${pluginVersion}</version>
   <vendor>amichne</vendor>
   <description>Project-owned local access to the existing Kotlin index and bounded semantic reads.</description>
-  <idea-version since-build="${ideBuild}" until-build="${ideBuild}"/>
+  <idea-version since-build="${ideReleaseLine}" until-build="${ideReleaseLine}.*"/>
   <depends>com.intellij.modules.platform</depends>
   <depends>com.intellij.java</depends>
   <depends>org.jetbrains.kotlin</depends>

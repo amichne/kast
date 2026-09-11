@@ -35,6 +35,7 @@ val ideBuild =
                 .get()
         (groovy.json.JsonSlurper().parseText(metadata) as Map<*, *>)["buildNumber"] as String
     } else pinnedBuild
+val ideReleaseLine = ideBuild.substringBefore('.')
 
 tasks.processResources {
     val schema = rootProject.file("protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json")
@@ -44,6 +45,7 @@ tasks.processResources {
     val values =
         mapOf(
             "ideBuild" to ideBuild,
+            "ideReleaseLine" to ideReleaseLine,
             "kotlinBuild" to "$ideBuild-IJ",
             "pluginVersion" to project.version.toString(),
             "schemaDigest" to digest(schema),
@@ -84,7 +86,7 @@ val hostedPlugin by
     tasks.registering(Zip::class) {
         group = "distribution"
         description = "Packages the project-owned existing-IDE index endpoint."
-        archiveFileName.set("kast-ide-hosted-v${project.version}-idea-$ideBuild.zip")
+        archiveFileName.set("kast-ide-hosted-v${project.version}-idea-$ideReleaseLine.zip")
         destinationDirectory.set(layout.buildDirectory.dir("distributions"))
         isPreserveFileTimestamps = false
         isReproducibleFileOrder = true

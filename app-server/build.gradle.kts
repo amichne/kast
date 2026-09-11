@@ -1,6 +1,7 @@
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.OutputFile
+import org.gradle.api.tasks.testing.Test
 import org.gradle.process.CommandLineArgumentProvider
 
 abstract class KastObserverSnapshotArguments : CommandLineArgumentProvider {
@@ -39,6 +40,12 @@ dependencies {
     implementation(project(":distribution:managed"))
     implementation(project(":protocol:contract"))
     implementation(project(":protocol:registry"))
+}
+
+tasks.named<Test>("test") {
+    val installedSchemas = providers.environmentVariable("KAST_CODEX_SCHEMA_DIRECTORY")
+    inputs.property("installedCodexSchemaDirectory", installedSchemas.orElse(""))
+    inputs.dir(installedSchemas).optional().withPropertyName("installedCodexSchemas")
 }
 
 val kastObserverSnapshotManifest = layout.buildDirectory.file("observer-snapshots/kast-observer-presentations.json")

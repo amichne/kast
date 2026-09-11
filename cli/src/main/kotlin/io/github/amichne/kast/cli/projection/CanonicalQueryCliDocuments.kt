@@ -98,7 +98,10 @@ private sealed interface QueryResultItemCliDocument {
         val location: QueryExactLocationCliDocument?,
         val signature: CompilerSignatureCliDocument?,
         val connections: List<RelationFactCliDocument>,
-    ) : QueryResultItemCliDocument
+    ) : QueryResultItemCliDocument {
+        // Migration alias is derived from the retained exact reference, never an independent input.
+        val symbol_ref: String = ref.token
+    }
 }
 
 @Serializable private data class QueryCandidateLocationCliDocument(val file: String, val offset: Int)

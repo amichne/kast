@@ -25,7 +25,7 @@ class MintlifyCallableReferenceTest {
         val reference = Json.parseToJsonElement(mintlifyCallableReference(surface).value).jsonObject
         val paths = reference.getValue("paths").jsonObject
         val components = reference.getValue("components").jsonObject.getValue("schemas").jsonObject
-        val invocationByOperation = installed.cliInvocations.operations.associateBy { it.operationId }
+        val invocationByTool = installed.cliInvocations.operations.associateBy { it.toolName }
         val publicOperationIds = HostedOperationProjection.publicDefinitions.map { it.operation.id.value }
         val internalOperationIds = HostedOperationProjection.internalDefinitions.map { it.operation.id.value }
 
@@ -35,7 +35,7 @@ class MintlifyCallableReferenceTest {
             installed.hostedBootstrap.tools.map { "/callables/${it.name}" },
             paths.keys.toList(),
         )
-        assertEquals(publicOperationIds, installed.hostedBootstrap.tools.map { it.operationId })
+        assertEquals(publicOperationIds.toSet(), installed.hostedBootstrap.tools.map { it.operationId }.toSet())
         assertFalse(installed.hostedBootstrap.tools.any { it.operationId in internalOperationIds })
         assertEquals(installed.hostedBootstrap.tools.size * 2, components.size)
 
@@ -79,10 +79,10 @@ class MintlifyCallableReferenceTest {
                     .getValue("schema")
                     .jsonObject
                     .reference()
-            val invocation = invocationByOperation.getValue(tool.operationId)
+            val invocation = invocationByTool.getValue(tool.name)
             val sample = operation.getValue("x-codeSamples").jsonArray.single().jsonObject
 
-            assertEquals(tool.operationId, operation.getValue("operationId").jsonPrimitive.content)
+            assertEquals(tool.name, operation.getValue("operationId").jsonPrimitive.content)
             assertEquals("none", mintMetadata.getValue("playground").jsonPrimitive.content)
             assertTrue(operation.getValue("description").jsonPrimitive.content.contains("not an HTTP endpoint"))
             assertEquals(tool.effect, kastMetadata.getValue("effect").jsonPrimitive.content)

@@ -911,7 +911,17 @@ internal class CodexProtocolAdapter(
 
     private fun failurePresentation(failure: BrokerFailure): ToolPresentation =
         ToolPresentation.text(
-            canonicalJson(buildJsonObject { put("failure", failure.code()) }),
+            canonicalJson(
+                buildJsonObject {
+                    put("failure", failure.code())
+                    if (failure is BrokerFailure.InvalidArguments && failure.guidance.isNotEmpty()) {
+                        put(
+                            "corrections",
+                            kotlinx.serialization.json.JsonArray(failure.guidance.map { JsonPrimitive(it.value) }),
+                        )
+                    }
+                }
+            ),
             success = false,
         )
 

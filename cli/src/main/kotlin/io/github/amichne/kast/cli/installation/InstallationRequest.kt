@@ -1,6 +1,8 @@
 package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.registry.AgentToolDefinition
+import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 
@@ -85,15 +87,31 @@ internal enum class InstallationSwitch {
     ENABLED,
 }
 
-@JvmInline
-internal value class AppServerTools private constructor(val value: String) {
+internal enum class AppServerToolsFailure {
+    EMPTY_NAME,
+    DUPLICATE_NAME,
+    UNKNOWN_NAME,
+}
+
+/** A canonical, non-empty tool selection; installation cannot persist retired tool identities. */
+internal class AppServerTools private constructor(private val definitions: List<AgentToolDefinition>) {
+    val value: String
+        get() = definitions.joinToString(",") { it.name.value }
+
     companion object {
-        fun parse(raw: String): Refinement<AppServerTools, Unit> =
-            if (raw.isNotBlank() && raw.none { it == '\n' || it == '\r' || it == '\u0000' }) {
-                Refinement.Refined(AppServerTools(raw))
-            } else {
-                Refinement.Rejected(Unit)
+        fun parse(raw: String?): Refinement<AppServerTools, AppServerToolsFailure> {
+            if (raw == null)
+                return Refinement.Refined(AppServerTools(CanonicalAgentToolDefinitions.defaultAppServerTools))
+            val tokens = raw.split(',')
+            if (tokens.any(String::isBlank)) return Refinement.Rejected(AppServerToolsFailure.EMPTY_NAME)
+            val names = tokens.toSet()
+            if (names.size != tokens.size) return Refinement.Rejected(AppServerToolsFailure.DUPLICATE_NAME)
+            val definitions = CanonicalAgentToolDefinitions.all.filter { it.name.value in names }
+            if (definitions.size != names.size) {
+                return Refinement.Rejected(AppServerToolsFailure.UNKNOWN_NAME)
             }
+            return Refinement.Refined(AppServerTools(definitions))
+        }
     }
 }
 
@@ -241,13 +259,8 @@ private constructor(
                     is Refinement.Refined -> refined.value
                     is Refinement.Rejected -> return refined
                 }
-            val toolsRaw =
-                when (val refined = raw(InstallationEnvironment.APP_SERVER_TOOLS)) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected -> return refined
-                }
             val tools =
-                when (val parsed = AppServerTools.parse(toolsRaw)) {
+                when (val parsed = AppServerTools.parse(environment[InstallationEnvironment.APP_SERVER_TOOLS.key])) {
                     is Refinement.Refined -> parsed.value
                     is Refinement.Rejected ->
                         return Refinement.Rejected(

@@ -17,7 +17,8 @@ import io.github.amichne.kast.appserver.core.ToolDescription
 import io.github.amichne.kast.appserver.core.ToolLoading
 import io.github.amichne.kast.appserver.core.ToolName
 import io.github.amichne.kast.appserver.core.ToolPresentation
-import io.github.amichne.kast.appserver.query.PublicQueryContract
+import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.appserver.query.explanation
 import io.github.amichne.kast.appserver.schema.CompiledJsonSchema
 import io.github.amichne.kast.appserver.schema.JsonDomainDefinition
 import io.github.amichne.kast.appserver.schema.NetworkntJsonSchemaCompiler
@@ -29,6 +30,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.RefinementDefinition
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.registry.AgentToolInputBinding
 import io.github.amichne.kast.protocol.registry.AgentToolPolicy
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import io.github.amichne.kast.protocol.registry.HostedApprovalPolicy
@@ -325,7 +327,7 @@ internal object KastProviderQualifier {
             JsonDomainDefinition(
                 inputSchema,
                 RefinementDefinition<ValidatedJsonValue, KastInvocationInput, KastToolInputFailure> { admitted ->
-                    admitKastInput(hostedDefinition.operation, admitted)
+                    admitKastInput(hostedDefinition.operation, admitted, inputBinding)
                 },
             )
         return BrokerTool(
@@ -337,6 +339,31 @@ internal object KastProviderQualifier {
             invoke = { runtime, input, context -> runtime.invoke(this, input, context) },
             encode = KastInvocationOutput::document,
             invocationBudget = executionBudget.invocation,
+            inputGuidance = { failure ->
+                val guidance =
+                    when (failure) {
+                        is io.github.amichne.kast.appserver.schema.JsonDomainAdmissionFailure.Constraint ->
+                            if (inputBinding is AgentToolInputBinding.Facade)
+                                listOf(
+                                    io.github.amichne.kast.appserver.query.PublicToolInputFailure.SchemaRejected
+                                        .explanation()
+                                )
+                            else emptyList()
+                        is io.github.amichne.kast.appserver.schema.JsonDomainAdmissionFailure.Domain ->
+                            when (val reason = failure.failure) {
+                                is KastToolInputFailure.Facade -> listOf(reason.reason.explanation())
+                                KastToolInputFailure.NotObject,
+                                KastToolInputFailure.SchemaMismatch,
+                                is KastToolInputFailure.Query -> emptyList()
+                            }
+                    }
+                guidance.map { message ->
+                    when (val admitted = ToolDescription.admit(message)) {
+                        is Refinement.Refined -> admitted.value
+                        is Refinement.Rejected -> error("Static tool guidance exceeded its bound")
+                    }
+                }
+            },
             present = { output ->
                 val envelope = output.document
                 val semantic = (envelope["document"] as? JsonObject)?.get("status") as? JsonPrimitive
@@ -359,24 +386,23 @@ internal object KastProviderQualifier {
     }
 
     private fun admitProjection(projection: KastServerProjectionBoundary): QualifiedKastProjection? {
-        if (projection.schemaVersion != 9 || projection.namespace != "kast") return null
+        if (projection.schemaVersion != 10 || projection.namespace != "kast") return null
         val bootstrap = projection.hostedBootstrap
         val cli = projection.cliInvocations
-        if (bootstrap.schemaVersion != 1 || cli.schemaVersion != 2) return null
+        if (bootstrap.schemaVersion != 1 || cli.schemaVersion != 3) return null
         val policy = refined(AgentToolPolicy.parse(bootstrap.policy)) ?: return null
         if (policy != CanonicalAgentToolDefinitions.policy) return null
         if (bootstrap.tools.isEmpty() || bootstrap.tools.size > 64) return null
         if (bootstrap.tools.map(KastHostedToolBoundary::name).hasDuplicates()) return null
-        if (bootstrap.tools.map(KastHostedToolBoundary::operationId).hasDuplicates()) return null
-        if (cli.operations.map(KastCliOperationInvocationBoundary::operationId).hasDuplicates()) return null
-        val invocationsByOperation = cli.operations.associateBy { it.operationId }
-        if (invocationsByOperation.keys != bootstrap.tools.mapTo(linkedSetOf()) { it.operationId }) {
+        if (cli.operations.map(KastCliOperationInvocationBoundary::toolName).hasDuplicates()) return null
+        val invocationsByTool = cli.operations.associateBy { it.toolName }
+        if (invocationsByTool.keys != bootstrap.tools.mapTo(linkedSetOf()) { it.name }) {
             return null
         }
         return QualifiedKastProjection(
             policy,
             bootstrap.tools.map { tool ->
-                admitTool(tool, invocationsByOperation.getValue(tool.operationId)) ?: return null
+                admitTool(tool, invocationsByTool.getValue(tool.name)) ?: return null
             },
         )
     }
@@ -392,8 +418,15 @@ internal object KastProviderQualifier {
             } ?: return null
         val canonicalDefinition =
             CanonicalAgentToolDefinitions.all.singleOrNull {
-                it.operation.operation == canonicalOperation
+                it.name.value == tool.name && it.operation.operation == canonicalOperation
             } ?: return null
+        if (cliInvocation.toolName != tool.name || cliInvocation.operationId != tool.operationId) return null
+        val inputBinding = canonicalDefinition.inputBinding
+        if (
+            inputBinding is AgentToolInputBinding.Facade &&
+                cliInvocation.invocation.command != listOf("tool", inputBinding.identity.toolName)
+        )
+            return null
         val executionBudget = OperationExecutionBudget.forOperation(canonicalOperation)
         if (
             tool.executionBudget.readinessMillis != OperationExecutionBudget.WORKSPACE_READINESS.value ||
@@ -420,8 +453,11 @@ internal object KastProviderQualifier {
         if (cliInvocation.invocation.command.any { token -> !token.isAdmittedCliToken() }) return null
         val inputDocument = tool.inputSchema as? JsonObject ?: return null
         val outputDocument = tool.outputSchema as? JsonObject ?: return null
-        if (canonicalOperation == CanonicalOperation.QUERY_RUN && inputDocument != PublicQueryContract.parameters)
-            return null
+        when (val input = canonicalDefinition.inputBinding) {
+            is AgentToolInputBinding.Facade ->
+                if (inputDocument != PublicToolContract.parameters(input.identity)) return null
+            AgentToolInputBinding.Canonical -> Unit
+        }
         if (inputDocument["additionalProperties"] != JsonPrimitive(false)) return null
         val inputSchema = refined(NetworkntJsonSchemaCompiler.compile(inputDocument)) ?: return null
         val outputSchema = refined(NetworkntJsonSchemaCompiler.compile(outputDocument)) ?: return null
@@ -441,10 +477,15 @@ internal object KastProviderQualifier {
                 canonicalDefinition.approval,
                 executionBudget,
                 canonicalDefinition.loading,
+                when (inputBinding) {
+                    is AgentToolInputBinding.Facade -> PublicToolContract.generationParameters(inputBinding.identity)
+                    AgentToolInputBinding.Canonical -> inputDocument
+                },
             ),
             inputSchema,
             outputSchema,
             cliInvocation.invocation.command,
+            canonicalDefinition.inputBinding,
         )
     }
 
@@ -593,7 +634,7 @@ private class ExposedKastTools private constructor(val values: List<QualifiedKas
                 qualifiedTools.filter { tool ->
                     val definition =
                         CanonicalAgentToolDefinitions.all.single { definition ->
-                            definition.operation.operation == tool.hostedDefinition.operation
+                            definition.name == tool.hostedDefinition.name
                         }
                     selection.admits(definition)
                 }
@@ -611,6 +652,7 @@ internal data class QualifiedKastTool(
     val inputSchema: CompiledJsonSchema,
     val outputSchema: CompiledJsonSchema,
     val command: List<String>,
+    val inputBinding: AgentToolInputBinding = AgentToolInputBinding.Canonical,
 )
 
 @JvmInline
@@ -671,6 +713,7 @@ private data class KastCliInvocationsBoundary(
 
 @Serializable
 private data class KastCliOperationInvocationBoundary(
+    val toolName: String,
     val operationId: String,
     val cliUsage: String,
     val invocation: KastCliInvocationBoundary,

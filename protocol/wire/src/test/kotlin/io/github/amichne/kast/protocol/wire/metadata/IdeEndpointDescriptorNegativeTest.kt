@@ -89,14 +89,14 @@ class IdeEndpointDescriptorNegativeTest {
     fun `compatibility identity mismatches retain the exact rejected field`() {
         listOf(
                 Triple(
-                    candidate.copy(ideBuild = "262.9437.186"),
+                    candidate.copy(ideBuild = "263.9437.186"),
                     IdeHostCompatibilityField.IDE_BUILD,
-                    candidate.ideBuild to "262.9437.186",
+                    candidate.ideBuild to "263.9437.186",
                 ),
                 Triple(
-                    candidate.copy(kotlinPluginBuild = "262.9437.186-IJ"),
+                    candidate.copy(kotlinPluginBuild = "263.9437.186-IJ"),
                     IdeHostCompatibilityField.KOTLIN_PLUGIN_BUILD,
-                    candidate.kotlinPluginBuild to "262.9437.186-IJ",
+                    candidate.kotlinPluginBuild to "263.9437.186-IJ",
                 ),
                 Triple(
                     candidate.copy(kastPluginVersion = "0.28.2"),

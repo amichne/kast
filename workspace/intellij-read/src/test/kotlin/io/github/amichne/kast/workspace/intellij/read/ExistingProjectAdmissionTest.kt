@@ -11,6 +11,31 @@ import org.junit.jupiter.api.Test
 
 class ExistingProjectAdmissionTest {
     @Test
+    fun `another 262 host retains its observed builds after project admission`() {
+        val observation =
+            RecordingProjectObservation().apply {
+                hostIdentity = fixtureHostIdentity("262.20000.200", "262.20001.201-IJ")
+            }
+        val admitted =
+            when (
+                val result =
+                    AdmittedIdeProject.admitObserved(
+                        opaqueProject(),
+                        FIXTURE_ROOT,
+                        FIXTURE_COMPATIBILITY,
+                        FIXTURE_COMPATIBILITY_POLICY,
+                        observation,
+                        FIXTURE_EPOCH_SOURCE_FACTORY,
+                    )
+            ) {
+                is ExistingProjectAdmission.Admitted -> result.project
+                is ExistingProjectAdmission.Rejected -> fail("262 host rejected: ${result.failure}")
+            }
+        assertEquals("262.20000.200", admitted.compatibility.ideBuild.value)
+        assertEquals("262.20001.201-IJ", admitted.compatibility.kotlinPluginBuild.value)
+    }
+
+    @Test
     fun `epoch source installation closes a disposal race`() {
         assertEquals(
             Refinement.Rejected(ExistingProjectReadEpochSourceInstallationFailure.ProjectDisposed),

@@ -1,6 +1,6 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.appserver.query.PublicQueryContract
+import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.command.CliCommandSurface
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
@@ -16,6 +16,7 @@ import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.registry.AgentToolDefinition
+import io.github.amichne.kast.protocol.registry.AgentToolInputBinding
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import io.github.amichne.kast.protocol.registry.HostedBindingCompleteness
 import io.github.amichne.kast.protocol.registry.HostedOperationProjection
@@ -36,9 +37,9 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 
-private const val SERVER_PROJECTION_SCHEMA_VERSION = 9
+private const val SERVER_PROJECTION_SCHEMA_VERSION = 10
 private const val HOSTED_BOOTSTRAP_SCHEMA_VERSION = 1
-private const val CLI_INVOCATIONS_SCHEMA_VERSION = 2
+private const val CLI_INVOCATIONS_SCHEMA_VERSION = 3
 private const val MAXIMUM_PROTOCOL_TEXT_LENGTH = 1_048_576
 private const val MAXIMUM_WORKSPACE_FILE_LENGTH = 4_096
 private const val MAXIMUM_PROTOCOL_COUNT = 1_000
@@ -86,6 +87,7 @@ internal data class InstalledCliInvocationsDocument(
 
 @Serializable
 internal data class InstalledCliOperationInvocationDocument(
+    val toolName: String,
     val operationId: String,
     val cliUsage: String,
     val invocation: InstalledServerCliInvocationDocument,
@@ -113,6 +115,7 @@ private constructor(
         /** Derives the complete binding set without accepting independently associated members. */
         fun from(commandSurface: CliCommandSurface): List<InstalledServerBinding> {
             val commandByOperation = commandSurface.semanticCommands.associateBy { it.operation }
+            val facadeByIdentity = commandSurface.toolCommands.associateBy { it.identity }
             val toolsByOperation = installedServerTools.associateBy(InstalledServerTool::operation)
             return CanonicalAgentToolDefinitions.all.map { definition ->
                 val operation = definition.operation.operation
@@ -120,7 +123,25 @@ private constructor(
                 InstalledServerBinding(
                     operation = operation,
                     tool = tool.hostedDocument(definition),
-                    invocation = tool.cliInvocationDocument(commandByOperation.getValue(operation).usage),
+                    invocation =
+                        when (val input = definition.inputBinding) {
+                            AgentToolInputBinding.Canonical ->
+                                tool.cliInvocationDocument(
+                                    definition.name.value,
+                                    commandByOperation.getValue(operation).usage,
+                                )
+                            is AgentToolInputBinding.Facade ->
+                                InstalledCliOperationInvocationDocument(
+                                    toolName = definition.name.value,
+                                    operationId = operation.id.value,
+                                    cliUsage = facadeByIdentity.getValue(input.identity).usage,
+                                    invocation =
+                                        InstalledServerCliInvocationDocument(
+                                            InstalledServerInvocationType.CLI,
+                                            listOf("tool", input.identity.toolName),
+                                        ),
+                                )
+                        },
                 )
             }
         }
@@ -257,16 +278,16 @@ private enum class InstalledServerTool(
                     operationMillis = OperationExecutionBudget.forOperation(operation).operation.value,
                 ),
             inputSchema =
-                if (operation == CanonicalOperation.QUERY_RUN) {
-                    PublicQueryContract.parameters
-                } else {
-                    generatedRequestSchema(requestSerializer)
+                when (val input = definition.inputBinding) {
+                    is AgentToolInputBinding.Facade -> PublicToolContract.parameters(input.identity)
+                    AgentToolInputBinding.Canonical -> generatedRequestSchema(requestSerializer)
                 },
             outputSchema = installedServerOutputSchema(operation),
         )
 
-    fun cliInvocationDocument(cliUsage: String): InstalledCliOperationInvocationDocument =
+    fun cliInvocationDocument(toolName: String, cliUsage: String): InstalledCliOperationInvocationDocument =
         InstalledCliOperationInvocationDocument(
+            toolName = toolName,
             operationId = operation.id.value,
             cliUsage = cliUsage,
             invocation =
@@ -527,6 +548,12 @@ private fun queryResultItemSchema(): JsonObject =
         ),
         objectSchema(
             ServerSchemaProperty("type", constantSchema("exact-symbol", "Exact-symbol result.")),
+            ServerSchemaProperty(
+                "symbol_ref",
+                textSchema(
+                    "Opaque exact-symbol token. Copy verbatim into query_symbols source.symbol_refs; identical to ref.token."
+                ),
+            ),
             ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
             ServerSchemaProperty(
                 "kind",

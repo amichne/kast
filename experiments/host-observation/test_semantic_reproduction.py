@@ -11,6 +11,31 @@ class SemanticReproductionTest(unittest.TestCase):
     def setUp(self):
         self.expected = json.loads((r.FIXTURE / "expected.json").read_text())
 
+    def test_public_routes_validate_against_each_published_schema(self):
+        import jsonschema
+        resources = r.REPO / "app-server/src/main/resources/io/github/amichne/kast/appserver/query"
+        for case in r.cases(self.expected):
+            tool, command, request = r.invocation(case, r.ToolSurface.PUBLIC)
+            schema = json.loads((resources / (tool + ".parameters.json")).read_text())
+            with self.subTest(case=case.name):
+                jsonschema.Draft202012Validator(schema).validate(request)
+                self.assertEqual(["tool", tool], command)
+        case = r.Case("ordered", r.search("helper"), steps=(
+            dict(type="FILTER", visibility=["PRIVATE"]), dict(type="EXPAND", relation="CALLERS"),
+            dict(type="DISTINCT")), select=())
+        tool, command, request = r.invocation(case, r.ToolSurface.PUBLIC)
+        self.assertEqual("query_symbols", tool)
+        self.assertEqual(["filter_visibility", "expand_relation", "distinct_symbols"],
+                         [step["type"] for step in request["steps"]])
+        self.assertEqual([], request["return_fields"])
+
+    def test_legacy_replay_preserves_original_request_and_ambiguous_catalog_rejects(self):
+        case = r.Case("legacy", r.search("helper"))
+        tool, command, request = r.invocation(case, r.ToolSurface.LEGACY)
+        self.assertEqual(("query", ["query", "run"], case.request()), (tool, command, request))
+        with self.assertRaises(ValueError):
+            r.ToolSurface.admit([dict(name="query"), dict(name="search_classes")])
+
     def test_incomplete_empty_is_not_a_complete_negative(self):
         case = r.Case("negative", r.search("UnusedMarker"))
         complete = dict(status="complete", items=[], failures=[])

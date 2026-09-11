@@ -4,8 +4,10 @@ title: Runtime and process hosts
 description: Runtime composition connects domain operations to adapters, while server, indexer, App Server, and CLI own distinct transport and process responsibilities.
 resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
-timestamp: 2026-09-10T00:00:00Z
+timestamp: 2026-09-11T00:00:00Z
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
+  - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
   - path: docs/reviews/live-semantic-read-acceptance.md
   - path: runtime/server/src/main/kotlin/io/github/amichne/kast/runtime/server/ServerDispatch.kt
     symbols: [ServerDispatch]
@@ -20,6 +22,8 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
   - path: runtime/hosted/build.gradle.kts
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/compatibility/IdeHostCompatibility.kt
+    symbols: [IdeHostCompatibilityPolicy, IdeReleaseLine]
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointProtocol.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerCancellation.kt
@@ -42,8 +46,13 @@ The indexer runs the semantic runtime inside the admitted IntelliJ environment. 
 These hosts communicate through protocol and distribution contracts; reachability alone does not establish readiness or semantic authority.
 
 `runtime:hosted` is a separate IDEA plugin for existing-project reads.
-Its release archive carries the Kast release version and exact IDEA build in its
-name and descriptor; the public installer admits both before activation.
+Its release archive carries the Kast release version and IDEA release line in
+its name. The descriptor permits `since-build="262"` through `until-build="262.*"`;
+the public installer validates that line before activation. Runtime admission
+accepts IDEA and bundled Kotlin builds in the baseline's `262` release line while
+retaining their exact observed identities. Product, protocol, registry, schema,
+and capability checks remain exact. This policy accepts patch-build compatibility
+risk; the build baseline and recorded native acceptance remain `262.10315.125`.
 Its project service owns a bounded local socket and delegates saved-content
 semantic reads to `workspace:intellij-read`. It has no project-opening, Gradle
 import, or worker-launch authority and is excluded from isolated runtime
@@ -77,3 +86,5 @@ while full Codex WebSocket and multi-client acceptance remain separate.
 Read [request dispatch](../flows/request-dispatch.md) for the cross-host path.
 
 Hosted project services retain an immutable read-limit policy admitted from the IDE process environment and JVM properties. The CLI/provider retain the corresponding policy from their configuration boundary, including saved installation values. Invalid configuration rejects before native execution. Default hosted logs include the selected capacities and provenance. See [configuration](../../docs/hosted-read-configuration.md).
+
+The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Three ordinary searches and deferred `query_symbols` share `query.run`; `check_diagnostics` shares `diagnostic.check`. Private admission retains each tool's schema identity and typed syntax through its exact CLI binding. The `tool` command family uses the existing-IDE read path. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.

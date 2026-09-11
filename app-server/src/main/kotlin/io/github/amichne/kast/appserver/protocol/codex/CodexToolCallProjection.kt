@@ -1,20 +1,20 @@
 package io.github.amichne.kast.appserver.protocol.codex
 
 import io.github.amichne.kast.appserver.core.BrokerCallId
-import io.github.amichne.kast.appserver.core.ObserverMarkdown
 import io.github.amichne.kast.appserver.core.ProviderNamespace
 import io.github.amichne.kast.appserver.core.ToolAddress
 import io.github.amichne.kast.appserver.core.ToolName
 import io.github.amichne.kast.kernel.Refinement
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.put
 
 internal enum class CodexToolCallLifecycle(val schema: CodexOwnedSchema) {
     STARTED(CodexOwnedSchema.ITEM_STARTED_NOTIFICATION),
@@ -171,13 +171,11 @@ internal sealed interface CodexToolCallProjection {
     data class Rejected(val failure: CodexToolCallProjectionFailure) : CodexToolCallProjection
 }
 
-internal sealed interface CodexToolCallResultProjection {
-    data object Complete : CodexToolCallResultProjection
-
-    data class ExpandableObserver(val markdown: ObserverMarkdown) : CodexToolCallResultProjection
-}
-
-/** Validates the lifecycle while retaining the upstream native item, including future fields. */
+/**
+ * Uses the standard expandable MCP display for broker-owned calls. Execution and persisted upstream history remain
+ * dynamic tools. Retain upstream fields; only the display type changes. Generic desktop dynamic-tool rows discard
+ * contentItems, even when the wire schema admits them.
+ */
 internal object CodexToolCallProjector {
     internal fun projectStarted(item: JsonObject): CodexToolCallProjection =
         when (val identity = admitIdentity(item)) {
@@ -190,19 +188,19 @@ internal object CodexToolCallProjector {
                         rejected(CodexToolCallProjectionFailure.STARTED_COMPLETION_PRESENT)
                     else ->
                         when (val duration = admitDuration(item["durationMs"])) {
-                            is DurationAdmission.Admitted -> CodexToolCallProjection.Projected(item)
+                            is DurationAdmission.Admitted ->
+                                CodexToolCallProjection.Projected(
+                                    displayItem(item, identity.identity, JsonNull, JsonNull)
+                                )
                             is DurationAdmission.Rejected -> rejected(duration.failure)
                         }
                 }
         }
 
-    internal fun projectCompleted(
-        item: JsonObject,
-        resultProjection: CodexToolCallResultProjection = CodexToolCallResultProjection.Complete,
-    ): CodexToolCallProjection =
+    internal fun projectCompleted(item: JsonObject): CodexToolCallProjection =
         when (val identity = admitIdentity(item)) {
             is IdentityAdmission.Rejected -> rejected(identity.failure)
-            is IdentityAdmission.Admitted -> admitCompleted(item, identity.identity, resultProjection)
+            is IdentityAdmission.Admitted -> admitCompleted(item, identity.identity)
         }
 
     private fun admitIdentity(item: JsonObject): IdentityAdmission {
@@ -218,13 +216,13 @@ internal object CodexToolCallProjector {
         val tool =
             item.strictString("tool")?.let(ToolName::admit)?.let(::refined)
                 ?: return IdentityAdmission.Rejected(CodexToolCallProjectionFailure.TOOL_INVALID)
-        val arguments =
-            item["arguments"] ?: return IdentityAdmission.Rejected(CodexToolCallProjectionFailure.ARGUMENTS_MISSING)
+        if ("arguments" !in item) {
+            return IdentityAdmission.Rejected(CodexToolCallProjectionFailure.ARGUMENTS_MISSING)
+        }
         return IdentityAdmission.Admitted(
             DynamicToolIdentity(
                 callId,
                 ToolAddress(namespace, tool),
-                DynamicToolArguments(CodexToolCallArgumentProjector.project(namespace, arguments)),
             )
         )
     }
@@ -232,7 +230,6 @@ internal object CodexToolCallProjector {
     private fun admitCompleted(
         item: JsonObject,
         identity: DynamicToolIdentity,
-        resultProjection: CodexToolCallResultProjection,
     ): CodexToolCallProjection {
         val completion =
             when (item.strictString("status")) {
@@ -252,11 +249,10 @@ internal object CodexToolCallProjector {
         if (declaredSuccess != null && declaredSuccess != completion.success) {
             return rejected(CodexToolCallProjectionFailure.COMPLETION_SUCCESS_CONFLICT)
         }
-        val duration =
-            when (val admission = admitDuration(item["durationMs"])) {
-                is DurationAdmission.Admitted -> admission.duration
-                is DurationAdmission.Rejected -> return rejected(admission.failure)
-            }
+        when (val admission = admitDuration(item["durationMs"])) {
+            is DurationAdmission.Admitted -> Unit
+            is DurationAdmission.Rejected -> return rejected(admission.failure)
+        }
         val contentItems =
             when (val candidate = item["contentItems"]) {
                 null,
@@ -269,8 +265,48 @@ internal object CodexToolCallProjector {
                 is ToolResultAdmission.Admitted -> admission.result
                 is ToolResultAdmission.Rejected -> return rejected(admission.failure)
             }
-        return CodexToolCallProjection.Projected(item)
+        return CodexToolCallProjection.Projected(
+            displayItem(
+                item,
+                identity,
+                buildJsonObject {
+                    put(
+                        "content",
+                        buildJsonArray {
+                            result.texts.forEach { text ->
+                                add(
+                                    buildJsonObject {
+                                        put("type", "text")
+                                        put("text", text.value)
+                                    }
+                                )
+                            }
+                        },
+                    )
+                },
+                when (completion) {
+                    DynamicToolCompletion.SUCCEEDED -> JsonNull
+                    DynamicToolCompletion.FAILED -> buildJsonObject { put("message", "Tool call failed") }
+                },
+            )
+        )
     }
+
+    private fun displayItem(
+        original: JsonObject,
+        identity: DynamicToolIdentity,
+        result: JsonElement,
+        error: JsonElement,
+    ): JsonObject =
+        JsonObject(
+            original +
+                buildJsonObject {
+                    put("type", "mcpToolCall")
+                    put("server", identity.address.namespace.value)
+                    put("result", result)
+                    put("error", error)
+                }
+        )
 
     private fun admitDuration(candidate: JsonElement?): DurationAdmission =
         when (candidate) {
@@ -300,27 +336,14 @@ internal object CodexToolCallProjector {
                             ?: return ToolResultAdmission.Rejected(CodexToolCallProjectionFailure.CONTENT_ITEM_INVALID)
                     texts += ToolResultText(text)
                 }
+                // Raw display uses text only; retain admitted media descriptors without interpretation.
                 "inputImage",
-                "inputAudio" -> Unit // The qualified native schema validates media; preserve it verbatim.
+                "inputAudio" -> texts += ToolResultText(item.toString())
                 else -> return ToolResultAdmission.Rejected(CodexToolCallProjectionFailure.CONTENT_ITEM_INVALID)
             }
         }
-        return ToolResultAdmission.Admitted(
-            DynamicToolResult(
-                texts = texts,
-                structuredObject = texts.singleOrNull()?.value?.let(::parseObject),
-            )
-        )
+        return ToolResultAdmission.Admitted(DynamicToolResult(texts = texts))
     }
-
-    private fun parseObject(source: String): JsonObject? =
-        try {
-            Json.parseToJsonElement(source) as? JsonObject
-        } catch (_: SerializationException) {
-            null
-        } catch (_: IllegalArgumentException) {
-            null
-        }
 
     private fun rejected(failure: CodexToolCallProjectionFailure): CodexToolCallProjection.Rejected =
         CodexToolCallProjection.Rejected(failure)
@@ -328,10 +351,7 @@ internal object CodexToolCallProjector {
     private data class DynamicToolIdentity(
         val callId: BrokerCallId,
         val address: ToolAddress,
-        val arguments: DynamicToolArguments,
     )
-
-    @JvmInline private value class DynamicToolArguments(val value: JsonElement)
 
     @JvmInline
     private value class ToolDurationMs private constructor(val value: Long) {
@@ -342,34 +362,11 @@ internal object CodexToolCallProjector {
 
     @JvmInline private value class ToolResultText(val value: String)
 
-    private data class DynamicToolResult(
-        val texts: List<ToolResultText>,
-        val structuredObject: JsonObject?,
-    )
+    private data class DynamicToolResult(val texts: List<ToolResultText>)
 
-    private enum class DynamicToolCompletion(
-        val success: Boolean,
-        val status: String,
-    ) {
-        SUCCEEDED(true, "completed"),
-        FAILED(false, "failed"),
-    }
-
-    private sealed interface DynamicToolCall {
-        val identity: DynamicToolIdentity
-
-        data class Started(
-            override val identity: DynamicToolIdentity,
-            val duration: ToolDurationMs?,
-        ) : DynamicToolCall
-
-        data class Completed(
-            override val identity: DynamicToolIdentity,
-            val completion: DynamicToolCompletion,
-            val duration: ToolDurationMs?,
-            val result: DynamicToolResult,
-            val resultProjection: CodexToolCallResultProjection,
-        ) : DynamicToolCall
+    private enum class DynamicToolCompletion(val success: Boolean) {
+        SUCCEEDED(true),
+        FAILED(false),
     }
 
     private sealed interface IdentityAdmission {
@@ -389,30 +386,6 @@ internal object CodexToolCallProjector {
 
         data class Rejected(val failure: CodexToolCallProjectionFailure) : ToolResultAdmission
     }
-}
-
-private const val KAST_NAMESPACE = "kast"
-
-private object CodexToolCallArgumentProjector {
-    fun project(namespace: ProviderNamespace, arguments: JsonElement): JsonElement {
-        if (namespace.value != KAST_NAMESPACE) return arguments
-        val fields = arguments as? JsonObject ?: return arguments
-        return JsonObject(
-            fields.mapValues { (name, value) ->
-                REDACTIONS[name]?.let(::JsonPrimitive) ?: value
-            }
-        )
-    }
-
-    private val REDACTIONS =
-        mapOf(
-            "candidate" to "<candidate>",
-            "selector" to "<symbol>",
-            "anchor" to "<source>",
-            "continuation" to "<continuation>",
-            "plan" to "<plan>",
-            "target" to "<symbol>",
-        )
 }
 
 internal sealed interface CodexThreadHistoryProjectionFailure {

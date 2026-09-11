@@ -15,6 +15,7 @@ import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -55,7 +56,7 @@ class InstalledServerProjectionTest {
                 .jsonArray
                 .map(JsonElement::jsonObject)
 
-        assertEquals(9, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(10, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertTrue(
             bootstrap.getValue("policy").jsonPrimitive.content.contains("compiler-grounded Kotlin source intelligence")
         )
@@ -72,8 +73,8 @@ class InstalledServerProjectionTest {
     @Test
     fun `server projection publishes readiness and canonical semantic budgets`() {
         val tools = projectionTools()
-        val readBudget = tools.tool("source.read").getValue("executionBudget").jsonObject
-        val traversalBudget = tools.tool("traversal.run").getValue("executionBudget").jsonObject
+        val readBudget = tools.tool("source_read").getValue("executionBudget").jsonObject
+        val traversalBudget = tools.tool("impact_analyze").getValue("executionBudget").jsonObject
         assertEquals("1020000", readBudget.getValue("readinessMillis").jsonPrimitive.content)
         assertEquals("60000", readBudget.getValue("operationMillis").jsonPrimitive.content)
         assertEquals(
@@ -90,20 +91,23 @@ class InstalledServerProjectionTest {
 
         assertEquals(
             listOf(
-                "query",
+                "search_classes",
+                "search_functions",
+                "search_declarations",
+                "query_symbols",
                 "symbol_lookup",
                 "symbol_inspect",
                 "source_read",
                 "semantic_query",
                 "impact_analyze",
-                "diagnostic_check",
+                "check_diagnostics",
                 "change_plan",
                 "change_apply",
                 "change_recover",
             ),
             tools.map { it.getValue("name").jsonPrimitive.content },
         )
-        assertEquals(listOf("symbol", "inspect"), invocations.invocation("symbol.inspect").cliCommand())
+        assertEquals(listOf("symbol", "inspect"), invocations.invocation("symbol_inspect").cliCommand())
         assertTrue(
             tools
                 .filter { it.getValue("name").jsonPrimitive.content.startsWith("change_") }
@@ -129,6 +133,9 @@ class InstalledServerProjectionTest {
         assertEquals(
             listOf(
                 "query.run",
+                "query.run",
+                "query.run",
+                "query.run",
                 "symbol.discover",
                 "symbol.inspect",
                 "source.read",
@@ -141,16 +148,16 @@ class InstalledServerProjectionTest {
             ),
             tools.map { it.getValue("operationId").jsonPrimitive.content },
         )
-        assertEquals(listOf("relation", "read"), invocations.invocation("relation.read").cliCommand())
-        assertEquals(listOf("diagnostic", "check"), invocations.invocation("diagnostic.check").cliCommand())
+        assertEquals(listOf("relation", "read"), invocations.invocation("semantic_query").cliCommand())
+        assertEquals(listOf("tool", "check_diagnostics"), invocations.invocation("check_diagnostics").cliCommand())
         tools
-            .tool("relation.read")
+            .tool("semantic_query")
             .outputSchema()
             .assertAdmits(
                 """{"status":"completed","document":{"operation":"relation.read","status":"complete","relations":[]}}"""
             )
         tools
-            .tool("diagnostic.check")
+            .tool("check_diagnostics")
             .outputSchema()
             .assertAdmits(
                 """{"status":"completed","document":{"operation":"diagnostic.check","status":"complete","diagnostics":[]}}"""
@@ -159,23 +166,35 @@ class InstalledServerProjectionTest {
 
     @Test
     fun `diagnostic input names its filesystem path and rejects the former scope field`() {
-        val input = projectionTools().tool("diagnostic.check").getValue("inputSchema").jsonObject
+        val input = projectionTools().tool("check_diagnostics").getValue("inputSchema").jsonObject
 
-        input.assertAdmits("""{"path":".","limit":100}""")
+        input.assertAdmits("""{"relative_path":".","max_diagnostics":null}""")
         input.assertRejects("""{"scope":"workspace","limit":100}""")
     }
 
     @Test
     fun `query schema exposes intent and defaults but not evaluator states`() {
-        val query = projectionTools().tool("query.run")
+        val query = projectionTools().tool("query_symbols")
         val input = query.getValue("inputSchema").jsonObject
-        input.assertAdmits("""{"type":"QUERY","from":{"type":"SEARCH","query":"OrderService"}}""")
-        input.assertAdmits("""{"type":"QUERY","from":{"type":"ALL"},"select":[]}""")
-        input.assertAdmits("""{"type":"QUERY","from":{"type":"REFS","refs":["exact:v2:example"]}}""")
-        input.assertRejects("""{"type":"QUERY","from":{"type":"REFS","refs":["candidate:v2:example"]}}""")
-        input.assertRejects("""{"type":"QUERY","from":{"type":"ALL"},"steps":[{"type":"INSPECT"}]}""")
-        input.assertRejects("""{"type":"QUERY","from":{"type":"ALL"},"execution":{"kind":"exhaustive"}}""")
-        assertEquals(io.github.amichne.kast.appserver.query.PublicQueryContract.parameters, input)
+        input.assertAdmits(
+            """{"source":{"type":"search_declarations","declaration_name":"OrderService","name_match":null,"declaration_kinds":null,"scope":null},"steps":null,"return_fields":null}"""
+        )
+        input.assertAdmits(
+            """{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":null,"return_fields":[]}"""
+        )
+        input.assertAdmits(
+            """{"source":{"type":"symbol_refs","symbol_refs":["NON_ISSUED_SCHEMA_TEST_ONLY"]},"steps":null,"return_fields":null}"""
+        )
+        input.assertRejects("""{"type":"QUERY","from":{"type":"ALL"}}""")
+        input.assertRejects(
+            """{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":[{"type":"check_diagnostics"}],"return_fields":null}"""
+        )
+        assertEquals(
+            io.github.amichne.kast.appserver.query.PublicToolContract.parameters(
+                io.github.amichne.kast.protocol.registry.PublicToolIdentity.QUERY_SYMBOLS
+            ),
+            input,
+        )
         query
             .outputSchema()
             .assertAdmits(
@@ -195,13 +214,13 @@ class InstalledServerProjectionTest {
             """"changes":[{"path":"src/main/kotlin/demo/EventConsumer.kt","kind":"update","diff":"@@ class EventConsumer @@\n-old\n+new"}]"""
 
         tools
-            .tool("change.plan")
+            .tool("change_plan")
             .outputSchema()
             .assertAdmits(
                 """{"status":"completed","document":{"operation":"change.plan","status":"complete","planIdentity":"plan:opaque",$preview}}"""
             )
         tools
-            .tool("change.apply")
+            .tool("change_apply")
             .outputSchema()
             .assertAdmits(
                 """{"status":"completed","document":{"operation":"change.apply","status":"complete","receiptIdentity":"receipt:opaque",$preview}}"""
@@ -225,37 +244,42 @@ class InstalledServerProjectionTest {
         val expectedPublicOperations = HostedOperationProjection.publicDefinitions.map { it.operation.id.value }
         val internalOperations = HostedOperationProjection.internalDefinitions.map { it.operation.id.value }
 
-        assertEquals(10, tools.size)
-        assertEquals(9, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(13, tools.size)
+        assertEquals(10, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
-            expectedPublicOperations,
-            tools.map { it.getValue("operationId").jsonPrimitive.content },
+            expectedPublicOperations.toSet(),
+            tools.map { it.getValue("operationId").jsonPrimitive.content }.toSet(),
         )
         assertEquals(
             listOf(
-                "query",
+                "search_classes",
+                "search_functions",
+                "search_declarations",
+                "query_symbols",
                 "symbol_lookup",
                 "symbol_inspect",
                 "source_read",
                 "semantic_query",
                 "impact_analyze",
-                "diagnostic_check",
+                "check_diagnostics",
                 "change_plan",
                 "change_apply",
                 "change_recover",
             ),
             tools.map { it.getValue("name").jsonPrimitive.content },
         )
-        assertFalse(tools.tool("query.run").getValue("deferLoading").jsonPrimitive.content.toBoolean())
-        assertTrue(
+        assertTrue(tools.tool("query_symbols").getValue("deferLoading").jsonPrimitive.content.toBoolean())
+        assertEquals(
+            setOf("search_classes", "search_functions", "search_declarations", "check_diagnostics"),
             tools
-                .filterNot { it.getValue("operationId").jsonPrimitive.content == "query.run" }
-                .all { it.getValue("deferLoading").jsonPrimitive.content.toBoolean() }
+                .filterNot { it.getValue("deferLoading").jsonPrimitive.boolean }
+                .map { it.getValue("name").jsonPrimitive.content }
+                .toSet(),
         )
         assertFalse(tools.any { it.getValue("operationId").jsonPrimitive.content in internalOperations })
 
-        val discover = tools.tool("symbol.discover")
+        val discover = tools.tool("symbol_lookup")
         val targetVariants =
             discover
                 .getValue("inputSchema")
@@ -283,35 +307,38 @@ class InstalledServerProjectionTest {
         )
         assertEquals(
             linkedMapOf(
-                "query.run" to listOf("query", "run"),
-                "symbol.discover" to listOf("symbol", "discover"),
-                "symbol.inspect" to listOf("symbol", "inspect"),
-                "source.read" to listOf("source", "read"),
-                "relation.read" to listOf("relation", "read"),
-                "traversal.run" to listOf("traversal", "run"),
-                "diagnostic.check" to listOf("diagnostic", "check"),
-                "change.plan" to listOf("change", "plan"),
-                "change.apply" to listOf("change", "apply"),
-                "change.recover" to listOf("change", "recover"),
+                "search_classes" to listOf("tool", "search_classes"),
+                "search_functions" to listOf("tool", "search_functions"),
+                "search_declarations" to listOf("tool", "search_declarations"),
+                "query_symbols" to listOf("tool", "query_symbols"),
+                "symbol_lookup" to listOf("symbol", "discover"),
+                "symbol_inspect" to listOf("symbol", "inspect"),
+                "source_read" to listOf("source", "read"),
+                "semantic_query" to listOf("relation", "read"),
+                "impact_analyze" to listOf("traversal", "run"),
+                "check_diagnostics" to listOf("tool", "check_diagnostics"),
+                "change_plan" to listOf("change", "plan"),
+                "change_apply" to listOf("change", "apply"),
+                "change_recover" to listOf("change", "recover"),
             ),
             invocations.associate { invocation ->
-                invocation.getValue("operationId").jsonPrimitive.content to invocation.cliCommand()
+                invocation.getValue("toolName").jsonPrimitive.content to invocation.cliCommand()
             },
         )
         assertTrue(invocations.all { "bindings" !in it.getValue("invocation").jsonObject })
-        assertEquals(tools.size, tools.map { it.getValue("outputSchema") }.distinct().size)
+        assertEquals(10, tools.map { it.getValue("outputSchema") }.distinct().size)
 
         assertTrue(
             tools
-                .tool("symbol.inspect")
+                .tool("symbol_inspect")
                 .completedDocumentRequiredProperties()
                 .containsAll(listOf("operation", "status", "symbol"))
         )
-        assertTrue(tools.tool("traversal.run").completedDocumentProperty("graph") != null)
+        assertTrue(tools.tool("impact_analyze").completedDocumentProperty("graph") != null)
 
         val changeIntentVariants =
             tools
-                .tool("change.plan")
+                .tool("change_plan")
                 .getValue("inputSchema")
                 .jsonObject
                 .getValue("properties")
@@ -349,7 +376,7 @@ class InstalledServerProjectionTest {
 
     @Test
     fun `symbol output schema rejects proof contradictions`() {
-        val schema = projectionTools().tool("symbol.inspect").outputSchema()
+        val schema = projectionTools().tool("symbol_inspect").outputSchema()
         val valid =
             symbolInspectProcessDocument(
                 kind = "classlike",
@@ -417,10 +444,10 @@ class InstalledServerProjectionTest {
 
     @Test
     fun `source read projection accepts one canonical request document and proof rich outcomes`() {
-        val tool = projectionTools().tool("source.read")
+        val tool = projectionTools().tool("source_read")
         assertEquals(
             listOf("source", "read"),
-            projectionInvocations().invocation("source.read").cliCommand(),
+            projectionInvocations().invocation("source_read").cliCommand(),
         )
 
         val complete =
@@ -531,12 +558,12 @@ class InstalledServerProjectionTest {
     private fun JsonObject.completedDocumentProperty(name: String) =
         completedDocumentSchema().getValue("properties").jsonObject[name]
 
-    private fun List<JsonObject>.tool(operationId: String): JsonObject = single {
-        it.getValue("operationId").jsonPrimitive.content == operationId
+    private fun List<JsonObject>.tool(name: String): JsonObject = single {
+        it.getValue("name").jsonPrimitive.content == name
     }
 
-    private fun List<JsonObject>.invocation(operationId: String): JsonObject = single {
-        it.getValue("operationId").jsonPrimitive.content == operationId
+    private fun List<JsonObject>.invocation(name: String): JsonObject = single {
+        it.getValue("toolName").jsonPrimitive.content == name
     }
 
     companion object {

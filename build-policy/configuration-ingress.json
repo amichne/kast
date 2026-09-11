@@ -27,6 +27,7 @@
     "packaging/installation-lifecycle.py",
     "packaging/run-two-workspace-acceptance.py",
     "packaging/test-acceptance-environment.py",
+    "packaging/test-install-checkout.py",
     "packaging/test-installed-codex-host.py",
     "packaging/test-installed-product.sh",
     "workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/HostedReadConfiguration.kt",

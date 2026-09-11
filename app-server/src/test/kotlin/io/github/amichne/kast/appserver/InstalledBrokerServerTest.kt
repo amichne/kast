@@ -120,13 +120,13 @@ class InstalledBrokerServerTest {
                 configured(base).upstreamOptions.appServerArguments.withOwnedTransport("unix:///test.sock"),
             )
             assertEquals(
-                "query,source_read,semantic_query,impact_analyze,diagnostic_check," +
+                "search_classes,search_functions,search_declarations,query_symbols,source_read,semantic_query,impact_analyze,check_diagnostics," +
                     "change_plan,change_apply,change_recover",
                 configured(base).kastOptions.toolSelection.environmentValue,
             )
             assertEquals(
-                "query,diagnostic_check,change_apply",
-                configured(base + ("KAST_APP_SERVER_TOOLS" to "change_apply,query,diagnostic_check"))
+                "query_symbols,check_diagnostics,change_apply",
+                configured(base + ("KAST_APP_SERVER_TOOLS" to "change_apply,query_symbols,check_diagnostics"))
                     .kastOptions
                     .toolSelection
                     .environmentValue,
@@ -138,7 +138,7 @@ class InstalledBrokerServerTest {
                 InstalledBrokerServerConfiguration.admit(
                     kast,
                     user,
-                    base + ("KAST_APP_SERVER_TOOLS" to "query,symbol_unknown"),
+                    base + ("KAST_APP_SERVER_TOOLS" to "query_symbols,symbol_unknown"),
                 ),
             )
             assertEquals(
@@ -372,11 +372,14 @@ class InstalledBrokerServerTest {
                         .single { it.getValue("name").jsonPrimitive.content == "kast" }
                 assertEquals(
                     listOf(
-                        "query",
+                        "search_classes",
+                        "search_functions",
+                        "search_declarations",
+                        "query_symbols",
                         "source_read",
                         "semantic_query",
                         "impact_analyze",
-                        "diagnostic_check",
+                        "check_diagnostics",
                         "change_plan",
                         "change_apply",
                         "change_recover",

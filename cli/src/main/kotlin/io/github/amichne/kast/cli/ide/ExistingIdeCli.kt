@@ -19,6 +19,7 @@ internal fun selectCliRuntimePath(argv: List<String>): CliRuntimePath {
     return when (command) {
         "index",
         "ide",
+        "tool",
         "query",
         "symbol",
         "source",

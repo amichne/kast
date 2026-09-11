@@ -81,7 +81,7 @@ def scanner(root: Path) -> Path:
 def generate(root: Path, directory: Path, version: str, sha: str) -> None:
     plugins = tuple(directory.glob(f"kast-ide-hosted-v{version}-idea-*.zip"))
     if len(plugins) != 1:
-        raise SbomError("expected exactly one IDEA-build-specific hosted plugin")
+        raise SbomError("expected exactly one IDEA-release-line hosted plugin")
     names = (
         f"kast-control-v{version}-macos-aarch64.tar.gz",
         f"kast-semantic-runtime-{version}-macos-aarch64.zip",

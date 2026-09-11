@@ -186,7 +186,7 @@ class KastProviderTest {
         val executable = executable(temporary.resolve("kast"))
         for ((schema, failure) in
             listOf(
-                capabilitySchema().replace("\"schemaVersion\": 9", "\"schemaVersion\": 8") to
+                capabilitySchema().replace("\"schemaVersion\": 10", "\"schemaVersion\": 8") to
                     KastQualificationFailure.SCHEMA_INCOMPATIBLE,
                 capabilitySchema().replace("\"operationMillis\": 60000", "\"operationMillis\": 30000") to
                     KastQualificationFailure.SCHEMA_INCOMPATIBLE,
@@ -780,7 +780,7 @@ class KastProviderTest {
         {
           "schemaVersion": 1,
           "serverProjection": {
-            "schemaVersion": 9,
+            "schemaVersion": 10,
             "namespace": "kast",
             "hostedBootstrap": {
               "schemaVersion": 1,
@@ -837,10 +837,11 @@ class KastProviderTest {
               ]
             },
             "cliInvocations": {
-              "schemaVersion": 2,
+              "schemaVersion": 3,
               "operations": [
                 {
                   "operationId": "symbol.discover",
+                  "toolName": "symbol_lookup",
                   "cliUsage": "symbol discover < request.json",
                   "invocation": {
                     "type": "CLI",
@@ -849,6 +850,7 @@ class KastProviderTest {
                 },
                 {
                   "operationId": "change.apply",
+                  "toolName": "change_apply",
                   "cliUsage": "change apply < request.json",
                   "invocation": {
                     "type": "CLI",

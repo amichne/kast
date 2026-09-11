@@ -138,7 +138,7 @@ class KtorBrokerServerTest {
                             .jsonObject
                             .getValue("item")
                             .jsonObject
-                    assertEquals("dynamicToolCall", first.getValue("type").jsonPrimitive.content)
+                    assertEquals("mcpToolCall", first.getValue("type").jsonPrimitive.content)
                     assertEquals(
                         "exact:v2:opaque",
                         first.getValue("arguments").jsonObject.getValue("selector").jsonPrimitive.content,
@@ -146,7 +146,9 @@ class KtorBrokerServerTest {
                     assertEquals(
                         "exact model result",
                         first
-                            .getValue("contentItems")
+                            .getValue("result")
+                            .jsonObject
+                            .getValue("content")
                             .jsonArray
                             .single()
                             .jsonObject

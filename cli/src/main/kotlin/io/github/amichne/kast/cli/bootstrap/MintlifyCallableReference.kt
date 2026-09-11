@@ -4,7 +4,6 @@ import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandSurface
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
-import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
@@ -73,7 +72,7 @@ internal fun mintlifyCallableReference(commandSurface: CliCommandSurface): CliJs
 
 private fun InstalledServerBinding.operationDocument(): MintlifyCallableOperationDocument =
     MintlifyCallableOperationDocument(
-        operationId = tool.operationId,
+        operationId = tool.name,
         summary = tool.name.replace('_', ' '),
         description =
             "${tool.description}\n\nThis callable is not an HTTP endpoint. " +
@@ -127,10 +126,10 @@ private fun InstalledServerBinding.operationDocument(): MintlifyCallableOperatio
     )
 
 private fun InstalledServerBinding.requestComponentName(): MintlifyCallableComponentName =
-    MintlifyCallableComponentName.request(operation)
+    MintlifyCallableComponentName.request(tool.name)
 
 private fun InstalledServerBinding.responseComponentName(): MintlifyCallableComponentName =
-    MintlifyCallableComponentName.response(operation)
+    MintlifyCallableComponentName.response(tool.name)
 
 /** Rebinds one schema resource's document-local definitions after OpenAPI component embedding. */
 private fun JsonElement.rebaseLocalDefinitions(componentName: MintlifyCallableComponentName): JsonElement =
@@ -158,11 +157,11 @@ private fun JsonElement.rebaseLocalDefinitions(componentName: MintlifyCallableCo
 @JvmInline
 private value class MintlifyCallableComponentName private constructor(val value: String) {
     companion object {
-        fun request(operation: CanonicalOperation): MintlifyCallableComponentName =
-            MintlifyCallableComponentName("${operation.name}Request")
+        fun request(toolName: String): MintlifyCallableComponentName =
+            MintlifyCallableComponentName("${toolName}Request")
 
-        fun response(operation: CanonicalOperation): MintlifyCallableComponentName =
-            MintlifyCallableComponentName("${operation.name}Response")
+        fun response(toolName: String): MintlifyCallableComponentName =
+            MintlifyCallableComponentName("${toolName}Response")
     }
 }
 

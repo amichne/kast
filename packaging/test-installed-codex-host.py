@@ -15,6 +15,7 @@ import subprocess
 import sys
 from acceptance_environment import AcceptanceEnvironment, admitted_tools
 import time
+import zipfile
 
 
 class AcceptanceFailure(Exception):
@@ -79,7 +80,7 @@ def installed_catalog_evidence(kast: Path, environment: dict[str, str]) -> dict:
         policy = bootstrap["policy"]
         selected_names = environment.get(
             "KAST_APP_SERVER_TOOLS",
-            "query,source_read,semantic_query,impact_analyze,diagnostic_check,"
+            "search_classes,search_functions,search_declarations,check_diagnostics,query_symbols,source_read,semantic_query,impact_analyze,"
             "change_plan,change_apply,change_recover",
         ).split(",")
         if not selected_names or len(selected_names) != len(set(selected_names)):
@@ -88,6 +89,17 @@ def installed_catalog_evidence(kast: Path, environment: dict[str, str]) -> dict:
         tools = [tool for tool in bootstrap["tools"] if tool["name"] in selected]
         if {tool["name"] for tool in tools} != selected:
             raise AcceptanceFailure("configured Kast tool selection was unavailable")
+        # Read the installed generation projection, whose constraints intentionally
+        # differ from the full runtime validation schema.
+        projections = []
+        for jar in (kast.parent.parent / "lib").glob("*.jar"):
+            with zipfile.ZipFile(jar) as archive:
+                resource = "io/github/amichne/kast/appserver/query/tools.app-server.json"
+                if resource in archive.namelist():
+                    projections.append(json.loads(archive.read(resource)))
+        if len(projections) != 1:
+            raise AcceptanceFailure("installed generation projection was missing or ambiguous")
+        generation = {tool["name"]: tool["inputSchema"] for tool in projections[0]["tools"]}
         namespace = {
             "type": "namespace",
             "name": "kast",
@@ -97,7 +109,7 @@ def installed_catalog_evidence(kast: Path, environment: dict[str, str]) -> dict:
                     "type": "function",
                     "name": tool["name"],
                     "description": tool["description"],
-                    "inputSchema": tool["inputSchema"],
+                    "inputSchema": generation.get(tool["name"], tool["inputSchema"]),
                     "deferLoading": tool["deferLoading"],
                 }
                 for tool in tools

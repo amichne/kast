@@ -30,7 +30,7 @@ internal fun AgentSessionBootstrap.toCodexSessionProjection(): CodexSessionProje
                                     put("type", "function")
                                     put("name", tool.name.value)
                                     put("description", tool.description.value)
-                                    put("inputSchema", tool.inputSchema.document)
+                                    put("inputSchema", tool.generationSchema)
                                     put("deferLoading", tool.loading == HostedToolLoading.DEFERRED)
                                 }
                             )

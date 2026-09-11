@@ -67,6 +67,7 @@ data class AgentToolDefinition(
     val description: ProtocolText,
     val approval: HostedApprovalPolicy,
     val loading: HostedToolLoading,
+    val inputBinding: AgentToolInputBinding = AgentToolInputBinding.Canonical,
 )
 
 enum class AgentToolPolicyFailure {
@@ -91,16 +92,10 @@ value class AgentToolPolicy private constructor(val text: String) {
 
 /** Sole canonical hosted-agent metadata and policy authority. */
 object CanonicalAgentToolDefinitions {
-    val query =
-        tool(
-            CanonicalOperationDefinitions.queryRun,
-            "query",
-            "Search, filter, and expand exact Kotlin symbols. Use SEARCH for names, ALL for " +
-                "enumeration, or REFS for returned exact-symbol tokens. Omitted controls use the " +
-                "defaults documented in the parameter contract. Kast owns candidate refinement " +
-                "and bounded work; incomplete coverage stays explicit.",
-            loading = HostedToolLoading.EAGER,
-        )
+    val query = facade(PublicToolIdentity.QUERY_SYMBOLS)
+    val searchClasses = facade(PublicToolIdentity.SEARCH_CLASSES)
+    val searchFunctions = facade(PublicToolIdentity.SEARCH_FUNCTIONS)
+    val searchDeclarations = facade(PublicToolIdentity.SEARCH_DECLARATIONS)
     val symbolLookup =
         tool(
             CanonicalOperationDefinitions.symbolDiscover,
@@ -130,7 +125,7 @@ object CanonicalAgentToolDefinitions {
             CanonicalOperationDefinitions.relationRead,
             "semantic_query",
             "Read one bounded compiler-grounded semantic relation from an exact selector. Use " +
-                "kast.query first when exact identity is not established.",
+                "a Kast search tool first when exact identity is not established.",
         )
     val impactAnalyze =
         tool(
@@ -140,14 +135,7 @@ object CanonicalAgentToolDefinitions {
                 "is acquired automatically for the current generation; the caller does not prepare " +
                 "it separately.",
         )
-    val diagnosticCheck =
-        tool(
-            CanonicalOperationDefinitions.diagnosticCheck,
-            "diagnostic_check",
-            "Check bounded compiler diagnostics beneath a workspace-relative file or directory path. " +
-                "Use `.` for the workspace root. Prefer this when compiler-grounded diagnostic " +
-                "identity matters.",
-        )
+    val diagnosticCheck = facade(PublicToolIdentity.CHECK_DIAGNOSTICS)
     val changePlan =
         tool(
             CanonicalOperationDefinitions.changePlan,
@@ -175,6 +163,9 @@ object CanonicalAgentToolDefinitions {
 
     val all: List<AgentToolDefinition> =
         listOf(
+            searchClasses,
+            searchFunctions,
+            searchDeclarations,
             query,
             symbolLookup,
             symbolInspect,
@@ -198,11 +189,12 @@ object CanonicalAgentToolDefinitions {
                 """
                 Kast provides compiler-grounded Kotlin source intelligence for the current repository.
 
-                Prefer kast.query for read-only symbol discovery, filtering, and semantic expansion.
-                Its SEARCH, ALL, and REFS sources request exact symbols; Kast owns candidate
-                refinement, intermediate references, and bounded iteration. Use specialized read tools
-                only when their narrower contract is specifically required. Preserve returned refs
-                rather than reconstructing identities from source text.
+                Use kast.search_classes for a known class-like name and kast.search_functions for a
+                known function or method name. Use kast.search_declarations for unknown or mixed kinds,
+                properties and type aliases. Exact matching is the default; request fuzzy explicitly.
+                Use kast.check_diagnostics for compiler diagnostics. Use the deferred kast.query_symbols
+                for enumeration, returned symbol references, or ordered filters and relation expansion.
+                Preserve returned symbol references verbatim. Use semantic_query for occurrence facts.
 
                 Semantic reads use the existing IntelliJ project for the current repository and
                 require its saved, indexed source state. An unavailable or unready host rejects the
@@ -212,6 +204,25 @@ object CanonicalAgentToolDefinitions {
                     .trimIndent()
             )
         )
+
+    private fun facade(identity: PublicToolIdentity): AgentToolDefinition {
+        val operation =
+            when (identity) {
+                PublicToolIdentity.SEARCH_CLASSES,
+                PublicToolIdentity.SEARCH_FUNCTIONS,
+                PublicToolIdentity.SEARCH_DECLARATIONS,
+                PublicToolIdentity.QUERY_SYMBOLS -> CanonicalOperationDefinitions.queryRun
+                PublicToolIdentity.CHECK_DIAGNOSTICS -> CanonicalOperationDefinitions.diagnosticCheck
+            }
+        return AgentToolDefinition(
+            operation,
+            refined(AgentToolName.parse(identity.toolName)),
+            refined(ProtocolText.parse(identity.description)),
+            HostedApprovalPolicy.NONE,
+            identity.loading,
+            AgentToolInputBinding.Facade(identity),
+        )
+    }
 
     private fun tool(
         operation: OperationDefinition<*, *, *, *, *>,
@@ -233,4 +244,11 @@ object CanonicalAgentToolDefinitions {
             is Refinement.Refined -> value.value
             is Refinement.Rejected -> error("Invalid canonical hosted-agent metadata")
         }
+}
+
+/** The admitted public presentation remains bound even when several tools use one operation. */
+sealed interface AgentToolInputBinding {
+    data object Canonical : AgentToolInputBinding
+
+    data class Facade(val identity: PublicToolIdentity) : AgentToolInputBinding
 }

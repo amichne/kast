@@ -5,7 +5,7 @@ sidebarTitle: "Install and connect"
 description: "Install Kast and make compiler-grounded Kotlin search available to an agent."
 resource: "file://docs/public/start.mdx"
 tags: ["installation", "agents", "Codex", "IntelliJ"]
-timestamp: "2026-09-07T00:00:00-04:00"
+timestamp: "2026-09-11T00:00:00-04:00"
 code_sources:
   - path: "install.sh"
   - path: "gradle/libs.versions.toml"
@@ -32,12 +32,14 @@ Kast currently supports this host contract:
 | --- | --- |
 | Platform | macOS on Apple silicon |
 | Repository | An on-disk Kotlin Gradle repository |
-| IntelliJ | IDEA and bundled Kotlin plugin build `262.10315.125` |
+| IntelliJ | IDEA and bundled Kotlin plugin in the `262` release line |
 | Runtime | The Java 25 JBR bundled with the selected IDEA installation |
 
-The tested and packaged pair is IDEA `262.10315.125` with Kotlin plugin
-`262.10315.125-IJ`. The installer selects an exact-build plugin archive and
-rejects an IDEA build for which the release has no matching archive.
+The build baseline remains IDEA `262.10315.125` with Kotlin plugin
+`262.10315.125-IJ`. The plugin accepts other builds in the `262` release line,
+and the installer selects the shared `idea-262.zip` archive. Other release lines
+are excluded. This is an intentionally broad compatibility policy; native
+acceptance evidence remains limited to the recorded baseline.
 
 The built-in Codex integration also requires an installed `codex` executable on
 `PATH`, or an absolute `CODEX_EXECUTABLE`.
@@ -95,7 +97,7 @@ the broker running. Full desktop UI compatibility remains unqualified; see the
 [compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md).
 
 Ask the agent a question about the Kotlin repository. Its first Kast read should
-normally use `kast.query`. A successful tool row can be expanded to inspect the
+normally use `kast.search_classes`, `kast.search_functions` or `kast.search_declarations`. A successful tool row can be expanded to inspect the
 compiler-grounded result.
 
 <Info>

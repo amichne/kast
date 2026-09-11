@@ -10,8 +10,10 @@ import io.github.amichne.kast.appserver.provider.KastOperationId
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -20,7 +22,7 @@ import org.junit.jupiter.api.io.TempDir
 
 class CodexObserverReplayTest {
     @Test
-    fun `applied Kast change retains its original native dynamic item`(@TempDir temporary: Path) {
+    fun `applied Kast change retains raw evidence in the expandable tool display`(@TempDir temporary: Path) {
         val namespace =
             when (val admitted = ProviderNamespace.admit("kast")) {
                 is Refinement.Refined -> admitted.value
@@ -76,7 +78,7 @@ class CodexObserverReplayTest {
 
         val projected = CodexThreadHistoryProjector.project(history, setOf(namespace))
         check(projected is CodexThreadHistoryProjection.Projected)
-        assertEquals(history, projected.result)
+        assertRawToolDisplay(toolItem(history), toolItem(projected.result))
 
         val escaped =
             Json.parseToJsonElement(
@@ -90,7 +92,7 @@ class CodexObserverReplayTest {
                 .jsonObject
         val rejected = CodexThreadHistoryProjector.project(escaped, setOf(namespace))
         check(rejected is CodexThreadHistoryProjection.Projected)
-        assertEquals(escaped, rejected.result)
+        assertRawToolDisplay(toolItem(escaped), toolItem(rejected.result))
     }
 
     @Test
@@ -159,8 +161,24 @@ class CodexObserverReplayTest {
             }
             val projected = CodexThreadHistoryProjector.project(history, setOf(namespace))
             check(projected is CodexThreadHistoryProjection.Projected)
-            assertEquals(history, projected.result)
-            assertEquals(projected, CodexThreadHistoryProjector.project(projected.result, setOf(namespace)))
+            assertRawToolDisplay(toolItem(history), toolItem(projected.result))
+            assertEquals(
+                CodexThreadHistoryProjection.Unchanged,
+                CodexThreadHistoryProjector.project(projected.result, setOf(namespace)),
+            )
         }
     }
+
+    private fun toolItem(history: JsonObject): JsonObject =
+        history
+            .getValue("thread")
+            .jsonObject
+            .getValue("turns")
+            .jsonArray
+            .single()
+            .jsonObject
+            .getValue("items")
+            .jsonArray
+            .single()
+            .jsonObject
 }

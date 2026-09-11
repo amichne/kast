@@ -165,42 +165,47 @@ class CodexProtocolAdapterTest {
     }
 
     @Test
-    fun `owned dynamic lifecycle retains native identity and complete content for downstream observers`() =
-        runBlocking {
-            val adapter =
-                CodexProtocolAdapter(
-                    echoBroker(),
-                    protocolContracts(),
-                    MemoryThreadCatalogStore(),
-                )
-            val arguments = Json.parseToJsonElement("""{"value":"hello","scope":{"kind":"workspace"}}""")
-            val structuredResult = Json.parseToJsonElement("""{"value":"hello","details":{"count":2}}""")
-            val started =
-                """{"method":"item/started","params":{"threadId":"thread-1","turnId":"turn-1","startedAtMs":10,"item":{"type":"dynamicToolCall","id":"call-1","tool":"say","namespace":"echo","arguments":$arguments,"status":"inProgress"}}}"""
-            val completed =
-                """{"method":"item/completed","params":{"threadId":"thread-1","turnId":"turn-1","completedAtMs":27,"item":{"type":"dynamicToolCall","id":"call-1","tool":"say","namespace":"echo","arguments":$arguments,"status":"completed","contentItems":[{"type":"inputText","text":"{\"value\":\"hello\",\"details\":{\"count\":2}}"}],"success":true,"durationMs":17}}}"""
-
-            val startedDocument =
-                Json.parseToJsonElement((adapter.fromUpstream(started) as ProtocolRouting.ForwardDownstream).message)
-                    .jsonObject
-            val startedParams = startedDocument.getValue("params").jsonObject
-            val startedItem = startedParams.getValue("item").jsonObject
-            assertEquals(Json.parseToJsonElement(started), startedDocument)
-
-            val completedDocument =
-                Json.parseToJsonElement((adapter.fromUpstream(completed) as ProtocolRouting.ForwardDownstream).message)
-                    .jsonObject
-            val completedParams = completedDocument.getValue("params").jsonObject
-            val completedItem = completedParams.getValue("item").jsonObject
-            assertEquals(Json.parseToJsonElement(completed), completedDocument)
-
-            val unowned =
-                " { \"method\":\"item/started\",\"params\":{\"threadId\":\"thread-1\",\"turnId\":\"turn-1\",\"startedAtMs\":10,\"item\":{\"type\":\"dynamicToolCall\",\"id\":\"call-2\",\"tool\":\"say\",\"namespace\":\"external\",\"arguments\":{},\"status\":\"inProgress\"}}} "
-            assertEquals(
-                unowned,
-                (adapter.fromUpstream(unowned) as ProtocolRouting.ForwardDownstream).message,
+    fun `owned dynamic lifecycle exposes raw content through the native MCP display`() = runBlocking {
+        val adapter =
+            CodexProtocolAdapter(
+                echoBroker(),
+                protocolContracts(),
+                MemoryThreadCatalogStore(),
             )
-        }
+        val arguments = Json.parseToJsonElement("""{"value":"hello","scope":{"kind":"workspace"}}""")
+        val structuredResult = Json.parseToJsonElement("""{"value":"hello","details":{"count":2}}""")
+        val started =
+            """{"method":"item/started","params":{"threadId":"thread-1","turnId":"turn-1","startedAtMs":10,"item":{"type":"dynamicToolCall","id":"call-1","tool":"say","namespace":"echo","arguments":$arguments,"status":"inProgress"}}}"""
+        val completed =
+            """{"method":"item/completed","params":{"threadId":"thread-1","turnId":"turn-1","completedAtMs":27,"item":{"type":"dynamicToolCall","id":"call-1","tool":"say","namespace":"echo","arguments":$arguments,"status":"completed","contentItems":[{"type":"inputText","text":"{\"value\":\"hello\",\"details\":{\"count\":2}}"}],"success":true,"durationMs":17}}}"""
+
+        val startedDocument =
+            Json.parseToJsonElement((adapter.fromUpstream(started) as ProtocolRouting.ForwardDownstream).message)
+                .jsonObject
+        val startedParams = startedDocument.getValue("params").jsonObject
+        val startedItem = startedParams.getValue("item").jsonObject
+        assertRawToolDisplay(
+            Json.parseToJsonElement(started).jsonObject.getValue("params").jsonObject.getValue("item").jsonObject,
+            startedItem,
+        )
+
+        val completedDocument =
+            Json.parseToJsonElement((adapter.fromUpstream(completed) as ProtocolRouting.ForwardDownstream).message)
+                .jsonObject
+        val completedParams = completedDocument.getValue("params").jsonObject
+        val completedItem = completedParams.getValue("item").jsonObject
+        assertRawToolDisplay(
+            Json.parseToJsonElement(completed).jsonObject.getValue("params").jsonObject.getValue("item").jsonObject,
+            completedItem,
+        )
+
+        val unowned =
+            " { \"method\":\"item/started\",\"params\":{\"threadId\":\"thread-1\",\"turnId\":\"turn-1\",\"startedAtMs\":10,\"item\":{\"type\":\"dynamicToolCall\",\"id\":\"call-2\",\"tool\":\"say\",\"namespace\":\"external\",\"arguments\":{},\"status\":\"inProgress\"}}} "
+        assertEquals(
+            unowned,
+            (adapter.fromUpstream(unowned) as ProtocolRouting.ForwardDownstream).message,
+        )
+    }
 
     @Test
     fun `Kast observer projection occupies one expandable native tool item`(@TempDir temporary: Path) = runBlocking {
@@ -311,7 +316,7 @@ class CodexProtocolAdapterTest {
         val toolParams = downstream.single().getValue("params").jsonObject
         val toolItem = toolParams.getValue("item").jsonObject
 
-        assertEquals(dynamicKastItem(arguments, canonicalResult, completed = true), toolItem)
+        assertRawToolDisplay(dynamicKastItem(arguments, canonicalResult, completed = true), toolItem)
         assertEquals("thread-1", toolParams.getValue("threadId").jsonPrimitive.content)
         assertEquals("turn-1", toolParams.getValue("turnId").jsonPrimitive.content)
         assertEquals(27, toolParams.getValue("completedAtMs").jsonPrimitive.content.toLong())
@@ -329,66 +334,67 @@ class CodexProtocolAdapterTest {
     }
 
     @Test
-    fun `Kast change projection occupies one native file change item`(@TempDir temporary: Path) = runBlocking {
-        val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
-        val file =
-            when (
-                val admitted =
-                    ObserverFileChange.admit(
-                        "cli/src/main/kotlin/sample/EventConsumer.kt",
-                        ObserverFileChangeKind.UPDATE,
-                        "@@ consume @@\n-old()\n+new()",
-                    )
-            ) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> error("Static file change rejected")
-            }
-        val files =
-            when (val admitted = ObserverFileChangeSet.admit(listOf(file))) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> error("Static file set rejected")
-            }
-        val broker =
-            observerBroker(
-                AtomicInteger(),
-                mutableListOf(),
-                ObserverPresentation.FileChanges(files),
+    fun `Kast changes use the same raw tool display without a fabricated file change`(@TempDir temporary: Path) =
+        runBlocking {
+            val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+            val file =
+                when (
+                    val admitted =
+                        ObserverFileChange.admit(
+                            "cli/src/main/kotlin/sample/EventConsumer.kt",
+                            ObserverFileChangeKind.UPDATE,
+                            "@@ consume @@\n-old()\n+new()",
+                        )
+                ) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> error("Static file change rejected")
+                }
+            val files =
+                when (val admitted = ObserverFileChangeSet.admit(listOf(file))) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> error("Static file set rejected")
+                }
+            val broker =
+                observerBroker(
+                    AtomicInteger(),
+                    mutableListOf(),
+                    ObserverPresentation.FileChanges(files),
+                )
+            val store = MemoryThreadCatalogStore()
+            store.write(ThreadCatalogBinding.admit("thread-1", broker.catalog.digest, cwd).refinedValue())
+            val adapter = CodexProtocolAdapter(broker, protocolContracts(), store)
+            val arguments = buildJsonObject {}
+            adapter.fromUpstream(
+                """{"id":9,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"kast","tool":"symbol_inspect","arguments":{}}}"""
             )
-        val store = MemoryThreadCatalogStore()
-        store.write(ThreadCatalogBinding.admit("thread-1", broker.catalog.digest, cwd).refinedValue())
-        val adapter = CodexProtocolAdapter(broker, protocolContracts(), store)
-        val arguments = buildJsonObject {}
-        adapter.fromUpstream(
-            """{"id":9,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"kast","tool":"symbol_inspect","arguments":{}}}"""
-        )
-        val completed = buildJsonObject {
-            put("method", "item/completed")
-            put(
-                "params",
-                buildJsonObject {
-                    put("threadId", "thread-1")
-                    put("turnId", "turn-1")
-                    put("completedAtMs", 27)
-                    put("item", dynamicKastItem(arguments, "model result", completed = true))
-                },
-            )
-        }
-            .toString()
+            val completed = buildJsonObject {
+                put("method", "item/completed")
+                put(
+                    "params",
+                    buildJsonObject {
+                        put("threadId", "thread-1")
+                        put("turnId", "turn-1")
+                        put("completedAtMs", 27)
+                        put("item", dynamicKastItem(arguments, "model result", completed = true))
+                    },
+                )
+            }
+                .toString()
 
-        val projected =
-            assertInstanceOf(
-                ProtocolRouting.ForwardDownstream::class.java,
-                adapter.fromUpstream(completed),
-            )
-        val item =
-            Json.parseToJsonElement(projected.message)
-                .jsonObject
-                .getValue("params")
-                .jsonObject
-                .getValue("item")
-                .jsonObject
-        assertEquals(dynamicKastItem(arguments, "model result", completed = true), item)
-    }
+            val projected =
+                assertInstanceOf(
+                    ProtocolRouting.ForwardDownstream::class.java,
+                    adapter.fromUpstream(completed),
+                )
+            val item =
+                Json.parseToJsonElement(projected.message)
+                    .jsonObject
+                    .getValue("params")
+                    .jsonObject
+                    .getValue("item")
+                    .jsonObject
+            assertRawToolDisplay(dynamicKastItem(arguments, "model result", completed = true), item)
+        }
 
     @Test
     fun `observer state is bounded take-only and cleared on adapter close`() {
@@ -459,7 +465,7 @@ class CodexProtocolAdapterTest {
                 .getValue("item")
                 .jsonObject
 
-        assertEquals(dynamicKastItem(arguments, "model result", completed = true), item)
+        assertRawToolDisplay(dynamicKastItem(arguments, "model result", completed = true), item)
     }
 
     @Test
@@ -531,8 +537,10 @@ class CodexProtocolAdapterTest {
                 .jsonObject
 
         assertEquals("failed", item.getValue("status").jsonPrimitive.content)
-        assertFalse("error" in item)
-        assertEquals(Json.parseToJsonElement(completed).jsonObject.getValue("params").jsonObject.getValue("item"), item)
+        assertRawToolDisplay(
+            Json.parseToJsonElement(completed).jsonObject.getValue("params").jsonObject.getValue("item").jsonObject,
+            item,
+        )
     }
 
     @Test
@@ -547,7 +555,15 @@ class CodexProtocolAdapterTest {
             """{"method":"item/completed","params":{"threadId":"thread-1","turnId":"turn-1","completedAtMs":15,"item":{"type":"dynamicToolCall","id":"call-1","tool":"say","namespace":"echo","arguments":{"value":"image"},"status":"completed","contentItems":[{"type":"inputImage","imageUrl":"data:image/png;base64,AAAA"}],"success":true,"durationMs":5}}}"""
 
         val forwarded = assertInstanceOf(ProtocolRouting.ForwardDownstream::class.java, adapter.fromUpstream(completed))
-        assertEquals(Json.parseToJsonElement(completed), Json.parseToJsonElement(forwarded.message))
+        assertRawToolDisplay(
+            Json.parseToJsonElement(completed).jsonObject.getValue("params").jsonObject.getValue("item").jsonObject,
+            Json.parseToJsonElement(forwarded.message)
+                .jsonObject
+                .getValue("params")
+                .jsonObject
+                .getValue("item")
+                .jsonObject,
+        )
     }
 
     @Test
@@ -572,7 +588,16 @@ class CodexProtocolAdapterTest {
         assertFalse("structuredContent" in result)
         assertEquals(
             "[1,2,3]",
-            result.getValue("contentItems").jsonArray.single().jsonObject.getValue("text").jsonPrimitive.content,
+            result
+                .getValue("result")
+                .jsonObject
+                .getValue("content")
+                .jsonArray
+                .single()
+                .jsonObject
+                .getValue("text")
+                .jsonPrimitive
+                .content,
         )
     }
 
@@ -864,7 +889,21 @@ class CodexProtocolAdapterTest {
         }
         val route = adapter.fromUpstream(response.toString())
         assertInstanceOf(ProtocolRouting.ForwardDownstream::class.java, route)
-        assertEquals(response, Json.parseToJsonElement((route as ProtocolRouting.ForwardDownstream).message))
+        val displayed = Json.parseToJsonElement((route as ProtocolRouting.ForwardDownstream).message).jsonObject
+        fun item(container: JsonObject): JsonObject =
+            container
+                .getValue("thread")
+                .jsonObject
+                .getValue("turns")
+                .jsonArray
+                .single()
+                .jsonObject
+                .getValue("items")
+                .jsonArray
+                .single()
+                .jsonObject
+        assertEquals(response["id"], displayed["id"])
+        assertRawToolDisplay(item(result), item(displayed.getValue("result").jsonObject))
     }
 
     @Test
@@ -942,7 +981,21 @@ class CodexProtocolAdapterTest {
             val forwarded =
                 Json.parseToJsonElement((adapter.fromUpstream(response) as ProtocolRouting.ForwardDownstream).message)
                     .jsonObject
-            assertEquals(Json.parseToJsonElement(response), forwarded)
+            val pageItem =
+                forwarded
+                    .getValue("result")
+                    .jsonObject
+                    .getValue("initialTurnsPage")
+                    .jsonObject
+                    .getValue("data")
+                    .jsonArray
+                    .single()
+                    .jsonObject
+                    .getValue("items")
+                    .jsonArray
+                    .single()
+                    .jsonObject
+            assertRawToolDisplay(ownedItem.jsonObject, pageItem)
         }
 
     @Test
@@ -1607,14 +1660,28 @@ class CodexProtocolAdapterTest {
         arguments: kotlinx.serialization.json.JsonElement,
         structuredResult: kotlinx.serialization.json.JsonElement,
     ) {
-        assertEquals("dynamicToolCall", item.getValue("type").jsonPrimitive.content)
+        assertEquals("mcpToolCall", item.getValue("type").jsonPrimitive.content)
         assertEquals("call-1", item.getValue("id").jsonPrimitive.content)
         assertEquals("echo", item.getValue("namespace").jsonPrimitive.content)
+        assertEquals("echo", item.getValue("server").jsonPrimitive.content)
         assertEquals("read", item.getValue("tool").jsonPrimitive.content)
         assertEquals(arguments, item.getValue("arguments"))
         assertEquals(
             structuredResult.toString(),
             item.getValue("contentItems").jsonArray.single().jsonObject.getValue("text").jsonPrimitive.content,
+        )
+        assertEquals(
+            structuredResult.toString(),
+            item
+                .getValue("result")
+                .jsonObject
+                .getValue("content")
+                .jsonArray
+                .single()
+                .jsonObject
+                .getValue("text")
+                .jsonPrimitive
+                .content,
         )
     }
 

@@ -163,9 +163,73 @@ class Case:
     schema_valid: bool = True
     unique_tokens: bool = True
     issued: tuple[dict, ...] = ()
+    preferred_tool: str = "search_declarations"
 
     def request(self):
         return dict(type="QUERY", **{"from": self.source}, steps=list(self.steps), select=list(self.select))
+
+
+class ToolSurface(str, Enum):
+    LEGACY = "query"
+    PUBLIC = "public-tools-v1"
+
+    @staticmethod
+    def admit(tools):
+        names = {tool["name"] for tool in tools}
+        public = {"search_classes", "search_functions", "search_declarations", "check_diagnostics", "query_symbols"}
+        if public <= names and "query" not in names:
+            return ToolSurface.PUBLIC
+        if "query" in names and not (public & names):
+            return ToolSurface.LEGACY
+        raise ValueError("UNSUPPORTED_TOOL_SURFACE")
+
+
+def public_scope(selected):
+    if selected is None:
+        return None
+    fields = {"DIRECTORY": ("relative_directory_path", "include_subdirectories"),
+              "PACKAGE": ("package_name", "include_subpackages")}
+    path, recursive = fields[selected["type"]]
+    return {path: selected["value"], recursive: selected["containment"] == "RECURSIVE",
+            "source_set_names": selected.get("sourceSets")}
+
+
+def invocation(case, surface):
+    if surface is ToolSurface.LEGACY:
+        return "query", ["query", "run"], case.request()
+    source = case.source
+    kinds = [kind.lower() for kind in source["kinds"]] if "kinds" in source else None
+    if source["type"] == "SEARCH":
+        arguments = dict(declaration_name=source["query"], name_match=source["match"].lower(),
+                         scope=public_scope(source.get("scope")), declaration_kinds=kinds)
+        if not case.steps and case.select == tuple(FIELDS):
+            tool = case.preferred_tool
+            if tool in {"search_classes", "search_functions"}:
+                name = "class_name" if tool == "search_classes" else "function_name"
+                arguments[name] = arguments.pop("declaration_name")
+                arguments.pop("declaration_kinds")
+            elif tool != "search_declarations":
+                raise ValueError("UNSUPPORTED_SEARCH_TOOL")
+            return tool, ["tool", tool], arguments
+        lowered = dict(type="search_declarations", **arguments)
+    elif source["type"] == "ALL":
+        lowered = dict(type="all_declarations", declaration_kinds=kinds, scope=public_scope(source.get("scope")))
+    elif source["type"] == "REFS":
+        lowered = dict(type="symbol_refs", symbol_refs=source["refs"])
+    else:
+        raise ValueError("UNSUPPORTED_REPLAY_SOURCE")
+    steps = []
+    for step in case.steps:
+        if step["type"] == "FILTER":
+            steps.append(dict(type="filter_visibility", visibilities=[v.lower() for v in step["visibility"]]))
+        elif step["type"] == "EXPAND":
+            steps.append(dict(type="expand_relation", relation=step["relation"].lower()))
+        elif step["type"] == "DISTINCT":
+            steps.append(dict(type="distinct_symbols"))
+        else:
+            raise ValueError("UNSUPPORTED_REPLAY_STEP")
+    return "query_symbols", ["tool", "query_symbols"], dict(source=lowered, steps=steps,
+        return_fields=[field.lower() for field in case.select])
 
 
 def search(name, scope=None, match="EXACT"):
@@ -230,6 +294,12 @@ def cases(expected, parameters=None):
     result.append(Case("unused-references", search("UnusedMarker"), (), steps=({"type": "EXPAND", "relation": "REFERENCES"},)))
     result.append(Case("invalid-reference", dict(type="REFS", refs=["exact:v3:NOT_ISSUED"]), reported="malformed-reference"))
     result.append(Case("invalid-reference-syntax", dict(type="REFS", refs=["not-a-reference"]), reported="invalid-arguments", schema_valid=False))
+    result.extend([
+        Case("class-facade", search("FixtureLogger"), ids("logger"), preferred_tool="search_classes"),
+        Case("function-facade", search("loggerFunction"), ids("helper"), preferred_tool="search_functions"),
+        Case("function-overloads", search("sharedOperation"), tuple(expected["sameName"]), preferred_tool="search_functions"),
+        Case("class-case-sensitive-negative", search("fixturelogger"), preferred_tool="search_classes"),
+    ])
     return result
 
 
@@ -342,7 +412,9 @@ def replay(args):
     expected = json.loads((FIXTURE / "expected.json").read_text())
     pinned = json.loads(args.pin.read_text())
     schema = json.loads((args.pin.parent / "installed-schema.json").read_text())
-    query_schema = next(t["inputSchema"] for t in schema["serverProjection"]["hostedBootstrap"]["tools"] if t["name"] == "query")
+    tools = schema["serverProjection"]["hostedBootstrap"]["tools"]
+    surface = ToolSurface.admit(tools)
+    tool_schemas = {tool["name"]: tool["inputSchema"] for tool in tools}
     if not pinned["host"]["model"]["smart"] or pinned["host"]["model"]["gradleProjectCount"] == 0:
         raise ValueError("IMPORTED_SMART_MODEL_NOT_PINNED")
     if pinned["cli"]["executable"] != str(cli) or pinned["cli"]["sha256"] != digest(cli):
@@ -357,7 +429,11 @@ def replay(args):
     def invoke(case, phase):
         nonlocal first_live
         directory = fresh(output / (case.name + "-" + phase))
-        request = case.request()
+        if surface is ToolSurface.PUBLIC and case.name == "invalid-reference-syntax":
+            case = replace(case, schema_valid=True, reported="malformed-reference")
+        tool, command, request = invocation(case, surface)
+        query_schema = tool_schemas[tool]
+        write(directory / "route.json", dict(tool=tool, command=command, surface=surface.value))
         log_before = args.idea_log.stat() if args.idea_log else None
         validation = list(jsonschema.Draft202012Validator(query_schema).iter_errors(request))
         if bool(validation) == case.schema_valid:
@@ -365,13 +441,13 @@ def replay(args):
         write(directory / "schema-validation.json", dict(expectedValid=case.schema_valid, failures=len(validation)))
         write(directory / "request.json", request)
         if provider:
-            result = capture([*provider, cli, root, directory / "request.json", directory / "provider.json"], root, timeout=30)
+            result = capture([*provider, cli, root, directory / "request.json", directory / "provider.json", tool], root, timeout=30)
             native = [json.loads(p.read_text()) for p in sorted(directory.glob("process-*.json"))]
-            queries = [p for p in native if p.get("arguments") == ["query", "run"]]
+            queries = [p for p in native if p.get("arguments") == command]
             raw = queries[0] if len(queries) == 1 else {}
             document = raw.get("stdout") or raw.get("stderr")
         else:
-            result = capture([cli, "query", "run"], root, json.dumps(request), timeout=15)
+            result = capture([cli, *command], root, json.dumps(request), timeout=15)
             raw = result
             document = result.get("stdout") or result.get("stderr")
         write(directory / "process.json", result)

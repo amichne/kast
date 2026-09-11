@@ -1,0 +1,25 @@
+{
+  "type": "object",
+  "properties": {
+    "relative_path": {
+      "type": "string",
+      "description": "File or directory path relative to the session workspace root, such as src/main/kotlin/orders/OrderService.kt or services/orders. Use '.' for the root. Not a package name, glob, absolute path, or parent traversal.",
+      "minLength": 1,
+      "maxLength": 1048576
+    },
+    "max_diagnostics": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "maximum": 1000,
+      "description": "Maximum diagnostic entries to return. null selects 100. This limits results, not module admission, indexing, or compiler work; incomplete coverage remains explicit."
+    }
+  },
+  "required": [
+    "relative_path",
+    "max_diagnostics"
+  ],
+  "additionalProperties": false
+}
