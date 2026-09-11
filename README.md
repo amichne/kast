@@ -114,10 +114,12 @@ still unqualified. See the module's [compatibility and blocker record](app-serve
 for exact evidence and the outstanding real-client release gate.
 
 Kast qualifies the installed tool contract before a thread starts. The default
-catalog includes one eager `kast.query` tool plus deferred source, semantic,
-impact, diagnostic, and change tools. Direct `symbol_lookup` and
-`symbol_inspect` routes are omitted by default; change tools retain explicit
-approval requirements.
+catalog includes eager `search_classes`, `search_functions`,
+`search_declarations`, and `check_diagnostics`, plus deferred `query_symbols`,
+source, relation, and impact tools. Direct symbol lookup/inspection and the
+three change tools require explicit selection. Change tools retain explicit
+approval requirements and remain excluded from defaults until the installed
+provider → CLI → plugin change workflow passes acceptance.
 
 Other harnesses should consume the exact installed `serverProjection`; they
 should not copy command names, schemas, or selection policy into another

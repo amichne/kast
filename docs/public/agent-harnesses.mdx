@@ -128,8 +128,12 @@ names in `kast --schema`. Process values override the saved file. Unknown,
 duplicate, or empty names reject startup. The default value is:
 
 ```text
-search_classes,search_functions,search_declarations,query_symbols,source_read,semantic_query,impact_analyze,check_diagnostics,change_plan,change_apply,change_recover
+search_classes,search_functions,search_declarations,query_symbols,source_read,semantic_query,impact_analyze,check_diagnostics
 ```
+
+Change tools stay excluded from the default selection until the installed
+provider → CLI → plugin workflow passes native acceptance. Explicit selection
+does not grant live mutation authority or bypass approval.
 
 For operational symptoms and safe status collection, see
 [Troubleshooting](/troubleshooting).

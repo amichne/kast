@@ -7,13 +7,13 @@ import io.github.amichne.kast.change.contract.HostedAddDeclarationPlanCodec
 import io.github.amichne.kast.change.verify.ChangeApplicationIdentity
 import io.github.amichne.kast.change.verify.ChangeApplicationIssuance
 import io.github.amichne.kast.change.verify.ChangeApplicationLookup
-import io.github.amichne.kast.change.verify.ChangePlanIdentity
-import io.github.amichne.kast.change.verify.ChangePlanIssuance
+import io.github.amichne.kast.change.contract.ChangePlanIdentity
+import io.github.amichne.kast.change.contract.ChangePlanIssuance
 import io.github.amichne.kast.change.verify.ChangePlanLookup
 import io.github.amichne.kast.change.verify.ChangeReceiptIdentity
 import io.github.amichne.kast.change.verify.ChangeReceiptIssuance
 import io.github.amichne.kast.change.verify.DurableChangeAuthority
-import io.github.amichne.kast.change.verify.DurableChangeAuthorityFailure
+import io.github.amichne.kast.change.contract.DurableChangeAuthorityFailure
 import io.github.amichne.kast.change.verify.PendingChangeVerification
 import io.github.amichne.kast.change.verify.VerifiedReceipt
 import io.github.amichne.kast.evidence.contract.MutationDatabaseLocation

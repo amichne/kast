@@ -9,7 +9,6 @@ internal object KastCleanSlateModules {
             ModuleId.KERNEL,
             ModuleId.PROTOCOL_CONTRACT,
             ModuleId.CHANGE_CONTRACT,
-            ModuleId.CHANGE_VERIFY,
         ),
         target(
             ModuleId.QUERY_PROTOCOL,

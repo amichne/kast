@@ -67,6 +67,7 @@ class KastProviderTest {
                         executable,
                         temporary.toRealPath(),
                         RecordingProcessExecutor(capabilitySchema()),
+                        toolSelection = KastToolSelection.admit("symbol_lookup").refinedValue(),
                     )
                     .refinedValue()
             assertInstanceOf(KastProviderQualification.Qualified::class.java, KastProviderQualifier.qualify(valid))
@@ -251,74 +252,80 @@ class KastProviderTest {
         }
 
     @Test
-    fun `default bootstrap removes direct symbol routes and retains selected change routes`(@TempDir temporary: Path) =
-        runBlocking {
-            val executable = executable(temporary.resolve("kast"))
-            val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
-            val executor = RecordingProcessExecutor(schema = capabilitySchema())
-            val options = KastProviderOptions.admit(executable, cwd, executor).refinedValue()
-            val qualification =
-                assertInstanceOf(
-                    KastProviderQualification.Qualified::class.java,
-                    KastProviderQualifier.qualify(options),
+    fun `explicit change selection removes direct symbol routes and retains selected change routes`(
+        @TempDir temporary: Path
+    ) = runBlocking {
+        val executable = executable(temporary.resolve("kast"))
+        val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+        val executor = RecordingProcessExecutor(schema = capabilitySchema())
+        val options =
+            KastProviderOptions.admit(
+                    executable,
+                    cwd,
+                    executor,
+                    toolSelection = KastToolSelection.admit("change_apply").refinedValue(),
                 )
-            val broker =
-                Broker.create(
-                        listOf(qualification.registration),
-                        BrokerLimits.defaults(),
-                    )
-                    .validatedValue()
-
-            assertEquals(
-                listOf("change_apply"),
-                broker.catalog.namespaces.single().tools.map { tool -> tool.name.value },
-            )
-            assertEquals(
-                setOf("change_apply"),
-                qualification.bootstrap.tools.definitions.mapTo(linkedSetOf()) { it.name.value },
-            )
-            val completed =
-                broker.dispatch(
-                    BrokerDispatchRequest(
-                        ToolAddress(namespace("kast"), toolName("change_apply")),
-                        buildJsonObject { put("plan", "plan-1") },
-                        context(cwd),
-                    )
-                )
-            val explicit =
-                broker.dispatch(
-                    BrokerDispatchRequest(
-                        ToolAddress(namespace("kast"), toolName("symbol_lookup")),
-                        buildJsonObject { put("query", "Thing") },
-                        context(cwd),
-                    )
-                )
-
-            assertEquals(true, (completed as BrokerDispatch.Completed).presentation.success)
-            assertEquals(
-                listOf(
-                    ToolContent("Kast · change.apply · complete"),
-                    ToolContent(
-                        "{\"document\":{\"changes\":[],\"operation\":\"change.apply\"," +
-                            "\"status\":\"complete\"},\"status\":\"completed\"}"
-                    ),
-                ),
-                completed.presentation.content,
-            )
-            assertEquals(ObserverPresentation.None, completed.presentation.observer)
-            assertEquals(
-                listOf(listOf("change", "apply")),
-                executor.requests
-                    .filterNot { it.arguments.first().startsWith("--") }
-                    .map(BrokerProcessRequest::arguments),
-            )
+                .refinedValue()
+        val qualification =
             assertInstanceOf(
-                BrokerFailure.UnknownTool::class.java,
-                (explicit as BrokerDispatch.Rejected).failure,
+                KastProviderQualification.Qualified::class.java,
+                KastProviderQualifier.qualify(options),
             )
-            assertEquals(2, executor.requests.count { it.arguments == listOf("--version") })
-            assertEquals(2, executor.requests.count { it.arguments == listOf("--schema") })
-        }
+        val broker =
+            Broker.create(
+                    listOf(qualification.registration),
+                    BrokerLimits.defaults(),
+                )
+                .validatedValue()
+
+        assertEquals(
+            listOf("change_apply"),
+            broker.catalog.namespaces.single().tools.map { tool -> tool.name.value },
+        )
+        assertEquals(
+            setOf("change_apply"),
+            qualification.bootstrap.tools.definitions.mapTo(linkedSetOf()) { it.name.value },
+        )
+        val completed =
+            broker.dispatch(
+                BrokerDispatchRequest(
+                    ToolAddress(namespace("kast"), toolName("change_apply")),
+                    buildJsonObject { put("plan", "plan-1") },
+                    context(cwd),
+                )
+            )
+        val explicit =
+            broker.dispatch(
+                BrokerDispatchRequest(
+                    ToolAddress(namespace("kast"), toolName("symbol_lookup")),
+                    buildJsonObject { put("query", "Thing") },
+                    context(cwd),
+                )
+            )
+
+        assertEquals(true, (completed as BrokerDispatch.Completed).presentation.success)
+        assertEquals(
+            listOf(
+                ToolContent("Kast · change.apply · complete"),
+                ToolContent(
+                    "{\"document\":{\"changes\":[],\"operation\":\"change.apply\"," +
+                        "\"status\":\"complete\"},\"status\":\"completed\"}"
+                ),
+            ),
+            completed.presentation.content,
+        )
+        assertEquals(ObserverPresentation.None, completed.presentation.observer)
+        assertEquals(
+            listOf(listOf("change", "apply")),
+            executor.requests.filterNot { it.arguments.first().startsWith("--") }.map(BrokerProcessRequest::arguments),
+        )
+        assertInstanceOf(
+            BrokerFailure.UnknownTool::class.java,
+            (explicit as BrokerDispatch.Rejected).failure,
+        )
+        assertEquals(2, executor.requests.count { it.arguments == listOf("--version") })
+        assertEquals(2, executor.requests.count { it.arguments == listOf("--schema") })
+    }
 
     @Test
     fun `explicit mutation opt in publishes all qualified tools`(@TempDir temporary: Path) = runBlocking {

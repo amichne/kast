@@ -35,4 +35,5 @@ Composes domain services and platform ports, dispatches typed protocol operation
 - Start with the [repository knowledge](../knowledge/modules/runtime-hosts.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - For end-to-end operation routing, begin at `ServerDispatch`, follow the typed binding into `composition/protocol`, then the owning service.
+- Shared change planning projection lives in `change/protocol`; installed reference admission remains in `composition/protocol`.
 - For dependency wiring, begin in `bootstrap`; for emitted signals, begin in `telemetry` and the kernel observability port.

@@ -8,12 +8,12 @@ import io.github.amichne.kast.change.apply.MutationAdmissionFailure
 import io.github.amichne.kast.change.apply.RequestedMutationWriteScope
 import io.github.amichne.kast.change.apply.SourceObservationFailure
 import io.github.amichne.kast.change.apply.SourceWriteFailure
+import io.github.amichne.kast.change.contract.ChangePlanIdentity
 import io.github.amichne.kast.change.protocol.protocolPreview
 import io.github.amichne.kast.change.recovery.AddDeclarationRecoveryOutcome
 import io.github.amichne.kast.change.verify.AddDeclarationProofFailure
 import io.github.amichne.kast.change.verify.AddFileProofFailure
 import io.github.amichne.kast.change.verify.ChangeApplicationIssuance
-import io.github.amichne.kast.change.verify.ChangePlanIdentity
 import io.github.amichne.kast.change.verify.ChangePlanLookup
 import io.github.amichne.kast.change.verify.ChangeProofFailure
 import io.github.amichne.kast.change.verify.ChangeReceiptIssuance

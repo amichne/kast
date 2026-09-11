@@ -20,6 +20,7 @@ Implements proof-carrying source mutation as explicit planning, application, ver
 
 - `contract` - intents, plans, proofs, codecs, and typed outcomes.
 - `plan` - pure planners for supported mutations.
+- `protocol` - canonical planning admission, lowering, and bounded preview projection through narrow host ports.
 - `apply` - admitted write effects and observations.
 - `verify` - obligation discharge and resulting-generation publication.
 - `recovery` - durable recovery preparation and execution.
@@ -27,7 +28,7 @@ Implements proof-carrying source mutation as explicit planning, application, ver
 
 ## Entry Points
 
-- Gradle projects: `:change:contract`, `:change:plan`, `:change:apply`, `:change:verify`, `:change:recovery`, `:change:intellij`.
+- Gradle projects: `:change:contract`, `:change:plan`, `:change:protocol`, `:change:apply`, `:change:verify`, `:change:recovery`, `:change:intellij`.
 
 ## Navigation Hints
 

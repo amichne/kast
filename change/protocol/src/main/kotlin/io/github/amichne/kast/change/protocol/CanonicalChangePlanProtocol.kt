@@ -3,13 +3,13 @@ package io.github.amichne.kast.change.protocol
 import io.github.amichne.kast.change.contract.AddDeclarationPlanResult
 import io.github.amichne.kast.change.contract.AddFilePlanResult
 import io.github.amichne.kast.change.contract.ChangePlan
+import io.github.amichne.kast.change.contract.ChangePlanIssuance
+import io.github.amichne.kast.change.contract.ChangePlanIssuanceOperations
 import io.github.amichne.kast.change.contract.ChangePlanningFailure
 import io.github.amichne.kast.change.contract.RenameSymbolPlanResult
 import io.github.amichne.kast.change.contract.RenameSymbolPlanningFailure
 import io.github.amichne.kast.change.contract.ReplaceDeclarationPlanResult
 import io.github.amichne.kast.change.contract.ReplaceDeclarationPlanningFailure
-import io.github.amichne.kast.change.verify.ChangePlanIssuance
-import io.github.amichne.kast.change.verify.DurableChangeAuthority
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
@@ -24,7 +24,7 @@ import io.github.amichne.kast.protocol.contract.ProtocolText
 class CanonicalChangePlanProtocol(
     private val operations: ChangePlanningOperations,
     private val admission: ChangePlanRequestAdmission,
-    private val authority: DurableChangeAuthority,
+    private val authority: ChangePlanIssuanceOperations,
 ) {
     suspend fun execute(
         request: ChangePlanRequest
@@ -69,7 +69,7 @@ class CanonicalChangePlanProtocol(
         }
 }
 
-private fun io.github.amichne.kast.change.verify.ChangePlanIdentity.protocolText(): ProtocolText =
+private fun io.github.amichne.kast.change.contract.ChangePlanIdentity.protocolText(): ProtocolText =
     when (val parsed = ProtocolText.parse(value)) {
         is Refinement.Refined -> parsed.value
         is Refinement.Rejected -> error("canonical change plan identity is protocol text")

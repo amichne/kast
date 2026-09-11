@@ -11,5 +11,4 @@ dependencies {
     implementation(project(":kernel"))
     implementation(project(":protocol:contract"))
     implementation(project(":change:contract"))
-    implementation(project(":change:verify"))
 }

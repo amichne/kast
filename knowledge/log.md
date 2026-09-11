@@ -140,3 +140,14 @@
 - Bound every concept to concrete repository sources for impact detection.
 - Enforced strict source-path and repository-relative navigation-link integrity.
 - Added the manually qualified host-observation experiment, including its advisory boundary and original-owner retirement flow.
+
+## 2026-09-11 — Change protocol boundary and conservative recovery
+
+- Extracted canonical planning lowering and previews into `change/protocol`, with
+  a contract-owned plan-storage port and dependency-closure evidence.
+- Excluded unqualified change tools from the canonical default selection while
+  preserving explicit selections, approval policies, and read defaults.
+- Documented that absent or pre-write-only recovery records do not prove no
+  source effect; exact saved/document observation is required for prior state.
+- Live planning, mutation admission, and native change acceptance remain
+  unimplemented; published verification is still the retained execution path.

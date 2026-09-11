@@ -1,6 +1,9 @@
 package io.github.amichne.kast.change.protocol
 
-import io.github.amichne.kast.change.contract.*
+import io.github.amichne.kast.change.contract.AddDeclarationPlanRequest
+import io.github.amichne.kast.change.contract.AddFilePlanRequest
+import io.github.amichne.kast.change.contract.RenameSymbolPlanRequest
+import io.github.amichne.kast.change.contract.ReplaceDeclarationPlanRequest
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 
 /** Strong operation-specific requests admitted from the closed public change intent. */

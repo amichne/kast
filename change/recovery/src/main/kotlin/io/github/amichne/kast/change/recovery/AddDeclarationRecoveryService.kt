@@ -67,9 +67,7 @@ fun interface AddDeclarationRollbackPort {
 }
 
 sealed interface PriorStateEvidence {
-    data class Absent(val binding: MutationPlanBinding) : PriorStateEvidence
-
-    data class DurablePreWrite(val record: MutationRecoveryRecord.PreWriteDurable) : PriorStateEvidence
+    data class ObservedPreWrite(val observation: ConfirmedRecoveryPreimage) : PriorStateEvidence
 }
 
 enum class UndurableRecoveryRequirement {
@@ -79,6 +77,9 @@ enum class UndurableRecoveryRequirement {
 }
 
 sealed interface RecoveryRequiredEvidence {
+    /** Durable preparation survives the gap before applied recording; it does not prove no effect. */
+    data class PreWrite(val record: MutationRecoveryRecord.PreWriteDurable) : RecoveryRequiredEvidence
+
     data class Durable(val record: MutationRecoveryRecord.RecoveryRequired) : RecoveryRequiredEvidence
 
     data class Undurable(
@@ -96,7 +97,10 @@ sealed interface AddDeclarationRecoveryOutcome {
 }
 
 /** Host-neutral coordinator for durable AddDeclaration recovery evidence. */
-class AddDeclarationRecoveryService(private val evidence: MutationRecoveryEvidenceStore) {
+class AddDeclarationRecoveryService(
+    private val evidence: MutationRecoveryEvidenceStore,
+    private val preWriteObservation: RecoveryPreWriteObservationPort = RecoveryPreWriteObservationPort.Unavailable,
+) {
     /**
      * Proof transition: `AddDeclarationRecoveryPreparation -> PrepareAddDeclarationRecoveryResult`.
      *
@@ -189,7 +193,12 @@ class AddDeclarationRecoveryService(private val evidence: MutationRecoveryEviden
     ): AddDeclarationRecoveryOutcome =
         when (val loaded = evidence.load(binding)) {
             is MutationRecoveryLoadResult.Absent ->
-                AddDeclarationRecoveryOutcome.PriorState(PriorStateEvidence.Absent(loaded.binding))
+                AddDeclarationRecoveryOutcome.RecoveryRequired(
+                    RecoveryRequiredEvidence.Undurable(
+                        loaded.binding,
+                        UndurableRecoveryRequirement.EVIDENCE_UNAVAILABLE,
+                    )
+                )
             is MutationRecoveryLoadResult.Rejected ->
                 AddDeclarationRecoveryOutcome.RecoveryRequired(
                     RecoveryRequiredEvidence.Undurable(binding, loaded.failure.toRequirement())
@@ -203,7 +212,18 @@ class AddDeclarationRecoveryService(private val evidence: MutationRecoveryEviden
     ): AddDeclarationRecoveryOutcome =
         when (record) {
             is MutationRecoveryRecord.PreWriteDurable ->
-                AddDeclarationRecoveryOutcome.PriorState(PriorStateEvidence.DurablePreWrite(record))
+                when (val observed = preWriteObservation.observe(record)) {
+                    is RecoveryPreWriteObservation.Confirmed ->
+                        if (observed.preimage.record.digest == record.digest) {
+                            AddDeclarationRecoveryOutcome.PriorState(
+                                PriorStateEvidence.ObservedPreWrite(observed.preimage)
+                            )
+                        } else {
+                            AddDeclarationRecoveryOutcome.RecoveryRequired(RecoveryRequiredEvidence.PreWrite(record))
+                        }
+                    is RecoveryPreWriteObservation.Rejected ->
+                        AddDeclarationRecoveryOutcome.RecoveryRequired(RecoveryRequiredEvidence.PreWrite(record))
+                }
             is MutationRecoveryRecord.AppliedWritesDurable -> recoverApplied(record, rollback)
             is MutationRecoveryRecord.RolledBack -> AddDeclarationRecoveryOutcome.RolledBack(record)
             is MutationRecoveryRecord.RecoveryRequired ->

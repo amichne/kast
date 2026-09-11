@@ -95,7 +95,7 @@ class AddDeclarationRecoveryTest {
         val priorService = AddDeclarationRecoveryService(priorStore)
         val prepared = priorService.prepare(request()).prepared()
         assertInstanceOf(
-            AddDeclarationRecoveryOutcome.PriorState::class.java,
+            AddDeclarationRecoveryOutcome.RecoveryRequired::class.java,
             priorService.recover(prepared.record.binding) { error("rollback must not run") },
         )
 
@@ -131,6 +131,13 @@ class AddDeclarationRecoveryTest {
     }
 
     @Test
+    fun `missing durable evidence cannot prove no source effect`() {
+        val service = AddDeclarationRecoveryService(InMemoryMutationRecoveryEvidenceStore())
+        val outcome = service.recover(request().binding) { error("missing evidence cannot authorize rollback") }
+        assertInstanceOf(AddDeclarationRecoveryOutcome.RecoveryRequired::class.java, outcome)
+    }
+
+    @Test
     fun `corrupt evidence cannot be mistaken for success`() {
         val store = InMemoryMutationRecoveryEvidenceStore()
         val service = AddDeclarationRecoveryService(store)
@@ -145,6 +152,94 @@ class AddDeclarationRecoveryTest {
                 outcome,
             )
         assertInstanceOf(RecoveryRequiredEvidence.Undurable::class.java, required.evidence)
+    }
+
+    @Test
+    fun `confirmed saved and committed preimage permits prior state without rollback`() {
+        for (loaded in listOf(false, true)) {
+            val store = InMemoryMutationRecoveryEvidenceStore()
+            val service =
+                AddDeclarationRecoveryService(
+                    store,
+                    RecoveryPreWriteObservationPort { record ->
+                        val write = record.preparation.plannedWrites.single()
+                        val document =
+                            if (loaded) RecoveryDocumentObservation.SavedAndCommitted(write.preimage)
+                            else RecoveryDocumentObservation.NotLoaded
+                        val proof =
+                            ConfirmedRecoveryPreimage.admit(
+                                    record,
+                                    listOf(RecoverySourceObservation(write.source, write.preimage, document)),
+                                )
+                                .refined()
+                        RecoveryPreWriteObservation.Confirmed(proof)
+                    },
+                )
+            val prepared = service.prepare(request()).prepared()
+            val outcome = service.recover(prepared.record.binding) { error("confirmed preimage needs no write") }
+            val prior = assertInstanceOf(AddDeclarationRecoveryOutcome.PriorState::class.java, outcome)
+            val observed = assertInstanceOf(PriorStateEvidence.ObservedPreWrite::class.java, prior.evidence)
+            assertEquals(prepared.record.digest, observed.observation.record.digest)
+        }
+    }
+
+    @Test
+    fun `prewrite recovery rejects dirty divergent missing and duplicate observations`() {
+        val service = AddDeclarationRecoveryService(InMemoryMutationRecoveryEvidenceStore())
+        val record = service.prepare(request()).prepared().record
+        val write = record.preparation.plannedWrites.single()
+        val changed = RecoveryPreimage.fromBoundary("after in-memory mutation".toByteArray())
+        val exact = RecoverySourceObservation(write.source, write.preimage, RecoveryDocumentObservation.NotLoaded)
+        val cases =
+            listOf(
+                emptyList<RecoverySourceObservation>() to RecoveryPreWriteObservationFailure.WRITE_SET_MISMATCH,
+                listOf(exact, exact) to RecoveryPreWriteObservationFailure.WRITE_SET_MISMATCH,
+                listOf(exact.copy(savedContent = changed)) to RecoveryPreWriteObservationFailure.SAVED_CONTENT_DIVERGED,
+                listOf(exact.copy(document = RecoveryDocumentObservation.SavedAndCommitted(changed))) to
+                    RecoveryPreWriteObservationFailure.DOCUMENT_CONTENT_DIVERGED,
+                listOf(exact.copy(document = RecoveryDocumentObservation.DirtyOrUncommitted)) to
+                    RecoveryPreWriteObservationFailure.DOCUMENT_NOT_READY,
+                listOf(exact.copy(document = RecoveryDocumentObservation.Unavailable)) to
+                    RecoveryPreWriteObservationFailure.DOCUMENT_NOT_READY,
+            )
+        for ((sources, failure) in cases) {
+            assertEquals(Refinement.Rejected(failure), ConfirmedRecoveryPreimage.admit(record, sources))
+        }
+    }
+
+    @Test
+    fun `observation of another recovery record cannot confirm this plan`() {
+        val store = InMemoryMutationRecoveryEvidenceStore()
+        val otherRequest =
+            AddDeclarationRecoveryPreparation.admit(
+                    AddDeclarationPlanId.parse("b".repeat(64)).refined(),
+                    request().source,
+                    request().precondition,
+                    request().preimage,
+                )
+                .refined()
+        val other = AddDeclarationRecoveryService(store).prepare(otherRequest).prepared().record
+        val write = other.preparation.plannedWrites.single()
+        val proof =
+            ConfirmedRecoveryPreimage.admit(
+                    other,
+                    listOf(
+                        RecoverySourceObservation(write.source, write.preimage, RecoveryDocumentObservation.NotLoaded)
+                    ),
+                )
+                .refined()
+        val service =
+            AddDeclarationRecoveryService(
+                store,
+                RecoveryPreWriteObservationPort {
+                    RecoveryPreWriteObservation.Confirmed(proof)
+                },
+            )
+        val record = service.prepare(request()).prepared().record
+        assertInstanceOf(
+            AddDeclarationRecoveryOutcome.RecoveryRequired::class.java,
+            service.recover(record.binding) { error("wrong record must not write") },
+        )
     }
 
     private fun request(): AddDeclarationRecoveryPreparation {
