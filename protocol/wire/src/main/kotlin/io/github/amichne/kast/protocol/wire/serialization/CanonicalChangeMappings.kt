@@ -1,8 +1,10 @@
 package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.contract.ChangeApplyQualification
+import io.github.amichne.kast.protocol.contract.ChangeApplyRecoveryReason
 import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
 import io.github.amichne.kast.protocol.contract.ChangeApplyResult
+import io.github.amichne.kast.protocol.contract.ChangeApplyUnverifiedReason
 import io.github.amichne.kast.protocol.contract.ChangeFilePreview
 import io.github.amichne.kast.protocol.contract.ChangeFilePreviewKind
 import io.github.amichne.kast.protocol.contract.ChangeFilePreviewSet
@@ -18,32 +20,55 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoveryDocumentState
 import io.github.amichne.kast.protocol.contract.ProtocolText
 
 internal fun ChangeApplyResult.toSerializableDocument(): ChangeApplyResultDocument =
-    ChangeApplyResultDocument(
-        receiptIdentity.value,
-        changes.entries.map(ChangeFilePreview::toSerializableDocument),
-    )
+    when (this) {
+        is ChangeApplyResult.Verified ->
+            ChangeApplyResultDocument.Verified(
+                receiptIdentity.value,
+                changes.entries.map(ChangeFilePreview::toSerializableDocument),
+            )
+        is ChangeApplyResult.AppliedUnverified ->
+            ChangeApplyResultDocument.AppliedUnverified(
+                planIdentity.value,
+                changes.entries.map(ChangeFilePreview::toSerializableDocument),
+                reason.toSerializableDocument(),
+            )
+        is ChangeApplyResult.RecoveryRequired ->
+            ChangeApplyResultDocument.RecoveryRequired(
+                planIdentity.value,
+                changes.entries.map(ChangeFilePreview::toSerializableDocument),
+                reason.toSerializableDocument(),
+            )
+    }
 
-/**
- * Proof transition: `ChangeApplyResultDocument -> ChangeApplyResult`.
- *
- * Establishes a refined verified receipt identity. [WireDocumentConversion.Rejected] is the closed expected failure.
- * Raw result text may be extracted only here.
- */
+/** Wire state retains whether a verified receipt exists; unverified effects carry only their plan identity. */
 internal fun ChangeApplyResultDocument.toContract(): WireDocumentConversion<ChangeApplyResult> =
-    combineConverted(
-        receiptIdentity.refineChangeProtocolText(),
-        changes.toContract(),
-        ::ChangeApplyResult,
-    )
+    when (this) {
+        is ChangeApplyResultDocument.Verified ->
+            combineConverted(
+                receiptIdentity.refineChangeProtocolText(),
+                changes.toContract(),
+                ChangeApplyResult::Verified,
+            )
+        is ChangeApplyResultDocument.AppliedUnverified ->
+            combineConverted(planIdentity.refineChangeProtocolText(), changes.toContract()) { plan, changes ->
+                ChangeApplyResult.AppliedUnverified(plan, changes, reason.toContract())
+            }
+        is ChangeApplyResultDocument.RecoveryRequired ->
+            combineConverted(planIdentity.refineChangeProtocolText(), changes.toContract()) { plan, changes ->
+                ChangeApplyResult.RecoveryRequired(plan, changes, reason.toContract())
+            }
+    }
 
 internal fun ChangeApplyQualification.toSerializableDocument(): ChangeApplyQualificationDocument =
     when (this) {
+        ChangeApplyQualification.APPLIED_UNVERIFIED -> ChangeApplyQualificationDocument.APPLIED_UNVERIFIED
         ChangeApplyQualification.RECOVERY_REQUIRED -> ChangeApplyQualificationDocument.RECOVERY_REQUIRED
     }
 
 internal fun ChangeApplyQualificationDocument.toContract(): WireDocumentConversion<ChangeApplyQualification> =
     WireDocumentConversion.Converted(
         when (this) {
+            ChangeApplyQualificationDocument.APPLIED_UNVERIFIED -> ChangeApplyQualification.APPLIED_UNVERIFIED
             ChangeApplyQualificationDocument.RECOVERY_REQUIRED -> ChangeApplyQualification.RECOVERY_REQUIRED
         }
     )
@@ -203,6 +228,7 @@ internal fun ChangePlanQualificationDocument.toContract(): WireDocumentConversio
 
 internal fun ChangePlanRejection.toSerializableDocument(): ChangePlanRejectionDocument =
     when (this) {
+        ChangePlanRejection.UNSUPPORTED_HOSTED_INTENT -> ChangePlanRejectionDocument.UNSUPPORTED_HOSTED_INTENT
         ChangePlanRejection.WORKSPACE_NOT_READY -> ChangePlanRejectionDocument.WORKSPACE_NOT_READY
         ChangePlanRejection.EXACT_SYMBOL_REQUIRED -> ChangePlanRejectionDocument.EXACT_SYMBOL_REQUIRED
         ChangePlanRejection.EDITABLE_TARGET_REQUIRED -> ChangePlanRejectionDocument.EDITABLE_TARGET_REQUIRED
@@ -217,6 +243,7 @@ internal fun ChangePlanRejection.toSerializableDocument(): ChangePlanRejectionDo
 internal fun ChangePlanRejectionDocument.toContract(): WireDocumentConversion<ChangePlanRejection> =
     WireDocumentConversion.Converted(
         when (this) {
+            ChangePlanRejectionDocument.UNSUPPORTED_HOSTED_INTENT -> ChangePlanRejection.UNSUPPORTED_HOSTED_INTENT
             ChangePlanRejectionDocument.WORKSPACE_NOT_READY -> ChangePlanRejection.WORKSPACE_NOT_READY
             ChangePlanRejectionDocument.EXACT_SYMBOL_REQUIRED -> ChangePlanRejection.EXACT_SYMBOL_REQUIRED
             ChangePlanRejectionDocument.EDITABLE_TARGET_REQUIRED -> ChangePlanRejection.EDITABLE_TARGET_REQUIRED
@@ -238,3 +265,39 @@ internal fun ChangePlanRejectionDocument.toContract(): WireDocumentConversion<Ch
  */
 internal fun String.refineChangeProtocolText(): WireDocumentConversion<ProtocolText> =
     ProtocolText.parse(this).toWireDocumentConversion()
+
+internal fun ChangeApplyUnverifiedReason.toSerializableDocument(): ChangeApplyUnverifiedReasonDocument =
+    when (this) {
+        ChangeApplyUnverifiedReason.VERIFICATION_UNAVAILABLE ->
+            ChangeApplyUnverifiedReasonDocument.VERIFICATION_UNAVAILABLE
+        ChangeApplyUnverifiedReason.VERIFICATION_FAILED -> ChangeApplyUnverifiedReasonDocument.VERIFICATION_FAILED
+        ChangeApplyUnverifiedReason.RECEIPT_PERSISTENCE_FAILED ->
+            ChangeApplyUnverifiedReasonDocument.RECEIPT_PERSISTENCE_FAILED
+    }
+
+internal fun ChangeApplyUnverifiedReasonDocument.toContract(): ChangeApplyUnverifiedReason =
+    when (this) {
+        ChangeApplyUnverifiedReasonDocument.VERIFICATION_UNAVAILABLE ->
+            ChangeApplyUnverifiedReason.VERIFICATION_UNAVAILABLE
+        ChangeApplyUnverifiedReasonDocument.VERIFICATION_FAILED -> ChangeApplyUnverifiedReason.VERIFICATION_FAILED
+        ChangeApplyUnverifiedReasonDocument.RECEIPT_PERSISTENCE_FAILED ->
+            ChangeApplyUnverifiedReason.RECEIPT_PERSISTENCE_FAILED
+    }
+
+internal fun ChangeApplyRecoveryReason.toSerializableDocument(): ChangeApplyRecoveryReasonDocument =
+    when (this) {
+        ChangeApplyRecoveryReason.WRITE_OUTCOME_UNKNOWN -> ChangeApplyRecoveryReasonDocument.WRITE_OUTCOME_UNKNOWN
+        ChangeApplyRecoveryReason.POST_WRITE_OBSERVATION_UNAVAILABLE ->
+            ChangeApplyRecoveryReasonDocument.POST_WRITE_OBSERVATION_UNAVAILABLE
+        ChangeApplyRecoveryReason.ATTEMPT_INTERRUPTED -> ChangeApplyRecoveryReasonDocument.ATTEMPT_INTERRUPTED
+        ChangeApplyRecoveryReason.DURABILITY_REJECTED -> ChangeApplyRecoveryReasonDocument.DURABILITY_REJECTED
+    }
+
+internal fun ChangeApplyRecoveryReasonDocument.toContract(): ChangeApplyRecoveryReason =
+    when (this) {
+        ChangeApplyRecoveryReasonDocument.WRITE_OUTCOME_UNKNOWN -> ChangeApplyRecoveryReason.WRITE_OUTCOME_UNKNOWN
+        ChangeApplyRecoveryReasonDocument.POST_WRITE_OBSERVATION_UNAVAILABLE ->
+            ChangeApplyRecoveryReason.POST_WRITE_OBSERVATION_UNAVAILABLE
+        ChangeApplyRecoveryReasonDocument.ATTEMPT_INTERRUPTED -> ChangeApplyRecoveryReason.ATTEMPT_INTERRUPTED
+        ChangeApplyRecoveryReasonDocument.DURABILITY_REJECTED -> ChangeApplyRecoveryReason.DURABILITY_REJECTED
+    }

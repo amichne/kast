@@ -1,12 +1,17 @@
 package io.github.amichne.kast.cli.ide
 
-import io.github.amichne.kast.cli.*
+import io.github.amichne.kast.cli.CanonicalRoot
+import io.github.amichne.kast.cli.CanonicalRootDiscoverer
+import io.github.amichne.kast.cli.CanonicalRootDiscovery
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import java.util.Base64
-import kotlinx.serialization.json.*
-import org.junit.jupiter.api.Assertions.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class HostedChangeCliInputTest {
@@ -22,28 +27,30 @@ class HostedChangeCliInputTest {
             val root = CanonicalRoot(Path.of("/workspace"))
             var calls = 0
             executeExistingIdeCli(
-                listOf("change", verb, "--stdin", "--hosted-approved-invocation"),
-                root.path,
-                CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) },
-                ExistingIdeClient { _, operation ->
-                    calls++
-                    val approved = operation as ExistingIdeOperation.ApprovedMutation
-                    assertEquals(identity, approved.identity.value)
-                    assertEquals(assertion, approved.assertion.value)
-                    assertEquals(
-                        identity,
-                        Json.parseToJsonElement(approved.request.document)
-                            .jsonObject["body"]!!
-                            .jsonObject["value"]!!
-                            .jsonObject["planIdentity"]!!
-                            .jsonPrimitive
-                            .content,
-                    )
-                    ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
-                },
-                CliRequestDocumentInput.Provided(
-                    """{"arguments":{"planIdentity":"$identity"},"approval":"$assertion"}"""
-                ),
+                argv = listOf("change", verb, "--stdin", "--hosted-approved-invocation"),
+                start = root.path,
+                roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) },
+                client =
+                    ExistingIdeClient { _, operation ->
+                        calls++
+                        val approved = operation as ExistingIdeOperation.ApprovedMutation
+                        assertEquals(identity, approved.identity.value)
+                        assertEquals(assertion, approved.assertion.value)
+                        assertEquals(
+                            identity,
+                            Json.parseToJsonElement(approved.request.document)
+                                .jsonObject["body"]!!
+                                .jsonObject["value"]!!
+                                .jsonObject["planIdentity"]!!
+                                .jsonPrimitive
+                                .content,
+                        )
+                        ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
+                    },
+                requestInput =
+                    CliRequestDocumentInput.Provided(
+                        """{"arguments":{"planIdentity":"$identity"},"approval":"$assertion"}"""
+                    ),
             )
             assertEquals(1, calls)
         }

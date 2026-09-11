@@ -37,24 +37,25 @@ class SavedConfigurationAdmissionTest {
     }
 
     @Test
-    fun `installed mutation entry point rejects saved configuration before runtime admission`(
-        @TempDir temporary: Path
-    ) {
+    fun `hosted planning entry point rejects saved configuration before host admission`(@TempDir temporary: Path) {
         val root = workspace(temporary)
         for ((marker, _) in rejectionMarkers) {
             val result =
                 launch(
-                    temporary,
-                    root,
-                    "io.github.amichne.kast.cli.KastCliMainKt",
-                    marker,
-                    listOf("change", "plan"),
+                    temporary = temporary,
+                    root = root,
+                    mainClass = "io.github.amichne.kast.cli.KastCliMainKt",
+                    rejection = marker,
+                    arguments = listOf("change", "plan"),
+                    input =
+                        """{"intent":{"kind":"add-declaration","exactTarget":"exact:opaque",""" +
+                            """"declaration":"fun added() = Unit"}}""",
                 )
 
-            assertEquals(9, result.exitCode, result.stderr)
+            assertEquals(4, result.exitCode, result.stderr)
             assertEquals("", result.stdout)
             val document = Json.parseToJsonElement(result.stderr).jsonObject
-            assertEquals("composition_invalid", document.getValue("reason").jsonPrimitive.content)
+            assertEquals("ide-configuration-rejected", document.getValue("reason").jsonPrimitive.content)
             assertFalse(Files.exists(temporary.resolve("runtime")))
             assertFalse(Files.exists(temporary.resolve("cache")))
         }

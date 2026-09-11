@@ -1,10 +1,13 @@
 package io.github.amichne.kast.cli.ide
 
-import io.github.amichne.kast.cli.*
+import io.github.amichne.kast.cli.CanonicalRootDiscoverer
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertArrayEquals
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
@@ -12,6 +15,36 @@ class BrokerTrustEnrollmentTest {
     @TempDir lateinit var temporary: Path
 
     private fun home() = temporary.toRealPath()
+
+    @Test
+    fun `plugin created parent with mode755 is preserved while approval remains private`() {
+        val parent = home().resolve(".kast")
+        val original = PosixFilePermissions.fromString("rwxr-xr-x")
+        Files.createDirectory(parent, PosixFilePermissions.asFileAttribute(original))
+        assertEquals(
+            BrokerTrustResult.Complete(BrokerTrustStatus.ENROLLED),
+            FilesystemBrokerTrustRegistrar(home()).enroll(),
+        )
+        assertEquals(original, Files.getPosixFilePermissions(parent))
+        assertEquals(
+            PosixFilePermissions.fromString("rwx------"),
+            Files.getPosixFilePermissions(parent.resolve("approval")),
+        )
+    }
+
+    @Test
+    fun `group writable parent remains rejected without permission repair`() {
+        val parent = home().resolve(".kast")
+        Files.createDirectory(parent)
+        val original = PosixFilePermissions.fromString("rwxrwxr-x")
+        Files.setPosixFilePermissions(parent, original)
+        assertEquals(
+            BrokerTrustResult.Rejected(BrokerTrustFailure.UNSAFE_PATH),
+            FilesystemBrokerTrustRegistrar(home()).enroll(),
+        )
+        assertEquals(original, Files.getPosixFilePermissions(parent))
+        assertFalse(Files.exists(parent.resolve("approval")))
+    }
 
     @Test
     fun `explicit enrollment creates private matching keys and preserves them on repeat`() {
@@ -68,15 +101,17 @@ class BrokerTrustEnrollmentTest {
         var enrollments = 0
         val result =
             executeExistingIdeCli(
-                listOf("ide", "trust-broker"),
-                home(),
-                CanonicalRootDiscoverer { error("root discovery must not run") },
-                ExistingIdeClient { _, _ -> error("host query must not run") },
-                trustRegistrar =
-                    BrokerTrustRegistrar {
-                        enrollments++
-                        BrokerTrustResult.Complete(BrokerTrustStatus.ENROLLED)
-                    },
+                argv = listOf("ide", "trust-broker"),
+                start = home(),
+                capabilities =
+                    ExistingIdeCliCapabilities(
+                        CanonicalRootDiscoverer { error("root discovery must not run") },
+                        ExistingIdeClient { _, _ -> error("host query must not run") },
+                        BrokerTrustRegistrar {
+                            enrollments++
+                            BrokerTrustResult.Complete(BrokerTrustStatus.ENROLLED)
+                        },
+                    ),
             )
         assertEquals(1, enrollments)
         assertTrue(result.document.value.contains("ENROLLED"))

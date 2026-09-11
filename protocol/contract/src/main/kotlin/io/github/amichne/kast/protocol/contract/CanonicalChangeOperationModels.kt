@@ -152,6 +152,7 @@ enum class ChangePlanQualification : OperationQualification {
 }
 
 enum class ChangePlanRejection : OperationRejection {
+    UNSUPPORTED_HOSTED_INTENT,
     WORKSPACE_NOT_READY,
     EXACT_SYMBOL_REQUIRED,
     EDITABLE_TARGET_REQUIRED,
@@ -165,13 +166,48 @@ enum class ChangePlanRejection : OperationRejection {
 
 @Serializable data class ChangeApplyRequest(val planIdentity: ProtocolText) : OperationRequest
 
-data class ChangeApplyResult(
-    val receiptIdentity: ProtocolText,
-    val changes: ChangeFilePreviewSet,
-) : OperationResult
+/** An observed write effect never implies that verification or receipt issuance succeeded. */
+sealed interface ChangeApplyResult : OperationResult {
+    val changes: ChangeFilePreviewSet
+
+    data class Verified(val receiptIdentity: ProtocolText, override val changes: ChangeFilePreviewSet) :
+        ChangeApplyResult
+
+    data class AppliedUnverified(
+        val planIdentity: ProtocolText,
+        override val changes: ChangeFilePreviewSet,
+        val reason: ChangeApplyUnverifiedReason,
+    ) : ChangeApplyResult
+
+    data class RecoveryRequired(
+        val planIdentity: ProtocolText,
+        override val changes: ChangeFilePreviewSet,
+        val reason: ChangeApplyRecoveryReason,
+    ) : ChangeApplyResult
+
+    companion object {
+        /** Existing installed callers have already issued a verified receipt. */
+        operator fun invoke(receiptIdentity: ProtocolText, changes: ChangeFilePreviewSet): Verified =
+            Verified(receiptIdentity, changes)
+    }
+}
+
+enum class ChangeApplyUnverifiedReason {
+    VERIFICATION_UNAVAILABLE,
+    VERIFICATION_FAILED,
+    RECEIPT_PERSISTENCE_FAILED,
+}
+
+enum class ChangeApplyRecoveryReason {
+    WRITE_OUTCOME_UNKNOWN,
+    POST_WRITE_OBSERVATION_UNAVAILABLE,
+    ATTEMPT_INTERRUPTED,
+    DURABILITY_REJECTED,
+}
 
 enum class ChangeApplyQualification : OperationQualification {
-    RECOVERY_REQUIRED
+    APPLIED_UNVERIFIED,
+    RECOVERY_REQUIRED,
 }
 
 enum class ChangeApplyRejection : OperationRejection {

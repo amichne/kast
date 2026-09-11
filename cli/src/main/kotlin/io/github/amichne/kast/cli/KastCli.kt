@@ -4,7 +4,6 @@ import io.github.amichne.kast.appserver.BrokerServerRun
 import io.github.amichne.kast.appserver.BrokerServerRunner
 import io.github.amichne.kast.appserver.UnavailableBrokerServerRunner
 import io.github.amichne.kast.appserver.host.CodexClientLaunch
-import io.github.amichne.kast.appserver.host.CodexClientLaunchRun
 import io.github.amichne.kast.appserver.host.CodexClientLauncher
 import io.github.amichne.kast.appserver.host.UnavailableCodexClientLauncher
 import io.github.amichne.kast.appserver.outputReason
@@ -121,23 +120,13 @@ class KastCli(
                             run.failure.outputReason(),
                         )
                 }
-            CliAction.Local.CodexCli -> launchCodex(CodexClientLaunch.Cli)
-            CliAction.Local.CodexDesktop -> launchCodex(CodexClientLaunch.Desktop)
+            CliAction.Local.CodexCli -> launchCodex(codexClientLauncher, CodexClientLaunch.Cli)
+            CliAction.Local.CodexDesktop -> launchCodex(codexClientLauncher, CodexClientLaunch.Desktop)
             CliAction.Local.TrustBroker -> boundaryExit(CliBoundaryExitStatus.RUNTIME, "ide-trust-unavailable")
             is CliAction.Local.ExistingIde ->
                 io.github.amichne.kast.cli.ide.executeExistingIdeAction(action, start, rootDiscovery, existingIdeClient)
             is CliAction.Semantic -> executeSemantic(action.request, start)
             is CliAction.Lifecycle -> executeLifecycle(action, start)
-        }
-
-    private fun launchCodex(client: CodexClientLaunch): CliExit =
-        when (val run = codexClientLauncher.launch(client)) {
-            is CodexClientLaunchRun.Completed -> CliExit.Delegated(run.exitCode)
-            is CodexClientLaunchRun.Rejected ->
-                boundaryExit(
-                    CliBoundaryExitStatus.RUNTIME,
-                    "codex-${run.failure.name.lowercase().replace('_', '-')}",
-                )
         }
 
     private fun executeSemantic(

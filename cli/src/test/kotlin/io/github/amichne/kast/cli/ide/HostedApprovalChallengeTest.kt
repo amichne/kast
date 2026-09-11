@@ -4,8 +4,12 @@ import io.github.amichne.kast.cli.CanonicalRoot
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import java.util.UUID
-import kotlinx.serialization.json.*
-import org.junit.jupiter.api.Assertions.*
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class HostedApprovalChallengeTest {
@@ -36,7 +40,12 @@ class HostedApprovalChallengeTest {
     @Test
     fun `challenge requires exact plan owner root and operation`() {
         assertTrue(
-            admitHostedApprovalChallenge(challenge().toString().toByteArray(), root, descriptor, operation)
+            admitHostedApprovalChallenge(
+                raw = challenge().toString().toByteArray(),
+                root = root,
+                descriptor = descriptor,
+                operation = operation,
+            )
                 is Refinement.Refined
         )
         for ((key, value) in
@@ -49,7 +58,12 @@ class HostedApprovalChallengeTest {
             )) {
             val changed = JsonObject(challenge() + (key to JsonPrimitive(value)))
             assertTrue(
-                admitHostedApprovalChallenge(changed.toString().toByteArray(), root, descriptor, operation)
+                admitHostedApprovalChallenge(
+                    raw = changed.toString().toByteArray(),
+                    root = root,
+                    descriptor = descriptor,
+                    operation = operation,
+                )
                     is Refinement.Rejected
             )
         }
@@ -68,16 +82,21 @@ class HostedApprovalChallengeTest {
                             })
                 )
             assertTrue(
-                admitHostedApprovalChallenge(changed.toString().toByteArray(), root, descriptor, operation)
+                admitHostedApprovalChallenge(
+                    raw = changed.toString().toByteArray(),
+                    root = root,
+                    descriptor = descriptor,
+                    operation = operation,
+                )
                     is Refinement.Rejected
             )
         }
         assertTrue(
             admitHostedApprovalChallenge(
-                JsonObject(challenge() + ("extra" to JsonPrimitive(1))).toString().toByteArray(),
-                root,
-                descriptor,
-                operation,
+                raw = JsonObject(challenge() + ("extra" to JsonPrimitive(1))).toString().toByteArray(),
+                root = root,
+                descriptor = descriptor,
+                operation = operation,
             )
                 is Refinement.Rejected
         )

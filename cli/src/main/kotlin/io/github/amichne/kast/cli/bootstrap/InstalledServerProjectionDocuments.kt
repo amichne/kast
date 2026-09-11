@@ -280,7 +280,8 @@ private enum class InstalledServerTool(
             inputSchema =
                 when (val input = definition.inputBinding) {
                     is AgentToolInputBinding.Facade -> PublicToolContract.parameters(input.identity)
-                    AgentToolInputBinding.Canonical -> generatedRequestSchema(requestSerializer)
+                    AgentToolInputBinding.Canonical ->
+                        generatedHostedRequestSchema(requestSerializer, definition.operation.hostedVariants)
                 },
             outputSchema = installedServerOutputSchema(operation),
         )
@@ -298,7 +299,7 @@ private enum class InstalledServerTool(
         )
 }
 
-private data class ServerSchemaProperty(
+internal data class ServerSchemaProperty(
     val name: String,
     val schema: JsonObject,
 )
@@ -456,15 +457,7 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
                 ServerSchemaProperty("planIdentity", textSchema("Durable change plan identity.")),
                 ServerSchemaProperty("changes", changeFilePreviewsSchema()),
             )
-        CanonicalOperation.CHANGE_APPLY ->
-            outcomeSchema(
-                operation,
-                ServerSchemaProperty(
-                    "receiptIdentity",
-                    textSchema("Verified change receipt identity."),
-                ),
-                ServerSchemaProperty("changes", changeFilePreviewsSchema()),
-            )
+        CanonicalOperation.CHANGE_APPLY -> changeApplicationDocumentSchema(operation)
         CanonicalOperation.CHANGE_RECOVER ->
             outcomeSchema(
                 operation,
@@ -472,7 +465,7 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
             )
     }
 
-private fun changeFilePreviewsSchema(): JsonObject =
+internal fun changeFilePreviewsSchema(): JsonObject =
     nonEmptyArraySchema(
         objectSchema(
             ServerSchemaProperty("path", workspaceFileSchema()),
@@ -1139,7 +1132,7 @@ private fun diagnosticQualificationSchema(): JsonObject =
         ),
     )
 
-private fun operationOutcomeVariant(
+internal fun operationOutcomeVariant(
     operation: CanonicalOperation,
     status: String,
     vararg payload: ServerSchemaProperty,
@@ -1841,7 +1834,9 @@ private fun typedFailureSchema(type: String, field: String): JsonObject =
         ServerSchemaProperty(field, textSchema("Finite failure evidence.")),
     )
 
-private fun objectSchema(vararg properties: ServerSchemaProperty): JsonObject = buildJsonObject {
+private fun objectSchema(vararg properties: ServerSchemaProperty): JsonObject = objectSchema(properties.toList())
+
+internal fun objectSchema(properties: List<ServerSchemaProperty>): JsonObject = buildJsonObject {
     put("type", "object")
     put("additionalProperties", false)
     putJsonObject("properties") {
@@ -1871,7 +1866,9 @@ private fun objectSchemaWithRequired(
     }
 }
 
-private fun unionSchema(vararg variants: JsonObject): JsonObject = buildJsonObject {
+internal fun unionSchema(vararg variants: JsonObject): JsonObject = unionSchema(variants.toList())
+
+internal fun unionSchema(variants: List<JsonObject>): JsonObject = buildJsonObject {
     putJsonArray("anyOf") {
         variants.forEach(::add)
     }
@@ -1916,7 +1913,7 @@ private fun finiteArraySchema(item: JsonObject): JsonObject = buildJsonObject {
     put("items", item)
 }
 
-private fun textSchema(description: String): JsonObject = buildJsonObject {
+internal fun textSchema(description: String): JsonObject = buildJsonObject {
     put("type", "string")
     put("minLength", 1)
     put("maxLength", MAXIMUM_PROTOCOL_TEXT_LENGTH)
@@ -1979,13 +1976,13 @@ private fun integerSchema(
     put("description", description)
 }
 
-private fun constantSchema(value: String, description: String): JsonObject = buildJsonObject {
+internal fun constantSchema(value: String, description: String): JsonObject = buildJsonObject {
     put("type", "string")
     put("const", value)
     put("description", description)
 }
 
-private fun enumSchema(values: List<String>, description: String): JsonObject = buildJsonObject {
+internal fun enumSchema(values: List<String>, description: String): JsonObject = buildJsonObject {
     put("type", "string")
     put("description", description)
     put("enum", buildJsonArray { values.forEach { add(JsonPrimitive(it)) } })

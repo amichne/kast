@@ -44,7 +44,11 @@ sealed interface ExistingIdeOperation {
 
     data class Supertype(val name: ExistingIdeQualifiedClassName) : ExistingIdeOperation
 
-    class Plan private constructor(val request: PreparedCliRequest) : ExistingIdeOperation {
+    sealed interface Change : ExistingIdeOperation {
+        val request: PreparedCliRequest
+    }
+
+    class Plan private constructor(override val request: PreparedCliRequest) : Change {
         companion object {
             fun admit(request: PreparedCliRequest): Refinement<Plan, ExistingIdeFailure> =
                 when (val demand = request.hostedDemand) {
@@ -65,11 +69,11 @@ sealed interface ExistingIdeOperation {
 
     class ApprovedMutation
     internal constructor(
-        val request: PreparedCliRequest,
+        override val request: PreparedCliRequest,
         val kind: HostedMutationOperation,
         val identity: HostedPlanIdentity,
         val assertion: HostedApprovalAssertion,
-    ) : ExistingIdeOperation
+    ) : Change
 
     class Read
     private constructor(

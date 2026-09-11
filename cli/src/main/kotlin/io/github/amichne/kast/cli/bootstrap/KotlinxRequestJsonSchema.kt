@@ -7,6 +7,7 @@ import io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint
 import io.github.amichne.kast.protocol.contract.ProtocolHomogeneousCollection
 import io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint
 import io.github.amichne.kast.protocol.contract.ProtocolStringConstraint
+import io.github.amichne.kast.protocol.registry.HostedVariants
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PolymorphicKind
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -26,6 +27,31 @@ import kotlinx.serialization.json.putJsonObject
 /** Generates the hosted request schema from the same serializer that admits the request. */
 internal fun generatedRequestSchema(serializer: KSerializer<*>): JsonObject =
     serializer.descriptor.toJsonSchema(emptyList(), includeNullability = true)
+
+/** Retains generated payload constraints while narrowing variants through the canonical hosted owner. */
+internal fun generatedHostedRequestSchema(serializer: KSerializer<*>, variants: HostedVariants): JsonObject {
+    val generated = generatedRequestSchema(serializer)
+    return when (variants) {
+        HostedVariants.None -> generated
+        is HostedVariants.Intents -> {
+            val properties = generated["properties"] as? JsonObject ?: error("Hosted intent request must be an object")
+            val intent = properties["intent"] as? JsonObject ?: error("Hosted intent request must retain intent")
+            val choices = intent["anyOf"] as? JsonArray ?: error("Hosted intents must be a generated closed union")
+            val allowed = variants.intents.map { it.identity }.toSet()
+            val selected = choices.filter { choice ->
+                val fields = (choice as? JsonObject)?.get("properties") as? JsonObject
+                val tag = (fields?.get("kind") as? JsonObject)?.get("const") as? JsonPrimitive
+                tag?.content in allowed
+            }
+            check(selected.size == allowed.size) { "Every hosted intent must resolve to one generated variant" }
+            JsonObject(
+                generated +
+                    ("properties" to
+                        JsonObject(properties + ("intent" to JsonObject(intent + ("anyOf" to JsonArray(selected))))))
+            )
+        }
+    }
+}
 
 private fun SerialDescriptor.toJsonSchema(
     propertyAnnotations: List<Annotation>,

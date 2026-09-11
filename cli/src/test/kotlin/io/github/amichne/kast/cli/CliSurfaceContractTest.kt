@@ -44,6 +44,7 @@ class CliSurfaceContractTest {
                 CliProductCommand.IDE_CLASSES,
                 CliProductCommand.IDE_SUPERTYPE,
                 CliProductCommand.IDE_COMPLETION,
+                CliProductCommand.IDE_TRUST_BROKER,
                 CliProductCommand.APP_SERVER_REGISTER,
                 CliProductCommand.APP_SERVER_ENABLE,
                 CliProductCommand.APP_SERVER_REPAIR,

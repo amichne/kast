@@ -1,9 +1,12 @@
 package io.github.amichne.kast.cli.ide
 
-import io.github.amichne.kast.cli.*
+import io.github.amichne.kast.cli.CanonicalRoot
+import io.github.amichne.kast.cli.CanonicalRootDiscoverer
+import io.github.amichne.kast.cli.CanonicalRootDiscovery
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import java.nio.file.Path
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class ExistingIdeChangeCliTest {
@@ -13,16 +16,19 @@ class ExistingIdeChangeCliTest {
         var calls = 0
         val result =
             executeExistingIdeCli(
-                listOf("change", "plan"),
-                root.path,
-                CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) },
-                ExistingIdeClient { _, _ ->
-                    calls++
-                    ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
-                },
-                CliRequestDocumentInput.Provided(
-                    """{"intent":{"kind":"add-declaration","exactTarget":"exact:opaque\u005Fref","declaration":"fun added() = Unit"}}"""
-                ),
+                argv = listOf("change", "plan"),
+                start = root.path,
+                roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) },
+                client =
+                    ExistingIdeClient { _, _ ->
+                        calls++
+                        ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
+                    },
+                requestInput =
+                    CliRequestDocumentInput.Provided(
+                        """{"intent":{"kind":"add-declaration","exactTarget":"exact:opaque\u005Fref",""" +
+                            """"declaration":"fun added() = Unit"}}"""
+                    ),
             )
         assertEquals(1, calls)
         assertTrue(result.document.value.contains("ide-host-unavailable"))
@@ -33,14 +39,15 @@ class ExistingIdeChangeCliTest {
         val root = CanonicalRoot(Path.of("/workspace"))
         var calls = 0
         executeExistingIdeCli(
-            listOf("change", "apply", "--stdin", "--hosted-approval-prepare"),
-            root.path,
-            CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) },
-            ExistingIdeClient { _, _ ->
-                calls++
-                ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
-            },
-            CliRequestDocumentInput.Provided("""{"planIdentity":"plan:${"a".repeat(64)}"}"""),
+            argv = listOf("change", "apply", "--stdin", "--hosted-approval-prepare"),
+            start = root.path,
+            roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) },
+            client =
+                ExistingIdeClient { _, _ ->
+                    calls++
+                    ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
+                },
+            requestInput = CliRequestDocumentInput.Provided("""{"planIdentity":"plan:${"a".repeat(64)}"}"""),
         )
         assertEquals(1, calls)
     }
@@ -51,14 +58,15 @@ class ExistingIdeChangeCliTest {
         var calls = 0
         val result =
             executeExistingIdeCli(
-                listOf("change", "apply"),
-                root.path,
-                CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) },
-                ExistingIdeClient { _, _ ->
-                    calls++
-                    ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
-                },
-                CliRequestDocumentInput.Provided("""{"planIdentity":"plan:${"a".repeat(64)}"}"""),
+                argv = listOf("change", "apply"),
+                start = root.path,
+                roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) },
+                client =
+                    ExistingIdeClient { _, _ ->
+                        calls++
+                        ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
+                    },
+                requestInput = CliRequestDocumentInput.Provided("""{"planIdentity":"plan:${"a".repeat(64)}"}"""),
             )
         assertEquals(0, calls)
         assertTrue(result.document.value.contains("approval-required"))

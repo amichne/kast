@@ -110,7 +110,7 @@ class InstalledServerProjectionTest {
         assertEquals(listOf("symbol", "inspect"), invocations.invocation("symbol_inspect").cliCommand())
         assertTrue(
             tools
-                .filter { it.getValue("name").jsonPrimitive.content.startsWith("change_") }
+                .filter { it.getValue("name").jsonPrimitive.content in setOf("change_apply", "change_recover") }
                 .all {
                     it.getValue("approvalPolicy").jsonPrimitive.content ==
                         HostedApprovalPolicy.EXPLICIT.name.lowercase()
@@ -160,7 +160,8 @@ class InstalledServerProjectionTest {
             .tool("check_diagnostics")
             .outputSchema()
             .assertAdmits(
-                """{"status":"completed","document":{"operation":"diagnostic.check","status":"complete","diagnostics":[]}}"""
+                """{"status":"completed","document":{"operation":"diagnostic.check","status":"complete",""" +
+                    """"diagnostics":[]}}"""
             )
     }
 
@@ -177,17 +178,22 @@ class InstalledServerProjectionTest {
         val query = projectionTools().tool("query_symbols")
         val input = query.getValue("inputSchema").jsonObject
         input.assertAdmits(
-            """{"source":{"type":"search_declarations","declaration_name":"OrderService","name_match":null,"declaration_kinds":null,"scope":null},"steps":null,"return_fields":null}"""
+            """{"source":{"type":"search_declarations","declaration_name":"OrderService",""" +
+                """"name_match":null,"declaration_kinds":null,"scope":null},"steps":null,""" +
+                """"return_fields":null}"""
         )
         input.assertAdmits(
-            """{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":null,"return_fields":[]}"""
+            """{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":null,""" +
+                """"return_fields":[]}"""
         )
         input.assertAdmits(
-            """{"source":{"type":"symbol_refs","symbol_refs":["NON_ISSUED_SCHEMA_TEST_ONLY"]},"steps":null,"return_fields":null}"""
+            """{"source":{"type":"symbol_refs","symbol_refs":["NON_ISSUED_SCHEMA_TEST_ONLY"]},""" +
+                """"steps":null,"return_fields":null}"""
         )
         input.assertRejects("""{"type":"QUERY","from":{"type":"ALL"}}""")
         input.assertRejects(
-            """{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":[{"type":"check_diagnostics"}],"return_fields":null}"""
+            """{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},""" +
+                """"steps":[{"type":"check_diagnostics"}],"return_fields":null}"""
         )
         assertEquals(
             io.github.amichne.kast.appserver.query.PublicToolContract.parameters(
@@ -198,12 +204,14 @@ class InstalledServerProjectionTest {
         query
             .outputSchema()
             .assertAdmits(
-                """{"status":"completed","document":{"operation":"query.run","status":"complete","items":[],"failures":[]}}"""
+                """{"status":"completed","document":{"operation":"query.run","status":"complete","items":[],""" +
+                    """"failures":[]}}"""
             )
         query
             .outputSchema()
             .assertAdmits(
-                """{"status":"completed","document":{"operation":"query.run","status":"qualified","items":[],"failures":[],"qualification":{"knownMinimum":0,"limitations":["discovery-incomplete"]}}}"""
+                """{"status":"completed","document":{"operation":"query.run","status":"qualified","items":[],""" +
+                    """"failures":[],"qualification":{"knownMinimum":0,"limitations":["discovery-incomplete"]}}}"""
             )
     }
 
@@ -211,19 +219,22 @@ class InstalledServerProjectionTest {
     fun `change schemas admit their emitted proof carrying previews`() {
         val tools = projectionTools()
         val preview =
-            """"changes":[{"path":"src/main/kotlin/demo/EventConsumer.kt","kind":"update","diff":"@@ class EventConsumer @@\n-old\n+new"}]"""
+            """"changes":[{"path":"src/main/kotlin/demo/EventConsumer.kt","kind":"update",""" +
+                """"diff":"@@ class EventConsumer @@\n-old\n+new"}]"""
 
         tools
             .tool("change_plan")
             .outputSchema()
             .assertAdmits(
-                """{"status":"completed","document":{"operation":"change.plan","status":"complete","planIdentity":"plan:opaque",$preview}}"""
+                """{"status":"completed","document":{"operation":"change.plan","status":"complete",""" +
+                    """"planIdentity":"plan:opaque",$preview}}"""
             )
         tools
             .tool("change_apply")
             .outputSchema()
             .assertAdmits(
-                """{"status":"completed","document":{"operation":"change.apply","status":"complete","receiptIdentity":"receipt:opaque",$preview}}"""
+                """{"status":"completed","document":{"operation":"change.apply","status":"complete",""" +
+                    """"state":"verified","receiptIdentity":"receipt:opaque",$preview}}"""
             )
     }
 
@@ -347,16 +358,23 @@ class InstalledServerProjectionTest {
                 .jsonObject
                 .getValue("anyOf")
                 .jsonArray
-        assertEquals(4, changeIntentVariants.size)
+        assertEquals(1, changeIntentVariants.size)
     }
 
     @Test
     fun `canonical output schemas retain internal topology and public diagnostic proof`() {
         val coverage =
-            """{"status":"completed","document":{"operation":"topology.build","status":"rejected","reason":"coverage-incomplete","missing":["src/Missing.kt"],"unexpected":[],"duplicateCandidates":[],"duplicateCompletions":[],"workspaceMismatches":[],"candidateEvidenceMismatches":[],"duplicateSymbols":[],"missingEdgeTargets":[],"mismatchedEdgeEndpoints":[]}}"""
+            """{"status":"completed","document":{"operation":"topology.build","status":"rejected",""" +
+                """"reason":"coverage-incomplete","missing":["src/Missing.kt"],"unexpected":[],""" +
+                """"duplicateCandidates":[],"duplicateCompletions":[],"workspaceMismatches":[],""" +
+                """"candidateEvidenceMismatches":[],"duplicateSymbols":[],"missingEdgeTargets":[],""" +
+                """"mismatchedEdgeEndpoints":[]}}"""
         val longMessage = "x".repeat(20_000)
         val diagnostic =
-            """{"status":"completed","document":{"operation":"diagnostic.check","status":"complete","diagnostics":[{"severity":"warning","code":"LONG_MESSAGE","message":"$longMessage","location":{"candidateSelector":"candidate:diagnostic","file":"src/A.kt","range":{"startInclusive":0,"endExclusive":0}}}]}}"""
+            """{"status":"completed","document":{"operation":"diagnostic.check","status":"complete",""" +
+                """"diagnostics":[{"severity":"warning","code":"LONG_MESSAGE","message":"$longMessage",""" +
+                """"location":{"candidateSelector":"candidate:diagnostic","file":"src/A.kt",""" +
+                """"range":{"startInclusive":0,"endExclusive":0}}}]}}"""
 
         assertAll(
             { installedServerOutputSchema(CanonicalOperation.TOPOLOGY_BUILD).assertAdmits(coverage) },
@@ -369,7 +387,11 @@ class InstalledServerProjectionTest {
     @Test
     fun `hosted output schema admits typed cold runtime rejection evidence`() {
         val runtimeRejection =
-            """{"status":"rejected","diagnostic":{"status":"rejected","boundary":"runtime","reason":"gradle-import-failed","bootstrap":{"state":"rejected","attemptId":"728b343f-b2ca-4c67-b5cb-8abd9fc6886e","phase":"importing-gradle-model","completedPhases":2,"totalPhases":7,"cause":"gradle-import-failed","correctiveAction":"Run the repository Gradle wrapper successfully with the admitted import inputs, then run kast start again.","gradleJvm":{"type":"io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionObservation.Observed","report":{"distribution":{"type":"io.github.amichne.kast.distribution.contract.gradle.GradleDistributionEvidence.Observed","version":"9.4.1"},"requiredJava":[17,21,25],"candidates":[{"java":25,"homeIdentity":"d3bb48e3f4a12b8eafcd37372767714786c6efe55d2683b57822d8d5a69b8923","authority":"AMBIENT_JAVA_HOME","decision":"SELECTED"}],"outcome":{"type":"io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionOutcome.Selected","candidate":{"java":25,"homeIdentity":"d3bb48e3f4a12b8eafcd37372767714786c6efe55d2683b57822d8d5a69b8923","authority":"AMBIENT_JAVA_HOME","decision":"SELECTED"}}}}}}}"""
+            """{"status":"rejected","diagnostic":{"status":"rejected","boundary":"runtime",""" +
+                """"reason":"gradle-import-failed","bootstrap":{"state":"rejected",""" +
+                """"attemptId":"728b343f-b2ca-4c67-b5cb-8abd9fc6886e","phase":"importing-gradle-model",""" +
+                """"completedPhases":2,"totalPhases":7,"cause":"gradle-import-failed",""" +
+                """"correctiveAction":"Run the repository Gradle wrapper successfully with the admitted import inputs, then run kast start again.","gradleJvm":{"type":"io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionObservation.Observed","report":{"distribution":{"type":"io.github.amichne.kast.distribution.contract.gradle.GradleDistributionEvidence.Observed","version":"9.4.1"},"requiredJava":[17,21,25],"candidates":[{"java":25,"homeIdentity":"d3bb48e3f4a12b8eafcd37372767714786c6efe55d2683b57822d8d5a69b8923","authority":"AMBIENT_JAVA_HOME","decision":"SELECTED"}],"outcome":{"type":"io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionOutcome.Selected","candidate":{"java":25,"homeIdentity":"d3bb48e3f4a12b8eafcd37372767714786c6efe55d2683b57822d8d5a69b8923","authority":"AMBIENT_JAVA_HOME","decision":"SELECTED"}}}}}}}"""
 
         installedServerOutputSchema(CanonicalOperation.SYMBOL_DISCOVER).assertAdmits(runtimeRejection)
     }
@@ -400,7 +422,9 @@ class InstalledServerProjectionTest {
                 kind = "property",
                 qualifiedIdentity = "\"sample.Controller\"",
                 signature =
-                    """{"type":"property","qualifiedIdentity":"sample.Controller","receiver":{"type":"present","compilerType":"kotlin.String"},"contextReceivers":["sample.Context"],"returnType":"kotlin.Int"}""",
+                    """{"type":"property","qualifiedIdentity":"sample.Controller","receiver":{"type":"present",""" +
+                        """"compilerType":"kotlin.String"},"contextReceivers":["sample.Context"],""" +
+                        """"returnType":"kotlin.Int"}""",
             )
         val propertyWithoutReceiverProof =
             symbolInspectProcessDocument(
@@ -423,11 +447,21 @@ class InstalledServerProjectionTest {
         val schema = installedServerOutputSchema(CanonicalOperation.TOPOLOGY_BUILD)
         val compilerIdentity = "canonical-signature-sha256-v1|${"a".repeat(64)}"
         val fileEvidence =
-            """{"workspace":{"root":"/workspace","generation":3,"sourceState":"state"},"sourceRoot":{"module":"main","buildRoot":".","projectPath":":","sourceSet":"main","location":"src/main/kotlin","provenance":"authored"},"path":"src/Alpha.kt","contentHash":"${"b".repeat(64)}"}"""
+            """{"workspace":{"root":"/workspace","generation":3,"sourceState":"state"},""" +
+                """"sourceRoot":{"module":"main","buildRoot":".","projectPath":":","sourceSet":"main",""" +
+                """"location":"src/main/kotlin","provenance":"authored"},"path":"src/Alpha.kt",""" +
+                """"contentHash":"${"b".repeat(64)}"}"""
         val endpoint =
-            """{"node":{"compilerIdentity":"$compilerIdentity","file":"src/Alpha.kt","range":{"startInclusive":0,"endExclusive":5}},"fileEvidence":$fileEvidence,"name":"Alpha","qualifiedIdentity":{"state":"available","value":"sample.Alpha"},"kind":"classlike","compilerEvidence":{"identity":"$compilerIdentity","signature":{"type":"class-like","qualifiedIdentity":"sample.Alpha"}}}"""
+            """{"node":{"compilerIdentity":"$compilerIdentity","file":"src/Alpha.kt",""" +
+                """"range":{"startInclusive":0,"endExclusive":5}},"fileEvidence":$fileEvidence,""" +
+                """"name":"Alpha","qualifiedIdentity":{"state":"available","value":"sample.Alpha"},""" +
+                """"kind":"classlike","compilerEvidence":{"identity":"$compilerIdentity",""" +
+                """"signature":{"type":"class-like","qualifiedIdentity":"sample.Alpha"}}}"""
         val valid =
-            """{"status":"completed","document":{"operation":"topology.build","status":"rejected","reason":"coverage-incomplete","missing":[],"unexpected":[],"duplicateCandidates":[],"duplicateCompletions":[],"workspaceMismatches":[],"candidateEvidenceMismatches":[],"duplicateSymbols":[],"missingEdgeTargets":[],"mismatchedEdgeEndpoints":[$endpoint]}}"""
+            """{"status":"completed","document":{"operation":"topology.build","status":"rejected",""" +
+                """"reason":"coverage-incomplete","missing":[],"unexpected":[],"duplicateCandidates":[],""" +
+                """"duplicateCompletions":[],"workspaceMismatches":[],"candidateEvidenceMismatches":[],""" +
+                """"duplicateSymbols":[],"missingEdgeTargets":[],"mismatchedEdgeEndpoints":[$endpoint]}}"""
         val proofDropped =
             valid.replace(
                 ",\"compilerEvidence\":{\"identity\":\"$compilerIdentity\",\"signature\":{\"type\":\"class-like\",\"qualifiedIdentity\":\"sample.Alpha\"}}",
@@ -451,9 +485,23 @@ class InstalledServerProjectionTest {
         )
 
         val complete =
-            """{"status":"completed","document":{"operation":"source.read","status":"complete","snapshot":{"canonicalRoot":"/workspace","generation":17,"sourceState":"state","file":"src/Empty.kt","textIdentity":"identity","coordinateUnit":"utf16-code-unit","length":0},"region":{"kind":"file","selection":{"selector":"source-selector-v1:payload:digest","range":{"startInclusive":0,"endExclusive":0}}},"entities":[],"text":{"type":"returned","lines":{"startInclusive":1,"endInclusive":1},"selection":{"selector":"source-selector-v1:payload:digest","range":{"startInclusive":0,"endExclusive":0}},"text":""}}} """
+            """{"status":"completed","document":{"operation":"source.read","status":"complete",""" +
+                """"snapshot":{"canonicalRoot":"/workspace","generation":17,"sourceState":"state",""" +
+                """"file":"src/Empty.kt","textIdentity":"identity","coordinateUnit":"utf16-code-unit",""" +
+                """"length":0},"region":{"kind":"file",""" +
+                """"selection":{"selector":"source-selector-v1:payload:digest","range":{"startInclusive":0,""" +
+                """"endExclusive":0}}},"entities":[],"text":{"type":"returned","lines":{"startInclusive":1,""" +
+                """"endInclusive":1},"selection":{"selector":"source-selector-v1:payload:digest",""" +
+                """"range":{"startInclusive":0,"endExclusive":0}},"text":""}}} """
         val qualified =
-            """{"status":"completed","document":{"operation":"source.read","status":"qualified","snapshot":{"canonicalRoot":"/workspace","generation":17,"sourceState":"state","file":"src/Target.kt","textIdentity":"identity","coordinateUnit":"utf16-code-unit","length":10},"region":{"kind":"declaration","selection":{"selector":"source-selector-v1:payload:digest","range":{"startInclusive":0,"endExclusive":10}}},"entities":[],"text":{"type":"withheld","reason":"byte-limit-reached"},"qualification":{"knownMinimumEntityCount":0,"limitations":["text-byte-limit-reached"],"continuation":{"type":"unavailable"}}}}"""
+            """{"status":"completed","document":{"operation":"source.read","status":"qualified",""" +
+                """"snapshot":{"canonicalRoot":"/workspace","generation":17,"sourceState":"state",""" +
+                """"file":"src/Target.kt","textIdentity":"identity","coordinateUnit":"utf16-code-unit",""" +
+                """"length":10},"region":{"kind":"declaration",""" +
+                """"selection":{"selector":"source-selector-v1:payload:digest","range":{"startInclusive":0,""" +
+                """"endExclusive":10}}},"entities":[],"text":{"type":"withheld",""" +
+                """"reason":"byte-limit-reached"},"qualification":{"knownMinimumEntityCount":0,""" +
+                """"limitations":["text-byte-limit-reached"],"continuation":{"type":"unavailable"}}}}"""
         val missingRegionSelector =
             complete.replace(
                 "\"selection\":{\"selector\":\"source-selector-v1:payload:digest\",\"range\":{\"startInclusive\":0,\"endExclusive\":0}},",
@@ -530,7 +578,12 @@ class InstalledServerProjectionTest {
         qualifiedIdentity: String,
         signature: String,
     ): String =
-        """{"status":"completed","document":{"operation":"symbol.inspect","status":"complete","symbol":{"selector":"exact:v1:3:1","kind":"$kind","name":"Controller","qualifiedIdentity":$qualifiedIdentity,"file":"src/Controller.kt","range":{"startInclusive":0,"endExclusive":10},"compilerEvidence":{"identity":"canonical-signature-sha256-v1|${"a".repeat(64)}","signature":$signature}}}}"""
+        """{"status":"completed","document":{"operation":"symbol.inspect","status":"complete",""" +
+            """"symbol":{"selector":"exact:v1:3:1","kind":"$kind","name":"Controller",""" +
+            """"qualifiedIdentity":$qualifiedIdentity,"file":"src/Controller.kt",""" +
+            """"range":{"startInclusive":0,"endExclusive":10},""" +
+            """"compilerEvidence":{"identity":"canonical-signature-sha256-v1|${"a".repeat(64)}",""" +
+            """"signature":$signature}}}}"""
 
     private fun JsonObject.completedDocumentSchema(): JsonObject =
         getValue("outputSchema")

@@ -14,6 +14,11 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverQualification
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.put
 
 internal object CanonicalChangeCliDocuments {
     fun projectPlan(
@@ -62,25 +67,14 @@ internal object CanonicalChangeCliDocuments {
     ) =
         projectClosedOutcome(
             outcome,
-            complete = { result ->
-                applicationCompleteFactory.create(
-                    ChangeApplyCompleteCliDocument(
-                        CanonicalOperation.CHANGE_APPLY.id.value,
-                        "complete",
-                        result.receiptIdentity.value,
-                        result.changes.entries.map(ChangeFilePreview::cliDocument),
-                    )
-                )
-            },
+            complete = { result -> applicationDocument(result, buildJsonObject { put("status", "complete") }) },
             qualified = { result, qualification ->
-                applicationQualifiedFactory.create(
-                    ChangeApplyQualifiedCliDocument(
-                        CanonicalOperation.CHANGE_APPLY.id.value,
-                        "qualified",
-                        result.receiptIdentity.value,
-                        result.changes.entries.map(ChangeFilePreview::cliDocument),
-                        qualification.cliName(),
-                    )
+                applicationDocument(
+                    result,
+                    buildJsonObject {
+                        put("status", "qualified")
+                        put("qualification", qualification.cliName())
+                    },
                 )
             },
             rejected = { rejection ->
@@ -140,22 +134,32 @@ private data class ChangePlanQualifiedCliDocument(
     val qualification: String,
 )
 
-@Serializable
-private data class ChangeApplyCompleteCliDocument(
-    val operation: String,
-    val status: String,
-    val receiptIdentity: String,
-    val changes: List<ChangeFilePreviewCliDocument>,
-)
-
-@Serializable
-private data class ChangeApplyQualifiedCliDocument(
-    val operation: String,
-    val status: String,
-    val receiptIdentity: String,
-    val changes: List<ChangeFilePreviewCliDocument>,
-    val qualification: String,
-)
+/** Projection preserves the finite write effect and never invents a receipt for an unverified write. */
+private fun applicationDocument(result: ChangeApplyResult, outcome: JsonObject): CliJsonDocument =
+    CliJsonDocument.generated(JsonObject.serializer())
+        .create(
+            buildJsonObject {
+                put("operation", CanonicalOperation.CHANGE_APPLY.id.value)
+                outcome.forEach { (name, value) -> put(name, value) }
+                when (result) {
+                    is ChangeApplyResult.Verified -> {
+                        put("state", "verified")
+                        put("receiptIdentity", result.receiptIdentity.value)
+                    }
+                    is ChangeApplyResult.AppliedUnverified -> {
+                        put("state", "applied_unverified")
+                        put("planIdentity", result.planIdentity.value)
+                        put("reason", result.reason.cliName())
+                    }
+                    is ChangeApplyResult.RecoveryRequired -> {
+                        put("state", "recovery_required")
+                        put("planIdentity", result.planIdentity.value)
+                        put("reason", result.reason.cliName())
+                    }
+                }
+                put("changes", Json.encodeToJsonElement(result.changes.entries.map(ChangeFilePreview::cliDocument)))
+            }
+        )
 
 @Serializable
 private data class ChangeFilePreviewCliDocument(
@@ -184,7 +188,5 @@ private data class ChangeRecoveryQualifiedCliDocument(
 
 private val planCompleteFactory = CliJsonDocument.generated(ChangePlanCompleteCliDocument.serializer())
 private val planQualifiedFactory = CliJsonDocument.generated(ChangePlanQualifiedCliDocument.serializer())
-private val applicationCompleteFactory = CliJsonDocument.generated(ChangeApplyCompleteCliDocument.serializer())
-private val applicationQualifiedFactory = CliJsonDocument.generated(ChangeApplyQualifiedCliDocument.serializer())
 private val recoveryCompleteFactory = CliJsonDocument.generated(ChangeRecoveryCompleteCliDocument.serializer())
 private val recoveryQualifiedFactory = CliJsonDocument.generated(ChangeRecoveryQualifiedCliDocument.serializer())

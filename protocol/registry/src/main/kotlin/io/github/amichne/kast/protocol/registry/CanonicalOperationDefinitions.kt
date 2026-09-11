@@ -261,6 +261,7 @@ object CanonicalOperationDefinitions {
             OperationScope.FILE,
             CompletenessPolicy.COMPLETE_REQUIRED,
             HostedExposure.PUBLIC,
+            schema = schema("kast.change.apply.v3"),
         )
 
     val changeRecover =

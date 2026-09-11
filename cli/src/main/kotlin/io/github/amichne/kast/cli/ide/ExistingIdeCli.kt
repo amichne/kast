@@ -31,15 +31,36 @@ internal fun selectCliRuntimePath(argv: List<String>): CliRuntimePath {
     }
 }
 
-/** Hosted reads are selected before bootstrap can demand an isolated product or worker. */
+/** The hosted path receives only its explicit local effects. */
+internal class ExistingIdeCliCapabilities(
+    val roots: CanonicalRootDiscoverer,
+    val client: ExistingIdeClient,
+    val trust: BrokerTrustRegistrar = BrokerTrustRegistrar.Unavailable,
+)
+
+/** Hosted operations are selected before bootstrap can demand an isolated product or worker. */
 internal fun executeExistingIdeCli(
     argv: List<String>,
     start: Path,
     roots: CanonicalRootDiscoverer,
     client: ExistingIdeClient,
     requestInput: CliRequestDocumentInput = CliRequestDocumentInput.Absent,
-    trustRegistrar: BrokerTrustRegistrar = BrokerTrustRegistrar.Unavailable,
+): CliExit =
+    executeExistingIdeCli(
+        argv = argv,
+        start = start,
+        capabilities = ExistingIdeCliCapabilities(roots, client),
+        requestInput = requestInput,
+    )
+
+internal fun executeExistingIdeCli(
+    argv: List<String>,
+    start: Path,
+    capabilities: ExistingIdeCliCapabilities,
+    requestInput: CliRequestDocumentInput = CliRequestDocumentInput.Absent,
 ): CliExit {
+    val roots = capabilities.roots
+    val client = capabilities.client
     val ingress =
         when (val admitted = admitHostedCliInput(argv, requestInput)) {
             is Refinement.Refined -> admitted.value
@@ -63,7 +84,7 @@ internal fun executeExistingIdeCli(
             boundaryExit(CliBoundaryExitStatus.PROTOCOL, "ide-projection-rejected")
         is CliCommandParsing.Parsed ->
             when (val action = parsed.action) {
-                CliAction.Local.TrustBroker -> executeBrokerTrustEnrollment(trustRegistrar)
+                CliAction.Local.TrustBroker -> executeBrokerTrustEnrollment(capabilities.trust)
                 is CliAction.Local.ExistingIde -> executeExistingIdeAction(action, start, roots, client)
                 is CliAction.Semantic ->
                     when (val read = ingress.operation(action.request)) {
