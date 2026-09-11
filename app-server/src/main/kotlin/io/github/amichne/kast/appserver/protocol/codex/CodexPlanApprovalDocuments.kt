@@ -39,12 +39,14 @@ internal object CodexPlanApprovalDocuments {
 
     @Serializable
     data class FileUpdate(val path: String, val diff: String) {
-        @EncodeDefault val kind: UpdateKind = UpdateKind
+        @EncodeDefault val kind: UpdateKind = UpdateKind(UpdateType.UPDATE)
     }
 
+    @Serializable data class UpdateKind(val type: UpdateType)
+
     @Serializable
-    data object UpdateKind {
-        @EncodeDefault val type: String = "update"
+    enum class UpdateType {
+        @SerialName("update") UPDATE
     }
 
     @Serializable
