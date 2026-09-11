@@ -11,6 +11,8 @@ from unittest.mock import patch
 from hosted_read_fixture import ReadFixtureRejected, prepare_read_fixture
 from hosted_read_regression import _ReadReplay, _read_observation, _reproduction
 from hosted_read_transport import HostedReadTransport, ReadTransportRejected, _admit_cli_invocations
+from hosted_generated_fixture import (GENERATED_FILE, GENERATED_SOURCE, MOVEMENT_FILE, MOVEMENT_SOURCE,
+    prepare_generated_fixture, finalize_generated_fixture, amend_generated_provenance)
 
 
 REPO = Path(__file__).resolve().parent.parent
@@ -127,6 +129,63 @@ class HostedReadRegressionTest(unittest.TestCase):
         self.assertNotEqual(first['authoritySha256'], second['authoritySha256'])
         self.assertNotIn(str(self.workspace), json.dumps(first))
         self.assertNotIn('private-token', json.dumps(first))
+
+    def generated_fixture(self):
+        original = prepare_read_fixture(self.workspace, REPO)
+        pending = prepare_generated_fixture(original)
+        output = self.workspace / GENERATED_FILE
+        output.parent.mkdir(parents=True)
+        # Unit-test boundary observation only; the native runner must execute
+        # pending.gradle_tasks through the actual fixture Gradle installation.
+        output.write_text(GENERATED_SOURCE)
+        return finalize_generated_fixture(pending)
+
+    def test_generated_setup_requires_real_output_before_inventory_admission(self):
+        original = prepare_read_fixture(self.workspace, REPO)
+        pending = prepare_generated_fixture(original)
+        self.assertEqual(('generateNativeAcceptanceSource',), pending.gradle_tasks)
+        self.assertFalse((self.workspace / GENERATED_FILE).exists())
+        with self.assertRaises(OSError):
+            finalize_generated_fixture(pending)
+        output = self.workspace / GENERATED_FILE
+        output.parent.mkdir(parents=True)
+        output.write_text('class UnexpectedGeneratorOutput\n')
+        with self.assertRaises(ReadFixtureRejected):
+            finalize_generated_fixture(pending)
+        output.write_text(GENERATED_SOURCE)
+        fixture = finalize_generated_fixture(pending)
+        self.assertTrue(fixture.read_fixture.unchanged())
+        self.assertIn(GENERATED_FILE, dict(fixture.read_fixture.files))
+        self.assertIn(MOVEMENT_FILE, dict(fixture.read_fixture.files))
+        self.assertEqual('pending-native-gradle-and-jps-model-observation', fixture.evidence()['provenanceAuthority'])
+
+    def test_provenance_amendment_preserves_all_source_bytes_and_rejects_replay(self):
+        fixture = self.generated_fixture()
+        original_target = self.source.read_bytes()
+        receipt = amend_generated_provenance(fixture)
+        self.assertEqual('gradle-provenance-amended', receipt['outcome'])
+        self.assertNotEqual(receipt['beforeSha256'], receipt['afterSha256'])
+        self.assertEqual(original_target, self.source.read_bytes())
+        self.assertEqual(MOVEMENT_SOURCE, (self.workspace / MOVEMENT_FILE).read_text())
+        self.assertEqual(GENERATED_SOURCE, (self.workspace / GENERATED_FILE).read_text())
+        self.assertEqual(fixture.amended_build, (self.workspace / 'build.gradle.kts').read_text())
+        with self.assertRaises(ReadFixtureRejected):
+            amend_generated_provenance(fixture)
+
+    def test_provenance_amendment_cannot_overwrite_changed_build_or_target(self):
+        fixture = self.generated_fixture()
+        build = self.workspace / 'build.gradle.kts'
+        build.write_text('unexpected build\n')
+        with self.assertRaises(ReadFixtureRejected):
+            amend_generated_provenance(fixture)
+        self.assertEqual('unexpected build\n', build.read_text())
+        build.write_text(fixture.initial_build)
+        target = self.workspace / MOVEMENT_FILE
+        target.write_text('class UnexpectedContent\n')
+        with self.assertRaises(ReadFixtureRejected):
+            amend_generated_provenance(fixture)
+        self.assertEqual(fixture.initial_build, build.read_text())
+        self.assertEqual('class UnexpectedContent\n', target.read_text())
 
 
 if __name__ == '__main__':
