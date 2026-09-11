@@ -148,6 +148,16 @@ internal class NativeChangeEvidence(private val report: Path) {
         System.out.flush()
     }
 
+    fun contractRejected(document: NativeContractFailureDocument) {
+        metadata =
+            JsonObject(
+                metadata +
+                    ("contractFailure" to
+                        Json.encodeToJsonElement(NativeContractFailureDocument.serializer(), document))
+            )
+        persist()
+    }
+
     fun terminal(failure: NativeFailure?) {
         metadata =
             JsonObject(

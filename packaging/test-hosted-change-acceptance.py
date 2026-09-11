@@ -13,7 +13,7 @@ import zipfile
 from hosted_change_process import NativeProcesses
 from native_fixture_probe import NativeFixtureProbeError
 from hosted_change_acceptance import (AcceptanceRejected, admit_event, admit_harness, admitted_live,
-    CASE_NAMES, bounded_native_report, event_observation, native_workflow_qualified, pending_readiness, receipt_scope_observation, remaining_matrix_gates, tree_identity)
+    CASE_NAMES, admit_contract_failure, bounded_native_report, event_observation, native_workflow_qualified, pending_readiness, receipt_scope_observation, remaining_matrix_gates, tree_identity)
 
 
 class HostedChangeAcceptanceTest(unittest.TestCase):
@@ -115,6 +115,17 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
                         dict(event, preimageSha256='private-source')):
             with self.assertRaises(AcceptanceRejected):
                 admit_event(invalid)
+
+    def test_contract_failure_accepts_only_bounded_stage_and_known_contract_schema(self):
+        valid = {'stage': 'CONTRACT_DEFINITION', 'observations': [
+            {'contract': 'PLAN_APPROVAL_INCOMPATIBLE', 'schema': 'ITEM_STARTED_NOTIFICATION'}]}
+        admit_contract_failure(valid)
+        for invalid in (dict(valid, stage='private-source'), dict(valid, observations=[]),
+                        dict(valid, observations=valid['observations'] * 65),
+                        dict(valid, observations=[{'contract': 'INVALID', 'schema': 'PRIVATE_SOURCE'}]),
+                        dict(valid, observations=[dict(valid['observations'][0], payload='secret')])):
+            with self.assertRaises(AcceptanceRejected):
+                admit_contract_failure(invalid)
 
     def test_report_allows_digest_evidence_but_rejects_source_payload(self):
         workspace = Path('/private/fixture/workspace')

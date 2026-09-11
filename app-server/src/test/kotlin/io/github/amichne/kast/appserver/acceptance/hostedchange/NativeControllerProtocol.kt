@@ -22,16 +22,20 @@ internal object NativeControllerProtocol {
                     CodexOwnedSchema.entries.associateWith { schema ->
                         val file =
                             schemaFiles.singleOrNull { it.fileName.toString() == schema.fileName }
-                                ?: throw NativeRejected(NativeFailure.CONTRACT_REJECTED)
+                                ?: nativeSchemaFileRejected(schema)
                         Json.parseToJsonElement(Files.readString(file)).jsonObject
                     }
                 )
-                .nativeValue()
-        contracts.admit(CodexOwnedSchema.INITIALIZE_PARAMS, initialize().objectAt("params")).nativeValue()
-        contracts.admit(CodexOwnedSchema.THREAD_START_PARAMS, threadStart(workspace).objectAt("params")).nativeValue()
+                .nativeContracts()
+        contracts
+            .admit(CodexOwnedSchema.INITIALIZE_PARAMS, initialize().objectAt("params"))
+            .nativeEnvelope(NativeContractStage.INITIALIZE, CodexOwnedSchema.INITIALIZE_PARAMS)
+        contracts
+            .admit(CodexOwnedSchema.THREAD_START_PARAMS, threadStart(workspace).objectAt("params"))
+            .nativeEnvelope(NativeContractStage.THREAD_START, CodexOwnedSchema.THREAD_START_PARAMS)
         contracts
             .admit(CodexOwnedSchema.THREAD_START_RESPONSE, threadStarted(workspace, "native-probe").objectAt("result"))
-            .nativeValue()
+            .nativeEnvelope(NativeContractStage.THREAD_STARTED, CodexOwnedSchema.THREAD_START_RESPONSE)
         return contracts
     }
 

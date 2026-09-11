@@ -162,6 +162,67 @@ def event_observation(event: dict) -> dict:
     return dict(event)
 
 
+CONTROLLER_SCHEMAS = frozenset((
+    'DYNAMIC_TOOL_CALL_PARAMS',
+    'DYNAMIC_TOOL_CALL_RESPONSE',
+    'FILE_CHANGE_REQUEST_APPROVAL_PARAMS',
+    'FILE_CHANGE_REQUEST_APPROVAL_RESPONSE',
+    'SERVER_REQUEST_RESOLVED_NOTIFICATION',
+    'INITIALIZE_PARAMS',
+    'ITEM_COMPLETED_NOTIFICATION',
+    'ITEM_STARTED_NOTIFICATION',
+    'REVIEW_START_PARAMS',
+    'REVIEW_START_RESPONSE',
+    'THREAD_FORK_PARAMS',
+    'THREAD_FORK_RESPONSE',
+    'THREAD_ITEMS_LIST_PARAMS',
+    'THREAD_ITEMS_LIST_RESPONSE',
+    'THREAD_LIST_PARAMS',
+    'THREAD_LIST_RESPONSE',
+    'THREAD_METADATA_UPDATE_PARAMS',
+    'THREAD_METADATA_UPDATE_RESPONSE',
+    'THREAD_QUEUE_START_PARAMS',
+    'THREAD_QUEUE_START_RESPONSE',
+    'THREAD_READ_PARAMS',
+    'THREAD_READ_RESPONSE',
+    'THREAD_RESUME_PARAMS',
+    'THREAD_RESUME_RESPONSE',
+    'THREAD_REVERT_PARAMS',
+    'THREAD_REVERT_RESPONSE',
+    'THREAD_ROLLBACK_PARAMS',
+    'THREAD_ROLLBACK_RESPONSE',
+    'THREAD_SEARCH_PARAMS',
+    'THREAD_SEARCH_RESPONSE',
+    'THREAD_START_PARAMS',
+    'THREAD_START_RESPONSE',
+    'THREAD_STARTED_NOTIFICATION',
+    'THREAD_TIMELINE_LIST_PARAMS',
+    'THREAD_TIMELINE_LIST_RESPONSE',
+    'THREAD_TURNS_LIST_PARAMS',
+    'THREAD_TURNS_LIST_RESPONSE',
+    'THREAD_UNARCHIVE_PARAMS',
+    'THREAD_UNARCHIVE_RESPONSE',
+    'TURN_COMPLETED_NOTIFICATION',
+    'TURN_INTERRUPT_PARAMS',
+    'TURN_STARTED_NOTIFICATION',
+    'TURN_START_PARAMS',
+    'TURN_START_RESPONSE',
+))
+
+def admit_contract_failure(value: dict):
+    if (not isinstance(value, dict) or set(value) != {'stage', 'observations'}
+            or value['stage'] not in ('SCHEMA_INVENTORY', 'CONTRACT_DEFINITION', 'INITIALIZE', 'THREAD_START', 'THREAD_STARTED')
+            or not isinstance(value['observations'], list) or not 1 <= len(value['observations']) <= 64):
+        raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
+    for observation in value['observations']:
+        if (not isinstance(observation, dict) or set(observation) != {'contract', 'schema'}
+                or observation['contract'] not in ('SCHEMA_FILE_REJECTED', 'MISSING', 'INVALID',
+                    'INITIALIZE_MUTATION_INCOMPATIBLE', 'TOOL_CALL_PROJECTION_INCOMPATIBLE',
+                    'PLAN_APPROVAL_INCOMPATIBLE', 'PAYLOAD_REJECTED')
+                or observation['schema'] not in CONTROLLER_SCHEMAS):
+            raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
+
+
 def bounded_native_report(path: Path, workspace: Path) -> dict:
     if path.stat().st_size > 256 * 1024:
         raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
@@ -169,7 +230,7 @@ def bounded_native_report(path: Path, workspace: Path) -> dict:
     if set(value) != {'schemaVersion', 'metadata', 'cases'} or value['schemaVersion'] != 1:
         raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
     metadata = value['metadata']
-    if set(metadata) != {'upstream', 'provider', 'stockCodexUi', 'workspaceRoot', 'status', 'failure'}:
+    if set(metadata) - {'contractFailure'} != {'upstream', 'provider', 'stockCodexUi', 'workspaceRoot', 'status', 'failure'}:
         raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
     if metadata['workspaceRoot'] != str(workspace) or metadata['status'] not in ('observed', 'rejected'):
         raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
@@ -177,6 +238,10 @@ def bounded_native_report(path: Path, workspace: Path) -> dict:
         raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
     if metadata['upstream'] != 'scripted-native-protocol-controller' or metadata['provider'] != 'staged-production-broker-cli-plugin' or metadata['stockCodexUi'] != 'unqualified':
         raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
+    if 'contractFailure' in metadata:
+        admit_contract_failure(metadata['contractFailure'])
+        if metadata['status'] != 'rejected' or metadata['failure'] != 'CONTRACT_REJECTED':
+            raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
     cases = value['cases']
     if not isinstance(cases, dict) or not set(cases) <= CASE_NAMES:
         raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)

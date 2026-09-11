@@ -94,6 +94,9 @@ private class NativeHostedChangeRun(
             }
             demand(session.trace.isolatedStartupCount() == 0, NativeFailure.PROVIDER_REJECTED)
             evidence.record("provider-routing", NativeCaseOutcome.PASSED, session.trace.document())
+        } catch (rejected: NativeContractRejected) {
+            evidence.contractRejected(rejected.document)
+            failure = NativeFailure.CONTRACT_REJECTED
         } catch (rejected: NativeRejected) {
             failure = rejected.failure
         } catch (_: TimeoutCancellationException) {
