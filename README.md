@@ -124,15 +124,20 @@ broker with `kast ide trust-broker` before using either operation. Change tools
 remain excluded from defaults until the installed provider → CLI → plugin
 workflow passes native acceptance.
 
+See [Add a Kotlin declaration](docs/public/change.mdx) for saved-content
+requirements, the approval workflow, verification outcomes and durable recovery.
+
 Other harnesses should consume the exact installed `serverProjection`; they
 should not copy command names, schemas, or selection policy into another
 configuration. See [Integrate an agent harness](https://kast.michne.com/agent-harnesses/).
 
 ## Search first
 
-The primary read surface is `kast.query`. It can search declarations, filter
-results, and expand semantic relationships while Kast preserves exact compiler
-identity between stages.
+Use `kast.search_classes` for class-like declarations, `kast.search_functions`
+for functions and methods, and `kast.search_declarations` for unknown or mixed
+kinds, properties and type aliases. Exact matching is the default. The deferred
+`kast.query_symbols` supports enumeration, returned references, ordered filters
+and relation expansion while preserving compiler identity between stages.
 
 Agents should use specialist reads only when their narrower contract is needed.
 They should not start the runtime, synchronize the workspace, or build topology

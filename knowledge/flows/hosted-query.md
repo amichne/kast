@@ -257,6 +257,10 @@ IntelliJ write command. Dirty documents, changed epochs and unavailable authorit
 reject without isolated-worker fallback. Plan and receipt observations remain
 historical evidence, separate from the read authority needed for a new effect.
 See [change lifecycle](change-lifecycle.md) for approval, verification and recovery.
+The public [declaration change guide](../../docs/public/change.mdx) describes the
+saved-project workflow and the qualified states an agent must preserve. Change
+verification establishes new live evidence after the write; it does not reuse
+the planning epoch or publish a workspace generation.
 
 ## Corrected native discovery and relation expansion
 
