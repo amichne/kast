@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-11 | hash: 04aaec3f5af5 -->
+<!-- generated: 2026-09-11 | hash: 28f4fb8dfd0c -->
 
 # packaging
 

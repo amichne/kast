@@ -14,7 +14,7 @@ import zipfile
 from hosted_change_process import NativeProcesses
 from native_fixture_probe import NativeFixtureProbeError
 from hosted_change_acceptance import (AcceptanceRejected, admit_event, admit_harness, admitted_live,
-    CASE_NAMES, admit_contract_failure, bounded_native_report, event_observation, native_workflow_qualified, pending_readiness, StartupDiscoveryState, receipt_scope_observation, remaining_matrix_gates, tree_identity)
+    CASE_NAMES, admit_contract_failure, bounded_native_report, event_observation, native_workflow_qualified, pending_readiness, startup_discovery_state, StartupDiscoveryState, receipt_scope_observation, remaining_matrix_gates, tree_identity)
 
 
 @dataclass(frozen=True)
@@ -110,6 +110,35 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
         self.assertEqual(json.loads(
             '[{"generation":2,"stage":"STARTUP_DISCOVERY","outcome":"PENDING",'
             '"condition":"FRESHNESS_MOVED_PENDING","count":2}]'), processes.readiness_observations)
+
+    def test_startup_incomplete_model_is_pending_only_for_exact_admission_pair(self):
+        incomplete = asdict(StartupFailureDocument('PROJECT_ADMISSION_REJECTED', 'GRADLE_MODEL_INCOMPLETE'))
+        self.assertTrue(pending_readiness(incomplete))
+        self.assertEqual(StartupDiscoveryState.MODEL_INCOMPLETE_PENDING, startup_discovery_state(incomplete))
+        for failure, detail in (('PROJECT_ADMISSION_REJECTED', 'PROJECT_NOT_INITIALIZED'),
+                                ('PROJECT_ADMISSION_REJECTED', 'PROJECT_NOT_OPEN'),
+                                ('PROJECT_ADMISSION_REJECTED', 'K2_UNAVAILABLE'),
+                                ('PROJECT_ADMISSION_REJECTED', 'UNKNOWN'),
+                                ('MODEL_CAPTURE_REJECTED', 'GRADLE_MODEL_INCOMPLETE'),
+                                ('READ_EPOCH_REJECTED', 'GRADLE_MODEL_INCOMPLETE'),
+                                ('UNKNOWN', 'GRADLE_MODEL_INCOMPLETE')):
+            self.assertFalse(pending_readiness(asdict(StartupFailureDocument(failure, detail))))
+
+    def test_startup_incomplete_model_preserves_finite_cause_and_bounded_count(self):
+        processes = NativeProcesses(SimpleNamespace(), SimpleNamespace(), Path('/unused'), 60)
+        processes.generation = 1
+        state = startup_discovery_state(asdict(StartupFailureDocument(
+            'PROJECT_ADMISSION_REJECTED', 'GRADLE_MODEL_INCOMPLETE')))
+        processes.observe_discovery(state)
+        processes.observe_discovery(state)
+        self.assertEqual(1, len(processes.readiness_observations))
+        observation = processes.readiness_observations[0]
+        self.assertEqual({'generation', 'stage', 'outcome', 'condition', 'count'}, set(observation))
+        self.assertEqual(1, observation['generation'])
+        self.assertEqual('STARTUP_DISCOVERY', observation['stage'])
+        self.assertEqual('PENDING', observation['outcome'])
+        self.assertEqual('MODEL_INCOMPLETE_PENDING', observation['condition'])
+        self.assertEqual(2, observation['count'])
 
     def test_startup_discovery_observations_are_bounded_and_counted_by_finite_condition(self):
         processes = NativeProcesses(SimpleNamespace(), SimpleNamespace(), Path('/unused'), 60)

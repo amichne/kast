@@ -89,6 +89,7 @@ def admit_harness(jar: Path, commit: str) -> str:
 
 class StartupDiscoveryState(Enum):
     MODEL_PENDING = 'MODEL_PENDING'
+    MODEL_INCOMPLETE_PENDING = 'MODEL_INCOMPLETE_PENDING'
     DUMB_PENDING = 'DUMB_PENDING'
     INDEXING_PENDING = 'INDEXING_PENDING'
     READ_PREEMPTED_PENDING = 'READ_PREEMPTED_PENDING'
@@ -99,7 +100,7 @@ class StartupDiscoveryState(Enum):
 
     @property
     def pending(self):
-        return self in (self.MODEL_PENDING, self.DUMB_PENDING, self.INDEXING_PENDING,
+        return self in (self.MODEL_PENDING, self.MODEL_INCOMPLETE_PENDING, self.DUMB_PENDING, self.INDEXING_PENDING,
                         self.READ_PREEMPTED_PENDING, self.FRESHNESS_MOVED_PENDING)
 
 
@@ -107,6 +108,8 @@ def startup_discovery_state(document: dict) -> StartupDiscoveryState:
     failure, detail = document.get('failure'), document.get('detail')
     if failure == 'PROJECT_ADMISSION_REJECTED' and detail == 'GRADLE_MODEL_UNAVAILABLE':
         return StartupDiscoveryState.MODEL_PENDING
+    if failure == 'PROJECT_ADMISSION_REJECTED' and detail == 'GRADLE_MODEL_INCOMPLETE':
+        return StartupDiscoveryState.MODEL_INCOMPLETE_PENDING
     if failure == 'PROJECT_ADMISSION_REJECTED' and detail == 'DUMB_MODE':
         return StartupDiscoveryState.DUMB_PENDING
     if failure == 'INDEXING':
