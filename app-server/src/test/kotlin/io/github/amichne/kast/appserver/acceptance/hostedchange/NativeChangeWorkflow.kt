@@ -54,6 +54,7 @@ internal class NativeChangeWorkflow(
         NativeLifecycleWorkflow(session, source, evidence, controls).run(peer, original, postimage)
         lostResponse()
         probes.undoProductionChange(peer)
+        NativeDivergentRecoveryWorkflow(controls, source, evidence).run(peer)
         session.close()
         val replay = controls.replaceBroker(lostPlanIdentity, sha256(Files.readAllBytes(source)))
         evidence.record("broker-process-restart-no-replay", NativeCaseOutcome.PASSED, replay)
@@ -198,14 +199,6 @@ internal class NativeChangeWorkflow(
         demand(historical == receiptIdentity, NativeFailure.VERIFIED_RECEIPT_MISSING)
         unchanged(postimage)
         evidence.record("historical-receipt-after-owner-restart", NativeCaseOutcome.PASSED)
-        val divergent = postimage + "\n// acceptance-owned user content\n".toByteArray()
-        Files.write(source, divergent)
-        val unsafe = peer.call("change_recover", identity())
-        evidence.expectRecoveryRequired("recovery-preserves-divergent-content", unsafe)
-        unchanged(divergent)
-        evidence.record("recovery-preserves-divergent-content", NativeCaseOutcome.PASSED)
-        Files.write(source, postimage)
-        searchClass()
         val recovered = peer.call("change_recover", identity())
         demand(
             !recovered.rejected() &&
