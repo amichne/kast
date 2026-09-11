@@ -144,6 +144,26 @@ class BrokerCatalogTest {
         )
     }
 
+    @Test
+    fun `rejected provider output retains schema evidence through dispatch`(@TempDir temporary: Path) = runBlocking {
+        val broker =
+            Broker.create(listOf(echoProvider("echo", outputValue = { "" })), BrokerLimits.defaults()).validatedValue()
+        val dispatch =
+            broker.dispatch(
+                BrokerDispatchRequest(
+                    ToolAddress(namespace("echo"), toolName("say")),
+                    buildJsonObject { put("value", "valid input") },
+                    invocationContext(temporary),
+                )
+            ) as BrokerDispatch.Rejected
+        val failure = dispatch.failure as BrokerFailure.OutputContractRejected
+        assertEquals(1, failure.failureCount)
+        assertEquals(
+            """{"observations":[{"keyword":"MIN_LENGTH","field":"UNKNOWN"}]}""",
+            Json.encodeToString(failure.violationEvidence.toDocument()),
+        )
+    }
+
     private fun echoProvider(
         namespace: String,
         outputValue: (String) -> String = { value -> value },
@@ -170,7 +190,7 @@ class BrokerCatalogTest {
                   "type": "object",
                   "additionalProperties": false,
                   "required": ["value"],
-                  "properties": { "value": { "type": "string" } }
+                  "properties": { "value": { "type": "string", "minLength": 1 } }
                 }
                 """
                     .trimIndent()

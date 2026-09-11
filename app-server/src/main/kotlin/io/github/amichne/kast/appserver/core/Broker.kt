@@ -3,8 +3,10 @@ package io.github.amichne.kast.appserver.core
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.schema.CompiledJsonSchema
 import io.github.amichne.kast.appserver.schema.JsonDomainDefinition
+import io.github.amichne.kast.appserver.schema.JsonSchemaViolationEvidence
 import io.github.amichne.kast.appserver.schema.canonicalJson
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import java.nio.charset.StandardCharsets
@@ -273,7 +275,11 @@ internal sealed interface BrokerFailure {
         val code: ProviderFailureCode,
     ) : BrokerFailure
 
-    data class OutputContractRejected(val address: ToolAddress, val failureCount: Int) : BrokerFailure
+    data class OutputContractRejected(
+        val address: ToolAddress,
+        val failureCount: Int,
+        val violationEvidence: JsonSchemaViolationEvidence,
+    ) : BrokerFailure
 
     data class InvocationCancelled(val address: ToolAddress) : BrokerFailure
 
@@ -382,106 +388,109 @@ private class TypedProviderRoute<Runtime>(
 
     private fun <Input, Output, InputFailure> typedToolRoute(
         tool: BrokerTool<Runtime, Input, Output, InputFailure>
-    ): TypedToolRoute<Runtime> =
-        object : TypedToolRoute<Runtime> {
-            override suspend fun dispatch(
-                request: BrokerDispatchRequest,
-                acquire: suspend () -> ProviderStartup<Runtime>,
-            ): BrokerDispatch {
-                val admitted = tool.input.admit(request.arguments)
-                val input =
-                    when (admitted) {
-                        is Validation.Validated -> admitted.value
-                        is Validation.Rejected ->
-                            return BrokerDispatch.Rejected(
-                                BrokerFailure.InvalidArguments(
-                                    request.address,
-                                    admitted.failures.size,
-                                    admitted.failures.take(3).flatMap(tool.inputGuidance).distinct().take(3),
-                                )
-                            )
-                    }
-                if (!invocationCapacity.tryAcquire()) {
-                    return BrokerDispatch.Rejected(BrokerFailure.Overloaded(BrokerLimit.IN_FLIGHT_CALLS_PER_PROVIDER))
-                }
-                val invocation =
-                    try {
-                        val runtime =
-                            when (val started = acquire()) {
-                                is ProviderStartup.Started -> started.runtime
-                                is ProviderStartup.Rejected ->
-                                    return BrokerDispatch.Rejected(
-                                        BrokerFailure.ProviderStartupRejected(namespace, started.code)
-                                    )
-                            }
-                        try {
-                            withTimeout(tool.invocationBudget.value) {
-                                tool.invoke(runtime, input, request.context)
-                            }
-                        } catch (_: TimeoutCancellationException) {
-                            return BrokerDispatch.Rejected(
-                                BrokerFailure.ProviderInvocationRejected(
-                                    request.address,
-                                    ProviderFailureCode.TIMED_OUT,
-                                )
-                            )
-                        } catch (_: CancellationException) {
-                            return BrokerDispatch.Rejected(BrokerFailure.InvocationCancelled(request.address))
-                        } catch (_: RuntimeException) {
-                            return BrokerDispatch.Rejected(
-                                BrokerFailure.ProviderInvocationRejected(
-                                    request.address,
-                                    ProviderFailureCode.UNEXPECTED_FAILURE,
-                                )
-                            )
-                        }
-                    } finally {
-                        invocationCapacity.release()
-                    }
-                val output =
-                    when (invocation) {
-                        is ProviderCall.Completed -> invocation.value
-                        is ProviderCall.Rejected ->
-                            return BrokerDispatch.Rejected(
-                                BrokerFailure.ProviderInvocationRejected(request.address, invocation.code)
-                            )
-                    }
-                val encoded =
-                    try {
-                        tool.encode(output)
-                    } catch (_: RuntimeException) {
-                        return BrokerDispatch.Rejected(
-                            BrokerFailure.ProviderInvocationRejected(
-                                request.address,
-                                ProviderFailureCode.UNEXPECTED_FAILURE,
-                            )
-                        )
-                    }
-                if (canonicalJson(encoded).toByteArray(StandardCharsets.UTF_8).size > limits.maximumToolResultBytes) {
-                    return BrokerDispatch.Rejected(BrokerFailure.Overloaded(BrokerLimit.MAXIMUM_TOOL_RESULT_BYTES))
-                }
-                when (val outputAdmission = tool.outputSchema.admit(encoded)) {
-                    is Validation.Validated -> Unit
-                    is Validation.Rejected ->
-                        return BrokerDispatch.Rejected(
-                            BrokerFailure.OutputContractRejected(
-                                request.address,
-                                outputAdmission.failures.size,
-                            )
-                        )
-                }
-                return try {
-                    BrokerDispatch.Completed(tool.present(output))
-                } catch (_: RuntimeException) {
-                    BrokerDispatch.Rejected(
-                        BrokerFailure.ProviderInvocationRejected(
+    ): TypedToolRoute<Runtime> = TypedToolRoute { request, acquire ->
+        val input =
+            when (val admitted = tool.input.admit(request.arguments)) {
+                is Validation.Validated -> admitted.value
+                is Validation.Rejected ->
+                    return@TypedToolRoute BrokerDispatch.Rejected(
+                        BrokerFailure.InvalidArguments(
                             request.address,
-                            ProviderFailureCode.UNEXPECTED_FAILURE,
+                            admitted.failures.size,
+                            admitted.failures.take(3).flatMap(tool.inputGuidance).distinct().take(3),
                         )
                     )
-                }
             }
+        when (val invocation = invokeTool(tool = tool, input = input, request = request, acquire = acquire)) {
+            is Refinement.Refined -> presentOutput(tool, invocation.value, request.address)
+            is Refinement.Rejected -> BrokerDispatch.Rejected(invocation.failure)
         }
+    }
+
+    private suspend fun <Input, Output, InputFailure> invokeTool(
+        tool: BrokerTool<Runtime, Input, Output, InputFailure>,
+        input: Input,
+        request: BrokerDispatchRequest,
+        acquire: suspend () -> ProviderStartup<Runtime>,
+    ): Refinement<Output, BrokerFailure> {
+        if (!invocationCapacity.tryAcquire()) {
+            return Refinement.Rejected(BrokerFailure.Overloaded(BrokerLimit.IN_FLIGHT_CALLS_PER_PROVIDER))
+        }
+        return try {
+            val runtime =
+                when (val started = acquire()) {
+                    is ProviderStartup.Started -> started.runtime
+                    is ProviderStartup.Rejected ->
+                        return Refinement.Rejected(BrokerFailure.ProviderStartupRejected(namespace, started.code))
+                }
+            executeTool(tool = tool, input = input, request = request, runtime = runtime)
+        } finally {
+            invocationCapacity.release()
+        }
+    }
+
+    private suspend fun <Input, Output, InputFailure> executeTool(
+        tool: BrokerTool<Runtime, Input, Output, InputFailure>,
+        input: Input,
+        request: BrokerDispatchRequest,
+        runtime: Runtime,
+    ): Refinement<Output, BrokerFailure> =
+        try {
+            when (
+                val invocation =
+                    withTimeout(tool.invocationBudget.value) { tool.invoke(runtime, input, request.context) }
+            ) {
+                is ProviderCall.Completed -> Refinement.Refined(invocation.value)
+                is ProviderCall.Rejected ->
+                    Refinement.Rejected(BrokerFailure.ProviderInvocationRejected(request.address, invocation.code))
+            }
+        } catch (_: TimeoutCancellationException) {
+            Refinement.Rejected(
+                BrokerFailure.ProviderInvocationRejected(request.address, ProviderFailureCode.TIMED_OUT)
+            )
+        } catch (_: CancellationException) {
+            Refinement.Rejected(BrokerFailure.InvocationCancelled(request.address))
+        } catch (_: RuntimeException) {
+            Refinement.Rejected(
+                BrokerFailure.ProviderInvocationRejected(request.address, ProviderFailureCode.UNEXPECTED_FAILURE)
+            )
+        }
+
+    private fun <Input, Output, InputFailure> presentOutput(
+        tool: BrokerTool<Runtime, Input, Output, InputFailure>,
+        output: Output,
+        address: ToolAddress,
+    ): BrokerDispatch {
+        val encoded =
+            try {
+                tool.encode(output)
+            } catch (_: RuntimeException) {
+                return BrokerDispatch.Rejected(
+                    BrokerFailure.ProviderInvocationRejected(address, ProviderFailureCode.UNEXPECTED_FAILURE)
+                )
+            }
+        if (canonicalJson(encoded).toByteArray(StandardCharsets.UTF_8).size > limits.maximumToolResultBytes) {
+            return BrokerDispatch.Rejected(BrokerFailure.Overloaded(BrokerLimit.MAXIMUM_TOOL_RESULT_BYTES))
+        }
+        when (val admission = tool.outputSchema.admit(encoded)) {
+            is Validation.Validated -> Unit
+            is Validation.Rejected ->
+                return BrokerDispatch.Rejected(
+                    BrokerFailure.OutputContractRejected(
+                        address,
+                        admission.failures.size,
+                        JsonSchemaViolationEvidence.from(admission.failures),
+                    )
+                )
+        }
+        return try {
+            BrokerDispatch.Completed(tool.present(output))
+        } catch (_: RuntimeException) {
+            BrokerDispatch.Rejected(
+                BrokerFailure.ProviderInvocationRejected(address, ProviderFailureCode.UNEXPECTED_FAILURE)
+            )
+        }
+    }
 }
 
 private fun interface TypedToolRoute<Runtime> {

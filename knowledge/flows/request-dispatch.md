@@ -27,6 +27,8 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeQuery.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSocketClient.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/schema/JsonSchemaViolationEvidence.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/BrokerFailureDocument.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt
     symbols: [CodexProtocolAdapter]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexToolCallProjection.kt
@@ -94,3 +96,10 @@ the admitted endpoint owner.
 See [protocol](../modules/protocol.md) and [operation outcomes](../contracts/operation-outcomes.md).
 
 The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Three ordinary searches and deferred `query_symbols` share `query.run`; `check_diagnostics` shares `diagnostic.check`. Private admission retains each tool's schema identity and typed syntax through its exact CLI binding. The `tool` command family uses the existing-IDE read path. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
+
+The broker validates each encoded provider result against its qualified output
+schema before presentation. Output-contract rejection retains a deduplicated set
+of closed schema-keyword and field observations. Unknown fields remain `UNKNOWN`;
+validator messages, source values and reference tokens do not enter this evidence.
+Serializable failure DTOs preserve existing failure and correction fields and
+carry these observations as `outputViolationEvidence`.

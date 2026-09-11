@@ -47,13 +47,18 @@ internal value class JsonConstraintDescription private constructor(val value: St
 }
 
 internal sealed interface JsonConstraintViolation {
-    data class Reported(val description: JsonConstraintDescription) : JsonConstraintViolation
+    val observation: JsonSchemaViolationObservation
 
-    data object Unspecified : JsonConstraintViolation
+    data class Reported(
+        val description: JsonConstraintDescription,
+        override val observation: JsonSchemaViolationObservation,
+    ) : JsonConstraintViolation
+
+    data class Unspecified(override val observation: JsonSchemaViolationObservation) : JsonConstraintViolation
 
     companion object {
-        internal fun from(raw: String): JsonConstraintViolation =
-            JsonConstraintDescription.admit(raw)?.let(JsonConstraintViolation::Reported) ?: Unspecified
+        internal fun from(raw: String, observation: JsonSchemaViolationObservation): JsonConstraintViolation =
+            JsonConstraintDescription.admit(raw)?.let { Reported(it, observation) } ?: Unspecified(observation)
     }
 }
 
@@ -96,13 +101,18 @@ private constructor(
     internal fun constraintViolations(candidate: JsonElement): List<JsonConstraintViolation> =
         validator
             .validate(canonicalJson(candidate), InputFormat.JSON)
-            .map { validationMessage -> JsonConstraintViolation.from(validationMessage.message) }
+            .map { validationMessage ->
+                JsonConstraintViolation.from(
+                    validationMessage.message,
+                    JsonSchemaViolationObservation.from(validationMessage),
+                )
+            }
             .sortedBy { violation -> violation.sortKey() }
 
     private fun JsonConstraintViolation.sortKey(): String =
         when (this) {
             is JsonConstraintViolation.Reported -> description.value
-            JsonConstraintViolation.Unspecified -> ""
+            is JsonConstraintViolation.Unspecified -> ""
         }
 
     companion object {

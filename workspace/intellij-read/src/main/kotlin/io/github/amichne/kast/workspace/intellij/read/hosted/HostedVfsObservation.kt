@@ -7,7 +7,9 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.ProjectReadEpochVfsPath
 import io.github.amichne.kast.workspace.intellij.read.ProjectReadEpochVfsRoot
 import java.nio.file.Path
+import kotlinx.serialization.Serializable
 
+@Serializable
 internal enum class HostedVfsEventKind {
     CREATE,
     DELETE,
@@ -19,11 +21,13 @@ internal enum class HostedVfsEventKind {
     OTHER,
 }
 
+@Serializable
 internal enum class HostedVfsEventOrigin {
     REFRESH,
     IDE,
 }
 
+@Serializable
 internal enum class HostedVfsPathCategory {
     IDE_SETTINGS_PATH,
     GRADLE_CACHE_PATH,
@@ -34,6 +38,7 @@ internal enum class HostedVfsPathCategory {
     OTHER_PROJECT_PATH,
 }
 
+@Serializable
 internal enum class HostedVfsObservationFailure {
     BATCH_LIMIT,
     PATH_UNPROVEN,

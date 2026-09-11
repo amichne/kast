@@ -448,6 +448,7 @@ val hostedChangeAcceptanceTest = tasks.register<Exec>("hostedChangeAcceptanceTes
     group = "verification"
     description = "Checks native change fixture admission and bounded receipt projection without launching an IDE."
     inputs.files(fileTree("packaging") { include("hosted_change_*.py", "test-hosted-change-acceptance.py") })
+    inputs.file("packaging/hosted_generated_fixture.py")
     commandLine("python3", layout.projectDirectory.file("packaging/test-hosted-change-acceptance.py"))
 }
 
@@ -499,6 +500,7 @@ val hostedReadRegressionTest = tasks.register<Exec>("hostedReadRegressionTest") 
     inputs.files(
         "packaging/hosted_read_fixture.py", "packaging/hosted_read_regression.py",
         "packaging/hosted_read_transport.py", "packaging/test-hosted-read-regression.py",
+        "packaging/hosted_generated_fixture.py",
     )
     commandLine("python3", layout.projectDirectory.file("packaging/test-hosted-read-regression.py"))
 }

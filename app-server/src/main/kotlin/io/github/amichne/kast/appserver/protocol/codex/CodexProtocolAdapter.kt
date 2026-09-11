@@ -915,38 +915,7 @@ internal class CodexProtocolAdapter(
     }
 
     private fun failurePresentation(failure: BrokerFailure): ToolPresentation =
-        ToolPresentation.text(
-            canonicalJson(
-                buildJsonObject {
-                    put("failure", failure.code())
-                    if (failure is BrokerFailure.InvalidArguments && failure.guidance.isNotEmpty()) {
-                        put(
-                            "corrections",
-                            kotlinx.serialization.json.JsonArray(failure.guidance.map { JsonPrimitive(it.value) }),
-                        )
-                    }
-                }
-            ),
-            success = false,
-        )
-
-    private fun BrokerFailure.code(): String =
-        when (this) {
-            is BrokerFailure.UnknownNamespace -> "UNKNOWN_NAMESPACE"
-            is BrokerFailure.UnknownTool -> "UNKNOWN_TOOL"
-            is BrokerFailure.InvalidArguments -> "INVALID_ARGUMENTS"
-            is BrokerFailure.ProviderStartupRejected -> code.value
-            is BrokerFailure.ProviderInvocationRejected -> code.value
-            is BrokerFailure.OutputContractRejected -> "OUTPUT_CONTRACT_REJECTED"
-            is BrokerFailure.InvocationCancelled -> "INVOCATION_CANCELLED"
-            is BrokerFailure.Overloaded ->
-                when (limit) {
-                    BrokerLimit.IN_FLIGHT_CALLS_PER_CONNECTION -> "BROKER_OVERLOADED_IN_FLIGHT_CALLS_PER_CONNECTION"
-                    BrokerLimit.IN_FLIGHT_CALLS_PER_PROVIDER -> "BROKER_OVERLOADED_IN_FLIGHT_CALLS_PER_PROVIDER"
-                    BrokerLimit.MAXIMUM_TOOL_ARGUMENT_BYTES -> "BROKER_OVERLOADED_MAXIMUM_TOOL_ARGUMENT_BYTES"
-                    BrokerLimit.MAXIMUM_TOOL_RESULT_BYTES -> "BROKER_OVERLOADED_MAXIMUM_TOOL_RESULT_BYTES"
-                }
-        }
+        ToolPresentation.text(Json.encodeToString(BrokerFailureDocument.from(failure)), success = false)
 
     private fun CodexProtocolContracts.admits(
         schema: CodexOwnedSchema,

@@ -71,6 +71,7 @@ dependencies {
     implementation(project(":protocol:contract"))
     implementation(project(":workspace:contract"))
     implementation(project(":symbol:contract"))
+    compileOnly(catalog.findLibrary("serialization-json").get())
 
     workspaceReadIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideHostBuild@zip") {
         isTransitive = false
