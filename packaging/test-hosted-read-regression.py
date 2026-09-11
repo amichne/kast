@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+"""Focused proof for fixture isolation, source preservation and bounded read receipts."""
+import hashlib
+import json
+from pathlib import Path
+import tempfile
+import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
+
+from hosted_read_fixture import ReadFixtureRejected, prepare_read_fixture
+from hosted_read_regression import _ReadReplay, _read_observation, _reproduction
+from hosted_read_transport import HostedReadTransport, ReadTransportRejected, _admit_cli_invocations
+
+
+REPO = Path(__file__).resolve().parent.parent
+
+
+class HostedReadRegressionTest(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name).resolve()
+        self.root.chmod(0o700)
+        self.workspace = self.root / 'workspace'
+        self.source = self.workspace / 'src/main/kotlin/Fixture.kt'
+        self.source.parent.mkdir(parents=True)
+        self.source.write_text('package fixture\nclass NativeChangeTarget\n')
+        (self.workspace / 'build.gradle.kts').write_text('plugins { kotlin("jvm") version "2.3.10" }\n')
+        (self.workspace / 'settings.gradle.kts').write_text('rootProject.name = "hosted-change-acceptance"\n')
+        self.receipt = self.root / 'hosted-inputs.json'
+        self.receipt.write_text(json.dumps({'fixtureRoot': str(self.root), 'workspaceRoot': str(self.workspace),
+            'status': 'prepared', 'nativeAcceptance': 'not-run',
+            'sourcePreimageSha256': hashlib.sha256(self.source.read_bytes()).hexdigest()}))
+
+    def test_setup_preserves_change_target_and_detects_later_source_edits(self):
+        original = self.source.read_bytes()
+        fixture = prepare_read_fixture(self.workspace, REPO)
+        self.assertEqual(original, self.source.read_bytes())
+        self.assertTrue(fixture.unchanged())
+        self.assertGreater(fixture.evidence()['fileCount'], 3)
+        self.assertIn('2.3.10', (self.workspace / 'build.gradle.kts').read_text())
+        self.source.write_text('class DivergentUserContent\n')
+        self.assertFalse(fixture.unchanged())
+
+    def test_wrong_prepared_root_and_changed_source_reject_before_copying(self):
+        inputs = json.loads(self.receipt.read_text())
+        inputs['workspaceRoot'] = str(self.root / 'foreign')
+        self.receipt.write_text(json.dumps(inputs))
+        with self.assertRaises(ReadFixtureRejected):
+            prepare_read_fixture(self.workspace, REPO)
+        self.assertFalse((self.workspace / 'core').exists())
+        inputs['workspaceRoot'] = str(self.workspace)
+        self.receipt.write_text(json.dumps(inputs))
+        self.source.write_text('changed\n')
+        with self.assertRaises(ReadFixtureRejected):
+            prepare_read_fixture(self.workspace, REPO)
+        self.assertFalse((self.workspace / 'logging').exists())
+
+    def test_existing_module_or_symlink_cannot_be_overwritten(self):
+        (self.workspace / 'core').symlink_to(self.root, target_is_directory=True)
+        with self.assertRaises(ReadFixtureRejected):
+            prepare_read_fixture(self.workspace, REPO)
+        self.assertTrue((self.workspace / 'core').is_symlink())
+
+    def test_authored_oracle_rejects_missing_results_without_learning_from_output(self):
+        fixture = prepare_read_fixture(self.workspace, REPO)
+        oracle = _reproduction(REPO)
+        case = next(case for case in oracle.cases(fixture.oracle) if case.name == 'exact-logger')
+        assessment = oracle.assess(case, {'status': 'complete', 'items': []}, self.workspace, fixture.oracle)
+        self.assertEqual(oracle.Finding.NOT_REPRODUCED.value, assessment['finding'])
+        self.assertFalse(assessment['assertions']['exactIdentities'])
+
+    def test_receipt_rejects_payload_fields_and_unbounded_counts(self):
+        replay = _ReadReplay(None, None, None, None, 'cli', [])
+        with self.assertRaises(ValueError):
+            replay.record('case', 'source_read', {'exactText': 'private source payload'})
+        with self.assertRaises(ValueError):
+            replay.record('case', 'query_symbols', {'exact': True}, 1001)
+        replay.record('case', 'query_symbols', {'exact': True}, 1)
+        self.assertEqual({'exact': True}, replay.rows[0]['assertions'])
+        self.assertTrue(replay.rows[0]['passed'])
+
+    @staticmethod
+    def schema():
+        return {'serverProjection': {'schemaVersion': 10, 'namespace': 'kast',
+            'cliInvocations': {'schemaVersion': 3, 'operations': [{
+                'toolName': 'source_read', 'operationId': 'source.read',
+                'invocation': {'type': 'CLI', 'command': ['source', 'read']}}]},
+            'hostedBootstrap': {'schemaVersion': 1, 'tools': [{
+                'name': 'source_read', 'operationId': 'source.read', 'effect': 'intellij_read',
+                'approvalPolicy': 'none'}]}}}
+
+    def test_cli_uses_staged_operation_command_without_guessing_tool_facade(self):
+        transport = HostedReadTransport(None, SimpleNamespace(workspace=self.workspace, environment={}),
+                                        self.root / 'product', None, None)
+        transport.cli_commands = _admit_cli_invocations(self.schema())
+        result = SimpleNamespace(stdout=b'{"status":"complete"}')
+        with patch('hosted_read_transport.subprocess.run', return_value=result) as run:
+            self.assertEqual('complete', transport.invoke('cli', 'source_read', {})['status'])
+            self.assertEqual([str(self.root / 'product/bin/kast'), 'source', 'read'], run.call_args.args[0])
+        with self.assertRaises(ReadTransportRejected):
+            transport.invoke('cli', 'unpublished_tool', {})
+
+    def test_cli_projection_rejects_duplicate_mismatched_and_option_commands(self):
+        for change in ('duplicate', 'mismatch', 'option'):
+            schema = self.schema()
+            operations = schema['serverProjection']['cliInvocations']['operations']
+            if change == 'duplicate':
+                operations.append(operations[0])
+            elif change == 'mismatch':
+                operations[0]['operationId'] = 'change.apply'
+            else:
+                operations[0]['invocation']['command'] = ['--version']
+            with self.assertRaises(ReadTransportRejected):
+                _admit_cli_invocations(schema)
+        schema = self.schema()
+        schema['serverProjection']['hostedBootstrap']['tools'][0]['effect'] = 'source_write'
+        self.assertEqual({}, _admit_cli_invocations(schema))
+
+    def test_live_movement_remains_visible_without_paths_or_tokens(self):
+        live = {'root': str(self.workspace), 'host': 'fixture-owner', 'epoch': 1,
+                'contentView': 'SAVED_PSI_COMMITTED', 'version': 1}
+        first = _read_observation({'status': 'complete', 'live': live, 'items': [{'ref': 'private-token'}]})
+        second = _read_observation({'status': 'complete', 'live': {**live, 'epoch': 2}})
+        self.assertEqual((1, 2), (first['epoch'], second['epoch']))
+        self.assertNotEqual(first['authoritySha256'], second['authoritySha256'])
+        self.assertNotIn(str(self.workspace), json.dumps(first))
+        self.assertNotIn('private-token', json.dumps(first))
+
+
+if __name__ == '__main__':
+    unittest.main()
