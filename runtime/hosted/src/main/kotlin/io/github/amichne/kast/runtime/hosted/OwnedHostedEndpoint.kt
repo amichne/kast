@@ -63,6 +63,7 @@ private constructor(
             directory: Path,
             root: CanonicalWorkspaceRoot,
             host: IdeReadHostLifetime,
+            observer: HostedEndpointObserver = HostedEndpointObserver { _, _ -> },
         ): Refinement<OwnedHostedEndpoint, HostedEndpointFailure> {
             val socket = directory.resolve("host.sock")
             val descriptor = directory.resolve("endpoint.json")
@@ -104,7 +105,7 @@ private constructor(
                     channel.close()
                     return Refinement.Rejected(HostedEndpointFailure.OWNERSHIP_CONFLICT)
                 }
-                if (Files.exists(socket, NOFOLLOW_LINKS) || Files.exists(descriptor, NOFOLLOW_LINKS)) {
+                if (HostedEndpointReclamation.prepare(directory, root, lock, observer) is Refinement.Rejected) {
                     lock.release()
                     channel.close()
                     return Refinement.Rejected(HostedEndpointFailure.OWNERSHIP_CONFLICT)
@@ -127,13 +128,13 @@ private constructor(
                                 .toJson(
                                     mapOf(
                                         "type" to "KAST_IDE_ENDPOINT",
-                                        "protocol" to 2,
+                                        "protocol" to HostedEndpointCapabilities.protocol,
                                         "root" to root.value,
                                         "socket" to socket.toString(),
                                         "hostPid" to ProcessHandle.current().pid(),
                                         "host" to host.value.toString(),
                                         "querySchema" to HostedReadCapabilities.querySchema,
-                                        "operations" to HostedReadCapabilities.operations,
+                                        "operations" to HostedEndpointCapabilities.operations,
                                     )
                                 ),
                             StandardOpenOption.CREATE_NEW,

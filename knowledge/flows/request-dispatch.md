@@ -27,12 +27,18 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeQuery.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSocketClient.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/schema/JsonSchemaViolationEvidence.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/BrokerFailureDocument.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt
     symbols: [CodexProtocolAdapter]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexToolCallProjection.kt
     symbols: [CodexToolCallProjector, CodexThreadHistoryProjector]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionActivity.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHub.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexPlanApprovalProjection.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/HostedPlanApprovalGateway.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/HostedChangeCliInput.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/HostedChangeEvidence.kt
 ---
 
 # Request dispatch
@@ -61,7 +67,7 @@ live envelope against the requested root and admitted descriptor host. A typed h
 rejection can be returned before read authority exists; it does not become a
 successful canonical payload.
 
-App Server provider qualification requires projection version 9 and its exact
+App Server provider qualification requires projection version 10 and its exact
 operation schemas and declared default budgets. Invocation continues through the configured CLI
 process with admitted output and elapsed-time settings. `selectCliRuntimePath` now selects the seven existing-IDE reads before
 installed bootstrap in `KastCliMain`; saved read settings are admitted before the socket is opened. Invalid settings and missing hosts remain distinct rejections. The
@@ -70,17 +76,30 @@ records the final distribution's complete/qualified native matrix and a successf
 production provider invocation with direct CLI evidence equality. The provider
 harness does not establish full Codex WebSocket or multi-client acceptance.
 
-Broker-owned dynamic tools retain their execution protocol and upstream history.
-At the downstream display boundary, `CodexToolCallProjector` uses the standard
-`mcpToolCall` item with raw arguments and `result.content` text because the desktop
-client's generic dynamic-tool row omits result content. The same projection covers
-live notifications and reloaded history, retains the original outcome fields, and
-rejects contradictory status/success evidence. Qualification admits both shapes
-against the selected binary's generated schemas. `tool_display` session activity
-records projection completion or rejection without source payloads. See the
-[App Server presentation contract](../../app-server/README.md#presentation-and-evidence)
-for the raw display and its verification limits.
+Broker-owned dynamic tools retain their original live and history documents.
+The former MCP display relabeling has been removed. For change apply/recovery,
+`CodexPlanApprovalProjection` emits a separate native `fileChange` item containing
+the stored plan's preview and requests approval from the current controller.
+`HostedPlanApprovalGateway` signs only a correlated controller-approved challenge;
+the original dynamic item remains unchanged. Native schema admission and module
+tests establish the protocol shapes, while desktop rendering remains unqualified.
+
+The entire `change` CLI family routes to the existing-IDE path before installed
+bootstrap. Hosted ingress admits `AddDeclaration` planning and requires the
+broker's approved invocation for apply/recovery. The endpoint protocol is version
+3. Its added change routes retain canonical complete/qualified/rejected envelopes;
+missing hosts, unsupported intents and unapproved writes cannot fall back to an
+isolated worker. A stored verified apply receipt is historical evidence, so its
+original host may differ from the current endpoint; current reads still require
+the admitted endpoint owner.
 
 See [protocol](../modules/protocol.md) and [operation outcomes](../contracts/operation-outcomes.md).
 
 The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Three ordinary searches and deferred `query_symbols` share `query.run`; `check_diagnostics` shares `diagnostic.check`. Private admission retains each tool's schema identity and typed syntax through its exact CLI binding. The `tool` command family uses the existing-IDE read path. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
+
+The broker validates each encoded provider result against its qualified output
+schema before presentation. Output-contract rejection retains a deduplicated set
+of closed schema-keyword and field observations. Unknown fields remain `UNKNOWN`;
+validator messages, source values and reference tokens do not enter this evidence.
+Serializable failure DTOs preserve existing failure and correction fields and
+carry these observations as `outputViolationEvidence`.

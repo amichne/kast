@@ -45,6 +45,12 @@ class CompilerReobservedMutationAnchorTest {
                 .refined()
 
         assertSame(current, CompilerReobservedMutationAnchor.admit(prior, current).refined().evidence)
+        val detached = CompilerGroundedSymbolEvidence.fromSelector(prior)
+        assertSame(current, CompilerReobservedMutationAnchor.admit(detached, current).refined().evidence)
+        assertEquals(
+            CompilerReobservedMutationAnchorFailure.COMPILER_EVIDENCE_MISMATCH,
+            CompilerReobservedMutationAnchor.admit(detached, borrowed).rejected(),
+        )
         assertEquals(
             CompilerReobservedMutationAnchorFailure.COMPILER_EVIDENCE_MISMATCH,
             CompilerReobservedMutationAnchor.admit(prior, borrowed).rejected(),

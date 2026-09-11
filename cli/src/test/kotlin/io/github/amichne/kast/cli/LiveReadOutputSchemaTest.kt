@@ -89,14 +89,21 @@ class LiveReadOutputSchemaTest {
     }
 
     @Test
-    fun `every read admits only packaged pre-authority rejection shapes`() {
+    fun `every hosted operation admits only packaged pre-authority rejection shapes`() {
         val endpoint = Json.parseToJsonElement("""{"type":"HOST_REJECTED","failure":"DEADLINE_EXCEEDED"}""").jsonObject
         val hosted =
             Json.parseToJsonElement(
                     """{"schemaVersion":1,"outcome":"rejected","failure":"DIRTY_DOCUMENTS","detail":"saved content required","stage":"EPOCH_OBSERVATION"}"""
                 )
                 .jsonObject
-        for ((operation) in completeDocuments(live)) {
+        val operations =
+            completeDocuments(live).map { it.first } +
+                listOf(
+                    CanonicalOperation.CHANGE_PLAN,
+                    CanonicalOperation.CHANGE_APPLY,
+                    CanonicalOperation.CHANGE_RECOVER,
+                )
+        for (operation in operations) {
             assertAdmits(operation, endpoint)
             assertAdmits(operation, hosted)
             assertRejects(operation, endpoint.with("failure", JsonPrimitive("UNKNOWN")))
@@ -104,8 +111,8 @@ class LiveReadOutputSchemaTest {
             assertRejects(operation, hosted.with("outcome", JsonPrimitive("published")))
             assertRejects(operation, hosted.with("live", completeDocuments(live).first().second.getValue("live")))
         }
-        assertRejects(CanonicalOperation.CHANGE_APPLY, endpoint)
-        assertRejects(CanonicalOperation.CHANGE_APPLY, hosted)
+        assertRejects(CanonicalOperation.TOPOLOGY_BUILD, endpoint)
+        assertRejects(CanonicalOperation.TOPOLOGY_BUILD, hosted)
     }
 
     private fun completeDocuments(basis: EvidenceBasis): List<Pair<CanonicalOperation, JsonObject>> =
@@ -140,7 +147,7 @@ class LiveReadOutputSchemaTest {
                         complete(
                             CanonicalOperation.TRAVERSAL_RUN,
                             basis,
-                            TraversalRunResult(text("/workspace"), empty()),
+                            traversalResult(),
                         )
                     )
                     .document(),
@@ -150,6 +157,32 @@ class LiveReadOutputSchemaTest {
                     )
                     .document(),
         )
+
+    @Test
+    fun `resumable traversal output admits checkpoints for its actual evidence basis`() {
+        for ((basis, version) in listOf(published to "v1", live to "v2")) {
+            val payload = "{}".toByteArray()
+            val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
+            val digest =
+                java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(payload))
+            val continuation =
+                TraversalContinuationDocument.parse("traversal-continuation:$version:$encoded:$digest").refined()
+            val outcome =
+                OperationOutcome.Qualified(
+                    EvidenceEnvelope(CanonicalOperation.TRAVERSAL_RUN.id, basis, traversalResult()),
+                    TraversalRunQualification.resumable(
+                            listOf(TraversalLimitationDocument.RECORD_LIMIT_REACHED),
+                            emptyList(),
+                            continuation,
+                        )
+                        .refined(),
+                )
+            assertAdmits(
+                CanonicalOperation.TRAVERSAL_RUN,
+                CanonicalReadCliDocuments.projectTraversal(outcome).document(),
+            )
+        }
+    }
 
     private fun qualifiedDocuments(basis: EvidenceBasis): List<Pair<CanonicalOperation, JsonObject>> =
         listOf(
@@ -220,7 +253,7 @@ class LiveReadOutputSchemaTest {
                             EvidenceEnvelope(
                                 CanonicalOperation.TRAVERSAL_RUN.id,
                                 basis,
-                                TraversalRunResult(text("/workspace"), empty()),
+                                traversalResult(),
                             ),
                             TraversalRunQualification.terminalIncomplete(
                                     listOf(TraversalLimitationDocument.DEPTH_LIMIT_REACHED),
@@ -281,6 +314,32 @@ class LiveReadOutputSchemaTest {
             SourceTextProjectionDocument.NotRequested,
         )
     }
+
+    private fun traversalResult(): TraversalRunResult =
+        TraversalRunResult(
+            text("/workspace"),
+            BoundedProtocolList.create(
+                    listOf(
+                        TraversalRecordDocument(
+                            TraversalDepthDocument.parse(1).refined(),
+                            RelationFactDocument(
+                                meaning = RelationKindDocument.CALLERS,
+                                source = symbol(),
+                                target = symbol(),
+                                occurrence =
+                                    RelationOccurrenceDocument(
+                                        text("candidate:occurrence"),
+                                        text("src/Example.kt"),
+                                        SourceRangeDocument.create(offset(0), offset(1)).refined(),
+                                    ),
+                                provenance = RelationProvenanceDocument.K2_AUTHORED_SOURCE,
+                                coverage = RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
+                            ),
+                        )
+                    )
+                )
+                .refined(),
+        )
 
     private fun symbol(): SymbolDocument =
         SymbolDocument.create(

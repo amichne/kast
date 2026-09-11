@@ -20,6 +20,59 @@ import org.junit.jupiter.api.Test
 
 class AddDeclarationRecoveryTest {
     @Test
+    fun `observed interrupted postimage advances durability without replaying source mutation`() {
+        val store = InMemoryMutationRecoveryEvidenceStore()
+        val service = AddDeclarationRecoveryService(store)
+        val prior = service.prepare(request()).prepared().record
+        val source = prior.preparation.plannedWrites.single().source
+        val postimage = RecoveryPreimage.fromBoundary("after".toByteArray())
+        val proof =
+            ConfirmedRecoveryPostimage.admit(
+                    prior,
+                    listOf(ExpectedRecoveryPostimage(source, postimage)),
+                    listOf(
+                        RecoverySourceObservation(
+                            source,
+                            postimage,
+                            RecoveryDocumentObservation.SavedAndCommitted(postimage),
+                        )
+                    ),
+                )
+                .refined()
+        val persisted = service.recordObservedApplied(proof)
+        val applied = assertInstanceOf(MutationRecoveryPersistResult.Durable::class.java, persisted).record
+        assertEquals(
+            prior.digest,
+            assertInstanceOf(MutationRecoveryRecord.AppliedWritesDurable::class.java, applied).priorDigest,
+        )
+        assertInstanceOf(MutationRecoveryRecord.AppliedWritesDurable::class.java, store.current())
+    }
+
+    @Test
+    fun `interrupted postimage proof rejects dirty divergent missing and borrowed observations`() {
+        val store = InMemoryMutationRecoveryEvidenceStore()
+        val prior = AddDeclarationRecoveryService(store).prepare(request()).prepared().record
+        val source = prior.preparation.plannedWrites.single().source
+        val postimage = RecoveryPreimage.fromBoundary("after".toByteArray())
+        val changed = RecoveryPreimage.fromBoundary("user edit".toByteArray())
+        val expected = listOf(ExpectedRecoveryPostimage(source, postimage))
+        val cases =
+            listOf(
+                emptyList<RecoverySourceObservation>(),
+                listOf(RecoverySourceObservation(source, postimage, RecoveryDocumentObservation.DirtyOrUncommitted)),
+                listOf(RecoverySourceObservation(source, postimage, RecoveryDocumentObservation.Unavailable)),
+                listOf(
+                    RecoverySourceObservation(source, postimage, RecoveryDocumentObservation.SavedAndCommitted(changed))
+                ),
+                listOf(RecoverySourceObservation(source, changed, RecoveryDocumentObservation.NotLoaded)),
+            )
+        cases.forEach {
+            assertInstanceOf(Refinement.Rejected::class.java, ConfirmedRecoveryPostimage.admit(prior, expected, it))
+        }
+        assertEquals(prior.digest, store.current().digest)
+    }
+
+    @Test
     fun `pre-write evidence is durable before an applied write can exist`() {
         val store = InMemoryMutationRecoveryEvidenceStore()
         val service = AddDeclarationRecoveryService(store)
@@ -95,7 +148,7 @@ class AddDeclarationRecoveryTest {
         val priorService = AddDeclarationRecoveryService(priorStore)
         val prepared = priorService.prepare(request()).prepared()
         assertInstanceOf(
-            AddDeclarationRecoveryOutcome.PriorState::class.java,
+            AddDeclarationRecoveryOutcome.RecoveryRequired::class.java,
             priorService.recover(prepared.record.binding) { error("rollback must not run") },
         )
 
@@ -131,6 +184,13 @@ class AddDeclarationRecoveryTest {
     }
 
     @Test
+    fun `missing durable evidence cannot prove no source effect`() {
+        val service = AddDeclarationRecoveryService(InMemoryMutationRecoveryEvidenceStore())
+        val outcome = service.recover(request().binding) { error("missing evidence cannot authorize rollback") }
+        assertInstanceOf(AddDeclarationRecoveryOutcome.RecoveryRequired::class.java, outcome)
+    }
+
+    @Test
     fun `corrupt evidence cannot be mistaken for success`() {
         val store = InMemoryMutationRecoveryEvidenceStore()
         val service = AddDeclarationRecoveryService(store)
@@ -145,6 +205,117 @@ class AddDeclarationRecoveryTest {
                 outcome,
             )
         assertInstanceOf(RecoveryRequiredEvidence.Undurable::class.java, required.evidence)
+    }
+
+    @Test
+    fun `confirmed saved and committed preimage permits prior state without rollback`() {
+        for (loaded in listOf(false, true)) {
+            val store = InMemoryMutationRecoveryEvidenceStore()
+            val service =
+                AddDeclarationRecoveryService(
+                    store,
+                    RecoveryPreWriteObservationPort { record ->
+                        val write = record.preparation.plannedWrites.single()
+                        val document =
+                            if (loaded) RecoveryDocumentObservation.SavedAndCommitted(write.preimage)
+                            else RecoveryDocumentObservation.NotLoaded
+                        val proof =
+                            ConfirmedRecoveryPreimage.admit(
+                                    record,
+                                    listOf(RecoverySourceObservation(write.source, write.preimage, document)),
+                                )
+                                .refined()
+                        RecoveryPreWriteObservation.Confirmed(proof)
+                    },
+                )
+            val prepared = service.prepare(request()).prepared()
+            val outcome = service.recover(prepared.record.binding) { error("confirmed preimage needs no write") }
+            val prior = assertInstanceOf(AddDeclarationRecoveryOutcome.PriorState::class.java, outcome)
+            val observed = assertInstanceOf(PriorStateEvidence.ObservedPreWrite::class.java, prior.evidence)
+            assertEquals(prepared.record.digest, observed.observation.record.digest)
+        }
+    }
+
+    @Test
+    fun `prewrite recovery rejects dirty divergent missing and duplicate observations`() {
+        val service = AddDeclarationRecoveryService(InMemoryMutationRecoveryEvidenceStore())
+        val record = service.prepare(request()).prepared().record
+        val write = record.preparation.plannedWrites.single()
+        val changed = RecoveryPreimage.fromBoundary("after in-memory mutation".toByteArray())
+        val exact = RecoverySourceObservation(write.source, write.preimage, RecoveryDocumentObservation.NotLoaded)
+        val cases =
+            listOf(
+                emptyList<RecoverySourceObservation>() to RecoveryPreWriteObservationFailure.WRITE_SET_MISMATCH,
+                listOf(exact, exact) to RecoveryPreWriteObservationFailure.WRITE_SET_MISMATCH,
+                listOf(exact.copy(savedContent = changed)) to RecoveryPreWriteObservationFailure.SAVED_CONTENT_DIVERGED,
+                listOf(exact.copy(document = RecoveryDocumentObservation.SavedAndCommitted(changed))) to
+                    RecoveryPreWriteObservationFailure.DOCUMENT_CONTENT_DIVERGED,
+                listOf(exact.copy(document = RecoveryDocumentObservation.DirtyOrUncommitted)) to
+                    RecoveryPreWriteObservationFailure.DOCUMENT_NOT_READY,
+                listOf(exact.copy(document = RecoveryDocumentObservation.Unavailable)) to
+                    RecoveryPreWriteObservationFailure.DOCUMENT_NOT_READY,
+            )
+        for ((sources, failure) in cases) {
+            assertEquals(Refinement.Rejected(failure), ConfirmedRecoveryPreimage.admit(record, sources))
+        }
+    }
+
+    @Test
+    fun `legacy empty preimage cannot distinguish absence from an empty existing file`() {
+        val original = request()
+        val empty = RecoveryPreimage.fromBoundary(ByteArray(0))
+        val preparation =
+            AddDeclarationRecoveryPreparation.admit(
+                    planId = original.planId,
+                    source = original.source,
+                    precondition = PlannedSourcePrecondition.Absent,
+                    preimage = empty,
+                )
+                .refined()
+        val service = AddDeclarationRecoveryService(InMemoryMutationRecoveryEvidenceStore())
+        val record = service.prepare(preparation).prepared().record
+        assertEquals(
+            Refinement.Rejected(RecoveryPreWriteObservationFailure.AMBIGUOUS_PREIMAGE),
+            ConfirmedRecoveryPreimage.admit(
+                record,
+                listOf(RecoverySourceObservation(original.source, empty, RecoveryDocumentObservation.NotLoaded)),
+            ),
+        )
+    }
+
+    @Test
+    fun `observation of another recovery record cannot confirm this plan`() {
+        val store = InMemoryMutationRecoveryEvidenceStore()
+        val otherRequest =
+            AddDeclarationRecoveryPreparation.admit(
+                    planId = AddDeclarationPlanId.parse("b".repeat(64)).refined(),
+                    source = request().source,
+                    precondition = request().precondition,
+                    preimage = request().preimage,
+                )
+                .refined()
+        val other = AddDeclarationRecoveryService(store).prepare(otherRequest).prepared().record
+        val write = other.preparation.plannedWrites.single()
+        val proof =
+            ConfirmedRecoveryPreimage.admit(
+                    other,
+                    listOf(
+                        RecoverySourceObservation(write.source, write.preimage, RecoveryDocumentObservation.NotLoaded)
+                    ),
+                )
+                .refined()
+        val service =
+            AddDeclarationRecoveryService(
+                store,
+                RecoveryPreWriteObservationPort {
+                    RecoveryPreWriteObservation.Confirmed(proof)
+                },
+            )
+        val record = service.prepare(request()).prepared().record
+        assertInstanceOf(
+            AddDeclarationRecoveryOutcome.RecoveryRequired::class.java,
+            service.recover(record.binding) { error("wrong record must not write") },
+        )
     }
 
     private fun request(): AddDeclarationRecoveryPreparation {

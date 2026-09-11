@@ -2,6 +2,13 @@
 
 ## 2026-09-11
 
+- Matched traversal continuation input/output schemas to the existing published
+  version-1 and live version-2 codecs, retaining authority/version admission.
+- Preserved qualified manual-recovery evidence from a retained live plan after
+  owner replacement; completed recovery still requires the current live owner.
+- Extended bounded hosted VFS observations with an outside-root count to diagnose
+  application-wide indexing activity without recording paths or source payloads.
+
 - Bound shared Kotlin formatting and structural checks to the [architecture concept](modules/architecture.md), preserving generator ownership and distinguishing quality gates from module-dependency evidence.
 
 - Removed the shell installer's retired tool-name defaults. Typed installation admission now selects the canonical catalog on absence and rejects retired, unknown, empty, or duplicate explicit selections before writing configuration.
@@ -140,3 +147,33 @@
 - Bound every concept to concrete repository sources for impact detection.
 - Enforced strict source-path and repository-relative navigation-link integrity.
 - Added the manually qualified host-observation experiment, including its advisory boundary and original-owner retirement flow.
+
+## 2026-09-11 — Change protocol boundary and conservative recovery
+
+- Extracted canonical planning lowering and previews into `change/protocol`, with
+  a contract-owned plan-storage port and dependency-closure evidence.
+- Excluded unqualified change tools from the canonical default selection while
+  preserving explicit selections, approval policies, and read defaults.
+- Documented that absent or pre-write-only recovery records do not prove no
+  source effect; exact saved/document observation is required for prior state.
+- Live planning, mutation admission, and native change acceptance remain
+  unimplemented; published verification is still the retained execution path.
+- Reconciled formatting PR 712 through `38519c5d0`, split provider test fixtures
+  without expanding lint baselines, and passed the repository product gate.
+- Recorded the remaining approval integration gap: explicit catalog metadata is
+  retained, but Codex dynamic-tool dispatch has no exact-plan approval result.
+
+## 2026-09-11 — Native declaration workflow qualified
+
+- Implemented project-owned live planning, exact-plan approval, durable mutation,
+  scoped semantic verification and separately approved recovery without a
+  published generation or isolated-runtime fallback.
+- Qualified the installed provider → CLI → plugin workflow at clean source
+  `aa95c7652a7d713f6bae00ed6a82fbc1a1080d43`: 126 read cases and all 30 native
+  change cases passed, including interruption, retirement, Undo and divergent
+  content preservation. See the [acceptance record](../docs/reviews/plugin-native-change-acceptance.md).
+- Enabled the three change tools as deferred defaults, preserving read loading
+  policy and exact approval requirements for apply and recovery.
+- Added `verifyJsonContracts` to normal checks and the product gate. Its syntax
+  ratchet rejects new or changed manual JSON construction against exact reviewed
+  allowances; typed serialization and schema checks retain their distinct roles.

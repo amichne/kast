@@ -322,6 +322,11 @@ internal object EpochSignalClassContract {
     private val PRODUCTION_REQUIRED_MEMBERS =
         setOf(
             member("com/intellij/openapi/application/Application", "isDispatchThread"),
+            member("com/intellij/openapi/application/Application", "isWriteAccessAllowed"),
+            member(
+                "io/github/amichne/kast/workspace/contract/ProjectReadEpoch\$Source",
+                "observeBeforeWrite\$io_github_amichne_workspace_workspace_contract",
+            ),
             member("com/intellij/openapi/application/ReadAction", "computeCancellable"),
             member("com/intellij/openapi/progress/ProgressManager", "checkCanceled"),
             member("com/intellij/openapi/project/Project", "isDisposed"),
@@ -354,11 +359,12 @@ internal object EpochSignalClassContract {
             "com/intellij/openapi/vfs/newvfs/BulkFileListener",
         )
 
+    // Factory/listener bodies are unchanged; extraction of epoch execution moved their debug source positions.
     private val PRODUCTION_FINGERPRINTS =
         mapOf(
-            PRODUCTION_FACTORY_RESOURCE to "602b29270941146ad5272ddf5b3914faba55ed1fbe53725f183f0c6329a4b5d9",
+            PRODUCTION_FACTORY_RESOURCE to "4f8eec2e3fc4efac06de5108edc351ee84c7d8f3826d7d04a92755072a41d8ff",
             PRODUCTION_WORKSPACE_LISTENER_RESOURCE to
-                "69338081879a99e579acdbc102bb7e8614feefb9cc462d377bfbc4c02020b130",
+                "d92b4b59d41c1c2aeee7ae646a90343a72167979be140edc855684749478434f",
             PRODUCTION_VFS_LISTENER_RESOURCE to "079c89c14a5818ce28cbc2c2c1330af759f1ed3b30b2cbbeeef04b520c168c56",
             PRODUCTION_REFINEMENT_RESOURCE to "76162d327aa6eb497d109e45c75328fb8be9c661ec95567008ad0e293cf62eb3",
         )

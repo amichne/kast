@@ -59,6 +59,15 @@ dependencies {
     implementation(project(":kernel"))
     implementation(project(":protocol:contract"))
     implementation(project(":protocol:wire"))
+    implementation(project(":change:contract"))
+    implementation(project(":change:plan"))
+    implementation(project(":change:apply"))
+    implementation(project(":change:recovery"))
+    implementation(project(":change:verify"))
+    implementation(project(":change:protocol"))
+    implementation(project(":change:intellij"))
+    implementation(project(":evidence:contract"))
+    implementation(project(":evidence:sqlite"))
     implementation(project(":query:contract"))
     implementation(project(":query:protocol"))
     implementation(project(":query:service"))
@@ -103,6 +112,17 @@ val hostedPlugin by
                     "protocol-registry-*.jar",
                     "wire-*.jar",
                     "registry-*.jar",
+                    "change-contract-*.jar",
+                    "change-plan-*.jar",
+                    "change-protocol-*.jar",
+                    "change-apply-*.jar",
+                    "change-recovery-*.jar",
+                    "change-verify-*.jar",
+                    "change-intellij-*.jar",
+                    "evidence-contract-*.jar",
+                    "evidence-sqlite-*.jar",
+                    "topology-contract-*.jar",
+                    "sqlite-jdbc-*.jar",
                     "query-contract-*.jar",
                     "query-protocol-*.jar",
                     "query-service-*.jar",

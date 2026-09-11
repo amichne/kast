@@ -101,7 +101,10 @@ private constructor(
 
     /** Compiler-confined source-specific transition to one opaque epoch. */
     internal class Source<State : Any>
-    private constructor(private val observer: () -> Refinement<State, ProjectReadEpochObservationFailure>) {
+    private constructor(
+        private val observer: () -> Refinement<State, ProjectReadEpochObservationFailure>,
+        private val beforeWriteObserver: () -> Refinement<State, ProjectReadEpochObservationFailure>,
+    ) {
         private val comparisonDomain = ComparisonDomain()
 
         /**
@@ -111,9 +114,13 @@ private constructor(
          * [ProjectReadEpochObservationFailure]. Primitive platform counters may be extracted only inside the supplied
          * adapter observation boundary. Callers consume the returned epoch and never repeat that refinement.
          */
-        @JvmSynthetic
-        internal fun observe(): ProjectReadEpochObservation =
-            when (val result = observer()) {
+        @JvmSynthetic internal fun observe(): ProjectReadEpochObservation = retain(observer())
+
+        /** Separate adapter observation at an already-held write action; ordinary reads retain their thread policy. */
+        @JvmSynthetic internal fun observeBeforeWrite(): ProjectReadEpochObservation = retain(beforeWriteObserver())
+
+        private fun retain(result: Refinement<State, ProjectReadEpochObservationFailure>): ProjectReadEpochObservation =
+            when (result) {
                 is Refinement.Refined ->
                     ProjectReadEpochObservation.Observed(ProjectReadEpoch(comparisonDomain, result.value))
                 is Refinement.Rejected -> ProjectReadEpochObservation.Rejected(result.failure)
@@ -129,7 +136,14 @@ private constructor(
             @JvmSynthetic
             internal fun <State : Any> create(
                 observer: () -> Refinement<State, ProjectReadEpochObservationFailure>
-            ): Source<State> = Source(observer)
+            ): Source<State> = Source(observer) { Refinement.Rejected(ProjectReadEpochObservationFailure.WrongThread) }
+
+            /** Both probes belong to this one source; the write probe must enforce its distinct execution boundary. */
+            @JvmSynthetic
+            internal fun <State : Any> create(
+                observer: () -> Refinement<State, ProjectReadEpochObservationFailure>,
+                beforeWriteObserver: () -> Refinement<State, ProjectReadEpochObservationFailure>,
+            ): Source<State> = Source(observer, beforeWriteObserver)
         }
     }
 

@@ -10,6 +10,7 @@ base {
 }
 
 dependencies {
+    implementation(libs.serialization.json)
     implementation(project(":change:contract"))
     implementation(project(":change:recovery"))
     implementation(project(":evidence:contract"))

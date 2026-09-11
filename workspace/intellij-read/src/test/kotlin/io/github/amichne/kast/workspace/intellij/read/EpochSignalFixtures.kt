@@ -349,6 +349,10 @@ internal class RecordingProjectReadEpochExecution(
     var probeFailure: RuntimeException? = null,
     var failure: RuntimeException? = null,
 ) : ProjectReadEpochExecution {
+    var writeAccess: Boolean = false
+
+    override fun isWriteAccessAllowed(): Boolean = writeAccess
+
     override fun isDispatchThread(): Boolean {
         probeFailure?.let { throw it }
         return dispatchThread

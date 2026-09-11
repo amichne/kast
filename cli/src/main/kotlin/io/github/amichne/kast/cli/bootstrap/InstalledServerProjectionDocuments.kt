@@ -280,7 +280,8 @@ private enum class InstalledServerTool(
             inputSchema =
                 when (val input = definition.inputBinding) {
                     is AgentToolInputBinding.Facade -> PublicToolContract.parameters(input.identity)
-                    AgentToolInputBinding.Canonical -> generatedRequestSchema(requestSerializer)
+                    AgentToolInputBinding.Canonical ->
+                        generatedHostedRequestSchema(requestSerializer, definition.operation.hostedVariants)
                 },
             outputSchema = installedServerOutputSchema(operation),
         )
@@ -298,7 +299,7 @@ private enum class InstalledServerTool(
         )
 }
 
-private data class ServerSchemaProperty(
+internal data class ServerSchemaProperty(
     val name: String,
     val schema: JsonObject,
 )
@@ -372,7 +373,7 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
 }
 
 private fun operationProcessDocumentSchema(operation: CanonicalOperation): JsonObject =
-    if (operation.supportsLiveReadEvidence()) {
+    if (operation.supportsLiveEvidence()) {
         unionSchema(operationDocumentSchema(operation), hostedEndpointRejectionSchema, hostedReadRejectionSchema)
     } else {
         operationDocumentSchema(operation)
@@ -456,15 +457,7 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
                 ServerSchemaProperty("planIdentity", textSchema("Durable change plan identity.")),
                 ServerSchemaProperty("changes", changeFilePreviewsSchema()),
             )
-        CanonicalOperation.CHANGE_APPLY ->
-            outcomeSchema(
-                operation,
-                ServerSchemaProperty(
-                    "receiptIdentity",
-                    textSchema("Verified change receipt identity."),
-                ),
-                ServerSchemaProperty("changes", changeFilePreviewsSchema()),
-            )
+        CanonicalOperation.CHANGE_APPLY -> changeApplicationDocumentSchema(operation)
         CanonicalOperation.CHANGE_RECOVER ->
             outcomeSchema(
                 operation,
@@ -472,7 +465,7 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
             )
     }
 
-private fun changeFilePreviewsSchema(): JsonObject =
+internal fun changeFilePreviewsSchema(): JsonObject =
     nonEmptyArraySchema(
         objectSchema(
             ServerSchemaProperty("path", workspaceFileSchema()),
@@ -1048,7 +1041,7 @@ private fun traversalQualificationSchema(): JsonObject =
             ServerSchemaProperty(
                 "continuation",
                 patternTextSchema(
-                    "^traversal-continuation:v1:",
+                    io.github.amichne.kast.protocol.contract.TraversalContinuationDocument.TOKEN_PATTERN,
                     "Self-contained traversal checkpoint.",
                 ),
             ),
@@ -1139,54 +1132,41 @@ private fun diagnosticQualificationSchema(): JsonObject =
         ),
     )
 
-private fun operationOutcomeVariant(
+internal fun operationOutcomeVariant(
     operation: CanonicalOperation,
     status: String,
     vararg payload: ServerSchemaProperty,
+): JsonObject = operationOutcomeVariant(operation, status, payload.toList())
+
+internal fun operationOutcomeVariant(
+    operation: CanonicalOperation,
+    status: String,
+    payload: List<ServerSchemaProperty>,
 ): JsonObject {
     val identity =
-        arrayOf(
+        listOf(
             ServerSchemaProperty("operation", constantSchema(operation.id.value, "Canonical operation identity.")),
             ServerSchemaProperty("status", constantSchema(status, "Canonical operation outcome.")),
         )
-    val published = objectSchema(*identity, *payload)
-    if (!operation.supportsLiveReadEvidence() || status !in setOf("complete", "qualified")) return published
-    val livePayload =
-        payload
-            .map { property ->
-                when {
-                    operation == CanonicalOperation.SOURCE_READ && property.name == "snapshot" ->
-                        ServerSchemaProperty("snapshot", sourceSnapshotSchema(ServerReadEvidenceShape.LIVE))
-                    operation == CanonicalOperation.TRAVERSAL_RUN && property.name == "graph" ->
-                        ServerSchemaProperty("graph", normalizedTraversalGraphSchema(ServerReadEvidenceShape.LIVE))
-                    else -> property
-                }
-            }
-            .toTypedArray()
+    val published = objectSchema(identity + payload)
+    if (!operation.supportsLiveEvidence() || status !in setOf("complete", "qualified")) return published
+    val livePayload = payload.map { property ->
+        when {
+            operation == CanonicalOperation.SOURCE_READ && property.name == "snapshot" ->
+                ServerSchemaProperty("snapshot", sourceSnapshotSchema(ServerReadEvidenceShape.LIVE))
+            operation == CanonicalOperation.TRAVERSAL_RUN && property.name == "graph" ->
+                ServerSchemaProperty("graph", normalizedTraversalGraphSchema(ServerReadEvidenceShape.LIVE))
+            else -> property
+        }
+    }
     // The closed variants make top-level and nested Published/Live shapes mutually exclusive.
     return buildJsonObject {
         putJsonArray("oneOf") {
             add(published)
-            add(objectSchema(*identity, *livePayload, ServerSchemaProperty("live", liveReadEvidenceSchema())))
+            add(objectSchema(identity + livePayload + ServerSchemaProperty("live", liveReadEvidenceSchema())))
         }
     }
 }
-
-private fun CanonicalOperation.supportsLiveReadEvidence(): Boolean =
-    when (this) {
-        CanonicalOperation.QUERY_RUN,
-        CanonicalOperation.SYMBOL_DISCOVER,
-        CanonicalOperation.SYMBOL_INSPECT,
-        CanonicalOperation.SOURCE_READ,
-        CanonicalOperation.RELATION_READ,
-        CanonicalOperation.TRAVERSAL_RUN,
-        CanonicalOperation.DIAGNOSTIC_CHECK -> true
-        CanonicalOperation.INDEX_SYNC,
-        CanonicalOperation.TOPOLOGY_BUILD,
-        CanonicalOperation.CHANGE_PLAN,
-        CanonicalOperation.CHANGE_APPLY,
-        CanonicalOperation.CHANGE_RECOVER -> false
-    }
 
 private fun topologyBuildDocumentSchema(operation: CanonicalOperation): JsonObject {
     val result =
@@ -1841,7 +1821,9 @@ private fun typedFailureSchema(type: String, field: String): JsonObject =
         ServerSchemaProperty(field, textSchema("Finite failure evidence.")),
     )
 
-private fun objectSchema(vararg properties: ServerSchemaProperty): JsonObject = buildJsonObject {
+private fun objectSchema(vararg properties: ServerSchemaProperty): JsonObject = objectSchema(properties.toList())
+
+internal fun objectSchema(properties: List<ServerSchemaProperty>): JsonObject = buildJsonObject {
     put("type", "object")
     put("additionalProperties", false)
     putJsonObject("properties") {
@@ -1871,7 +1853,9 @@ private fun objectSchemaWithRequired(
     }
 }
 
-private fun unionSchema(vararg variants: JsonObject): JsonObject = buildJsonObject {
+internal fun unionSchema(vararg variants: JsonObject): JsonObject = unionSchema(variants.toList())
+
+internal fun unionSchema(variants: List<JsonObject>): JsonObject = buildJsonObject {
     putJsonArray("anyOf") {
         variants.forEach(::add)
     }
@@ -1916,7 +1900,7 @@ private fun finiteArraySchema(item: JsonObject): JsonObject = buildJsonObject {
     put("items", item)
 }
 
-private fun textSchema(description: String): JsonObject = buildJsonObject {
+internal fun textSchema(description: String): JsonObject = buildJsonObject {
     put("type", "string")
     put("minLength", 1)
     put("maxLength", MAXIMUM_PROTOCOL_TEXT_LENGTH)
@@ -1979,13 +1963,13 @@ private fun integerSchema(
     put("description", description)
 }
 
-private fun constantSchema(value: String, description: String): JsonObject = buildJsonObject {
+internal fun constantSchema(value: String, description: String): JsonObject = buildJsonObject {
     put("type", "string")
     put("const", value)
     put("description", description)
 }
 
-private fun enumSchema(values: List<String>, description: String): JsonObject = buildJsonObject {
+internal fun enumSchema(values: List<String>, description: String): JsonObject = buildJsonObject {
     put("type", "string")
     put("description", description)
     put("enum", buildJsonArray { values.forEach { add(JsonPrimitive(it)) } })

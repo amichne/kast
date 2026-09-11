@@ -209,6 +209,8 @@ internal data class KtorBrokerServerOptions(
     val invocationJournal: java.nio.file.Path? = null,
     val enrollment: io.github.amichne.kast.appserver.WorkspaceEnrollment =
         io.github.amichne.kast.appserver.WorkspaceEnrollment.ProtocolFixture,
+    val planApprovalGateway: HostedPlanApprovalGateway = HostedPlanApprovalGateway.Unavailable,
+    val planApprovalWaitMillis: Long = 300_000,
 )
 
 internal enum class KtorBrokerServerFailure {
@@ -263,7 +265,7 @@ private constructor(
             if (
                 options.maximumConnections <= 0 ||
                     options.maximumMessageBytes <= 0 ||
-                    options.connectionInitializationTimeoutMillis <= 0
+                    minOf(options.connectionInitializationTimeoutMillis, options.planApprovalWaitMillis) <= 0
             ) {
                 return KtorBrokerServerStart.Rejected(KtorBrokerServerFailure.INVALID_LIMIT)
             }
@@ -581,17 +583,4 @@ private constructor(
 
         private fun String.utf8Bytes(): Int = toByteArray(StandardCharsets.UTF_8).size
     }
-}
-
-private data class InitializeRequest(val message: String, val idKey: String)
-
-private enum class InitializationResponse {
-    UNRELATED,
-    SUCCESS,
-    FAILURE,
-}
-
-private enum class BrokerWebSocketRoute(val path: String) {
-    CODEX("/rpc"),
-    LEGACY("/"),
 }

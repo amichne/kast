@@ -13,6 +13,7 @@ Contains the public Mintlify documentation source plus scripts and styles for ob
 - [public/index.mdx](public/index.mdx) - product landing documentation.
 - [public/start.mdx](public/start.mdx) - installation and connection guide.
 - [public/search.mdx](public/search.mdx) - search workflow.
+- [public/change.mdx](public/change.mdx) - controlled change planning, approval, application, and recovery workflow.
 - [public/troubleshooting.mdx](public/troubleshooting.mdx) - support guidance.
 - [render_kast_observer_snapshots.py](render_kast_observer_snapshots.py) - observer snapshot renderer.
 
@@ -21,7 +22,7 @@ Contains the public Mintlify documentation source plus scripts and styles for ob
 - `public/concepts` - conceptual explanations.
 - `public/reference` - generated and hand-authored reference pages.
 - `public/images` - checked documentation assets.
-- `tooling` - local documentation tooling; generated caches are not source authority.
+- `reviews` - source and runtime acceptance review evidence.
 
 ## Entry Points
 

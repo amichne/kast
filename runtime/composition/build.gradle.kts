@@ -34,6 +34,7 @@ dependencies {
     implementation(project(":diagnostic:intellij"))
     implementation(project(":change:contract"))
     implementation(project(":change:plan"))
+    implementation(project(":change:protocol"))
     implementation(project(":change:apply"))
     implementation(project(":change:verify"))
     implementation(project(":change:recovery"))

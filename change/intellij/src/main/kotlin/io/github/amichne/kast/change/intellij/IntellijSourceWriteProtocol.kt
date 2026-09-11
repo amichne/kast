@@ -24,6 +24,15 @@ internal sealed interface IntellijSessionStepResult {
     data class Rejected(val failure: SourceWriteFailure) : IntellijSessionStepResult
 }
 
+/** Keeps failed admission distinct from a platform failure after source effects became possible. */
+internal sealed interface IntellijDocumentMutationResult {
+    data object Completed : IntellijDocumentMutationResult
+
+    data class RejectedBeforeMutation(val failure: SourceWriteFailure) : IntellijDocumentMutationResult
+
+    data class EffectUncertain(val failure: SourceWriteFailure) : IntellijDocumentMutationResult
+}
+
 internal sealed interface IntellijPhysicalSourceObservation {
     data class Observed(
         val bytes: ByteArray,
@@ -37,7 +46,7 @@ internal sealed interface IntellijPhysicalSourceObservation {
 internal interface IntellijDocumentMutationSession {
     fun currentText(): String
 
-    fun mutate(input: IntellijMutationInput): IntellijSessionStepResult
+    fun mutate(input: IntellijMutationInput): IntellijDocumentMutationResult
 
     fun restore(preimageText: String): IntellijSessionStepResult
 
@@ -78,8 +87,11 @@ internal class IntellijSourceWriteProtocol {
             return IntellijWriteProtocolResult.RejectedBeforeMutation(SourceWriteFailure.PREIMAGE_CHANGED)
         }
         when (val mutated = session.mutate(input)) {
-            IntellijSessionStepResult.Completed -> Unit
-            is IntellijSessionStepResult.Rejected -> return rollback(session, input, mutated.failure)
+            IntellijDocumentMutationResult.Completed -> Unit
+            is IntellijDocumentMutationResult.RejectedBeforeMutation ->
+                return IntellijWriteProtocolResult.RejectedBeforeMutation(mutated.failure)
+            is IntellijDocumentMutationResult.EffectUncertain ->
+                return IntellijWriteProtocolResult.RecoveryRequired(mutated.failure)
         }
         if (session.currentText() != input.postimageText) {
             return rollback(session, input, SourceWriteFailure.MUTATION_FAILED)
@@ -88,6 +100,9 @@ internal class IntellijSourceWriteProtocol {
             MutationDurabilityResult.Durable -> Unit
             is MutationDurabilityResult.Rejected ->
                 return rollback(session, input, SourceWriteFailure.DURABILITY_REJECTED)
+        }
+        if (session.currentText() != input.postimageText) {
+            return IntellijWriteProtocolResult.RecoveryRequired(SourceWriteFailure.PREIMAGE_CHANGED)
         }
         when (val saved = session.save()) {
             IntellijSessionStepResult.Completed -> Unit
@@ -105,10 +120,14 @@ internal class IntellijSourceWriteProtocol {
         session: IntellijDocumentMutationSession,
         input: IntellijMutationInput,
         failure: SourceWriteFailure,
-    ): IntellijWriteProtocolResult =
-        when (session.restore(input.preimageText)) {
+    ): IntellijWriteProtocolResult {
+        if (session.currentText() != input.postimageText) {
+            return IntellijWriteProtocolResult.RecoveryRequired(SourceWriteFailure.ROLLBACK_FAILED)
+        }
+        return when (session.restore(input.preimageText)) {
             IntellijSessionStepResult.Completed -> IntellijWriteProtocolResult.RejectedAfterRollback(failure)
             is IntellijSessionStepResult.Rejected ->
                 IntellijWriteProtocolResult.RecoveryRequired(SourceWriteFailure.ROLLBACK_FAILED)
         }
+    }
 }

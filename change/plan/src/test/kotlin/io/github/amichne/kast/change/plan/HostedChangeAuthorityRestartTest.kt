@@ -3,15 +3,15 @@ package io.github.amichne.kast.change.plan
 import io.github.amichne.kast.change.apply.AppliedUnverified
 import io.github.amichne.kast.change.apply.MutationPlanPublicationRelationship
 import io.github.amichne.kast.change.contract.AddDeclarationPlanResult
+import io.github.amichne.kast.change.contract.ChangePlanIssuance
+import io.github.amichne.kast.change.contract.DurableChangeAuthorityFailure
 import io.github.amichne.kast.change.recovery.AddDeclarationRecoveryPreparation
 import io.github.amichne.kast.change.recovery.AddDeclarationRecoveryService
 import io.github.amichne.kast.change.recovery.PrepareAddDeclarationRecoveryResult
 import io.github.amichne.kast.change.recovery.RecordAppliedAddDeclarationResult
 import io.github.amichne.kast.change.verify.ChangeApplicationIssuance
 import io.github.amichne.kast.change.verify.ChangeApplicationLookup
-import io.github.amichne.kast.change.verify.ChangePlanIssuance
 import io.github.amichne.kast.change.verify.ChangePlanLookup
-import io.github.amichne.kast.change.verify.DurableChangeAuthorityFailure
 import io.github.amichne.kast.evidence.contract.HostedWorkspaceStateLocation
 import io.github.amichne.kast.evidence.contract.KastUserStateRoot
 import io.github.amichne.kast.evidence.contract.RecoveryPreimage

@@ -34,14 +34,11 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import java.io.File
 import java.io.IOException
-import java.nio.ByteBuffer
-import java.nio.channels.FileChannel
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
-import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.PosixFilePermissions
 import java.util.UUID
@@ -56,8 +53,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
 internal enum class InstalledBrokerServerConfigurationFailure {
     KAST_EXECUTABLE_REJECTED,
@@ -613,6 +608,11 @@ internal object InstalledBrokerHost {
                 maximumMessageBytes = options.maximumMessageBytes,
                 activitySink = JsonLineBrokerInvocationActivitySink(System.err),
                 sessionBootstrap = kastQualification.bootstrap,
+                planApprovalGateway =
+                    io.github.amichne.kast.appserver.provider.KastHostedPlanApprovalGateway(
+                        options.kastOptions,
+                        options.kastOptions.qualificationDirectory.path,
+                    ),
                 enrollment = enrollment,
                 bindingOwner = owner,
                 sessionActivitySink = io.github.amichne.kast.appserver.runtime.JsonLineSessionActivitySink(System.err),
@@ -987,53 +987,4 @@ internal sealed interface BrokerServiceStateDocument {
         override val brokerVersion: String,
         val failure: BrokerServerFailure,
     ) : BrokerServiceStateDocument
-}
-
-private fun writeServiceState(path: Path, document: BrokerServiceStateDocument) {
-    val bytes =
-        (BROKER_SERVICE_STATE_JSON.encodeToString(BrokerServiceStateDocument.serializer(), document) + "\n")
-            .toByteArray(Charsets.UTF_8)
-    FileChannel.open(
-            path,
-            setOf(
-                StandardOpenOption.CREATE_NEW,
-                StandardOpenOption.WRITE,
-                LinkOption.NOFOLLOW_LINKS,
-            ),
-            PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")),
-        )
-        .use { channel ->
-            val buffer = ByteBuffer.wrap(bytes)
-            while (buffer.hasRemaining()) channel.write(buffer)
-            channel.force(true)
-        }
-}
-
-private fun readServiceState(path: Path): BrokerServiceStateDocument =
-    BROKER_SERVICE_STATE_JSON.decodeFromString(
-        BrokerServiceStateDocument.serializer(),
-        Files.readString(path),
-    )
-
-private fun admittedServiceStateFileKey(
-    path: Path,
-    expected: BrokerServiceStateDocument,
-): Any? {
-    val attributes =
-        Files.readAttributes(
-            path,
-            BasicFileAttributes::class.java,
-            LinkOption.NOFOLLOW_LINKS,
-        )
-    if (!attributes.isRegularFile || attributes.isSymbolicLink) return null
-    val key = attributes.fileKey() ?: return null
-    return key.takeIf { readServiceState(path) == expected }
-}
-
-internal const val BROKER_SERVICE_STATE_SCHEMA_VERSION = 3
-
-internal val BROKER_SERVICE_STATE_JSON = Json {
-    ignoreUnknownKeys = false
-    explicitNulls = false
-    classDiscriminator = "state"
 }

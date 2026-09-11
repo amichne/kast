@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kast.dev/experimental/hosted-endpoint/v2",
+  "$id": "https://kast.dev/experimental/hosted-endpoint/v3",
   "oneOf": [
     {
       "$ref": "#/$defs/descriptor"
@@ -30,7 +30,11 @@
         "SOURCE_READ",
         "RELATION_READ",
         "TRAVERSAL_RUN",
-        "DIAGNOSTIC_CHECK"
+        "DIAGNOSTIC_CHECK",
+        "CHANGE_PLAN",
+        "CHANGE_APPROVAL_PREPARE",
+        "CHANGE_APPLY",
+        "CHANGE_RECOVER"
       ]
     },
     "descriptor": {
@@ -51,7 +55,7 @@
           "const": "KAST_IDE_ENDPOINT"
         },
         "protocol": {
-          "const": 2
+          "const": 3
         },
         "root": {
           "$ref": "#/$defs/root"
@@ -94,7 +98,7 @@
           "const": "KAST_IDE_HOST"
         },
         "protocol": {
-          "const": 2
+          "const": 3
         },
         "root": {
           "$ref": "#/$defs/root"
@@ -141,7 +145,9 @@
             "SOCKET_UNAVAILABLE",
             "PLATFORM_UNAVAILABLE",
             "RESPONSE_REJECTED",
-            "RESULT_TOO_LARGE"
+            "RESULT_TOO_LARGE",
+            "APPROVAL_UNAVAILABLE",
+            "APPROVAL_REJECTED"
           ]
         }
       }

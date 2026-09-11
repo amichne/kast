@@ -24,6 +24,7 @@ import io.github.amichne.kast.change.recovery.AddDeclarationRollbackFailure
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackPort
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackResult
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.CanonicalSemanticProjectRoot
@@ -31,6 +32,7 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.psi.KtClass
+import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
@@ -130,7 +132,7 @@ internal fun compileIntent(
     }
 }
 
-private fun compileIntentRead(
+internal fun compileIntentRead(
     project: Project,
     selector: SymbolSelector,
     declaration: AddDeclarationSourceText,
@@ -151,6 +153,17 @@ private fun compileIntentRead(
                 candidate.textRange.endOffset == selector.range.endExclusive
         }
     if (anchors.size != 1) return rejected(InstalledAddDeclarationIntentFailure.TARGET_MOVED)
+    if (selector.kind == CompilerSymbolKind.CLASSLIKE && (anchors.single() as? KtClassOrObject)?.body?.rBrace == null) {
+        return rejected(InstalledAddDeclarationIntentFailure.TARGET_UNAVAILABLE)
+    }
+    return compileAddition(project, target, declaration)
+}
+
+private fun compileAddition(
+    project: Project,
+    target: KtFile,
+    declaration: AddDeclarationSourceText,
+): InstalledAddDeclarationIntentCompilation {
     val parsed =
         try {
             KtPsiFactory(project, false).createDeclaration<KtDeclaration>(declaration.value)

@@ -13,6 +13,8 @@ code_sources:
     symbols: [SemanticReadAuthority, LiveSemanticReadAuthority, SemanticReadValidationPort]
   - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/EditableMutationTarget.kt
   - path: change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/MutationAuthority.kt
+  - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/LiveChangeBasis.kt
+  - path: change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt
 ---
 
 # Evidence authority
@@ -26,4 +28,8 @@ The original live owner must admit current epoch evidence before a detached
 reference can participate in a read. Service validation and native selector
 revalidation preserve freshness through the read. The `requirePublished`
 refinement rejects live authority at effects that require a publication;
-an editable mutation target still carries a published `SemanticReadLease`.
+the installed editable mutation target still carries a published
+`SemanticReadLease`. Hosted `AddDeclaration` uses a separate `LiveMutationAuthority`
+that retains current observation, saved preimage, the planned write set and
+verified approval. Its detached `ChangePlanningBasis.Live` remains historical
+evidence and cannot revive an expired IDE owner or authorize a write by itself.

@@ -1,7 +1,6 @@
 package io.github.amichne.kast.workspace.intellij.read
 
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.externalSystem.model.ExternalProjectInfo
 import com.intellij.openapi.externalSystem.model.ProjectSystemId
@@ -102,7 +101,23 @@ internal class LiveProjectReadEpochSource(
     private val execution: ProjectReadEpochExecution = IdeaProjectReadEpochExecution,
     private val limits: ReadLimits = ReadLimits.Default,
 ) {
-    internal val source = ProjectReadEpoch.Source.create(::observeState)
+    internal val source = ProjectReadEpoch.Source.create(::observeState, ::observeBeforeWriteState)
+
+    /** Same constant-size signals, sampled only inside the existing EDT write action. No index query or wait. */
+    private fun observeBeforeWriteState(): Refinement<ProjectReadEpochState, ProjectReadEpochObservationFailure> {
+        val admitted =
+            when (
+                val result =
+                    observe(ProjectReadEpochObservationStage.THREAD) {
+                        execution.isDispatchThread() && execution.isWriteAccessAllowed()
+                    }
+            ) {
+                is EpochPlatformObservation.Observed -> result.value
+                is EpochPlatformObservation.Failed -> return result.rejection()
+            }
+        if (!admitted) return Refinement.Rejected(ProjectReadEpochObservationFailure.WrongThread)
+        return observeInsideRead()
+    }
 
     /**
      * Proof transition: `LiveProjectReadEpochSource -> Refinement<ProjectReadEpochState,
@@ -379,28 +394,6 @@ private class LiveProjectReadEpochPlatformPort(
 }
 
 /** Explicit EDT and cancellable-read effect boundary for epoch observation. */
-internal interface ProjectReadEpochExecution {
-    fun isDispatchThread(): Boolean
-
-    fun compute(
-        read: () -> Refinement<ProjectReadEpochState, ProjectReadEpochObservationFailure>
-    ): Refinement<ProjectReadEpochState, ProjectReadEpochObservationFailure>
-}
-
-private object IdeaProjectReadEpochExecution : ProjectReadEpochExecution {
-    override fun isDispatchThread(): Boolean = ApplicationManager.getApplication().isDispatchThread
-
-    override fun compute(
-        read: () -> Refinement<ProjectReadEpochState, ProjectReadEpochObservationFailure>
-    ): Refinement<ProjectReadEpochState, ProjectReadEpochObservationFailure> =
-        ReadAction.computeCancellable<
-            Refinement<ProjectReadEpochState, ProjectReadEpochObservationFailure>,
-            RuntimeException,
-        >(
-            read
-        )
-}
-
 private sealed interface EpochPlatformObservation<out Value> {
     data class Observed<Value>(val value: Value) : EpochPlatformObservation<Value>
 

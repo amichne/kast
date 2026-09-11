@@ -23,8 +23,8 @@ class HostedClientTest(unittest.TestCase):
     def reply(self, raw, request=None):
         self.directory.mkdir(parents=True, mode=0o700)
         path = self.directory / "host.sock"
-        metadata = dict(type="KAST_IDE_ENDPOINT", protocol=2, host="00000000-0000-0000-0000-000000000001", querySchema="kast.query.run.v2", root=str(self.root), socket=str(path), hostPid=123,
-                        operations=["DESCRIBE", "CLASS_LOOKUP", "DIRECT_SUPERTYPE", "QUERY_RUN", "SYMBOL_DISCOVER", "SYMBOL_INSPECT", "SOURCE_READ", "RELATION_READ", "TRAVERSAL_RUN", "DIAGNOSTIC_CHECK"])
+        metadata = dict(type="KAST_IDE_ENDPOINT", protocol=3, host="00000000-0000-0000-0000-000000000001", querySchema="kast.query.run.v2", root=str(self.root), socket=str(path), hostPid=123,
+                        operations=["DESCRIBE", "CLASS_LOOKUP", "DIRECT_SUPERTYPE", "QUERY_RUN", "SYMBOL_DISCOVER", "SYMBOL_INSPECT", "SOURCE_READ", "RELATION_READ", "TRAVERSAL_RUN", "DIAGNOSTIC_CHECK", "CHANGE_PLAN", "CHANGE_APPROVAL_PREPARE", "CHANGE_APPLY", "CHANGE_RECOVER"])
         (self.directory / "endpoint.json").write_text(json.dumps(metadata))
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as server:
             server.bind(str(path))
@@ -56,8 +56,8 @@ class HostedClientTest(unittest.TestCase):
         self.assertEqual(Answer(result), self.reply(json.dumps(result).encode(), dict(type="CLASS_LOOKUP", name="Absent")))
 
     def test_host_identity_must_match_descriptor(self):
-        result = dict(type="KAST_IDE_HOST", protocol=2, host="00000000-0000-0000-0000-000000000001", querySchema="kast.query.run.v2", root=str(self.root), hostPid=124,
-                      operations=["DESCRIBE", "CLASS_LOOKUP", "DIRECT_SUPERTYPE", "QUERY_RUN", "SYMBOL_DISCOVER", "SYMBOL_INSPECT", "SOURCE_READ", "RELATION_READ", "TRAVERSAL_RUN", "DIAGNOSTIC_CHECK"], indexAuthority="existing_ide_kotlin_stub_index")
+        result = dict(type="KAST_IDE_HOST", protocol=3, host="00000000-0000-0000-0000-000000000001", querySchema="kast.query.run.v2", root=str(self.root), hostPid=124,
+                      operations=["DESCRIBE", "CLASS_LOOKUP", "DIRECT_SUPERTYPE", "QUERY_RUN", "SYMBOL_DISCOVER", "SYMBOL_INSPECT", "SOURCE_READ", "RELATION_READ", "TRAVERSAL_RUN", "DIAGNOSTIC_CHECK", "CHANGE_PLAN", "CHANGE_APPROVAL_PREPARE", "CHANGE_APPLY", "CHANGE_RECOVER"], indexAuthority="existing_ide_kotlin_stub_index")
         self.assertEqual(Rejected(Failure.RESPONSE_REJECTED), self.reply(json.dumps(result).encode()))
 
     def test_unknown_failure_is_rejected(self):
@@ -93,7 +93,7 @@ class HostedClientTest(unittest.TestCase):
                 strict_json(raw)
 
     def test_schema_closes_host_capabilities(self):
-        document = dict(type="KAST_IDE_HOST", protocol=2, host="00000000-0000-0000-0000-000000000001", querySchema="kast.query.run.v2", root=str(self.root), hostPid=os.getpid(),
+        document = dict(type="KAST_IDE_HOST", protocol=3, host="00000000-0000-0000-0000-000000000001", querySchema="kast.query.run.v2", root=str(self.root), hostPid=os.getpid(),
                         operations=["DESCRIBE", "IMPORT"], indexAuthority="existing_ide_kotlin_stub_index")
         self.assertFalse(valid_schema(document, "hosted-endpoint.schema.json"))
 

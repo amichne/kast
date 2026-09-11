@@ -2,6 +2,7 @@ import org.gradle.api.artifacts.VersionCatalogsExtension
 
 plugins {
     id("kast.kotlin-library")
+    kotlin("plugin.serialization")
     id("kast.role.intellij-write")
 }
 
@@ -44,6 +45,8 @@ private fun extractedIdeaFiles(configure: ConfigurableFileTree.() -> Unit) =
 private val ideaLibs: ConfigurableFileCollection = extractedIdeaFiles {
     include("**/lib/**/*.jar")
     exclude("**/plugins/**")
+    exclude("**/lib/intellij.libraries.kotlinx.serialization.*.jar")
+    exclude("**/lib/intellij.libraries.ktor.utils.jar")
 }
 
 private val kotlinPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
@@ -69,7 +72,72 @@ dependencies {
     changeIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
         isTransitive = false
     }
+    compileOnly(catalog.findLibrary("serialization-json").get())
+    testImplementation(catalog.findLibrary("serialization-json").get())
     compileOnly(ideaLibs)
     compileOnly(kotlinPluginLibs)
     compileOnly(javaPluginLibs)
+}
+
+// Deliberately separate from main: the native acceptance probe is never shipped in the product plugin.
+val nativeFixture by sourceSets.creating
+val nativeFixtureTest by sourceSets.creating
+
+kotlin.target.compilations
+    .getByName("nativeFixtureTest")
+    .associateWith(kotlin.target.compilations.getByName("nativeFixture"))
+
+configurations[nativeFixtureTest.implementationConfigurationName].extendsFrom(configurations.testImplementation.get())
+
+configurations[nativeFixtureTest.runtimeOnlyConfigurationName].extendsFrom(configurations.testRuntimeOnly.get())
+
+dependencies {
+    add(nativeFixture.compileOnlyConfigurationName, catalog.findLibrary("serialization-json").get())
+    add(nativeFixture.compileOnlyConfigurationName, ideaLibs)
+    add(nativeFixture.compileOnlyConfigurationName, kotlinPluginLibs)
+    add(nativeFixture.compileOnlyConfigurationName, javaPluginLibs)
+    add(nativeFixture.implementationConfigurationName, catalog.findLibrary("serialization-json").get())
+    add(nativeFixtureTest.implementationConfigurationName, nativeFixture.output)
+    add(nativeFixtureTest.implementationConfigurationName, catalog.findLibrary("serialization-json").get())
+}
+
+val nativeFixtureJar by
+    tasks.registering(Jar::class) {
+        group = "verification"
+        description = "Builds the isolated-IDE test probe only; never a production plugin dependency."
+        archiveBaseName.set("kast-native-fixture-probe")
+        archiveVersion.set("")
+        isPreserveFileTimestamps = false
+        isReproducibleFileOrder = true
+        from(nativeFixture.output)
+    }
+
+tasks.register<Test>("nativeFixtureTest") {
+    group = "verification"
+    description = "Checks the native test probe's bounded request and state contracts without an IDE."
+    testClassesDirs = nativeFixtureTest.output.classesDirs
+    classpath = nativeFixtureTest.runtimeClasspath
+    useJUnitPlatform()
+}
+
+tasks.register<Zip>("nativeFixturePlugin") {
+    group = "verification"
+    description = "Packages an optional sandbox-only native acceptance probe; excluded from release assembly."
+    archiveFileName.set("kast-native-fixture-probe.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+    into("kast-native-fixture-probe/lib") {
+        from(nativeFixtureJar)
+        from(configurations[nativeFixture.runtimeClasspathConfigurationName]) {
+            include("kotlinx-serialization-core-jvm-*.jar", "kotlinx-serialization-json-jvm-*.jar")
+        }
+    }
+}
+
+// Keep the same checks while avoiding the alpha analyzer's concurrent PSI traversal race in the probe source sets.
+tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
+    if (name == "detektNativeFixture" || name == "detektNativeFixtureTest") {
+        parallel.set(false)
+    }
 }

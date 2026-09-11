@@ -134,3 +134,27 @@ tasks.register("writeInstalledWorkspaceHarnessClasspath") {
         }
     }
 }
+
+val hostedChangeSourceCommit =
+    providers
+        .exec {
+            workingDir(rootProject.projectDir)
+            commandLine("git", "rev-parse", "HEAD")
+        }
+        .standardOutput
+        .asText
+        .map(String::trim)
+
+tasks.register<Jar>("hostedChangeHarnessJar") {
+    group = "verification"
+    description =
+        "Packages only opt-in native change test-controller classes; production classes load from staged artifacts."
+    dependsOn(tasks.named("testClasses"))
+    from(sourceSets.test.get().output.classesDirs) {
+        include("io/github/amichne/kast/appserver/acceptance/hostedchange/**")
+    }
+    archiveFileName.set("hosted-change-acceptance.jar")
+    destinationDirectory.set(layout.buildDirectory.dir("acceptance"))
+    inputs.property("sourceCommit", hostedChangeSourceCommit)
+    manifest.attributes("Kast-Acceptance-Source-Commit" to hostedChangeSourceCommit.get())
+}

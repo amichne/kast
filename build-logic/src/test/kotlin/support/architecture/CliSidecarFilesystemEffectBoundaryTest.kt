@@ -17,6 +17,7 @@ class CliSidecarFilesystemEffectBoundaryTest {
         JvmClassName("io/github/amichne/kast/cli/SidecarCacheIdentityFile"),
         JvmClassName("io/github/amichne/kast/cli/SidecarCacheStateFile"),
         JvmClassName("io/github/amichne/kast/cli/bootstrap/SidecarBootstrapAttemptLock"),
+        JvmClassName("io/github/amichne/kast/cli/ide/FilesystemBrokerTrustRegistrar"),
         JvmClassName("io/github/amichne/kast/cli/installation/InstallationWorkflow"),
         JvmClassName("io/github/amichne/kast/cli/installation/InstallationWorkflow\$copyControl\$1"),
         JvmClassName("io/github/amichne/kast/cli/installation/InstallationWorkflowKt"),

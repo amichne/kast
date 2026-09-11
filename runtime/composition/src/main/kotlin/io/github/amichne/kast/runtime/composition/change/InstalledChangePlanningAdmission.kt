@@ -11,6 +11,8 @@ import io.github.amichne.kast.change.contract.InstalledAddDeclarationIntentCompi
 import io.github.amichne.kast.change.contract.InstalledAddDeclarationIntentCompiler
 import io.github.amichne.kast.change.contract.MutationTargetObservation
 import io.github.amichne.kast.change.contract.ObservedMutationTargetState
+import io.github.amichne.kast.change.protocol.ChangePlanAdmission
+import io.github.amichne.kast.change.protocol.ChangePlanAdmissionFailure
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticOperations
@@ -22,8 +24,6 @@ import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.runtime.composition.installedSemanticBudgets
 import io.github.amichne.kast.runtime.composition.protocol.AuthorizedChangeIntent
-import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmission
-import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionFailure
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionOperations
 import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult

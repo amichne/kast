@@ -4,6 +4,11 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.*
 import io.github.amichne.kast.workspace.intellij.read.IntellijSemanticSourceFileAdmission
 
+internal class HostedReadFreshness(
+    val beforeWrite: () -> Refinement<Unit, HostedQueryFailure>,
+    val current: suspend () -> Refinement<Unit, HostedQueryFailure>,
+)
+
 /** Request-local detached scope and original-owner freshness checks; contains no native objects. */
 class HostedSemanticReadContext
 internal constructor(
@@ -13,7 +18,7 @@ internal constructor(
     val observation: io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation =
         io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation.None,
     val limits: io.github.amichne.kast.kernel.ReadLimits = io.github.amichne.kast.kernel.ReadLimits.Default,
-    private val validateCurrent: suspend () -> Refinement<Unit, HostedQueryFailure>,
+    private val freshness: HostedReadFreshness,
 ) {
     private enum class Lifetime {
         ACTIVE,
@@ -34,9 +39,22 @@ internal constructor(
         }
     }
 
+    /** Captures a narrower one-use probe; the read context still expires normally at request completion. */
+    fun prepareWriteObservation(
+        expected: LiveSemanticReadReference,
+        expectedModel: WorkspaceSearchScopeModel,
+    ): Refinement<HostedPreWriteObservation, HostedQueryFailure> =
+        when {
+            lifetime != Lifetime.ACTIVE -> Refinement.Rejected(HostedQueryFailure.STALE_REQUEST)
+            expected != authority.reference -> Refinement.Rejected(HostedQueryFailure.STALE_REQUEST)
+            expectedModel.workspaceRoot != model.workspaceRoot || expectedModel.sourceRoots != model.sourceRoots ->
+                Refinement.Rejected(HostedQueryFailure.MODEL_MOVED)
+            else -> Refinement.Refined(HostedPreWriteObservation.capture(authority.reference, freshness.beforeWrite))
+        }
+
     internal suspend fun validate(): Refinement<Unit, HostedQueryFailure> =
         when (lifetime) {
-            Lifetime.ACTIVE -> validateCurrent()
+            Lifetime.ACTIVE -> freshness.current()
             Lifetime.ENDED -> Refinement.Rejected(HostedQueryFailure.STALE_REQUEST)
         }
 

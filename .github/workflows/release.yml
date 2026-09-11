@@ -85,6 +85,15 @@ jobs:
           RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
         run: bash .github/scripts/ci/verify.sh --version "$RELEASE_VERSION"
 
+      - name: Retain exact release candidate
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: release-candidate-v${{ steps.release_version.outputs.version }}-${{ github.sha }}
+          path: build/release/v${{ steps.release_version.outputs.version }}/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
       - name: Publish immutable GitHub release
         env:
           RELEASE_VERSION: ${{ steps.release_version.outputs.version }}

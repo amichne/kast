@@ -8,6 +8,7 @@ import io.github.amichne.kast.change.plan.PureAddDeclarationPlanningService
 import io.github.amichne.kast.change.plan.PureAddFilePlanningService
 import io.github.amichne.kast.change.plan.PureRenameSymbolPlanningService
 import io.github.amichne.kast.change.plan.PureReplaceDeclarationPlanningService
+import io.github.amichne.kast.change.protocol.ChangePlanAdmission
 import io.github.amichne.kast.kernel.KastObservability
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
@@ -39,7 +40,6 @@ import io.github.amichne.kast.runtime.composition.protocol.CanonicalDiagnosticCh
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalProtocolAuthority
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDiscoverHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolInspectHandler
-import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmission
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionOperations
 import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalRelationReadHandler
 import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalTraversalRunHandler

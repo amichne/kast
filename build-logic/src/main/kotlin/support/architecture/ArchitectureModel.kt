@@ -94,6 +94,7 @@ enum class ModuleId(val projectPath: String) {
     DIAGNOSTIC_INTELLIJ(":diagnostic:intellij"),
     CHANGE_CONTRACT(":change:contract"),
     CHANGE_PLAN(":change:plan"),
+    CHANGE_PROTOCOL(":change:protocol"),
     CHANGE_APPLY(":change:apply"),
     CHANGE_VERIFY(":change:verify"),
     CHANGE_RECOVERY(":change:recovery"),

@@ -7,6 +7,7 @@ import io.github.amichne.kast.change.plan.PureAddDeclarationPlanningService
 import io.github.amichne.kast.change.plan.PureAddFilePlanningService
 import io.github.amichne.kast.change.plan.PureRenameSymbolPlanningService
 import io.github.amichne.kast.change.plan.PureReplaceDeclarationPlanningService
+import io.github.amichne.kast.change.protocol.ChangePlanAdmission
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
@@ -16,7 +17,6 @@ import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalKastOperationHandlerFactory
-import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmission
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionOperations
 import java.nio.file.Files
 import java.nio.file.Path

@@ -38,6 +38,77 @@ class IntellijSourceWriteProtocolTest {
         )
 
     @Test
+    fun `precondition rejection after write acquisition preserves a racing edit without rollback`() {
+        val events = mutableListOf<String>()
+        val userText = "fun service() = 42\n"
+        val session = FakeDocumentSession(input.preimageText, events, rejectedMutationText = userText)
+        val barrier = MutationDurabilityBarrier {
+            events += "durable"
+            MutationDurabilityResult.Durable
+        }
+
+        val result = IntellijSourceWriteProtocol().execute(input, barrier, session)
+
+        val rejected = assertInstanceOf(IntellijWriteProtocolResult.RejectedBeforeMutation::class.java, result)
+        assertEquals(SourceWriteFailure.PREIMAGE_CHANGED, rejected.failure)
+        assertEquals(listOf("precondition-rejected"), events)
+        assertEquals(userText, session.text)
+    }
+
+    @Test
+    fun `durability rejection never restores a document changed after mutation`() {
+        val events = mutableListOf<String>()
+        val session = FakeDocumentSession(input.preimageText, events)
+        val userText = "fun service() = 42\n"
+        val barrier = MutationDurabilityBarrier {
+            session.text = userText
+            events += "durable-rejected"
+            MutationDurabilityResult.Rejected(MutationDurabilityFailure.RECOVERY_EVIDENCE_REJECTED)
+        }
+
+        val result = IntellijSourceWriteProtocol().execute(input, barrier, session)
+
+        assertInstanceOf(IntellijWriteProtocolResult.RecoveryRequired::class.java, result)
+        assertEquals(listOf("insert", "durable-rejected"), events)
+        assertEquals(userText, session.text)
+    }
+
+    @Test
+    fun `a document changed during durable recording is not saved over`() {
+        val events = mutableListOf<String>()
+        val session = FakeDocumentSession(input.preimageText, events)
+        val userText = "fun service() = 42\n"
+        val barrier = MutationDurabilityBarrier {
+            session.text = userText
+            events += "durable"
+            MutationDurabilityResult.Durable
+        }
+
+        val result = IntellijSourceWriteProtocol().execute(input, barrier, session)
+
+        assertInstanceOf(IntellijWriteProtocolResult.RecoveryRequired::class.java, result)
+        assertEquals(listOf("insert", "durable"), events)
+        assertEquals(userText, session.text)
+    }
+
+    @Test
+    fun `uncertain mutation retains recovery state without restoration durability or save`() {
+        val events = mutableListOf<String>()
+        val session = FakeDocumentSession(input.preimageText, events, uncertainMutation = true)
+        val barrier = MutationDurabilityBarrier {
+            events += "durable"
+            MutationDurabilityResult.Durable
+        }
+
+        val result = IntellijSourceWriteProtocol().execute(input, barrier, session)
+
+        val required = assertInstanceOf(IntellijWriteProtocolResult.RecoveryRequired::class.java, result)
+        assertEquals(SourceWriteFailure.MUTATION_FAILED, required.failure)
+        assertEquals(listOf("insert"), events)
+        assertEquals(input.postimageText, session.text)
+    }
+
+    @Test
     fun `document mutation becomes durable before physical save`() {
         val events = mutableListOf<String>()
         val session = FakeDocumentSession(input.preimageText, events)
@@ -150,15 +221,25 @@ private class FakeDocumentSession(
     initialText: String,
     private val events: MutableList<String>,
     private val saveFails: Boolean = false,
+    private val rejectedMutationText: String? = null,
+    private val uncertainMutation: Boolean = false,
 ) : IntellijDocumentMutationSession {
     var text: String = initialText
 
     override fun currentText(): String = text
 
-    override fun mutate(input: IntellijMutationInput): IntellijSessionStepResult {
+    override fun mutate(input: IntellijMutationInput): IntellijDocumentMutationResult {
+        rejectedMutationText?.let { userText ->
+            events += "precondition-rejected"
+            text = userText
+            return IntellijDocumentMutationResult.RejectedBeforeMutation(SourceWriteFailure.PREIMAGE_CHANGED)
+        }
         events += "insert"
         text = input.postimageText
-        return IntellijSessionStepResult.Completed
+        if (uncertainMutation) {
+            return IntellijDocumentMutationResult.EffectUncertain(SourceWriteFailure.MUTATION_FAILED)
+        }
+        return IntellijDocumentMutationResult.Completed
     }
 
     override fun restore(preimageText: String): IntellijSessionStepResult {

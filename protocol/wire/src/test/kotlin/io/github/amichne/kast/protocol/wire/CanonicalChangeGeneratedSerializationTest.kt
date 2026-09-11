@@ -5,9 +5,11 @@ import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ChangeApplyQualification
+import io.github.amichne.kast.protocol.contract.ChangeApplyRecoveryReason
 import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangeApplyResult
+import io.github.amichne.kast.protocol.contract.ChangeApplyUnverifiedReason
 import io.github.amichne.kast.protocol.contract.ChangeFilePreview
 import io.github.amichne.kast.protocol.contract.ChangeFilePreviewKind
 import io.github.amichne.kast.protocol.contract.ChangeFilePreviewSet
@@ -31,7 +33,10 @@ import io.github.amichne.kast.protocol.contract.ProtocolText
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class CanonicalChangeGeneratedSerializationTest {
@@ -65,9 +70,11 @@ class CanonicalChangeGeneratedSerializationTest {
                 ChangeIntentDocument.AddFile(text("src/New.kt"), text("class New")) to
                     """{"intent":{"kind":"add-file","relativePath":"src/New.kt","content":"class New"}}""",
                 ChangeIntentDocument.AddDeclaration(text("exact:Target"), text("fun added() = Unit")) to
-                    """{"intent":{"kind":"add-declaration","exactTarget":"exact:Target","declaration":"fun added() = Unit"}}""",
+                    """{"intent":{"kind":"add-declaration","exactTarget":"exact:Target",""" +
+                        """"declaration":"fun added() = Unit"}}""",
                 ChangeIntentDocument.ReplaceDeclaration(text("exact:Target"), text("class Target")) to
-                    """{"intent":{"kind":"replace-declaration","exactTarget":"exact:Target","replacement":"class Target"}}""",
+                    """{"intent":{"kind":"replace-declaration","exactTarget":"exact:Target",""" +
+                        """"replacement":"class Target"}}""",
                 ChangeIntentDocument.RenameSymbol(text("exact:Target"), text("Renamed")) to
                     """{"intent":{"kind":"rename-symbol","exactTarget":"exact:Target","newName":"Renamed"}}""",
             )
@@ -94,7 +101,8 @@ class CanonicalChangeGeneratedSerializationTest {
         )
         assertEquals(
             wireJson.parseToJsonElement(
-                """{"receiptIdentity":"receipt:1","changes":[{"path":"src/Target.kt","kind":"update","diff":"-old\n+new"}]}"""
+                """{"state":"verified","receiptIdentity":"receipt:1","changes":[{"path":"src/Target.kt",""" +
+                    """"kind":"update","diff":"-old\n+new"}]}"""
             ),
             CanonicalOperationWireBindings.changeApply.resultPayload(ChangeApplyResult(text("receipt:1"), preview())),
         )
@@ -171,6 +179,51 @@ class CanonicalChangeGeneratedSerializationTest {
             assertEquals(
                 WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.REQUEST)),
                 binding.decodeRequest(request),
+            )
+        }
+    }
+
+    @Test
+    fun `unverified and recovery effects round trip without manufacturing a receipt`() {
+        val binding = CanonicalOperationWireBindings.changeApply
+        assertEquals("kast.change.apply.v3", binding.schema.value)
+        val cases =
+            ChangeApplyUnverifiedReason.entries.map {
+                ChangeApplyResult.AppliedUnverified(text("plan:1"), preview(), it)
+            } +
+                ChangeApplyRecoveryReason.entries.map {
+                    ChangeApplyResult.RecoveryRequired(text("plan:1"), preview(), it)
+                }
+        for (result in cases) {
+            val qualifier =
+                when (result) {
+                    is ChangeApplyResult.AppliedUnverified -> ChangeApplyQualification.APPLIED_UNVERIFIED
+                    is ChangeApplyResult.RecoveryRequired -> ChangeApplyQualification.RECOVERY_REQUIRED
+                    is ChangeApplyResult.Verified -> error("unexpected verified fixture")
+                }
+            val document =
+                binding
+                    .encodeOutcome(
+                        OperationOutcome.Qualified(
+                            EvidenceEnvelope(binding.operation.id, EvidenceGeneration.parse(17).refinedValue(), result),
+                            qualifier,
+                        )
+                    )
+                    .encodedDocument()
+            val decoded = binding.decodeOutcome(document) as WireDecoding.Decoded
+            assertEquals(result, (decoded.value as OperationOutcome.Qualified).evidence.payload)
+            val payload = document.qualifiedBody().result.jsonObject
+            assertEquals("plan:1", payload.getValue("planIdentity").jsonPrimitive.content)
+            assertTrue("receiptIdentity" !in payload)
+            val counterfeit =
+                document.replace(
+                    "\"planIdentity\":\"plan:1\"",
+                    "\"planIdentity\":\"plan:1\",\"receiptIdentity\":\"fake\"",
+                )
+            assertTrue(binding.decodeOutcome(counterfeit) is WireDecoding.Rejected)
+            assertTrue(
+                binding.decodeOutcome(document.replace("kast.change.apply.v3", "kast.change.apply.v2"))
+                    is WireDecoding.Rejected
             )
         }
     }

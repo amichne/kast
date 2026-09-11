@@ -114,10 +114,18 @@ still unqualified. See the module's [compatibility and blocker record](app-serve
 for exact evidence and the outstanding real-client release gate.
 
 Kast qualifies the installed tool contract before a thread starts. The default
-catalog includes one eager `kast.query` tool plus deferred source, semantic,
-impact, diagnostic, and change tools. Direct `symbol_lookup` and
-`symbol_inspect` routes are omitted by default; change tools retain explicit
-approval requirements.
+catalog includes eager `search_classes`, `search_functions`,
+`search_declarations`, and `check_diagnostics`, plus deferred `query_symbols`,
+source, relation, impact, and change tools. Direct symbol lookup/inspection
+requires explicit selection. `change_plan` prepares an
+immutable `AddDeclaration` plan without writing source. `change_apply` and
+`change_recover` require approval of that exact stored plan. Enroll the local
+broker with `kast ide trust-broker` before using either operation. The installed
+provider → CLI → plugin workflow passed the
+[native change acceptance matrix](docs/reviews/plugin-native-change-acceptance.md).
+
+See [Add a Kotlin declaration](docs/public/change.mdx) for saved-content
+requirements, the approval workflow, verification outcomes and durable recovery.
 
 Other harnesses should consume the exact installed `serverProjection`; they
 should not copy command names, schemas, or selection policy into another
@@ -125,9 +133,11 @@ configuration. See [Integrate an agent harness](https://kast.michne.com/agent-ha
 
 ## Search first
 
-The primary read surface is `kast.query`. It can search declarations, filter
-results, and expand semantic relationships while Kast preserves exact compiler
-identity between stages.
+Use `kast.search_classes` for class-like declarations, `kast.search_functions`
+for functions and methods, and `kast.search_declarations` for unknown or mixed
+kinds, properties and type aliases. Exact matching is the default. The deferred
+`kast.query_symbols` supports enumeration, returned references, ordered filters
+and relation expansion while preserving compiler identity between stages.
 
 Agents should use specialist reads only when their narrower contract is needed.
 They should not start the runtime, synchronize the workspace, or build topology
@@ -159,6 +169,27 @@ Development requires Java 25 or newer and the Python version in
 ./gradlew build
 ./gradlew assembleSidecarRelease
 ```
+
+The opt-in native change acceptance task stages the matched CLI, broker and
+plugin, then creates and imports a private Kotlin fixture. Supply an IDEA
+installation, the generated JSON schema directory from the installed Codex
+version, and a new report path:
+
+```shell
+./gradlew hostedChangeAcceptance \
+  -PhostedIdeaHome=/absolute/path/to/idea \
+  -PhostedCodexSchemas=/absolute/path/to/codex-schemas \
+  -PhostedChangeReport=/absolute/path/to/new-change-receipt.json
+```
+
+Release qualification requires a clean source checkout. The diagnostic option
+`-PhostedDiagnosticDirty=true` permits development runs and records them as
+unqualified. The receipt separates native observations from deterministic tests
+and stock Codex desktop compatibility. Fixture setup and retirement stay outside
+the measured change operations.
+
+The [build and release reuse audit](docs/reviews/build-release-cache-audit.md) records
+artifact retrieval, cache policy and deferred promotion work.
 
 Validate the public documentation with `mint validate` from `docs/public`.
 

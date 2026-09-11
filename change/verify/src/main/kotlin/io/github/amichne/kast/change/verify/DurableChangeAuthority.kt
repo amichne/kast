@@ -2,14 +2,10 @@ package io.github.amichne.kast.change.verify
 
 import io.github.amichne.kast.change.apply.AppliedUnverified
 import io.github.amichne.kast.change.contract.ChangePlan
-
-@JvmInline
-value class ChangePlanIdentity private constructor(val value: String) {
-    companion object {
-        fun parse(value: String): ChangePlanIdentity? =
-            value.takeIf { PLAN_IDENTITY.matches(it) }?.let(::ChangePlanIdentity)
-    }
-}
+import io.github.amichne.kast.change.contract.ChangePlanIdentity
+import io.github.amichne.kast.change.contract.ChangePlanIssuance
+import io.github.amichne.kast.change.contract.ChangePlanIssuanceOperations
+import io.github.amichne.kast.change.contract.DurableChangeAuthorityFailure
 
 @JvmInline
 value class ChangeApplicationIdentity private constructor(val value: String) {
@@ -25,20 +21,6 @@ value class ChangeReceiptIdentity private constructor(val value: String) {
         fun parse(value: String): ChangeReceiptIdentity? =
             value.takeIf { RECEIPT_IDENTITY.matches(it) }?.let(::ChangeReceiptIdentity)
     }
-}
-
-enum class DurableChangeAuthorityFailure {
-    STORAGE_UNAVAILABLE,
-    IDENTITY_COLLISION,
-    CORRUPT_RECORD,
-    UNSUPPORTED_PLAN,
-    RECOVERY_EVIDENCE_UNAVAILABLE,
-}
-
-sealed interface ChangePlanIssuance {
-    data class Issued(val identity: ChangePlanIdentity) : ChangePlanIssuance
-
-    data class Rejected(val failure: DurableChangeAuthorityFailure) : ChangePlanIssuance
 }
 
 sealed interface ChangePlanLookup {
@@ -74,8 +56,8 @@ sealed interface ChangeReceiptIssuance {
     data class Rejected(val failure: DurableChangeAuthorityFailure) : ChangeReceiptIssuance
 }
 
-interface DurableChangeAuthority {
-    fun issuePlan(plan: ChangePlan): ChangePlanIssuance
+interface DurableChangeAuthority : ChangePlanIssuanceOperations {
+    override fun issuePlan(plan: ChangePlan): ChangePlanIssuance
 
     fun loadPlan(identity: ChangePlanIdentity): ChangePlanLookup
 
@@ -89,6 +71,5 @@ interface DurableChangeAuthority {
     fun issueReceipt(receipt: VerifiedReceipt): ChangeReceiptIssuance
 }
 
-private val PLAN_IDENTITY = Regex("plan:[0-9a-f]{64}")
 private val APPLICATION_IDENTITY = Regex("application:[0-9a-f]{64}")
 private val RECEIPT_IDENTITY = Regex("receipt:[0-9a-f]{64}")

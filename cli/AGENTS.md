@@ -16,7 +16,7 @@ Defines Kast's human-facing command graph, installed configuration and lifecycle
 - [src/main/kotlin/io/github/amichne/kast/cli/configuration/SavedConfigurationIngress.kt](src/main/kotlin/io/github/amichne/kast/cli/configuration/SavedConfigurationIngress.kt) - saved configuration boundary.
 - [src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt) - installation workflow.
 
-- [src/main/kotlin/io/github/amichne/kast/cli/ide](src/main/kotlin/io/github/amichne/kast/cli/ide) - existing-IDE client and semantic read projection.
+- [src/main/kotlin/io/github/amichne/kast/cli/ide](src/main/kotlin/io/github/amichne/kast/cli/ide) - existing-IDE client, semantic read projection, and hosted change/apply/recovery admission and projection.
 
 - [src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt](src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt) - intent-tool command projection.
 

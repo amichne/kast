@@ -49,7 +49,7 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
         with:
           validate-wrappers: true
-          cache-read-only: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+          # Keep the setup-gradle default: main writes; other branches restore only.
           gradle-home-cache-includes: |
             caches
             notifications
@@ -62,6 +62,18 @@ jobs:
         run: |
           git checkout --detach "$CANDIDATE_SHA"
           python3 .github/scripts/ci/verify-checks.py
+
+      - name: Retain built distributions
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: ci-distributions-${{ github.sha }}
+          path: |
+            build/distributions/kast-control-*.tar.gz
+            build/distributions/kast-semantic-runtime-*.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
 
       - name: Retain verification reports
         if: always()

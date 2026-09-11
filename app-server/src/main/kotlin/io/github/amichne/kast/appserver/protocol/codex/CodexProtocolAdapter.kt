@@ -169,7 +169,11 @@ internal class CodexProtocolAdapter(
         }
     }
 
-    internal suspend fun fromUpstream(message: String): ProtocolRouting {
+    internal suspend fun fromUpstream(
+        message: String,
+        approval: io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval =
+            io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval.Absent,
+    ): ProtocolRouting {
         val document = parseObject(message) ?: return ProtocolRouting.Close(ProtocolCloseFailure.MalformedUpstream)
         val envelope = UpstreamEnvelope.classify(document)
         if (envelope is UpstreamEnvelope.Response) {
@@ -243,10 +247,11 @@ internal class CodexProtocolAdapter(
             when (
                 val admission =
                     BrokerInvocationContext.admit(
-                        threadId,
-                        turnId,
-                        callId,
-                        binding.workspace.root.path,
+                        threadId = threadId,
+                        turnId = turnId,
+                        callId = callId,
+                        workingDirectory = binding.workspace.root.path,
+                        approval = approval,
                     )
             ) {
                 is Refinement.Refined -> admission.value
@@ -910,38 +915,7 @@ internal class CodexProtocolAdapter(
     }
 
     private fun failurePresentation(failure: BrokerFailure): ToolPresentation =
-        ToolPresentation.text(
-            canonicalJson(
-                buildJsonObject {
-                    put("failure", failure.code())
-                    if (failure is BrokerFailure.InvalidArguments && failure.guidance.isNotEmpty()) {
-                        put(
-                            "corrections",
-                            kotlinx.serialization.json.JsonArray(failure.guidance.map { JsonPrimitive(it.value) }),
-                        )
-                    }
-                }
-            ),
-            success = false,
-        )
-
-    private fun BrokerFailure.code(): String =
-        when (this) {
-            is BrokerFailure.UnknownNamespace -> "UNKNOWN_NAMESPACE"
-            is BrokerFailure.UnknownTool -> "UNKNOWN_TOOL"
-            is BrokerFailure.InvalidArguments -> "INVALID_ARGUMENTS"
-            is BrokerFailure.ProviderStartupRejected -> code.value
-            is BrokerFailure.ProviderInvocationRejected -> code.value
-            is BrokerFailure.OutputContractRejected -> "OUTPUT_CONTRACT_REJECTED"
-            is BrokerFailure.InvocationCancelled -> "INVOCATION_CANCELLED"
-            is BrokerFailure.Overloaded ->
-                when (limit) {
-                    BrokerLimit.IN_FLIGHT_CALLS_PER_CONNECTION -> "BROKER_OVERLOADED_IN_FLIGHT_CALLS_PER_CONNECTION"
-                    BrokerLimit.IN_FLIGHT_CALLS_PER_PROVIDER -> "BROKER_OVERLOADED_IN_FLIGHT_CALLS_PER_PROVIDER"
-                    BrokerLimit.MAXIMUM_TOOL_ARGUMENT_BYTES -> "BROKER_OVERLOADED_MAXIMUM_TOOL_ARGUMENT_BYTES"
-                    BrokerLimit.MAXIMUM_TOOL_RESULT_BYTES -> "BROKER_OVERLOADED_MAXIMUM_TOOL_RESULT_BYTES"
-                }
-        }
+        ToolPresentation.text(Json.encodeToString(BrokerFailureDocument.from(failure)), success = false)
 
     private fun CodexProtocolContracts.admits(
         schema: CodexOwnedSchema,
@@ -1006,42 +980,4 @@ internal class CodexProtocolAdapter(
             is Refinement.Refined -> value.value
             is Refinement.Rejected -> null
         }
-}
-
-private sealed interface UpstreamEnvelope {
-    data class Request(val method: String, val id: RpcId?) : UpstreamEnvelope
-
-    data class Response(val id: RpcId) : UpstreamEnvelope
-
-    data object Other : UpstreamEnvelope
-
-    companion object {
-        fun classify(document: JsonObject): UpstreamEnvelope {
-            val method = document.string("method")
-            if (method != null) return Request(method, RpcId.admit(document["id"]))
-            val id = RpcId.admit(document["id"])
-            return if (id != null && (document.containsKey("result") || document.containsKey("error"))) {
-                Response(id)
-            } else {
-                Other
-            }
-        }
-
-        private fun JsonObject.string(name: String): String? = (get(name) as? JsonPrimitive)?.contentOrNull
-    }
-}
-
-private class RpcId
-private constructor(
-    val value: JsonPrimitive,
-    val key: String,
-) {
-    companion object {
-        fun admit(candidate: JsonElement?): RpcId? {
-            val primitive = candidate as? JsonPrimitive ?: return null
-            if (primitive.isString) return RpcId(primitive, "string:${primitive.content}")
-            val numeric = primitive.content.toBigDecimalOrNull() ?: return null
-            return RpcId(primitive, "number:${numeric.toPlainString()}")
-        }
-    }
 }

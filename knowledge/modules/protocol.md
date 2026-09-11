@@ -23,6 +23,7 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
   - path: query/protocol/build.gradle.kts
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalChangeOperationModels.kt
 ---
 
 # Protocol
@@ -47,10 +48,14 @@ stamp is never serialized as a workspace generation or source-state identity.
 
 The canonical read revisions are `query.run.v2`, `source.read.v4`, and version 3
 for symbol discovery, symbol inspection, relation reads, traversal, and diagnostics.
-The CLI's App Server projection is version 9, and provider qualification requires
+The CLI's App Server projection is version 10, and provider qualification requires
 that version. Its successful read schemas carry mutually exclusive published and
 live variants, including the corresponding source snapshot shape. The hosted
-endpoint schema is version 2 and advertises the seven canonical read routes.
+endpoint schema is version 3 and advertises the seven canonical read routes plus
+change planning, approval preparation, apply and recovery. Version-2 endpoint
+descriptors reject. `change.apply.v3` distinguishes `Verified`,
+`AppliedUnverified` and `RecoveryRequired`; only the first carries a receipt.
+Qualified effects retain their finite reason and exact plan identity.
 The earlier provider-qualified CLI schema document was 290,635 bytes, below its
 524,288-byte qualification cap. Hosted read admission now also has a closed
 `CONFIGURATION_REJECTED` outcome; canonical semantic outcome schemas retain their existing identities. Schema compatibility and native execution remain

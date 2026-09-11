@@ -4,6 +4,7 @@ package io.github.amichne.kast.protocol.wire
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonClassDiscriminator
 
 @Serializable
 internal data class ChangePlanResultDocument(
@@ -32,6 +33,7 @@ internal enum class ChangePlanQualificationDocument {
 
 @Serializable
 internal enum class ChangePlanRejectionDocument {
+    @SerialName("unsupported_hosted_intent") UNSUPPORTED_HOSTED_INTENT,
     @SerialName("workspace_not_ready") WORKSPACE_NOT_READY,
     @SerialName("exact_symbol_required") EXACT_SYMBOL_REQUIRED,
     @SerialName("editable_target_required") EDITABLE_TARGET_REQUIRED,
@@ -44,14 +46,49 @@ internal enum class ChangePlanRejectionDocument {
 }
 
 @Serializable
-internal data class ChangeApplyResultDocument(
-    val receiptIdentity: String,
-    val changes: List<ChangeFilePreviewDocument>,
-)
+@JsonClassDiscriminator("state")
+internal sealed interface ChangeApplyResultDocument {
+    @Serializable
+    @SerialName("verified")
+    data class Verified(val receiptIdentity: String, val changes: List<ChangeFilePreviewDocument>) :
+        ChangeApplyResultDocument
+
+    @Serializable
+    @SerialName("applied_unverified")
+    data class AppliedUnverified(
+        val planIdentity: String,
+        val changes: List<ChangeFilePreviewDocument>,
+        val reason: ChangeApplyUnverifiedReasonDocument,
+    ) : ChangeApplyResultDocument
+
+    @Serializable
+    @SerialName("recovery_required")
+    data class RecoveryRequired(
+        val planIdentity: String,
+        val changes: List<ChangeFilePreviewDocument>,
+        val reason: ChangeApplyRecoveryReasonDocument,
+    ) : ChangeApplyResultDocument
+}
+
+@Serializable
+internal enum class ChangeApplyUnverifiedReasonDocument {
+    @SerialName("verification_unavailable") VERIFICATION_UNAVAILABLE,
+    @SerialName("verification_failed") VERIFICATION_FAILED,
+    @SerialName("receipt_persistence_failed") RECEIPT_PERSISTENCE_FAILED,
+}
+
+@Serializable
+internal enum class ChangeApplyRecoveryReasonDocument {
+    @SerialName("write_outcome_unknown") WRITE_OUTCOME_UNKNOWN,
+    @SerialName("post_write_observation_unavailable") POST_WRITE_OBSERVATION_UNAVAILABLE,
+    @SerialName("attempt_interrupted") ATTEMPT_INTERRUPTED,
+    @SerialName("durability_rejected") DURABILITY_REJECTED,
+}
 
 @Serializable
 internal enum class ChangeApplyQualificationDocument {
-    @SerialName("recovery_required") RECOVERY_REQUIRED
+    @SerialName("applied_unverified") APPLIED_UNVERIFIED,
+    @SerialName("recovery_required") RECOVERY_REQUIRED,
 }
 
 @Serializable

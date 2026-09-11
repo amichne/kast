@@ -25,12 +25,20 @@ internal fun selectCliRuntimePath(argv: List<String>): CliRuntimePath {
         "source",
         "relation",
         "traversal",
-        "diagnostic" -> CliRuntimePath.EXISTING_IDE
+        "diagnostic",
+        "change" -> CliRuntimePath.EXISTING_IDE
         else -> CliRuntimePath.INSTALLED
     }
 }
 
-/** Hosted reads are selected before bootstrap can demand an isolated product or worker. */
+/** The hosted path receives only its explicit local effects. */
+internal class ExistingIdeCliCapabilities(
+    val roots: CanonicalRootDiscoverer,
+    val client: ExistingIdeClient,
+    val trust: BrokerTrustRegistrar = BrokerTrustRegistrar.Unavailable,
+)
+
+/** Hosted operations are selected before bootstrap can demand an isolated product or worker. */
 internal fun executeExistingIdeCli(
     argv: List<String>,
     start: Path,
@@ -38,7 +46,31 @@ internal fun executeExistingIdeCli(
     client: ExistingIdeClient,
     requestInput: CliRequestDocumentInput = CliRequestDocumentInput.Absent,
 ): CliExit =
-    when (val parsed = parseExistingIdeCommand(argv, requestInput)) {
+    executeExistingIdeCli(
+        argv = argv,
+        start = start,
+        capabilities = ExistingIdeCliCapabilities(roots, client),
+        requestInput = requestInput,
+    )
+
+internal fun executeExistingIdeCli(
+    argv: List<String>,
+    start: Path,
+    capabilities: ExistingIdeCliCapabilities,
+    requestInput: CliRequestDocumentInput = CliRequestDocumentInput.Absent,
+): CliExit {
+    val roots = capabilities.roots
+    val client = capabilities.client
+    val ingress =
+        when (val admitted = admitHostedCliInput(argv, requestInput)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected ->
+                return boundaryExit(
+                    CliBoundaryExitStatus.USAGE,
+                    "ide-${admitted.failure.name.lowercase().replace('_', '-')}",
+                )
+        }
+    return when (val parsed = parseExistingIdeCommand(ingress.argv, ingress.input)) {
         is CliCommandParsing.Help -> CliExit.Complete(parsed.document)
         is CliCommandParsing.Rejected ->
             CliExit.BoundaryRejected(
@@ -52,9 +84,10 @@ internal fun executeExistingIdeCli(
             boundaryExit(CliBoundaryExitStatus.PROTOCOL, "ide-projection-rejected")
         is CliCommandParsing.Parsed ->
             when (val action = parsed.action) {
+                CliAction.Local.TrustBroker -> executeBrokerTrustEnrollment(capabilities.trust)
                 is CliAction.Local.ExistingIde -> executeExistingIdeAction(action, start, roots, client)
                 is CliAction.Semantic ->
-                    when (val read = ExistingIdeOperation.Read.admit(action.request)) {
+                    when (val read = ingress.operation(action.request)) {
                         is Refinement.Refined ->
                             executeExistingIdeAction(
                                 CliAction.Local.ExistingIde(read.value, ExistingIdeRootSelection.CurrentDirectory),
@@ -62,11 +95,16 @@ internal fun executeExistingIdeCli(
                                 roots,
                                 client,
                             )
-                        is Refinement.Rejected -> boundaryExit(CliBoundaryExitStatus.USAGE, "ide-operation-unsupported")
+                        is Refinement.Rejected ->
+                            boundaryExit(
+                                CliBoundaryExitStatus.USAGE,
+                                "ide-${read.failure.name.lowercase().replace('_', '-')}",
+                            )
                     }
                 else -> boundaryExit(CliBoundaryExitStatus.USAGE, "ide-command-required")
             }
     }
+}
 
 private fun parseExistingIdeCommand(argv: List<String>, input: CliRequestDocumentInput): CliCommandParsing =
     if (argv.firstOrNull() in setOf("index", "ide")) CliCommandGraphFactory.parseExistingIde(argv)

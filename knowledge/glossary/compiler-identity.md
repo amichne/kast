@@ -14,6 +14,7 @@ code_sources:
     symbols: [CanonicalCompilerSignature]
   - path: symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolExactService.kt
     symbols: [SymbolExactService]
+  - path: change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt
 ---
 
 # Compiler identity
@@ -28,5 +29,7 @@ compiler identity. Candidate refinement rejects evidence outside the retained
 declaration kinds. A relation target can carry a different declaration kind
 through its separate compiler-evidence issuance path.
 
-Compiler identity alone does not authorize a write. Live selectors still need a
-published refinement at mutation admission; an IDE epoch cannot supply it.
+Compiler identity alone does not authorize a write. The published path requires
+a published lease. Hosted `AddDeclaration` retains its live planning basis and
+requires exact-plan approval plus a fresh matching live preimage before
+`LiveMutationAuthority` admits the write. An epoch alone supplies neither proof.

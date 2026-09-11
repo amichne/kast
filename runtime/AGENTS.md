@@ -23,7 +23,7 @@ Composes domain services and platform ports, dispatches typed protocol operation
 
 - `composition` - installed assembly, platform adapters, protocol handlers, and semantic bootstrap.
 - `server` - typed operation binding and dispatch.
-- `hosted` - existing-IDE plugin and saved-content read endpoint; see [hosted queries](../knowledge/flows/hosted-query.md).
+- `hosted` - existing-IDE endpoint for saved-content reads, controlled changes, and recovery; see [hosted queries](../knowledge/flows/hosted-query.md).
 - `telemetry` - OpenTelemetry projection and forwarding.
 
 ## Entry Points
@@ -35,4 +35,5 @@ Composes domain services and platform ports, dispatches typed protocol operation
 - Start with the [repository knowledge](../knowledge/modules/runtime-hosts.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - For end-to-end operation routing, begin at `ServerDispatch`, follow the typed binding into `composition/protocol`, then the owning service.
+- Shared change planning projection lives in `change/protocol`; installed reference admission remains in `composition/protocol`.
 - For dependency wiring, begin in `bootstrap`; for emitted signals, begin in `telemetry` and the kernel observability port.

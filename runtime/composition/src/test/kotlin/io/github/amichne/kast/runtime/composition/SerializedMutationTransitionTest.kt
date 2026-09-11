@@ -11,7 +11,7 @@ import io.github.amichne.kast.change.apply.SourceWriteAccess
 import io.github.amichne.kast.change.apply.SourceWriteFailure
 import io.github.amichne.kast.change.apply.SourceWriteResult
 import io.github.amichne.kast.change.contract.AddFilePlanResult
-import io.github.amichne.kast.change.verify.ChangePlanIssuance
+import io.github.amichne.kast.change.contract.ChangePlanIssuance
 import io.github.amichne.kast.change.verify.ChangeVerificationObservation
 import io.github.amichne.kast.change.verify.ChangeVerificationObservationRejection
 import io.github.amichne.kast.change.verify.VerifiedMutationRequest

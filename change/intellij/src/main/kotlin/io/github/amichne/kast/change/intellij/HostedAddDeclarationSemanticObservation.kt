@@ -14,6 +14,8 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.change.contract.AddDeclarationChangePlan
 import io.github.amichne.kast.change.contract.AddDeclarationKind
+import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
+import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
 import io.github.amichne.kast.change.verify.CompilerReobservedMutationAnchor
 import io.github.amichne.kast.change.verify.HostedAddDeclarationSemanticEvidence
 import io.github.amichne.kast.change.verify.HostedAddDeclarationSemanticObservation
@@ -24,10 +26,14 @@ import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignatureFailure
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
+import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import java.nio.file.Path
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
@@ -61,7 +67,16 @@ internal fun observeHostedAddDeclaration(
             rejected(HostedAddDeclarationSemanticObservationFailure.PROJECT_UNAVAILABLE)
         } else {
             ReadAction.nonBlocking<HostedAddDeclarationSemanticObservation> {
-                    observeRead(project, workspace, plan)
+                    observeRead(
+                        project,
+                        workspace.readLease,
+                        HostedSemanticObservationInput(
+                            prior = CompilerGroundedSymbolEvidence.fromSelector(plan.target.selector),
+                            scope = plan.target.selector.scope,
+                            constraints = plan.target.selector.constraints,
+                            expectedDelta = plan.expectedSemanticDelta,
+                        ),
+                    )
                 }
                 .inSmartMode(project)
                 .executeSynchronously()
@@ -73,36 +88,85 @@ internal fun observeHostedAddDeclaration(
     }
 }
 
+internal fun observeLiveAddDeclaration(
+    project: Project,
+    authority: LiveSemanticReadAuthority,
+    plan: LiveAddDeclarationChangePlan,
+): HostedAddDeclarationSemanticObservation {
+    if (project.isDisposed || DumbService.getInstance(project).isDumb) {
+        return rejected(HostedAddDeclarationSemanticObservationFailure.PROJECT_UNAVAILABLE)
+    }
+    if (
+        authority.workspaceRoot != plan.basis.observation.reference.workspaceRoot ||
+            authority.reference.host != plan.basis.observation.reference.host
+    ) {
+        return rejected(HostedAddDeclarationSemanticObservationFailure.ROOT_OR_GENERATION_MISMATCH)
+    }
+    return try {
+        ReadAction.nonBlocking<HostedAddDeclarationSemanticObservation> {
+                observeRead(
+                    project,
+                    authority,
+                    HostedSemanticObservationInput(
+                        prior = plan.target.evidence,
+                        scope = plan.target.scope,
+                        constraints = plan.target.constraints,
+                        expectedDelta = plan.expectedSemanticDelta,
+                    ),
+                )
+            }
+            .inSmartMode(project)
+            .executeSynchronously()
+    } catch (cancellation: ProcessCanceledException) {
+        throw cancellation
+    } catch (_: Exception) {
+        rejected(HostedAddDeclarationSemanticObservationFailure.EVIDENCE_REJECTED)
+    }
+}
+
+private data class HostedSemanticObservationInput(
+    val prior: CompilerGroundedSymbolEvidence,
+    val scope: SymbolSearchScope,
+    val constraints: SymbolDiscoveryConstraints,
+    val expectedDelta: ExpectedAddDeclarationDelta,
+)
+
 private fun observeRead(
     project: Project,
-    workspace: PublishedWorkspace,
-    plan: AddDeclarationChangePlan,
+    authority: SemanticReadAuthority,
+    input: HostedSemanticObservationInput,
 ): HostedAddDeclarationSemanticObservation {
+    val prior = input.prior
+    val expectedDelta = input.expectedDelta
     val virtual =
-        LocalFileSystem.getInstance().findFileByNioFile(Path.of(plan.target.file.path.value))
-            ?: return rejected(HostedAddDeclarationSemanticObservationFailure.TARGET_UNAVAILABLE)
+        LocalFileSystem.getInstance()
+            .findFileByNioFile(
+                Path.of(
+                    (prior.file as? SymbolDiscoveryFileIdentity.Workspace)?.path?.value
+                        ?: return rejected(HostedAddDeclarationSemanticObservationFailure.TARGET_UNAVAILABLE)
+                )
+            ) ?: return rejected(HostedAddDeclarationSemanticObservationFailure.TARGET_UNAVAILABLE)
     val file =
         PsiManager.getInstance(project).findFile(virtual) as? KtFile
             ?: return rejected(HostedAddDeclarationSemanticObservationFailure.TARGET_UNAVAILABLE)
     val declarations = PsiTreeUtil.collectElementsOfType(file, KtNamedDeclaration::class.java)
-    val prior = plan.target.selector
     val anchor =
         declarations.singleOrNull { declaration ->
             declaration.name == prior.name.value && declaration.textRange.startOffset == prior.range.startInclusive
         } ?: return rejected(HostedAddDeclarationSemanticObservationFailure.DECLARATION_MISSING_OR_AMBIGUOUS)
     val added =
         declarations.singleOrNull { declaration ->
-            declaration.name == plan.expectedSemanticDelta.declarationName &&
-                declaration.addDeclarationKind() == plan.expectedSemanticDelta.declarationKind
+            declaration.name == expectedDelta.declarationName &&
+                declaration.addDeclarationKind() == expectedDelta.declarationKind
         } ?: return rejected(HostedAddDeclarationSemanticObservationFailure.DECLARATION_MISSING_OR_AMBIGUOUS)
-    if (file.packageFqName.asString() != plan.expectedSemanticDelta.packageName || added.name == null) {
+    if (file.packageFqName.asString() != expectedDelta.packageName || added.name == null) {
         return rejected(HostedAddDeclarationSemanticObservationFailure.EVIDENCE_REJECTED)
     }
     val currentFile =
         when (
             val admitted =
                 SymbolDiscoveryFileIdentity.fromBoundary(
-                    workspace.root,
+                    authority.workspaceRoot,
                     Path.of(virtual.path),
                     virtual.url,
                 )
@@ -113,6 +177,9 @@ private fun observeRead(
     val evidence =
         anchor.compilerEvidence(currentFile)
             ?: return rejected(HostedAddDeclarationSemanticObservationFailure.EVIDENCE_REJECTED)
+    if (added.compilerEvidence(currentFile) == null) {
+        return rejected(HostedAddDeclarationSemanticObservationFailure.EVIDENCE_REJECTED)
+    }
     val reobserved =
         when (val admitted = CompilerReobservedMutationAnchor.admit(prior, evidence)) {
             is Refinement.Refined -> admitted.value
@@ -122,10 +189,10 @@ private fun observeRead(
         when (
             val admitted =
                 ObservedAddDeclarationDelta.fromCompilerBoundary(
-                    file.packageFqName.asString(),
-                    checkNotNull(added.name),
-                    checkNotNull(added.addDeclarationKind()),
-                    1,
+                    packageName = file.packageFqName.asString(),
+                    declarationName = checkNotNull(added.name),
+                    declarationKind = checkNotNull(added.addDeclarationKind()),
+                    matchingDeclarationCount = 1,
                 )
         ) {
             is Refinement.Refined -> admitted.value
@@ -133,7 +200,12 @@ private fun observeRead(
         }
     return HostedAddDeclarationSemanticObservation.Observed(
         HostedAddDeclarationSemanticEvidence(
-            SymbolSelector.issue(workspace.readLease, prior.scope, reobserved.evidence),
+            SymbolSelector.issue(
+                lease = authority,
+                scope = input.scope,
+                evidence = reobserved.evidence,
+                constraints = input.constraints,
+            ),
             delta,
         )
     )

@@ -9,6 +9,8 @@ import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationReadPosition
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
+import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.traversal.contract.TraversalPosition
 import io.github.amichne.kast.traversal.contract.TraversalResult
 import java.nio.charset.StandardCharsets
@@ -45,6 +47,14 @@ private constructor(
         internal fun admit(
             target: EditableMutationTarget,
             evidence: AddDeclarationPlanningEvidenceInput,
+        ): Refinement<CompleteChangePlanningEvidence, ChangePlanningFailure> =
+            admit(target.selector, target.file, evidence)
+
+        /** Normalizes semantic evidence only; a selector alone never admits an editable target. */
+        internal fun admit(
+            selector: SymbolSelector,
+            targetFile: SymbolDiscoveryFileIdentity.Workspace,
+            evidence: AddDeclarationPlanningEvidenceInput,
         ): Refinement<CompleteChangePlanningEvidence, ChangePlanningFailure> {
             if (evidence.relations.isEmpty()) {
                 return Refinement.Rejected(ChangePlanningFailure.RELATION_EVIDENCE_REQUIRED)
@@ -71,21 +81,21 @@ private constructor(
                         ?: return Refinement.Rejected(ChangePlanningFailure.DIAGNOSTIC_EVIDENCE_INCOMPLETE)
                 }
             if (
-                relations.any { it.batch.request.subject.lease != target.lease } ||
-                    traversals.any { it.page.plan.start.lease != target.lease } ||
-                    diagnostics.any { it.batch.scope.lease != target.lease }
+                relations.any { it.batch.request.subject.lease != selector.lease } ||
+                    traversals.any { it.page.plan.start.lease != selector.lease } ||
+                    diagnostics.any { it.batch.scope.lease != selector.lease }
             ) {
                 return Refinement.Rejected(ChangePlanningFailure.EVIDENCE_LEASE_MISMATCH)
             }
             if (
                 relations.any {
-                    it.batch.request.subject.fingerprint.value != target.selector.fingerprint.value
+                    it.batch.request.subject.fingerprint.value != selector.fingerprint.value
                 } ||
                     traversals.any {
-                        it.page.plan.start.fingerprint != target.selector.fingerprint
+                        it.page.plan.start.fingerprint != selector.fingerprint
                     } ||
                     diagnostics.any { result ->
-                        result.batch.scope.files.none { file -> file.value == target.file.path.value }
+                        result.batch.scope.files.none { file -> file.value == targetFile.path.value }
                     }
             ) {
                 return Refinement.Rejected(ChangePlanningFailure.EVIDENCE_TARGET_MISMATCH)
@@ -116,42 +126,6 @@ private constructor(
 
 typealias CompleteAddDeclarationPlanningEvidence = CompleteChangePlanningEvidence
 
-@Serializable
-enum class AddDeclarationRelationMeaning {
-    REFERENCES,
-    CALLERS,
-    CALLEES,
-    IMPLEMENTATIONS,
-    INHERITORS,
-    OVERRIDES,
-    TYPE_USES,
-}
-
-@Serializable
-@JvmInline
-value class ChangePlanningEvidenceProjection private constructor(val value: String) {
-    companion object {
-        internal fun fromProven(value: String): ChangePlanningEvidenceProjection =
-            ChangePlanningEvidenceProjection(value)
-    }
-}
-
-@Serializable
-@JvmInline
-value class StableRelationEvidenceDigest private constructor(val value: String) {
-    companion object {
-        internal fun fromProven(value: String): StableRelationEvidenceDigest = StableRelationEvidenceDigest(value)
-    }
-}
-
-@Serializable
-data class DurableAddDeclarationRelationEvidence
-internal constructor(
-    val meaning: AddDeclarationRelationMeaning,
-    val projection: ChangePlanningEvidenceProjection,
-    val stableDigest: StableRelationEvidenceDigest,
-)
-
 /** Canonical, restart-safe projection of every proof admitted by AddDeclaration planning. */
 @Serializable
 data class DurableAddDeclarationPlanningEvidence
@@ -164,6 +138,17 @@ internal constructor(
     internal val relationDigestSemantics: StableRelationEvidenceSemantics = StableRelationEvidenceSemantics.SEMANTIC_V2,
 ) {
     companion object {
+        /** Detaches complete compiler-grounded read evidence; it grants no read or write authority. */
+        fun capture(
+            selector: SymbolSelector,
+            targetFile: SymbolDiscoveryFileIdentity.Workspace,
+            evidence: AddDeclarationPlanningEvidenceInput,
+        ): Refinement<DurableAddDeclarationPlanningEvidence, ChangePlanningFailure> =
+            when (val admitted = CompleteChangePlanningEvidence.admit(selector, targetFile, evidence)) {
+                is Refinement.Refined -> Refinement.Refined(from(admitted.value))
+                is Refinement.Rejected -> admitted
+            }
+
         internal fun from(evidence: CompleteChangePlanningEvidence): DurableAddDeclarationPlanningEvidence =
             DurableAddDeclarationPlanningEvidence(
                 relations =
@@ -183,6 +168,17 @@ internal constructor(
                         ChangePlanningEvidenceProjection.fromProven(diagnosticProjection(result))
                     },
                 fingerprint = ChangePlanningEvidenceFingerprintDocument(evidence.fingerprint.value),
+            )
+
+        /** Restores canonical current-format historical evidence without admitting a semantic read. */
+        fun restoreHistorical(
+            evidence: DurableAddDeclarationPlanningEvidence
+        ): Refinement<DurableAddDeclarationPlanningEvidence, DurablePlanningEvidenceFailure> =
+            restore(
+                relations = evidence.relations,
+                traversals = evidence.traversals,
+                diagnostics = evidence.diagnostics,
+                fingerprint = evidence.fingerprint,
             )
 
         internal fun restore(
@@ -309,17 +305,6 @@ private fun RelationMeaning.durable(): AddDeclarationRelationMeaning =
         RelationMeaning.Inheritors -> AddDeclarationRelationMeaning.INHERITORS
         RelationMeaning.Overrides -> AddDeclarationRelationMeaning.OVERRIDES
         RelationMeaning.TypeUses -> AddDeclarationRelationMeaning.TYPE_USES
-    }
-
-fun AddDeclarationRelationMeaning.domain(): RelationMeaning =
-    when (this) {
-        AddDeclarationRelationMeaning.REFERENCES -> RelationMeaning.References
-        AddDeclarationRelationMeaning.CALLERS -> RelationMeaning.Callers
-        AddDeclarationRelationMeaning.CALLEES -> RelationMeaning.Callees
-        AddDeclarationRelationMeaning.IMPLEMENTATIONS -> RelationMeaning.Implementations
-        AddDeclarationRelationMeaning.INHERITORS -> RelationMeaning.Inheritors
-        AddDeclarationRelationMeaning.OVERRIDES -> RelationMeaning.Overrides
-        AddDeclarationRelationMeaning.TYPE_USES -> RelationMeaning.TypeUses
     }
 
 private val SHA_256 = Regex("[0-9a-f]{64}")

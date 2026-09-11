@@ -24,6 +24,11 @@ code_sources:
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijProjectSourceMembership.kt
     symbols: [IntellijProjectSourceMembership]
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireBinding.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedEpochVfsDiagnostics.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedVfsObservation.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedVfsDiagnosticReceipt.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointReclamation.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
     symbols: [evaluateHostedCanonicalQuery]
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointProtocol.kt
@@ -70,6 +75,8 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
   - path: experiments/host-observation/kast_ide.py
   - path: experiments/host-observation/qualify_hosted_index.py
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedPreWriteObservation.kt
 ---
 
 # Existing-IDE semantic query
@@ -213,6 +220,20 @@ is owned by the separate `runtime:hosted` plugin. Normal requests use a framed
 Unix socket and retain the same packaged compatibility policy and admitted epoch
 authority across requests. The primary native `kast index classes` command and Python
 acceptance client reject missing hosts without opening an isolated workspace.
+After an IDE crash, the next endpoint owner may reclaim the paired socket and
+descriptor while holding the exclusive ownership lock. Reclamation requires the
+recorded PID to be absent, the descriptor to match this root and current protocol,
+and both protected artifacts to retain their admitted physical identities. Live
+or reused PIDs, malformed descriptors, symlinks and unpaired artifacts fail closed.
+Admission and retirement emit bounded stage/outcome observations.
+
+The hosted service also records bounded VFS observations under its own lifetime.
+Receipts contain event kind, IDE-versus-refresh origin, syntactic path categories,
+counts and the existing host correlation. `OUTSIDE_ROOT` counts expose global
+VFS activity that can schedule project indexing. They contain no file paths or
+source payloads. These diagnostic categories do not change source membership or epoch
+admission; the original epoch listeners remain authoritative.
+
 Incremental creation, class renaming, and deletion were qualified against the
 same original IDE index. Broader semantic CLI/App Server routing and stronger
 workspace publication remain separate integration boundaries.
@@ -225,6 +246,21 @@ loads those resources directly from its dependency. Production packaging no
 longer reads protocol assets or host properties from the acceptance experiment.
 
 The opt-in [semantic reproduction runner](../../experiments/host-observation/SEMANTIC_REPRODUCTION.md) separates fixture creation/import, runtime pinning, and read-only public CLI/provider replay. The hosted service publishes one bounded native diagnostic receipt by default after a request drains, including effective configuration/provenance, stage durations, remaining outer deadline, contributor counts and precise termination reasons. Diagnostics carry only finite categories and bounded counts; they do not alter budgets or strengthen qualified coverage. An epoch change invalidates cross-request reference evidence.
+
+## Hosted change admission
+
+Endpoint protocol 3 retains the read routes and adds change planning, approval
+preparation, apply and recovery. The CLI rejects older endpoint descriptors.
+`AddDeclaration` planning consumes the exact live selector from these reads;
+apply obtains a fresh read and a pre-write observation before entering the
+IntelliJ write command. Dirty documents, changed epochs and unavailable authority
+reject without isolated-worker fallback. Plan and receipt observations remain
+historical evidence, separate from the read authority needed for a new effect.
+See [change lifecycle](change-lifecycle.md) for approval, verification and recovery.
+The public [declaration change guide](../../docs/public/change.mdx) describes the
+saved-project workflow and the qualified states an agent must preserve. Change
+verification establishes new live evidence after the write; it does not reuse
+the planning epoch or publish a workspace generation.
 
 ## Corrected native discovery and relation expansion
 

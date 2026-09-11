@@ -4,6 +4,13 @@ internal object KastCleanSlateModules {
     val all: List<ModulePolicy> = listOf(
         target(ModuleId.KERNEL, ModuleRole.KERNEL),
         target(
+            ModuleId.CHANGE_PROTOCOL,
+            ModuleRole.SERVICE,
+            ModuleId.KERNEL,
+            ModuleId.PROTOCOL_CONTRACT,
+            ModuleId.CHANGE_CONTRACT,
+        ),
+        target(
             ModuleId.QUERY_PROTOCOL,
             ModuleRole.SERVICE,
             ModuleId.KERNEL,
@@ -251,6 +258,8 @@ internal object KastCleanSlateModules {
         target(
             ModuleId.CHANGE_VERIFY,
             ModuleRole.SERVICE,
+            ModuleId.CHANGE_RECOVERY,
+            ModuleId.EVIDENCE_CONTRACT,
             ModuleId.CHANGE_APPLY,
             ModuleId.CHANGE_CONTRACT,
             ModuleId.DIAGNOSTIC_CONTRACT,
@@ -368,6 +377,7 @@ internal object KastCleanSlateModules {
             scopedEffects = mapOf(
                 ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                     JvmClassName("io/github/amichne/kast/cli/ApfsCoWIndexSeedCloner"),
+                    JvmClassName("io/github/amichne/kast/cli/ide/FilesystemBrokerTrustRegistrar"),
                     JvmClassName("io/github/amichne/kast/cli/FilesystemRootSidecarCacheLifecycle"),
                     JvmClassName("io/github/amichne/kast/cli/FilesystemSidecarCachePreparer"),
                     JvmClassName("io/github/amichne/kast/cli/IndexSeedFilesystemService"),
@@ -409,6 +419,15 @@ internal object KastCleanSlateModules {
         target(
             ModuleId.RUNTIME_HOSTED,
             ModuleRole.IDE_HOST,
+            ModuleId.CHANGE_CONTRACT,
+            ModuleId.CHANGE_PLAN,
+            ModuleId.CHANGE_PROTOCOL,
+            ModuleId.CHANGE_APPLY,
+            ModuleId.CHANGE_VERIFY,
+            ModuleId.CHANGE_RECOVERY,
+            ModuleId.CHANGE_INTELLIJ,
+            ModuleId.EVIDENCE_CONTRACT,
+            ModuleId.EVIDENCE_SQLITE,
             ModuleId.KERNEL,
             ModuleId.PROTOCOL_CONTRACT,
             ModuleId.PROTOCOL_WIRE,
@@ -434,10 +453,15 @@ internal object KastCleanSlateModules {
             effects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM, ForbiddenEffect.UDS_BIND, ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE),
             scopedEffects = mapOf(ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                 JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint"),
+                JvmClassName("io/github/amichne/kast/runtime/hosted/DeadHostedEndpoint"),
                 JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion"),
             ),
-                // FileChannel only locks the private endpoint; the digest names the canonical root.
-                ForbiddenEffect.PHYSICAL_SOURCE_READ to setOf(JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion")),
+                // Reads are confined to endpoint ownership and approval artifacts; the digest names the canonical root.
+                ForbiddenEffect.PHYSICAL_SOURCE_READ to setOf(
+                    JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion"),
+                    JvmClassName("io/github/amichne/kast/runtime/hosted/HostedChangeApprovalsKt"),
+                    JvmClassName("io/github/amichne/kast/runtime/hosted/DeadHostedEndpointOwner\$Companion"),
+                ),
                 ForbiddenEffect.SOURCE_CONTENT_HASH to setOf(JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion")),
             ),
         ),
@@ -532,6 +556,7 @@ internal object KastCleanSlateModules {
         ModuleId.DIAGNOSTIC_INTELLIJ,
         ModuleId.CHANGE_CONTRACT,
         ModuleId.CHANGE_PLAN,
+        ModuleId.CHANGE_PROTOCOL,
         ModuleId.CHANGE_APPLY,
         ModuleId.CHANGE_VERIFY,
         ModuleId.CHANGE_RECOVERY,

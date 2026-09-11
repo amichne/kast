@@ -120,7 +120,8 @@ class InstalledBrokerServerTest {
                 configured(base).upstreamOptions.appServerArguments.withOwnedTransport("unix:///test.sock"),
             )
             assertEquals(
-                "search_classes,search_functions,search_declarations,query_symbols,source_read,semantic_query,impact_analyze,check_diagnostics," +
+                "search_classes,search_functions,search_declarations,query_symbols," +
+                    "source_read,semantic_query,impact_analyze,check_diagnostics," +
                     "change_plan,change_apply,change_recover",
                 configured(base).kastOptions.toolSelection.environmentValue,
             )

@@ -11,6 +11,7 @@ GRADLE = ["./gradlew", "--max-workers=2", "-Dorg.gradle.jvmargs=-Xmx5g"]
 QUALIFICATION = frozenset({
     ":installedTwoWorkspaceTest", ":installedCodexHostTest",
     ":app-server:generateCodexHostIntegrationManifest", ":runtimeQualification",
+    ":hostedChangeAcceptance",
 })
 REQUIRED = frozenset({
     ":productBuildGate", ":cli:test", ":cli:nativeTest", ":app-server:test", ":indexer:test",

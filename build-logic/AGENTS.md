@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-11 | hash: 12942fb54d16 -->
+<!-- generated: 2026-09-11 | hash: 3426c63fec45 -->
 
 # build-logic
 
@@ -19,10 +19,13 @@ Defines reusable Gradle conventions, module roles, publication behavior, generat
 - [src/main/kotlin/kast.kotlin-quality.gradle.kts](src/main/kotlin/kast.kotlin-quality.gradle.kts) - shared formatting, Detekt, and structural gates.
 - [src/main/kotlin/conventions/KotlinFileLengthTask.kt](src/main/kotlin/conventions/KotlinFileLengthTask.kt) - production/test file-length enforcement.
 - [src/main/kotlin/conventions/KotlinFileLengthBaseline.kt](src/main/kotlin/conventions/KotlinFileLengthBaseline.kt) - validated per-file ceilings for existing oversized sources.
+- [src/main/kotlin/conventions/JsonContractVerification.kt](src/main/kotlin/conventions/JsonContractVerification.kt) - JSON syntax guard registration and root verification-gate dependencies.
+- [src/main/kotlin/conventions/VerifyJsonContractsTask.kt](src/main/kotlin/conventions/VerifyJsonContractsTask.kt) - typed scan request and isolated parser process boundary.
 
 ## Subdirectories
 
-- `src/main/kotlin/conventions` - serialization and publication conventions.
+- `src/main/kotlin/conventions` - serialization, publication, and verification conventions.
+- `src/main/kotlin/conventions/jsoncontracts` - JSON syntax scanner, typed findings, and exact baseline admission.
 - `src/main/kotlin/kast/role` - role-specific dependency/effect policy plugins.
 - `src/main/kotlin/support/architecture` - scanners, policy, validation, and projections.
 - `src/main/kotlin/support/tasks` - generated control and documentation tasks.
@@ -31,6 +34,7 @@ Defines reusable Gradle conventions, module roles, publication behavior, generat
 ## Entry Points
 
 - Included from root `settings.gradle.kts` with `includeBuild("build-logic")`.
+- Run `./gradlew verifyJsonContracts` from the repository root; `check` and `productBuildGate` require it. See the [JSON guard contract](../config/json-contracts/README.md) for its syntax-evidence limits and baseline policy.
 
 ## Navigation Hints
 

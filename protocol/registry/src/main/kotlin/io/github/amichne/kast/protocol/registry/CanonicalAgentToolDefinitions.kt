@@ -132,7 +132,7 @@ object CanonicalAgentToolDefinitions {
             CanonicalOperationDefinitions.traversalRun,
             "impact_analyze",
             "Perform bounded transitive semantic traversal from an exact selector. Required topology " +
-                "is acquired automatically for the current generation; the caller does not prepare " +
+                "is acquired automatically for the current semantic state; the caller does not prepare " +
                 "it separately.",
         )
     val diagnosticCheck = facade(PublicToolIdentity.CHECK_DIAGNOSTICS)
@@ -140,17 +140,17 @@ object CanonicalAgentToolDefinitions {
         tool(
             CanonicalOperationDefinitions.changePlan,
             "change_plan",
-            "Derive a bounded change plan from an exact target without writing source. Preserve the " +
-                "returned plan identity for apply or recovery.",
-            HostedApprovalPolicy.EXPLICIT,
+            "Plan AddDeclaration in one existing authored Kotlin source file without writing source. " +
+                "Pass the returned search reference unchanged and preserve the plan identity for apply or recovery.",
         )
     val changeApply =
         tool(
-            CanonicalOperationDefinitions.changeApply,
-            "change_apply",
-            "Apply one previously derived Kast change plan and return its verified receipt. Requires " +
-                "explicit approval and the exact returned plan identity.",
-            HostedApprovalPolicy.EXPLICIT,
+            operation = CanonicalOperationDefinitions.changeApply,
+            name = "change_apply",
+            description =
+                "Apply one stored Kast plan with explicit approval of its exact identity. Verification is " +
+                    "part of apply; preserve its verified receipt or qualified unverified/recovery state.",
+            approval = HostedApprovalPolicy.EXPLICIT,
         )
     val changeRecover =
         tool(
@@ -178,7 +178,7 @@ object CanonicalAgentToolDefinitions {
             changeRecover,
         )
 
-    /** Standard App Server surface; direct symbol refinement stays available only by opt-in. */
+    /** Native-qualified read and change surface; raw symbol operations require explicit selection. */
     val defaultAppServerTools: List<AgentToolDefinition> = all.filter { definition ->
         definition !== symbolLookup && definition !== symbolInspect
     }
@@ -200,6 +200,13 @@ object CanonicalAgentToolDefinitions {
                 require its saved, indexed source state. An unavailable or unready host rejects the
                 read. Do not invoke lifecycle, index synchronization, or topology preparation as
                 query prerequisites.
+
+                For changes, pass the returned search reference unchanged to change_plan. Hosted
+                changes support AddDeclaration in one existing authored Kotlin file. Planning does
+                not write source. Review the stored preview; change_apply and change_recover require
+                separate explicit approval of the exact plan. Apply includes semantic verification.
+                Preserve qualified unverified or recovery-required outcomes: a missing response does
+                not prove no write occurred. Use durable recovery without replaying an attempted plan.
                 """
                     .trimIndent()
             )
