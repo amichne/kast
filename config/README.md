@@ -24,3 +24,12 @@ fails, and unlisted files receive only the default limit. Lower a recorded
 ceiling when reducing a file; remove its entry once it fits the default. The
 check does not rewrite baselines automatically. Do not regenerate or raise
 ceilings to accommodate new violations.
+
+## JSON contracts
+
+Root `check` and `productBuildGate` run the single `verifyJsonContracts` task.
+It parses Kotlin syntax in an isolated process and rejects new or changed manual
+JSON expressions, extra copies, and stale allowances. See
+[JSON contract policy](json-contracts/README.md) for exact fingerprint rules,
+justified fixture exceptions, the typed report, and coverage limits. It never
+rewrites `config/json-contracts/baseline.json`.

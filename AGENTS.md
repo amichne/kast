@@ -88,6 +88,7 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 - Keep `JsonElement` only for a contract-defined dynamic or opaque field. Document that boundary and validate the surrounding DTO. Deliberately malformed or incompatible JSON is allowed in negative tests that specifically prove its rejection.
 - Verify actual encoded output against an independent expected shape or authoritative schema. Cover each closed outcome variant, required defaults/discriminators, and rejection of unknown values. A round trip through the same serializer alone is not contract proof.
 - When changing an existing manual JSON boundary, migrate the affected shape and its callers in the same change. Do not extend manual construction or erase a typed failure to make a test pass.
+- Run `./gradlew verifyJsonContracts`; `check` and `productBuildGate` require it. Its [syntax guard and exact baseline](config/json-contracts/README.md) reject new, changed, duplicated, and stale manual JSON expressions. Do not expand legacy allowances to pass a check. This guard supplements the encoded-shape and schema tests above; it does not replace them.
 
 ## Repository Knowledge
 

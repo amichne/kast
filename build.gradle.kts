@@ -1,3 +1,5 @@
+import conventions.registerJsonContractVerification
+import conventions.jsoncontracts.JsonContractScanRequest
 import org.gradle.api.tasks.bundling.Compression
 import org.gradle.api.tasks.bundling.Tar
 import org.gradle.api.tasks.bundling.Zip
@@ -11,6 +13,24 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.serialization) apply false
 }
+// Parser dependencies are resolved only for the isolated verification process, never the KGP classloader.
+val jsonContractParser by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+dependencies {
+    add(jsonContractParser.name, "org.jetbrains.kotlin:kotlin-compiler-embeddable:${libs.versions.kotlin.get()}")
+    add(jsonContractParser.name, libs.serialization.json)
+}
+
+registerJsonContractVerification(
+    files(
+        JsonContractScanRequest::class.java.protectionDomain.codeSource.location,
+        jsonContractParser,
+    )
+)
+
 group = providers.gradleProperty("GROUP").get()
 val gitDescribeVersion: Provider<String> = providers.exec {
     commandLine("git", "describe", "--tags", "--match", "v*", "--long", "--always")
