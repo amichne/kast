@@ -8,6 +8,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.KeyPairGenerator
+import java.util.concurrent.Callable
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -36,7 +39,7 @@ class HostedChangeApprovalsTest {
     }
 
     @Test
-    fun `malformed and wrong signed subject consume their pending challenge once`() {
+    fun `malformed and wrong signed subject cannot spend pending challenges`() {
         listOf<(LiveApprovalChallenge) -> String>(
                 { "approved" },
                 { fixture.signed(it, LiveChangeEffect.CHANGE_RECOVER) },
@@ -53,10 +56,73 @@ class HostedChangeApprovalsTest {
                     approvals.consume(fixture.plan, apply, assertion(challenge)),
                 )
                 assertEquals(
+                    challenge,
+                    approvals.consume(fixture.plan, apply, fixture.signed(challenge)).approvalRefined().challenge,
+                )
+            }
+    }
+
+    @Test
+    fun `concurrent approvals for one plan retain distinct single use challenges`() {
+        val approvals = HostedChangeApprovals(fixture.owner) { Refinement.Refined(fixture.key) }
+        Executors.newFixedThreadPool(2).use { executor ->
+            val challenges =
+                executor
+                    .invokeAll(
+                        List(2) { Callable { approvals.prepare(fixture.plan, apply).approvalRefined() } },
+                        5,
+                        TimeUnit.SECONDS,
+                    )
+                    .map { it.get(5, TimeUnit.SECONDS) }
+            assertNotEquals(challenges[0], challenges[1])
+            val proofs =
+                executor
+                    .invokeAll(
+                        challenges.map { challenge ->
+                            Callable {
+                                approvals.consume(fixture.plan, apply, fixture.signed(challenge)).approvalRefined()
+                            }
+                        },
+                        5,
+                        TimeUnit.SECONDS,
+                    )
+                    .map { it.get(5, TimeUnit.SECONDS) }
+            assertEquals(challenges.toSet(), proofs.map { it.challenge }.toSet())
+            challenges.forEach { challenge ->
+                assertEquals(
                     Refinement.Rejected(HostedApprovalFailure.NOT_PENDING),
                     approvals.consume(fixture.plan, apply, fixture.signed(challenge)),
                 )
             }
+        }
+    }
+
+    @Test
+    fun `replayed approval cannot consume another pending approval for the same plan`() {
+        val approvals = HostedChangeApprovals(fixture.owner) { Refinement.Refined(fixture.key) }
+        val first = approvals.prepare(fixture.plan, apply).approvalRefined()
+        val second = approvals.prepare(fixture.plan, apply).approvalRefined()
+        val signed = fixture.signed(first)
+        approvals.consume(fixture.plan, apply, signed).approvalRefined()
+        assertEquals(
+            Refinement.Rejected(HostedApprovalFailure.INVALID_ASSERTION),
+            approvals.consume(fixture.plan, apply, signed),
+        )
+        assertEquals(second, approvals.consume(fixture.plan, apply, fixture.signed(second)).approvalRefined().challenge)
+    }
+
+    @Test
+    fun `pending capacity counts independent challenges for the same plan`() {
+        val approvals = HostedChangeApprovals(fixture.owner) { Refinement.Refined(fixture.key) }
+        val challenges = List(128) { approvals.prepare(fixture.plan, apply).approvalRefined() }
+        assertEquals(128, challenges.toSet().size)
+        assertEquals(
+            Refinement.Rejected(HostedApprovalFailure.CAPACITY_EXHAUSTED),
+            approvals.prepare(fixture.plan, apply),
+        )
+        val first = challenges.first()
+        approvals.consume(fixture.plan, apply, fixture.signed(first)).approvalRefined()
+        approvals.prepare(fixture.plan, apply).approvalRefined()
     }
 
     @Test

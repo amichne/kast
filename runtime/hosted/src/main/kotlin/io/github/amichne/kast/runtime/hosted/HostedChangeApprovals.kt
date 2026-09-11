@@ -28,12 +28,13 @@ internal class HostedChangeApprovals(
     private val owner: IdeReadHostLifetime,
     private val key: () -> Refinement<BrokerApprovalVerificationKey, HostedApprovalFailure>,
 ) : AutoCloseable {
-    private data class Subject(val plan: String, val effect: LiveChangeEffect)
-
-    private data class Pending(val challenge: LiveApprovalChallenge, val key: BrokerApprovalVerificationKey)
+    private data class Pending(
+        val expectation: LivePlanApprovalExpectation,
+        val key: BrokerApprovalVerificationKey,
+    )
 
     private sealed interface State {
-        data class Open(val pending: MutableMap<Subject, Pending>) : State
+        data class Open(val pending: MutableMap<LiveApprovalChallenge, Pending>) : State
 
         data object Retired : State
     }
@@ -56,8 +57,7 @@ internal class HostedChangeApprovals(
                 is Refinement.Refined -> loaded.value
                 is Refinement.Rejected -> return loaded
             }
-        val subject = Subject(plan.planId.value, effect)
-        if (subject !in open.pending && open.pending.size >= MAX_PENDING_APPROVALS)
+        if (open.pending.size >= MAX_PENDING_APPROVALS)
             return Refinement.Rejected(HostedApprovalFailure.CAPACITY_EXHAUSTED)
         val bytes = ByteArray(APPROVAL_CHALLENGE_BYTES).also(random::nextBytes)
         val challenge =
@@ -68,7 +68,12 @@ internal class HostedChangeApprovals(
                 is Refinement.Refined -> parsed.value
                 is Refinement.Rejected -> return Refinement.Rejected(HostedApprovalFailure.UNAVAILABLE)
             }
-        open.pending[subject] = Pending(challenge, pinned)
+        if (challenge in open.pending) return Refinement.Rejected(HostedApprovalFailure.UNAVAILABLE)
+        open.pending[challenge] =
+            Pending(
+                LivePlanApprovalExpectation(plan = plan, owner = owner, operation = effect, challenge = challenge),
+                pinned,
+            )
         return Refinement.Refined(challenge)
     }
 
@@ -83,31 +88,29 @@ internal class HostedChangeApprovals(
                 is State.Open -> current
                 State.Retired -> return Refinement.Rejected(HostedApprovalFailure.RETIRED)
             }
-        val pending =
-            open.pending.remove(Subject(plan.planId.value, effect))
-                ?: return Refinement.Rejected(HostedApprovalFailure.NOT_PENDING)
+        val candidates =
+            open.pending.values.filter {
+                it.expectation.plan.planId == plan.planId && it.expectation.operation == effect
+            }
+        if (candidates.isEmpty()) return Refinement.Rejected(HostedApprovalFailure.NOT_PENDING)
         val pinned =
             when (val loaded = key()) {
                 is Refinement.Refined -> loaded.value
                 is Refinement.Rejected -> return loaded
             }
-        if (!pending.key.sameAuthority(pinned)) return Refinement.Rejected(HostedApprovalFailure.KEY_CHANGED)
-        return when (
-            val verified =
-                VerifiedLivePlanApproval.verify(
-                    assertion,
-                    pending.key,
-                    LivePlanApprovalExpectation(
-                        plan = plan,
-                        owner = owner,
-                        operation = effect,
-                        challenge = pending.challenge,
-                    ),
-                )
-        ) {
-            is Refinement.Refined -> verified
-            is Refinement.Rejected -> Refinement.Rejected(HostedApprovalFailure.INVALID_ASSERTION)
+        val (current, retired) = candidates.partition { it.key.sameAuthority(pinned) }
+        retired.forEach { open.pending.remove(it.expectation.challenge) }
+        if (current.isEmpty()) return Refinement.Rejected(HostedApprovalFailure.KEY_CHANGED)
+        for (pending in current) {
+            when (val verified = VerifiedLivePlanApproval.verify(assertion, pending.key, pending.expectation)) {
+                is Refinement.Refined -> {
+                    open.pending.remove(verified.value.challenge)
+                    return verified
+                }
+                is Refinement.Rejected -> Unit
+            }
         }
+        return Refinement.Rejected(HostedApprovalFailure.INVALID_ASSERTION)
     }
 
     @Synchronized
