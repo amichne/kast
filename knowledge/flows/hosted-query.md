@@ -4,7 +4,7 @@ title: Existing-IDE semantic query
 description: An existing IDEA project owns the default seven canonical reads, with bounded live authority and scoped native CLI/provider acceptance.
 resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted
 tags: [intellij, kotlin, semantic-query, lifecycle]
-timestamp: 2026-09-10T00:00:00Z
+timestamp: 2026-09-11T00:00:00Z
 code_sources:
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt
   - path: docs/hosted-read-configuration.md
@@ -228,3 +228,6 @@ The opt-in [semantic reproduction runner](../../experiments/host-observation/SEM
 The subsequent [semantic reproduction review](../../docs/reviews/hosted-semantic-reproduction.md) records complete fixture `ALL` queries under unchanged default budgets. Scoped Kotlin file indexes supply declarations directly; exact names retain their direct indexes and fuzzy discovery retains bounded contributors. Constructor properties refine through their generated K2 property symbol. Query `EXPAND` retains the original selected subject while admitting related endpoints in the workspace search boundary. Java references resolve through K2 identity, and explicitly excluded library calls do not make project-only callee coverage incomplete. The earlier acceptance limitations above remain historical evidence.
 
 The read policy is immutable per host service and rejects invalid settings. CLI/provider transport capacities use the same typed parameter catalogue. See [read configuration](../../docs/hosted-read-configuration.md).
+
+
+The new `tool` CLI family lowers the five [public intent tools](../contracts/public-tools.md) into the existing canonical operations before taking this same existing-IDE path. Native semantics and reference authority remain here; tool syntax is not compiler evidence.

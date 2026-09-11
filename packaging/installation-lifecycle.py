@@ -246,8 +246,11 @@ def recovery_candidates(installation):
                 started = [(index, event) for index, event in matched if event['event'] == 'tool-call-started']
                 finished = [(index, event) for index, event in matched if event['event'] == 'tool-call-finished']
                 if (len(started) != 1 or len(finished) != 1 or started[0][0] >= finished[0][0]
-                        or started[0][1].get('namespace') != 'kast' or started[0][1].get('tool') != 'query'
-                        or finished[0][1].get('namespace') != 'kast' or finished[0][1].get('tool') != 'query'
+                        or started[0][1].get('namespace') != 'kast'
+                        or started[0][1].get('tool') not in {'query', 'search_classes', 'search_functions',
+                            'search_declarations', 'check_diagnostics', 'query_symbols'}
+                        or finished[0][1].get('namespace') != 'kast'
+                        or finished[0][1].get('tool') != started[0][1].get('tool')
                         or finished[0][1].get('completion') != 'cancelled'):
                     raise Rejected(Failure.RECOVERY_REJECTED)
                 recoveries.append({'invocationKey': key, 'fingerprint': record['fingerprint'],

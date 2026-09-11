@@ -4,8 +4,10 @@ title: Runtime and process hosts
 description: Runtime composition connects domain operations to adapters, while server, indexer, App Server, and CLI own distinct transport and process responsibilities.
 resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
-timestamp: 2026-09-10T00:00:00Z
+timestamp: 2026-09-11T00:00:00Z
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
+  - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
   - path: docs/reviews/live-semantic-read-acceptance.md
   - path: runtime/server/src/main/kotlin/io/github/amichne/kast/runtime/server/ServerDispatch.kt
     symbols: [ServerDispatch]
@@ -77,3 +79,5 @@ while full Codex WebSocket and multi-client acceptance remain separate.
 Read [request dispatch](../flows/request-dispatch.md) for the cross-host path.
 
 Hosted project services retain an immutable read-limit policy admitted from the IDE process environment and JVM properties. The CLI/provider retain the corresponding policy from their configuration boundary, including saved installation values. Invalid configuration rejects before native execution. Default hosted logs include the selected capacities and provenance. See [configuration](../../docs/hosted-read-configuration.md).
+
+The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Three ordinary searches and deferred `query_symbols` share `query.run`; `check_diagnostics` shares `diagnostic.check`. Private admission retains each tool's schema identity and typed syntax through its exact CLI binding. The `tool` command family uses the existing-IDE read path. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.

@@ -71,7 +71,7 @@ internal fun mintlifyCallableReference(
 
 private fun InstalledServerBinding.operationDocument(): MintlifyCallableOperationDocument =
     MintlifyCallableOperationDocument(
-        operationId = tool.operationId,
+        operationId = tool.name,
         summary = tool.name.replace('_', ' '),
         description = "${tool.description}\n\nThis callable is not an HTTP endpoint. " +
             "Invoke it with the Kast CLI command shown in the example.",
@@ -116,10 +116,10 @@ private fun InstalledServerBinding.operationDocument(): MintlifyCallableOperatio
     )
 
 private fun InstalledServerBinding.requestComponentName(): MintlifyCallableComponentName =
-    MintlifyCallableComponentName.request(operation)
+    MintlifyCallableComponentName.request(tool.name)
 
 private fun InstalledServerBinding.responseComponentName(): MintlifyCallableComponentName =
-    MintlifyCallableComponentName.response(operation)
+    MintlifyCallableComponentName.response(tool.name)
 
 /** Rebinds one schema resource's document-local definitions after OpenAPI component embedding. */
 private fun JsonElement.rebaseLocalDefinitions(
@@ -147,11 +147,11 @@ private fun JsonElement.rebaseLocalDefinitions(
 @JvmInline
 private value class MintlifyCallableComponentName private constructor(val value: String) {
     companion object {
-        fun request(operation: CanonicalOperation): MintlifyCallableComponentName =
-            MintlifyCallableComponentName("${operation.name}Request")
+        fun request(toolName: String): MintlifyCallableComponentName =
+            MintlifyCallableComponentName("${toolName}Request")
 
-        fun response(operation: CanonicalOperation): MintlifyCallableComponentName =
-            MintlifyCallableComponentName("${operation.name}Response")
+        fun response(toolName: String): MintlifyCallableComponentName =
+            MintlifyCallableComponentName("${toolName}Response")
     }
 }
 

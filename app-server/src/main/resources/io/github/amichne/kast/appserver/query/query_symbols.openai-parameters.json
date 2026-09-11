@@ -1,0 +1,350 @@
+{
+  "type": "object",
+  "properties": {
+    "source": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SearchSource"
+        },
+        {
+          "$ref": "#/$defs/AllSource"
+        },
+        {
+          "$ref": "#/$defs/ReferenceSource"
+        }
+      ],
+      "description": "Starting declarations or returned exact-symbol references. No candidate-refinement step is needed."
+    },
+    "steps": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/FilterVisibility"
+          },
+          {
+            "$ref": "#/$defs/ExpandRelation"
+          },
+          {
+            "$ref": "#/$defs/DistinctSymbols"
+          }
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 1000,
+      "description": "Ordered transformations, executed left to right. null and [] mean no transformations. Filtering before expansion and filtering after expansion have different meanings. Only the three advertised step shapes are supported; diagnostics are a separate tool."
+    },
+    "return_fields": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string",
+        "enum": [
+          "name",
+          "location",
+          "signature"
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 3,
+      "description": "null returns name and location, [] requests mandatory identity and kind only. Symbol references and completeness evidence are always retained. Duplicate fields are rejected by server admission."
+    }
+  },
+  "required": [
+    "source",
+    "steps",
+    "return_fields"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "DirectoryScope": {
+      "type": "object",
+      "properties": {
+        "relative_directory_path": {
+          "type": "string",
+          "description": "Directory relative to the session workspace root, such as services/orders. Use '.' for the root. Not a file path, absolute path, glob, or package name. Parent traversal and non-canonical paths are rejected by server admission."
+        },
+        "include_subdirectories": {
+          "type": "boolean",
+          "description": "true includes the named directory and nested directories; false selects only the named directory."
+        },
+        "source_set_names": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "description": "Exact imported Gradle source-set name, such as main, integrationTest, or commonMain."
+          },
+          "minItems": 1,
+          "maxItems": 1000,
+          "description": "null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission."
+        }
+      },
+      "required": [
+        "relative_directory_path",
+        "include_subdirectories",
+        "source_set_names"
+      ],
+      "additionalProperties": false
+    },
+    "PackageScope": {
+      "type": "object",
+      "properties": {
+        "package_name": {
+          "type": "string",
+          "description": "Semantic Kotlin package name, such as com.example.orders. Not a filesystem path. Uses Kast's supported package-name grammar."
+        },
+        "include_subpackages": {
+          "type": "boolean",
+          "description": "true includes the named package and subpackages; false selects only the named package."
+        },
+        "source_set_names": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "description": "Exact imported Gradle source-set name, such as main, integrationTest, or commonMain."
+          },
+          "minItems": 1,
+          "maxItems": 1000,
+          "description": "null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission."
+        }
+      },
+      "required": [
+        "package_name",
+        "include_subpackages",
+        "source_set_names"
+      ],
+      "additionalProperties": false
+    },
+    "SearchSource": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "search_declarations"
+          ]
+        },
+        "declaration_name": {
+          "type": "string",
+          "description": "Simple declaration name. Not a signature, source-text query, or qualified name."
+        },
+        "name_match": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "exact",
+            "fuzzy",
+            null
+          ],
+          "description": "null means exact, case-sensitive declaration-name matching. Exact matching returns every matching overload; it does not select one overload. Fuzzy matching requires explicit opt-in."
+        },
+        "declaration_kinds": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "enum": [
+              "class",
+              "function",
+              "property",
+              "type_alias"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 4,
+          "description": "null includes all four supported declaration families. Supply a non-empty, non-duplicate list to restrict them. The class family means Kast's supported class-like declarations. Constructors are not included."
+        },
+        "scope": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DirectoryScope"
+            },
+            {
+              "$ref": "#/$defs/PackageScope"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
+        }
+      },
+      "required": [
+        "type",
+        "declaration_name",
+        "name_match",
+        "declaration_kinds",
+        "scope"
+      ],
+      "additionalProperties": false,
+      "description": "Find declarations and establish exact symbol identities. Source scope restricts discovery only, not later expansion destinations."
+    },
+    "AllSource": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "all_declarations"
+          ]
+        },
+        "declaration_kinds": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "enum": [
+              "class",
+              "function",
+              "property",
+              "type_alias"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 4,
+          "description": "null includes all four supported declaration families. Supply a non-empty, non-duplicate list to restrict them. The class family means Kast's supported class-like declarations. Constructors are not included."
+        },
+        "scope": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DirectoryScope"
+            },
+            {
+              "$ref": "#/$defs/PackageScope"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
+        }
+      },
+      "required": [
+        "type",
+        "declaration_kinds",
+        "scope"
+      ],
+      "additionalProperties": false,
+      "description": "Enumerate declarations under existing bounded execution. All does not mean unlimited work or guaranteed complete coverage."
+    },
+    "ReferenceSource": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "symbol_refs"
+          ]
+        },
+        "symbol_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Opaque exact-symbol reference returned by Kast. Copy the token verbatim; do not construct, edit, or substitute a candidate reference."
+          },
+          "minItems": 1,
+          "maxItems": 1000
+        }
+      },
+      "required": [
+        "type",
+        "symbol_refs"
+      ],
+      "additionalProperties": false
+    },
+    "FilterVisibility": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "filter_visibility"
+          ]
+        },
+        "visibilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "public",
+              "protected",
+              "internal",
+              "private",
+              "local"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 5,
+          "description": "Keep symbols with one of these compiler-established visibilities. Duplicate values are rejected by server admission."
+        }
+      },
+      "required": [
+        "type",
+        "visibilities"
+      ],
+      "additionalProperties": false
+    },
+    "ExpandRelation": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "expand_relation"
+          ]
+        },
+        "relation": {
+          "type": "string",
+          "enum": [
+            "references",
+            "callers",
+            "callees",
+            "implementations",
+            "inheritors",
+            "overrides",
+            "type_uses"
+          ],
+          "description": "One semantic hop. callers means declarations calling the current symbols; callees means declarations called by them. This pipeline produces related symbols. Use the relation-read tool for occurrence-oriented relation facts."
+        }
+      },
+      "required": [
+        "type",
+        "relation"
+      ],
+      "additionalProperties": false
+    },
+    "DistinctSymbols": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "distinct_symbols"
+          ]
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "Remove duplicate symbol identities at this position only. Never insert this step implicitly."
+    }
+  }
+}

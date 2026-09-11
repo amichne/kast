@@ -7,8 +7,10 @@ val verifyPublicQueryGeneration by tasks.registering(Exec::class) {
     description = "Rejects drift between the public query schema, Kotlin syntax/defaults, and provider projections."
     val generator = rootProject.layout.projectDirectory.file("packaging/generate-public-query.py")
     inputs.file(generator)
+    inputs.file(rootProject.layout.projectDirectory.file("protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt"))
     inputs.dir(layout.projectDirectory.dir("src/main/resources/io/github/amichne/kast/appserver/query"))
     inputs.files(
+        layout.projectDirectory.file("src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDocuments.kt"),
         layout.projectDirectory.file("src/main/kotlin/io/github/amichne/kast/appserver/query/PublicQueryDocuments.kt"),
     )
     workingDir(rootProject.projectDir)

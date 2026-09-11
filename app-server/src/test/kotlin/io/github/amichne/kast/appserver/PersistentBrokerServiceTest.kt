@@ -305,12 +305,12 @@ class PersistentBrokerServiceTest {
         val queryOnly = BrokerServiceLaunchCommand.resolve(
             fixture.kast,
             fixture.userHome,
-            fixture.environment + ("KAST_APP_SERVER_TOOLS" to "query"),
+            fixture.environment + ("KAST_APP_SERVER_TOOLS" to "query_symbols"),
         ) as BrokerServiceLaunchCommandResolution.Resolved
 
         assertNotEquals(defaults.identity, queryOnly.command.identity)
         assertEquals(defaults.serviceLabel, queryOnly.command.serviceLabel)
-        assertEquals("query", queryOnly.command.toolSelection.environmentValue)
+        assertEquals("query_symbols", queryOnly.command.toolSelection.environmentValue)
     }
 
     @Test
