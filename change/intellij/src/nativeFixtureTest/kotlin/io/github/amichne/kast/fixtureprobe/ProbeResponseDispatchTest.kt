@@ -89,6 +89,7 @@ class ProbeResponseDispatchTest {
                 generation = ProbeSetupGeneration(imports = 1, roots = 1, workspace = 1, vfs = 1, psi = 1, dumb = 1),
                 import = ProbeImportState.FINAL_TASKS_FINISHED,
                 provenance = ProbeSourceProvenance.AUTHORED,
+                indexing = ProbeSetupIndexingState.IDLE,
             )
         val proof =
             assertInstanceOf(

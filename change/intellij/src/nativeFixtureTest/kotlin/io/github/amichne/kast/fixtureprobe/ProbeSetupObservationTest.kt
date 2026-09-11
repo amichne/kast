@@ -12,7 +12,26 @@ class ProbeSetupObservationTest {
             generation = generation,
             import = ProbeImportState.FINAL_TASKS_FINISHED,
             provenance = ProbeSourceProvenance.AUTHORED,
+            indexing = ProbeSetupIndexingState.IDLE,
         )
+
+    @Test
+    fun smartModeWithScheduledWorkDoesNotProveReadiness() {
+        assertEquals(
+            ProbeSetupIndexingState.SCHEDULED,
+            ProbeSetupIndexingState.observe(isDumb = false, hasScheduledTasks = true),
+        )
+        val scheduled = completed.copy(indexing = ProbeSetupIndexingState.SCHEDULED)
+        assertInstanceOf(
+            ProbeResult.Rejected::class.java,
+            ProbeSetupObservation.admit(scheduled, scheduled, SETUP_QUIET_WINDOW_NANOS),
+        )
+        val unavailable = completed.copy(indexing = ProbeSetupIndexingState.UNAVAILABLE)
+        assertInstanceOf(
+            ProbeResult.Rejected::class.java,
+            ProbeSetupObservation.admit(unavailable, unavailable, SETUP_QUIET_WINDOW_NANOS),
+        )
+    }
 
     @Test
     fun unchangedReadySampleRetainsObservedImport() {

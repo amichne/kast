@@ -17,6 +17,8 @@ internal enum class ProbeSetupImportEvidence {
 internal enum class ProbeSetupStatus {
     CANDIDATE,
     INDEXING,
+    INDEXING_SCHEDULED,
+    INDEXING_UNAVAILABLE,
     EXTERNAL_TASKS_ACTIVE,
     IMPORT_PENDING,
     IMPORT_FAILED,
@@ -37,6 +39,7 @@ internal data class ProbeSetupSample(
     val generation: ProbeSetupGeneration,
     val import: ProbeImportState,
     val provenance: ProbeSourceProvenance,
+    val indexing: ProbeSetupIndexingState,
 )
 
 internal class ProbeSetupObservation
@@ -47,6 +50,7 @@ private constructor(val import: ProbeSetupImportEvidence, val provenance: ProbeS
             after: ProbeSetupSample,
             elapsedNanos: Long,
         ): ProbeResult<ProbeSetupObservation> {
+            if (after.indexing != ProbeSetupIndexingState.IDLE) return ProbeResult.Rejected(ProbeFailure.SETUP_MOVING)
             if (after.provenance == ProbeSourceProvenance.UNAVAILABLE)
                 return ProbeResult.Rejected(ProbeFailure.SETUP_MOVING)
             if (
@@ -88,4 +92,20 @@ internal enum class ProbeSourceProvenance {
     AUTHORED,
     GENERATED,
     UNAVAILABLE,
+}
+
+internal enum class ProbeSetupIndexingState {
+    IDLE,
+    RUNNING,
+    SCHEDULED,
+    UNAVAILABLE;
+
+    companion object {
+        fun observe(isDumb: Boolean, hasScheduledTasks: Boolean): ProbeSetupIndexingState =
+            when {
+                isDumb -> RUNNING
+                hasScheduledTasks -> SCHEDULED
+                else -> IDLE
+            }
+    }
 }

@@ -199,11 +199,17 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
             return ProbeResult.Rejected(ProbeFailure.SETUP_REFRESH_TIMEOUT)
         // The observation is posted after refresh completion, so earlier queued EDT work runs before it.
         onEdt(deadline) { Unit }
+        when (val drained = ProbeSetupNativeTasks.drain(project, deadline)) {
+            is ProbeResult.Accepted -> Unit
+            is ProbeResult.Rejected -> return drained
+        }
+        onEdt(deadline) { Unit }
         return ProbeResult.Accepted(Unit)
     }
 
     private fun sample(command: ProbeCommand, requirement: ProbeImportRequirement): ProbeSetupSample {
         val dumb = DumbService.getInstance(project)
+        val indexing = ProbeSetupNativeTasks.indexingState(project)
         val progress = import.get()
         val state = progress.state
         val provenance = observeGradleSourceModule()
@@ -211,7 +217,9 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
             when {
                 !sandbox.valid(project) -> ProbeSetupStatus.GRADLE_MODULE_UNAVAILABLE
                 state == ProbeImportState.FAILED -> ProbeSetupStatus.IMPORT_FAILED
-                dumb.isDumb -> ProbeSetupStatus.INDEXING
+                indexing == ProbeSetupIndexingState.RUNNING -> ProbeSetupStatus.INDEXING
+                indexing == ProbeSetupIndexingState.SCHEDULED -> ProbeSetupStatus.INDEXING_SCHEDULED
+                indexing == ProbeSetupIndexingState.UNAVAILABLE -> ProbeSetupStatus.INDEXING_UNAVAILABLE
                 ExternalSystemTaskType.entries.any {
                     ExternalSystemProcessingManager.getInstance().hasTaskOfTypeInProgress(it, project)
                 } -> ProbeSetupStatus.EXTERNAL_TASKS_ACTIVE
@@ -234,6 +242,7 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
                 ),
             import = state,
             provenance = provenance,
+            indexing = indexing,
         )
     }
 
