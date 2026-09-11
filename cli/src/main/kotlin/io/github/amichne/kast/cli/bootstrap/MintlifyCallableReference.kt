@@ -110,7 +110,7 @@ private fun InstalledServerBinding.operationDocument(): MintlifyCallableOperatio
                         mode = MintlifyCallablePageMode.WIDE,
                         hideApiMarker = true,
                         icon = "square-terminal",
-                        description = tool.description.substringBefore(". ").trimEnd('.') + ".",
+                        description = "Inputs and response fields for ${tool.name}.",
                         title = tool.name.replace('_', ' ').replaceFirstChar { it.uppercaseChar() },
                     ),
                 content =

@@ -99,6 +99,10 @@ class MintlifyCallableReferenceTest {
                 tool.outputSchema.expandSchema(tool.outputSchema),
                 components.getValue(responseReference).expandSchema(reference),
             )
+            assertEquals(
+                "Inputs and response fields for ${tool.name}.",
+                mintMetadata.getValue("description").jsonPrimitive.content,
+            )
             assertEquals("wide", mintMetadata.getValue("mode").jsonPrimitive.content)
             assertEquals("true", mintMetadata.getValue("hideApiMarker").jsonPrimitive.content)
             assertFalse("x-codeSamples" in operation)
