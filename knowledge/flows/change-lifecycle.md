@@ -115,6 +115,7 @@ missing records or incomplete observation cannot establish success. Legacy empty
 preimages remain ambiguous because they cannot distinguish absence from an
 existing empty file.
 
-Change tools remain opt-in while native installed acceptance is pending. See
+Change tools are deferred defaults after the installed workflow passed the
+[native acceptance matrix](../../docs/reviews/plugin-native-change-acceptance.md). See
 [semantic change](../modules/change.md), [evidence authority](../glossary/evidence-authority.md)
 and the [App Server compatibility record](../../app-server/docs/compatibility.md).

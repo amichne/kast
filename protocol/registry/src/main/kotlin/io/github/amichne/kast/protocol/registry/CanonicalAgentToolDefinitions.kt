@@ -178,13 +178,9 @@ object CanonicalAgentToolDefinitions {
             changeRecover,
         )
 
-    /** Qualified read surface. Change tools remain explicit opt-ins until installed hosted acceptance passes. */
+    /** Native-qualified read and change surface; raw symbol operations require explicit selection. */
     val defaultAppServerTools: List<AgentToolDefinition> = all.filter { definition ->
-        definition !== symbolLookup &&
-            definition !== symbolInspect &&
-            definition !== changePlan &&
-            definition !== changeApply &&
-            definition !== changeRecover
+        definition !== symbolLookup && definition !== symbolInspect
     }
 
     val policy: AgentToolPolicy =

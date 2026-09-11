@@ -77,8 +77,9 @@ The source write, semantic verification and durable receipt are separate facts.
 Apply returns `Verified`, `AppliedUnverified` or `RecoveryRequired`; the latter
 two retain their qualifications. Stored verified receipts can be replayed without
 repeating the write. Recovery requires a fresh approval and rejects divergent or
-unobservable source state. Change tools remain excluded from default selection
-until the matched installed provider/CLI/plugin workflow passes native acceptance.
+unobservable source state. Change tools are deferred defaults after the matched
+installed provider/CLI/plugin workflow passed the
+[native change matrix](../../docs/reviews/plugin-native-change-acceptance.md).
 The desktop checklist below remains a separate, unqualified client gate.
 
 ## Historical semantic-access reproduction

@@ -1,7 +1,46 @@
 # Existing-IDE declaration change acceptance
 
-Status: full native qualification is pending. Change tools remain excluded from
-the canonical default catalog until the installed matrix passes.
+Status: the installed matrix passed on September 11, 2026, at clean source
+`aa95c7652a7d713f6bae00ed6a82fbc1a1080d43`: 126/126 read cases and 30/30 native
+change cases. The canonical catalog now includes the three deferred change tools.
+Final release artifacts must pass the same matrix at their exact source identity.
+
+## Qualification record
+
+The native run used IDEA `262.10315.125` with Kotlin `262.10315.125-IJ`.
+Its receipt reports `passed=true`, `releaseQualified=true`, no remaining matrix
+rows and successful removal of the private fixture. The
+[complete bounded receipt](receipts/plugin-native-change-aa95c765.json)
+has SHA-256 `6f0cb6ffac3887c03aac36158f61f6faad3a5ad867f05b7ee0f2469c4267cfd4`.
+
+| Staged input | SHA-256 |
+|---|---|
+| Control product tree | `bdf788cf00083e25706d3a8dce583198ef97725ced8f6c36f61331b1036b6427` |
+| Schema tree | `9522acbdef23c826a8608bffb9b3d8a9bab0e93793fd74753d43c39ea873be02` |
+| Hosted plugin archive | `af5cfb72bbef91c70a68a992a065ef6f270a344ad71e59d265156f1932870a43` |
+| Native broker harness | `cabbae6045c0bcb8e2d14a631b4b1ba8b8a8641525dda33198b53d0caf8fa3b0` |
+| Test-only IDE probe | `00ed82515a2c2d44fc5b35115e7a1d3b6cdbbacac68ed2f95e5525c1ed5dc889` |
+
+The product and schema values identify ordered file trees, not archive bytes.
+
+| Native boundary | Observed result |
+|---|---|
+| Search, plan, approval, apply and verification | Unchanged reference; planning leaves saved source unchanged; verified before/after receipt; independent PSI observation |
+| Root, intent, reference, epoch, owner, model and provenance | Foreign, unsupported, invalid, retired, moved and generated states rejected |
+| Indexing, dirty document, approval decline/cancel/malformed and edited preimage | Rejected without additional source effects |
+| Approval wait and concurrent/repeated apply | Workspace available during approval; one effect; existing receipt reused |
+| Owner restart and recovery | Historical receipt retained; fresh approved exact-image rollback; divergent document preserved |
+| Post-save interruption | Retry fenced with `WORKSPACE_RECOVERY_REQUIRED`; zero new invocation; broker stores retained; separately approved rollback |
+| Plugin unload and lost response | Pending approval retired; attempted plan not replayed; durable verified state retrieved |
+| Undo and divergent saved content | Undo removed only the latest change with saved/committed PSI; recovery preserved later disk edits |
+| Separate broker process | Verified receipt retrieved; saved source unchanged |
+| Read regression and routing | 126/126 reads; unchanged query budgets; 96 recorded CLI processes with zero isolated-startup commands |
+
+Earlier native runs exposed asynchronous VFS save completion and shared Undo
+command-group defects. The product now awaits per-file physical write completion
+before observing saved bytes and gives each mutation session a distinct command
+group. The full passing run includes both regressions. Startup readiness
+classification remains setup-only and does not retry measured operations.
 
 ## Supported boundary
 

@@ -121,7 +121,8 @@ class InstalledBrokerServerTest {
             )
             assertEquals(
                 "search_classes,search_functions,search_declarations,query_symbols," +
-                    "source_read,semantic_query,impact_analyze,check_diagnostics",
+                    "source_read,semantic_query,impact_analyze,check_diagnostics," +
+                    "change_plan,change_apply,change_recover",
                 configured(base).kastOptions.toolSelection.environmentValue,
             )
             assertEquals(
@@ -380,6 +381,9 @@ class InstalledBrokerServerTest {
                         "semantic_query",
                         "impact_analyze",
                         "check_diagnostics",
+                        "change_plan",
+                        "change_apply",
+                        "change_recover",
                     ),
                     kastNamespace.getValue("tools").jsonArray.map { tool ->
                         tool.jsonObject.getValue("name").jsonPrimitive.content

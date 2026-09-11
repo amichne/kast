@@ -116,13 +116,13 @@ for exact evidence and the outstanding real-client release gate.
 Kast qualifies the installed tool contract before a thread starts. The default
 catalog includes eager `search_classes`, `search_functions`,
 `search_declarations`, and `check_diagnostics`, plus deferred `query_symbols`,
-source, relation, and impact tools. Direct symbol lookup/inspection and the
-three change tools require explicit selection. `change_plan` prepares an
+source, relation, impact, and change tools. Direct symbol lookup/inspection
+requires explicit selection. `change_plan` prepares an
 immutable `AddDeclaration` plan without writing source. `change_apply` and
 `change_recover` require approval of that exact stored plan. Enroll the local
-broker with `kast ide trust-broker` before using either operation. Change tools
-remain excluded from defaults until the installed provider → CLI → plugin
-workflow passes native acceptance.
+broker with `kast ide trust-broker` before using either operation. The installed
+provider → CLI → plugin workflow passed the
+[native change acceptance matrix](docs/reviews/plugin-native-change-acceptance.md).
 
 See [Add a Kotlin declaration](docs/public/change.mdx) for saved-content
 requirements, the approval workflow, verification outcomes and durable recovery.

@@ -162,3 +162,18 @@
   without expanding lint baselines, and passed the repository product gate.
 - Recorded the remaining approval integration gap: explicit catalog metadata is
   retained, but Codex dynamic-tool dispatch has no exact-plan approval result.
+
+## 2026-09-11 — Native declaration workflow qualified
+
+- Implemented project-owned live planning, exact-plan approval, durable mutation,
+  scoped semantic verification and separately approved recovery without a
+  published generation or isolated-runtime fallback.
+- Qualified the installed provider → CLI → plugin workflow at clean source
+  `aa95c7652a7d713f6bae00ed6a82fbc1a1080d43`: 126 read cases and all 30 native
+  change cases passed, including interruption, retirement, Undo and divergent
+  content preservation. See the [acceptance record](../docs/reviews/plugin-native-change-acceptance.md).
+- Enabled the three change tools as deferred defaults, preserving read loading
+  policy and exact approval requirements for apply and recovery.
+- Added `verifyJsonContracts` to normal checks and the product gate. Its syntax
+  ratchet rejects new or changed manual JSON construction against exact reviewed
+  allowances; typed serialization and schema checks retain their distinct roles.
