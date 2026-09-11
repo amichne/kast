@@ -110,7 +110,21 @@ sealed interface IdeHostCompatibilityMismatch {
 }
 
 @JvmInline
+value class IdeReleaseLine private constructor(val value: String) {
+    companion object {
+        /** Retains the release line already established by a refined full build identity. */
+        internal fun from(build: IdeBuildIdentity): IdeReleaseLine =
+            IdeReleaseLine(build.value.substringBefore('.'))
+
+        internal fun from(build: KotlinPluginBuildIdentity): IdeReleaseLine =
+            IdeReleaseLine(build.value.substringBefore('.'))
+    }
+}
+
+@JvmInline
 value class IdeBuildIdentity private constructor(val value: String) {
+    val releaseLine: IdeReleaseLine get() = IdeReleaseLine.from(this)
+
     companion object {
         /**
          * Proof transition: `String -> Refinement<IdeBuildIdentity, IdeHostCompatibilityFailure>`.
@@ -125,6 +139,8 @@ value class IdeBuildIdentity private constructor(val value: String) {
 
 @JvmInline
 value class KotlinPluginBuildIdentity private constructor(val value: String) {
+    val releaseLine: IdeReleaseLine get() = IdeReleaseLine.from(this)
+
     companion object {
         /**
          * Proof transition: `String -> Refinement<KotlinPluginBuildIdentity, IdeHostCompatibilityFailure>`.
@@ -241,7 +257,8 @@ class AdmittedIdeHostCompatibility private constructor(
      * Proof transition: `AdmittedIdeHostCompatibility + AdmittedIdeHostCompatibility ->
      * IdeHostCompatibilityComparison`.
      *
-     * Establishes exact tuple equality or the first finite mismatch with both refined values.
+     * Establishes matching IDEA and Kotlin release lines and exact remaining tuple equality,
+     * or the first finite mismatch with both refined full identities retained.
      * Each capability set is already valid; differing membership or order remains an exact typed
      * mismatch. Raw values may be extracted only at endpoint or generated-report boundaries.
      */
@@ -249,10 +266,10 @@ class AdmittedIdeHostCompatibility private constructor(
         expected: AdmittedIdeHostCompatibility,
     ): IdeHostCompatibilityComparison =
         when {
-            ideBuild != expected.ideBuild -> mismatch(
+            ideBuild.releaseLine != expected.ideBuild.releaseLine -> mismatch(
                 IdeHostCompatibilityMismatch.IdeBuild(expected.ideBuild, ideBuild),
             )
-            kotlinPluginBuild != expected.kotlinPluginBuild -> mismatch(
+            kotlinPluginBuild.releaseLine != expected.kotlinPluginBuild.releaseLine -> mismatch(
                 IdeHostCompatibilityMismatch.KotlinPluginBuild(
                     expected.kotlinPluginBuild,
                     kotlinPluginBuild,
@@ -285,7 +302,7 @@ class AdmittedIdeHostCompatibility private constructor(
             capabilities != expected.capabilities -> mismatch(
                 IdeHostCompatibilityMismatch.Capabilities(expected.capabilities, capabilities),
             )
-            else -> IdeHostCompatibilityComparison.Exact
+            else -> IdeHostCompatibilityComparison.Compatible
         }
 
     companion object {
@@ -348,7 +365,8 @@ class IdeHostCompatibilityPolicy private constructor(
         /**
          * Proof transition: `IdeHostCompatibilityCandidate -> Refinement<IdeHostCompatibilityPolicy, IdeHostCompatibilityFailure>`.
          *
-         * Establishes one fully refined supported tuple. Expected malformed policy input remains
+         * Establishes a fully refined baseline tuple whose IDEA and Kotlin release lines are
+         * supported. Expected malformed policy input remains
          * finite [IdeHostCompatibilityFailure] data. Raw extraction is permitted only when the
          * build-report boundary projects the admitted policy.
          */
@@ -364,8 +382,9 @@ class IdeHostCompatibilityPolicy private constructor(
     /**
      * Proof transition: `IdeHostCompatibilityCandidate -> IdeHostCompatibilityAdmission`.
      *
-     * Establishes exact equality with the one supported tuple and returns
-     * [AdmittedIdeHostCompatibility]. Syntax, capability, and field mismatch failures remain
+     * Admits IDEA and Kotlin builds in the baseline's release lines, retaining their exact
+     * observed identities in [AdmittedIdeHostCompatibility]. Product, protocol, digest, and
+     * capability equality remains exact. Syntax, capability, and field mismatch failures remain
      * closed [IdeHostCompatibilityFailure] data. Raw extraction is permitted only at the endpoint
      * or generated-report boundary.
      */
@@ -375,7 +394,7 @@ class IdeHostCompatibilityPolicy private constructor(
             is Refinement.Refined -> when (
                 val comparison = parsed.value.compareAgainst(supportedCompatibility)
             ) {
-                IdeHostCompatibilityComparison.Exact ->
+                IdeHostCompatibilityComparison.Compatible ->
                     IdeHostCompatibilityAdmission.Admitted(parsed.value)
                 is IdeHostCompatibilityComparison.Mismatch ->
                     IdeHostCompatibilityAdmission.Rejected(
@@ -386,7 +405,7 @@ class IdeHostCompatibilityPolicy private constructor(
 }
 
 internal sealed interface IdeHostCompatibilityComparison {
-    data object Exact : IdeHostCompatibilityComparison
+    data object Compatible : IdeHostCompatibilityComparison
 
     data class Mismatch(
         val mismatch: IdeHostCompatibilityMismatch,

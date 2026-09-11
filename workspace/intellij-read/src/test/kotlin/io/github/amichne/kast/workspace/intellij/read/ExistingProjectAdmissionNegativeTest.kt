@@ -254,11 +254,11 @@ class ExistingProjectAdmissionNegativeTest {
         RejectionCase(
             name = "incompatible host",
             failure = ExistingProjectAdmissionFailure.HostIncompatible(
-                fixtureCompatibilityMismatch("262.9437.186"),
+                fixtureCompatibilityMismatch("263.9437.186"),
             ),
             observedStageCount = ExistingProjectObservationStage.entries.size,
             configure = {
-                hostIdentity = fixtureHostIdentity(ideBuild = "262.9437.186")
+                hostIdentity = fixtureHostIdentity(ideBuild = "263.9437.186")
             },
         ),
     )

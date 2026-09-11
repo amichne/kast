@@ -3,6 +3,12 @@
 ## 2026-09-11
 
 - Added [public intent tools](contracts/public-tools.md), generated nullable-control contracts and distinct tool/operation identity. Installed catalog version 10 and CLI binding version 3 retain exact schema routing and existing canonical semantics. Live IDEA validation on Kast completed class, function and property searches, exact-reference reuse, case-sensitive absence, invalid-reference rejection, and file diagnostics after explicit VFS synchronization.
+- Broadened the existing-IDE plugin to the `262` release line. The descriptor,
+  installer archive selection, release packaging, and runtime IDEA/Kotlin
+  admission now agree on that line. Full observed build identities and exact
+  product, protocol, digest, and capability checks remain intact. The build
+  baseline and native acceptance evidence remain `262.10315.125`; other `262`
+  builds are accepted as a deliberate compatibility risk.
 
 ## 2026-09-10
 
