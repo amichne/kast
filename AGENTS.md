@@ -80,6 +80,15 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 9. Instrument as you investigate.
    When diagnosing an opaque failure requires source-level investigation, progressively make that boundary observable in the same change. Add bounded, structured, typed stage and outcome evidence at the narrowest effect boundary, and test both success and failure signals. Temporary probes may guide diagnosis, but completion replaces them with durable instrumentation. Never record secrets, source payloads, or unbounded data.
 
+## JSON Contracts
+
+- Serialize types; never hand-assemble fixed contracts. Model fixed JSON requests, responses, notifications, diagnostics, persisted records, qualification witnesses, and valid test fixtures with typed DTOs and the serialization library. In Kotlin, use `@Serializable` data classes, sealed variants, and enums. Do not construct these shapes with JSON builders, maps, string interpolation, or `Any`.
+- Decode at the boundary, then refine into domain types. Preserve admitted identities, outcome variants, qualifications, and finite failure codes through every projection. A known failure must never become a generic `UNKNOWN`, `UNCLASSIFIED`, missing field, or success-shaped result.
+- Encode required discriminators and fixed fields explicitly, including default-valued fields. Treat absent, null, empty, and default values as distinct wherever the external contract distinguishes them.
+- Keep `JsonElement` only for a contract-defined dynamic or opaque field. Document that boundary and validate the surrounding DTO. Deliberately malformed or incompatible JSON is allowed in negative tests that specifically prove its rejection.
+- Verify actual encoded output against an independent expected shape or authoritative schema. Cover each closed outcome variant, required defaults/discriminators, and rejection of unknown values. A round trip through the same serializer alone is not contract proof.
+- When changing an existing manual JSON boundary, migrate the affected shape and its callers in the same change. Do not extend manual construction or erase a typed failure to make a test pass.
+
 ## Repository Knowledge
 
 - Start repository-wide orientation at `knowledge/index.md`, then follow its module, flow, contract, or glossary indexes before broad source reads.
