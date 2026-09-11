@@ -1,34 +1,29 @@
 package io.github.amichne.kast.symbol.intellij
 
-import io.github.amichne.kast.kernel.ReadLimits
-import io.github.amichne.kast.kernel.ReadLimitParameter
-
-import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
-import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
-import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
-import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
-
 import com.intellij.openapi.project.Project
+import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
 import io.github.amichne.kast.symbol.contract.SymbolCompilation
 import io.github.amichne.kast.symbol.contract.SymbolCompilerPort
 import io.github.amichne.kast.symbol.contract.SymbolCompilerRejection
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionCompilation
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 import io.github.amichne.kast.symbol.contract.SymbolExactCompilerPort
-import io.github.amichne.kast.symbol.contract.SymbolResolutionCompilation
-import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
 import io.github.amichne.kast.symbol.contract.SymbolExactCompilerRejection
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
+import io.github.amichne.kast.symbol.contract.SymbolResolutionCompilation
+import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijSemanticSourceFileAdmission
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 
 /** One admitted project and authority; the owning host checks epoch freshness around each call. */
-class ProjectBoundIntellijSymbolPorts private constructor(
+class ProjectBoundIntellijSymbolPorts
+private constructor(
     val discovery: SymbolCompilerPort,
     val exact: SymbolExactCompilerPort,
 ) {
@@ -48,18 +43,33 @@ class ProjectBoundIntellijSymbolPorts private constructor(
                         SymbolCompilation.Rejected(SymbolCompilerRejection.SCOPE_REJECTED)
                     } else if (request.scope.lease != authority || project.isDisposed) {
                         SymbolCompilation.Rejected(SymbolCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE)
-                    } else IntellijSymbolCompilerAdapter(IntellijNativeDiscoveryAdapter(
-                        IntellijSearchScopeQueryAdapter(IntellijSearchScopeCompiler(request.constraints) { path ->
-                            fileAdmission.admits(path, request.constraints.sourceSets)
-                        }), observation, limits,
-                    )).compile(project, request, compiledModel)
+                    } else
+                        IntellijSymbolCompilerAdapter(
+                                IntellijNativeDiscoveryAdapter(
+                                    IntellijSearchScopeQueryAdapter(
+                                        IntellijSearchScopeCompiler(request.constraints) { path ->
+                                            fileAdmission.admits(path, request.constraints.sourceSets)
+                                        }
+                                    ),
+                                    observation,
+                                    limits,
+                                )
+                            )
+                            .compile(project, request, compiledModel)
                 },
                 object : SymbolExactCompilerPort {
-                    private fun exact(constraints: SymbolDiscoveryConstraints) = IntellijSymbolExactCompilerAdapter(
-                        IntellijSymbolSelectorResolver(IntellijSearchScopeQueryAdapter(
-                            IntellijSearchScopeCompiler(constraints) { path -> fileAdmission.admits(path, constraints.sourceSets) },
-                        ), observation, limits),
-                    )
+                    private fun exact(constraints: SymbolDiscoveryConstraints) =
+                        IntellijSymbolExactCompilerAdapter(
+                            IntellijSymbolSelectorResolver(
+                                IntellijSearchScopeQueryAdapter(
+                                    IntellijSearchScopeCompiler(constraints) { path ->
+                                        fileAdmission.admits(path, constraints.sourceSets)
+                                    }
+                                ),
+                                observation,
+                                limits,
+                            )
+                        )
 
                     override suspend fun resolve(request: SymbolResolutionRequest): SymbolResolutionCompilation =
                         if (request.selection.scope.unsupportedByBoundHost()) {

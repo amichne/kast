@@ -4,7 +4,7 @@ import io.github.amichne.kast.kernel.Refinement
 import java.nio.charset.StandardCharsets
 
 enum class RelationMeasureFailure {
-    NEGATIVE,
+    NEGATIVE
 }
 
 @JvmInline
@@ -13,9 +13,8 @@ value class RelationByteCount private constructor(val value: Long) {
         /**
          * Proof transition: `Long -> Refinement<RelationByteCount, RelationMeasureFailure>`.
          *
-         * Establishes a non-negative canonical detached byte count. [RelationMeasureFailure] is
-         * the closed expected failure. Raw counts may be extracted only by compiler collectors,
-         * metrics, and transport.
+         * Establishes a non-negative canonical detached byte count. [RelationMeasureFailure] is the closed expected
+         * failure. Raw counts may be extracted only by compiler collectors, metrics, and transport.
          */
         fun parse(raw: Long): Refinement<RelationByteCount, RelationMeasureFailure> =
             if (raw >= 0L) Refinement.Refined(RelationByteCount(raw))
@@ -29,9 +28,8 @@ value class RelationWorkCount private constructor(val value: Long) {
         /**
          * Proof transition: `Long -> Refinement<RelationWorkCount, RelationMeasureFailure>`.
          *
-         * Establishes a non-negative number of native items examined. [RelationMeasureFailure] is
-         * the closed expected failure. Raw counts may be extracted only by compiler collectors,
-         * metrics, and continuation issuance.
+         * Establishes a non-negative number of native items examined. [RelationMeasureFailure] is the closed expected
+         * failure. Raw counts may be extracted only by compiler collectors, metrics, and continuation issuance.
          */
         fun parse(raw: Long): Refinement<RelationWorkCount, RelationMeasureFailure> =
             if (raw >= 0L) Refinement.Refined(RelationWorkCount(raw))
@@ -63,7 +61,8 @@ enum class RelationBatchFailure {
 }
 
 @ConsistentCopyVisibility
-data class RelationBatch private constructor(
+data class RelationBatch
+private constructor(
     val request: RelationRequest,
     val facts: List<RelationFact>,
     val encodedBytes: RelationByteCount,
@@ -72,13 +71,12 @@ data class RelationBatch private constructor(
 ) {
     companion object {
         /**
-         * Proof transition: `(RelationRequest, List<RelationFact>, RelationByteCount,
-         * RelationWorkCount) -> Refinement<RelationBatch, RelationBatchFailure>`.
+         * Proof transition: `(RelationRequest, List<RelationFact>, RelationByteCount, RelationWorkCount) ->
+         * Refinement<RelationBatch, RelationBatchFailure>`.
          *
-         * Establishes exact request ownership, authority, meaning, individual edge coverage,
-         * deterministic uniqueness, and request bounds for a detached one-hop page.
-         * [RelationBatchFailure] is the closed expected failure. Raw collections and measures may
-         * enter only at a bounded compiler collector or transport decoder.
+         * Establishes exact request ownership, authority, meaning, individual edge coverage, deterministic uniqueness,
+         * and request bounds for a detached one-hop page. [RelationBatchFailure] is the closed expected failure. Raw
+         * collections and measures may enter only at a bounded compiler collector or transport decoder.
          */
         fun create(
             request: RelationRequest,
@@ -127,7 +125,7 @@ data class RelationBatch private constructor(
                     encodedBytes,
                     examinedWorkUnits,
                     resultCount,
-                ),
+                )
             )
         }
     }
@@ -145,16 +143,11 @@ enum class RelationLimitation {
     PROVIDER_INCOMPLETE,
 }
 
-@JvmInline
-value class RelationExactCount internal constructor(val value: Int)
+@JvmInline value class RelationExactCount internal constructor(val value: Int)
 
-@JvmInline
-value class RelationKnownMinimum internal constructor(val value: Int)
+@JvmInline value class RelationKnownMinimum internal constructor(val value: Int)
 
-@ConsistentCopyVisibility
-data class RelationCompleteCoverage internal constructor(
-    val exactCount: RelationExactCount,
-)
+@ConsistentCopyVisibility data class RelationCompleteCoverage internal constructor(val exactCount: RelationExactCount)
 
 enum class RelationIncompleteCoverageFailure {
     EMPTY_LIMITATIONS,
@@ -168,13 +161,15 @@ sealed interface RelationIncompleteCoverage {
     val knownMinimum: RelationKnownMinimum
     val limitations: Set<RelationLimitation>
 
-    data class Resumable internal constructor(
+    data class Resumable
+    internal constructor(
         override val knownMinimum: RelationKnownMinimum,
         override val limitations: Set<RelationLimitation>,
         val continuation: RelationContinuation,
     ) : RelationIncompleteCoverage
 
-    data class TerminalIncomplete internal constructor(
+    data class TerminalIncomplete
+    internal constructor(
         override val knownMinimum: RelationKnownMinimum,
         override val limitations: Set<RelationLimitation>,
     ) : RelationIncompleteCoverage
@@ -185,10 +180,9 @@ sealed interface RelationIncompleteCoverage {
          * Refinement<RelationIncompleteCoverage, RelationIncompleteCoverageFailure>`.
          *
          * Establishes non-empty incomplete-coverage reasons, a known-minimum count, and a
-         * selector/scope/meaning/authority-bound continuation that strictly advances
-         * enumeration.
-         * [RelationIncompleteCoverageFailure] is the closed expected failure. Raw limitations and
-         * provider positions may enter only from the bounded compiler collector.
+         * selector/scope/meaning/authority-bound continuation that strictly advances enumeration.
+         * [RelationIncompleteCoverageFailure] is the closed expected failure. Raw limitations and provider positions
+         * may enter only from the bounded compiler collector.
          */
         fun resumable(
             batch: RelationBatch,
@@ -196,26 +190,16 @@ sealed interface RelationIncompleteCoverage {
             nextProviderCursor: RelationProviderCursor,
         ): Refinement<RelationIncompleteCoverage, RelationIncompleteCoverageFailure> {
             if (limitations.isEmpty()) {
-                return Refinement.Rejected(
-                    RelationIncompleteCoverageFailure.EMPTY_LIMITATIONS,
-                )
+                return Refinement.Rejected(RelationIncompleteCoverageFailure.EMPTY_LIMITATIONS)
             }
             if (nextProviderCursor.provider != batch.request.providerCursor.provider) {
                 return Refinement.Rejected(RelationIncompleteCoverageFailure.PROVIDER_MISMATCH)
             }
-            if (
-                nextProviderCursor.nextPosition.value <
-                batch.request.providerCursor.nextPosition.value
-            ) {
+            if (nextProviderCursor.nextPosition.value < batch.request.providerCursor.nextPosition.value) {
                 return Refinement.Rejected(RelationIncompleteCoverageFailure.CURSOR_REWIND)
             }
-            if (
-                nextProviderCursor.nextPosition.value ==
-                batch.request.providerCursor.nextPosition.value
-            ) {
-                return Refinement.Rejected(
-                    RelationIncompleteCoverageFailure.CURSOR_NOT_ADVANCED,
-                )
+            if (nextProviderCursor.nextPosition.value == batch.request.providerCursor.nextPosition.value) {
+                return Refinement.Rejected(RelationIncompleteCoverageFailure.CURSOR_NOT_ADVANCED)
             }
             val orderedLimitations = limitations.toSortedSet(compareBy { it.ordinal }).toSet()
             return Refinement.Refined(
@@ -223,7 +207,7 @@ sealed interface RelationIncompleteCoverage {
                     knownMinimum = RelationKnownMinimum(batch.facts.size),
                     limitations = orderedLimitations,
                     continuation = RelationContinuation.issue(batch.request, nextProviderCursor),
-                ),
+                )
             )
         }
 
@@ -238,7 +222,7 @@ sealed interface RelationIncompleteCoverage {
                     TerminalIncomplete(
                         knownMinimum = RelationKnownMinimum(batch.facts.size),
                         limitations = limitations.toSortedSet(compareBy { it.ordinal }).toSet(),
-                    ),
+                    )
                 )
             }
     }
@@ -261,67 +245,67 @@ enum class RelationCompilerRejection {
 /** Closed output of the request-local compiler relation boundary. */
 sealed interface RelationCompilation {
     @ConsistentCopyVisibility
-    data class Complete internal constructor(
+    data class Complete
+    internal constructor(
         val batch: RelationBatch,
         val coverage: RelationCompleteCoverage,
     ) : RelationCompilation
 
     @ConsistentCopyVisibility
-    data class Qualified internal constructor(
+    data class Qualified
+    internal constructor(
         val batch: RelationBatch,
         val coverage: RelationIncompleteCoverage,
     ) : RelationCompilation
 
-    data class Rejected(
-        val reason: RelationCompilerRejection,
-    ) : RelationCompilation
+    data class Rejected(val reason: RelationCompilerRejection) : RelationCompilation
 
     companion object {
         /**
-         * Proof transition: `RelationBatch + terminal compiler proof ->
-         * RelationCompilation.Complete`.
+         * Proof transition: `RelationBatch + terminal compiler proof -> RelationCompilation.Complete`.
          *
-         * Establishes exact count and permits empty evidence to mean absence. Only a
-         * limitation-free terminal compiler collector may call this transition.
+         * Establishes exact count and permits empty evidence to mean absence. Only a limitation-free terminal compiler
+         * collector may call this transition.
          */
-        fun complete(batch: RelationBatch): Complete = Complete(
-            batch,
-            RelationCompleteCoverage(RelationExactCount(batch.facts.size)),
-        )
+        fun complete(batch: RelationBatch): Complete =
+            Complete(
+                batch,
+                RelationCompleteCoverage(RelationExactCount(batch.facts.size)),
+            )
 
         /**
          * Proof transition: `(RelationBatch, Set<RelationLimitation>, RelationWorkOffset) ->
          * Refinement<RelationCompilation.Qualified, RelationIncompleteCoverageFailure>`.
          *
-         * Establishes known-minimum evidence plus resumable incomplete coverage. Empty evidence
-         * remains qualified and cannot represent absence. [RelationIncompleteCoverageFailure] is
-         * the closed expected failure. Raw provider state may enter only from the bounded compiler
-         * collector.
+         * Establishes known-minimum evidence plus resumable incomplete coverage. Empty evidence remains qualified and
+         * cannot represent absence. [RelationIncompleteCoverageFailure] is the closed expected failure. Raw provider
+         * state may enter only from the bounded compiler collector.
          */
         fun qualifiedResumable(
             batch: RelationBatch,
             limitations: Set<RelationLimitation>,
             nextProviderCursor: RelationProviderCursor,
-        ): Refinement<Qualified, RelationIncompleteCoverageFailure> = when (
-            val coverage = RelationIncompleteCoverage.resumable(
-                batch,
-                limitations,
-                nextProviderCursor,
-            )
-        ) {
-            is Refinement.Refined -> Refinement.Refined(Qualified(batch, coverage.value))
-            is Refinement.Rejected -> coverage
-        }
+        ): Refinement<Qualified, RelationIncompleteCoverageFailure> =
+            when (
+                val coverage =
+                    RelationIncompleteCoverage.resumable(
+                        batch,
+                        limitations,
+                        nextProviderCursor,
+                    )
+            ) {
+                is Refinement.Refined -> Refinement.Refined(Qualified(batch, coverage.value))
+                is Refinement.Rejected -> coverage
+            }
 
         fun qualifiedTerminal(
             batch: RelationBatch,
             limitations: Set<RelationLimitation>,
-        ): Refinement<Qualified, RelationIncompleteCoverageFailure> = when (
-            val coverage = RelationIncompleteCoverage.terminal(batch, limitations)
-        ) {
-            is Refinement.Refined -> Refinement.Refined(Qualified(batch, coverage.value))
-            is Refinement.Rejected -> coverage
-        }
+        ): Refinement<Qualified, RelationIncompleteCoverageFailure> =
+            when (val coverage = RelationIncompleteCoverage.terminal(batch, limitations)) {
+                is Refinement.Refined -> Refinement.Refined(Qualified(batch, coverage.value))
+                is Refinement.Rejected -> coverage
+            }
     }
 }
 
@@ -330,9 +314,9 @@ fun interface RelationCompilerPort {
     /**
      * Proof transition: `RelationRequest -> RelationCompilation`.
      *
-     * A non-rejected result establishes exact one-hop compiler evidence and either exact terminal
-     * or resumable incomplete coverage. [RelationCompilerRejection] is the closed expected
-     * failure. Live compiler/platform values remain inside the implementation call.
+     * A non-rejected result establishes exact one-hop compiler evidence and either exact terminal or resumable
+     * incomplete coverage. [RelationCompilerRejection] is the closed expected failure. Live compiler/platform values
+     * remain inside the implementation call.
      */
     suspend fun read(request: RelationRequest): RelationCompilation
 }
@@ -363,9 +347,7 @@ sealed interface RelationReadResult {
         val coverage: RelationIncompleteCoverage,
     ) : RelationReadResult
 
-    data class Rejected(
-        val reason: RelationReadRejection,
-    ) : RelationReadResult
+    data class Rejected(val reason: RelationReadRejection) : RelationReadResult
 }
 
 /** Public `relation.read` boundary. */
@@ -373,10 +355,9 @@ fun interface RelationOperations {
     /**
      * Proof transition: `RelationRequest -> RelationReadResult`.
      *
-     * A complete or qualified result establishes current-authority, exact compiler-grounded
-     * one-hop evidence. [RelationReadRejection] is the closed expected failure. Raw selector,
-     * endpoint, continuation, and budget inputs may enter only before [RelationRequest]
-     * construction.
+     * A complete or qualified result establishes current-authority, exact compiler-grounded one-hop evidence.
+     * [RelationReadRejection] is the closed expected failure. Raw selector, endpoint, continuation, and budget inputs
+     * may enter only before [RelationRequest] construction.
      */
     suspend fun read(request: RelationRequest): RelationReadResult
 }

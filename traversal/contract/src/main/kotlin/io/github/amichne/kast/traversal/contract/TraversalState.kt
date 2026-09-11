@@ -28,9 +28,8 @@ value class TraversalDepth private constructor(val value: Int) : Comparable<Trav
         /**
          * Proof transition: `Int -> Refinement<TraversalDepth, TraversalDepthFailure>`.
          *
-         * Establishes a finite non-negative semantic hop depth. [TraversalDepthFailure] is the
-         * closed expected failure. Raw depth extraction may occur only in traversal accounting or
-         * continuation transport.
+         * Establishes a finite non-negative semantic hop depth. [TraversalDepthFailure] is the closed expected failure.
+         * Raw depth extraction may occur only in traversal accounting or continuation transport.
          */
         fun parse(raw: Int): Refinement<TraversalDepth, TraversalDepthFailure> =
             if (raw >= 0) Refinement.Refined(TraversalDepth(raw))
@@ -40,8 +39,8 @@ value class TraversalDepth private constructor(val value: Int) : Comparable<Trav
     /**
      * Proof transition: `TraversalDepth -> Refinement<TraversalDepth, TraversalDepthFailure>`.
      *
-     * Establishes the next representable semantic hop. [TraversalDepthFailure] is the closed
-     * expected failure. Raw integer extraction remains inside traversal accounting.
+     * Establishes the next representable semantic hop. [TraversalDepthFailure] is the closed expected failure. Raw
+     * integer extraction remains inside traversal accounting.
      */
     fun next(): Refinement<TraversalDepth, TraversalDepthFailure> =
         if (value == Int.MAX_VALUE) Refinement.Rejected(TraversalDepthFailure.OVERFLOW)
@@ -55,54 +54,48 @@ enum class TraversalNodeFailure {
 
 /** Exact detached graph node; its endpoint fingerprint is compiler-grounded relation identity. */
 @ConsistentCopyVisibility
-data class TraversalNode private constructor(
-    val endpoint: RelationEndpoint,
-) : Comparable<TraversalNode> {
+data class TraversalNode private constructor(val endpoint: RelationEndpoint) : Comparable<TraversalNode> {
     val fingerprint: RelationEndpointFingerprint = endpoint.fingerprint
 
-    override fun compareTo(other: TraversalNode): Int =
-        fingerprint.value.compareTo(other.fingerprint.value)
+    override fun compareTo(other: TraversalNode): Int = fingerprint.value.compareTo(other.fingerprint.value)
 
     companion object {
         /**
          * Proof transition: `SymbolSelector -> TraversalNode`.
          *
-         * Preserves the exact start selector's root, generation, scope, declaration, and compiler
-         * identity. Raw symbol identity is never extracted by traversal.
+         * Preserves the exact start selector's root, generation, scope, declaration, and compiler identity. Raw symbol
+         * identity is never extracted by traversal.
          */
-        fun start(selector: SymbolSelector): TraversalNode =
-            TraversalNode(RelationEndpoint.subject(selector))
+        fun start(selector: SymbolSelector): TraversalNode = TraversalNode(RelationEndpoint.subject(selector))
 
         /**
-         * Proof transition: `(TraversalPlan, RelationEndpoint.Resolved) ->
-         * Refinement<TraversalNode, TraversalNodeFailure>`.
+         * Proof transition: `(TraversalPlan, RelationEndpoint.Resolved) -> Refinement<TraversalNode,
+         * TraversalNodeFailure>`.
          *
-         * Establishes that a related compiler-grounded endpoint retains the plan's exact lease and
-         * scope. [TraversalNodeFailure] is the closed expected failure. Raw compiler values remain
-         * outside traversal at the relation reader boundary.
+         * Establishes that a related compiler-grounded endpoint retains the plan's exact lease and scope.
+         * [TraversalNodeFailure] is the closed expected failure. Raw compiler values remain outside traversal at the
+         * relation reader boundary.
          */
         fun related(
             plan: TraversalPlan,
             endpoint: RelationEndpoint.Resolved,
-        ): Refinement<TraversalNode, TraversalNodeFailure> = when {
-            endpoint.lease != plan.start.lease ->
-                Refinement.Rejected(TraversalNodeFailure.LEASE_MISMATCH)
-            endpoint.scope != plan.scope ->
-                Refinement.Rejected(TraversalNodeFailure.SCOPE_MISMATCH)
-            else -> Refinement.Refined(TraversalNode(endpoint))
-        }
+        ): Refinement<TraversalNode, TraversalNodeFailure> =
+            when {
+                endpoint.lease != plan.start.lease -> Refinement.Rejected(TraversalNodeFailure.LEASE_MISMATCH)
+                endpoint.scope != plan.scope -> Refinement.Rejected(TraversalNodeFailure.SCOPE_MISMATCH)
+                else -> Refinement.Refined(TraversalNode(endpoint))
+            }
 
         /** Restores a detached node from a verified self-contained exact selector. */
         fun restore(
             plan: TraversalPlan,
             selector: SymbolSelector,
-        ): Refinement<TraversalNode, TraversalNodeFailure> = when {
-            selector.lease != plan.start.lease ->
-                Refinement.Rejected(TraversalNodeFailure.LEASE_MISMATCH)
-            selector.scope != plan.scope ->
-                Refinement.Rejected(TraversalNodeFailure.SCOPE_MISMATCH)
-            else -> Refinement.Refined(TraversalNode(RelationEndpoint.subject(selector)))
-        }
+        ): Refinement<TraversalNode, TraversalNodeFailure> =
+            when {
+                selector.lease != plan.start.lease -> Refinement.Rejected(TraversalNodeFailure.LEASE_MISMATCH)
+                selector.scope != plan.scope -> Refinement.Rejected(TraversalNodeFailure.SCOPE_MISMATCH)
+                else -> Refinement.Refined(TraversalNode(RelationEndpoint.subject(selector)))
+            }
     }
 }
 
@@ -112,7 +105,8 @@ enum class TraversalFrontierEntryFailure {
 }
 
 @ConsistentCopyVisibility
-data class TraversalFrontierEntry private constructor(
+data class TraversalFrontierEntry
+private constructor(
     val node: TraversalNode,
     val depth: TraversalDepth,
 ) : Comparable<TraversalFrontierEntry> {
@@ -124,24 +118,24 @@ data class TraversalFrontierEntry private constructor(
             TraversalFrontierEntry(TraversalNode.start(plan.start), TraversalDepth.Zero)
 
         /**
-         * Proof transition: `(TraversalPlan, TraversalNode, TraversalDepth) ->
-         * Refinement<TraversalFrontierEntry, TraversalFrontierEntryFailure>`.
+         * Proof transition: `(TraversalPlan, TraversalNode, TraversalDepth) -> Refinement<TraversalFrontierEntry,
+         * TraversalFrontierEntryFailure>`.
          *
-         * Establishes a frontier entry bound to the plan's exact lease and scope.
-         * [TraversalFrontierEntryFailure] is the closed expected failure. Raw frontier state may
-         * enter only from the pure engine or continuation transport.
+         * Establishes a frontier entry bound to the plan's exact lease and scope. [TraversalFrontierEntryFailure] is
+         * the closed expected failure. Raw frontier state may enter only from the pure engine or continuation
+         * transport.
          */
         fun create(
             plan: TraversalPlan,
             node: TraversalNode,
             depth: TraversalDepth,
-        ): Refinement<TraversalFrontierEntry, TraversalFrontierEntryFailure> = when {
-            node.endpoint.lease != plan.start.lease ->
-                Refinement.Rejected(TraversalFrontierEntryFailure.LEASE_MISMATCH)
-            node.endpoint.scope != plan.scope ->
-                Refinement.Rejected(TraversalFrontierEntryFailure.SCOPE_MISMATCH)
-            else -> Refinement.Refined(TraversalFrontierEntry(node, depth))
-        }
+        ): Refinement<TraversalFrontierEntry, TraversalFrontierEntryFailure> =
+            when {
+                node.endpoint.lease != plan.start.lease ->
+                    Refinement.Rejected(TraversalFrontierEntryFailure.LEASE_MISMATCH)
+                node.endpoint.scope != plan.scope -> Refinement.Rejected(TraversalFrontierEntryFailure.SCOPE_MISMATCH)
+                else -> Refinement.Refined(TraversalFrontierEntry(node, depth))
+            }
     }
 }
 
@@ -154,7 +148,8 @@ enum class TraversalPendingReadFailure {
 }
 
 @ConsistentCopyVisibility
-data class TraversalPendingRead private constructor(
+data class TraversalPendingRead
+private constructor(
     val entry: TraversalFrontierEntry,
     val relationContinuation: RelationContinuation,
 ) {
@@ -163,28 +158,28 @@ data class TraversalPendingRead private constructor(
          * Proof transition: `(TraversalPlan, TraversalFrontierEntry, RelationContinuation) ->
          * Refinement<TraversalPendingRead, TraversalPendingReadFailure>`.
          *
-         * Establishes that incomplete one-hop work resumes the same exact node, meaning, and
-         * generation inside the plan scope. [TraversalPendingReadFailure] is the closed expected
-         * failure. Raw relation continuation decoding may occur only before this boundary.
+         * Establishes that incomplete one-hop work resumes the same exact node, meaning, and generation inside the plan
+         * scope. [TraversalPendingReadFailure] is the closed expected failure. Raw relation continuation decoding may
+         * occur only before this boundary.
          */
         fun create(
             plan: TraversalPlan,
             entry: TraversalFrontierEntry,
             continuation: RelationContinuation,
-        ): Refinement<TraversalPendingRead, TraversalPendingReadFailure> = when {
-            entry.node.endpoint.lease != plan.start.lease ||
-            entry.node.endpoint.scope != plan.scope ->
-                Refinement.Rejected(TraversalPendingReadFailure.FRONTIER_MISMATCH)
-            continuation.subject != entry.node.fingerprint ->
-                Refinement.Rejected(TraversalPendingReadFailure.SELECTOR_MISMATCH)
-            continuation.meaning != plan.meaning ->
-                Refinement.Rejected(TraversalPendingReadFailure.MEANING_MISMATCH)
-            continuation.scope != RelationScopeFingerprint.from(entry.node.endpoint) ->
-                Refinement.Rejected(TraversalPendingReadFailure.SCOPE_MISMATCH)
-            continuation.authority != plan.start.lease.identity ->
-                Refinement.Rejected(TraversalPendingReadFailure.GENERATION_MISMATCH)
-            else -> Refinement.Refined(TraversalPendingRead(entry, continuation))
-        }
+        ): Refinement<TraversalPendingRead, TraversalPendingReadFailure> =
+            when {
+                entry.node.endpoint.lease != plan.start.lease || entry.node.endpoint.scope != plan.scope ->
+                    Refinement.Rejected(TraversalPendingReadFailure.FRONTIER_MISMATCH)
+                continuation.subject != entry.node.fingerprint ->
+                    Refinement.Rejected(TraversalPendingReadFailure.SELECTOR_MISMATCH)
+                continuation.meaning != plan.meaning ->
+                    Refinement.Rejected(TraversalPendingReadFailure.MEANING_MISMATCH)
+                continuation.scope != RelationScopeFingerprint.from(entry.node.endpoint) ->
+                    Refinement.Rejected(TraversalPendingReadFailure.SCOPE_MISMATCH)
+                continuation.authority != plan.start.lease.identity ->
+                    Refinement.Rejected(TraversalPendingReadFailure.GENERATION_MISMATCH)
+                else -> Refinement.Refined(TraversalPendingRead(entry, continuation))
+            }
     }
 }
 
@@ -192,9 +187,7 @@ sealed interface TraversalPendingState {
     data object None : TraversalPendingState
 
     @ConsistentCopyVisibility
-    data class Active internal constructor(
-        val read: TraversalPendingRead,
-    ) : TraversalPendingState
+    data class Active internal constructor(val read: TraversalPendingRead) : TraversalPendingState
 
     companion object {
         fun active(read: TraversalPendingRead): Active = Active(read)
@@ -212,7 +205,8 @@ enum class TraversalCheckpointFailure {
 }
 
 /** Detached deterministic traversal state carried by a qualified continuation. */
-class TraversalCheckpoint private constructor(
+class TraversalCheckpoint
+private constructor(
     val identity: TraversalIdentityFingerprint,
     val frontier: List<TraversalFrontierEntry>,
     val visited: Set<RelationEndpointFingerprint>,
@@ -225,22 +219,22 @@ class TraversalCheckpoint private constructor(
          *
          * Establishes the exact unvisited depth-zero start frontier with no hidden prior work.
          */
-        fun initial(plan: TraversalPlan): TraversalCheckpoint = TraversalCheckpoint(
-            identity = plan.identity,
-            frontier = listOf(TraversalFrontierEntry.initial(plan)),
-            visited = emptySet(),
-            pending = TraversalPendingState.None,
-            terminalRelationLimitations = emptySet(),
-        )
+        fun initial(plan: TraversalPlan): TraversalCheckpoint =
+            TraversalCheckpoint(
+                identity = plan.identity,
+                frontier = listOf(TraversalFrontierEntry.initial(plan)),
+                visited = emptySet(),
+                pending = TraversalPendingState.None,
+                terminalRelationLimitations = emptySet(),
+            )
 
         /**
-         * Proof transition: `(TraversalPlan, frontier, visited, pending) ->
-         * Refinement<TraversalCheckpoint, TraversalCheckpointFailure>`.
+         * Proof transition: `(TraversalPlan, frontier, visited, pending) -> Refinement<TraversalCheckpoint,
+         * TraversalCheckpointFailure>`.
          *
-         * Establishes exact plan identity, deterministic unique frontier order, scope/lease
-         * retention, cycle state, and a pending read owned by one visited node.
-         * [TraversalCheckpointFailure] is the closed expected failure. Raw collections may enter
-         * only from the pure traversal engine or continuation transport.
+         * Establishes exact plan identity, deterministic unique frontier order, scope/lease retention, cycle state, and
+         * a pending read owned by one visited node. [TraversalCheckpointFailure] is the closed expected failure. Raw
+         * collections may enter only from the pure traversal engine or continuation transport.
          */
         fun create(
             plan: TraversalPlan,
@@ -250,14 +244,13 @@ class TraversalCheckpoint private constructor(
             terminalRelationLimitations: Set<RelationLimitation> = emptySet(),
         ): Refinement<TraversalCheckpoint, TraversalCheckpointFailure> {
             if (frontier != frontier.sorted()) {
-                return Refinement.Rejected(
-                    TraversalCheckpointFailure.NON_DETERMINISTIC_FRONTIER,
-                )
+                return Refinement.Rejected(TraversalCheckpointFailure.NON_DETERMINISTIC_FRONTIER)
             }
             if (frontier.map { it.node.fingerprint }.distinct().size != frontier.size) {
                 return Refinement.Rejected(TraversalCheckpointFailure.DUPLICATE_FRONTIER_NODE)
             }
-            if (frontier.any {
+            if (
+                frontier.any {
                     it.node.endpoint.lease != plan.start.lease || it.node.endpoint.scope != plan.scope
                 }
             ) {
@@ -267,16 +260,10 @@ class TraversalCheckpoint private constructor(
             if (frontierIds.any(visited::contains)) {
                 return Refinement.Rejected(TraversalCheckpointFailure.VISITED_FRONTIER_OVERLAP)
             }
-            if (
-                pending is TraversalPendingState.Active &&
-                pending.read.entry.node.fingerprint !in visited
-            ) {
+            if (pending is TraversalPendingState.Active && pending.read.entry.node.fingerprint !in visited) {
                 return Refinement.Rejected(TraversalCheckpointFailure.PENDING_NODE_NOT_VISITED)
             }
-            if (
-                pending is TraversalPendingState.Active &&
-                pending.read.entry.node.fingerprint in frontierIds
-            ) {
+            if (pending is TraversalPendingState.Active && pending.read.entry.node.fingerprint in frontierIds) {
                 return Refinement.Rejected(TraversalCheckpointFailure.PENDING_NODE_IN_FRONTIER)
             }
             return Refinement.Refined(
@@ -286,7 +273,7 @@ class TraversalCheckpoint private constructor(
                     visited.toSet(),
                     pending,
                     terminalRelationLimitations.toSortedSet(compareBy { it.ordinal }).toSet(),
-                ),
+                )
             )
         }
     }
@@ -298,7 +285,7 @@ enum class TraversalContinuationFailure {
 }
 
 enum class TraversalContinuationFingerprintFailure {
-    INVALID_SHA256,
+    INVALID_SHA256
 }
 
 @JvmInline
@@ -306,30 +293,28 @@ value class TraversalContinuationFingerprint private constructor(val value: Stri
     init {
         require(
             value.length == TRAVERSAL_CONTINUATION_FINGERPRINT_LENGTH &&
-            value.all { character -> character in '0'..'9' || character in 'a'..'f' },
+                value.all { character -> character in '0'..'9' || character in 'a'..'f' }
         )
     }
 
     companion object {
-        fun parse(
-            raw: String,
-        ): Refinement<TraversalContinuationFingerprint, TraversalContinuationFingerprintFailure> =
+        fun parse(raw: String): Refinement<TraversalContinuationFingerprint, TraversalContinuationFingerprintFailure> =
             if (
                 raw.length == TRAVERSAL_CONTINUATION_FINGERPRINT_LENGTH &&
-                raw.all { character -> character in '0'..'9' || character in 'a'..'f' }
+                    raw.all { character -> character in '0'..'9' || character in 'a'..'f' }
             ) {
                 Refinement.Refined(TraversalContinuationFingerprint(raw))
             } else {
                 Refinement.Rejected(TraversalContinuationFingerprintFailure.INVALID_SHA256)
             }
 
-        internal fun established(raw: String): TraversalContinuationFingerprint =
-            TraversalContinuationFingerprint(raw)
+        internal fun established(raw: String): TraversalContinuationFingerprint = TraversalContinuationFingerprint(raw)
     }
 }
 
 /** Opaque deterministic resume state bound to one traversal semantic identity. */
-class TraversalContinuation private constructor(
+class TraversalContinuation
+private constructor(
     val start: SymbolSelector,
     val meaning: RelationMeaning,
     val identity: TraversalIdentityFingerprint,
@@ -338,13 +323,12 @@ class TraversalContinuation private constructor(
 ) {
     companion object {
         /**
-         * Proof transition: `(TraversalPlan, TraversalCheckpoint) ->
-         * Refinement<TraversalContinuation, TraversalContinuationFailure>`.
+         * Proof transition: `(TraversalPlan, TraversalCheckpoint) -> Refinement<TraversalContinuation,
+         * TraversalContinuationFailure>`.
          *
-         * Establishes an opaque continuation bound to the plan's exact selector, meaning, root,
-         * generation, scope, frontier, visited set, and pending relation page.
-         * [TraversalContinuationFailure] is the closed expected failure. Raw encoding is permitted
-         * only at continuation transport.
+         * Establishes an opaque continuation bound to the plan's exact selector, meaning, root, generation, scope,
+         * frontier, visited set, and pending relation page. [TraversalContinuationFailure] is the closed expected
+         * failure. Raw encoding is permitted only at continuation transport.
          */
         fun issue(
             plan: TraversalPlan,
@@ -365,18 +349,18 @@ class TraversalContinuation private constructor(
                     appendTraversalField(visited.value)
                 }
                 appendTraversalField(checkpoint.terminalRelationLimitations.size.toString())
-                checkpoint.terminalRelationLimitations.sortedBy { it.ordinal }.forEach { limitation ->
-                    appendTraversalField(limitation.name)
-                }
+                checkpoint.terminalRelationLimitations
+                    .sortedBy { it.ordinal }
+                    .forEach { limitation ->
+                        appendTraversalField(limitation.name)
+                    }
                 when (val pending = checkpoint.pending) {
                     TraversalPendingState.None -> appendTraversalField("-")
-                    is TraversalPendingState.Active -> appendTraversalField(
-                        pending.read.relationContinuation.fingerprint.value,
-                    )
+                    is TraversalPendingState.Active ->
+                        appendTraversalField(pending.read.relationContinuation.fingerprint.value)
                 }
             }
-            val digest = MessageDigest.getInstance("SHA-256")
-                .digest(canonical.toByteArray(StandardCharsets.UTF_8))
+            val digest = MessageDigest.getInstance("SHA-256").digest(canonical.toByteArray(StandardCharsets.UTF_8))
             return Refinement.Refined(
                 TraversalContinuation(
                     plan.start,
@@ -386,9 +370,9 @@ class TraversalContinuation private constructor(
                     TraversalContinuationFingerprint.established(
                         digest.joinToString(separator = "") { byte ->
                             (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-                        },
+                        }
                     ),
-                ),
+                )
             )
         }
 
@@ -400,11 +384,12 @@ class TraversalContinuation private constructor(
         ): Refinement<TraversalContinuation, TraversalContinuationFailure> =
             when (val issued = issue(plan, checkpoint)) {
                 is Refinement.Rejected -> issued
-                is Refinement.Refined -> if (issued.value.fingerprint == fingerprint) {
-                    issued
-                } else {
-                    Refinement.Rejected(TraversalContinuationFailure.INTEGRITY_MISMATCH)
-                }
+                is Refinement.Refined ->
+                    if (issued.value.fingerprint == fingerprint) {
+                        issued
+                    } else {
+                        Refinement.Rejected(TraversalContinuationFailure.INTEGRITY_MISMATCH)
+                    }
             }
     }
 }

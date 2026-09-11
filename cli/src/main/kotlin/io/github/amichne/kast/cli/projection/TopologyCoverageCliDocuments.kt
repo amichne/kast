@@ -101,9 +101,7 @@ private sealed interface TopologyCoverageQualifiedIdentityCliDocument {
     @SerialName("available")
     data class Available(val value: String) : TopologyCoverageQualifiedIdentityCliDocument
 
-    @Serializable
-    @SerialName("unavailable")
-    data object Unavailable : TopologyCoverageQualifiedIdentityCliDocument
+    @Serializable @SerialName("unavailable") data object Unavailable : TopologyCoverageQualifiedIdentityCliDocument
 }
 
 @Serializable
@@ -116,29 +114,35 @@ private enum class TopologyCoverageSymbolKindCliDocument {
 }
 
 /** Preserves every exact coverage mismatch in one generated closed CLI rejection document. */
-internal fun TopologyBuildRejection.CoverageIncomplete.coverageRejectedDocument():
-    CliJsonDocument = topologyCoverageRejectedFactory.create(
-    TopologyCoverageRejectedCliDocument(
-        operation = CanonicalOperation.TOPOLOGY_BUILD.id.value,
-        status = "rejected",
-        reason = "coverage-incomplete",
-        missing = failure.missing.sortedValues(),
-        unexpected = failure.unexpected.sortedValues(),
-        duplicateCandidates = failure.duplicateCandidates.sortedValues(),
-        duplicateCompletions = failure.duplicateCompletions.sortedValues(),
-        workspaceMismatches = failure.workspaceMismatches.sortedValues(),
-        candidateEvidenceMismatches = failure.candidateEvidenceMismatches
-            .map(TopologyCoverageCandidateEvidenceMismatch::toCliDocument)
-            .sortedWith(topologyCoverageCandidateEvidenceMismatchCliDocumentComparator),
-        duplicateSymbols = failure.duplicateSymbols.map(TopologyCoverageNode::toCliDocument)
-            .sortedWith(topologyCoverageNodeCliDocumentComparator),
-        missingEdgeTargets = failure.missingEdgeTargets.map(TopologyCoverageNode::toCliDocument)
-            .sortedWith(topologyCoverageNodeCliDocumentComparator),
-        mismatchedEdgeEndpoints = failure.mismatchedEdgeEndpoints
-            .map(TopologyCoverageSymbol::toCliDocument)
-            .sortedWith(topologyCoverageSymbolCliDocumentComparator),
-    ),
-)
+internal fun TopologyBuildRejection.CoverageIncomplete.coverageRejectedDocument(): CliJsonDocument =
+    topologyCoverageRejectedFactory.create(
+        TopologyCoverageRejectedCliDocument(
+            operation = CanonicalOperation.TOPOLOGY_BUILD.id.value,
+            status = "rejected",
+            reason = "coverage-incomplete",
+            missing = failure.missing.sortedValues(),
+            unexpected = failure.unexpected.sortedValues(),
+            duplicateCandidates = failure.duplicateCandidates.sortedValues(),
+            duplicateCompletions = failure.duplicateCompletions.sortedValues(),
+            workspaceMismatches = failure.workspaceMismatches.sortedValues(),
+            candidateEvidenceMismatches =
+                failure.candidateEvidenceMismatches
+                    .map(TopologyCoverageCandidateEvidenceMismatch::toCliDocument)
+                    .sortedWith(topologyCoverageCandidateEvidenceMismatchCliDocumentComparator),
+            duplicateSymbols =
+                failure.duplicateSymbols
+                    .map(TopologyCoverageNode::toCliDocument)
+                    .sortedWith(topologyCoverageNodeCliDocumentComparator),
+            missingEdgeTargets =
+                failure.missingEdgeTargets
+                    .map(TopologyCoverageNode::toCliDocument)
+                    .sortedWith(topologyCoverageNodeCliDocumentComparator),
+            mismatchedEdgeEndpoints =
+                failure.mismatchedEdgeEndpoints
+                    .map(TopologyCoverageSymbol::toCliDocument)
+                    .sortedWith(topologyCoverageSymbolCliDocumentComparator),
+        )
+    )
 
 private fun Set<ProtocolText>.sortedValues(): List<String> = map(ProtocolText::value).sorted()
 
@@ -146,10 +150,11 @@ private fun TopologyCoverageNode.toCliDocument(): TopologyCoverageNodeCliDocumen
     TopologyCoverageNodeCliDocument(
         compilerIdentity = compilerIdentity.value,
         file = file.value,
-        range = TopologyCoverageRangeCliDocument(
-            startInclusive = range.startInclusive.value,
-            endExclusive = range.endExclusive.value,
-        ),
+        range =
+            TopologyCoverageRangeCliDocument(
+                startInclusive = range.startInclusive.value,
+                endExclusive = range.endExclusive.value,
+            ),
     )
 
 private fun TopologyCoverageSymbol.toCliDocument(): TopologyCoverageSymbolCliDocument =
@@ -157,12 +162,13 @@ private fun TopologyCoverageSymbol.toCliDocument(): TopologyCoverageSymbolCliDoc
         node = node.toCliDocument(),
         fileEvidence = fileEvidence.toCliDocument(),
         name = name.value,
-        qualifiedIdentity = when (val identity = qualifiedIdentity) {
-            is TopologyCoverageQualifiedIdentity.Available ->
-                TopologyCoverageQualifiedIdentityCliDocument.Available(identity.value.value)
-            TopologyCoverageQualifiedIdentity.Unavailable ->
-                TopologyCoverageQualifiedIdentityCliDocument.Unavailable
-        },
+        qualifiedIdentity =
+            when (val identity = qualifiedIdentity) {
+                is TopologyCoverageQualifiedIdentity.Available ->
+                    TopologyCoverageQualifiedIdentityCliDocument.Available(identity.value.value)
+                TopologyCoverageQualifiedIdentity.Unavailable ->
+                    TopologyCoverageQualifiedIdentityCliDocument.Unavailable
+            },
         kind = kind.toCliDocument(),
         compilerEvidence = compilerEvidence.toCliDocument(),
     )
@@ -173,32 +179,34 @@ private fun TopologyCoverageCandidateEvidenceMismatch.toCliDocument() =
         completed = completed.toCliDocument(),
     )
 
-private fun TopologyCoverageFileEvidence.toCliDocument() = TopologyCoverageFileEvidenceCliDocument(
-    workspace = TopologyCoverageWorkspaceEvidenceCliDocument(
-        root = workspace.root.value,
-        generation = workspace.generation.value,
-        sourceState = workspace.sourceState.value,
-    ),
-    sourceRoot = TopologyCoverageSourceRootEvidenceCliDocument(
-        module = sourceRoot.module.value,
-        buildRoot = sourceRoot.buildRoot.value,
-        projectPath = sourceRoot.projectPath.value,
-        sourceSet = sourceRoot.sourceSet.value,
-        location = sourceRoot.location.value,
-        provenance = sourceRoot.provenance.toCliDocument(),
-    ),
-    path = path.value,
-    contentHash = contentHash.value,
-)
+private fun TopologyCoverageFileEvidence.toCliDocument() =
+    TopologyCoverageFileEvidenceCliDocument(
+        workspace =
+            TopologyCoverageWorkspaceEvidenceCliDocument(
+                root = workspace.root.value,
+                generation = workspace.generation.value,
+                sourceState = workspace.sourceState.value,
+            ),
+        sourceRoot =
+            TopologyCoverageSourceRootEvidenceCliDocument(
+                module = sourceRoot.module.value,
+                buildRoot = sourceRoot.buildRoot.value,
+                projectPath = sourceRoot.projectPath.value,
+                sourceSet = sourceRoot.sourceSet.value,
+                location = sourceRoot.location.value,
+                provenance = sourceRoot.provenance.toCliDocument(),
+            ),
+        path = path.value,
+        contentHash = contentHash.value,
+    )
 
-private fun TopologyCoverageSourceRootProvenance.toCliDocument() = when (this) {
-    TopologyCoverageSourceRootProvenance.AUTHORED ->
-        TopologyCoverageSourceRootProvenanceCliDocument.AUTHORED
-    TopologyCoverageSourceRootProvenance.GENERATED ->
-        TopologyCoverageSourceRootProvenanceCliDocument.GENERATED
-    TopologyCoverageSourceRootProvenance.UNKNOWN_EXCLUDED_FROM_SOURCE_MODEL ->
-        TopologyCoverageSourceRootProvenanceCliDocument.UNKNOWN_EXCLUDED_FROM_SOURCE_MODEL
-}
+private fun TopologyCoverageSourceRootProvenance.toCliDocument() =
+    when (this) {
+        TopologyCoverageSourceRootProvenance.AUTHORED -> TopologyCoverageSourceRootProvenanceCliDocument.AUTHORED
+        TopologyCoverageSourceRootProvenance.GENERATED -> TopologyCoverageSourceRootProvenanceCliDocument.GENERATED
+        TopologyCoverageSourceRootProvenance.UNKNOWN_EXCLUDED_FROM_SOURCE_MODEL ->
+            TopologyCoverageSourceRootProvenanceCliDocument.UNKNOWN_EXCLUDED_FROM_SOURCE_MODEL
+    }
 
 private fun TopologyCoverageSymbolKind.toCliDocument(): TopologyCoverageSymbolKindCliDocument =
     when (this) {
@@ -209,24 +217,26 @@ private fun TopologyCoverageSymbolKind.toCliDocument(): TopologyCoverageSymbolKi
         TopologyCoverageSymbolKind.TYPE_ALIAS -> TopologyCoverageSymbolKindCliDocument.TYPE_ALIAS
     }
 
-private val topologyCoverageNodeCliDocumentComparator = compareBy<TopologyCoverageNodeCliDocument>(
-    { it.compilerIdentity },
-    { it.file },
-    { it.range.startInclusive },
-    { it.range.endExclusive },
-)
+private val topologyCoverageNodeCliDocumentComparator =
+    compareBy<TopologyCoverageNodeCliDocument>(
+        { it.compilerIdentity },
+        { it.file },
+        { it.range.startInclusive },
+        { it.range.endExclusive },
+    )
 
 private val topologyCoverageSymbolCliDocumentComparator =
     Comparator<TopologyCoverageSymbolCliDocument> { left, right ->
         val nodeOrder = topologyCoverageNodeCliDocumentComparator.compare(left.node, right.node)
-        val evidenceOrder = if (nodeOrder == 0) {
-            topologyCoverageFileEvidenceCliDocumentComparator.compare(
-                left.fileEvidence,
-                right.fileEvidence,
-            )
-        } else {
-            nodeOrder
-        }
+        val evidenceOrder =
+            if (nodeOrder == 0) {
+                topologyCoverageFileEvidenceCliDocumentComparator.compare(
+                    left.fileEvidence,
+                    right.fileEvidence,
+                )
+            } else {
+                nodeOrder
+            }
         if (evidenceOrder != 0) {
             evidenceOrder
         } else {
@@ -259,10 +269,11 @@ private val topologyCoverageFileEvidenceCliDocumentComparator =
 
 private val topologyCoverageCandidateEvidenceMismatchCliDocumentComparator =
     Comparator<TopologyCoverageCandidateEvidenceMismatchCliDocument> { left, right ->
-        val candidateOrder = topologyCoverageFileEvidenceCliDocumentComparator.compare(
-            left.candidate,
-            right.candidate,
-        )
+        val candidateOrder =
+            topologyCoverageFileEvidenceCliDocumentComparator.compare(
+                left.candidate,
+                right.candidate,
+            )
         if (candidateOrder != 0) {
             candidateOrder
         } else {
@@ -270,29 +281,33 @@ private val topologyCoverageCandidateEvidenceMismatchCliDocumentComparator =
         }
     }
 
-private fun TopologyCoverageQualifiedIdentityCliDocument.sortRank(): Int = when (this) {
-    is TopologyCoverageQualifiedIdentityCliDocument.Available -> 0
-    TopologyCoverageQualifiedIdentityCliDocument.Unavailable -> 1
-}
+private fun TopologyCoverageQualifiedIdentityCliDocument.sortRank(): Int =
+    when (this) {
+        is TopologyCoverageQualifiedIdentityCliDocument.Available -> 0
+        TopologyCoverageQualifiedIdentityCliDocument.Unavailable -> 1
+    }
 
-private fun TopologyCoverageQualifiedIdentityCliDocument.sortValue(): String = when (this) {
-    is TopologyCoverageQualifiedIdentityCliDocument.Available -> value
-    TopologyCoverageQualifiedIdentityCliDocument.Unavailable -> ""
-}
+private fun TopologyCoverageQualifiedIdentityCliDocument.sortValue(): String =
+    when (this) {
+        is TopologyCoverageQualifiedIdentityCliDocument.Available -> value
+        TopologyCoverageQualifiedIdentityCliDocument.Unavailable -> ""
+    }
 
-private fun TopologyCoverageSymbolKindCliDocument.sortRank(): Int = when (this) {
-    TopologyCoverageSymbolKindCliDocument.CLASSLIKE -> 0
-    TopologyCoverageSymbolKindCliDocument.CONSTRUCTOR -> 1
-    TopologyCoverageSymbolKindCliDocument.FUNCTION -> 2
-    TopologyCoverageSymbolKindCliDocument.PROPERTY -> 3
-    TopologyCoverageSymbolKindCliDocument.TYPE_ALIAS -> 4
-}
+private fun TopologyCoverageSymbolKindCliDocument.sortRank(): Int =
+    when (this) {
+        TopologyCoverageSymbolKindCliDocument.CLASSLIKE -> 0
+        TopologyCoverageSymbolKindCliDocument.CONSTRUCTOR -> 1
+        TopologyCoverageSymbolKindCliDocument.FUNCTION -> 2
+        TopologyCoverageSymbolKindCliDocument.PROPERTY -> 3
+        TopologyCoverageSymbolKindCliDocument.TYPE_ALIAS -> 4
+    }
 
-private fun TopologyCoverageSourceRootProvenanceCliDocument.sortRank(): Int = when (this) {
-    TopologyCoverageSourceRootProvenanceCliDocument.AUTHORED -> 0
-    TopologyCoverageSourceRootProvenanceCliDocument.GENERATED -> 1
-    TopologyCoverageSourceRootProvenanceCliDocument.UNKNOWN_EXCLUDED_FROM_SOURCE_MODEL -> 2
-}
+private fun TopologyCoverageSourceRootProvenanceCliDocument.sortRank(): Int =
+    when (this) {
+        TopologyCoverageSourceRootProvenanceCliDocument.AUTHORED -> 0
+        TopologyCoverageSourceRootProvenanceCliDocument.GENERATED -> 1
+        TopologyCoverageSourceRootProvenanceCliDocument.UNKNOWN_EXCLUDED_FROM_SOURCE_MODEL -> 2
+    }
 
 private val topologyCoverageRejectedFactory =
     CliJsonDocument.generated(TopologyCoverageRejectedCliDocument.serializer())

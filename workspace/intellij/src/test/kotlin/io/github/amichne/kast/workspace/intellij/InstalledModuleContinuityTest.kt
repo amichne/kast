@@ -1,8 +1,8 @@
 package io.github.amichne.kast.workspace.intellij
 
+import java.time.Duration
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import java.time.Duration
 
 class InstalledModuleContinuityTest {
     @Test

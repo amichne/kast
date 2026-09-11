@@ -11,14 +11,11 @@ import org.junit.jupiter.api.Test
 class StructuralDiscoveryRetirementTest {
     @Test
     fun `legacy structure discovery is rejected and absent from command help`() {
-        val factory = when (
-            val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())
-        ) {
-            is CliCommandGraphConstruction.Created -> construction.factory
-            is CliCommandGraphConstruction.Rejected -> error(
-                "command graph: ${construction.failures}",
-            )
-        }
+        val factory =
+            when (val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())) {
+                is CliCommandGraphConstruction.Created -> construction.factory
+                is CliCommandGraphConstruction.Rejected -> error("command graph: ${construction.failures}")
+            }
 
         assertInstanceOf(
             CliCommandParsing.Rejected::class.java,
@@ -29,7 +26,7 @@ class StructuralDiscoveryRetirementTest {
                     "--mode=structure",
                     "--file=A.kt",
                     "--limit=10",
-                ),
+                )
             ),
         )
         val help = factory.parse(listOf("symbol", "discover", "--help"))

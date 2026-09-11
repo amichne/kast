@@ -2,6 +2,9 @@ package io.github.amichne.kast.workspace.intellij
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import java.nio.file.Files
+import java.nio.file.Path
+import javax.xml.parsers.DocumentBuilderFactory
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -9,9 +12,6 @@ import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
-import javax.xml.parsers.DocumentBuilderFactory
 
 class InstalledSemanticProjectStoreTest {
     @Test
@@ -35,9 +35,7 @@ class InstalledSemanticProjectStoreTest {
     }
 
     @Test
-    fun `bootstrap module excludes generated output directories before project open`(
-        @TempDir root: Path,
-    ) {
+    fun `bootstrap module excludes generated output directories before project open`(@TempDir root: Path) {
         val workspacePath = Files.createDirectory(root.resolve("workspace & source")).toRealPath()
         Files.createDirectories(workspacePath.resolve(".gradle/caches"))
         Files.createDirectories(workspacePath.resolve(".kotlin/sessions"))
@@ -46,9 +44,7 @@ class InstalledSemanticProjectStoreTest {
         Files.createDirectories(workspacePath.resolve("module/src/main/kotlin"))
         Files.createDirectories(workspacePath.resolve("topology/build/build/classes"))
         Files.createDirectories(workspacePath.resolve("topology/build/src/main/kotlin"))
-        Files.createDirectories(
-            workspacePath.resolve("topology/build/src/main/kotlin/example/build"),
-        )
+        Files.createDirectories(workspacePath.resolve("topology/build/src/main/kotlin/example/build"))
         Files.createDirectories(workspacePath.resolve("docs/node_modules/package"))
         Files.writeString(workspacePath.resolve("build.gradle.kts"), "plugins {}\n")
         Files.writeString(workspacePath.resolve("module/build.gradle.kts"), "plugins {}\n")
@@ -68,13 +64,13 @@ class InstalledSemanticProjectStoreTest {
         val modules = parser.parse(store.path.resolve(".idea/modules.xml").toFile())
         assertEquals(
             "\$PROJECT_DIR\$/.idea/kast-index-bootstrap.iml",
-            modules.getElementsByTagName("module").item(0).attributes
-                .getNamedItem("filepath").nodeValue,
+            modules.getElementsByTagName("module").item(0).attributes.getNamedItem("filepath").nodeValue,
         )
         val module = parser.parse(store.path.resolve(".idea/kast-index-bootstrap.iml").toFile())
-        val excludedUrls = module.getElementsByTagName("excludeFolder")
-            .let { nodes -> (0 until nodes.length).map { index -> nodes.item(index).attributes
-                .getNamedItem("url").nodeValue } }
+        val excludedUrls =
+            module.getElementsByTagName("excludeFolder").let { nodes ->
+                (0 until nodes.length).map { index -> nodes.item(index).attributes.getNamedItem("url").nodeValue }
+            }
         assertEquals(
             listOf(
                 "file://${workspacePath.resolve(".gradle")}",
@@ -90,9 +86,7 @@ class InstalledSemanticProjectStoreTest {
         assertFalse(excludedUrls.any { url -> url.contains("src/main/kotlin") })
         assertFalse(excludedUrls.contains("file://${workspacePath.resolve("topology/build")}"))
         assertFalse(
-            excludedUrls.contains(
-                "file://${workspacePath.resolve("topology/build/src/main/kotlin/example/build")}",
-            ),
+            excludedUrls.contains("file://${workspacePath.resolve("topology/build/src/main/kotlin/example/build")}")
         )
     }
 
@@ -102,10 +96,11 @@ class InstalledSemanticProjectStoreTest {
         val workspace = canonicalWorkspace(workspacePath)
         val state = Files.createDirectory(workspacePath.resolve("runtime-state")).toRealPath()
 
-        val rejected = assertInstanceOf(
-            InstalledSemanticProjectStorePreparation.Rejected::class.java,
-            InstalledSemanticProjectStore.prepare(workspace, state),
-        )
+        val rejected =
+            assertInstanceOf(
+                InstalledSemanticProjectStorePreparation.Rejected::class.java,
+                InstalledSemanticProjectStore.prepare(workspace, state),
+            )
 
         assertEquals(InstalledSemanticProjectStoreFailure.OVERLAPS_WORKSPACE, rejected.failure)
         Files.list(state).use { entries -> assertEquals(0L, entries.count()) }
@@ -114,15 +109,16 @@ class InstalledSemanticProjectStoreTest {
     private fun prepared(
         workspace: CanonicalWorkspaceRoot,
         state: Path,
-    ): InstalledSemanticProjectStore = assertInstanceOf(
-        InstalledSemanticProjectStorePreparation.Prepared::class.java,
-        InstalledSemanticProjectStore.prepare(workspace, state),
-    ).store
+    ): InstalledSemanticProjectStore =
+        assertInstanceOf(
+                InstalledSemanticProjectStorePreparation.Prepared::class.java,
+                InstalledSemanticProjectStore.prepare(workspace, state),
+            )
+            .store
 
-    private fun canonicalWorkspace(path: Path): CanonicalWorkspaceRoot = when (
-        val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(path)
-    ) {
-        is Refinement.Refined -> admitted.value
-        is Refinement.Rejected -> error(admitted.failure)
-    }
+    private fun canonicalWorkspace(path: Path): CanonicalWorkspaceRoot =
+        when (val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(path)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> error(admitted.failure)
+        }
 }

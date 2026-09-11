@@ -10,42 +10,36 @@ internal enum class PendingObserverPresentationWrite {
 }
 
 internal sealed interface PendingObserverPresentationTake {
-    data class Found(
-        val presentation: ObserverPresentation.Available,
-    ) : PendingObserverPresentationTake
+    data class Found(val presentation: ObserverPresentation.Available) : PendingObserverPresentationTake
 
     data object Missing : PendingObserverPresentationTake
 }
 
 /**
- * Connection-local, bounded, non-persistent call correlation. Completions can arrive out of order,
- * so this is an atomic keyed take rather than an ordered asynchronous stream.
+ * Connection-local, bounded, non-persistent call correlation. Completions can arrive out of order, so this is an atomic
+ * keyed take rather than an ordered asynchronous stream.
  */
-internal class PendingObserverPresentations private constructor(
-    private val capacity: Int,
-) {
+internal class PendingObserverPresentations private constructor(private val capacity: Int) {
     private val presentations = linkedMapOf<BrokerCallId, ObserverPresentation.Available>()
 
     internal fun put(
         callId: BrokerCallId,
         presentation: ObserverPresentation.Available,
-    ): PendingObserverPresentationWrite = synchronized(presentations) {
-        when {
-            presentations.containsKey(callId) ->
-                PendingObserverPresentationWrite.DISCARDED_DUPLICATE
-            presentations.size >= capacity ->
-                PendingObserverPresentationWrite.DISCARDED_CAPACITY
-            else -> {
-                presentations[callId] = presentation
-                PendingObserverPresentationWrite.STORED
+    ): PendingObserverPresentationWrite =
+        synchronized(presentations) {
+            when {
+                presentations.containsKey(callId) -> PendingObserverPresentationWrite.DISCARDED_DUPLICATE
+                presentations.size >= capacity -> PendingObserverPresentationWrite.DISCARDED_CAPACITY
+                else -> {
+                    presentations[callId] = presentation
+                    PendingObserverPresentationWrite.STORED
+                }
             }
         }
-    }
 
     internal fun take(callId: BrokerCallId): PendingObserverPresentationTake =
         synchronized(presentations) {
-            presentations.remove(callId)
-                ?.let(PendingObserverPresentationTake::Found)
+            presentations.remove(callId)?.let(PendingObserverPresentationTake::Found)
                 ?: PendingObserverPresentationTake.Missing
         }
 

@@ -3,12 +3,13 @@ package io.github.amichne.kast.topology.contract
 import io.github.amichne.kast.kernel.Refinement
 
 enum class TopologySnapshotManifestFailure {
-    NEGATIVE_COUNT,
+    NEGATIVE_COUNT
 }
 
 /** Exact non-negative file, symbol, and edge cardinalities for one snapshot. */
 @ConsistentCopyVisibility
-data class TopologySnapshotCardinalities private constructor(
+data class TopologySnapshotCardinalities
+private constructor(
     val files: Int,
     val symbols: Int,
     val edges: Int,
@@ -25,9 +26,9 @@ data class TopologySnapshotCardinalities private constructor(
          * Proof transition: `(Int, Int, Int) -> Refinement<TopologySnapshotCardinalities,
          * TopologySnapshotManifestFailure>`.
          *
-         * Establishes non-negative persisted file, symbol, and edge counts as one cardinality
-         * proof. [TopologySnapshotManifestFailure] is the closed expected failure. Raw counts may
-         * enter only from the SQLite result-set boundary.
+         * Establishes non-negative persisted file, symbol, and edge counts as one cardinality proof.
+         * [TopologySnapshotManifestFailure] is the closed expected failure. Raw counts may enter only from the SQLite
+         * result-set boundary.
          */
         fun restore(
             files: Int,
@@ -44,7 +45,8 @@ data class TopologySnapshotCardinalities private constructor(
 
 /** Deterministic published topology identity and exact cardinalities. */
 @ConsistentCopyVisibility
-data class TopologySnapshotManifest private constructor(
+data class TopologySnapshotManifest
+private constructor(
     val digest: TopologyGenerationDigest,
     val cardinalities: TopologySnapshotCardinalities,
 ) {
@@ -52,8 +54,8 @@ data class TopologySnapshotManifest private constructor(
         /**
          * Proof transition: `CompleteTopologyGeneration -> TopologySnapshotManifest`.
          *
-         * Preserves the complete generation digest and its exact file, symbol, and edge counts.
-         * Primitive count extraction is permitted only by protocol presentation and persistence.
+         * Preserves the complete generation digest and its exact file, symbol, and edge counts. Primitive count
+         * extraction is permitted only by protocol presentation and persistence.
          */
         fun from(generation: CompleteTopologyGeneration): TopologySnapshotManifest =
             TopologySnapshotManifest(
@@ -62,12 +64,12 @@ data class TopologySnapshotManifest private constructor(
             )
 
         /**
-         * Proof transition: `(TopologyGenerationDigest, Int, Int, Int) ->
-         * Refinement<TopologySnapshotManifest, TopologySnapshotManifestFailure>`.
+         * Proof transition: `(TopologyGenerationDigest, Int, Int, Int) -> Refinement<TopologySnapshotManifest,
+         * TopologySnapshotManifestFailure>`.
          *
          * Establishes non-negative persisted cardinalities bound to one refined digest.
-         * [TopologySnapshotManifestFailure] is the closed expected failure. Raw counts may enter
-         * only from the SQLite result-set boundary.
+         * [TopologySnapshotManifestFailure] is the closed expected failure. Raw counts may enter only from the SQLite
+         * result-set boundary.
          */
         fun restore(
             digest: TopologyGenerationDigest,
@@ -75,14 +77,15 @@ data class TopologySnapshotManifest private constructor(
             symbolCount: Int,
             edgeCount: Int,
         ): Refinement<TopologySnapshotManifest, TopologySnapshotManifestFailure> =
-            when (val cardinalities = TopologySnapshotCardinalities.restore(
-                fileCount,
-                symbolCount,
-                edgeCount,
-            )) {
-                is Refinement.Refined -> Refinement.Refined(
-                    TopologySnapshotManifest(digest, cardinalities.value),
-                )
+            when (
+                val cardinalities =
+                    TopologySnapshotCardinalities.restore(
+                        fileCount,
+                        symbolCount,
+                        edgeCount,
+                    )
+            ) {
+                is Refinement.Refined -> Refinement.Refined(TopologySnapshotManifest(digest, cardinalities.value))
                 is Refinement.Rejected -> Refinement.Rejected(cardinalities.failure)
             }
     }
@@ -100,19 +103,13 @@ enum class TopologySnapshotReadFailure {
 }
 
 sealed interface TopologySnapshotEligibility {
-    data class Eligible(
-        val snapshot: PublishedTopologySnapshot,
-    ) : TopologySnapshotEligibility
+    data class Eligible(val snapshot: PublishedTopologySnapshot) : TopologySnapshotEligibility
 
-    data class Stale(
-        val latest: PublishedTopologySnapshot,
-    ) : TopologySnapshotEligibility
+    data class Stale(val latest: PublishedTopologySnapshot) : TopologySnapshotEligibility
 
     data object Unavailable : TopologySnapshotEligibility
 
-    data class Rejected(
-        val failure: TopologySnapshotReadFailure,
-    ) : TopologySnapshotEligibility
+    data class Rejected(val failure: TopologySnapshotReadFailure) : TopologySnapshotEligibility
 }
 
 /** Side-effect-free eligibility lookup for an exact workspace identity. */
@@ -127,17 +124,11 @@ enum class TopologyPublicationFailure {
 }
 
 sealed interface TopologyPublicationResult {
-    data class Published(
-        val snapshot: PublishedTopologySnapshot,
-    ) : TopologyPublicationResult
+    data class Published(val snapshot: PublishedTopologySnapshot) : TopologyPublicationResult
 
-    data class Unchanged(
-        val snapshot: PublishedTopologySnapshot,
-    ) : TopologyPublicationResult
+    data class Unchanged(val snapshot: PublishedTopologySnapshot) : TopologyPublicationResult
 
-    data class Rejected(
-        val failure: TopologyPublicationFailure,
-    ) : TopologyPublicationResult
+    data class Rejected(val failure: TopologyPublicationFailure) : TopologyPublicationResult
 }
 
 /** Sole physical publication port; production implementation belongs to `:evidence:sqlite`. */
@@ -146,7 +137,4 @@ fun interface TopologySnapshotPublisher {
 }
 
 /** Combined read and publication port implemented in production only by `:evidence:sqlite`. */
-interface TopologySnapshotStore :
-    TopologySnapshotReader,
-    TopologySnapshotPublisher,
-    TopologySnapshotContentReader
+interface TopologySnapshotStore : TopologySnapshotReader, TopologySnapshotPublisher, TopologySnapshotContentReader

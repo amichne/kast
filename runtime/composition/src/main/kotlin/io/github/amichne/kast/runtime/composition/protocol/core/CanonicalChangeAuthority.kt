@@ -21,14 +21,11 @@ import java.util.concurrent.ConcurrentHashMap
 /** Process-local authority retained for the isolated runtime; hosted composition injects SQLite. */
 internal class CanonicalChangeAuthority : DurableChangeAuthority {
     private val plans = ConcurrentHashMap<ChangePlanIdentity, ChangePlan>()
-    private val applications =
-        ConcurrentHashMap<ChangeApplicationIdentity, PendingChangeVerification>()
+    private val applications = ConcurrentHashMap<ChangeApplicationIdentity, PendingChangeVerification>()
     private val receipts = ConcurrentHashMap<ChangeReceiptIdentity, VerifiedReceipt>()
 
     override fun issuePlan(plan: ChangePlan): ChangePlanIssuance {
-        val handle = requireNotNull(
-            ChangePlanIdentity.parse(changeHandle("plan", listOf(plan.planId.value))),
-        )
+        val handle = requireNotNull(ChangePlanIdentity.parse(changeHandle("plan", listOf(plan.planId.value))))
         val prior = plans.putIfAbsent(handle, plan)
         return if (prior == null || prior.planId == plan.planId) {
             ChangePlanIssuance.Issued(handle)
@@ -44,20 +41,19 @@ internal class CanonicalChangeAuthority : DurableChangeAuthority {
         plan: ChangePlan,
         application: AppliedUnverified,
     ): ChangeApplicationIssuance {
-        val handle = requireNotNull(
-            ChangeApplicationIdentity.parse(
-                changeHandle(
-                    "application",
-                    listOf(plan.planId.value, application.postimage.value),
-                ),
-            ),
-        )
+        val handle =
+            requireNotNull(
+                ChangeApplicationIdentity.parse(
+                    changeHandle(
+                        "application",
+                        listOf(plan.planId.value, application.postimage.value),
+                    )
+                )
+            )
         val pending = PendingChangeVerification(plan, application)
         val prior = applications.putIfAbsent(handle, pending)
         return if (
-            prior == null ||
-            prior.plan.planId == plan.planId &&
-            prior.application.postimage == application.postimage
+            prior == null || prior.plan.planId == plan.planId && prior.application.postimage == application.postimage
         ) {
             ChangeApplicationIssuance.Issued(handle)
         } else {
@@ -66,27 +62,26 @@ internal class CanonicalChangeAuthority : DurableChangeAuthority {
     }
 
     override fun loadApplication(identity: ChangeApplicationIdentity): ChangeApplicationLookup =
-        applications[identity]
-            ?.let(ChangeApplicationLookup::Found)
-        ?: ChangeApplicationLookup.Missing
+        applications[identity]?.let(ChangeApplicationLookup::Found) ?: ChangeApplicationLookup.Missing
 
     override fun issueReceipt(receipt: VerifiedReceipt): ChangeReceiptIssuance {
-        val handle = requireNotNull(
-            ChangeReceiptIdentity.parse(
-                changeHandle(
-                    "receipt",
-                    listOf(
-                        receipt.planId.value,
-                        receipt.resultingWorkspace.generation.value.toString(),
-                    ),
-                ),
-            ),
-        )
+        val handle =
+            requireNotNull(
+                ChangeReceiptIdentity.parse(
+                    changeHandle(
+                        "receipt",
+                        listOf(
+                            receipt.planId.value,
+                            receipt.resultingWorkspace.generation.value.toString(),
+                        ),
+                    )
+                )
+            )
         val prior = receipts.putIfAbsent(handle, receipt)
         return if (
             prior == null ||
-            prior.planId == receipt.planId &&
-            prior.resultingWorkspace.generation == receipt.resultingWorkspace.generation
+                prior.planId == receipt.planId &&
+                    prior.resultingWorkspace.generation == receipt.resultingWorkspace.generation
         ) {
             ChangeReceiptIssuance.Issued(handle)
         } else {
@@ -106,9 +101,10 @@ private fun changeHandle(
             append(field)
         }
     }
-    val digest = MessageDigest.getInstance("SHA-256")
-        .digest(canonical.toByteArray(StandardCharsets.UTF_8))
-        .joinToString(separator = "") { byte ->
+    val digest =
+        MessageDigest.getInstance("SHA-256").digest(canonical.toByteArray(StandardCharsets.UTF_8)).joinToString(
+            separator = ""
+        ) { byte ->
             (byte.toInt() and 0xff).toString(16).padStart(2, '0')
         }
     return "$prefix:$digest"

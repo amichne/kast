@@ -10,22 +10,22 @@ value class AddDeclarationChangedDocumentPath private constructor(val value: Str
 
     companion object {
         /**
-         * Proof transition:
-         * `String -> Refinement<AddDeclarationChangedDocumentPath,
+         * Proof transition: `String -> Refinement<AddDeclarationChangedDocumentPath,
          * AddDeclarationChangedDocumentPathFailure>`.
          *
-         * Establishes a canonical absolute changed-document identity. The closed expected failure
-         * is `AddDeclarationChangedDocumentPathFailure`; raw paths may be extracted only from the
-         * physical document observer.
+         * Establishes a canonical absolute changed-document identity. The closed expected failure is
+         * `AddDeclarationChangedDocumentPathFailure`; raw paths may be extracted only from the physical document
+         * observer.
          */
         fun parse(
-            raw: String,
+            raw: String
         ): Refinement<AddDeclarationChangedDocumentPath, AddDeclarationChangedDocumentPathFailure> {
-            val parsed = try {
-                Path.of(raw)
-            } catch (_: Exception) {
-                return Refinement.Rejected(AddDeclarationChangedDocumentPathFailure.INVALID)
-            }
+            val parsed =
+                try {
+                    Path.of(raw)
+                } catch (_: Exception) {
+                    return Refinement.Rejected(AddDeclarationChangedDocumentPathFailure.INVALID)
+                }
             if (!parsed.isAbsolute || parsed.normalize().toString() != raw) {
                 return Refinement.Rejected(AddDeclarationChangedDocumentPathFailure.INVALID)
             }
@@ -35,7 +35,7 @@ value class AddDeclarationChangedDocumentPath private constructor(val value: Str
 }
 
 enum class AddDeclarationChangedDocumentPathFailure {
-    INVALID,
+    INVALID
 }
 
 enum class AddDeclarationUndoAvailability {
@@ -49,7 +49,8 @@ enum class AddDeclarationApplyObservationFailure {
 }
 
 @ConsistentCopyVisibility
-data class AddDeclarationApplyObservation private constructor(
+data class AddDeclarationApplyObservation
+private constructor(
     val planId: AddDeclarationPlanId,
     val changedDocumentPaths: Set<AddDeclarationChangedDocumentPath>,
     val afterImage: ExactFileContentProof,
@@ -62,15 +63,12 @@ data class AddDeclarationApplyObservation private constructor(
 
     companion object {
         /**
-         * Proof transition:
-         * `PlannedAddDeclaration` plus raw changed-document paths, exact after image, and undo
-         * observation to `Refinement<AddDeclarationApplyObservation,
-         * AddDeclarationApplyObservationFailure>`.
+         * Proof transition: `PlannedAddDeclaration` plus raw changed-document paths, exact after image, and undo
+         * observation to `Refinement<AddDeclarationApplyObservation, AddDeclarationApplyObservationFailure>`.
          *
-         * Establishes a non-empty canonical physical observation bound to the exact PlanId and
-         * proves source mutation began. The closed expected failure is
-         * `AddDeclarationApplyObservationFailure`; raw path and undo extraction is permitted only
-         * at the physical adapter boundary.
+         * Establishes a non-empty canonical physical observation bound to the exact PlanId and proves source mutation
+         * began. The closed expected failure is `AddDeclarationApplyObservationFailure`; raw path and undo extraction
+         * is permitted only at the physical adapter boundary.
          */
         fun observe(
             plan: PlannedAddDeclaration,
@@ -85,9 +83,10 @@ data class AddDeclarationApplyObservation private constructor(
                 changedDocumentPaths.forEach { raw ->
                     when (val path = AddDeclarationChangedDocumentPath.parse(raw)) {
                         is Refinement.Refined -> add(path.value)
-                        is Refinement.Rejected -> return Refinement.Rejected(
-                            AddDeclarationApplyObservationFailure.CHANGED_DOCUMENT_PATH_INVALID,
-                        )
+                        is Refinement.Rejected ->
+                            return Refinement.Rejected(
+                                AddDeclarationApplyObservationFailure.CHANGED_DOCUMENT_PATH_INVALID
+                            )
                     }
                 }
             }
@@ -98,7 +97,7 @@ data class AddDeclarationApplyObservation private constructor(
                     afterImage = afterImage,
                     undoAvailability = undoAvailability,
                     mutationProgress = AddDeclarationMutationProgress.BEGUN,
-                ),
+                )
             )
         }
     }
@@ -112,21 +111,20 @@ enum class ClosedAddDeclarationApplyFailure {
 }
 
 @ConsistentCopyVisibility
-data class ClosedAddDeclarationApply private constructor(
+data class ClosedAddDeclarationApply
+private constructor(
     val plan: PlannedAddDeclaration,
     val observation: AddDeclarationApplyObservation,
     val observedWriteSet: DeclaredWriteSet,
 ) {
     companion object {
         /**
-         * Proof transition:
-         * planned mutation plus physical observation to
-         * `Refinement<ClosedAddDeclarationApply, ClosedAddDeclarationApplyFailure>`.
+         * Proof transition: planned mutation plus physical observation to `Refinement<ClosedAddDeclarationApply,
+         * ClosedAddDeclarationApplyFailure>`.
          *
-         * Establishes exact PlanId, approved physical postimage, singleton declared write-set
-         * closure, and the pinned headless global-undo state. The closed expected failure is
-         * `ClosedAddDeclarationApplyFailure`; raw document identities are consumed only at the
-         * apply service boundary.
+         * Establishes exact PlanId, approved physical postimage, singleton declared write-set closure, and the pinned
+         * headless global-undo state. The closed expected failure is `ClosedAddDeclarationApplyFailure`; raw document
+         * identities are consumed only at the apply service boundary.
          */
         fun prove(
             plan: PlannedAddDeclaration,
@@ -146,9 +144,7 @@ data class ClosedAddDeclarationApply private constructor(
             if (observation.undoAvailability != AddDeclarationUndoAvailability.UNAVAILABLE) {
                 return Refinement.Rejected(ClosedAddDeclarationApplyFailure.UNDO_STATE_UNSUPPORTED)
             }
-            return Refinement.Refined(
-                ClosedAddDeclarationApply(plan, observation, plan.declaredWriteSet),
-            )
+            return Refinement.Refined(ClosedAddDeclarationApply(plan, observation, plan.declaredWriteSet))
         }
     }
 }

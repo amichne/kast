@@ -12,17 +12,15 @@ import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 import io.github.amichne.kast.workspace.intellij.read.ExistingProjectValidation
 import io.github.amichne.kast.workspace.intellij.read.HostedProjectAdmissionFailure
 
-class HostedRelationPorts private constructor(
-    val compiler: RelationCompilerPort,
-) {
+class HostedRelationPorts private constructor(val compiler: RelationCompilerPort) {
     companion object {
-        internal fun retained(compiler: RelationCompilerPort): HostedRelationPorts =
-            HostedRelationPorts(compiler)
+        internal fun retained(compiler: RelationCompilerPort): HostedRelationPorts = HostedRelationPorts(compiler)
     }
 }
 
 sealed interface HostedRelationAdmission {
     data class Admitted(val ports: HostedRelationPorts) : HostedRelationAdmission
+
     data class Rejected(val failure: HostedProjectAdmissionFailure) : HostedRelationAdmission
 }
 
@@ -34,29 +32,29 @@ fun admitHostedIntellijRelationPorts(
     workspaces: WorkspaceInspectionOperations,
     scopes: InstalledRelationScopeOperations,
 ): HostedRelationAdmission {
-    when (val validation = ExistingProjectValidation.validate(
-        project,
-        root,
-        compatibilityCandidate,
-        compatibilityPolicy,
-    )) {
+    when (
+        val validation =
+            ExistingProjectValidation.validate(
+                project,
+                root,
+                compatibilityCandidate,
+                compatibilityPolicy,
+            )
+    ) {
         ExistingProjectValidation.Validated -> Unit
-        is ExistingProjectValidation.Rejected -> return HostedRelationAdmission.Rejected(
-            HostedProjectAdmissionFailure.ProjectRejected(validation.failure),
-        )
+        is ExistingProjectValidation.Rejected ->
+            return HostedRelationAdmission.Rejected(HostedProjectAdmissionFailure.ProjectRejected(validation.failure))
     }
     val adapter = IntellijRelationCompilerAdapter()
     val compiler = RelationCompilerPort { request ->
         if (project.isDisposed) return@RelationCompilerPort relationUnavailable()
-        val lease = (workspaces.inspect() as? WorkspaceRuntimeState.Ready)
-            ?.workspace
-            ?.readLease
-            ?: return@RelationCompilerPort relationUnavailable()
+        val lease =
+            (workspaces.inspect() as? WorkspaceRuntimeState.Ready)?.workspace?.readLease
+                ?: return@RelationCompilerPort relationUnavailable()
         adapter.read(project, lease, request, scopes.compile(lease))
     }
     return HostedRelationAdmission.Admitted(HostedRelationPorts.retained(compiler))
 }
 
-private fun relationUnavailable(): RelationCompilation = RelationCompilation.Rejected(
-    RelationCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE,
-)
+private fun relationUnavailable(): RelationCompilation =
+    RelationCompilation.Rejected(RelationCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE)

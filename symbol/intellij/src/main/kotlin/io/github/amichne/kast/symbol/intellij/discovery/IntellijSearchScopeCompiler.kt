@@ -1,14 +1,13 @@
 package io.github.amichne.kast.symbol.intellij
 
 import com.intellij.openapi.project.Project
-import io.github.amichne.kast.workspace.intellij.read.IntellijProjectSourceMembership
 import com.intellij.openapi.vfs.VirtualFile
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
-import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
 import com.intellij.psi.search.DelegatingGlobalSearchScope
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.ProjectScope
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
@@ -20,13 +19,13 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompil
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelFailure
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
+import io.github.amichne.kast.workspace.intellij.read.IntellijProjectSourceMembership
 import java.nio.file.Path
 
 sealed interface IntellijSearchScopeFailure {
     @ConsistentCopyVisibility
-    data class ProjectModelRejected internal constructor(
-        val failures: Set<WorkspaceSearchScopeModelFailure>,
-    ) : IntellijSearchScopeFailure
+    data class ProjectModelRejected internal constructor(val failures: Set<WorkspaceSearchScopeModelFailure>) :
+        IntellijSearchScopeFailure
 
     data object LeaseRootMismatch : IntellijSearchScopeFailure
 
@@ -40,10 +39,7 @@ sealed interface IntellijSearchScopeFailure {
 }
 
 internal sealed interface IntellijVirtualFilePath {
-    @ConsistentCopyVisibility
-    data class Absolute internal constructor(
-        val value: Path,
-    ) : IntellijVirtualFilePath
+    @ConsistentCopyVisibility data class Absolute internal constructor(val value: Path) : IntellijVirtualFilePath
 
     data object Relative : IntellijVirtualFilePath
 
@@ -53,15 +49,15 @@ internal sealed interface IntellijVirtualFilePath {
         /**
          * Proof transition: Path to IntellijVirtualFilePath.
          *
-         * Establishes an absolute normalized native path or returns a closed relative-path state.
-         * Raw [Path] extraction is permitted only inside the request-local native search-scope
-         * boundary.
+         * Establishes an absolute normalized native path or returns a closed relative-path state. Raw [Path] extraction
+         * is permitted only inside the request-local native search-scope boundary.
          */
-        fun classify(path: Path): IntellijVirtualFilePath = if (path.isAbsolute) {
-            Absolute(path.normalize())
-        } else {
-            Relative
-        }
+        fun classify(path: Path): IntellijVirtualFilePath =
+            if (path.isAbsolute) {
+                Absolute(path.normalize())
+            } else {
+                Relative
+            }
     }
 }
 
@@ -71,22 +67,22 @@ internal enum class IntellijLibraryMembership {
 }
 
 internal sealed interface IntellijSearchScopeCompilation {
-    data class Compiled(
-        val capability: CompiledIntellijSearchScope,
-    ) : IntellijSearchScopeCompilation
+    data class Compiled(val capability: CompiledIntellijSearchScope) : IntellijSearchScopeCompilation
 
-    data class Rejected(
-        val failures: Set<IntellijSearchScopeFailure>,
-    ) : IntellijSearchScopeCompilation
+    data class Rejected(val failures: Set<IntellijSearchScopeFailure>) : IntellijSearchScopeCompilation
 }
 
-internal enum class IntellijScopePopulation { MODEL_OWNED, KNOWN_EMPTY }
+internal enum class IntellijScopePopulation {
+    MODEL_OWNED,
+    KNOWN_EMPTY,
+}
 
 /**
- * Request-local proof that the native scope was compiled from the same lease and detached model
- * policy before a PSI or index query started.
+ * Request-local proof that the native scope was compiled from the same lease and detached model policy before a PSI or
+ * index query started.
  */
-internal class CompiledIntellijSearchScope internal constructor(
+internal class CompiledIntellijSearchScope
+internal constructor(
     val lease: SemanticReadAuthority,
     val scope: SymbolSearchScope,
     val sourceRoots: List<ModelOwnedSourceRoot>,
@@ -100,17 +96,14 @@ internal class IntellijSearchScopeCompiler(
     private val fileAdmission: (Path) -> Boolean = { true },
 ) {
     /**
-     * Proof transition:
-     * SymbolSearchScopeRequest + WorkspaceSearchScopeModelCompilation + Project
-     * to IntellijSearchScopeCompilation.
+     * Proof transition: SymbolSearchScopeRequest + WorkspaceSearchScopeModelCompilation + Project to
+     * IntellijSearchScopeCompilation.
      *
-     * A compiled result establishes matching canonical-root admission, exact model ownership,
-     * explicit file/module/source-set/project/workspace targeting, production/test and generated
-     * policy, declared library admission through [ProjectScope.getLibrariesScope] backed by
-     * IntelliJ's project file index, and a bounded native [GlobalSearchScope].
-     * [IntellijSearchScopeFailure] is the closed expected failure. [Project] and all live
-     * file-index and scope values remain request-local and may be extracted only by the native
-     * query adapter.
+     * A compiled result establishes matching canonical-root admission, exact model ownership, explicit
+     * file/module/source-set/project/workspace targeting, production/test and generated policy, declared library
+     * admission through [ProjectScope.getLibrariesScope] backed by IntelliJ's project file index, and a bounded native
+     * [GlobalSearchScope]. [IntellijSearchScopeFailure] is the closed expected failure. [Project] and all live
+     * file-index and scope values remain request-local and may be extracted only by the native query adapter.
      */
     fun compile(
         project: Project,
@@ -137,10 +130,9 @@ internal class IntellijSearchScopeCompiler(
     }
 
     /**
-     * Proof transition equivalent to [compile], with the request-local native base scope, path
-     * extractor, and IntelliJ library classifier supplied explicitly for isolated adapter proof.
-     * Expected failures remain [IntellijSearchScopeFailure], and live values must not cross the
-     * query callback boundary.
+     * Proof transition equivalent to [compile], with the request-local native base scope, path extractor, and IntelliJ
+     * library classifier supplied explicitly for isolated adapter proof. Expected failures remain
+     * [IntellijSearchScopeFailure], and live values must not cross the query callback boundary.
      */
     internal fun compile(
         request: SymbolSearchScopeRequest,
@@ -150,22 +142,24 @@ internal class IntellijSearchScopeCompiler(
         libraryMembership: (VirtualFile) -> IntellijLibraryMembership,
         sourceMembership: (VirtualFile) -> Boolean = { true },
     ): IntellijSearchScopeCompilation {
-        val model = when (modelCompilation) {
-            is WorkspaceSearchScopeModelCompilation.Compiled -> modelCompilation.model
-            is WorkspaceSearchScopeModelCompilation.Rejected ->
-                return rejected(IntellijSearchScopeFailure.ProjectModelRejected(modelCompilation.failures))
-        }
+        val model =
+            when (modelCompilation) {
+                is WorkspaceSearchScopeModelCompilation.Compiled -> modelCompilation.model
+                is WorkspaceSearchScopeModelCompilation.Rejected ->
+                    return rejected(IntellijSearchScopeFailure.ProjectModelRejected(modelCompilation.failures))
+            }
         if (model.workspaceRoot != request.lease.workspaceRoot) {
             return rejected(IntellijSearchScopeFailure.LeaseRootMismatch)
         }
 
         val ownedRoots = rootsFor(request.scope, model.sourceRoots)
         if (ownedRoots.isEmpty()) {
-            val failure = if (request.scope is SymbolSearchScope.ExactFile) {
-                IntellijSearchScopeFailure.TargetProvenanceUnknown
-            } else {
-                IntellijSearchScopeFailure.OwnerNotInModel
-            }
+            val failure =
+                if (request.scope is SymbolSearchScope.ExactFile) {
+                    IntellijSearchScopeFailure.TargetProvenanceUnknown
+                } else {
+                    IntellijSearchScopeFailure.OwnerNotInModel
+                }
             return rejected(failure)
         }
         if (request.scope is SymbolSearchScope.ExactFile && ownedRoots.size != 1) {
@@ -179,40 +173,40 @@ internal class IntellijSearchScopeCompiler(
         if (policyRoots.isEmpty()) {
             return rejected(IntellijSearchScopeFailure.NoReadableSourceRoots)
         }
-        val readableRoots = when (val selected = constraints.sourceSets) {
-            SymbolDiscoverySourceSets.All -> policyRoots
-            is SymbolDiscoverySourceSets.Exact -> {
-                if (ownedRoots.none { it.sourceSet in selected.values }) {
-                    // Complete model ownership proves these exact names have no source roots.
-                    // Library policy cannot broaden an empty source-set intersection.
-                    return IntellijSearchScopeCompilation.Compiled(CompiledIntellijSearchScope(
-                        lease = request.lease,
-                        scope = request.scope,
-                        sourceRoots = emptyList(),
-                        ownershipRoots = model.sourceRoots,
-                        nativeScope = GlobalSearchScope.EMPTY_SCOPE,
-                        population = IntellijScopePopulation.KNOWN_EMPTY,
-                    ))
+        val readableRoots =
+            when (val selected = constraints.sourceSets) {
+                SymbolDiscoverySourceSets.All -> policyRoots
+                is SymbolDiscoverySourceSets.Exact -> {
+                    if (ownedRoots.none { it.sourceSet in selected.values }) {
+                        // Complete model ownership proves these exact names have no source roots.
+                        // Library policy cannot broaden an empty source-set intersection.
+                        return IntellijSearchScopeCompilation.Compiled(
+                            CompiledIntellijSearchScope(
+                                lease = request.lease,
+                                scope = request.scope,
+                                sourceRoots = emptyList(),
+                                ownershipRoots = model.sourceRoots,
+                                nativeScope = GlobalSearchScope.EMPTY_SCOPE,
+                                population = IntellijScopePopulation.KNOWN_EMPTY,
+                            )
+                        )
+                    }
+                    policyRoots.filter { it.sourceSet in selected.values }
                 }
-                policyRoots.filter { it.sourceSet in selected.values }
             }
-        }
         if (readableRoots.isEmpty()) {
             return rejected(IntellijSearchScopeFailure.NoReadableSourceRoots)
         }
 
-        val pathPolicy = when (val scope = request.scope) {
-            is SymbolSearchScope.ExactFile ->
-                IntellijModelPathPolicy.ExactFile(Path.of(scope.file.value))
-            else ->
-                IntellijModelPathPolicy.SourceRoots(
-                    readableRoots
-                        .map { Path.of(it.sourceRoot.value) }
-                        .distinct()
-                        .sortedBy(Path::toString),
-                    model.sourceRoots.map { Path.of(it.sourceRoot.value) }.distinct(),
-                )
-        }
+        val pathPolicy =
+            when (val scope = request.scope) {
+                is SymbolSearchScope.ExactFile -> IntellijModelPathPolicy.ExactFile(Path.of(scope.file.value))
+                else ->
+                    IntellijModelPathPolicy.SourceRoots(
+                        readableRoots.map { Path.of(it.sourceRoot.value) }.distinct().sortedBy(Path::toString),
+                        model.sourceRoots.map { Path.of(it.sourceRoot.value) }.distinct(),
+                    )
+            }
         val libraryPolicy = request.scope.libraryPolicy()
         return IntellijSearchScopeCompilation.Compiled(
             CompiledIntellijSearchScope(
@@ -220,71 +214,70 @@ internal class IntellijSearchScopeCompiler(
                 scope = request.scope,
                 sourceRoots = readableRoots,
                 ownershipRoots = model.sourceRoots,
-                nativeScope = ModelOwnedGlobalSearchScope(
-                    baseScope = baseScope,
-                    pathPolicy = pathPolicy,
-                    libraryPolicy = libraryPolicy,
-                    nativePath = nativePath,
-                    libraryMembership = libraryMembership,
-                    sourceMembership = sourceMembership,
-                    fileAdmission = { path ->
-                        fileAdmission(path) && matchesDirectory(path, request.lease.workspaceRoot.value, constraints)
-                    },
-                ),
-            ),
+                nativeScope =
+                    ModelOwnedGlobalSearchScope(
+                        baseScope = baseScope,
+                        pathPolicy = pathPolicy,
+                        libraryPolicy = libraryPolicy,
+                        nativePath = nativePath,
+                        libraryMembership = libraryMembership,
+                        sourceMembership = sourceMembership,
+                        fileAdmission = { path ->
+                            fileAdmission(path) &&
+                                matchesDirectory(path, request.lease.workspaceRoot.value, constraints)
+                        },
+                    ),
+            )
         )
     }
 
     private fun rootsFor(
         scope: SymbolSearchScope,
         roots: List<ModelOwnedSourceRoot>,
-    ): List<ModelOwnedSourceRoot> = when (scope) {
-        is SymbolSearchScope.ExactFile -> {
-            val file = Path.of(scope.file.value)
-            val candidates = roots.filter { file.startsWith(Path.of(it.sourceRoot.value)) }
-            val mostSpecificDepth = candidates.maxOfOrNull { Path.of(it.sourceRoot.value).nameCount }
-            candidates.filter { Path.of(it.sourceRoot.value).nameCount == mostSpecificDepth }
+    ): List<ModelOwnedSourceRoot> =
+        when (scope) {
+            is SymbolSearchScope.ExactFile -> {
+                val file = Path.of(scope.file.value)
+                val candidates = roots.filter { file.startsWith(Path.of(it.sourceRoot.value)) }
+                val mostSpecificDepth = candidates.maxOfOrNull { Path.of(it.sourceRoot.value).nameCount }
+                candidates.filter { Path.of(it.sourceRoot.value).nameCount == mostSpecificDepth }
+            }
+            is SymbolSearchScope.Module -> roots.filter { it.module == scope.module }
+            is SymbolSearchScope.SourceSet ->
+                roots.filter {
+                    it.project == scope.project && it.sourceSet == scope.sourceSet
+                }
+            is SymbolSearchScope.GradleProject -> roots.filter { it.project == scope.project }
+            is SymbolSearchScope.Workspace -> roots
         }
-        is SymbolSearchScope.Module -> roots.filter { it.module == scope.module }
-        is SymbolSearchScope.SourceSet -> roots.filter {
-            it.project == scope.project && it.sourceSet == scope.sourceSet
-        }
-        is SymbolSearchScope.GradleProject -> roots.filter { it.project == scope.project }
-        is SymbolSearchScope.Workspace -> roots
-    }
 
-    private fun rejected(
-        failure: IntellijSearchScopeFailure,
-    ): IntellijSearchScopeCompilation.Rejected =
+    private fun rejected(failure: IntellijSearchScopeFailure): IntellijSearchScopeCompilation.Rejected =
         IntellijSearchScopeCompilation.Rejected(setOf(failure))
 }
 
 internal sealed interface IntellijScopedQueryResult<out Value> {
-    data class Completed<Value>(
-        val value: Value,
-    ) : IntellijScopedQueryResult<Value>
+    data class Completed<Value>(val value: Value) : IntellijScopedQueryResult<Value>
 
-    data class Rejected(
-        val failures: Set<IntellijSearchScopeFailure>,
-    ) : IntellijScopedQueryResult<Nothing>
+    data class Rejected(val failures: Set<IntellijSearchScopeFailure>) : IntellijScopedQueryResult<Nothing>
 }
 
 internal class IntellijSearchScopeQueryAdapter(
-    private val compiler: IntellijSearchScopeCompiler = IntellijSearchScopeCompiler(),
+    private val compiler: IntellijSearchScopeCompiler = IntellijSearchScopeCompiler()
 ) {
     /**
-     * Compiles the detached policy before invoking [query]. Rejected ownership never enters native
-     * PSI or index work, and the callback receives only the proof-carrying compiled capability.
+     * Compiles the detached policy before invoking [query]. Rejected ownership never enters native PSI or index work,
+     * and the callback receives only the proof-carrying compiled capability.
      */
     fun <Value> execute(
         project: Project,
         request: SymbolSearchScopeRequest,
         modelCompilation: WorkspaceSearchScopeModelCompilation,
         query: (CompiledIntellijSearchScope) -> Value,
-    ): IntellijScopedQueryResult<Value> = executeCompilation(
-        compilation = compiler.compile(project, request, modelCompilation),
-        query = query,
-    )
+    ): IntellijScopedQueryResult<Value> =
+        executeCompilation(
+            compilation = compiler.compile(project, request, modelCompilation),
+            query = query,
+        )
 
     internal fun <Value> execute(
         request: SymbolSearchScopeRequest,
@@ -293,34 +286,34 @@ internal class IntellijSearchScopeQueryAdapter(
         nativePath: (VirtualFile) -> IntellijVirtualFilePath,
         libraryMembership: (VirtualFile) -> IntellijLibraryMembership,
         query: (CompiledIntellijSearchScope) -> Value,
-    ): IntellijScopedQueryResult<Value> = executeCompilation(
-        compilation = compiler.compile(
-            request,
-            modelCompilation,
-            baseScope,
-            nativePath,
-            libraryMembership,
-        ),
-        query = query,
-    )
+    ): IntellijScopedQueryResult<Value> =
+        executeCompilation(
+            compilation =
+                compiler.compile(
+                    request,
+                    modelCompilation,
+                    baseScope,
+                    nativePath,
+                    libraryMembership,
+                ),
+            query = query,
+        )
 
     private fun <Value> executeCompilation(
         compilation: IntellijSearchScopeCompilation,
         query: (CompiledIntellijSearchScope) -> Value,
-    ): IntellijScopedQueryResult<Value> = when (compilation) {
-        is IntellijSearchScopeCompilation.Compiled ->
-            IntellijScopedQueryResult.Completed(query(compilation.capability))
-        is IntellijSearchScopeCompilation.Rejected ->
-            IntellijScopedQueryResult.Rejected(compilation.failures)
-    }
+    ): IntellijScopedQueryResult<Value> =
+        when (compilation) {
+            is IntellijSearchScopeCompilation.Compiled ->
+                IntellijScopedQueryResult.Completed(query(compilation.capability))
+            is IntellijSearchScopeCompilation.Rejected -> IntellijScopedQueryResult.Rejected(compilation.failures)
+        }
 }
 
 private sealed interface IntellijModelPathPolicy {
     fun contains(path: Path): Boolean
 
-    data class ExactFile(
-        val file: Path,
-    ) : IntellijModelPathPolicy {
+    data class ExactFile(val file: Path) : IntellijModelPathPolicy {
         override fun contains(path: Path): Boolean = path == file
     }
 
@@ -350,58 +343,56 @@ private class ModelOwnedGlobalSearchScope(
             return false
         }
         if (
-            libraryPolicy == SymbolLibraryPolicy.INCLUDE &&
-            libraryMembership(file) == IntellijLibraryMembership.LIBRARY
+            libraryPolicy == SymbolLibraryPolicy.INCLUDE && libraryMembership(file) == IntellijLibraryMembership.LIBRARY
         ) {
             return true
         }
         return when (val path = nativePath(file)) {
-            is IntellijVirtualFilePath.Absolute -> sourceMembership(file) &&
-                fileAdmission(path.value) && pathPolicy.contains(path.value)
+            is IntellijVirtualFilePath.Absolute ->
+                sourceMembership(file) && fileAdmission(path.value) && pathPolicy.contains(path.value)
             IntellijVirtualFilePath.Relative,
-            IntellijVirtualFilePath.Unavailable,
-                -> false
+            IntellijVirtualFilePath.Unavailable -> false
         }
     }
 
     override fun isSearchInLibraries(): Boolean = libraryPolicy == SymbolLibraryPolicy.INCLUDE
 }
 
-private fun SymbolSourceKindPolicy.includes(kind: WorkspaceSourceRootKind): Boolean = when (this) {
-    SymbolSourceKindPolicy.PRODUCTION_ONLY -> kind == WorkspaceSourceRootKind.PRODUCTION
-    SymbolSourceKindPolicy.TEST_ONLY -> kind == WorkspaceSourceRootKind.TEST
-    SymbolSourceKindPolicy.PRODUCTION_AND_TEST ->
-        kind == WorkspaceSourceRootKind.PRODUCTION || kind == WorkspaceSourceRootKind.TEST
-}
+private fun SymbolSourceKindPolicy.includes(kind: WorkspaceSourceRootKind): Boolean =
+    when (this) {
+        SymbolSourceKindPolicy.PRODUCTION_ONLY -> kind == WorkspaceSourceRootKind.PRODUCTION
+        SymbolSourceKindPolicy.TEST_ONLY -> kind == WorkspaceSourceRootKind.TEST
+        SymbolSourceKindPolicy.PRODUCTION_AND_TEST ->
+            kind == WorkspaceSourceRootKind.PRODUCTION || kind == WorkspaceSourceRootKind.TEST
+    }
 
-private fun SymbolGeneratedSourcePolicy.includes(
-    provenance: WorkspaceSourceRootProvenance,
-): Boolean = when (this) {
-    SymbolGeneratedSourcePolicy.EXCLUDE -> provenance == WorkspaceSourceRootProvenance.AUTHORED
-    SymbolGeneratedSourcePolicy.INCLUDE -> true
-}
+private fun SymbolGeneratedSourcePolicy.includes(provenance: WorkspaceSourceRootProvenance): Boolean =
+    when (this) {
+        SymbolGeneratedSourcePolicy.EXCLUDE -> provenance == WorkspaceSourceRootProvenance.AUTHORED
+        SymbolGeneratedSourcePolicy.INCLUDE -> true
+    }
 
-internal fun SymbolSearchScope.libraryPolicy(): SymbolLibraryPolicy = when (this) {
-    is SymbolSearchScope.Workspace -> libraries
-    is SymbolSearchScope.ExactFile,
-    is SymbolSearchScope.GradleProject,
-    is SymbolSearchScope.Module,
-    is SymbolSearchScope.SourceSet,
-        -> SymbolLibraryPolicy.EXCLUDE
-}
+internal fun SymbolSearchScope.libraryPolicy(): SymbolLibraryPolicy =
+    when (this) {
+        is SymbolSearchScope.Workspace -> libraries
+        is SymbolSearchScope.ExactFile,
+        is SymbolSearchScope.GradleProject,
+        is SymbolSearchScope.Module,
+        is SymbolSearchScope.SourceSet -> SymbolLibraryPolicy.EXCLUDE
+    }
 
 /**
  * Proof transition: VirtualFile to IntellijVirtualFilePath.
  *
- * Establishes an absolute normalized NIO path or returns the closed
- * [IntellijVirtualFilePath.Unavailable] state. The live [VirtualFile] and raw [Path] stay inside the
- * native scope boundary.
+ * Establishes an absolute normalized NIO path or returns the closed [IntellijVirtualFilePath.Unavailable] state. The
+ * live [VirtualFile] and raw [Path] stay inside the native scope boundary.
  */
-internal fun nativePath(file: VirtualFile): IntellijVirtualFilePath = try {
-    IntellijVirtualFilePath.classify(file.toNioPath())
-} catch (_: UnsupportedOperationException) {
-    IntellijVirtualFilePath.Unavailable
-}
+internal fun nativePath(file: VirtualFile): IntellijVirtualFilePath =
+    try {
+        IntellijVirtualFilePath.classify(file.toNioPath())
+    } catch (_: UnsupportedOperationException) {
+        IntellijVirtualFilePath.Unavailable
+    }
 
 private fun matchesDirectory(path: Path, root: String, constraints: SymbolDiscoveryConstraints): Boolean {
     val restriction = constraints.directory ?: return true

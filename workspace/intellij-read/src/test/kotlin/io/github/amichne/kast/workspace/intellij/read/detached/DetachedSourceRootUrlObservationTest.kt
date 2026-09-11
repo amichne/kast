@@ -10,9 +10,7 @@ class DetachedSourceRootUrlObservationTest {
         assertEquals(
             "/workspace/kast/src/test/resources",
             refinedValue(
-                LiveDetachedModelCapture.observeLocalSourceRootPath(
-                    "file:///workspace/kast/src/test/resources",
-                ),
+                LiveDetachedModelCapture.observeLocalSourceRootPath("file:///workspace/kast/src/test/resources")
             ),
         )
     }
@@ -22,24 +20,20 @@ class DetachedSourceRootUrlObservationTest {
         assertEquals(
             DetachedModelCaptureFailure.INVALID_SOURCE_ROOT,
             rejectedFailure(
-                LiveDetachedModelCapture.observeLocalSourceRootPath(
-                    "jar:///workspace/kast/dependency.jar!/sources",
-                ),
+                LiveDetachedModelCapture.observeLocalSourceRootPath("jar:///workspace/kast/dependency.jar!/sources")
             ),
         )
     }
 
-    private fun <Value, Failure> refinedValue(
-        refinement: Refinement<Value, Failure>,
-    ): Value = when (refinement) {
-        is Refinement.Refined -> refinement.value
-        is Refinement.Rejected -> error("Expected refinement, observed ${refinement.failure}")
-    }
+    private fun <Value, Failure> refinedValue(refinement: Refinement<Value, Failure>): Value =
+        when (refinement) {
+            is Refinement.Refined -> refinement.value
+            is Refinement.Rejected -> error("Expected refinement, observed ${refinement.failure}")
+        }
 
-    private fun <Value, Failure> rejectedFailure(
-        refinement: Refinement<Value, Failure>,
-    ): Failure = when (refinement) {
-        is Refinement.Refined -> error("Expected rejection, observed ${refinement.value}")
-        is Refinement.Rejected -> refinement.failure
-    }
+    private fun <Value, Failure> rejectedFailure(refinement: Refinement<Value, Failure>): Failure =
+        when (refinement) {
+            is Refinement.Refined -> error("Expected rejection, observed ${refinement.value}")
+            is Refinement.Rejected -> refinement.failure
+        }
 }

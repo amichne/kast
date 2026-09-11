@@ -4,21 +4,18 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 enum class SymbolDiscoveryMeasureFailure {
-    NEGATIVE,
+    NEGATIVE
 }
 
 @JvmInline
-value class SymbolDiscoveryByteCount private constructor(
-    val value: Long,
-) {
+value class SymbolDiscoveryByteCount private constructor(val value: Long) {
     companion object {
         /**
-         * Proof transition:
-         * Long to Refinement<SymbolDiscoveryByteCount, SymbolDiscoveryMeasureFailure>.
+         * Proof transition: Long to Refinement<SymbolDiscoveryByteCount, SymbolDiscoveryMeasureFailure>.
          *
-         * Establishes a non-negative canonical candidate-projection byte count.
-         * [SymbolDiscoveryMeasureFailure] is the closed expected failure. Raw counts may be
-         * extracted only at bounded projection, metrics, or transport boundaries.
+         * Establishes a non-negative canonical candidate-projection byte count. [SymbolDiscoveryMeasureFailure] is the
+         * closed expected failure. Raw counts may be extracted only at bounded projection, metrics, or transport
+         * boundaries.
          */
         fun parse(raw: Long): Refinement<SymbolDiscoveryByteCount, SymbolDiscoveryMeasureFailure> =
             if (raw >= 0L) {
@@ -30,17 +27,14 @@ value class SymbolDiscoveryByteCount private constructor(
 }
 
 @JvmInline
-value class SymbolDiscoveryWorkCount private constructor(
-    val value: Long,
-) {
+value class SymbolDiscoveryWorkCount private constructor(val value: Long) {
     companion object {
         /**
-         * Proof transition:
-         * Long to Refinement<SymbolDiscoveryWorkCount, SymbolDiscoveryMeasureFailure>.
+         * Proof transition: Long to Refinement<SymbolDiscoveryWorkCount, SymbolDiscoveryMeasureFailure>.
          *
          * Establishes a non-negative count of native names and elements examined by discovery.
-         * [SymbolDiscoveryMeasureFailure] is the closed expected failure. Raw counts may be
-         * extracted only at native query, metrics, or transport boundaries.
+         * [SymbolDiscoveryMeasureFailure] is the closed expected failure. Raw counts may be extracted only at native
+         * query, metrics, or transport boundaries.
          */
         fun parse(raw: Long): Refinement<SymbolDiscoveryWorkCount, SymbolDiscoveryMeasureFailure> =
             if (raw >= 0L) {
@@ -52,21 +46,15 @@ value class SymbolDiscoveryWorkCount private constructor(
 }
 
 @JvmInline
-value class SymbolDiscoveryElapsedNanoseconds private constructor(
-    val value: Long,
-) {
+value class SymbolDiscoveryElapsedNanoseconds private constructor(val value: Long) {
     companion object {
         /**
-         * Proof transition:
-         * Long to Refinement<SymbolDiscoveryElapsedNanoseconds, SymbolDiscoveryMeasureFailure>.
+         * Proof transition: Long to Refinement<SymbolDiscoveryElapsedNanoseconds, SymbolDiscoveryMeasureFailure>.
          *
-         * Establishes a non-negative monotonic elapsed duration in nanoseconds.
-         * [SymbolDiscoveryMeasureFailure] is the closed expected failure. Raw durations may be
-         * extracted only at the native timing and transport boundaries.
+         * Establishes a non-negative monotonic elapsed duration in nanoseconds. [SymbolDiscoveryMeasureFailure] is the
+         * closed expected failure. Raw durations may be extracted only at the native timing and transport boundaries.
          */
-        fun parse(
-            raw: Long,
-        ): Refinement<SymbolDiscoveryElapsedNanoseconds, SymbolDiscoveryMeasureFailure> =
+        fun parse(raw: Long): Refinement<SymbolDiscoveryElapsedNanoseconds, SymbolDiscoveryMeasureFailure> =
             if (raw >= 0L) {
                 Refinement.Refined(SymbolDiscoveryElapsedNanoseconds(raw))
             } else {
@@ -89,7 +77,8 @@ enum class SymbolDiscoveryBatchFailure {
 }
 
 @ConsistentCopyVisibility
-data class SymbolDiscoveryBatch private constructor(
+data class SymbolDiscoveryBatch
+private constructor(
     val lease: SemanticReadAuthority,
     val scope: SymbolSearchScope,
     val constraints: SymbolDiscoveryConstraints,
@@ -100,14 +89,13 @@ data class SymbolDiscoveryBatch private constructor(
 ) {
     companion object {
         /**
-         * Proof transition:
-         * SymbolDiscoveryRequest + candidates + measures to
-         * Refinement<SymbolDiscoveryBatch, SymbolDiscoveryBatchFailure>.
+         * Proof transition: SymbolDiscoveryRequest + candidates + measures to Refinement<SymbolDiscoveryBatch,
+         * SymbolDiscoveryBatchFailure>.
          *
-         * Establishes that candidates retain the request lease, are unique and deterministically
-         * ordered, and fit both the request record and canonical UTF-8 byte limits.
-         * [SymbolDiscoveryBatchFailure] is the closed expected failure. Candidate lists and raw
-         * metrics may be extracted only by bounded native projection or transport boundaries.
+         * Establishes that candidates retain the request lease, are unique and deterministically ordered, and fit both
+         * the request record and canonical UTF-8 byte limits. [SymbolDiscoveryBatchFailure] is the closed expected
+         * failure. Candidate lists and raw metrics may be extracted only by bounded native projection or transport
+         * boundaries.
          */
         fun create(
             request: SymbolDiscoveryRequest,
@@ -140,7 +128,7 @@ data class SymbolDiscoveryBatch private constructor(
                     encodedBytes = encodedBytes,
                     examinedWorkUnits = examinedWorkUnits,
                     timings = timings,
-                ),
+                )
             )
         }
     }
@@ -159,24 +147,21 @@ enum class SymbolDiscoveryQualification {
 }
 
 enum class SymbolDiscoveryQualificationFailure {
-    EMPTY,
+    EMPTY
 }
 
-class SymbolDiscoveryQualifications private constructor(
-    val values: Set<SymbolDiscoveryQualification>,
-) {
+class SymbolDiscoveryQualifications private constructor(val values: Set<SymbolDiscoveryQualification>) {
     companion object {
         /**
-         * Proof transition:
-         * Set<SymbolDiscoveryQualification> to
-         * Refinement<SymbolDiscoveryQualifications, SymbolDiscoveryQualificationFailure>.
+         * Proof transition: Set<SymbolDiscoveryQualification> to Refinement<SymbolDiscoveryQualifications,
+         * SymbolDiscoveryQualificationFailure>.
          *
-         * Establishes a non-empty closed qualification set, preventing a partial batch from being
-         * represented without its limitation. [SymbolDiscoveryQualificationFailure] is the closed
-         * expected failure. Raw sets may be extracted only at adapter and transport boundaries.
+         * Establishes a non-empty closed qualification set, preventing a partial batch from being represented without
+         * its limitation. [SymbolDiscoveryQualificationFailure] is the closed expected failure. Raw sets may be
+         * extracted only at adapter and transport boundaries.
          */
         fun from(
-            raw: Set<SymbolDiscoveryQualification>,
+            raw: Set<SymbolDiscoveryQualification>
         ): Refinement<SymbolDiscoveryQualifications, SymbolDiscoveryQualificationFailure> =
             if (raw.isEmpty()) {
                 Refinement.Rejected(SymbolDiscoveryQualificationFailure.EMPTY)
@@ -185,8 +170,7 @@ class SymbolDiscoveryQualifications private constructor(
             }
     }
 
-    override fun equals(other: Any?): Boolean =
-        other is SymbolDiscoveryQualifications && values == other.values
+    override fun equals(other: Any?): Boolean = other is SymbolDiscoveryQualifications && values == other.values
 
     override fun hashCode(): Int = values.hashCode()
 
@@ -194,9 +178,7 @@ class SymbolDiscoveryQualifications private constructor(
 }
 
 sealed interface SymbolDiscoveryOutcome {
-    data class Complete(
-        val batch: SymbolDiscoveryBatch,
-    ) : SymbolDiscoveryOutcome
+    data class Complete(val batch: SymbolDiscoveryBatch) : SymbolDiscoveryOutcome
 
     data class Qualified(
         val batch: SymbolDiscoveryBatch,

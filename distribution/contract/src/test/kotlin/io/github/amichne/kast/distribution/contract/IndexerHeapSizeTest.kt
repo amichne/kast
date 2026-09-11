@@ -12,6 +12,7 @@ class IndexerHeapSizeTest {
             assertEquals(expected, (IndexerHeapSize.parse(raw) as Refinement.Refined).value.mebibytes)
         }
     }
+
     @Test
     fun `invalid requests never default`() {
         for (raw in listOf("", " ", "8", "8G", "8.5g", "-8g", "+8g", "8g ", "8g -javaagent:bad")) {

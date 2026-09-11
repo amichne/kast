@@ -1,8 +1,6 @@
 package io.github.amichne.kast.protocol.registry
 
-/**
- * The closed execution lane whose authority and cost remain visible before admission.
- */
+/** The closed execution lane whose authority and cost remain visible before admission. */
 enum class OperationLane {
     METADATA,
     INDEX_LOOKUP,
@@ -13,9 +11,7 @@ enum class OperationLane {
     SOURCE_WRITE,
 }
 
-/**
- * The strongest effect authority an operation may require from a later runtime binding.
- */
+/** The strongest effect authority an operation may require from a later runtime binding. */
 enum class OperationEffect {
     NONE,
     INTELLIJ_READ,
@@ -27,9 +23,7 @@ enum class OperationEffect {
     PROCESS_CONTROL,
 }
 
-/**
- * The broad resource-cost class used to route and admit an operation.
- */
+/** The broad resource-cost class used to route and admit an operation. */
 enum class OperationCost {
     HOST_NEUTRAL,
     BOUNDED_READ,
@@ -37,9 +31,7 @@ enum class OperationCost {
     RUNTIME_ORCHESTRATION,
 }
 
-/**
- * The narrowest domain scope against which an operation is evaluated.
- */
+/** The narrowest domain scope against which an operation is evaluated. */
 enum class OperationScope {
     RUNTIME,
     WORKSPACE,
@@ -49,9 +41,7 @@ enum class OperationScope {
     SOURCE,
 }
 
-/**
- * Whether a bounded operation must be complete or may return explicitly qualified evidence.
- */
+/** Whether a bounded operation must be complete or may return explicitly qualified evidence. */
 enum class CompletenessPolicy {
     COMPLETE_REQUIRED,
     QUALIFIED_ALLOWED,

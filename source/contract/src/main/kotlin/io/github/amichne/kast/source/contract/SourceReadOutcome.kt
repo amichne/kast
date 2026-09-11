@@ -17,7 +17,8 @@ enum class SourceTextWithheldReason {
 sealed interface SourceTextProjection {
     data object NotRequested : SourceTextProjection
 
-    class Returned private constructor(
+    class Returned
+    private constructor(
         val selector: SourceSelector,
         val text: String,
         val lines: SourceLineRange,
@@ -32,9 +33,9 @@ sealed interface SourceTextProjection {
 
     companion object {
         /**
-         * Refines the full normalized committed document into exact selected text and one-based
-         * source lines. Length and digest must match the selector snapshot before extraction;
-         * [SourceTextProjectionFailure] closes every expected mismatch.
+         * Refines the full normalized committed document into exact selected text and one-based source lines. Length
+         * and digest must match the selector snapshot before extraction; [SourceTextProjectionFailure] closes every
+         * expected mismatch.
          */
         fun returned(
             selector: SourceSelector,
@@ -51,17 +52,22 @@ sealed interface SourceTextProjection {
             ) {
                 return Refinement.Rejected(SourceTextProjectionFailure.DOCUMENT_IDENTITY_MISMATCH)
             }
-            return Refinement.Refined(Returned.create(
-                selector,
-                normalizedDocumentText.substring(selector.range.startInclusive.value, selector.range.endExclusive.value),
-                SourceLineRange.fromCommittedText(normalizedDocumentText, selector.range),
-            ))
+            return Refinement.Refined(
+                Returned.create(
+                    selector,
+                    normalizedDocumentText.substring(
+                        selector.range.startInclusive.value,
+                        selector.range.endExclusive.value,
+                    ),
+                    SourceLineRange.fromCommittedText(normalizedDocumentText, selector.range),
+                )
+            )
         }
     }
 }
 
 enum class SourceEntityCountFailure {
-    NEGATIVE,
+    NEGATIVE
 }
 
 @JvmInline
@@ -89,6 +95,7 @@ enum class SourceReadLimitation {
 
 sealed interface SourceReadContinuationState {
     data object Unavailable : SourceReadContinuationState
+
     data class Available(val continuation: SourceReadContinuation) : SourceReadContinuationState
 }
 
@@ -98,7 +105,8 @@ enum class SourceReadQualificationFailure {
 }
 
 /** Exact known-minimum coverage, canonical limitations, and explicit resumability. */
-class SourceReadQualification private constructor(
+class SourceReadQualification
+private constructor(
     val knownMinimumEntityCount: SourceEntityCount,
     val limitations: List<SourceReadLimitation>,
     val continuation: SourceReadContinuationState,
@@ -114,7 +122,7 @@ class SourceReadQualification private constructor(
             }
             if (
                 SourceReadLimitation.ENTITY_LIMIT_REACHED in limitations &&
-                continuation is SourceReadContinuationState.Unavailable
+                    continuation is SourceReadContinuationState.Unavailable
             ) {
                 return Refinement.Rejected(SourceReadQualificationFailure.CONTINUATION_REQUIRED)
             }
@@ -123,7 +131,7 @@ class SourceReadQualification private constructor(
                     knownMinimumEntityCount,
                     limitations.sortedBy { it.ordinal },
                     continuation,
-                ),
+                )
             )
         }
     }
@@ -160,7 +168,8 @@ enum class SourceReadEvidenceFailure {
 
 sealed interface SourceReadResult {
     @ConsistentCopyVisibility
-    data class Complete private constructor(
+    data class Complete
+    private constructor(
         val snapshot: SourceSnapshot,
         val region: SourceRegion,
         val entities: List<SourceEntity>,
@@ -172,19 +181,17 @@ sealed interface SourceReadResult {
                 region: SourceRegion,
                 entities: List<SourceEntity>,
                 text: SourceTextProjection,
-            ): Refinement<Complete, SourceReadEvidenceFailure> = when (
-                val admitted = admitEvidence(snapshot, region, entities, text, complete = true)
-            ) {
-                is Refinement.Refined -> Refinement.Refined(
-                    Complete(snapshot, region, admitted.value, text),
-                )
-                is Refinement.Rejected -> admitted
-            }
+            ): Refinement<Complete, SourceReadEvidenceFailure> =
+                when (val admitted = admitEvidence(snapshot, region, entities, text, complete = true)) {
+                    is Refinement.Refined -> Refinement.Refined(Complete(snapshot, region, admitted.value, text))
+                    is Refinement.Rejected -> admitted
+                }
         }
     }
 
     @ConsistentCopyVisibility
-    data class Qualified private constructor(
+    data class Qualified
+    private constructor(
         val snapshot: SourceSnapshot,
         val region: SourceRegion,
         val entities: List<SourceEntity>,
@@ -198,14 +205,12 @@ sealed interface SourceReadResult {
                 entities: List<SourceEntity>,
                 text: SourceTextProjection,
                 qualification: SourceReadQualification,
-            ): Refinement<Qualified, SourceReadEvidenceFailure> = when (
-                val admitted = admitEvidence(snapshot, region, entities, text, complete = false)
-            ) {
-                is Refinement.Refined -> Refinement.Refined(
-                    Qualified(snapshot, region, admitted.value, text, qualification),
-                )
-                is Refinement.Rejected -> admitted
-            }
+            ): Refinement<Qualified, SourceReadEvidenceFailure> =
+                when (val admitted = admitEvidence(snapshot, region, entities, text, complete = false)) {
+                    is Refinement.Refined ->
+                        Refinement.Refined(Qualified(snapshot, region, admitted.value, text, qualification))
+                    is Refinement.Rejected -> admitted
+                }
         }
     }
 
@@ -232,9 +237,10 @@ private fun admitEvidence(
     }
     when (text) {
         SourceTextProjection.NotRequested -> Unit
-        is SourceTextProjection.Withheld -> if (complete) {
-            return Refinement.Rejected(SourceReadEvidenceFailure.WITHHELD_TEXT_IS_NOT_COMPLETE)
-        }
+        is SourceTextProjection.Withheld ->
+            if (complete) {
+                return Refinement.Rejected(SourceReadEvidenceFailure.WITHHELD_TEXT_IS_NOT_COMPLETE)
+            }
         is SourceTextProjection.Returned -> {
             if (text.selector.snapshot != snapshot) {
                 return Refinement.Rejected(SourceReadEvidenceFailure.TEXT_SNAPSHOT_MISMATCH)
@@ -248,6 +254,4 @@ private fun admitEvidence(
 }
 
 private fun SourceRange.contains(other: SourceRange): Boolean =
-    snapshot == other.snapshot &&
-        startInclusive <= other.startInclusive &&
-        endExclusive >= other.endExclusive
+    snapshot == other.snapshot && startInclusive <= other.startInclusive && endExclusive >= other.endExclusive

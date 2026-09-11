@@ -12,15 +12,12 @@ class PureRenameSymbolPlanningService : RenameSymbolPlanOperations {
     /**
      * Proof transition: `RenameSymbolPlanRequest -> RenameSymbolPlanResult`.
      *
-     * Refines complete target-bound evidence and issues one deterministic exact-occurrence plan.
-     * Expected failure is closed by `RenameSymbolPlanningFailure`. Raw compiler and source values
-     * remain outside this pure service.
+     * Refines complete target-bound evidence and issues one deterministic exact-occurrence plan. Expected failure is
+     * closed by `RenameSymbolPlanningFailure`. Raw compiler and source values remain outside this pure service.
      */
-    override fun plan(request: RenameSymbolPlanRequest): RenameSymbolPlanResult = when (
-        val admitted = AdmittedRenameSymbolPlanInput.admit(request)
-    ) {
-        is Refinement.Refined ->
-            RenameSymbolPlanResult.Planned(RenameSymbolChangePlan.issue(admitted.value))
-        is Refinement.Rejected -> RenameSymbolPlanResult.Rejected(admitted.failure)
-    }
+    override fun plan(request: RenameSymbolPlanRequest): RenameSymbolPlanResult =
+        when (val admitted = AdmittedRenameSymbolPlanInput.admit(request)) {
+            is Refinement.Refined -> RenameSymbolPlanResult.Planned(RenameSymbolChangePlan.issue(admitted.value))
+            is Refinement.Rejected -> RenameSymbolPlanResult.Rejected(admitted.failure)
+        }
 }

@@ -7,6 +7,7 @@ import java.time.Duration
 
 internal fun interface RuntimeStartupProgressSink {
     fun publish(state: SemanticRuntimeBootstrapState)
+
     fun discoveringRuntime() = Unit
 }
 
@@ -23,7 +24,9 @@ internal class TerminalRuntimeStartupProgress(
 
     override fun discoveringRuntime() {
         if (terminal && lines == 0) {
-            writeLine("kast: discovering runtime; elapsed=0s; progress=0/${SemanticRuntimeBootstrapPhase.entries.size} phases")
+            writeLine(
+                "kast: discovering runtime; elapsed=0s; progress=0/${SemanticRuntimeBootstrapPhase.entries.size} phases"
+            )
             lines++
         }
     }
@@ -34,17 +37,18 @@ internal class TerminalRuntimeStartupProgress(
         val now = nanoTime()
         if (state == last && now - lastWrittenAt < HEARTBEAT.toNanos()) return
         val elapsed = Duration.ofNanos(now - started).seconds
-        val text = when (state) {
-            is SemanticRuntimeBootstrapState.Starting ->
-                "${state.phase.displayName}; elapsed=${elapsed}s; " +
-                    "progress=${state.phase.completedPhases}/${state.phase.totalPhases} phases"
-            is SemanticRuntimeBootstrapState.Ready ->
-                "ready; elapsed=${elapsed}s; " +
-                    "progress=${SemanticRuntimeBootstrapPhase.entries.size}/${SemanticRuntimeBootstrapPhase.entries.size} phases"
-            is SemanticRuntimeBootstrapState.Rejected ->
-                "rejected during ${state.phase.displayName}; elapsed=${elapsed}s; " +
-                    "cause=${state.failure.wireName}${state.modelInputDetail()}; next: ${state.correctiveAction().instruction}"
-        }
+        val text =
+            when (state) {
+                is SemanticRuntimeBootstrapState.Starting ->
+                    "${state.phase.displayName}; elapsed=${elapsed}s; " +
+                        "progress=${state.phase.completedPhases}/${state.phase.totalPhases} phases"
+                is SemanticRuntimeBootstrapState.Ready ->
+                    "ready; elapsed=${elapsed}s; " +
+                        "progress=${SemanticRuntimeBootstrapPhase.entries.size}/${SemanticRuntimeBootstrapPhase.entries.size} phases"
+                is SemanticRuntimeBootstrapState.Rejected ->
+                    "rejected during ${state.phase.displayName}; elapsed=${elapsed}s; " +
+                        "cause=${state.failure.wireName}${state.modelInputDetail()}; next: ${state.correctiveAction().instruction}"
+            }
         writeLine("kast: $text")
         last = state
         lastWrittenAt = now
@@ -54,16 +58,19 @@ internal class TerminalRuntimeStartupProgress(
     companion object {
         private val HEARTBEAT = Duration.ofMillis(CliOperationalLimits.progressHeartbeatMillis)
         private const val MAXIMUM_LINES = CliOperationalLimits.maximumProgressLines
-        fun create(): RuntimeStartupProgressSink = TerminalRuntimeStartupProgress(
-            System.console()?.isTerminal == true,
-            System::nanoTime,
-            System.err::println,
-        )
+
+        fun create(): RuntimeStartupProgressSink =
+            TerminalRuntimeStartupProgress(
+                System.console()?.isTerminal == true,
+                System::nanoTime,
+                System.err::println,
+            )
     }
 }
 
-private fun SemanticRuntimeBootstrapState.Rejected.modelInputDetail(): String = when (val evidence = cause) {
-    is io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapCause.Standard -> ""
-    is io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapCause.ModelInput ->
-        "; input=${evidence.input.path.value}; reason=${evidence.input.reason}"
-}
+private fun SemanticRuntimeBootstrapState.Rejected.modelInputDetail(): String =
+    when (val evidence = cause) {
+        is io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapCause.Standard -> ""
+        is io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapCause.ModelInput ->
+            "; input=${evidence.input.path.value}; reason=${evidence.input.reason}"
+    }

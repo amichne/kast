@@ -14,13 +14,13 @@ import io.github.amichne.kast.protocol.contract.ChangeApplyResult
 import io.github.amichne.kast.protocol.contract.ChangeFilePreview
 import io.github.amichne.kast.protocol.contract.ChangeFilePreviewKind
 import io.github.amichne.kast.protocol.contract.ChangeFilePreviewSet
-import io.github.amichne.kast.protocol.contract.ChangePreviewDiff
-import io.github.amichne.kast.protocol.contract.ChangePreviewPath
 import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
 import io.github.amichne.kast.protocol.contract.ChangePlanQualification
 import io.github.amichne.kast.protocol.contract.ChangePlanRejection
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ChangePlanResult
+import io.github.amichne.kast.protocol.contract.ChangePreviewDiff
+import io.github.amichne.kast.protocol.contract.ChangePreviewPath
 import io.github.amichne.kast.protocol.contract.ChangeRecoverQualification
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
@@ -28,11 +28,11 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
 import io.github.amichne.kast.protocol.contract.ChangeRecoveryDocumentState
 import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
 import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
-import io.github.amichne.kast.protocol.contract.DiagnosticDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
+import io.github.amichne.kast.protocol.contract.DiagnosticDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticKnownCountDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticLimitationDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticLimitationReasonDocument
@@ -46,10 +46,10 @@ import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
 import io.github.amichne.kast.protocol.contract.RelationFactCoverageDocument
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
-import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
+import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
 import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
@@ -60,11 +60,6 @@ import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
-import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
-import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
-import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
-import io.github.amichne.kast.protocol.contract.SymbolInspectResult
-import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
@@ -75,24 +70,29 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
 import io.github.amichne.kast.protocol.contract.SymbolDocument
+import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
+import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
-import io.github.amichne.kast.protocol.contract.TraversalRunQualification
-import io.github.amichne.kast.protocol.contract.TraversalRunRejection
-import io.github.amichne.kast.protocol.contract.TraversalRunRequest
-import io.github.amichne.kast.protocol.contract.TraversalRunResult
-import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
-import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
-import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
-import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
-import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
 import io.github.amichne.kast.protocol.contract.TopologyBuildDigest
+import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
 import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
 import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildResult
 import io.github.amichne.kast.protocol.contract.TopologyBuildStatus
 import io.github.amichne.kast.protocol.contract.TopologyExtractionRejection
+import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
+import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
+import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
+import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
+import io.github.amichne.kast.protocol.contract.TraversalRunQualification
+import io.github.amichne.kast.protocol.contract.TraversalRunRejection
+import io.github.amichne.kast.protocol.contract.TraversalRunRequest
+import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import io.github.amichne.kast.protocol.registry.CanonicalOperationDefinitions
 import io.github.amichne.kast.protocol.registry.HostedVariants
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -109,16 +109,19 @@ class CanonicalOperationWireBindingsTest {
 
     @Test
     fun `generated registry document preserves the typed definition order`() {
-        val operations = CanonicalOperationDefinitions.registry.definitions.joinToString(",") {
-            val intents = when (val variants = it.hostedVariants) {
-                is HostedVariants.Intents -> variants.intents.joinToString(",") { intent ->
-                    "\"${intent.identity}\""
-                }
-                HostedVariants.None -> ""
+        val operations =
+            CanonicalOperationDefinitions.registry.definitions.joinToString(",") {
+                val intents =
+                    when (val variants = it.hostedVariants) {
+                        is HostedVariants.Intents ->
+                            variants.intents.joinToString(",") { intent ->
+                                "\"${intent.identity}\""
+                            }
+                        HostedVariants.None -> ""
+                    }
+                "{\"operationId\":\"${it.id.value}\",\"hostedExposure\":" +
+                    "\"${it.hostedExposure.name.lowercase()}\",\"intents\":[$intents]}"
             }
-            "{\"operationId\":\"${it.id.value}\",\"hostedExposure\":" +
-                "\"${it.hostedExposure.name.lowercase()}\",\"intents\":[$intents]}"
-        }
 
         assertEquals(
             "{\"schemaVersion\":2,\"operations\":[$operations]}\n",
@@ -145,16 +148,17 @@ class CanonicalOperationWireBindingsTest {
             discoverRequest("Target", 20),
             SymbolDiscoverResult(
                 BoundedProtocolList.create(
-                    listOf<SymbolDiscoveryDocument>(
-                        SymbolDiscoveryDocument.Declaration(
-                            text("candidate:v1:Target"),
-                            SymbolDiscoveryKindDocument.SYMBOL,
-                            text("Target"),
-                            text("src/Target.kt"),
-                            offset(7),
-                        ),
-                    ),
-                ).refinedValue(),
+                        listOf<SymbolDiscoveryDocument>(
+                            SymbolDiscoveryDocument.Declaration(
+                                text("candidate:v1:Target"),
+                                SymbolDiscoveryKindDocument.SYMBOL,
+                                text("Target"),
+                                text("src/Target.kt"),
+                                offset(7),
+                            )
+                        )
+                    )
+                    .refinedValue()
             ),
             SymbolDiscoverQualification.from(setOf(SymbolDiscoverLimitation.RESULT_LIMIT)).refinedValue(),
             SymbolDiscoverRejection.QUERY_REJECTED,
@@ -171,14 +175,15 @@ class CanonicalOperationWireBindingsTest {
             RelationReadRequest(text("exact:Target"), RelationKindDocument.CALLERS, count(50)),
             RelationReadResult(
                 BoundedProtocolList.create(
-                    listOf(
-                        relation(
-                            RelationKindDocument.CALLERS,
-                            symbol("exact:v1:Caller", "Caller"),
-                            symbol("exact:v1:Target", "Target"),
-                        ),
-                    ),
-                ).refinedValue(),
+                        listOf(
+                            relation(
+                                RelationKindDocument.CALLERS,
+                                symbol("exact:v1:Caller", "Caller"),
+                                symbol("exact:v1:Target", "Target"),
+                            )
+                        )
+                    )
+                    .refinedValue()
             ),
             relationQualification(),
             RelationReadRejection.RELATION_UNSUPPORTED,
@@ -194,25 +199,26 @@ class CanonicalOperationWireBindingsTest {
             TraversalRunResult(
                 text("/workspace"),
                 BoundedProtocolList.create(
-                    listOf(
-                        traversal(
-                            1,
-                            relation(
-                                RelationKindDocument.CALLERS,
-                                symbol("exact:v1:Caller", "Caller"),
-                                symbol("exact:v1:Target", "Target"),
+                        listOf(
+                            traversal(
+                                1,
+                                relation(
+                                    RelationKindDocument.CALLERS,
+                                    symbol("exact:v1:Caller", "Caller"),
+                                    symbol("exact:v1:Target", "Target"),
+                                ),
                             ),
-                        ),
-                        traversal(
-                            2,
-                            relation(
-                                RelationKindDocument.CALLERS,
-                                symbol("exact:v1:Root", "Root"),
-                                symbol("exact:v1:Caller", "Caller"),
+                            traversal(
+                                2,
+                                relation(
+                                    RelationKindDocument.CALLERS,
+                                    symbol("exact:v1:Root", "Root"),
+                                    symbol("exact:v1:Caller", "Caller"),
+                                ),
                             ),
-                        ),
-                    ),
-                ).refinedValue(),
+                        )
+                    )
+                    .refinedValue(),
             ),
             traversalQualification(),
             TraversalRunRejection.PLAN_REJECTED,
@@ -222,19 +228,20 @@ class CanonicalOperationWireBindingsTest {
             DiagnosticCheckRequest(text("project:fixture"), count(100)),
             DiagnosticCheckResult(
                 BoundedProtocolList.create(
-                    listOf(
-                        DiagnosticDocument(
-                            DiagnosticSeverityDocument.WARNING,
-                            text("UNUSED"),
-                            text("unused"),
-                            DiagnosticLocationDocument(
-                                text("candidate:diagnostic"),
-                                text("src/Target.kt"),
-                                DiagnosticRangeDocument.create(offset(3), offset(3)).refinedValue(),
-                            ),
-                        ),
-                    ),
-                ).refinedValue(),
+                        listOf(
+                            DiagnosticDocument(
+                                DiagnosticSeverityDocument.WARNING,
+                                text("UNUSED"),
+                                text("unused"),
+                                DiagnosticLocationDocument(
+                                    text("candidate:diagnostic"),
+                                    text("src/Target.kt"),
+                                    DiagnosticRangeDocument.create(offset(3), offset(3)).refinedValue(),
+                                ),
+                            )
+                        )
+                    )
+                    .refinedValue()
             ),
             diagnosticQualification(),
             DiagnosticCheckRejection.SCOPE_REJECTED,
@@ -259,7 +266,7 @@ class CanonicalOperationWireBindingsTest {
                 ChangeIntentDocument.AddDeclaration(
                     text("exact:Target"),
                     text("fun added() = Unit"),
-                ),
+                )
             ),
             ChangePlanResult(text("plan:1"), preview()),
             ChangePlanQualification.OPTIONAL_EVIDENCE_INCOMPLETE,
@@ -283,17 +290,17 @@ class CanonicalOperationWireBindingsTest {
 
     @Test
     fun `all four closed change intents use the one production plan binding`() {
-        val intents = listOf(
-            ChangeIntentDocument.AddFile(text("src/New.kt"), text("class New")),
-            ChangeIntentDocument.AddDeclaration(text("exact:Target"), text("fun added() = Unit")),
-            ChangeIntentDocument.ReplaceDeclaration(text("exact:Target"), text("class Target")),
-            ChangeIntentDocument.RenameSymbol(text("exact:Target"), text("Renamed")),
-        )
+        val intents =
+            listOf(
+                ChangeIntentDocument.AddFile(text("src/New.kt"), text("class New")),
+                ChangeIntentDocument.AddDeclaration(text("exact:Target"), text("fun added() = Unit")),
+                ChangeIntentDocument.ReplaceDeclaration(text("exact:Target"), text("class Target")),
+                ChangeIntentDocument.RenameSymbol(text("exact:Target"), text("Renamed")),
+            )
 
         intents.forEach { intent ->
             val request = ChangePlanRequest(intent)
-            val encoded = CanonicalOperationWireBindings.changePlan.encodeRequest(request)
-                .encodedDocument()
+            val encoded = CanonicalOperationWireBindings.changePlan.encodeRequest(request).encodedDocument()
             val admitted = WireRequestEnvelope.admit(encoded).admittedRequest()
             assertEquals(
                 WireDecoding.Decoded(request),
@@ -305,14 +312,12 @@ class CanonicalOperationWireBindingsTest {
     @Test
     fun `production binding rejects unknown operation schema and invalid refined payload`() {
         val binding = CanonicalOperationWireBindings.symbolDiscover
-        val encoded = binding.encodeRequest(discoverRequest("Target", 20))
-            .encodedDocument()
+        val encoded = binding.encodeRequest(discoverRequest("Target", 20)).encodedDocument()
         val unknownSchema = SchemaIdentity.parse("kast.unknown.v1").refinedValue()
         val unknownOperation = OperationId.parse("symbol.missing").refinedValue()
 
-        val admittedUnknownSchema = WireRequestEnvelope.admit(
-            encoded.replace(binding.schema.value, unknownSchema.value),
-        ).admittedRequest()
+        val admittedUnknownSchema =
+            WireRequestEnvelope.admit(encoded.replace(binding.schema.value, unknownSchema.value)).admittedRequest()
         assertEquals(
             WireDecoding.Rejected(WireFailure.UnknownSchema(unknownSchema)),
             binding.decodeRequest(admittedUnknownSchema),
@@ -323,7 +328,7 @@ class CanonicalOperationWireBindingsTest {
                 encoded.replace(
                     "\"operation\":\"${binding.operation.id.value}\"",
                     "\"operation\":\"${unknownOperation.value}\"",
-                ),
+                )
             ),
         )
 
@@ -339,7 +344,7 @@ class CanonicalOperationWireBindingsTest {
         Result : OperationResult,
         Qualification : OperationQualification,
         Rejection : OperationRejection,
-        > assertRoundTrips(
+    > assertRoundTrips(
         binding: OperationWireBinding<Request, Result, Qualification, Rejection>,
         request: Request,
         result: Result,
@@ -350,19 +355,21 @@ class CanonicalOperationWireBindingsTest {
         val admittedRequest = WireRequestEnvelope.admit(requestDocument).admittedRequest()
         assertEquals(WireDecoding.Decoded(request), binding.decodeRequest(admittedRequest))
 
-        val evidence = EvidenceEnvelope(
-            operation = binding.operation.id,
-            generation = EvidenceGeneration.parse(17).refinedValue(),
-            payload = result,
-        )
+        val evidence =
+            EvidenceEnvelope(
+                operation = binding.operation.id,
+                generation = EvidenceGeneration.parse(17).refinedValue(),
+                payload = result,
+            )
         listOf(
-            OperationOutcome.Complete(evidence),
-            OperationOutcome.Qualified(evidence, qualification),
-            OperationOutcome.Rejected(rejection),
-        ).forEach { outcome ->
-            val document = binding.encodeOutcome(outcome).encodedDocument()
-            assertEquals(WireDecoding.Decoded(outcome), binding.decodeOutcome(document))
-        }
+                OperationOutcome.Complete(evidence),
+                OperationOutcome.Qualified(evidence, qualification),
+                OperationOutcome.Rejected(rejection),
+            )
+            .forEach { outcome ->
+                val document = binding.encodeOutcome(outcome).encodedDocument()
+                assertEquals(WireDecoding.Decoded(outcome), binding.decodeOutcome(document))
+            }
     }
 
     private fun <
@@ -370,7 +377,7 @@ class CanonicalOperationWireBindingsTest {
         Result : OperationResult,
         Qualification : OperationQualification,
         Rejection : OperationRejection,
-        > assertRejections(
+    > assertRejections(
         binding: OperationWireBinding<Request, Result, Qualification, Rejection>,
         rejections: Iterable<Rejection>,
     ) {
@@ -396,64 +403,70 @@ class CanonicalOperationWireBindingsTest {
         val signature = CompilerSignatureDocument.ClassLike(qualifiedIdentity)
         val evidence = CompilerSymbolEvidenceDocument.fromSignature(signature).refinedValue()
         return SymbolDocument.create(
-            selector = text(selector),
-            kind = SymbolKindDocument.CLASSLIKE,
-            name = text(name),
-            qualifiedIdentity = SymbolQualifiedIdentityDocument.Available(qualifiedIdentity),
-            file = text("src/$name.kt"),
-            range = SourceRangeDocument.create(offset(0), offset(name.length)).refinedValue(),
-            compilerEvidence = evidence,
-        ).refinedValue()
+                selector = text(selector),
+                kind = SymbolKindDocument.CLASSLIKE,
+                name = text(name),
+                qualifiedIdentity = SymbolQualifiedIdentityDocument.Available(qualifiedIdentity),
+                file = text("src/$name.kt"),
+                range = SourceRangeDocument.create(offset(0), offset(name.length)).refinedValue(),
+                compilerEvidence = evidence,
+            )
+            .refinedValue()
     }
 
     private fun relation(
         meaning: RelationKindDocument,
         source: SymbolDocument,
         target: SymbolDocument,
-    ): RelationFactDocument = RelationFactDocument(
-        meaning,
-        source,
-        target,
-        RelationOccurrenceDocument(text("candidate:occurrence"), source.file, source.range),
-        RelationProvenanceDocument.K2_AUTHORED_SOURCE,
-        RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
-    )
+    ): RelationFactDocument =
+        RelationFactDocument(
+            meaning,
+            source,
+            target,
+            RelationOccurrenceDocument(text("candidate:occurrence"), source.file, source.range),
+            RelationProvenanceDocument.K2_AUTHORED_SOURCE,
+            RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
+        )
 
     private fun traversal(depth: Int, relation: RelationFactDocument): TraversalRecordDocument =
         TraversalRecordDocument(TraversalDepthDocument.parse(depth).refinedValue(), relation)
 
     private fun relationQualification(): RelationReadQualification =
         RelationReadQualification.resumable(
-            RelationKnownMinimumDocument.parse(1).refinedValue(),
-            listOf(
-                RelationLimitationDocument.RESULT_LIMIT_REACHED,
-                RelationLimitationDocument.PROVIDER_INCOMPLETE,
-            ),
-            relationContinuation("binding"),
-        ).refinedValue()
+                RelationKnownMinimumDocument.parse(1).refinedValue(),
+                listOf(
+                    RelationLimitationDocument.RESULT_LIMIT_REACHED,
+                    RelationLimitationDocument.PROVIDER_INCOMPLETE,
+                ),
+                relationContinuation("binding"),
+            )
+            .refinedValue()
 
     private fun traversalQualification(): TraversalRunQualification =
         TraversalRunQualification.resumable(
-            listOf(
-                TraversalLimitationDocument.RECORD_LIMIT_REACHED,
-                TraversalLimitationDocument.ONE_HOP_INCOMPLETE,
-            ),
-            listOf(RelationLimitationDocument.PROVIDER_INCOMPLETE),
-            traversalContinuation("binding"),
-        ).refinedValue()
+                listOf(
+                    TraversalLimitationDocument.RECORD_LIMIT_REACHED,
+                    TraversalLimitationDocument.ONE_HOP_INCOMPLETE,
+                ),
+                listOf(RelationLimitationDocument.PROVIDER_INCOMPLETE),
+                traversalContinuation("binding"),
+            )
+            .refinedValue()
 
     private fun diagnosticQualification(): DiagnosticCheckQualification =
         DiagnosticCheckQualification.create(
-            DiagnosticKnownCountDocument.parse(1).refinedValue(),
-            resultLimitReached = true,
-            analyzedFiles = listOf(text("src/Target.kt")),
-            limitations = listOf(
-                DiagnosticLimitationDocument(
-                    text("src/Other.kt"),
-                    DiagnosticLimitationReasonDocument.INDEXING,
-                ),
-            ),
-        ).refinedValue()
+                DiagnosticKnownCountDocument.parse(1).refinedValue(),
+                resultLimitReached = true,
+                analyzedFiles = listOf(text("src/Target.kt")),
+                limitations =
+                    listOf(
+                        DiagnosticLimitationDocument(
+                            text("src/Other.kt"),
+                            DiagnosticLimitationReasonDocument.INDEXING,
+                        )
+                    ),
+            )
+            .refinedValue()
 
     private fun offset(raw: Int): ProtocolOffset = ProtocolOffset.parse(raw).refinedValue()
 
@@ -464,51 +477,50 @@ class CanonicalOperationWireBindingsTest {
     private fun relationContinuation(payloadText: String): RelationContinuationDocument {
         val payload = payloadText.toByteArray()
         val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
-        val digest = java.security.MessageDigest.getInstance("SHA-256")
-            .digest(payload)
-            .joinToString("") { byte ->
+        val digest =
+            java.security.MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { byte ->
                 (byte.toInt() and 0xff).toString(16).padStart(2, '0')
             }
-        return RelationContinuationDocument.parse(
-            "relation-continuation:v1:$encoded:$digest",
-        ).refinedValue()
+        return RelationContinuationDocument.parse("relation-continuation:v1:$encoded:$digest").refinedValue()
     }
 
     private fun traversalContinuation(payloadText: String): TraversalContinuationDocument {
         val payload = payloadText.toByteArray()
         val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
-        val digest = java.security.MessageDigest.getInstance("SHA-256")
-            .digest(payload)
-            .joinToString("") { byte ->
+        val digest =
+            java.security.MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { byte ->
                 (byte.toInt() and 0xff).toString(16).padStart(2, '0')
             }
-        return TraversalContinuationDocument.parse(
-            "traversal-continuation:v1:$encoded:$digest",
-        ).refinedValue()
+        return TraversalContinuationDocument.parse("traversal-continuation:v1:$encoded:$digest").refinedValue()
     }
 
-    private fun preview(): ChangeFilePreviewSet = ChangeFilePreviewSet.admit(
-        listOf(
-            ChangeFilePreview(
-                ChangePreviewPath.parse("src/Target.kt").refinedValue(),
-                ChangeFilePreviewKind.UPDATE,
-                ChangePreviewDiff.parse("-old\n+new").refinedValue(),
-            ),
-        ),
-    ).refinedValue()
+    private fun preview(): ChangeFilePreviewSet =
+        ChangeFilePreviewSet.admit(
+                listOf(
+                    ChangeFilePreview(
+                        ChangePreviewPath.parse("src/Target.kt").refinedValue(),
+                        ChangeFilePreviewKind.UPDATE,
+                        ChangePreviewDiff.parse("-old\n+new").refinedValue(),
+                    )
+                )
+            )
+            .refinedValue()
 
-    private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error("Expected refined value, got $failure")
-    }
+    private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error("Expected refined value, got $failure")
+        }
 
-    private fun WireEncoding.encodedDocument(): String = when (this) {
-        is WireEncoding.Encoded -> document
-        is WireEncoding.Rejected -> error("Expected encoded document, got $failure")
-    }
+    private fun WireEncoding.encodedDocument(): String =
+        when (this) {
+            is WireEncoding.Encoded -> document
+            is WireEncoding.Rejected -> error("Expected encoded document, got $failure")
+        }
 
-    private fun WireRequestAdmission.admittedRequest(): AdmittedWireRequest = when (this) {
-        is WireRequestAdmission.Admitted -> request
-        is WireRequestAdmission.Rejected -> error("Expected admitted request, got $failure")
-    }
+    private fun WireRequestAdmission.admittedRequest(): AdmittedWireRequest =
+        when (this) {
+            is WireRequestAdmission.Admitted -> request
+            is WireRequestAdmission.Rejected -> error("Expected admitted request, got $failure")
+        }
 }

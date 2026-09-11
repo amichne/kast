@@ -17,19 +17,19 @@ internal fun productCommandGroup(): LocalCommandFamily {
     )
 }
 
-private class ProductCommand : KastCommandGroup(
-    "product",
-    "Inspect the installed control product and local IDE endpoint evidence.",
-)
+private class ProductCommand :
+    KastCommandGroup(
+        "product",
+        "Inspect the installed control product and local IDE endpoint evidence.",
+    )
 
-private class ProductInspectCommand : LocalKastCommand(
-    "inspect",
-    CliProductCommand.INSPECT,
-) {
+private class ProductInspectCommand :
+    LocalKastCommand(
+        "inspect",
+        CliProductCommand.INSPECT,
+    ) {
     override fun help(context: Context): String =
         "Inspect control identity and endpoint evidence without compatible runtime admission."
 
-    override fun resolveAction(): CliActionResolution = CliActionResolution.Selected(
-        CliAction.Local.ProductInspect,
-    )
+    override fun resolveAction(): CliActionResolution = CliActionResolution.Selected(CliAction.Local.ProductInspect)
 }

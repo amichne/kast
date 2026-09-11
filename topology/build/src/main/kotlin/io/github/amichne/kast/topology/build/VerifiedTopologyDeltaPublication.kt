@@ -34,17 +34,11 @@ enum class VerifiedTopologyDeltaPublicationFailure {
 }
 
 sealed interface VerifiedTopologyDeltaPublication {
-    data class Published(
-        val snapshot: PublishedTopologySnapshot,
-    ) : VerifiedTopologyDeltaPublication
+    data class Published(val snapshot: PublishedTopologySnapshot) : VerifiedTopologyDeltaPublication
 
-    data class Unchanged(
-        val snapshot: PublishedTopologySnapshot,
-    ) : VerifiedTopologyDeltaPublication
+    data class Unchanged(val snapshot: PublishedTopologySnapshot) : VerifiedTopologyDeltaPublication
 
-    data class Rejected(
-        val failure: VerifiedTopologyDeltaPublicationFailure,
-    ) : VerifiedTopologyDeltaPublication
+    data class Rejected(val failure: VerifiedTopologyDeltaPublicationFailure) : VerifiedTopologyDeltaPublication
 }
 
 /** Verification-bound publication of one singleton source delta; it is not a traversal fallback. */
@@ -58,10 +52,10 @@ fun interface VerifiedTopologyDeltaPublicationOperations {
 }
 
 /**
- * Preserves a complete durable topology across one verified source write by extracting only the
- * changed file and mechanically rebinding all retained compiler facts to the resulting lease. The
- * prior lease names the durable snapshot admitted by the plan; exact candidate comparison below
- * proves unchanged files across any conservative cold-start publications before application.
+ * Preserves a complete durable topology across one verified source write by extracting only the changed file and
+ * mechanically rebinding all retained compiler facts to the resulting lease. The prior lease names the durable snapshot
+ * admitted by the plan; exact candidate comparison below proves unchanged files across any conservative cold-start
+ * publications before application.
  */
 class VerifiedTopologyDeltaPublicationService(
     private val leaseGuard: SemanticReadLeaseGuard,
@@ -76,105 +70,104 @@ class VerifiedTopologyDeltaPublicationService(
         postimage: WorkspaceSourceContentHash,
     ): VerifiedTopologyDeltaPublication {
         val currentIdentity = TopologyWorkspaceIdentity.from(resulting)
-        val priorSnapshot = when (
-            val guarded = leaseGuard.whileCurrent(resulting.readLease) {
-                snapshots.eligible(currentIdentity)
+        val priorSnapshot =
+            when (
+                val guarded =
+                    leaseGuard.whileCurrent(resulting.readLease) {
+                        snapshots.eligible(currentIdentity)
+                    }
+            ) {
+                SemanticReadLeaseUse.Moved -> return rejected(VerifiedTopologyDeltaPublicationFailure.WORKSPACE_MOVED)
+                is SemanticReadLeaseUse.Completed ->
+                    when (val eligibility = guarded.value) {
+                        is TopologySnapshotEligibility.Eligible -> return unchanged(eligibility.snapshot)
+                        is TopologySnapshotEligibility.Stale -> eligibility.latest
+                        TopologySnapshotEligibility.Unavailable ->
+                            return rejected(VerifiedTopologyDeltaPublicationFailure.PRIOR_SNAPSHOT_UNAVAILABLE)
+                        is TopologySnapshotEligibility.Rejected ->
+                            return rejected(VerifiedTopologyDeltaPublicationFailure.SNAPSHOT_READ_REJECTED)
+                    }
             }
-        ) {
-            SemanticReadLeaseUse.Moved -> return rejected(
-                VerifiedTopologyDeltaPublicationFailure.WORKSPACE_MOVED,
-            )
-            is SemanticReadLeaseUse.Completed -> when (val eligibility = guarded.value) {
-                is TopologySnapshotEligibility.Eligible -> return unchanged(eligibility.snapshot)
-                is TopologySnapshotEligibility.Stale -> eligibility.latest
-                TopologySnapshotEligibility.Unavailable -> return rejected(
-                    VerifiedTopologyDeltaPublicationFailure.PRIOR_SNAPSHOT_UNAVAILABLE,
-                )
-                is TopologySnapshotEligibility.Rejected -> return rejected(
-                    VerifiedTopologyDeltaPublicationFailure.SNAPSHOT_READ_REJECTED,
-                )
-            }
-        }
         if (priorSnapshot.identity.lease != priorTopologyLease) {
             return rejected(VerifiedTopologyDeltaPublicationFailure.PRIOR_SNAPSHOT_MISMATCH)
         }
-        val priorContent = when (val read = snapshots.read(priorSnapshot)) {
-            is TopologySnapshotContentRead.Loaded -> read.content
-            is TopologySnapshotContentRead.Rejected -> return rejected(
-                VerifiedTopologyDeltaPublicationFailure.SNAPSHOT_READ_REJECTED,
-            )
-        }
-        val initial = enumerate(resulting) ?: return rejected(
-            VerifiedTopologyDeltaPublicationFailure.CANDIDATE_ENUMERATION_REJECTED,
-        )
-        val changed = initial.files.singleOrNull { candidate ->
-            Path.of(resulting.root.value).resolve(candidate.path.value).normalize().toString() ==
-                changedSource.path.value
-        } ?: return rejected(VerifiedTopologyDeltaPublicationFailure.CHANGED_SOURCE_MISMATCH)
+        val priorContent =
+            when (val read = snapshots.read(priorSnapshot)) {
+                is TopologySnapshotContentRead.Loaded -> read.content
+                is TopologySnapshotContentRead.Rejected ->
+                    return rejected(VerifiedTopologyDeltaPublicationFailure.SNAPSHOT_READ_REJECTED)
+            }
+        val initial =
+            enumerate(resulting)
+                ?: return rejected(VerifiedTopologyDeltaPublicationFailure.CANDIDATE_ENUMERATION_REJECTED)
+        val changed =
+            initial.files.singleOrNull { candidate ->
+                Path.of(resulting.root.value).resolve(candidate.path.value).normalize().toString() ==
+                    changedSource.path.value
+            } ?: return rejected(VerifiedTopologyDeltaPublicationFailure.CHANGED_SOURCE_MISMATCH)
         if (changed.contentHash != postimage) {
             return rejected(VerifiedTopologyDeltaPublicationFailure.CHANGED_SOURCE_MISMATCH)
         }
-        val request = when (val admitted = initial.extractionRequest(changed)) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> return rejected(
-                VerifiedTopologyDeltaPublicationFailure.CHANGED_SOURCE_MISMATCH,
-            )
-        }
-        val extracted = when (val extraction = extractor.extract(request)) {
-            is TopologyFileExtraction.Complete -> extraction.file
-            is TopologyFileExtraction.Failed,
-            is TopologyFileExtraction.IdentityMismatch,
-                -> return rejected(
-                VerifiedTopologyDeltaPublicationFailure.CHANGED_SOURCE_EXTRACTION_REJECTED,
-            )
-        }
-        val rebound = when (val reuse = rebindVerifiedSingletonChange(
-            resulting,
-            initial,
-            priorContent,
-            extracted,
-        )) {
-            is VerifiedTopologyGenerationReuse.Rebound -> reuse.generation
-            is VerifiedTopologyGenerationReuse.Rejected -> return rejected(
-                VerifiedTopologyDeltaPublicationFailure.REBIND_REJECTED,
-            )
-        }
-        val observed = enumerate(resulting) ?: return rejected(
-            VerifiedTopologyDeltaPublicationFailure.CANDIDATE_ENUMERATION_REJECTED,
-        )
+        val request =
+            when (val admitted = initial.extractionRequest(changed)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected ->
+                    return rejected(VerifiedTopologyDeltaPublicationFailure.CHANGED_SOURCE_MISMATCH)
+            }
+        val extracted =
+            when (val extraction = extractor.extract(request)) {
+                is TopologyFileExtraction.Complete -> extraction.file
+                is TopologyFileExtraction.Failed,
+                is TopologyFileExtraction.IdentityMismatch ->
+                    return rejected(VerifiedTopologyDeltaPublicationFailure.CHANGED_SOURCE_EXTRACTION_REJECTED)
+            }
+        val rebound =
+            when (
+                val reuse =
+                    rebindVerifiedSingletonChange(
+                        resulting,
+                        initial,
+                        priorContent,
+                        extracted,
+                    )
+            ) {
+                is VerifiedTopologyGenerationReuse.Rebound -> reuse.generation
+                is VerifiedTopologyGenerationReuse.Rejected ->
+                    return rejected(VerifiedTopologyDeltaPublicationFailure.REBIND_REJECTED)
+            }
+        val observed =
+            enumerate(resulting)
+                ?: return rejected(VerifiedTopologyDeltaPublicationFailure.CANDIDATE_ENUMERATION_REJECTED)
         if (observed.workspace != initial.workspace || observed.files != initial.files) {
             return rejected(VerifiedTopologyDeltaPublicationFailure.SOURCE_MOVED)
         }
         return when (
-            val guarded = leaseGuard.whileCurrent(resulting.readLease) {
-                snapshots.publish(rebound)
-            }
+            val guarded =
+                leaseGuard.whileCurrent(resulting.readLease) {
+                    snapshots.publish(rebound)
+                }
         ) {
-            SemanticReadLeaseUse.Moved -> rejected(
-                VerifiedTopologyDeltaPublicationFailure.WORKSPACE_MOVED,
-            )
-            is SemanticReadLeaseUse.Completed -> when (val publication = guarded.value) {
-                is TopologyPublicationResult.Published ->
-                    VerifiedTopologyDeltaPublication.Published(publication.snapshot)
-                is TopologyPublicationResult.Unchanged -> unchanged(publication.snapshot)
-                is TopologyPublicationResult.Rejected -> rejected(
-                    VerifiedTopologyDeltaPublicationFailure.PUBLICATION_REJECTED,
-                )
-            }
+            SemanticReadLeaseUse.Moved -> rejected(VerifiedTopologyDeltaPublicationFailure.WORKSPACE_MOVED)
+            is SemanticReadLeaseUse.Completed ->
+                when (val publication = guarded.value) {
+                    is TopologyPublicationResult.Published ->
+                        VerifiedTopologyDeltaPublication.Published(publication.snapshot)
+                    is TopologyPublicationResult.Unchanged -> unchanged(publication.snapshot)
+                    is TopologyPublicationResult.Rejected ->
+                        rejected(VerifiedTopologyDeltaPublicationFailure.PUBLICATION_REJECTED)
+                }
         }
     }
 
-    private fun enumerate(workspace: PublishedWorkspace): TopologyCandidateSet? = when (
-        val enumeration = candidates.enumerate(workspace)
-    ) {
-        is TopologyCandidateEnumeration.Complete -> enumeration.candidates
-        is TopologyCandidateEnumeration.Rejected -> null
-    }
+    private fun enumerate(workspace: PublishedWorkspace): TopologyCandidateSet? =
+        when (val enumeration = candidates.enumerate(workspace)) {
+            is TopologyCandidateEnumeration.Complete -> enumeration.candidates
+            is TopologyCandidateEnumeration.Rejected -> null
+        }
 }
 
 private fun unchanged(snapshot: PublishedTopologySnapshot): VerifiedTopologyDeltaPublication =
     VerifiedTopologyDeltaPublication.Unchanged(snapshot)
 
-private fun rejected(
-    failure: VerifiedTopologyDeltaPublicationFailure,
-): VerifiedTopologyDeltaPublication = VerifiedTopologyDeltaPublication.Rejected(failure)
+private fun rejected(failure: VerifiedTopologyDeltaPublicationFailure): VerifiedTopologyDeltaPublication =
+    VerifiedTopologyDeltaPublication.Rejected(failure)

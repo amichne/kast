@@ -15,7 +15,8 @@ enum class TopologySourceFileFailure {
 
 /** One content-identified Kotlin file owned by an admitted Gradle source set. */
 @ConsistentCopyVisibility
-data class TopologySourceFile private constructor(
+data class TopologySourceFile
+private constructor(
     val workspace: TopologyWorkspaceIdentity,
     val sourceRoot: SourceRoot,
     val path: WorkspaceSourcePath,
@@ -36,14 +37,12 @@ data class TopologySourceFile private constructor(
 
     companion object {
         /**
-         * Proof transition: `(PublishedWorkspace, SourceRoot, WorkspaceSourcePath,
-         * WorkspaceSourceContentHash) -> Refinement<TopologySourceFile,
-         * TopologySourceFileFailure>`.
+         * Proof transition: `(PublishedWorkspace, SourceRoot, WorkspaceSourcePath, WorkspaceSourceContentHash) ->
+         * Refinement<TopologySourceFile, TopologySourceFileFailure>`.
          *
-         * Establishes that the content-identified `.kt` or `.kts` file is below one source root
-         * carried by the exact published workspace. [TopologySourceFileFailure] is the closed
-         * expected failure. Raw path and digest extraction may occur only in the physical
-         * admitted-root enumeration adapter.
+         * Establishes that the content-identified `.kt` or `.kts` file is below one source root carried by the exact
+         * published workspace. [TopologySourceFileFailure] is the closed expected failure. Raw path and digest
+         * extraction may occur only in the physical admitted-root enumeration adapter.
          */
         fun admit(
             workspace: PublishedWorkspace,
@@ -52,22 +51,18 @@ data class TopologySourceFile private constructor(
             contentHash: WorkspaceSourceContentHash,
         ): Refinement<TopologySourceFile, TopologySourceFileFailure> {
             if (sourceRoot !in workspace.sourceRoots) {
-                return Refinement.Rejected(
-                    TopologySourceFileFailure.SOURCE_ROOT_NOT_PUBLISHED,
-                )
+                return Refinement.Rejected(TopologySourceFileFailure.SOURCE_ROOT_NOT_PUBLISHED)
             }
             return restore(TopologyWorkspaceIdentity.from(workspace), sourceRoot, path, contentHash)
         }
 
         /**
-         * Proof transition: `(TopologyWorkspaceIdentity, SourceRoot, WorkspaceSourcePath,
-         * WorkspaceSourceContentHash) -> Refinement<TopologySourceFile,
-         * TopologySourceFileFailure>`.
+         * Proof transition: `(TopologyWorkspaceIdentity, SourceRoot, WorkspaceSourcePath, WorkspaceSourceContentHash)
+         * -> Refinement<TopologySourceFile, TopologySourceFileFailure>`.
          *
-         * Re-establishes Kotlin extension and source-root containment for one file read from an
-         * already published snapshot. [TopologySourceFileFailure] is the closed expected failure.
-         * Raw persisted fields must first pass their workspace and source-root parsers at the
-         * SQLite boundary.
+         * Re-establishes Kotlin extension and source-root containment for one file read from an already published
+         * snapshot. [TopologySourceFileFailure] is the closed expected failure. Raw persisted fields must first pass
+         * their workspace and source-root parsers at the SQLite boundary.
          */
         fun restore(
             workspace: TopologyWorkspaceIdentity,
@@ -77,8 +72,7 @@ data class TopologySourceFile private constructor(
         ): Refinement<TopologySourceFile, TopologySourceFileFailure> {
             val filePath = Path.of(path.value)
             val rootPath = Path.of(sourceRoot.location.value)
-            val withinRoot = sourceRoot.location.value == "." ||
-                filePath != rootPath && filePath.startsWith(rootPath)
+            val withinRoot = sourceRoot.location.value == "." || filePath != rootPath && filePath.startsWith(rootPath)
             if (!withinRoot) {
                 return Refinement.Rejected(TopologySourceFileFailure.FILE_OUTSIDE_SOURCE_ROOT)
             }
@@ -88,13 +82,14 @@ data class TopologySourceFile private constructor(
             return Refinement.Refined(TopologySourceFile(workspace, sourceRoot, path, contentHash))
         }
 
-        private val SOURCE_FILE_ORDER = compareBy<TopologySourceFile>(
-            { it.path.value },
-            { it.sourceRoot.owner.project.buildRoot.value },
-            { it.sourceRoot.owner.project.projectPath.value },
-            { it.sourceRoot.owner.sourceSet.value },
-            { it.sourceRoot.owner.module.value },
-        )
+        private val SOURCE_FILE_ORDER =
+            compareBy<TopologySourceFile>(
+                { it.path.value },
+                { it.sourceRoot.owner.project.buildRoot.value },
+                { it.sourceRoot.owner.project.projectPath.value },
+                { it.sourceRoot.owner.sourceSet.value },
+                { it.sourceRoot.owner.module.value },
+            )
     }
 }
 

@@ -1,7 +1,7 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.cli.command.CliCommandSurface
 import io.github.amichne.kast.appserver.query.PublicQueryContract
+import io.github.amichne.kast.cli.command.CliCommandSurface
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
@@ -99,11 +99,12 @@ internal data class InstalledServerCliInvocationDocument(
 
 @Serializable
 internal enum class InstalledServerInvocationType {
-    CLI,
+    CLI
 }
 
 /** One public hosted tool retained with its canonical operation and exact CLI invocation. */
-internal class InstalledServerBinding private constructor(
+internal class InstalledServerBinding
+private constructor(
     val operation: CanonicalOperation,
     val tool: InstalledHostedToolDocument,
     val invocation: InstalledCliOperationInvocationDocument,
@@ -119,9 +120,7 @@ internal class InstalledServerBinding private constructor(
                 InstalledServerBinding(
                     operation = operation,
                     tool = tool.hostedDocument(definition),
-                    invocation = tool.cliInvocationDocument(
-                        commandByOperation.getValue(operation).usage,
-                    ),
+                    invocation = tool.cliInvocationDocument(commandByOperation.getValue(operation).usage),
                 )
             }
         }
@@ -131,50 +130,52 @@ internal class InstalledServerBinding private constructor(
 /**
  * Proof transition: `CliCommandSurface -> InstalledServerProjectionDocument`.
  *
- * The proven canonical command graph supplies exact operation usage while this closed projection
- * supplies the corresponding server name, JSON shapes, and CLI binding grammar. The resulting
- * document is the sole broker-facing authority for an installed executable; no runtime or
- * filesystem input is interpreted here.
+ * The proven canonical command graph supplies exact operation usage while this closed projection supplies the
+ * corresponding server name, JSON shapes, and CLI binding grammar. The resulting document is the sole broker-facing
+ * authority for an installed executable; no runtime or filesystem input is interpreted here.
  */
-internal fun installedServerProjection(
-    commandSurface: CliCommandSurface,
-): InstalledServerProjectionDocument {
+internal fun installedServerProjection(commandSurface: CliCommandSurface): InstalledServerProjectionDocument {
     val bindings = installedServerBindings(commandSurface)
     return InstalledServerProjectionDocument(
         schemaVersion = SERVER_PROJECTION_SCHEMA_VERSION,
         namespace = "kast",
-        hostedBootstrap = InstalledHostedBootstrapDocument(
-            schemaVersion = HOSTED_BOOTSTRAP_SCHEMA_VERSION,
-            policy = CanonicalAgentToolDefinitions.policy.text,
-            tools = bindings.map(InstalledServerBinding::tool),
-        ),
-        cliInvocations = InstalledCliInvocationsDocument(
-            schemaVersion = CLI_INVOCATIONS_SCHEMA_VERSION,
-            operations = bindings.map(InstalledServerBinding::invocation),
-        ),
+        hostedBootstrap =
+            InstalledHostedBootstrapDocument(
+                schemaVersion = HOSTED_BOOTSTRAP_SCHEMA_VERSION,
+                policy = CanonicalAgentToolDefinitions.policy.text,
+                tools = bindings.map(InstalledServerBinding::tool),
+            ),
+        cliInvocations =
+            InstalledCliInvocationsDocument(
+                schemaVersion = CLI_INVOCATIONS_SCHEMA_VERSION,
+                operations = bindings.map(InstalledServerBinding::invocation),
+            ),
     )
 }
 
 /**
  * Proof transition: `CliCommandSurface -> List<InstalledServerBinding>`.
  *
- * Retains the canonical operation while joining its hosted schema and CLI invocation. Consumers
- * can project another representation without reconstructing operation identity from JSON text.
+ * Retains the canonical operation while joining its hosted schema and CLI invocation. Consumers can project another
+ * representation without reconstructing operation identity from JSON text.
  */
-internal fun installedServerBindings(
-    commandSurface: CliCommandSurface,
-): List<InstalledServerBinding> = InstalledServerBinding.from(commandSurface)
+internal fun installedServerBindings(commandSurface: CliCommandSurface): List<InstalledServerBinding> =
+    InstalledServerBinding.from(commandSurface)
 
-private val installedServerTools: List<InstalledServerTool> = InstalledServerTool.entries.filter { tool ->
-    HostedOperationProjection.publicDefinitions.any { it.operation == tool.operation }
-}.sortedBy { tool -> CanonicalOperation.entries.indexOf(tool.operation) }.also {
-    val operations = it.map { tool -> tool.operation }
-    when (val completeness = HostedOperationProjection.verifyBindings(operations)) {
-        HostedBindingCompleteness.Complete -> Unit
-        is HostedBindingCompleteness.Rejected ->
-            error("Invalid installed server projection: ${completeness.failures}")
-    }
-}
+private val installedServerTools: List<InstalledServerTool> =
+    InstalledServerTool.entries
+        .filter { tool ->
+            HostedOperationProjection.publicDefinitions.any { it.operation == tool.operation }
+        }
+        .sortedBy { tool -> CanonicalOperation.entries.indexOf(tool.operation) }
+        .also {
+            val operations = it.map { tool -> tool.operation }
+            when (val completeness = HostedOperationProjection.verifyBindings(operations)) {
+                HostedBindingCompleteness.Complete -> Unit
+                is HostedBindingCompleteness.Rejected ->
+                    error("Invalid installed server projection: ${completeness.failures}")
+            }
+        }
 
 private enum class InstalledServerTool(
     val operation: CanonicalOperation,
@@ -240,8 +241,7 @@ private enum class InstalledServerTool(
         operation = CanonicalOperation.CHANGE_RECOVER,
         requestSerializer = ChangeRecoverRequest.serializer(),
         command = listOf("change", "recover"),
-    ),
-    ;
+    );
 
     fun hostedDocument(definition: AgentToolDefinition): InstalledHostedToolDocument =
         InstalledHostedToolDocument(
@@ -251,15 +251,17 @@ private enum class InstalledServerTool(
             deferLoading = definition.loading == HostedToolLoading.DEFERRED,
             effect = definition.operation.effect.name.lowercase(),
             approvalPolicy = definition.approval.name.lowercase(),
-            executionBudget = InstalledServerExecutionBudgetDocument(
-                readinessMillis = OperationExecutionBudget.WORKSPACE_READINESS.value,
-                operationMillis = OperationExecutionBudget.forOperation(operation).operation.value,
-            ),
-            inputSchema = if (operation == CanonicalOperation.QUERY_RUN) {
-                PublicQueryContract.parameters
-            } else {
-                generatedRequestSchema(requestSerializer)
-            },
+            executionBudget =
+                InstalledServerExecutionBudgetDocument(
+                    readinessMillis = OperationExecutionBudget.WORKSPACE_READINESS.value,
+                    operationMillis = OperationExecutionBudget.forOperation(operation).operation.value,
+                ),
+            inputSchema =
+                if (operation == CanonicalOperation.QUERY_RUN) {
+                    PublicQueryContract.parameters
+                } else {
+                    generatedRequestSchema(requestSerializer)
+                },
             outputSchema = installedServerOutputSchema(operation),
         )
 
@@ -267,10 +269,11 @@ private enum class InstalledServerTool(
         InstalledCliOperationInvocationDocument(
             operationId = operation.id.value,
             cliUsage = cliUsage,
-            invocation = InstalledServerCliInvocationDocument(
-                type = InstalledServerInvocationType.CLI,
-                command = command,
-            ),
+            invocation =
+                InstalledServerCliInvocationDocument(
+                    type = InstalledServerInvocationType.CLI,
+                    command = command,
+                ),
         )
 }
 
@@ -279,35 +282,38 @@ private data class ServerSchemaProperty(
     val schema: JsonObject,
 )
 
-internal fun installedServerOutputSchema(operation: CanonicalOperation): JsonObject = unionSchema(
-    objectSchema(
-        ServerSchemaProperty("status", constantSchema("completed", "Process outcome.")),
-        ServerSchemaProperty("document", operationProcessDocumentSchema(operation)),
-    ),
-    objectSchema(
-        ServerSchemaProperty("status", constantSchema("rejected", "Process outcome.")),
-        ServerSchemaProperty("diagnostic", processDiagnosticSchema()),
-    ),
-).withLocalOutputDefinitions()
+internal fun installedServerOutputSchema(operation: CanonicalOperation): JsonObject =
+    unionSchema(
+            objectSchema(
+                ServerSchemaProperty("status", constantSchema("completed", "Process outcome.")),
+                ServerSchemaProperty("document", operationProcessDocumentSchema(operation)),
+            ),
+            objectSchema(
+                ServerSchemaProperty("status", constantSchema("rejected", "Process outcome.")),
+                ServerSchemaProperty("diagnostic", processDiagnosticSchema()),
+            ),
+        )
+        .withLocalOutputDefinitions()
 
 /** Exact schema reuse keeps each advertised schema standalone and within the provider byte budget. */
 private fun JsonObject.withLocalOutputDefinitions(): JsonObject {
     val names = reusableServerOutputSchemas.entries.associate { (name, schema) -> schema to name }
     val used = linkedSetOf<String>()
     val pending = ArrayDeque<String>()
-    fun rewrite(value: JsonElement, allowReference: Boolean = true): JsonElement = when (value) {
-        is JsonArray -> JsonArray(value.map { rewrite(it) })
-        is JsonObject -> {
-            val name = if (allowReference) names[value] else null
-            if (name == null) {
-                JsonObject(value.mapValues { (_, child) -> rewrite(child) })
-            } else {
-                if (used.add(name)) pending.addLast(name)
-                buildJsonObject { put("\$ref", "#/\$defs/$name") }
+    fun rewrite(value: JsonElement, allowReference: Boolean = true): JsonElement =
+        when (value) {
+            is JsonArray -> JsonArray(value.map { rewrite(it) })
+            is JsonObject -> {
+                val name = if (allowReference) names[value] else null
+                if (name == null) {
+                    JsonObject(value.mapValues { (_, child) -> rewrite(child) })
+                } else {
+                    if (used.add(name)) pending.addLast(name)
+                    buildJsonObject { put("\$ref", "#/\$defs/$name") }
+                }
             }
+            else -> value
         }
-        else -> value
-    }
     val root = rewrite(this, allowReference = false).jsonObject
     val definitions = linkedMapOf<String, JsonElement>()
     while (pending.isNotEmpty()) {
@@ -357,683 +363,779 @@ private val hostedEndpointRejectionSchema: JsonObject by lazy {
 }
 
 private val hostedReadRejectionSchema: JsonObject by lazy {
-    packagedHostedSchema("hosted-query").getValue("oneOf").jsonArray.single { variant ->
-        variant.jsonObject.getValue("properties").jsonObject.getValue("outcome")
-            .jsonObject["const"] == JsonPrimitive("rejected")
-    }.jsonObject
+    packagedHostedSchema("hosted-query")
+        .getValue("oneOf")
+        .jsonArray
+        .single { variant ->
+            variant.jsonObject.getValue("properties").jsonObject.getValue("outcome").jsonObject["const"] ==
+                JsonPrimitive("rejected")
+        }
+        .jsonObject
 }
 
 private fun packagedHostedSchema(name: String): JsonObject =
     requireNotNull(CanonicalOperation::class.java.getResourceAsStream("/ide-hosted/$name.schema.json")) {
-        "Missing packaged hosted schema: $name"
-    }.bufferedReader().use { Json.parseToJsonElement(it.readText()).jsonObject }
+            "Missing packaged hosted schema: $name"
+        }
+        .bufferedReader()
+        .use { Json.parseToJsonElement(it.readText()).jsonObject }
 
-private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject = when (operation) {
-    CanonicalOperation.INDEX_SYNC -> outcomeSchema(
-        operation,
-        ServerSchemaProperty(
-            "state",
-            enumSchema(listOf("synchronized", "unchanged"), "Index synchronization result."),
-        ),
-    )
-    CanonicalOperation.TOPOLOGY_BUILD -> topologyBuildDocumentSchema(operation)
-    CanonicalOperation.SYMBOL_DISCOVER -> outcomeSchema(
-        operation,
-        ServerSchemaProperty("items", arraySchema(symbolDiscoverySchema())),
-    )
-    CanonicalOperation.SYMBOL_INSPECT -> outcomeSchema(
-        operation,
-        ServerSchemaProperty("symbol", symbolSchema()),
-    )
-    CanonicalOperation.SOURCE_READ -> proofQualifiedOutcomeSchema(
-        operation,
-        sourceReadQualificationSchema(),
-        ServerSchemaProperty("snapshot", sourceSnapshotSchema()),
-        ServerSchemaProperty("region", sourceRegionSchema()),
-        ServerSchemaProperty("entities", arraySchema(sourceEntitySchema())),
-        ServerSchemaProperty("text", sourceTextProjectionSchema()),
-    )
-    CanonicalOperation.RELATION_READ -> proofQualifiedOutcomeSchema(
-        operation,
-        relationQualificationSchema(),
-        ServerSchemaProperty("relations", arraySchema(relationFactSchema())),
-    )
-    CanonicalOperation.TRAVERSAL_RUN -> proofQualifiedOutcomeSchema(
-        operation,
-        traversalQualificationSchema(),
-        ServerSchemaProperty("graph", normalizedTraversalGraphSchema()),
-    )
-    CanonicalOperation.QUERY_RUN -> queryRunDocumentSchema(operation)
-    CanonicalOperation.DIAGNOSTIC_CHECK -> proofQualifiedOutcomeSchema(
-        operation,
-        diagnosticQualificationSchema(),
-        ServerSchemaProperty("diagnostics", arraySchema(diagnosticSchema())),
-    )
-    CanonicalOperation.CHANGE_PLAN -> outcomeSchema(
-        operation,
-        ServerSchemaProperty("planIdentity", textSchema("Durable change plan identity.")),
-        ServerSchemaProperty("changes", changeFilePreviewsSchema()),
-    )
-    CanonicalOperation.CHANGE_APPLY -> outcomeSchema(
-        operation,
-        ServerSchemaProperty(
-            "receiptIdentity",
-            textSchema("Verified change receipt identity."),
-        ),
-        ServerSchemaProperty("changes", changeFilePreviewsSchema()),
-    )
-    CanonicalOperation.CHANGE_RECOVER -> outcomeSchema(
-        operation,
-        ServerSchemaProperty("state", textSchema("Recovered workspace state.")),
-    )
-}
-
-private fun changeFilePreviewsSchema(): JsonObject = nonEmptyArraySchema(
-    objectSchema(
-        ServerSchemaProperty("path", workspaceFileSchema()),
-        ServerSchemaProperty(
-            "kind",
-            enumSchema(listOf("add", "delete", "update"), "Closed file-change kind."),
-        ),
-        ServerSchemaProperty("diff", textSchema("Bounded semantic change preview.")),
-    ),
-)
-
-private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject = unionSchema(
-    operationOutcomeVariant(
-        operation,
-        "complete",
-        ServerSchemaProperty("items", arraySchema(queryResultItemSchema())),
-        ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
-    ),
-    operationOutcomeVariant(
-        operation,
-        "qualified",
-        ServerSchemaProperty("items", arraySchema(queryResultItemSchema())),
-        ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
-        ServerSchemaProperty(
-            "qualification",
-            objectSchema(
-                ServerSchemaProperty("knownMinimum", integerSchema(0, description = "Known returned item count.")),
+private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
+    when (operation) {
+        CanonicalOperation.INDEX_SYNC ->
+            outcomeSchema(
+                operation,
                 ServerSchemaProperty(
-                    "limitations",
-                    nonEmptyArraySchema(enumSchema(
-                        listOf(
-                            "result-limit-reached",
-                            "byte-limit-reached",
-                            "work-limit-reached",
-                            "time-limit-reached",
-                            "discovery-incomplete",
-                            "refinement-incomplete",
-                            "visibility-incomplete",
-                            "relation-incomplete",
+                    "state",
+                    enumSchema(listOf("synchronized", "unchanged"), "Index synchronization result."),
+                ),
+            )
+        CanonicalOperation.TOPOLOGY_BUILD -> topologyBuildDocumentSchema(operation)
+        CanonicalOperation.SYMBOL_DISCOVER ->
+            outcomeSchema(
+                operation,
+                ServerSchemaProperty("items", arraySchema(symbolDiscoverySchema())),
+            )
+        CanonicalOperation.SYMBOL_INSPECT ->
+            outcomeSchema(
+                operation,
+                ServerSchemaProperty("symbol", symbolSchema()),
+            )
+        CanonicalOperation.SOURCE_READ ->
+            proofQualifiedOutcomeSchema(
+                operation,
+                sourceReadQualificationSchema(),
+                ServerSchemaProperty("snapshot", sourceSnapshotSchema()),
+                ServerSchemaProperty("region", sourceRegionSchema()),
+                ServerSchemaProperty("entities", arraySchema(sourceEntitySchema())),
+                ServerSchemaProperty("text", sourceTextProjectionSchema()),
+            )
+        CanonicalOperation.RELATION_READ ->
+            proofQualifiedOutcomeSchema(
+                operation,
+                relationQualificationSchema(),
+                ServerSchemaProperty("relations", arraySchema(relationFactSchema())),
+            )
+        CanonicalOperation.TRAVERSAL_RUN ->
+            proofQualifiedOutcomeSchema(
+                operation,
+                traversalQualificationSchema(),
+                ServerSchemaProperty("graph", normalizedTraversalGraphSchema()),
+            )
+        CanonicalOperation.QUERY_RUN -> queryRunDocumentSchema(operation)
+        CanonicalOperation.DIAGNOSTIC_CHECK ->
+            proofQualifiedOutcomeSchema(
+                operation,
+                diagnosticQualificationSchema(),
+                ServerSchemaProperty("diagnostics", arraySchema(diagnosticSchema())),
+            )
+        CanonicalOperation.CHANGE_PLAN ->
+            outcomeSchema(
+                operation,
+                ServerSchemaProperty("planIdentity", textSchema("Durable change plan identity.")),
+                ServerSchemaProperty("changes", changeFilePreviewsSchema()),
+            )
+        CanonicalOperation.CHANGE_APPLY ->
+            outcomeSchema(
+                operation,
+                ServerSchemaProperty(
+                    "receiptIdentity",
+                    textSchema("Verified change receipt identity."),
+                ),
+                ServerSchemaProperty("changes", changeFilePreviewsSchema()),
+            )
+        CanonicalOperation.CHANGE_RECOVER ->
+            outcomeSchema(
+                operation,
+                ServerSchemaProperty("state", textSchema("Recovered workspace state.")),
+            )
+    }
+
+private fun changeFilePreviewsSchema(): JsonObject =
+    nonEmptyArraySchema(
+        objectSchema(
+            ServerSchemaProperty("path", workspaceFileSchema()),
+            ServerSchemaProperty(
+                "kind",
+                enumSchema(listOf("add", "delete", "update"), "Closed file-change kind."),
+            ),
+            ServerSchemaProperty("diff", textSchema("Bounded semantic change preview.")),
+        )
+    )
+
+private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
+    unionSchema(
+        operationOutcomeVariant(
+            operation,
+            "complete",
+            ServerSchemaProperty("items", arraySchema(queryResultItemSchema())),
+            ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
+        ),
+        operationOutcomeVariant(
+            operation,
+            "qualified",
+            ServerSchemaProperty("items", arraySchema(queryResultItemSchema())),
+            ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
+            ServerSchemaProperty(
+                "qualification",
+                objectSchema(
+                    ServerSchemaProperty("knownMinimum", integerSchema(0, description = "Known returned item count.")),
+                    ServerSchemaProperty(
+                        "limitations",
+                        nonEmptyArraySchema(
+                            enumSchema(
+                                listOf(
+                                    "result-limit-reached",
+                                    "byte-limit-reached",
+                                    "work-limit-reached",
+                                    "time-limit-reached",
+                                    "discovery-incomplete",
+                                    "refinement-incomplete",
+                                    "visibility-incomplete",
+                                    "relation-incomplete",
+                                ),
+                                "Every aggregate query limitation.",
+                            )
                         ),
-                        "Every aggregate query limitation.",
-                    )),
+                    ),
                 ),
             ),
         ),
-    ),
-    operationOutcomeVariant(
-        operation,
-        "rejected",
-        ServerSchemaProperty("rejection", queryRejectionSchema()),
-    ),
-)
+        operationOutcomeVariant(
+            operation,
+            "rejected",
+            ServerSchemaProperty("rejection", queryRejectionSchema()),
+        ),
+    )
 
-private fun queryResultItemSchema(): JsonObject = unionSchema(
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("candidate", "Declaration-candidate result.")),
-        ServerSchemaProperty("ref", queryOutputReferenceSchema("declaration-candidate")),
-        ServerSchemaProperty("kind", enumSchema(listOf("class", "symbol"), "Candidate discovery kind.")),
-        ServerSchemaProperty("name", nullableSchema(textSchema("Projected declaration name."))),
-        ServerSchemaProperty("location", nullableSchema(
-            objectSchema(
-                ServerSchemaProperty("file", textSchema("Workspace-relative source file.")),
-                ServerSchemaProperty("offset", integerSchema(0, description = "Declaration offset.")),
+private fun queryResultItemSchema(): JsonObject =
+    unionSchema(
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("candidate", "Declaration-candidate result.")),
+            ServerSchemaProperty("ref", queryOutputReferenceSchema("declaration-candidate")),
+            ServerSchemaProperty("kind", enumSchema(listOf("class", "symbol"), "Candidate discovery kind.")),
+            ServerSchemaProperty("name", nullableSchema(textSchema("Projected declaration name."))),
+            ServerSchemaProperty(
+                "location",
+                nullableSchema(
+                    objectSchema(
+                        ServerSchemaProperty("file", textSchema("Workspace-relative source file.")),
+                        ServerSchemaProperty("offset", integerSchema(0, description = "Declaration offset.")),
+                    )
+                ),
             ),
-        )),
-    ),
+        ),
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("exact-symbol", "Exact-symbol result.")),
+            ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
+            ServerSchemaProperty(
+                "kind",
+                enumSchema(
+                    listOf("classlike", "constructor", "function", "property", "type-alias"),
+                    "Compiler symbol kind.",
+                ),
+            ),
+            ServerSchemaProperty("name", nullableSchema(textSchema("Projected declaration name."))),
+            ServerSchemaProperty(
+                "location",
+                nullableSchema(
+                    objectSchema(
+                        ServerSchemaProperty("file", textSchema("Workspace-relative source file.")),
+                        ServerSchemaProperty("range", sourceRangeSchema()),
+                    )
+                ),
+            ),
+            ServerSchemaProperty(
+                "signature",
+                nullableSchema(
+                    unionSchema(
+                        functionCompilerSignatureSchema(),
+                        propertyCompilerSignatureSchema(),
+                        typeAliasCompilerSignatureSchema(),
+                        classLikeCompilerSignatureSchema(),
+                    )
+                ),
+            ),
+            ServerSchemaProperty("connections", arraySchema(relationFactSchema())),
+        ),
+    )
+
+private fun queryOutputReferenceSchema(kind: String): JsonObject =
     objectSchema(
-        ServerSchemaProperty("type", constantSchema("exact-symbol", "Exact-symbol result.")),
-        ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
+        ServerSchemaProperty("kind", constantSchema(kind, "Reference evidence family.")),
         ServerSchemaProperty(
-            "kind",
-            enumSchema(listOf("classlike", "constructor", "function", "property", "type-alias"), "Compiler symbol kind."),
-        ),
-        ServerSchemaProperty("name", nullableSchema(textSchema("Projected declaration name."))),
-        ServerSchemaProperty("location", nullableSchema(
-            objectSchema(
-                ServerSchemaProperty("file", textSchema("Workspace-relative source file.")),
-                ServerSchemaProperty("range", sourceRangeSchema()),
+            "token",
+            patternTextSchema(
+                if (kind == "exact-symbol") "^exact:v[23]:" else "^candidate:v[23]:",
+                "Reusable proof-carrying reference.",
             ),
-        )),
-        ServerSchemaProperty("signature", nullableSchema(unionSchema(
-            functionCompilerSignatureSchema(),
-            propertyCompilerSignatureSchema(),
-            typeAliasCompilerSignatureSchema(),
-            classLikeCompilerSignatureSchema(),
-        ))),
-        ServerSchemaProperty("connections", arraySchema(relationFactSchema())),
-    ),
-)
-
-private fun queryOutputReferenceSchema(kind: String): JsonObject = objectSchema(
-    ServerSchemaProperty("kind", constantSchema(kind, "Reference evidence family.")),
-    ServerSchemaProperty(
-        "token",
-        patternTextSchema(
-            if (kind == "exact-symbol") "^exact:v[23]:" else "^candidate:v[23]:",
-            "Reusable proof-carrying reference.",
         ),
-    ),
-)
+    )
 
-private fun queryItemFailureSchema(): JsonObject = unionSchema(
-    queryItemFailureVariantSchema("refinement", "declaration-candidate", queryExactFailureSchema()),
-    queryItemFailureVariantSchema("exact-reference", "exact-symbol", queryExactFailureSchema()),
-    queryItemFailureVariantSchema("predicate", "exact-symbol", queryPredicateFailureSchema()),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("relation", "Per-symbol relation failure.")),
-        ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
-        ServerSchemaProperty("relation", relationSchema()),
-        ServerSchemaProperty("reason", queryRelationFailureSchema()),
-    ),
-)
+private fun queryItemFailureSchema(): JsonObject =
+    unionSchema(
+        queryItemFailureVariantSchema("refinement", "declaration-candidate", queryExactFailureSchema()),
+        queryItemFailureVariantSchema("exact-reference", "exact-symbol", queryExactFailureSchema()),
+        queryItemFailureVariantSchema("predicate", "exact-symbol", queryPredicateFailureSchema()),
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("relation", "Per-symbol relation failure.")),
+            ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
+            ServerSchemaProperty("relation", relationSchema()),
+            ServerSchemaProperty("reason", queryRelationFailureSchema()),
+        ),
+    )
 
 private fun queryItemFailureVariantSchema(
     type: String,
     refKind: String,
     reason: JsonObject,
-): JsonObject = objectSchema(
-    ServerSchemaProperty("type", constantSchema(type, "Per-item query failure.")),
-    ServerSchemaProperty("ref", queryOutputReferenceSchema(refKind)),
-    ServerSchemaProperty("reason", reason),
-)
-
-private fun queryExactFailureSchema(): JsonObject = enumSchema(
-    listOf(
-        "workspace-not-ready",
-        "workspace-root-mismatch",
-        "stale-generation",
-        "scope-rejected",
-        "workspace-index-unavailable",
-        "stale-location",
-        "outside-scope",
-        "ambiguous-declaration",
-        "unsupported-declaration",
-        "compiler-identity-unavailable",
-        "declaration-moved-or-changed",
-        "compiler-contract-violation",
-    ),
-    "Closed exact-symbol refinement failure.",
-)
-
-private fun queryPredicateFailureSchema(): JsonObject = enumSchema(
-    listOf(
-        "predicate-unproven",
-        "workspace-not-ready",
-        "workspace-root-mismatch",
-        "stale-generation",
-        "source-state-mismatch",
-        "candidate-stale",
-        "source-selector-stale",
-        "source-snapshot-mismatch",
-        "source-unavailable",
-        "document-dirty",
-        "psi-document-uncommitted",
-        "outside-source-scope",
-        "anchor-not-found",
-        "ambiguous-anchor",
-        "region-not-applicable",
-        "region-absent",
-        "compiler-analysis-unavailable",
-        "contract-violation",
-    ),
-    "Closed exact-symbol predicate failure.",
-)
-
-private fun queryRelationFailureSchema(): JsonObject = enumSchema(
-    listOf(
-        "workspace-not-ready",
-        "workspace-root-mismatch",
-        "stale-generation",
-        "scope-rejected",
-        "workspace-index-unavailable",
-        "stale-selector",
-        "outside-scope",
-        "ambiguous-subject",
-        "unsupported-subject",
-        "compiler-identity-unavailable",
-        "continuation-cursor-moved",
-        "compiler-contract-violation",
-    ),
-    "Closed semantic-relation failure.",
-)
-
-private fun queryRejectionSchema(): JsonObject = unionSchema(
-    objectSchema(ServerSchemaProperty("type", constantSchema("workspace-not-ready", "Workspace unavailable."))),
+): JsonObject =
     objectSchema(
-        ServerSchemaProperty("type", constantSchema("plan-rejected", "Typed stage composition rejected.")),
-        ServerSchemaProperty("path", textSchema("Rejected step path.")),
-        ServerSchemaProperty("required", enumSchema(listOf("declaration-candidate", "exact-symbol"), "Required input type.")),
-        ServerSchemaProperty("actual", enumSchema(listOf("declaration-candidate", "exact-symbol"), "Actual input type.")),
-        ServerSchemaProperty(
-            "correction",
-            enumSchema(
-                listOf(
-                    "insert-inspect",
-                    "remove-inspect",
-                    "select-symbol-output",
+        ServerSchemaProperty("type", constantSchema(type, "Per-item query failure.")),
+        ServerSchemaProperty("ref", queryOutputReferenceSchema(refKind)),
+        ServerSchemaProperty("reason", reason),
+    )
+
+private fun queryExactFailureSchema(): JsonObject =
+    enumSchema(
+        listOf(
+            "workspace-not-ready",
+            "workspace-root-mismatch",
+            "stale-generation",
+            "scope-rejected",
+            "workspace-index-unavailable",
+            "stale-location",
+            "outside-scope",
+            "ambiguous-declaration",
+            "unsupported-declaration",
+            "compiler-identity-unavailable",
+            "declaration-moved-or-changed",
+            "compiler-contract-violation",
+        ),
+        "Closed exact-symbol refinement failure.",
+    )
+
+private fun queryPredicateFailureSchema(): JsonObject =
+    enumSchema(
+        listOf(
+            "predicate-unproven",
+            "workspace-not-ready",
+            "workspace-root-mismatch",
+            "stale-generation",
+            "source-state-mismatch",
+            "candidate-stale",
+            "source-selector-stale",
+            "source-snapshot-mismatch",
+            "source-unavailable",
+            "document-dirty",
+            "psi-document-uncommitted",
+            "outside-source-scope",
+            "anchor-not-found",
+            "ambiguous-anchor",
+            "region-not-applicable",
+            "region-absent",
+            "compiler-analysis-unavailable",
+            "contract-violation",
+        ),
+        "Closed exact-symbol predicate failure.",
+    )
+
+private fun queryRelationFailureSchema(): JsonObject =
+    enumSchema(
+        listOf(
+            "workspace-not-ready",
+            "workspace-root-mismatch",
+            "stale-generation",
+            "scope-rejected",
+            "workspace-index-unavailable",
+            "stale-selector",
+            "outside-scope",
+            "ambiguous-subject",
+            "unsupported-subject",
+            "compiler-identity-unavailable",
+            "continuation-cursor-moved",
+            "compiler-contract-violation",
+        ),
+        "Closed semantic-relation failure.",
+    )
+
+private fun queryRejectionSchema(): JsonObject =
+    unionSchema(
+        objectSchema(ServerSchemaProperty("type", constantSchema("workspace-not-ready", "Workspace unavailable."))),
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("plan-rejected", "Typed stage composition rejected.")),
+            ServerSchemaProperty("path", textSchema("Rejected step path.")),
+            ServerSchemaProperty(
+                "required",
+                enumSchema(listOf("declaration-candidate", "exact-symbol"), "Required input type."),
+            ),
+            ServerSchemaProperty(
+                "actual",
+                enumSchema(listOf("declaration-candidate", "exact-symbol"), "Actual input type."),
+            ),
+            ServerSchemaProperty(
+                "correction",
+                enumSchema(
+                    listOf(
+                        "insert-inspect",
+                        "remove-inspect",
+                        "select-symbol-output",
+                    ),
+                    "Closed corrective action.",
                 ),
-                "Closed corrective action.",
             ),
         ),
-    ),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("reference-rejected", "Reference admission rejected.")),
-        ServerSchemaProperty("path", textSchema("Rejected reference path.")),
-        ServerSchemaProperty(
-            "reason",
-            enumSchema(
-                listOf("wrong-kind", "malformed", "incompatible-workspace", "stale-generation"),
-                "Exact reference rejection reason.",
-            ),
-        ),
-    ),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("source-rejected", "Query source is not exhaustively supported.")),
-        ServerSchemaProperty("kind", constantSchema("constructor", "Unsupported declaration family.")),
-        ServerSchemaProperty(
-            "reason",
-            constantSchema("unsupported-declaration-kind", "Closed source-admission failure."),
-        ),
-    ),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("execution-rejected", "Query execution rejected.")),
-        ServerSchemaProperty(
-            "reason",
-            enumSchema(
-                listOf(
-                    "request-rejected",
-                    "discovery-rejected",
-                    "reference-stale",
-                    "budget-rejected",
-                    "internal-contract-violation",
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("reference-rejected", "Reference admission rejected.")),
+            ServerSchemaProperty("path", textSchema("Rejected reference path.")),
+            ServerSchemaProperty(
+                "reason",
+                enumSchema(
+                    listOf("wrong-kind", "malformed", "incompatible-workspace", "stale-generation"),
+                    "Exact reference rejection reason.",
                 ),
-                "Closed execution rejection reason.",
             ),
         ),
-    ),
-)
+        objectSchema(
+            ServerSchemaProperty(
+                "type",
+                constantSchema("source-rejected", "Query source is not exhaustively supported."),
+            ),
+            ServerSchemaProperty("kind", constantSchema("constructor", "Unsupported declaration family.")),
+            ServerSchemaProperty(
+                "reason",
+                constantSchema("unsupported-declaration-kind", "Closed source-admission failure."),
+            ),
+        ),
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("execution-rejected", "Query execution rejected.")),
+            ServerSchemaProperty(
+                "reason",
+                enumSchema(
+                    listOf(
+                        "request-rejected",
+                        "discovery-rejected",
+                        "reference-stale",
+                        "budget-rejected",
+                        "internal-contract-violation",
+                    ),
+                    "Closed execution rejection reason.",
+                ),
+            ),
+        ),
+    )
 
 private fun outcomeSchema(
     operation: CanonicalOperation,
     vararg payload: ServerSchemaProperty,
-): JsonObject = proofQualifiedOutcomeSchema(
-    operation,
-    textSchema("Closed qualification reason."),
-    *payload,
-)
+): JsonObject =
+    proofQualifiedOutcomeSchema(
+        operation,
+        textSchema("Closed qualification reason."),
+        *payload,
+    )
 
 private fun proofQualifiedOutcomeSchema(
     operation: CanonicalOperation,
     qualificationSchema: JsonObject,
     vararg payload: ServerSchemaProperty,
-): JsonObject = unionSchema(
-    operationOutcomeVariant(operation, "complete", *payload),
-    operationOutcomeVariant(
-        operation,
-        "qualified",
-        *payload,
-        ServerSchemaProperty("qualification", qualificationSchema),
-    ),
-    operationOutcomeVariant(
-        operation,
-        "rejected",
-        ServerSchemaProperty("reason", textSchema("Closed rejection reason.")),
-    ),
-)
-
-private fun relationQualificationSchema(): JsonObject = unionSchema(
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("resumable", "Coverage state.")),
-        ServerSchemaProperty(
-            "knownMinimum",
-            integerSchema(0, description = "Known minimum relation count."),
+): JsonObject =
+    unionSchema(
+        operationOutcomeVariant(operation, "complete", *payload),
+        operationOutcomeVariant(
+            operation,
+            "qualified",
+            *payload,
+            ServerSchemaProperty("qualification", qualificationSchema),
         ),
-        ServerSchemaProperty("limitations", relationLimitationsSchema()),
+        operationOutcomeVariant(
+            operation,
+            "rejected",
+            ServerSchemaProperty("reason", textSchema("Closed rejection reason.")),
+        ),
+    )
+
+private fun relationQualificationSchema(): JsonObject =
+    unionSchema(
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("resumable", "Coverage state.")),
+            ServerSchemaProperty(
+                "knownMinimum",
+                integerSchema(0, description = "Known minimum relation count."),
+            ),
+            ServerSchemaProperty("limitations", relationLimitationsSchema()),
+            ServerSchemaProperty(
+                "continuation",
+                patternTextSchema(
+                    "^relation-continuation:v1:",
+                    "Self-contained relation continuation.",
+                ),
+            ),
+        ),
+        objectSchema(
+            ServerSchemaProperty(
+                "type",
+                constantSchema("terminal_incomplete", "Coverage state."),
+            ),
+            ServerSchemaProperty(
+                "knownMinimum",
+                integerSchema(0, description = "Known minimum relation count."),
+            ),
+            ServerSchemaProperty("limitations", relationLimitationsSchema()),
+        ),
+    )
+
+private fun sourceReadQualificationSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty(
+            "knownMinimumEntityCount",
+            integerSchema(0, description = "Known minimum matching entity count."),
+        ),
+        ServerSchemaProperty(
+            "limitations",
+            nonEmptyArraySchema(
+                enumSchema(
+                    listOf(
+                        "entity-limit-reached",
+                        "text-byte-limit-reached",
+                        "work-limit-reached",
+                        "time-limit-reached",
+                        "dumb-mode-transition",
+                        "semantic-resolution-incomplete",
+                        "unsupported-entity",
+                        "provider-failure",
+                    ),
+                    "Every source-read coverage limitation.",
+                )
+            ),
+        ),
         ServerSchemaProperty(
             "continuation",
-            patternTextSchema(
-                "^relation-continuation:v1:",
-                "Self-contained relation continuation.",
-            ),
-        ),
-    ),
-    objectSchema(
-        ServerSchemaProperty(
-            "type",
-            constantSchema("terminal_incomplete", "Coverage state."),
-        ),
-        ServerSchemaProperty(
-            "knownMinimum",
-            integerSchema(0, description = "Known minimum relation count."),
-        ),
-        ServerSchemaProperty("limitations", relationLimitationsSchema()),
-    ),
-)
-
-private fun sourceReadQualificationSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty(
-        "knownMinimumEntityCount",
-        integerSchema(0, description = "Known minimum matching entity count."),
-    ),
-    ServerSchemaProperty(
-        "limitations",
-        nonEmptyArraySchema(
-            enumSchema(
-                listOf(
-                    "entity-limit-reached",
-                    "text-byte-limit-reached",
-                    "work-limit-reached",
-                    "time-limit-reached",
-                    "dumb-mode-transition",
-                    "semantic-resolution-incomplete",
-                    "unsupported-entity",
-                    "provider-failure",
+            unionSchema(
+                objectSchema(
+                    ServerSchemaProperty(
+                        "type",
+                        constantSchema("unavailable", "Continuation state."),
+                    )
                 ),
-                "Every source-read coverage limitation.",
-            ),
-        ),
-    ),
-    ServerSchemaProperty(
-        "continuation",
-        unionSchema(
-            objectSchema(
-                ServerSchemaProperty(
-                    "type",
-                    constantSchema("unavailable", "Continuation state."),
-                ),
-            ),
-            objectSchema(
-                ServerSchemaProperty(
-                    "type",
-                    constantSchema("available", "Continuation state."),
-                ),
-                ServerSchemaProperty(
-                    "continuation",
-                    textSchema("Snapshot-bound continuation proof."),
-                ),
-            ),
-        ),
-    ),
-)
-
-private enum class ServerReadEvidenceShape { PUBLISHED, LIVE }
-
-private fun liveReadEvidenceSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("root", buildJsonObject {
-        put("type", "string"); put("pattern", "^/[^\\x00-\\x1F\\x7F]*$"); put("maxLength", 4096)
-        put("description", "Canonical root of the admitted live project.")
-    }),
-    ServerSchemaProperty("host", patternTextSchema(
-        "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-        "Original live host incarnation.",
-    )),
-    ServerSchemaProperty("epoch", buildJsonObject {
-        put("type", "integer"); put("minimum", 1); put("maximum", Long.MAX_VALUE)
-        put("description", "Observed live content and model epoch, never a publication generation.")
-    }),
-    ServerSchemaProperty("contentView", constantSchema("SAVED_PSI_COMMITTED", "Saved and PSI-committed live content.")),
-    ServerSchemaProperty("version", integerSchema(1, 1, "Live evidence representation version.")),
-)
-
-private fun sourceSnapshotSchema(basis: ServerReadEvidenceShape = ServerReadEvidenceShape.PUBLISHED): JsonObject = objectSchema(
-    ServerSchemaProperty("canonicalRoot", textSchema("Canonical workspace root.")),
-    *when (basis) {
-        ServerReadEvidenceShape.PUBLISHED -> arrayOf(
-            ServerSchemaProperty("generation", integerSchema(0, description = "Semantic generation.")),
-            ServerSchemaProperty("sourceState", textSchema("Workspace source-state identity.")),
-        )
-        ServerReadEvidenceShape.LIVE -> arrayOf(ServerSchemaProperty("live", liveReadEvidenceSchema()))
-    },
-    ServerSchemaProperty("file", textSchema("Exact workspace source file.")),
-    ServerSchemaProperty("textIdentity", textSchema("Committed document text identity.")),
-    ServerSchemaProperty(
-        "coordinateUnit",
-        constantSchema("utf16-code-unit", "Source coordinate unit."),
-    ),
-    ServerSchemaProperty("length", integerSchema(0, description = "Document UTF-16 length.")),
-)
-
-private fun sourceSelectionSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("selector", textSchema("Reusable exact source selector.")),
-    ServerSchemaProperty("range", diagnosticRangeSchema()),
-)
-
-private fun sourceRegionSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty(
-        "kind",
-        enumSchema(
-            listOf("anchor", "declaration", "callable-body", "class-body", "file", "window"),
-            "Established structural region kind.",
-        ),
-    ),
-    ServerSchemaProperty("selection", sourceSelectionSchema()),
-)
-
-private fun sourceEntitySchema(): JsonObject = unionSchema(
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("declaration", "Source entity kind.")),
-        ServerSchemaProperty(
-            "kind",
-            enumSchema(
-                listOf("classlike", "constructor", "function", "property", "type-alias"),
-                "Declaration kind.",
-            ),
-        ),
-        ServerSchemaProperty("name", textSchema("Declaration source name.")),
-        ServerSchemaProperty(
-            "visibility",
-            enumSchema(
-                listOf("public", "protected", "internal", "private", "local"),
-                "Compiler-established visibility.",
-            ),
-        ),
-        *sourceEntityCommonProperties(),
-        ServerSchemaProperty("semanticIdentity", sourceDeclarationSemanticIdentitySchema()),
-    ),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("value-parameter", "Source entity kind.")),
-        ServerSchemaProperty("name", textSchema("Value-parameter name.")),
-        *sourceEntityCommonProperties(),
-    ),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("call", "Source entity kind.")),
-        *sourceEntityCommonProperties(),
-        ServerSchemaProperty("callee", sourceSelectionSchema()),
-        ServerSchemaProperty("target", sourceEntityTargetSchema()),
-    ),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("reference", "Source entity kind.")),
-        ServerSchemaProperty("name", textSchema("Referenced source name.")),
-        *sourceEntityCommonProperties(),
-        ServerSchemaProperty("target", sourceEntityTargetSchema()),
-    ),
-)
-
-private fun sourceEntityCommonProperties(): Array<ServerSchemaProperty> = arrayOf(
-    ServerSchemaProperty("nestingDepth", integerSchema(0, description = "Structural nesting depth.")),
-    ServerSchemaProperty("parentSelector", textSchema("Exact structural parent selector.")),
-    ServerSchemaProperty("selection", sourceSelectionSchema()),
-)
-
-private fun sourceDeclarationSemanticIdentitySchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("type", constantSchema("candidate", "Semantic identity state.")),
-    ServerSchemaProperty("selector", textSchema("Resolvable declaration candidate selector.")),
-)
-
-private fun sourceEntityTargetSchema(): JsonObject = unionSchema(
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("candidate", "Semantic target state.")),
-        ServerSchemaProperty("selector", textSchema("Resolvable target candidate selector.")),
-    ),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("local", "Semantic target state.")),
-        ServerSchemaProperty("selector", textSchema("Exact local source selector.")),
-    ),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("unresolved", "Semantic target state.")),
-        ServerSchemaProperty(
-            "reason",
-            enumSchema(
-                listOf("name-not-found", "ambiguous", "error-type", "unsupported-target"),
-                "Compiler-established unresolved reason.",
-            ),
-        ),
-    ),
-)
-
-private fun sourceTextProjectionSchema(): JsonObject = unionSchema(
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("not-requested", "Text projection state.")),
-    ),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("returned", "Text projection state.")),
-        ServerSchemaProperty("selection", sourceSelectionSchema()),
-        ServerSchemaProperty("text", sourceTextSchema()),
-        ServerSchemaProperty("lines", objectSchema(
-            ServerSchemaProperty("startInclusive", integerSchema(1, description = "First one-based line.")),
-            ServerSchemaProperty("endInclusive", integerSchema(1, description = "Last one-based line.")),
-        )),
-    ),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("withheld", "Text projection state.")),
-        ServerSchemaProperty(
-            "reason",
-            enumSchema(
-                listOf("byte-limit-reached", "provider-unavailable"),
-                "Explicit reason source text was withheld.",
-            ),
-        ),
-    ),
-)
-
-private fun traversalQualificationSchema(): JsonObject = unionSchema(
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("resumable", "Coverage state.")),
-        ServerSchemaProperty("limitations", traversalLimitationsSchema()),
-        ServerSchemaProperty("relationLimitations", relationLimitationsSchema()),
-        ServerSchemaProperty(
-            "continuation",
-            patternTextSchema(
-                "^traversal-continuation:v1:",
-                "Self-contained traversal checkpoint.",
-            ),
-        ),
-    ),
-    objectSchema(
-        ServerSchemaProperty(
-            "type",
-            constantSchema("terminal_incomplete", "Coverage state."),
-        ),
-        ServerSchemaProperty("limitations", traversalLimitationsSchema()),
-        ServerSchemaProperty("relationLimitations", relationLimitationsSchema()),
-    ),
-)
-
-private fun traversalLimitationsSchema(): JsonObject = arraySchema(
-    enumSchema(
-        listOf(
-            "record-limit-reached",
-            "byte-limit-reached",
-            "work-limit-reached",
-            "time-limit-reached",
-            "depth-limit-reached",
-            "frontier-limit-reached",
-            "one-hop-incomplete",
-        ),
-        "Every traversal limitation.",
-    ),
-)
-
-private fun relationLimitationsSchema(): JsonObject = arraySchema(
-    enumSchema(
-        listOf(
-            "result-limit-reached",
-            "byte-limit-reached",
-            "work-limit-reached",
-            "time-limit-reached",
-            "dumb-mode-transition",
-            "unresolved-target",
-            "unsupported-item",
-            "provider-failure",
-            "provider-incomplete",
-        ),
-        "Every relation coverage limitation.",
-    ),
-)
-
-private fun diagnosticQualificationSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty(
-        "knownDiagnosticCount",
-        integerSchema(0, description = "Known diagnostic count before result truncation."),
-    ),
-    ServerSchemaProperty(
-        "resultLimitReached",
-        buildJsonObject {
-            put("type", "boolean")
-            put("description", "Whether returned diagnostics were truncated by the request limit.")
-        },
-    ),
-    ServerSchemaProperty(
-        "analyzedFiles",
-        arraySchema(textSchema("Exact analyzed diagnostic source file.")),
-    ),
-    ServerSchemaProperty(
-        "limitations",
-        arraySchema(
-            objectSchema(
-                ServerSchemaProperty("file", textSchema("Limited diagnostic source file.")),
-                ServerSchemaProperty(
-                    "reason",
-                    enumSchema(
-                        listOf(
-                            "file-unavailable",
-                            "outside-source-content",
-                            "indexing",
-                            "psi-unavailable",
-                            "unsupported-file-kind",
-                            "unsupported-diagnostic",
-                            "analysis-unavailable",
-                        ),
-                        "Exact per-file diagnostic limitation.",
+                objectSchema(
+                    ServerSchemaProperty(
+                        "type",
+                        constantSchema("available", "Continuation state."),
+                    ),
+                    ServerSchemaProperty(
+                        "continuation",
+                        textSchema("Snapshot-bound continuation proof."),
                     ),
                 ),
             ),
         ),
-    ),
-)
+    )
+
+private enum class ServerReadEvidenceShape {
+    PUBLISHED,
+    LIVE,
+}
+
+private fun liveReadEvidenceSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty(
+            "root",
+            buildJsonObject {
+                put("type", "string")
+                put("pattern", "^/[^\\x00-\\x1F\\x7F]*$")
+                put("maxLength", 4096)
+                put("description", "Canonical root of the admitted live project.")
+            },
+        ),
+        ServerSchemaProperty(
+            "host",
+            patternTextSchema(
+                "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                "Original live host incarnation.",
+            ),
+        ),
+        ServerSchemaProperty(
+            "epoch",
+            buildJsonObject {
+                put("type", "integer")
+                put("minimum", 1)
+                put("maximum", Long.MAX_VALUE)
+                put("description", "Observed live content and model epoch, never a publication generation.")
+            },
+        ),
+        ServerSchemaProperty(
+            "contentView",
+            constantSchema("SAVED_PSI_COMMITTED", "Saved and PSI-committed live content."),
+        ),
+        ServerSchemaProperty("version", integerSchema(1, 1, "Live evidence representation version.")),
+    )
+
+private fun sourceSnapshotSchema(basis: ServerReadEvidenceShape = ServerReadEvidenceShape.PUBLISHED): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("canonicalRoot", textSchema("Canonical workspace root.")),
+        *when (basis) {
+            ServerReadEvidenceShape.PUBLISHED ->
+                arrayOf(
+                    ServerSchemaProperty("generation", integerSchema(0, description = "Semantic generation.")),
+                    ServerSchemaProperty("sourceState", textSchema("Workspace source-state identity.")),
+                )
+            ServerReadEvidenceShape.LIVE -> arrayOf(ServerSchemaProperty("live", liveReadEvidenceSchema()))
+        },
+        ServerSchemaProperty("file", textSchema("Exact workspace source file.")),
+        ServerSchemaProperty("textIdentity", textSchema("Committed document text identity.")),
+        ServerSchemaProperty(
+            "coordinateUnit",
+            constantSchema("utf16-code-unit", "Source coordinate unit."),
+        ),
+        ServerSchemaProperty("length", integerSchema(0, description = "Document UTF-16 length.")),
+    )
+
+private fun sourceSelectionSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("selector", textSchema("Reusable exact source selector.")),
+        ServerSchemaProperty("range", diagnosticRangeSchema()),
+    )
+
+private fun sourceRegionSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty(
+            "kind",
+            enumSchema(
+                listOf("anchor", "declaration", "callable-body", "class-body", "file", "window"),
+                "Established structural region kind.",
+            ),
+        ),
+        ServerSchemaProperty("selection", sourceSelectionSchema()),
+    )
+
+private fun sourceEntitySchema(): JsonObject =
+    unionSchema(
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("declaration", "Source entity kind.")),
+            ServerSchemaProperty(
+                "kind",
+                enumSchema(
+                    listOf("classlike", "constructor", "function", "property", "type-alias"),
+                    "Declaration kind.",
+                ),
+            ),
+            ServerSchemaProperty("name", textSchema("Declaration source name.")),
+            ServerSchemaProperty(
+                "visibility",
+                enumSchema(
+                    listOf("public", "protected", "internal", "private", "local"),
+                    "Compiler-established visibility.",
+                ),
+            ),
+            *sourceEntityCommonProperties(),
+            ServerSchemaProperty("semanticIdentity", sourceDeclarationSemanticIdentitySchema()),
+        ),
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("value-parameter", "Source entity kind.")),
+            ServerSchemaProperty("name", textSchema("Value-parameter name.")),
+            *sourceEntityCommonProperties(),
+        ),
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("call", "Source entity kind.")),
+            *sourceEntityCommonProperties(),
+            ServerSchemaProperty("callee", sourceSelectionSchema()),
+            ServerSchemaProperty("target", sourceEntityTargetSchema()),
+        ),
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("reference", "Source entity kind.")),
+            ServerSchemaProperty("name", textSchema("Referenced source name.")),
+            *sourceEntityCommonProperties(),
+            ServerSchemaProperty("target", sourceEntityTargetSchema()),
+        ),
+    )
+
+private fun sourceEntityCommonProperties(): Array<ServerSchemaProperty> =
+    arrayOf(
+        ServerSchemaProperty("nestingDepth", integerSchema(0, description = "Structural nesting depth.")),
+        ServerSchemaProperty("parentSelector", textSchema("Exact structural parent selector.")),
+        ServerSchemaProperty("selection", sourceSelectionSchema()),
+    )
+
+private fun sourceDeclarationSemanticIdentitySchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("candidate", "Semantic identity state.")),
+        ServerSchemaProperty("selector", textSchema("Resolvable declaration candidate selector.")),
+    )
+
+private fun sourceEntityTargetSchema(): JsonObject =
+    unionSchema(
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("candidate", "Semantic target state.")),
+            ServerSchemaProperty("selector", textSchema("Resolvable target candidate selector.")),
+        ),
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("local", "Semantic target state.")),
+            ServerSchemaProperty("selector", textSchema("Exact local source selector.")),
+        ),
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("unresolved", "Semantic target state.")),
+            ServerSchemaProperty(
+                "reason",
+                enumSchema(
+                    listOf("name-not-found", "ambiguous", "error-type", "unsupported-target"),
+                    "Compiler-established unresolved reason.",
+                ),
+            ),
+        ),
+    )
+
+private fun sourceTextProjectionSchema(): JsonObject =
+    unionSchema(
+        objectSchema(ServerSchemaProperty("type", constantSchema("not-requested", "Text projection state."))),
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("returned", "Text projection state.")),
+            ServerSchemaProperty("selection", sourceSelectionSchema()),
+            ServerSchemaProperty("text", sourceTextSchema()),
+            ServerSchemaProperty(
+                "lines",
+                objectSchema(
+                    ServerSchemaProperty("startInclusive", integerSchema(1, description = "First one-based line.")),
+                    ServerSchemaProperty("endInclusive", integerSchema(1, description = "Last one-based line.")),
+                ),
+            ),
+        ),
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("withheld", "Text projection state.")),
+            ServerSchemaProperty(
+                "reason",
+                enumSchema(
+                    listOf("byte-limit-reached", "provider-unavailable"),
+                    "Explicit reason source text was withheld.",
+                ),
+            ),
+        ),
+    )
+
+private fun traversalQualificationSchema(): JsonObject =
+    unionSchema(
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("resumable", "Coverage state.")),
+            ServerSchemaProperty("limitations", traversalLimitationsSchema()),
+            ServerSchemaProperty("relationLimitations", relationLimitationsSchema()),
+            ServerSchemaProperty(
+                "continuation",
+                patternTextSchema(
+                    "^traversal-continuation:v1:",
+                    "Self-contained traversal checkpoint.",
+                ),
+            ),
+        ),
+        objectSchema(
+            ServerSchemaProperty(
+                "type",
+                constantSchema("terminal_incomplete", "Coverage state."),
+            ),
+            ServerSchemaProperty("limitations", traversalLimitationsSchema()),
+            ServerSchemaProperty("relationLimitations", relationLimitationsSchema()),
+        ),
+    )
+
+private fun traversalLimitationsSchema(): JsonObject =
+    arraySchema(
+        enumSchema(
+            listOf(
+                "record-limit-reached",
+                "byte-limit-reached",
+                "work-limit-reached",
+                "time-limit-reached",
+                "depth-limit-reached",
+                "frontier-limit-reached",
+                "one-hop-incomplete",
+            ),
+            "Every traversal limitation.",
+        )
+    )
+
+private fun relationLimitationsSchema(): JsonObject =
+    arraySchema(
+        enumSchema(
+            listOf(
+                "result-limit-reached",
+                "byte-limit-reached",
+                "work-limit-reached",
+                "time-limit-reached",
+                "dumb-mode-transition",
+                "unresolved-target",
+                "unsupported-item",
+                "provider-failure",
+                "provider-incomplete",
+            ),
+            "Every relation coverage limitation.",
+        )
+    )
+
+private fun diagnosticQualificationSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty(
+            "knownDiagnosticCount",
+            integerSchema(0, description = "Known diagnostic count before result truncation."),
+        ),
+        ServerSchemaProperty(
+            "resultLimitReached",
+            buildJsonObject {
+                put("type", "boolean")
+                put("description", "Whether returned diagnostics were truncated by the request limit.")
+            },
+        ),
+        ServerSchemaProperty(
+            "analyzedFiles",
+            arraySchema(textSchema("Exact analyzed diagnostic source file.")),
+        ),
+        ServerSchemaProperty(
+            "limitations",
+            arraySchema(
+                objectSchema(
+                    ServerSchemaProperty("file", textSchema("Limited diagnostic source file.")),
+                    ServerSchemaProperty(
+                        "reason",
+                        enumSchema(
+                            listOf(
+                                "file-unavailable",
+                                "outside-source-content",
+                                "indexing",
+                                "psi-unavailable",
+                                "unsupported-file-kind",
+                                "unsupported-diagnostic",
+                                "analysis-unavailable",
+                            ),
+                            "Exact per-file diagnostic limitation.",
+                        ),
+                    ),
+                )
+            ),
+        ),
+    )
 
 private fun operationOutcomeVariant(
     operation: CanonicalOperation,
     status: String,
     vararg payload: ServerSchemaProperty,
 ): JsonObject {
-    val identity = arrayOf(
-        ServerSchemaProperty("operation", constantSchema(operation.id.value, "Canonical operation identity.")),
-        ServerSchemaProperty("status", constantSchema(status, "Canonical operation outcome.")),
-    )
+    val identity =
+        arrayOf(
+            ServerSchemaProperty("operation", constantSchema(operation.id.value, "Canonical operation identity.")),
+            ServerSchemaProperty("status", constantSchema(status, "Canonical operation outcome.")),
+        )
     val published = objectSchema(*identity, *payload)
     if (!operation.supportsLiveReadEvidence() || status !in setOf("complete", "qualified")) return published
-    val livePayload = payload.map { property -> when {
-        operation == CanonicalOperation.SOURCE_READ && property.name == "snapshot" ->
-            ServerSchemaProperty("snapshot", sourceSnapshotSchema(ServerReadEvidenceShape.LIVE))
-        operation == CanonicalOperation.TRAVERSAL_RUN && property.name == "graph" ->
-            ServerSchemaProperty("graph", normalizedTraversalGraphSchema(ServerReadEvidenceShape.LIVE))
-        else -> property
-    } }.toTypedArray()
+    val livePayload =
+        payload
+            .map { property ->
+                when {
+                    operation == CanonicalOperation.SOURCE_READ && property.name == "snapshot" ->
+                        ServerSchemaProperty("snapshot", sourceSnapshotSchema(ServerReadEvidenceShape.LIVE))
+                    operation == CanonicalOperation.TRAVERSAL_RUN && property.name == "graph" ->
+                        ServerSchemaProperty("graph", normalizedTraversalGraphSchema(ServerReadEvidenceShape.LIVE))
+                    else -> property
+                }
+            }
+            .toTypedArray()
     // The closed variants make top-level and nested Published/Live shapes mutually exclusive.
     return buildJsonObject {
         putJsonArray("oneOf") {
@@ -1043,20 +1145,29 @@ private fun operationOutcomeVariant(
     }
 }
 
-private fun CanonicalOperation.supportsLiveReadEvidence(): Boolean = when (this) {
-    CanonicalOperation.QUERY_RUN, CanonicalOperation.SYMBOL_DISCOVER, CanonicalOperation.SYMBOL_INSPECT,
-    CanonicalOperation.SOURCE_READ, CanonicalOperation.RELATION_READ, CanonicalOperation.TRAVERSAL_RUN,
-    CanonicalOperation.DIAGNOSTIC_CHECK -> true
-    CanonicalOperation.INDEX_SYNC, CanonicalOperation.TOPOLOGY_BUILD, CanonicalOperation.CHANGE_PLAN,
-    CanonicalOperation.CHANGE_APPLY, CanonicalOperation.CHANGE_RECOVER -> false
-}
+private fun CanonicalOperation.supportsLiveReadEvidence(): Boolean =
+    when (this) {
+        CanonicalOperation.QUERY_RUN,
+        CanonicalOperation.SYMBOL_DISCOVER,
+        CanonicalOperation.SYMBOL_INSPECT,
+        CanonicalOperation.SOURCE_READ,
+        CanonicalOperation.RELATION_READ,
+        CanonicalOperation.TRAVERSAL_RUN,
+        CanonicalOperation.DIAGNOSTIC_CHECK -> true
+        CanonicalOperation.INDEX_SYNC,
+        CanonicalOperation.TOPOLOGY_BUILD,
+        CanonicalOperation.CHANGE_PLAN,
+        CanonicalOperation.CHANGE_APPLY,
+        CanonicalOperation.CHANGE_RECOVER -> false
+    }
 
 private fun topologyBuildDocumentSchema(operation: CanonicalOperation): JsonObject {
-    val result = arrayOf(
-        ServerSchemaProperty("snapshotStatus", textSchema("Topology snapshot status.")),
-        ServerSchemaProperty("generation", integerSchema(0, description = "Evidence generation.")),
-        ServerSchemaProperty("digest", textSchema("Topology snapshot digest.")),
-    )
+    val result =
+        arrayOf(
+            ServerSchemaProperty("snapshotStatus", textSchema("Topology snapshot status.")),
+            ServerSchemaProperty("generation", integerSchema(0, description = "Evidence generation.")),
+            ServerSchemaProperty("digest", textSchema("Topology snapshot digest.")),
+        )
     return unionSchema(
         operationOutcomeVariant(operation, "complete", *result),
         operationOutcomeVariant(
@@ -1124,127 +1235,140 @@ private fun topologyCoverageRejectedSchema(operation: CanonicalOperation): JsonO
         ),
     )
 
-private fun topologyCoverageCandidateEvidenceMismatchSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("candidate", topologyCoverageFileEvidenceSchema()),
-    ServerSchemaProperty("completed", topologyCoverageFileEvidenceSchema()),
-)
+private fun topologyCoverageCandidateEvidenceMismatchSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("candidate", topologyCoverageFileEvidenceSchema()),
+        ServerSchemaProperty("completed", topologyCoverageFileEvidenceSchema()),
+    )
 
-private fun topologyCoverageNodeSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("compilerIdentity", compilerIdentitySchema()),
-    ServerSchemaProperty("file", textSchema("Exact topology source file.")),
-    ServerSchemaProperty("range", sourceRangeSchema()),
-)
+private fun topologyCoverageNodeSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("compilerIdentity", compilerIdentitySchema()),
+        ServerSchemaProperty("file", textSchema("Exact topology source file.")),
+        ServerSchemaProperty("range", sourceRangeSchema()),
+    )
 
-private fun topologyCoverageSymbolSchema(): JsonObject = unionSchema(
-    topologyCoverageSymbolVariantSchema("classlike", classLikeCompilerSignatureSchema()),
-    topologyCoverageSymbolVariantSchema("constructor", functionCompilerSignatureSchema()),
-    topologyCoverageSymbolVariantSchema("function", functionCompilerSignatureSchema()),
-    topologyCoverageSymbolVariantSchema("property", propertyCompilerSignatureSchema()),
-    topologyCoverageSymbolVariantSchema("type-alias", typeAliasCompilerSignatureSchema()),
-)
+private fun topologyCoverageSymbolSchema(): JsonObject =
+    unionSchema(
+        topologyCoverageSymbolVariantSchema("classlike", classLikeCompilerSignatureSchema()),
+        topologyCoverageSymbolVariantSchema("constructor", functionCompilerSignatureSchema()),
+        topologyCoverageSymbolVariantSchema("function", functionCompilerSignatureSchema()),
+        topologyCoverageSymbolVariantSchema("property", propertyCompilerSignatureSchema()),
+        topologyCoverageSymbolVariantSchema("type-alias", typeAliasCompilerSignatureSchema()),
+    )
 
 private fun topologyCoverageSymbolVariantSchema(
     kind: String,
     signature: JsonObject,
-): JsonObject = objectSchema(
-    ServerSchemaProperty("node", topologyCoverageNodeSchema()),
-    ServerSchemaProperty("fileEvidence", topologyCoverageFileEvidenceSchema()),
-    ServerSchemaProperty("name", textSchema("Topology symbol name.")),
-    ServerSchemaProperty("qualifiedIdentity", topologyCoverageQualifiedIdentitySchema()),
-    ServerSchemaProperty("kind", constantSchema(kind, "Compiler symbol kind.")),
-    ServerSchemaProperty("compilerEvidence", compilerEvidenceSchema(signature)),
-)
+): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("node", topologyCoverageNodeSchema()),
+        ServerSchemaProperty("fileEvidence", topologyCoverageFileEvidenceSchema()),
+        ServerSchemaProperty("name", textSchema("Topology symbol name.")),
+        ServerSchemaProperty("qualifiedIdentity", topologyCoverageQualifiedIdentitySchema()),
+        ServerSchemaProperty("kind", constantSchema(kind, "Compiler symbol kind.")),
+        ServerSchemaProperty("compilerEvidence", compilerEvidenceSchema(signature)),
+    )
 
-private fun topologyCoverageQualifiedIdentitySchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("state", constantSchema("available", "Identity state.")),
-    ServerSchemaProperty("value", textSchema("Compiler qualified identity.")),
-)
+private fun topologyCoverageQualifiedIdentitySchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("state", constantSchema("available", "Identity state.")),
+        ServerSchemaProperty("value", textSchema("Compiler qualified identity.")),
+    )
 
-private fun topologyCoverageFileEvidenceSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty(
-        "workspace",
-        objectSchema(
-            ServerSchemaProperty("root", textSchema("Canonical workspace root.")),
-            ServerSchemaProperty(
-                "generation",
-                integerSchema(0, description = "Evidence generation."),
+private fun topologyCoverageFileEvidenceSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty(
+            "workspace",
+            objectSchema(
+                ServerSchemaProperty("root", textSchema("Canonical workspace root.")),
+                ServerSchemaProperty(
+                    "generation",
+                    integerSchema(0, description = "Evidence generation."),
+                ),
+                ServerSchemaProperty("sourceState", textSchema("Workspace source-state identity.")),
             ),
-            ServerSchemaProperty("sourceState", textSchema("Workspace source-state identity.")),
         ),
-    ),
-    ServerSchemaProperty(
-        "sourceRoot",
-        objectSchema(
-            ServerSchemaProperty("module", textSchema("IDE module identity.")),
-            ServerSchemaProperty("buildRoot", textSchema("Workspace-relative build root.")),
-            ServerSchemaProperty("projectPath", textSchema("Gradle project path.")),
-            ServerSchemaProperty("sourceSet", textSchema("Gradle source-set name.")),
-            ServerSchemaProperty("location", textSchema("Workspace-relative source root.")),
-            ServerSchemaProperty(
-                "provenance",
-                enumSchema(
-                    listOf("authored", "generated", "unknown-excluded-from-source-model"),
-                    "Source-root provenance.",
+        ServerSchemaProperty(
+            "sourceRoot",
+            objectSchema(
+                ServerSchemaProperty("module", textSchema("IDE module identity.")),
+                ServerSchemaProperty("buildRoot", textSchema("Workspace-relative build root.")),
+                ServerSchemaProperty("projectPath", textSchema("Gradle project path.")),
+                ServerSchemaProperty("sourceSet", textSchema("Gradle source-set name.")),
+                ServerSchemaProperty("location", textSchema("Workspace-relative source root.")),
+                ServerSchemaProperty(
+                    "provenance",
+                    enumSchema(
+                        listOf("authored", "generated", "unknown-excluded-from-source-model"),
+                        "Source-root provenance.",
+                    ),
                 ),
             ),
         ),
-    ),
-    ServerSchemaProperty("path", textSchema("Workspace-relative source path.")),
-    ServerSchemaProperty("contentHash", sha256Schema("Exact source content hash.")),
-)
+        ServerSchemaProperty("path", textSchema("Workspace-relative source path.")),
+        ServerSchemaProperty("contentHash", sha256Schema("Exact source content hash.")),
+    )
 
-private fun symbolSchema(): JsonObject = unionSchema(
-    symbolVariantSchema("classlike", classLikeCompilerSignatureSchema()),
-    symbolVariantSchema("constructor", functionCompilerSignatureSchema()),
-    symbolVariantSchema("function", functionCompilerSignatureSchema()),
-    symbolVariantSchema("property", propertyCompilerSignatureSchema()),
-    symbolVariantSchema("type-alias", typeAliasCompilerSignatureSchema()),
-)
+private fun symbolSchema(): JsonObject =
+    unionSchema(
+        symbolVariantSchema("classlike", classLikeCompilerSignatureSchema()),
+        symbolVariantSchema("constructor", functionCompilerSignatureSchema()),
+        symbolVariantSchema("function", functionCompilerSignatureSchema()),
+        symbolVariantSchema("property", propertyCompilerSignatureSchema()),
+        symbolVariantSchema("type-alias", typeAliasCompilerSignatureSchema()),
+    )
 
-private fun symbolVariantSchema(kind: String, signature: JsonObject): JsonObject = objectSchema(
-    ServerSchemaProperty("selector", textSchema("Exact generation-bound selector.")),
-    ServerSchemaProperty("kind", constantSchema(kind, "Compiler symbol kind.")),
-    ServerSchemaProperty("name", textSchema("Source declaration name.")),
-    ServerSchemaProperty("qualifiedIdentity", textSchema("Compiler qualified identity.")),
-    ServerSchemaProperty("file", textSchema("Exact source file.")),
-    ServerSchemaProperty("range", sourceRangeSchema()),
-    ServerSchemaProperty("compilerEvidence", compilerEvidenceSchema(signature)),
-)
+private fun symbolVariantSchema(kind: String, signature: JsonObject): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("selector", textSchema("Exact generation-bound selector.")),
+        ServerSchemaProperty("kind", constantSchema(kind, "Compiler symbol kind.")),
+        ServerSchemaProperty("name", textSchema("Source declaration name.")),
+        ServerSchemaProperty("qualifiedIdentity", textSchema("Compiler qualified identity.")),
+        ServerSchemaProperty("file", textSchema("Exact source file.")),
+        ServerSchemaProperty("range", sourceRangeSchema()),
+        ServerSchemaProperty("compilerEvidence", compilerEvidenceSchema(signature)),
+    )
 
-private fun compilerEvidenceSchema(signature: JsonObject): JsonObject = objectSchema(
-    ServerSchemaProperty("identity", compilerIdentitySchema()),
-    ServerSchemaProperty("signature", signature),
-)
+private fun compilerEvidenceSchema(signature: JsonObject): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("identity", compilerIdentitySchema()),
+        ServerSchemaProperty("signature", signature),
+    )
 
-private fun functionCompilerSignatureSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("type", constantSchema("function", "Signature variant.")),
-    ServerSchemaProperty("qualifiedIdentity", textSchema("Compiler qualified identity.")),
-    ServerSchemaProperty("receiver", compilerReceiverSchema()),
-    ServerSchemaProperty("contextReceivers", arraySchema(textSchema("Compiler type."))),
-    ServerSchemaProperty("valueParameters", arraySchema(textSchema("Compiler type."))),
-    ServerSchemaProperty(
-        "typeParameterCount",
-        integerSchema(0, description = "Exact type parameter count."),
-    ),
-)
+private fun functionCompilerSignatureSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("function", "Signature variant.")),
+        ServerSchemaProperty("qualifiedIdentity", textSchema("Compiler qualified identity.")),
+        ServerSchemaProperty("receiver", compilerReceiverSchema()),
+        ServerSchemaProperty("contextReceivers", arraySchema(textSchema("Compiler type."))),
+        ServerSchemaProperty("valueParameters", arraySchema(textSchema("Compiler type."))),
+        ServerSchemaProperty(
+            "typeParameterCount",
+            integerSchema(0, description = "Exact type parameter count."),
+        ),
+    )
 
-private fun propertyCompilerSignatureSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("type", constantSchema("property", "Signature variant.")),
-    ServerSchemaProperty("qualifiedIdentity", textSchema("Compiler qualified identity.")),
-    ServerSchemaProperty("receiver", compilerReceiverSchema()),
-    ServerSchemaProperty("contextReceivers", arraySchema(textSchema("Compiler type."))),
-    ServerSchemaProperty("returnType", textSchema("Canonical compiler return type.")),
-)
+private fun propertyCompilerSignatureSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("property", "Signature variant.")),
+        ServerSchemaProperty("qualifiedIdentity", textSchema("Compiler qualified identity.")),
+        ServerSchemaProperty("receiver", compilerReceiverSchema()),
+        ServerSchemaProperty("contextReceivers", arraySchema(textSchema("Compiler type."))),
+        ServerSchemaProperty("returnType", textSchema("Canonical compiler return type.")),
+    )
 
-private fun typeAliasCompilerSignatureSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("type", constantSchema("type-alias", "Signature variant.")),
-    ServerSchemaProperty("qualifiedIdentity", textSchema("Compiler qualified identity.")),
-)
+private fun typeAliasCompilerSignatureSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("type-alias", "Signature variant.")),
+        ServerSchemaProperty("qualifiedIdentity", textSchema("Compiler qualified identity.")),
+    )
 
-private fun classLikeCompilerSignatureSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("type", constantSchema("class-like", "Signature variant.")),
-    ServerSchemaProperty("qualifiedIdentity", textSchema("Compiler qualified identity.")),
-)
+private fun classLikeCompilerSignatureSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("class-like", "Signature variant.")),
+        ServerSchemaProperty("qualifiedIdentity", textSchema("Compiler qualified identity.")),
+    )
 
 private fun compilerIdentitySchema(): JsonObject = buildJsonObject {
     put("type", "string")
@@ -1252,419 +1376,443 @@ private fun compilerIdentitySchema(): JsonObject = buildJsonObject {
     put("description", "Identity derived from the exact canonical compiler signature.")
 }
 
-private fun compilerReceiverSchema(): JsonObject = unionSchema(
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("absent", "Receiver state.")),
-    ),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("present", "Receiver state.")),
-        ServerSchemaProperty("compilerType", textSchema("Canonical compiler receiver type.")),
-    ),
-)
-
-private fun relationFactSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("meaning", relationSchema()),
-    ServerSchemaProperty("source", symbolSchema()),
-    ServerSchemaProperty("target", symbolSchema()),
-    ServerSchemaProperty(
-        "occurrence",
+private fun compilerReceiverSchema(): JsonObject =
+    unionSchema(
+        objectSchema(ServerSchemaProperty("type", constantSchema("absent", "Receiver state."))),
         objectSchema(
-            ServerSchemaProperty("candidateSelector", textSchema("Occurrence candidate selector.")),
-            ServerSchemaProperty("file", textSchema("Exact occurrence file.")),
-            ServerSchemaProperty("range", sourceRangeSchema()),
+            ServerSchemaProperty("type", constantSchema("present", "Receiver state.")),
+            ServerSchemaProperty("compilerType", textSchema("Canonical compiler receiver type.")),
         ),
-    ),
-    ServerSchemaProperty(
-        "provenance",
-        enumSchema(
-            listOf("k2-authored-source", "k2-generated-source", "k2-project-library"),
-            "Compiler and source-root provenance.",
-        ),
-    ),
-    ServerSchemaProperty(
-        "coverage",
-        constantSchema("exact-compiler-confirmed", "Per-edge compiler coverage proof."),
-    ),
-)
+    )
 
-private fun normalizedTraversalGraphSchema(basis: ServerReadEvidenceShape = ServerReadEvidenceShape.PUBLISHED): JsonObject = objectSchema(
-    ServerSchemaProperty(
-        "snapshot",
+private fun relationFactSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("meaning", relationSchema()),
+        ServerSchemaProperty("source", symbolSchema()),
+        ServerSchemaProperty("target", symbolSchema()),
+        ServerSchemaProperty(
+            "occurrence",
+            objectSchema(
+                ServerSchemaProperty("candidateSelector", textSchema("Occurrence candidate selector.")),
+                ServerSchemaProperty("file", textSchema("Exact occurrence file.")),
+                ServerSchemaProperty("range", sourceRangeSchema()),
+            ),
+        ),
+        ServerSchemaProperty(
+            "provenance",
+            enumSchema(
+                listOf("k2-authored-source", "k2-generated-source", "k2-project-library"),
+                "Compiler and source-root provenance.",
+            ),
+        ),
+        ServerSchemaProperty(
+            "coverage",
+            constantSchema("exact-compiler-confirmed", "Per-edge compiler coverage proof."),
+        ),
+    )
+
+private fun normalizedTraversalGraphSchema(
+    basis: ServerReadEvidenceShape = ServerReadEvidenceShape.PUBLISHED
+): JsonObject =
+    objectSchema(
+        ServerSchemaProperty(
+            "snapshot",
+            objectSchema(
+                ServerSchemaProperty(
+                    "canonicalRoot",
+                    textSchema("Exact canonical workspace root for the whole graph."),
+                ),
+                when (basis) {
+                    ServerReadEvidenceShape.PUBLISHED ->
+                        ServerSchemaProperty(
+                            "generation",
+                            integerSchema(0, description = "Exact semantic evidence generation."),
+                        )
+                    ServerReadEvidenceShape.LIVE -> ServerSchemaProperty("live", liveReadEvidenceSchema())
+                },
+            ),
+        ),
+        ServerSchemaProperty("nodes", arraySchema(normalizedTraversalNodeSchema())),
+        ServerSchemaProperty("edges", arraySchema(normalizedTraversalEdgeSchema())),
+        ServerSchemaProperty("proofs", arraySchema(normalizedTraversalProofSchema())),
+    )
+
+private fun normalizedTraversalNodeSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("id", integerSchema(0, description = "Graph-local node index.")),
+        ServerSchemaProperty("selector", textSchema("Exact generation-bound selector.")),
+        ServerSchemaProperty(
+            "kind",
+            enumSchema(
+                listOf("classlike", "constructor", "function", "property", "type-alias"),
+                "Compiler symbol kind.",
+            ),
+        ),
+        ServerSchemaProperty("name", textSchema("Source declaration name.")),
+        ServerSchemaProperty("qualifiedIdentity", textSchema("Compiler qualified identity.")),
+        ServerSchemaProperty("file", textSchema("Exact source file.")),
+        ServerSchemaProperty("range", sourceRangeSchema()),
+        ServerSchemaProperty("proof", integerSchema(0, description = "Graph-local proof index.")),
+    )
+
+private fun normalizedTraversalEdgeSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("depth", integerSchema(0, description = "Breadth-first hop depth.")),
+        ServerSchemaProperty("meaning", relationSchema()),
+        ServerSchemaProperty("source", integerSchema(0, description = "Source node index.")),
+        ServerSchemaProperty("target", integerSchema(0, description = "Target node index.")),
+        ServerSchemaProperty(
+            "occurrence",
+            objectSchema(
+                ServerSchemaProperty("candidateSelector", textSchema("Occurrence candidate selector.")),
+                ServerSchemaProperty("file", textSchema("Exact occurrence file.")),
+                ServerSchemaProperty("range", sourceRangeSchema()),
+            ),
+        ),
+        ServerSchemaProperty(
+            "provenance",
+            enumSchema(
+                listOf("k2-authored-source", "k2-generated-source", "k2-project-library"),
+                "Compiler and source-root provenance.",
+            ),
+        ),
+        ServerSchemaProperty(
+            "coverage",
+            constantSchema("exact-compiler-confirmed", "Per-edge compiler coverage proof."),
+        ),
+    )
+
+private fun normalizedTraversalProofSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("id", integerSchema(0, description = "Graph-local proof index.")),
+        ServerSchemaProperty("identity", compilerIdentitySchema()),
+    )
+
+private fun diagnosticSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty(
+            "severity",
+            enumSchema(listOf("error", "warning", "info"), "Compiler diagnostic severity."),
+        ),
+        ServerSchemaProperty("code", textSchema("Compiler diagnostic code.")),
+        ServerSchemaProperty("message", textSchema("Compiler diagnostic message.")),
+        ServerSchemaProperty(
+            "location",
+            objectSchema(
+                ServerSchemaProperty("candidateSelector", textSchema("Diagnostic candidate selector.")),
+                ServerSchemaProperty("file", textSchema("Diagnostic source file.")),
+                ServerSchemaProperty("range", diagnosticRangeSchema()),
+            ),
+        ),
+    )
+
+private fun symbolDiscoverySchema(): JsonObject =
+    unionSchema(
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("file", "Discovery evidence variant.")),
+            ServerSchemaProperty("candidateSelector", textSchema("Candidate selector.")),
+            ServerSchemaProperty("name", textSchema("File name.")),
+            ServerSchemaProperty("file", textSchema("Discovered file.")),
+        ),
         objectSchema(
             ServerSchemaProperty(
-                "canonicalRoot",
-                textSchema("Exact canonical workspace root for the whole graph."),
+                "type",
+                constantSchema("declaration", "Discovery evidence variant."),
             ),
-            when (basis) {
-                ServerReadEvidenceShape.PUBLISHED -> ServerSchemaProperty(
-                    "generation", integerSchema(0, description = "Exact semantic evidence generation."),
-                )
-                ServerReadEvidenceShape.LIVE -> ServerSchemaProperty("live", liveReadEvidenceSchema())
-            },
+            ServerSchemaProperty("candidateSelector", textSchema("Candidate selector.")),
+            ServerSchemaProperty("kind", enumSchema(listOf("file", "class", "symbol"), "Kind.")),
+            ServerSchemaProperty("name", textSchema("Declaration name.")),
+            ServerSchemaProperty("file", textSchema("Declaration file.")),
+            ServerSchemaProperty("offset", integerSchema(0, description = "Declaration offset.")),
         ),
-    ),
-    ServerSchemaProperty("nodes", arraySchema(normalizedTraversalNodeSchema())),
-    ServerSchemaProperty("edges", arraySchema(normalizedTraversalEdgeSchema())),
-    ServerSchemaProperty("proofs", arraySchema(normalizedTraversalProofSchema())),
-)
-
-private fun normalizedTraversalNodeSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("id", integerSchema(0, description = "Graph-local node index.")),
-    ServerSchemaProperty("selector", textSchema("Exact generation-bound selector.")),
-    ServerSchemaProperty(
-        "kind",
-        enumSchema(
-            listOf("classlike", "constructor", "function", "property", "type-alias"),
-            "Compiler symbol kind.",
-        ),
-    ),
-    ServerSchemaProperty("name", textSchema("Source declaration name.")),
-    ServerSchemaProperty("qualifiedIdentity", textSchema("Compiler qualified identity.")),
-    ServerSchemaProperty("file", textSchema("Exact source file.")),
-    ServerSchemaProperty("range", sourceRangeSchema()),
-    ServerSchemaProperty("proof", integerSchema(0, description = "Graph-local proof index.")),
-)
-
-private fun normalizedTraversalEdgeSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("depth", integerSchema(0, description = "Breadth-first hop depth.")),
-    ServerSchemaProperty("meaning", relationSchema()),
-    ServerSchemaProperty("source", integerSchema(0, description = "Source node index.")),
-    ServerSchemaProperty("target", integerSchema(0, description = "Target node index.")),
-    ServerSchemaProperty(
-        "occurrence",
         objectSchema(
-            ServerSchemaProperty("candidateSelector", textSchema("Occurrence candidate selector.")),
-            ServerSchemaProperty("file", textSchema("Exact occurrence file.")),
+            ServerSchemaProperty("type", constantSchema("text-match", "Discovery evidence variant.")),
+            ServerSchemaProperty("candidateSelector", textSchema("Candidate selector.")),
+            ServerSchemaProperty("query", textSchema("Matched query.")),
+            ServerSchemaProperty("file", textSchema("Matched file.")),
             ServerSchemaProperty("range", sourceRangeSchema()),
         ),
-    ),
-    ServerSchemaProperty(
-        "provenance",
-        enumSchema(
-            listOf("k2-authored-source", "k2-generated-source", "k2-project-library"),
-            "Compiler and source-root provenance.",
-        ),
-    ),
-    ServerSchemaProperty(
-        "coverage",
-        constantSchema("exact-compiler-confirmed", "Per-edge compiler coverage proof."),
-    ),
-)
+    )
 
-private fun normalizedTraversalProofSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("id", integerSchema(0, description = "Graph-local proof index.")),
-    ServerSchemaProperty("identity", compilerIdentitySchema()),
-)
+private fun sourceRangeSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("startInclusive", integerSchema(0, description = "Start offset.")),
+        ServerSchemaProperty("endExclusive", integerSchema(1, description = "Exclusive end offset.")),
+    )
 
-private fun diagnosticSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty(
-        "severity",
-        enumSchema(listOf("error", "warning", "info"), "Compiler diagnostic severity."),
-    ),
-    ServerSchemaProperty("code", textSchema("Compiler diagnostic code.")),
-    ServerSchemaProperty("message", textSchema("Compiler diagnostic message.")),
-    ServerSchemaProperty(
-        "location",
+private fun diagnosticRangeSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("startInclusive", integerSchema(0, description = "Start offset.")),
+        ServerSchemaProperty("endExclusive", integerSchema(0, description = "Exclusive end offset.")),
+    )
+
+private fun processDiagnosticSchema(): JsonObject =
+    unionSchema(
         objectSchema(
-            ServerSchemaProperty("candidateSelector", textSchema("Diagnostic candidate selector.")),
-            ServerSchemaProperty("file", textSchema("Diagnostic source file.")),
-            ServerSchemaProperty("range", diagnosticRangeSchema()),
+            ServerSchemaProperty("status", constantSchema("rejected", "Boundary outcome.")),
+            ServerSchemaProperty("boundary", textSchema("Rejected process boundary.")),
+            ServerSchemaProperty("reason", textSchema("Closed boundary rejection reason.")),
         ),
-    ),
-)
-
-private fun symbolDiscoverySchema(): JsonObject = unionSchema(
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("file", "Discovery evidence variant.")),
-        ServerSchemaProperty("candidateSelector", textSchema("Candidate selector.")),
-        ServerSchemaProperty("name", textSchema("File name.")),
-        ServerSchemaProperty("file", textSchema("Discovered file.")),
-    ),
-    objectSchema(
-        ServerSchemaProperty(
-            "type",
-            constantSchema("declaration", "Discovery evidence variant."),
+        objectSchema(
+            ServerSchemaProperty("status", constantSchema("rejected", "Boundary outcome.")),
+            ServerSchemaProperty("boundary", textSchema("Rejected process boundary.")),
+            ServerSchemaProperty("reason", textSchema("Closed boundary rejection reason.")),
+            ServerSchemaProperty("diagnostic", textSchema("Usage diagnostic.")),
         ),
-        ServerSchemaProperty("candidateSelector", textSchema("Candidate selector.")),
-        ServerSchemaProperty("kind", enumSchema(listOf("file", "class", "symbol"), "Kind.")),
-        ServerSchemaProperty("name", textSchema("Declaration name.")),
-        ServerSchemaProperty("file", textSchema("Declaration file.")),
-        ServerSchemaProperty("offset", integerSchema(0, description = "Declaration offset.")),
-    ),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("text-match", "Discovery evidence variant.")),
-        ServerSchemaProperty("candidateSelector", textSchema("Candidate selector.")),
-        ServerSchemaProperty("query", textSchema("Matched query.")),
-        ServerSchemaProperty("file", textSchema("Matched file.")),
-        ServerSchemaProperty("range", sourceRangeSchema()),
-    ),
-)
+        objectSchema(
+            ServerSchemaProperty("status", constantSchema("rejected", "Boundary outcome.")),
+            ServerSchemaProperty("boundary", constantSchema("runtime", "Rejected process boundary.")),
+            ServerSchemaProperty("reason", textSchema("Closed boundary rejection reason.")),
+            ServerSchemaProperty("details", ideDescriptorFailureSchema()),
+        ),
+        objectSchema(
+            ServerSchemaProperty("status", constantSchema("rejected", "Boundary outcome.")),
+            ServerSchemaProperty("boundary", constantSchema("runtime", "Rejected process boundary.")),
+            ServerSchemaProperty("reason", textSchema("Closed boundary rejection reason.")),
+            ServerSchemaProperty("bootstrap", runtimeBootstrapDiagnosticSchema()),
+        ),
+    )
 
-private fun sourceRangeSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("startInclusive", integerSchema(0, description = "Start offset.")),
-    ServerSchemaProperty("endExclusive", integerSchema(1, description = "Exclusive end offset.")),
-)
+private fun runtimeBootstrapDiagnosticSchema(): JsonObject =
+    unionSchema(
+        objectSchema(ServerSchemaProperty("state", constantSchema("unavailable", "Bootstrap state."))),
+        objectSchema(ServerSchemaProperty("state", constantSchema("invalid", "Bootstrap state."))),
+        objectSchema(
+            ServerSchemaProperty("state", constantSchema("starting", "Bootstrap state.")),
+            ServerSchemaProperty("attemptId", uuidSchema("Bootstrap attempt identity.")),
+            ServerSchemaProperty("phase", textSchema("Current bootstrap phase.")),
+            ServerSchemaProperty("completedPhases", integerSchema(0, 7, "Completed bootstrap phases.")),
+            ServerSchemaProperty("totalPhases", integerSchema(1, 7, "Total bootstrap phases.")),
+            ServerSchemaProperty("gradleJvm", gradleJvmSelectionObservationSchema()),
+        ),
+        objectSchema(
+            ServerSchemaProperty("state", constantSchema("ready", "Bootstrap state.")),
+            ServerSchemaProperty("attemptId", uuidSchema("Bootstrap attempt identity.")),
+            ServerSchemaProperty("gradleJvm", gradleJvmSelectionObservationSchema()),
+            ServerSchemaProperty("phase", constantSchema("ready", "Completed bootstrap phase.")),
+            ServerSchemaProperty("completedPhases", integerSchema(7, 7, "Completed bootstrap phases.")),
+            ServerSchemaProperty("totalPhases", integerSchema(7, 7, "Total bootstrap phases.")),
+        ),
+        objectSchema(
+            ServerSchemaProperty("state", constantSchema("rejected", "Bootstrap state.")),
+            ServerSchemaProperty("attemptId", uuidSchema("Bootstrap attempt identity.")),
+            ServerSchemaProperty("phase", textSchema("Rejected bootstrap phase.")),
+            ServerSchemaProperty("completedPhases", integerSchema(0, 7, "Completed bootstrap phases.")),
+            ServerSchemaProperty("totalPhases", integerSchema(1, 7, "Total bootstrap phases.")),
+            ServerSchemaProperty("cause", textSchema("Closed bootstrap rejection reason.")),
+            ServerSchemaProperty("correctiveAction", textSchema("Bounded corrective action.")),
+            ServerSchemaProperty("gradleJvm", gradleJvmSelectionObservationSchema()),
+        ),
+    )
 
-private fun diagnosticRangeSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("startInclusive", integerSchema(0, description = "Start offset.")),
-    ServerSchemaProperty("endExclusive", integerSchema(0, description = "Exclusive end offset.")),
-)
-
-private fun processDiagnosticSchema(): JsonObject = unionSchema(
-    objectSchema(
-        ServerSchemaProperty("status", constantSchema("rejected", "Boundary outcome.")),
-        ServerSchemaProperty("boundary", textSchema("Rejected process boundary.")),
-        ServerSchemaProperty("reason", textSchema("Closed boundary rejection reason.")),
-    ),
-    objectSchema(
-        ServerSchemaProperty("status", constantSchema("rejected", "Boundary outcome.")),
-        ServerSchemaProperty("boundary", textSchema("Rejected process boundary.")),
-        ServerSchemaProperty("reason", textSchema("Closed boundary rejection reason.")),
-        ServerSchemaProperty("diagnostic", textSchema("Usage diagnostic.")),
-    ),
-    objectSchema(
-        ServerSchemaProperty("status", constantSchema("rejected", "Boundary outcome.")),
-        ServerSchemaProperty("boundary", constantSchema("runtime", "Rejected process boundary.")),
-        ServerSchemaProperty("reason", textSchema("Closed boundary rejection reason.")),
-        ServerSchemaProperty("details", ideDescriptorFailureSchema()),
-    ),
-    objectSchema(
-        ServerSchemaProperty("status", constantSchema("rejected", "Boundary outcome.")),
-        ServerSchemaProperty("boundary", constantSchema("runtime", "Rejected process boundary.")),
-        ServerSchemaProperty("reason", textSchema("Closed boundary rejection reason.")),
-        ServerSchemaProperty("bootstrap", runtimeBootstrapDiagnosticSchema()),
-    ),
-)
-
-private fun runtimeBootstrapDiagnosticSchema(): JsonObject = unionSchema(
-    objectSchema(ServerSchemaProperty("state", constantSchema("unavailable", "Bootstrap state."))),
-    objectSchema(ServerSchemaProperty("state", constantSchema("invalid", "Bootstrap state."))),
-    objectSchema(
-        ServerSchemaProperty("state", constantSchema("starting", "Bootstrap state.")),
-        ServerSchemaProperty("attemptId", uuidSchema("Bootstrap attempt identity.")),
-        ServerSchemaProperty("phase", textSchema("Current bootstrap phase.")),
-        ServerSchemaProperty("completedPhases", integerSchema(0, 7, "Completed bootstrap phases.")),
-        ServerSchemaProperty("totalPhases", integerSchema(1, 7, "Total bootstrap phases.")),
-        ServerSchemaProperty("gradleJvm", gradleJvmSelectionObservationSchema()),
-    ),
-    objectSchema(
-        ServerSchemaProperty("state", constantSchema("ready", "Bootstrap state.")),
-        ServerSchemaProperty("attemptId", uuidSchema("Bootstrap attempt identity.")),
-        ServerSchemaProperty("gradleJvm", gradleJvmSelectionObservationSchema()),
-        ServerSchemaProperty("phase", constantSchema("ready", "Completed bootstrap phase.")),
-        ServerSchemaProperty("completedPhases", integerSchema(7, 7, "Completed bootstrap phases.")),
-        ServerSchemaProperty("totalPhases", integerSchema(7, 7, "Total bootstrap phases.")),
-    ),
-    objectSchema(
-        ServerSchemaProperty("state", constantSchema("rejected", "Bootstrap state.")),
-        ServerSchemaProperty("attemptId", uuidSchema("Bootstrap attempt identity.")),
-        ServerSchemaProperty("phase", textSchema("Rejected bootstrap phase.")),
-        ServerSchemaProperty("completedPhases", integerSchema(0, 7, "Completed bootstrap phases.")),
-        ServerSchemaProperty("totalPhases", integerSchema(1, 7, "Total bootstrap phases.")),
-        ServerSchemaProperty("cause", textSchema("Closed bootstrap rejection reason.")),
-        ServerSchemaProperty("correctiveAction", textSchema("Bounded corrective action.")),
-        ServerSchemaProperty("gradleJvm", gradleJvmSelectionObservationSchema()),
-    ),
-)
-
-private fun gradleJvmSelectionObservationSchema(): JsonObject = unionSchema(
-    objectSchema(
-        ServerSchemaProperty(
-            "type",
-            constantSchema(
-                "$GRADLE_CONTRACT.GradleJvmSelectionObservation.Unobserved",
-                "Gradle JVM observation variant.",
+private fun gradleJvmSelectionObservationSchema(): JsonObject =
+    unionSchema(
+        objectSchema(
+            ServerSchemaProperty(
+                "type",
+                constantSchema(
+                    "$GRADLE_CONTRACT.GradleJvmSelectionObservation.Unobserved",
+                    "Gradle JVM observation variant.",
+                ),
+            )
+        ),
+        objectSchema(
+            ServerSchemaProperty(
+                "type",
+                constantSchema(
+                    "$GRADLE_CONTRACT.GradleJvmSelectionObservation.Observed",
+                    "Gradle JVM observation variant.",
+                ),
             ),
+            ServerSchemaProperty("report", gradleJvmSelectionReportSchema()),
         ),
-    ),
-    objectSchema(
-        ServerSchemaProperty(
-            "type",
-            constantSchema(
-                "$GRADLE_CONTRACT.GradleJvmSelectionObservation.Observed",
-                "Gradle JVM observation variant.",
-            ),
-        ),
-        ServerSchemaProperty("report", gradleJvmSelectionReportSchema()),
-    ),
-)
+    )
 
-private fun gradleJvmSelectionReportSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("distribution", gradleDistributionEvidenceSchema()),
-    ServerSchemaProperty(
-        "requiredJava",
-        finiteArraySchema(integerSchema(1, 99, "Required Java feature.")),
-    ),
-    ServerSchemaProperty("candidates", arraySchema(gradleJvmCandidateSchema())),
-    ServerSchemaProperty("outcome", gradleJvmSelectionOutcomeSchema()),
-)
+private fun gradleJvmSelectionReportSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("distribution", gradleDistributionEvidenceSchema()),
+        ServerSchemaProperty(
+            "requiredJava",
+            finiteArraySchema(integerSchema(1, 99, "Required Java feature.")),
+        ),
+        ServerSchemaProperty("candidates", arraySchema(gradleJvmCandidateSchema())),
+        ServerSchemaProperty("outcome", gradleJvmSelectionOutcomeSchema()),
+    )
 
-private fun gradleDistributionEvidenceSchema(): JsonObject = unionSchema(
-    objectSchema(
-        ServerSchemaProperty(
-            "type",
-            constantSchema(
-                "$GRADLE_CONTRACT.GradleDistributionEvidence.Unavailable",
-                "Gradle distribution evidence variant.",
-            ),
+private fun gradleDistributionEvidenceSchema(): JsonObject =
+    unionSchema(
+        objectSchema(
+            ServerSchemaProperty(
+                "type",
+                constantSchema(
+                    "$GRADLE_CONTRACT.GradleDistributionEvidence.Unavailable",
+                    "Gradle distribution evidence variant.",
+                ),
+            )
         ),
-    ),
-    objectSchema(
-        ServerSchemaProperty(
-            "type",
-            constantSchema(
-                "$GRADLE_CONTRACT.GradleDistributionEvidence.Observed",
-                "Gradle distribution evidence variant.",
+        objectSchema(
+            ServerSchemaProperty(
+                "type",
+                constantSchema(
+                    "$GRADLE_CONTRACT.GradleDistributionEvidence.Observed",
+                    "Gradle distribution evidence variant.",
+                ),
             ),
+            ServerSchemaProperty("version", textSchema("Observed Gradle version.")),
         ),
-        ServerSchemaProperty("version", textSchema("Observed Gradle version.")),
-    ),
-)
+    )
 
-private fun gradleJvmCandidateSchema(): JsonObject = objectSchema(
-    ServerSchemaProperty("java", integerSchema(1, 99, "Java feature.")),
-    ServerSchemaProperty("homeIdentity", sha256Schema("JDK home identity.")),
-    ServerSchemaProperty(
-        "authority",
-        enumSchema(
-            listOf(
-                "DAEMON_JVM_CRITERIA",
-                "REPOSITORY_GRADLE_PROPERTY",
-                "AMBIENT_JAVA_HOME",
-                "SIDECAR_COMPATIBLE",
-                "PLATFORM_RESOLVER",
-            ),
-            "JDK selection authority.",
-        ),
-    ),
-    ServerSchemaProperty(
-        "decision",
-        enumSchema(
-            listOf(
-                "SELECTED",
-                "INCOMPATIBLE_GRADLE",
-                "SHADOWED_BY_PROJECT_AUTHORITY",
-                "NOT_SELECTED",
-            ),
-            "JDK candidate decision.",
-        ),
-    ),
-)
-
-private fun gradleJvmSelectionOutcomeSchema(): JsonObject = unionSchema(
+private fun gradleJvmCandidateSchema(): JsonObject =
     objectSchema(
+        ServerSchemaProperty("java", integerSchema(1, 99, "Java feature.")),
+        ServerSchemaProperty("homeIdentity", sha256Schema("JDK home identity.")),
         ServerSchemaProperty(
-            "type",
-            constantSchema(
-                "$GRADLE_CONTRACT.GradleJvmSelectionOutcome.Selected",
-                "Gradle JVM outcome variant.",
-            ),
-        ),
-        ServerSchemaProperty("candidate", gradleJvmCandidateSchema()),
-    ),
-    objectSchema(
-        ServerSchemaProperty(
-            "type",
-            constantSchema(
-                "$GRADLE_CONTRACT.GradleJvmSelectionOutcome.Rejected",
-                "Gradle JVM outcome variant.",
-            ),
-        ),
-        ServerSchemaProperty(
-            "failure",
+            "authority",
             enumSchema(
                 listOf(
-                    "GRADLE_DISTRIBUTION_UNAVAILABLE",
-                    "DAEMON_JVM_CRITERIA_UNSUPPORTED",
-                    "REPOSITORY_JAVA_HOME_INVALID",
-                    "LOCAL_JVM_DISCOVERY_FAILED",
-                    "NO_COMPATIBLE_RUNTIME",
-                    "SDK_REGISTRATION_FAILED",
+                    "DAEMON_JVM_CRITERIA",
+                    "REPOSITORY_GRADLE_PROPERTY",
+                    "AMBIENT_JAVA_HOME",
+                    "SIDECAR_COMPATIBLE",
+                    "PLATFORM_RESOLVER",
                 ),
-                "Closed Gradle JVM selection failure.",
+                "JDK selection authority.",
             ),
         ),
-    ),
-)
-
-private fun ideDescriptorFailureSchema(): JsonObject = unionSchema(
-    *listOf(
-        "malformed-document",
-        "non-canonical-document",
-        "unsupported-schema",
-        "unsupported-host-kind",
-        "unsupported-framing",
-    ).map(::typeOnlyFailureSchema).toTypedArray(),
-    typedFailureSchema("invalid-canonical-root", "failure"),
-    typedFailureSchema("invalid-socket-path", "failure"),
-    typedFailureSchema("invalid-process-id", "failure"),
-    typedFailureSchema("invalid-runtime-epoch", "failure"),
-    objectSchema(
         ServerSchemaProperty(
-            "type",
-            constantSchema("compatibility-rejected", "Descriptor failure variant."),
+            "decision",
+            enumSchema(
+                listOf(
+                    "SELECTED",
+                    "INCOMPATIBLE_GRADLE",
+                    "SHADOWED_BY_PROJECT_AUTHORITY",
+                    "NOT_SELECTED",
+                ),
+                "JDK candidate decision.",
+            ),
         ),
-        ServerSchemaProperty("failure", compatibilityFailureSchema()),
-    ),
-    objectSchema(
-        ServerSchemaProperty(
-            "type",
-            constantSchema("hosted-capabilities-rejected", "Descriptor failure variant."),
+    )
+
+private fun gradleJvmSelectionOutcomeSchema(): JsonObject =
+    unionSchema(
+        objectSchema(
+            ServerSchemaProperty(
+                "type",
+                constantSchema(
+                    "$GRADLE_CONTRACT.GradleJvmSelectionOutcome.Selected",
+                    "Gradle JVM outcome variant.",
+                ),
+            ),
+            ServerSchemaProperty("candidate", gradleJvmCandidateSchema()),
         ),
-        ServerSchemaProperty("failure", hostedCapabilitiesFailureSchema()),
-    ),
-)
-
-private fun compatibilityFailureSchema(): JsonObject = unionSchema(
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("malformed", "Compatibility failure.")),
-        ServerSchemaProperty("field", textSchema("Rejected compatibility field.")),
-        ServerSchemaProperty("syntax", textSchema("Closed syntax failure.")),
-    ),
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("mismatch", "Compatibility failure.")),
-        ServerSchemaProperty("field", textSchema("Mismatched compatibility field.")),
-        ServerSchemaProperty("expected", textSchema("Expected identity.")),
-        ServerSchemaProperty("observed", textSchema("Observed identity.")),
-    ),
-    objectSchema(
-        ServerSchemaProperty(
-            "type",
-            constantSchema("capability-set-mismatch", "Compatibility failure."),
+        objectSchema(
+            ServerSchemaProperty(
+                "type",
+                constantSchema(
+                    "$GRADLE_CONTRACT.GradleJvmSelectionOutcome.Rejected",
+                    "Gradle JVM outcome variant.",
+                ),
+            ),
+            ServerSchemaProperty(
+                "failure",
+                enumSchema(
+                    listOf(
+                        "GRADLE_DISTRIBUTION_UNAVAILABLE",
+                        "DAEMON_JVM_CRITERIA_UNSUPPORTED",
+                        "REPOSITORY_JAVA_HOME_INVALID",
+                        "LOCAL_JVM_DISCOVERY_FAILED",
+                        "NO_COMPATIBLE_RUNTIME",
+                        "SDK_REGISTRATION_FAILED",
+                    ),
+                    "Closed Gradle JVM selection failure.",
+                ),
+            ),
         ),
-        ServerSchemaProperty("field", textSchema("Mismatched capability field.")),
-        ServerSchemaProperty("expected", finiteArraySchema(textSchema("Expected operation."))),
-        ServerSchemaProperty("observed", finiteArraySchema(textSchema("Observed operation."))),
-    ),
-    typedFailureSchema("unknown-capability", "operationId"),
-    typedFailureSchema("unsupported-capability", "operationId"),
-    typedFailureSchema("duplicate-capability", "operationId"),
-)
+    )
 
-private fun hostedCapabilitiesFailureSchema(): JsonObject = unionSchema(
-    typedFailureSchema("malformed-operation-id", "failure"),
-    typedFailureSchema("unknown-operation", "operationId"),
-    typedFailureSchema("unsupported-intent", "operationId"),
-    typedFailureSchema("duplicate-operation", "operationId"),
-    objectSchema(
-        ServerSchemaProperty(
-            "type",
-            constantSchema("duplicate-intent", "Hosted-capability failure."),
+private fun ideDescriptorFailureSchema(): JsonObject =
+    unionSchema(
+        *listOf(
+                "malformed-document",
+                "non-canonical-document",
+                "unsupported-schema",
+                "unsupported-host-kind",
+                "unsupported-framing",
+            )
+            .map(::typeOnlyFailureSchema)
+            .toTypedArray(),
+        typedFailureSchema("invalid-canonical-root", "failure"),
+        typedFailureSchema("invalid-socket-path", "failure"),
+        typedFailureSchema("invalid-process-id", "failure"),
+        typedFailureSchema("invalid-runtime-epoch", "failure"),
+        objectSchema(
+            ServerSchemaProperty(
+                "type",
+                constantSchema("compatibility-rejected", "Descriptor failure variant."),
+            ),
+            ServerSchemaProperty("failure", compatibilityFailureSchema()),
         ),
-        ServerSchemaProperty("operationId", textSchema("Canonical operation identity.")),
-        ServerSchemaProperty("intent", textSchema("Duplicate hosted intent.")),
-    ),
-    typeOnlyFailureSchema("canonical-projection-mismatch"),
-)
+        objectSchema(
+            ServerSchemaProperty(
+                "type",
+                constantSchema("hosted-capabilities-rejected", "Descriptor failure variant."),
+            ),
+            ServerSchemaProperty("failure", hostedCapabilitiesFailureSchema()),
+        ),
+    )
 
-private fun typeOnlyFailureSchema(type: String): JsonObject = objectSchema(
-    ServerSchemaProperty("type", constantSchema(type, "Closed failure variant.")),
-)
+private fun compatibilityFailureSchema(): JsonObject =
+    unionSchema(
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("malformed", "Compatibility failure.")),
+            ServerSchemaProperty("field", textSchema("Rejected compatibility field.")),
+            ServerSchemaProperty("syntax", textSchema("Closed syntax failure.")),
+        ),
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("mismatch", "Compatibility failure.")),
+            ServerSchemaProperty("field", textSchema("Mismatched compatibility field.")),
+            ServerSchemaProperty("expected", textSchema("Expected identity.")),
+            ServerSchemaProperty("observed", textSchema("Observed identity.")),
+        ),
+        objectSchema(
+            ServerSchemaProperty(
+                "type",
+                constantSchema("capability-set-mismatch", "Compatibility failure."),
+            ),
+            ServerSchemaProperty("field", textSchema("Mismatched capability field.")),
+            ServerSchemaProperty("expected", finiteArraySchema(textSchema("Expected operation."))),
+            ServerSchemaProperty("observed", finiteArraySchema(textSchema("Observed operation."))),
+        ),
+        typedFailureSchema("unknown-capability", "operationId"),
+        typedFailureSchema("unsupported-capability", "operationId"),
+        typedFailureSchema("duplicate-capability", "operationId"),
+    )
 
-private fun typedFailureSchema(type: String, field: String): JsonObject = objectSchema(
-    ServerSchemaProperty("type", constantSchema(type, "Closed failure variant.")),
-    ServerSchemaProperty(field, textSchema("Finite failure evidence.")),
-)
+private fun hostedCapabilitiesFailureSchema(): JsonObject =
+    unionSchema(
+        typedFailureSchema("malformed-operation-id", "failure"),
+        typedFailureSchema("unknown-operation", "operationId"),
+        typedFailureSchema("unsupported-intent", "operationId"),
+        typedFailureSchema("duplicate-operation", "operationId"),
+        objectSchema(
+            ServerSchemaProperty(
+                "type",
+                constantSchema("duplicate-intent", "Hosted-capability failure."),
+            ),
+            ServerSchemaProperty("operationId", textSchema("Canonical operation identity.")),
+            ServerSchemaProperty("intent", textSchema("Duplicate hosted intent.")),
+        ),
+        typeOnlyFailureSchema("canonical-projection-mismatch"),
+    )
+
+private fun typeOnlyFailureSchema(type: String): JsonObject =
+    objectSchema(ServerSchemaProperty("type", constantSchema(type, "Closed failure variant.")))
+
+private fun typedFailureSchema(type: String, field: String): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema(type, "Closed failure variant.")),
+        ServerSchemaProperty(field, textSchema("Finite failure evidence.")),
+    )
 
 private fun objectSchema(vararg properties: ServerSchemaProperty): JsonObject = buildJsonObject {
     put("type", "object")
@@ -1688,9 +1836,11 @@ private fun objectSchemaWithRequired(
         properties.forEach { property -> put(property.name, property.schema) }
     }
     putJsonArray("required") {
-        properties.filter { it.name in required }.forEach { property ->
-            add(JsonPrimitive(property.name))
-        }
+        properties
+            .filter { it.name in required }
+            .forEach { property ->
+                add(JsonPrimitive(property.name))
+            }
     }
 }
 
@@ -1700,10 +1850,11 @@ private fun unionSchema(vararg variants: JsonObject): JsonObject = buildJsonObje
     }
 }
 
-private fun nullableSchema(value: JsonObject): JsonObject = unionSchema(
-    value,
-    buildJsonObject { put("type", "null") },
-)
+private fun nullableSchema(value: JsonObject): JsonObject =
+    unionSchema(
+        value,
+        buildJsonObject { put("type", "null") },
+    )
 
 private fun arraySchema(item: JsonObject): JsonObject = buildJsonObject {
     put("type", "array")
@@ -1777,16 +1928,18 @@ private fun sha256Schema(description: String): JsonObject = buildJsonObject {
     put("description", description)
 }
 
-private fun uuidSchema(description: String): JsonObject = patternTextSchema(
-    "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
-    description,
-)
+private fun uuidSchema(description: String): JsonObject =
+    patternTextSchema(
+        "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+        description,
+    )
 
-private fun countSchema(description: String): JsonObject = integerSchema(
-    minimum = 1,
-    maximum = MAXIMUM_PROTOCOL_COUNT,
-    description = description,
-)
+private fun countSchema(description: String): JsonObject =
+    integerSchema(
+        minimum = 1,
+        maximum = MAXIMUM_PROTOCOL_COUNT,
+        description = description,
+    )
 
 private fun integerSchema(
     minimum: Int,
@@ -1811,18 +1964,19 @@ private fun enumSchema(values: List<String>, description: String): JsonObject = 
     put("enum", buildJsonArray { values.forEach { add(JsonPrimitive(it)) } })
 }
 
-private const val GRADLE_CONTRACT =
-    "io.github.amichne.kast.distribution.contract.gradle"
+private const val GRADLE_CONTRACT = "io.github.amichne.kast.distribution.contract.gradle"
 
-private fun relationSchema(): JsonObject = enumSchema(
-    values = listOf(
-        "references",
-        "callers",
-        "callees",
-        "implementations",
-        "inheritors",
-        "overrides",
-        "type-uses",
-    ),
-    description = "One canonical Kast semantic relation.",
-)
+private fun relationSchema(): JsonObject =
+    enumSchema(
+        values =
+            listOf(
+                "references",
+                "callers",
+                "callees",
+                "implementations",
+                "inheritors",
+                "overrides",
+                "type-uses",
+            ),
+        description = "One canonical Kast semantic relation.",
+    )

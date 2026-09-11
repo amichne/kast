@@ -17,13 +17,12 @@ class SymbolDiscoverQualificationWireTest {
     @Test
     fun `single limitation encodes as an ordered limitations object`() {
         val evidence = emptyEvidence()
-        val qualification = SymbolDiscoverQualification.from(
-            setOf(SymbolDiscoverLimitation.WORK_LIMIT),
-        ).refinedValue()
+        val qualification = SymbolDiscoverQualification.from(setOf(SymbolDiscoverLimitation.WORK_LIMIT)).refinedValue()
 
-        val document = CanonicalOperationWireBindings.symbolDiscover.encodeOutcome(
-            OperationOutcome.Qualified(evidence, qualification),
-        ).encodedDocument()
+        val document =
+            CanonicalOperationWireBindings.symbolDiscover
+                .encodeOutcome(OperationOutcome.Qualified(evidence, qualification))
+                .encodedDocument()
 
         assertTrue(document.contains("\"qualification\":{\"limitations\":[\"work-limit\"]}"))
         assertEquals(
@@ -35,20 +34,21 @@ class SymbolDiscoverQualificationWireTest {
     @Test
     fun `multiple limitations round trip in deterministic order`() {
         val evidence = emptyEvidence()
-        val qualification = SymbolDiscoverQualification.from(
-            setOf(
-                SymbolDiscoverLimitation.PROVIDER_FAILURE,
-                SymbolDiscoverLimitation.WORK_LIMIT,
-            ),
-        ).refinedValue()
+        val qualification =
+            SymbolDiscoverQualification.from(
+                    setOf(
+                        SymbolDiscoverLimitation.PROVIDER_FAILURE,
+                        SymbolDiscoverLimitation.WORK_LIMIT,
+                    )
+                )
+                .refinedValue()
 
-        val document = CanonicalOperationWireBindings.symbolDiscover.encodeOutcome(
-            OperationOutcome.Qualified(evidence, qualification),
-        ).encodedDocument()
+        val document =
+            CanonicalOperationWireBindings.symbolDiscover
+                .encodeOutcome(OperationOutcome.Qualified(evidence, qualification))
+                .encodedDocument()
 
-        assertTrue(
-            document.contains("\"limitations\":[\"work-limit\",\"provider-failure\"]"),
-        )
+        assertTrue(document.contains("\"limitations\":[\"work-limit\",\"provider-failure\"]"))
         val decoded = CanonicalOperationWireBindings.symbolDiscover.decodeOutcome(document)
         assertEquals(
             WireDecoding.Decoded(OperationOutcome.Qualified(evidence, qualification)),
@@ -57,26 +57,29 @@ class SymbolDiscoverQualificationWireTest {
         assertEquals(
             listOf(SymbolDiscoverLimitation.WORK_LIMIT, SymbolDiscoverLimitation.PROVIDER_FAILURE),
             (decoded as WireDecoding.Decoded)
-                .value.let { (it as OperationOutcome.Qualified<*, *>).qualification }
+                .value
+                .let { (it as OperationOutcome.Qualified<*, *>).qualification }
                 .let { (it as SymbolDiscoverQualification).limitations },
         )
     }
 
-    private fun emptyEvidence(): EvidenceEnvelope<SymbolDiscoverResult> = EvidenceEnvelope(
-        operation = CanonicalOperationWireBindings.symbolDiscover.operation.id,
-        generation = EvidenceGeneration.parse(17).refinedValue(),
-        payload = SymbolDiscoverResult(
-            BoundedProtocolList.create(emptyList<SymbolDiscoveryDocument>()).refinedValue(),
-        ),
-    )
+    private fun emptyEvidence(): EvidenceEnvelope<SymbolDiscoverResult> =
+        EvidenceEnvelope(
+            operation = CanonicalOperationWireBindings.symbolDiscover.operation.id,
+            generation = EvidenceGeneration.parse(17).refinedValue(),
+            payload =
+                SymbolDiscoverResult(BoundedProtocolList.create(emptyList<SymbolDiscoveryDocument>()).refinedValue()),
+        )
 
-    private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error("Expected refined value, got $failure")
-    }
+    private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error("Expected refined value, got $failure")
+        }
 
-    private fun WireEncoding.encodedDocument(): String = when (this) {
-        is WireEncoding.Encoded -> document
-        is WireEncoding.Rejected -> error("Expected encoded document, got $failure")
-    }
+    private fun WireEncoding.encodedDocument(): String =
+        when (this) {
+            is WireEncoding.Encoded -> document
+            is WireEncoding.Rejected -> error("Expected encoded document, got $failure")
+        }
 }

@@ -16,115 +16,130 @@ import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 internal object CanonicalReadCliDocuments {
     fun projectRelation(
-        outcome: OperationOutcome<
-            RelationReadResult,
-            RelationReadQualification,
-            RelationReadRejection,
-            >,
-    ) = projectClosedOutcome(
-        outcome,
-        complete = { result ->
-            relationCompleteFactory.create(
-                RelationCompleteCliDocument(
-                    operation = CanonicalOperation.RELATION_READ.id.value,
-                    status = "complete",
-                    relations = result.relations.values.map { it.toCliDocument() },
-                ),
-            )
-        },
-        qualified = { result, qualification ->
-            relationQualifiedFactory.create(
-                RelationQualifiedCliDocument(
-                    operation = CanonicalOperation.RELATION_READ.id.value,
-                    status = "qualified",
-                    relations = result.relations.values.map { it.toCliDocument() },
-                    qualification = qualification.toCliDocument(),
-                ),
-            )
-        },
-        rejected = { rejection ->
-            canonicalRejectedDocument(CanonicalOperation.RELATION_READ, rejection.cliName())
-        },
-    )
+        outcome:
+            OperationOutcome<
+                RelationReadResult,
+                RelationReadQualification,
+                RelationReadRejection,
+            >
+    ) =
+        projectClosedOutcome(
+            outcome,
+            complete = { result ->
+                relationCompleteFactory.create(
+                    RelationCompleteCliDocument(
+                        operation = CanonicalOperation.RELATION_READ.id.value,
+                        status = "complete",
+                        relations = result.relations.values.map { it.toCliDocument() },
+                    )
+                )
+            },
+            qualified = { result, qualification ->
+                relationQualifiedFactory.create(
+                    RelationQualifiedCliDocument(
+                        operation = CanonicalOperation.RELATION_READ.id.value,
+                        status = "qualified",
+                        relations = result.relations.values.map { it.toCliDocument() },
+                        qualification = qualification.toCliDocument(),
+                    )
+                )
+            },
+            rejected = { rejection ->
+                canonicalRejectedDocument(CanonicalOperation.RELATION_READ, rejection.cliName())
+            },
+        )
 
     fun projectTraversal(
-        outcome: OperationOutcome<
-            TraversalRunResult,
-            TraversalRunQualification,
-            TraversalRunRejection,
-            >,
-    ): ProjectedCliOutcome = when (outcome) {
-        is OperationOutcome.Complete -> ProjectedCliOutcome.Complete(
-            traversalCompleteFactory.create(
-                TraversalCompleteCliDocument(
-                    operation = CanonicalOperation.TRAVERSAL_RUN.id.value,
-                    status = "complete",
-                    graph = normalizeTraversalGraph(
-                        outcome.evidence.payload.snapshotRoot,
-                        outcome.evidence.basis,
-                        outcome.evidence.payload.records.values,
-                    ),
-                ),
-            ).withEvidence(outcome.evidence.basis),
-        )
-        is OperationOutcome.Qualified -> ProjectedCliOutcome.Qualified(
-            traversalQualifiedFactory.create(
-                TraversalQualifiedCliDocument(
-                    operation = CanonicalOperation.TRAVERSAL_RUN.id.value,
-                    status = "qualified",
-                    graph = normalizeTraversalGraph(
-                        outcome.evidence.payload.snapshotRoot,
-                        outcome.evidence.basis,
-                        outcome.evidence.payload.records.values,
-                    ),
-                    qualification = outcome.qualification.toCliDocument(),
-                ),
-            ).withEvidence(outcome.evidence.basis),
-        )
-        is OperationOutcome.Rejected -> ProjectedCliOutcome.Rejected(
-            canonicalRejectedDocument(
-                CanonicalOperation.TRAVERSAL_RUN,
-                outcome.reason.cliName(),
-            ),
-        )
-    }
+        outcome:
+            OperationOutcome<
+                TraversalRunResult,
+                TraversalRunQualification,
+                TraversalRunRejection,
+            >
+    ): ProjectedCliOutcome =
+        when (outcome) {
+            is OperationOutcome.Complete ->
+                ProjectedCliOutcome.Complete(
+                    traversalCompleteFactory
+                        .create(
+                            TraversalCompleteCliDocument(
+                                operation = CanonicalOperation.TRAVERSAL_RUN.id.value,
+                                status = "complete",
+                                graph =
+                                    normalizeTraversalGraph(
+                                        outcome.evidence.payload.snapshotRoot,
+                                        outcome.evidence.basis,
+                                        outcome.evidence.payload.records.values,
+                                    ),
+                            )
+                        )
+                        .withEvidence(outcome.evidence.basis)
+                )
+            is OperationOutcome.Qualified ->
+                ProjectedCliOutcome.Qualified(
+                    traversalQualifiedFactory
+                        .create(
+                            TraversalQualifiedCliDocument(
+                                operation = CanonicalOperation.TRAVERSAL_RUN.id.value,
+                                status = "qualified",
+                                graph =
+                                    normalizeTraversalGraph(
+                                        outcome.evidence.payload.snapshotRoot,
+                                        outcome.evidence.basis,
+                                        outcome.evidence.payload.records.values,
+                                    ),
+                                qualification = outcome.qualification.toCliDocument(),
+                            )
+                        )
+                        .withEvidence(outcome.evidence.basis)
+                )
+            is OperationOutcome.Rejected ->
+                ProjectedCliOutcome.Rejected(
+                    canonicalRejectedDocument(
+                        CanonicalOperation.TRAVERSAL_RUN,
+                        outcome.reason.cliName(),
+                    )
+                )
+        }
 
     fun projectDiagnostics(
-        outcome: OperationOutcome<
-            DiagnosticCheckResult,
-            DiagnosticCheckQualification,
-            DiagnosticCheckRejection,
-            >,
-    ) = projectClosedOutcome(
-        outcome,
-        complete = { result ->
-            diagnosticCompleteFactory.create(
-                DiagnosticCompleteCliDocument(
-                    operation = CanonicalOperation.DIAGNOSTIC_CHECK.id.value,
-                    status = "complete",
-                    diagnostics = result.diagnostics.values.map { it.toCliDocument() },
-                ),
-            )
-        },
-        qualified = { result, qualification ->
-            diagnosticQualifiedFactory.create(
-                DiagnosticQualifiedCliDocument(
-                    operation = CanonicalOperation.DIAGNOSTIC_CHECK.id.value,
-                    status = "qualified",
-                    diagnostics = result.diagnostics.values.map { it.toCliDocument() },
-                    qualification = qualification.toCliDocument(),
-                ),
-            )
-        },
-        rejected = { rejection ->
-            canonicalRejectedDocument(CanonicalOperation.DIAGNOSTIC_CHECK, rejection.cliName())
-        },
-    )
+        outcome:
+            OperationOutcome<
+                DiagnosticCheckResult,
+                DiagnosticCheckQualification,
+                DiagnosticCheckRejection,
+            >
+    ) =
+        projectClosedOutcome(
+            outcome,
+            complete = { result ->
+                diagnosticCompleteFactory.create(
+                    DiagnosticCompleteCliDocument(
+                        operation = CanonicalOperation.DIAGNOSTIC_CHECK.id.value,
+                        status = "complete",
+                        diagnostics = result.diagnostics.values.map { it.toCliDocument() },
+                    )
+                )
+            },
+            qualified = { result, qualification ->
+                diagnosticQualifiedFactory.create(
+                    DiagnosticQualifiedCliDocument(
+                        operation = CanonicalOperation.DIAGNOSTIC_CHECK.id.value,
+                        status = "qualified",
+                        diagnostics = result.diagnostics.values.map { it.toCliDocument() },
+                        qualification = qualification.toCliDocument(),
+                    )
+                )
+            },
+            rejected = { rejection ->
+                canonicalRejectedDocument(CanonicalOperation.DIAGNOSTIC_CHECK, rejection.cliName())
+            },
+        )
 }
 
 @Serializable
@@ -268,27 +283,29 @@ internal fun RelationFactDocument.toCliDocument(): RelationFactCliDocument =
         coverage.cliName(),
     )
 
-private fun DiagnosticDocument.toCliDocument(): DiagnosticCliDocument = DiagnosticCliDocument(
-    severity.cliName(),
-    code.value,
-    message.value,
-    DiagnosticLocationCliDocument(
-        location.candidateSelector.value,
-        location.file.value,
-        SourceRangeCliDocument(
-            location.range.startInclusive.value,
-            location.range.endExclusive.value,
+private fun DiagnosticDocument.toCliDocument(): DiagnosticCliDocument =
+    DiagnosticCliDocument(
+        severity.cliName(),
+        code.value,
+        message.value,
+        DiagnosticLocationCliDocument(
+            location.candidateSelector.value,
+            location.file.value,
+            SourceRangeCliDocument(
+                location.range.startInclusive.value,
+                location.range.endExclusive.value,
+            ),
         ),
-    ),
-)
+    )
 
 private fun RelationReadQualification.toCliDocument(): RelationQualificationCliDocument =
     when (this) {
-        is RelationReadQualification.Resumable -> RelationQualificationCliDocument.Resumable(
-            knownMinimum = knownMinimum.value,
-            limitations = limitations.map { it.cliName() },
-            continuation = continuation.value,
-        )
+        is RelationReadQualification.Resumable ->
+            RelationQualificationCliDocument.Resumable(
+                knownMinimum = knownMinimum.value,
+                limitations = limitations.map { it.cliName() },
+                continuation = continuation.value,
+            )
         is RelationReadQualification.TerminalIncomplete ->
             RelationQualificationCliDocument.TerminalIncomplete(
                 knownMinimum = knownMinimum.value,
@@ -298,11 +315,12 @@ private fun RelationReadQualification.toCliDocument(): RelationQualificationCliD
 
 private fun TraversalRunQualification.toCliDocument(): TraversalQualificationCliDocument =
     when (this) {
-        is TraversalRunQualification.Resumable -> TraversalQualificationCliDocument.Resumable(
-            limitations = limitations.map { it.cliName() },
-            relationLimitations = relationLimitations.map { it.cliName() },
-            continuation = continuation.value,
-        )
+        is TraversalRunQualification.Resumable ->
+            TraversalQualificationCliDocument.Resumable(
+                limitations = limitations.map { it.cliName() },
+                relationLimitations = relationLimitations.map { it.cliName() },
+                continuation = continuation.value,
+            )
         is TraversalRunQualification.TerminalIncomplete ->
             TraversalQualificationCliDocument.TerminalIncomplete(
                 limitations = limitations.map { it.cliName() },
@@ -310,30 +328,26 @@ private fun TraversalRunQualification.toCliDocument(): TraversalQualificationCli
             )
     }
 
-private fun DiagnosticCheckQualification.toCliDocument() = DiagnosticQualificationCliDocument(
-    knownDiagnosticCount = knownDiagnosticCount.value,
-    resultLimitReached = resultLimitReached,
-    analyzedFiles = analyzedFiles.map { it.value },
-    limitations = limitations.map(DiagnosticLimitationDocument::toCliDocument),
-)
+private fun DiagnosticCheckQualification.toCliDocument() =
+    DiagnosticQualificationCliDocument(
+        knownDiagnosticCount = knownDiagnosticCount.value,
+        resultLimitReached = resultLimitReached,
+        analyzedFiles = analyzedFiles.map { it.value },
+        limitations = limitations.map(DiagnosticLimitationDocument::toCliDocument),
+    )
 
-private fun DiagnosticLimitationDocument.toCliDocument() = DiagnosticLimitationCliDocument(
-    file.value,
-    reason.cliName(),
-)
+private fun DiagnosticLimitationDocument.toCliDocument() =
+    DiagnosticLimitationCliDocument(
+        file.value,
+        reason.cliName(),
+    )
 
 private fun io.github.amichne.kast.protocol.contract.SourceRangeDocument.toReadCliDocument() =
     SourceRangeCliDocument(startInclusive.value, endExclusive.value)
 
-private val relationCompleteFactory =
-    CliJsonDocument.generated(RelationCompleteCliDocument.serializer())
-private val relationQualifiedFactory =
-    CliJsonDocument.generated(RelationQualifiedCliDocument.serializer())
-private val traversalCompleteFactory =
-    CliJsonDocument.generated(TraversalCompleteCliDocument.serializer())
-private val traversalQualifiedFactory =
-    CliJsonDocument.generated(TraversalQualifiedCliDocument.serializer())
-private val diagnosticCompleteFactory =
-    CliJsonDocument.generated(DiagnosticCompleteCliDocument.serializer())
-private val diagnosticQualifiedFactory =
-    CliJsonDocument.generated(DiagnosticQualifiedCliDocument.serializer())
+private val relationCompleteFactory = CliJsonDocument.generated(RelationCompleteCliDocument.serializer())
+private val relationQualifiedFactory = CliJsonDocument.generated(RelationQualifiedCliDocument.serializer())
+private val traversalCompleteFactory = CliJsonDocument.generated(TraversalCompleteCliDocument.serializer())
+private val traversalQualifiedFactory = CliJsonDocument.generated(TraversalQualifiedCliDocument.serializer())
+private val diagnosticCompleteFactory = CliJsonDocument.generated(DiagnosticCompleteCliDocument.serializer())
+private val diagnosticQualifiedFactory = CliJsonDocument.generated(DiagnosticQualifiedCliDocument.serializer())

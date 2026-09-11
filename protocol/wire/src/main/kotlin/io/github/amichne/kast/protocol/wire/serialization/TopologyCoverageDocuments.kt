@@ -58,9 +58,7 @@ internal sealed interface TopologyCoverageQualifiedIdentityDocument {
     @SerialName("available")
     data class Available(val value: String) : TopologyCoverageQualifiedIdentityDocument
 
-    @Serializable
-    @SerialName("unavailable")
-    data object Unavailable : TopologyCoverageQualifiedIdentityDocument
+    @Serializable @SerialName("unavailable") data object Unavailable : TopologyCoverageQualifiedIdentityDocument
 }
 
 @Serializable
@@ -94,101 +92,109 @@ internal fun TopologyCoverageFailure.toSerializableDocument(): TopologyCoverageF
         duplicateCandidates = duplicateCandidates.map(ProtocolText::value).sorted(),
         duplicateCompletions = duplicateCompletions.map(ProtocolText::value).sorted(),
         workspaceMismatches = workspaceMismatches.map(ProtocolText::value).sorted(),
-        candidateEvidenceMismatches = candidateEvidenceMismatches
-            .map(TopologyCoverageCandidateEvidenceMismatch::toSerializableDocument)
-            .sortedWith(topologyCoverageCandidateEvidenceMismatchDocumentComparator),
-        duplicateSymbols = duplicateSymbols.map(TopologyCoverageNode::toSerializableDocument)
-            .sortedWith(topologyCoverageNodeDocumentComparator),
-        missingEdgeTargets = missingEdgeTargets.map(TopologyCoverageNode::toSerializableDocument)
-            .sortedWith(topologyCoverageNodeDocumentComparator),
-        mismatchedEdgeEndpoints = mismatchedEdgeEndpoints
-            .map(TopologyCoverageSymbol::toSerializableDocument)
-            .sortedWith(topologyCoverageSymbolDocumentComparator),
+        candidateEvidenceMismatches =
+            candidateEvidenceMismatches
+                .map(TopologyCoverageCandidateEvidenceMismatch::toSerializableDocument)
+                .sortedWith(topologyCoverageCandidateEvidenceMismatchDocumentComparator),
+        duplicateSymbols =
+            duplicateSymbols
+                .map(TopologyCoverageNode::toSerializableDocument)
+                .sortedWith(topologyCoverageNodeDocumentComparator),
+        missingEdgeTargets =
+            missingEdgeTargets
+                .map(TopologyCoverageNode::toSerializableDocument)
+                .sortedWith(topologyCoverageNodeDocumentComparator),
+        mismatchedEdgeEndpoints =
+            mismatchedEdgeEndpoints
+                .map(TopologyCoverageSymbol::toSerializableDocument)
+                .sortedWith(topologyCoverageSymbolDocumentComparator),
     )
 
 /**
  * Proof transition: `TopologyCoverageFailureDocument -> TopologyCoverageFailure`.
  *
- * Establishes canonical distinct collections, refined text and ranges, and a non-empty exact
- * failure. [WireDocumentConversion.Rejected] is the closed expected failure. Raw primitives
- * remain inside this generated-document adapter.
+ * Establishes canonical distinct collections, refined text and ranges, and a non-empty exact failure.
+ * [WireDocumentConversion.Rejected] is the closed expected failure. Raw primitives remain inside this
+ * generated-document adapter.
  */
-internal fun TopologyCoverageFailureDocument.toContract():
-    WireDocumentConversion<TopologyCoverageFailure> {
-    val textSets = combineConverted(
-        missing.canonicalTexts(),
-        unexpected.canonicalTexts(),
-        duplicateCandidates.canonicalTexts(),
-        duplicateCompletions.canonicalTexts(),
-        workspaceMismatches.canonicalTexts(),
-        ::TopologyCoverageTextSets,
-    )
-    val evidenceSets = combineConverted(
-        candidateEvidenceMismatches.canonicalValues(
-            topologyCoverageCandidateEvidenceMismatchDocumentComparator,
-            TopologyCoverageCandidateEvidenceMismatchDocument::toContract,
-        ),
-        duplicateSymbols.canonicalValues(
-            topologyCoverageNodeDocumentComparator,
-            TopologyCoverageNodeDocument::toContract,
-        ),
-        missingEdgeTargets.canonicalValues(
-            topologyCoverageNodeDocumentComparator,
-            TopologyCoverageNodeDocument::toContract,
-        ),
-        mismatchedEdgeEndpoints.canonicalValues(
-            topologyCoverageSymbolDocumentComparator,
-            TopologyCoverageSymbolDocument::toContract,
-        ),
-        ::TopologyCoverageEvidenceSets,
-    )
+internal fun TopologyCoverageFailureDocument.toContract(): WireDocumentConversion<TopologyCoverageFailure> {
+    val textSets =
+        combineConverted(
+            missing.canonicalTexts(),
+            unexpected.canonicalTexts(),
+            duplicateCandidates.canonicalTexts(),
+            duplicateCompletions.canonicalTexts(),
+            workspaceMismatches.canonicalTexts(),
+            ::TopologyCoverageTextSets,
+        )
+    val evidenceSets =
+        combineConverted(
+            candidateEvidenceMismatches.canonicalValues(
+                topologyCoverageCandidateEvidenceMismatchDocumentComparator,
+                TopologyCoverageCandidateEvidenceMismatchDocument::toContract,
+            ),
+            duplicateSymbols.canonicalValues(
+                topologyCoverageNodeDocumentComparator,
+                TopologyCoverageNodeDocument::toContract,
+            ),
+            missingEdgeTargets.canonicalValues(
+                topologyCoverageNodeDocumentComparator,
+                TopologyCoverageNodeDocument::toContract,
+            ),
+            mismatchedEdgeEndpoints.canonicalValues(
+                topologyCoverageSymbolDocumentComparator,
+                TopologyCoverageSymbolDocument::toContract,
+            ),
+            ::TopologyCoverageEvidenceSets,
+        )
     return combineConverted(textSets, evidenceSets, ::Pair).flatMapConverted { (texts, evidence) ->
         TopologyCoverageFailure.admit(
-            texts.missing,
-            texts.unexpected,
-            texts.duplicateCandidates,
-            texts.duplicateCompletions,
-            texts.workspaceMismatches,
-            evidence.candidateEvidenceMismatches,
-            evidence.duplicateSymbols,
-            evidence.missingEdgeTargets,
-            evidence.mismatchedEdgeEndpoints,
-        ).toWireDocumentConversion()
+                texts.missing,
+                texts.unexpected,
+                texts.duplicateCandidates,
+                texts.duplicateCompletions,
+                texts.workspaceMismatches,
+                evidence.candidateEvidenceMismatches,
+                evidence.duplicateSymbols,
+                evidence.missingEdgeTargets,
+                evidence.mismatchedEdgeEndpoints,
+            )
+            .toWireDocumentConversion()
     }
 }
 
-private fun TopologyCoverageNode.toSerializableDocument() = TopologyCoverageNodeDocument(
-    compilerIdentity.value,
-    file.value,
-    TopologyCoverageRangeDocument(range.startInclusive.value, range.endExclusive.value),
-)
+private fun TopologyCoverageNode.toSerializableDocument() =
+    TopologyCoverageNodeDocument(
+        compilerIdentity.value,
+        file.value,
+        TopologyCoverageRangeDocument(range.startInclusive.value, range.endExclusive.value),
+    )
 
-private fun TopologyCoverageSymbol.toSerializableDocument() = TopologyCoverageSymbolDocument(
-    node.toSerializableDocument(),
-    fileEvidence.toSerializableDocument(),
-    name.value,
-    when (val identity = qualifiedIdentity) {
-        is TopologyCoverageQualifiedIdentity.Available ->
-            TopologyCoverageQualifiedIdentityDocument.Available(identity.value.value)
-        TopologyCoverageQualifiedIdentity.Unavailable ->
-            TopologyCoverageQualifiedIdentityDocument.Unavailable
-    },
-    when (kind) {
-        TopologyCoverageSymbolKind.CLASSLIKE -> TopologyCoverageSymbolKindDocument.CLASSLIKE
-        TopologyCoverageSymbolKind.CONSTRUCTOR -> TopologyCoverageSymbolKindDocument.CONSTRUCTOR
-        TopologyCoverageSymbolKind.FUNCTION -> TopologyCoverageSymbolKindDocument.FUNCTION
-        TopologyCoverageSymbolKind.PROPERTY -> TopologyCoverageSymbolKindDocument.PROPERTY
-        TopologyCoverageSymbolKind.TYPE_ALIAS -> TopologyCoverageSymbolKindDocument.TYPE_ALIAS
-    },
-    compilerEvidence.toWireDocument(),
-)
+private fun TopologyCoverageSymbol.toSerializableDocument() =
+    TopologyCoverageSymbolDocument(
+        node.toSerializableDocument(),
+        fileEvidence.toSerializableDocument(),
+        name.value,
+        when (val identity = qualifiedIdentity) {
+            is TopologyCoverageQualifiedIdentity.Available ->
+                TopologyCoverageQualifiedIdentityDocument.Available(identity.value.value)
+            TopologyCoverageQualifiedIdentity.Unavailable -> TopologyCoverageQualifiedIdentityDocument.Unavailable
+        },
+        when (kind) {
+            TopologyCoverageSymbolKind.CLASSLIKE -> TopologyCoverageSymbolKindDocument.CLASSLIKE
+            TopologyCoverageSymbolKind.CONSTRUCTOR -> TopologyCoverageSymbolKindDocument.CONSTRUCTOR
+            TopologyCoverageSymbolKind.FUNCTION -> TopologyCoverageSymbolKindDocument.FUNCTION
+            TopologyCoverageSymbolKind.PROPERTY -> TopologyCoverageSymbolKindDocument.PROPERTY
+            TopologyCoverageSymbolKind.TYPE_ALIAS -> TopologyCoverageSymbolKindDocument.TYPE_ALIAS
+        },
+        compilerEvidence.toWireDocument(),
+    )
 
 /**
  * Proof transition: `TopologyCoverageNodeDocument -> TopologyCoverageNode`.
  *
- * Establishes refined compiler/file identities and an ordered source range.
- * [WireDocumentConversion.Rejected] is the closed expected failure. Raw fields are extracted only
- * from the generated coverage document.
+ * Establishes refined compiler/file identities and an ordered source range. [WireDocumentConversion.Rejected] is the
+ * closed expected failure. Raw fields are extracted only from the generated coverage document.
  */
 private fun TopologyCoverageNodeDocument.toContract(): WireDocumentConversion<TopologyCoverageNode> =
     combineConverted(
@@ -201,50 +207,52 @@ private fun TopologyCoverageNodeDocument.toContract(): WireDocumentConversion<To
 /**
  * Proof transition: `TopologyCoverageRangeDocument -> SourceRangeDocument`.
  *
- * Establishes non-negative ordered offsets. [WireDocumentConversion.Rejected] is the closed
- * expected failure. Raw offsets remain inside this generated-document adapter.
+ * Establishes non-negative ordered offsets. [WireDocumentConversion.Rejected] is the closed expected failure. Raw
+ * offsets remain inside this generated-document adapter.
  */
 private fun TopologyCoverageRangeDocument.toContract(): WireDocumentConversion<SourceRangeDocument> =
     combineConverted(
-        startInclusive.protocolOffset(),
-        endExclusive.protocolOffset(),
-        ::Pair,
-    ).flatMapConverted { (start, end) ->
-        SourceRangeDocument.create(start, end).toWireDocumentConversion()
-    }
+            startInclusive.protocolOffset(),
+            endExclusive.protocolOffset(),
+            ::Pair,
+        )
+        .flatMapConverted { (start, end) ->
+            SourceRangeDocument.create(start, end).toWireDocumentConversion()
+        }
 
 /**
  * Proof transition: `TopologyCoverageSymbolDocument -> TopologyCoverageSymbol`.
  *
- * Establishes exact node, file, name, qualified-identity, and kind evidence.
- * [WireDocumentConversion.Rejected] is the closed expected failure. Raw fields are extracted only
- * from the generated coverage document.
+ * Establishes exact node, file, name, qualified-identity, and kind evidence. [WireDocumentConversion.Rejected] is the
+ * closed expected failure. Raw fields are extracted only from the generated coverage document.
  */
-private fun TopologyCoverageSymbolDocument.toContract():
-    WireDocumentConversion<TopologyCoverageSymbol> = combineConverted(
-    node.toContract(),
-    fileEvidence.toContract(),
-    name.protocolText(),
-    qualifiedIdentity.toContract(),
-    compilerEvidence.toContract(),
-) { node, fileEvidence, name, qualifiedIdentity, compilerEvidence ->
-    TopologyCoverageSymbolFields(
-        node,
-        fileEvidence,
-        name,
-        qualifiedIdentity,
-        compilerEvidence,
-    )
-}.flatMapConverted { fields ->
-    TopologyCoverageSymbol.create(
-        fields.node,
-        fields.fileEvidence,
-        fields.name,
-        fields.qualifiedIdentity,
-        kind.toContract(),
-        fields.compilerEvidence,
-    ).toWireDocumentConversion()
-}
+private fun TopologyCoverageSymbolDocument.toContract(): WireDocumentConversion<TopologyCoverageSymbol> =
+    combineConverted(
+            node.toContract(),
+            fileEvidence.toContract(),
+            name.protocolText(),
+            qualifiedIdentity.toContract(),
+            compilerEvidence.toContract(),
+        ) { node, fileEvidence, name, qualifiedIdentity, compilerEvidence ->
+            TopologyCoverageSymbolFields(
+                node,
+                fileEvidence,
+                name,
+                qualifiedIdentity,
+                compilerEvidence,
+            )
+        }
+        .flatMapConverted { fields ->
+            TopologyCoverageSymbol.create(
+                    fields.node,
+                    fields.fileEvidence,
+                    fields.name,
+                    fields.qualifiedIdentity,
+                    kind.toContract(),
+                    fields.compilerEvidence,
+                )
+                .toWireDocumentConversion()
+        }
 
 private data class TopologyCoverageSymbolFields(
     val node: TopologyCoverageNode,
@@ -255,36 +263,36 @@ private data class TopologyCoverageSymbolFields(
 )
 
 /**
- * Proof transition: `TopologyCoverageQualifiedIdentityDocument ->
- * TopologyCoverageQualifiedIdentity`.
+ * Proof transition: `TopologyCoverageQualifiedIdentityDocument -> TopologyCoverageQualifiedIdentity`.
  *
- * Establishes explicit availability and refined available text. [WireDocumentConversion.Rejected]
- * is the closed expected failure. Raw identity text remains in this generated-document adapter.
+ * Establishes explicit availability and refined available text. [WireDocumentConversion.Rejected] is the closed
+ * expected failure. Raw identity text remains in this generated-document adapter.
  */
 private fun TopologyCoverageQualifiedIdentityDocument.toContract():
-    WireDocumentConversion<TopologyCoverageQualifiedIdentity> = when (this) {
-    is TopologyCoverageQualifiedIdentityDocument.Available -> value.protocolText().mapConverted {
-        TopologyCoverageQualifiedIdentity.Available(it)
+    WireDocumentConversion<TopologyCoverageQualifiedIdentity> =
+    when (this) {
+        is TopologyCoverageQualifiedIdentityDocument.Available ->
+            value.protocolText().mapConverted {
+                TopologyCoverageQualifiedIdentity.Available(it)
+            }
+        TopologyCoverageQualifiedIdentityDocument.Unavailable ->
+            WireDocumentConversion.Converted(TopologyCoverageQualifiedIdentity.Unavailable)
     }
-    TopologyCoverageQualifiedIdentityDocument.Unavailable -> WireDocumentConversion.Converted(
-        TopologyCoverageQualifiedIdentity.Unavailable,
-    )
-}
 
-private fun TopologyCoverageSymbolKindDocument.toContract(): TopologyCoverageSymbolKind = when (this) {
-    TopologyCoverageSymbolKindDocument.CLASSLIKE -> TopologyCoverageSymbolKind.CLASSLIKE
-    TopologyCoverageSymbolKindDocument.CONSTRUCTOR -> TopologyCoverageSymbolKind.CONSTRUCTOR
-    TopologyCoverageSymbolKindDocument.FUNCTION -> TopologyCoverageSymbolKind.FUNCTION
-    TopologyCoverageSymbolKindDocument.PROPERTY -> TopologyCoverageSymbolKind.PROPERTY
-    TopologyCoverageSymbolKindDocument.TYPE_ALIAS -> TopologyCoverageSymbolKind.TYPE_ALIAS
-}
+private fun TopologyCoverageSymbolKindDocument.toContract(): TopologyCoverageSymbolKind =
+    when (this) {
+        TopologyCoverageSymbolKindDocument.CLASSLIKE -> TopologyCoverageSymbolKind.CLASSLIKE
+        TopologyCoverageSymbolKindDocument.CONSTRUCTOR -> TopologyCoverageSymbolKind.CONSTRUCTOR
+        TopologyCoverageSymbolKindDocument.FUNCTION -> TopologyCoverageSymbolKind.FUNCTION
+        TopologyCoverageSymbolKindDocument.PROPERTY -> TopologyCoverageSymbolKind.PROPERTY
+        TopologyCoverageSymbolKindDocument.TYPE_ALIAS -> TopologyCoverageSymbolKind.TYPE_ALIAS
+    }
 
 /**
  * Proof transition: `List<String> -> Set<ProtocolText>`.
  *
- * Establishes canonical ordering, uniqueness, and refined values.
- * [WireDocumentConversion.Rejected] is the closed expected failure. Raw strings are admitted only
- * from the generated coverage document.
+ * Establishes canonical ordering, uniqueness, and refined values. [WireDocumentConversion.Rejected] is the closed
+ * expected failure. Raw strings are admitted only from the generated coverage document.
  */
 private fun List<String>.canonicalTexts(): WireDocumentConversion<Set<ProtocolText>> =
     canonicalValues(naturalOrder(), String::protocolText)
@@ -292,9 +300,8 @@ private fun List<String>.canonicalTexts(): WireDocumentConversion<Set<ProtocolTe
 /**
  * Proof transition: `List<Document> -> Set<Value>`.
  *
- * Establishes canonical ordering and uniqueness before retaining converted values.
- * [WireDocumentConversion.Rejected] is the closed expected failure. Raw collections remain at the
- * generated-document boundary.
+ * Establishes canonical ordering and uniqueness before retaining converted values. [WireDocumentConversion.Rejected] is
+ * the closed expected failure. Raw collections remain at the generated-document boundary.
  */
 private fun <Document, Value> List<Document>.canonicalValues(
     comparator: Comparator<Document>,
@@ -309,8 +316,8 @@ private fun <Document, Value> List<Document>.canonicalValues(
 /**
  * Proof transition: `String -> ProtocolText`.
  *
- * Establishes non-blank bounded text. [WireDocumentConversion.Rejected] is the closed expected
- * failure. Raw strings are admitted only from the generated coverage document.
+ * Establishes non-blank bounded text. [WireDocumentConversion.Rejected] is the closed expected failure. Raw strings are
+ * admitted only from the generated coverage document.
  */
 private fun String.protocolText(): WireDocumentConversion<ProtocolText> =
     ProtocolText.parse(this).toWireDocumentConversion()
@@ -318,8 +325,8 @@ private fun String.protocolText(): WireDocumentConversion<ProtocolText> =
 /**
  * Proof transition: `Int -> ProtocolOffset`.
  *
- * Establishes a non-negative offset. [WireDocumentConversion.Rejected] is the closed expected
- * failure. Raw integers are admitted only from the generated coverage document.
+ * Establishes a non-negative offset. [WireDocumentConversion.Rejected] is the closed expected failure. Raw integers are
+ * admitted only from the generated coverage document.
  */
 private fun Int.protocolOffset(): WireDocumentConversion<ProtocolOffset> =
     ProtocolOffset.parse(this).toWireDocumentConversion()
@@ -335,14 +342,15 @@ private val topologyCoverageNodeDocumentComparator =
 private val topologyCoverageSymbolDocumentComparator =
     Comparator<TopologyCoverageSymbolDocument> { left, right ->
         val nodeOrder = topologyCoverageNodeDocumentComparator.compare(left.node, right.node)
-        val evidenceOrder = if (nodeOrder == 0) {
-            topologyCoverageFileEvidenceDocumentComparator.compare(
-                left.fileEvidence,
-                right.fileEvidence,
-            )
-        } else {
-            nodeOrder
-        }
+        val evidenceOrder =
+            if (nodeOrder == 0) {
+                topologyCoverageFileEvidenceDocumentComparator.compare(
+                    left.fileEvidence,
+                    right.fileEvidence,
+                )
+            } else {
+                nodeOrder
+            }
         if (evidenceOrder != 0) {
             evidenceOrder
         } else {
@@ -358,20 +366,23 @@ private val topologyCoverageSymbolDocumentComparator =
         }
     }
 
-private fun TopologyCoverageQualifiedIdentityDocument.sortRank(): Int = when (this) {
-    is TopologyCoverageQualifiedIdentityDocument.Available -> 0
-    TopologyCoverageQualifiedIdentityDocument.Unavailable -> 1
-}
+private fun TopologyCoverageQualifiedIdentityDocument.sortRank(): Int =
+    when (this) {
+        is TopologyCoverageQualifiedIdentityDocument.Available -> 0
+        TopologyCoverageQualifiedIdentityDocument.Unavailable -> 1
+    }
 
-private fun TopologyCoverageQualifiedIdentityDocument.sortValue(): String = when (this) {
-    is TopologyCoverageQualifiedIdentityDocument.Available -> value
-    TopologyCoverageQualifiedIdentityDocument.Unavailable -> ""
-}
+private fun TopologyCoverageQualifiedIdentityDocument.sortValue(): String =
+    when (this) {
+        is TopologyCoverageQualifiedIdentityDocument.Available -> value
+        TopologyCoverageQualifiedIdentityDocument.Unavailable -> ""
+    }
 
-private fun TopologyCoverageSymbolKindDocument.sortRank(): Int = when (this) {
-    TopologyCoverageSymbolKindDocument.CLASSLIKE -> 0
-    TopologyCoverageSymbolKindDocument.CONSTRUCTOR -> 1
-    TopologyCoverageSymbolKindDocument.FUNCTION -> 2
-    TopologyCoverageSymbolKindDocument.PROPERTY -> 3
-    TopologyCoverageSymbolKindDocument.TYPE_ALIAS -> 4
-}
+private fun TopologyCoverageSymbolKindDocument.sortRank(): Int =
+    when (this) {
+        TopologyCoverageSymbolKindDocument.CLASSLIKE -> 0
+        TopologyCoverageSymbolKindDocument.CONSTRUCTOR -> 1
+        TopologyCoverageSymbolKindDocument.FUNCTION -> 2
+        TopologyCoverageSymbolKindDocument.PROPERTY -> 3
+        TopologyCoverageSymbolKindDocument.TYPE_ALIAS -> 4
+    }

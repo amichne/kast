@@ -1,13 +1,13 @@
 package io.github.amichne.kast.diagnostic.intellij
 
-import io.github.amichne.kast.kernel.ReadLimits
-import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScope
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScopeQuery
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolutionFailure
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.ReadLimitParameter
+import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
@@ -27,16 +27,26 @@ internal suspend fun resolveDiagnosticScope(
     if (project.isDisposed || current != query.lease) {
         return@readAction Refinement.Rejected(DiagnosticScopeResolutionFailure.WORKSPACE_NOT_READY)
     }
-    val paths = when (val result = IntellijProjectSourceFiles.collect(
-        project, query.lease.workspaceRoot, query.path, diagnosticScopeBudget(ReadLimits.Default),
-    )) {
-        is Refinement.Refined -> result.value
-        is Refinement.Rejected -> return@readAction Refinement.Rejected(when (result.failure) {
-            ProjectSourceFileFailure.INVALID_SCOPE -> DiagnosticScopeResolutionFailure.INVALID_SCOPE
-            ProjectSourceFileFailure.UNAVAILABLE -> DiagnosticScopeResolutionFailure.UNAVAILABLE
-            ProjectSourceFileFailure.LIMIT_EXCEEDED -> DiagnosticScopeResolutionFailure.LIMIT_EXCEEDED
-        })
-    }
+    val paths =
+        when (
+            val result =
+                IntellijProjectSourceFiles.collect(
+                    project,
+                    query.lease.workspaceRoot,
+                    query.path,
+                    diagnosticScopeBudget(ReadLimits.Default),
+                )
+        ) {
+            is Refinement.Refined -> result.value
+            is Refinement.Rejected ->
+                return@readAction Refinement.Rejected(
+                    when (result.failure) {
+                        ProjectSourceFileFailure.INVALID_SCOPE -> DiagnosticScopeResolutionFailure.INVALID_SCOPE
+                        ProjectSourceFileFailure.UNAVAILABLE -> DiagnosticScopeResolutionFailure.UNAVAILABLE
+                        ProjectSourceFileFailure.LIMIT_EXCEEDED -> DiagnosticScopeResolutionFailure.LIMIT_EXCEEDED
+                    }
+                )
+        }
     if (paths.isEmpty()) return@readAction Refinement.Rejected(DiagnosticScopeResolutionFailure.EMPTY)
     when (val admitted = DiagnosticScope.fromCanonicalPaths(query.lease, paths)) {
         is Refinement.Refined -> admitted
@@ -44,13 +54,16 @@ internal suspend fun resolveDiagnosticScope(
     }
 }
 
-internal fun diagnosticScopeBudget(limits: ReadLimits) = ResourceBudget(
-    resultLimit = ResultLimit.parse(limits[ReadLimitParameter.DIAGNOSTIC_SCOPE_FILES].value).constant(),
-    workUnitLimit = WorkUnitLimit.parse(limits[ReadLimitParameter.DIAGNOSTIC_SCOPE_WORK].value.toLong()).constant(),
-    elapsedTimeLimit = ElapsedTimeLimitMillis.parse(limits[ReadLimitParameter.DIAGNOSTIC_SCOPE_MILLIS].value.toLong()).constant(),
-)
+internal fun diagnosticScopeBudget(limits: ReadLimits) =
+    ResourceBudget(
+        resultLimit = ResultLimit.parse(limits[ReadLimitParameter.DIAGNOSTIC_SCOPE_FILES].value).constant(),
+        workUnitLimit = WorkUnitLimit.parse(limits[ReadLimitParameter.DIAGNOSTIC_SCOPE_WORK].value.toLong()).constant(),
+        elapsedTimeLimit =
+            ElapsedTimeLimitMillis.parse(limits[ReadLimitParameter.DIAGNOSTIC_SCOPE_MILLIS].value.toLong()).constant(),
+    )
 
-private fun <Value, Failure> Refinement<Value, Failure>.constant(): Value = when (this) {
-    is Refinement.Refined -> value
-    is Refinement.Rejected -> error("Invalid diagnostic scope budget: $failure")
-}
+private fun <Value, Failure> Refinement<Value, Failure>.constant(): Value =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error("Invalid diagnostic scope budget: $failure")
+    }

@@ -19,14 +19,12 @@ enum class CompilerReobservedMutationAnchorFailure {
 }
 
 /** Live K2 evidence for the mutation anchor, proven equivalent to its prior compiler meaning. */
-class CompilerReobservedMutationAnchor private constructor(
-    val evidence: CompilerGroundedSymbolEvidence,
-) {
+class CompilerReobservedMutationAnchor private constructor(val evidence: CompilerGroundedSymbolEvidence) {
     companion object {
         /**
-         * Allows the declaration range to grow after an intended edit, but requires the current
-         * compiler signature, kind, qualified identity, file, name, and start location to remain
-         * exactly the prior anchor's. A PSI match cannot manufacture this proof.
+         * Allows the declaration range to grow after an intended edit, but requires the current compiler signature,
+         * kind, qualified identity, file, name, and start location to remain exactly the prior anchor's. A PSI match
+         * cannot manufacture this proof.
          */
         fun admit(
             prior: SymbolSelector,
@@ -36,29 +34,21 @@ class CompilerReobservedMutationAnchor private constructor(
             CompilerReobservedMutationAnchorFailure,
         > {
             if (current.file != prior.file) {
-                return Refinement.Rejected(
-                    CompilerReobservedMutationAnchorFailure.FILE_MISMATCH,
-                )
+                return Refinement.Rejected(CompilerReobservedMutationAnchorFailure.FILE_MISMATCH)
             }
             if (current.name != prior.name) {
-                return Refinement.Rejected(
-                    CompilerReobservedMutationAnchorFailure.NAME_MISMATCH,
-                )
+                return Refinement.Rejected(CompilerReobservedMutationAnchorFailure.NAME_MISMATCH)
             }
             if (current.range.startInclusive != prior.range.startInclusive) {
-                return Refinement.Rejected(
-                    CompilerReobservedMutationAnchorFailure.START_OFFSET_MISMATCH,
-                )
+                return Refinement.Rejected(CompilerReobservedMutationAnchorFailure.START_OFFSET_MISMATCH)
             }
             if (
                 current.qualifiedIdentity != prior.qualifiedIdentity ||
-                current.kind != prior.kind ||
-                current.signature != prior.signature ||
-                current.compilerIdentity != prior.compilerIdentity
+                    current.kind != prior.kind ||
+                    current.signature != prior.signature ||
+                    current.compilerIdentity != prior.compilerIdentity
             ) {
-                return Refinement.Rejected(
-                    CompilerReobservedMutationAnchorFailure.COMPILER_EVIDENCE_MISMATCH,
-                )
+                return Refinement.Rejected(CompilerReobservedMutationAnchorFailure.COMPILER_EVIDENCE_MISMATCH)
             }
             return Refinement.Refined(CompilerReobservedMutationAnchor(current))
         }
@@ -74,8 +64,8 @@ enum class HostedAddDeclarationSemanticObservationFailure {
 }
 
 sealed interface HostedAddDeclarationSemanticObservation {
-    data class Observed(val evidence: HostedAddDeclarationSemanticEvidence) :
-        HostedAddDeclarationSemanticObservation
+    data class Observed(val evidence: HostedAddDeclarationSemanticEvidence) : HostedAddDeclarationSemanticObservation
+
     data class Rejected(val failure: HostedAddDeclarationSemanticObservationFailure) :
         HostedAddDeclarationSemanticObservation
 }

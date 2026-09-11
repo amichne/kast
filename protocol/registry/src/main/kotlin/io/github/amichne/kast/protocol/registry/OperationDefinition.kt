@@ -18,9 +18,8 @@ import kotlin.reflect.KClass
 /**
  * Complete host-neutral metadata for one permanent public operation.
  *
- * This type deliberately contains no handler, function, runtime capability, or implementation
- * reference. Later composition may bind executable authority to [id] without weakening this
- * contract.
+ * This type deliberately contains no handler, function, runtime capability, or implementation reference. Later
+ * composition may bind executable authority to [id] without weakening this contract.
  */
 data class OperationDefinition<
     Request : OperationRequest,
@@ -28,7 +27,7 @@ data class OperationDefinition<
     Capability : CapabilityMarker,
     Qualification : OperationQualification,
     Rejection : OperationRejection,
-    >(
+>(
     val operation: CanonicalOperation,
     val types: OperationTypeBinding<Request, Result, Qualification, Rejection>,
     val requiredCapability: CapabilityId,
@@ -64,16 +63,13 @@ data class OperationDefinition<
         get() = types.schema
 
     /**
-     * Proof transition: `EvidenceEnvelope<Result> ->
-     * OperationOutcomeBinding<Result, Qualification, Rejection>`.
+     * Proof transition: `EvidenceEnvelope<Result> -> OperationOutcomeBinding<Result, Qualification, Rejection>`.
      *
-     * Establishes that complete evidence names this definition's exact permanent [id].
-     * [OperationOutcomeBindingFailure] is the closed expected failure. The raw payload may be
-     * extracted only at an operation-specific external result boundary.
+     * Establishes that complete evidence names this definition's exact permanent [id]. [OperationOutcomeBindingFailure]
+     * is the closed expected failure. The raw payload may be extracted only at an operation-specific external result
+     * boundary.
      */
-    fun bindComplete(
-        evidence: EvidenceEnvelope<Result>,
-    ): OperationOutcomeBinding<Result, Qualification, Rejection> =
+    fun bindComplete(evidence: EvidenceEnvelope<Result>): OperationOutcomeBinding<Result, Qualification, Rejection> =
         if (evidence.operation == id) {
             OperationOutcomeBinding.Bound(OperationOutcome.Complete(evidence))
         } else {
@@ -81,18 +77,17 @@ data class OperationDefinition<
                 OperationOutcomeBindingFailure.EvidenceOperationMismatch(
                     expected = id,
                     observed = evidence.operation,
-                ),
+                )
             )
         }
 
     /**
-     * Proof transition: `EvidenceEnvelope<Result> + Qualification ->
-     * OperationOutcomeBinding<Result, Qualification, Rejection>`.
+     * Proof transition: `EvidenceEnvelope<Result> + Qualification -> OperationOutcomeBinding<Result, Qualification,
+     * Rejection>`.
      *
-     * Establishes that qualified evidence names this definition's exact permanent [id] while
-     * preserving its typed qualification when [completeness] permits qualified success.
-     * [OperationOutcomeBindingFailure] is the closed expected failure. The raw payload may be
-     * extracted only at an operation-specific external result boundary.
+     * Establishes that qualified evidence names this definition's exact permanent [id] while preserving its typed
+     * qualification when [completeness] permits qualified success. [OperationOutcomeBindingFailure] is the closed
+     * expected failure. The raw payload may be extracted only at an operation-specific external result boundary.
      */
     fun bindQualified(
         evidence: EvidenceEnvelope<Result>,
@@ -103,18 +98,14 @@ data class OperationDefinition<
                 OperationOutcomeBindingFailure.EvidenceOperationMismatch(
                     expected = id,
                     observed = evidence.operation,
-                ),
+                )
             )
         } else {
             when (completeness) {
                 CompletenessPolicy.COMPLETE_REQUIRED ->
-                    OperationOutcomeBinding.Rejected(
-                        OperationOutcomeBindingFailure.QualificationNotAllowed(id),
-                    )
+                    OperationOutcomeBinding.Rejected(OperationOutcomeBindingFailure.QualificationNotAllowed(id))
                 CompletenessPolicy.QUALIFIED_ALLOWED ->
-                    OperationOutcomeBinding.Bound(
-                        OperationOutcome.Qualified(evidence, qualification),
-                    )
+                    OperationOutcomeBinding.Bound(OperationOutcome.Qualified(evidence, qualification))
             }
         }
 
@@ -122,17 +113,14 @@ data class OperationDefinition<
         OperationOutcome.Rejected(reason)
 }
 
-/**
- * Closed result of binding successful evidence to its declared permanent operation.
- */
+/** Closed result of binding successful evidence to its declared permanent operation. */
 sealed interface OperationOutcomeBinding<out Payload, out Qualification, out Rejection> {
     data class Bound<Payload, Qualification, Rejection>(
-        val outcome: OperationOutcome<Payload, Qualification, Rejection>,
+        val outcome: OperationOutcome<Payload, Qualification, Rejection>
     ) : OperationOutcomeBinding<Payload, Qualification, Rejection>
 
-    data class Rejected(
-        val failure: OperationOutcomeBindingFailure,
-    ) : OperationOutcomeBinding<Nothing, Nothing, Nothing>
+    data class Rejected(val failure: OperationOutcomeBindingFailure) :
+        OperationOutcomeBinding<Nothing, Nothing, Nothing>
 }
 
 sealed interface OperationOutcomeBindingFailure {
@@ -141,7 +129,5 @@ sealed interface OperationOutcomeBindingFailure {
         val observed: OperationId,
     ) : OperationOutcomeBindingFailure
 
-    data class QualificationNotAllowed(
-        val operation: OperationId,
-    ) : OperationOutcomeBindingFailure
+    data class QualificationNotAllowed(val operation: OperationId) : OperationOutcomeBindingFailure
 }

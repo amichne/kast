@@ -19,25 +19,27 @@ val changeIdeaDistribution: Configuration by configurations.creating {
     isCanBeResolved = true
 }
 
-private val extractedIdeaDistributionDirectory = objects.directoryProperty().apply {
-    set(file(gradle.gradleUserHomeDir.resolve("kast/change-intellij-idea-distributions/$ideaDistributionVersion")))
-}
+private val extractedIdeaDistributionDirectory =
+    objects.directoryProperty().apply {
+        set(file(gradle.gradleUserHomeDir.resolve("kast/change-intellij-idea-distributions/$ideaDistributionVersion")))
+    }
 
-val extractChangeIdeaDistribution by tasks.registering(ExtractIdeaDistributionTask::class) {
-    archives.from(changeIdeaDistribution)
-    ideaVersion.set(ideaDistributionVersion)
-    outputDirectory.set(extractedIdeaDistributionDirectory)
-}
+val extractChangeIdeaDistribution by
+    tasks.registering(ExtractIdeaDistributionTask::class) {
+        archives.from(changeIdeaDistribution)
+        ideaVersion.set(ideaDistributionVersion)
+        outputDirectory.set(extractedIdeaDistributionDirectory)
+    }
 
-private fun extractedIdeaFiles(
-    configure: ConfigurableFileTree.() -> Unit,
-) = files(
-    extractedIdeaDistributionDirectory.map { directory ->
-        fileTree(directory) {
-            configure()
-        }
-    },
-).builtBy(extractChangeIdeaDistribution)
+private fun extractedIdeaFiles(configure: ConfigurableFileTree.() -> Unit) =
+    files(
+            extractedIdeaDistributionDirectory.map { directory ->
+                fileTree(directory) {
+                    configure()
+                }
+            }
+        )
+        .builtBy(extractChangeIdeaDistribution)
 
 private val ideaLibs: ConfigurableFileCollection = extractedIdeaFiles {
     include("**/lib/**/*.jar")

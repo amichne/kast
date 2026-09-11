@@ -16,12 +16,9 @@ import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
 import java.util.concurrent.CancellationException
 
 /** Canonical publication transaction backed directly by one SQLite publication database. */
-class SqliteCanonicalWorkspacePublicationTransaction private constructor(
-    private val delegate: SqliteWorkspaceGenerationPublication,
-) : WorkspacePublicationTransaction {
-    constructor(database: SqliteWorkspacePublicationDatabase) : this(
-        SqliteWorkspaceGenerationPublication(database),
-    )
+class SqliteCanonicalWorkspacePublicationTransaction
+private constructor(private val delegate: SqliteWorkspaceGenerationPublication) : WorkspacePublicationTransaction {
+    constructor(database: SqliteWorkspacePublicationDatabase) : this(SqliteWorkspaceGenerationPublication(database))
 
     internal constructor(
         database: SqliteWorkspacePublicationDatabase,
@@ -30,103 +27,101 @@ class SqliteCanonicalWorkspacePublicationTransaction private constructor(
 
     private val owner = Owner()
 
-    override fun begin(): WorkspacePublicationOpening = try {
-        WorkspacePublicationOpening.Opened(OwnedOpen(delegate.begin(), owner))
-    } catch (failure: Exception) {
-        failure.rejectedOpening()
-    }
+    override fun begin(): WorkspacePublicationOpening =
+        try {
+            WorkspacePublicationOpening.Opened(OwnedOpen(delegate.begin(), owner))
+        } catch (failure: Exception) {
+            failure.rejectedOpening()
+        }
 
     override fun prepare(
         open: OpenCanonicalWorkspacePublication,
         candidate: ReconciledWorkspace,
-    ): WorkspacePublicationPreparation = when (val admission = admit(open)) {
-        OpenAdmission.Rejected -> WorkspacePublicationPreparation.Rejected(
-            WorkspacePublicationFailure.CapabilityUnavailable,
-        )
-        is OpenAdmission.Owned -> try {
-            WorkspacePublicationPreparation.Prepared(
-                OwnedPrepared(
-                    publication = delegate.prepare(
-                        admission.publication,
-                        candidate.candidate.sourceState,
-                        WorkspaceGraphPublication.Ready,
-                    ),
-                    candidate = candidate,
-                    owner = owner,
-                ),
-            )
-        } catch (failure: Exception) {
-            failure.rejectedPreparation()
-        }
-    }
-
-    override fun commit(
-        prepared: PreparedCanonicalWorkspacePublication,
-    ): WorkspacePublicationResult = when (val admission = admit(prepared)) {
-        PreparedAdmission.Rejected -> WorkspacePublicationResult.Rejected(
-            WorkspacePublicationFailure.CapabilityUnavailable,
-        )
-        is PreparedAdmission.Owned -> try {
-            val committed = delegate.commit(admission.publication)
-            when (committed) {
-                is io.github.amichne.kast.evidence.contract.GenerationPublication.Published ->
-                    WorkspacePublicationResult.Advanced(
-                        PublishedWorkspace.publish(
-                            admission.candidate,
-                            committed.commit.publication.generation,
-                        ),
+    ): WorkspacePublicationPreparation =
+        when (val admission = admit(open)) {
+            OpenAdmission.Rejected ->
+                WorkspacePublicationPreparation.Rejected(WorkspacePublicationFailure.CapabilityUnavailable)
+            is OpenAdmission.Owned ->
+                try {
+                    WorkspacePublicationPreparation.Prepared(
+                        OwnedPrepared(
+                            publication =
+                                delegate.prepare(
+                                    admission.publication,
+                                    candidate.candidate.sourceState,
+                                    WorkspaceGraphPublication.Ready,
+                                ),
+                            candidate = candidate,
+                            owner = owner,
+                        )
                     )
-                is io.github.amichne.kast.evidence.contract.GenerationPublication.Unchanged ->
-                    WorkspacePublicationResult.Unchanged(
-                        PublishedWorkspace.publish(
-                            admission.candidate,
-                            committed.commit.publication.generation,
-                        ),
-                    )
-                io.github.amichne.kast.evidence.contract.GenerationPublication.InvalidatedBeforeCommit,
-                is io.github.amichne.kast.evidence.contract.GenerationPublication.InvalidatedAfterCommit,
-                    -> WorkspacePublicationResult.Rejected(
-                        WorkspacePublicationFailure.CapabilityUnavailable,
-                    )
-            }
-        } catch (failure: Exception) {
-            failure.rejectedResult()
+                } catch (failure: Exception) {
+                    failure.rejectedPreparation()
+                }
         }
-    }
 
-    override fun discard(
-        open: OpenCanonicalWorkspacePublication,
-    ): WorkspacePublicationDiscard = when (val admission = admit(open)) {
-        OpenAdmission.Rejected -> WorkspacePublicationDiscard.Rejected(
-            WorkspacePublicationFailure.CapabilityUnavailable,
-        )
-        is OpenAdmission.Owned -> try {
-            delegate.discard(admission.publication)
-            WorkspacePublicationDiscard.Discarded
-        } catch (failure: Exception) {
-            failure.rejectedDiscard()
+    override fun commit(prepared: PreparedCanonicalWorkspacePublication): WorkspacePublicationResult =
+        when (val admission = admit(prepared)) {
+            PreparedAdmission.Rejected ->
+                WorkspacePublicationResult.Rejected(WorkspacePublicationFailure.CapabilityUnavailable)
+            is PreparedAdmission.Owned ->
+                try {
+                    val committed = delegate.commit(admission.publication)
+                    when (committed) {
+                        is io.github.amichne.kast.evidence.contract.GenerationPublication.Published ->
+                            WorkspacePublicationResult.Advanced(
+                                PublishedWorkspace.publish(
+                                    admission.candidate,
+                                    committed.commit.publication.generation,
+                                )
+                            )
+                        is io.github.amichne.kast.evidence.contract.GenerationPublication.Unchanged ->
+                            WorkspacePublicationResult.Unchanged(
+                                PublishedWorkspace.publish(
+                                    admission.candidate,
+                                    committed.commit.publication.generation,
+                                )
+                            )
+                        io.github.amichne.kast.evidence.contract.GenerationPublication.InvalidatedBeforeCommit,
+                        is io.github.amichne.kast.evidence.contract.GenerationPublication.InvalidatedAfterCommit ->
+                            WorkspacePublicationResult.Rejected(WorkspacePublicationFailure.CapabilityUnavailable)
+                    }
+                } catch (failure: Exception) {
+                    failure.rejectedResult()
+                }
         }
-    }
 
-    override fun discard(
-        prepared: PreparedCanonicalWorkspacePublication,
-    ): WorkspacePublicationDiscard = when (val admission = admit(prepared)) {
-        PreparedAdmission.Rejected -> WorkspacePublicationDiscard.Rejected(
-            WorkspacePublicationFailure.CapabilityUnavailable,
-        )
-        is PreparedAdmission.Owned -> try {
-            delegate.discard(admission.publication)
-            WorkspacePublicationDiscard.Discarded
-        } catch (failure: Exception) {
-            failure.rejectedDiscard()
+    override fun discard(open: OpenCanonicalWorkspacePublication): WorkspacePublicationDiscard =
+        when (val admission = admit(open)) {
+            OpenAdmission.Rejected ->
+                WorkspacePublicationDiscard.Rejected(WorkspacePublicationFailure.CapabilityUnavailable)
+            is OpenAdmission.Owned ->
+                try {
+                    delegate.discard(admission.publication)
+                    WorkspacePublicationDiscard.Discarded
+                } catch (failure: Exception) {
+                    failure.rejectedDiscard()
+                }
         }
-    }
+
+    override fun discard(prepared: PreparedCanonicalWorkspacePublication): WorkspacePublicationDiscard =
+        when (val admission = admit(prepared)) {
+            PreparedAdmission.Rejected ->
+                WorkspacePublicationDiscard.Rejected(WorkspacePublicationFailure.CapabilityUnavailable)
+            is PreparedAdmission.Owned ->
+                try {
+                    delegate.discard(admission.publication)
+                    WorkspacePublicationDiscard.Discarded
+                } catch (failure: Exception) {
+                    failure.rejectedDiscard()
+                }
+        }
 
     /**
      * Proof transition: `OpenCanonicalWorkspacePublication -> OpenAdmission`.
      *
-     * Establishes that the open capability belongs to this exact transaction. The finite rejected
-     * state exposes no underlying SQLite capability.
+     * Establishes that the open capability belongs to this exact transaction. The finite rejected state exposes no
+     * underlying SQLite capability.
      */
     private fun admit(open: OpenCanonicalWorkspacePublication): OpenAdmission {
         val candidate = open as? OwnedOpen ?: return OpenAdmission.Rejected
@@ -140,8 +135,8 @@ class SqliteCanonicalWorkspacePublicationTransaction private constructor(
     /**
      * Proof transition: `PreparedCanonicalWorkspacePublication -> PreparedAdmission`.
      *
-     * Establishes that the prepared capability and reconciled candidate belong to this exact
-     * transaction. The finite rejected state exposes neither value.
+     * Establishes that the prepared capability and reconciled candidate belong to this exact transaction. The finite
+     * rejected state exposes neither value.
      */
     private fun admit(prepared: PreparedCanonicalWorkspacePublication): PreparedAdmission {
         val candidate = prepared as? OwnedPrepared ?: return PreparedAdmission.Rejected
@@ -190,9 +185,7 @@ class SqliteCanonicalWorkspacePublicationTransaction private constructor(
     ) : PreparedCanonicalWorkspacePublication
 
     private sealed interface OpenAdmission {
-        data class Owned(
-            val publication: OpenWorkspacePublication,
-        ) : OpenAdmission
+        data class Owned(val publication: OpenWorkspacePublication) : OpenAdmission
 
         data object Rejected : OpenAdmission
     }

@@ -1,8 +1,8 @@
 package io.github.amichne.kast.change.apply
 
 import io.github.amichne.kast.change.contract.AddDeclarationPlanId
-import io.github.amichne.kast.change.contract.ChangePlan
 import io.github.amichne.kast.change.contract.ChangeIntent
+import io.github.amichne.kast.change.contract.ChangePlan
 import io.github.amichne.kast.change.contract.SourceTextMutation
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackResult
 import io.github.amichne.kast.change.recovery.PreparedAddDeclarationRecovery
@@ -16,10 +16,11 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 /**
  * Permission for exactly one source insertion against one repository state.
  *
- * The private constructor makes a bare plan, observation, or source path insufficient. Authority
- * exists only after pure current-state admission and durable exact pre-write recovery evidence.
+ * The private constructor makes a bare plan, observation, or source path insufficient. Authority exists only after pure
+ * current-state admission and durable exact pre-write recovery evidence.
  */
-class MutationAuthority private constructor(
+class MutationAuthority
+private constructor(
     val planId: AddDeclarationPlanId,
     val binding: MutationPlanBinding,
     val source: SymbolDiscoveryFileIdentity.Workspace,
@@ -37,9 +38,7 @@ class MutationAuthority private constructor(
     /** Closed exact preimage state leaves only at the IntelliJ source-write boundary. */
     fun preconditionAtIntellijBoundary(): MutationPreconditionAtIntellijBoundary =
         when (val preimage = precondition) {
-            is ObservedMutationSource -> MutationPreconditionAtIntellijBoundary.Existing(
-                preimage.text,
-            )
+            is ObservedMutationSource -> MutationPreconditionAtIntellijBoundary.Existing(preimage.text)
             is ObservedAbsentMutationSource -> MutationPreconditionAtIntellijBoundary.Absent
         }
 
@@ -50,88 +49,89 @@ class MutationAuthority private constructor(
     fun mutationsAtIntellijBoundary(): List<SourceTextMutation> = postimage.mutations
 
     /** Raw exact postimage bytes leave only for physical save observation. */
-    fun postimageBytesAtIntellijBoundary(): ByteArray =
-        postimage.text.toByteArray(Charsets.UTF_8)
+    fun postimageBytesAtIntellijBoundary(): ByteArray = postimage.text.toByteArray(Charsets.UTF_8)
 
     companion object {
         /**
-         * Proof transition: `(AdmittedMutation, PreparedAddDeclarationRecovery) ->
-         * MutationAuthority`.
+         * Proof transition: `(AdmittedMutation, PreparedAddDeclarationRecovery) -> MutationAuthority`.
          *
-         * Establishes that the one admitted write has byte-exact recovery evidence durably stored
-         * before any source writer can receive it. There is no expected failure because both inputs
-         * already carry their proofs. Raw source extraction is permitted only by the IntelliJ
-         * source writer or its exact rollback boundary.
+         * Establishes that the one admitted write has byte-exact recovery evidence durably stored before any source
+         * writer can receive it. There is no expected failure because both inputs already carry their proofs. Raw
+         * source extraction is permitted only by the IntelliJ source writer or its exact rollback boundary.
          */
         internal fun issue(
             admitted: AdmittedMutation,
             recovery: PreparedAddDeclarationRecovery,
-        ): MutationAuthority = MutationAuthority(
-            admitted.request.plan.planId,
-            recovery.record.binding,
-            admitted.write.source,
-            admitted.request.plan.intent,
-            admitted.publication,
-            admitted.write.preimage,
-            admitted.write.postimage,
-        )
+        ): MutationAuthority =
+            MutationAuthority(
+                admitted.request.plan.planId,
+                recovery.record.binding,
+                admitted.write.source,
+                admitted.request.plan.intent,
+                admitted.publication,
+                admitted.write.preimage,
+                admitted.write.postimage,
+            )
 
         fun restore(
             plan: ChangePlan,
             record: MutationRecoveryRecord.AppliedWritesDurable,
         ): Refinement<MutationAuthority, MutationAuthorityRestorationFailure> {
-            val write = plan.writes.entries.singleOrNull()
-                ?: return Refinement.Rejected(
-                    MutationAuthorityRestorationFailure.WRITE_SET_MISMATCH,
-                )
+            val write =
+                plan.writes.entries.singleOrNull()
+                    ?: return Refinement.Rejected(MutationAuthorityRestorationFailure.WRITE_SET_MISMATCH)
             if (
                 record.binding.value != plan.planId.value ||
-                record.appliedWrites.sources.singleOrNull()?.value != write.source.path.value
+                    record.appliedWrites.sources.singleOrNull()?.value != write.source.path.value
             ) {
-                return Refinement.Rejected(
-                    MutationAuthorityRestorationFailure.RECOVERY_BINDING_MISMATCH,
-                )
+                return Refinement.Rejected(MutationAuthorityRestorationFailure.RECOVERY_BINDING_MISMATCH)
             }
-            val plannedRecovery = record.preparation.plannedWrites.singleOrNull()
-                ?: return Refinement.Rejected(
-                    MutationAuthorityRestorationFailure.RECOVERY_BINDING_MISMATCH,
-                )
-            val precondition = when (write.precondition) {
-                is io.github.amichne.kast.change.contract.PlannedSourcePrecondition.Existing ->
-                    when (val captured = ObservedMutationSource.capture(
-                        write.source,
-                        plannedRecovery.preimage.decodeAtRecoveryBoundary(),
-                        SourceWriteAccess.Writable,
-                    )) {
-                        is Refinement.Refined -> captured.value
-                        is Refinement.Rejected -> return Refinement.Rejected(
-                            MutationAuthorityRestorationFailure.PREIMAGE_INVALID,
+            val plannedRecovery =
+                record.preparation.plannedWrites.singleOrNull()
+                    ?: return Refinement.Rejected(MutationAuthorityRestorationFailure.RECOVERY_BINDING_MISMATCH)
+            val precondition =
+                when (write.precondition) {
+                    is io.github.amichne.kast.change.contract.PlannedSourcePrecondition.Existing ->
+                        when (
+                            val captured =
+                                ObservedMutationSource.capture(
+                                    write.source,
+                                    plannedRecovery.preimage.decodeAtRecoveryBoundary(),
+                                    SourceWriteAccess.Writable,
+                                )
+                        ) {
+                            is Refinement.Refined -> captured.value
+                            is Refinement.Rejected ->
+                                return Refinement.Rejected(MutationAuthorityRestorationFailure.PREIMAGE_INVALID)
+                        }
+                    io.github.amichne.kast.change.contract.PlannedSourcePrecondition.Absent ->
+                        return Refinement.Rejected(MutationAuthorityRestorationFailure.UNSUPPORTED_PLAN)
+                }
+            val postimage =
+                when (
+                    val derived =
+                        DerivedMutationPostimage.derive(
+                            precondition,
+                            write.mutations,
                         )
-                    }
-                io.github.amichne.kast.change.contract.PlannedSourcePrecondition.Absent ->
-                    return Refinement.Rejected(
-                        MutationAuthorityRestorationFailure.UNSUPPORTED_PLAN,
-                    )
-            }
-            val postimage = when (val derived = DerivedMutationPostimage.derive(
-                precondition,
-                write.mutations,
-            )) {
-                is Refinement.Refined -> derived.value
-                is Refinement.Rejected -> return Refinement.Rejected(
-                    MutationAuthorityRestorationFailure.POSTIMAGE_INVALID,
-                )
-            }
-            val publication = when (val restored = MutationPlanPublication.restore(
-                plan,
-                plan.priorLease,
-                plan.workspaceState,
-            )) {
-                is Refinement.Refined -> restored.value
-                is Refinement.Rejected -> return Refinement.Rejected(
-                    MutationAuthorityRestorationFailure.PUBLICATION_INVALID,
-                )
-            }
+                ) {
+                    is Refinement.Refined -> derived.value
+                    is Refinement.Rejected ->
+                        return Refinement.Rejected(MutationAuthorityRestorationFailure.POSTIMAGE_INVALID)
+                }
+            val publication =
+                when (
+                    val restored =
+                        MutationPlanPublication.restore(
+                            plan,
+                            plan.priorLease,
+                            plan.workspaceState,
+                        )
+                ) {
+                    is Refinement.Refined -> restored.value
+                    is Refinement.Rejected ->
+                        return Refinement.Rejected(MutationAuthorityRestorationFailure.PUBLICATION_INVALID)
+                }
             return Refinement.Refined(
                 MutationAuthority(
                     plan.planId,
@@ -141,7 +141,7 @@ class MutationAuthority private constructor(
                     publication,
                     precondition,
                     postimage,
-                ),
+                )
             )
         }
     }
@@ -158,9 +158,7 @@ enum class MutationAuthorityRestorationFailure {
 
 /** Raw boundary projection that cannot confuse an absent target with an empty existing file. */
 sealed interface MutationPreconditionAtIntellijBoundary {
-    data class Existing(
-        val text: String,
-    ) : MutationPreconditionAtIntellijBoundary
+    data class Existing(val text: String) : MutationPreconditionAtIntellijBoundary
 
     data object Absent : MutationPreconditionAtIntellijBoundary
 }
@@ -173,9 +171,7 @@ enum class MutationDurabilityFailure {
 sealed interface MutationDurabilityResult {
     data object Durable : MutationDurabilityResult
 
-    data class Rejected(
-        val failure: MutationDurabilityFailure,
-    ) : MutationDurabilityResult
+    data class Rejected(val failure: MutationDurabilityFailure) : MutationDurabilityResult
 }
 
 /** Applied-write evidence barrier bound internally to one exact [MutationAuthority]. */
@@ -183,9 +179,9 @@ fun interface MutationDurabilityBarrier {
     /**
      * Proof transition: `PreparedAddDeclarationRecovery -> MutationDurabilityResult`.
      *
-     * Durable establishes an atomically persisted applied-write record for the exact authority
-     * before physical save. [MutationDurabilityFailure] closes expected persistence or repeated
-     * transition failure. Persistence handles remain inside the supplied implementation.
+     * Durable establishes an atomically persisted applied-write record for the exact authority before physical save.
+     * [MutationDurabilityFailure] closes expected persistence or repeated transition failure. Persistence handles
+     * remain inside the supplied implementation.
      */
     fun recordApplied(): MutationDurabilityResult
 }
@@ -201,13 +197,9 @@ enum class SourceObservationFailure {
 }
 
 sealed interface SourceObservationResult {
-    data class Observed(
-        val source: ObservedMutationPrecondition,
-    ) : SourceObservationResult
+    data class Observed(val source: ObservedMutationPrecondition) : SourceObservationResult
 
-    data class Rejected(
-        val failure: SourceObservationFailure,
-    ) : SourceObservationResult
+    data class Rejected(val failure: SourceObservationFailure) : SourceObservationResult
 }
 
 /** Physical current-source observation port; it grants no write capability. */
@@ -215,9 +207,8 @@ fun interface AddDeclarationSourceObserver {
     /**
      * Proof transition: `WorkspaceFile -> SourceObservationResult`.
      *
-     * Observed carries exact current bytes and writability for the requested file.
-     * [SourceObservationFailure] is the closed expected failure. Paths, documents, PSI, and bytes
-     * may be extracted only inside the physical adapter.
+     * Observed carries exact current bytes and writability for the requested file. [SourceObservationFailure] is the
+     * closed expected failure. Paths, documents, PSI, and bytes may be extracted only inside the physical adapter.
      */
     fun observe(source: SymbolDiscoveryFileIdentity.Workspace): SourceObservationResult
 }
@@ -229,19 +220,19 @@ enum class AppliedSourceWriteFailure {
 }
 
 /** Exact physically observed singleton postimage for one authority. */
-class AppliedSourceWrite private constructor(
+class AppliedSourceWrite
+private constructor(
     internal val authority: MutationAuthority,
     val content: WorkspaceSourceContentHash,
 ) {
     companion object {
         /**
-         * Proof transition: `(MutationAuthority, ByteArray, Set<String>) -> Refinement<
-         * AppliedSourceWrite, AppliedSourceWriteFailure>`.
+         * Proof transition: `(MutationAuthority, ByteArray, Set<String>) -> Refinement< AppliedSourceWrite,
+         * AppliedSourceWriteFailure>`.
          *
-         * Establishes that physical bytes equal the authority's exact postimage and the observed
-         * changed-path set is exactly its singleton source. [AppliedSourceWriteFailure] is the
-         * closed expected failure. Raw bytes and paths may enter only from the IntelliJ after-save
-         * observation boundary and are retained only as typed identities.
+         * Establishes that physical bytes equal the authority's exact postimage and the observed changed-path set is
+         * exactly its singleton source. [AppliedSourceWriteFailure] is the closed expected failure. Raw bytes and paths
+         * may enter only from the IntelliJ after-save observation boundary and are retained only as typed identities.
          */
         fun observe(
             authority: MutationAuthority,
@@ -249,23 +240,23 @@ class AppliedSourceWrite private constructor(
             rawChangedPaths: Set<String>,
         ): Refinement<AppliedSourceWrite, AppliedSourceWriteFailure> {
             if (rawChangedPaths != setOf(authority.source.path.value)) {
-                return Refinement.Rejected(
-                    AppliedSourceWriteFailure.CHANGED_WRITE_SET_MISMATCH,
-                )
+                return Refinement.Rejected(AppliedSourceWriteFailure.CHANGED_WRITE_SET_MISMATCH)
             }
-            val observed = when (val captured = ObservedMutationSource.capture(
-                authority.source,
-                rawContent,
-                SourceWriteAccess.Writable,
-            )) {
-                is Refinement.Refined -> captured.value
-                is Refinement.Rejected -> return Refinement.Rejected(
-                    AppliedSourceWriteFailure.INVALID_CONTENT,
-                )
-            }
+            val observed =
+                when (
+                    val captured =
+                        ObservedMutationSource.capture(
+                            authority.source,
+                            rawContent,
+                            SourceWriteAccess.Writable,
+                        )
+                ) {
+                    is Refinement.Refined -> captured.value
+                    is Refinement.Rejected -> return Refinement.Rejected(AppliedSourceWriteFailure.INVALID_CONTENT)
+                }
             if (
                 observed.content != authority.expectedPostimage ||
-                observed.text != authority.postimageTextAtIntellijBoundary()
+                    observed.text != authority.postimageTextAtIntellijBoundary()
             ) {
                 return Refinement.Rejected(AppliedSourceWriteFailure.POSTIMAGE_MISMATCH)
             }
@@ -290,21 +281,13 @@ enum class SourceWriteFailure {
 }
 
 sealed interface SourceWriteResult {
-    data class Applied(
-        val write: AppliedSourceWrite,
-    ) : SourceWriteResult
+    data class Applied(val write: AppliedSourceWrite) : SourceWriteResult
 
-    data class RejectedBeforeMutation(
-        val failure: SourceWriteFailure,
-    ) : SourceWriteResult
+    data class RejectedBeforeMutation(val failure: SourceWriteFailure) : SourceWriteResult
 
-    data class RejectedAfterRollback(
-        val failure: SourceWriteFailure,
-    ) : SourceWriteResult
+    data class RejectedAfterRollback(val failure: SourceWriteFailure) : SourceWriteResult
 
-    data class RecoveryRequired(
-        val failure: SourceWriteFailure,
-    ) : SourceWriteResult
+    data class RecoveryRequired(val failure: SourceWriteFailure) : SourceWriteResult
 }
 
 /** Sole normal source-write port; a bare plan cannot invoke it. */
@@ -312,9 +295,9 @@ fun interface AddDeclarationSourceWriter {
     /**
      * Proof transition: `(MutationAuthority, MutationDurabilityBarrier) -> SourceWriteResult`.
      *
-     * Applied carries the authority's exact singleton physical postimage after the durability
-     * barrier and save. [SourceWriteFailure] closes every expected platform failure. Raw IntelliJ
-     * values remain inside the implementation adapter.
+     * Applied carries the authority's exact singleton physical postimage after the durability barrier and save.
+     * [SourceWriteFailure] closes every expected platform failure. Raw IntelliJ values remain inside the implementation
+     * adapter.
      */
     fun write(
         authority: MutationAuthority,
@@ -325,12 +308,11 @@ fun interface AddDeclarationSourceWriter {
 /** Exact recovery-only source effect requiring both authority and its durable applied record. */
 fun interface AddDeclarationSourceRollback {
     /**
-     * Proof transition: `(MutationAuthority, AppliedWritesDurable) ->
-     * AddDeclarationRollbackResult`.
+     * Proof transition: `(MutationAuthority, AppliedWritesDurable) -> AddDeclarationRollbackResult`.
      *
-     * RolledBack establishes the authority's exact preimage without overwriting divergent source.
-     * Expected failure is closed by `AddDeclarationRollbackFailure`. Raw preimage bytes may leave
-     * only inside the IntelliJ recovery boundary.
+     * RolledBack establishes the authority's exact preimage without overwriting divergent source. Expected failure is
+     * closed by `AddDeclarationRollbackFailure`. Raw preimage bytes may leave only inside the IntelliJ recovery
+     * boundary.
      */
     fun rollback(
         authority: MutationAuthority,

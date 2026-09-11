@@ -16,7 +16,8 @@ enum class AddDeclarationPlanningEvidenceFailure {
 
 @Serializable
 @ConsistentCopyVisibility
-data class AddDeclarationPlanningEvidence private constructor(
+data class AddDeclarationPlanningEvidence
+private constructor(
     val intent: AddDeclarationIntent,
     val generation: AddDeclarationGeneration,
     val target: AddDeclarationTargetCapability,
@@ -29,14 +30,12 @@ data class AddDeclarationPlanningEvidence private constructor(
 ) {
     companion object {
         /**
-         * Proof transition:
-         * Detached planning facts to Refinement of AddDeclarationPlanningEvidence or
+         * Proof transition: Detached planning facts to Refinement of AddDeclarationPlanningEvidence or
          * AddDeclarationPlanningEvidenceFailure.
          *
-         * Establishes one coherent add-declaration evidence aggregate for the same intent, target,
-         * singleton write set, and G0 verification contract.
-         * AddDeclarationPlanningEvidenceFailure is the closed expected failure. Raw evidence is
-         * extracted only by the IntelliJ planning adapter.
+         * Establishes one coherent add-declaration evidence aggregate for the same intent, target, singleton write set,
+         * and G0 verification contract. AddDeclarationPlanningEvidenceFailure is the closed expected failure. Raw
+         * evidence is extracted only by the IntelliJ planning adapter.
          */
         fun admit(
             intent: AddDeclarationIntent,
@@ -51,8 +50,8 @@ data class AddDeclarationPlanningEvidence private constructor(
         ): Refinement<AddDeclarationPlanningEvidence, AddDeclarationPlanningEvidenceFailure> {
             if (
                 target.workspaceRoot != intent.workspaceRoot ||
-                target.targetPath != intent.targetPath ||
-                target.expectedCurrentSha256 != intent.expectedCurrentSha256
+                    target.targetPath != intent.targetPath ||
+                    target.expectedCurrentSha256 != intent.expectedCurrentSha256
             ) {
                 return Refinement.Rejected(AddDeclarationPlanningEvidenceFailure.INTENT_TARGET_MISMATCH)
             }
@@ -64,24 +63,17 @@ data class AddDeclarationPlanningEvidence private constructor(
             }
             val exactGeneration = AddDeclarationGeneration.of(generation)
             if (verification.requiredGeneration != exactGeneration) {
-                return Refinement.Rejected(
-                    AddDeclarationPlanningEvidenceFailure.VERIFICATION_GENERATION_MISMATCH,
-                )
+                return Refinement.Rejected(AddDeclarationPlanningEvidenceFailure.VERIFICATION_GENERATION_MISMATCH)
             }
             if (compilerContext.generation != exactGeneration) {
-                return Refinement.Rejected(
-                    AddDeclarationPlanningEvidenceFailure.COMPILER_CONTEXT_GENERATION_MISMATCH,
-                )
+                return Refinement.Rejected(AddDeclarationPlanningEvidenceFailure.COMPILER_CONTEXT_GENERATION_MISMATCH)
             }
-            val targetContext = compilerContext.contextFiles.singleOrNull {
-                it.path == target.targetPath.value
-            } ?: return Refinement.Rejected(
-                AddDeclarationPlanningEvidenceFailure.COMPILER_CONTEXT_TARGET_MISSING,
-            )
+            val targetContext =
+                compilerContext.contextFiles.singleOrNull {
+                    it.path == target.targetPath.value
+                } ?: return Refinement.Rejected(AddDeclarationPlanningEvidenceFailure.COMPILER_CONTEXT_TARGET_MISSING)
             if (targetContext.sha256 != expectedFile.preimage.sha256) {
-                return Refinement.Rejected(
-                    AddDeclarationPlanningEvidenceFailure.COMPILER_CONTEXT_TARGET_HASH_MISMATCH,
-                )
+                return Refinement.Rejected(AddDeclarationPlanningEvidenceFailure.COMPILER_CONTEXT_TARGET_HASH_MISMATCH)
             }
             return Refinement.Refined(
                 AddDeclarationPlanningEvidence(
@@ -94,7 +86,7 @@ data class AddDeclarationPlanningEvidence private constructor(
                     verification = verification,
                     compilerContext = compilerContext,
                     compilerEvidence = compilerEvidence,
-                ),
+                )
             )
         }
     }
@@ -107,34 +99,32 @@ value class ChangePlanId private constructor(val value: String) {
         /**
          * Proof transition: `String -> Refinement<ChangePlanId, ChangePlanIdFailure>`.
          *
-         * Establishes an opaque canonical lowercase SHA-256 plan identity. The closed expected
-         * failure is `ChangePlanIdFailure.INVALID`; raw extraction is permitted only at
-         * transport and durable-journal boundaries.
+         * Establishes an opaque canonical lowercase SHA-256 plan identity. The closed expected failure is
+         * `ChangePlanIdFailure.INVALID`; raw extraction is permitted only at transport and durable-journal boundaries.
          */
-        fun parse(
-            raw: String,
-        ): Refinement<ChangePlanId, ChangePlanIdFailure> =
+        fun parse(raw: String): Refinement<ChangePlanId, ChangePlanIdFailure> =
             if (Regex("[0-9a-f]{64}").matches(raw)) {
                 Refinement.Refined(ChangePlanId(raw))
             } else {
                 Refinement.Rejected(ChangePlanIdFailure.INVALID)
             }
 
-        internal fun fromCanonicalIdentity(value: String): ChangePlanId =
-            ChangePlanId(sha256Hex(value.toByteArray()))
+        internal fun fromCanonicalIdentity(value: String): ChangePlanId = ChangePlanId(sha256Hex(value.toByteArray()))
     }
 }
 
 enum class ChangePlanIdFailure {
-    INVALID,
+    INVALID
 }
 
 typealias AddDeclarationPlanId = ChangePlanId
+
 typealias AddDeclarationPlanIdFailure = ChangePlanIdFailure
 
 @Serializable
 @ConsistentCopyVisibility
-data class PlannedAddDeclaration private constructor(
+data class PlannedAddDeclaration
+private constructor(
     val planId: AddDeclarationPlanId,
     val intent: AddDeclarationIntent,
     val generation: AddDeclarationGeneration,
@@ -148,20 +138,16 @@ data class PlannedAddDeclaration private constructor(
 ) {
     companion object {
         /**
-         * Proof transition:
-         * AddDeclarationPlanningEvidence to PlannedAddDeclaration.
+         * Proof transition: AddDeclarationPlanningEvidence to PlannedAddDeclaration.
          *
-         * Establishes a detached operation-specific plan with canonical identity derived from every
-         * G0 input and proof fact. There is no expected failure because the evidence aggregate
-         * already carries all invariants. Raw compiler JSON may be extracted only at the named
-         * compatibility transport boundary.
+         * Establishes a detached operation-specific plan with canonical identity derived from every G0 input and proof
+         * fact. There is no expected failure because the evidence aggregate already carries all invariants. Raw
+         * compiler JSON may be extracted only at the named compatibility transport boundary.
          */
         fun issue(evidence: AddDeclarationPlanningEvidence): PlannedAddDeclaration {
             val material = PlanIdentityMaterial.from(evidence)
             return PlannedAddDeclaration(
-                planId = AddDeclarationPlanId.fromCanonicalIdentity(
-                    AddDeclarationPlanCodec.encodeIdentity(material),
-                ),
+                planId = AddDeclarationPlanId.fromCanonicalIdentity(AddDeclarationPlanCodec.encodeIdentity(material)),
                 intent = evidence.intent,
                 generation = evidence.generation,
                 target = evidence.target,
@@ -175,17 +161,18 @@ data class PlannedAddDeclaration private constructor(
         }
     }
 
-    internal fun identityMaterial(): PlanIdentityMaterial = PlanIdentityMaterial(
-        intent = intent,
-        generation = generation,
-        target = target,
-        expectedFile = expectedFile,
-        declaredWriteSet = declaredWriteSet,
-        expectedSemanticDelta = expectedSemanticDelta,
-        verification = verification,
-        compilerContext = compilerContext,
-        compilerEvidence = compilerEvidence,
-    )
+    internal fun identityMaterial(): PlanIdentityMaterial =
+        PlanIdentityMaterial(
+            intent = intent,
+            generation = generation,
+            target = target,
+            expectedFile = expectedFile,
+            declaredWriteSet = declaredWriteSet,
+            expectedSemanticDelta = expectedSemanticDelta,
+            verification = verification,
+            compilerContext = compilerContext,
+            compilerEvidence = compilerEvidence,
+        )
 }
 
 @Serializable

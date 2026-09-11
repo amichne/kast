@@ -13,72 +13,66 @@ import java.nio.file.Path
 
 internal sealed interface SidecarBootstrapStateFileFailure {
     data object PathRejected : SidecarBootstrapStateFileFailure
+
     data object FilesystemRejected : SidecarBootstrapStateFileFailure
-    data class DocumentRejected(
-        val failure: SemanticRuntimeBootstrapDocumentFailure,
-    ) : SidecarBootstrapStateFileFailure
+
+    data class DocumentRejected(val failure: SemanticRuntimeBootstrapDocumentFailure) : SidecarBootstrapStateFileFailure
 }
 
 internal sealed interface SidecarBootstrapStateObservation {
-    data class Observed(
-        val state: SemanticRuntimeBootstrapState,
-    ) : SidecarBootstrapStateObservation
+    data class Observed(val state: SemanticRuntimeBootstrapState) : SidecarBootstrapStateObservation
 
-    data class Rejected(
-        val failure: SidecarBootstrapStateFileFailure,
-    ) : SidecarBootstrapStateObservation
+    data class Rejected(val failure: SidecarBootstrapStateFileFailure) : SidecarBootstrapStateObservation
 }
 
 /** Read-only exact-cache adapter for the child-owned typed bootstrap document. */
 internal object SidecarBootstrapStateFile {
     private const val MAXIMUM_DOCUMENT_BYTES = CliOperationalLimits.maximumBootstrapDocumentBytes
+
     fun observe(path: Path): SidecarBootstrapStateObservation {
         path.admittedParent()
-            ?: return SidecarBootstrapStateObservation.Rejected(
-                SidecarBootstrapStateFileFailure.PathRejected,
-            )
-        val document = try {
-            if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
-                return SidecarBootstrapStateObservation.Rejected(SidecarBootstrapStateFileFailure.PathRejected)
+            ?: return SidecarBootstrapStateObservation.Rejected(SidecarBootstrapStateFileFailure.PathRejected)
+        val document =
+            try {
+                if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
+                    return SidecarBootstrapStateObservation.Rejected(SidecarBootstrapStateFileFailure.PathRejected)
+                }
+                val bytes = Files.newInputStream(path).use { it.readNBytes(MAXIMUM_DOCUMENT_BYTES + 1) }
+                if (bytes.size > MAXIMUM_DOCUMENT_BYTES) {
+                    return SidecarBootstrapStateObservation.Rejected(SidecarBootstrapStateFileFailure.PathRejected)
+                }
+                bytes.toString(Charsets.UTF_8)
+            } catch (_: IOException) {
+                return SidecarBootstrapStateObservation.Rejected(SidecarBootstrapStateFileFailure.FilesystemRejected)
+            } catch (_: SecurityException) {
+                return SidecarBootstrapStateObservation.Rejected(SidecarBootstrapStateFileFailure.FilesystemRejected)
             }
-            val bytes = Files.newInputStream(path).use { it.readNBytes(MAXIMUM_DOCUMENT_BYTES + 1) }
-            if (bytes.size > MAXIMUM_DOCUMENT_BYTES) {
-                return SidecarBootstrapStateObservation.Rejected(SidecarBootstrapStateFileFailure.PathRejected)
-            }
-            bytes.toString(Charsets.UTF_8)
-        } catch (_: IOException) {
-            return SidecarBootstrapStateObservation.Rejected(
-                SidecarBootstrapStateFileFailure.FilesystemRejected,
-            )
-        } catch (_: SecurityException) {
-            return SidecarBootstrapStateObservation.Rejected(
-                SidecarBootstrapStateFileFailure.FilesystemRejected,
-            )
-        }
         return when (val decoded = SemanticRuntimeBootstrapCodec.decode(document.trim())) {
             is Refinement.Refined -> SidecarBootstrapStateObservation.Observed(decoded.value)
-            is Refinement.Rejected -> SidecarBootstrapStateObservation.Rejected(
-                SidecarBootstrapStateFileFailure.DocumentRejected(decoded.failure),
-            )
+            is Refinement.Rejected ->
+                SidecarBootstrapStateObservation.Rejected(
+                    SidecarBootstrapStateFileFailure.DocumentRejected(decoded.failure)
+                )
         }
     }
 
     private fun Path.admittedParent(): Path? {
         if (
             !isAbsolute ||
-            normalize() != this ||
-            fileName?.toString() != SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME ||
-            Files.isSymbolicLink(this)
+                normalize() != this ||
+                fileName?.toString() != SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME ||
+                Files.isSymbolicLink(this)
         ) {
             return null
         }
-        val physicalParent = try {
-            parent?.toRealPath()
-        } catch (_: IOException) {
-            return null
-        } catch (_: SecurityException) {
-            return null
-        }
+        val physicalParent =
+            try {
+                parent?.toRealPath()
+            } catch (_: IOException) {
+                return null
+            } catch (_: SecurityException) {
+                return null
+            }
         return physicalParent?.takeIf { candidate ->
             candidate == parent && Files.isDirectory(candidate, LinkOption.NOFOLLOW_LINKS)
         }

@@ -5,20 +5,18 @@ import java.nio.file.Path
 import java.util.UUID
 
 enum class EvidenceGenerationFailure {
-    NEGATIVE,
+    NEGATIVE
 }
 
 @JvmInline
-value class EvidenceGeneration private constructor(
-    val value: Long,
-) : Comparable<EvidenceGeneration> {
+value class EvidenceGeneration private constructor(val value: Long) : Comparable<EvidenceGeneration> {
     companion object {
         /**
          * Proof transition: `Long -> Refinement<EvidenceGeneration, EvidenceGenerationFailure>`.
          *
-         * Establishes a non-negative monotonically comparable evidence generation.
-         * [EvidenceGenerationFailure] is the closed expected failure. Raw generation numbers may
-         * be extracted only at the workspace-publication or external protocol boundary.
+         * Establishes a non-negative monotonically comparable evidence generation. [EvidenceGenerationFailure] is the
+         * closed expected failure. Raw generation numbers may be extracted only at the workspace-publication or
+         * external protocol boundary.
          */
         fun parse(raw: Long): Refinement<EvidenceGeneration, EvidenceGenerationFailure> =
             if (raw >= 0) Refinement.Refined(EvidenceGeneration(raw))
@@ -29,12 +27,19 @@ value class EvidenceGeneration private constructor(
 }
 
 /** Detached evidence of the content view used by a live IDE read. */
-enum class LiveReadContentView { SAVED_PSI_COMMITTED }
+enum class LiveReadContentView {
+    SAVED_PSI_COMMITTED
+}
 
-enum class LiveReadEvidenceFailure { INVALID_ROOT, INVALID_EPOCH, UNSUPPORTED_VERSION }
+enum class LiveReadEvidenceFailure {
+    INVALID_ROOT,
+    INVALID_EPOCH,
+    UNSUPPORTED_VERSION,
+}
 
 /** Detached provenance only. This value cannot acquire or restore live execution authority. */
-data class LiveReadEvidence private constructor(
+data class LiveReadEvidence
+private constructor(
     val workspaceRoot: String,
     val host: UUID,
     val epoch: Long,
@@ -51,9 +56,12 @@ data class LiveReadEvidence private constructor(
             contentView: LiveReadContentView,
             version: Int,
         ): Refinement<LiveReadEvidence, LiveReadEvidenceFailure> {
-            val root = try { Path.of(workspaceRoot) } catch (_: InvalidPathException) {
-                return Refinement.Rejected(LiveReadEvidenceFailure.INVALID_ROOT)
-            }
+            val root =
+                try {
+                    Path.of(workspaceRoot)
+                } catch (_: InvalidPathException) {
+                    return Refinement.Rejected(LiveReadEvidenceFailure.INVALID_ROOT)
+                }
             return when {
                 !root.isAbsolute || root.normalize() != root ->
                     Refinement.Rejected(LiveReadEvidenceFailure.INVALID_ROOT)
@@ -68,6 +76,7 @@ data class LiveReadEvidence private constructor(
 /** A live read and a canonical publication are distinct claims. */
 sealed interface EvidenceBasis {
     data class Published(val generation: EvidenceGeneration) : EvidenceBasis
+
     data class Live(val evidence: LiveReadEvidence) : EvidenceBasis
 }
 
@@ -78,6 +87,9 @@ data class EvidenceEnvelope<out Payload>(
     val payload: Payload,
 ) {
     /** Existing published producers retain their strong generation-only construction boundary. */
-    constructor(operation: OperationId, generation: EvidenceGeneration, payload: Payload) :
-        this(operation, EvidenceBasis.Published(generation), payload)
+    constructor(
+        operation: OperationId,
+        generation: EvidenceGeneration,
+        payload: Payload,
+    ) : this(operation, EvidenceBasis.Published(generation), payload)
 }

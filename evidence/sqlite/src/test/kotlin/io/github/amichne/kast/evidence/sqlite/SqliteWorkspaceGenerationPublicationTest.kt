@@ -15,16 +15,15 @@ import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidate
 import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import java.nio.file.Files
+import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
 
 class SqliteWorkspaceGenerationPublicationTest {
-    @TempDir
-    lateinit var tempDir: Path
+    @TempDir lateinit var tempDir: Path
 
     @Test
     fun `generation authority commits one durable publication directly to SQLite`() {
@@ -32,19 +31,17 @@ class SqliteWorkspaceGenerationPublicationTest {
         val authority = SqliteWorkspaceGenerationPublication(database)
         val identity = WorkspaceStateIdentity("verified-state")
 
-        val prepared = authority.prepare(
-            authority.begin(),
-            identity,
-            WorkspaceGraphPublication.Ready,
-        )
+        val prepared =
+            authority.prepare(
+                authority.begin(),
+                identity,
+                WorkspaceGraphPublication.Ready,
+            )
         assertEquals(PublishedWorkspaceGenerationState.Unpublished, authority.current())
 
-        val committed = (
-            authority.commit(prepared) as GenerationPublication.Published
-        ).commit.publication
-        val reopened = SqliteWorkspaceGenerationPublication(
-            publicationDatabase(tempDir.resolve("generation/workspace.db")),
-        )
+        val committed = (authority.commit(prepared) as GenerationPublication.Published).commit.publication
+        val reopened =
+            SqliteWorkspaceGenerationPublication(publicationDatabase(tempDir.resolve("generation/workspace.db")))
 
         assertEquals(1, committed.generation.value)
         assertEquals(identity, committed.identity)
@@ -62,18 +59,17 @@ class SqliteWorkspaceGenerationPublicationTest {
         val first = publish(authority, identity)
 
         repeat(100) {
-            val unchanged = authority.commit(
-                authority.prepare(
-                    authority.begin(),
-                    identity,
-                    WorkspaceGraphPublication.Ready,
-                ),
-            )
+            val unchanged =
+                authority.commit(
+                    authority.prepare(
+                        authority.begin(),
+                        identity,
+                        WorkspaceGraphPublication.Ready,
+                    )
+                )
             assertInstanceOf(GenerationPublication.Unchanged::class.java, unchanged)
         }
-        val retained = (
-            authority.current() as PublishedWorkspaceGenerationState.Published
-        ).publication
+        val retained = (authority.current() as PublishedWorkspaceGenerationState.Published).publication
         assertEquals(first, retained)
         assertEquals(1L, retained.generation.value)
     }
@@ -84,17 +80,18 @@ class SqliteWorkspaceGenerationPublicationTest {
         val transaction = SqliteCanonicalWorkspacePublicationTransaction(database)
         val candidate = reconciled(tempDir.resolve("workspace"), "stable-state")
         val first = publish(transaction, candidate)
-        val prepared = (
-            transaction.prepare(
-                (transaction.begin() as WorkspacePublicationOpening.Opened).publication,
-                candidate,
-            ) as WorkspacePublicationPreparation.Prepared
-        ).publication
+        val prepared =
+            (transaction.prepare(
+                    (transaction.begin() as WorkspacePublicationOpening.Opened).publication,
+                    candidate,
+                ) as WorkspacePublicationPreparation.Prepared)
+                .publication
 
-        val unchanged = assertInstanceOf(
-            WorkspacePublicationResult.Unchanged::class.java,
-            transaction.commit(prepared),
-        )
+        val unchanged =
+            assertInstanceOf(
+                WorkspacePublicationResult.Unchanged::class.java,
+                transaction.commit(prepared),
+            )
 
         assertEquals(first.readLease, unchanged.workspace.readLease)
         assertEquals(first.sourceState, unchanged.workspace.sourceState)
@@ -105,11 +102,12 @@ class SqliteWorkspaceGenerationPublicationTest {
         val database = publicationDatabase(tempDir.resolve("discard/workspace.db"))
         val authority = SqliteWorkspaceGenerationPublication(database)
         val first = publish(authority, WorkspaceStateIdentity("first"))
-        val prepared = authority.prepare(
-            authority.begin(),
-            WorkspaceStateIdentity("discarded"),
-            WorkspaceGraphPublication.Ready,
-        )
+        val prepared =
+            authority.prepare(
+                authority.begin(),
+                WorkspaceStateIdentity("discarded"),
+                WorkspaceGraphPublication.Ready,
+            )
 
         authority.discard(prepared)
 
@@ -126,21 +124,23 @@ class SqliteWorkspaceGenerationPublicationTest {
         val firstCandidate = reconciled(tempDir.resolve("workspace"), "first")
         val first = publish(firstTransaction, firstCandidate)
         val prior = SqliteWorkspaceGenerationPublication(database).current()
-        val failingTransaction = SqliteCanonicalWorkspacePublicationTransaction(
-            database,
-            faultInjector = SqliteWorkspacePublicationFaultInjector { point ->
-                if (point == SqliteWorkspacePublicationFaultPoint.BEFORE_COMMIT) {
-                    error("injected commit failure")
-                }
-            },
-        )
+        val failingTransaction =
+            SqliteCanonicalWorkspacePublicationTransaction(
+                database,
+                faultInjector =
+                    SqliteWorkspacePublicationFaultInjector { point ->
+                        if (point == SqliteWorkspacePublicationFaultPoint.BEFORE_COMMIT) {
+                            error("injected commit failure")
+                        }
+                    },
+            )
         val open = (failingTransaction.begin() as WorkspacePublicationOpening.Opened).publication
-        val prepared = (
-            failingTransaction.prepare(
-                open,
-                reconciled(tempDir.resolve("workspace"), "next"),
-            ) as WorkspacePublicationPreparation.Prepared
-                       ).publication
+        val prepared =
+            (failingTransaction.prepare(
+                    open,
+                    reconciled(tempDir.resolve("workspace"), "next"),
+                ) as WorkspacePublicationPreparation.Prepared)
+                .publication
 
         assertEquals(
             WorkspacePublicationResult.Rejected(WorkspacePublicationFailure.StorageUnavailable),
@@ -165,41 +165,45 @@ class SqliteWorkspaceGenerationPublicationTest {
     private fun publish(
         authority: SqliteWorkspaceGenerationPublication,
         identity: WorkspaceStateIdentity,
-    ): PublishedWorkspaceGeneration = (
-        authority.commit(
-            authority.prepare(
-                authority.begin(),
-                identity,
-                WorkspaceGraphPublication.Ready,
-            ),
-        ) as GenerationPublication.Published
-    ).commit.publication
+    ): PublishedWorkspaceGeneration =
+        (authority.commit(
+                authority.prepare(
+                    authority.begin(),
+                    identity,
+                    WorkspaceGraphPublication.Ready,
+                )
+            ) as GenerationPublication.Published)
+            .commit
+            .publication
 
     private fun publish(
         transaction: SqliteCanonicalWorkspacePublicationTransaction,
         candidate: ReconciledWorkspace,
-    ) = (transaction.commit(
-        (
-            transaction.prepare(
-                (transaction.begin() as WorkspacePublicationOpening.Opened).publication,
-                candidate,
-            ) as WorkspacePublicationPreparation.Prepared
-        ).publication,
-    ) as WorkspacePublicationResult.Advanced).workspace
+    ) =
+        (transaction.commit(
+                (transaction.prepare(
+                        (transaction.begin() as WorkspacePublicationOpening.Opened).publication,
+                        candidate,
+                    ) as WorkspacePublicationPreparation.Prepared)
+                    .publication
+            ) as WorkspacePublicationResult.Advanced)
+            .workspace
 
     private fun reconciled(
         root: Path,
         identity: String,
     ): ReconciledWorkspace {
-        val canonicalRoot = when (val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(root)) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> error(admitted.failure)
-        }
+        val canonicalRoot =
+            when (val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(root)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> error(admitted.failure)
+            }
         return when (
-            val admitted = ReconciledWorkspace.admit(
-                WorkspaceCandidate(canonicalRoot, WorkspaceStateIdentity(identity)),
-                WorkspaceEvidenceKind.entries.toSet(),
-            )
+            val admitted =
+                ReconciledWorkspace.admit(
+                    WorkspaceCandidate(canonicalRoot, WorkspaceStateIdentity(identity)),
+                    WorkspaceEvidenceKind.entries.toSet(),
+                )
         ) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> error(admitted.failure.missing)

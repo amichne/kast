@@ -14,29 +14,30 @@ import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeAuthor
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangePlanHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalProtocolAuthority
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionOperations
+import kotlin.coroutines.startCoroutine
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
-import kotlin.coroutines.startCoroutine
 
 class CanonicalChangePlanTargetAdmissionTest {
     @Test
     fun `change plan rejects a manufactured exact target before semantic admission`() {
         var admissionInvoked = false
-        val handler = CanonicalChangePlanHandler(
-            ChangePlanningOperations(
-                PureAddFilePlanningService(),
-                PureAddDeclarationPlanningService(),
-                PureReplaceDeclarationPlanningService(),
-                PureRenameSymbolPlanningService(),
-            ),
-            ChangePlanAdmissionOperations {
-                admissionInvoked = true
-                error("manufactured targets must not reach semantic admission")
-            },
-            CanonicalProtocolAuthority(),
-            CanonicalChangeAuthority(),
-        )
+        val handler =
+            CanonicalChangePlanHandler(
+                ChangePlanningOperations(
+                    PureAddFilePlanningService(),
+                    PureAddDeclarationPlanningService(),
+                    PureReplaceDeclarationPlanningService(),
+                    PureRenameSymbolPlanningService(),
+                ),
+                ChangePlanAdmissionOperations {
+                    admissionInvoked = true
+                    error("manufactured targets must not reach semantic admission")
+                },
+                CanonicalProtocolAuthority(),
+                CanonicalChangeAuthority(),
+            )
 
         val outcome = runImmediateTargetAdmission {
             handler.execute(
@@ -44,8 +45,8 @@ class CanonicalChangePlanTargetAdmissionTest {
                     ChangeIntentDocument.AddDeclaration(
                         ProtocolText.parse("manufactured-target").refinedTargetAdmission(),
                         ProtocolText.parse("fun added() = Unit").refinedTargetAdmission(),
-                    ),
-                ),
+                    )
+                )
             )
         }
 
@@ -69,7 +70,7 @@ private fun <Value> runImmediateTargetAdmission(block: suspend () -> Value): Val
             override fun resumeWith(result: Result<Value>) {
                 completed = result
             }
-        },
+        }
     )
     return checkNotNull(completed) { "operation suspended unexpectedly" }.getOrThrow()
 }

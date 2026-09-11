@@ -8,16 +8,16 @@ import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointCanonicalRoot
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointLocation
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointSocketDirectory
 import io.github.amichne.kast.protocol.wire.metadata.IdeRuntimeEpoch
-import kotlinx.coroutines.test.runTest
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
 
 class OpenTelemetryFileForwardingTest {
     @Test
@@ -77,14 +77,12 @@ class OpenTelemetryFileForwardingTest {
     private fun output() = location().telemetryOutput(epoch(7))
 
     private fun location(): IdeEndpointLocation {
-        val root = refined(
-            IdeEndpointCanonicalRoot.parse("/workspace/otel-${UUID.randomUUID()}"),
-        )
+        val root = refined(IdeEndpointCanonicalRoot.parse("/workspace/otel-${UUID.randomUUID()}"))
         return refined(
             IdeEndpointLocation.locate(
                 refined(IdeEndpointSocketDirectory.parse("/tmp")),
                 root,
-            ),
+            )
         )
     }
 
@@ -95,8 +93,9 @@ class OpenTelemetryFileForwardingTest {
         Files.deleteIfExists(Path.of(output.directoryPath.value))
     }
 
-    private fun <Value, Failure> refined(value: Refinement<Value, Failure>): Value = when (value) {
-        is Refinement.Refined -> value.value
-        is Refinement.Rejected -> error("fixture rejected: ${value.failure}")
-    }
+    private fun <Value, Failure> refined(value: Refinement<Value, Failure>): Value =
+        when (value) {
+            is Refinement.Refined -> value.value
+            is Refinement.Rejected -> error("fixture rejected: ${value.failure}")
+        }
 }

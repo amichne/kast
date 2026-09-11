@@ -10,19 +10,26 @@ import org.junit.jupiter.api.Test
 
 internal sealed interface DetachedModelClassContractFailure {
     data class ResourceMissing(val resource: String) : DetachedModelClassContractFailure
+
     data class ClassRejected(val resource: String) : DetachedModelClassContractFailure
+
     data class ClassVersionMismatch(
         val resource: String,
         val expected: Int,
         val observed: Int,
     ) : DetachedModelClassContractFailure
+
     data class MissingClassReference(val className: String) : DetachedModelClassContractFailure
+
     data class MissingMember(val member: DetachedModelMemberReference) : DetachedModelClassContractFailure
+
     data class ForbiddenMember(val member: DetachedModelMemberReference) : DetachedModelClassContractFailure
+
     data class PublicModelMethodSetMismatch(
         val expected: List<String>,
         val observed: List<String>,
     ) : DetachedModelClassContractFailure
+
     data class ClassFingerprintMismatch(
         val resource: String,
         val expected: String,
@@ -53,16 +60,19 @@ internal object DetachedModelClassContract {
         val main = views.getValue(MAIN_RESOURCE)
         val allMembers = views.values.flatMapTo(linkedSetOf(), DetachedModelClassView::members)
         return buildList {
-            val publicModelMethods = DetachedIdeWorkspaceModel::class.java.declaredMethods
-                .filter { method -> Modifier.isPublic(method.modifiers) && !method.isSynthetic }
-                .map { method -> method.name.substringBefore('-') }
-                .sorted()
+            val publicModelMethods =
+                DetachedIdeWorkspaceModel::class
+                    .java
+                    .declaredMethods
+                    .filter { method -> Modifier.isPublic(method.modifiers) && !method.isSynthetic }
+                    .map { method -> method.name.substringBefore('-') }
+                    .sorted()
             if (publicModelMethods != EXPECTED_PUBLIC_MODEL_METHODS) {
                 add(
                     DetachedModelClassContractFailure.PublicModelMethodSetMismatch(
                         EXPECTED_PUBLIC_MODEL_METHODS,
                         publicModelMethods,
-                    ),
+                    )
                 )
             }
             views.forEach { (resource, view) ->
@@ -72,7 +82,7 @@ internal object DetachedModelClassContract {
                             resource,
                             JAVA_25_CLASS_VERSION,
                             view.majorVersion,
-                        ),
+                        )
                     )
                 }
                 val expected = EXPECTED_FINGERPRINTS.getValue(resource)
@@ -82,7 +92,7 @@ internal object DetachedModelClassContract {
                             resource,
                             expected,
                             view.fingerprint,
-                        ),
+                        )
                     )
                 }
             }
@@ -99,18 +109,14 @@ internal object DetachedModelClassContract {
     }
 
     private fun readClass(resource: String): ClassRead {
-        val bytes = javaClass.classLoader.getResourceAsStream(resource)?.use { stream ->
-            stream.readAllBytes()
-        } ?: return ClassRead.Missing
+        val bytes =
+            javaClass.classLoader.getResourceAsStream(resource)?.use { stream ->
+                stream.readAllBytes()
+            } ?: return ClassRead.Missing
         return try {
-            val parsed = DataInputStream(bytes.inputStream()).use(::parseClass)
-                ?: return ClassRead.Rejected
+            val parsed = DataInputStream(bytes.inputStream()).use(::parseClass) ?: return ClassRead.Rejected
             ClassRead.Admitted(
-                parsed.copy(
-                    fingerprint = HexFormat.of().formatHex(
-                        MessageDigest.getInstance("SHA-256").digest(bytes),
-                    ),
-                ),
+                parsed.copy(fingerprint = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)))
             )
         } catch (_: IOException) {
             ClassRead.Rejected
@@ -132,29 +138,41 @@ internal object DetachedModelClassContract {
         while (index < entries.size) {
             when (input.readUnsignedByte()) {
                 1 -> entries[index] = DetachedModelPoolEntry.Utf8(input.readUTF())
-                3, 4 -> input.skipNBytes(4).also { entries[index] = DetachedModelPoolEntry.Other }
-                5, 6 -> {
+                3,
+                4 -> input.skipNBytes(4).also { entries[index] = DetachedModelPoolEntry.Other }
+                5,
+                6 -> {
                     input.skipNBytes(8)
                     entries[index] = DetachedModelPoolEntry.Other
                     index += 1
                 }
                 7 -> entries[index] = DetachedModelPoolEntry.ClassName(input.readUnsignedShort())
-                8, 16, 19, 20 ->
-                    input.skipNBytes(2).also { entries[index] = DetachedModelPoolEntry.Other }
-                9 -> entries[index] = DetachedModelPoolEntry.Field(
-                    input.readUnsignedShort(),
-                    input.readUnsignedShort(),
-                )
-                10, 11 -> entries[index] = DetachedModelPoolEntry.Method(
-                    input.readUnsignedShort(),
-                    input.readUnsignedShort(),
-                )
-                12 -> entries[index] = DetachedModelPoolEntry.NameAndType(
-                    input.readUnsignedShort(),
-                    input.readUnsignedShort(),
-                )
+                8,
+                16,
+                19,
+                20 -> input.skipNBytes(2).also { entries[index] = DetachedModelPoolEntry.Other }
+                9 ->
+                    entries[index] =
+                        DetachedModelPoolEntry.Field(
+                            input.readUnsignedShort(),
+                            input.readUnsignedShort(),
+                        )
+                10,
+                11 ->
+                    entries[index] =
+                        DetachedModelPoolEntry.Method(
+                            input.readUnsignedShort(),
+                            input.readUnsignedShort(),
+                        )
+                12 ->
+                    entries[index] =
+                        DetachedModelPoolEntry.NameAndType(
+                            input.readUnsignedShort(),
+                            input.readUnsignedShort(),
+                        )
                 15 -> input.skipNBytes(3).also { entries[index] = DetachedModelPoolEntry.Other }
-                17, 18 -> input.skipNBytes(4).also { entries[index] = DetachedModelPoolEntry.Other }
+                17,
+                18 -> input.skipNBytes(4).also { entries[index] = DetachedModelPoolEntry.Other }
                 else -> return null
             }
             index += 1
@@ -165,12 +183,13 @@ internal object DetachedModelClassContract {
             val entry = entries[at] as DetachedModelPoolEntry.ClassName
             return utf8(entry.nameIndex)
         }
-        val classNames = entries.filterIsInstance<DetachedModelPoolEntry.ClassName>()
-            .mapTo(linkedSetOf()) { entry -> utf8(entry.nameIndex) }
-        val members = entries.filterIsInstance<DetachedModelPoolEntry.Method>()
-            .mapTo(linkedSetOf()) { method ->
-                val nameAndType = entries[method.nameAndTypeIndex]
-                    as DetachedModelPoolEntry.NameAndType
+        val classNames =
+            entries.filterIsInstance<DetachedModelPoolEntry.ClassName>().mapTo(linkedSetOf()) { entry ->
+                utf8(entry.nameIndex)
+            }
+        val members =
+            entries.filterIsInstance<DetachedModelPoolEntry.Method>().mapTo(linkedSetOf()) { method ->
+                val nameAndType = entries[method.nameAndTypeIndex] as DetachedModelPoolEntry.NameAndType
                 DetachedModelMemberReference(
                     className(method.ownerIndex),
                     utf8(nameAndType.nameIndex),
@@ -184,18 +203,15 @@ internal object DetachedModelClassContract {
         val name = member.name.lowercase()
         return when {
             member.owner == READ_ACTION && member.name in BLOCKING_READ_METHODS -> true
-            member.owner.endsWith("NonBlockingReadAction") &&
-                member.name == "executeSynchronously" -> true
+            member.owner.endsWith("NonBlockingReadAction") && member.name == "executeSynchronously" -> true
             member.owner == APPLICATION && member.name == "runReadAction" -> true
             member in WHOLE_CLASSPATH_MATERIALIZERS -> true
             member.owner.endsWith("DumbService") && member.name in SMART_WAIT_METHODS -> true
             member.owner.startsWith("com/intellij/openapi/externalSystem/") &&
                 DESTRUCTIVE_EXTERNAL_SYSTEM_VERBS.any(name::startsWith) -> true
             member in FORBIDDEN_SOURCE_ROOT_MATERIALIZERS -> true
-            member.owner.startsWith("com/intellij/openapi/vfs/") &&
-                FORBIDDEN_VFS_METHODS.any(name::contains) -> true
-            member.owner == "java/nio/file/Files" &&
-                FORBIDDEN_FILES_METHODS.any(name::startsWith) -> true
+            member.owner.startsWith("com/intellij/openapi/vfs/") && FORBIDDEN_VFS_METHODS.any(name::contains) -> true
+            member.owner == "java/nio/file/Files" && FORBIDDEN_FILES_METHODS.any(name::startsWith) -> true
             member.owner.startsWith("java/io/") && member.owner != "java/io/Serializable" -> true
             member.owner == "java/security/MessageDigest" -> true
             member.owner.startsWith("com/google/common/hash/") -> true
@@ -204,8 +220,7 @@ internal object DetachedModelClassContract {
             member.owner == "java/lang/Thread" && member.name == "sleep" -> true
             member.owner == "java/lang/Object" && member.name == "wait" -> true
             member.owner == "java/util/concurrent/Future" && member.name == "get" -> true
-            member.owner == "java/util/concurrent/CompletableFuture" &&
-                member.name in setOf("get", "join") -> true
+            member.owner == "java/util/concurrent/CompletableFuture" && member.name in setOf("get", "join") -> true
             name == "runblocking" -> true
             else -> false
         }
@@ -223,114 +238,218 @@ internal object DetachedModelClassContract {
     private const val CLASS_MAGIC = 0xCAFEBABE.toInt()
     private const val JAVA_25_CLASS_VERSION = 69
 
-    private val EXPECTED_FINGERPRINTS = linkedMapOf(
-        MAIN_RESOURCE to "73adcd39cb680dab10c9fb466e8fd77a0ab14d47a24ed72f7b05bcc75c99dbed",
-        MAPPINGS_RESOURCE to "3a5cc9841ee89c7a0b94f9a28c9266fcff93dd7feec88067494a33f5a90b567e",
-    )
+    private val EXPECTED_FINGERPRINTS =
+        linkedMapOf(
+            MAIN_RESOURCE to "e83474c35b8a6a5fcbb3d2ad2b57feb8b66d372952af75bab5b95fdabc02352f",
+            MAPPINGS_RESOURCE to "3a5cc9841ee89c7a0b94f9a28c9266fcff93dd7feec88067494a33f5a90b567e",
+        )
 
-    private val EXPECTED_PUBLIC_MODEL_METHODS = listOf(
-        "getCanonicalRoot",
-        "getCompatibility",
-        "getModules",
-    )
+    private val EXPECTED_PUBLIC_MODEL_METHODS =
+        listOf(
+            "getCanonicalRoot",
+            "getCompatibility",
+            "getModules",
+        )
 
-    private val REQUIRED_CLASS_REFERENCES = setOf(
-        "com/intellij/openapi/application/ReadAction\$CannotReadException",
-        "com/intellij/openapi/progress/ProcessCanceledException",
-    )
+    private val REQUIRED_CLASS_REFERENCES =
+        setOf(
+            "com/intellij/openapi/application/ReadAction\$CannotReadException",
+            "com/intellij/openapi/progress/ProcessCanceledException",
+        )
 
-    private val REQUIRED_MEMBERS = setOf(
-        member("com/intellij/openapi/application/ApplicationManager", "getApplication", "()Lcom/intellij/openapi/application/Application;"),
-        member(APPLICATION, "isDispatchThread", "()Z"),
-        member(READ_ACTION, "computeCancellable", "(Lcom/intellij/openapi/util/ThrowableComputable;)Ljava/lang/Object;"),
-        member("com/intellij/openapi/progress/ProgressManager", "checkCanceled", "()V"),
-        member("com/intellij/openapi/project/Project", "isDisposed", "()Z"),
-        member("com/intellij/openapi/project/Project", "isOpen", "()Z"),
-        member("com/intellij/openapi/project/Project", "isInitialized", "()Z"),
-        member("com/intellij/openapi/project/DumbService\$Companion", "isDumb", "($PROJECT)Z"),
-        member("com/intellij/openapi/project/Project", "getBasePath", "()Ljava/lang/String;"),
-        member("com/intellij/openapi/externalSystem/service/project/ProjectDataManager", "getInstance", "()Lcom/intellij/openapi/externalSystem/service/project/ProjectDataManager;"),
-        member("com/intellij/openapi/externalSystem/service/project/ProjectDataManager", "getExternalProjectsData", "($PROJECT" + "Lcom/intellij/openapi/externalSystem/model/ProjectSystemId;)Ljava/util/Collection;"),
-        member("com/intellij/openapi/externalSystem/model/ExternalProjectInfo", "getExternalProjectPath", "()Ljava/lang/String;"),
-        member("com/intellij/openapi/externalSystem/model/ExternalProjectInfo", "getExternalProjectStructure", "()Lcom/intellij/openapi/externalSystem/model/DataNode;"),
-        member("com/intellij/openapi/externalSystem/model/ExternalProjectInfo", "getLastSuccessfulImportTimestamp", "()J"),
-        member("com/intellij/openapi/externalSystem/model/ExternalProjectInfo", "getLastImportTimestamp", "()J"),
-        member("com/intellij/openapi/externalSystem/model/DataNode", "isReady", "()Z"),
-        member("com/intellij/openapi/module/ModuleManager\$Companion", "getInstance", "($PROJECT)Lcom/intellij/openapi/module/ModuleManager;"),
-        member("com/intellij/openapi/module/ModuleManager", "getModules", "()[Lcom/intellij/openapi/module/Module;"),
-        member("com/intellij/openapi/module/Module", "isDisposed", "()Z"),
-        member("com/intellij/openapi/module/Module", "getName", "()Ljava/lang/String;"),
-        member("com/intellij/openapi/roots/ModuleRootManager", "getInstance", "(Lcom/intellij/openapi/module/Module;)Lcom/intellij/openapi/roots/ModuleRootManager;"),
-        member("com/intellij/openapi/roots/ModuleRootManager", "getContentEntries", "()[Lcom/intellij/openapi/roots/ContentEntry;"),
-        member("com/intellij/openapi/roots/ContentEntry", "getSourceFolders", "()[Lcom/intellij/openapi/roots/SourceFolder;"),
-        member("com/intellij/openapi/roots/SourceFolder", "getUrl", "()Ljava/lang/String;"),
-        member("com/intellij/openapi/roots/SourceFolder", "getRootType", "()Lorg/jetbrains/jps/model/module/JpsModuleSourceRootType;"),
-        member("com/intellij/openapi/vfs/VirtualFileManager", "extractProtocol", "(Ljava/lang/String;)Ljava/lang/String;"),
-        member("com/intellij/openapi/vfs/VfsUtilCore", "urlToPath", "(Ljava/lang/String;)Ljava/lang/String;"),
-        member("com/intellij/openapi/roots/ModuleRootManager", "orderEntries", "()Lcom/intellij/openapi/roots/OrderEnumerator;"),
-        member("com/intellij/openapi/roots/OrderEnumerator", "forEach", "(Lcom/intellij/util/Processor;)V"),
-        member("com/intellij/openapi/roots/OrderEntry", "getFiles", "(Lcom/intellij/openapi/roots/OrderRootType;)[Lcom/intellij/openapi/vfs/VirtualFile;"),
-        member("com/intellij/openapi/vfs/VirtualFile", "getUrl", "()Ljava/lang/String;"),
-        member("com/intellij/openapi/externalSystem/util/ExternalSystemApiUtil", "isExternalSystemAwareModule", "(Ljava/lang/String;Lcom/intellij/openapi/module/Module;)Z"),
-        member("com/intellij/openapi/externalSystem/util/ExternalSystemApiUtil", "getExternalRootProjectPath", "(Lcom/intellij/openapi/module/Module;)Ljava/lang/String;"),
-        member("com/intellij/openapi/externalSystem/util/ExternalSystemApiUtil", "getExternalProjectPath", "(Lcom/intellij/openapi/module/Module;)Ljava/lang/String;"),
-        member("com/intellij/openapi/externalSystem/util/ExternalSystemApiUtil", "getExternalProjectId", "(Lcom/intellij/openapi/module/Module;)Ljava/lang/String;"),
-        member("com/intellij/openapi/roots/ModuleRootManager", "getSdk", "()Lcom/intellij/openapi/projectRoots/Sdk;"),
-        member("com/intellij/openapi/projectRoots/Sdk", "getName", "()Ljava/lang/String;"),
-        member("com/intellij/openapi/projectRoots/Sdk", "getSdkType", "()Lcom/intellij/openapi/projectRoots/SdkTypeId;"),
-        member("com/intellij/openapi/projectRoots/SdkTypeId", "getName", "()Ljava/lang/String;"),
-        member("com/intellij/openapi/projectRoots/Sdk", "getVersionString", "()Ljava/lang/String;"),
-    )
+    private val REQUIRED_MEMBERS =
+        setOf(
+            member(
+                "com/intellij/openapi/application/ApplicationManager",
+                "getApplication",
+                "()Lcom/intellij/openapi/application/Application;",
+            ),
+            member(APPLICATION, "isDispatchThread", "()Z"),
+            member(
+                READ_ACTION,
+                "computeCancellable",
+                "(Lcom/intellij/openapi/util/ThrowableComputable;)Ljava/lang/Object;",
+            ),
+            member("com/intellij/openapi/progress/ProgressManager", "checkCanceled", "()V"),
+            member("com/intellij/openapi/project/Project", "isDisposed", "()Z"),
+            member("com/intellij/openapi/project/Project", "isOpen", "()Z"),
+            member("com/intellij/openapi/project/Project", "isInitialized", "()Z"),
+            member("com/intellij/openapi/project/DumbService\$Companion", "isDumb", "($PROJECT)Z"),
+            member("com/intellij/openapi/project/Project", "getBasePath", "()Ljava/lang/String;"),
+            member(
+                "com/intellij/openapi/externalSystem/service/project/ProjectDataManager",
+                "getInstance",
+                "()Lcom/intellij/openapi/externalSystem/service/project/ProjectDataManager;",
+            ),
+            member(
+                "com/intellij/openapi/externalSystem/service/project/ProjectDataManager",
+                "getExternalProjectsData",
+                "($PROJECT" + "Lcom/intellij/openapi/externalSystem/model/ProjectSystemId;)Ljava/util/Collection;",
+            ),
+            member(
+                "com/intellij/openapi/externalSystem/model/ExternalProjectInfo",
+                "getExternalProjectPath",
+                "()Ljava/lang/String;",
+            ),
+            member(
+                "com/intellij/openapi/externalSystem/model/ExternalProjectInfo",
+                "getExternalProjectStructure",
+                "()Lcom/intellij/openapi/externalSystem/model/DataNode;",
+            ),
+            member(
+                "com/intellij/openapi/externalSystem/model/ExternalProjectInfo",
+                "getLastSuccessfulImportTimestamp",
+                "()J",
+            ),
+            member("com/intellij/openapi/externalSystem/model/ExternalProjectInfo", "getLastImportTimestamp", "()J"),
+            member("com/intellij/openapi/externalSystem/model/DataNode", "isReady", "()Z"),
+            member(
+                "com/intellij/openapi/module/ModuleManager\$Companion",
+                "getInstance",
+                "($PROJECT)Lcom/intellij/openapi/module/ModuleManager;",
+            ),
+            member(
+                "com/intellij/openapi/module/ModuleManager",
+                "getModules",
+                "()[Lcom/intellij/openapi/module/Module;",
+            ),
+            member("com/intellij/openapi/module/Module", "isDisposed", "()Z"),
+            member("com/intellij/openapi/module/Module", "getName", "()Ljava/lang/String;"),
+            member(
+                "com/intellij/openapi/roots/ModuleRootManager",
+                "getInstance",
+                "(Lcom/intellij/openapi/module/Module;)Lcom/intellij/openapi/roots/ModuleRootManager;",
+            ),
+            member(
+                "com/intellij/openapi/roots/ModuleRootManager",
+                "getContentEntries",
+                "()[Lcom/intellij/openapi/roots/ContentEntry;",
+            ),
+            member(
+                "com/intellij/openapi/roots/ContentEntry",
+                "getSourceFolders",
+                "()[Lcom/intellij/openapi/roots/SourceFolder;",
+            ),
+            member("com/intellij/openapi/roots/SourceFolder", "getUrl", "()Ljava/lang/String;"),
+            member(
+                "com/intellij/openapi/roots/SourceFolder",
+                "getRootType",
+                "()Lorg/jetbrains/jps/model/module/JpsModuleSourceRootType;",
+            ),
+            member(
+                "com/intellij/openapi/vfs/VirtualFileManager",
+                "extractProtocol",
+                "(Ljava/lang/String;)Ljava/lang/String;",
+            ),
+            member("com/intellij/openapi/vfs/VfsUtilCore", "urlToPath", "(Ljava/lang/String;)Ljava/lang/String;"),
+            member(
+                "com/intellij/openapi/roots/ModuleRootManager",
+                "orderEntries",
+                "()Lcom/intellij/openapi/roots/OrderEnumerator;",
+            ),
+            member("com/intellij/openapi/roots/OrderEnumerator", "forEach", "(Lcom/intellij/util/Processor;)V"),
+            member(
+                "com/intellij/openapi/roots/OrderEntry",
+                "getFiles",
+                "(Lcom/intellij/openapi/roots/OrderRootType;)[Lcom/intellij/openapi/vfs/VirtualFile;",
+            ),
+            member("com/intellij/openapi/vfs/VirtualFile", "getUrl", "()Ljava/lang/String;"),
+            member(
+                "com/intellij/openapi/externalSystem/util/ExternalSystemApiUtil",
+                "isExternalSystemAwareModule",
+                "(Ljava/lang/String;Lcom/intellij/openapi/module/Module;)Z",
+            ),
+            member(
+                "com/intellij/openapi/externalSystem/util/ExternalSystemApiUtil",
+                "getExternalRootProjectPath",
+                "(Lcom/intellij/openapi/module/Module;)Ljava/lang/String;",
+            ),
+            member(
+                "com/intellij/openapi/externalSystem/util/ExternalSystemApiUtil",
+                "getExternalProjectPath",
+                "(Lcom/intellij/openapi/module/Module;)Ljava/lang/String;",
+            ),
+            member(
+                "com/intellij/openapi/externalSystem/util/ExternalSystemApiUtil",
+                "getExternalProjectId",
+                "(Lcom/intellij/openapi/module/Module;)Ljava/lang/String;",
+            ),
+            member(
+                "com/intellij/openapi/roots/ModuleRootManager",
+                "getSdk",
+                "()Lcom/intellij/openapi/projectRoots/Sdk;",
+            ),
+            member("com/intellij/openapi/projectRoots/Sdk", "getName", "()Ljava/lang/String;"),
+            member(
+                "com/intellij/openapi/projectRoots/Sdk",
+                "getSdkType",
+                "()Lcom/intellij/openapi/projectRoots/SdkTypeId;",
+            ),
+            member("com/intellij/openapi/projectRoots/SdkTypeId", "getName", "()Ljava/lang/String;"),
+            member("com/intellij/openapi/projectRoots/Sdk", "getVersionString", "()Ljava/lang/String;"),
+        )
 
     private val BLOCKING_READ_METHODS = setOf("compute", "computeBlocking", "run")
     // IDEA 262 has no root-level processor. The pinned adapter must use the stoppable order-entry
     // processor and only the one per-entry root array needed to observe up to root 513.
-    private val WHOLE_CLASSPATH_MATERIALIZERS = setOf(
-        member(
-            "com/intellij/openapi/roots/OrderEnumerator",
-            "classes",
-            "()Lcom/intellij/openapi/roots/OrderRootsEnumerator;",
-        ),
-        member(
-            "com/intellij/openapi/roots/OrderRootsEnumerator",
-            "getUrls",
-            "()[Ljava/lang/String;",
-        ),
-        member(
-            "com/intellij/openapi/roots/OrderRootsEnumerator",
-            "getRoots",
-            "()[Lcom/intellij/openapi/vfs/VirtualFile;",
-        ),
-        member(
-            "com/intellij/openapi/roots/OrderRootsEnumerator",
-            "getRootEntries",
-            "()Ljava/util/Collection;",
-        ),
-    )
-    private val SMART_WAIT_METHODS = setOf(
-        "waitForSmartMode",
-        "runWhenSmart",
-        "smartInvokeLater",
-        "runReadActionInSmartMode",
-        "runReadActionInSmartModeWithWriteActionPriority",
-    )
+    private val WHOLE_CLASSPATH_MATERIALIZERS =
+        setOf(
+            member(
+                "com/intellij/openapi/roots/OrderEnumerator",
+                "classes",
+                "()Lcom/intellij/openapi/roots/OrderRootsEnumerator;",
+            ),
+            member(
+                "com/intellij/openapi/roots/OrderRootsEnumerator",
+                "getUrls",
+                "()[Ljava/lang/String;",
+            ),
+            member(
+                "com/intellij/openapi/roots/OrderRootsEnumerator",
+                "getRoots",
+                "()[Lcom/intellij/openapi/vfs/VirtualFile;",
+            ),
+            member(
+                "com/intellij/openapi/roots/OrderRootsEnumerator",
+                "getRootEntries",
+                "()Ljava/util/Collection;",
+            ),
+        )
+    private val SMART_WAIT_METHODS =
+        setOf(
+            "waitForSmartMode",
+            "runWhenSmart",
+            "smartInvokeLater",
+            "runReadActionInSmartMode",
+            "runReadActionInSmartModeWithWriteActionPriority",
+        )
     private val DESTRUCTIVE_EXTERNAL_SYSTEM_VERBS = setOf("refresh", "link", "unlink", "import", "prepare", "repair")
-    private val FORBIDDEN_SOURCE_ROOT_MATERIALIZERS = setOf(
-        member(
-            "com/intellij/openapi/roots/SourceFolder",
-            "getFile",
-            "()Lcom/intellij/openapi/vfs/VirtualFile;",
-        ),
-    )
-    private val FORBIDDEN_VFS_METHODS = setOf("refresh", "contentsToByteArray", "inputStream", "binaryContent", "iterateChildrenRecursively", "visitChildrenRecursively")
-        .map(String::lowercase)
-    private val FORBIDDEN_FILES_METHODS = setOf("walk", "find", "read", "lines", "newInputStream", "newByteChannel")
-        .map(String::lowercase)
-    private val MEMBER_ORDER = compareBy<DetachedModelMemberReference>(
-        DetachedModelMemberReference::owner,
-        DetachedModelMemberReference::name,
-        DetachedModelMemberReference::descriptor,
-    )
+    private val FORBIDDEN_SOURCE_ROOT_MATERIALIZERS =
+        setOf(
+            member(
+                "com/intellij/openapi/roots/SourceFolder",
+                "getFile",
+                "()Lcom/intellij/openapi/vfs/VirtualFile;",
+            )
+        )
+    private val FORBIDDEN_VFS_METHODS =
+        setOf(
+                "refresh",
+                "contentsToByteArray",
+                "inputStream",
+                "binaryContent",
+                "iterateChildrenRecursively",
+                "visitChildrenRecursively",
+            )
+            .map(String::lowercase)
+    private val FORBIDDEN_FILES_METHODS =
+        setOf("walk", "find", "read", "lines", "newInputStream", "newByteChannel").map(String::lowercase)
+    private val MEMBER_ORDER =
+        compareBy<DetachedModelMemberReference>(
+            DetachedModelMemberReference::owner,
+            DetachedModelMemberReference::name,
+            DetachedModelMemberReference::descriptor,
+        )
 }
 
 internal class DetachedModelClassContractTest {
@@ -345,7 +464,9 @@ internal class DetachedModelClassContractTest {
 
 private sealed interface ClassRead {
     data class Admitted(val view: DetachedModelClassView) : ClassRead
+
     data object Missing : ClassRead
+
     data object Rejected : ClassRead
 }
 
@@ -358,9 +479,14 @@ private data class DetachedModelClassView(
 
 private sealed interface DetachedModelPoolEntry {
     data class Utf8(val value: String) : DetachedModelPoolEntry
+
     data class ClassName(val nameIndex: Int) : DetachedModelPoolEntry
+
     data class NameAndType(val nameIndex: Int, val descriptorIndex: Int) : DetachedModelPoolEntry
+
     data class Field(val ownerIndex: Int, val nameAndTypeIndex: Int) : DetachedModelPoolEntry
+
     data class Method(val ownerIndex: Int, val nameAndTypeIndex: Int) : DetachedModelPoolEntry
+
     data object Other : DetachedModelPoolEntry
 }

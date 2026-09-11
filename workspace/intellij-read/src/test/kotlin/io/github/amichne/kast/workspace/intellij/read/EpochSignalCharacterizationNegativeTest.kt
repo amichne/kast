@@ -32,7 +32,7 @@ class EpochSignalCharacterizationNegativeTest {
                     rejectedConstantZeroAuthorities =
                         document.rejectedConstantZeroAuthorities.filterIndexed { at, _ ->
                             at != index
-                        },
+                        }
                 ),
                 EpochLedgerFailure.CONSTANT_ZERO_AUTHORITY_NOT_REJECTED,
             )
@@ -49,48 +49,66 @@ class EpochSignalCharacterizationNegativeTest {
             )
         }
         assertRejected(
-            document.copy(cases = document.cases.update(EpochCaseId.PSI_MOVEMENT) {
-                copy(sampleCount = 1)
-            }),
+            document.copy(
+                cases =
+                    document.cases.update(EpochCaseId.PSI_MOVEMENT) {
+                        copy(sampleCount = 1)
+                    }
+            ),
             EpochLedgerFailure.CASE_SET_MISMATCH,
         )
         assertRejected(
-            document.copy(cases = document.cases.update(EpochCaseId.VFS_EVENT_STORM) {
-                copy(vfsEventCount = 999)
-            }),
+            document.copy(
+                cases =
+                    document.cases.update(EpochCaseId.VFS_EVENT_STORM) {
+                        copy(vfsEventCount = 999)
+                    }
+            ),
             EpochLedgerFailure.CASE_SET_MISMATCH,
         )
         assertRejected(
-            document.copy(cases = document.cases.update(EpochCaseId.SMART_DUMB_SMART) {
-                copy(dumbModeTransitions = emptyList())
-            }),
+            document.copy(
+                cases =
+                    document.cases.update(EpochCaseId.SMART_DUMB_SMART) {
+                        copy(dumbModeTransitions = emptyList())
+                    }
+            ),
             EpochLedgerFailure.CASE_SET_MISMATCH,
         )
         assertRejected(
-            document.copy(cases = document.cases.update(EpochCaseId.GRADLE_ROOT_MOVEMENT) {
-                copy(projectModelTransitions = emptyList())
-            }),
+            document.copy(
+                cases =
+                    document.cases.update(EpochCaseId.GRADLE_ROOT_MOVEMENT) {
+                        copy(projectModelTransitions = emptyList())
+                    }
+            ),
             EpochLedgerFailure.CASE_SET_MISMATCH,
         )
         assertRejected(
-            document.copy(cases = document.cases.update(EpochCaseId.GRADLE_IMPORT_COMPLETED) {
-                copy(
-                    projectModelTransitions =
-                        listOf(EpochProjectModelTransition.GRADLE_IMPORT_STARTED),
-                )
-            }),
+            document.copy(
+                cases =
+                    document.cases.update(EpochCaseId.GRADLE_IMPORT_COMPLETED) {
+                        copy(projectModelTransitions = listOf(EpochProjectModelTransition.GRADLE_IMPORT_STARTED))
+                    }
+            ),
             EpochLedgerFailure.CASE_SET_MISMATCH,
         )
         assertRejected(
-            document.copy(cases = document.cases.update(EpochCaseId.COMBINED_MOVEMENT) {
-                copy(movedSignals = listOf(EpochSignalCategory.VFS))
-            }),
+            document.copy(
+                cases =
+                    document.cases.update(EpochCaseId.COMBINED_MOVEMENT) {
+                        copy(movedSignals = listOf(EpochSignalCategory.VFS))
+                    }
+            ),
             EpochLedgerFailure.CASE_SET_MISMATCH,
         )
         assertRejected(
-            document.copy(cases = document.cases.update(EpochCaseId.STABLE) {
-                copy(observedRelation = EpochSampleRelation.CHANGED)
-            }),
+            document.copy(
+                cases =
+                    document.cases.update(EpochCaseId.STABLE) {
+                        copy(observedRelation = EpochSampleRelation.CHANGED)
+                    }
+            ),
             EpochLedgerFailure.CASE_SET_MISMATCH,
         )
     }
@@ -99,16 +117,17 @@ class EpochSignalCharacterizationNegativeTest {
     fun `every forbidden-work counter fails closed`() {
         val document = EpochSignalLedgerContract.document
         listOf(
-            document.copy(vfsRefreshCount = 1),
-            document.copy(gradleImportCount = 1),
-            document.copy(repositoryWalkCount = 1),
-            document.copy(sourceHashCount = 1),
-            document.copy(semanticJobCount = 1),
-            document.copy(edtWorkCount = 1),
-            document.copy(blockingWaitCount = 1),
-        ).forEach { mutated ->
-            assertRejected(mutated, EpochLedgerFailure.FORBIDDEN_EFFECT_OBSERVED)
-        }
+                document.copy(vfsRefreshCount = 1),
+                document.copy(gradleImportCount = 1),
+                document.copy(repositoryWalkCount = 1),
+                document.copy(sourceHashCount = 1),
+                document.copy(semanticJobCount = 1),
+                document.copy(edtWorkCount = 1),
+                document.copy(blockingWaitCount = 1),
+            )
+            .forEach { mutated ->
+                assertRejected(mutated, EpochLedgerFailure.FORBIDDEN_EFFECT_OBSERVED)
+            }
     }
 
     @Test
@@ -120,7 +139,7 @@ class EpochSignalCharacterizationNegativeTest {
         assertEquals(
             EpochLedgerAdmission.Rejected(EpochLedgerFailure.MALFORMED_DOCUMENT),
             EpochSignalLedgerContract.admit(
-                EpochSignalLedgerContract.canonicalBytes.replaceFirst("{", "{\"unknown\":true,"),
+                EpochSignalLedgerContract.canonicalBytes.replaceFirst("{", "{\"unknown\":true,")
             ),
         )
         assertEquals(

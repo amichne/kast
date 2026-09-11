@@ -35,27 +35,29 @@ tasks.named<Test>("test") {
     }
 }
 
-val nativeTest by tasks.registering(Test::class) {
-    description = "Runs native UDS CLI boundary tests."
-    group = "verification"
-    testClassesDirs = sourceSets.test.get().output.classesDirs
-    classpath = sourceSets.test.get().runtimeClasspath
-    useJUnitPlatform {
-        includeTags("native")
+val nativeTest by
+    tasks.registering(Test::class) {
+        description = "Runs native UDS CLI boundary tests."
+        group = "verification"
+        testClassesDirs = sourceSets.test.get().output.classesDirs
+        classpath = sourceSets.test.get().runtimeClasspath
+        useJUnitPlatform {
+            includeTags("native")
+        }
     }
-}
 
 tasks.named("check") {
     dependsOn(nativeTest)
 }
 
-val codexIntegrationStartScripts by tasks.registering(CreateStartScripts::class) {
-    applicationName = "kast-codex"
-    mainClass = "io.github.amichne.kast.cli.KastCodexMain"
-    outputDir = layout.buildDirectory.dir("codex-integration-scripts").get().asFile
-    classpath = tasks.named<CreateStartScripts>("startScripts").get().classpath
-    dependsOn(tasks.named("jar"))
-}
+val codexIntegrationStartScripts by
+    tasks.registering(CreateStartScripts::class) {
+        applicationName = "kast-codex"
+        mainClass = "io.github.amichne.kast.cli.KastCodexMain"
+        outputDir = layout.buildDirectory.dir("codex-integration-scripts").get().asFile
+        classpath = tasks.named<CreateStartScripts>("startScripts").get().classpath
+        dependsOn(tasks.named("jar"))
+    }
 
 distributions.main {
     contents {
@@ -77,49 +79,45 @@ tasks.register<support.tasks.WriteJavaProcessOutputTask>("generateConfigurationC
     outputFile.set(layout.buildDirectory.file("generated/configuration/configuration-schema.json"))
 }
 
-val projectedMintlifyCallableReference = layout.buildDirectory.file(
-    "generated/documentation/callables.openapi.json",
-)
-val publishedMintlifyCallableReference = rootProject.layout.projectDirectory.file(
-    "docs/public/reference/callables.openapi.json",
-)
+val projectedMintlifyCallableReference = layout.buildDirectory.file("generated/documentation/callables.openapi.json")
+val publishedMintlifyCallableReference =
+    rootProject.layout.projectDirectory.file("docs/public/reference/callables.openapi.json")
 
-val projectMintlifyCallableReference by tasks.registering(
-    support.tasks.WriteJavaProcessOutputTask::class,
-) {
-    group = "documentation"
-    description = "Projects the Mintlify reference for every public installed callable."
-    dependsOn(tasks.named("classes"))
-    classpath.from(sourceSets.main.get().runtimeClasspath)
-    mainClass.set("io.github.amichne.kast.cli.MintlifyCallableReference")
-    outputFile.set(projectedMintlifyCallableReference)
-}
+val projectMintlifyCallableReference by
+    tasks.registering(support.tasks.WriteJavaProcessOutputTask::class) {
+        group = "documentation"
+        description = "Projects the Mintlify reference for every public installed callable."
+        dependsOn(tasks.named("classes"))
+        classpath.from(sourceSets.main.get().runtimeClasspath)
+        mainClass.set("io.github.amichne.kast.cli.MintlifyCallableReference")
+        outputFile.set(projectedMintlifyCallableReference)
+    }
 
-val generateMintlifyCallableReference by tasks.registering(
-    support.tasks.WriteJavaProcessOutputTask::class,
-) {
-    group = "documentation"
-    description = "Updates the checked-in Mintlify callable reference."
-    dependsOn(tasks.named("classes"))
-    classpath.from(sourceSets.main.get().runtimeClasspath)
-    mainClass.set("io.github.amichne.kast.cli.MintlifyCallableReference")
-    outputFile.set(publishedMintlifyCallableReference)
-}
+val generateMintlifyCallableReference by
+    tasks.registering(support.tasks.WriteJavaProcessOutputTask::class) {
+        group = "documentation"
+        description = "Updates the checked-in Mintlify callable reference."
+        dependsOn(tasks.named("classes"))
+        classpath.from(sourceSets.main.get().runtimeClasspath)
+        mainClass.set("io.github.amichne.kast.cli.MintlifyCallableReference")
+        outputFile.set(publishedMintlifyCallableReference)
+    }
 
-val verifyMintlifyCallableReference by tasks.registering(Exec::class) {
-    group = "verification"
-    description = "Rejects drift in the checked-in Mintlify callable reference; regenerate on failure."
-    dependsOn(projectMintlifyCallableReference)
-    mustRunAfter(generateMintlifyCallableReference)
-    inputs.file(projectedMintlifyCallableReference)
-    inputs.file(publishedMintlifyCallableReference)
-    commandLine(
-        "cmp",
-        "-s",
-        projectedMintlifyCallableReference.get().asFile.absolutePath,
-        publishedMintlifyCallableReference.asFile.absolutePath,
-    )
-}
+val verifyMintlifyCallableReference by
+    tasks.registering(Exec::class) {
+        group = "verification"
+        description = "Rejects drift in the checked-in Mintlify callable reference; regenerate on failure."
+        dependsOn(projectMintlifyCallableReference)
+        mustRunAfter(generateMintlifyCallableReference)
+        inputs.file(projectedMintlifyCallableReference)
+        inputs.file(publishedMintlifyCallableReference)
+        commandLine(
+            "cmp",
+            "-s",
+            projectedMintlifyCallableReference.get().asFile.absolutePath,
+            publishedMintlifyCallableReference.asFile.absolutePath,
+        )
+    }
 
 tasks.named("check") {
     dependsOn(verifyMintlifyCallableReference)

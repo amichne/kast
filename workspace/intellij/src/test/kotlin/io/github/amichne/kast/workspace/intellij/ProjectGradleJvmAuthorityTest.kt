@@ -1,10 +1,10 @@
 package io.github.amichne.kast.workspace.intellij
 
+import java.nio.file.Files
+import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
 
 class ProjectGradleJvmAuthorityTest {
     @Test
@@ -41,7 +41,10 @@ class ProjectGradleJvmAuthorityTest {
         Files.createSymbolicLink(root.resolve("gradle.properties"), outside)
         val rejection = projectGradleJvmAuthority(root) as ProjectGradleJvmAuthority.InputRejected
         val input = rejection.failure as InstalledGradleModelCaptureFailure.ModelInputRejected
-        assertEquals(io.github.amichne.kast.distribution.contract.bootstrap.ModelInputFailureReason.OUTSIDE_WORKSPACE, input.failure.reason)
+        assertEquals(
+            io.github.amichne.kast.distribution.contract.bootstrap.ModelInputFailureReason.OUTSIDE_WORKSPACE,
+            input.failure.reason,
+        )
         assertEquals("gradle.properties", input.failure.path.value)
     }
 

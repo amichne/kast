@@ -14,13 +14,11 @@ import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 enum class QueryByteLimitFailure {
-    NOT_POSITIVE,
+    NOT_POSITIVE
 }
 
 @JvmInline
-value class QueryByteLimit private constructor(
-    val value: Long,
-) {
+value class QueryByteLimit private constructor(val value: Long) {
     companion object {
         fun parse(raw: Long): Refinement<QueryByteLimit, QueryByteLimitFailure> =
             if (raw > 0L) {
@@ -38,10 +36,11 @@ data class QueryBudget(
 )
 
 enum class QueryExecutionRequestFailure {
-    REFERENCE_LEASE_MISMATCH,
+    REFERENCE_LEASE_MISMATCH
 }
 
-class QueryExecutionRequest private constructor(
+class QueryExecutionRequest
+private constructor(
     val plan: AdmittedQueryPlan,
     val lease: SemanticReadAuthority,
     val budget: QueryBudget,
@@ -52,13 +51,13 @@ class QueryExecutionRequest private constructor(
             lease: SemanticReadAuthority,
             budget: QueryBudget,
         ): Refinement<QueryExecutionRequest, QueryExecutionRequestFailure> {
-            val referenceLeases = when (plan) {
-                is AdmittedQueryPlan.CandidateReferences -> plan.source.values.map { it.lease }
-                is AdmittedQueryPlan.ExactReferences -> plan.source.values.map { it.lease }
-                is AdmittedQueryPlan.Candidates,
-                is AdmittedQueryPlan.Symbols,
-                    -> emptyList()
-            }
+            val referenceLeases =
+                when (plan) {
+                    is AdmittedQueryPlan.CandidateReferences -> plan.source.values.map { it.lease }
+                    is AdmittedQueryPlan.ExactReferences -> plan.source.values.map { it.lease }
+                    is AdmittedQueryPlan.Candidates,
+                    is AdmittedQueryPlan.Symbols -> emptyList()
+                }
             return if (referenceLeases.any { it != lease }) {
                 Refinement.Rejected(QueryExecutionRequestFailure.REFERENCE_LEASE_MISMATCH)
             } else {
@@ -68,9 +67,7 @@ class QueryExecutionRequest private constructor(
     }
 }
 
-data class QueryCandidate(
-    val selection: SymbolDiscoverySelection,
-)
+data class QueryCandidate(val selection: SymbolDiscoverySelection)
 
 /** Exact symbol plus every retained relation edge that established its presence. */
 data class QuerySymbol(
@@ -83,6 +80,7 @@ data class QuerySymbol(
 
 sealed interface QueryResultSet {
     data class Candidates(val values: List<QueryCandidate>) : QueryResultSet
+
     data class Symbols(val values: List<QuerySymbol>) : QueryResultSet
 }
 
@@ -102,9 +100,7 @@ sealed interface QueryItemFailure {
         val reason: SymbolExactRejection,
     ) : QueryItemFailure
 
-    data class PredicateUnproven(
-        val selector: SymbolSelector,
-    ) : QueryItemFailure
+    data class PredicateUnproven(val selector: SymbolSelector) : QueryItemFailure
 
     data class Relation(
         val selector: SymbolSelector,
@@ -119,13 +115,11 @@ data class QueryResult(
 )
 
 enum class QueryCountFailure {
-    NEGATIVE,
+    NEGATIVE
 }
 
 @JvmInline
-value class QueryCount private constructor(
-    val value: Int,
-) {
+value class QueryCount private constructor(val value: Int) {
     companion object {
         fun parse(raw: Int): Refinement<QueryCount, QueryCountFailure> =
             if (raw < 0) {
@@ -150,7 +144,8 @@ enum class QueryLimitation {
 sealed interface QueryCoverage {
     data class Complete(val resultCount: QueryCount) : QueryCoverage
 
-    class Qualified private constructor(
+    class Qualified
+    private constructor(
         val knownMinimum: QueryCount,
         val limitations: List<QueryLimitation>,
     ) : QueryCoverage {
@@ -162,16 +157,12 @@ sealed interface QueryCoverage {
                 if (limitations.isEmpty()) {
                     Refinement.Rejected(QueryCollectionFailure.EMPTY)
                 } else {
-                    Refinement.Refined(
-                        Qualified(knownMinimum, limitations.sortedBy { it.ordinal }),
-                    )
+                    Refinement.Refined(Qualified(knownMinimum, limitations.sortedBy { it.ordinal }))
                 }
         }
 
         override fun equals(other: Any?): Boolean =
-            other is Qualified &&
-                knownMinimum == other.knownMinimum &&
-                limitations == other.limitations
+            other is Qualified && knownMinimum == other.knownMinimum && limitations == other.limitations
 
         override fun hashCode(): Int = 31 * knownMinimum.hashCode() + limitations.hashCode()
     }

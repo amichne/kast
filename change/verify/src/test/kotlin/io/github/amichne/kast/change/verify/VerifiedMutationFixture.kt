@@ -49,16 +49,16 @@ import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.RelationProvenance
+import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
-import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
 import io.github.amichne.kast.relation.contract.RelationResultCount
 import io.github.amichne.kast.relation.contract.RelationWorkCount
-import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
-import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
@@ -67,7 +67,6 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
-import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
@@ -76,6 +75,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
+import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSelector
@@ -121,59 +121,71 @@ internal class VerifiedMutationFixture {
         applied: AppliedUnverified,
     ): VerifiedMutationRequest = VerifiedMutationRequest(plan, applied)
 
-    fun applyRequest(plan: ChangePlan = this.plan): AddDeclarationApplyRequest = AddDeclarationApplyRequest(
-        plan,
-        workspace,
-        RequestedMutationWriteScope(
-            workspace.root,
-            plan.writes.entries.mapTo(linkedSetOf()) { it.source },
-        ),
-    )
+    fun applyRequest(plan: ChangePlan = this.plan): AddDeclarationApplyRequest =
+        AddDeclarationApplyRequest(
+            plan,
+            workspace,
+            RequestedMutationWriteScope(
+                workspace.root,
+                plan.writes.entries.mapTo(linkedSetOf()) { it.source },
+            ),
+        )
 
-    fun observedSource(plan: ChangePlan = this.plan): ObservedMutationSource = ObservedMutationSource.capture(
-        plan.writes.entries.single().source,
-        sourceText.toByteArray(),
-        SourceWriteAccess.Writable,
-    ).refined()
+    fun observedSource(plan: ChangePlan = this.plan): ObservedMutationSource =
+        ObservedMutationSource.capture(
+                plan.writes.entries.single().source,
+                sourceText.toByteArray(),
+                SourceWriteAccess.Writable,
+            )
+            .refined()
 
-    fun completeEvidence(): AddDeclarationVerificationEvidence = AddDeclarationVerificationEvidence(
-        source = applied.source,
-        content = applied.postimage,
-        relations = listOf(completeResultingRelation()),
-        diagnostics = listOf(completeResultingDiagnostics()),
-        observedDelta = observedDelta("sample", "added", AddDeclarationKind.FUNCTION),
-    )
+    fun completeEvidence(): AddDeclarationVerificationEvidence =
+        AddDeclarationVerificationEvidence(
+            source = applied.source,
+            content = applied.postimage,
+            relations = listOf(completeResultingRelation()),
+            diagnostics = listOf(completeResultingDiagnostics()),
+            observedDelta = observedDelta("sample", "added", AddDeclarationKind.FUNCTION),
+        )
 
     fun renamePlan(): RenameSymbolChangePlan {
         val request = planRequest()
         val start = sourceText.indexOf("service")
-        val occurrence = RenameSymbolOccurrence.admit(
-            request.target.file,
-            ExactDeclarationTextRange.parse(start, start + "service".length).refined(),
-            KotlinIdentifier.parse("service").refined(),
-            RenameSymbolOccurrenceRole.DECLARATION,
-        ).refined()
+        val occurrence =
+            RenameSymbolOccurrence.admit(
+                    request.target.file,
+                    ExactDeclarationTextRange.parse(start, start + "service".length).refined(),
+                    KotlinIdentifier.parse("service").refined(),
+                    RenameSymbolOccurrenceRole.DECLARATION,
+                )
+                .refined()
         val referenceStart = sourceText.lastIndexOf("service")
-        val reference = RenameSymbolOccurrence.admit(
-            request.target.file,
-            ExactDeclarationTextRange.parse(
-                referenceStart,
-                referenceStart + "service".length,
-            ).refined(),
-            KotlinIdentifier.parse("service").refined(),
-            RenameSymbolOccurrenceRole.REFERENCE,
-        ).refined()
-        val result = PureRenameSymbolPlanningService().plan(
-            RenameSymbolPlanRequest(
-                request.target,
-                KotlinIdentifier.parse("renamedService").refined(),
-                RenameSymbolOccurrenceSet.admit(
-                    request.target,
-                    listOf(occurrence, reference),
-                ).refined(),
-                request.evidence,
-            ),
-        )
+        val reference =
+            RenameSymbolOccurrence.admit(
+                    request.target.file,
+                    ExactDeclarationTextRange.parse(
+                            referenceStart,
+                            referenceStart + "service".length,
+                        )
+                        .refined(),
+                    KotlinIdentifier.parse("service").refined(),
+                    RenameSymbolOccurrenceRole.REFERENCE,
+                )
+                .refined()
+        val result =
+            PureRenameSymbolPlanningService()
+                .plan(
+                    RenameSymbolPlanRequest(
+                        request.target,
+                        KotlinIdentifier.parse("renamedService").refined(),
+                        RenameSymbolOccurrenceSet.admit(
+                                request.target,
+                                listOf(occurrence, reference),
+                            )
+                            .refined(),
+                        request.evidence,
+                    )
+                )
         return (result as RenameSymbolPlanResult.Planned).plan
     }
 
@@ -183,159 +195,190 @@ internal class VerifiedMutationFixture {
             applied.postimage,
             listOf(completeResultingDiagnostics()),
             ObservedRenameSymbolDelta.fromCompilerBoundary(
-                KotlinIdentifier.parse("service").refined(),
-                KotlinIdentifier.parse("renamedService").refined(),
-                0,
-                1,
-                0,
-                1,
-            ).refined(),
+                    KotlinIdentifier.parse("service").refined(),
+                    KotlinIdentifier.parse("renamedService").refined(),
+                    0,
+                    1,
+                    0,
+                    1,
+                )
+                .refined(),
         )
 
     fun observedDelta(
         packageName: String,
         declarationName: String,
         kind: AddDeclarationKind,
-    ): ObservedAddDeclarationDelta = ObservedAddDeclarationDelta.fromCompilerBoundary(
-        packageName,
-        declarationName,
-        kind,
-        1,
-    ).refined()
+    ): ObservedAddDeclarationDelta =
+        ObservedAddDeclarationDelta.fromCompilerBoundary(
+                packageName,
+                declarationName,
+                kind,
+                1,
+            )
+            .refined()
 
     fun qualifiedResultingRelation(): RelationReadResult {
         val batch = relationBatch(selector(resultingWorkspace), RelationMeaning.References)
-        val qualified = RelationCompilation.qualifiedResumable(
-            batch,
-            setOf(RelationLimitation.PROVIDER_INCOMPLETE),
-            batch.request.providerCursor.advance(
-                RelationProviderItemDescriptor.parse("resulting-relation").refined(),
-            ),
-        ).refined()
+        val qualified =
+            RelationCompilation.qualifiedResumable(
+                    batch,
+                    setOf(RelationLimitation.PROVIDER_INCOMPLETE),
+                    batch.request.providerCursor.advance(
+                        RelationProviderItemDescriptor.parse("resulting-relation").refined()
+                    ),
+                )
+                .refined()
         return RelationReadResult.Qualified(qualified.batch, qualified.coverage)
     }
 
-    fun changedResultingRelation(): RelationReadResult = completeRelation(
-        selector(resultingWorkspace),
-        RelationMeaning.Callers,
-    )
+    fun changedResultingRelation(): RelationReadResult =
+        completeRelation(
+            selector(resultingWorkspace),
+            RelationMeaning.Callers,
+        )
 
     fun qualifiedResultingDiagnostics(): DiagnosticCheckResult {
         val scope = diagnosticScope(resultingWorkspace)
-        val qualified = DiagnosticCompilation.qualified(
-            DiagnosticBatch.empty(scope),
-            emptyList(),
-            setOf(DiagnosticLimitation(scope.files.single(), DiagnosticLimitationReason.INDEXING)),
-        ).refined()
+        val qualified =
+            DiagnosticCompilation.qualified(
+                    DiagnosticBatch.empty(scope),
+                    emptyList(),
+                    setOf(DiagnosticLimitation(scope.files.single(), DiagnosticLimitationReason.INDEXING)),
+                )
+                .refined()
         return DiagnosticCheckResult.Qualified(qualified.batch, qualified.coverage)
     }
 
     fun erroredResultingDiagnostics(): DiagnosticCheckResult {
         val scope = diagnosticScope(resultingWorkspace)
-        val fact = DiagnosticFact.fromBoundary(
-            scope,
-            scope.files.single(),
-            0,
-            1,
-            DiagnosticSeverity.ERROR,
-            "COMPILER_ERROR",
-            "verification error",
-        ).refined()
-        val complete = DiagnosticCompilation.complete(
-            DiagnosticBatch.create(scope, listOf(fact)).refined(),
-        )
+        val fact =
+            DiagnosticFact.fromBoundary(
+                    scope,
+                    scope.files.single(),
+                    0,
+                    1,
+                    DiagnosticSeverity.ERROR,
+                    "COMPILER_ERROR",
+                    "verification error",
+                )
+                .refined()
+        val complete = DiagnosticCompilation.complete(DiagnosticBatch.create(scope, listOf(fact)).refined())
         return DiagnosticCheckResult.Complete(complete.batch, complete.coverage)
     }
 
     fun expandedResultingDiagnostics(): DiagnosticCheckResult {
-        val scope = DiagnosticScope.fromCanonicalPaths(
-            resultingWorkspace.readLease,
-            listOf(targetPath, Path.of("/workspace/app/src/main/kotlin/sample/Other.kt")),
-        ).refined()
+        val scope =
+            DiagnosticScope.fromCanonicalPaths(
+                    resultingWorkspace.readLease,
+                    listOf(targetPath, Path.of("/workspace/app/src/main/kotlin/sample/Other.kt")),
+                )
+                .refined()
         val complete = DiagnosticCompilation.complete(DiagnosticBatch.empty(scope))
         return DiagnosticCheckResult.Complete(complete.batch, complete.coverage)
     }
 
-    internal fun planRequest(): AddDeclarationPlanRequest = AddDeclarationPlanRequest(
-        target = editableTarget(),
-        declaration = AddDeclarationSourceText.parse("fun added(): Int = 1").refined(),
-        expectedSemanticDelta = ExpectedAddDeclarationDelta.admit(
-            "sample",
-            "added",
-            AddDeclarationKind.FUNCTION,
-        ).refined(),
-        evidence = AddDeclarationPlanningEvidenceInput(
-            relations = listOf(completeRelation(selector(workspace), RelationMeaning.References)),
-            traversals = listOf(completeTraversal()),
-            diagnostics = listOf(completeDiagnostics(workspace)),
-        ),
-    )
+    internal fun planRequest(): AddDeclarationPlanRequest =
+        AddDeclarationPlanRequest(
+            target = editableTarget(),
+            declaration = AddDeclarationSourceText.parse("fun added(): Int = 1").refined(),
+            expectedSemanticDelta =
+                ExpectedAddDeclarationDelta.admit(
+                        "sample",
+                        "added",
+                        AddDeclarationKind.FUNCTION,
+                    )
+                    .refined(),
+            evidence =
+                AddDeclarationPlanningEvidenceInput(
+                    relations = listOf(completeRelation(selector(workspace), RelationMeaning.References)),
+                    traversals = listOf(completeTraversal()),
+                    diagnostics = listOf(completeDiagnostics(workspace)),
+                ),
+        )
 
-    private fun editableTarget(): EditableMutationTarget = EditableMutationTarget.admit(
-        MutationTargetObservation(
-            workspace,
-            selector(workspace),
-            sourceRoot.owner,
-            ObservedMutationTargetState(
-                workspace.readLease,
-                selector(workspace).file,
-                WorkspaceSourceContentHash.parse(sha256(sourceText.toByteArray())).refined(),
-            ),
-        ),
-    ).refined()
+    private fun editableTarget(): EditableMutationTarget =
+        EditableMutationTarget.admit(
+                MutationTargetObservation(
+                    workspace,
+                    selector(workspace),
+                    sourceRoot.owner,
+                    ObservedMutationTargetState(
+                        workspace.readLease,
+                        selector(workspace).file,
+                        WorkspaceSourceContentHash.parse(sha256(sourceText.toByteArray())).refined(),
+                    ),
+                )
+            )
+            .refined()
+
     private fun selector(workspace: PublishedWorkspace): SymbolSelector {
-        val scope = SymbolSearchScope.Workspace(
-            SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-            SymbolGeneratedSourcePolicy.INCLUDE,
-            SymbolLibraryPolicy.EXCLUDE,
-        )
-        val request = SymbolDiscoveryRequest(
-            SymbolSearchScopeRequest(workspace.readLease, scope),
-            SymbolDiscoveryTarget.Name(SymbolNameDiscoveryKind.SYMBOL, SymbolDiscoveryPattern.parse("service").refined(), SymbolDiscoveryMatch.FUZZY),
-            SymbolDiscoveryBudget(resourceBudget(), SymbolDiscoveryByteLimit.parse(10_000L).refined()),
-        )
-        val candidate = SymbolDiscoveryCandidate.fromBoundary(
-            SymbolDiscoveryKind.SYMBOL,
-            "service",
-            workspace.readLease,
-            targetPath,
-            "file://$targetPath",
-            anchorStart,
-        ).refined()
-        val batch = SymbolDiscoveryBatch.create(
-            request,
-            listOf(candidate),
-            candidate.projectedUtf8Size(),
-            SymbolDiscoveryWorkCount.parse(1L).refined(),
-            SymbolDiscoveryTimings(
-                SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
-                SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
-            ),
-        ).refined()
+        val scope =
+            SymbolSearchScope.Workspace(
+                SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                SymbolGeneratedSourcePolicy.INCLUDE,
+                SymbolLibraryPolicy.EXCLUDE,
+            )
+        val request =
+            SymbolDiscoveryRequest(
+                SymbolSearchScopeRequest(workspace.readLease, scope),
+                SymbolDiscoveryTarget.Name(
+                    SymbolNameDiscoveryKind.SYMBOL,
+                    SymbolDiscoveryPattern.parse("service").refined(),
+                    SymbolDiscoveryMatch.FUZZY,
+                ),
+                SymbolDiscoveryBudget(resourceBudget(), SymbolDiscoveryByteLimit.parse(10_000L).refined()),
+            )
+        val candidate =
+            SymbolDiscoveryCandidate.fromBoundary(
+                    SymbolDiscoveryKind.SYMBOL,
+                    "service",
+                    workspace.readLease,
+                    targetPath,
+                    "file://$targetPath",
+                    anchorStart,
+                )
+                .refined()
+        val batch =
+            SymbolDiscoveryBatch.create(
+                    request,
+                    listOf(candidate),
+                    candidate.projectedUtf8Size(),
+                    SymbolDiscoveryWorkCount.parse(1L).refined(),
+                    SymbolDiscoveryTimings(
+                        SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
+                        SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
+                    ),
+                )
+                .refined()
         val selection = SymbolDiscoverySelection.select(batch, 0).refined()
         val location = selection.candidate.location as SymbolDiscoveryCandidateLocation.Declaration
-        val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
-            location.file,
-            anchorStart,
-            anchorEnd,
-            "service",
-            "sample.service",
-            CompilerSymbolKind.FUNCTION,
-            CanonicalCompilerSignature.function(
-                "sample.service",
-                null,
-                emptyList(),
-                emptyList(),
-                0,
-            ).refined(),
-        ).refined()
+        val evidence =
+            CompilerGroundedSymbolEvidence.fromBoundary(
+                    location.file,
+                    anchorStart,
+                    anchorEnd,
+                    "service",
+                    "sample.service",
+                    CompilerSymbolKind.FUNCTION,
+                    CanonicalCompilerSignature.function(
+                            "sample.service",
+                            null,
+                            emptyList(),
+                            emptyList(),
+                            0,
+                        )
+                        .refined(),
+                )
+                .refined()
         return SymbolSelector.issue(selection, evidence).refined()
     }
 
-    private fun completeResultingRelation(): RelationReadResult = completeRelation(
-        selector(resultingWorkspace),
-        RelationMeaning.References,
-    )
+    private fun completeResultingRelation(): RelationReadResult =
+        completeRelation(
+            selector(resultingWorkspace),
+            RelationMeaning.References,
+        )
 
     private fun completeRelation(
         selector: SymbolSelector,
@@ -350,62 +393,65 @@ internal class VerifiedMutationFixture {
         meaning: RelationMeaning,
     ): RelationBatch {
         val request = RelationRequest.start(selector, meaning, relationBudget())
-        val qualifiedIdentity = (selector.qualifiedIdentity as ExactDeclarationQualifiedIdentity.Available)
-            .value
-        val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
-            selector.file,
-            selector.range.startInclusive,
-            selector.range.endExclusive,
-            selector.name.value,
-            qualifiedIdentity,
-            selector.kind,
-            selector.signature,
-        ).refined()
+        val qualifiedIdentity = (selector.qualifiedIdentity as ExactDeclarationQualifiedIdentity.Available).value
+        val evidence =
+            CompilerGroundedSymbolEvidence.fromBoundary(
+                    selector.file,
+                    selector.range.startInclusive,
+                    selector.range.endExclusive,
+                    selector.name.value,
+                    qualifiedIdentity,
+                    selector.kind,
+                    selector.signature,
+                )
+                .refined()
         val source = RelationEndpoint.resolve(selector.lease, selector.scope, evidence).refined()
-        val occurrence = RelationOccurrence.fromBoundary(
-            selector.file,
-            sourceText.lastIndexOf(selector.name.value),
-            sourceText.lastIndexOf(selector.name.value) + selector.name.value.length,
-        ).refined()
-        val fact = RelationFact.create(
-            request,
-            source,
-            request.subject,
-            occurrence,
-            RelationProvenance.K2_AUTHORED_SOURCE,
-        ).refined()
+        val occurrence =
+            RelationOccurrence.fromBoundary(
+                    selector.file,
+                    sourceText.lastIndexOf(selector.name.value),
+                    sourceText.lastIndexOf(selector.name.value) + selector.name.value.length,
+                )
+                .refined()
+        val fact =
+            RelationFact.create(
+                    request,
+                    source,
+                    request.subject,
+                    occurrence,
+                    RelationProvenance.K2_AUTHORED_SOURCE,
+                )
+                .refined()
         return RelationBatch.create(
-            request,
-            listOf(fact),
-            RelationByteCount.parse(
-                fact.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong(),
-            ).refined(),
-            RelationWorkCount.parse(1L).refined(),
-            RelationResultCount.parse(1).refined(),
-        ).refined()
+                request,
+                listOf(fact),
+                RelationByteCount.parse(fact.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong())
+                    .refined(),
+                RelationWorkCount.parse(1L).refined(),
+                RelationResultCount.parse(1).refined(),
+            )
+            .refined()
     }
 
     private fun completeTraversal(): TraversalResult {
-        val traversal = TraversalPlan.start(
-            selector(workspace),
-            RelationMeaning.References,
-            traversalBudget(),
-        ).refined()
+        val traversal =
+            TraversalPlan.start(
+                    selector(workspace),
+                    RelationMeaning.References,
+                    traversalBudget(),
+                )
+                .refined()
         val page = TraversalPage.fromBoundary(traversal, emptyList(), 0L, 0L, 0L, 0).refined()
         return TraversalResult.complete(page)
     }
 
-    private fun completeResultingDiagnostics(): DiagnosticCheckResult = completeDiagnostics(
-        resultingWorkspace,
-    )
+    private fun completeResultingDiagnostics(): DiagnosticCheckResult = completeDiagnostics(resultingWorkspace)
 
     private fun completeDiagnostics(
         workspace: PublishedWorkspace,
         path: Path = targetPath,
     ): DiagnosticCheckResult {
-        val complete = DiagnosticCompilation.complete(
-            DiagnosticBatch.empty(diagnosticScope(workspace, path)),
-        )
+        val complete = DiagnosticCompilation.complete(DiagnosticBatch.empty(diagnosticScope(workspace, path)))
         return DiagnosticCheckResult.Complete(complete.batch, complete.coverage)
     }
 
@@ -420,39 +466,51 @@ internal class VerifiedMutationFixture {
     ): PublishedWorkspace =
         PublishedWorkspace.publish(
             ReconciledWorkspace.admit(
-                WorkspaceCandidate(root, WorkspaceStateIdentity(state)),
-                WorkspaceEvidenceKind.entries.toSet(),
-                listOf(sourceRoot),
-            ).refined(),
+                    WorkspaceCandidate(root, WorkspaceStateIdentity(state)),
+                    WorkspaceEvidenceKind.entries.toSet(),
+                    listOf(sourceRoot),
+                )
+                .refined(),
             EvidenceGeneration.parse(generation).refined(),
         )
 
-    private fun sourceRoot(): SourceRoot = SourceRoot.admit(
-        GradleSourceRootEvidence("app", ".", ":app", "main", "app/src/main/kotlin", SourceRootProvenance.Authored),
-    ).refined()
+    private fun sourceRoot(): SourceRoot =
+        SourceRoot.admit(
+                GradleSourceRootEvidence(
+                    "app",
+                    ".",
+                    ":app",
+                    "main",
+                    "app/src/main/kotlin",
+                    SourceRootProvenance.Authored,
+                )
+            )
+            .refined()
 
     private fun canonicalRoot(raw: String): CanonicalWorkspaceRoot =
         CanonicalWorkspaceRoot.fromCanonicalPath(Path.of(raw)).refined()
 
-    private fun resourceBudget(): ResourceBudget = ResourceBudget(
-        ResultLimit.parse(8).refined(),
-        WorkUnitLimit.parse(8L).refined(),
-        ElapsedTimeLimitMillis.parse(1_000L).refined(),
-    )
+    private fun resourceBudget(): ResourceBudget =
+        ResourceBudget(
+            ResultLimit.parse(8).refined(),
+            WorkUnitLimit.parse(8L).refined(),
+            ElapsedTimeLimitMillis.parse(1_000L).refined(),
+        )
 
     private fun relationBudget(): RelationBudget =
         RelationBudget(resourceBudget(), RelationByteLimit.parse(10_000L).refined())
 
-    private fun traversalBudget(): TraversalBudget = TraversalBudget(
-        ResultLimit.parse(8).refined(),
-        TraversalByteLimit.parse(10_000L).refined(),
-        WorkUnitLimit.parse(8L).refined(),
-        ElapsedTimeLimitMillis.parse(1_000L).refined(),
-        TraversalDepthLimit.parse(2).refined(),
-        TraversalFrontierLimit.parse(8).refined(),
-        relationBudget(),
-    )
+    private fun traversalBudget(): TraversalBudget =
+        TraversalBudget(
+            ResultLimit.parse(8).refined(),
+            TraversalByteLimit.parse(10_000L).refined(),
+            WorkUnitLimit.parse(8L).refined(),
+            ElapsedTimeLimitMillis.parse(1_000L).refined(),
+            TraversalDepthLimit.parse(2).refined(),
+            TraversalFrontierLimit.parse(8).refined(),
+            relationBudget(),
+        )
 
-    private fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes)
-        .joinToString("") { byte -> "%02x".format(byte) }
+    private fun sha256(bytes: ByteArray): String =
+        MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { byte -> "%02x".format(byte) }
 }

@@ -11,14 +11,14 @@ import io.github.amichne.kast.traversal.contract.TraversalPlan
 import io.github.amichne.kast.traversal.contract.TraversalQualification
 import io.github.amichne.kast.traversal.contract.TraversalRejection
 import io.github.amichne.kast.traversal.contract.TraversalResult
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.startCoroutine
 
 class TraversalServiceTest {
     private val fixture = TraversalTestFixture()
@@ -32,12 +32,13 @@ class TraversalServiceTest {
         var related: RelationEndpoint.Resolved? = null
         val relations = RelationOperations { request ->
             requests += request
-            val targets = if (request.subject.fingerprint.value == a.fingerprint.value) {
-                listOf(fixture.endpoint(request.subject, b).also { related = it })
-            } else {
-                assertSame(related, request.subject)
-                emptyList()
-            }
+            val targets =
+                if (request.subject.fingerprint.value == a.fingerprint.value) {
+                    listOf(fixture.endpoint(request.subject, b).also { related = it })
+                } else {
+                    assertSame(related, request.subject)
+                    emptyList()
+                }
             fixture.completeRelationResult(request, targets)
         }
 
@@ -59,16 +60,18 @@ class TraversalServiceTest {
                 listOf(fixture.endpoint(request.subject, b)),
             )
         }
-        val plan = fixture.plan(
-            a,
-            aggregateTime = 10L,
-            oneHop = fixture.relationBudget(time = 10L),
-        )
+        val plan =
+            fixture.plan(
+                a,
+                aggregateTime = 10L,
+                oneHop = fixture.relationBudget(time = 10L),
+            )
 
-        val result = assertInstanceOf(
-            TraversalResult.Qualified::class.java,
-            runSuspend { traversalOperations(relations).run(plan) },
-        )
+        val result =
+            assertInstanceOf(
+                TraversalResult.Qualified::class.java,
+                runSuspend { traversalOperations(relations).run(plan) },
+            )
 
         assertEquals(setOf(TraversalLimitation.TIME_LIMIT_REACHED), result.qualification.limitations)
         assertEquals(1, requests.size)
@@ -85,57 +88,67 @@ class TraversalServiceTest {
             }
         }
         val plan = fixture.plan(a)
-        val stopped = assertInstanceOf(
-            TraversalResult.Qualified::class.java,
-            runSuspend { traversalOperations(relations).run(plan) },
-        )
-        val stoppedQualification = assertInstanceOf(
-            TraversalQualification.Resumable::class.java,
-            stopped.qualification,
-        )
-        val resumed = TraversalPlan.resume(
-            a,
-            RelationMeaning.Callees,
-            plan.budget,
-            stoppedQualification.continuation,
-        ).refined()
+        val stopped =
+            assertInstanceOf(
+                TraversalResult.Qualified::class.java,
+                runSuspend { traversalOperations(relations).run(plan) },
+            )
+        val stoppedQualification =
+            assertInstanceOf(
+                TraversalQualification.Resumable::class.java,
+                stopped.qualification,
+            )
+        val resumed =
+            TraversalPlan.resume(
+                    a,
+                    RelationMeaning.Callees,
+                    plan.budget,
+                    stoppedQualification.continuation,
+                )
+                .refined()
 
         assertInstanceOf(
             TraversalResult.Complete::class.java,
             runSuspend { traversalOperations(relations).run(resumed) },
         )
 
-        val resumedPosition = assertInstanceOf(
-            RelationReadPosition.Resume::class.java,
-            requests.last().position,
-        )
+        val resumedPosition =
+            assertInstanceOf(
+                RelationReadPosition.Resume::class.java,
+                requests.last().position,
+            )
         assertEquals(
-            stoppedQualification.continuation.checkpoint
-                .let { (it.pending as TraversalPendingState.Active).read.relationContinuation.fingerprint },
+            stoppedQualification.continuation.checkpoint.let {
+                (it.pending as TraversalPendingState.Active).read.relationContinuation.fingerprint
+            },
             resumedPosition.continuation.fingerprint,
         )
     }
 
     @Test
     fun `cycles terminate once and equivalent graph insertion orders are deterministic`() {
-        val firstReader = InMemoryRelationReader(
-            linkedMapOf(a to listOf(c, b), b to listOf(c, a), c to listOf(a)),
-            fixture,
-        )
-        val secondReader = InMemoryRelationReader(
-            linkedMapOf(c to listOf(a), b to listOf(a, c), a to listOf(b, c)),
-            fixture,
-        )
+        val firstReader =
+            InMemoryRelationReader(
+                linkedMapOf(a to listOf(c, b), b to listOf(c, a), c to listOf(a)),
+                fixture,
+            )
+        val secondReader =
+            InMemoryRelationReader(
+                linkedMapOf(c to listOf(a), b to listOf(a, c), a to listOf(b, c)),
+                fixture,
+            )
         val plan = fixture.plan(a)
 
-        val first = assertInstanceOf(
-            TraversalResult.Complete::class.java,
-            runSuspend { TraversalService(firstReader).run(plan) },
-        )
-        val second = assertInstanceOf(
-            TraversalResult.Complete::class.java,
-            runSuspend { TraversalService(secondReader).run(plan) },
-        )
+        val first =
+            assertInstanceOf(
+                TraversalResult.Complete::class.java,
+                runSuspend { TraversalService(firstReader).run(plan) },
+            )
+        val second =
+            assertInstanceOf(
+                TraversalResult.Complete::class.java,
+                runSuspend { TraversalService(secondReader).run(plan) },
+            )
 
         assertEquals(5, first.coverage.exactRecordCount.value)
         assertEquals(
@@ -155,50 +168,59 @@ class TraversalServiceTest {
     @Test
     fun `every resumable aggregate bound qualifies with a continuation`() {
         val graph = linkedMapOf(a to listOf(b, c), b to emptyList(), c to emptyList())
-        val baseline = assertInstanceOf(
-            TraversalResult.Complete::class.java,
-            runSuspend { TraversalService(InMemoryRelationReader(graph, fixture)).run(fixture.plan(a)) },
-        )
+        val baseline =
+            assertInstanceOf(
+                TraversalResult.Complete::class.java,
+                runSuspend { TraversalService(InMemoryRelationReader(graph, fixture)).run(fixture.plan(a)) },
+            )
         val exactBytes = baseline.page.encodedBytes.value
-        val cases = listOf(
-            TraversalLimitation.RECORD_LIMIT_REACHED to fixture.plan(
-                a,
-                aggregateRecords = 2,
-                oneHop = fixture.relationBudget(records = 2),
-            ),
-            TraversalLimitation.BYTE_LIMIT_REACHED to fixture.plan(
-                a,
-                aggregateBytes = exactBytes,
-                oneHop = fixture.relationBudget(bytes = exactBytes),
-            ),
-            TraversalLimitation.WORK_LIMIT_REACHED to fixture.plan(
-                a,
-                aggregateWork = 2L,
-                oneHop = fixture.relationBudget(work = 2L),
-            ),
-            TraversalLimitation.TIME_LIMIT_REACHED to fixture.plan(
-                a,
-                aggregateTime = 1L,
-                oneHop = fixture.relationBudget(time = 1L),
-            ),
-            TraversalLimitation.FRONTIER_LIMIT_REACHED to fixture.plan(
-                a,
-                frontier = 1,
-            ),
-        )
+        val cases =
+            listOf(
+                TraversalLimitation.RECORD_LIMIT_REACHED to
+                    fixture.plan(
+                        a,
+                        aggregateRecords = 2,
+                        oneHop = fixture.relationBudget(records = 2),
+                    ),
+                TraversalLimitation.BYTE_LIMIT_REACHED to
+                    fixture.plan(
+                        a,
+                        aggregateBytes = exactBytes,
+                        oneHop = fixture.relationBudget(bytes = exactBytes),
+                    ),
+                TraversalLimitation.WORK_LIMIT_REACHED to
+                    fixture.plan(
+                        a,
+                        aggregateWork = 2L,
+                        oneHop = fixture.relationBudget(work = 2L),
+                    ),
+                TraversalLimitation.TIME_LIMIT_REACHED to
+                    fixture.plan(
+                        a,
+                        aggregateTime = 1L,
+                        oneHop = fixture.relationBudget(time = 1L),
+                    ),
+                TraversalLimitation.FRONTIER_LIMIT_REACHED to
+                    fixture.plan(
+                        a,
+                        frontier = 1,
+                    ),
+            )
 
         cases.forEach { (expected, plan) ->
-            val result = assertInstanceOf(
-                TraversalResult.Qualified::class.java,
-                runSuspend { TraversalService(InMemoryRelationReader(graph, fixture)).run(plan) },
-                expected.name,
-            )
+            val result =
+                assertInstanceOf(
+                    TraversalResult.Qualified::class.java,
+                    runSuspend { TraversalService(InMemoryRelationReader(graph, fixture)).run(plan) },
+                    expected.name,
+                )
             assertEquals(setOf(expected), result.qualification.limitations, expected.name)
-            val qualification = assertInstanceOf(
-                TraversalQualification.Resumable::class.java,
-                result.qualification,
-                expected.name,
-            )
+            val qualification =
+                assertInstanceOf(
+                    TraversalQualification.Resumable::class.java,
+                    result.qualification,
+                    expected.name,
+                )
             assertEquals(plan.identity, qualification.continuation.identity, expected.name)
         }
     }
@@ -208,10 +230,11 @@ class TraversalServiceTest {
         val graph = linkedMapOf(a to listOf(b), b to emptyList())
         val plan = fixture.plan(a, depth = 1)
 
-        val result = assertInstanceOf(
-            TraversalResult.Qualified::class.java,
-            runSuspend { TraversalService(InMemoryRelationReader(graph, fixture)).run(plan) },
-        )
+        val result =
+            assertInstanceOf(
+                TraversalResult.Qualified::class.java,
+                runSuspend { TraversalService(InMemoryRelationReader(graph, fixture)).run(plan) },
+            )
 
         assertEquals(
             setOf(TraversalLimitation.DEPTH_LIMIT_REACHED),
@@ -229,9 +252,8 @@ class TraversalServiceTest {
         val budget = fixture.relationBudget(records = 2, bytes = 100_000L, work = 10L, time = 10L)
 
         val result = runSuspend {
-            TraversalService(InMemoryRelationReader(graph, fixture)).run(
-                fixture.plan(a, aggregateRecords = 2, oneHop = budget),
-            )
+            TraversalService(InMemoryRelationReader(graph, fixture))
+                .run(fixture.plan(a, aggregateRecords = 2, oneHop = budget))
         }
 
         val complete = assertInstanceOf(TraversalResult.Complete::class.java, result)
@@ -240,16 +262,18 @@ class TraversalServiceTest {
 
     @Test
     fun `incomplete one hop evidence remains qualified with relation continuation`() {
-        val reader = InMemoryRelationReader(
-            linkedMapOf(a to listOf(b), b to emptyList()),
-            fixture,
-            qualified = setOf(a.fingerprint.value),
-        )
+        val reader =
+            InMemoryRelationReader(
+                linkedMapOf(a to listOf(b), b to emptyList()),
+                fixture,
+                qualified = setOf(a.fingerprint.value),
+            )
 
-        val result = assertInstanceOf(
-            TraversalResult.Qualified::class.java,
-            runSuspend { TraversalService(reader).run(fixture.plan(a)) },
-        )
+        val result =
+            assertInstanceOf(
+                TraversalResult.Qualified::class.java,
+                runSuspend { TraversalService(reader).run(fixture.plan(a)) },
+            )
 
         assertEquals(
             setOf(TraversalLimitation.ONE_HOP_INCOMPLETE),
@@ -259,14 +283,16 @@ class TraversalServiceTest {
             setOf(RelationLimitation.PROVIDER_INCOMPLETE),
             result.qualification.relationLimitations,
         )
-        val qualification = assertInstanceOf(
-            TraversalQualification.Resumable::class.java,
-            result.qualification,
-        )
-        val pending = assertInstanceOf(
-            TraversalPendingState.Active::class.java,
-            qualification.continuation.checkpoint.pending,
-        )
+        val qualification =
+            assertInstanceOf(
+                TraversalQualification.Resumable::class.java,
+                result.qualification,
+            )
+        val pending =
+            assertInstanceOf(
+                TraversalPendingState.Active::class.java,
+                qualification.continuation.checkpoint.pending,
+            )
         assertEquals(a.fingerprint.value, pending.read.entry.node.fingerprint.value)
     }
 
@@ -274,10 +300,11 @@ class TraversalServiceTest {
     fun `terminal incomplete one hop has no traversal continuation`() {
         val relations = RelationOperations { request -> fixture.terminalRelationResult(request) }
 
-        val result = assertInstanceOf(
-            TraversalResult.Qualified::class.java,
-            runSuspend { traversalOperations(relations).run(fixture.plan(a)) },
-        )
+        val result =
+            assertInstanceOf(
+                TraversalResult.Qualified::class.java,
+                runSuspend { traversalOperations(relations).run(fixture.plan(a)) },
+            )
 
         assertInstanceOf(
             TraversalQualification.TerminalIncomplete::class.java,
@@ -304,10 +331,11 @@ class TraversalServiceTest {
             }
         }
 
-        val result = assertInstanceOf(
-            TraversalResult.Qualified::class.java,
-            runSuspend { traversalOperations(relations).run(fixture.plan(a)) },
-        )
+        val result =
+            assertInstanceOf(
+                TraversalResult.Qualified::class.java,
+                runSuspend { traversalOperations(relations).run(fixture.plan(a)) },
+            )
 
         assertInstanceOf(
             TraversalQualification.TerminalIncomplete::class.java,
@@ -333,20 +361,23 @@ class TraversalServiceTest {
                 fixture.completeRelationResult(request, emptyList())
             }
         }
-        val limited = fixture.plan(
-            a,
-            aggregateRecords = 1,
-            oneHop = fixture.relationBudget(records = 1),
-        )
+        val limited =
+            fixture.plan(
+                a,
+                aggregateRecords = 1,
+                oneHop = fixture.relationBudget(records = 1),
+            )
 
-        val first = assertInstanceOf(
-            TraversalResult.Qualified::class.java,
-            runSuspend { traversalOperations(relations).run(limited) },
-        )
-        val resumable = assertInstanceOf(
-            TraversalQualification.Resumable::class.java,
-            first.qualification,
-        )
+        val first =
+            assertInstanceOf(
+                TraversalResult.Qualified::class.java,
+                runSuspend { traversalOperations(relations).run(limited) },
+            )
+        val resumable =
+            assertInstanceOf(
+                TraversalQualification.Resumable::class.java,
+                first.qualification,
+            )
         assertEquals(
             setOf(
                 TraversalLimitation.RECORD_LIMIT_REACHED,
@@ -356,16 +387,19 @@ class TraversalServiceTest {
         )
 
         val wider = fixture.plan(a)
-        val resumed = TraversalPlan.resume(
-            a,
-            RelationMeaning.Callees,
-            wider.budget,
-            resumable.continuation,
-        ).refined()
-        val terminal = assertInstanceOf(
-            TraversalResult.Qualified::class.java,
-            runSuspend { traversalOperations(relations).run(resumed) },
-        )
+        val resumed =
+            TraversalPlan.resume(
+                    a,
+                    RelationMeaning.Callees,
+                    wider.budget,
+                    resumable.continuation,
+                )
+                .refined()
+        val terminal =
+            assertInstanceOf(
+                TraversalResult.Qualified::class.java,
+                runSuspend { traversalOperations(relations).run(resumed) },
+            )
 
         assertInstanceOf(
             TraversalQualification.TerminalIncomplete::class.java,
@@ -398,10 +432,11 @@ class TraversalServiceTest {
         block.startCoroutine(
             object : Continuation<T> {
                 override val context = EmptyCoroutineContext
+
                 override fun resumeWith(result: Result<T>) {
                     outcome = result
                 }
-            },
+            }
         )
         return checkNotNull(outcome).getOrThrow()
     }

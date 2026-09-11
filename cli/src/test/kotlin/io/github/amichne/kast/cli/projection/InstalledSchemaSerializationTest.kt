@@ -26,13 +26,13 @@ class InstalledSchemaSerializationTest {
         val operationRegistry = "{\"operation\":\"registry\"}"
         val wireSchema = "{\"wire\":true}"
         val surface = commandGraphFactory().surface
-        val schema = installedSchema(operationRegistry, wireSchema, surface)
-            .constructedDocument()
+        val schema = installedSchema(operationRegistry, wireSchema, surface).constructedDocument()
 
-        val document = Json.decodeFromString(
-            InstalledSchemaFixture.serializer(),
-            schema.value,
-        )
+        val document =
+            Json.decodeFromString(
+                InstalledSchemaFixture.serializer(),
+                schema.value,
+            )
 
         assertEquals(1, document.schemaVersion)
         assertEquals(Json.parseToJsonElement(operationRegistry), document.operationRegistry)
@@ -59,37 +59,40 @@ class InstalledSchemaSerializationTest {
         val valid = "{}"
 
         listOf(
-            InstalledSchemaResource.OPERATION_REGISTRY to installedSchema(
-                "[]",
-                valid,
-                surface,
-            ),
-            InstalledSchemaResource.WIRE_SCHEMA to installedSchema(
-                valid,
-                "[]",
-                surface,
-            ),
-        ).forEach { (resource, construction) ->
-            assertEquals(
-                InstalledSchemaConstruction.Rejected(
-                    InstalledSchemaFailure(resource, CliOpenJsonObjectFailure.NOT_AN_OBJECT),
-                ),
-                construction,
+                InstalledSchemaResource.OPERATION_REGISTRY to
+                    installedSchema(
+                        "[]",
+                        valid,
+                        surface,
+                    ),
+                InstalledSchemaResource.WIRE_SCHEMA to
+                    installedSchema(
+                        valid,
+                        "[]",
+                        surface,
+                    ),
             )
+            .forEach { (resource, construction) ->
+                assertEquals(
+                    InstalledSchemaConstruction.Rejected(
+                        InstalledSchemaFailure(resource, CliOpenJsonObjectFailure.NOT_AN_OBJECT)
+                    ),
+                    construction,
+                )
+            }
+    }
+
+    private fun commandGraphFactory(): CliCommandGraphFactory =
+        when (val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())) {
+            is CliCommandGraphConstruction.Created -> construction.factory
+            is CliCommandGraphConstruction.Rejected -> error(construction.failures)
         }
-    }
 
-    private fun commandGraphFactory(): CliCommandGraphFactory = when (
-        val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())
-    ) {
-        is CliCommandGraphConstruction.Created -> construction.factory
-        is CliCommandGraphConstruction.Rejected -> error(construction.failures)
-    }
-
-    private fun InstalledSchemaConstruction.constructedDocument(): CliJsonDocument = when (this) {
-        is InstalledSchemaConstruction.Constructed -> document
-        is InstalledSchemaConstruction.Rejected -> error(failure)
-    }
+    private fun InstalledSchemaConstruction.constructedDocument(): CliJsonDocument =
+        when (this) {
+            is InstalledSchemaConstruction.Constructed -> document
+            is InstalledSchemaConstruction.Rejected -> error(failure)
+        }
 }
 
 @Serializable

@@ -17,7 +17,7 @@ internal data class GeneratedOperationSerializers<
     Result : OperationResult,
     Qualification : OperationQualification,
     Rejection : OperationRejection,
-    >(
+>(
     val request: WireValueCodec<Request>,
     val result: WireValueCodec<Result>,
     val qualification: WireValueCodec<Qualification>,
@@ -25,23 +25,15 @@ internal data class GeneratedOperationSerializers<
 )
 
 sealed interface WireEncoding {
-    data class Encoded(
-        val document: String,
-    ) : WireEncoding
+    data class Encoded(val document: String) : WireEncoding
 
-    data class Rejected(
-        val failure: WireFailure,
-    ) : WireEncoding
+    data class Rejected(val failure: WireFailure) : WireEncoding
 }
 
 sealed interface WireDecoding<out Value> {
-    data class Decoded<Value>(
-        val value: Value,
-    ) : WireDecoding<Value>
+    data class Decoded<Value>(val value: Value) : WireDecoding<Value>
 
-    data class Rejected(
-        val failure: WireFailure,
-    ) : WireDecoding<Nothing>
+    data class Rejected(val failure: WireFailure) : WireDecoding<Nothing>
 }
 
 enum class WireValueRole {
@@ -61,21 +53,13 @@ enum class WireBodyKind {
 sealed interface WireFailure {
     data object MalformedEnvelope : WireFailure
 
-    data class InvalidSchemaIdentity(
-        val failure: SchemaIdentityFailure,
-    ) : WireFailure
+    data class InvalidSchemaIdentity(val failure: SchemaIdentityFailure) : WireFailure
 
-    data class UnknownSchema(
-        val schema: SchemaIdentity,
-    ) : WireFailure
+    data class UnknownSchema(val schema: SchemaIdentity) : WireFailure
 
-    data class InvalidOperationIdentity(
-        val failure: PermanentIdentityFailure,
-    ) : WireFailure
+    data class InvalidOperationIdentity(val failure: PermanentIdentityFailure) : WireFailure
 
-    data class UnknownOperation(
-        val operationId: OperationId,
-    ) : WireFailure
+    data class UnknownOperation(val operationId: OperationId) : WireFailure
 
     data class UnexpectedOperation(
         val expected: CanonicalOperation,
@@ -87,15 +71,9 @@ sealed interface WireFailure {
         val observed: WireBodyKind,
     ) : WireFailure
 
-    data class InvalidEvidenceGeneration(
-        val failure: EvidenceGenerationFailure,
-    ) : WireFailure
+    data class InvalidEvidenceGeneration(val failure: EvidenceGenerationFailure) : WireFailure
 
-    data class InvalidPayload(
-        val role: WireValueRole,
-    ) : WireFailure
+    data class InvalidPayload(val role: WireValueRole) : WireFailure
 
-    data class PayloadEncodingFailed(
-        val role: WireValueRole,
-    ) : WireFailure
+    data class PayloadEncodingFailed(val role: WireValueRole) : WireFailure
 }

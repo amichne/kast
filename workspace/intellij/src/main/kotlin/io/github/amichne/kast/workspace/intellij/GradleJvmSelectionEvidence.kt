@@ -19,10 +19,13 @@ internal fun gradleJvmSelectedReport(
     return GradleJvmSelectionReport(
         distribution = distributionEvidence(selection.distribution),
         requiredJava = GradleRuntimeCompatibilityPolicy.requiredJava(selection.distribution),
-        candidates = listOf(selected) + candidates.sortedCandidates()
-            .filter { it.home != selection.candidate.home }
-            .take(31)
-            .map { it.evidence(it.unselectedDecision(selection.distribution)) },
+        candidates =
+            listOf(selected) +
+                candidates
+                    .sortedCandidates()
+                    .filter { it.home != selection.candidate.home }
+                    .take(31)
+                    .map { it.evidence(it.unselectedDecision(selection.distribution)) },
         outcome = GradleJvmSelectionOutcome.Selected(selected),
     )
 }
@@ -31,20 +34,23 @@ internal fun gradleJvmRejectionReport(
     distribution: GradleVersion,
     candidates: List<GradleJvmCandidate>,
     failure: GradleJvmSelectionFailure,
-): GradleJvmSelectionReport = GradleJvmSelectionReport(
-    distributionEvidence(distribution),
-    GradleRuntimeCompatibilityPolicy.requiredJava(distribution),
-    candidates.sortedCandidates().take(32).map { candidate ->
-        candidate.evidence(candidate.unselectedDecision(distribution))
-    },
-    GradleJvmSelectionOutcome.Rejected(failure),
-)
+): GradleJvmSelectionReport =
+    GradleJvmSelectionReport(
+        distributionEvidence(distribution),
+        GradleRuntimeCompatibilityPolicy.requiredJava(distribution),
+        candidates.sortedCandidates().take(32).map { candidate ->
+            candidate.evidence(candidate.unselectedDecision(distribution))
+        },
+        GradleJvmSelectionOutcome.Rejected(failure),
+    )
 
 private fun distributionEvidence(version: GradleVersion) =
     GradleDistributionEvidence.Observed(GradleDistributionVersion.observed(version.version))
 
-private fun List<GradleJvmCandidate>.sortedCandidates(): List<GradleJvmCandidate> =
-    distinctBy { it.home }.sortedWith(compareBy({ it.feature.value }, { it.home.toString() }))
+private fun List<GradleJvmCandidate>.sortedCandidates(): List<GradleJvmCandidate> = distinctBy {
+    it.home
+}
+    .sortedWith(compareBy({ it.feature.value }, { it.home.toString() }))
 
 private fun GradleJvmCandidate.unselectedDecision(distribution: GradleVersion): GradleJvmCandidateDecision =
     when (GradleRuntimeCompatibilityPolicy.classify(distribution, feature)) {
@@ -52,9 +58,10 @@ private fun GradleJvmCandidate.unselectedDecision(distribution: GradleVersion): 
         is GradleRuntimeCompatibility.Compatible -> GradleJvmCandidateDecision.NOT_SELECTED
     }
 
-private fun GradleJvmCandidate.evidence(decision: GradleJvmCandidateDecision) = GradleJvmCandidateEvidence(
-    feature,
-    GradleImportEnvironmentIdentity.digest("$home\n$runtimeVersion"),
-    source,
-    decision,
-)
+private fun GradleJvmCandidate.evidence(decision: GradleJvmCandidateDecision) =
+    GradleJvmCandidateEvidence(
+        feature,
+        GradleImportEnvironmentIdentity.digest("$home\n$runtimeVersion"),
+        source,
+        decision,
+    )

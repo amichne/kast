@@ -2,19 +2,17 @@ package io.github.amichne.kast.workspace.intellij
 
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType
+import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 import org.jetbrains.plugins.gradle.util.GradleConstants
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
-import java.util.concurrent.TimeUnit
 
 class InstalledGradleImportObserverTest {
     @Test
-    fun `pre-closure cancellation is retained for an exact replacement`(
-        @TempDir workspace: Path,
-    ) {
+    fun `pre-closure cancellation is retained for an exact replacement`(@TempDir workspace: Path) {
         val root = workspace.toRealPath()
         val observer = InstalledGradleImportObserver(root)
         val cancelled = task("cancelled")
@@ -36,9 +34,7 @@ class InstalledGradleImportObserverTest {
     }
 
     @Test
-    fun `pre-closure failure remains terminal for an exact replacement`(
-        @TempDir workspace: Path,
-    ) {
+    fun `pre-closure failure remains terminal for an exact replacement`(@TempDir workspace: Path) {
         val root = workspace.toRealPath()
         val observer = InstalledGradleImportObserver(root)
         val failed = task("failed")
@@ -192,9 +188,10 @@ class InstalledGradleImportObserverTest {
         )
     }
 
-    private fun task(projectId: String): ExternalSystemTaskId = ExternalSystemTaskId.create(
-        GradleConstants.SYSTEM_ID,
-        ExternalSystemTaskType.RESOLVE_PROJECT,
-        projectId,
-    )
+    private fun task(projectId: String): ExternalSystemTaskId =
+        ExternalSystemTaskId.create(
+            GradleConstants.SYSTEM_ID,
+            ExternalSystemTaskType.RESOLVE_PROJECT,
+            projectId,
+        )
 }

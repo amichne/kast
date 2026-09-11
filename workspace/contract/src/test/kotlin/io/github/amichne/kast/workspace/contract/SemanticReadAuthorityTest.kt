@@ -45,27 +45,40 @@ class SemanticReadAuthorityTest {
     @Test
     fun `foreign roots and incomparable sources cannot join the owner`() {
         val other = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace/other")).value()
-        assertEquals(LiveSemanticReadFailure.WRONG_ROOT,
-            owner.admit(VfsPassiveReadCapability.issue(other, source.observeEpoch())).failure())
+        assertEquals(
+            LiveSemanticReadFailure.WRONG_ROOT,
+            owner.admit(VfsPassiveReadCapability.issue(other, source.observeEpoch())).failure(),
+        )
         admit()
         val foreign = FixtureEpochSource(FixtureEpochState.stable())
-        assertEquals(LiveSemanticReadFailure.INCOMPARABLE_EPOCH,
-            owner.admit(VfsPassiveReadCapability.issue(root, foreign.observeEpoch())).failure())
+        assertEquals(
+            LiveSemanticReadFailure.INCOMPARABLE_EPOCH,
+            owner.admit(VfsPassiveReadCapability.issue(root, foreign.observeEpoch())).failure(),
+        )
     }
 
     @Test
     fun `restart and forged transport fields cannot recreate read authority`() {
         val old = admit().reference
-        val restarted = LiveSemanticReadOwner(root,
-            IdeReadHostLifetime.fromBoundary(UUID.fromString("20000000-0000-0000-0000-000000000002")))
+        val restarted =
+            LiveSemanticReadOwner(
+                root,
+                IdeReadHostLifetime.fromBoundary(UUID.fromString("20000000-0000-0000-0000-000000000002")),
+            )
         assertEquals(LiveSemanticReadFailure.WRONG_HOST, restarted.restore(old, freshness()).failure())
         val foreignRoot = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace/foreign")).value()
-        assertEquals(LiveSemanticReadFailure.WRONG_ROOT,
-            owner.restore(old.copy(workspaceRoot = foreignRoot), freshness()).failure())
-        assertEquals(LiveSemanticReadFailure.EPOCH_MOVED,
-            owner.restore(old.copy(epoch = IdeReadEpochRevision.parse(99).value()), freshness()).failure())
-        assertEquals(LiveSemanticReadFailure.REFERENCE_VERSION_UNSUPPORTED,
-            owner.restore(old.copy(version = 0), freshness()).failure())
+        assertEquals(
+            LiveSemanticReadFailure.WRONG_ROOT,
+            owner.restore(old.copy(workspaceRoot = foreignRoot), freshness()).failure(),
+        )
+        assertEquals(
+            LiveSemanticReadFailure.EPOCH_MOVED,
+            owner.restore(old.copy(epoch = IdeReadEpochRevision.parse(99).value()), freshness()).failure(),
+        )
+        assertEquals(
+            LiveSemanticReadFailure.REFERENCE_VERSION_UNSUPPORTED,
+            owner.restore(old.copy(version = 0), freshness()).failure(),
+        )
     }
 
     @Test
@@ -91,13 +104,18 @@ class SemanticReadAuthorityTest {
     }
 
     private fun freshness() = VfsPassiveReadCapability.issue(root, source.observeEpoch())
+
     private fun admit() = owner.admit(freshness()).value()
-    private fun <V, F> Refinement<V, F>.value(): V = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error("Expected refinement: $failure")
-    }
-    private fun <V, F> Refinement<V, F>.failure(): F = when (this) {
-        is Refinement.Refined -> error("Expected rejection")
-        is Refinement.Rejected -> failure
-    }
+
+    private fun <V, F> Refinement<V, F>.value(): V =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error("Expected refinement: $failure")
+        }
+
+    private fun <V, F> Refinement<V, F>.failure(): F =
+        when (this) {
+            is Refinement.Refined -> error("Expected rejection")
+            is Refinement.Rejected -> failure
+        }
 }

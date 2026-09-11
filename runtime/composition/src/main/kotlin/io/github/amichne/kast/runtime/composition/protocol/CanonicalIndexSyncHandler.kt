@@ -15,49 +15,44 @@ import io.github.amichne.kast.workspace.contract.IndexSynchronizationResult
 import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefreshFailure
 
 /** Canonical projection of the shared manual and post-apply index synchronization operation. */
-class CanonicalIndexSyncHandler(
-    private val operations: IndexSynchronizationOperations,
-) : OperationHandler<IndexSyncRequest, IndexSyncResult, IndexSyncQualification, IndexSyncRejection> {
+class CanonicalIndexSyncHandler(private val operations: IndexSynchronizationOperations) :
+    OperationHandler<IndexSyncRequest, IndexSyncResult, IndexSyncQualification, IndexSyncRejection> {
     override suspend fun execute(
-        request: IndexSyncRequest,
+        request: IndexSyncRequest
     ): OperationOutcome<IndexSyncResult, IndexSyncQualification, IndexSyncRejection> =
         when (val result = operations.synchronize()) {
-            is IndexSynchronizationResult.Synchronized -> OperationOutcome.Complete(
-                EvidenceEnvelope(
-                    CanonicalOperation.INDEX_SYNC.id,
-                    result.workspace.generation,
-                    IndexSyncResult(IndexSyncStateDocument.SYNCHRONIZED),
-                ),
-            )
-            is IndexSynchronizationResult.Unchanged -> OperationOutcome.Complete(
-                EvidenceEnvelope(
-                    CanonicalOperation.INDEX_SYNC.id,
-                    result.workspace.generation,
-                    IndexSyncResult(IndexSyncStateDocument.UNCHANGED),
-                ),
-            )
-            is IndexSynchronizationResult.Rejected -> OperationOutcome.Rejected(
-                result.failure.toProtocol(),
-            )
+            is IndexSynchronizationResult.Synchronized ->
+                OperationOutcome.Complete(
+                    EvidenceEnvelope(
+                        CanonicalOperation.INDEX_SYNC.id,
+                        result.workspace.generation,
+                        IndexSyncResult(IndexSyncStateDocument.SYNCHRONIZED),
+                    )
+                )
+            is IndexSynchronizationResult.Unchanged ->
+                OperationOutcome.Complete(
+                    EvidenceEnvelope(
+                        CanonicalOperation.INDEX_SYNC.id,
+                        result.workspace.generation,
+                        IndexSyncResult(IndexSyncStateDocument.UNCHANGED),
+                    )
+                )
+            is IndexSynchronizationResult.Rejected -> OperationOutcome.Rejected(result.failure.toProtocol())
         }
 }
 
-private fun IndexSynchronizationFailure.toProtocol(): IndexSyncRejection = when (this) {
-    IndexSynchronizationFailure.WorkspaceNotReady -> IndexSyncRejection.WORKSPACE_NOT_READY
-    is IndexSynchronizationFailure.Refresh -> when (failure) {
-        WorkspaceIndexRefreshFailure.INVALID_SOURCE_ROOT_SCOPE ->
-            IndexSyncRejection.INVALID_SOURCE_ROOT_SCOPE
-        WorkspaceIndexRefreshFailure.REFRESH_UNAVAILABLE ->
-            IndexSyncRejection.REFRESH_UNAVAILABLE
-        WorkspaceIndexRefreshFailure.INDEXING_INTERRUPTED ->
-            IndexSyncRejection.INDEXING_INTERRUPTED
-        WorkspaceIndexRefreshFailure.INDEXING_TIMED_OUT ->
-            IndexSyncRejection.INDEXING_TIMED_OUT
-        WorkspaceIndexRefreshFailure.INDEXING_FAILED -> IndexSyncRejection.INDEXING_FAILED
+private fun IndexSynchronizationFailure.toProtocol(): IndexSyncRejection =
+    when (this) {
+        IndexSynchronizationFailure.WorkspaceNotReady -> IndexSyncRejection.WORKSPACE_NOT_READY
+        is IndexSynchronizationFailure.Refresh ->
+            when (failure) {
+                WorkspaceIndexRefreshFailure.INVALID_SOURCE_ROOT_SCOPE -> IndexSyncRejection.INVALID_SOURCE_ROOT_SCOPE
+                WorkspaceIndexRefreshFailure.REFRESH_UNAVAILABLE -> IndexSyncRejection.REFRESH_UNAVAILABLE
+                WorkspaceIndexRefreshFailure.INDEXING_INTERRUPTED -> IndexSyncRejection.INDEXING_INTERRUPTED
+                WorkspaceIndexRefreshFailure.INDEXING_TIMED_OUT -> IndexSyncRejection.INDEXING_TIMED_OUT
+                WorkspaceIndexRefreshFailure.INDEXING_FAILED -> IndexSyncRejection.INDEXING_FAILED
+            }
+        IndexSynchronizationFailure.PublicationInvalidated -> IndexSyncRejection.PUBLICATION_INVALIDATED
+        is IndexSynchronizationFailure.PublicationBlocked -> IndexSyncRejection.PUBLICATION_BLOCKED
+        IndexSynchronizationFailure.PublicationContractViolation -> IndexSyncRejection.PUBLICATION_CONTRACT_VIOLATION
     }
-    IndexSynchronizationFailure.PublicationInvalidated ->
-        IndexSyncRejection.PUBLICATION_INVALIDATED
-    is IndexSynchronizationFailure.PublicationBlocked -> IndexSyncRejection.PUBLICATION_BLOCKED
-    IndexSynchronizationFailure.PublicationContractViolation ->
-        IndexSyncRejection.PUBLICATION_CONTRACT_VIOLATION
-}

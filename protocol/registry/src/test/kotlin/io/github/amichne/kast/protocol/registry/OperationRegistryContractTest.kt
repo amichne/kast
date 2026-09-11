@@ -81,25 +81,19 @@ class OperationRegistryContractTest {
         val missing = CanonicalOperation.CHANGE_RECOVER
 
         assertEquals(
-            OperationRegistryConstruction.Rejected(
-                setOf(OperationRegistryFailure.MissingOperationId(missing.id)),
-            ),
+            OperationRegistryConstruction.Rejected(setOf(OperationRegistryFailure.MissingOperationId(missing.id))),
             OperationRegistry.create(definitions.filterNot { it.operation == missing }),
         )
 
         val duplicate = definitions.first()
         assertEquals(
-            OperationRegistryConstruction.Rejected(
-                setOf(OperationRegistryFailure.DuplicateOperationId(duplicate.id)),
-            ),
+            OperationRegistryConstruction.Rejected(setOf(OperationRegistryFailure.DuplicateOperationId(duplicate.id))),
             OperationRegistry.create(definitions + duplicate),
         )
 
         val unknown = RawMetadata(operationId("symbol.missing"))
         assertEquals(
-            OperationRegistryConstruction.Rejected(
-                setOf(OperationRegistryFailure.UnknownOperationId(unknown.id)),
-            ),
+            OperationRegistryConstruction.Rejected(setOf(OperationRegistryFailure.UnknownOperationId(unknown.id))),
             OperationRegistry.create(definitions + unknown),
         )
 
@@ -110,7 +104,7 @@ class OperationRegistryContractTest {
                 setOf(
                     OperationRegistryFailure.UntypedOperationMetadata(untypedOperation.id),
                     OperationRegistryFailure.MissingOperationId(untypedOperation.id),
-                ),
+                )
             ),
             OperationRegistry.create(withoutTypedDefinition + RawMetadata(untypedOperation.id)),
         )
@@ -126,15 +120,14 @@ class OperationRegistryContractTest {
             registry.lookup(operationId("symbol.missing")),
         )
 
-        val evidence = EvidenceEnvelope(
-            operation = definition.id,
-            generation = EvidenceGeneration.parse(9).refinedValue(),
-            payload = TestResult("found"),
-        )
+        val evidence =
+            EvidenceEnvelope(
+                operation = definition.id,
+                generation = EvidenceGeneration.parse(9).refinedValue(),
+                payload = TestResult("found"),
+            )
         assertEquals(
-            OperationOutcomeBinding.Bound(
-                io.github.amichne.kast.kernel.OperationOutcome.Complete(evidence),
-            ),
+            OperationOutcomeBinding.Bound(io.github.amichne.kast.kernel.OperationOutcome.Complete(evidence)),
             definition.bindComplete(evidence),
         )
         assertEquals(
@@ -142,19 +135,18 @@ class OperationRegistryContractTest {
                 io.github.amichne.kast.kernel.OperationOutcome.Qualified(
                     evidence,
                     TestQualification.TRUNCATED,
-                ),
+                )
             ),
             definition.bindQualified(evidence, TestQualification.TRUNCATED),
         )
 
-        val completeOnly = definition(
-            CanonicalOperation.SYMBOL_DISCOVER,
-            CompletenessPolicy.COMPLETE_REQUIRED,
-        )
+        val completeOnly =
+            definition(
+                CanonicalOperation.SYMBOL_DISCOVER,
+                CompletenessPolicy.COMPLETE_REQUIRED,
+            )
         assertEquals(
-            OperationOutcomeBinding.Rejected(
-                OperationOutcomeBindingFailure.QualificationNotAllowed(completeOnly.id),
-            ),
+            OperationOutcomeBinding.Rejected(OperationOutcomeBindingFailure.QualificationNotAllowed(completeOnly.id)),
             completeOnly.bindQualified(evidence, TestQualification.TRUNCATED),
         )
 
@@ -164,7 +156,7 @@ class OperationRegistryContractTest {
                 OperationOutcomeBindingFailure.EvidenceOperationMismatch(
                     expected = definition.id,
                     observed = mismatched.operation,
-                ),
+                )
             ),
             definition.bindComplete(mismatched),
         )
@@ -179,12 +171,13 @@ class OperationRegistryContractTest {
         val required = CanonicalOperation.TOPOLOGY_BUILD.id
         val blocker: OperationBlocker = OperationBlocker.StrongerOperationRequired(required)
 
-        val recorded = when (blocker) {
-            is OperationBlocker.BudgetUnavailable -> error("Unexpected blocker: $blocker")
-            is OperationBlocker.CapabilityUnavailable -> error("Unexpected blocker: $blocker")
-            is OperationBlocker.ScopeUnavailable -> error("Unexpected blocker: $blocker")
-            is OperationBlocker.StrongerOperationRequired -> blocker.requiredOperation
-        }
+        val recorded =
+            when (blocker) {
+                is OperationBlocker.BudgetUnavailable -> error("Unexpected blocker: $blocker")
+                is OperationBlocker.CapabilityUnavailable -> error("Unexpected blocker: $blocker")
+                is OperationBlocker.ScopeUnavailable -> error("Unexpected blocker: $blocker")
+                is OperationBlocker.StrongerOperationRequired -> blocker.requiredOperation
+            }
 
         assertEquals(required, recorded)
     }
@@ -198,13 +191,14 @@ class OperationRegistryContractTest {
     ): OperationDefinition<TestRequest, TestResult, TestCapability, TestQualification, TestRejection> =
         OperationDefinition(
             operation = operation,
-            types = OperationTypeBinding(
-                requestType = TestRequest::class,
-                resultType = TestResult::class,
-                qualificationType = TestQualification::class,
-                rejectionType = TestRejection::class,
-                schema = schemaIdentity("kast.${operation.id.value}.v1"),
-            ),
+            types =
+                OperationTypeBinding(
+                    requestType = TestRequest::class,
+                    resultType = TestResult::class,
+                    qualificationType = TestQualification::class,
+                    rejectionType = TestRejection::class,
+                    schema = schemaIdentity("kast.${operation.id.value}.v1"),
+                ),
             requiredCapability = capabilityId("semantic.read"),
             capabilityType = TestCapability::class,
             lane = OperationLane.INDEX_LOOKUP,
@@ -216,11 +210,12 @@ class OperationRegistryContractTest {
             hostedExposure = HostedExposure.UNAVAILABLE,
         )
 
-    private fun resourceBudget(): ResourceBudget = ResourceBudget(
-        resultLimit = ResultLimit.parse(250).refinedValue(),
-        workUnitLimit = WorkUnitLimit.parse(10_000).refinedValue(),
-        elapsedTimeLimit = ElapsedTimeLimitMillis.parse(5_000).refinedValue(),
-    )
+    private fun resourceBudget(): ResourceBudget =
+        ResourceBudget(
+            resultLimit = ResultLimit.parse(250).refinedValue(),
+            workUnitLimit = WorkUnitLimit.parse(10_000).refinedValue(),
+            elapsedTimeLimit = ElapsedTimeLimitMillis.parse(5_000).refinedValue(),
+        )
 
     private fun operationId(raw: String): OperationId = OperationId.parse(raw).refinedValue()
 
@@ -228,37 +223,31 @@ class OperationRegistryContractTest {
 
     private fun schemaIdentity(raw: String): SchemaIdentity = SchemaIdentity.parse(raw).refinedValue()
 
-    private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error("Expected refined value, got $failure")
-    }
+    private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error("Expected refined value, got $failure")
+        }
 
-    private data class RawMetadata(
-        override val id: OperationId,
-    ) : OperationMetadata
+    private data class RawMetadata(override val id: OperationId) : OperationMetadata
 
-    private data class TestRequest(
-        val query: String,
-    ) : OperationRequest
+    private data class TestRequest(val query: String) : OperationRequest
 
-    private data class TestResult(
-        val value: String,
-    ) : OperationResult
+    private data class TestResult(val value: String) : OperationResult
 
-    private data class TestCapability(
-        override val id: CapabilityId,
-    ) : CapabilityMarker
+    private data class TestCapability(override val id: CapabilityId) : CapabilityMarker
 
     private enum class TestQualification : OperationQualification {
-        TRUNCATED,
+        TRUNCATED
     }
 
     private enum class TestRejection : OperationRejection {
-        BLOCKED,
+        BLOCKED
     }
 
-    private fun OperationRegistryConstruction.createdRegistry(): OperationRegistry = when (this) {
-        is OperationRegistryConstruction.Created -> registry
-        is OperationRegistryConstruction.Rejected -> error("Expected registry, got $failures")
-    }
+    private fun OperationRegistryConstruction.createdRegistry(): OperationRegistry =
+        when (this) {
+            is OperationRegistryConstruction.Created -> registry
+            is OperationRegistryConstruction.Rejected -> error("Expected registry, got $failures")
+        }
 }

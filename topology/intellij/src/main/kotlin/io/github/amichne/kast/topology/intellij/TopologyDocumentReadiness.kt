@@ -4,17 +4,17 @@ package io.github.amichne.kast.topology.intellij
 internal enum class TopologyDocumentReadiness {
     READY,
     DOCUMENT_DIRTY,
-    PSI_DOCUMENT_UNCOMMITTED,
-    ;
+    PSI_DOCUMENT_UNCOMMITTED;
 
     companion object {
         fun observe(
             fileModified: Boolean,
             psiCommitted: Boolean,
-        ): TopologyDocumentReadiness = when {
-            fileModified -> DOCUMENT_DIRTY
-            !psiCommitted -> PSI_DOCUMENT_UNCOMMITTED
-            else -> READY
-        }
+        ): TopologyDocumentReadiness =
+            when {
+                fileModified -> DOCUMENT_DIRTY
+                !psiCommitted -> PSI_DOCUMENT_UNCOMMITTED
+                else -> READY
+            }
     }
 }

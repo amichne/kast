@@ -1,8 +1,8 @@
 package io.github.amichne.kast.cli.installation
 
-import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSource
 import io.github.amichne.kast.distribution.contract.configuration.KastConfigurationCatalogue
+import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
@@ -19,17 +19,21 @@ class InstallationWorkflowTest {
     @Test
     fun `installation child logs bounded success and rejection outcomes`() {
         val observations = mutableListOf<InstallationChildObservation>()
-        for ((executable, expected) in listOf(
-            "/usr/bin/true" to InstallationChildOutcome.COMPLETED,
-            "/usr/bin/false" to InstallationChildOutcome.EXIT_REJECTED,
-            "/missing-secret-installation-command" to InstallationChildOutcome.IO_REJECTED,
-        )) {
-            assertEquals(expected, executeInstallationChild(
-                InstallationChildStage.PRIOR_RETIREMENT,
-                listOf(executable),
-                mapOf("PRIVATE_SETTING" to "secret-input"),
-                observations::add,
-            ))
+        for ((executable, expected) in
+            listOf(
+                "/usr/bin/true" to InstallationChildOutcome.COMPLETED,
+                "/usr/bin/false" to InstallationChildOutcome.EXIT_REJECTED,
+                "/missing-secret-installation-command" to InstallationChildOutcome.IO_REJECTED,
+            )) {
+            assertEquals(
+                expected,
+                executeInstallationChild(
+                    InstallationChildStage.PRIOR_RETIREMENT,
+                    listOf(executable),
+                    mapOf("PRIVATE_SETTING" to "secret-input"),
+                    observations::add,
+                ),
+            )
         }
         assertEquals(3, observations.size)
         assertEquals(
@@ -40,9 +44,7 @@ class InstallationWorkflowTest {
     }
 
     @Test
-    fun `fresh installation materializes every saved default in its environment file`(
-        @TempDir temporary: Path,
-    ) {
+    fun `fresh installation materializes every saved default in its environment file`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val installation = root.resolve("installation")
         assertInstanceOf(
@@ -55,17 +57,19 @@ class InstallationWorkflowTest {
                     Files.createDirectory(root.resolve("home")),
                     Files.createDirectory(root.resolve("codex-home")),
                     "1.2.3",
-                ),
+                )
             ),
         )
         val selected = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
-        val values = Files.readAllLines(selected.resolve("config/environment"))
-            .filterNot { it.startsWith("#") }
-            .filter(String::isNotBlank)
-            .associate { it.substringBefore('=') to it.substringAfter('=') }
-        val defaults = KastConfigurationCatalogue.declarations.filter {
-            ConfigurationSource.SAVED_INSTALLATION in it.sources && it.defaultValue != null
-        }
+        val values =
+            Files.readAllLines(selected.resolve("config/environment"))
+                .filterNot { it.startsWith("#") }
+                .filter(String::isNotBlank)
+                .associate { it.substringBefore('=') to it.substringAfter('=') }
+        val defaults =
+            KastConfigurationCatalogue.declarations.filter {
+                ConfigurationSource.SAVED_INSTALLATION in it.sources && it.defaultValue != null
+            }
         defaults.forEach { declaration ->
             assertTrue(values.containsKey(declaration.key), declaration.key)
         }
@@ -73,9 +77,7 @@ class InstallationWorkflowTest {
     }
 
     @Test
-    fun `upgrade retains the admitted workspace registry`(
-        @TempDir temporary: Path,
-    ) {
+    fun `upgrade retains the admitted workspace registry`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val installation = root.resolve("installation")
         val commands = root.resolve("commands")
@@ -123,9 +125,7 @@ class InstallationWorkflowTest {
     }
 
     @Test
-    fun `owned legacy activation lock is narrowed before installation proceeds`(
-        @TempDir temporary: Path,
-    ) {
+    fun `owned legacy activation lock is narrowed before installation proceeds`(@TempDir temporary: Path) {
         val lock = Files.writeString(temporary.resolve("activation.lock"), "")
         Files.setPosixFilePermissions(lock, PosixFilePermissions.fromString("rw-r--r--"))
 
@@ -165,8 +165,8 @@ class InstallationWorkflowTest {
             |if set(document) != {'schemaVersion', 'revision', 'roots'} or document['schemaVersion'] != 2:
             |    raise SystemExit(1)
             |print('{"status":"complete"}')
-            |
-            """.trimMargin(),
+            |"""
+                .trimMargin(),
         )
 
         val runtime = fixture.resolve("kast-semantic-runtime-$version-macos-aarch64.zip")
@@ -178,17 +178,20 @@ class InstallationWorkflowTest {
         val runtimeDigest = digest(runtime)
         val pluginDigest = "sha256:${"1".repeat(64)}"
         val archiveDigest = "sha256:$runtimeDigest"
-        val runtimeIdentity = digest(
-            listOf(
-                "macos",
-                "aarch64",
-                "261.1",
-                "2.4.10",
-                pluginDigest,
-                "kast-wire-v1",
-                archiveDigest,
-            ).joinToString("\n").byteInputStream(),
-        )
+        val runtimeIdentity =
+            digest(
+                listOf(
+                        "macos",
+                        "aarch64",
+                        "261.1",
+                        "2.4.10",
+                        pluginDigest,
+                        "kast-wire-v1",
+                        archiveDigest,
+                    )
+                    .joinToString("\n")
+                    .byteInputStream()
+            )
         Files.writeString(
             metadata.resolve("semantic-runtime.json"),
             """{"schemaVersion":1,"runtimeId":"sha256:$runtimeIdentity","productVersion":"$version","platform":"macos","architecture":"aarch64","ideaBuild":"261.1","kotlinPluginBuild":"2.4.10","kastPluginSha256":"$pluginDigest","wireSchemaId":"kast-wire-v1","archive":{"fileName":"${runtime.fileName}","url":"https://example.invalid/${runtime.fileName}","sha256":"$archiveDigest","bytes":${Files.size(runtime)}},"layout":{"executable":"kast-indexer","requiredEntries":["kast-indexer"],"executableEntries":["kast-indexer"]}}""",
@@ -206,27 +209,28 @@ class InstallationWorkflowTest {
         }
         Files.writeString(idea.resolve("Resources/build.txt"), "IU-261.1")
 
-        val parsed = InstallationRequest.parse(
-            mapOf(
-                InstallationEnvironment.CONTROL_ROOT.key to control.toString(),
-                InstallationEnvironment.CONTROL_ARCHIVE.key to controlArchive.toString(),
-                InstallationEnvironment.CONTROL_SHA256.key to digest(controlArchive),
-                InstallationEnvironment.RUNTIME_ARCHIVE.key to runtime.toString(),
-                InstallationEnvironment.RUNTIME_SHA256.key to runtimeDigest,
-                InstallationEnvironment.VERSION.key to version,
-                InstallationEnvironment.IDEA_HOME.key to idea.toString(),
-                InstallationEnvironment.JAVA_HOME.key to javaHome.toString(),
-                InstallationEnvironment.INSTALL_ROOT.key to installation.toString(),
-                InstallationEnvironment.BIN_DIRECTORY.key to commands.toString(),
-                InstallationEnvironment.HOME.key to home.toString(),
-                InstallationEnvironment.CODEX_HOME.key to codexHome.toString(),
-                InstallationEnvironment.ENABLE_LAUNCHD.key to "0",
-                InstallationEnvironment.ENABLE_APP_SERVER.key to "0",
-                InstallationEnvironment.APP_SERVER_TOOLS.key to "query,source_read",
-                InstallationEnvironment.REFRESH_APP_SERVER.key to "0",
-                InstallationEnvironment.MODE.key to "apply",
-            ),
-        )
+        val parsed =
+            InstallationRequest.parse(
+                mapOf(
+                    InstallationEnvironment.CONTROL_ROOT.key to control.toString(),
+                    InstallationEnvironment.CONTROL_ARCHIVE.key to controlArchive.toString(),
+                    InstallationEnvironment.CONTROL_SHA256.key to digest(controlArchive),
+                    InstallationEnvironment.RUNTIME_ARCHIVE.key to runtime.toString(),
+                    InstallationEnvironment.RUNTIME_SHA256.key to runtimeDigest,
+                    InstallationEnvironment.VERSION.key to version,
+                    InstallationEnvironment.IDEA_HOME.key to idea.toString(),
+                    InstallationEnvironment.JAVA_HOME.key to javaHome.toString(),
+                    InstallationEnvironment.INSTALL_ROOT.key to installation.toString(),
+                    InstallationEnvironment.BIN_DIRECTORY.key to commands.toString(),
+                    InstallationEnvironment.HOME.key to home.toString(),
+                    InstallationEnvironment.CODEX_HOME.key to codexHome.toString(),
+                    InstallationEnvironment.ENABLE_LAUNCHD.key to "0",
+                    InstallationEnvironment.ENABLE_APP_SERVER.key to "0",
+                    InstallationEnvironment.APP_SERVER_TOOLS.key to "query,source_read",
+                    InstallationEnvironment.REFRESH_APP_SERVER.key to "0",
+                    InstallationEnvironment.MODE.key to "apply",
+                )
+            )
         return when (parsed) {
             is Refinement.Refined -> parsed.value
             is Refinement.Rejected -> error("fixture request rejected: ${parsed.failure}")

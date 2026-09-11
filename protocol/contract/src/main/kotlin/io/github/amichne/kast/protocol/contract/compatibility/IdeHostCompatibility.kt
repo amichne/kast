@@ -5,10 +5,8 @@ import io.github.amichne.kast.kernel.Refinement
 
 private val IDE_BUILD_FORMAT = Regex("[0-9]{3}\\.[0-9]+\\.[0-9]+")
 private val KOTLIN_PLUGIN_BUILD_FORMAT = Regex("[0-9]{3}\\.[0-9]+\\.[0-9]+-IJ")
-private val KAST_PLUGIN_VERSION_FORMAT =
-    Regex("[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9]+-g[0-9a-f]{7,40})?")
-private val RUNTIME_PROTOCOL_FORMAT =
-    Regex("[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*\\.v[1-9][0-9]*")
+private val KAST_PLUGIN_VERSION_FORMAT = Regex("[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9]+-g[0-9a-f]{7,40})?")
+private val RUNTIME_PROTOCOL_FORMAT = Regex("[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*\\.v[1-9][0-9]*")
 private val SHA256_FORMAT = Regex("sha256:[0-9a-f]{64}")
 
 enum class IdeHostCompatibilityField {
@@ -33,75 +31,69 @@ sealed interface IdeHostCompatibilityFailure {
         val syntax: IdeHostCompatibilitySyntaxFailure,
     ) : IdeHostCompatibilityFailure
 
-    data class Mismatch(
-        val mismatch: IdeHostCompatibilityMismatch,
-    ) : IdeHostCompatibilityFailure
+    data class Mismatch(val mismatch: IdeHostCompatibilityMismatch) : IdeHostCompatibilityFailure
 
-    data class UnknownCapability(
-        val operationId: OperationId,
-    ) : IdeHostCompatibilityFailure
+    data class UnknownCapability(val operationId: OperationId) : IdeHostCompatibilityFailure
 
-    data class UnsupportedCapability(
-        val operation: CanonicalOperation,
-    ) : IdeHostCompatibilityFailure
+    data class UnsupportedCapability(val operation: CanonicalOperation) : IdeHostCompatibilityFailure
 
-    data class DuplicateCapability(
-        val capability: IdeHostCapability,
-    ) : IdeHostCompatibilityFailure
+    data class DuplicateCapability(val capability: IdeHostCapability) : IdeHostCompatibilityFailure
 }
 
 /** Exact refined values on both sides of one compatibility mismatch. */
 sealed interface IdeHostCompatibilityMismatch {
     val field: IdeHostCompatibilityField
 
-    data class IdeBuild internal constructor(
+    data class IdeBuild
+    internal constructor(
         val expected: IdeBuildIdentity,
         val observed: IdeBuildIdentity,
     ) : IdeHostCompatibilityMismatch {
         override val field: IdeHostCompatibilityField = IdeHostCompatibilityField.IDE_BUILD
     }
 
-    data class KotlinPluginBuild internal constructor(
+    data class KotlinPluginBuild
+    internal constructor(
         val expected: KotlinPluginBuildIdentity,
         val observed: KotlinPluginBuildIdentity,
     ) : IdeHostCompatibilityMismatch {
-        override val field: IdeHostCompatibilityField =
-            IdeHostCompatibilityField.KOTLIN_PLUGIN_BUILD
+        override val field: IdeHostCompatibilityField = IdeHostCompatibilityField.KOTLIN_PLUGIN_BUILD
     }
 
-    data class KastPluginVersion internal constructor(
+    data class KastPluginVersion
+    internal constructor(
         val expected: io.github.amichne.kast.protocol.contract.KastPluginVersion,
         val observed: io.github.amichne.kast.protocol.contract.KastPluginVersion,
     ) : IdeHostCompatibilityMismatch {
-        override val field: IdeHostCompatibilityField =
-            IdeHostCompatibilityField.KAST_PLUGIN_VERSION
+        override val field: IdeHostCompatibilityField = IdeHostCompatibilityField.KAST_PLUGIN_VERSION
     }
 
-    data class RuntimeProtocol internal constructor(
+    data class RuntimeProtocol
+    internal constructor(
         val expected: RuntimeProtocolIdentity,
         val observed: RuntimeProtocolIdentity,
     ) : IdeHostCompatibilityMismatch {
-        override val field: IdeHostCompatibilityField =
-            IdeHostCompatibilityField.RUNTIME_PROTOCOL_IDENTITY
+        override val field: IdeHostCompatibilityField = IdeHostCompatibilityField.RUNTIME_PROTOCOL_IDENTITY
     }
 
-    data class OperationRegistry internal constructor(
+    data class OperationRegistry
+    internal constructor(
         val expected: OperationRegistryDigest,
         val observed: OperationRegistryDigest,
     ) : IdeHostCompatibilityMismatch {
-        override val field: IdeHostCompatibilityField =
-            IdeHostCompatibilityField.OPERATION_REGISTRY_DIGEST
+        override val field: IdeHostCompatibilityField = IdeHostCompatibilityField.OPERATION_REGISTRY_DIGEST
     }
 
-    data class WireSchema internal constructor(
+    data class WireSchema
+    internal constructor(
         val expected: WireSchemaDigest,
         val observed: WireSchemaDigest,
     ) : IdeHostCompatibilityMismatch {
-        override val field: IdeHostCompatibilityField =
-            IdeHostCompatibilityField.WIRE_SCHEMA_DIGEST
+        override val field: IdeHostCompatibilityField = IdeHostCompatibilityField.WIRE_SCHEMA_DIGEST
     }
 
-    data class Capabilities internal constructor(
+    data class Capabilities
+    internal constructor(
         val expected: IdeHostCapabilitySet,
         val observed: IdeHostCapabilitySet,
     ) : IdeHostCompatibilityMismatch {
@@ -115,8 +107,8 @@ value class IdeBuildIdentity private constructor(val value: String) {
         /**
          * Proof transition: `String -> Refinement<IdeBuildIdentity, IdeHostCompatibilityFailure>`.
          *
-         * Establishes an exact three-part numeric IntelliJ build identity. Raw text may be
-         * extracted only at the endpoint metadata or generated-report boundary.
+         * Establishes an exact three-part numeric IntelliJ build identity. Raw text may be extracted only at the
+         * endpoint metadata or generated-report boundary.
          */
         fun parse(raw: String): Refinement<IdeBuildIdentity, IdeHostCompatibilityFailure> =
             refineIdentity(raw, IdeHostCompatibilityField.IDE_BUILD, IDE_BUILD_FORMAT, ::IdeBuildIdentity)
@@ -129,8 +121,8 @@ value class KotlinPluginBuildIdentity private constructor(val value: String) {
         /**
          * Proof transition: `String -> Refinement<KotlinPluginBuildIdentity, IdeHostCompatibilityFailure>`.
          *
-         * Establishes an exact IntelliJ-bundled Kotlin plugin build identity. Raw text may be
-         * extracted only at the endpoint metadata or generated-report boundary.
+         * Establishes an exact IntelliJ-bundled Kotlin plugin build identity. Raw text may be extracted only at the
+         * endpoint metadata or generated-report boundary.
          */
         fun parse(raw: String): Refinement<KotlinPluginBuildIdentity, IdeHostCompatibilityFailure> =
             refineIdentity(
@@ -148,8 +140,8 @@ value class KastPluginVersion private constructor(val value: String) {
         /**
          * Proof transition: `String -> Refinement<KastPluginVersion, IdeHostCompatibilityFailure>`.
          *
-         * Establishes a release or Git-describe Kast plugin version. Raw text may be extracted
-         * only at the endpoint metadata or generated-report boundary.
+         * Establishes a release or Git-describe Kast plugin version. Raw text may be extracted only at the endpoint
+         * metadata or generated-report boundary.
          */
         fun parse(raw: String): Refinement<KastPluginVersion, IdeHostCompatibilityFailure> =
             refineIdentity(
@@ -167,8 +159,8 @@ value class RuntimeProtocolIdentity private constructor(val value: String) {
         /**
          * Proof transition: `String -> Refinement<RuntimeProtocolIdentity, IdeHostCompatibilityFailure>`.
          *
-         * Establishes a versioned permanent IDE-hosted runtime protocol identity. Raw text may be
-         * extracted only at the endpoint metadata or generated-report boundary.
+         * Establishes a versioned permanent IDE-hosted runtime protocol identity. Raw text may be extracted only at the
+         * endpoint metadata or generated-report boundary.
          */
         fun parse(raw: String): Refinement<RuntimeProtocolIdentity, IdeHostCompatibilityFailure> =
             refineIdentity(
@@ -186,8 +178,8 @@ value class OperationRegistryDigest private constructor(val value: String) {
         /**
          * Proof transition: `String -> Refinement<OperationRegistryDigest, IdeHostCompatibilityFailure>`.
          *
-         * Establishes a lowercase SHA-256 identity for exact operation-registry bytes. Raw text
-         * may be extracted only at the endpoint metadata or generated-report boundary.
+         * Establishes a lowercase SHA-256 identity for exact operation-registry bytes. Raw text may be extracted only
+         * at the endpoint metadata or generated-report boundary.
          */
         fun parse(raw: String): Refinement<OperationRegistryDigest, IdeHostCompatibilityFailure> =
             refineIdentity(
@@ -205,8 +197,8 @@ value class WireSchemaDigest private constructor(val value: String) {
         /**
          * Proof transition: `String -> Refinement<WireSchemaDigest, IdeHostCompatibilityFailure>`.
          *
-         * Establishes a lowercase SHA-256 identity for exact wire-schema bytes. Raw text may be
-         * extracted only at the endpoint metadata or generated-report boundary.
+         * Establishes a lowercase SHA-256 identity for exact wire-schema bytes. Raw text may be extracted only at the
+         * endpoint metadata or generated-report boundary.
          */
         fun parse(raw: String): Refinement<WireSchemaDigest, IdeHostCompatibilityFailure> =
             refineIdentity(
@@ -228,7 +220,8 @@ data class IdeHostCompatibilityCandidate(
     val capabilities: List<String>,
 )
 
-class AdmittedIdeHostCompatibility private constructor(
+class AdmittedIdeHostCompatibility
+private constructor(
     val ideBuild: IdeBuildIdentity,
     val kotlinPluginBuild: KotlinPluginBuildIdentity,
     val kastPluginVersion: KastPluginVersion,
@@ -241,83 +234,93 @@ class AdmittedIdeHostCompatibility private constructor(
      * Proof transition: `AdmittedIdeHostCompatibility + AdmittedIdeHostCompatibility ->
      * IdeHostCompatibilityComparison`.
      *
-     * Establishes exact tuple equality or the first finite mismatch with both refined values.
-     * Each capability set is already valid; differing membership or order remains an exact typed
-     * mismatch. Raw values may be extracted only at endpoint or generated-report boundaries.
+     * Establishes exact tuple equality or the first finite mismatch with both refined values. Each capability set is
+     * already valid; differing membership or order remains an exact typed mismatch. Raw values may be extracted only at
+     * endpoint or generated-report boundaries.
      */
-    internal fun compareAgainst(
-        expected: AdmittedIdeHostCompatibility,
-    ): IdeHostCompatibilityComparison =
+    internal fun compareAgainst(expected: AdmittedIdeHostCompatibility): IdeHostCompatibilityComparison =
         when {
-            ideBuild != expected.ideBuild -> mismatch(
-                IdeHostCompatibilityMismatch.IdeBuild(expected.ideBuild, ideBuild),
-            )
-            kotlinPluginBuild != expected.kotlinPluginBuild -> mismatch(
-                IdeHostCompatibilityMismatch.KotlinPluginBuild(
-                    expected.kotlinPluginBuild,
-                    kotlinPluginBuild,
-                ),
-            )
-            kastPluginVersion != expected.kastPluginVersion -> mismatch(
-                IdeHostCompatibilityMismatch.KastPluginVersion(
-                    expected.kastPluginVersion,
-                    kastPluginVersion,
-                ),
-            )
-            runtimeProtocolIdentity != expected.runtimeProtocolIdentity -> mismatch(
-                IdeHostCompatibilityMismatch.RuntimeProtocol(
-                    expected.runtimeProtocolIdentity,
-                    runtimeProtocolIdentity,
-                ),
-            )
-            operationRegistryDigest != expected.operationRegistryDigest -> mismatch(
-                IdeHostCompatibilityMismatch.OperationRegistry(
-                    expected.operationRegistryDigest,
-                    operationRegistryDigest,
-                ),
-            )
-            wireSchemaDigest != expected.wireSchemaDigest -> mismatch(
-                IdeHostCompatibilityMismatch.WireSchema(
-                    expected.wireSchemaDigest,
-                    wireSchemaDigest,
-                ),
-            )
-            capabilities != expected.capabilities -> mismatch(
-                IdeHostCompatibilityMismatch.Capabilities(expected.capabilities, capabilities),
-            )
+            ideBuild != expected.ideBuild ->
+                mismatch(IdeHostCompatibilityMismatch.IdeBuild(expected.ideBuild, ideBuild))
+            kotlinPluginBuild != expected.kotlinPluginBuild ->
+                mismatch(
+                    IdeHostCompatibilityMismatch.KotlinPluginBuild(
+                        expected.kotlinPluginBuild,
+                        kotlinPluginBuild,
+                    )
+                )
+            kastPluginVersion != expected.kastPluginVersion ->
+                mismatch(
+                    IdeHostCompatibilityMismatch.KastPluginVersion(
+                        expected.kastPluginVersion,
+                        kastPluginVersion,
+                    )
+                )
+            runtimeProtocolIdentity != expected.runtimeProtocolIdentity ->
+                mismatch(
+                    IdeHostCompatibilityMismatch.RuntimeProtocol(
+                        expected.runtimeProtocolIdentity,
+                        runtimeProtocolIdentity,
+                    )
+                )
+            operationRegistryDigest != expected.operationRegistryDigest ->
+                mismatch(
+                    IdeHostCompatibilityMismatch.OperationRegistry(
+                        expected.operationRegistryDigest,
+                        operationRegistryDigest,
+                    )
+                )
+            wireSchemaDigest != expected.wireSchemaDigest ->
+                mismatch(
+                    IdeHostCompatibilityMismatch.WireSchema(
+                        expected.wireSchemaDigest,
+                        wireSchemaDigest,
+                    )
+                )
+            capabilities != expected.capabilities ->
+                mismatch(IdeHostCompatibilityMismatch.Capabilities(expected.capabilities, capabilities))
             else -> IdeHostCompatibilityComparison.Exact
         }
 
     companion object {
         /**
-         * Proof transition: `IdeHostCompatibilityCandidate -> Refinement<AdmittedIdeHostCompatibility, IdeHostCompatibilityFailure>`.
+         * Proof transition: `IdeHostCompatibilityCandidate -> Refinement<AdmittedIdeHostCompatibility,
+         * IdeHostCompatibilityFailure>`.
          *
-         * Establishes all six refined identities and the exact capability set. Every expected
-         * syntax or capability failure remains closed data. Raw extraction is permitted only at
-         * endpoint or generated-report boundaries.
+         * Establishes all six refined identities and the exact capability set. Every expected syntax or capability
+         * failure remains closed data. Raw extraction is permitted only at endpoint or generated-report boundaries.
          */
         internal fun parse(
-            candidate: IdeHostCompatibilityCandidate,
+            candidate: IdeHostCompatibilityCandidate
         ): Refinement<AdmittedIdeHostCompatibility, IdeHostCompatibilityFailure> {
-            val ideBuild = refinedOrReject(IdeBuildIdentity.parse(candidate.ideBuild)) { return it }
-            val kotlinBuild = refinedOrReject(
-                KotlinPluginBuildIdentity.parse(candidate.kotlinPluginBuild),
-            ) { return it }
-            val pluginVersion = refinedOrReject(
-                KastPluginVersion.parse(candidate.kastPluginVersion),
-            ) { return it }
-            val runtimeProtocol = refinedOrReject(
-                RuntimeProtocolIdentity.parse(candidate.runtimeProtocolIdentity),
-            ) { return it }
-            val registryDigest = refinedOrReject(
-                OperationRegistryDigest.parse(candidate.operationRegistryDigest),
-            ) { return it }
-            val wireDigest = refinedOrReject(
-                WireSchemaDigest.parse(candidate.wireSchemaDigest),
-            ) { return it }
-            val capabilities = refinedOrReject(
-                IdeHostCapabilitySet.parse(candidate.capabilities),
-            ) { return it }
+            val ideBuild =
+                refinedOrReject(IdeBuildIdentity.parse(candidate.ideBuild)) {
+                    return it
+                }
+            val kotlinBuild =
+                refinedOrReject(KotlinPluginBuildIdentity.parse(candidate.kotlinPluginBuild)) {
+                    return it
+                }
+            val pluginVersion =
+                refinedOrReject(KastPluginVersion.parse(candidate.kastPluginVersion)) {
+                    return it
+                }
+            val runtimeProtocol =
+                refinedOrReject(RuntimeProtocolIdentity.parse(candidate.runtimeProtocolIdentity)) {
+                    return it
+                }
+            val registryDigest =
+                refinedOrReject(OperationRegistryDigest.parse(candidate.operationRegistryDigest)) {
+                    return it
+                }
+            val wireDigest =
+                refinedOrReject(WireSchemaDigest.parse(candidate.wireSchemaDigest)) {
+                    return it
+                }
+            val capabilities =
+                refinedOrReject(IdeHostCapabilitySet.parse(candidate.capabilities)) {
+                    return it
+                }
             return Refinement.Refined(
                 AdmittedIdeHostCompatibility(
                     ideBuild,
@@ -327,33 +330,30 @@ class AdmittedIdeHostCompatibility private constructor(
                     registryDigest,
                     wireDigest,
                     capabilities,
-                ),
+                )
             )
         }
     }
 }
 
 sealed interface IdeHostCompatibilityAdmission {
-    data class Admitted(val compatibility: AdmittedIdeHostCompatibility) :
-        IdeHostCompatibilityAdmission
+    data class Admitted(val compatibility: AdmittedIdeHostCompatibility) : IdeHostCompatibilityAdmission
 
-    data class Rejected(val failure: IdeHostCompatibilityFailure) :
-        IdeHostCompatibilityAdmission
+    data class Rejected(val failure: IdeHostCompatibilityFailure) : IdeHostCompatibilityAdmission
 }
 
-class IdeHostCompatibilityPolicy private constructor(
-    val supportedCompatibility: AdmittedIdeHostCompatibility,
-) {
+class IdeHostCompatibilityPolicy private constructor(val supportedCompatibility: AdmittedIdeHostCompatibility) {
     companion object {
         /**
-         * Proof transition: `IdeHostCompatibilityCandidate -> Refinement<IdeHostCompatibilityPolicy, IdeHostCompatibilityFailure>`.
+         * Proof transition: `IdeHostCompatibilityCandidate -> Refinement<IdeHostCompatibilityPolicy,
+         * IdeHostCompatibilityFailure>`.
          *
-         * Establishes one fully refined supported tuple. Expected malformed policy input remains
-         * finite [IdeHostCompatibilityFailure] data. Raw extraction is permitted only when the
-         * build-report boundary projects the admitted policy.
+         * Establishes one fully refined supported tuple. Expected malformed policy input remains finite
+         * [IdeHostCompatibilityFailure] data. Raw extraction is permitted only when the build-report boundary projects
+         * the admitted policy.
          */
         fun define(
-            supported: IdeHostCompatibilityCandidate,
+            supported: IdeHostCompatibilityCandidate
         ): Refinement<IdeHostCompatibilityPolicy, IdeHostCompatibilityFailure> =
             when (val parsed = AdmittedIdeHostCompatibility.parse(supported)) {
                 is Refinement.Refined -> Refinement.Refined(IdeHostCompatibilityPolicy(parsed.value))
@@ -364,66 +364,63 @@ class IdeHostCompatibilityPolicy private constructor(
     /**
      * Proof transition: `IdeHostCompatibilityCandidate -> IdeHostCompatibilityAdmission`.
      *
-     * Establishes exact equality with the one supported tuple and returns
-     * [AdmittedIdeHostCompatibility]. Syntax, capability, and field mismatch failures remain
-     * closed [IdeHostCompatibilityFailure] data. Raw extraction is permitted only at the endpoint
-     * or generated-report boundary.
+     * Establishes exact equality with the one supported tuple and returns [AdmittedIdeHostCompatibility]. Syntax,
+     * capability, and field mismatch failures remain closed [IdeHostCompatibilityFailure] data. Raw extraction is
+     * permitted only at the endpoint or generated-report boundary.
      */
     fun admit(candidate: IdeHostCompatibilityCandidate): IdeHostCompatibilityAdmission =
         when (val parsed = AdmittedIdeHostCompatibility.parse(candidate)) {
             is Refinement.Rejected -> IdeHostCompatibilityAdmission.Rejected(parsed.failure)
-            is Refinement.Refined -> when (
-                val comparison = parsed.value.compareAgainst(supportedCompatibility)
-            ) {
-                IdeHostCompatibilityComparison.Exact ->
-                    IdeHostCompatibilityAdmission.Admitted(parsed.value)
-                is IdeHostCompatibilityComparison.Mismatch ->
-                    IdeHostCompatibilityAdmission.Rejected(
-                        IdeHostCompatibilityFailure.Mismatch(comparison.mismatch),
-                    )
-            }
+            is Refinement.Refined ->
+                when (val comparison = parsed.value.compareAgainst(supportedCompatibility)) {
+                    IdeHostCompatibilityComparison.Exact -> IdeHostCompatibilityAdmission.Admitted(parsed.value)
+                    is IdeHostCompatibilityComparison.Mismatch ->
+                        IdeHostCompatibilityAdmission.Rejected(
+                            IdeHostCompatibilityFailure.Mismatch(comparison.mismatch)
+                        )
+                }
         }
 }
 
 internal sealed interface IdeHostCompatibilityComparison {
     data object Exact : IdeHostCompatibilityComparison
 
-    data class Mismatch(
-        val mismatch: IdeHostCompatibilityMismatch,
-    ) : IdeHostCompatibilityComparison
+    data class Mismatch(val mismatch: IdeHostCompatibilityMismatch) : IdeHostCompatibilityComparison
 }
 
-private fun mismatch(
-    mismatch: IdeHostCompatibilityMismatch,
-): IdeHostCompatibilityComparison = IdeHostCompatibilityComparison.Mismatch(mismatch)
+private fun mismatch(mismatch: IdeHostCompatibilityMismatch): IdeHostCompatibilityComparison =
+    IdeHostCompatibilityComparison.Mismatch(mismatch)
 
 private fun malformed(
     field: IdeHostCompatibilityField,
     raw: String,
-): IdeHostCompatibilityFailure.Malformed = IdeHostCompatibilityFailure.Malformed(
-    field,
-    if (raw.isBlank()) {
-        IdeHostCompatibilitySyntaxFailure.BLANK
-    } else {
-        IdeHostCompatibilitySyntaxFailure.INVALID_FORMAT
-    },
-)
+): IdeHostCompatibilityFailure.Malformed =
+    IdeHostCompatibilityFailure.Malformed(
+        field,
+        if (raw.isBlank()) {
+            IdeHostCompatibilitySyntaxFailure.BLANK
+        } else {
+            IdeHostCompatibilitySyntaxFailure.INVALID_FORMAT
+        },
+    )
 
 private inline fun <Strong> refineIdentity(
     raw: String,
     field: IdeHostCompatibilityField,
     format: Regex,
     construct: (String) -> Strong,
-): Refinement<Strong, IdeHostCompatibilityFailure> = when {
-    raw.isBlank() -> Refinement.Rejected(malformed(field, raw))
-    !format.matches(raw) -> Refinement.Rejected(malformed(field, raw))
-    else -> Refinement.Refined(construct(raw))
-}
+): Refinement<Strong, IdeHostCompatibilityFailure> =
+    when {
+        raw.isBlank() -> Refinement.Rejected(malformed(field, raw))
+        !format.matches(raw) -> Refinement.Rejected(malformed(field, raw))
+        else -> Refinement.Refined(construct(raw))
+    }
 
 private inline fun <Strong> refinedOrReject(
     refinement: Refinement<Strong, IdeHostCompatibilityFailure>,
     rejected: (Refinement.Rejected<IdeHostCompatibilityFailure>) -> Nothing,
-): Strong = when (refinement) {
-    is Refinement.Refined -> refinement.value
-    is Refinement.Rejected -> rejected(refinement)
-}
+): Strong =
+    when (refinement) {
+        is Refinement.Refined -> refinement.value
+        is Refinement.Rejected -> rejected(refinement)
+    }

@@ -17,116 +17,150 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
-import io.github.amichne.kast.protocol.contract.OperationQualification
-import io.github.amichne.kast.protocol.contract.OperationRejection
-import io.github.amichne.kast.protocol.contract.OperationResult
-import io.github.amichne.kast.protocol.contract.RelationReadQualification
-import io.github.amichne.kast.protocol.contract.RelationReadRejection
-import io.github.amichne.kast.protocol.contract.RelationReadResult
-import io.github.amichne.kast.protocol.contract.QueryRunQualification
-import io.github.amichne.kast.protocol.contract.QueryRunRejection
-import io.github.amichne.kast.protocol.contract.QueryRunResult
-import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
-import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
-import io.github.amichne.kast.protocol.contract.SymbolInspectResult
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
-import io.github.amichne.kast.protocol.contract.SourceReadQualification
-import io.github.amichne.kast.protocol.contract.SourceReadRejection
-import io.github.amichne.kast.protocol.contract.SourceReadResult
-import io.github.amichne.kast.protocol.contract.TraversalRunQualification
-import io.github.amichne.kast.protocol.contract.TraversalRunRejection
-import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import io.github.amichne.kast.protocol.contract.IndexSyncQualification
 import io.github.amichne.kast.protocol.contract.IndexSyncRejection
 import io.github.amichne.kast.protocol.contract.IndexSyncResult
+import io.github.amichne.kast.protocol.contract.OperationQualification
+import io.github.amichne.kast.protocol.contract.OperationRejection
+import io.github.amichne.kast.protocol.contract.OperationResult
+import io.github.amichne.kast.protocol.contract.QueryRunQualification
+import io.github.amichne.kast.protocol.contract.QueryRunRejection
+import io.github.amichne.kast.protocol.contract.QueryRunResult
+import io.github.amichne.kast.protocol.contract.RelationReadQualification
+import io.github.amichne.kast.protocol.contract.RelationReadRejection
+import io.github.amichne.kast.protocol.contract.RelationReadResult
+import io.github.amichne.kast.protocol.contract.SourceReadQualification
+import io.github.amichne.kast.protocol.contract.SourceReadRejection
+import io.github.amichne.kast.protocol.contract.SourceReadResult
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
+import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
+import io.github.amichne.kast.protocol.contract.TraversalRunQualification
+import io.github.amichne.kast.protocol.contract.TraversalRunRejection
+import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import kotlinx.serialization.Serializable
 
-internal val indexSyncCliProjector = CliOutcomeProjector<
-    IndexSyncResult,
-    IndexSyncQualification,
-    IndexSyncRejection,
-    > { outcome -> CanonicalIndexCliDocuments.project(outcome) }
+internal val indexSyncCliProjector =
+    CliOutcomeProjector<
+        IndexSyncResult,
+        IndexSyncQualification,
+        IndexSyncRejection,
+    > { outcome ->
+        CanonicalIndexCliDocuments.project(outcome)
+    }
 
-internal val symbolDiscoverCliProjector = CliOutcomeProjector<
-    SymbolDiscoverResult,
-    SymbolDiscoverQualification,
-    SymbolDiscoverRejection,
-    > { outcome -> CanonicalSymbolCliDocuments.projectDiscovery(outcome) }
+internal val symbolDiscoverCliProjector =
+    CliOutcomeProjector<
+        SymbolDiscoverResult,
+        SymbolDiscoverQualification,
+        SymbolDiscoverRejection,
+    > { outcome ->
+        CanonicalSymbolCliDocuments.projectDiscovery(outcome)
+    }
 
-internal val symbolInspectCliProjector = CliOutcomeProjector<
-    SymbolInspectResult,
-    SymbolInspectQualification,
-    SymbolInspectRejection,
-    > { outcome -> CanonicalSymbolCliDocuments.projectInspection(outcome) }
+internal val symbolInspectCliProjector =
+    CliOutcomeProjector<
+        SymbolInspectResult,
+        SymbolInspectQualification,
+        SymbolInspectRejection,
+    > { outcome ->
+        CanonicalSymbolCliDocuments.projectInspection(outcome)
+    }
 
-internal val sourceReadCliProjector = CliOutcomeProjector<
-    SourceReadResult,
-    SourceReadQualification,
-    SourceReadRejection,
-    > { outcome -> CanonicalSourceReadCliDocuments.project(outcome) }
+internal val sourceReadCliProjector =
+    CliOutcomeProjector<
+        SourceReadResult,
+        SourceReadQualification,
+        SourceReadRejection,
+    > { outcome ->
+        CanonicalSourceReadCliDocuments.project(outcome)
+    }
 
-internal val relationReadCliProjector = CliOutcomeProjector<
-    RelationReadResult,
-    RelationReadQualification,
-    RelationReadRejection,
-    > { outcome -> CanonicalReadCliDocuments.projectRelation(outcome) }
+internal val relationReadCliProjector =
+    CliOutcomeProjector<
+        RelationReadResult,
+        RelationReadQualification,
+        RelationReadRejection,
+    > { outcome ->
+        CanonicalReadCliDocuments.projectRelation(outcome)
+    }
 
-internal val traversalRunCliProjector = CliOutcomeProjector<
-    TraversalRunResult,
-    TraversalRunQualification,
-    TraversalRunRejection,
-    > { outcome -> CanonicalReadCliDocuments.projectTraversal(outcome) }
+internal val traversalRunCliProjector =
+    CliOutcomeProjector<
+        TraversalRunResult,
+        TraversalRunQualification,
+        TraversalRunRejection,
+    > { outcome ->
+        CanonicalReadCliDocuments.projectTraversal(outcome)
+    }
 
-internal val queryRunCliProjector = CliOutcomeProjector<
-    QueryRunResult,
-    QueryRunQualification,
-    QueryRunRejection,
-    > { outcome -> CanonicalQueryCliDocuments.project(outcome) }
+internal val queryRunCliProjector =
+    CliOutcomeProjector<
+        QueryRunResult,
+        QueryRunQualification,
+        QueryRunRejection,
+    > { outcome ->
+        CanonicalQueryCliDocuments.project(outcome)
+    }
 
-internal val diagnosticCheckCliProjector = CliOutcomeProjector<
-    DiagnosticCheckResult,
-    DiagnosticCheckQualification,
-    DiagnosticCheckRejection,
-    > { outcome -> CanonicalReadCliDocuments.projectDiagnostics(outcome) }
+internal val diagnosticCheckCliProjector =
+    CliOutcomeProjector<
+        DiagnosticCheckResult,
+        DiagnosticCheckQualification,
+        DiagnosticCheckRejection,
+    > { outcome ->
+        CanonicalReadCliDocuments.projectDiagnostics(outcome)
+    }
 
-internal val changePlanCliProjector = CliOutcomeProjector<
-    ChangePlanResult,
-    ChangePlanQualification,
-    ChangePlanRejection,
-    > { outcome -> CanonicalChangeCliDocuments.projectPlan(outcome) }
+internal val changePlanCliProjector =
+    CliOutcomeProjector<
+        ChangePlanResult,
+        ChangePlanQualification,
+        ChangePlanRejection,
+    > { outcome ->
+        CanonicalChangeCliDocuments.projectPlan(outcome)
+    }
 
-internal val changeApplyCliProjector = CliOutcomeProjector<
-    ChangeApplyResult,
-    ChangeApplyQualification,
-    ChangeApplyRejection,
-    > { outcome -> CanonicalChangeCliDocuments.projectApplication(outcome) }
+internal val changeApplyCliProjector =
+    CliOutcomeProjector<
+        ChangeApplyResult,
+        ChangeApplyQualification,
+        ChangeApplyRejection,
+    > { outcome ->
+        CanonicalChangeCliDocuments.projectApplication(outcome)
+    }
 
-internal val changeRecoverCliProjector = CliOutcomeProjector<
-    ChangeRecoverResult,
-    ChangeRecoverQualification,
-    ChangeRecoverRejection,
-    > { outcome -> CanonicalChangeCliDocuments.projectRecovery(outcome) }
+internal val changeRecoverCliProjector =
+    CliOutcomeProjector<
+        ChangeRecoverResult,
+        ChangeRecoverQualification,
+        ChangeRecoverRejection,
+    > { outcome ->
+        CanonicalChangeCliDocuments.projectRecovery(outcome)
+    }
 
 internal fun <
     Result : OperationResult,
     Qualification : OperationQualification,
     Rejection : OperationRejection,
-    > projectClosedOutcome(
+> projectClosedOutcome(
     outcome: OperationOutcome<Result, Qualification, Rejection>,
     complete: (Result) -> CliJsonDocument,
     qualified: (Result, Qualification) -> CliJsonDocument,
     rejected: (Rejection) -> CliJsonDocument,
-): ProjectedCliOutcome = when (outcome) {
-    is OperationOutcome.Complete -> ProjectedCliOutcome.Complete(
-        complete(outcome.evidence.payload).withEvidence(outcome.evidence.basis),
-    )
-    is OperationOutcome.Qualified -> ProjectedCliOutcome.Qualified(
-        qualified(outcome.evidence.payload, outcome.qualification).withEvidence(outcome.evidence.basis),
-    )
-    is OperationOutcome.Rejected -> ProjectedCliOutcome.Rejected(rejected(outcome.reason))
-}
+): ProjectedCliOutcome =
+    when (outcome) {
+        is OperationOutcome.Complete ->
+            ProjectedCliOutcome.Complete(complete(outcome.evidence.payload).withEvidence(outcome.evidence.basis))
+        is OperationOutcome.Qualified ->
+            ProjectedCliOutcome.Qualified(
+                qualified(outcome.evidence.payload, outcome.qualification).withEvidence(outcome.evidence.basis)
+            )
+        is OperationOutcome.Rejected -> ProjectedCliOutcome.Rejected(rejected(outcome.reason))
+    }
 
 @Serializable
 private data class RejectedCliDocument(
@@ -135,18 +169,18 @@ private data class RejectedCliDocument(
     val reason: String,
 )
 
-private val rejectedDocumentFactory =
-    CliJsonDocument.generated(RejectedCliDocument.serializer())
+private val rejectedDocumentFactory = CliJsonDocument.generated(RejectedCliDocument.serializer())
 
 internal fun canonicalRejectedDocument(
     operation: CanonicalOperation,
     reason: String,
-): CliJsonDocument = rejectedDocumentFactory.create(
-    RejectedCliDocument(
-        operation = operation.id.value,
-        status = "rejected",
-        reason = reason,
-    ),
-)
+): CliJsonDocument =
+    rejectedDocumentFactory.create(
+        RejectedCliDocument(
+            operation = operation.id.value,
+            status = "rejected",
+            reason = reason,
+        )
+    )
 
 internal fun Enum<*>.cliName(): String = name.lowercase().replace('_', '-')

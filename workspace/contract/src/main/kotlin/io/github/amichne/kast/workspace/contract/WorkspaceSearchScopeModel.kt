@@ -21,8 +21,8 @@ enum class WorkspaceSourceRootKind {
 }
 
 /**
- * Raw Gradle project-model source-root observation. Primitives are retained only at this
- * workspace-model boundary and are refined by [WorkspaceSearchScopeModel.compile].
+ * Raw Gradle project-model source-root observation. Primitives are retained only at this workspace-model boundary and
+ * are refined by [WorkspaceSearchScopeModel.compile].
  */
 data class WorkspaceSourceRootBoundary(
     val ideaModuleName: String,
@@ -51,25 +51,14 @@ enum class WorkspaceSearchScopeModelFailure {
     NO_SOURCE_ROOTS,
 }
 
-@JvmInline
-value class WorkspaceModuleIdentity internal constructor(
-    val value: String,
-)
+@JvmInline value class WorkspaceModuleIdentity internal constructor(val value: String)
+
+@JvmInline value class WorkspaceRelativeGradleBuildRoot internal constructor(val value: String)
+
+@JvmInline value class GradleProjectPath internal constructor(val value: String)
 
 @JvmInline
-value class WorkspaceRelativeGradleBuildRoot internal constructor(
-    val value: String,
-)
-
-@JvmInline
-value class GradleProjectPath internal constructor(
-    val value: String,
-)
-
-@JvmInline
-value class WorkspaceSourceSetName private constructor(
-    val value: String,
-) {
+value class WorkspaceSourceSetName private constructor(val value: String) {
     companion object {
         /** Refines boundary text to a non-blank exact name; adapters alone extract its spelling. */
         fun parse(raw: String): Refinement<WorkspaceSourceSetName, WorkspaceSourceSetNameFailure> =
@@ -78,21 +67,22 @@ value class WorkspaceSourceSetName private constructor(
     }
 }
 
-enum class WorkspaceSourceSetNameFailure { BLANK }
+enum class WorkspaceSourceSetNameFailure {
+    BLANK
+}
 
-@JvmInline
-value class CanonicalSourceRoot internal constructor(
-    val value: String,
-)
+@JvmInline value class CanonicalSourceRoot internal constructor(val value: String)
 
 @ConsistentCopyVisibility
-data class GradleProjectIdentity internal constructor(
+data class GradleProjectIdentity
+internal constructor(
     val buildRoot: WorkspaceRelativeGradleBuildRoot,
     val projectPath: GradleProjectPath,
 )
 
 @ConsistentCopyVisibility
-data class ModelOwnedSourceRoot internal constructor(
+data class ModelOwnedSourceRoot
+internal constructor(
     val module: WorkspaceModuleIdentity,
     val project: GradleProjectIdentity,
     val sourceSet: WorkspaceSourceSetName,
@@ -102,21 +92,19 @@ data class ModelOwnedSourceRoot internal constructor(
 )
 
 sealed interface WorkspaceSearchScopeModelCompilation {
-    data class Compiled(
-        val model: WorkspaceSearchScopeModel,
-    ) : WorkspaceSearchScopeModelCompilation
+    data class Compiled(val model: WorkspaceSearchScopeModel) : WorkspaceSearchScopeModelCompilation
 
     @ConsistentCopyVisibility
-    data class Rejected internal constructor(
-        val failures: Set<WorkspaceSearchScopeModelFailure>,
-    ) : WorkspaceSearchScopeModelCompilation
+    data class Rejected internal constructor(val failures: Set<WorkspaceSearchScopeModelFailure>) :
+        WorkspaceSearchScopeModelCompilation
 }
 
 /**
- * Detached proof of complete, coherent Gradle project-model ownership for source roots below one
- * exact canonical workspace.
+ * Detached proof of complete, coherent Gradle project-model ownership for source roots below one exact canonical
+ * workspace.
  */
-class WorkspaceSearchScopeModel private constructor(
+class WorkspaceSearchScopeModel
+private constructor(
     val workspaceRoot: CanonicalWorkspaceRoot,
     sourceRoots: List<ModelOwnedSourceRoot>,
 ) {
@@ -124,15 +112,13 @@ class WorkspaceSearchScopeModel private constructor(
 
     companion object {
         /**
-         * Proof transition:
-         * CanonicalWorkspaceRoot + ImportedWorkspaceModelState + Iterable<WorkspaceSourceRootBoundary>
-         * to WorkspaceSearchScopeModelCompilation.
+         * Proof transition: CanonicalWorkspaceRoot + ImportedWorkspaceModelState +
+         * Iterable<WorkspaceSourceRootBoundary> to WorkspaceSearchScopeModelCompilation.
          *
-         * A compiled result establishes complete model admission, normalized workspace-contained
-         * roots, strong build/project/source-set identities, known production/test kind and
-         * provenance, and one coherent Gradle project owner per exact source root.
-         * [WorkspaceSearchScopeModelFailure] is the closed expected failure. Raw paths and names
-         * may be extracted only by the physical project-model adapter that calls this boundary.
+         * A compiled result establishes complete model admission, normalized workspace-contained roots, strong
+         * build/project/source-set identities, known production/test kind and provenance, and one coherent Gradle
+         * project owner per exact source root. [WorkspaceSearchScopeModelFailure] is the closed expected failure. Raw
+         * paths and names may be extracted only by the physical project-model adapter that calls this boundary.
          */
         fun compile(
             workspaceRoot: CanonicalWorkspaceRoot,
@@ -141,7 +127,7 @@ class WorkspaceSearchScopeModel private constructor(
         ): WorkspaceSearchScopeModelCompilation {
             if (modelState == ImportedWorkspaceModelState.INCOMPLETE) {
                 return WorkspaceSearchScopeModelCompilation.Rejected(
-                    setOf(WorkspaceSearchScopeModelFailure.MODEL_INCOMPLETE),
+                    setOf(WorkspaceSearchScopeModelFailure.MODEL_INCOMPLETE)
                 )
             }
 
@@ -173,31 +159,30 @@ class WorkspaceSearchScopeModel private constructor(
                 return WorkspaceSearchScopeModelCompilation.Rejected(failures)
             }
 
-            val orderedRoots = roots.distinct().sortedWith(
-                compareBy(
-                    { it.sourceRoot.value },
-                    { it.project.buildRoot.value },
-                    { it.project.projectPath.value },
-                    { it.sourceSet.value },
-                    { it.module.value },
-                    { it.sourceKind.name },
-                    { it.provenance.name },
-                ),
-            )
-            return WorkspaceSearchScopeModelCompilation.Compiled(
-                WorkspaceSearchScopeModel(workspaceRoot, orderedRoots),
-            )
+            val orderedRoots =
+                roots
+                    .distinct()
+                    .sortedWith(
+                        compareBy(
+                            { it.sourceRoot.value },
+                            { it.project.buildRoot.value },
+                            { it.project.projectPath.value },
+                            { it.sourceSet.value },
+                            { it.module.value },
+                            { it.sourceKind.name },
+                            { it.provenance.name },
+                        )
+                    )
+            return WorkspaceSearchScopeModelCompilation.Compiled(WorkspaceSearchScopeModel(workspaceRoot, orderedRoots))
         }
 
         /**
-         * Proof transition:
-         * CanonicalWorkspaceRoot + WorkspaceSourceRootBoundary
-         * to Refinement<ModelOwnedSourceRoot, Set<WorkspaceSearchScopeModelFailure>>.
+         * Proof transition: CanonicalWorkspaceRoot + WorkspaceSourceRootBoundary to Refinement<ModelOwnedSourceRoot,
+         * Set<WorkspaceSearchScopeModelFailure>>.
          *
-         * Establishes strong model ownership plus known production/test kind and
-         * authored/generated provenance for one source root without filesystem I/O.
-         * [WorkspaceSearchScopeModelFailure] is the closed expected failure, and raw extraction
-         * remains confined to [compile].
+         * Establishes strong model ownership plus known production/test kind and authored/generated provenance for one
+         * source root without filesystem I/O. [WorkspaceSearchScopeModelFailure] is the closed expected failure, and
+         * raw extraction remains confined to [compile].
          */
         private fun refineBoundary(
             workspaceRoot: CanonicalWorkspaceRoot,
@@ -212,8 +197,8 @@ class WorkspaceSearchScopeModel private constructor(
             if (moduleName.isEmpty()) {
                 failures += WorkspaceSearchScopeModelFailure.INVALID_IDEA_MODULE_NAME
             }
-            if (!boundary.linkedBuildRoot.isAbsolute ||
-                boundary.linkedBuildRoot.normalize() != boundary.linkedBuildRoot
+            if (
+                !boundary.linkedBuildRoot.isAbsolute || boundary.linkedBuildRoot.normalize() != boundary.linkedBuildRoot
             ) {
                 failures += WorkspaceSearchScopeModelFailure.INVALID_LINKED_BUILD_ROOT
             } else if (!boundary.linkedBuildRoot.startsWith(workspacePath)) {
@@ -240,30 +225,28 @@ class WorkspaceSearchScopeModel private constructor(
                 return Refinement.Rejected(failures)
             }
 
-            val relativeBuildRoot = workspacePath
-                .relativize(boundary.linkedBuildRoot)
-                .joinToString("/") { it.toString() }
-                .ifEmpty { "." }
+            val relativeBuildRoot =
+                workspacePath.relativize(boundary.linkedBuildRoot).joinToString("/") { it.toString() }.ifEmpty { "." }
             return Refinement.Refined(
                 ModelOwnedSourceRoot(
                     module = WorkspaceModuleIdentity(moduleName),
-                    project = GradleProjectIdentity(
-                        buildRoot = WorkspaceRelativeGradleBuildRoot(relativeBuildRoot),
-                        projectPath = GradleProjectPath(projectPath),
-                    ),
-                    sourceSet = when (sourceSetName) {
-                        is Refinement.Refined -> sourceSetName.value
-                        is Refinement.Rejected -> return Refinement.Rejected(failures)
-                    },
+                    project =
+                        GradleProjectIdentity(
+                            buildRoot = WorkspaceRelativeGradleBuildRoot(relativeBuildRoot),
+                            projectPath = GradleProjectPath(projectPath),
+                        ),
+                    sourceSet =
+                        when (sourceSetName) {
+                            is Refinement.Refined -> sourceSetName.value
+                            is Refinement.Rejected -> return Refinement.Rejected(failures)
+                        },
                     sourceRoot = CanonicalSourceRoot(boundary.sourceRoot.toString()),
                     sourceKind = boundary.sourceKind,
                     provenance = boundary.provenance,
-                ),
+                )
             )
         }
 
-        private val GRADLE_PROJECT_PATH = Regex(
-            pattern = ":(?:[A-Za-z0-9_.-]+(?::[A-Za-z0-9_.-]+)*)?",
-        )
+        private val GRADLE_PROJECT_PATH = Regex(pattern = ":(?:[A-Za-z0-9_.-]+(?::[A-Za-z0-9_.-]+)*)?")
     }
 }

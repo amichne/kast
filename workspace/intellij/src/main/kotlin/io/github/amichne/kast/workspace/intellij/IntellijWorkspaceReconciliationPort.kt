@@ -18,9 +18,7 @@ import java.util.concurrent.CancellationException
 
 /** Detached result of capturing the imported Gradle model identity. */
 sealed interface GradleWorkspaceModelCapture {
-    data class Captured(
-        val sourceState: WorkspaceStateIdentity,
-    ) : GradleWorkspaceModelCapture
+    data class Captured(val sourceState: WorkspaceStateIdentity) : GradleWorkspaceModelCapture
 
     data object Unavailable : GradleWorkspaceModelCapture
 }
@@ -28,12 +26,10 @@ sealed interface GradleWorkspaceModelCapture {
 /** Narrow Gradle-model capture boundary owned by the IntelliJ adapter. */
 fun interface GradleWorkspaceModelPort {
     /**
-     * Proof transition: `(CanonicalWorkspaceRoot, Set<WorkspaceSignal>) ->
-     * GradleWorkspaceModelCapture`.
+     * Proof transition: `(CanonicalWorkspaceRoot, Set<WorkspaceSignal>) -> GradleWorkspaceModelCapture`.
      *
-     * Establishes one detached admitted source-state identity from the imported model, or the
-     * finite unavailable state. Live Gradle and IntelliJ model objects may be read only inside the
-     * implementation and cannot escape this result.
+     * Establishes one detached admitted source-state identity from the imported model, or the finite unavailable state.
+     * Live Gradle and IntelliJ model objects may be read only inside the implementation and cannot escape this result.
      */
     fun capture(
         root: CanonicalWorkspaceRoot,
@@ -56,9 +52,8 @@ fun interface IntellijWorkspaceReconciliation {
     /**
      * Proof transition: `WorkspaceCandidate -> IntellijWorkspaceReconciliationResult`.
      *
-     * Establishes the evidence families and typed source roots reconciled for the exact candidate,
-     * or the finite unavailable state. Live project, compiler, and index objects remain inside
-     * the adapter.
+     * Establishes the evidence families and typed source roots reconciled for the exact candidate, or the finite
+     * unavailable state. Live project, compiler, and index objects remain inside the adapter.
      */
     fun reconcile(candidate: WorkspaceCandidate): IntellijWorkspaceReconciliationResult
 }
@@ -66,8 +61,8 @@ fun interface IntellijWorkspaceReconciliation {
 /**
  * Physical IntelliJ/Gradle adapter for canonical candidate capture and reconciliation.
  *
- * The root is physically canonicalized before contract admission. All live model work remains in
- * injected adapter ports; only detached workspace contract values leave each call.
+ * The root is physically canonicalized before contract admission. All live model work remains in injected adapter
+ * ports; only detached workspace contract values leave each call.
  */
 class IntellijWorkspaceReconciliationPort(
     private val workspaceRoot: () -> Path,
@@ -75,72 +70,73 @@ class IntellijWorkspaceReconciliationPort(
     private val reconcile: IntellijWorkspaceReconciliation,
 ) : WorkspaceReconciliationPort {
     override fun capture(signals: Set<WorkspaceSignal>): WorkspaceCandidateCapture {
-        val root = when (val captured = captureCanonicalRoot()) {
-            is CanonicalRootCapture.Captured -> captured.root
-            CanonicalRootCapture.Unavailable -> {
-                return WorkspaceCandidateCapture.Rejected(
-                    WorkspacePublicationBlocker.CandidateCaptureUnavailable,
-                )
+        val root =
+            when (val captured = captureCanonicalRoot()) {
+                is CanonicalRootCapture.Captured -> captured.root
+                CanonicalRootCapture.Unavailable -> {
+                    return WorkspaceCandidateCapture.Rejected(WorkspacePublicationBlocker.CandidateCaptureUnavailable)
+                }
             }
-        }
-        val model = try {
-            gradleModel.capture(root, signals)
-        } catch (failure: Exception) {
-            rethrowCancellation(failure)
-            GradleWorkspaceModelCapture.Unavailable
-        }
+        val model =
+            try {
+                gradleModel.capture(root, signals)
+            } catch (failure: Exception) {
+                rethrowCancellation(failure)
+                GradleWorkspaceModelCapture.Unavailable
+            }
         return when (model) {
-            is GradleWorkspaceModelCapture.Captured -> WorkspaceCandidateCapture.Captured(
-                WorkspaceCandidate(root, model.sourceState),
-            )
-            GradleWorkspaceModelCapture.Unavailable -> WorkspaceCandidateCapture.Rejected(
-                WorkspacePublicationBlocker.CandidateCaptureUnavailable,
-            )
+            is GradleWorkspaceModelCapture.Captured ->
+                WorkspaceCandidateCapture.Captured(WorkspaceCandidate(root, model.sourceState))
+            GradleWorkspaceModelCapture.Unavailable ->
+                WorkspaceCandidateCapture.Rejected(WorkspacePublicationBlocker.CandidateCaptureUnavailable)
         }
     }
 
     override fun reconcile(candidate: WorkspaceCandidate): WorkspaceCandidateReconciliation {
-        val result = try {
-            reconcile.reconcile(candidate)
-        } catch (failure: Exception) {
-            rethrowCancellation(failure)
-            IntellijWorkspaceReconciliationResult.Unavailable
-        }
+        val result =
+            try {
+                reconcile.reconcile(candidate)
+            } catch (failure: Exception) {
+                rethrowCancellation(failure)
+                IntellijWorkspaceReconciliationResult.Unavailable
+            }
         return when (result) {
             IntellijWorkspaceReconciliationResult.Unavailable ->
-                WorkspaceCandidateReconciliation.Rejected(
-                    WorkspacePublicationBlocker.ReconciliationUnavailable,
-                )
-            is IntellijWorkspaceReconciliationResult.Reconciled -> when (
-                val admitted = ReconciledWorkspace.admit(
-                    candidate,
-                    result.evidence,
-                    result.sourceRoots,
-                )
-            ) {
-                is Refinement.Refined -> WorkspaceCandidateReconciliation.Reconciled(admitted.value)
-                is Refinement.Rejected -> WorkspaceCandidateReconciliation.Rejected(
-                    WorkspacePublicationBlocker.IncompleteEvidence(admitted.failure),
-                )
-            }
+                WorkspaceCandidateReconciliation.Rejected(WorkspacePublicationBlocker.ReconciliationUnavailable)
+            is IntellijWorkspaceReconciliationResult.Reconciled ->
+                when (
+                    val admitted =
+                        ReconciledWorkspace.admit(
+                            candidate,
+                            result.evidence,
+                            result.sourceRoots,
+                        )
+                ) {
+                    is Refinement.Refined -> WorkspaceCandidateReconciliation.Reconciled(admitted.value)
+                    is Refinement.Rejected ->
+                        WorkspaceCandidateReconciliation.Rejected(
+                            WorkspacePublicationBlocker.IncompleteEvidence(admitted.failure)
+                        )
+                }
         }
     }
 
     /**
      * Proof transition: `Path -> CanonicalRootCapture`.
      *
-     * Establishes physical canonicalization followed by lexical contract admission. I/O,
-     * permission, and contract rejection remain the single finite unavailable state. Raw path
-     * extraction is confined to this physical workspace boundary.
+     * Establishes physical canonicalization followed by lexical contract admission. I/O, permission, and contract
+     * rejection remain the single finite unavailable state. Raw path extraction is confined to this physical workspace
+     * boundary.
      */
     private fun captureCanonicalRoot(): CanonicalRootCapture {
-        val physical = try {
-            workspaceRoot().toRealPath()
-        } catch (_: IOException) {
-            return CanonicalRootCapture.Unavailable
-        } catch (_: SecurityException) {
-            return CanonicalRootCapture.Unavailable
-        }
+        val physical =
+            try {
+                workspaceRoot().toRealPath()
+            } catch (_: IOException) {
+                return CanonicalRootCapture.Unavailable
+            } catch (_: SecurityException) {
+                return CanonicalRootCapture.Unavailable
+            }
         return when (val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(physical)) {
             is Refinement.Refined -> CanonicalRootCapture.Captured(admitted.value)
             is Refinement.Rejected -> CanonicalRootCapture.Unavailable
@@ -153,9 +149,7 @@ class IntellijWorkspaceReconciliationPort(
 }
 
 private sealed interface CanonicalRootCapture {
-    data class Captured(
-        val root: CanonicalWorkspaceRoot,
-    ) : CanonicalRootCapture
+    data class Captured(val root: CanonicalWorkspaceRoot) : CanonicalRootCapture
 
     data object Unavailable : CanonicalRootCapture
 }

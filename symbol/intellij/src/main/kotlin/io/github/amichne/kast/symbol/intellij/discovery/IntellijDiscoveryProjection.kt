@@ -8,12 +8,12 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileSystemItem
 import com.intellij.psi.util.PsiUtilCore
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateFailure
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
-import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtConstructor
 import org.jetbrains.kotlin.psi.KtNamedFunction
@@ -22,9 +22,7 @@ import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtTypeAlias
 
 internal sealed interface IntellijDiscoveryItemFileResult {
-    data class Found(
-        val file: VirtualFile,
-    ) : IntellijDiscoveryItemFileResult
+    data class Found(val file: VirtualFile) : IntellijDiscoveryItemFileResult
 
     data object Unsupported : IntellijDiscoveryItemFileResult
 }
@@ -33,9 +31,8 @@ internal fun interface IntellijDiscoveryItemFile {
     /**
      * Proof transition: NavigationItem to IntellijDiscoveryItemFileResult.
      *
-     * Establishes one request-local backing [VirtualFile] or the closed
-     * [IntellijDiscoveryItemFileResult.Unsupported] state before scope containment is evaluated.
-     * Live values may be extracted only by the native discovery collector.
+     * Establishes one request-local backing [VirtualFile] or the closed [IntellijDiscoveryItemFileResult.Unsupported]
+     * state before scope containment is evaluated. Live values may be extracted only by the native discovery collector.
      */
     fun find(item: NavigationItem): IntellijDiscoveryItemFileResult
 }
@@ -58,21 +55,20 @@ fun interface IntellijDiscoveryItemAdmissionPolicy {
     /**
      * Proof transition: `NavigationItem -> IntellijDiscoveryItemAdmission`.
      *
-     * Establishes whether a live provider item belongs to the request's precise semantic domain
-     * before it can consume a returned-record budget. Filtered items are proven outside the
-     * requested domain; unsupported items preserve qualified coverage. The live item may be
-     * inspected only inside the request-local native read.
+     * Establishes whether a live provider item belongs to the request's precise semantic domain before it can consume a
+     * returned-record budget. Filtered items are proven outside the requested domain; unsupported items preserve
+     * qualified coverage. The live item may be inspected only inside the request-local native read.
      */
     fun admit(item: NavigationItem): IntellijDiscoveryItemAdmission
 }
 
 internal data object AdmitEveryIntellijDiscoveryItem : IntellijDiscoveryItemAdmissionPolicy {
-    override fun admit(item: NavigationItem): IntellijDiscoveryItemAdmission =
-        IntellijDiscoveryItemAdmission.ADMITTED
+    override fun admit(item: NavigationItem): IntellijDiscoveryItemAdmission = IntellijDiscoveryItemAdmission.ADMITTED
 }
 
 sealed interface IntellijDiscoveryItemCompilerKindResult {
     data class Found(val kind: CompilerSymbolKind) : IntellijDiscoveryItemCompilerKindResult
+
     data object Unsupported : IntellijDiscoveryItemCompilerKindResult
 }
 
@@ -83,29 +79,32 @@ fun interface IntellijDiscoveryItemCompilerKind {
 
 internal data object IntellijPsiDiscoveryItemCompilerKind : IntellijDiscoveryItemCompilerKind {
     override fun classify(item: NavigationItem): IntellijDiscoveryItemCompilerKindResult {
-        val kind = when (val element = item.psiElement()) {
-            is KtClassOrObject -> CompilerSymbolKind.CLASSLIKE
-            is KtConstructor<*> -> CompilerSymbolKind.CONSTRUCTOR
-            is KtNamedFunction -> CompilerSymbolKind.FUNCTION
-            is KtProperty -> CompilerSymbolKind.PROPERTY
-            is KtParameter -> if (element.hasValOrVar()) {
-                CompilerSymbolKind.PROPERTY
-            } else {
-                return IntellijDiscoveryItemCompilerKindResult.Unsupported
+        val kind =
+            when (val element = item.psiElement()) {
+                is KtClassOrObject -> CompilerSymbolKind.CLASSLIKE
+                is KtConstructor<*> -> CompilerSymbolKind.CONSTRUCTOR
+                is KtNamedFunction -> CompilerSymbolKind.FUNCTION
+                is KtProperty -> CompilerSymbolKind.PROPERTY
+                is KtParameter ->
+                    if (element.hasValOrVar()) {
+                        CompilerSymbolKind.PROPERTY
+                    } else {
+                        return IntellijDiscoveryItemCompilerKindResult.Unsupported
+                    }
+                is KtTypeAlias -> CompilerSymbolKind.TYPE_ALIAS
+                else -> return IntellijDiscoveryItemCompilerKindResult.Unsupported
             }
-            is KtTypeAlias -> CompilerSymbolKind.TYPE_ALIAS
-            else -> return IntellijDiscoveryItemCompilerKindResult.Unsupported
-        }
         return IntellijDiscoveryItemCompilerKindResult.Found(kind)
     }
 }
 
 internal object IntellijPsiDiscoveryItemFile : IntellijDiscoveryItemFile {
     override fun find(item: NavigationItem): IntellijDiscoveryItemFileResult {
-        val file = when (item) {
-            is PsiFileSystemItem -> item.virtualFile
-            else -> item.psiElement()?.let(PsiUtilCore::getVirtualFile)
-        }
+        val file =
+            when (item) {
+                is PsiFileSystemItem -> item.virtualFile
+                else -> item.psiElement()?.let(PsiUtilCore::getVirtualFile)
+            }
         return if (file == null) {
             IntellijDiscoveryItemFileResult.Unsupported
         } else {
@@ -116,70 +115,66 @@ internal object IntellijPsiDiscoveryItemFile : IntellijDiscoveryItemFile {
 
 internal object IntellijPsiDiscoveryCandidateProjector : IntellijDiscoveryCandidateProjector {
     /**
-     * Proof transition:
-     * SymbolDiscoveryRequest + NavigationItem + VirtualFile to
-     * Refinement<SymbolDiscoveryCandidate, SymbolDiscoveryCandidateFailure>.
+     * Proof transition: SymbolDiscoveryRequest + NavigationItem + VirtualFile to Refinement<SymbolDiscoveryCandidate,
+     * SymbolDiscoveryCandidateFailure>.
      *
-     * Establishes a bounded detached name, exact workspace path or external virtual-file URL, and
-     * a non-negative declaration-range start for class and symbol candidates.
-     * [SymbolDiscoveryCandidateFailure] is the closed expected failure. Live IntelliJ values and
-     * raw paths, URLs, names, and offsets are extracted only inside this request-local projection.
+     * Establishes a bounded detached name, exact workspace path or external virtual-file URL, and a non-negative
+     * declaration-range start for class and symbol candidates. [SymbolDiscoveryCandidateFailure] is the closed expected
+     * failure. Live IntelliJ values and raw paths, URLs, names, and offsets are extracted only inside this
+     * request-local projection.
      */
     override fun project(
         request: SymbolDiscoveryRequest,
         item: NavigationItem,
         file: VirtualFile,
     ): Refinement<SymbolDiscoveryCandidate, SymbolDiscoveryCandidateFailure> {
-        val resultKind = when (val target = request.target) {
-            is SymbolDiscoveryTarget.All -> target.resultKind
-            is SymbolDiscoveryTarget.Name -> target.resultKind
-            is SymbolDiscoveryTarget.Location,
-            is SymbolDiscoveryTarget.Text,
-                -> return Refinement.Rejected(SymbolDiscoveryCandidateFailure.TARGET_KIND_MISMATCH)
-        }
-        val rawOffset = when (resultKind) {
-            SymbolDiscoveryKind.FILE -> {
-                if (item !is PsiFile) {
-                    return Refinement.Rejected(
-                        SymbolDiscoveryCandidateFailure.INVALID_FILE_LOCATION,
-                    )
-                }
-                null
+        val resultKind =
+            when (val target = request.target) {
+                is SymbolDiscoveryTarget.All -> target.resultKind
+                is SymbolDiscoveryTarget.Name -> target.resultKind
+                is SymbolDiscoveryTarget.Location,
+                is SymbolDiscoveryTarget.Text ->
+                    return Refinement.Rejected(SymbolDiscoveryCandidateFailure.TARGET_KIND_MISMATCH)
             }
-            SymbolDiscoveryKind.CLASS,
-            SymbolDiscoveryKind.SYMBOL,
-                -> {
-                val element = item.psiElement()
-                if (element == null) {
-                    return Refinement.Rejected(
-                        SymbolDiscoveryCandidateFailure.DECLARATION_CANDIDATE_MISSING_OFFSET,
-                    )
+        val rawOffset =
+            when (resultKind) {
+                SymbolDiscoveryKind.FILE -> {
+                    if (item !is PsiFile) {
+                        return Refinement.Rejected(SymbolDiscoveryCandidateFailure.INVALID_FILE_LOCATION)
+                    }
+                    null
                 }
-                element.textRange.startOffset
+                SymbolDiscoveryKind.CLASS,
+                SymbolDiscoveryKind.SYMBOL -> {
+                    val element = item.psiElement()
+                    if (element == null) {
+                        return Refinement.Rejected(SymbolDiscoveryCandidateFailure.DECLARATION_CANDIDATE_MISSING_OFFSET)
+                    }
+                    element.textRange.startOffset
+                }
+                SymbolDiscoveryKind.TEXT ->
+                    return Refinement.Rejected(SymbolDiscoveryCandidateFailure.INVALID_DECLARATION_OFFSET)
             }
-            SymbolDiscoveryKind.TEXT -> return Refinement.Rejected(
-                SymbolDiscoveryCandidateFailure.INVALID_DECLARATION_OFFSET,
-            )
-        }
         val classifiedPath = nativePath(file)
         return SymbolDiscoveryCandidate.fromBoundary(
             kind = resultKind,
             rawName = item.name.orEmpty(),
             lease = request.scope.lease,
-            nativePath = when (classifiedPath) {
-                is IntellijVirtualFilePath.Absolute -> classifiedPath.value
-                IntellijVirtualFilePath.Relative,
-                IntellijVirtualFilePath.Unavailable,
-                    -> null
-            },
+            nativePath =
+                when (classifiedPath) {
+                    is IntellijVirtualFilePath.Absolute -> classifiedPath.value
+                    IntellijVirtualFilePath.Relative,
+                    IntellijVirtualFilePath.Unavailable -> null
+                },
             virtualFileUrl = file.url,
             rawOffset = rawOffset,
         )
     }
 }
 
-private fun NavigationItem.psiElement(): PsiElement? = when (this) {
-    is PsiElement -> this
-    is PsiElementNavigationItem -> targetElement
-    else -> null
-}
+private fun NavigationItem.psiElement(): PsiElement? =
+    when (this) {
+        is PsiElement -> this
+        is PsiElementNavigationItem -> targetElement
+        else -> null
+    }

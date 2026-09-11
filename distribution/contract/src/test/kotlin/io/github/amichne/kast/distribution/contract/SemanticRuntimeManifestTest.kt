@@ -9,10 +9,12 @@ class SemanticRuntimeManifestTest {
     fun `canonical manifest admits every runtime identity invariant`() {
         val admitted = SemanticRuntimeManifest.admit(VALID_MANIFEST)
 
-        val manifest = assertInstanceOf(
-            SemanticRuntimeManifestAdmission.Admitted::class.java,
-            admitted,
-        ).manifest
+        val manifest =
+            assertInstanceOf(
+                    SemanticRuntimeManifestAdmission.Admitted::class.java,
+                    admitted,
+                )
+                .manifest
         assertEquals(RUNTIME_ID, manifest.runtimeId.value)
         assertEquals(VALID_MANIFEST, manifest.canonicalJson.value)
         assertEquals("0.24.2", manifest.productVersion.value)
@@ -25,9 +27,7 @@ class SemanticRuntimeManifestTest {
 
     @Test
     fun `manifest identity mismatch is a closed rejection`() {
-        val admitted = SemanticRuntimeManifest.admit(
-            VALID_MANIFEST.replace(RUNTIME_ID, "sha256:${"0".repeat(64)}"),
-        )
+        val admitted = SemanticRuntimeManifest.admit(VALID_MANIFEST.replace(RUNTIME_ID, "sha256:${"0".repeat(64)}"))
 
         assertEquals(
             SemanticRuntimeManifestAdmission.Rejected(SemanticRuntimeFailure.MANIFEST_INVALID),
@@ -37,17 +37,16 @@ class SemanticRuntimeManifestTest {
 
     @Test
     fun `primitive compatibility and size fields cannot survive admission`() {
-        val invalidDocuments = listOf(
-            VALID_MANIFEST.replace("\"productVersion\":\"0.24.2\"", "\"productVersion\":\"\""),
-            VALID_MANIFEST.replace("\"wireSchemaId\":\"kast-wire-v1\"", "\"wireSchemaId\":\"bad schema\""),
-            VALID_MANIFEST.replace("\"bytes\":123", "\"bytes\":0"),
-        )
+        val invalidDocuments =
+            listOf(
+                VALID_MANIFEST.replace("\"productVersion\":\"0.24.2\"", "\"productVersion\":\"\""),
+                VALID_MANIFEST.replace("\"wireSchemaId\":\"kast-wire-v1\"", "\"wireSchemaId\":\"bad schema\""),
+                VALID_MANIFEST.replace("\"bytes\":123", "\"bytes\":0"),
+            )
 
         invalidDocuments.forEach { raw ->
             assertEquals(
-                SemanticRuntimeManifestAdmission.Rejected(
-                    SemanticRuntimeFailure.MANIFEST_INVALID,
-                ),
+                SemanticRuntimeManifestAdmission.Rejected(SemanticRuntimeFailure.MANIFEST_INVALID),
                 SemanticRuntimeManifest.admit(raw),
             )
         }
@@ -70,8 +69,7 @@ class SemanticRuntimeManifestTest {
     }
 
     private companion object {
-        const val RUNTIME_ID =
-            "sha256:6cfad2c4d851942791feb6272b8d5149e9630d9275b8a317e0d3a84bf2ef2986"
+        const val RUNTIME_ID = "sha256:6cfad2c4d851942791feb6272b8d5149e9630d9275b8a317e0d3a84bf2ef2986"
         val VALID_MANIFEST =
             "{\"schemaVersion\":1,\"runtimeId\":\"$RUNTIME_ID\",\"productVersion\":\"0.24.2\",\"platform\":\"macos\",\"architecture\":\"aarch64\",\"ideaBuild\":\"261.25134.95\",\"kotlinPluginBuild\":\"2.4.10\",\"kastPluginSha256\":\"sha256:${
                 "1".repeat(

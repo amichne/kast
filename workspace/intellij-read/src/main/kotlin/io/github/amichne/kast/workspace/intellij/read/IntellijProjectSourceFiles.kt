@@ -1,7 +1,5 @@
 package io.github.amichne.kast.workspace.intellij.read
 
-import io.github.amichne.kast.kernel.ReadLimits
-import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
@@ -10,6 +8,7 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.util.concurrency.annotations.RequiresReadLock
+import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
@@ -33,8 +32,9 @@ object IntellijProjectSourceFiles {
         }
         return try {
             val start = System.nanoTime()
-            val requested = LocalFileSystem.getInstance().findFileByNioFile(scope)
-                ?: return Refinement.Rejected(ProjectSourceFileFailure.UNAVAILABLE)
+            val requested =
+                LocalFileSystem.getInstance().findFileByNioFile(scope)
+                    ?: return Refinement.Rejected(ProjectSourceFileFailure.UNAVAILABLE)
             if (!requested.isValid || requested.canonicalPath?.let(Path::of) != scope) {
                 return Refinement.Rejected(ProjectSourceFileFailure.INVALID_SCOPE)
             }
@@ -61,7 +61,11 @@ object IntellijProjectSourceFiles {
         }
     }
 
-    private fun classify(project: Project, file: VirtualFile, limits: ReadLimits = ReadLimits.Default): ProjectSourceEntry {
+    private fun classify(
+        project: Project,
+        file: VirtualFile,
+        limits: ReadLimits = ReadLimits.Default,
+    ): ProjectSourceEntry {
         if (!file.isValid) return ProjectSourceEntry.Rejected(ProjectSourceFileFailure.UNAVAILABLE)
         if (file.isDirectory || file.extension !in setOf("kt", "kts")) return ProjectSourceEntry.Ignored
         return when (IntellijProjectFileIndexClassifier.classify(project, file, limits = limits)) {
@@ -70,7 +74,8 @@ object IntellijProjectSourceFiles {
                 if (file.canonicalPath?.let(Path::of) == path) ProjectSourceEntry.Source(path)
                 else ProjectSourceEntry.Rejected(ProjectSourceFileFailure.INVALID_SCOPE)
             }
-            is IntellijProjectFileClassification.Rejected -> ProjectSourceEntry.Rejected(ProjectSourceFileFailure.UNAVAILABLE)
+            is IntellijProjectFileClassification.Rejected ->
+                ProjectSourceEntry.Rejected(ProjectSourceFileFailure.UNAVAILABLE)
             is IntellijProjectFileClassification.NotSource,
             is IntellijProjectFileClassification.Library -> ProjectSourceEntry.Ignored
         }
