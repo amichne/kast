@@ -92,18 +92,21 @@ projection = document["serverProjection"]
 bootstrap = projection["hostedBootstrap"]
 invocations = projection["cliInvocations"]["operations"]
 expected_tools = [
-    "query",
+    "search_classes",
+    "search_functions",
+    "search_declarations",
+    "query_symbols",
     "symbol_lookup",
     "symbol_inspect",
     "source_read",
     "semantic_query",
     "impact_analyze",
-    "diagnostic_check",
+    "check_diagnostics",
     "change_plan",
     "change_apply",
     "change_recover",
 ]
-assert [tool["name"] for tool in bootstrap["tools"]] == expected_tools, bootstrap
+assert [tool["name"] for tool in bootstrap["tools"]] == expected_tools, [tool["name"] for tool in bootstrap["tools"]]
 assert "compiler-grounded Kotlin source intelligence" in bootstrap["policy"], bootstrap
 assert {tool["operationId"] for tool in bootstrap["tools"]} == {
     invocation["operationId"] for invocation in invocations
@@ -113,8 +116,13 @@ assert all("invocation" not in tool and "cliUsage" not in tool for tool in boots
 PY
 
 help="$(env "${command_environment[@]}" "$kast" --help)"
-for command in symbol source relation traversal diagnostic change codex index ide start stop; do
+for command in tool symbol source relation traversal diagnostic change codex index ide start stop; do
   grep -Eq "^  ${command}[[:space:]]" <<<"$help" || fail "public command is absent: $command"
+done
+env "${command_environment[@]}" "$kast" config --help >/dev/null
+tool_help="$(env "${command_environment[@]}" "$kast" tool --help)"
+for command in search_classes search_functions search_declarations check_diagnostics query_symbols; do
+  grep -Eq "^  ${command}[[:space:]]" <<<"$tool_help" || fail "public tool command is absent: $command"
 done
 for command in product status topology broker; do
   if grep -Eq "^  ${command}[[:space:]]" <<<"$help"; then

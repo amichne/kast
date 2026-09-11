@@ -1,5 +1,9 @@
 # Knowledge-base update log
 
+## 2026-09-11
+
+- Added [public intent tools](contracts/public-tools.md), generated nullable-control contracts and distinct tool/operation identity. Installed catalog version 10 and CLI binding version 3 retain exact schema routing and existing canonical semantics. Live IDEA validation on Kast completed class, function and property searches, exact-reference reuse, case-sensitive absence, invalid-reference rejection, and file diagnostics after explicit VFS synchronization.
+
 ## 2026-09-10
 
 - Bound stable release installation to a checksum-verified, release-versioned

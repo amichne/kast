@@ -14,7 +14,7 @@ import kotlin.system.exitProcess
 object SemanticReproductionProvider {
     @JvmStatic
     fun main(arguments: Array<String>) {
-        require(arguments.size == 4) { "CLI WORKSPACE QUERY_JSON REPORT_JSON" }
+        require(arguments.size == 5) { "CLI WORKSPACE QUERY_JSON REPORT_JSON TOOL_NAME" }
         val exit = runBlocking {
             val cli = Path.of(arguments[0]).toRealPath()
             val workspace = Path.of(arguments[1]).toRealPath()
@@ -75,7 +75,7 @@ object SemanticReproductionProvider {
                 "manual-live-native", "manual-turn", "manual-query", workspace,
             ).refined()
             val result = broker.dispatch(BrokerDispatchRequest(
-                ToolAddress(ProviderNamespace.admit("kast").refined(), ToolName.admit("query").refined()),
+                ToolAddress(ProviderNamespace.admit("kast").refined(), ToolName.admit(arguments[4]).refined()),
                 query,
                 context,
             ))
@@ -83,6 +83,7 @@ object SemanticReproductionProvider {
                 put("harness", "semantic-reproduction-production-provider")
                 put("cli", cli.toString()); put("workspace", workspace.toString())
                 put("query", query)
+                put("toolName", arguments[4])
                 putJsonObject("qualification") {
                     put("cliVersion", qualification.evidence.cliVersion.value)
                     put("contractDigest", qualification.evidence.contractDigest.value)

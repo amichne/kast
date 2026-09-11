@@ -36,6 +36,9 @@ class CanonicalAgentToolDefinitionsTest {
         assertEquals(
             listOf(
                 CanonicalOperation.QUERY_RUN,
+                CanonicalOperation.QUERY_RUN,
+                CanonicalOperation.QUERY_RUN,
+                CanonicalOperation.QUERY_RUN,
                 CanonicalOperation.SYMBOL_DISCOVER,
                 CanonicalOperation.SYMBOL_INSPECT,
                 CanonicalOperation.SOURCE_READ,
@@ -50,13 +53,16 @@ class CanonicalAgentToolDefinitionsTest {
         )
         assertEquals(
             listOf(
-                "query",
+                "search_classes",
+                "search_functions",
+                "search_declarations",
+                "query_symbols",
                 "symbol_lookup",
                 "symbol_inspect",
                 "source_read",
                 "semantic_query",
                 "impact_analyze",
-                "diagnostic_check",
+                "check_diagnostics",
                 "change_plan",
                 "change_apply",
                 "change_recover",
@@ -65,11 +71,14 @@ class CanonicalAgentToolDefinitionsTest {
         )
         assertEquals(
             listOf(
-                "query",
+                "search_classes",
+                "search_functions",
+                "search_declarations",
+                "query_symbols",
                 "source_read",
                 "semantic_query",
                 "impact_analyze",
-                "diagnostic_check",
+                "check_diagnostics",
                 "change_plan",
                 "change_apply",
                 "change_recover",
@@ -77,14 +86,15 @@ class CanonicalAgentToolDefinitionsTest {
             CanonicalAgentToolDefinitions.defaultAppServerTools.map { it.name.value },
         )
         assertEquals(HostedApprovalPolicy.NONE, CanonicalAgentToolDefinitions.symbolLookup.approval)
-        assertEquals(HostedToolLoading.EAGER, CanonicalAgentToolDefinitions.query.loading)
-        assertTrue(CanonicalAgentToolDefinitions.all.drop(1).all { it.loading == HostedToolLoading.DEFERRED })
+        assertEquals(HostedToolLoading.DEFERRED, CanonicalAgentToolDefinitions.query.loading)
+        assertEquals(listOf("search_classes", "search_functions", "search_declarations", "check_diagnostics"),
+            CanonicalAgentToolDefinitions.all.filter { it.loading == HostedToolLoading.EAGER }.map { it.name.value })
         assertEquals(HostedApprovalPolicy.EXPLICIT, CanonicalAgentToolDefinitions.changeApply.approval)
         assertTrue("exact selector" in CanonicalAgentToolDefinitions.semanticQuery.description.value)
         assertTrue("automatically" in CanonicalAgentToolDefinitions.impactAnalyze.description.value)
         val policy = CanonicalAgentToolDefinitions.policy.text
         assertTrue("compiler-grounded Kotlin source intelligence" in policy)
-        assertTrue("Preserve returned refs" in policy)
+        assertTrue("Preserve returned symbol references" in policy)
         listOf("kast start", "index sync --", "topology build --", "broker serve").forEach { command ->
             assertTrue(command !in policy)
         }

@@ -4,10 +4,10 @@ title: "Search with Kast"
 description: "How an agent should use Kast's primary query surface to discover and connect Kotlin declarations."
 resource: "file://docs/public/search.mdx"
 tags: ["search", "query", "agents", "Kotlin"]
-timestamp: "2026-09-08T00:00:00-04:00"
+timestamp: "2026-09-11T00:00:00-04:00"
 code_sources:
-  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicQueryContract.kt"
-    symbols: ["PublicQueryContract", "AdmittedPublicQuery", "PublicQueryRequestSerializer"]
+  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt"
+    symbols: ["PublicToolContract", "AdmittedPublicTool", "PublicToolRequestSerializer"]
   - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt"
     symbols: ["CanonicalAgentToolDefinitions"]
   - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySource.kt"
@@ -17,104 +17,117 @@ code_sources:
   - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt"
     symbols: ["QueryExecutionResult", "QueryCoverage"]
 icon: "scan-search"
-keywords: ["kast.query", "symbol search", "semantic relationships", "agent use"]
+keywords: ["kast.search_classes", "symbol search", "semantic relationships", "agent use"]
 ---
 
-Kast's public query contract expresses intent rather than candidate-refinement stages.
-Use the same request with `kast.query` or `kast query run < request.json`.
+Use the tool that names your intent. Every search uses the session workspace's saved, indexed IntelliJ state and preserves each matching declaration and its compiler evidence.
+
+| Intent | Tool |
+|---|---|
+| Known class-like declaration name | `kast.search_classes` |
+| Known function or method name | `kast.search_functions` |
+| Unknown/mixed kinds, properties or type aliases | `kast.search_declarations` |
+| Compiler diagnostics for a file or directory | `kast.check_diagnostics` |
+| Enumeration, returned references or ordered transformations | `kast.query_symbols` (deferred) |
 
 ## Search with defaults
 
+Call `kast.search_classes` with:
+
 ```json
-{"type":"QUERY","from":{"type":"SEARCH","query":"OrderService"}}
+{"class_name":"OrderService","name_match":null,"scope":null}
 ```
 
-The default is exact declaration-name matching, not a unique overload selection.
-All matching overloads remain separate exact symbols. Omitted controls use supported
-kinds, main and test sources, no pipeline stages, and name/location projection.
-Enumerated controls use CAPS_CASE; source-set names preserve Gradle spelling.
-Explicit `null` is rejected; omit a control to use its declaring default.
-`select: []` deliberately requests no optional display fields. Empty kinds, empty
-source sets, blank queries, unknown fields and old INSPECT steps are rejected.
+The same input works with `kast tool search_classes < request.json`. Use `function_name` with `search_functions`. These searches return names, locations, signatures and opaque `symbol_ref` tokens alongside completeness evidence. Every matching overload remains separate. During migration, `symbol_ref` repeats the exact bytes in `ref.token`.
 
-## Compose ordered operations
+Controls must be present. `null` selects the documented default: exact, case-sensitive name matching and recursive directory `.` in the imported source-set names `main` and `test`. Names are simple declaration identifiers; use a package scope for qualification. Fuzzy matching requires `"name_match":"fuzzy"` and never runs as a hidden retry.
+
+For a property or an unknown declaration kind, call `search_declarations`:
 
 ```json
 {
-  "type": "QUERY",
-  "from": {
-    "type": "SEARCH",
-    "query": "submitOrder",
-    "scope": {
-      "type": "DIRECTORY",
-      "value": "services/orders",
-      "sourceSets": [
-        "main"
-      ]
-    }
-  },
-  "steps": [
-    {
-      "type": "EXPAND",
-      "relation": "CALLERS"
-    },
-    {
-      "type": "FILTER",
-      "visibility": [
-        "PUBLIC"
-      ]
-    },
-    {
-      "type": "DISTINCT"
-    }
-  ],
-  "select": [
-    "NAME",
-    "LOCATION",
-    "SIGNATURE"
-  ]
+  "declaration_name": "retryCount",
+  "name_match": null,
+  "scope": null,
+  "declaration_kinds": ["property"]
 }
 ```
 
-Scope restrictions intersect during discovery. `sourceSets` accepts exact Gradle
-source-set names, including custom names such as `integrationTest` and multiplatform
-names such as `commonMain`. Omitted source-set selection uses `main` and `test`; an unmatched
-name contributes no declarations. Names are matched against imported ownership,
-independently of production/test classification and physical directory names.
-Scope selects exactly one `DIRECTORY` or `PACKAGE` target through `type` and `value`.
-Directory values are relative to the workspace root; `"."` names the root. Package
-values use dotted Kotlin names. Omitted scope means the workspace root.
-Containment defaults to `RECURSIVE`, including the target and nested directories or
-subpackages; `DIRECT` searches only the target. Scope does not
-silently constrain later expansion destinations. Step order matters: this query
-filters callers, not the declarations that were initially matched.
+`declaration_kinds: null` includes the supported `class`, `function`, `property` and `type_alias` families. Empty or duplicate kind selections reject. Constructor discovery is not advertised.
 
-## Reuse exact references
+## Choose one scope
+
+A directory scope uses paths relative to the session workspace root:
 
 ```json
-{"type":"QUERY","from":{"type":"REFS","refs":["exact:v3:EXAMPLE_NOT_ISSUED"]}}
+{
+  "function_name": "submitOrder",
+  "name_match": null,
+  "scope": {
+    "relative_directory_path": "services/orders",
+    "include_subdirectories": true,
+    "source_set_names": ["main"]
+  }
+}
 ```
 
-The example token demonstrates shape only. Copy real `items[].ref.token` values
-verbatim. Prefix syntax is not proof of workspace compatibility, current generation,
-or compiler identity. Kast still admits those facts at execution.
+A package scope instead uses semantic Kotlin package names:
 
-Use `ALL` instead of `SEARCH` to enumerate; it has no query or match field. `REFS`
-also has neither discovery scope nor name-matching controls. All public sources
-request exact-symbol results; callers never insert candidate-refinement operations.
+```json
+{
+  "class_name": "OrderService",
+  "name_match": null,
+  "scope": {
+    "package_name": "com.example.orders",
+    "include_subpackages": false,
+    "source_set_names": null
+  }
+}
+```
 
-## Let Kast coordinate the work
+The two closed shapes are exclusive. Mixed fields, absolute paths, parent traversal and non-canonical paths reject. `source_set_names: null` means exactly `main` and `test`, not every imported source set. Explicit names such as `integrationTest` or `commonMain` must match imported Gradle ownership. Empty and duplicate selections reject. A known absent source-set name contributes no declarations.
 
-Kast reads the existing IntelliJ project for the exact repository root. Save pending
-edits and let the IDE finish indexing before querying. An unavailable or unready host
-rejects the read. Do not invoke lifecycle, synchronization or topology preparation
-as query prerequisites. Existing bounded exhaustive intent remains qualified when
-work or result coverage is incomplete. A qualified empty result is not proof of
-zero matches. Preserve failure and limitation evidence.
+Source-set restrictions intersect the chosen directory or package during discovery. They do not constrain later expansion destinations.
 
-Installed server projection 9 retains the declaration query syntax introduced in
-projection 8 and adds explicit live read evidence.
-Unchanged canonical wire/evaluator models are internal, not a second public CLI mode.
-See `app-server/docs/public-query-contract.md` for ownership, enforcement and the
-requirement-to-proof map. The installed `--schema` remains the executable's public
-contract authority.
+## Check diagnostics separately
+
+Call `kast.check_diagnostics`:
+
+```json
+{"relative_path":"src/main/kotlin/orders/OrderService.kt","max_diagnostics":null}
+```
+
+A path may name a file or directory. Use `.` explicitly for the workspace root. Null selects at most 100 returned entries; the positive maximum is 1000. This request does not build the project. It is independent of diagnostic logging detail and bounded by the host's diagnostic scope policy.
+
+## Compose an advanced query
+
+`kast.query_symbols` handles ordered pipelines. This example filters functions before finding their callers:
+
+```json
+{
+  "source": {
+    "type": "all_declarations",
+    "declaration_kinds": ["function"],
+    "scope": null
+  },
+  "steps": [
+    {"type":"filter_visibility","visibilities":["public"]},
+    {"type":"expand_relation","relation":"callers"}
+  ],
+  "return_fields": ["name","location","signature"]
+}
+```
+
+Sources are `search_declarations`, `all_declarations` and `symbol_refs`. Steps are `filter_visibility`, `expand_relation` and `distinct_symbols`. Their order is meaningful: filtering before expansion selects callers of public functions; filtering after expansion selects public callers. Kast does not reorder steps or insert deduplication. Diagnostics are a separate tool.
+
+`steps: null` and `steps: []` both mean no transformations. `return_fields: null` selects name and location; `return_fields: []` requests mandatory identity and kind only. Duplicate projection fields reject.
+
+To reuse a result, copy its `symbol_ref` verbatim into `source: {"type":"symbol_refs","symbol_refs":["<returned token>"]}`. Schema admission does not authenticate a token. The original owner re-admits its workspace, lifetime, epoch and scope. Do not construct or shorten references. Use `semantic_query` for occurrence-oriented relation facts, including use-site locations; query expansion returns related declaration symbols.
+
+## Read completeness evidence
+
+`complete`, `qualified`, and `rejected` have different meanings. Keep item failures, coverage, provenance and compiler signatures. A qualified empty result does not prove absence. Larger configured budgets do not guarantee complete coverage.
+
+Save edits and let IDEA finish indexing before a semantic read. An unavailable or unready host rejects without opening a project, importing Gradle or starting a worker as a hidden prerequisite.
+
+Installed server projection 10 and CLI-invocation projection 3 bind each tool name to its schema and executable command. Older persisted catalogs are incompatible and must be recreated with a matched broker/executable. The explicit legacy `kast query run` CLI grammar remains available; `kast.query` and `kast.diagnostic_check` are not aliases in the new agent catalog.

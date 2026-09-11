@@ -41,20 +41,20 @@ questions and Kast manages the runtime and intermediate evidence.
 
 ## Search is the main surface
 
-The agent-facing `kast.query` tool searches declarations, filters results, and
-expands semantic relationships in one typed request. Its `symbols` source
-establishes exact compiler identity, so the agent does not need to coordinate a
-manual discovery-and-inspection sequence.
+Use `kast.search_classes` or `kast.search_functions` when the declaration kind
+is known, and `kast.search_declarations` for unknown or mixed kinds. Searches
+return exact references, names, locations and signatures. Diagnostics use the
+separate `kast.check_diagnostics` tool.
 
-Specialist tools remain available for narrower contracts, but they are deferred.
-The harness-provided selection policy tells the agent to start with search and
-preserve returned references instead of reconstructing identities from text.
+The deferred `kast.query_symbols` composes enumeration, returned references,
+filters and semantic expansion. Keep the returned references intact rather
+than rebuilding identities from text.
 
 ## Kast owns readiness
 
 An agent does not need to start Kast, synchronize the repository, or build a
-topology before asking a semantic question. Every operation starts or joins the
-exact-root runtime and acquires its own prerequisites.
+topology before asking a semantic question. Semantic reads use the existing saved, indexed IntelliJ project. An unavailable
+or unready host rejects the read without a hidden import or worker startup.
 
 Kast returns a typed limitation or rejection when it cannot establish current
 evidence. It does not manufacture readiness or silently weaken a result.

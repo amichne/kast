@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.projection
 
+import io.github.amichne.kast.protocol.contract.*
 import io.github.amichne.kast.cli.ProjectedCliOutcome
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
@@ -56,6 +57,22 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 
 class GeneratedCliProjectionTest {
+    @Test
+    fun `symbol ref output is derived from the same exact token without changing overload identity`() {
+        val tokens = listOf("exact:v3:first-overload", "exact:v3:second-overload")
+        val result = QueryRunResult(bounded(tokens.map { token ->
+            QueryResultItemDocument.ExactSymbol(QueryReferenceDocument.ExactSymbol(text(token)),
+                SymbolKindDocument.FUNCTION, text("overloaded"), null, null, bounded(emptyList()))
+        }), bounded(emptyList()))
+        val projected = queryRunCliProjector.project(OperationOutcome.Complete(evidence(CanonicalOperation.QUERY_RUN, result))) as ProjectedCliOutcome.Complete
+        val items = Json.parseToJsonElement(projected.document.value).jsonObject.getValue("items").jsonArray
+        assertEquals(2, items.size)
+        items.zip(tokens).forEach { (item, token) ->
+            assertEquals(kotlinx.serialization.json.JsonPrimitive(token), item.jsonObject.getValue("symbol_ref"))
+            assertEquals(item.jsonObject.getValue("symbol_ref"), item.jsonObject.getValue("ref").jsonObject.getValue("token"))
+        }
+    }
+
     @Test
     fun `traversal graph normalizes repeated nodes and retains compact proof references`() {
         val source = symbol("exact:A", "A", "src/A.kt")

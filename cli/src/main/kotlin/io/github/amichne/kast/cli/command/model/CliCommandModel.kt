@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli.command
 
 import com.github.ajalt.clikt.core.BaseCliktCommand
+import io.github.amichne.kast.appserver.query.explanation
 import io.github.amichne.kast.cli.CliProjectionFailure
 import io.github.amichne.kast.cli.CliProjectionPreparation
 import io.github.amichne.kast.cli.CliRequestPreparer
@@ -103,6 +104,7 @@ sealed interface CliAction {
 
 /** Closed domain failures produced after Clikt has refined individual option values. */
 sealed interface CliUsageFailure {
+    data class PublicTool(val failure: io.github.amichne.kast.appserver.query.PublicToolInputFailure) : CliUsageFailure
     enum class Start : CliUsageFailure {
         OPTIONS_REQUIRE_SEED,
     }
@@ -114,6 +116,7 @@ sealed interface CliUsageFailure {
 }
 
 internal fun CliUsageFailure.message(): String = when (this) {
+    is CliUsageFailure.PublicTool -> failure.explanation()
     CliUsageFailure.Start.OPTIONS_REQUIRE_SEED ->
         "--source-idea-system and --accept-global-index-copy require --cache seed"
     CliUsageFailure.RequestDocument.REQUIRED ->
@@ -210,6 +213,8 @@ internal class SemanticKastCommand<Request : OperationRequest>(
     private fun decode(document: String): CliActionResolution {
         val request = try {
             requestJson.decodeFromString(serializer, document)
+        } catch (failure: io.github.amichne.kast.appserver.query.PublicToolSerializationException) {
+            return CliActionResolution.UsageRejected(CliUsageFailure.PublicTool(failure.failure))
         } catch (_: SerializationException) {
             return CliActionResolution.UsageRejected(CliUsageFailure.RequestDocument.REJECTED)
         } catch (_: IllegalArgumentException) {

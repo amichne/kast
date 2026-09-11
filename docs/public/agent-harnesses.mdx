@@ -70,14 +70,15 @@ reusing stale metadata.
 
 ## Make search the default
 
-`kast.query` is the only eagerly loaded Kast tool. It searches, filters, and
-expands Kotlin declaration relationships while preserving exact compiler
-identity between query stages.
+`search_classes`, `search_functions`, `search_declarations` and `check_diagnostics`
+are eager. Prefer the specific search when its declaration kind is known; use
+`query_symbols` for enumeration, returned references and ordered pipelines.
 
-The default catalog defers source, semantic, impact, diagnostic, and change
-operations. Direct `symbol_lookup` and `symbol_inspect` routes remain in the
-installed projection for opt-in compatibility, but are not published by
-default. Change tools retain their explicit approval requirements.
+The advanced query, source, semantic, impact and change tools are deferred.
+Direct `symbol_lookup` and `symbol_inspect` remain opt-in. Change tools retain
+explicit approval requirements. Several tool names bind to `query.run`; join
+installed CLI invocations by `toolName`, not just `operationId`. Projection 10
+and CLI invocation version 3 require the matched installed contract.
 
 The harness must also preserve returned references verbatim. It must not rebuild
 selectors from names, file paths, or source text.
@@ -85,8 +86,8 @@ selectors from names, file paths, or source text.
 ## Let operations own readiness
 
 Do not expose lifecycle, index synchronization, topology preparation, status,
-or broker administration as agent tools. Semantic operations start or join the
-runtime, reconcile the workspace, and acquire derived evidence themselves.
+or broker administration as agent tools. Semantic reads use the existing saved, indexed IntelliJ project and reject an
+unavailable host. Operations retain their own evidence and readiness boundaries.
 
 This keeps the agent contract task-oriented and prevents a harness from creating
 an invalid prerequisite sequence.
@@ -127,7 +128,7 @@ names in `kast --schema`. Process values override the saved file. Unknown,
 duplicate, or empty names reject startup. The default value is:
 
 ```text
-query,source_read,semantic_query,impact_analyze,diagnostic_check,change_plan,change_apply,change_recover
+search_classes,search_functions,search_declarations,query_symbols,source_read,semantic_query,impact_analyze,check_diagnostics,change_plan,change_apply,change_recover
 ```
 
 For operational symptoms and safe status collection, see
