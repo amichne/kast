@@ -15,6 +15,10 @@ class RoutineGateTest(unittest.TestCase):
                 report = inspect(self.output(REQUIRED | {task}))
                 self.assertEqual([{"condition": "RUNTIME_QUALIFICATION_REQUIRED", "task": task}], report["findings"])
 
+    def test_hosted_change_acceptance_cannot_enter_routine_ci(self):
+        report = inspect(self.output(REQUIRED | {":hostedChangeAcceptance"}))
+        self.assertEqual([{"condition": "RUNTIME_QUALIFICATION_REQUIRED", "task": ":hostedChangeAcceptance"}], report["findings"])
+
     def test_removing_required_proof_rejects(self):
         for task in REQUIRED:
             with self.subTest(task=task):
