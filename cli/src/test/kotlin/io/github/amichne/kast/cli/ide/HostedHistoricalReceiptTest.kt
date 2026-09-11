@@ -165,28 +165,82 @@ class HostedHistoricalReceiptTest {
     }
 
     @Test
-    fun `recovery requires evidence from the current owner`() {
-        val recovered =
+    fun `complete recovery requires evidence from the current owner`() {
+        for (state in ChangeRecoveryDocumentState.entries) {
+            val recovered =
+                CanonicalOperationWireBindings.changeRecover
+                    .encodeOutcome(
+                        OperationOutcome.Complete(
+                            EvidenceEnvelope(
+                                CanonicalOperation.CHANGE_RECOVER.id,
+                                live("/workspace", historical),
+                                ChangeRecoverResult(state),
+                            )
+                        )
+                    )
+                    .encoded()
+            assertEquals(
+                ExistingIdeExchange.Rejected(ExistingIdeFailure.RESPONSE_REJECTED),
+                ExistingIdeDocuments.response(
+                    raw = recovered,
+                    root = root,
+                    operation = operation(HostedMutationOperation.CHANGE_RECOVER),
+                    descriptor = current,
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `unresolved recovery retains historical plan evidence without claiming current source proof`() {
+        val result = ChangeRecoverResult(ChangeRecoveryDocumentState.RECOVERY_REQUIRED)
+        val raw =
             CanonicalOperationWireBindings.changeRecover
                 .encodeOutcome(
-                    OperationOutcome.Complete(
-                        EvidenceEnvelope(
-                            CanonicalOperation.CHANGE_RECOVER.id,
-                            live("/workspace", historical),
-                            ChangeRecoverResult(ChangeRecoveryDocumentState.ROLLED_BACK),
-                        )
+                    OperationOutcome.Qualified(
+                        EvidenceEnvelope(CanonicalOperation.CHANGE_RECOVER.id, live("/workspace", historical), result),
+                        io.github.amichne.kast.protocol.contract.ChangeRecoverQualification.MANUAL_RECOVERY_REQUIRED,
                     )
                 )
                 .encoded()
-        assertEquals(
-            ExistingIdeExchange.Rejected(ExistingIdeFailure.RESPONSE_REJECTED),
+        assertTrue(
             ExistingIdeDocuments.response(
-                raw = recovered,
+                raw = raw,
                 root = root,
                 operation = operation(HostedMutationOperation.CHANGE_RECOVER),
                 descriptor = current,
-            ),
+            ) is ExistingIdeExchange.Semantic
         )
+    }
+
+    @Test
+    fun `unresolved recovery cannot turn foreign or published evidence into historical live proof`() {
+        for (basis in
+            listOf(live("/other", historical), EvidenceBasis.Published(EvidenceGeneration.parse(1).refined()))) {
+            val raw =
+                CanonicalOperationWireBindings.changeRecover
+                    .encodeOutcome(
+                        OperationOutcome.Qualified(
+                            EvidenceEnvelope(
+                                CanonicalOperation.CHANGE_RECOVER.id,
+                                basis,
+                                ChangeRecoverResult(ChangeRecoveryDocumentState.RECOVERY_REQUIRED),
+                            ),
+                            io.github.amichne.kast.protocol.contract.ChangeRecoverQualification
+                                .MANUAL_RECOVERY_REQUIRED,
+                        )
+                    )
+                    .encoded()
+            assertEquals(
+                ExistingIdeExchange.Rejected(ExistingIdeFailure.RESPONSE_REJECTED),
+                ExistingIdeDocuments.response(
+                    raw = raw,
+                    root = root,
+                    operation = operation(HostedMutationOperation.CHANGE_RECOVER),
+                    descriptor = current,
+                ),
+            )
+        }
     }
 
     private fun text(raw: String) = ProtocolText.parse(raw).refined()

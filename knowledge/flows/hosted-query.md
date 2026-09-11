@@ -229,8 +229,9 @@ Admission and retirement emit bounded stage/outcome observations.
 
 The hosted service also records bounded VFS observations under its own lifetime.
 Receipts contain event kind, IDE-versus-refresh origin, syntactic path categories,
-counts and the existing host correlation. They contain no file paths or source
-payloads. These diagnostic categories do not change source membership or epoch
+counts and the existing host correlation. `OUTSIDE_ROOT` counts expose global
+VFS activity that can schedule project indexing. They contain no file paths or
+source payloads. These diagnostic categories do not change source membership or epoch
 admission; the original epoch listeners remain authoritative.
 
 Incremental creation, class renaming, and deletion were qualified against the

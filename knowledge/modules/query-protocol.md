@@ -32,6 +32,8 @@ code_sources:
     symbols: [WorkspaceSearchScopeModel]
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalRelationContinuationCodec.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalTraversalContinuationCodec.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/TraversalContinuationDocument.kt
+    symbols: [TraversalContinuationDocument]
 ---
 
 # Query protocol
@@ -78,3 +80,8 @@ The live variant carries detached provenance and cannot enter a published write
 or topology admission. See [source identity](../contracts/source-identity.md),
 [semantic query](../flows/semantic-query.md), and
 [operation outcomes](../contracts/operation-outcomes.md).
+
+Traversal continuations preserve their authority version: published continuations
+use version 1 and live continuations use version 2. Input and output schemas share
+the document token pattern; decoding still checks the version against the
+retained authority and rejects unsupported versions.

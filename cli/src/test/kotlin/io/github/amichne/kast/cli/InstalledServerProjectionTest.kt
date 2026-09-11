@@ -26,6 +26,21 @@ import org.junit.jupiter.api.Test
 
 class InstalledServerProjectionTest {
     @Test
+    fun `traversal resume input admits both supported checkpoint versions and rejects unknown versions`() {
+        val schema =
+            schemaRegistry.getSchema(projectionTools().tool("impact_analyze").getValue("inputSchema").toString())
+        for (version in listOf("v1", "v2", "v3")) {
+            val request =
+                """
+                {"exactSelector":"exact-selector","relation":"callers","maximumDepth":1,"maximumResults":1,
+                 "position":{"type":"resume","continuation":"traversal-continuation:$version:payload:digest"}}
+                """
+            val admitted = schema.validate(request, InputFormat.JSON).isEmpty()
+            assertEquals(version != "v3", admitted, version)
+        }
+    }
+
+    @Test
     fun `full generated capability document fits the production provider schema byte budget`() {
         val document =
             installedSchema(

@@ -36,6 +36,7 @@ internal enum class HostedVfsPathCategory {
     KOTLIN_FILE,
     JAVA_FILE,
     OTHER_PROJECT_PATH,
+    OUTSIDE_ROOT,
 }
 
 @Serializable
@@ -66,12 +67,12 @@ internal class HostedVfsPathCount private constructor(val value: Int) {
 internal data class HostedVfsCount(val coordinate: HostedVfsCoordinate, val paths: HostedVfsPathCount)
 
 internal sealed interface HostedVfsBatchEvidence {
-    data object OutsideRoot : HostedVfsBatchEvidence
+    data object Empty : HostedVfsBatchEvidence
 
     class Observed private constructor(val counts: List<HostedVfsCount>) : HostedVfsBatchEvidence {
         companion object {
             fun from(coordinates: List<HostedVfsCoordinate>): HostedVfsBatchEvidence =
-                if (coordinates.isEmpty()) OutsideRoot
+                if (coordinates.isEmpty()) Empty
                 else
                     Observed(
                         coordinates
@@ -104,10 +105,8 @@ internal fun observeHostedVfsBatch(
                     is Refinement.Rejected ->
                         return HostedVfsBatchEvidence.Rejected(HostedVfsObservationFailure.PATH_UNPROVEN)
                 }
-            if (rootIdentity.contains(path)) {
-                coordinates +=
-                    HostedVfsCoordinate(event.kind, event.origin, category(rootPath.relativize(Path.of(raw))))
-            }
+            val category = observedCategory(rootIdentity.contains(path), rootPath, raw)
+            coordinates += HostedVfsCoordinate(event.kind, event.origin, category)
         }
     }
     return HostedVfsBatchEvidence.Observed.from(coordinates)
@@ -129,3 +128,6 @@ private fun category(relative: Path): HostedVfsPathCategory {
 }
 
 private const val MAX_EVENT_PATHS = 2
+
+private fun observedCategory(insideRoot: Boolean, root: Path, raw: String): HostedVfsPathCategory =
+    if (insideRoot) category(root.relativize(Path.of(raw))) else HostedVfsPathCategory.OUTSIDE_ROOT

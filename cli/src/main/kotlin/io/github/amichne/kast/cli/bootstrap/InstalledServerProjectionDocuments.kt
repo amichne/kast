@@ -1041,7 +1041,7 @@ private fun traversalQualificationSchema(): JsonObject =
             ServerSchemaProperty(
                 "continuation",
                 patternTextSchema(
-                    "^traversal-continuation:v1:",
+                    io.github.amichne.kast.protocol.contract.TraversalContinuationDocument.TOKEN_PATTERN,
                     "Self-contained traversal checkpoint.",
                 ),
             ),

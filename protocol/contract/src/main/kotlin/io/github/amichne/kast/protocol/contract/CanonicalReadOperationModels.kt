@@ -420,66 +420,6 @@ enum class TraversalLimitationDocument {
     ONE_HOP_INCOMPLETE,
 }
 
-enum class TraversalContinuationDocumentFailure {
-    UNKNOWN_TOKEN_FAMILY,
-    INVALID_TOKEN_STRUCTURE,
-    INVALID_PAYLOAD_ENCODING,
-    PAYLOAD_DIGEST_MISMATCH,
-}
-
-@JvmInline
-@Serializable(with = TraversalContinuationDocumentSerializer::class)
-value class TraversalContinuationDocument private constructor(val value: String) {
-    companion object {
-        fun parse(raw: String): Refinement<TraversalContinuationDocument, TraversalContinuationDocumentFailure> {
-            val parts = raw.split(':')
-            if (parts.firstOrNull() != TRAVERSAL_CONTINUATION_TOKEN_FAMILY) {
-                return Refinement.Rejected(TraversalContinuationDocumentFailure.UNKNOWN_TOKEN_FAMILY)
-            }
-            if (
-                parts.size != TRAVERSAL_CONTINUATION_TOKEN_PART_COUNT ||
-                    parts[1] !in setOf(TRAVERSAL_CONTINUATION_TOKEN_VERSION, "v2")
-            ) {
-                return Refinement.Rejected(TraversalContinuationDocumentFailure.INVALID_TOKEN_STRUCTURE)
-            }
-            val payload =
-                try {
-                    Base64.getUrlDecoder().decode(parts[2])
-                } catch (_: IllegalArgumentException) {
-                    return Refinement.Rejected(TraversalContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING)
-                }
-            if (payload.isEmpty() || Base64.getUrlEncoder().withoutPadding().encodeToString(payload) != parts[2]) {
-                return Refinement.Rejected(TraversalContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING)
-            }
-            try {
-                payload.decodeToString(throwOnInvalidSequence = true)
-            } catch (_: CharacterCodingException) {
-                return Refinement.Rejected(TraversalContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING)
-            }
-            if (parts[3] != traversalContinuationSha256(payload)) {
-                return Refinement.Rejected(TraversalContinuationDocumentFailure.PAYLOAD_DIGEST_MISMATCH)
-            }
-            if (raw.length > MAX_PROTOCOL_TEXT_LENGTH) {
-                return Refinement.Rejected(TraversalContinuationDocumentFailure.INVALID_TOKEN_STRUCTURE)
-            }
-            return Refinement.Refined(TraversalContinuationDocument(raw))
-        }
-    }
-}
-
-internal object TraversalContinuationDocumentSerializer :
-    RefiningStringSerializer<TraversalContinuationDocument>(
-        serialName = "io.github.amichne.kast.protocol.contract.TraversalContinuationDocument",
-        minimumLength = 1,
-        maximumLength = MAX_PROTOCOL_TEXT_LENGTH,
-        pattern = "^traversal-continuation:v1:",
-    ) {
-    override fun raw(value: TraversalContinuationDocument): String = value.value
-
-    override fun refine(raw: String): Refinement<TraversalContinuationDocument, *> =
-        TraversalContinuationDocument.parse(raw)
-}
-
 enum class TraversalRunQualificationFailure {
     EMPTY_LIMITATIONS,
     NON_CANONICAL_LIMITATIONS,
@@ -570,15 +510,6 @@ private fun admitTraversalLimitations(
     }
     return Refinement.Refined(java.util.List.copyOf(limitations) to java.util.List.copyOf(relationLimitations))
 }
-
-private fun traversalContinuationSha256(bytes: ByteArray): String =
-    MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { byte ->
-        (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-    }
-
-private const val TRAVERSAL_CONTINUATION_TOKEN_FAMILY = "traversal-continuation"
-private const val TRAVERSAL_CONTINUATION_TOKEN_VERSION = "v1"
-private const val TRAVERSAL_CONTINUATION_TOKEN_PART_COUNT = 4
 
 enum class TraversalRunRejection : OperationRejection {
     WORKSPACE_NOT_READY,

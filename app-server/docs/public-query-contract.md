@@ -136,8 +136,10 @@ remain the authority for session compatibility.
 
 `query.run` still lowers to the canonical wire request, which is retained because
 it belongs to the evaluator and runtime modules. This is not a legacy public alias.
-The seven read-result schemas accept exclusive published/live variants. Writes and
-recovery continue to require publication authority. Hosted admission rejections
+The seven read-result schemas accept exclusive published/live variants. Hosted
+`AddDeclaration` planning, apply and recovery use the existing project's live
+authority, with exact-plan approval and fresh admission before source effects.
+The retained isolated path uses publication authority. Hosted admission rejections
 retain their typed reasons; process exit zero alone does not establish semantic
 success. Provider and direct CLI validate the same executable contract.
 

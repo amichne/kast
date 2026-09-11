@@ -158,6 +158,32 @@ class LiveReadOutputSchemaTest {
                     .document(),
         )
 
+    @Test
+    fun `resumable traversal output admits checkpoints for its actual evidence basis`() {
+        for ((basis, version) in listOf(published to "v1", live to "v2")) {
+            val payload = "{}".toByteArray()
+            val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
+            val digest =
+                java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(payload))
+            val continuation =
+                TraversalContinuationDocument.parse("traversal-continuation:$version:$encoded:$digest").refined()
+            val outcome =
+                OperationOutcome.Qualified(
+                    EvidenceEnvelope(CanonicalOperation.TRAVERSAL_RUN.id, basis, traversalResult()),
+                    TraversalRunQualification.resumable(
+                            listOf(TraversalLimitationDocument.RECORD_LIMIT_REACHED),
+                            emptyList(),
+                            continuation,
+                        )
+                        .refined(),
+                )
+            assertAdmits(
+                CanonicalOperation.TRAVERSAL_RUN,
+                CanonicalReadCliDocuments.projectTraversal(outcome).document(),
+            )
+        }
+    }
+
     private fun qualifiedDocuments(basis: EvidenceBasis): List<Pair<CanonicalOperation, JsonObject>> =
         listOf(
             CanonicalOperation.QUERY_RUN to

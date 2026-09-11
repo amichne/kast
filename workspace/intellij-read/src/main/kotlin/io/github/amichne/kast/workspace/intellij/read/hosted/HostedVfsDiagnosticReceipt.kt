@@ -16,7 +16,7 @@ internal fun publishHostedVfsEvidence(
 ) {
     val receipt: HostedVfsDiagnosticDocument =
         when (evidence) {
-            HostedVfsBatchEvidence.OutsideRoot -> return
+            HostedVfsBatchEvidence.Empty -> return
             is HostedVfsBatchEvidence.Observed ->
                 HostedVfsDiagnosticDocument.Observed(
                     host.value.toString(),

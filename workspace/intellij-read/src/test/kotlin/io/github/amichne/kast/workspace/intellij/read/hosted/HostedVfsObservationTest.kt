@@ -40,6 +40,7 @@ class HostedVfsObservationTest {
                 HostedVfsPathCategory.GRADLE_SCRIPT to 1,
                 HostedVfsPathCategory.KOTLIN_FILE to 2,
                 HostedVfsPathCategory.JAVA_FILE to 1,
+                HostedVfsPathCategory.OUTSIDE_ROOT to 1,
             ),
             counts,
         )
@@ -59,12 +60,17 @@ class HostedVfsObservationTest {
     }
 
     @Test
-    fun `outside root and empty batches produce no event`() {
-        assertEquals(HostedVfsBatchEvidence.OutsideRoot, observeHostedVfsBatch(root, emptyList(), ReadLimits.Default))
-        assertEquals(
-            HostedVfsBatchEvidence.OutsideRoot,
-            observeHostedVfsBatch(root, listOf(event("/workspace-other/file.kt")), ReadLimits.Default),
-        )
+    fun `outside root events retain bounded counts without paths while empty batches stay silent`() {
+        assertEquals(HostedVfsBatchEvidence.Empty, observeHostedVfsBatch(root, emptyList(), ReadLimits.Default))
+        val observed =
+            observeHostedVfsBatch(root, listOf(event("/workspace-other/private-cache.kt")), ReadLimits.Default)
+                as HostedVfsBatchEvidence.Observed
+        assertEquals(HostedVfsPathCategory.OUTSIDE_ROOT, observed.counts.single().coordinate.category)
+        assertEquals(1, observed.counts.single().paths.value)
+        val published = mutableListOf<String>()
+        publishHostedVfsEvidence(IdeReadHostLifetime.fromBoundary(UUID.randomUUID()), observed, published::add)
+        assertFalse(published.single().contains("workspace-other"))
+        assertFalse(published.single().contains("private-cache"))
     }
 
     @Test
@@ -97,7 +103,7 @@ class HostedVfsObservationTest {
         )
         assertEquals("PATH_UNPROVEN", JsonParser.parseString(published.single()).asJsonObject["failure"].asString)
         published.clear()
-        publishHostedVfsEvidence(host, HostedVfsBatchEvidence.OutsideRoot, published::add)
+        publishHostedVfsEvidence(host, HostedVfsBatchEvidence.Empty, published::add)
         assertTrue(published.isEmpty())
     }
 

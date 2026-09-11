@@ -82,8 +82,11 @@ attempted write. The latter two remain qualified results.
 A repeated verified apply returns its stored receipt without another write,
 including when the current IDE owner differs from the historical receipt.
 An attempted plan without a verified receipt cannot be applied again. Recovery
-requires a new approval, durable records and fresh source observation. It can
-prove the exact prior state or roll back an exact matching postimage; divergence,
+requires a new approval and durable records. Qualified manual-recovery-required
+results may retain the original plan's historical live evidence when fresh read
+admission fails. They do not prove current source state; completed prior-state or
+rollback results still require the current owner's fresh source observation.
+Recovery can prove the exact prior state or roll back an exact matching postimage; divergence,
 missing records or incomplete observation cannot establish success. Legacy empty
 preimages remain ambiguous because they cannot distinguish absence from an
 existing empty file.

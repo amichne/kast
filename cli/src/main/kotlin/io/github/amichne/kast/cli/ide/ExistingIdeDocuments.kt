@@ -155,12 +155,7 @@ internal object ExistingIdeDocuments {
         val admitted =
             when (decoded) {
                 is WireDecoding.Rejected -> Refinement.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
-                is WireDecoding.Decoded ->
-                    when (val outcome = decoded.value) {
-                        is OperationOutcome.Complete -> changeEvidence(outcome.evidence, operation, context)
-                        is OperationOutcome.Qualified -> changeEvidence(outcome.evidence, operation, context)
-                        is OperationOutcome.Rejected -> Refinement.Refined(Unit)
-                    }
+                is WireDecoding.Decoded -> changeEvidence(decoded.value, operation, context)
             }
         return when (admitted) {
             is Refinement.Refined -> completeResponse(operation.request, document)
@@ -169,12 +164,12 @@ internal object ExistingIdeDocuments {
     }
 
     private fun changeEvidence(
-        evidence: io.github.amichne.kast.kernel.EvidenceEnvelope<*>,
+        outcome: OperationOutcome<*, *, *>,
         operation: ExistingIdeOperation.Change,
         context: ResponseContext,
     ) =
-        admitHostedChangeEvidence(
-            evidence = evidence,
+        admitHostedChangeOutcome(
+            outcome = outcome,
             root = context.root,
             descriptor = context.descriptor,
             operation = operation,
