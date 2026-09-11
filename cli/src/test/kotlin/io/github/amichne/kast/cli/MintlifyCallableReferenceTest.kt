@@ -118,6 +118,8 @@ class MintlifyCallableReferenceTest {
             Json.parseToJsonElement(mintlifyCallableReference(commandGraphFactory().surface).value).jsonObject
         val components = reference.getValue("components").jsonObject.getValue("schemas").jsonObject
         assertTrue(components.values.none { "\$defs" in it.jsonObject })
+        val symbolVariants = components.getValue("semantic_queryResponse_symbol").jsonObject.getValue("anyOf").jsonArray
+        assertEquals("constructor symbol", symbolVariants[1].jsonObject.getValue("title").jsonPrimitive.content)
         val item = components.getValue("search_classesResponse_queryResultItem").jsonObject
         assertEquals("queryResultItem", item.getValue("title").jsonPrimitive.content)
         val variants = item.getValue("anyOf").jsonArray

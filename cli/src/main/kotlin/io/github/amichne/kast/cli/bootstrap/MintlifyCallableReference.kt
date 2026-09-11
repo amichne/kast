@@ -193,7 +193,9 @@ private fun JsonObject.documentationTitle(): String? {
             ((properties?.get(key) as? JsonObject)?.get("const") as? JsonPrimitive)?.content
         } ?: return null
     val required = this["required"] as? JsonArray
-    return if (required?.contains(JsonPrimitive("live")) == true) "$tag · live" else tag
+    // Mintlify resolves tab labels through an object lookup; the bare constructor key resolves to its prototype.
+    val label = if (tag == "constructor") "constructor symbol" else tag
+    return if (required?.contains(JsonPrimitive("live")) == true) "$label · live" else label
 }
 
 /** One OpenAPI component identity derived only from a canonical operation and schema role. */
