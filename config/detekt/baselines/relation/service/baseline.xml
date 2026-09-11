@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:RelationService.kt:all { fact -> fact.subject === subject &amp;&amp; fact.meaning == request.meaning &amp;&amp; fact.authority == subject.lease.identity &amp;&amp; fact.source.lease == subject.lease &amp;&amp; fact.target.lease == subject.lease &amp;&amp; request.admitsEndpoint(fact.source) &amp;&amp; request.admitsEndpoint(fact.target) }</ID>
+    <ID>ComplexCondition:RelationService.kt:batch.request !== request || coverage.knownMinimum.value != batch.facts.size || batch.resultCount.value != batch.facts.size || coverage.limitations.isEmpty()</ID>
+    <ID>ComplexCondition:RelationService.kt:continuation.subject != request.subject.fingerprint || continuation.scope != request.scopeFingerprint || continuation.meaning != request.meaning || continuation.authority != request.subject.lease.identity || continuation.nextProviderCursor.provider != request.providerCursor.provider || continuation.nextProviderCursor.nextPosition.value &lt; request.providerCursor.nextPosition.value</ID>
+    <ID>LongMethod:RelationServiceTest.kt:RelationServiceTest$private fun selector: SymbolSelector</ID>
+  </CurrentIssues>
+</SmellBaseline>

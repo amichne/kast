@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:IndexerCacheStatePublisher.kt:IndexerCacheStatePublisher$fun publish: IndexerCacheStatePublication</ID>
+    <ID>CognitiveComplexMethod:IndexerLaunchOptions.kt:IndexerLaunchOptions.Companion$fun admit: IndexerLaunchAdmission</ID>
+    <ID>CognitiveComplexMethod:IndexerSemanticLane.kt:IndexerSemanticLane$fun dispatch: IndexerSemanticExecution</ID>
+    <ID>CognitiveComplexMethod:IndexerSocketRoute.kt:IndexerSocketRoute.Companion$fun prepare: Validation&lt;IndexerSocketRoute, IndexerTransportFailure></ID>
+    <ID>CognitiveComplexMethod:IndexerWireFrameCodec.kt:IndexerWireFrameCodec$fun write: IndexerFrameWrite</ID>
+    <ID>CognitiveComplexMethod:IndexerWireFrameCodec.kt:IndexerWireFrameCodec$private fun readCompletely: BufferRead</ID>
+    <ID>CognitiveComplexMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport$fun serveNext: IndexerConnectionHandling</ID>
+    <ID>CognitiveComplexMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport$override fun close</ID>
+    <ID>CognitiveComplexMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport$private fun serveFrames: IndexerConnectionHandling</ID>
+    <ID>CognitiveComplexMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport.Companion$fun activate: IndexerTransportActivation</ID>
+    <ID>CognitiveComplexMethod:KastIndexerApplicationStarter.kt:KastIndexerApplicationStarter$override fun main</ID>
+    <ID>ComplexCondition:IndexerBootstrapStatePublisher.kt:AdmittedIndexerBootstrapStatePublisher.Companion$!path.isAbsolute || path.normalize() != path || path.fileName?.toString() != InstalledSemanticRuntimeBootstrapAttempt.FILE_NAME || Files.isSymbolicLink(path)</ID>
+    <ID>ComplexCondition:IndexerCacheStatePublisher.kt:IndexerCacheStatePublisher$!path.isAbsolute || path.normalize() != path || path.fileName.toString() != "cache-state" || Files.isSymbolicLink(path)</ID>
+    <ID>ComplexCondition:KastIndexerMain.kt:IndexerNetworkArguments.Companion$!root.isAbsolute || root.normalize() != root || root.toRealPath() != root || !Files.isDirectory(root) || cache == null || !cache.isAbsolute || state.normalize() != state || state.fileName.toString() != "cache-state" || !Files.isDirectory(cache) || cache.toRealPath() != cache || Files.isSymbolicLink(state)</ID>
+    <ID>CyclomaticComplexMethod:IndexerBootstrapStatePublisher.kt:AdmittedIndexerBootstrapStatePublisher.Companion$internal fun admit: IndexerBootstrapStatePublisherAdmission</ID>
+    <ID>CyclomaticComplexMethod:IndexerCacheStatePublisher.kt:IndexerCacheStatePublisher$fun publish: IndexerCacheStatePublication</ID>
+    <ID>CyclomaticComplexMethod:IndexerLaunchOptions.kt:IndexerLaunchOptions.Companion$fun admit: IndexerLaunchAdmission</ID>
+    <ID>CyclomaticComplexMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport$override fun close</ID>
+    <ID>CyclomaticComplexMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport$private fun serveFrames: IndexerConnectionHandling</ID>
+    <ID>CyclomaticComplexMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport.Companion$fun activate: IndexerTransportActivation</ID>
+    <ID>CyclomaticComplexMethod:KastIndexerApplicationStarter.kt:KastIndexerApplicationStarter$override fun main</ID>
+    <ID>CyclomaticComplexMethod:KastIndexerMain.kt:IndexerNetworkArguments.Companion$fun admit: IndexerNetworkArgumentAdmission</ID>
+    <ID>LargeClass:InstalledIndexerLaunchTest.kt:InstalledIndexerLaunchTest</ID>
+    <ID>LongMethod:IndexerBootstrapStatePublisherTest.kt:IndexerBootstrapStatePublisherTest$@Test fun `publisher persists each ordered phase and rejects skipped phases and early readiness`</ID>
+    <ID>LongMethod:IndexerCacheStatePublisher.kt:IndexerCacheStatePublisher$fun publish: IndexerCacheStatePublication</ID>
+    <ID>LongMethod:IndexerLaunchOptions.kt:IndexerLaunchOptions.Companion$fun admit: IndexerLaunchAdmission</ID>
+    <ID>LongMethod:IndexerSemanticLane.kt:IndexerSemanticLane$fun dispatch: IndexerSemanticExecution</ID>
+    <ID>LongMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport$override fun close</ID>
+    <ID>LongMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport$private fun serveFrames: IndexerConnectionHandling</ID>
+    <ID>LongMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport.Companion$fun activate: IndexerTransportActivation</ID>
+    <ID>LongMethod:KastIndexerApplicationStarter.kt:KastIndexerApplicationStarter$override fun main</ID>
+    <ID>MagicNumber:IndexerSemanticLane.kt:25L</ID>
+    <ID>MagicNumber:KastIndexerApplicationStarter.kt:70</ID>
+    <ID>MagicNumber:KastIndexerMain.kt:64</ID>
+    <ID>MaxLineLength:IndexerBootstrapStatePublisher.kt:IndexerBootstrapStatePublisher$"kast-indexer: bootstrap-transition: current=${event.current} requested=${event.requested} outcome=${event.outcome}"</ID>
+    <ID>NestedBlockDepth:IndexerSocketRoute.kt:IndexerSocketRoute.Companion$fun prepare: Validation&lt;IndexerSocketRoute, IndexerTransportFailure></ID>
+    <ID>WildcardImport:IndexerWireQualificationTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

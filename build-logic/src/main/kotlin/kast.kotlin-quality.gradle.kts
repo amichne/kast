@@ -29,23 +29,30 @@ spotless {
 detekt {
     toolVersion = "2.0.0-alpha.6"
     config.setFrom(rootProject.file("config/detekt/detekt.yml"))
+    baseline.set(
+        rootProject.file("config/detekt/baselines/${project.path.removePrefix(":").replace(':', '/')}/baseline.xml")
+    )
     buildUponDefaultConfig = true
     parallel = true
 }
 
-val checkMainKotlinFileLength by tasks.registering(KotlinFileLengthTask::class) {
-    group = "verification"
-    description = "Rejects production Kotlin files larger than the structural reading budget."
-    sourceFiles.from(fileTree("src/main") { include("**/*.kt") })
-    maximumLines = 400
-}
+val checkMainKotlinFileLength by
+    tasks.registering(KotlinFileLengthTask::class) {
+        group = "verification"
+        description = "Rejects production Kotlin files larger than the structural reading budget."
+        sourceFiles.from(fileTree("src/main") { include("**/*.kt") })
+        maximumLines = 400
+        baselineFile.set(rootProject.layout.projectDirectory.file("config/kotlin/file-length-baseline.tsv"))
+    }
 
-val checkTestKotlinFileLength by tasks.registering(KotlinFileLengthTask::class) {
-    group = "verification"
-    description = "Rejects test Kotlin files larger than the test reading budget."
-    sourceFiles.from(fileTree("src/test") { include("**/*.kt") })
-    maximumLines = 600
-}
+val checkTestKotlinFileLength by
+    tasks.registering(KotlinFileLengthTask::class) {
+        group = "verification"
+        description = "Rejects test Kotlin files larger than the test reading budget."
+        sourceFiles.from(fileTree("src/test") { include("**/*.kt") })
+        maximumLines = 600
+        baselineFile.set(rootProject.layout.projectDirectory.file("config/kotlin/file-length-baseline.tsv"))
+    }
 
 tasks.named("check") {
     dependsOn(

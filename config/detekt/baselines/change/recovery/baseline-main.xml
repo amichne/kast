@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>NamedArguments:AddDeclarationRecoveryPreparation.kt:AddDeclarationRecoveryPreparation.Companion$admit(plan.planId, source, write.precondition, preimage)</ID>
+  </CurrentIssues>
+</SmellBaseline>

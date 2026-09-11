@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:CanonicalQueryOperationModels.kt:directory != null &amp;&amp; directory != "." &amp;&amp; (directory.startsWith('/') || directory.any(Char::isISOControl) || directory.split('/').any { it.isBlank() || it == "." || it == ".." })</ID>
+    <ID>CyclomaticComplexMethod:CanonicalQueryOperationModels.kt:private fun QueryDiscoveryDocument.isCanonical: Boolean</ID>
+    <ID>CyclomaticComplexMethod:CanonicalSourceReadOperationModels.kt:SourceReadAnchorDocument.Companion$fun admit: Refinement&lt;SourceReadAnchorDocument, SourceReadAnchorDocumentFailure></ID>
+    <ID>CyclomaticComplexMethod:SymbolProtocolModels.kt:private fun CompilerSignatureDocument.matchesCanonical: Boolean</ID>
+    <ID>InvalidPackageDeclaration:IdeHostCapability.kt:package io.github.amichne.kast.protocol.contract</ID>
+    <ID>InvalidPackageDeclaration:IdeHostCompatibility.kt:package io.github.amichne.kast.protocol.contract</ID>
+    <ID>LongParameterList:IdeHostCompatibility.kt:AdmittedIdeHostCompatibility</ID>
+    <ID>LongParameterList:SymbolProtocolModels.kt:SymbolDocument.Companion$fun create: Refinement&lt;SymbolDocument, SymbolDocumentFailure></ID>
+    <ID>LongParameterList:TopologyCoverageModels.kt:TopologyCoverageFailure.Companion$fun admit: Refinement&lt;TopologyCoverageFailure, TopologyCoverageFailureAdmissionFailure></ID>
+    <ID>LongParameterList:TopologyCoverageModels.kt:TopologyCoverageSymbol.Companion$fun create: Refinement&lt;TopologyCoverageSymbol, TopologyCoverageSymbolFailure></ID>
+    <ID>MagicNumber:CanonicalQueryOperationModels.kt:256</ID>
+    <ID>MagicNumber:CanonicalReadOperationModels.kt:0xff</ID>
+    <ID>MagicNumber:CanonicalReadOperationModels.kt:16</ID>
+    <ID>MagicNumber:CanonicalReadOperationModels.kt:RelationContinuationDocument.Companion$3</ID>
+    <ID>MagicNumber:CanonicalReadOperationModels.kt:TraversalContinuationDocument.Companion$3</ID>
+    <ID>MagicNumber:CanonicalSourceReadOperationModels.kt:0xff</ID>
+    <ID>MagicNumber:CanonicalSourceReadOperationModels.kt:16</ID>
+    <ID>MagicNumber:CanonicalTopologyOperationModels.kt:TopologyBuildDigest.Companion$64</ID>
+    <ID>MagicNumber:TopologyCoverageModels.kt:TopologyCoverageSourceHash.Companion$64</ID>
+    <ID>NamedArguments:CanonicalReadOperationModels.kt:DiagnosticCheckQualification.Companion$DiagnosticCheckQualification( knownDiagnosticCount, resultLimitReached, java.util.List.copyOf(analyzedFiles), java.util.List.copyOf(limitations), )</ID>
+    <ID>NamedArguments:IdeHostCompatibility.kt:AdmittedIdeHostCompatibility.Companion$AdmittedIdeHostCompatibility( ideBuild, kotlinBuild, pluginVersion, runtimeProtocol, registryDigest, wireDigest, capabilities, )</ID>
+    <ID>NamedArguments:IdeHostCompatibility.kt:IdeBuildIdentity.Companion$refineIdentity(raw, IdeHostCompatibilityField.IDE_BUILD, IDE_BUILD_FORMAT, ::IdeBuildIdentity)</ID>
+    <ID>NamedArguments:IdeHostCompatibility.kt:KastPluginVersion.Companion$refineIdentity( raw, IdeHostCompatibilityField.KAST_PLUGIN_VERSION, KAST_PLUGIN_VERSION_FORMAT, ::KastPluginVersion, )</ID>
+    <ID>NamedArguments:IdeHostCompatibility.kt:KotlinPluginBuildIdentity.Companion$refineIdentity( raw, IdeHostCompatibilityField.KOTLIN_PLUGIN_BUILD, KOTLIN_PLUGIN_BUILD_FORMAT, ::KotlinPluginBuildIdentity, )</ID>
+    <ID>NamedArguments:IdeHostCompatibility.kt:OperationRegistryDigest.Companion$refineIdentity( raw, IdeHostCompatibilityField.OPERATION_REGISTRY_DIGEST, SHA256_FORMAT, ::OperationRegistryDigest, )</ID>
+    <ID>NamedArguments:IdeHostCompatibility.kt:RuntimeProtocolIdentity.Companion$refineIdentity( raw, IdeHostCompatibilityField.RUNTIME_PROTOCOL_IDENTITY, RUNTIME_PROTOCOL_FORMAT, ::RuntimeProtocolIdentity, )</ID>
+    <ID>NamedArguments:IdeHostCompatibility.kt:WireSchemaDigest.Companion$refineIdentity( raw, IdeHostCompatibilityField.WIRE_SCHEMA_DIGEST, SHA256_FORMAT, ::WireSchemaDigest, )</ID>
+    <ID>NamedArguments:ProtocolSerialization.kt:RefiningIntSerializer$constrainedIntegerDescriptor( serialName, PrimitiveKind.INT, minimum, maximum, )</ID>
+    <ID>NamedArguments:ProtocolSerialization.kt:RefiningLongSerializer$constrainedIntegerDescriptor( serialName, PrimitiveKind.LONG, minimum, maximum, )</ID>
+    <ID>NamedArguments:TopologyCoverageModels.kt:TopologyCoverageFailure.Companion$TopologyCoverageFailure( java.util.Set.copyOf(missing), java.util.Set.copyOf(unexpected), java.util.Set.copyOf(duplicateCandidates), java.util.Set.copyOf(duplicateCompletions), java.util.Set.copyOf(workspaceMismatches), java.util.Set.copyOf(candidateEvidenceMismatches), java.util.Set.copyOf(duplicateSymbols), java.util.Set.copyOf(missingEdgeTargets), java.util.Set.copyOf(mismatchedEdgeEndpoints), )</ID>
+  </CurrentIssues>
+</SmellBaseline>

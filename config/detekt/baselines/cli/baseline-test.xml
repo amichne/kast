@@ -1,0 +1,238 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:ExistingIdeSocketTest.kt:ExistingIdeSocketTest$@Test fun `native framed client accepts the exact host and rejects oversized and invalid UTF8 responses`</ID>
+    <ID>CyclomaticComplexMethod:ExistingIdeSocketTest.kt:ExistingIdeSocketTest$@Test fun `native framed client accepts the exact host and rejects oversized and invalid UTF8 responses`</ID>
+    <ID>FunctionOnlyReturningConstant:CliNativeTransportTest.kt:CliNativeTransportTest$private fun symbolDiscoverDocument: String</ID>
+    <ID>ImplicitDefaultLocale:CliContinuationAdmissionTest.kt:"%02x".format(it)</ID>
+    <ID>ImplicitDefaultLocale:ConfigurationInspectionTest.kt:ConfigurationInspectionTest$"%02x".format(it)</ID>
+    <ID>ImplicitDefaultLocale:ExistingIdeCliTest.kt:ExistingIdeCliTest$"%02x".format(it)</ID>
+    <ID>ImplicitDefaultLocale:ExistingIdeSocketTest.kt:ExistingIdeSocketTest$"%02x".format(it)</ID>
+    <ID>ImplicitDefaultLocale:InstallationWorkflowTest.kt:InstallationWorkflowTest$"%02x".format(byte)</ID>
+    <ID>InvalidPackageDeclaration:CliNativeTransportTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:CoordinatedRootRuntimeDemanderTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:IndexSeedActivityTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:IndexSeedFilesystemServiceTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:IndexSeedProtocolTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledIdeRuntimeDiscoveryTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledSchemaSerializationTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledSidecarCacheRootTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledSidecarRuntimeDemanderTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeEndpointAliasTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeLifecycleTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeProcessModeTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeProcessSessionTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeSocketDirectoryTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeStartupProgressTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:SeedProjectCompatibilityTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:SidecarBootstrapStateFileTest.kt:package io.github.amichne.kast.cli.runtime.bootstrap</ID>
+    <ID>InvalidPackageDeclaration:SidecarCacheLifecycleTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:SidecarCacheRecoveryTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:SidecarStartupProtocolTest.kt:package io.github.amichne.kast.cli</ID>
+    <ID>LargeClass:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest</ID>
+    <ID>LargeClass:GeneratedCliProjectionTest.kt:GeneratedCliProjectionTest</ID>
+    <ID>LargeClass:IndexSeedFilesystemServiceTest.kt:IndexSeedFilesystemServiceTest</ID>
+    <ID>LargeClass:InstalledServerProjectionTest.kt:InstalledServerProjectionTest</ID>
+    <ID>LargeClass:InstalledSidecarRuntimeDemanderTest.kt:InstalledSidecarRuntimeDemanderTest</ID>
+    <ID>LargeClass:LiveReadOutputSchemaTest.kt:LiveReadOutputSchemaTest</ID>
+    <ID>LargeClass:RuntimeProcessSessionTest.kt:RuntimeProcessSessionTest</ID>
+    <ID>LargeClass:SidecarCacheLifecycleTest.kt:SidecarCacheLifecycleTest</ID>
+    <ID>LongMethod:BrokerOperationalCatalogueTest.kt:BrokerOperationalCatalogueTest$@Test fun `inspection exposes broker admission queues persistence and qualification bounds`</ID>
+    <ID>LongMethod:CliBoundaryContractTest.kt:CliBoundaryContractTest$@Test fun `every public command projection parses to its canonical operation`</ID>
+    <ID>LongMethod:CliNativeTransportTest.kt:CliNativeTransportTest$@Test fun `semantic runtime admission rejection prevents wire exchange`</ID>
+    <ID>LongMethod:CliNativeTransportTest.kt:CliNativeTransportTest$@Test fun `symbol discovery traverses exact root UDS and typed wire`</ID>
+    <ID>LongMethod:CliSurfaceContractTest.kt:CliSurfaceContractTest$@Test fun `local metadata returns before root or runtime demand`</ID>
+    <ID>LongMethod:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$@Test fun `each successful read binding requires the original live host and rejects published evidence`</ID>
+    <ID>LongMethod:ExistingIdeSocketTest.kt:ExistingIdeSocketTest$@Test fun `native framed client accepts the exact host and rejects oversized and invalid UTF8 responses`</ID>
+    <ID>LongMethod:GeneratedCliProjectionTest.kt:GeneratedCliProjectionTest$@Test fun `qualified read outputs retain structured proof instead of one reason label`</ID>
+    <ID>LongMethod:GeneratedCliProjectionTest.kt:GeneratedCliProjectionTest$@Test fun `traversal graph normalizes repeated nodes and retains compact proof references`</ID>
+    <ID>LongMethod:InstallationWorkflowTest.kt:InstallationWorkflowTest$private fun releaseRequest: InstallationRequest</ID>
+    <ID>LongMethod:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$@Test fun `installed schema owns broker tool shapes and exact whole document cli invocations`</ID>
+    <ID>LongMethod:InstalledSidecarRuntimeDemanderTest.kt:InstalledSidecarRuntimeDemanderTest$private fun demanderFixture: DemanderFixture</ID>
+    <ID>LongMethod:LiveReadOutputSchemaTest.kt:LiveReadOutputSchemaTest$private fun qualifiedDocuments: List&lt;Pair&lt;CanonicalOperation, JsonObject>></ID>
+    <ID>LongMethod:MintlifyCallableReferenceTest.kt:MintlifyCallableReferenceTest$@Test fun `reference preserves every public callable without claiming an HTTP server`</ID>
+    <ID>LongMethod:ProductInspectionCommandTest.kt:ProductInspectionCommandTest$@Test fun `product inspection reports sidecar cache and per-socket telemetry without runtime demand`</ID>
+    <ID>LongMethod:RuntimeProcessSessionTest.kt:RuntimeProcessSessionTest$@Test fun `detached exact attempt is joined after cli exit without refreshing or relaunching`</ID>
+    <ID>LongMethod:SemanticRuntimeDemandTest.kt:SemanticRuntimeDemandTest$@Test fun `semantic requests carry their original demand through admission before exchange`</ID>
+    <ID>LongMethod:SidecarCacheLifecycleTest.kt:SidecarCacheLifecycleTest$@Test fun `cache identity and state survive restart and exact cache is quarantined`</ID>
+    <ID>LongMethod:SidecarCacheLifecycleTest.kt:SidecarCacheLifecycleTest$@Test fun `current release cache is selected while valid stale payload caches coexist`</ID>
+    <ID>LongMethod:SidecarCacheLifecycleTest.kt:SidecarCacheLifecycleTest$@Test fun `fresh cache root refines an authorized parent alias to physical ownership`</ID>
+    <ID>LongMethod:SidecarCacheLifecycleTest.kt:SidecarCacheLifecycleTest$@Test fun `project-specific seed requires current identity proof after restart`</ID>
+    <ID>LongMethod:SidecarStartupProtocolTest.kt:SidecarStartupProtocolTest$@Test fun `launch command retains every installed runtime and private cache proof`</ID>
+    <ID>LongMethod:TopologyBuildCliProjectorTest.kt:TopologyBuildCliProjectorTest$@Test fun `coverage rejection retains all exact mismatch evidence`</ID>
+    <ID>LongParameterList:InstallationWorkflowTest.kt:InstallationWorkflowTest$private fun releaseRequest: InstallationRequest</ID>
+    <ID>LongParameterList:SavedConfigurationAdmissionTest.kt:SavedConfigurationAdmissionTest$private fun launch: ProcessEvidence</ID>
+    <ID>MaxLineLength:CliBoundaryContractTest.kt:CliBoundaryContractTest$"""{"anchor":{"type":"symbol","selector":"$selector"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"complete"},"entityLimit":250,"textByteLimit":65536,"page":{"type":"first"}}"""</ID>
+    <ID>MaxLineLength:CliBoundaryContractTest.kt:CliBoundaryContractTest$"""{"exactSelector":"selector","relation":"callees","maximumDepth":2,"maximumResults":10,"position":{"type":"resume","continuation":"${traversalContinuationToken()}"}}"""</ID>
+    <ID>MaxLineLength:CliBoundaryContractTest.kt:CliBoundaryContractTest$"""{"exactSelector":"selector","relation":"callees","maximumDepth":2,"maximumResults":10,"position":{"type":"resume","continuation":"bad"}}"""</ID>
+    <ID>MaxLineLength:CliBoundaryContractTest.kt:CliBoundaryContractTest$"""{"exactSelector":"selector","relation":"callers","maximumDepth":2,"maximumResults":10,"position":{"type":"start"}}"""</ID>
+    <ID>MaxLineLength:CliBoundaryContractTest.kt:CliBoundaryContractTest$"""{"type":"QUERY","from":{"type":"ALL","kinds":["CLASS"],"scope":{"type":"DIRECTORY","value":".","sourceSets":["main"]}}}"""</ID>
+    <ID>MaxLineLength:ExistingIdeCliTest.kt:ExistingIdeCliTest$return """{"file":"/workspace/Classes.kt","compilerIdentity":"canonical-signature-sha256-v1|$identity","canonicalSignature":"$signature","signature":{"kind":"class_like","qualifiedIdentity":"$name"},"documentStamp":1,"vfsStamp":1,"module":"fixture","gradleBuildRoot":"/workspace","gradleProject":":fixture","sourceRoot":"src","sourceKind":"PRODUCTION","provenanceAuthority":"cached_source_folder_flag"}"""</ID>
+    <ID>MaxLineLength:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$"""{"anchor":{"type":"symbol","selector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"complete"},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}"""</ID>
+    <ID>MaxLineLength:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$"""{"exactSelector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","relation":"references","limit":10}"""</ID>
+    <ID>MaxLineLength:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$"""{"exactSelector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","relation":"references","maximumDepth":1,"maximumResults":10}"""</ID>
+    <ID>MaxLineLength:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$"""{"target":{"type":"exact","selector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"}}"""</ID>
+    <ID>MaxLineLength:InstallationWorkflowTest.kt:InstallationWorkflowTest$"""{"schemaVersion":1,"runtimeId":"sha256:$runtimeIdentity","productVersion":"$version","platform":"macos","architecture":"aarch64","ideaBuild":"261.1","kotlinPluginBuild":"2.4.10","kastPluginSha256":"$pluginDigest","wireSchemaId":"kast-wire-v1","archive":{"fileName":"${runtime.fileName}","url":"https://example.invalid/${runtime.fileName}","sha256":"$archiveDigest","bytes":${Files.size(runtime)}},"layout":{"executable":"kast-indexer","requiredEntries":["kast-indexer"],"executableEntries":["kast-indexer"]}}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":[{"type":"check_diagnostics"}],"return_fields":null}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":null,"return_fields":[]}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"source":{"type":"search_declarations","declaration_name":"OrderService","name_match":null,"declaration_kinds":null,"scope":null},"steps":null,"return_fields":null}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"source":{"type":"symbol_refs","symbol_refs":["NON_ISSUED_SCHEMA_TEST_ONLY"]},"steps":null,"return_fields":null}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"status":"completed","document":{"operation":"change.apply","status":"complete","receiptIdentity":"receipt:opaque",$preview}}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"status":"completed","document":{"operation":"change.plan","status":"complete","planIdentity":"plan:opaque",$preview}}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"status":"completed","document":{"operation":"diagnostic.check","status":"complete","diagnostics":[]}}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"status":"completed","document":{"operation":"query.run","status":"complete","items":[],"failures":[]}}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"status":"completed","document":{"operation":"query.run","status":"qualified","items":[],"failures":[],"qualification":{"knownMinimum":0,"limitations":["discovery-incomplete"]}}}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"type":"property","qualifiedIdentity":"sample.Controller","receiver":{"type":"present","compilerType":"kotlin.String"},"contextReceivers":["sample.Context"],"returnType":"kotlin.Int"}"""</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$",\"compilerEvidence\":{\"identity\":\"$compilerIdentity\",\"signature\":{\"type\":\"class-like\",\"qualifiedIdentity\":\"sample.Alpha\"}}"</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"Full --schema output is $emittedBytes bytes; provider accepts ${BrokerOperationalLimits.maximumKastSchemaBytes}"</ID>
+    <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"\"selection\":{\"selector\":\"source-selector-v1:payload:digest\",\"range\":{\"startInclusive\":0,\"endExclusive\":0}},"</ID>
+    <ID>MaxLineLength:LiveReadOutputSchemaTest.kt:LiveReadOutputSchemaTest$"""{"schemaVersion":1,"outcome":"rejected","failure":"DIRTY_DOCUMENTS","detail":"saved content required","stage":"EPOCH_OBSERVATION"}"""</ID>
+    <ID>MaxLineLength:PublicToolCommandTest.kt:PublicToolCommandTest$"""{"declaration_name":"order","name_match":null,"scope":null,"declaration_kinds":["property","type_alias"]}"""</ID>
+    <ID>MaxLineLength:PublicToolCommandTest.kt:PublicToolCommandTest$"""{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":null,"return_fields":[]}"""</ID>
+    <ID>MaxLineLength:SourceReadCliContractTest.kt:SourceReadCliContractTest$"""{"anchor":{"type":"candidate","selector":"$token"},"region":{"type":"anchor"},"entities":{"type":"matching","containment":"direct","filters":[]},"text":{"type":"complete"},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}"""</ID>
+    <ID>MaxLineLength:SourceReadCliContractTest.kt:SourceReadCliContractTest$"""{"anchor":{"type":"candidate","selector":"$token"},"region":{"type":"anchor"},"entities":{"type":"matching","containment":"direct","filters":[{"type":"declaration","kinds":["function","function"],"visibility":{"type":"any"}}]},"text":{"type":"complete"},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}"""</ID>
+    <ID>MaxLineLength:SourceReadCliContractTest.kt:SourceReadCliContractTest$"""{"anchor":{"type":"candidate","selector":"$token"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"window","beforeLines":-1,"afterLines":0},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}"""</ID>
+    <ID>MaxLineLength:SourceReadCliContractTest.kt:SourceReadCliContractTest$"""{"anchor":{"type":"candidate","selector":"unknown:selector"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"complete"},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}"""</ID>
+    <ID>MultilineLambdaItParameter:ExistingIdeCliTest.kt:ExistingIdeCliTest${ assertEquals(root.path, it) CanonicalRootDiscovery.Discovered(root) }</ID>
+    <ID>MultilineLambdaItParameter:InstallationWorkflowTest.kt:InstallationWorkflowTest${ val hash = MessageDigest.getInstance("SHA-256") val buffer = ByteArray(DEFAULT_BUFFER_SIZE) while (true) { val count = it.read(buffer) if (count &lt; 0) break hash.update(buffer, 0, count) } hash.digest().joinToString("") { byte -> "%02x".format(byte) } }</ID>
+    <ID>MultilineLambdaItParameter:InstalledServerProjectionTest.kt:InstalledServerProjectionTest${ it.getValue("approvalPolicy").jsonPrimitive.content == HostedApprovalPolicy.EXPLICIT.name.lowercase() }</ID>
+    <ID>NamedArguments:CliBoundaryDocumentsTest.kt:CliBoundaryDocumentsTest$lifecycleComplete( CliLifecycleCommand.STOP, endpoint, RuntimeLifecycleState.STOPPED, setOf(RuntimePersistentState, RuntimeEndpointMarker.SOCKET), )</ID>
+    <ID>NamedArguments:CoordinatedRootRuntimeDemanderTest.kt:CoordinatedRootRuntimeDemanderTest$admit( "installation", "00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002", "a".repeat(64), 1, )</ID>
+    <ID>NamedArguments:CoordinatedRootRuntimeDemanderTest.kt:CoordinatedRootRuntimeDemanderTest$admit( other, SemanticRuntimeId.parse("sha256:" + "a".repeat(64)).refined(), other.resolve("runtime.sock"), SemanticRuntimeBootstrapAttemptId.admit("00000000-0000-4000-8000-000000000001").refined(), )</ID>
+    <ID>NamedArguments:CoordinatedRootRuntimeDemanderTest.kt:CoordinatedRootRuntimeDemanderTest$admit( root.path, SemanticRuntimeId.parse("sha256:" + "a".repeat(64)).refined(), root.path.resolve("runtime.sock"), SemanticRuntimeBootstrapAttemptId.admit("00000000-0000-4000-8000-000000000001").refined(), )</ID>
+    <ID>NamedArguments:ExistingIdeCliTest.kt:ExistingIdeCliTest$create( path, nonce, 1, io.github.amichne.kast.kernel.LiveReadContentView.SAVED_PSI_COMMITTED, 1, )</ID>
+    <ID>NamedArguments:ExistingIdeCliTest.kt:ExistingIdeCliTest$executeExistingIdeCli( listOf("ide", "classes", "Refinement", "--root", "/workspace"), Path.of("/other"), CanonicalRootDiscoverer { assertEquals(root.path, it) CanonicalRootDiscovery.Discovered(root) }, client, )</ID>
+    <ID>NamedArguments:ExistingIdeCliTest.kt:ExistingIdeCliTest$executeExistingIdeCli( listOf("ide", "supertype", "example.Outer.Child", "--root", "/workspace"), Path.of("/other"), CanonicalRootDiscoverer { assertEquals(root.path, it) CanonicalRootDiscovery.Discovered(root) }, ExistingIdeClient { exact, operation -> assertSame(root, exact) assertEquals("example.Outer.Child", (operation as ExistingIdeOperation.Supertype).name.value) calls++ ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE) }, )</ID>
+    <ID>NamedArguments:ExistingIdeCliTest.kt:ExistingIdeCliTest$executeExistingIdeCli( listOf("index") + arguments, root.path, CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) }, ExistingIdeClient { _, _ -> calls++ ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE) }, )</ID>
+    <ID>NamedArguments:ExistingIdeCliTest.kt:ExistingIdeCliTest$executeExistingIdeCli(argv, Path.of("/missing"), roots, client)</ID>
+    <ID>NamedArguments:ExistingIdeCliTest.kt:ExistingIdeCliTest$executeExistingIdeCli(listOf("ide", "classes"), root.path, roots, client)</ID>
+    <ID>NamedArguments:ExistingIdeCliTest.kt:ExistingIdeCliTest$executeExistingIdeCli(listOf("ide", "classes", name), root.path, roots, client)</ID>
+    <ID>NamedArguments:ExistingIdeCliTest.kt:ExistingIdeCliTest$executeExistingIdeCli(listOf("ide", "generate-completion", "unknown"), root.path, roots, client)</ID>
+    <ID>NamedArguments:ExistingIdeCliTest.kt:ExistingIdeCliTest$executeExistingIdeCli(listOf("ide", "generate-completion", shell), root.path, roots, client)</ID>
+    <ID>NamedArguments:ExistingIdeCliTest.kt:ExistingIdeCliTest$executeExistingIdeCli(listOf("ide", "status", "--root", "\u0000"), root.path, roots, client)</ID>
+    <ID>NamedArguments:ExistingIdeCliTest.kt:ExistingIdeCliTest$executeExistingIdeCli(listOf("ide", "supertype", name), root.path, roots, client)</ID>
+    <ID>NamedArguments:ExistingIdeCliTest.kt:ExistingIdeCliTest$executeExistingIdeCli(listOf("index", "--help"), root.path, roots, client)</ID>
+    <ID>NamedArguments:ExistingIdeCliTest.kt:ExistingIdeCliTest$executeExistingIdeCli(listOf("index", "generate-completion", shell), root.path, roots, client)</ID>
+    <ID>NamedArguments:ExistingIdeCliTest.kt:ExistingIdeCliTest$executeExistingIdeCli(listOf("index", "sync"), root.path, roots, client)</ID>
+    <ID>NamedArguments:ExistingIdeCliTest.kt:ExistingIdeCliTest$response(invalid.toByteArray(), root, ExistingIdeOperation.Status, descriptor)</ID>
+    <ID>NamedArguments:ExistingIdeCliTest.kt:ExistingIdeCliTest$response(invalid.toByteArray(), root, operation, descriptor)</ID>
+    <ID>NamedArguments:ExistingIdeCliTest.kt:ExistingIdeCliTest$response(valid.toByteArray(), root, ExistingIdeOperation.Status, descriptor)</ID>
+    <ID>NamedArguments:ExistingIdeCliTest.kt:ExistingIdeCliTest$response(valid.toByteArray(), root, operation, descriptor)</ID>
+    <ID>NamedArguments:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$SourceReadResult( snapshot, SourceRegionDocument(SourceRegionKindDocument.FILE, selection), empty(), SourceTextProjectionDocument.NotRequested, )</ID>
+    <ID>NamedArguments:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$SourceSnapshotDocument( text("/workspace"), when (basis) { is EvidenceBasis.Published -> SourceSnapshotContextDocument.Published(basis.generation, text("source-state")) is EvidenceBasis.Live -> SourceSnapshotContextDocument.Live(basis.evidence) }, text("src/Empty.kt"), text("text-digest"), SourceCoordinateUnitDocument.UTF16_CODE_UNIT, SourceLengthDocument.parse(0).refined(), )</ID>
+    <ID>NamedArguments:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$create( "/workspace", UUID.fromString("00000000-0000-0000-0000-000000000002"), 7, LiveReadContentView.SAVED_PSI_COMMITTED, 1, )</ID>
+    <ID>NamedArguments:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$create( "/workspace", descriptor.host, 8, LiveReadContentView.SAVED_PSI_COMMITTED, 1, )</ID>
+    <ID>NamedArguments:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$create( root.path.toString(), descriptor.host, 7, LiveReadContentView.SAVED_PSI_COMMITTED, 1, )</ID>
+    <ID>NamedArguments:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$executeExistingIdeAction( CliAction.Local.ExistingIde( operation, io.github.amichne.kast.cli.command.ide.ExistingIdeRootSelection.CurrentDirectory, ), root.path, CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) }, ExistingIdeClient { _, _ -> answer }, )</ID>
+    <ID>NamedArguments:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$executeExistingIdeCli( command.split(' ') + "--help", root.path, roots, client, CliRequestDocumentInput.Deferred { fail("Help read stdin") }, )</ID>
+    <ID>NamedArguments:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$executeExistingIdeCli( command.split(' ') + "unexpected", root.path, roots, client, CliRequestDocumentInput.Deferred { fail("Invalid arguments read stdin") }, )</ID>
+    <ID>NamedArguments:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$executeExistingIdeCli( command.split(' '), root.path, CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) }, ExistingIdeClient { admittedRoot, admitted -> assertSame(root, admittedRoot) assertEquals(operation, (admitted as ExistingIdeOperation.Read).kind) calls++ ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE) }, CliRequestDocumentInput.Provided(document), )</ID>
+    <ID>NamedArguments:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$executeExistingIdeCli( command.split(' '), root.path, roots, client, CliRequestDocumentInput.Provided("{}"), )</ID>
+    <ID>NamedArguments:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$response( rejection.replace("DIRTY_DOCUMENTS", "UNKNOWN").toByteArray(), root, operation, descriptor, )</ID>
+    <ID>NamedArguments:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$response(rejection.toByteArray(), root, operation, descriptor)</ID>
+    <ID>NamedArguments:GeneratedCliProjectionTest.kt:GeneratedCliProjectionTest$ExactSymbol( QueryReferenceDocument.ExactSymbol(text(token)), SymbolKindDocument.FUNCTION, text("overloaded"), null, null, bounded(emptyList()), )</ID>
+    <ID>NamedArguments:GeneratedCliProjectionTest.kt:GeneratedCliProjectionTest$create( DiagnosticKnownCountDocument.parse(0).refined(), resultLimitReached = true, analyzedFiles = listOf(text("src/A.kt")), limitations = emptyList(), )</ID>
+    <ID>NamedArguments:GeneratedCliProjectionTest.kt:GeneratedCliProjectionTest$create( DiagnosticKnownCountDocument.parse(1).refined(), resultLimitReached = false, analyzedFiles = emptyList(), limitations = listOf( DiagnosticLimitationDocument( text("src/A.kt"), DiagnosticLimitationReasonDocument.INDEXING, ) ), )</ID>
+    <ID>NamedArguments:IndexSeedFilesystemServiceTest.kt:IndexSeedFilesystemServiceTest$IdeRuntimeIdentityCandidate( pair.ideaBuild, pair.kotlinPluginBuild, "jbr-25.0.3+9-b508.16-aarch64", "sha256:${"a".repeat(64)}", )</ID>
+    <ID>NamedArguments:IndexSeedFilesystemServiceTest.kt:IndexSeedFilesystemServiceTest$SeedFixture(source, project, cacheRoot, runtime, cacheIdentity)</ID>
+    <ID>NamedArguments:IndexSeedFilesystemServiceTest.kt:SeedFixture$IndexSeedRequest( sourceSystem, cacheRoot, runtime, cacheIdentity, consent, projectEvidence, )</ID>
+    <ID>NamedArguments:IndexSeedFilesystemServiceTest.kt:SeedFixture$SeedProjectIdentityCandidate( projectRoot, gradleDistribution, "sha256:${"1".repeat(64)}", "sha256:${"2".repeat(64)}", "sha256:${"3".repeat(64)}", "sha256:${"4".repeat(64)}", "sha256:${"5".repeat(64)}", )</ID>
+    <ID>NamedArguments:IndexSeedProtocolTest.kt:IndexSeedProtocolTest$admit( path, runtime, SourceIdeProcessState.STOPPED, SourceIdeLockState.UNLOCKED, IndexContentManifest.from(mapOf("index/foo" to digest('1'))).admitted(), )</ID>
+    <ID>NamedArguments:IndexSeedProtocolTest.kt:IndexSeedProtocolTest$admit( source, supportedRuntime(), SourceIdeProcessState.RUNNING, SourceIdeLockState.UNLOCKED, manifest, )</ID>
+    <ID>NamedArguments:IndexSeedProtocolTest.kt:IndexSeedProtocolTest$admit( source, supportedRuntime(), SourceIdeProcessState.STOPPED, SourceIdeLockState.LOCKED, manifest, )</ID>
+    <ID>NamedArguments:IndexSeedProtocolTest.kt:IndexSeedProtocolTest$admit( source, supportedRuntime(), SourceIdeProcessState.STOPPED, SourceIdeLockState.UNLOCKED, manifest, )</ID>
+    <ID>NamedArguments:IndexSeedProtocolTest.kt:IndexSeedProtocolTest$admit( sourcePath, runtime, SourceIdeProcessState.STOPPED, SourceIdeLockState.UNLOCKED, before, )</ID>
+    <ID>NamedArguments:IndexSeedProtocolTest.kt:IndexSeedProtocolTest$create( cache, incompatibleSource, IndexSeedConsent.GRANTED, IndexSeedFilesystem.APFS, )</ID>
+    <ID>NamedArguments:IndexSeedProtocolTest.kt:IndexSeedProtocolTest$create( cache, source, IndexSeedConsent.ABSENT, IndexSeedFilesystem.APFS, )</ID>
+    <ID>NamedArguments:IndexSeedProtocolTest.kt:IndexSeedProtocolTest$create( cache, source, IndexSeedConsent.GRANTED, IndexSeedFilesystem.APFS, )</ID>
+    <ID>NamedArguments:IndexSeedProtocolTest.kt:IndexSeedProtocolTest$create( cache, source, IndexSeedConsent.GRANTED, IndexSeedFilesystem.UNSUPPORTED, )</ID>
+    <ID>NamedArguments:IndexSeedProtocolTest.kt:IndexSeedProtocolTest$derive( root, runtime, semanticRuntimeId(), GradleImportEnvironmentIdentity.digest("changed"), )</ID>
+    <ID>NamedArguments:IndexSeedProtocolTest.kt:IndexSeedProtocolTest$derive( root, runtime, semanticRuntimeId(), GradleImportEnvironmentIdentity.digest("first"), )</ID>
+    <ID>NamedArguments:InstallationWorkflowTest.kt:InstallationWorkflowTest$executeInstallationChild( InstallationChildStage.PRIOR_RETIREMENT, listOf(executable), mapOf("PRIVATE_SETTING" to "secret-input"), observations::add, )</ID>
+    <ID>NamedArguments:InstallationWorkflowTest.kt:InstallationWorkflowTest$releaseRequest( root, installation, root.resolve("commands"), Files.createDirectory(root.resolve("home")), Files.createDirectory(root.resolve("codex-home")), "1.2.3", )</ID>
+    <ID>NamedArguments:InstallationWorkflowTest.kt:InstallationWorkflowTest$releaseRequest(root, installation, commands, home, codexHome, "1.2.3")</ID>
+    <ID>NamedArguments:InstallationWorkflowTest.kt:InstallationWorkflowTest$releaseRequest(root, installation, commands, home, codexHome, "1.2.4")</ID>
+    <ID>NamedArguments:InstalledSidecarRuntimeDemanderTest.kt:InstalledSidecarRuntimeDemanderTest$DemanderFixture( demander, root, ideaRuntime, cacheRoot, payload.executable, endpoint, selections, intents, launches, endpoints, )</ID>
+    <ID>NamedArguments:InstalledSidecarRuntimeDemanderTest.kt:InstalledSidecarRuntimeDemanderTest$IdeRuntimeIdentityCandidate( pair.ideaBuild, pair.kotlinPluginBuild, "jbr-25.0.3+9-b508.16-aarch64", "sha256:${"a".repeat(64)}", )</ID>
+    <ID>NamedArguments:InstalledSidecarRuntimeDemanderTest.kt:InstalledSidecarRuntimeDemanderTest$RootSidecarCacheStatus( launch.cache.identity.key, endpoint.runtimeId, launch.cache.root, launch.cacheState, ideaRuntime.home, ideaRuntime.identity.supportedPair.ideaBuild, ideaRuntime.identity.supportedPair.kotlinPluginBuild, ideaRuntime.identity.jbrIdentity, ideaRuntime.identity.kastPayloadDigest, )</ID>
+    <ID>NamedArguments:InstalledSidecarRuntimeDemanderTest.kt:InstalledSidecarRuntimeDemanderTest$admit( cacheIdentity, cache, system, config, log, if (intent is StartupCacheIntent.Seed) { KastCacheState.SEEDED } else { KastCacheState.FRESH }, )</ID>
+    <ID>NamedArguments:InstalledSidecarRuntimeDemanderTest.kt:InstalledSidecarRuntimeDemanderTest$admit( runtimeId, executable, privatePlugins, "sha256:${"a".repeat(64)}", )</ID>
+    <ID>NamedArguments:InstalledSidecarRuntimeDemanderTest.kt:InstalledSidecarRuntimeDemanderTest$demand( fixture.executable, launch, fixture.root, fixture.endpoint, )</ID>
+    <ID>NamedArguments:InstalledSidecarRuntimeDemanderTest.kt:InstalledSidecarRuntimeDemanderTest.&lt;no name provided>$RootSidecarCacheReference( "sha256:${character.toString().repeat(64)}", (SemanticRuntimeId.parse("sha256:${character.toString().repeat(64)}") as Refinement.Refined) .value, temporary.resolve("history-$character"), home.toRealPath(), )</ID>
+    <ID>NamedArguments:InstalledSidecarRuntimeDemanderTest.kt:InstalledSidecarRuntimeDemanderTest.&lt;no name provided>$RootSidecarCacheReference( identity, (SemanticRuntimeId.parse(identity) as Refinement.Refined).value, fixture.cacheRoot.resolve(identity), fixture.ideaRuntime.home, )</ID>
+    <ID>NamedArguments:LiveReadOutputSchemaTest.kt:LiveReadOutputSchemaTest$SourceReadResult( snapshot, SourceRegionDocument(SourceRegionKindDocument.FILE, selection), empty(), SourceTextProjectionDocument.NotRequested, )</ID>
+    <ID>NamedArguments:LiveReadOutputSchemaTest.kt:LiveReadOutputSchemaTest$SourceSnapshotDocument( text("/workspace"), when (basis) { is EvidenceBasis.Published -> SourceSnapshotContextDocument.Published(basis.generation, text("source-state")) is EvidenceBasis.Live -> SourceSnapshotContextDocument.Live(basis.evidence) }, text("src/Empty.kt"), text("text-digest"), SourceCoordinateUnitDocument.UTF16_CODE_UNIT, SourceLengthDocument.parse(0).refined(), )</ID>
+    <ID>NamedArguments:LiveReadOutputSchemaTest.kt:LiveReadOutputSchemaTest$create( "/workspace", UUID.fromString("00000000-0000-0000-0000-000000000001"), 7, LiveReadContentView.SAVED_PSI_COMMITTED, 1, )</ID>
+    <ID>NamedArguments:LiveReadOutputSchemaTest.kt:LiveReadOutputSchemaTest$create( DiagnosticKnownCountDocument.parse(0).refined(), false, emptyList(), listOf( DiagnosticLimitationDocument( text("src/Example.kt"), DiagnosticLimitationReasonDocument.INDEXING, ) ), )</ID>
+    <ID>NamedArguments:LiveReadOutputSchemaTest.kt:LiveReadOutputSchemaTest$create( text("exact:v2:payload:digest"), SymbolKindDocument.CLASSLIKE, text("Example"), SymbolQualifiedIdentityDocument.Available(text("sample.Example")), text("src/Example.kt"), SourceRangeDocument.create(offset(0), offset(1)).refined(), CompilerSymbolEvidenceDocument.fromSignature( CompilerSignatureDocument.ClassLike(text("sample.Example")) ) .refined(), )</ID>
+    <ID>NamedArguments:ProductInspectionCommandTest.kt:ProductInspectionCommandTest$SidecarProductInspector( identity, FilesystemCanonicalRootDiscovery, object : RootSidecarCacheLifecycle { override fun observe(root: Path): RootSidecarCacheObservation = RootSidecarCacheObservation.Observed( RootSidecarCacheStatus( cacheIdentity, identity.runtimeId, physicalCacheRoot, KastCacheState.SMART, temporary.resolve("IntelliJ IDEA.app"), support.ideaBuild, support.kotlinPluginBuild, "jbr-25.0.3-aarch64", identity.payloadDigest.value, ) ) override fun quarantine(stopped: StoppedSidecarCaches): RootSidecarCacheQuarantine = error("product inspection must not quarantine") }, RuntimeEndpointLocator { RuntimeEndpointResolution.Resolved(endpoint) }, )</ID>
+    <ID>NamedArguments:RuntimeProcessModeTest.kt:RuntimeProcessModeTest$IdeRuntimeIdentityCandidate( pair.ideaBuild, pair.kotlinPluginBuild, "jbr-25.0.3+9-b508.16-aarch64", "sha256:${"a".repeat(64)}", )</ID>
+    <ID>NamedArguments:RuntimeProcessSessionTest.kt:RuntimeProcessSessionTest$IdeRuntimeIdentityCandidate( pair.ideaBuild, pair.kotlinPluginBuild, "jbr-25.0.3+9-b508.16-aarch64", "sha256:${"a".repeat(64)}", )</ID>
+    <ID>NamedArguments:RuntimeProcessSessionTest.kt:RuntimeProcessSessionTest$admit( InstalledIdeRuntime(ideaHome, java.toRealPath(), identity), state, system, config, log, plugins, maxHeap = heap, importEnvironment = (inputs.importEnvironment() as Refinement.Refined).value, sidecarEnvironment = inputs, )</ID>
+    <ID>NamedArguments:RuntimeProcessSessionTest.kt:RuntimeProcessSessionTest$create( admitted, endpoint.root, endpoint, launchContext(temporary), attempt(), )</ID>
+    <ID>NamedArguments:RuntimeProcessSessionTest.kt:RuntimeProcessSessionTest$create( executable(temporary), endpoint.root, endpoint, launchContext(temporary), attempt(), )</ID>
+    <ID>NamedArguments:RuntimeProcessSessionTest.kt:RuntimeProcessSessionTest$create( executable(temporary), endpoint.root, endpoint, launchContext(temporary, inputs), attempt(), )</ID>
+    <ID>NamedArguments:SavedConfigurationAdmissionTest.kt:SavedConfigurationAdmissionTest$launch( temporary, root, "io.github.amichne.kast.cli.KastCliMainKt", marker, listOf("change", "plan"), )</ID>
+    <ID>NamedArguments:SavedConfigurationAdmissionTest.kt:SavedConfigurationAdmissionTest$launch( temporary, workspace(temporary), "io.github.amichne.kast.cli.KastCliMainKt", "unreadable", listOf("query", "run"), """{"type":"QUERY","from":{"type":"SEARCH","query":"Example"}}""", )</ID>
+    <ID>NamedArguments:SavedConfigurationAdmissionTest.kt:SavedConfigurationAdmissionTest$launch(temporary, root, "io.github.amichne.kast.cli.KastCliMainKt", marker)</ID>
+    <ID>NamedArguments:SavedConfigurationAdmissionTest.kt:SavedConfigurationAdmissionTest$launch(temporary, root, KastCodexMain::class.java.name, marker)</ID>
+    <ID>NamedArguments:SeedProjectCompatibilityTest.kt:SeedProjectCompatibilityTest$SeedProjectIdentityCandidate( project, gradleDistribution, digest(marker), digest('b'), digest('c'), digest('d'), digest('e'), )</ID>
+    <ID>NamedArguments:SidecarCacheLifecycleTest.kt:SidecarCacheLifecycleTest$FilesystemRootSidecarCacheLifecycle( alias.resolve("caches"), releaseIdentity(identity), cacheRuntimeResolver(runtime), importEnvironment = { Refinement.Refined(GradleImportEnvironment.Empty) }, )</ID>
+    <ID>NamedArguments:SidecarCacheLifecycleTest.kt:SidecarCacheLifecycleTest$FilesystemRootSidecarCacheLifecycle( cacheRoot, releaseIdentity(currentIdentity), cacheRuntimeResolver(currentRuntime), importEnvironment = { Refinement.Refined(GradleImportEnvironment.Empty) }, )</ID>
+    <ID>NamedArguments:SidecarCacheLifecycleTest.kt:SidecarCacheLifecycleTest$FilesystemRootSidecarCacheLifecycle( cacheRoot, releaseIdentity(currentRuntimeIdentity, currentSemanticRuntimeId), cacheRuntimeResolver(currentRuntime), importEnvironment = { Refinement.Refined(GradleImportEnvironment.Empty) }, )</ID>
+    <ID>NamedArguments:SidecarCacheLifecycleTest.kt:SidecarCacheLifecycleTest$FilesystemRootSidecarCacheLifecycle( cacheRoot, releaseIdentity(identity), cacheRuntimeResolver(runtime), importEnvironment = { Refinement.Refined(GradleImportEnvironment.Empty) }, )</ID>
+    <ID>NamedArguments:SidecarCacheLifecycleTest.kt:SidecarCacheLifecycleTest$FilesystemRootSidecarCacheLifecycle( cacheRoot, releaseIdentity(runtimeIdentity()), missingRuntimeResolver, importEnvironment = { Refinement.Refined(GradleImportEnvironment.Empty) }, )</ID>
+    <ID>NamedArguments:SidecarCacheLifecycleTest.kt:SidecarCacheLifecycleTest$IdeRuntimeIdentityCandidate( pair.ideaBuild, pair.kotlinPluginBuild, jbrIdentity, "sha256:${payloadCharacter.toString().repeat(64)}", )</ID>
+    <ID>NamedArguments:SidecarCacheLifecycleTest.kt:SidecarCacheLifecycleTest$SeedProjectIdentityCandidate( project, "8.8", "sha256:${"a".repeat(64)}", "sha256:${"b".repeat(64)}", "sha256:${"c".repeat(64)}", "sha256:${"d".repeat(64)}", "sha256:${"e".repeat(64)}", )</ID>
+    <ID>NamedArguments:SidecarCacheRecoveryTest.kt:SidecarCacheRecoveryTest$FilesystemRootSidecarCacheLifecycle( cacheRoot, release, SidecarIdeRuntimeResolver { _, _, _ -> InstalledIdeRuntimeDiscoveryResult.Discovered(runtime) }, importEnvironment = { Refinement.Refined(GradleImportEnvironment.Empty) }, )</ID>
+    <ID>NamedArguments:SidecarCacheRecoveryTest.kt:SidecarCacheRecoveryTest$IdeRuntimeIdentityCandidate( pair.ideaBuild, pair.kotlinPluginBuild, "jbr-25.0.3-aarch64", "sha256:${"a".repeat(64)}", )</ID>
+    <ID>NamedArguments:SidecarCliLifecycleTest.kt:SidecarCliLifecycleTest.Fixture$SidecarProductIdentity( (io.github.amichne.kast.protocol.contract.KastPluginVersion.parse("1.2.3") as Refinement.Refined) .value, runtimeId, (SupportedIdeRuntimePair.admit("262.9437.185", "262.9437.185-IJ") as SupportedIdeRuntimePairAdmission.Admitted) .pair, (io.github.amichne.kast.distribution.contract.RuntimeDigest.parse( "sha256:${"a".repeat(64)}" ) as Refinement.Refined) .value, )</ID>
+    <ID>NamedArguments:SidecarStartupProtocolTest.kt:SidecarStartupProtocolTest$IdeRuntimeIdentityCandidate( pair.ideaBuild, pair.kotlinPluginBuild, "jbr-25.0.3+9-b508.16-aarch64", "sha256:${"a".repeat(64)}", )</ID>
+    <ID>NamedArguments:SidecarStartupProtocolTest.kt:SidecarStartupProtocolTest$admit( installed, cacheRoot, system, config, log, privatePlugins, )</ID>
+    <ID>NamedArguments:SidecarStartupProtocolTest.kt:SidecarStartupProtocolTest$admit( installed, cacheRoot, system, config, log, privatePlugins, maxHeap = (io.github.amichne.kast.distribution.contract.IndexerHeapSize.parse("8g") as Refinement.Refined) .value, )</ID>
+    <ID>NamedArguments:SidecarStartupProtocolTest.kt:SidecarStartupProtocolTest$create(executable, root, endpoint, context, attempt)</ID>
+    <ID>NamedArguments:SidecarStartupProtocolTest.kt:SidecarStartupProtocolTest$create(executable, root, endpoint, larger, attempt)</ID>
+    <ID>NamedArguments:SourceReadCliContractTest.kt:SourceReadCliContractTest$SourceReadRequest( SourceReadAnchorDocument.Source(protocolText(token)), SourceRegionSelectionDocument.Enclosing(SourceEnclosingRegionKindDocument.CALLABLE_BODY), SourceEntitySelectionDocument.Matching( SourceContainmentDocument.DESCENDANTS, listOf( SourceEntityFilterDocument.Declarations( listOf( SourceDeclarationKindDocument.FUNCTION, SourceDeclarationKindDocument.PROPERTY, ), SourceVisibilitySelectionDocument.Exact( listOf( SourceDeclarationVisibilityDocument.PUBLIC, SourceDeclarationVisibilityDocument.PRIVATE, ) ), ), SourceEntityFilterDocument.Parameters, SourceEntityFilterDocument.Calls, SourceEntityFilterDocument.References, ), ), SourceTextRequestDocument.Window( SourceLineCountDocument.parse(3).refinedValue(), SourceLineCountDocument.parse(5).refinedValue(), ), SourceEntityLimitDocument.parse(10).refinedValue(), SourceTextByteLimitDocument.parse(4_096).refinedValue(), SourceReadPageDocument.Continue(protocolText("source-read-continuation-v1|${"a".repeat(64)}")), )</ID>
+    <ID>NamedArguments:SourceReadCliContractTest.kt:SourceReadCliContractTest$SourceReadRequest( SourceReadAnchorDocument.Symbol(protocolText(token)), SourceRegionSelectionDocument.Anchor, SourceEntitySelectionDocument.None, SourceTextRequestDocument.Complete, SourceEntityLimitDocument.parse(250).refinedValue(), SourceTextByteLimitDocument.parse(65_536).refinedValue(), SourceReadPageDocument.First, )</ID>
+    <ID>NestedBlockDepth:ExistingIdeSocketTest.kt:ExistingIdeSocketTest$@Test fun `native framed client accepts the exact host and rejects oversized and invalid UTF8 responses`</ID>
+    <ID>NestedBlockDepth:IndexSeedFilesystemServiceTest.kt:CopyingTestCloner$override fun clone: IndexSeedCopyResult</ID>
+    <ID>NestedBlockDepth:WireDeadlineTest.kt:WireDeadlineTest$@Test fun `successful frame preserves its reusable connection and reports completion`</ID>
+    <ID>NestedBlockDepth:WireDeadlineTest.kt:WireDeadlineTest$private fun stalledPeer</ID>
+    <ID>NestedBlockDepth:WireQualificationTest.kt:WireQualificationTest$private fun fixture</ID>
+    <ID>ObjectLiteralToLambda:BrokerServeCommandTest.kt:BrokerServeCommandTest$object : RootRuntimeDemander { override fun demand( root: CanonicalRoot, demand: HostedRuntimeDemand, startup: RuntimeStartupRequest, ): RuntimeAdmission { boundaryTouched = true error("runtime demand must not run") } }</ID>
+    <ID>ObjectLiteralToLambda:CodexCommandTest.kt:CodexCommandTest$object : RootRuntimeDemander { override fun demand( root: CanonicalRoot, demand: HostedRuntimeDemand, startup: RuntimeStartupRequest, ): RuntimeAdmission = error("Codex launch must not demand a sidecar") }</ID>
+    <ID>ObjectLiteralToLambda:SidecarCliLifecycleTest.kt:SidecarCliLifecycleTest$object : RootRuntimeDemander { override fun demand( root: CanonicalRoot, demand: HostedRuntimeDemand, startup: RuntimeStartupRequest, ): RuntimeAdmission = error("status must not demand a runtime") }</ID>
+    <ID>ObjectLiteralToLambda:SidecarCliLifecycleTest.kt:SidecarCliLifecycleTest$object : RootRuntimeDemander { override fun demand( root: CanonicalRoot, demand: HostedRuntimeDemand, startup: RuntimeStartupRequest, ): RuntimeAdmission { runtimeDemands += 1 error("status must not demand a runtime") } }</ID>
+    <ID>UnnecessaryLet:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$let(Json::parseToJsonElement)</ID>
+    <ID>UnnecessaryLet:LiveReadOutputSchemaTest.kt:LiveReadOutputSchemaTest$let(Json::parseToJsonElement)</ID>
+    <ID>UnnecessaryLet:RuntimeLifecycleTest.kt:RuntimeLifecycleFixtureProcess$let(Path::of)</ID>
+    <ID>UnusedPrivateFunction:CliBoundaryContractTest.kt:CliBoundaryContractTest$private fun &lt;Strong, Failure> Refinement&lt;Strong, Failure>.refinedValue: Strong</ID>
+    <ID>WildcardImport:BrokerOperationalCatalogueTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:CliBoundaryDocumentsTest.kt:import io.github.amichne.kast.distribution.contract.bootstrap.*</ID>
+    <ID>WildcardImport:CoordinatedRootRuntimeDemanderTest.kt:import io.github.amichne.kast.appserver.*</ID>
+    <ID>WildcardImport:CoordinatedRootRuntimeDemanderTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:ExistingIdeCliTest.kt:import io.github.amichne.kast.cli.*</ID>
+    <ID>WildcardImport:ExistingIdeCliTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:ExistingIdeSemanticReadTest.kt:import io.github.amichne.kast.cli.*</ID>
+    <ID>WildcardImport:ExistingIdeSemanticReadTest.kt:import io.github.amichne.kast.kernel.*</ID>
+    <ID>WildcardImport:ExistingIdeSemanticReadTest.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:ExistingIdeSemanticReadTest.kt:import io.github.amichne.kast.protocol.wire.*</ID>
+    <ID>WildcardImport:ExistingIdeSemanticReadTest.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:ExistingIdeSemanticReadTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:ExistingIdeSocketTest.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:ExistingIdeSocketTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:GeneratedCliProjectionTest.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:LiveReadOutputSchemaTest.kt:import io.github.amichne.kast.kernel.*</ID>
+    <ID>WildcardImport:LiveReadOutputSchemaTest.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:LiveReadOutputSchemaTest.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:PublicToolCommandTest.kt:import io.github.amichne.kast.appserver.query.*</ID>
+    <ID>WildcardImport:PublicToolCommandTest.kt:import io.github.amichne.kast.cli.command.*</ID>
+    <ID>WildcardImport:PublicToolCommandTest.kt:import io.github.amichne.kast.protocol.wire.*</ID>
+    <ID>WildcardImport:PublicToolCommandTest.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:PublicToolCommandTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:RuntimeEndpointAliasTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:WireDeadlineTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:WireQualificationTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>LongMethod:RelationServiceTest.kt:RelationServiceTest$private fun selector: SymbolSelector</ID>
+    <ID>NamedArguments:RelationServiceTest.kt:RelationServiceTest$create( discovery, listOf(candidate), SymbolDiscoveryByteCount.parse(candidate.projectedUtf8Size().value).refined(), SymbolDiscoveryWorkCount.parse(1L).refined(), SymbolDiscoveryTimings( SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), ), )</ID>
+    <ID>NamedArguments:RelationServiceTest.kt:RelationServiceTest$create( request, emptyList(), RelationByteCount.parse(0L).refined(), RelationWorkCount.parse(0L).refined(), RelationResultCount.parse(0).refined(), )</ID>
+    <ID>NamedArguments:RelationServiceTest.kt:RelationServiceTest$fromBoundary( SymbolDiscoveryKind.SYMBOL, "run", lease, Path.of("${lease.workspaceRoot.value}/src/Subject.kt"), "file://${lease.workspaceRoot.value}/src/Subject.kt", 41, )</ID>
+    <ID>NamedArguments:RelationServiceTest.kt:RelationServiceTest$fromBoundary( location.file, location.offset.value, location.offset.value + 10, selection.candidate.name.value, "sample.Subject.run", CompilerSymbolKind.FUNCTION, CanonicalCompilerSignature.function( "sample.Subject.run", null, emptyList(), emptyList(), 0, ) .refined(), )</ID>
+  </CurrentIssues>
+</SmellBaseline>

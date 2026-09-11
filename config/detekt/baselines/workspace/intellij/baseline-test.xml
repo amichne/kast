@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>InvalidPackageDeclaration:GradleProducerProvenanceImportTest.kt:package io.github.amichne.kast.workspace.intellij</ID>
+    <ID>InvalidPackageDeclaration:InstalledGradleSourceRootCaptureTest.kt:package io.github.amichne.kast.workspace.intellij</ID>
+    <ID>InvalidPackageDeclaration:SourceRootProvenanceTest.kt:package io.github.amichne.kast.workspace.intellij</ID>
+    <ID>LongMethod:GradleProducerProvenanceImportTest.kt:GradleProducerProvenanceImportTest$@Test fun `real Gradle IDEA model preserves producer provenance including Kotlin DSL roots`</ID>
+    <ID>LongMethod:GradleProducerProvenanceImportTest.kt:GradleProducerProvenanceImportTest$private fun createGradleFixture</ID>
+    <ID>LongMethod:GradleProducerProvenanceImportTest.kt:GradleProducerProvenanceImportTest$private fun loadGradleModels: ImportedGradleModels</ID>
+    <ID>LongMethod:InstalledGradleSourceRootCaptureTest.kt:InstalledGradleSourceRootCaptureTest$@Test fun `generated producer evidence reaches the compiled workspace scope`</ID>
+    <ID>LongMethod:InstalledSemanticProjectStoreTest.kt:InstalledSemanticProjectStoreTest$@Test fun `bootstrap module excludes generated output directories before project open`</ID>
+    <ID>LongParameterList:SourceRootProvenanceTest.kt:SourceRootProvenanceTest$private fun producer: GradleSourceRootProducerEvidence</ID>
+    <ID>NamedArguments:GradleJvmSelectionEvidenceTest.kt:GradleJvmSelectionEvidenceTest$GradleJvmCandidate( Path.of("/private/jdk/$suffix"), JavaFeature.of(feature), "$feature.0.1", GradleJvmSelectionSource.PLATFORM_RESOLVER, )</ID>
+    <ID>NamedArguments:InstalledGradleImportDiagnosticTest.kt:InstalledGradleImportDiagnosticTest$InstalledGradleImportExecutionIdentity( GradleDistributionVersion.observed("7.6.4"), JavaFeature.of(25), GradleImportEnvironmentIdentity.digest("/private/client"), JavaFeature.of(17), GradleImportEnvironmentIdentity.digest("/private/project"), )</ID>
+    <ID>NamedArguments:InstalledGradleSemanticIdentityTest.kt:InstalledGradleSemanticIdentityTest$InstalledGradleModelCapture( root, listOf(sourceRoot), identity(boundary), boundary, inputs(rootPath), )</ID>
+    <ID>NamedArguments:InstalledGradleSemanticIdentityTest.kt:InstalledGradleSemanticIdentityTest$InstalledGradleModelCapture(root, listOf(sourceRoot), identity(boundary), boundary, inputs(rootPath))</ID>
+    <ID>NamedArguments:InstalledGradleSemanticIdentityTest.kt:InstalledGradleSemanticIdentityTest$InstalledGradleSemanticIdentityBoundary( root, listOf(sourceRoot), listOf( InstalledSourceContentIdentity.Root( sourcePath("src/main/kotlin"), InstalledSourceRootState.Present, ), InstalledSourceContentIdentity.File( sourcePath("src/main/kotlin/example/App.kt"), hash, ), ), listOf(rootPath), listOf(module("app", "kotlin-stdlib")), )</ID>
+    <ID>NamedArguments:InstalledGradleSemanticIdentityTest.kt:InstalledGradleSemanticIdentityTest$InstalledGradleSemanticIdentityBoundary( root, listOf(sourceRoot), sourceContents, listOf(rootPath, rootPath.resolve("included")), modules, )</ID>
+    <ID>NamedArguments:InstalledGradleSemanticIdentityTest.kt:InstalledGradleSemanticIdentityTest$InstalledGradleSemanticIdentityBoundary( root, listOf(sourceRoot), sourceContents.reversed(), listOf(rootPath.resolve("included"), rootPath), modules.reversed(), )</ID>
+    <ID>NamedArguments:InstalledGradleSemanticIdentityTest.kt:InstalledGradleSemanticIdentityTest$WorkspaceSourceRootBoundary( "app.main", root, ":", "main", root.resolve("src/main/kotlin"), WorkspaceSourceRootKind.PRODUCTION, WorkspaceSourceRootProvenance.AUTHORED, )</ID>
+    <ID>NamedArguments:InstalledGradleSemanticIdentityTest.kt:InstalledGradleSemanticIdentityTest$boundary(root, rootPath, sourceRoot(rootPath), contentHash('a'))</ID>
+    <ID>NamedArguments:InstalledGradleSemanticIdentityTest.kt:InstalledGradleSemanticIdentityTest$boundary(root, rootPath, sourceRoot, contentHash('a'))</ID>
+    <ID>NamedArguments:InstalledGradleSemanticIdentityTest.kt:InstalledGradleSemanticIdentityTest$boundary(root, rootPath, sourceRoot, contentHash('b'))</ID>
+    <ID>NamedArguments:InstalledModuleMaterializationTest.kt:InstalledModuleMaterializationTest$materializeImportedModules( InstalledModuleAvailability.UNAVAILABLE, root, InstalledExternalProjectsReader { listOf(FixtureExternalProjectInfo(structure, root.resolve(".").toString())) }, InstalledExternalProjectImporter { observed -> assertEquals(structure, observed) InstalledExternalProjectImport.IMPORTED }, )</ID>
+    <ID>NamedArguments:InstalledModuleMaterializationTest.kt:InstalledModuleMaterializationTest$materializeImportedModules( InstalledModuleAvailability.UNAVAILABLE, workspace.toRealPath(), InstalledExternalProjectsReader { listOf(FixtureExternalProjectInfo(structure, "\u0000")) }, InstalledExternalProjectImporter { imports.incrementAndGet() InstalledExternalProjectImport.IMPORTED }, )</ID>
+    <ID>NamedArguments:InstalledModuleMaterializationTest.kt:InstalledModuleMaterializationTest$materializeImportedModules( InstalledModuleAvailability.UNAVAILABLE, workspace.toRealPath(), InstalledExternalProjectsReader { throw IllegalStateException("getExternalProjectsData failed") }, InstalledExternalProjectImporter { imports.incrementAndGet() InstalledExternalProjectImport.IMPORTED }, )</ID>
+    <ID>NamedArguments:SourceRootProvenanceTest.kt:SourceRootProvenanceTest$producer( root, GradleSourceRootProducerProvenance.AUTHORED, projectDirectory = workspaceDirectory.resolve("other-project"), projectPath = ":other", )</ID>
+    <ID>WildcardImport:GradleJvmSelectionEvidenceTest.kt:import io.github.amichne.kast.distribution.contract.gradle.*</ID>
+    <ID>WildcardImport:GradleJvmSelectionEvidenceTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:ProjectGradleJvmAuthorityTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

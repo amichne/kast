@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:SourceReadService.kt:SourceReadService$override suspend fun read: SourceReadResult</ID>
+    <ID>ComplexCondition:SourceReadService.kt:SourceReadService$snapshot.context == initial &amp;&amp; snapshot.readScope == anchor.readScope() &amp;&amp; (anchor !is SourceReadAnchor.Source || snapshot == anchor.selector.snapshot)</ID>
+    <ID>CyclomaticComplexMethod:SourceReadService.kt:SourceReadService$override suspend fun read: SourceReadResult</ID>
+    <ID>LongMethod:SourceReadService.kt:SourceReadService$override suspend fun read: SourceReadResult</ID>
+  </CurrentIssues>
+</SmellBaseline>

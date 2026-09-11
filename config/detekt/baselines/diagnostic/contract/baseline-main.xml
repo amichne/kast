@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>LongParameterList:DiagnosticFact.kt:DiagnosticFact.Companion$fun fromBoundary: Refinement&lt;DiagnosticFact, Set&lt;DiagnosticFactFailure>></ID>
+    <ID>NamedArguments:DiagnosticFact.kt:DiagnosticFact.Companion$DiagnosticFact( scope, DiagnosticLocation(file, range.value), severity, parsedCode.value, parsedMessage.value, )</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -1,0 +1,26 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ImplicitDefaultLocale:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$"%02x".format(it.toInt() and 255)</ID>
+    <ID>LargeClass:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest</ID>
+    <ID>LongMethod:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$@Test fun `file and text batch references retain their original read scope`</ID>
+    <ID>NamedArguments:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$LiveSelectorAuthorityDocument(current.host.value.toString(), 4, current.contentView.name, 1)</ID>
+    <ID>NamedArguments:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$LiveSemanticReadReference( root, IdeReadHostLifetime.fromBoundary(UUID.fromString("00000000-0000-0000-0000-000000000001")), IdeReadEpochRevision.parse(1).refined(), IdeReadContentView.SAVED_PSI_COMMITTED, 1, )</ID>
+    <ID>NamedArguments:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$LiveSemanticReadReference( root, IdeReadHostLifetime.fromBoundary(UUID.randomUUID()), IdeReadEpochRevision.parse(4).refined(), IdeReadContentView.SAVED_PSI_COMMITTED, 1, )</ID>
+    <ID>NamedArguments:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$QueryRunRequest( QueryFromDocument.Symbols( QueryDiscoveryDocument( QueryMatchDocument.All, QueryScopeDocument(bounded(listOf(text("main"), text("test"))), null, null), bounded(listOf(QueryDeclarationKindDocument.CLASS)), ) ), bounded(emptyList()), QueryOutputDocument.Symbols(bounded(emptyList())), QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE), )</ID>
+    <ID>NamedArguments:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$SourceReadRequest( SourceReadAnchorDocument.Candidate(token), SourceRegionSelectionDocument.Anchor, SourceEntitySelectionDocument.None, SourceTextRequestDocument.None, SourceEntityLimitDocument.parse(200).refined(), SourceTextByteLimitDocument.parse(2000).refined(), SourceReadPageDocument.First, )</ID>
+    <ID>NamedArguments:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$SymbolDiscoveryConstraints( SymbolDiscoveryDirectoryConstraint( SymbolDiscoveryDirectory.parse("src").refined(), SymbolDiscoveryContainment.DESCENDANTS, ), SymbolDiscoveryPackageConstraint( SymbolDiscoveryPackage.parse("example").refined(), SymbolDiscoveryContainment.DIRECT, ), SymbolDiscoveryDeclarationKinds.from(setOf(CompilerSymbolKind.CLASSLIKE)).refined(), SymbolDiscoverySourceSets.Exact.from(setOf(WorkspaceSourceSetName.parse("integrationTest").refined())) .refined(), )</ID>
+    <ID>NamedArguments:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$SymbolDiscoveryRequest( scopeRequest, SymbolDiscoveryTarget.All(SymbolNameDiscoveryKind.FILE), maximum, constraints, )</ID>
+    <ID>NamedArguments:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$create( request, listOf(candidate), candidate.projectedUtf8Size(), SymbolDiscoveryWorkCount.parse(1).refined(), SymbolDiscoveryTimings(elapsed, elapsed), )</ID>
+    <ID>NamedArguments:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$fromBoundary( SymbolDiscoveryKind.CLASS, "Subject", lease, file, file.toUri().toString(), 0, )</ID>
+    <ID>NamedArguments:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$fromBoundary( SymbolDiscoveryKind.FILE, "Subject.kt", lease, path, path.toUri().toString(), null, )</ID>
+    <ID>NamedArguments:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$fromBoundary( SymbolDiscoveryKind.TEXT, "Subject", lease, path, path.toUri().toString(), 0, 7, )</ID>
+    <ID>WildcardImport:CanonicalQueryProtocolTest.kt:import io.github.amichne.kast.kernel.*</ID>
+    <ID>WildcardImport:CanonicalQueryProtocolTest.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:CanonicalQueryProtocolTest.kt:import io.github.amichne.kast.query.contract.*</ID>
+    <ID>WildcardImport:CanonicalQueryProtocolTest.kt:import io.github.amichne.kast.symbol.contract.*</ID>
+    <ID>WildcardImport:CanonicalQueryProtocolTest.kt:import io.github.amichne.kast.workspace.contract.*</ID>
+    <ID>WildcardImport:CanonicalQueryProtocolTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

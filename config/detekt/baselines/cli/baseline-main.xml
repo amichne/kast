@@ -1,0 +1,364 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:CliCommandGraph.kt:CliCommandGraph$fun parse: CliCommandParsing</ID>
+    <ID>CognitiveComplexMethod:ConfigurationInspection.kt:ConfigurationCliInspection$fun inspect: ConfigurationInspectionHandling</ID>
+    <ID>CognitiveComplexMethod:CoordinatedRootRuntimeDemander.kt:CoordinatedRootRuntimeDemander$override fun demand: RuntimeAdmission</ID>
+    <ID>CognitiveComplexMethod:ExistingIdeSocketClient.kt:ExistingIdeDocuments$fun response: ExistingIdeExchange</ID>
+    <ID>CognitiveComplexMethod:ExistingIdeSocketClient.kt:ExistingIdeSocketClient$override fun query: ExistingIdeExchange</ID>
+    <ID>CognitiveComplexMethod:IndexSeedFilesystemService.kt:IndexSeedFilesystemService$private fun seedIntoStaging: IndexSeedExecution</ID>
+    <ID>CognitiveComplexMethod:InstallationRequest.kt:InstallationRequest.Companion$fun parse: Refinement&lt;InstallationRequest, InstallationRequestFailure></ID>
+    <ID>CognitiveComplexMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun apply: InstallationOutcome</ID>
+    <ID>CognitiveComplexMethod:InstallationWorkflow.kt:private fun payloadFiles: List&lt;PayloadFile></ID>
+    <ID>CognitiveComplexMethod:InstallationWorkflow.kt:private fun verifyControlLayout: Boolean</ID>
+    <ID>CognitiveComplexMethod:InstalledKastCliComposition.kt:InstalledKastCliComposition$override fun create: KastCliCompositionConstruction</ID>
+    <ID>CognitiveComplexMethod:InstalledRuntimeWorkerEffects.kt:InstalledRuntimeWorkerEffects$override suspend fun start: InstalledWorkerStart</ID>
+    <ID>CognitiveComplexMethod:InstalledServerProjectionDocuments.kt:private fun JsonObject.withLocalOutputDefinitions: JsonObject</ID>
+    <ID>CognitiveComplexMethod:InstalledSidecarRuntimeDemand.kt:FilesystemSidecarCachePreparer$private fun prepareExistingOrFresh: SidecarCachePreparation</ID>
+    <ID>CognitiveComplexMethod:InstalledSidecarRuntimeDemand.kt:InstalledSidecarRootRuntimeDemander$private fun demandExclusively: RuntimeAdmission</ID>
+    <ID>CognitiveComplexMethod:KastCli.kt:KastCli$private fun executeRequest: CliExit</ID>
+    <ID>CognitiveComplexMethod:MacOsRuntimeProcessAuthority.kt:JdkRuntimeBootstrapProcessSearch$override fun find: RuntimeBootstrapProcessSearchResult</ID>
+    <ID>CognitiveComplexMethod:MacOsRuntimeProcessAuthority.kt:JdkRuntimeProcessSearch$override fun find: RuntimeProcessSearchResult</ID>
+    <ID>CognitiveComplexMethod:MacOsRuntimeProcessEnvironment.kt:private fun canonicalJavaHome: CanonicalEnvironmentDirectory</ID>
+    <ID>CognitiveComplexMethod:RuntimeBoundary.kt:ExactRootProcessRuntimeDemander$private fun awaitBootstrapAttempt: RuntimeAdmission</ID>
+    <ID>CognitiveComplexMethod:RuntimeBoundary.kt:ExactRootProcessRuntimeDemander$private fun demandExclusively: RuntimeAdmission</ID>
+    <ID>CognitiveComplexMethod:RuntimeEndpointArtifacts.kt:PosixRuntimeEndpointArtifacts$override fun clean: RuntimeEndpointArtifactCleaning</ID>
+    <ID>CognitiveComplexMethod:SidecarBootstrapAttemptLock.kt:SidecarBootstrapAttemptLock$fun &lt;Value> withAcquired: SidecarBootstrapAttemptLockExecution&lt;Value></ID>
+    <ID>CognitiveComplexMethod:SidecarCacheLifecycle.kt:private fun readIdentity: CacheIdentityRead</ID>
+    <ID>ComplexCondition:ExistingIdeQuery.kt:ExistingIdeClassName.Companion$raw.toByteArray(Charsets.UTF_8).size in 1..512 &amp;&amp; (raw.first().isLetter() || raw.first() == '_') &amp;&amp; raw.all { it.isLetterOrDigit() || it == '_' }</ID>
+    <ID>ComplexCondition:ExistingIdeSocketClient.kt:ExistingIdeDocuments$operation == ExistingIdeOperation.Status &amp;&amp; node.path("type").asString() == "KAST_IDE_HOST" &amp;&amp; node.path("root").asString() == root.path.toString() &amp;&amp; node.path("hostPid").asLong() == descriptor.hostPid &amp;&amp; node.path("host").asString() == descriptor.host.toString()</ID>
+    <ID>ComplexCondition:IndexSeedFilesystemService.kt:Intellij262IndexSeedLayout$!source.startsWith(sourceSystem) || Files.isSymbolicLink(source) || (!Files.isDirectory(source, LinkOption.NOFOLLOW_LINKS) &amp;&amp; !Files.isRegularFile(source, LinkOption.NOFOLLOW_LINKS))</ID>
+    <ID>ComplexCondition:InstallationRequest.kt:SemanticVersion.Companion$parts.size != 3 || parts.any { it.isEmpty() || (it.length > 1 &amp;&amp; it.startsWith('0')) }</ID>
+    <ID>ComplexCondition:InstallationWorkflow.kt:!regularExecutable(root.resolve("bin/kast")) || !regularFile(root.resolve("share/kast/semantic-runtime.json")) || !regularFile(root.resolve("share/kast/operation-registry.json")) || !regularFile(root.resolve("share/kast/wire-schema.json")) || !regularFile(root.resolve("share/kast/installation-lifecycle.py"))</ID>
+    <ID>ComplexCondition:InstallationWorkflow.kt:InstallationWorkflow$!physicalDirectory(idea) || !physicalDirectory(java) || !regularExecutable(java.resolve("bin/java")) || !regularFile(idea.resolve("Resources/build.txt")) || !physicalDirectory(idea.resolve("plugins/Kotlin")) || idea.resolve("jbr/Contents/Home").normalize() != java</ID>
+    <ID>ComplexCondition:InstallationWorkflow.kt:InstallationWorkflow$manifest.productVersion.value != request.version.toString() || manifest.archive.digest.value != "sha256:${request.runtimeDigest.value}" || manifest.archive.size.bytes != fileSize(request.runtimeArchive.value) || manifest.archive.fileName.value != request.runtimeArchive.value.fileName.toString()</ID>
+    <ID>ComplexCondition:InstallationWorkflow.kt:name.isBlank() || name.startsWith('/') || path.isAbsolute || path.toString() != name.trimEnd('/') || name.split('/').any { it == ".." } || name == "idea-home" || name.startsWith("idea-home/") || name.endsWith("/product-info.json") || name.contains("/plugins/Kotlin/") || name.contains("/plugins/gradle/")</ID>
+    <ID>ComplexCondition:InstalledSidecarRuntimeDemand.kt:values.getProperty("format") == INDEX_SEED_RECEIPT_FORMAT &amp;&amp; values.getProperty("cache.key") == identity.key &amp;&amp; values.getProperty("project.root") == identity.canonicalProjectRoot.toString() &amp;&amp; values.getProperty("idea.build") == identity.runtimeIdentity.supportedPair.ideaBuild &amp;&amp; values.getProperty("kotlin.plugin.build") == identity.runtimeIdentity.supportedPair.kotlinPluginBuild &amp;&amp; values.getProperty("jbr.identity") == identity.runtimeIdentity.jbrIdentity &amp;&amp; values.getProperty("kast.payload.digest") == identity.runtimeIdentity.kastPayloadDigest &amp;&amp; validSeedCategoryProof(values)</ID>
+    <ID>ComplexCondition:LifecycleCommands.kt:ideaHome is CliOptionValue.Absent &amp;&amp; cacheMode == StartCacheMode.REUSE &amp;&amp; sourceIdeaSystem is CliOptionValue.Absent &amp;&amp; !acceptGlobalIndexCopy</ID>
+    <ID>ComplexCondition:MacOsRuntimeProcessEnvironment.kt:!javaExecutable.isAbsolute || javaExecutable.normalize() != javaExecutable || Files.isSymbolicLink(javaExecutable) || !Files.isRegularFile(javaExecutable, LinkOption.NOFOLLOW_LINKS) || !Files.isExecutable(javaExecutable) || javaExecutable.fileName.toString() != "java" || javaExecutable.parent?.fileName?.toString() != "bin"</ID>
+    <ID>ComplexCondition:MacOsRuntimeProcessEnvironment.kt:gradleHome.isBlank() || gradleHome.length > 4096 || !path.isAbsolute || path.normalize() != path</ID>
+    <ID>ComplexCondition:MintlifyCallableReference.kt:name == "\$ref" &amp;&amp; value is JsonPrimitive &amp;&amp; value.isString &amp;&amp; value.content.startsWith("#/\$defs/")</ID>
+    <ID>ComplexCondition:SidecarBootstrapStateFile.kt:SidecarBootstrapStateFile$!isAbsolute || normalize() != this || fileName?.toString() != SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME || Files.isSymbolicLink(this)</ID>
+    <ID>CyclomaticComplexMethod:CliCommandGraph.kt:CliCommandGraph$fun parse: CliCommandParsing</ID>
+    <ID>CyclomaticComplexMethod:ConfigurationInspection.kt:ConfigurationCliInspection$fun inspect: ConfigurationInspectionHandling</ID>
+    <ID>CyclomaticComplexMethod:ExistingIdeSocketClient.kt:ExistingIdeDocuments$fun response: ExistingIdeExchange</ID>
+    <ID>CyclomaticComplexMethod:ExistingIdeSocketClient.kt:ExistingIdeSocketClient$override fun query: ExistingIdeExchange</ID>
+    <ID>CyclomaticComplexMethod:IndexSeedFilesystemService.kt:IndexSeedFilesystemService$private fun seedIntoStaging: IndexSeedExecution</ID>
+    <ID>CyclomaticComplexMethod:InstallationRequest.kt:InstallationRequest.Companion$fun parse: Refinement&lt;InstallationRequest, InstallationRequestFailure></ID>
+    <ID>CyclomaticComplexMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun apply: InstallationOutcome</ID>
+    <ID>CyclomaticComplexMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun verify: PlanVerification</ID>
+    <ID>CyclomaticComplexMethod:InstallationWorkflow.kt:private fun verifyControlLayout: Boolean</ID>
+    <ID>CyclomaticComplexMethod:InstallationWorkflow.kt:private fun verifyRuntimeArchive: Boolean</ID>
+    <ID>CyclomaticComplexMethod:InstalledKastCliComposition.kt:InstalledKastCliComposition$override fun create: KastCliCompositionConstruction</ID>
+    <ID>CyclomaticComplexMethod:InstalledRuntimeWorkerEffects.kt:InstalledRuntimeWorkerEffects$override suspend fun start: InstalledWorkerStart</ID>
+    <ID>CyclomaticComplexMethod:InstalledSidecarRuntimeDemand.kt:FilesystemSidecarCachePreparer$private fun prepareExistingOrFresh: SidecarCachePreparation</ID>
+    <ID>CyclomaticComplexMethod:InstalledSidecarRuntimeDemand.kt:InstalledSidecarRootRuntimeDemander$private fun demandExclusively: RuntimeAdmission</ID>
+    <ID>CyclomaticComplexMethod:InstalledSidecarRuntimeDemand.kt:private fun admitSeedReceipt: SeedReceiptPresence</ID>
+    <ID>CyclomaticComplexMethod:MacOsRuntimeProcessAuthority.kt:JdkRuntimeBootstrapProcessSearch$override fun find: RuntimeBootstrapProcessSearchResult</ID>
+    <ID>CyclomaticComplexMethod:MacOsRuntimeProcessAuthority.kt:JdkRuntimeProcessSearch$override fun find: RuntimeProcessSearchResult</ID>
+    <ID>CyclomaticComplexMethod:MacOsRuntimeProcessEnvironment.kt:private fun canonicalJavaHome: CanonicalEnvironmentDirectory</ID>
+    <ID>CyclomaticComplexMethod:SidecarBootstrapAttemptLock.kt:SidecarBootstrapAttemptLock$fun &lt;Value> withAcquired: SidecarBootstrapAttemptLockExecution&lt;Value></ID>
+    <ID>CyclomaticComplexMethod:SidecarCacheLifecycle.kt:SidecarCacheIdentityFile$fun record: CacheIdentityTransition</ID>
+    <ID>CyclomaticComplexMethod:SidecarCacheLifecycle.kt:private fun readIdentity: CacheIdentityRead</ID>
+    <ID>ImplicitDefaultLocale:ExistingIdeSocketClient.kt:ExistingIdeSocketClient$"%02x".format(it)</ID>
+    <ID>ImplicitDefaultLocale:InstallationWorkflow.kt:"%02x".format(byte)</ID>
+    <ID>InjectDispatcher:FrontendWorkerSeedConsent.kt:FrontendWorkerSeedConsent$IO</ID>
+    <ID>InjectDispatcher:InstalledRuntimeWorkerEffects.kt:InstalledRuntimeWorkerEffects$IO</ID>
+    <ID>InvalidPackageDeclaration:CliCommandGraph.kt:package io.github.amichne.kast.cli.command</ID>
+    <ID>InvalidPackageDeclaration:CliCommandModel.kt:package io.github.amichne.kast.cli.command</ID>
+    <ID>InvalidPackageDeclaration:CliOperationalLimits.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:ConfigurationInspection.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:CoordinatedRootRuntimeDemander.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:DirectRuntimeProcessStarter.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:FrontendWorkerSeedConsent.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:IndexSeedActivity.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:IndexSeedFilesystemService.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:IndexSeedProtocol.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledConfigurationSchema.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledIdeRuntimeDiscovery.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledKastCliComposition.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledProtocolResources.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledRuntimeWorkerEffects.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledSchemaDocuments.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledServerProjectionDocuments.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:InstalledSidecarRuntimeDemand.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:KastCliMain.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:KastCodexMain.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:KotlinxRequestJsonSchema.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:MacOsRuntimeProcessAuthority.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:MacOsRuntimeProcessEnvironment.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:MacOsRuntimeProcessSession.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:MintlifyCallableReference.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:ProductInspection.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RootRuntimeDemand.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeBootstrapObservation.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeBoundary.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeEndpointArtifacts.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeInvocationDeadline.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeLifecycle.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeProcessMode.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeStartupProgress.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:RuntimeStartupProtocol.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:SavedConfigurationIngress.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:SidecarCacheInventory.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:SidecarCacheLifecycle.kt:package io.github.amichne.kast.cli</ID>
+    <ID>InvalidPackageDeclaration:SidecarEnvironmentInputs.kt:package io.github.amichne.kast.cli</ID>
+    <ID>LargeClass:InstallationWorkflow.kt:InstallationWorkflow</ID>
+    <ID>LargeClass:InstalledKastCliComposition.kt:InstalledKastCliComposition : KastCliComposition</ID>
+    <ID>LargeClass:KastCli.kt:KastCli</ID>
+    <ID>LongMethod:CanonicalCliProjections.kt:internal fun canonicalCliRequestPreparers: CanonicalCliRequestPreparers</ID>
+    <ID>LongMethod:CliCommandGraph.kt:CliCommandGraph$fun parse: CliCommandParsing</ID>
+    <ID>LongMethod:CliCommandGraph.kt:private fun canonicalGraph: CliCommandGraph</ID>
+    <ID>LongMethod:ConfigurationInspection.kt:ConfigurationCliInspection$fun inspect: ConfigurationInspectionHandling</ID>
+    <ID>LongMethod:CoordinatedRootRuntimeDemander.kt:CoordinatedRootRuntimeDemander$override fun demand: RuntimeAdmission</ID>
+    <ID>LongMethod:ExistingIdeSocketClient.kt:ExistingIdeDocuments$fun response: ExistingIdeExchange</ID>
+    <ID>LongMethod:ExistingIdeSocketClient.kt:ExistingIdeSocketClient$override fun query: ExistingIdeExchange</ID>
+    <ID>LongMethod:IndexSeedFilesystemService.kt:IndexSeedFilesystemService$fun seed: IndexSeedExecution</ID>
+    <ID>LongMethod:IndexSeedFilesystemService.kt:IndexSeedFilesystemService$private fun seedIntoStaging: IndexSeedExecution</ID>
+    <ID>LongMethod:IndexSeedFilesystemService.kt:private fun writeReceipt: Boolean</ID>
+    <ID>LongMethod:InstallationRequest.kt:InstallationRequest.Companion$fun parse: Refinement&lt;InstallationRequest, InstallationRequestFailure></ID>
+    <ID>LongMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun apply: InstallationOutcome</ID>
+    <ID>LongMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun verify: PlanVerification</ID>
+    <ID>LongMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun writeLauncher</ID>
+    <ID>LongMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun writeManifest</ID>
+    <ID>LongMethod:InstalledKastCliComposition.kt:InstalledKastCliComposition$fun retireUnreserved: io.github.amichne.kast.appserver.InstalledWorkerRetirement</ID>
+    <ID>LongMethod:InstalledKastCliComposition.kt:InstalledKastCliComposition$fun sidecarDemander: RootRuntimeDemander</ID>
+    <ID>LongMethod:InstalledKastCliComposition.kt:InstalledKastCliComposition$override fun create: KastCliCompositionConstruction</ID>
+    <ID>LongMethod:InstalledRuntimeWorkerEffects.kt:InstalledRuntimeWorkerEffects$override suspend fun start: InstalledWorkerStart</ID>
+    <ID>LongMethod:InstalledServerProjectionDocuments.kt:private fun operationDocumentSchema: JsonObject</ID>
+    <ID>LongMethod:InstalledServerProjectionDocuments.kt:private fun queryRejectionSchema: JsonObject</ID>
+    <ID>LongMethod:InstalledServerProjectionDocuments.kt:private fun queryResultItemSchema: JsonObject</ID>
+    <ID>LongMethod:InstalledSidecarRuntimeDemand.kt:FilesystemSidecarCachePreparer$private fun prepareExistingOrFresh: SidecarCachePreparation</ID>
+    <ID>LongMethod:InstalledSidecarRuntimeDemand.kt:InstalledSidecarRootRuntimeDemander$private fun demandExclusively: RuntimeAdmission</ID>
+    <ID>LongMethod:MacOsRuntimeProcessAuthority.kt:JdkRuntimeBootstrapProcessSearch$override fun find: RuntimeBootstrapProcessSearchResult</ID>
+    <ID>LongMethod:MacOsRuntimeProcessEnvironment.kt:MacOsRuntimeProcessEnvironment.Companion$fun resolve: MacOsRuntimeProcessEnvironmentResolution</ID>
+    <ID>LongMethod:MintlifyCallableReference.kt:private fun InstalledServerBinding.operationDocument: MintlifyCallableOperationDocument</ID>
+    <ID>LongMethod:RuntimeBoundary.kt:ExactRootProcessRuntimeDemander$private fun demandExclusively: RuntimeAdmission</ID>
+    <ID>LongMethod:RuntimeBoundary.kt:internal fun RuntimeAdmissionFailure.outputReason: String</ID>
+    <ID>LongMethod:SidecarBootstrapAttemptLock.kt:SidecarBootstrapAttemptLock$fun &lt;Value> withAcquired: SidecarBootstrapAttemptLockExecution&lt;Value></ID>
+    <ID>LongMethod:SidecarCacheLifecycle.kt:SidecarCacheIdentityFile$fun record: CacheIdentityTransition</ID>
+    <ID>LongMethod:SidecarCacheLifecycle.kt:private fun readIdentity: CacheIdentityRead</ID>
+    <ID>LongMethod:UnixDomainWireClient.kt:UnixDomainWireClient$fun open: WireSessionOpening</ID>
+    <ID>LongParameterList:CanonicalCliProjections.kt:CanonicalCliRequestPreparers</ID>
+    <ID>LongParameterList:CliCommandModel.kt:SemanticKastCommand</ID>
+    <ID>LongParameterList:IndexSeedProtocol.kt:KastCacheIdentity</ID>
+    <ID>LongParameterList:IndexSeedProtocol.kt:SeedProjectIdentity</ID>
+    <ID>LongParameterList:InstalledConfigurationSchema.kt:InstalledConfigurationSchema$private fun limit</ID>
+    <ID>LongParameterList:InstalledSidecarRuntimeDemand.kt:InstalledSidecarRootRuntimeDemander</ID>
+    <ID>LongParameterList:InstalledSidecarRuntimeDemand.kt:PreparedSidecarCache.Companion$fun admit: SidecarCachePreparation</ID>
+    <ID>LongParameterList:KastCli.kt:KastCli</ID>
+    <ID>LongParameterList:KastCli.kt:KastCli$constructor</ID>
+    <ID>LongParameterList:RuntimeBoundary.kt:ExactRootProcessRuntimeDemander</ID>
+    <ID>LongParameterList:RuntimeBoundary.kt:IndexerLaunchCommand</ID>
+    <ID>LongParameterList:RuntimeStartupProtocol.kt:SidecarLaunchContext</ID>
+    <ID>LongParameterList:RuntimeStartupProtocol.kt:SidecarLaunchContext.Companion$fun admit: SidecarLaunchContextAdmission</ID>
+    <ID>MagicNumber:ExistingIdeQuery.kt:ExistingIdeClassName.Companion$512</ID>
+    <ID>MagicNumber:ExistingIdeQuery.kt:ExistingIdeQualifiedClassName.Companion$4096</ID>
+    <ID>MagicNumber:IndexSeedFilesystemService.kt:Intellij262IndexSeedLayout$4096L</ID>
+    <ID>MagicNumber:InstallationRequest.kt:SemanticVersion.Companion$3</ID>
+    <ID>MagicNumber:InstallationRequest.kt:Sha256.Companion$64</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:0b000_000_100</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:0b000_001_000</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:0b000_010_000</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:0b000_100_000</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:0b001_000_000</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:0b010_000_000</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:0b100_000_000</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:0b110_000_000</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:420</ID>
+    <ID>MagicNumber:InstallationWorkflow.kt:493</ID>
+    <ID>MagicNumber:InstalledServerProjectionDocuments.kt:4096</ID>
+    <ID>MagicNumber:InstalledServerProjectionDocuments.kt:7</ID>
+    <ID>MagicNumber:InstalledServerProjectionDocuments.kt:99</ID>
+    <ID>MagicNumber:KastCli.kt:CliBoundaryExitStatus.BOOTSTRAP$9</ID>
+    <ID>MagicNumber:KastCli.kt:CliBoundaryExitStatus.PROTOCOL$6</ID>
+    <ID>MagicNumber:KastCli.kt:CliBoundaryExitStatus.ROOT$3</ID>
+    <ID>MagicNumber:KastCli.kt:CliBoundaryExitStatus.RUNTIME$4</ID>
+    <ID>MagicNumber:KastCli.kt:CliBoundaryExitStatus.TRANSPORT$5</ID>
+    <ID>MagicNumber:KastCodexMain.kt:KastCodexMain$64</ID>
+    <ID>MagicNumber:MacOsRuntimeProcessEnvironment.kt:4096</ID>
+    <ID>MagicNumber:RuntimeStartupProtocol.kt:SidecarLaunchContext.Companion$3</ID>
+    <ID>MagicNumber:TopologyCoverageCliDocuments.kt:3</ID>
+    <ID>MagicNumber:TopologyCoverageCliDocuments.kt:4</ID>
+    <ID>MatchingDeclarationName:CanonicalCliProjections.kt:CanonicalCliRequestPreparers</ID>
+    <ID>MatchingDeclarationName:CliOptions.kt:CliOptionValue&lt;out Value></ID>
+    <ID>MatchingDeclarationName:DirectRuntimeProcessStarter.kt:JdkRuntimeProcessStarter : RuntimeProcessStarter</ID>
+    <ID>MatchingDeclarationName:ExistingIdeCli.kt:CliRuntimePath</ID>
+    <ID>MatchingDeclarationName:IdeCommands.kt:ExistingIdeRootSelection</ID>
+    <ID>MatchingDeclarationName:SavedConfigurationIngress.kt:SavedConfigurationIngressCompositionFailure : KastCliCompositionFailure</ID>
+    <ID>MaxLineLength:AppServerCommands.kt:AppServerRepairLeaf$"Delete this installation's owned broker, runtime, cache, and workspace-registry state before rebuilding it."</ID>
+    <ID>MaxLineLength:InstalledConfigurationSchema.kt:InstalledConfigurationSchema$"CoordinatorStatusProtocol.maximumMessageBytes; generated maximum scalar widths and admitted worker count"</ID>
+    <ID>MaxLineLength:InstalledServerProjectionDocuments.kt:"Opaque exact-symbol token. Copy verbatim into query_symbols source.symbol_refs; identical to ref.token."</ID>
+    <ID>MaxLineLength:RuntimeBoundary.kt:IndexerLaunchCommand.Companion$"--bootstrap-state-path=${context.cacheRoot.resolve(SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME)}"</ID>
+    <ID>MaxLineLength:WireIoDeadline.kt:JsonLineWireActivitySink$"{\"component\":\"kast-wire\",\"stage\":\"${activity.stage.name.lowercase()}\",\"outcome\":\"${activity.outcome.name.lowercase()}\"}"</ID>
+    <ID>MultilineLambdaItParameter:CanonicalQueryCliDocuments.kt:{ QueryExactLocationCliDocument( it.file.value, SourceRangeCliDocument(it.range.startInclusive.value, it.range.endExclusive.value), ) }</ID>
+    <ID>MultilineLambdaItParameter:IdeCommands.kt:IdeClassesCommand${ when (val parsed = ExistingIdeClassName.parse(it)) { is Refinement.Refined -> parsed.value is Refinement.Rejected -> fail("Expected a Kotlin class short name of at most 512 UTF-8 bytes") } }</ID>
+    <ID>MultilineLambdaItParameter:IdeCommands.kt:IdeSupertypeCommand${ when (val parsed = ExistingIdeQualifiedClassName.parse(it)) { is Refinement.Refined -> parsed.value is Refinement.Rejected -> fail("Expected a qualified Kotlin class name of at most 4096 UTF-8 bytes") } }</ID>
+    <ID>MultilineLambdaItParameter:InstalledServerProjectionDocuments.kt:{ val operations = it.map { tool -> tool.operation } when (val completeness = HostedOperationProjection.verifyBindings(operations)) { HostedBindingCompleteness.Complete -> Unit is HostedBindingCompleteness.Rejected -> error("Invalid installed server projection: ${completeness.failures}") } }</ID>
+    <ID>NamedArguments:CanonicalChangeCliDocuments.kt:CanonicalChangeCliDocuments$ChangeApplyCompleteCliDocument( CanonicalOperation.CHANGE_APPLY.id.value, "complete", result.receiptIdentity.value, result.changes.entries.map(ChangeFilePreview::cliDocument), )</ID>
+    <ID>NamedArguments:CanonicalChangeCliDocuments.kt:CanonicalChangeCliDocuments$ChangeApplyQualifiedCliDocument( CanonicalOperation.CHANGE_APPLY.id.value, "qualified", result.receiptIdentity.value, result.changes.entries.map(ChangeFilePreview::cliDocument), qualification.cliName(), )</ID>
+    <ID>NamedArguments:CanonicalChangeCliDocuments.kt:CanonicalChangeCliDocuments$ChangePlanCompleteCliDocument( CanonicalOperation.CHANGE_PLAN.id.value, "complete", result.planIdentity.value, result.changes.entries.map(ChangeFilePreview::cliDocument), )</ID>
+    <ID>NamedArguments:CanonicalChangeCliDocuments.kt:CanonicalChangeCliDocuments$ChangePlanQualifiedCliDocument( CanonicalOperation.CHANGE_PLAN.id.value, "qualified", result.planIdentity.value, result.changes.entries.map(ChangeFilePreview::cliDocument), qualification.cliName(), )</ID>
+    <ID>NamedArguments:CanonicalChangeCliDocuments.kt:CanonicalChangeCliDocuments$ChangeRecoveryQualifiedCliDocument( CanonicalOperation.CHANGE_RECOVER.id.value, "qualified", result.state.cliName(), qualification.cliName(), )</ID>
+    <ID>NamedArguments:CanonicalIndexCliDocuments.kt:CanonicalIndexCliDocuments$IndexSyncQualifiedCliDocument( CanonicalOperation.INDEX_SYNC.id.value, "qualified", result.state.cliName(), qualification.cliName(), )</ID>
+    <ID>NamedArguments:CanonicalQueryCliDocuments.kt:Candidate( ref.toCliDocument(), kind.cliName(), name?.value, location?.let { QueryCandidateLocationCliDocument(it.file.value, it.offset.value) }, )</ID>
+    <ID>NamedArguments:CanonicalQueryCliDocuments.kt:CanonicalQueryCliDocuments$QueryCompleteCliDocument( CanonicalOperation.QUERY_RUN.id.value, "complete", result.items.values.map(QueryResultItemDocument::toCliDocument), result.failures.values.map(QueryItemFailureDocument::toCliDocument), )</ID>
+    <ID>NamedArguments:CanonicalQueryCliDocuments.kt:CanonicalQueryCliDocuments$QueryQualifiedCliDocument( CanonicalOperation.QUERY_RUN.id.value, "qualified", result.items.values.map(QueryResultItemDocument::toCliDocument), result.failures.values.map(QueryItemFailureDocument::toCliDocument), QueryQualificationCliDocument( qualification.knownMinimum.value, qualification.limitations.map(Enum&lt;*>::cliName), ), )</ID>
+    <ID>NamedArguments:CanonicalQueryCliDocuments.kt:ExactSymbol( ref.toCliDocument(), kind.cliName(), name?.value, location?.let { QueryExactLocationCliDocument( it.file.value, SourceRangeCliDocument(it.range.startInclusive.value, it.range.endExclusive.value), ) }, signature?.toCliDocument(), connections.values.map(RelationFactDocument::toCliDocument), )</ID>
+    <ID>NamedArguments:CanonicalQueryCliDocuments.kt:PlanRejected( "steps[${position.value}]", required.cliName(), actual.cliName(), correction.cliName(), )</ID>
+    <ID>NamedArguments:CanonicalReadCliDocuments.kt:DiagnosticCliDocument( severity.cliName(), code.value, message.value, DiagnosticLocationCliDocument( location.candidateSelector.value, location.file.value, SourceRangeCliDocument( location.range.startInclusive.value, location.range.endExclusive.value, ), ), )</ID>
+    <ID>NamedArguments:CanonicalReadCliDocuments.kt:RelationFactCliDocument( meaning.cliName(), source.toCliDocument(), target.toCliDocument(), RelationOccurrenceCliDocument( occurrence.candidateSelector.value, occurrence.file.value, occurrence.range.toReadCliDocument(), ), provenance.cliName(), coverage.cliName(), )</ID>
+    <ID>NamedArguments:CanonicalSourceReadCliDocuments.kt:Call( nestingDepth.value, parentSelector.value, selection.toCliDocument(), callee.toCliDocument(), target.toCliDocument(), )</ID>
+    <ID>NamedArguments:CanonicalSourceReadCliDocuments.kt:Declaration( kind.cliName(), name.value, visibility.cliName(), nestingDepth.value, parentSelector.value, selection.toCliDocument(), semanticIdentity.toCliDocument(), )</ID>
+    <ID>NamedArguments:CanonicalSourceReadCliDocuments.kt:Reference( name.value, nestingDepth.value, parentSelector.value, selection.toCliDocument(), target.toCliDocument(), )</ID>
+    <ID>NamedArguments:CanonicalSourceReadCliDocuments.kt:SourceSnapshotCliDocument.Companion$SourceSnapshotCliDocument( snapshot.canonicalRoot.value, snapshot.file.value, snapshot.textIdentity.value, snapshot.coordinateUnit.cliName(), snapshot.length.value, generation = context.generation.value, sourceState = context.sourceState.value, )</ID>
+    <ID>NamedArguments:CanonicalSourceReadCliDocuments.kt:SourceSnapshotCliDocument.Companion$SourceSnapshotCliDocument( snapshot.canonicalRoot.value, snapshot.file.value, snapshot.textIdentity.value, snapshot.coordinateUnit.cliName(), snapshot.length.value, live = LiveReadCliEvidence.from(context.evidence), )</ID>
+    <ID>NamedArguments:CanonicalSourceReadCliDocuments.kt:ValueParameter( name.value, nestingDepth.value, parentSelector.value, selection.toCliDocument(), )</ID>
+    <ID>NamedArguments:CanonicalSymbolCliDocuments.kt:Function( qualifiedIdentity.value, receiver.toCliDocument(), contextReceivers.values.map { it.value }, valueParameters.values.map { it.value }, typeParameterCount.value, )</ID>
+    <ID>NamedArguments:CanonicalSymbolCliDocuments.kt:Property( qualifiedIdentity.value, receiver.toCliDocument(), contextReceivers.values.map { it.value }, returnType.value, )</ID>
+    <ID>NamedArguments:CliBoundaryDocuments.kt:Rejected( attemptId.value, phase.wireName, phase.completedPhases, phase.totalPhases, failure.wireName, cause, correctiveAction().instruction, gradleJvm, )</ID>
+    <ID>NamedArguments:CliBoundaryDocuments.kt:Starting( attemptId.value, phase.wireName, phase.completedPhases, phase.totalPhases, gradleJvm, )</ID>
+    <ID>NamedArguments:CliCommandGraph.kt:CliCommandGraph( root, semantic, localFamilies.flatMap { it.commands } + appServer.commands, lifecycle, tools.surface, )</ID>
+    <ID>NamedArguments:CliCommandGraph.kt:CliCommandGraphFactory.Companion$CliCommandGraph( KastRootCommand().subcommands(families.map { it.root }), emptyList(), families.flatMap { it.commands }, emptyList(), )</ID>
+    <ID>NamedArguments:CliOperationalLimits.kt:CliOperationalLimits$ConfigurationOperationalLimit(key, ":cli", value, unit, scope, "CliOperationalLimits.$member")</ID>
+    <ID>NamedArguments:CliOperationalLimits.kt:CliOperationalLimits$limit( "cli.bootstrap.state.maximum_bytes", maximumBootstrapDocumentBytes.toLong(), ConfigurationUnit.BYTES, "maximumBootstrapDocumentBytes", ConfigurationScope.WORKSPACE, )</ID>
+    <ID>NamedArguments:CliOperationalLimits.kt:CliOperationalLimits$limit( "cli.endpoint.maximum_path_bytes", maximumEndpointPathBytes.toLong(), ConfigurationUnit.BYTES, "maximumEndpointPathBytes", ConfigurationScope.WORKSPACE, )</ID>
+    <ID>NamedArguments:CliOperationalLimits.kt:CliOperationalLimits$limit( "cli.launch.wrapper_timeout", directLaunchTimeoutSeconds * 1_000, ConfigurationUnit.MILLISECONDS, "directLaunchTimeoutSeconds", ConfigurationScope.WORKSPACE, )</ID>
+    <ID>NamedArguments:CliOperationalLimits.kt:CliOperationalLimits$limit( "cli.launchctl.timeout", launchctlTimeoutSeconds * 1_000, ConfigurationUnit.MILLISECONDS, "launchctlTimeoutSeconds", ConfigurationScope.WORKSPACE, )</ID>
+    <ID>NamedArguments:CliOperationalLimits.kt:CliOperationalLimits$limit( "cli.process_stop.wait_timeout", processStopTimeoutSeconds * 1_000, ConfigurationUnit.MILLISECONDS, "processStopTimeoutSeconds", ConfigurationScope.WORKSPACE, )</ID>
+    <ID>NamedArguments:CliOperationalLimits.kt:CliOperationalLimits$limit( "cli.request.maximum_bytes", maximumRequestDocumentBytes.toLong(), ConfigurationUnit.BYTES, "maximumRequestDocumentBytes", ConfigurationScope.REQUEST, )</ID>
+    <ID>NamedArguments:CliOperationalLimits.kt:CliOperationalLimits$limit( "cli.seed.project_state.maximum_bytes", maximumProjectStateBytes, ConfigurationUnit.BYTES, "maximumProjectStateBytes", ConfigurationScope.WORKSPACE, )</ID>
+    <ID>NamedArguments:CliOperationalLimits.kt:CliOperationalLimits$limit( "cli.startup.progress.heartbeat", progressHeartbeatMillis, ConfigurationUnit.MILLISECONDS, "progressHeartbeatMillis", ConfigurationScope.WORKSPACE, )</ID>
+    <ID>NamedArguments:CliOperationalLimits.kt:CliOperationalLimits$limit( "cli.startup.progress.maximum_lines", maximumProgressLines.toLong(), ConfigurationUnit.COUNT, "maximumProgressLines", ConfigurationScope.WORKSPACE, )</ID>
+    <ID>NamedArguments:ConfigurationInspection.kt:ConfigurationCliInspection$read( root.resolve("bin/kast"), Path.of(home), environment, configuration, workspace?.let(Path::of), )</ID>
+    <ID>NamedArguments:CoordinatedRootRuntimeDemander.kt:CoordinatedRootRuntimeDemander$Ready( endpoint.endpoint, workerBinding = admitted.binding, deadline = deadline, wireAuthority = RuntimeWireAuthority.Qualified(identity), )</ID>
+    <ID>NamedArguments:ExistingIdeCli.kt:executeExistingIdeAction( CliAction.Local.ExistingIde(read.value, ExistingIdeRootSelection.CurrentDirectory), start, roots, client, )</ID>
+    <ID>NamedArguments:ExistingIdeSocketClient.kt:ExistingIdeSocketClient$response(bytes, root, operation, admitted)</ID>
+    <ID>NamedArguments:IndexSeedFilesystemService.kt:IndexSeedFilesystemService$admit( sourceSystem, request.runtime.identity, initialQuiescence.processState, initialQuiescence.lockState, sourceBefore, )</ID>
+    <ID>NamedArguments:IndexSeedFilesystemService.kt:IndexSeedFilesystemService$create( request.cacheIdentity, source, consent, filesystemProbe.observe(sourceSystem, cacheRoot), projectProofState, )</ID>
+    <ID>NamedArguments:IndexSeedFilesystemService.kt:IndexSeedFilesystemService$resolve( sourceSystem, request.runtime.home, request.cacheIdentity.canonicalProjectRoot, projectProofState.categories, )</ID>
+    <ID>NamedArguments:IndexSeedProtocol.kt:IndexSeedPlan.Companion$IndexSeedPlan( cacheIdentity, source, projectProofState.categories, projectProofState, )</ID>
+    <ID>NamedArguments:IndexSeedProtocol.kt:IndexSeedReceipt.Companion$IndexSeedReceipt( plan.cacheIdentity, plan.cacheIdentity.runtimeIdentity, plan.source.sourceSystem, plan.categories, plan.projectProofState, clonedContent, )</ID>
+    <ID>NamedArguments:IndexSeedProtocol.kt:KastCacheIdentity.Companion$KastCacheIdentity( canonicalProject, canonicalIdeaHome, canonicalJava, semanticRuntimeId, runtime.identity, importEnvironmentIdentity, key, )</ID>
+    <ID>NamedArguments:IndexSeedProtocol.kt:SeedProjectIdentity.Companion$SeedProjectIdentity( projectRoot, candidate.gradleDistribution, candidate.selectedGradleJvmFingerprint, candidate.repositoryGradleInputsFingerprint, candidate.importedProjectJvmModelFingerprint, candidate.classpathFingerprint, candidate.sourceGeneration, )</ID>
+    <ID>NamedArguments:InstallationRequest.kt:InstallationRequest.Companion$InstallationRequest( controlRoot, controlArchive, controlDigest, runtimeArchive, runtimeDigest, version, ideaHome, javaHome, installRoot, binDirectory, home, codexHome, enableLaunchd, enableAppServer, tools, refresh, mode, )</ID>
+    <ID>NamedArguments:InstallationWorkflow.kt:InstallationWorkflow$ExternalAnchor( "codex-command", plan.codexCommandLink.toString(), expectedLinkTarget = plan.currentLink.resolve("bin/kast-codex-complete").toString(), requiresCurrentTarget = currentTarget, )</ID>
+    <ID>NamedArguments:InstallationWorkflow.kt:InstallationWorkflow$ExternalAnchor( "command", plan.commandLink.toString(), expectedLinkTarget = plan.currentLink.resolve("bin/kast-complete").toString(), requiresCurrentTarget = currentTarget, )</ID>
+    <ID>NamedArguments:InstallationWorkflow.kt:InstallationWorkflow$ExternalAnchor( "login", plan.request.home.value.resolve("Library/LaunchAgents/$serviceLabel.login.plist").toString(), expectedExecutable = plan.targetRoot.resolve("bin/kast").toString(), expectedLabel = "$serviceLabel.login", )</ID>
+    <ID>NamedArguments:InstallationWorkflow.kt:InstallationWorkflow$ExternalAnchor( "socket-alias", alias.toString(), expectedLinkTarget = run.toString(), identityReceipt = run.resolve("endpoint-alias.json").toString(), )</ID>
+    <ID>NamedArguments:InstallationWorkflow.kt:InstallationWorkflow$ExternalAnchor( "upstream-directory", upstream.parent.toString(), identityReceipt = run.resolve("upstream-directory.json").toString(), expectedPhysicalDirectory = run.toString(), )</ID>
+    <ID>NamedArguments:InstallationWorkflow.kt:InstallationWorkflow$VerifiedInstallationPlan( request, manifest.archive.fileName.value, payload, versions, target, request.installRoot.value.resolve("current"), request.binDirectory.value.resolve("kast"), request.binDirectory.value.resolve("kast-codex"), )</ID>
+    <ID>NamedArguments:InstalledConfigurationSchema.kt:InstalledConfigurationSchema$limit( "coordinator.command.maximum_bytes", ":app-server", CoordinatorStatusProtocol.maximumCommandBytes.toLong(), ConfigurationUnit.BYTES, "CoordinatorStatusProtocol.maximumCommandBytes", )</ID>
+    <ID>NamedArguments:InstalledConfigurationSchema.kt:InstalledConfigurationSchema$limit( "coordinator.status.maximum_bytes", ":app-server", CoordinatorStatusProtocol.maximumMessageBytes.toLong(), ConfigurationUnit.BYTES, "CoordinatorStatusProtocol.maximumMessageBytes; generated maximum scalar widths and admitted worker count", )</ID>
+    <ID>NamedArguments:InstalledConfigurationSchema.kt:InstalledConfigurationSchema$limit( "indexer.connections.default", ":distribution:contract", IndexerTransportLimits.defaultConnections.toLong(), ConfigurationUnit.COUNT, "IndexerTransportLimits.defaultConnections", ConfigurationScope.WORKSPACE, )</ID>
+    <ID>NamedArguments:InstalledConfigurationSchema.kt:InstalledConfigurationSchema$limit( "indexer.connections.maximum", ":distribution:contract", IndexerTransportLimits.maximumConnections.toLong(), ConfigurationUnit.COUNT, "IndexerTransportLimits.maximumConnections", ConfigurationScope.WORKSPACE, )</ID>
+    <ID>NamedArguments:InstalledConfigurationSchema.kt:InstalledConfigurationSchema$limit( "indexer.frame.maximum_bytes", ":distribution:contract", IndexerTransportLimits.maximumFrameBytes.toLong(), ConfigurationUnit.BYTES, "IndexerTransportLimits.maximumFrameBytes", )</ID>
+    <ID>NamedArguments:InstalledConfigurationSchema.kt:InstalledConfigurationSchema$limit( "operation.${budget.name.lowercase()}.dispatch", ":protocol:registry", budget.operation.value, ConfigurationUnit.MILLISECONDS, "OperationExecutionBudget.${budget.name}.operation", )</ID>
+    <ID>NamedArguments:InstalledConfigurationSchema.kt:InstalledConfigurationSchema$limit( "operation.${budget.name.lowercase()}.invocation", ":protocol:registry", budget.invocation.value, ConfigurationUnit.MILLISECONDS, "OperationExecutionBudget.${budget.name}.invocation", )</ID>
+    <ID>NamedArguments:InstalledConfigurationSchema.kt:InstalledConfigurationSchema$limit( "operation.local_qualification", ":protocol:registry", OperationExecutionBudget.LOCAL_QUALIFICATION.value, ConfigurationUnit.MILLISECONDS, "OperationExecutionBudget.LOCAL_QUALIFICATION", )</ID>
+    <ID>NamedArguments:InstalledConfigurationSchema.kt:InstalledConfigurationSchema$limit( "operation.provider_qualification", ":protocol:registry", OperationExecutionBudget.PROVIDER_QUALIFICATION.value, ConfigurationUnit.MILLISECONDS, "OperationExecutionBudget.PROVIDER_QUALIFICATION", )</ID>
+    <ID>NamedArguments:InstalledConfigurationSchema.kt:InstalledConfigurationSchema$limit( "operation.workspace_readiness", ":protocol:registry", OperationExecutionBudget.WORKSPACE_READINESS.value, ConfigurationUnit.MILLISECONDS, "OperationExecutionBudget.WORKSPACE_READINESS", )</ID>
+    <ID>NamedArguments:InstalledConfigurationSchema.kt:InstalledConfigurationSchema$limit( "transport.qualification.maximum_bytes", ":distribution:contract", WireRuntimeQualification.maximumBytes.toLong(), ConfigurationUnit.BYTES, "WireRuntimeQualification.maximumBytes", )</ID>
+    <ID>NamedArguments:InstalledIdeRuntimeDiscovery.kt:InstalledIdeRuntimeDiscovery$IdeRuntimeIdentityCandidate( ideaBuild, kotlinPluginBuild, jbr.identity, kastPayloadDigest, )</ID>
+    <ID>NamedArguments:InstalledKastCliComposition.kt:InstalledKastCliComposition$FilesystemRootSidecarCacheLifecycle( cacheRoot, cacheReleaseIdentity, SidecarIdeRuntimeResolver { supported, digest, selection -> InstalledIdeRuntimeDiscovery.discover(supported, digest, selection) }, importEnvironment = sidecarEnvironment::importEnvironment, )</ID>
+    <ID>NamedArguments:InstalledKastCliComposition.kt:InstalledKastCliComposition$FilesystemRootSidecarCacheLifecycle( cacheRoot, cacheReleaseIdentity, SidecarIdeRuntimeResolver { supported, digest, selection -> InstalledIdeRuntimeDiscovery.discover(supported, digest, selection) }, selectedInputs::importEnvironment, )</ID>
+    <ID>NamedArguments:InstalledKastCliComposition.kt:InstalledKastCliComposition$IndexSeedFilesystemService( FilesystemSourceIdeQuiescenceProbe, ApfsIndexSeedFilesystemProbe, ApfsCoWIndexSeedCloner, consent, JsonLineIndexSeedActivitySink(System.err), )</ID>
+    <ID>NamedArguments:InstalledKastCliComposition.kt:InstalledKastCliComposition$InstalledSidecarRootRuntimeDemander( endpointLocator, support, userHome, ManagedInstalledSidecarPayloadResolver( manifest, InstalledSemanticRuntimeResolver { selectedManifest -> resolveInstalledRuntime(selectedManifest, selected, installation.root) }, ), { supported, digest, selection -> InstalledIdeRuntimeDiscovery.discover(supported, digest, selection) }, cachePreparer(consent), ExactSidecarProcessDemander( runtimeDemanderFactory = { executable, context -> val exact = ExactRootProcessRuntimeDemander( executable, context, selectedProcesses.starter, bootstrapProcessAuthority = selectedProcesses.bootstrapAuthority, ) RuntimeDemander { root, endpoint -> capture( WorkerProcessCapture( executable, context, endpoint, selectedProcesses.bootstrapAuthority, selectedLifecycle, ) ) exact.demand(root, endpoint) } } ), legacyProcessAuthority = selectedProcesses.authority, cacheLifecycle = selectedCache, lifecycle = selectedLifecycle, maxHeap = request.heap, sidecarEnvironment = selectedInputs, )</ID>
+    <ID>NamedArguments:InstalledKastCliComposition.kt:InstalledKastCliComposition$InstalledWorkerClient( installedKastExecutable, userHome, environment, seedConsent = FrontendWorkerSeedConsent, )</ID>
+    <ID>NamedArguments:InstalledKastCliComposition.kt:InstalledKastCliComposition$KastCli( commandGraphFactory, FilesystemCanonicalRootDiscovery, endpointLocator, io.github.amichne.kast.cli.CoordinatedRootRuntimeDemander(workerClient, maxHeap), UnixDomainWireClient(activity = JsonLineWireActivitySink(System.err)), localMetadata, io.github.amichne.kast.cli.CoordinatedRuntimeLifecycle(workerClient, lifecycle), SidecarProductInspector( SidecarProductIdentity( productVersion, manifest.runtimeId, support, manifest.kastPluginDigest, ), FilesystemCanonicalRootDiscovery, cacheLifecycle, endpointLocator, ), cacheLifecycle = cacheLifecycle, existingIdeClient = io.github.amichne.kast.cli.ide.ExistingIdeSocketClient(userHome, configuration.readLimits), appServerManager = io.github.amichne.kast.appserver.InstalledAppServerManager(installedKastExecutable, userHome), brokerServerRunner = InstalledBrokerServerRunner( installedKastExecutable, userHome, workerEffects = workerEffects, ), codexClientLauncher = installedCodexClientLauncher( installedKastExecutable, userHome, ), )</ID>
+    <ID>NamedArguments:InstalledKastCliComposition.kt:ManagedInstalledSidecarPayloadResolver$admit( installed.runtimeId, installed.executable, installed.directory.resolve("private-plugins"), manifest.kastPluginDigest.value, )</ID>
+    <ID>NamedArguments:InstalledKastCliComposition.kt:SidecarProductIdentity(version, manifest.runtimeId, support, manifest.kastPluginDigest)</ID>
+    <ID>NamedArguments:InstalledRuntimeWorkerEffects.kt:InstalledRuntimeWorkerEffects$LiveRoute( selected.endpoint, RuntimeBootstrapProcessQuery.from( selected.endpoint, selected.executable, selected.context, ), selected.authority, selected.lifecycle, )</ID>
+    <ID>NamedArguments:InstalledRuntimeWorkerEffects.kt:InstalledRuntimeWorkerEffects$admit( root.path, ready.endpoint.runtimeId, ready.endpoint.socketPath, bootstrap.attemptId, )</ID>
+    <ID>NamedArguments:InstalledSidecarRuntimeDemand.kt:FilesystemSidecarCachePreparer$IndexSeedRequest( source, cacheRoot, runtime, cacheIdentity, intent.consentRequest, )</ID>
+    <ID>NamedArguments:InstalledSidecarRuntimeDemand.kt:FilesystemSidecarCachePreparer$admit( cacheIdentity, canonicalRoot, system, config, log, state, )</ID>
+    <ID>NamedArguments:InstalledSidecarRuntimeDemand.kt:FilesystemSidecarCachePreparer$admit( cacheIdentity, publication.root, publication.systemDirectory, config, log, KastCacheState.SEEDED, )</ID>
+    <ID>NamedArguments:InstalledSidecarRuntimeDemand.kt:FilesystemSidecarCachePreparer$seed(root, runtime, cacheIdentity, intent)</ID>
+    <ID>NamedArguments:InstalledSidecarRuntimeDemand.kt:InstalledSidecarRootRuntimeDemander$admit( runtime, cache.root, cache.systemDirectory, cache.configDirectory, cache.logDirectory, payload.privatePluginsDirectory, importEnvironment, maxHeap, sidecarEnvironment, )</ID>
+    <ID>NamedArguments:InstalledSidecarRuntimeDemand.kt:InstalledSidecarRootRuntimeDemander$demand( payload.executable, PreparedSidecarLaunch(cache, context), root, exactEndpoint, )</ID>
+    <ID>NamedArguments:InstalledSidecarRuntimeDemand.kt:InstalledSidecarRootRuntimeDemander$derive(root.path, runtime, endpoint.runtimeId, importEnvironment.identity)</ID>
+    <ID>NamedArguments:InstalledSidecarRuntimeDemand.kt:PreparedSidecarCache.Companion$PreparedSidecarCache( identity, canonicalRoot, paths[0], paths[1], paths[2], state, )</ID>
+    <ID>NamedArguments:InstalledSidecarRuntimeDemand.kt:SidecarPayload.Companion$SidecarPayload(runtimeId, admittedExecutable, plugins, digest)</ID>
+    <ID>NamedArguments:KastCli.kt:KastCli$exchange( boundary.endpoint, request.document, authority.identity, remaining.value, )</ID>
+    <ID>NamedArguments:KastCli.kt:KastCli$executeExistingIdeAction(action, start, rootDiscovery, existingIdeClient)</ID>
+    <ID>NamedArguments:KastCli.kt:KastCli$lifecycleComplete( CliLifecycleCommand.START, boundary.endpoint, RuntimeLifecycleState.RUNNING, boundary.removed, )</ID>
+    <ID>NamedArguments:KastCli.kt:KastCli$lifecycleComplete( command, endpoint, RuntimeLifecycleState.STOPPED, removed, )</ID>
+    <ID>NamedArguments:KastCliMain.kt:executeExistingIdeCli( args.toList(), Path.of("").toAbsolutePath(), FilesystemCanonicalRootDiscovery, io.github.amichne.kast.cli.ide.configuredExistingIdeClient( Path.of(System.getProperty("user.home")), environment, ), CliRequestDocumentInput.Deferred(::readCanonicalRequestInput), )</ID>
+    <ID>NamedArguments:LifecycleCommands.kt:StartCommand$closedChoiceOption( "--cache", "reuse|seed|rebuild", "Private cache policy for this start.", linkedMapOf( "reuse" to StartCacheMode.REUSE, "seed" to StartCacheMode.SEED, "rebuild" to StartCacheMode.REBUILD, ), )</ID>
+    <ID>NamedArguments:LiveReadCliEvidence.kt:LiveReadCliEvidence.Companion$LiveReadCliEvidence( value.workspaceRoot, value.host.toString(), value.epoch, value.contentView.name, value.version, )</ID>
+    <ID>NamedArguments:RuntimeBoundary.kt:ExactRootProcessRuntimeDemander$awaitBootstrapAttempt( endpoint, bootstrapState, process.attemptId, process.session, )</ID>
+    <ID>NamedArguments:RuntimeBoundary.kt:ExactRootProcessRuntimeDemander$awaitOwnedBootstrapAttempt( endpoint, command.bootstrapState, command.bootstrapAttemptId, started.session, )</ID>
+    <ID>NamedArguments:RuntimeBoundary.kt:ExactRootProcessRuntimeDemander$create( executable, root, endpoint, launchContext, attemptId, )</ID>
+    <ID>NamedArguments:RuntimeBoundary.kt:RuntimeBootstrapProcessQuery.Companion$RuntimeBootstrapProcessQuery( endpoint, executable, launchContext.cacheRoot.resolve(SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME), launchContext.maxHeap, )</ID>
+    <ID>NamedArguments:RuntimeBoundary.kt:RuntimeEndpoint$RuntimeEndpoint( root, runtime, socketPath.resolveSibling(name), physicalSocketPath.resolveSibling(name), route, )</ID>
+    <ID>NamedArguments:RuntimeBoundary.kt:RuntimeEndpoint$RuntimeEndpoint( root, runtimeId, socketPath, physicalSocketPath, RuntimeSocketRoute.Aliased(receipt), )</ID>
+    <ID>NamedArguments:RuntimeBoundary.kt:RuntimeEndpoint$RuntimeEndpoint(root, runtimeId, socketPath, physicalSocketPath, RuntimeSocketRoute.Canonical)</ID>
+    <ID>NamedArguments:RuntimeBoundary.kt:RuntimeEndpoint.Companion$RuntimeEndpoint( root, runtimeId, socket, admission.value.physicalDirectory.resolve(socket.fileName), RuntimeSocketRoute.Aliased(admission.value), )</ID>
+    <ID>NamedArguments:RuntimeBoundary.kt:RuntimeEndpoint.Companion$RuntimeEndpoint(root, runtimeId, socket, physical, RuntimeSocketRoute.Planned)</ID>
+    <ID>NamedArguments:RuntimeBoundary.kt:RuntimeEndpoint.Companion$RuntimeEndpoint(root, runtimeId, socket, socket, RuntimeSocketRoute.Canonical)</ID>
+    <ID>NamedArguments:RuntimeBoundary.kt:Sha256RuntimeEndpointLocator$planned( root, runtimeId, socketDirectory.path.resolve("kast-$digest.sock"), socketDirectory.physicalPath.resolve("kast-$digest.sock"), )</ID>
+    <ID>NamedArguments:RuntimeStartupProtocol.kt:SidecarLaunchContext.Companion$SidecarLaunchContext( runtime, importEnvironment, maxHeap, root, paths[0], paths[1], paths[2], paths[3], sidecarEnvironment, )</ID>
+    <ID>NamedArguments:SidecarCacheLifecycle.kt:CacheIdentityRecord$RootSidecarCacheReference( identity.key, identity.semanticRuntimeId, cacheRoot, ideaHome, )</ID>
+    <ID>NamedArguments:SidecarCacheLifecycle.kt:CacheIdentityRecord$RootSidecarCacheStatus( identity.key, identity.semanticRuntimeId, cacheRoot, state, ideaHome, identity.runtimeIdentity.supportedPair.ideaBuild, identity.runtimeIdentity.supportedPair.kotlinPluginBuild, identity.runtimeIdentity.jbrIdentity, identity.runtimeIdentity.kastPayloadDigest, )</ID>
+    <ID>NamedArguments:SidecarCacheLifecycle.kt:IdeRuntimeIdentityCandidate( pair.ideaBuild, pair.kotlinPluginBuild, values.getProperty("jbr.identity").orEmpty(), values.getProperty("kast.payload.digest").orEmpty(), )</ID>
+    <ID>NamedArguments:SidecarCacheLifecycle.kt:RootSidecarCacheLifecycle$RootSidecarCacheReference( observed.status.cacheIdentity, observed.status.semanticRuntimeId, observed.status.cacheRoot, observed.status.ideaHome, )</ID>
+    <ID>NamedArguments:SidecarCacheLifecycle.kt:derive( project, installedRuntime, semanticRuntimeId, when ( val parsed = GradleImportEnvironmentIdentity.parse( values.getProperty("gradle.import.identity") ?: return CacheIdentityRead.Rejected ) ) { is Refinement.Refined -> parsed.value is Refinement.Rejected -> return CacheIdentityRead.Rejected }, )</ID>
+    <ID>NestedBlockDepth:CliCommandGraph.kt:CliCommandGraph$fun parse: CliCommandParsing</ID>
+    <ID>NestedBlockDepth:DirectRuntimeProcessStarter.kt:private fun Process.retireLaunchTree</ID>
+    <ID>NestedBlockDepth:ExistingIdeSocketClient.kt:ExistingIdeSocketClient$override fun query: ExistingIdeExchange</ID>
+    <ID>NestedBlockDepth:IndexSeedFilesystemService.kt:private fun deleteUnpublishedStaging</ID>
+    <ID>NestedBlockDepth:InstallationWorkflow.kt:InstallationWorkflow$private fun apply: InstallationOutcome</ID>
+    <ID>NestedBlockDepth:InstallationWorkflow.kt:private fun digest: Sha256?</ID>
+    <ID>NestedBlockDepth:InstallationWorkflow.kt:private fun payloadFiles: List&lt;PayloadFile></ID>
+    <ID>NestedBlockDepth:InstallationWorkflow.kt:private fun verifyControlLayout: Boolean</ID>
+    <ID>NestedBlockDepth:InstallationWorkflow.kt:private fun verifyRuntimeArchive: Boolean</ID>
+    <ID>NestedBlockDepth:KastCli.kt:KastCli$private fun executeRequest: CliExit</ID>
+    <ID>NestedBlockDepth:MacOsRuntimeProcessAuthority.kt:JdkRuntimeBootstrapProcessSearch$override fun find: RuntimeBootstrapProcessSearchResult</ID>
+    <ID>NestedBlockDepth:MacOsRuntimeProcessAuthority.kt:JdkRuntimeProcessSearch$override fun find: RuntimeProcessSearchResult</ID>
+    <ID>NestedBlockDepth:RuntimeBoundary.kt:ExactRootProcessRuntimeDemander$private fun awaitBootstrapAttempt: RuntimeAdmission</ID>
+    <ID>NestedBlockDepth:RuntimeBoundary.kt:ExactRootProcessRuntimeDemander$private fun demandExclusively: RuntimeAdmission</ID>
+    <ID>NestedScopeFunctions:MacOsRuntimeProcessEnvironment.kt:MacOsRuntimeProcessEnvironment.Companion$let { inherited -> put(GradleImportEnvironment.INHERITED_JAVA_HOME_SETTING, inherited.toString()) if ("KAST_TRUST_DONOR_JAVA_HOME" !in this) { put("KAST_TRUST_DONOR_JAVA_HOME", inherited.toString()) } }</ID>
+    <ID>NestedScopeFunctions:MacOsRuntimeProcessEnvironment.kt:MacOsRuntimeProcessEnvironment.Companion$let { value -> put(key, value) }</ID>
+    <ID>NestedScopeFunctions:MacOsRuntimeProcessEnvironment.kt:MacOsRuntimeProcessEnvironment.Companion$let(::canonicalOptionalJavaHome)</ID>
+    <ID>SpreadOperator:InstalledServerProjectionDocuments.kt:( *listOf( "malformed-document", "non-canonical-document", "unsupported-schema", "unsupported-host-kind", "unsupported-framing", ) .map(::typeOnlyFailureSchema) .toTypedArray(), typedFailureSchema("invalid-canonical-root", "failure"), typedFailureSchema("invalid-socket-path", "failure"), typedFailureSchema("invalid-process-id", "failure"), typedFailureSchema("invalid-runtime-epoch", "failure"), objectSchema( ServerSchemaProperty( "type", constantSchema("compatibility-rejected", "Descriptor failure variant."), ), ServerSchemaProperty("failure", compatibilityFailureSchema()), ), objectSchema( ServerSchemaProperty( "type", constantSchema("hosted-capabilities-rejected", "Descriptor failure variant."), ), ServerSchemaProperty("failure", hostedCapabilitiesFailureSchema()), ), )</ID>
+    <ID>SpreadOperator:InstalledServerProjectionDocuments.kt:( ServerSchemaProperty("canonicalRoot", textSchema("Canonical workspace root.")), *when (basis) { ServerReadEvidenceShape.PUBLISHED -> arrayOf( ServerSchemaProperty("generation", integerSchema(0, description = "Semantic generation.")), ServerSchemaProperty("sourceState", textSchema("Workspace source-state identity.")), ) ServerReadEvidenceShape.LIVE -> arrayOf(ServerSchemaProperty("live", liveReadEvidenceSchema())) }, ServerSchemaProperty("file", textSchema("Exact workspace source file.")), ServerSchemaProperty("textIdentity", textSchema("Committed document text identity.")), ServerSchemaProperty( "coordinateUnit", constantSchema("utf16-code-unit", "Source coordinate unit."), ), ServerSchemaProperty("length", integerSchema(0, description = "Document UTF-16 length.")), )</ID>
+    <ID>SpreadOperator:InstalledServerProjectionDocuments.kt:( ServerSchemaProperty("type", constantSchema("call", "Source entity kind.")), *sourceEntityCommonProperties(), ServerSchemaProperty("callee", sourceSelectionSchema()), ServerSchemaProperty("target", sourceEntityTargetSchema()), )</ID>
+    <ID>SpreadOperator:InstalledServerProjectionDocuments.kt:( ServerSchemaProperty("type", constantSchema("declaration", "Source entity kind.")), ServerSchemaProperty( "kind", enumSchema( listOf("classlike", "constructor", "function", "property", "type-alias"), "Declaration kind.", ), ), ServerSchemaProperty("name", textSchema("Declaration source name.")), ServerSchemaProperty( "visibility", enumSchema( listOf("public", "protected", "internal", "private", "local"), "Compiler-established visibility.", ), ), *sourceEntityCommonProperties(), ServerSchemaProperty("semanticIdentity", sourceDeclarationSemanticIdentitySchema()), )</ID>
+    <ID>SpreadOperator:InstalledServerProjectionDocuments.kt:( ServerSchemaProperty("type", constantSchema("reference", "Source entity kind.")), ServerSchemaProperty("name", textSchema("Referenced source name.")), *sourceEntityCommonProperties(), ServerSchemaProperty("target", sourceEntityTargetSchema()), )</ID>
+    <ID>SpreadOperator:InstalledServerProjectionDocuments.kt:( ServerSchemaProperty("type", constantSchema("value-parameter", "Source entity kind.")), ServerSchemaProperty("name", textSchema("Value-parameter name.")), *sourceEntityCommonProperties(), )</ID>
+    <ID>SpreadOperator:InstalledServerProjectionDocuments.kt:( operation, "qualified", *result, ServerSchemaProperty("qualification", textSchema("Closed qualification reason.")), )</ID>
+    <ID>SpreadOperator:InstalledServerProjectionDocuments.kt:(*identity, *livePayload, ServerSchemaProperty("live", liveReadEvidenceSchema()))</ID>
+    <ID>SpreadOperator:InstalledServerProjectionDocuments.kt:(*identity, *payload)</ID>
+    <ID>SpreadOperator:InstalledServerProjectionDocuments.kt:(operation, "complete", *result)</ID>
+    <ID>ThrowsCount:InstallationWorkflow.kt:private fun payloadFiles: List&lt;PayloadFile></ID>
+    <ID>UnreachableCode:InstallationWorkflow.kt:InstallationWorkflow$return manifest.schemaVersion == 1 &amp;&amp; manifest.semanticVersion == plan.request.version.toString() &amp;&amp; manifest.installationRoot == plan.targetRoot.toString() &amp;&amp; manifest.payloadIdentity == "sha256:${plan.payloadDigest.value}" &amp;&amp; manifest.controlSha256 == "sha256:${plan.request.controlDigest.value}" &amp;&amp; manifest.runtimeSha256 == "sha256:${plan.request.runtimeDigest.value}" &amp;&amp; manifest.payloadFiles == payloadFiles(plan.targetRoot)</ID>
+    <ID>UnreachableCode:InstallationWorkflow.kt:InstallationWorkflow$val manifest = try { manifestJson.decodeFromString(InstallationManifest.serializer(), raw) } catch (_: SerializationException) { return false } catch (_: IllegalArgumentException) { return false }</ID>
+    <ID>UnusedPrivateFunction:InstalledServerProjectionDocuments.kt:private fun booleanSchema: JsonObject</ID>
+    <ID>UnusedPrivateFunction:InstalledServerProjectionDocuments.kt:private fun countSchema: JsonObject</ID>
+    <ID>UnusedPrivateFunction:InstalledServerProjectionDocuments.kt:private fun objectSchemaWithRequired: JsonObject</ID>
+    <ID>UnusedPrivateFunction:InstalledServerProjectionDocuments.kt:private fun uniqueArraySchema: JsonObject</ID>
+    <ID>UnusedPrivateFunction:InstalledServerProjectionDocuments.kt:private fun uniqueNonEmptyArraySchema: JsonObject</ID>
+    <ID>UnusedVariable:MacOsRuntimeProcessSession.kt:MacOsRuntimeProcessSession$val invocation = launchctl.invoke( listOf(LAUNCHCTL_EXECUTABLE, "list", serviceLabel), LaunchctlExitContract.CompletionOrAbsent(LAUNCHCTL_SERVICE_NOT_FOUND), )</ID>
+    <ID>UnusedVariable:MacOsRuntimeProcessSession.kt:MacOsRuntimeProcessSession$val observation = observe()</ID>
+    <ID>UnusedVariable:RuntimeBoundary.kt:val failure = failure</ID>
+    <ID>UseOrEmpty:CliCommandGraph.kt:getFormattedHelp() ?: ""</ID>
+    <ID>UseOrEmpty:CliCommandGraph.kt:getFormattedHelp(failure) ?: ""</ID>
+    <ID>VariableNaming:CanonicalQueryCliDocuments.kt:QueryResultItemCliDocument.ExactSymbol$// Migration alias is derived from the retained exact reference, never an independent input. val symbol_ref: String = ref.token</ID>
+    <ID>WildcardImport:AppServerCommands.kt:import io.github.amichne.kast.appserver.*</ID>
+    <ID>WildcardImport:AppServerCommands.kt:import io.github.amichne.kast.cli.command.*</ID>
+    <ID>WildcardImport:CanonicalQueryCliDocuments.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:CoordinatedRootRuntimeDemander.kt:import io.github.amichne.kast.appserver.*</ID>
+    <ID>WildcardImport:ExistingIdeCli.kt:import io.github.amichne.kast.cli.*</ID>
+    <ID>WildcardImport:ExistingIdeCli.kt:import io.github.amichne.kast.cli.command.*</ID>
+    <ID>WildcardImport:ExistingIdeSocketClient.kt:import io.github.amichne.kast.cli.*</ID>
+    <ID>WildcardImport:ExistingIdeSocketClient.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:FrontendWorkerSeedConsent.kt:import io.github.amichne.kast.appserver.*</ID>
+    <ID>WildcardImport:IdeCommands.kt:import io.github.amichne.kast.cli.command.*</ID>
+    <ID>WildcardImport:IdeCommands.kt:import io.github.amichne.kast.cli.ide.*</ID>
+    <ID>WildcardImport:InstalledRuntimeWorkerEffects.kt:import io.github.amichne.kast.appserver.*</ID>
+    <ID>WildcardImport:KastCodexMain.kt:import io.github.amichne.kast.appserver.*</ID>
+    <ID>WildcardImport:LiveReadCliEvidence.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:PublicToolCommands.kt:import io.github.amichne.kast.cli.command.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

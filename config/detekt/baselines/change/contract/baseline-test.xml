@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ImplicitDefaultLocale:AddDeclarationRevalidationContractTest.kt:AddDeclarationRevalidationContractTest$"%02x".format(byte)</ID>
+    <ID>ImplicitDefaultLocale:PlannedAddDeclarationTest.kt:PlannedAddDeclarationTest$"%02x".format(byte)</ID>
+    <ID>LongMethod:AddDeclarationRevalidationContractTest.kt:AddDeclarationRevalidationContractTest$private fun plan: PlannedAddDeclaration</ID>
+    <ID>LongMethod:PlannedAddDeclarationTest.kt:PlannedAddDeclarationTest$private fun evidence: AddDeclarationPlanningEvidence</ID>
+    <ID>LongParameterList:AddDeclarationRevalidationContractTest.kt:AddDeclarationRevalidationContractTest$private fun observation: AddDeclarationRevalidationObservation</ID>
+  </CurrentIssues>
+</SmellBaseline>

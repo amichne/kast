@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>InjectDispatcher:HostedListenerTest.kt:HostedListenerTest$IO</ID>
+    <ID>MaxLineLength:HostedEndpointTest.kt:HostedEndpointTest$"""{"type":"DIRECT_SUPERTYPE","root":"/workspace","qualifiedName":"example.Child","file":"Child.kt","offset":0}"""</ID>
+    <ID>MultilineLambdaItParameter:HostedEndpointTest.kt:HostedEndpointTest${ DataOutputStream(it).apply { writeInt(3) writeByte(1) } }</ID>
+    <ID>MultilineLambdaItParameter:HostedEndpointTest.kt:HostedEndpointTest${ assertTrue(it is HostedRequest.Describe) dispatched++ "{}" }</ID>
+    <ID>NamedArguments:HostedEndpointTest.kt:HostedEndpointTest$QueryRunRequest( QueryFromDocument.Symbols( QueryDiscoveryDocument( QueryMatchDocument.All, QueryScopeDocument(bounded(listOf(text("main"), text("test"))), null, null), bounded(listOf(QueryDeclarationKindDocument.CLASS)), ) ), bounded(emptyList()), QueryOutputDocument.Symbols(bounded(emptyList())), QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE), )</ID>
+    <ID>NestedScopeFunctions:HostedEndpointTest.kt:HostedEndpointTest$apply { writeInt(3) writeByte(1) }</ID>
+    <ID>WildcardImport:HostedEndpointTest.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:HostedEndpointTest.kt:import io.github.amichne.kast.protocol.wire.*</ID>
+    <ID>WildcardImport:HostedEndpointTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:HostedPeerCancellationTest.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:HostedPeerCancellationTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

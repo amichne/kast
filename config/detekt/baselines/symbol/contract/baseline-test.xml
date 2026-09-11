@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>LargeClass:SymbolSelectorContractTest.kt:SymbolSelectorContractTest</ID>
+    <ID>LongMethod:CandidateSelectorContractTest.kt:CandidateSelectorContractTest$private fun batch: SymbolDiscoveryBatch</ID>
+    <ID>LongMethod:NativeRelationContractTest.kt:NativeRelationContractTest$@Test fun `batch rejects wrong subject family order and byte claims`</ID>
+    <ID>LongMethod:NativeRelationContractTest.kt:NativeRelationContractTest$private fun selector: ExactDeclarationSelector</ID>
+    <ID>LongMethod:SymbolDiscoveryContractTest.kt:SymbolDiscoveryContractTest$@Test fun `batch construction rejects overflow reordered candidates and false byte evidence`</ID>
+    <ID>LongMethod:SymbolDiscoveryContractTest.kt:SymbolDiscoveryContractTest$@Test fun `candidate transition distinguishes workspace files external files and declarations`</ID>
+    <ID>LongMethod:SymbolSelectorContractTest.kt:SymbolSelectorContractTest$@Test fun `compiler evidence cannot escape the selected file name or offset`</ID>
+    <ID>LongMethod:SymbolSelectorContractTest.kt:SymbolSelectorContractTest$@Test fun `compiler evidence retains canonical signature and rejects mismatched restored identity`</ID>
+    <ID>LongMethod:SymbolSelectorContractTest.kt:SymbolSelectorContractTest$@Test fun `restored selection rejects compiler evidence outside retained declaration kinds`</ID>
+    <ID>LongMethod:SymbolSelectorContractTest.kt:SymbolSelectorContractTest$private fun selection: SymbolDiscoverySelection</ID>
+    <ID>LongParameterList:SymbolDiscoveryContractTest.kt:SymbolDiscoveryContractTest$private fun candidate: SymbolDiscoveryCandidate</ID>
+    <ID>NamedArguments:CandidateSelectorContractTest.kt:CandidateSelectorContractTest$SymbolDiscoveryRequest( scope, SymbolDiscoveryTarget.Name( SymbolNameDiscoveryKind.FILE, SymbolDiscoveryPattern.parse("Subject").refined(), SymbolDiscoveryMatch.EXACT_NAME, ), budget, SymbolDiscoveryConstraints( SymbolDiscoveryDirectoryConstraint( SymbolDiscoveryDirectory.parse("src").refined(), SymbolDiscoveryContainment.DESCENDANTS, ), null, sourceSets = SymbolDiscoverySourceSets.Exact.from(setOf(WorkspaceSourceSetName.parse("main").refined())) .refined(), ), )</ID>
+    <ID>NamedArguments:CandidateSelectorContractTest.kt:CandidateSelectorContractTest$create( request, listOf(candidate), candidate.projectedUtf8Size(), SymbolDiscoveryWorkCount.parse(1).refined(), SymbolDiscoveryTimings(elapsed, elapsed), )</ID>
+    <ID>NamedArguments:CandidateSelectorContractTest.kt:CandidateSelectorContractTest$fromBoundary( kind, "Subject.kt", lease, Path.of("/workspace/src/Subject.kt"), "file:///workspace/src/Subject.kt", if (kind == SymbolDiscoveryKind.TEXT) 7 else null, if (kind == SymbolDiscoveryKind.TEXT) 14 else null, )</ID>
+    <ID>NamedArguments:CandidateSelectorContractTest.kt:CandidateSelectorContractTest$restoreRange(lease, file, -1, 0)</ID>
+    <ID>NamedArguments:CandidateSelectorContractTest.kt:CandidateSelectorContractTest$restoreRange(lease, file, 7, 7)</ID>
+    <ID>NamedArguments:CandidateSelectorContractTest.kt:CandidateSelectorContractTest$restoreRange(lease, file, 8, 7)</ID>
+    <ID>NamedArguments:ExactDeclarationSelectorContractTest.kt:ExactDeclarationSelectorContractTest$request(kind, candidates.size, scope, constraints)</ID>
+    <ID>NamedArguments:NativeRelationContractTest.kt:NativeRelationContractTest$create( request, listOf(wrongFamily), wrongFamily.projectedUtf8Size(), NativeRelationWorkCount.parse(1L).refined(), timings(), )</ID>
+    <ID>NamedArguments:NativeRelationContractTest.kt:NativeRelationContractTest$create( request, listOf(wrongSubject), wrongSubject.projectedUtf8Size(), NativeRelationWorkCount.parse(1L).refined(), timings(), )</ID>
+    <ID>NamedArguments:NativeRelationContractTest.kt:NativeRelationContractTest$create( request, ordered, NativeRelationByteCount.parse(0L).refined(), NativeRelationWorkCount.parse(2L).refined(), timings(), )</ID>
+    <ID>NamedArguments:NativeRelationContractTest.kt:NativeRelationContractTest$create( request, ordered.reversed(), bytes, NativeRelationWorkCount.parse(2L).refined(), timings(), )</ID>
+    <ID>NamedArguments:NativeRelationContractTest.kt:NativeRelationContractTest$evidence("sample.Service.service", 7, 17, "/workspace/src/Service.kt", "service")</ID>
+    <ID>NamedArguments:SymbolDiscoveryContractTest.kt:SymbolDiscoveryContractTest$candidate( SymbolDiscoveryKind.SYMBOL, "Alpha", Path.of("/workspace/src/Alpha.kt"), "file:///workspace/src/Alpha.kt", 1, )</ID>
+    <ID>NamedArguments:SymbolDiscoveryContractTest.kt:SymbolDiscoveryContractTest$candidate( SymbolDiscoveryKind.SYMBOL, "Beta", Path.of("/workspace/src/Beta.kt"), "file:///workspace/src/Beta.kt", 2, )</ID>
+    <ID>NamedArguments:SymbolDiscoveryContractTest.kt:SymbolDiscoveryContractTest$create( request(resultLimit = 2), listOf(second, first), SymbolDiscoveryByteCount.parse(first.projectedUtf8Size().value + second.projectedUtf8Size().value) .refined(), work, timings, )</ID>
+    <ID>NamedArguments:SymbolDiscoveryContractTest.kt:SymbolDiscoveryContractTest$create( request, listOf(first), SymbolDiscoveryByteCount.parse(0L).refined(), work, timings, )</ID>
+    <ID>NamedArguments:SymbolDiscoveryContractTest.kt:SymbolDiscoveryContractTest$create( request, listOf(first, second), SymbolDiscoveryByteCount.parse(first.projectedUtf8Size().value + second.projectedUtf8Size().value) .refined(), work, timings, )</ID>
+    <ID>NamedArguments:SymbolDiscoveryContractTest.kt:SymbolDiscoveryContractTest$create( request, listOf(otherGenerationCandidate), otherGenerationCandidate.projectedUtf8Size(), work, timings, )</ID>
+    <ID>NamedArguments:SymbolDiscoveryContractTest.kt:SymbolDiscoveryContractTest$fromBoundary( SymbolDiscoveryKind.CLASS, "Broken", lease(), null, "no-scheme", 0, )</ID>
+    <ID>NamedArguments:SymbolDiscoveryContractTest.kt:SymbolDiscoveryContractTest$fromBoundary( SymbolDiscoveryKind.FILE, "App.kt", lease(), Path.of("/workspace/src/App.kt"), "file:///workspace/src/App.kt", 1, )</ID>
+    <ID>NamedArguments:SymbolDiscoveryContractTest.kt:SymbolDiscoveryContractTest$fromBoundary( SymbolDiscoveryKind.SYMBOL, "run", lease(), Path.of("/workspace/src/App.kt"), "file:///workspace/src/App.kt", null, )</ID>
+    <ID>NamedArguments:SymbolSelectorContractTest.kt:SymbolSelectorContractTest$SymbolDiscoveryConstraints(null, null, kinds, sourceSets)</ID>
+    <ID>NamedArguments:SymbolSelectorContractTest.kt:SymbolSelectorContractTest$create( request, listOf(candidate), candidate.projectedUtf8Size(), SymbolDiscoveryWorkCount.parse(1L).refined(), SymbolDiscoveryTimings( SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), ), )</ID>
+    <ID>NamedArguments:SymbolSelectorContractTest.kt:SymbolSelectorContractTest$fromBoundary( SymbolDiscoveryKind.SYMBOL, "call", lease, Path.of("/workspace/src/Service.kt"), "file:///workspace/src/Service.kt", 7, )</ID>
+    <ID>NamedArguments:SymbolSelectorContractTest.kt:SymbolSelectorContractTest$fromBoundary( location.file, location.offset.value + 1, location.offset.value + 10, selection.candidate.name.value, "sample.Service.call", CompilerSymbolKind.FUNCTION, signature, )</ID>
+    <ID>NamedArguments:SymbolSelectorContractTest.kt:SymbolSelectorContractTest$fromBoundary( location.file, location.offset.value, location.offset.value + 10, "other", "sample.Service.call", CompilerSymbolKind.FUNCTION, signature, )</ID>
+    <ID>NamedArguments:SymbolSelectorContractTest.kt:SymbolSelectorContractTest$fromBoundary( location.file, location.offset.value, location.offset.value + 10, restored.candidate.name.value, "sample.Service.call", CompilerSymbolKind.PROPERTY, CanonicalCompilerSignature.property( rawQualifiedIdentity = "sample.Service.call", rawReceiverType = null, rawContextReceiverTypes = emptyList(), rawReturnType = "kotlin.Int", ) .refined(), )</ID>
+    <ID>NamedArguments:SymbolSelectorContractTest.kt:SymbolSelectorContractTest$fromBoundary( location.file, location.offset.value, location.offset.value + 10, selection.candidate.name.value, "sample.Service.call", CompilerSymbolKind.FUNCTION, signature, )</ID>
+    <ID>NamedArguments:SymbolSelectorContractTest.kt:SymbolSelectorContractTest$fromBoundary( otherFile, location.offset.value, location.offset.value + 10, selection.candidate.name.value, "sample.Service.call", CompilerSymbolKind.FUNCTION, signature, )</ID>
+    <ID>NamedArguments:SymbolSelectorContractTest.kt:SymbolSelectorContractTest$issue(restored.lease, restored.scope, property, constraints)</ID>
+    <ID>NamedArguments:SymbolSelectorContractTest.kt:SymbolSelectorContractTest$restore( original.lease, original.scope, original.candidate, constraints, )</ID>
+  </CurrentIssues>
+</SmellBaseline>

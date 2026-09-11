@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:CanonicalQueryProtocol.kt:CanonicalQueryProtocol$private fun projectItems: QueryProjection&lt;QueryResultItemDocument></ID>
+    <ID>CognitiveComplexMethod:CanonicalQueryReferences.kt:CanonicalQueryReferences$override fun issueCandidates: CandidateSelectorIssuance</ID>
+    <ID>CognitiveComplexMethod:CanonicalSelectorDocumentAdmission.kt:internal fun CandidateSelectorDocument.admitCandidateSelector: SelectorDocumentAdmission&lt;CandidateSelector></ID>
+    <ID>CognitiveComplexMethod:CanonicalSelectorDocumentAdmission.kt:private fun admitAuthority: SelectorDocumentAdmission&lt;SemanticReadAuthority></ID>
+    <ID>CognitiveComplexMethod:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$fun decode: CanonicalTraversalContinuationDecoding</ID>
+    <ID>ComplexCondition:CanonicalSelectorDocumentAdmission.kt:root == reference.workspaceRoot.value &amp;&amp; live.host == reference.host.value.toString() &amp;&amp; live.epoch == reference.epoch.value &amp;&amp; live.contentView == reference.contentView.name &amp;&amp; live.version == reference.version &amp;&amp; live.version == LiveSemanticReadReference.VERSION</ID>
+    <ID>CyclomaticComplexMethod:CanonicalDiscoveryAdmission.kt:internal fun admitDiscoveryRequest: DiscoveryRequestAdmission</ID>
+    <ID>CyclomaticComplexMethod:CanonicalRelationContinuationCodec.kt:CanonicalRelationContinuationCodec$fun decode: CanonicalRelationContinuationDecoding</ID>
+    <ID>CyclomaticComplexMethod:CanonicalSelectorDocumentAdmission.kt:internal fun CandidateSelectorDocument.admitCandidateSelector: SelectorDocumentAdmission&lt;CandidateSelector></ID>
+    <ID>CyclomaticComplexMethod:CanonicalSelectorDocumentAdmission.kt:private fun SelectorConstraintsDocument?.admitConstraints: SelectorDocumentAdmission&lt;SymbolDiscoveryConstraints></ID>
+    <ID>CyclomaticComplexMethod:CanonicalSelectorDocumentAdmission.kt:private fun admitAuthority: SelectorDocumentAdmission&lt;SemanticReadAuthority></ID>
+    <ID>CyclomaticComplexMethod:CanonicalSourceReadProtocol.kt:private fun SourceReadRequest.admit: SourceRequestAdmission</ID>
+    <ID>CyclomaticComplexMethod:CanonicalSourceReadProtocol.kt:private fun protocolResult: ProtocolSourceReadResult?</ID>
+    <ID>CyclomaticComplexMethod:CanonicalSymbolDocuments.kt:private fun CanonicalCompilerSignature.protocolDocument: CompilerSignatureDocument?</ID>
+    <ID>CyclomaticComplexMethod:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$fun decode: CanonicalTraversalContinuationDecoding</ID>
+    <ID>LargeClass:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest</ID>
+    <ID>LongMethod:CanonicalDiagnosticCheckProtocol.kt:CanonicalDiagnosticCheckProtocol$private fun project: OperationOutcome&lt; DiagnosticCheckResult, DiagnosticCheckQualification, DiagnosticCheckRejection, ></ID>
+    <ID>LongMethod:CanonicalDiscoveryAdmission.kt:internal fun admitDiscoveryRequest: DiscoveryRequestAdmission</ID>
+    <ID>LongMethod:CanonicalGraphProtocols.kt:CanonicalRelationReadProtocol$suspend fun execute: OperationOutcome&lt; RelationReadResult, RelationReadQualification, RelationReadRejection, ></ID>
+    <ID>LongMethod:CanonicalGraphProtocols.kt:CanonicalTraversalRunProtocol$suspend fun execute: OperationOutcome&lt; TraversalRunResult, TraversalRunQualification, TraversalRunRejection, ></ID>
+    <ID>LongMethod:CanonicalQueryProtocol.kt:CanonicalQueryProtocol$private fun projectItems: QueryProjection&lt;QueryResultItemDocument></ID>
+    <ID>LongMethod:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$@Test fun `file and text batch references retain their original read scope`</ID>
+    <ID>LongMethod:CanonicalRelationContinuationCodec.kt:CanonicalRelationContinuationCodec$fun decode: CanonicalRelationContinuationDecoding</ID>
+    <ID>LongMethod:CanonicalSelectorCodec.kt:CanonicalSelectorCodec$fun encodeCandidate: CanonicalSelectorEncoding</ID>
+    <ID>LongMethod:CanonicalSelectorDocumentAdmission.kt:internal fun CandidateSelectorDocument.admitCandidateSelector: SelectorDocumentAdmission&lt;CandidateSelector></ID>
+    <ID>LongMethod:CanonicalSelectorDocumentAdmission.kt:internal fun ExactSelectorDocument.admitExactSelector: SelectorDocumentAdmission&lt;SymbolSelector></ID>
+    <ID>LongMethod:CanonicalSelectorDocumentAdmission.kt:private fun CandidateSelectorDocument.Declaration.admitSelection: SelectorDocumentAdmission&lt;SymbolDiscoverySelection></ID>
+    <ID>LongMethod:CanonicalSourceReadProtocol.kt:private fun SourceReadRequest.admit: SourceRequestAdmission</ID>
+    <ID>LongMethod:CanonicalSourceReadProtocol.kt:private fun protocolResult: ProtocolSourceReadResult?</ID>
+    <ID>LongMethod:CanonicalSymbolProtocols.kt:CanonicalSymbolDiscoverProtocol$private fun projectDiscovery: OperationOutcome&lt; SymbolDiscoverResult, SymbolDiscoverQualification, SymbolDiscoverRejection, ></ID>
+    <ID>LongMethod:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$fun decode: CanonicalTraversalContinuationDecoding</ID>
+    <ID>MagicNumber:CanonicalRelationContinuationCodec.kt:0xff</ID>
+    <ID>MagicNumber:CanonicalRelationContinuationCodec.kt:16</ID>
+    <ID>MagicNumber:CanonicalRelationContinuationCodec.kt:CanonicalRelationContinuationCodec$3</ID>
+    <ID>MagicNumber:CanonicalSelectorCodec.kt:0xff</ID>
+    <ID>MagicNumber:CanonicalSelectorCodec.kt:16</ID>
+    <ID>MagicNumber:CanonicalSelectorCodec.kt:3</ID>
+    <ID>MagicNumber:CanonicalTraversalContinuationCodec.kt:0xff</ID>
+    <ID>MagicNumber:CanonicalTraversalContinuationCodec.kt:16</ID>
+    <ID>MatchingDeclarationName:CanonicalDiscoveryAdmission.kt:DiscoveryRequestAdmission</ID>
+    <ID>UnusedParameter:CanonicalSourceReadProtocol.kt:authority: QueryReferenceAuthority</ID>
+    <ID>WildcardImport:CanonicalDiagnosticCheckProtocol.kt:import io.github.amichne.kast.query.protocol.*</ID>
+    <ID>WildcardImport:CanonicalQueryProtocol.kt:import io.github.amichne.kast.kernel.*</ID>
+    <ID>WildcardImport:CanonicalQueryProtocol.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:CanonicalQueryProtocol.kt:import io.github.amichne.kast.query.contract.*</ID>
+    <ID>WildcardImport:CanonicalQueryProtocol.kt:import io.github.amichne.kast.workspace.contract.*</ID>
+    <ID>WildcardImport:CanonicalQueryProtocolTest.kt:import io.github.amichne.kast.kernel.*</ID>
+    <ID>WildcardImport:CanonicalQueryProtocolTest.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:CanonicalQueryProtocolTest.kt:import io.github.amichne.kast.query.contract.*</ID>
+    <ID>WildcardImport:CanonicalQueryProtocolTest.kt:import io.github.amichne.kast.symbol.contract.*</ID>
+    <ID>WildcardImport:CanonicalQueryProtocolTest.kt:import io.github.amichne.kast.workspace.contract.*</ID>
+    <ID>WildcardImport:CanonicalQueryProtocolTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:CanonicalQueryReferences.kt:import io.github.amichne.kast.source.contract.*</ID>
+    <ID>WildcardImport:CanonicalRelationDocuments.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:CanonicalRelationDocuments.kt:import io.github.amichne.kast.relation.contract.*</ID>
+    <ID>WildcardImport:CanonicalSelectorCodec.kt:import io.github.amichne.kast.symbol.contract.*</ID>
+    <ID>WildcardImport:CanonicalSelectorCodec.kt:import io.github.amichne.kast.workspace.contract.*</ID>
+    <ID>WildcardImport:CanonicalSelectorDocumentAdmission.kt:import io.github.amichne.kast.symbol.contract.*</ID>
+    <ID>WildcardImport:CanonicalSelectorDocumentAdmission.kt:import io.github.amichne.kast.workspace.contract.*</ID>
+    <ID>WildcardImport:CanonicalSymbolProtocols.kt:import io.github.amichne.kast.query.protocol.*</ID>
+    <ID>WildcardImport:CanonicalTraversalContinuationCodec.kt:import io.github.amichne.kast.query.protocol.*</ID>
+    <ID>WildcardImport:QueryReferenceAuthority.kt:import io.github.amichne.kast.symbol.contract.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

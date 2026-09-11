@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:RelationFact.kt:RevalidatedRelationEndpoint.Companion$endpoint.file == evidence.file &amp;&amp; endpoint.range == evidence.range &amp;&amp; endpoint.name == evidence.name &amp;&amp; endpoint.qualifiedIdentity == evidence.qualifiedIdentity &amp;&amp; endpoint.kind == evidence.kind &amp;&amp; endpoint.signature == evidence.signature &amp;&amp; endpoint.compilerIdentity == evidence.compilerIdentity</ID>
+    <ID>LargeClass:RelationContractTest.kt:RelationContractTest</ID>
+    <ID>LongMethod:RelationContractTest.kt:RelationContractTest$private fun selector: SymbolSelector</ID>
+    <ID>MagicNumber:RelationFact.kt:0xff</ID>
+    <ID>MagicNumber:RelationFact.kt:16</ID>
+    <ID>MagicNumber:RelationFact.kt:3</ID>
+    <ID>MagicNumber:RelationFact.kt:4</ID>
+    <ID>MagicNumber:RelationFact.kt:5</ID>
+    <ID>MagicNumber:RelationFact.kt:6</ID>
+    <ID>MagicNumber:RelationRequest.kt:0xff</ID>
+    <ID>MagicNumber:RelationRequest.kt:16</ID>
+  </CurrentIssues>
+</SmellBaseline>

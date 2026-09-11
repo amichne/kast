@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>LongMethod:OpenTelemetryKastObservabilityTest.kt:OpenTelemetryKastObservabilityTest$@Test fun `compiler identity mismatch exports one structured diagnostic event`</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:IntellijSourceReadPort.kt:IntellijSourceEntityPage.Companion$fun select: IntellijSourceEntityPage</ID>
+    <ID>CognitiveComplexMethod:IntellijSourceReadPort.kt:IntellijSourceReadPort$override suspend fun read: SourceReadResult</ID>
+    <ID>CognitiveComplexMethod:IntellijSourceScopeAdmission.kt:internal fun admitsSourceReadScope: Boolean</ID>
+    <ID>CognitiveComplexMethod:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess$private fun liveDocument: LiveSourceDocumentAdmission</ID>
+    <ID>CognitiveComplexMethod:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$private fun visit</ID>
+    <ID>CognitiveComplexMethod:LiveIntellijSourceRead.kt:private fun projectEntities: NativeSourceEntityProjection</ID>
+    <ID>CognitiveComplexMethod:ProjectBoundIntellijSourceReadPort.kt:ProjectBoundIntellijSourceReadPort$fun create: SourceReadPort</ID>
+    <ID>ComplexCondition:IntellijSourceReadPort.kt:IntellijSelectedSourceCapture.Companion$anchorSelector.snapshot != snapshot || regionSelector.snapshot != snapshot || '\r' in normalizedDocumentText || normalizedDocumentText.length != snapshot.length.value || SourceTextIdentity.fromNormalizedCommittedText(normalizedDocumentText) != snapshot.textIdentity</ID>
+    <ID>ComplexCondition:IntellijSourceReadPort.kt:IntellijSelectedSourceCapture.Companion$entityPage.knownMinimumEntityCount &lt; entityPage.entities.size || entityPage.entities.any { entity -> entity.selector.snapshot != snapshot || entity.selector.range.startInclusive &lt; regionSelector.range.startInclusive || entity.selector.range.endExclusive > regionSelector.range.endExclusive } || (entityPage.nextOrdinal == null &amp;&amp; SourceReadLimitation.ENTITY_LIMIT_REACHED in entityPage.limitations) || (entityPage.nextOrdinal != null &amp;&amp; SourceReadLimitation.ENTITY_LIMIT_REACHED !in entityPage.limitations)</ID>
+    <ID>ComplexCondition:IntellijSourceReadPort.kt:IntellijSourceReadPort$request.region != RegionSelection.Anchor || request.entities != EntitySelection.None || request.text != TextProjection.Complete || request.page != SourceReadPage.First || cursor.startOrdinal != 0</ID>
+    <ID>ComplexCondition:LiveIntellijSourceRead.kt:declaration != null &amp;&amp; declaration.name == candidate.name.value &amp;&amp; declaration.textRange.startOffset == location.offset.value &amp;&amp; declaration.matches(candidate.kind) &amp;&amp; declaration.matchesCompilerKinds(selector.selection.constraints)</ID>
+    <ID>ComplexCondition:LiveIntellijSourceRead.kt:declaration != null &amp;&amp; declaration.name == selector.name.value &amp;&amp; declaration.textRange.startOffset == selector.range.startInclusive &amp;&amp; declaration.textRange.endOffset == selector.range.endExclusive</ID>
+    <ID>CyclomaticComplexMethod:IntellijSourceReadPort.kt:IntellijSelectedSourceCapture.Companion$fun create: Refinement&lt;IntellijSelectedSourceCapture, IntellijSourceReadRejection></ID>
+    <ID>CyclomaticComplexMethod:IntellijSourceReadPort.kt:IntellijSourceReadPort$override suspend fun read: SourceReadResult</ID>
+    <ID>CyclomaticComplexMethod:IntellijSourceScopeAdmission.kt:internal fun admitsSourceReadScope: Boolean</ID>
+    <ID>CyclomaticComplexMethod:LiveIntellijSourceRead.kt:LiveIntellijSourceReadAccess$private fun captureInReadAction: IntellijSourceReadAccessResult</ID>
+    <ID>CyclomaticComplexMethod:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess$private fun liveDocument: LiveSourceDocumentAdmission</ID>
+    <ID>CyclomaticComplexMethod:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$private fun visit</ID>
+    <ID>CyclomaticComplexMethod:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$private fun visitParameter</ID>
+    <ID>LargeClass:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest</ID>
+    <ID>LargeClass:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest</ID>
+    <ID>LargeClass:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator</ID>
+    <ID>LongMethod:IntellijSourceCallReferenceReadTest.kt:IntellijSourceCallReferenceReadTest$private fun fixture: Fixture</ID>
+    <ID>LongMethod:IntellijSourceEntityReadTest.kt:IntellijSourceEntityReadTest$private fun fixture: Fixture</ID>
+    <ID>LongMethod:IntellijSourceReadPort.kt:IntellijSourceEntityPage.Companion$fun select: IntellijSourceEntityPage</ID>
+    <ID>LongMethod:IntellijSourceReadPort.kt:IntellijSourceReadPort$override suspend fun read: SourceReadResult</ID>
+    <ID>LongMethod:IntellijSourceReadPortTest.kt:IntellijSourceReadPortTest$private fun fixture: Fixture</ID>
+    <ID>LongMethod:IntellijSourceRegionReadTest.kt:IntellijSourceRegionReadTest$@Test fun `window is whole-line clipped to enclosing region and round trips`</ID>
+    <ID>LongMethod:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess$private fun admitCandidateAnchor: LiveSourceAnchorResult</ID>
+    <ID>LongMethod:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess$private fun liveDocument: LiveSourceDocumentAdmission</ID>
+    <ID>LongMethod:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess$private fun selectInReadAction: IntellijSourceRegionAccessResult</ID>
+    <ID>LongMethod:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$private fun visitParameter</ID>
+    <ID>LongMethod:LiveIntellijSourceRead.kt:private fun KtNamedDeclaration.candidateSelector: CandidateSelector.Declaration?</ID>
+    <ID>LongMethod:LiveIntellijSourceRead.kt:private fun deriveRegion: NativeSourceRegion?</ID>
+    <ID>LongMethod:LiveIntellijSourceRead.kt:private fun projectEntities: NativeSourceEntityProjection</ID>
+    <ID>LoopWithTooManyJumpStatements:IntellijSourceReadPort.kt:IntellijSourceEntityPage.Companion$while</ID>
+    <ID>MatchingDeclarationName:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess : IntellijSourceRegionAccess</ID>
+    <ID>TooGenericExceptionCaught:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess$failure: RuntimeException</ID>
+    <ID>UnusedPrivateClass:LiveIntellijSourceRead.kt:LiveIntellijSourceReadAccess : IntellijSourceReadAccess</ID>
+  </CurrentIssues>
+</SmellBaseline>

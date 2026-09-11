@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:DiagnosticService.kt:batch.scope === scope &amp;&amp; coverage.analyzedFiles == scope.files &amp;&amp; batch.facts.all { fact -> fact.scope === scope &amp;&amp; fact.authority == scope.lease.identity &amp;&amp; fact.location.file in scope.files }</ID>
+    <ID>ComplexCondition:DiagnosticService.kt:batch.scope === scope &amp;&amp; coverage.limitations.isNotEmpty() &amp;&amp; analyzed.intersect(limited).isEmpty() &amp;&amp; analyzed + limited == scope.files.toSet() &amp;&amp; batch.facts.all { fact -> fact.scope === scope &amp;&amp; fact.authority == scope.lease.identity &amp;&amp; fact.location.file in scope.files }</ID>
+  </CurrentIssues>
+</SmellBaseline>

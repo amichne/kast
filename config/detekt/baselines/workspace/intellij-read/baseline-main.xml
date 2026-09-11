@@ -1,0 +1,128 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:AdmittedHostedQuery.kt:internal suspend fun &lt;Evidence : Any> AdmittedIdeProject.prepareHostedRead: HostedReadPreparation&lt;Evidence></ID>
+    <ID>CognitiveComplexMethod:DetachedIdeWorkspaceModelRefinement.kt:RefinedDetachedModules.Companion$internal fun refine: Refinement&lt;RefinedDetachedModules, DetachedModelCaptureFailure></ID>
+    <ID>CognitiveComplexMethod:DetachedModelValueRefinement.kt:internal fun refineClasspathUrl: Refinement&lt;DetachedClasspathEntryUrl, DetachedModelCaptureFailure></ID>
+    <ID>CognitiveComplexMethod:ExistingProjectAdmission.kt:private fun validateExistingProject: ExistingProjectValidationEvidence</ID>
+    <ID>CognitiveComplexMethod:HostedQueryService.kt:HostedQueryService$suspend fun &lt;Value> read: HostedSemanticReadResult&lt;Value></ID>
+    <ID>CognitiveComplexMethod:LiveDetachedModelCapture.kt:LiveDetachedModelCapture$private fun observeInsideRead: DetachedModelObservation</ID>
+    <ID>CognitiveComplexMethod:LiveDetachedModelCapture.kt:LiveDetachedModelCapture$private fun observeSourceRoots: Refinement&lt;List&lt;DetachedSourceRootBoundary>, DetachedModelCaptureFailure></ID>
+    <ID>CognitiveComplexMethod:LiveHostedKotlinRead.kt:internal fun readHostedKotlin: HostedSemanticRead&lt;HostedInheritorEvidence></ID>
+    <ID>CognitiveComplexMethod:LiveIndexExclusionVerifier.kt:IntellijIndexExclusionVerifier$fun verify: IntellijIndexExclusionVerification</ID>
+    <ID>CognitiveComplexMethod:LiveNamedGradleSourceScopeCapture.kt:LiveNamedGradleSourceScopeCapture$suspend fun capture: Refinement&lt;NamedGradleSourceScope, NamedGradleSourceScopeFailure></ID>
+    <ID>CognitiveComplexMethod:LiveProjectReadEpochObservation.kt:LiveProjectReadEpochSource$private fun observeInsideRead: Refinement&lt; ProjectReadEpochState, ProjectReadEpochObservationFailure, ></ID>
+    <ID>CognitiveComplexMethod:ProjectReadEpochObservation.kt:internal fun observeProjectReadEpochVfsBatch: ProjectReadEpochVfsBatchObservation</ID>
+    <ID>ComplexCondition:DetachedModelValueRefinement.kt:!path.startsWith('/') || path == "/" || path.contains("//") || path.split('/').any { segment -> segment == "." || segment == ".." }</ID>
+    <ID>ComplexCondition:DetachedModelValueRefinement.kt:separatorIndex &lt;= 1 || path.indexOf("!/", separatorIndex + 2) >= 0 || (protocol == IntellijClasspathProtocol.JRT &amp;&amp; separatorIndex + 2 == path.length)</ID>
+    <ID>ComplexCondition:ExistingProjectAdmission.kt:AdmittedIdeProjectSession$current.liveProject === project &amp;&amp; current.canonicalRoot == expectedRoot &amp;&amp; current.compatibilityCandidate == compatibilityCandidate &amp;&amp; current.compatibilityPolicy == compatibilityPolicy</ID>
+    <ID>ComplexCondition:HostedClassLookup.kt:HostedClassName.Companion$raw.isNotEmpty() &amp;&amp; raw.toByteArray(Charsets.UTF_8).size &lt;= 512 &amp;&amp; (raw.first().isLetter() || raw.first() == '_') &amp;&amp; raw.all { it.isLetterOrDigit() || it == '_' }</ID>
+    <ID>ComplexCondition:HostedQuery.kt:HostedKotlinSelection.Companion$relativeFile.length > 4096 || !relativeFile.endsWith(".kt") || relativeFile.split('/').any { it.isEmpty() || it == "." || it == ".." } || relativeFile.any { it.isISOControl() || it == '\\' }</ID>
+    <ID>CyclomaticComplexMethod:AdmittedHostedQuery.kt:internal suspend fun &lt;Evidence : Any> AdmittedIdeProject.prepareHostedRead: HostedReadPreparation&lt;Evidence></ID>
+    <ID>CyclomaticComplexMethod:DetachedModelValueRefinement.kt:internal fun refineClasspathUrl: Refinement&lt;DetachedClasspathEntryUrl, DetachedModelCaptureFailure></ID>
+    <ID>CyclomaticComplexMethod:ExistingProjectAdmission.kt:private fun validateExistingProject: ExistingProjectValidationEvidence</ID>
+    <ID>CyclomaticComplexMethod:HostedQuery.kt:HostedKotlinSelection.Companion$fun parse: Refinement&lt;HostedKotlinSelection, HostedQueryFailure></ID>
+    <ID>CyclomaticComplexMethod:HostedQueryService.kt:HostedQueryService$suspend fun &lt;Value> read: HostedSemanticReadResult&lt;Value></ID>
+    <ID>CyclomaticComplexMethod:IntellijProjectSourceFiles.kt:IntellijProjectSourceFiles$@RequiresReadLock fun collect: Refinement&lt;List&lt;Path>, ProjectSourceFileFailure></ID>
+    <ID>CyclomaticComplexMethod:LiveHostedKotlinRead.kt:internal fun detachDeclaration: Refinement&lt;HostedCompilerDeclaration, HostedQueryFailure></ID>
+    <ID>CyclomaticComplexMethod:LiveHostedKotlinRead.kt:internal fun readHostedKotlin: HostedSemanticRead&lt;HostedInheritorEvidence></ID>
+    <ID>CyclomaticComplexMethod:LiveNamedGradleSourceScopeCapture.kt:LiveNamedGradleSourceScopeCapture$suspend fun capture: Refinement&lt;NamedGradleSourceScope, NamedGradleSourceScopeFailure></ID>
+    <ID>CyclomaticComplexMethod:LiveProjectReadEpochObservation.kt:LiveProjectReadEpochSource$private fun observeInsideRead: Refinement&lt; ProjectReadEpochState, ProjectReadEpochObservationFailure, ></ID>
+    <ID>InjectDispatcher:HostedQueryProbe.kt:HostedQueryProbe$Default</ID>
+    <ID>InvalidPackageDeclaration:LiveProjectReadEpochObservation.kt:package io.github.amichne.kast.workspace.intellij.read</ID>
+    <ID>InvalidPackageDeclaration:ProjectReadEpochIdentity.kt:package io.github.amichne.kast.workspace.intellij.read</ID>
+    <ID>InvalidPackageDeclaration:ProjectReadEpochObservation.kt:package io.github.amichne.kast.workspace.intellij.read</ID>
+    <ID>InvalidPackageDeclaration:ProjectReadEpochSourceFactory.kt:package io.github.amichne.kast.workspace.intellij.read</ID>
+    <ID>InvalidPackageDeclaration:ProjectReadEpochVfsListener.kt:package io.github.amichne.kast.workspace.intellij.read</ID>
+    <ID>LongMethod:AdmittedHostedQuery.kt:internal suspend fun &lt;Evidence : Any> AdmittedIdeProject.prepareHostedRead: HostedReadPreparation&lt;Evidence></ID>
+    <ID>LongMethod:DetachedIdeWorkspaceModelRefinement.kt:private fun refineModule: Refinement&lt;DetachedIdeModule, DetachedModelCaptureFailure></ID>
+    <ID>LongMethod:ExistingProjectAdmission.kt:private fun validateExistingProject: ExistingProjectValidationEvidence</ID>
+    <ID>LongMethod:HostedQueryExecutor.kt:HostedQueryExecutor$suspend fun &lt;Value> execute: HostedExecution&lt;Value></ID>
+    <ID>LongMethod:HostedQueryService.kt:HostedQueryService$suspend fun &lt;Value> read: HostedSemanticReadResult&lt;Value></ID>
+    <ID>LongMethod:HostedQueryWire.kt:internal fun HostedQueryFailure.detail: Any</ID>
+    <ID>LongMethod:HostedReadDiagnostics.kt:internal fun hostedReadDiagnostics: HostedReadDiagnostics</ID>
+    <ID>LongMethod:LiveHostedIndexedSupertype.kt:internal fun readHostedIndexedSupertype: HostedSemanticRead&lt;HostedInheritorEvidence></ID>
+    <ID>LongMethod:LiveHostedKotlinRead.kt:internal fun detachDeclaration: Refinement&lt;HostedCompilerDeclaration, HostedQueryFailure></ID>
+    <ID>LongMethod:LiveHostedKotlinRead.kt:internal fun readHostedKotlin: HostedSemanticRead&lt;HostedInheritorEvidence></ID>
+    <ID>LongMethod:LiveIndexExclusionVerifier.kt:IntellijIndexExclusionVerifier$fun verify: IntellijIndexExclusionVerification</ID>
+    <ID>LongMethod:LiveNamedGradleSourceScopeCapture.kt:LiveNamedGradleSourceScopeCapture$suspend fun capture: Refinement&lt;NamedGradleSourceScope, NamedGradleSourceScopeFailure></ID>
+    <ID>LongMethod:LiveProjectReadEpochObservation.kt:LiveProjectReadEpochSource$private fun observeInsideRead: Refinement&lt; ProjectReadEpochState, ProjectReadEpochObservationFailure, ></ID>
+    <ID>LongMethod:ProjectFileIndexClassification.kt:private fun classifySourceObservation: IntellijProjectFileClassification</ID>
+    <ID>LongMethod:ProjectReadEpochObservation.kt:ProjectReadEpochState.Companion$fun admit: Refinement&lt;ProjectReadEpochState, ProjectReadEpochObservationFailure></ID>
+    <ID>LongParameterList:ExistingProjectAdmission.kt:AdmittedIdeProject.Companion$internal fun admitObserved: ExistingProjectAdmission</ID>
+    <ID>LongParameterList:ProjectReadEpochObservation.kt:ProjectReadEpochState</ID>
+    <ID>MagicNumber:BoundedSourceFileCollector.kt:BoundedSourceFileCollector$1_000_000</ID>
+    <ID>MagicNumber:HostedClassLookup.kt:HostedClassName.Companion$512</ID>
+    <ID>MagicNumber:HostedQualifiedClassSelection.kt:HostedQualifiedClassSelection.Companion$4096</ID>
+    <ID>MagicNumber:HostedQuery.kt:HostedKotlinSelection.Companion$4096</ID>
+    <ID>MagicNumber:HostedReadDiagnostics.kt:HostedReadDiagnostics$1_000_000</ID>
+    <ID>MagicNumber:LiveHostedKotlinRead.kt:4L</ID>
+    <ID>MatchingDeclarationName:AdmittedHostedQuery.kt:HostedReadPreparation&lt;out Evidence></ID>
+    <ID>MatchingDeclarationName:DetachedIdeWorkspaceModelRefinement.kt:RefinedDetachedModules</ID>
+    <ID>MatchingDeclarationName:DetachedModelCapture.kt:DetachedModelObservationPort</ID>
+    <ID>MatchingDeclarationName:LiveProjectFileIndexClassifier.kt:IntellijProjectFileIndexClassifier</ID>
+    <ID>MatchingDeclarationName:ProjectReadEpochVfsListener.kt:RootFilteredProjectEpochVfsListener : BulkFileListener</ID>
+    <ID>MaxLineLength:HostedQueryWire.kt:is io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure.DuplicateCapability</ID>
+    <ID>MaxLineLength:HostedQueryWire.kt:is io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure.UnknownCapability</ID>
+    <ID>MaxLineLength:HostedQueryWire.kt:is io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure.UnsupportedCapability</ID>
+    <ID>MultilineLambdaItParameter:HostedReadDiagnostics.kt:{ mapOf( "parameter" to it.parameter.name, "value" to it.value, "unit" to it.parameter.unit.name, "source" to it.source.name, ) }</ID>
+    <ID>MultilineLambdaItParameter:IntellijReadObservation.kt:IntellijReadUnexpectedFailure.Companion${ "${it.className}.${it.methodName}:${it.lineNumber}" .take(limits[ReadLimitParameter.DIAGNOSTIC_TEXT_CHARACTERS].value) }</ID>
+    <ID>MultilineLambdaItParameter:LiveHostedClassIndex.kt:HostedIndexScope${ it.kind in setOf(DetachedSourceRootKind.PRODUCTION, DetachedSourceRootKind.TEST) &amp;&amp; it.provenance == DetachedSourceRootProvenance.AUTHORED }</ID>
+    <ID>MultilineLambdaItParameter:LiveHostedIndexedSupertype.kt:{ ProgressManager.checkCanceled() candidates.accept(it) == HostedIndexCollection.CONTINUE }</ID>
+    <ID>NamedArguments:AdmittedHostedQuery.kt:prepareHostedRead( selection.root, progress, checkpoint, { project, model -> when (selection) { is HostedKotlinSelection -> readHostedKotlin(project, selection, model, progress.limits) is HostedQualifiedClassSelection -> readHostedIndexedSupertype(project, selection, model, progress.limits) } }, ::verifyHostedContent, )</ID>
+    <ID>NamedArguments:DetachedIdeWorkspaceModelRefinement.kt:DetachedIdeModule( name, DetachedGradleModuleOwner(buildRoot, projectRoot, projectIdentity), sourceRoots, sdk, classpath, )</ID>
+    <ID>NamedArguments:DetachedIdeWorkspaceModelRefinement.kt:refineWorkspacePath( raw.gradleBuildRoot, root, DetachedModelCaptureFailure.INVALID_GRADLE_BUILD_ROOT, DetachedModelCaptureFailure.GRADLE_BUILD_ROOT_OUTSIDE_WORKSPACE, limits = limits, )</ID>
+    <ID>NamedArguments:DetachedIdeWorkspaceModelRefinement.kt:refineWorkspacePath( raw.gradleProjectRoot, root, DetachedModelCaptureFailure.INVALID_GRADLE_PROJECT_ROOT, DetachedModelCaptureFailure.GRADLE_PROJECT_ROOT_OUTSIDE_WORKSPACE, limits = limits, )</ID>
+    <ID>NamedArguments:DetachedIdeWorkspaceModelRefinement.kt:refineWorkspacePath( raw.path, root, DetachedModelCaptureFailure.INVALID_SOURCE_ROOT, DetachedModelCaptureFailure.SOURCE_ROOT_OUTSIDE_WORKSPACE, limits = limits, )</ID>
+    <ID>NamedArguments:ExistingProjectAdmission.kt:AdmittedIdeProject$admit( canonicalRoot, compatibility, LiveDetachedModelCapture.observe(liveProject.project, canonicalRoot, limits), limits, )</ID>
+    <ID>NamedArguments:ExistingProjectAdmission.kt:AdmittedIdeProject$admit( canonicalRoot, compatibility, LiveDetachedModelCapture.observeAsync(liveProject.project, canonicalRoot, limits), limits, )</ID>
+    <ID>NamedArguments:ExistingProjectAdmission.kt:AdmittedIdeProject$capture(liveProject.project, canonicalRoot, observation, limits)</ID>
+    <ID>NamedArguments:ExistingProjectAdmission.kt:AdmittedIdeProject.Companion$AdmittedIdeProject( LiveProjectHandle(project), installed.value, evidence.exactRoot, evidence.compatibility, )</ID>
+    <ID>NamedArguments:ExistingProjectAdmission.kt:AdmittedIdeProject.Companion$admitObserved( project, expectedRoot, compatibilityCandidate, compatibilityPolicy, LiveExistingProjectObservation, LiveProjectReadEpochSourceFactory, )</ID>
+    <ID>NamedArguments:ExistingProjectAdmission.kt:AdmittedIdeProjectSession$CachedAdmittedIdeProject( project, expectedRoot, compatibilityCandidate, compatibilityPolicy, admission.project, )</ID>
+    <ID>NamedArguments:ExistingProjectAdmission.kt:AdmittedIdeProjectSession$admitObserved( project, root, candidate, policy, LiveExistingProjectObservation, ExistingProjectReadEpochSourceFactory { retained, retainedRoot -> LiveProjectReadEpochSourceFactory.createOwned(retained, retainedRoot, owner, limits) }, )</ID>
+    <ID>NamedArguments:ExistingProjectAdmission.kt:ExistingProjectValidation.Companion$validateObserved( project, expectedRoot, compatibilityCandidate, compatibilityPolicy, LiveExistingProjectObservation, )</ID>
+    <ID>NamedArguments:HostedQueryProbe.kt:IdeHostCompatibilityCandidate( metadata.getProperty("ideBuild"), metadata.getProperty("kotlinBuild"), metadata.getProperty("version"), "kast.ide-hosted.runtime.v1", metadata.getProperty("registryDigest"), metadata.getProperty("schemaDigest"), emptyList(), )</ID>
+    <ID>NamedArguments:HostedQueryService.kt:HostedQueryService$HostedIndexPublication(endpoint, prepared.epoch, prepared.model, prepared.evidence)</ID>
+    <ID>NamedArguments:HostedQueryService.kt:HostedQueryService$HostedQueryPublication(endpoint, prepared.epoch, prepared.model, prepared.evidence)</ID>
+    <ID>NamedArguments:HostedQueryService.kt:HostedQueryService$HostedSemanticReadContext( authority, sourceScope.model, IntellijSemanticSourceFileAdmission(sourceScope::contains), progress.observation, progress.limits, ) { readAction { when (val saved = checkSavedDocuments(project)) { is SavedDocuments.Rejected -> return@readAction Refinement.Rejected(saved.failure) SavedDocuments.Clean -> Unit } when (val current = admitted.admitVfsPassiveRead(epoch)) { is VfsPassiveReadAdmission.Admitted -> Refinement.Refined(Unit) is VfsPassiveReadAdmission.Rejected -> Refinement.Rejected(HostedQueryFailure.Freshness(current.failure)) } } }</ID>
+    <ID>NamedArguments:HostedQueryService.kt:HostedQueryService$admit(project, lookup.root, candidate, policy)</ID>
+    <ID>NamedArguments:HostedQueryService.kt:HostedQueryService$admit(project, root, compatibility.candidate, compatibility.policy)</ID>
+    <ID>NamedArguments:HostedQueryService.kt:HostedQueryService$admit(project, selection.root, candidate, policy)</ID>
+    <ID>NamedArguments:HostedQueryService.kt:HostedQueryService$lookup(endpoint, lookup, compatibility.value.candidate, compatibility.value.policy)</ID>
+    <ID>NamedArguments:HostedQueryService.kt:HostedQueryService$prepareHostedRead( lookup.root, progress, checkpoint, { retained, model -> readHostedClassIndex(retained, lookup, model, progress.limits) }, { retained, evidence -> verifyHostedDeclarations(retained, evidence.declarations) }, )</ID>
+    <ID>NamedArguments:HostedQueryService.kt:HostedQueryService$query(endpoint, selection, compatibility.value.candidate, compatibility.value.policy)</ID>
+    <ID>NamedArguments:HostedReadDiagnostics.kt:HostedReadDiagnostics$HostedReadDiagnosticReceipt( UUID.randomUUID(), correlation, duration, ordered.mapIndexed { index, (stage, start) -> HostedReadStageDuration(stage, start, (ordered.getOrNull(index + 1)?.second ?: duration) - start) }, when (val entry = stages[HostedQueryStage.SEMANTIC_READ]) { null -> HostedSemanticEntry.NotEntered else -> HostedSemanticEntry.Entered( (limits[ReadLimitParameter.HOST_QUERY_MILLIS].value.toLong() * 1_000_000 - entry) .coerceAtLeast(0) ) }, counters.map { (key, value) -> HostedNativeCount(key.first, key.second, value) }, terminations.map { HostedNativeTermination(it.first, it.second) }, outcome, unexpectedFailures.toList(), limits, )</ID>
+    <ID>NamedArguments:IntellijReadObservation.kt:IntellijReadUnexpectedFailure.Companion$IntellijReadUnexpectedFailure( stage, if (failure is LinkageError) IntellijReadUnexpectedKind.LINKAGE else IntellijReadUnexpectedKind.RUNTIME, failure.javaClass.name.take(limits[ReadLimitParameter.DIAGNOSTIC_TEXT_CHARACTERS].value), failure.stackTrace .asSequence() .filter { it.className.startsWith("io.github.amichne.kast.") } .take(limits[ReadLimitParameter.DIAGNOSTIC_FRAMES].value) .map { "${it.className}.${it.methodName}:${it.lineNumber}" .take(limits[ReadLimitParameter.DIAGNOSTIC_TEXT_CHARACTERS].value) } .toList(), )</ID>
+    <ID>NamedArguments:LiveHostedIndexedSupertype.kt:readHostedKotlin(project, located, model, limits = limits)</ID>
+    <ID>NamedArguments:LiveHostedKotlinRead.kt:HostedCompilerDeclaration( evidence.value, content, scope.module, scope.root, )</ID>
+    <ID>NamedArguments:LiveHostedKotlinRead.kt:detachDeclaration(project, model, declaration, subject, limits = limits)</ID>
+    <ID>NamedArguments:LiveHostedKotlinRead.kt:detachDeclaration(project, model, parentDeclaration, parent, limits = limits)</ID>
+    <ID>NamedArguments:LiveHostedKotlinRead.kt:fromBoundary( file, declaration.textRange.startOffset, declaration.textRange.endOffset, declaration.name.orEmpty(), qualifiedName, CompilerSymbolKind.CLASSLIKE, signature, )</ID>
+    <ID>NamedArguments:LiveNamedGradleSourceScopeCapture.kt:LiveNamedGradleSourceScopeCapture$WorkspaceSourceRootBoundary( module.name, Path.of(buildPath), owner.path, sourceSet.name, path.toPath(), if (type.isTest) WorkspaceSourceRootKind.TEST else WorkspaceSourceRootKind.PRODUCTION, if (type.isGenerated) WorkspaceSourceRootProvenance.GENERATED else WorkspaceSourceRootProvenance.AUTHORED, )</ID>
+    <ID>NamedArguments:LiveProjectReadEpochObservation.kt:LiveProjectReadEpochSourceFactory$LiveProjectReadEpochSource( LiveProjectReadEpochPlatformPort(project, limits), projectModelCounter, vfsCounter, limits = limits, )</ID>
+    <ID>NamedArguments:ProjectReadEpochIdentity.kt:GradleEpochRootIdentity.Companion$refine( raw, ProjectReadEpochObservationFailure.GradleRootUnavailable, ProjectReadEpochObservationFailure.GradleRootMalformed, ::GradleEpochRootIdentity, limits = limits, )</ID>
+    <ID>NamedArguments:ProjectReadEpochIdentity.kt:ProjectEpochRootIdentity.Companion$refine( raw, ProjectReadEpochObservationFailure.ProjectRootUnavailable, ProjectReadEpochObservationFailure.ProjectRootMalformed, ::ProjectEpochRootIdentity, limits = limits, )</ID>
+    <ID>NamedArguments:ProjectReadEpochObservation.kt:ProjectReadEpochState.Companion$ProjectReadEpochState( projectModel, boundary.projectRoot, boundary.gradleRoot, importState, psi, vfs, rootModel, dumbCycle, )</ID>
+    <ID>NestedBlockDepth:ProjectReadEpochObservation.kt:internal fun observeProjectReadEpochVfsBatch: ProjectReadEpochVfsBatchObservation</ID>
+    <ID>NoNameShadowing:AdmittedHostedQuery.kt:read</ID>
+    <ID>TooGenericExceptionCaught:HostedQueryExecutor.kt:HostedQueryExecutor$failure: RuntimeException</ID>
+    <ID>TooGenericExceptionCaught:LiveNamedGradleSourceScopeCapture.kt:LiveNamedGradleSourceScopeCapture$failure: RuntimeException</ID>
+    <ID>TooGenericExceptionCaught:LiveProjectReadEpochObservation.kt:LiveProjectReadEpochSourceFactory$failure: RuntimeException</ID>
+    <ID>UnreachableCatchBlock:LiveNamedGradleSourceScopeCapture.kt:LiveNamedGradleSourceScopeCapture$catch (cancelled: ProcessCanceledException) { throw cancelled }</ID>
+    <ID>UnusedParameter:ProjectReadEpochObservation.kt:EpochImportState.Companion$limits: ReadLimits = ReadLimits.Default</ID>
+    <ID>UnusedParameter:ProjectReadEpochObservation.kt:EpochSignalCount.Companion$limits: ReadLimits = ReadLimits.Default</ID>
+    <ID>UnusedParameter:ProjectReadEpochObservation.kt:ProjectReadEpochState.Companion$limits: ReadLimits = ReadLimits.Default</ID>
+    <ID>UnusedPrivateProperty:LiveProjectReadEpochObservation.kt:private const val MAX_CACHED_GRADLE_MODELS = 16</ID>
+    <ID>UnusedPrivateProperty:ProjectFileIndexClassification.kt:private const val MAX_FILE_IDENTITY_CHARS = 8_192</ID>
+    <ID>UnusedPrivateProperty:ProjectFileIndexClassification.kt:private const val MAX_MODULE_IDENTITY_CHARS = 512</ID>
+    <ID>UnusedPrivateProperty:ProjectReadEpochIdentity.kt:private const val MAX_ROOT_CHARACTERS = 4_096</ID>
+    <ID>UnusedPrivateProperty:ProjectReadEpochIdentity.kt:private const val MAX_ROOT_UTF8_BYTES = 8_192</ID>
+    <ID>WildcardImport:HostedQueryService.kt:import io.github.amichne.kast.workspace.contract.*</ID>
+    <ID>WildcardImport:HostedReadDiagnostics.kt:import io.github.amichne.kast.workspace.intellij.read.*</ID>
+    <ID>WildcardImport:HostedSemanticReadContext.kt:import io.github.amichne.kast.workspace.contract.*</ID>
+    <ID>WildcardImport:LiveNamedGradleSourceScopeCapture.kt:import io.github.amichne.kast.workspace.contract.*</ID>
+    <ID>WildcardImport:NamedGradleSourceScope.kt:import io.github.amichne.kast.workspace.contract.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

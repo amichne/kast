@@ -1,0 +1,573 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:AppServerManagement.kt:InstalledAppServerManager$override fun execute: AppServerManagementResult</ID>
+    <ID>CognitiveComplexMethod:AppServerManagement.kt:InstalledAppServerManager$private fun passiveStatus: AppServerManagementResult</ID>
+    <ID>CognitiveComplexMethod:AppServerManagement.kt:InstalledAppServerManager$private fun rpc: JsonObject?</ID>
+    <ID>CognitiveComplexMethod:BrokerInstallationState.kt:BrokerInstallationState$private fun identity: Refinement&lt;String, InstallationStateFailure></ID>
+    <ID>CognitiveComplexMethod:BrokerProcess.kt:JdkBrokerProcessExecutor$override suspend fun execute: BrokerProcessExecution</ID>
+    <ID>CognitiveComplexMethod:BrokerSessionHub.kt:BrokerSessionHub$private fun control: String</ID>
+    <ID>CognitiveComplexMethod:BrokerSessionHub.kt:BrokerSessionHub.Session$private suspend fun acceptLocked</ID>
+    <ID>CognitiveComplexMethod:BrokerSessionHub.kt:BrokerSessionHub.Session$private suspend fun receiveLocked</ID>
+    <ID>CognitiveComplexMethod:BrokerSessionHub.kt:BrokerSessionHub.Session$suspend fun start</ID>
+    <ID>CognitiveComplexMethod:CodexHostInvocation.kt:CodexServiceInvocation.Companion$fun admit: Refinement&lt;CodexServiceInvocation, CodexServiceArgumentFailure></ID>
+    <ID>CognitiveComplexMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$internal suspend fun fromUpstream: ProtocolRouting</ID>
+    <ID>CognitiveComplexMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$private fun threadStart: ProtocolRouting</ID>
+    <ID>CognitiveComplexMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$private suspend fun recordThreadOperation: ProtocolRouting</ID>
+    <ID>CognitiveComplexMethod:CodexProtocolContracts.kt:CodexProtocolContracts.Companion$internal fun define: Validation&lt;CodexProtocolContracts, CodexProtocolContractFailure></ID>
+    <ID>CognitiveComplexMethod:CodexProtocolQualifier.kt:CodexProtocolQualifier$private fun collectSchemas: CodexSchemaCollection</ID>
+    <ID>CognitiveComplexMethod:ConfigurationAppliedInspection.kt:InstalledConfigurationAppliedInspection$suspend fun read: AppliedConfigurationInspection</ID>
+    <ID>CognitiveComplexMethod:DesktopStdioHost.kt:DesktopStdioHost$override suspend fun run: CodexIntegrationRun</ID>
+    <ID>CognitiveComplexMethod:DesktopStdioHost.kt:private fun readBoundedLine: BoundedJsonLine</ID>
+    <ID>CognitiveComplexMethod:InstalledBrokerServer.kt:InstalledBrokerServerConfiguration.Companion$internal fun admit: InstalledBrokerServerConfiguration</ID>
+    <ID>CognitiveComplexMethod:InstalledCoordinator.kt:InstalledCoordinator.Companion$suspend fun start: InstalledCoordinatorStart</ID>
+    <ID>CognitiveComplexMethod:InstalledCoordinator.kt:InstalledCoordinatorConfiguration$fun admit: Refinement&lt;InstalledCoordinatorOptions, InstalledBrokerServerConfigurationFailure></ID>
+    <ID>CognitiveComplexMethod:InstalledWorkerClient.kt:InstalledWorkerClient$internal suspend fun status: CoordinatorStatusRead</ID>
+    <ID>CognitiveComplexMethod:InstalledWorkerClient.kt:InstalledWorkerClient$private suspend fun &lt;T> exchange: T</ID>
+    <ID>CognitiveComplexMethod:InstalledWorkerClient.kt:InstalledWorkerClient$private suspend fun &lt;T> receiveResult: T</ID>
+    <ID>CognitiveComplexMethod:KastCodexMain.kt:OwnedCodexIntegration$@Synchronized fun close: CodexIntegrationShutdown</ID>
+    <ID>CognitiveComplexMethod:KastObserverProjector.kt:KastObserverProjector$private fun projectTraversal: String?</ID>
+    <ID>CognitiveComplexMethod:KastObserverProjector.kt:KastObserverProjector.ObserverEvidence.Companion$fun admit: ObserverEvidence?</ID>
+    <ID>CognitiveComplexMethod:KastProvider.kt:KastProviderQualifier$private fun QualifiedKastTool.asBrokerTool: BrokerTool&lt; KastRuntime, KastInvocationInput, KastInvocationOutput, KastToolInputFailure, ></ID>
+    <ID>CognitiveComplexMethod:KastProvider.kt:KastProviderQualifier$private fun admitTool: QualifiedKastTool?</ID>
+    <ID>CognitiveComplexMethod:KastQueryInput.kt:internal fun KastInvocationInput.encodeFor: Refinement&lt;JsonElement, KastToolInputFailure></ID>
+    <ID>CognitiveComplexMethod:KtorBrokerServer.kt:KtorBrokerServer.Companion$private suspend fun startTransport: KtorBrokerServerStart</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:BrokerServiceStartLock$fun withAcquired: BrokerServiceLockExecution</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:JdkBrokerSocketPathObserver$override fun observe: BrokerSocketPathObservation</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:JdkBrokerSocketPathObserver$private fun admitParent: BrokerSocketParentAdmission</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$internal fun destructiveReset: PersistentBrokerServiceAdmission</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$internal fun stop: PersistentBrokerServiceAdmission</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun awaitReadiness: PersistentBrokerServiceAdmission</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun awaitRetirement: BrokerLaunchdServiceRetirement</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun ensurePresent: PersistentBrokerServiceAdmission</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun observeReadiness: BrokerReadinessObservation</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun reconcileAbsent: PersistentBrokerServiceAdmission</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun recoverInvalidReadiness: PersistentBrokerServiceAdmission</ID>
+    <ID>CognitiveComplexMethod:ManagedCodexUpstream.kt:ManagedCodexUpstream.Companion$internal suspend fun start: ManagedCodexUpstreamStart</ID>
+    <ID>CognitiveComplexMethod:PersistentBrokerService.kt:BrokerServiceLaunchCommand.Companion$fun resolve: BrokerServiceLaunchCommandResolution</ID>
+    <ID>CognitiveComplexMethod:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$private fun readEnvironment: Map&lt;String, String>?</ID>
+    <ID>CognitiveComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore$private fun flush: Boolean</ID>
+    <ID>CognitiveComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$internal fun open: FileThreadCatalogStoreOpen</ID>
+    <ID>CognitiveComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$private fun readDocument: ThreadStoreDocumentRead</ID>
+    <ID>CognitiveComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$fun enroll: Refinement&lt;WorkspaceRegistrationAcknowledgement, EnrollmentFailure></ID>
+    <ID>CognitiveComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun retainTo: WorkspaceRegistryRetention</ID>
+    <ID>CognitiveComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun snapshot: WorkspaceRegistryRead</ID>
+    <ID>CognitiveComplexMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$private suspend fun launch</ID>
+    <ID>CognitiveComplexMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun demand: InstalledWorkerStart</ID>
+    <ID>CognitiveComplexMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun handle</ID>
+    <ID>CognitiveComplexMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun stop: InstalledWorkerStop</ID>
+    <ID>CognitiveComplexMethod:WorkspaceWorkerAdmission.kt:WorkerAdmissionCoordinator$@Synchronized fun request: WorkerDemand</ID>
+    <ID>ComplexCondition:AgentSessionBootstrap.kt:HostedToolCatalog.Companion$definitions.groupBy(HostedToolDefinition::operation).values.any { presentations -> val owner = presentations.first() presentations.any { it.effect != owner.effect || it.approval != owner.approval || it.executionBudget != owner.executionBudget || it.outputSchema.digest != owner.outputSchema.digest } }</ID>
+    <ID>ComplexCondition:AppServerManagement.kt:InstalledAppServerManager$(action == AppServerAction.Enable || action == AppServerAction.Repair || action == AppServerAction.Bootstrap) &amp;&amp; InstallationLifecycleFence.observe(installationRoot) != InstallationLifecycleStartAdmission.AVAILABLE</ID>
+    <ID>ComplexCondition:BrokerDomain.kt:ProviderVersion.Companion$raw.isNotBlank() &amp;&amp; raw.length &lt;= 128 &amp;&amp; raw.none { character -> character == '\n' || character == '\r' || character == '\u0000' }</ID>
+    <ID>ComplexCondition:BrokerSessionHub.kt:BrokerSessionHub.Session$!attached &amp;&amp; calls.get() == 0 &amp;&amp; !tasks.hasWork(id) &amp;&amp; !ownsPendingRequest</ID>
+    <ID>ComplexCondition:BrokerSessionHub.kt:BrokerSessionHub.Session$routing is ProtocolRouting.ForwardUpstream &amp;&amp; thread != null &amp;&amp; tasks.contains(thread) &amp;&amp; method != null &amp;&amp; method !in READ_METHODS</ID>
+    <ID>ComplexCondition:BrokerSessionHub.kt:BrokerSessionHub.Session$thread != null &amp;&amp; tasks.contains(thread) &amp;&amp; method != null &amp;&amp; !doc.containsKey("id") &amp;&amp; routing is ProtocolRouting.ForwardDownstream</ID>
+    <ID>ComplexCondition:CodexHostInvocation.kt:CodexClientArguments.Companion$bounded.value.any { argument -> argument == "-C" || argument.startsWith("-C") || argument == "--cd" || argument.startsWith("--cd=") }</ID>
+    <ID>ComplexCondition:CodexProtocolAdapter.kt:CodexProtocolAdapter$threadId == null || turnId == null || callId == null || tool == null || arguments == null</ID>
+    <ID>ComplexCondition:DesktopAttachment.kt:DesktopBundle.Companion$path.nameCount &lt; 4 || path.parent.fileName.toString() != "MacOS" || path.parent.parent.fileName.toString() != "Contents" || !path.parent.parent.parent.fileName.toString().endsWith(".app")</ID>
+    <ID>ComplexCondition:InstalledBrokerServer.kt:OwnedBrokerServiceReadiness$!original.isRegularFile || original.isSymbolicLink || original.fileKey() != fileKey || readServiceState(managed.path) != state</ID>
+    <ID>ComplexCondition:InstalledWorkerClient.kt:InstalledWorkerClient$binding.installationId != published.installation || binding.stateEpoch.toString() != published.epoch || binding.serviceGeneration.toString() != published.generation || (request.action == WorkerControlAction.DEMAND &amp;&amp; binding.configurationIdentity != request.configurationIdentity)</ID>
+    <ID>ComplexCondition:InstalledWorkerClient.kt:InstalledWorkerClient$document["status"] != JsonPrimitive("READY") || document["serviceGeneration"] != JsonPrimitive(publication.generation) || document["installationId"] != JsonPrimitive(publication.installation) || document["stateEpoch"] != JsonPrimitive(publication.epoch)</ID>
+    <ID>ComplexCondition:InstalledWorkerClient.kt:InstalledWorkerClient$prompted || request.action != WorkerControlAction.DEMAND || request.startup != WorkerStartupAction.SEED || request.seedConsent != WorkerSeedConsentSelection.INTERACTIVE</ID>
+    <ID>ComplexCondition:InstalledWorkerClient.kt:InstalledWorkerClient$state !is BrokerServiceStateDocument.Ready || state.schemaVersion != BROKER_SERVICE_STATE_SCHEMA_VERSION || (requireDesired &amp;&amp; state.serviceIdentity != command.identity.value)</ID>
+    <ID>ComplexCondition:InstalledWorkerClient.kt:InstalledWorkerClient$status["status"] != JsonPrimitive("READY") || status["serviceGeneration"] != JsonPrimitive(published.generation) || status["installationId"] != JsonPrimitive(published.installation) || status["stateEpoch"] != JsonPrimitive(published.epoch) || (startService &amp;&amp; status["configurationIdentity"] != JsonPrimitive(published.configuration))</ID>
+    <ID>ComplexCondition:InstalledWorkerEffects.kt:InstalledWorkerEndpoint.Companion$root.isAbsolute &amp;&amp; root.normalize() == root &amp;&amp; socket.isAbsolute &amp;&amp; socket.normalize() == socket</ID>
+    <ID>ComplexCondition:InstalledWorkerEffects.kt:WorkerRouteBinding.Installation.Companion$!installationId.matches(Regex("[A-Za-z0-9._:-]{1,256}")) || epoch.toString() != stateEpoch || generation.toString() != serviceGeneration || !configurationIdentity.matches(Regex("[0-9a-f]{64}")) || workspaceRevision &lt; 1</ID>
+    <ID>ComplexCondition:KastObserverProjector.kt:KastObserverProjector$occurrence.strictString("candidateSelector") == null || occurrence.strictString("file") == null || occurrence["range"] !is JsonObject || edge.strictString("provenance") !in RELATION_PROVENANCE || edge.strictString("coverage") != "exact-compiler-confirmed"</ID>
+    <ID>ComplexCondition:KastObserverProjector.kt:KastObserverProjector$occurrence.strictString("candidateSelector") == null || occurrence.strictString("file") == null || occurrence["range"] !is JsonObject || relation.strictString("provenance") !in RELATION_PROVENANCE || relation.strictString("coverage") != "exact-compiler-confirmed"</ID>
+    <ID>ComplexCondition:KastObserverProjector.kt:KastObserverProjector$symbol.strictString("selector") == null || symbol.strictLabel("qualifiedIdentity") == null || symbol["range"] !is JsonObject || symbol["compilerEvidence"] !is JsonObject</ID>
+    <ID>ComplexCondition:KastObserverProjector.kt:KastObserverProjector.ObserverFilePath.Companion$raw.isBlank() || raw.length > MAXIMUM_FILE_LENGTH || canonicalRoot.isBlank() || canonicalRoot.length > MAXIMUM_FILE_LENGTH || raw.any(::isForbiddenPathCharacter) || canonicalRoot.any(::isForbiddenPathCharacter)</ID>
+    <ID>ComplexCondition:KastObserverProjector.kt:KastObserverProjector.ObserverFilePath.Companion$raw.isBlank() || raw.length > MAXIMUM_FILE_LENGTH || raw.any { character -> character == '\n' || character == '\r' || character == '\u0000' }</ID>
+    <ID>ComplexCondition:KastObserverProjector.kt:KastObserverProjector.ObserverFilePath.Companion$value.isBlank() || value == "." || value == ".." || value.startsWith("../")</ID>
+    <ID>ComplexCondition:KastQueryInput.kt:tool.inputBinding == AgentToolInputBinding.Canonical &amp;&amp; operation == tool.hostedDefinition.operation &amp;&amp; operation != CanonicalOperation.QUERY_RUN &amp;&amp; arguments.schemaDigest == tool.inputSchema.digest</ID>
+    <ID>ComplexCondition:ManagedCodexUpstream.kt:ManagedCodexUpstream.Companion$options.maximumMessageBytes &lt;= 0 || options.startupTimeoutMillis &lt;= 0 || !options.codexHome.isAbsolute || options.codexHome.normalize() != options.codexHome || !Files.isDirectory(options.codexHome)</ID>
+    <ID>ComplexCondition:PersistentBrokerService.kt:BrokerChildEnvironment.Companion$value.length > MAXIMUM_CHILD_ENVIRONMENT_VALUE_CHARACTERS || value.any { it == '\n' || it == '\r' || it == '\u0000' }</ID>
+    <ID>ComplexCondition:PersistentBrokerService.kt:BrokerExecutableSearchPath.Companion$directories.any { directory -> val raw = directory.toString() !directory.isAbsolute || directory.normalize() != directory || raw.isBlank() || raw.any(Char::isISOControl) || File.pathSeparatorChar in raw }</ID>
+    <ID>ComplexCondition:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$arguments.size !in 5..MAXIMUM_ARGUMENTS || arguments[0] != "/usr/bin/env" || arguments[1] != "-i" || arguments.takeLast(3) != listOf(observed.kast.toString(), "broker", "serve")</ID>
+    <ID>ComplexCondition:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$environment["HOME"] != userHome.toString() || environment["CODEX_HOME"] != codexHome.toString() || environment["KAST_CONFIGURATION_FILE"] != installationRoot.resolve("config/environment").toString() || environment["BROKER_READINESS_FILE"] != observed.readinessFile.toString()</ID>
+    <ID>ComplexCondition:SavedConfigurationIngress.kt:InstalledSavedConfigurationIngress$selector.isBlank() || selector.length > 4096 || !path.isAbsolute || path.normalize() != path</ID>
+    <ID>ComplexCondition:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$!destination.isAbsolute || destination.normalize() != destination || Files.isSymbolicLink(destination) || !Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(parent) || parent.toRealPath() != parent</ID>
+    <ID>ComplexCondition:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$existing != null &amp;&amp; startup is InstalledWorkerStartup.Reuse &amp;&amp; startup.ideHome != null &amp;&amp; startups[workspace.id]?.startup?.ideHome != startup.ideHome</ID>
+    <ID>ComplexCondition:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$selected is WorkerDemand.Awaiting &amp;&amp; !(startup is InstalledWorkerStartup.Reuse &amp;&amp; startup.ideHome == null) &amp;&amp; startups[workspace.id]?.startup != startup</ID>
+    <ID>ComplexCondition:WorkspaceWorkerAdmission.kt:WorkerAdmissionCoordinator$entry.reservation !== permit.reservation || phase !is Phase.Starting || phase.permit !== permit || admissionState == AdmissionState.DRAINING</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolAllSource$val declaration_kinds: BoundedProtocolList&lt;PublicToolDeclarationKinds>?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolCheckDiagnostics$val max_diagnostics: Int?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolCheckDiagnostics$val relative_path: ProtocolText</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolDirectoryScope$val include_subdirectories: Boolean</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolDirectoryScope$val relative_directory_path: ProtocolText</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolDirectoryScope$val source_set_names: BoundedProtocolList&lt;ProtocolText>?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolPackageScope$val include_subpackages: Boolean</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolPackageScope$val package_name: ProtocolText</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolPackageScope$val source_set_names: BoundedProtocolList&lt;ProtocolText>?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolQuerySymbols$val return_fields: BoundedProtocolList&lt;PublicToolReturnFields>?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolReferenceSource$val symbol_refs: BoundedProtocolList&lt;ProtocolText></ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchClasses$val class_name: ProtocolText</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchClasses$val name_match: PublicToolNameMatch?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchDeclarations$val declaration_kinds: BoundedProtocolList&lt;PublicToolDeclarationKinds>?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchDeclarations$val declaration_name: ProtocolText</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchDeclarations$val name_match: PublicToolNameMatch?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchFunctions$val function_name: ProtocolText</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchFunctions$val name_match: PublicToolNameMatch?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchSource$val declaration_kinds: BoundedProtocolList&lt;PublicToolDeclarationKinds>?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchSource$val declaration_name: ProtocolText</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchSource$val name_match: PublicToolNameMatch?</ID>
+    <ID>CyclomaticComplexMethod:AppServerManagement.kt:InstalledAppServerManager$override fun execute: AppServerManagementResult</ID>
+    <ID>CyclomaticComplexMethod:AppServerManagement.kt:InstalledAppServerManager$private fun passiveStatus: AppServerManagementResult</ID>
+    <ID>CyclomaticComplexMethod:BrokerInstallationState.kt:BrokerInstallationState$private fun identity: Refinement&lt;String, InstallationStateFailure></ID>
+    <ID>CyclomaticComplexMethod:BrokerInstallationState.kt:BrokerInstallationState$private fun readEpoch: Refinement&lt;ThreadBindingOwner.Installation, InstallationStateFailure></ID>
+    <ID>CyclomaticComplexMethod:BrokerProcess.kt:JdkBrokerProcessExecutor$override suspend fun execute: BrokerProcessExecution</ID>
+    <ID>CyclomaticComplexMethod:BrokerSessionHub.kt:BrokerSessionHub$private fun control: String</ID>
+    <ID>CyclomaticComplexMethod:BrokerSessionHub.kt:BrokerSessionHub.Session$private suspend fun acceptLocked</ID>
+    <ID>CyclomaticComplexMethod:BrokerSessionHub.kt:BrokerSessionHub.Session$private suspend fun receiveLocked</ID>
+    <ID>CyclomaticComplexMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$internal suspend fun fromUpstream: ProtocolRouting</ID>
+    <ID>CyclomaticComplexMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$private fun projectToolLifecycle: ProtocolRouting</ID>
+    <ID>CyclomaticComplexMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$private fun threadStart: ProtocolRouting</ID>
+    <ID>CyclomaticComplexMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$private suspend fun bindExistingThread: ProtocolRouting</ID>
+    <ID>CyclomaticComplexMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$private suspend fun recordThreadOperation: ProtocolRouting</ID>
+    <ID>CyclomaticComplexMethod:CodexProtocolContracts.kt:CodexProtocolContracts.Companion$internal fun define: Validation&lt;CodexProtocolContracts, CodexProtocolContractFailure></ID>
+    <ID>CyclomaticComplexMethod:ConfigurationAppliedInspection.kt:InstalledConfigurationAppliedInspection$suspend fun read: AppliedConfigurationInspection</ID>
+    <ID>CyclomaticComplexMethod:CoordinatorStatus.kt:CoordinatorStatusSnapshot.Companion$fun admit: Refinement&lt;CoordinatorStatusSnapshot, WorkerControlFailure></ID>
+    <ID>CyclomaticComplexMethod:DesktopStdioHost.kt:DesktopStdioHost$override suspend fun run: CodexIntegrationRun</ID>
+    <ID>CyclomaticComplexMethod:InstalledBrokerServer.kt:InstalledBrokerHost$suspend fun prepare: InstalledBrokerHostStart</ID>
+    <ID>CyclomaticComplexMethod:InstalledBrokerServer.kt:InstalledBrokerServerConfiguration.Companion$internal fun admit: InstalledBrokerServerConfiguration</ID>
+    <ID>CyclomaticComplexMethod:InstalledBrokerServer.kt:OwnedBrokerServiceReadiness$private fun transition: BrokerReadinessTransition</ID>
+    <ID>CyclomaticComplexMethod:InstalledCodexClientLauncher.kt:InstalledCodexClientLauncher$override fun launch: CodexClientLaunchRun</ID>
+    <ID>CyclomaticComplexMethod:InstalledCoordinator.kt:InstalledCoordinatorConfiguration$fun admit: Refinement&lt;InstalledCoordinatorOptions, InstalledBrokerServerConfigurationFailure></ID>
+    <ID>CyclomaticComplexMethod:InstalledWorkerClient.kt:InstalledWorkerClient$private suspend fun &lt;T> exchange: T</ID>
+    <ID>CyclomaticComplexMethod:InstalledWorkerClient.kt:InstalledWorkerClient$private suspend fun &lt;T> receiveResult: T</ID>
+    <ID>CyclomaticComplexMethod:InstalledWorkerClient.kt:WorkerControlReply.Companion$fun decode: InstalledWorkerStart</ID>
+    <ID>CyclomaticComplexMethod:KastObserverProjector.kt:KastObserverProjector$private fun projectSource: String?</ID>
+    <ID>CyclomaticComplexMethod:KastObserverProjector.kt:KastObserverProjector$private fun projectTraversal: String?</ID>
+    <ID>CyclomaticComplexMethod:KastObserverProjector.kt:KastObserverProjector.ObserverEvidence.Companion$fun admit: ObserverEvidence?</ID>
+    <ID>CyclomaticComplexMethod:KastProvider.kt:KastProviderQualifier$private fun admitProjection: QualifiedKastProjection?</ID>
+    <ID>CyclomaticComplexMethod:KastProvider.kt:KastProviderQualifier$private fun admitTool: QualifiedKastTool?</ID>
+    <ID>CyclomaticComplexMethod:KastProvider.kt:KastProviderQualifier$private suspend fun qualifyContract: KastContractQualification</ID>
+    <ID>CyclomaticComplexMethod:MacOsPersistentBrokerServiceHost.kt:JdkBrokerSocketPathObserver$override fun observe: BrokerSocketPathObservation</ID>
+    <ID>CyclomaticComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$internal fun destructiveReset: PersistentBrokerServiceAdmission</ID>
+    <ID>CyclomaticComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$internal fun stop: PersistentBrokerServiceAdmission</ID>
+    <ID>CyclomaticComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun observeReadiness: BrokerReadinessObservation</ID>
+    <ID>CyclomaticComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun retireReadiness: BrokerReadinessRetirement</ID>
+    <ID>CyclomaticComplexMethod:ManagedCodexUpstream.kt:ManagedCodexUpstream.Companion$internal suspend fun start: ManagedCodexUpstreamStart</ID>
+    <ID>CyclomaticComplexMethod:PersistentBrokerService.kt:BrokerServiceLaunchCommand.Companion$fun resolve: BrokerServiceLaunchCommandResolution</ID>
+    <ID>CyclomaticComplexMethod:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$fun retirementEnvironment: PublishedBrokerServiceEnvironment?</ID>
+    <ID>CyclomaticComplexMethod:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$private fun readEnvironment: Map&lt;String, String>?</ID>
+    <ID>CyclomaticComplexMethod:SavedConfigurationIngress.kt:InstalledSavedConfigurationIngress$fun read: SavedConfigurationIngress</ID>
+    <ID>CyclomaticComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore$private fun flush: Boolean</ID>
+    <ID>CyclomaticComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$internal fun open: FileThreadCatalogStoreOpen</ID>
+    <ID>CyclomaticComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$private fun readDocument: ThreadStoreDocumentRead</ID>
+    <ID>CyclomaticComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$fun enroll: Refinement&lt;WorkspaceRegistrationAcknowledgement, EnrollmentFailure></ID>
+    <ID>CyclomaticComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun retainTo: WorkspaceRegistryRetention</ID>
+    <ID>CyclomaticComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun snapshot: WorkspaceRegistryRead</ID>
+    <ID>CyclomaticComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$private fun retain: WorkspaceRegistryRetention</ID>
+    <ID>CyclomaticComplexMethod:WorkspaceExecution.kt:WorkspaceExecution$@Synchronized private fun finish</ID>
+    <ID>CyclomaticComplexMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$private suspend fun launch</ID>
+    <ID>CyclomaticComplexMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun demand: InstalledWorkerStart</ID>
+    <ID>CyclomaticComplexMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun handle</ID>
+    <ID>CyclomaticComplexMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun stop: InstalledWorkerStop</ID>
+    <ID>ImplicitDefaultLocale:InstalledWorkspaceConfigurationIngress.kt:InstalledWorkspaceConfigurationIngress$"%02x".format(it)</ID>
+    <ID>ImplicitDefaultLocale:InvocationFence.kt:InvocationFence.Companion$"%02x".format(it)</ID>
+    <ID>ImplicitDefaultLocale:WorkspaceEnrollment.kt:BrokerWorkspaceId.Companion$"%02x".format(it)</ID>
+    <ID>InjectDispatcher:BrokerProcess.kt:JdkBrokerProcessExecutor$IO</ID>
+    <ID>InjectDispatcher:BrokerSessionHub.kt:BrokerSessionHub$IO</ID>
+    <ID>InjectDispatcher:CodexProtocolAdapter.kt:CodexProtocolAdapter$Default</ID>
+    <ID>InjectDispatcher:DesktopStdioHost.kt:DesktopStdioHost$IO</ID>
+    <ID>InjectDispatcher:InstalledBrokerServer.kt:InstalledBrokerServer$Default</ID>
+    <ID>InjectDispatcher:InstalledWorkerClient.kt:InstalledWorkerClient$IO</ID>
+    <ID>InjectDispatcher:MacOsPersistentBrokerServiceHost.kt:JdkBrokerSocketProbe$IO</ID>
+    <ID>InjectDispatcher:ManagedCodexUpstream.kt:JdkCodexAppServerProcess$IO</ID>
+    <ID>InjectDispatcher:ManagedCodexUpstream.kt:JdkCodexAppServerProcessLauncher$IO</ID>
+    <ID>InjectDispatcher:ThreadCatalogStore.kt:FileThreadCatalogStore$IO</ID>
+    <ID>LargeClass:AppServerManagement.kt:InstalledAppServerManager : AppServerManager</ID>
+    <ID>LargeClass:BrokerOperationalLimits.kt:BrokerOperationalLimits</ID>
+    <ID>LargeClass:BrokerSessionHub.kt:BrokerSessionHub$Session</ID>
+    <ID>LargeClass:CodexProtocolAdapter.kt:CodexProtocolAdapter : AutoCloseable</ID>
+    <ID>LargeClass:CodexProtocolContracts.kt:CodexProtocolContracts$Companion</ID>
+    <ID>LargeClass:CodexToolCallProjection.kt:CodexThreadHistoryProjector</ID>
+    <ID>LargeClass:KastObserverProjector.kt:KastObserverProjector</ID>
+    <ID>LargeClass:KastProvider.kt:KastProviderQualifier</ID>
+    <ID>LargeClass:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost : PersistentBrokerServiceHost</ID>
+    <ID>LargeClass:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl</ID>
+    <ID>LongMethod:AppServerManagement.kt:InstalledAppServerManager$override fun execute: AppServerManagementResult</ID>
+    <ID>LongMethod:AppServerManagement.kt:InstalledAppServerManager$private fun passiveStatus: AppServerManagementResult</ID>
+    <ID>LongMethod:Broker.kt:TypedProviderRoute.&lt;no name provided>$override suspend fun dispatch: BrokerDispatch</ID>
+    <ID>LongMethod:BrokerProcess.kt:JdkBrokerProcessExecutor$override suspend fun execute: BrokerProcessExecution</ID>
+    <ID>LongMethod:BrokerSessionHub.kt:BrokerSessionHub$private fun control: String</ID>
+    <ID>LongMethod:BrokerSessionHub.kt:BrokerSessionHub.Session$private suspend fun acceptLocked</ID>
+    <ID>LongMethod:BrokerSessionHub.kt:BrokerSessionHub.Session$private suspend fun receiveLocked</ID>
+    <ID>LongMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$internal suspend fun fromUpstream: ProtocolRouting</ID>
+    <ID>LongMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$private fun threadStart: ProtocolRouting</ID>
+    <ID>LongMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$private suspend fun recordThreadOperation: ProtocolRouting</ID>
+    <ID>LongMethod:CodexProtocolContracts.kt:CodexProtocolContracts.Companion$private fun responseWitness: JsonObject</ID>
+    <ID>LongMethod:CodexProtocolQualifier.kt:CodexProtocolQualifier$internal suspend fun qualify: CodexProtocolQualification</ID>
+    <ID>LongMethod:CodexProtocolQualifier.kt:CodexProtocolQualifier$private fun collectSchemas: CodexSchemaCollection</ID>
+    <ID>LongMethod:CodexToolCallProjection.kt:CodexToolCallProjector$private fun admitCompleted: CodexToolCallProjection</ID>
+    <ID>LongMethod:ConfigurationAppliedInspection.kt:InstalledConfigurationAppliedInspection$suspend fun read: AppliedConfigurationInspection</ID>
+    <ID>LongMethod:DesktopStdioHost.kt:DesktopStdioHost$override suspend fun run: CodexIntegrationRun</ID>
+    <ID>LongMethod:InstalledBrokerServer.kt:InstalledBrokerHost$suspend fun prepare: InstalledBrokerHostStart</ID>
+    <ID>LongMethod:InstalledBrokerServer.kt:InstalledBrokerServer.Companion$internal suspend fun start: InstalledBrokerServerStart</ID>
+    <ID>LongMethod:InstalledBrokerServer.kt:InstalledBrokerServerConfiguration.Companion$internal fun admit: InstalledBrokerServerConfiguration</ID>
+    <ID>LongMethod:InstalledBrokerServer.kt:OwnedBrokerServiceReadiness$private fun transition: BrokerReadinessTransition</ID>
+    <ID>LongMethod:InstalledCodexClientLauncher.kt:InstalledCodexClientLauncher$override fun launch: CodexClientLaunchRun</ID>
+    <ID>LongMethod:InstalledCoordinator.kt:InstalledCoordinator.Companion$suspend fun start: InstalledCoordinatorStart</ID>
+    <ID>LongMethod:InstalledCoordinator.kt:InstalledCoordinatorConfiguration$fun admit: Refinement&lt;InstalledCoordinatorOptions, InstalledBrokerServerConfigurationFailure></ID>
+    <ID>LongMethod:InstalledWorkerClient.kt:InstalledWorkerClient$internal suspend fun status: CoordinatorStatusRead</ID>
+    <ID>LongMethod:InstalledWorkerClient.kt:InstalledWorkerClient$private suspend fun &lt;T> exchange: T</ID>
+    <ID>LongMethod:InstalledWorkerClient.kt:WorkerControlReply.Companion$fun decode: InstalledWorkerStart</ID>
+    <ID>LongMethod:KastCodexMain.kt:OwnedCodexIntegration$@Synchronized fun close: CodexIntegrationShutdown</ID>
+    <ID>LongMethod:KastCodexMain.kt:suspend fun runInstalledCodex: CodexIntegrationRun</ID>
+    <ID>LongMethod:KastObserverProjector.kt:KastObserverProjector$private fun projectTraversal: String?</ID>
+    <ID>LongMethod:KastObserverProjector.kt:KastObserverProjector.ObserverEvidence.Companion$fun admit: ObserverEvidence?</ID>
+    <ID>LongMethod:KastProvider.kt:KastProviderQualifier$private fun QualifiedKastTool.asBrokerTool: BrokerTool&lt; KastRuntime, KastInvocationInput, KastInvocationOutput, KastToolInputFailure, ></ID>
+    <ID>LongMethod:KastProvider.kt:KastProviderQualifier$private fun admitTool: QualifiedKastTool?</ID>
+    <ID>LongMethod:KastProvider.kt:KastProviderQualifier$private suspend fun qualifyContract: KastContractQualification</ID>
+    <ID>LongMethod:KtorBrokerServer.kt:KtorBrokerServer.Companion$private suspend fun startTransport: KtorBrokerServerStart</ID>
+    <ID>LongMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$internal fun destructiveReset: PersistentBrokerServiceAdmission</ID>
+    <ID>LongMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun observeReadiness: BrokerReadinessObservation</ID>
+    <ID>LongMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun submit: BrokerLaunchdServiceSubmission</ID>
+    <ID>LongMethod:ManagedCodexUpstream.kt:ManagedCodexUpstream.Companion$internal suspend fun start: ManagedCodexUpstreamStart</ID>
+    <ID>LongMethod:PersistentBrokerService.kt:BrokerServiceLaunchCommand.Companion$fun resolve: BrokerServiceLaunchCommandResolution</ID>
+    <ID>LongMethod:PublicToolMapping.kt:internal fun PublicToolDocument.lower: Refinement&lt;PublicToolCanonical, PublicToolInputFailure></ID>
+    <ID>LongMethod:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$private fun readEnvironment: Map&lt;String, String>?</ID>
+    <ID>LongMethod:SavedConfigurationIngress.kt:InstalledSavedConfigurationIngress$fun read: SavedConfigurationIngress</ID>
+    <ID>LongMethod:ThreadCatalogStore.kt:FileThreadCatalogStore$private fun flush: Boolean</ID>
+    <ID>LongMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$internal fun open: FileThreadCatalogStoreOpen</ID>
+    <ID>LongMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$private fun readDocument: ThreadStoreDocumentRead</ID>
+    <ID>LongMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$fun enroll: Refinement&lt;WorkspaceRegistrationAcknowledgement, EnrollmentFailure></ID>
+    <ID>LongMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun retainTo: WorkspaceRegistryRetention</ID>
+    <ID>LongMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$private fun retain: WorkspaceRegistryRetention</ID>
+    <ID>LongMethod:WorkspaceExecution.kt:WorkspaceExecution$@Synchronized fun snapshot: JsonObject</ID>
+    <ID>LongMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$private fun receipt: Boolean</ID>
+    <ID>LongMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun demand: InstalledWorkerStart</ID>
+    <ID>LongMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun handle</ID>
+    <ID>LongMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun stop: InstalledWorkerStop</ID>
+    <ID>LongParameterList:Broker.kt:BrokerTool</ID>
+    <ID>LongParameterList:BrokerProcess.kt:BrokerProcessRequest</ID>
+    <ID>LongParameterList:BrokerProcess.kt:BrokerProcessRequest.Companion$internal fun admit: Refinement&lt;BrokerProcessRequest, BrokerProcessRequestFailure></ID>
+    <ID>LongParameterList:CodexProtocolAdapter.kt:CodexProtocolAdapter</ID>
+    <ID>LongParameterList:CodexProtocolQualifier.kt:CodexProtocolQualificationOptions</ID>
+    <ID>LongParameterList:CodexProtocolQualifier.kt:CodexProtocolQualificationOptions.Companion$internal fun admit: Refinement&lt;CodexProtocolQualificationOptions, CodexProtocolOptionsFailure></ID>
+    <ID>LongParameterList:InstalledBrokerServer.kt:InstalledBrokerServerConfiguration.Companion$internal fun admit: InstalledBrokerServerConfiguration</ID>
+    <ID>LongParameterList:InstalledCodexClientLauncher.kt:InstalledCodexClientLauncher</ID>
+    <ID>LongParameterList:InstalledCoordinator.kt:InstalledCoordinatorOptions</ID>
+    <ID>LongParameterList:KastProvider.kt:KastProviderOptions.Companion$internal fun admit: Refinement&lt;KastProviderOptions, KastProviderOptionsFailure></ID>
+    <ID>LongParameterList:PersistentBrokerService.kt:BrokerServiceIdentity.Companion$internal fun derive: BrokerServiceIdentity</ID>
+    <ID>LongParameterList:PersistentBrokerService.kt:BrokerServiceLaunchCommand</ID>
+    <ID>LongParameterList:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl</ID>
+    <ID>LongParameterList:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$private suspend fun recoverLostWorker: InstalledWorkerStart</ID>
+    <ID>LongParameterList:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$private suspend fun retireAndDemand: InstalledWorkerStart</ID>
+    <ID>LongParameterList:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl.Companion$fun create: Refinement&lt;WorkspaceRuntimeControl, WorkerControlFailure></ID>
+    <ID>LoopWithTooManyJumpStatements:KtorBrokerServer.kt:KtorBrokerServer.Companion$for</ID>
+    <ID>MagicNumber:BrokerDomain.kt:512</ID>
+    <ID>MagicNumber:BrokerDomain.kt:ProviderVersion.Companion$128</ID>
+    <ID>MagicNumber:BrokerDomain.kt:ToolDescription.Companion$4_096</ID>
+    <ID>MagicNumber:BrokerInstallationLayout.kt:BrokerInstallationLayout.Companion$16</ID>
+    <ID>MagicNumber:BrokerSessionHub.kt:BrokerSessionHub$32040</ID>
+    <ID>MagicNumber:CodexProtocolAdapter.kt:CodexProtocolAdapter$32040</ID>
+    <ID>MagicNumber:CodexProtocolContracts.kt:CodexProtocolContracts.Companion$4</ID>
+    <ID>MagicNumber:CodexProtocolQualifier.kt:CodexVersion.Companion$512</ID>
+    <ID>MagicNumber:DesktopAttachment.kt:DesktopBundle.Companion$4</ID>
+    <ID>MagicNumber:KastProvider.kt:KastCliVersion.Companion$512</ID>
+    <ID>MagicNumber:KastProvider.kt:KastProviderQualifier$10</ID>
+    <ID>MagicNumber:KastProvider.kt:KastProviderQualifier$16</ID>
+    <ID>MagicNumber:KastProvider.kt:KastProviderQualifier$16_384</ID>
+    <ID>MagicNumber:KastProvider.kt:KastProviderQualifier$3</ID>
+    <ID>MagicNumber:KastProvider.kt:KastProviderQualifier$4_096</ID>
+    <ID>MagicNumber:KastProvider.kt:KastProviderQualifier$64</ID>
+    <ID>MagicNumber:ObserverWorkingDirectory.kt:ObserverWorkingDirectory.Companion$4_096</ID>
+    <ID>MagicNumber:PersistentBrokerService.kt:BrokerLaunchdServiceLabel.Companion$32</ID>
+    <ID>MagicNumber:PublicQueryPackageName.kt:PublicQueryPackageName.Companion$1_048_576</ID>
+    <ID>MagicNumber:PublicToolMapping.kt:DeclarationName.Companion$256</ID>
+    <ID>MagicNumber:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$3</ID>
+    <ID>MagicNumber:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$5</ID>
+    <ID>MagicNumber:SavedConfigurationIngress.kt:InstalledSavedConfigurationIngress$4096</ID>
+    <ID>MagicNumber:SharedTaskSessions.kt:ClientConnectionId.Companion$36</ID>
+    <ID>MagicNumber:WorkspaceRelativePath.kt:WorkspaceRelativePath.Companion$1_048_576</ID>
+    <ID>MatchingDeclarationName:KastQueryInput.kt:KastToolInputFailure</ID>
+    <ID>MaxLineLength:AppServerManagement.kt:InstalledAppServerManager$"""{"id":1,"method":"initialize","params":{"clientInfo":{"name":"kast-control","version":"1"}}}"""</ID>
+    <ID>MaxLineLength:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$"$APP_SERVER_ENABLE_ENVIRONMENT=${if (command.host == BrokerHostSelection.Disabled) "0" else "1"}"</ID>
+    <ID>MaxLineLength:PublicQueryDocuments.kt:PublicQueryAll$val kinds: BoundedProtocolList&lt;PublicQueryDeclarationKind> = queryListOf(PublicQueryDeclarationKind.CLASS, PublicQueryDeclarationKind.FUNCTION, PublicQueryDeclarationKind.PROPERTY, PublicQueryDeclarationKind.TYPE_ALIAS)</ID>
+    <ID>MaxLineLength:PublicQueryDocuments.kt:PublicQueryScope.Directory$override val sourceSets: BoundedProtocolList&lt;ProtocolText> = queryListOf(queryValue(ProtocolText.parse("main")), queryValue(ProtocolText.parse("test")))</ID>
+    <ID>MaxLineLength:PublicQueryDocuments.kt:PublicQueryScope.Package$override val sourceSets: BoundedProtocolList&lt;ProtocolText> = queryListOf(queryValue(ProtocolText.parse("main")), queryValue(ProtocolText.parse("test")))</ID>
+    <ID>MaxLineLength:PublicQueryDocuments.kt:PublicQueryScopeEnvelope$val sourceSets: BoundedProtocolList&lt;ProtocolText> = queryListOf(queryValue(ProtocolText.parse("main")), queryValue(ProtocolText.parse("test")))</ID>
+    <ID>MaxLineLength:PublicQueryDocuments.kt:PublicQuerySearch$val kinds: BoundedProtocolList&lt;PublicQueryDeclarationKind> = queryListOf(PublicQueryDeclarationKind.CLASS, PublicQueryDeclarationKind.FUNCTION, PublicQueryDeclarationKind.PROPERTY, PublicQueryDeclarationKind.TYPE_ALIAS)</ID>
+    <ID>MaxLineLength:PublicToolDocuments.kt:PublicToolDefaults$val declarationKinds = toolDefault(BoundedProtocolList.create(listOf(PublicToolDeclarationKinds.CLASS, PublicToolDeclarationKinds.FUNCTION, PublicToolDeclarationKinds.PROPERTY, PublicToolDeclarationKinds.TYPE_ALIAS)))</ID>
+    <ID>MaxLineLength:PublicToolDocuments.kt:PublicToolDefaults$val returnFields = toolDefault(BoundedProtocolList.create(listOf(PublicToolReturnFields.NAME, PublicToolReturnFields.LOCATION)))</ID>
+    <ID>MaxLineLength:PublicToolDocuments.kt:PublicToolDefaults$val searchFields = toolDefault(BoundedProtocolList.create(listOf(PublicToolReturnFields.NAME, PublicToolReturnFields.LOCATION, PublicToolReturnFields.SIGNATURE)))</ID>
+    <ID>MaxLineLength:PublicToolDocuments.kt:PublicToolDefaults$val sourceSets = toolDefault(BoundedProtocolList.create(listOf(toolDefault(ProtocolText.parse("main")), toolDefault(ProtocolText.parse("test")))))</ID>
+    <ID>MaxLineLength:PublicToolDocuments.kt:PublicToolScopeSerializer$override</ID>
+    <ID>MaxLineLength:PublicToolDocuments.kt:internal</ID>
+    <ID>MultilineLambdaItParameter:AgentSessionBootstrap.kt:HostedToolCatalog.Companion${ it.effect != owner.effect || it.approval != owner.approval || it.executionBudget != owner.executionBudget || it.outputSchema.digest != owner.outputSchema.digest }</ID>
+    <ID>MultilineLambdaItParameter:BrokerInstallationState.kt:BrokerInstallationState${ val bytes = it.readNBytes(BrokerOperationalLimits.maximumEpochBytes + 1) if (bytes.size > BrokerOperationalLimits.maximumEpochBytes) return Refinement.Rejected(InstallationStateFailure.EPOCH_REJECTED) Json.parseToJsonElement(bytes.toString(Charsets.UTF_8)).jsonObject }</ID>
+    <ID>MultilineLambdaItParameter:BrokerSessionHub.kt:BrokerSessionHub${ try { it.close() } catch (_: Exception) { /* Retire all owned sessions. */ } }</ID>
+    <ID>MultilineLambdaItParameter:BrokerSessionHub.kt:BrokerSessionHub.Session${ tasks.reconcile( returned, it, turn.text("status") in setOf("completed", "interrupted", "failed"), ) }</ID>
+    <ID>MultilineLambdaItParameter:InstalledWorkerClient.kt:InstalledWorkerClient${ val bytes = it.readNBytes(BrokerOperationalLimits.maximumControlStateBytes + 1) if (bytes.size > BrokerOperationalLimits.maximumControlStateBytes) throw java.io.IOException("state rejected") bytes.toString(Charsets.UTF_8) }</ID>
+    <ID>MultilineLambdaItParameter:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand${ it.identity.value == publishedIdentity &amp;&amp; it.readinessFile.toString() == publishedReadiness &amp;&amp; it.stateDirectory == observed.stateDirectory &amp;&amp; it.serviceLabel.value == observed.serviceLabel.value }</ID>
+    <ID>MultilineLambdaItParameter:SharedTaskSessions.kt:SharedTaskSessions${ if (it.activity is TaskActivity.ReconciliationRequired) { it.activity = TaskActivity.Idle it.pending.clear() if (it.controller !in connections) it.controller = null } }</ID>
+    <ID>MultilineLambdaItParameter:SharedTaskSessions.kt:SharedTaskSessions${ it.activity = TaskActivity.Idle if (it.pending.isEmpty() &amp;&amp; it.controller !in connections) it.controller = null }</ID>
+    <ID>MultilineLambdaItParameter:SharedTaskSessions.kt:SharedTaskSessions${ it.activity = TaskActivity.ReconciliationRequired((it.activity as? TaskActivity.Active)?.turnId) it.controller = null }</ID>
+    <ID>MultilineLambdaItParameter:SharedTaskSessions.kt:SharedTaskSessions${ it.observers -= client if (it.controller == client &amp;&amp; it.activity == TaskActivity.Idle &amp;&amp; it.pending.isEmpty()) it.controller = null }</ID>
+    <ID>MultilineLambdaItParameter:SharedTaskSessions.kt:SharedTaskSessions${ it.pending.remove(request) if (it.activity == TaskActivity.Idle &amp;&amp; it.pending.isEmpty() &amp;&amp; it.controller !in connections) { it.controller = null } }</ID>
+    <ID>MultilineLambdaItParameter:WorkspaceExecution.kt:WorkspaceExecution${ put("failure", it.name) put("certainty", it.certainty.name.lowercase()) }</ID>
+    <ID>MultilineLambdaItParameter:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl${ withTimeoutOrNull(BrokerOperationalLimits.workerStartupJoin.value) { it.join() true } == true }</ID>
+    <ID>NamedArguments:Broker.kt:CatalogTool( tool.name, tool.description, tool.loading, tool.inputSchema.document, )</ID>
+    <ID>NamedArguments:Broker.kt:ProviderRegistration$ProviderToolDocument( tool.name, tool.description, tool.loading, tool.input.schema, tool.outputSchema, )</ID>
+    <ID>NamedArguments:BrokerDomain.kt:BrokerInvocationContext.Companion$BrokerInvocationContext( admittedThread, admittedTurn, admittedCall, admittedDirectory, )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$ConfigurationOperationalLimit(key, ":app-server", value, unit, scope, "BrokerOperationalLimits.$property")</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.calls.per_connection", inFlightCallsPerConnection.toLong(), ConfigurationUnit.COUNT, ConfigurationScope.HOST_PROFILE, "inFlightCallsPerConnection", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.calls.per_provider", inFlightCallsPerProvider.toLong(), ConfigurationUnit.COUNT, ConfigurationScope.HOST_PROFILE, "inFlightCallsPerProvider", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.catalog.maximum_bytes", maximumCatalogBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.HOST_PROFILE, "maximumCatalogBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.catalog.maximum_descriptors", maximumDescriptorCount.toLong(), ConfigurationUnit.COUNT, ConfigurationScope.HOST_PROFILE, "maximumDescriptorCount", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.client.connect", clientConnect.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.REQUEST, "clientConnect", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.client.maximum_message_bytes", maximumClientMessageBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.REQUEST, "maximumClientMessageBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.client.process_retirement_wait", clientProcessRetirementWait.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.HOST_PROFILE, "clientProcessRetirementWait", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.client.shutdown", clientShutdown.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.HOST_PROFILE, "clientShutdown", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.codex.command.maximum_output_bytes", maximumCodexCommandOutputBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.REQUEST, "maximumCodexCommandOutputBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.codex.qualification", codexQualification.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.HOST_PROFILE, "codexQualification", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.codex.schema.default_bytes", defaultCodexSchemaBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.HOST_PROFILE, "defaultCodexSchemaBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.codex.schema.installed_bytes", installedCodexSchemaBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.HOST_PROFILE, "installedCodexSchemaBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.codex.schema.maximum_files", maximumCodexSchemaFiles.toLong(), ConfigurationUnit.COUNT, ConfigurationScope.HOST_PROFILE, "maximumCodexSchemaFiles", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.connection.initialization", connectionInitialization.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.HOST_PROFILE, "connectionInitialization", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.connections.maximum", maximumConnections.toLong(), ConfigurationUnit.COUNT, ConfigurationScope.INSTALLATION, "maximumConnections", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.control.state.maximum_bytes", maximumControlStateBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.INSTALLATION, "maximumControlStateBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.desktop.inspection", desktopInspection.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.REQUEST, "desktopInspection", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.desktop.inspection.maximum_bytes", maximumDesktopInspectionBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.REQUEST, "maximumDesktopInspectionBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.desktop.shutdown_phase", desktopShutdown.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.HOST_PROFILE, "desktopShutdown", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.epoch.maximum_bytes", maximumEpochBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.INSTALLATION, "maximumEpochBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.gradle.invocation", gradleInvocation.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.REQUEST, "gradleInvocation", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.gradle.maximum_output_bytes", maximumGradleOutputBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.REQUEST, "maximumGradleOutputBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.host.argument.maximum_bytes", maximumHostArgumentBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.HOST_PROFILE, "maximumHostArgumentBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.host.argument.maximum_count", maximumHostArgumentCount.toLong(), ConfigurationUnit.COUNT, ConfigurationScope.HOST_PROFILE, "maximumHostArgumentCount", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.inventory.maximum_bytes", maximumInventoryBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.INSTALLATION, "maximumInventoryBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.inventory.maximum_entries", maximumInventoryEntries.toLong(), ConfigurationUnit.COUNT, ConfigurationScope.INSTALLATION, "maximumInventoryEntries", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.invocation_journal.maximum_bytes", maximumInvocationJournalBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.INSTALLATION, "maximumInvocationJournalBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.invocations.maximum", maximumInvocations.toLong(), ConfigurationUnit.COUNT, ConfigurationScope.INSTALLATION, "maximumInvocations", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.kast.maximum_output_bytes", maximumKastOutputBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.REQUEST, "maximumKastOutputBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.kast.qualification.maximum", maximumKastQualification.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.HOST_PROFILE, "maximumKastQualification", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.kast.schema.maximum_bytes", maximumKastSchemaBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.REQUEST, "maximumKastSchemaBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.kast.version.maximum_bytes", maximumKastVersionBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.REQUEST, "maximumKastVersionBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.launchctl.invocation", launchctlInvocation.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.INSTALLATION, "launchctlInvocation", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.management.connect", managementConnect.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.REQUEST, "managementConnect", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.management.exchange", managementExchange.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.REQUEST, "managementExchange", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.message.maximum_bytes", maximumMessageBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.REQUEST, "maximumMessageBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.observer.change.maximum_files", maximumObserverChangeFiles.toLong(), ConfigurationUnit.COUNT, ConfigurationScope.REQUEST, "maximumObserverChangeFiles", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.observer.diff.maximum_bytes", maximumObserverDiffBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.REQUEST, "maximumObserverDiffBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.process.maximum_input_bytes", maximumProcessInputBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.REQUEST, "maximumProcessInputBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.process.maximum_output_bytes", maximumProcessOutputBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.REQUEST, "maximumProcessOutputBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.process.maximum_timeout", maximumProcessTimeout.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.REQUEST, "maximumProcessTimeout", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.process.retirement_wait", processRetirementWait.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.REQUEST, "processRetirementWait", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.provider.startup", providerStartup.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.HOST_PROFILE, "providerStartup", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.readiness.exchange", readinessExchange.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.REQUEST, "readinessExchange", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.registry.maximum_bytes", maximumRegistryBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.INSTALLATION, "maximumRegistryBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.registry.maximum_workspaces", maximumWorkspaces.toLong(), ConfigurationUnit.COUNT, ConfigurationScope.INSTALLATION, "maximumWorkspaces", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.runtime.connections.maximum", maximumRuntimeConnections.toLong(), ConfigurationUnit.COUNT, ConfigurationScope.INSTALLATION, "maximumRuntimeConnections", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.seed.consent", seedConsent.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.REQUEST, "seedConsent", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.seed.consent.maximum_bytes", maximumSeedConsentBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.REQUEST, "maximumSeedConsentBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.server.failed_startup_shutdown", serverFailedStartupShutdown.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.INSTALLATION, "serverFailedStartupShutdown", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.server.shutdown", serverShutdown.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.INSTALLATION, "serverShutdown", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.server.shutdown_grace", serverShutdownGrace.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.INSTALLATION, "serverShutdownGrace", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.server_requests.maximum", maximumServerRequests.toLong(), ConfigurationUnit.COUNT, ConfigurationScope.INSTALLATION, "maximumServerRequests", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.service.child_phases", serviceChildPhases.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.HOST_PROFILE, "serviceChildPhases", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.service.lock_poll", serviceLockPoll.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.INSTALLATION, "serviceLockPoll", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.service.poll", servicePoll.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.INSTALLATION, "servicePoll", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.service.retirement", serviceRetirement.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.INSTALLATION, "serviceRetirement", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.service.start_lock", serviceStartLock.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.INSTALLATION, "serviceStartLock", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.service.startup", serviceStartup.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.INSTALLATION, "serviceStartup", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.session.channel_capacity", sessionChannelCapacity.toLong(), ConfigurationUnit.COUNT, ConfigurationScope.HOST_PROFILE, "sessionChannelCapacity", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.session.close", sessionClose.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.HOST_PROFILE, "sessionClose", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.session.events.maximum", maximumSessionEvents.toLong(), ConfigurationUnit.COUNT, ConfigurationScope.INSTALLATION, "maximumSessionEvents", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.session.send", sessionSend.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.REQUEST, "sessionSend", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.tasks.maximum", maximumTaskSessions.toLong(), ConfigurationUnit.COUNT, ConfigurationScope.INSTALLATION, "maximumTaskSessions", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.thread_catalog.maximum_bytes", maximumThreadStoreBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.INSTALLATION, "maximumThreadStoreBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.tool.argument.maximum_bytes", maximumToolArgumentBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.REQUEST, "maximumToolArgumentBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.tool.result.maximum_bytes", maximumToolResultBytes.toLong(), ConfigurationUnit.BYTES, ConfigurationScope.REQUEST, "maximumToolResultBytes", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.upstream.health_poll", upstreamHealthPoll.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.HOST_PROFILE, "upstreamHealthPoll", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.upstream.process_retirement_wait", upstreamProcessRetirementWait.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.HOST_PROFILE, "upstreamProcessRetirementWait", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.upstream_startup", upstreamStartup.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.HOST_PROFILE, "upstreamStartup", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.worker.control_handshake", workerControlHandshake.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.REQUEST, "workerControlHandshake", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.worker.shutdown_join", workerShutdownJoin.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.INSTALLATION, "workerShutdownJoin", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.worker.startup_join", workerStartupJoin.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.WORKSPACE, "workerStartupJoin", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.workspace.events.maximum", maximumWorkspaceEvents.toLong(), ConfigurationUnit.COUNT, ConfigurationScope.INSTALLATION, "maximumWorkspaceEvents", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.workspace.interaction", workspaceInteraction.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.WORKSPACE, "workspaceInteraction", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.workspace.queue.default", defaultWorkspaceQueued.toLong(), ConfigurationUnit.COUNT, ConfigurationScope.WORKSPACE, "defaultWorkspaceQueued", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.workspace.queue.maximum", maximumWorkspaceQueued.toLong(), ConfigurationUnit.COUNT, ConfigurationScope.WORKSPACE, "maximumWorkspaceQueued", )</ID>
+    <ID>NamedArguments:BrokerOperationalLimits.kt:BrokerOperationalLimits$declaration( "broker.workspace.queue.wait", workspaceQueueWait.value, ConfigurationUnit.MILLISECONDS, ConfigurationScope.WORKSPACE, "workspaceQueueWait", )</ID>
+    <ID>NamedArguments:BrokerProcess.kt:JdkBrokerProcessExecutor$readBounded(input, observedBytes, request.maximumOutputBytes, process)</ID>
+    <ID>NamedArguments:BrokerSessionHub.kt:BrokerSessionHub$Session(ClientConnectionId.fresh(), upstream, id, clientName)</ID>
+    <ID>NamedArguments:BrokerSessionHub.kt:BrokerSessionHub.Session$CodexProtocolAdapter( options.broker, options.contracts, options.threadStore, options.activitySink, sessionBootstrap = options.sessionBootstrap, enrollment = options.enrollment, bindingOwner = options.bindingOwner, )</ID>
+    <ID>NamedArguments:BrokerSessionHub.kt:BrokerSessionHub.Session$ServerRequest(this, recipient.id, doc.getValue("id"), thread)</ID>
+    <ID>NamedArguments:BrokerSessionHub.kt:BrokerSessionHub.Session$SessionActivity(id, SessionStage.TOOL_DISPLAY, SessionOutcome.REJECTED, routing.failure)</ID>
+    <ID>NamedArguments:BrokerSessionHub.kt:BrokerSessionHub.Session$SessionActivity(id, SessionStage.TRANSPORT, SessionOutcome.REJECTED, routing.failure)</ID>
+    <ID>NamedArguments:BrokerSessionHub.kt:BrokerSessionHub.Session$WorkspaceExecutionIdentity( bound.value.id, id, identity.thread, identity.turn, identity.call, )</ID>
+    <ID>NamedArguments:CodexProtocolAdapter.kt:CodexProtocolAdapter$admit( threadId, turnId, callId, binding.workspace.root.path, )</ID>
+    <ID>NamedArguments:CodexProtocolAdapter.kt:CodexProtocolAdapter$admit(threadId, broker.catalog.digest, cwdPath, workspaceRoot, bindingOwner)</ID>
+    <ID>NamedArguments:CodexProtocolAdapter.kt:CodexProtocolAdapter$bindExistingThread( document, message, CodexOwnedSchema.THREAD_FORK_PARAMS, PendingThreadOperationType.FORK, rejectHistory = false, )</ID>
+    <ID>NamedArguments:CodexProtocolAdapter.kt:CodexProtocolAdapter$bindExistingThread( document, message, CodexOwnedSchema.THREAD_RESUME_PARAMS, PendingThreadOperationType.RESUME, rejectHistory = true, )</ID>
+    <ID>NamedArguments:CodexProtocolQualifier.kt:CodexProtocolQualificationOptions.Companion$CodexProtocolQualificationOptions( codexExecutable, home, temporary, processExecutor, maximumSchemaBytes, maximumSchemaFiles, timeoutMillis, )</ID>
+    <ID>NamedArguments:CodexProtocolQualifier.kt:CodexProtocolQualifier$Qualified( version, CodexProtocolDigest.derive(files), files.size, contracts, )</ID>
+    <ID>NamedArguments:CodexToolCallProjection.kt:CodexToolCallProjector$displayItem( item, identity, buildJsonObject { put( "content", buildJsonArray { result.texts.forEach { text -> add( buildJsonObject { put("type", "text") put("text", text.value) } ) } }, ) }, when (completion) { DynamicToolCompletion.SUCCEEDED -> JsonNull DynamicToolCompletion.FAILED -> buildJsonObject { put("message", "Tool call failed") } }, )</ID>
+    <ID>NamedArguments:CodexToolCallProjection.kt:CodexToolCallProjector$displayItem(item, identity.identity, JsonNull, JsonNull)</ID>
+    <ID>NamedArguments:ConfigurationAppliedInspection.kt:InstalledConfigurationAppliedInspection$Acknowledged( scope, acknowledgedIdentity, snapshot.serviceGeneration, evidence, )</ID>
+    <ID>NamedArguments:ConfigurationAppliedInspection.kt:InstalledConfigurationAppliedInspection$Pending( scope, desiredIdentity, acknowledgedIdentity, snapshot.serviceGeneration, evidence, )</ID>
+    <ID>NamedArguments:InstalledBrokerServer.kt:InstalledBrokerServerConfiguration.Companion$ManagedCodexUpstreamOptions( codex, codexHome, privateSocket, launcher, MAXIMUM_MESSAGE_BYTES, UPSTREAM_STARTUP_TIMEOUT_MILLIS, appServerArguments, )</ID>
+    <ID>NamedArguments:InstalledBrokerServer.kt:InstalledBrokerServerConfiguration.Companion$ManagedCodexUpstreamOptions( codex, codexHome, privateSocket, maximumMessageBytes = MAXIMUM_MESSAGE_BYTES, startupTimeoutMillis = UPSTREAM_STARTUP_TIMEOUT_MILLIS, appServerArguments = appServerArguments, )</ID>
+    <ID>NamedArguments:InstalledBrokerServer.kt:InstalledBrokerServerConfiguration.Companion$admit( codex, codexHome, protocolTemporary, processExecutor, maximumSchemaBytes = BrokerOperationalLimits.installedCodexSchemaBytes, maximumSchemaFiles = BrokerOperationalLimits.maximumCodexSchemaFiles, timeoutMillis = BrokerOperationalLimits.codexQualification.value, )</ID>
+    <ID>NamedArguments:InstalledBrokerServer.kt:InstalledBrokerServerConfiguration.Companion$admit( kast.path, canonicalUserHome, processExecutor, toolSelection = toolSelection, readLimits = configuration.readLimits, )</ID>
+    <ID>NamedArguments:InstalledBrokerServer.kt:OwnedBrokerServiceReadiness$Ready( BROKER_SERVICE_STATE_SCHEMA_VERSION, managed.identity.value, managed.instanceId.toString(), VENDORED_BROKER_VERSION, )</ID>
+    <ID>NamedArguments:InstalledBrokerServer.kt:OwnedBrokerServiceReadiness$Rejected( BROKER_SERVICE_STATE_SCHEMA_VERSION, managed.identity.value, managed.instanceId.toString(), VENDORED_BROKER_VERSION, failure, )</ID>
+    <ID>NamedArguments:InstalledBrokerServer.kt:Starting( BROKER_SERVICE_STATE_SCHEMA_VERSION, managed.identity.value, managed.instanceId.toString(), VENDORED_BROKER_VERSION, )</ID>
+    <ID>NamedArguments:InstalledCodexClientLauncher.kt:InstalledCodexClientLauncher$Cli( codex, command.publicSocket, command.codexHome, workingDirectory, )</ID>
+    <ID>NamedArguments:InstalledCodexClientLauncher.kt:InstalledCodexClientLauncher$Desktop(executable, facade, codex, command.codexHome)</ID>
+    <ID>NamedArguments:InstalledCodexClientLauncher.kt:InstalledCodexClientLauncher$debug( command, client, "workspace-preparation-rejected", preparation.serviceFailure?.name?.lowercase() ?: preparation.failure.name.lowercase(), )</ID>
+    <ID>NamedArguments:InstalledCodexClientLauncher.kt:InstalledCodexClientLauncher$debug(command, client, "client-completed", result.exitCode.toString())</ID>
+    <ID>NamedArguments:InstalledCodexClientLauncher.kt:InstalledCodexClientLauncher$debug(command, client, "client-rejected", result.failure.name.lowercase())</ID>
+    <ID>NamedArguments:InstalledCodexClientLauncher.kt:InstalledCodexClientLauncher$debug(command, client, "service-rejected", admission.failure.name.lowercase())</ID>
+    <ID>NamedArguments:InstalledCoordinator.kt:InstalledCoordinator.Companion$create( options.installationRoot, owner, generation, options.configuration, effects, lifecycle = WorkerControlLifecycle.Installed(options.serviceDirectory.resolve("stopped")), hostObservation = frontend::observe, sourceEnvironment = options.environment, )</ID>
+    <ID>NamedArguments:InstalledCoordinator.kt:InstalledCoordinatorConfiguration$InstalledCoordinatorOptions( executable, user, environment.toMap(), root, socket, layout.broker, readiness, configuration, activitySink, )</ID>
+    <ID>NamedArguments:InstalledWorkerClient.kt:InstalledWorkerClient$Published( owner.installationId.value, owner.stateEpoch.value.toString(), state.serviceInstanceId, workerLaunchConfigurationIdentity(command.configuration), )</ID>
+    <ID>NamedArguments:InstalledWorkerClient.kt:InstalledWorkerClient$connectCodexUnixWebSocket( command.publicSocket, CoordinatorStatusProtocol.maximumMessageBytes, BrokerOperationalLimits.clientConnect.value, BrokerControlRoute.RUNTIME, )</ID>
+    <ID>NamedArguments:InstalledWorkerClient.kt:InstalledWorkerClient$connectCodexUnixWebSocket( command.publicSocket, CoordinatorStatusProtocol.maximumMessageBytes, OperationExecutionBudget.LOCAL_QUALIFICATION.value, BrokerControlRoute.RUNTIME, )</ID>
+    <ID>NamedArguments:InstalledWorkerClient.kt:InstalledWorkerClient$receiveResult(connection, selectedRequest, published, reject, decode)</ID>
+    <ID>NamedArguments:InstalledWorkerClient.kt:WorkerControlDocument.Companion$WorkerControlDocument( WorkerControlAction.DEMAND, root.toString(), "${heap.mebibytes}m", when (startup) { is InstalledWorkerStartup.Reuse -> WorkerStartupAction.REUSE is InstalledWorkerStartup.Rebuild -> WorkerStartupAction.REBUILD is InstalledWorkerStartup.Seed -> WorkerStartupAction.SEED }, startup.ideHome?.toString(), (startup as? InstalledWorkerStartup.Seed)?.sourceSystem?.toString(), seedConsent = (startup as? InstalledWorkerStartup.Seed)?.consent ?: WorkerSeedConsentSelection.PREGRANTED, )</ID>
+    <ID>NamedArguments:InstalledWorkerClient.kt:WorkerControlReply.Companion$admit( Path.of(value.root), runtime.value, Path.of(value.socket), attempt.value, )</ID>
+    <ID>NamedArguments:InstalledWorkerClient.kt:WorkerControlReply.Companion$admit( value.installationId, value.stateEpoch, value.serviceGeneration, value.configurationIdentity, value.workspaceRevision, )</ID>
+    <ID>NamedArguments:InstalledWorkerEffects.kt:WorkerRouteBinding.Installation.Companion$Installation(installationId, epoch, generation, configurationIdentity, workspaceRevision)</ID>
+    <ID>NamedArguments:KastCodexMain.kt:CliRemoteClientHost( codex, launch.publicSocket, invocation.arguments, workingDirectory, )</ID>
+    <ID>NamedArguments:KastCodexMain.kt:DesktopStdioHost( System.`in`, System.out, BrokerUpstreamConnector { connectCodexUnixWebSocket( launch.publicSocket, BrokerOperationalLimits.maximumClientMessageBytes, CONNECTION_TIMEOUT_MILLIS, ) }, BrokerOperationalLimits.maximumClientMessageBytes, )</ID>
+    <ID>NamedArguments:KastObserverProjector.kt:KastObserverProjector$admitTraversalNode( candidate as? JsonObject ?: return null, canonicalRoot, observerDirectory.path, proofs, )</ID>
+    <ID>NamedArguments:KastObserverProjector.kt:KastObserverProjector.ObserverEvidence.Companion$create( root, host, raw.strictLong("epoch") ?: return null, contentView, raw.strictInt("version") ?: return null, )</ID>
+    <ID>NamedArguments:KastProvider.kt:KastProviderOptions.Companion$KastProviderOptions( admittedExecutable, admittedDirectory, processExecutor, qualificationTimeoutMillis, toolSelection, readLimits, )</ID>
+    <ID>NamedArguments:KastProvider.kt:KastProviderQualifier$BrokerTool( name, description, if (deferLoading) ToolLoading.DEFERRED else ToolLoading.EAGER, definition, outputSchema, invoke = { runtime, input, context -> runtime.invoke(this, input, context) }, encode = KastInvocationOutput::document, invocationBudget = executionBudget.invocation, inputGuidance = { failure -> val guidance = when (failure) { is io.github.amichne.kast.appserver.schema.JsonDomainAdmissionFailure.Constraint -> if (inputBinding is AgentToolInputBinding.Facade) listOf( io.github.amichne.kast.appserver.query.PublicToolInputFailure.SchemaRejected .explanation() ) else emptyList() is io.github.amichne.kast.appserver.schema.JsonDomainAdmissionFailure.Domain -> when (val reason = failure.failure) { is KastToolInputFailure.Facade -> listOf(reason.reason.explanation()) KastToolInputFailure.NotObject, KastToolInputFailure.SchemaMismatch, is KastToolInputFailure.Query -> emptyList() } } guidance.map { message -> when (val admitted = ToolDescription.admit(message)) { is Refinement.Refined -> admitted.value is Refinement.Rejected -> error("Static tool guidance exceeded its bound") } } }, present = { output -> val envelope = output.document val semantic = (envelope["document"] as? JsonObject)?.get("status") as? JsonPrimitive val status = when (semantic?.content) { "complete", "qualified", "rejected", "cancelled", "uncertain" -> semantic.content else -> if (output.success) "completed" else "rejected" } ToolPresentation.outcome( "Kast · ${operation.value} · $status", canonicalJson(envelope), success = output.success, ) }, )</ID>
+    <ID>NamedArguments:KastProvider.kt:KastProviderQualifier$KastQualificationEvidence( cliVersion, KastContractDigest.derive(rawDocument), capability.schemaVersion, capability.serverProjection.schemaVersion, )</ID>
+    <ID>NamedArguments:KastProvider.kt:KastProviderQualifier$QualifiedKastTool( operation, executionBudget, name, description, tool.deferLoading, HostedToolDefinition( canonicalOperation, canonicalDefinition.name, canonicalDefinition.description, inputSchema, outputSchema, canonicalDefinition.operation.effect, canonicalDefinition.approval, executionBudget, canonicalDefinition.loading, when (inputBinding) { is AgentToolInputBinding.Facade -> PublicToolContract.generationParameters(inputBinding.identity) AgentToolInputBinding.Canonical -> inputDocument }, ), inputSchema, outputSchema, cliInvocation.invocation.command, canonicalDefinition.inputBinding, )</ID>
+    <ID>NamedArguments:KastProvider.kt:KastProviderQualifier$admit( options.executable, arguments, options.qualificationDirectory, maximumOutputBytes, options.qualificationTimeoutMillis, )</ID>
+    <ID>NamedArguments:KastProvider.kt:KastRuntime$admit( options.executable, tool.command, context.workingDirectory, options.readLimits[ReadLimitParameter.PROVIDER_OUTPUT_BYTES].value, options.readLimits[ when (tool.executionBudget) { OperationExecutionBudget.SEMANTIC_READ -> ReadLimitParameter.PROVIDER_INVOCATION_MILLIS OperationExecutionBudget.GRAPH_BUILD -> ReadLimitParameter.PROVIDER_GRAPH_INVOCATION_MILLIS }] .value .toLong(), input = requestInput, limits = options.readLimits, )</ID>
+    <ID>NamedArguments:KtorBrokerServer.kt:KtorBrokerServer.Companion$KtorBrokerServer(engine, owned, ownershipLease, frontend, runtimeControl)</ID>
+    <ID>NamedArguments:KtorBrokerServer.kt:KtorBrokerServer.Companion$startTransport( options.publicSocket, options.maximumConnections, options.maximumMessageBytes, frontend, null, )</ID>
+    <ID>NamedArguments:KtorBrokerServer.kt:KtorBrokerServer.Companion$startTransport( socket, BrokerOperationalLimits.maximumConnections, BrokerOperationalLimits.maximumMessageBytes, frontend, runtimeControl, )</ID>
+    <ID>NamedArguments:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$StartupRejected( identity, document.brokerVersion, instanceId, document.failure, )</ID>
+    <ID>NamedArguments:ManagedCodexUpstream.kt:ManagedCodexUpstream.Companion$ManagedCodexUpstream( process, options.privateSocket, options.maximumMessageBytes, options.startupTimeoutMillis, owned, )</ID>
+    <ID>NamedArguments:PersistentBrokerService.kt:BrokerServiceLaunchCommand.Companion$BrokerServiceLaunchCommand( host, kast, executableSearchPath, userHome, javaHome, javaExecutable, jvmUserHomeOption, codexHome, stateDirectory, stateDirectory.resolve("service-readiness.json"), installation.publicSocket, stateDirectory.resolve("service.log"), stateDirectory.resolve("launch-environment"), stateDirectory.resolve("service-start.lock"), identity, BrokerLaunchdServiceLabel.from(installation.root), toolSelection, childEnvironment, configuration, )</ID>
+    <ID>NamedArguments:PublicToolMapping.kt:QueryRunRequest( source, bounded(steps), QueryOutputDocument.Symbols(bounded(fields.map { it.lower() })), QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE), )</ID>
+    <ID>NamedArguments:PublicToolMapping.kt:search( class_name, name_match, scope, listOf(PublicToolDeclarationKinds.CLASS), PublicToolParameter.CLASS_NAME, )</ID>
+    <ID>NamedArguments:PublicToolMapping.kt:search( declaration_name, name_match, scope, (declaration_kinds ?: PublicToolDefaults.declarationKinds).values, )</ID>
+    <ID>NamedArguments:PublicToolMapping.kt:search( function_name, name_match, scope, listOf(PublicToolDeclarationKinds.FUNCTION), PublicToolParameter.FUNCTION_NAME, )</ID>
+    <ID>NamedArguments:PublicToolMapping.kt:searchSource( declaration_name, name_match ?: PublicToolDefaults.nameMatch, scope ?: PublicToolDefaults.scope, (declaration_kinds ?: PublicToolDefaults.declarationKinds).values, PublicToolParameter.SOURCE_DECLARATION_NAME, )</ID>
+    <ID>NamedArguments:PublicToolMapping.kt:searchSource( name, match ?: PublicToolDefaults.nameMatch, scope ?: PublicToolDefaults.scope, kinds, parameter, )</ID>
+    <ID>NamedArguments:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$resolve( observed.kast, observed.userHome, configurationEnvironment, javaHomeCandidate = javaHome, purpose = BrokerServicePurpose.COORDINATOR, )</ID>
+    <ID>NamedArguments:SharedTaskSessions.kt:SharedTaskSessions$TaskSessionView(it.thread, it.controller, it.observers.toSet(), it.activity, it.pending.size, it.lease)</ID>
+    <ID>NamedArguments:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$admit(boundary.threadId, digest, cwd, root, owner)</ID>
+    <ID>NamedArguments:ThreadCatalogStore.kt:ThreadCatalogBinding.Companion$ThreadCatalogBinding( admittedThread, catalogDigest, admittedDirectory, WorkspaceRegistration(admittedRoot), owner, )</ID>
+    <ID>NamedArguments:WorkerSeedConsentExchange.kt:WorkerSeedPrompt$WorkerSeedPromptDocument( WorkerSeedMessageKind.SEED_CONSENT_REQUEST, challenge.toString(), disclosure.categories.sortedBy { it.name }, disclosure.estimatedBytes, )</ID>
+    <ID>NamedArguments:WorkerStopReply.kt:WorkerStopReply.Companion$WorkerStopReply( WorkerStopStatus.STOPPED, result.root.toString(), result.binding.installationId, result.binding.stateEpoch.toString(), result.binding.serviceGeneration.toString(), result.binding.configurationIdentity, result.binding.workspaceRevision, )</ID>
+    <ID>NamedArguments:WorkerStopReply.kt:WorkerStopReply.Companion$admit( value.installationId, value.stateEpoch, value.serviceGeneration, value.configurationIdentity, value.workspaceRevision, )</ID>
+    <ID>NamedArguments:WorkspaceExecution.kt:WorkspaceExecution$WorkspaceExecutionEvent( request.identity, stage, outcome, request.enqueuedAt.elapsedNow(), request.queued, request.interactionLimit, failure, )</ID>
+    <ID>NamedArguments:WorkspaceExecution.kt:WorkspaceExecution$publish( request, if (executing) WorkspaceExecutionStage.EXECUTION else WorkspaceExecutionStage.QUEUE, when { failure == WorkspaceExecutionFailure.WORKSPACE_INTERACTION_TIMED_OUT || failure == WorkspaceExecutionFailure.WORKSPACE_QUEUE_TIMED_OUT -> WorkspaceExecutionOutcome.TIMED_OUT uncertain -> WorkspaceExecutionOutcome.UNCERTAIN failure == WorkspaceExecutionFailure.CANCELLED_BEFORE_EXECUTION -> WorkspaceExecutionOutcome.CANCELLED failure != null -> WorkspaceExecutionOutcome.REJECTED else -> WorkspaceExecutionOutcome.COMPLETED }, failure, )</ID>
+    <ID>NamedArguments:WorkspaceExecution.kt:WorkspaceExecution$publish(request, WorkspaceExecutionStage.ADMISSION, WorkspaceExecutionOutcome.REJECTED, failure)</ID>
+    <ID>NamedArguments:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$InstalledWorkerStartRequest( workspace.root.path, heap, startup, selectedConfiguration, consentAuthority, )</ID>
+    <ID>NamedArguments:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$admit( owner.installationId.value, owner.stateEpoch.value.toString(), generation.value.toString(), workerConfigurationIdentity( configurations[reservation.id] ?: return Refinement.Rejected(WorkerControlFailure.IDENTITY_REJECTED) ), revision.value, )</ID>
+    <ID>NamedArguments:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$admit( owner.installationId.value, owner.stateEpoch.value.toString(), generation.value.toString(), workerConfigurationIdentity(selected), snapshot.revision.value, )</ID>
+    <ID>NamedArguments:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$demand( root, heap.value, document.startupRequest(), WorkerSeedConsentExchange(session), expectation.value, )</ID>
+    <ID>NamedArguments:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$recoverLostWorker( route.route.reservation, endpoint, root, heap, startup, consentAuthority, expectedConfiguration, )</ID>
+    <ID>NamedArguments:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$retireAndDemand( selection.reservation, selection.endpoint, root, heap, startup, consentAuthority, expectedConfiguration, )</ID>
+    <ID>NamedArguments:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl.Companion$WorkspaceRuntimeControl( installationRoot, owner, generation, configuration, effects, WorkerAdmissionCoordinator( owner, generation, policy, WorkerReservationIdSource { WorkerReservationId.fresh() }, ), receipts, lifecycle, hostObservation, sourceEnvironment.toMap(), workerDispatcher, )</ID>
+    <ID>NamedArguments:WorkspaceWorkerAdmission.kt:DeclaredWorkerMemory.Companion$DeclaredWorkerMemory(heap, native, gradle, total)</ID>
+    <ID>NestedBlockDepth:AppServerManagement.kt:InstalledAppServerManager$override fun execute: AppServerManagementResult</ID>
+    <ID>NestedBlockDepth:BrokerInstallationState.kt:BrokerInstallationState$fun admit: Refinement&lt;ThreadBindingOwner.Installation, InstallationStateFailure></ID>
+    <ID>NestedBlockDepth:BrokerInstallationState.kt:BrokerInstallationState$private fun identity: Refinement&lt;String, InstallationStateFailure></ID>
+    <ID>NestedBlockDepth:BrokerSessionHub.kt:BrokerSessionHub.Session$private suspend fun receiveLocked</ID>
+    <ID>NestedBlockDepth:CodexHostInvocation.kt:CodexServiceInvocation.Companion$fun admit: Refinement&lt;CodexServiceInvocation, CodexServiceArgumentFailure></ID>
+    <ID>NestedBlockDepth:CodexProtocolQualifier.kt:CodexProtocolQualifier$private fun collectSchemas: CodexSchemaCollection</ID>
+    <ID>NestedBlockDepth:DesktopStdioHost.kt:DesktopStdioHost$override suspend fun run: CodexIntegrationRun</ID>
+    <ID>NestedBlockDepth:DesktopStdioHost.kt:private fun readBoundedLine: BoundedJsonLine</ID>
+    <ID>NestedBlockDepth:InstalledWorkerClient.kt:InstalledWorkerClient$private suspend fun &lt;T> receiveResult: T</ID>
+    <ID>NestedBlockDepth:InstalledWorkerClient.kt:WorkerControlReply.Companion$fun decode: InstalledWorkerStart</ID>
+    <ID>NestedBlockDepth:InvocationFence.kt:InvocationFence$private fun flush: Boolean</ID>
+    <ID>NestedBlockDepth:KastCodexMain.kt:OwnedCodexIntegration$@Synchronized fun close: CodexIntegrationShutdown</ID>
+    <ID>NestedBlockDepth:MacOsPersistentBrokerServiceHost.kt:BrokerServiceStartLock$fun withAcquired: BrokerServiceLockExecution</ID>
+    <ID>NestedBlockDepth:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun awaitRetirement: BrokerLaunchdServiceRetirement</ID>
+    <ID>NestedBlockDepth:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun reconcileAbsent: PersistentBrokerServiceAdmission</ID>
+    <ID>NestedBlockDepth:ManagedCodexUpstream.kt:ManagedCodexUpstream.Companion$internal suspend fun start: ManagedCodexUpstreamStart</ID>
+    <ID>NestedBlockDepth:PersistentBrokerService.kt:BrokerServiceLaunchCommand.Companion$private fun sha256: String?</ID>
+    <ID>NestedBlockDepth:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$private fun readDocument: ThreadStoreDocumentRead</ID>
+    <ID>NestedBlockDepth:WorkerStopReply.kt:WorkerStopReply.Companion$fun decode: InstalledWorkerStop</ID>
+    <ID>NestedBlockDepth:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun snapshot: WorkspaceRegistryRead</ID>
+    <ID>NestedBlockDepth:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$private fun receipt: Boolean</ID>
+    <ID>NestedBlockDepth:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun handle</ID>
+    <ID>NestedScopeFunctions:BrokerSessionHub.kt:BrokerSessionHub.Session$let { (ownedThread, command) -> val returnedTurn = ((doc["result"] as? JsonObject)?.get("turn") as? JsonObject)?.text("id") if (returnedTurn != null) tasks.begin(ownedThread, returnedTurn) if ( doc.containsKey("error") || returnedTurn != null || command !in setOf("turn/start", "thread/queue/start", "review/start") ) tasks.resolved(ownedThread, key) }</ID>
+    <ID>NestedScopeFunctions:BrokerSessionHub.kt:BrokerSessionHub.Session$let { tasks.reconcile( returned, it, turn.text("status") in setOf("completed", "interrupted", "failed"), ) }</ID>
+    <ID>NestedScopeFunctions:SharedTaskSessions.kt:SharedTaskSessions$also { sessions[thread] = it }</ID>
+    <ID>NoNameShadowing:CoordinatorStatus.kt:CoordinatorStatusProtocol${ it.name.length }</ID>
+    <ID>NoNameShadowing:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore${ it.root == canonical }</ID>
+    <ID>NoNameShadowing:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore${ it.workspaces.isNotEmpty() }</ID>
+    <ID>ObjectLiteralToLambda:Broker.kt:TypedProviderRoute$object : TypedToolRoute&lt;Runtime> { override suspend fun dispatch( request: BrokerDispatchRequest, acquire: suspend () -> ProviderStartup&lt;Runtime>, ): BrokerDispatch { val admitted = tool.input.admit(request.arguments) val input = when (admitted) { is Validation.Validated -> admitted.value is Validation.Rejected -> return BrokerDispatch.Rejected( BrokerFailure.InvalidArguments( request.address, admitted.failures.size, admitted.failures.take(3).flatMap(tool.inputGuidance).distinct().take(3), ) ) } if (!invocationCapacity.tryAcquire()) { return BrokerDispatch.Rejected(BrokerFailure.Overloaded(BrokerLimit.IN_FLIGHT_CALLS_PER_PROVIDER)) } val invocation = try { val runtime = when (val started = acquire()) { is ProviderStartup.Started -> started.runtime is ProviderStartup.Rejected -> return BrokerDispatch.Rejected( BrokerFailure.ProviderStartupRejected(namespace, started.code) ) } try { withTimeout(tool.invocationBudget.value) { tool.invoke(runtime, input, request.context) } } catch (_: TimeoutCancellationException) { return BrokerDispatch.Rejected( BrokerFailure.ProviderInvocationRejected( request.address, ProviderFailureCode.TIMED_OUT, ) ) } catch (_: CancellationException) { return BrokerDispatch.Rejected(BrokerFailure.InvocationCancelled(request.address)) } catch (_: RuntimeException) { return BrokerDispatch.Rejected( BrokerFailure.ProviderInvocationRejected( request.address, ProviderFailureCode.UNEXPECTED_FAILURE, ) ) } } finally { invocationCapacity.release() } val output = when (invocation) { is ProviderCall.Completed -> invocation.value is ProviderCall.Rejected -> return BrokerDispatch.Rejected( BrokerFailure.ProviderInvocationRejected(request.address, invocation.code) ) } val encoded = try { tool.encode(output) } catch (_: RuntimeException) { return BrokerDispatch.Rejected( BrokerFailure.ProviderInvocationRejected( request.address, ProviderFailureCode.UNEXPECTED_FAILURE, ) ) } if (canonicalJson(encoded).toByteArray(StandardCharsets.UTF_8).size > limits.maximumToolResultBytes) { return BrokerDispatch.Rejected(BrokerFailure.Overloaded(BrokerLimit.MAXIMUM_TOOL_RESULT_BYTES)) } when (val outputAdmission = tool.outputSchema.admit(encoded)) { is Validation.Validated -> Unit is Validation.Rejected -> return BrokerDispatch.Rejected( BrokerFailure.OutputContractRejected( request.address, outputAdmission.failures.size, ) ) } return try { BrokerDispatch.Completed(tool.present(output)) } catch (_: RuntimeException) { BrokerDispatch.Rejected( BrokerFailure.ProviderInvocationRejected( request.address, ProviderFailureCode.UNEXPECTED_FAILURE, ) ) } } }</ID>
+    <ID>RedundantSuspendModifier:KastCodexMain.kt:suspend</ID>
+    <ID>ReturnFromFinally:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$finally { Files.deleteIfExists(temporary) }</ID>
+    <ID>TooGenericExceptionCaught:BrokerSessionHub.kt:BrokerSessionHub$failure: Exception</ID>
+    <ID>TooGenericExceptionCaught:BrokerSessionHub.kt:BrokerSessionHub.Session$failure: Exception</ID>
+    <ID>TooGenericExceptionCaught:MacOsPersistentBrokerServiceHost.kt:JdkBrokerSocketProbe$failure: Exception</ID>
+    <ID>UnnecessarySafeCall:BrokerSessionHub.kt:BrokerSessionHub.Session$params?.text("turnId")</ID>
+    <ID>UnnecessarySafeCall:BrokerSessionHub.kt:BrokerSessionHub.Session$result?.get("thread")</ID>
+    <ID>UnreachableCatchBlock:InstalledBrokerServer.kt:OwnedBrokerServiceReadiness$catch (_: SecurityException) { return }</ID>
+    <ID>UnreachableCode:KastProvider.kt:KastProviderQualifier$return KastContractQualification.Qualified( KastQualificationEvidence( cliVersion, KastContractDigest.derive(rawDocument), capability.schemaVersion, capability.serverProjection.schemaVersion, ), projection.policy, projection.tools, )</ID>
+    <ID>UnreachableCode:KastProvider.kt:KastProviderQualifier$val capability = try { boundaryJson.decodeFromJsonElement(KastCapabilityBoundary.serializer(), rawDocument) } catch (_: SerializationException) { null } catch (_: IllegalArgumentException) { null } ?: return KastContractQualification.Rejected(KastQualificationFailure.SCHEMA_INVALID)</ID>
+    <ID>UnreachableCode:KastProvider.kt:KastProviderQualifier$val projection = admitProjection(capability.serverProjection) ?: return KastContractQualification.Rejected(KastQualificationFailure.SCHEMA_INCOMPATIBLE)</ID>
+    <ID>UnreachableCode:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$!BROKER_VERSION.matches(document.brokerVersion)</ID>
+    <ID>UnreachableCode:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$document.schemaVersion != BROKER_SERVICE_STATE_SCHEMA_VERSION</ID>
+    <ID>UnreachableCode:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$instanceId.toString() != document.serviceInstanceId</ID>
+    <ID>UnreachableCode:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$return BrokerReadinessObservation.Invalid</ID>
+    <ID>UnreachableCode:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$return when (document) { is BrokerServiceStateDocument.Starting -> BrokerReadinessObservation.Starting( identity, document.brokerVersion, instanceId, ) is BrokerServiceStateDocument.Ready -> BrokerReadinessObservation.Ready( identity, document.brokerVersion, instanceId, ) is BrokerServiceStateDocument.Rejected -> BrokerReadinessObservation.StartupRejected( identity, document.brokerVersion, instanceId, document.failure, ) }</ID>
+    <ID>UnreachableCode:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$val document = try { BROKER_SERVICE_STATE_JSON.decodeFromString( BrokerServiceStateDocument.serializer(), raw, ) } catch (_: SerializationException) { return BrokerReadinessObservation.Invalid } catch (_: IllegalArgumentException) { return BrokerReadinessObservation.Invalid }</ID>
+    <ID>UnreachableCode:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$val identity = BrokerServiceIdentity.admit(document.serviceIdentity) ?: return BrokerReadinessObservation.Invalid</ID>
+    <ID>UnreachableCode:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$val instanceId = try { UUID.fromString(document.serviceInstanceId) } catch (_: IllegalArgumentException) { return BrokerReadinessObservation.Invalid }</ID>
+    <ID>UnsafeCallOnNullableType:BrokerSessionHub.kt:BrokerSessionHub.Session$method!!</ID>
+    <ID>UnsafeCallOnNullableType:KastObserverProjector.kt:KastObserverProjector$meaning!!</ID>
+    <ID>UnusedParameter:CodexProtocolAdapter.kt:CodexProtocolAdapter$message: String</ID>
+    <ID>UnusedPrivateFunction:CodexProtocolAdapter.kt:CodexProtocolAdapter$private fun takeObserver: PendingObserverPresentationTake</ID>
+    <ID>UnusedPrivateFunction:KtorBrokerServer.kt:KtorBrokerServer.Companion$private fun initializationResponse: InitializationResponse</ID>
+    <ID>UnusedPrivateFunction:KtorBrokerServer.kt:KtorBrokerServer.Companion$private suspend fun applyRouting: Boolean</ID>
+    <ID>UnusedPrivateProperty:BrokerProcess.kt:BrokerProcessInput.Document.Companion$private const val MAXIMUM_INPUT_BYTES = BrokerOperationalLimits.maximumProcessInputBytes</ID>
+    <ID>UnusedPrivateProperty:BrokerProcess.kt:BrokerProcessRequest.Companion$private const val MAXIMUM_OUTPUT_BYTES = BrokerOperationalLimits.maximumProcessOutputBytes</ID>
+    <ID>UnusedPrivateProperty:BrokerProcess.kt:BrokerProcessRequest.Companion$private val MAXIMUM_TIMEOUT_MILLIS = BrokerOperationalLimits.maximumProcessTimeout.value</ID>
+    <ID>UnusedPrivateProperty:PersistentBrokerService.kt:BrokerHostSelection.Selected$private val payloadDigest: String</ID>
+    <ID>UnusedVariable:BrokerSessionHub.kt:BrokerSessionHub.Session$key</ID>
+    <ID>UnusedVariable:BrokerSessionHub.kt:BrokerSessionHub.Session$val requestKey = doc["id"]?.toString() ?: return close()</ID>
+    <ID>UnusedVariable:CodexHostInvocation.kt:CodexAppServerArguments.Companion$val bounded = when (val admission = admitCommonArguments(all)) { is Refinement.Refined -> admission.value is Refinement.Rejected -> return Refinement.Rejected( when (admission.failure) { CodexArgumentFailure.TOO_MANY_ARGUMENTS -> CodexAppServerArgumentFailure.TOO_MANY_ARGUMENTS CodexArgumentFailure.TOO_MANY_BYTES -> CodexAppServerArgumentFailure.TOO_MANY_BYTES CodexArgumentFailure.INVALID_CHARACTER -> CodexAppServerArgumentFailure.INVALID_CHARACTER CodexArgumentFailure.REMOTE_OVERRIDE, CodexArgumentFailure.WORKING_DIRECTORY_OVERRIDE -> error("Common argument admission cannot produce an owned-argument override") } ) }</ID>
+    <ID>UseOrEmpty:CodexProtocolAdapter.kt:CodexProtocolAdapter$method ?: ""</ID>
+    <ID>UseOrEmpty:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$boundary.installationId ?: ""</ID>
+    <ID>UseOrEmpty:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$boundary.stateEpoch ?: ""</ID>
+    <ID>WildcardImport:AppServerManagement.kt:import io.github.amichne.kast.appserver.runtime.*</ID>
+    <ID>WildcardImport:AppServerManagement.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:BrokerInstallationState.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:BrokerQualification.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:BrokerSessionActivity.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:BrokerSessionHub.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:BrokerSessionHub.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:InstalledCoordinator.kt:import io.github.amichne.kast.appserver.runtime.*</ID>
+    <ID>WildcardImport:InstalledWorkerClient.kt:import io.github.amichne.kast.appserver.runtime.*</ID>
+    <ID>WildcardImport:InstalledWorkerClient.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:InstalledWorkerClient.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:InvocationFence.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:PublicToolContract.kt:import io.github.amichne.kast.appserver.schema.*</ID>
+    <ID>WildcardImport:PublicToolContract.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:PublicToolContract.kt:import kotlinx.serialization.*</ID>
+    <ID>WildcardImport:PublicToolContract.kt:import kotlinx.serialization.descriptors.*</ID>
+    <ID>WildcardImport:PublicToolContract.kt:import kotlinx.serialization.encoding.*</ID>
+    <ID>WildcardImport:PublicToolContract.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:PublicToolDocuments.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:PublicToolMapping.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:WorkerSeedConsentExchange.kt:import io.github.amichne.kast.appserver.*</ID>
+    <ID>WildcardImport:WorkerSeedConsentExchange.kt:import io.ktor.websocket.*</ID>
+    <ID>WildcardImport:WorkerSeedConsentExchange.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:WorkerStopReply.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:WorkspaceEnrollment.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:WorkspaceExecution.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:WorkspaceExecution.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:WorkspaceRuntimeControl.kt:import io.github.amichne.kast.appserver.*</ID>
+    <ID>WildcardImport:WorkspaceRuntimeControl.kt:import io.ktor.websocket.*</ID>
+    <ID>WildcardImport:WorkspaceRuntimeControl.kt:import java.nio.file.*</ID>
+    <ID>WildcardImport:WorkspaceRuntimeControl.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:WorkspaceRuntimeControl.kt:import kotlinx.serialization.json.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

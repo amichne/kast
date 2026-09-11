@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>LongMethod:CanonicalAgentToolDefinitionsTest.kt:CanonicalAgentToolDefinitionsTest$@Test fun `agent tools preserve canonical hosted semantics and lifecycle free policy`</ID>
+    <ID>LongMethod:OperationRegistryContractTest.kt:OperationRegistryContractTest$@Test fun `lookup and outcome binding preserve canonical identity`</ID>
+  </CurrentIssues>
+</SmellBaseline>

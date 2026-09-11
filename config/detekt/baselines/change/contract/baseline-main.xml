@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:AddDeclarationCompilerContext.kt:AddDeclarationCompilerContextFile.Companion$canonical == null || !canonical.isAbsolute || canonical.normalize().toString() != path || (!path.endsWith(".kt") &amp;&amp; !path.endsWith(".java"))</ID>
+    <ID>ComplexCondition:AddDeclarationOwnership.kt:AddDeclarationSourceOwner.Companion$!canonicalName(sourceSetName) || '/' in sourceSetName || '\\' in sourceSetName || ':' in sourceSetName</ID>
+    <ID>ComplexCondition:AddDeclarationPlanningEvidence.kt:DurableAddDeclarationPlanningEvidence.Companion$relationProjections.any(String::isBlank) || traversalProjections.any(String::isBlank) || diagnosticProjections.any(String::isBlank) || relations.any { !SHA_256.matches(it.stableDigest.value) } || !SHA_256.matches(fingerprint.value)</ID>
+    <ID>CyclomaticComplexMethod:AddDeclarationPlanCodec.kt:private fun PlannedAddDeclaration.revalidatedOrNull: PlannedAddDeclaration?</ID>
+    <ID>CyclomaticComplexMethod:AddDeclarationPlanningEvidence.kt:CompleteChangePlanningEvidence.Companion$internal fun admit: Refinement&lt;CompleteChangePlanningEvidence, ChangePlanningFailure></ID>
+    <ID>CyclomaticComplexMethod:AddDeclarationPlanningEvidence.kt:DurableAddDeclarationPlanningEvidence.Companion$internal fun restore: Refinement&lt;DurableAddDeclarationPlanningEvidence, DurablePlanningEvidenceFailure></ID>
+    <ID>CyclomaticComplexMethod:HostedAddDeclarationPlanCodec.kt:HostedAddDeclarationPlanCodec$fun decode: Refinement&lt;AddDeclarationChangePlan, HostedAddDeclarationPlanDecodeFailure></ID>
+    <ID>ImplicitDefaultLocale:AddDeclarationIntent.kt:"%02x".format(byte)</ID>
+    <ID>InvalidPackageDeclaration:AddDeclarationChangePlan.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:AddDeclarationFileProof.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:AddDeclarationOwnership.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:AddDeclarationPlanInput.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:AddDeclarationPlanningEvidence.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:AddDeclarationRevalidation.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:AddFileChangePlan.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:ChangeIntent.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:EditableMutationTarget.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:RenameSymbolChangePlan.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>InvalidPackageDeclaration:ReplaceDeclarationChangePlan.kt:package io.github.amichne.kast.change.contract</ID>
+    <ID>LongMethod:AddDeclarationPlanCodec.kt:private fun PlannedAddDeclaration.revalidatedOrNull: PlannedAddDeclaration?</ID>
+    <ID>LongMethod:AddDeclarationPlanningEvidence.kt:CompleteChangePlanningEvidence.Companion$internal fun admit: Refinement&lt;CompleteChangePlanningEvidence, ChangePlanningFailure></ID>
+    <ID>LongMethod:ChangeIntent.kt:RenameSymbolOccurrenceSet.Companion$fun admit: Refinement&lt;RenameSymbolOccurrenceSet, RenameSymbolOccurrenceSetFailure></ID>
+    <ID>LongMethod:EditableMutationTarget.kt:EditableMutationTarget.Companion$fun admit: Refinement&lt;EditableMutationTarget, MutationTargetAdmissionFailure></ID>
+    <ID>LongMethod:HostedAddDeclarationPlanCodec.kt:HostedAddDeclarationPlanCodec$fun decode: Refinement&lt;AddDeclarationChangePlan, HostedAddDeclarationPlanDecodeFailure></ID>
+    <ID>LongMethod:RenameSymbolChangePlan.kt:RenameSymbolChangePlan.Companion$fun issue: RenameSymbolChangePlan</ID>
+    <ID>LongParameterList:AddDeclarationChangePlan.kt:AddDeclarationChangePlan</ID>
+    <ID>LongParameterList:AddDeclarationCompilerContext.kt:ExpectedAddDeclarationCompilerContext.Companion$fun admitSingleSource: Refinement&lt;ExpectedAddDeclarationCompilerContext, AddDeclarationCompilerContextAdmissionFailure></ID>
+    <ID>LongParameterList:EditableMutationTarget.kt:EditableMutationTarget.Companion$internal fun restore: Refinement&lt;EditableMutationTarget, MutationTargetAdmissionFailure></ID>
+    <ID>LongParameterList:PlannedAddDeclaration.kt:AddDeclarationPlanningEvidence.Companion$fun admit: Refinement&lt;AddDeclarationPlanningEvidence, AddDeclarationPlanningEvidenceFailure></ID>
+    <ID>NamedArguments:AddDeclarationChangePlan.kt:AddDeclarationChangePlan$PlannedMutationWrite( target.file, target.sourceRoot, PlannedSourcePrecondition.Existing(sourceSnapshot.content), listOf( when (val edit = plannedEdits.single()) { is AddDeclarationPlannedEdit.InsertAfterDeclaration -> SourceTextMutation.InsertAfterDeclaration(edit.anchor, edit.declaration) is AddDeclarationPlannedEdit.InsertIntoClassBody -> SourceTextMutation.InsertIntoClassBody(edit.anchor, edit.declaration) } ), )</ID>
+    <ID>NamedArguments:AddDeclarationChangePlan.kt:AddDeclarationChangePlan.Companion$create( input.target, input.declaration, evidence, input.expectedSemanticDelta, verification, )</ID>
+    <ID>NamedArguments:AddDeclarationChangePlan.kt:AddDeclarationChangePlan.Companion$create( target, declaration, evidence, expectedSemanticDelta, AddDeclarationVerificationContract.forGeneration(target.lease.generation), )</ID>
+    <ID>NamedArguments:AddDeclarationChangePlan.kt:AddDeclarationSourceSnapshot.Companion$AddDeclarationSourceSnapshot( target.lease, target.workspaceState, target.file, target.content, )</ID>
+    <ID>NamedArguments:AddDeclarationChangePlan.kt:AdmittedAddDeclarationPlanInput.Companion$AdmittedAddDeclarationPlanInput( request.target, request.declaration, request.expectedSemanticDelta, evidence.value, )</ID>
+    <ID>NamedArguments:AddDeclarationCompilerContext.kt:ExpectedAddDeclarationCompilerContext.Companion$admit(generation, model, classpath, listOf(source), outboundCount)</ID>
+    <ID>NamedArguments:AddDeclarationPlanningEvidence.kt:CompleteChangePlanningEvidence.Companion$CompleteChangePlanningEvidence( normalizedRelations, normalizedTraversals, normalizedDiagnostics, ChangePlanningEvidenceFingerprint(sha256Hex(canonical.toByteArray(StandardCharsets.UTF_8))), )</ID>
+    <ID>NamedArguments:AddFileChangePlan.kt:AddFileChangePlan.Companion$AddFileChangePlan( ChangePlanId.fromCanonicalIdentity(canonical), intent, request.target, writes, AddFileObligation.entries, )</ID>
+    <ID>NamedArguments:AddFileChangePlan.kt:AddFileChangePlan.Companion$PlannedMutationWrite( request.target.file, request.target.sourceRoot, PlannedSourcePrecondition.Absent, listOf(SourceTextMutation.CreateFile(request.content)), )</ID>
+    <ID>NamedArguments:AddFileChangePlan.kt:CreatableKotlinFileTarget.Companion$CreatableKotlinFileTarget( workspace.readLease, workspace.sourceState, observation.file, sourceRoot, )</ID>
+    <ID>NamedArguments:HostedAddDeclarationPlanCodec.kt:HostedAddDeclarationPlanCodec$GradleSourceRootEvidence( document.sourceRootModule, document.sourceRootBuildRoot, document.sourceRootProjectPath, document.sourceRootSourceSet, document.sourceRootLocation, SourceRootProvenance.Authored, )</ID>
+    <ID>NamedArguments:HostedAddDeclarationPlanCodec.kt:HostedAddDeclarationPlanCodec$HostedAddDeclarationPlanDocument( SCHEMA_VERSION, planId.value, priorLease.workspaceRoot.value, priorLease.generation.value, workspaceState.value, target.file.path.value, target.content.value, target.owner.module.value, target.owner.project.buildRoot.value, target.owner.project.projectPath.value, target.owner.sourceSet.value, target.sourceRoot.location.value, scope.kind.name, scope.primary, scope.secondary, scope.sourceKinds.name, scope.generatedSources.name, scope.libraries?.name, target.range.startInclusive, target.range.endExclusive, target.selector.name.value, qualified, target.selector.kind.name, target.selector.signature.canonicalEncoding().value, target.selector.compilerIdentity.value, target.selector.fingerprint.value, declaration.value, expectedSemanticDelta.packageName, expectedSemanticDelta.declarationName, expectedSemanticDelta.declarationKind.name, evidence.relationDigestSemantics.name, evidence, )</ID>
+    <ID>NamedArguments:HostedAddDeclarationPlanCodec.kt:HostedAddDeclarationPlanCodec$SymbolSearchScopeSnapshot( document.scopeKind.enumOrNull&lt;SymbolSearchScopeKind>() ?: return rejected(), document.scopePrimary, document.scopeSecondary, document.scopeSourceKinds.enumOrNull&lt;SymbolSourceKindPolicy>() ?: return rejected(), document.scopeGeneratedSources.enumOrNull&lt;SymbolGeneratedSourcePolicy>() ?: return rejected(), document.scopeLibraries?.enumOrNull&lt;SymbolLibraryPolicy>(), )</ID>
+    <ID>NamedArguments:HostedAddDeclarationPlanCodec.kt:HostedAddDeclarationPlanCodec$restore( document.evidence.relations, document.evidence.traversals, document.evidence.diagnostics, document.evidence.fingerprint, document.relationEvidenceSemantics.enumOrNull&lt;StableRelationEvidenceSemantics>() ?: return rejected(), )</ID>
+    <ID>NamedArguments:HostedAddDeclarationPlanCodec.kt:HostedAddDeclarationPlanCodec$restore( planId, target, declaration, evidence, expectedDelta, )</ID>
+    <ID>NamedArguments:HostedAddDeclarationPlanCodec.kt:HostedAddDeclarationPlanCodec$restore(lease, scope, selectorEvidence, selectorFingerprint)</ID>
+    <ID>NamedArguments:HostedAddDeclarationPlanCodec.kt:HostedAddDeclarationPlanCodec$restoreBoundary( file, document.selectorStart, document.selectorEnd, document.selectorName, document.selectorQualifiedIdentity, document.selectorKind.enumOrNull&lt;CompilerSymbolKind>() ?: return rejected(), compilerSignature, compilerIdentity, )</ID>
+    <ID>NamedArguments:RenameSymbolChangePlan.kt:AdmittedRenameSymbolPlanInput.Companion$AdmittedRenameSymbolPlanInput( request.target, request.newName, request.occurrences, evidence, )</ID>
+    <ID>NamedArguments:RenameSymbolChangePlan.kt:RenameSymbolChangePlan.Companion$PlannedMutationWrite( input.target.file, input.target.sourceRoot, PlannedSourcePrecondition.Existing(input.target.content), mutations, )</ID>
+    <ID>NamedArguments:RenameSymbolChangePlan.kt:RenameSymbolChangePlan.Companion$RenameSymbolChangePlan( ChangePlanId.fromCanonicalIdentity(canonical), intent, input.target, input.evidence, writes, RenameSymbolObligation.entries, )</ID>
+    <ID>NamedArguments:ReplaceDeclarationChangePlan.kt:ReplaceDeclarationChangePlan.Companion$PlannedMutationWrite( selected.file, selected.sourceRoot, PlannedSourcePrecondition.Existing(selected.content), listOf( SourceTextMutation.ReplaceDeclaration( selected.range, input.target.expected, input.replacement, ) ), )</ID>
+    <ID>NamedArguments:ReplaceDeclarationChangePlan.kt:ReplaceDeclarationChangePlan.Companion$ReplaceDeclarationChangePlan( ChangePlanId.fromCanonicalIdentity(canonical), intent, input.target, input.evidence, writes, ReplaceDeclarationObligation.entries, )</ID>
+  </CurrentIssues>
+</SmellBaseline>

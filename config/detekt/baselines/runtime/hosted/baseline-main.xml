@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:HostedConnection.kt:internal suspend fun serveHostedConnection</ID>
+    <ID>CognitiveComplexMethod:HostedEndpointProtocol.kt:HostedRequests$fun decode: Refinement&lt;HostedRequest, HostedEndpointFailure></ID>
+    <ID>CognitiveComplexMethod:OwnedHostedEndpoint.kt:OwnedHostedEndpoint.Companion$fun open: Refinement&lt;OwnedHostedEndpoint, HostedEndpointFailure></ID>
+    <ID>CyclomaticComplexMethod:HostedEndpointProtocol.kt:HostedRequests$fun decode: Refinement&lt;HostedRequest, HostedEndpointFailure></ID>
+    <ID>CyclomaticComplexMethod:OwnedHostedEndpoint.kt:OwnedHostedEndpoint.Companion$fun open: Refinement&lt;OwnedHostedEndpoint, HostedEndpointFailure></ID>
+    <ID>ImplicitDefaultLocale:OwnedHostedEndpoint.kt:OwnedHostedEndpoint.Companion$"%02x".format(it)</ID>
+    <ID>InjectDispatcher:HostedConnection.kt:IO</ID>
+    <ID>InjectDispatcher:HostedEndpointService.kt:HostedEndpointService$IO</ID>
+    <ID>InjectDispatcher:HostedPeerCancellation.kt:IO</ID>
+    <ID>LongMethod:HostedCanonicalQuery.kt:internal suspend fun evaluateHostedCanonicalQuery: String</ID>
+    <ID>LongMethod:HostedEndpointProtocol.kt:HostedRequests$fun decode: Refinement&lt;HostedRequest, HostedEndpointFailure></ID>
+    <ID>LongMethod:OwnedHostedEndpoint.kt:OwnedHostedEndpoint.Companion$fun open: Refinement&lt;OwnedHostedEndpoint, HostedEndpointFailure></ID>
+    <ID>LongParameterList:OwnedHostedEndpoint.kt:OwnedHostedEndpoint</ID>
+    <ID>MagicNumber:OwnedHostedEndpoint.kt:OwnedHostedEndpoint.Companion$100</ID>
+    <ID>MultilineLambdaItParameter:HostedEndpointService.kt:HostedEndpointService${ when ( val result = dispatchUntilPeerTermination(client::awaitHostedPeerTermination) { dispatch(root, it, continuations, limits) } ) { is HostedPeerDispatch.Completed -> result.response is HostedPeerDispatch.Rejected -> HostedRequests.rejected( when (result.termination) { HostedPeerTermination.DISCONNECTED -> HostedEndpointFailure.IO_UNAVAILABLE HostedPeerTermination.EXTRA_INPUT -> HostedEndpointFailure.INVALID_REQUEST } ) } }</ID>
+    <ID>NamedArguments:HostedCanonicalQuery.kt:HostedSemanticBudgets$TraversalBudget( hostedQueryBudget.resources.resultLimit, fixed(TraversalByteLimit.parse(limits[ReadLimitParameter.SEMANTIC_RETURNED_BYTES].value.toLong())), hostedQueryBudget.resources.workUnitLimit, hostedQueryBudget.resources.elapsedTimeLimit, fixed(TraversalDepthLimit.parse(limits[ReadLimitParameter.TRAVERSAL_DEPTH].value)), fixed(TraversalFrontierLimit.parse(limits[ReadLimitParameter.TRAVERSAL_FRONTIER].value)), hostedRelationBudget, )</ID>
+    <ID>NamedArguments:HostedCanonicalQuery.kt:create( project, context.authority, context.model, context.sourceFiles, context.limits, )</ID>
+    <ID>NamedArguments:HostedCanonicalQuery.kt:create( project, context.authority, context.model, context.sourceFiles, context.observation, context.limits, )</ID>
+    <ID>NamedArguments:HostedCanonicalQuery.kt:create( project, context.authority, context.model, context.sourceFiles, continuations, context.limits, context.observation, )</ID>
+    <ID>NamedArguments:HostedEndpointService.kt:HostedEndpointService$serveHostedConnection( Channels.newInputStream(client), Channels.newOutputStream(client), observer, limits, ) { when ( val result = dispatchUntilPeerTermination(client::awaitHostedPeerTermination) { dispatch(root, it, continuations, limits) } ) { is HostedPeerDispatch.Completed -> result.response is HostedPeerDispatch.Rejected -> HostedRequests.rejected( when (result.termination) { HostedPeerTermination.DISCONNECTED -> HostedEndpointFailure.IO_UNAVAILABLE HostedPeerTermination.EXTRA_INPUT -> HostedEndpointFailure.INVALID_REQUEST } ) } }</ID>
+    <ID>NamedArguments:OwnedHostedEndpoint.kt:OwnedHostedEndpoint.Companion$OwnedHostedEndpoint(server, socket, socketKey, descriptor, descriptorKey, lock, channel)</ID>
+    <ID>NestedBlockDepth:HostedEndpointProtocol.kt:HostedRequests$fun decode: Refinement&lt;HostedRequest, HostedEndpointFailure></ID>
+    <ID>NestedBlockDepth:OwnedHostedEndpoint.kt:OwnedHostedEndpoint$override fun close</ID>
+    <ID>NestedBlockDepth:OwnedHostedEndpoint.kt:OwnedHostedEndpoint.Companion$fun open: Refinement&lt;OwnedHostedEndpoint, HostedEndpointFailure></ID>
+    <ID>TooGenericExceptionCaught:OwnedHostedEndpoint.kt:OwnedHostedEndpoint.Companion$failure: Exception</ID>
+    <ID>UnusedPrivateProperty:HostedCanonicalQuery.kt:HostedSemanticBudgets$private val limits: ReadLimits</ID>
+    <ID>UnusedPrivateProperty:HostedEndpointService.kt:HostedEndpointService$private val scope: CoroutineScope</ID>
+    <ID>WildcardImport:HostedCanonicalQuery.kt:import io.github.amichne.kast.kernel.*</ID>
+    <ID>WildcardImport:HostedCanonicalQuery.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:HostedCanonicalQuery.kt:import io.github.amichne.kast.protocol.wire.*</ID>
+    <ID>WildcardImport:HostedCanonicalQuery.kt:import io.github.amichne.kast.query.contract.*</ID>
+    <ID>WildcardImport:HostedCanonicalQuery.kt:import io.github.amichne.kast.query.protocol.*</ID>
+    <ID>WildcardImport:HostedCanonicalQuery.kt:import io.github.amichne.kast.source.contract.*</ID>
+    <ID>WildcardImport:HostedCanonicalQuery.kt:import io.github.amichne.kast.traversal.contract.*</ID>
+    <ID>WildcardImport:HostedEndpointProtocol.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:HostedEndpointProtocol.kt:import io.github.amichne.kast.protocol.wire.*</ID>
+    <ID>WildcardImport:HostedEndpointService.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:HostedPeerCancellation.kt:import kotlinx.coroutines.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

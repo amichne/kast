@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:IndexerCacheStatePublisher.kt:IndexerCacheStatePublisher$fun publish: IndexerCacheStatePublication</ID>
+    <ID>CognitiveComplexMethod:IndexerLaunchOptions.kt:IndexerLaunchOptions.Companion$fun admit: IndexerLaunchAdmission</ID>
+    <ID>CognitiveComplexMethod:IndexerSemanticLane.kt:IndexerSemanticLane$fun dispatch: IndexerSemanticExecution</ID>
+    <ID>CognitiveComplexMethod:IndexerSocketRoute.kt:IndexerSocketRoute.Companion$fun prepare: Validation&lt;IndexerSocketRoute, IndexerTransportFailure></ID>
+    <ID>CognitiveComplexMethod:IndexerWireFrameCodec.kt:IndexerWireFrameCodec$fun write: IndexerFrameWrite</ID>
+    <ID>CognitiveComplexMethod:IndexerWireFrameCodec.kt:IndexerWireFrameCodec$private fun readCompletely: BufferRead</ID>
+    <ID>CognitiveComplexMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport$fun serveNext: IndexerConnectionHandling</ID>
+    <ID>CognitiveComplexMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport$override fun close</ID>
+    <ID>CognitiveComplexMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport$private fun serveFrames: IndexerConnectionHandling</ID>
+    <ID>CognitiveComplexMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport.Companion$fun activate: IndexerTransportActivation</ID>
+    <ID>CognitiveComplexMethod:KastIndexerApplicationStarter.kt:KastIndexerApplicationStarter$override fun main</ID>
+    <ID>ComplexCondition:IndexerBootstrapStatePublisher.kt:AdmittedIndexerBootstrapStatePublisher.Companion$!path.isAbsolute || path.normalize() != path || path.fileName?.toString() != InstalledSemanticRuntimeBootstrapAttempt.FILE_NAME || Files.isSymbolicLink(path)</ID>
+    <ID>ComplexCondition:IndexerCacheStatePublisher.kt:IndexerCacheStatePublisher$!path.isAbsolute || path.normalize() != path || path.fileName.toString() != "cache-state" || Files.isSymbolicLink(path)</ID>
+    <ID>ComplexCondition:KastIndexerMain.kt:IndexerNetworkArguments.Companion$!root.isAbsolute || root.normalize() != root || root.toRealPath() != root || !Files.isDirectory(root) || cache == null || !cache.isAbsolute || state.normalize() != state || state.fileName.toString() != "cache-state" || !Files.isDirectory(cache) || cache.toRealPath() != cache || Files.isSymbolicLink(state)</ID>
+    <ID>CyclomaticComplexMethod:IndexerBootstrapStatePublisher.kt:AdmittedIndexerBootstrapStatePublisher.Companion$internal fun admit: IndexerBootstrapStatePublisherAdmission</ID>
+    <ID>CyclomaticComplexMethod:IndexerCacheStatePublisher.kt:IndexerCacheStatePublisher$fun publish: IndexerCacheStatePublication</ID>
+    <ID>CyclomaticComplexMethod:IndexerLaunchOptions.kt:IndexerLaunchOptions.Companion$fun admit: IndexerLaunchAdmission</ID>
+    <ID>CyclomaticComplexMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport$override fun close</ID>
+    <ID>CyclomaticComplexMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport$private fun serveFrames: IndexerConnectionHandling</ID>
+    <ID>CyclomaticComplexMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport.Companion$fun activate: IndexerTransportActivation</ID>
+    <ID>CyclomaticComplexMethod:KastIndexerApplicationStarter.kt:KastIndexerApplicationStarter$override fun main</ID>
+    <ID>CyclomaticComplexMethod:KastIndexerMain.kt:IndexerNetworkArguments.Companion$fun admit: IndexerNetworkArgumentAdmission</ID>
+    <ID>LongMethod:IndexerCacheStatePublisher.kt:IndexerCacheStatePublisher$fun publish: IndexerCacheStatePublication</ID>
+    <ID>LongMethod:IndexerLaunchOptions.kt:IndexerLaunchOptions.Companion$fun admit: IndexerLaunchAdmission</ID>
+    <ID>LongMethod:IndexerSemanticLane.kt:IndexerSemanticLane$fun dispatch: IndexerSemanticExecution</ID>
+    <ID>LongMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport$override fun close</ID>
+    <ID>LongMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport$private fun serveFrames: IndexerConnectionHandling</ID>
+    <ID>LongMethod:InstalledIndexerTransport.kt:InstalledIndexerTransport.Companion$fun activate: IndexerTransportActivation</ID>
+    <ID>LongMethod:KastIndexerApplicationStarter.kt:KastIndexerApplicationStarter$override fun main</ID>
+    <ID>LongParameterList:InstalledIndexerTransport.kt:InstalledIndexerTransport</ID>
+    <ID>MagicNumber:IndexerSemanticLane.kt:25L</ID>
+    <ID>MagicNumber:KastIndexerApplicationStarter.kt:70</ID>
+    <ID>MagicNumber:KastIndexerMain.kt:64</ID>
+    <ID>MaxLineLength:IndexerBootstrapStatePublisher.kt:IndexerBootstrapStatePublisher$"kast-indexer: bootstrap-transition: current=${event.current} requested=${event.requested} outcome=${event.outcome}"</ID>
+    <ID>NamedArguments:IndexerWireFrameCodec.kt:IndexerWireFrameCodec$readCompletely(channel, header, deadline, input)</ID>
+    <ID>NamedArguments:IndexerWireFrameCodec.kt:IndexerWireFrameCodec$readCompletely(channel, payload, deadline, input)</ID>
+    <ID>NamedArguments:InstalledIndexerBootstrapProgress.kt:InstalledIndexerBootstrapProgress$TransitionRejected( phase, completedPhases, totalPhases, InstalledIndexerBootstrapAdvanceFailure.PHASE_OUT_OF_ORDER, )</ID>
+    <ID>NamedArguments:InstalledIndexerTransport.kt:InstalledIndexerTransport.Companion$InstalledIndexerTransport( server, prepared.route, ownedSocket, ownedDescriptor, host, policy, activity, authority, )</ID>
+    <ID>NamedArguments:KastIndexerApplicationStarter.kt:KastIndexerApplicationStarter$create( options.workspaceRoot, endpoint.stateDirectory, options.socketPath, object : InstalledRuntimeBootstrapObserver { override fun observe(phase: InstalledRuntimeBootstrapPhase) { bootstrap.observe(phase) } override fun observeGradleJvm(report: InstalledGradleJvmSelectionReport) { if ( bootstrapState.observeGradleJvm(report) != IndexerBootstrapStatePublication.PUBLISHED ) { reject(InstalledIndexerStartupFailure.BootstrapState) } } override fun observeIndexScope(scope: InstalledRuntimeIndexScope) { reportIndexScope(scope) } }, )</ID>
+    <ID>NamedArguments:KastIndexerMain.kt:prepare( networkArguments.root, networkArguments.cache, Path(System.getProperty("java.home")), System.getenv(), )</ID>
+    <ID>NestedBlockDepth:IndexerSocketRoute.kt:IndexerSocketRoute.Companion$fun prepare: Validation&lt;IndexerSocketRoute, IndexerTransportFailure></ID>
+    <ID>SpreadOperator:KastIndexerMain.kt:KastIndexerBootstrap$( KAST_INDEXER_COMMAND_NAME, *args .filterNot { argument -> LAUNCHER_OWNED_PREFIXES.any(argument::startsWith) } .toTypedArray(), )</ID>
+  </CurrentIssues>
+</SmellBaseline>

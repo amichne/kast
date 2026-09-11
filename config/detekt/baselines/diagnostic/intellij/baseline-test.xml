@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>NamedArguments:DiagnosticCompilationEvidenceTest.kt:DiagnosticCompilationEvidenceTest$fromBoundary( scope, scope.files.single(), 0, 1, DiagnosticSeverity.ERROR, code, "SensitiveName private-token compiler message", )</ID>
+    <ID>NamedArguments:DiagnosticReadTest.kt:DiagnosticReadTest$fromBoundary( scope, scope.files.first(), 4, 11, DiagnosticSeverity.ERROR, "UNRESOLVED_REFERENCE", "Unresolved reference", )</ID>
+    <ID>WildcardImport:DiagnosticCompilationEvidenceTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -1,0 +1,137 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:CanonicalQueryProtocol.kt:CanonicalQueryProtocol$private fun projectItems: QueryProjection&lt;QueryResultItemDocument></ID>
+    <ID>CognitiveComplexMethod:CanonicalQueryReferences.kt:CanonicalQueryReferences$override fun issueCandidates: CandidateSelectorIssuance</ID>
+    <ID>CognitiveComplexMethod:CanonicalSelectorDocumentAdmission.kt:internal fun CandidateSelectorDocument.admitCandidateSelector: SelectorDocumentAdmission&lt;CandidateSelector></ID>
+    <ID>CognitiveComplexMethod:CanonicalSelectorDocumentAdmission.kt:private fun admitAuthority: SelectorDocumentAdmission&lt;SemanticReadAuthority></ID>
+    <ID>CognitiveComplexMethod:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$fun decode: CanonicalTraversalContinuationDecoding</ID>
+    <ID>ComplexCondition:CanonicalSelectorDocumentAdmission.kt:root == reference.workspaceRoot.value &amp;&amp; live.host == reference.host.value.toString() &amp;&amp; live.epoch == reference.epoch.value &amp;&amp; live.contentView == reference.contentView.name &amp;&amp; live.version == reference.version &amp;&amp; live.version == LiveSemanticReadReference.VERSION</ID>
+    <ID>CyclomaticComplexMethod:CanonicalDiscoveryAdmission.kt:internal fun admitDiscoveryRequest: DiscoveryRequestAdmission</ID>
+    <ID>CyclomaticComplexMethod:CanonicalRelationContinuationCodec.kt:CanonicalRelationContinuationCodec$fun decode: CanonicalRelationContinuationDecoding</ID>
+    <ID>CyclomaticComplexMethod:CanonicalSelectorDocumentAdmission.kt:internal fun CandidateSelectorDocument.admitCandidateSelector: SelectorDocumentAdmission&lt;CandidateSelector></ID>
+    <ID>CyclomaticComplexMethod:CanonicalSelectorDocumentAdmission.kt:private fun SelectorConstraintsDocument?.admitConstraints: SelectorDocumentAdmission&lt;SymbolDiscoveryConstraints></ID>
+    <ID>CyclomaticComplexMethod:CanonicalSelectorDocumentAdmission.kt:private fun admitAuthority: SelectorDocumentAdmission&lt;SemanticReadAuthority></ID>
+    <ID>CyclomaticComplexMethod:CanonicalSourceReadProtocol.kt:private fun SourceReadRequest.admit: SourceRequestAdmission</ID>
+    <ID>CyclomaticComplexMethod:CanonicalSourceReadProtocol.kt:private fun protocolResult: ProtocolSourceReadResult?</ID>
+    <ID>CyclomaticComplexMethod:CanonicalSymbolDocuments.kt:private fun CanonicalCompilerSignature.protocolDocument: CompilerSignatureDocument?</ID>
+    <ID>CyclomaticComplexMethod:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$fun decode: CanonicalTraversalContinuationDecoding</ID>
+    <ID>LongMethod:CanonicalDiagnosticCheckProtocol.kt:CanonicalDiagnosticCheckProtocol$private fun project: OperationOutcome&lt; DiagnosticCheckResult, DiagnosticCheckQualification, DiagnosticCheckRejection, ></ID>
+    <ID>LongMethod:CanonicalDiscoveryAdmission.kt:internal fun admitDiscoveryRequest: DiscoveryRequestAdmission</ID>
+    <ID>LongMethod:CanonicalGraphProtocols.kt:CanonicalRelationReadProtocol$suspend fun execute: OperationOutcome&lt; RelationReadResult, RelationReadQualification, RelationReadRejection, ></ID>
+    <ID>LongMethod:CanonicalGraphProtocols.kt:CanonicalTraversalRunProtocol$suspend fun execute: OperationOutcome&lt; TraversalRunResult, TraversalRunQualification, TraversalRunRejection, ></ID>
+    <ID>LongMethod:CanonicalQueryProtocol.kt:CanonicalQueryProtocol$private fun projectItems: QueryProjection&lt;QueryResultItemDocument></ID>
+    <ID>LongMethod:CanonicalRelationContinuationCodec.kt:CanonicalRelationContinuationCodec$fun decode: CanonicalRelationContinuationDecoding</ID>
+    <ID>LongMethod:CanonicalSelectorCodec.kt:CanonicalSelectorCodec$fun encodeCandidate: CanonicalSelectorEncoding</ID>
+    <ID>LongMethod:CanonicalSelectorDocumentAdmission.kt:internal fun CandidateSelectorDocument.admitCandidateSelector: SelectorDocumentAdmission&lt;CandidateSelector></ID>
+    <ID>LongMethod:CanonicalSelectorDocumentAdmission.kt:internal fun ExactSelectorDocument.admitExactSelector: SelectorDocumentAdmission&lt;SymbolSelector></ID>
+    <ID>LongMethod:CanonicalSelectorDocumentAdmission.kt:private fun CandidateSelectorDocument.Declaration.admitSelection: SelectorDocumentAdmission&lt;SymbolDiscoverySelection></ID>
+    <ID>LongMethod:CanonicalSourceReadProtocol.kt:private fun SourceReadRequest.admit: SourceRequestAdmission</ID>
+    <ID>LongMethod:CanonicalSourceReadProtocol.kt:private fun protocolResult: ProtocolSourceReadResult?</ID>
+    <ID>LongMethod:CanonicalSymbolProtocols.kt:CanonicalSymbolDiscoverProtocol$private fun projectDiscovery: OperationOutcome&lt; SymbolDiscoverResult, SymbolDiscoverQualification, SymbolDiscoverRejection, ></ID>
+    <ID>LongMethod:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$fun decode: CanonicalTraversalContinuationDecoding</ID>
+    <ID>LongParameterList:CanonicalSymbolDocuments.kt:private fun symbolDocument: SymbolDocument?</ID>
+    <ID>MagicNumber:CanonicalRelationContinuationCodec.kt:0xff</ID>
+    <ID>MagicNumber:CanonicalRelationContinuationCodec.kt:16</ID>
+    <ID>MagicNumber:CanonicalRelationContinuationCodec.kt:CanonicalRelationContinuationCodec$3</ID>
+    <ID>MagicNumber:CanonicalSelectorCodec.kt:0xff</ID>
+    <ID>MagicNumber:CanonicalSelectorCodec.kt:16</ID>
+    <ID>MagicNumber:CanonicalSelectorCodec.kt:3</ID>
+    <ID>MagicNumber:CanonicalTraversalContinuationCodec.kt:0xff</ID>
+    <ID>MagicNumber:CanonicalTraversalContinuationCodec.kt:16</ID>
+    <ID>MatchingDeclarationName:CanonicalDiscoveryAdmission.kt:DiscoveryRequestAdmission</ID>
+    <ID>MultilineLambdaItParameter:CanonicalQueryProtocol.kt:{ SymbolDiscoveryDirectoryConstraint( SymbolDiscoveryDirectory.parse(it.path.value).refinedOrNull() ?: return null, SymbolDiscoveryContainment.valueOf(it.containment.name), ) }</ID>
+    <ID>MultilineLambdaItParameter:CanonicalQueryProtocol.kt:{ SymbolDiscoveryPackageConstraint( SymbolDiscoveryPackage.parse(it.name.value).refinedOrNull() ?: return null, SymbolDiscoveryContainment.valueOf(it.containment.name), ) }</ID>
+    <ID>MultilineLambdaItParameter:CanonicalSelectorDocumentAdmission.kt:{ val value = SymbolDiscoveryDirectory.parse(it.value).valueOrNull() ?: return SelectorDocumentAdmission.Rejected val containment = SymbolDiscoveryContainment.entries.singleOrNull { entry -> entry.name == it.containment } ?: return SelectorDocumentAdmission.Rejected SymbolDiscoveryDirectoryConstraint(value, containment) }</ID>
+    <ID>MultilineLambdaItParameter:CanonicalSelectorDocumentAdmission.kt:{ val value = SymbolDiscoveryPackage.parse(it.value).valueOrNull() ?: return SelectorDocumentAdmission.Rejected val containment = SymbolDiscoveryContainment.entries.singleOrNull { entry -> entry.name == it.containment } ?: return SelectorDocumentAdmission.Rejected SymbolDiscoveryPackageConstraint(value, containment) }</ID>
+    <ID>NamedArguments:CanonicalDiagnosticCheckProtocol.kt:CanonicalDiagnosticCheckProtocol$create( knownCount, resultLimitReached, analyzedFiles, limitations, )</ID>
+    <ID>NamedArguments:CanonicalDiagnosticCheckProtocol.kt:CanonicalDiagnosticCheckProtocol$project( result.batch.facts, scope, minOf(request.limit.value, maximumResults.value), DiagnosticProjection.Complete(result.coverage.analyzedFiles), )</ID>
+    <ID>NamedArguments:CanonicalDiagnosticCheckProtocol.kt:CanonicalDiagnosticCheckProtocol$project( result.batch.facts, scope, minOf(request.limit.value, maximumResults.value), DiagnosticProjection.Incomplete(result.coverage), )</ID>
+    <ID>NamedArguments:CanonicalDiagnosticCheckProtocol.kt:issueRangeCandidate( scope.lease, workspaceFile, location.range.start.value, location.range.endExclusive.value, )</ID>
+    <ID>NamedArguments:CanonicalGraphProtocols.kt:CanonicalRelationReadProtocol$resume( subject, meaning, budget, continuation, )</ID>
+    <ID>NamedArguments:CanonicalGraphProtocols.kt:CanonicalTraversalRunProtocol$decode( position.continuation, budget, authority, current, )</ID>
+    <ID>NamedArguments:CanonicalQueryProtocol.kt:CanonicalQueryProtocol$Candidate( QueryReferenceDocument.DeclarationCandidate(token), document.kind, document.name.takeIf { QueryCandidateFieldDocument.NAME in output.fields.values }, QueryCandidateLocationDocument(document.file, document.offset).takeIf { QueryCandidateFieldDocument.LOCATION in output.fields.values }, )</ID>
+    <ID>NamedArguments:CanonicalQueryProtocol.kt:CanonicalQueryProtocol$ExactSymbol( QueryReferenceDocument.ExactSymbol(token), document.kind, document.name.takeIf { QuerySymbolFieldDocument.NAME in output.fields.values }, QueryExactLocationDocument(document.file, document.range).takeIf { QuerySymbolFieldDocument.LOCATION in output.fields.values }, document.compilerEvidence.signature.takeIf { QuerySymbolFieldDocument.SIGNATURE in output.fields.values }, boundedConnections, )</ID>
+    <ID>NamedArguments:CanonicalQueryProtocol.kt:CanonicalQueryProtocol$project( request.output, lease, result.result, result.coverage, )</ID>
+    <ID>NamedArguments:CanonicalQueryProtocol.kt:CanonicalQueryProtocol$project(request.output, lease, result.result, null)</ID>
+    <ID>NamedArguments:CanonicalQueryProtocol.kt:PlanRejected( position(position.value), QueryElementTypeDocument.valueOf(required.name), QueryElementTypeDocument.valueOf(actual.name), QueryAdmissionCorrectionDocument.valueOf(correction.name), )</ID>
+    <ID>NamedArguments:CanonicalQueryProtocol.kt:create( workspaceRoot.value, reference.host.value, reference.epoch.value, LiveReadContentView.valueOf(reference.contentView.name), reference.version, )</ID>
+    <ID>NamedArguments:CanonicalQueryReferences.kt:CanonicalQueryReferences$issue(endpoint.lease, endpoint.scope, endpoint.evidence, endpoint.constraints)</ID>
+    <ID>NamedArguments:CanonicalQueryReferences.kt:CanonicalQueryReferences$restoreRange( lease, workspaceFile, rawStartInclusive, rawEndExclusive, )</ID>
+    <ID>NamedArguments:CanonicalRelationContinuationCodec.kt:CanonicalRelationContinuationCodec$restore( subject, meaning, scope, authority, cursor, fingerprint, )</ID>
+    <ID>NamedArguments:CanonicalRelationDocuments.kt:issueRangeCandidate( subject.lease, occurrence.file, occurrence.range.startInclusive, occurrence.range.endExclusive, )</ID>
+    <ID>NamedArguments:CanonicalSelectorCodec.kt:CanonicalSelectorCodec$SelectorReadScopeDocument( selector.scope.sourceKinds.name, selector.scope.generatedSources.name, projected.kind, projected.file, projected.libraries, selector.constraints.selectorDocument(), )</ID>
+    <ID>NamedArguments:CanonicalSelectorCodec.kt:CanonicalSelectorCodec$admitSelectorReference(document.root, document.generation, document.live, current)</ID>
+    <ID>NamedArguments:CanonicalSelectorCodec.kt:LiveSelectorAuthorityDocument( host.value.toString(), epoch.value, contentView.name, version, )</ID>
+    <ID>NamedArguments:CanonicalSelectorDocumentAdmission.kt:SelectorConstraintsDocument( directory?.let { SelectorConstraintPathDocument(it.directory.value, it.containment.name) }, packageName?.let { SelectorConstraintPathDocument(it.packageName.value, it.containment.name) }, declarationKinds?.values?.map { it.name }?.sorted(), when (val sets = sourceSets) { SymbolDiscoverySourceSets.All -> null is SymbolDiscoverySourceSets.Exact -> sets.values.map { it.value }.sorted() }, )</ID>
+    <ID>NamedArguments:CanonicalSelectorDocumentAdmission.kt:SymbolDiscoveryConstraints(directoryConstraint, packageConstraint, kinds, sets)</ID>
+    <ID>NamedArguments:CanonicalSelectorDocumentAdmission.kt:admitAuthority(root, generation, null, null)</ID>
+    <ID>NamedArguments:CanonicalSelectorDocumentAdmission.kt:fromBoundary( candidateKind, name, lease, nativePath, url, offset, )</ID>
+    <ID>NamedArguments:CanonicalSelectorDocumentAdmission.kt:restore( lease, admittedScope, candidate, constraints = when (val admitted = constraints.admitConstraints()) { is SelectorDocumentAdmission.Admitted -> admitted.value SelectorDocumentAdmission.Rejected -> return SelectorDocumentAdmission.Rejected }, )</ID>
+    <ID>NamedArguments:CanonicalSelectorDocumentAdmission.kt:restore( lease, admittedScope, evidence, admittedFingerprint, constraints = when (val admitted = constraints.admitConstraints()) { is SelectorDocumentAdmission.Admitted -> admitted.value SelectorDocumentAdmission.Rejected -> return SelectorDocumentAdmission.Rejected }, )</ID>
+    <ID>NamedArguments:CanonicalSelectorDocumentAdmission.kt:restoreBoundary( fileIdentity, start, end, name, qualifiedIdentity, symbolKind, signature, compiler, )</ID>
+    <ID>NamedArguments:CanonicalSelectorDocumentAdmission.kt:restoreFile(lease, workspaceFile, admittedScope.scope, admittedScope.constraints)</ID>
+    <ID>NamedArguments:CanonicalSelectorDocumentAdmission.kt:restoreRange( lease, workspaceFile, startInclusive, endExclusive, admittedScope.scope, admittedScope.constraints, )</ID>
+    <ID>NamedArguments:CanonicalSourceReadProtocol.kt:Call( depth, parent, selectionDocument, calleeSelector.protocolSelection() ?: return null, target.protocol() ?: return null, )</ID>
+    <ID>NamedArguments:CanonicalSourceReadProtocol.kt:Declaration( kind.protocol(), selector.presentName() ?: return null, visibility.protocol(), depth, parent, selectionDocument, semanticIdentity.protocol() ?: return null, )</ID>
+    <ID>NamedArguments:CanonicalSourceReadProtocol.kt:DomainSourceReadRequest( domainAnchor, domainRegion, domainEntities, domainText, domainEntityLimit, domainTextByteLimit, domainPage, )</ID>
+    <ID>NamedArguments:CanonicalSourceReadProtocol.kt:ProtocolSourceReadResult(snapshotDocument, regionDocument, boundedEntities, textDocument)</ID>
+    <ID>NamedArguments:CanonicalSourceReadProtocol.kt:Reference( selector.presentName() ?: return null, depth, parent, selectionDocument, target.protocol() ?: return null, )</ID>
+    <ID>NamedArguments:CanonicalSourceReadProtocol.kt:ValueParameter( selector.presentName() ?: return null, depth, parent, selectionDocument, )</ID>
+    <ID>NamedArguments:CanonicalSymbolDocuments.kt:Declaration( candidateSelector, kind.protocolDiscoveryKind() ?: return null, name, file, offset(candidateLocation.offset.value) ?: return null, )</ID>
+    <ID>NamedArguments:CanonicalSymbolDocuments.kt:TextMatch( candidateSelector, name, file, range( candidateLocation.range.startInclusive.value, candidateLocation.range.endExclusive.value, ) ?: return null, )</ID>
+    <ID>NamedArguments:CanonicalSymbolDocuments.kt:symbolDocument( exactSelector, kind, name.value, qualifiedIdentity, file.stableValue, range.startInclusive, range.endExclusive, signature, compilerIdentity, )</ID>
+    <ID>NoNameShadowing:CanonicalSymbolProtocols.kt:CanonicalSymbolInspectProtocol$token</ID>
+    <ID>UnreachableCode:CanonicalSelectorCodec.kt:CanonicalSelectorCodec$document</ID>
+    <ID>UnreachableCode:CanonicalSelectorCodec.kt:CanonicalSelectorCodec$document.constraints != null</ID>
+    <ID>UnreachableCode:CanonicalSelectorCodec.kt:CanonicalSelectorCodec$document.live != null</ID>
+    <ID>UnreachableCode:CanonicalSelectorCodec.kt:CanonicalSelectorCodec$document.readScope != null</ID>
+    <ID>UnreachableCode:CanonicalSelectorCodec.kt:CanonicalSelectorCodec$return CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.UNSUPPORTED_REFERENCE_VERSION)</ID>
+    <ID>UnreachableCode:CanonicalSelectorCodec.kt:CanonicalSelectorCodec$return document.admitCandidateSelector(identity.value).asDecoding()</ID>
+    <ID>UnreachableCode:CanonicalSelectorCodec.kt:CanonicalSelectorCodec$return document.admitExactSelector(identity.value).asDecoding()</ID>
+    <ID>UnreachableCode:CanonicalSelectorCodec.kt:CanonicalSelectorCodec$return identity</ID>
+    <ID>UnreachableCode:CanonicalSelectorCodec.kt:CanonicalSelectorCodec$token.value.split(':')[1] == CANDIDATE_TOKEN_VERSION</ID>
+    <ID>UnreachableCode:CanonicalSelectorCodec.kt:CanonicalSelectorCodec$token.value.split(':')[1] == EXACT_TOKEN_VERSION</ID>
+    <ID>UnreachableCode:CanonicalSelectorCodec.kt:CanonicalSelectorCodec$val document = try { selectorJson.decodeFromString(CandidateSelectorDocument.serializer(), payload) } catch (_: SerializationException) { return CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.MALFORMED_DOCUMENT) } catch (_: IllegalArgumentException) { return CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.MALFORMED_DOCUMENT) }</ID>
+    <ID>UnreachableCode:CanonicalSelectorCodec.kt:CanonicalSelectorCodec$val document = try { selectorJson.decodeFromString(ExactSelectorDocument.serializer(), payload) } catch (_: SerializationException) { return CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.MALFORMED_DOCUMENT) } catch (_: IllegalArgumentException) { return CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.MALFORMED_DOCUMENT) }</ID>
+    <ID>UnreachableCode:CanonicalSelectorCodec.kt:CanonicalSelectorCodec$val identity = admitSelectorReference(document.root, document.generation, document.live, current)</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$io</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$io.github</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$io.github.amichne</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$io.github.amichne.kast</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$io.github.amichne.kast.protocol</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$io.github.amichne.kast.protocol.contract</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$return CanonicalTraversalContinuationDecoding.Decoded(continuation)</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$return malformed()</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$terminalRelationLimitations.size != payload.terminalRelationLimitations.size</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$val checkpoint = TraversalCheckpoint.create( plan, frontier, visited, pending, terminalRelationLimitations, ) .refinedOrNull() ?: return malformed()</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$val continuation = TraversalContinuation.restore(plan, checkpoint, fingerprint).refinedOrNull() ?: return malformed()</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$val fingerprint = TraversalContinuationFingerprint.parse(payload.fingerprint).refinedOrNull() ?: return malformed()</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$val frontier = payload.frontier.map { entry -> entry.restore(plan, authority) ?: return malformed() }</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$val meaning = payload.relation.relationMeaningOrNull() ?: return malformed()</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$val payload = try { traversalContinuationJson.decodeFromString( TraversalContinuationPayload.serializer(), payloadText, ) } catch (_: SerializationException) { return CanonicalTraversalContinuationDecoding.Malformed } catch (_: IllegalArgumentException) { return CanonicalTraversalContinuationDecoding.Malformed }</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$val pending = when (val state = payload.pending) { null -> TraversalPendingState.None is TraversalPendingPayload.Active -> { val entry = state.entry.restore(plan, authority) ?: return malformed() val relationDocument = io.github.amichne.kast.protocol.contract.RelationContinuationDocument.parse( state.relationContinuation ) .refinedOrNull() ?: return malformed() val relation = when ( val decoded = CanonicalRelationContinuationCodec.decode(relationDocument, plan.start.lease) ) { is CanonicalRelationContinuationDecoding.Decoded -> decoded.continuation CanonicalRelationContinuationDecoding.Malformed -> return malformed() CanonicalRelationContinuationDecoding.AuthorityMismatch -> return CanonicalTraversalContinuationDecoding.AuthorityMismatch } val read = TraversalPendingRead.create(plan, entry, relation).refinedOrNull() ?: return malformed() TraversalPendingState.active(read) } }</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$val plan = TraversalPlan.start(start, meaning, budget).refinedOrNull() ?: return malformed()</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$val start = when (val lookup = authority.exact(payload.start.protocolTextOrNull() ?: return malformed(), current)) { is ExactSelectorLookup.Found -> lookup.selector is ExactSelectorLookup.Rejected -> return when (lookup.reason) { SelectorLookupRejection.WORKSPACE_MISMATCH -> CanonicalTraversalContinuationDecoding.SubjectMismatch SelectorLookupRejection.STALE -> CanonicalTraversalContinuationDecoding.AuthorityMismatch SelectorLookupRejection.WRONG_KIND, SelectorLookupRejection.MALFORMED -> malformed() } }</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$val terminalRelationLimitations = payload.terminalRelationLimitations.mapTo(linkedSetOf()) { name -> RelationLimitation.entries.singleOrNull { it.name == name } ?: return malformed() }</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$val visited = payload.visited.mapTo(linkedSetOf()) { raw -> RelationEndpointFingerprint.parse(raw).refinedOrNull() ?: return malformed() }</ID>
+    <ID>UnreachableCode:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$visited.size != payload.visited.size</ID>
+    <ID>UnusedParameter:CanonicalSourceReadProtocol.kt:authority: QueryReferenceAuthority</ID>
+    <ID>WildcardImport:CanonicalDiagnosticCheckProtocol.kt:import io.github.amichne.kast.query.protocol.*</ID>
+    <ID>WildcardImport:CanonicalQueryProtocol.kt:import io.github.amichne.kast.kernel.*</ID>
+    <ID>WildcardImport:CanonicalQueryProtocol.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:CanonicalQueryProtocol.kt:import io.github.amichne.kast.query.contract.*</ID>
+    <ID>WildcardImport:CanonicalQueryProtocol.kt:import io.github.amichne.kast.workspace.contract.*</ID>
+    <ID>WildcardImport:CanonicalQueryReferences.kt:import io.github.amichne.kast.source.contract.*</ID>
+    <ID>WildcardImport:CanonicalRelationDocuments.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:CanonicalRelationDocuments.kt:import io.github.amichne.kast.relation.contract.*</ID>
+    <ID>WildcardImport:CanonicalSelectorCodec.kt:import io.github.amichne.kast.symbol.contract.*</ID>
+    <ID>WildcardImport:CanonicalSelectorCodec.kt:import io.github.amichne.kast.workspace.contract.*</ID>
+    <ID>WildcardImport:CanonicalSelectorDocumentAdmission.kt:import io.github.amichne.kast.symbol.contract.*</ID>
+    <ID>WildcardImport:CanonicalSelectorDocumentAdmission.kt:import io.github.amichne.kast.workspace.contract.*</ID>
+    <ID>WildcardImport:CanonicalSymbolProtocols.kt:import io.github.amichne.kast.query.protocol.*</ID>
+    <ID>WildcardImport:CanonicalTraversalContinuationCodec.kt:import io.github.amichne.kast.query.protocol.*</ID>
+    <ID>WildcardImport:QueryReferenceAuthority.kt:import io.github.amichne.kast.symbol.contract.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

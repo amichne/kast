@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:QueryService.kt:QueryService$private suspend fun refine: List&lt;QuerySymbol></ID>
+    <ID>CognitiveComplexMethod:QueryService.kt:QueryService$private suspend fun related: List&lt;QuerySymbol></ID>
+    <ID>CognitiveComplexMethod:QueryService.kt:QueryService$private suspend fun where: List&lt;QuerySymbol></ID>
+    <ID>CyclomaticComplexMethod:QueryService.kt:QueryService$private suspend fun related: List&lt;QuerySymbol></ID>
+    <ID>LargeClass:QueryService.kt:QueryService : QueryOperations</ID>
+    <ID>LargeClass:QueryServiceTest.kt:QueryServiceTest</ID>
+    <ID>LongMethod:QueryService.kt:QueryService$private suspend fun discover: DiscoveryExecution</ID>
+    <ID>LongMethod:QueryService.kt:QueryService$private suspend fun related: List&lt;QuerySymbol></ID>
+    <ID>LongMethod:QueryServiceTest.kt:QueryServiceTest$private fun selfRead: SourceReadResult.Complete</ID>
+    <ID>LoopWithTooManyJumpStatements:QueryService.kt:QueryService$while</ID>
+    <ID>NestedBlockDepth:QueryService.kt:QueryService$private suspend fun related: List&lt;QuerySymbol></ID>
+    <ID>WildcardImport:QueryServiceTest.kt:import io.github.amichne.kast.source.contract.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

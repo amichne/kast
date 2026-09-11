@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:DerivedTrustStoreMaterializer.kt:DerivedTrustStoreMaterializer$private fun materializeExclusively: DerivedTrustStoreMaterialization</ID>
+    <ID>CognitiveComplexMethod:InstalledNetworkBootstrap.kt:InstalledNetworkBootstrap$fun prepare: NetworkBootstrapResult</ID>
+    <ID>CognitiveComplexMethod:NetworkPolicyReceipt.kt:NetworkPolicyReceipt$fun observe: NetworkPolicyObservation</ID>
+    <ID>CognitiveComplexMethod:SafeRuntimeArchive.kt:SafeRuntimeArchive$fun extract: RuntimeArchiveExtraction</ID>
+    <ID>ComplexCondition:InstalledEndpointAlias.kt:InstalledEndpointAliasReceipt$!InstalledEndpointAliases.matches(alias, physicalDirectory) || physicalDirectory.fileName.toString() != "run" || physicalDirectory.parent.fileName.toString() != "state" || InstalledEndpointAliases.physicalDirectoryIdentity(physicalDirectory) != targetIdentity || !Files.isSymbolicLink(alias) || Files.readSymbolicLink(alias) != physicalDirectory || InstalledEndpointAliases.identity(alias) != aliasIdentity || aliasIdentity.owner != targetIdentity.owner</ID>
+    <ID>ComplexCondition:InstalledEndpointAlias.kt:InstalledEndpointAliases$!Files.isRegularFile(receipt, NOFOLLOW_LINKS) || Files.size(receipt) > 4096 || Files.getPosixFilePermissions(receipt, NOFOLLOW_LINKS) != privateFile || identity(receipt)?.owner != physicalIdentity.owner</ID>
+    <ID>ComplexCondition:InstalledEndpointAlias.kt:InstalledEndpointAliases$!path.isAbsolute || path.normalize() != path || path.toRealPath() != path || !Files.isDirectory(path, NOFOLLOW_LINKS) || Files.getPosixFilePermissions(path, NOFOLLOW_LINKS) != privateDirectory</ID>
+    <ID>ComplexCondition:InstalledEndpointAlias.kt:InstalledEndpointAliases$!target.isAbsolute || target.normalize() != target || aliasFor(target) != alias || target.fileName.toString() != "run" || target.parent.fileName.toString() != "state"</ID>
+    <ID>ComplexCondition:InstalledUpstreamDirectory.kt:InstalledUpstreamDirectories$!path.isAbsolute || path.normalize() != path || path.toRealPath() != path || path.parent != root || !directoryName.matches(path.fileName.toString()) || !Files.isDirectory(path, NOFOLLOW_LINKS) || Files.getPosixFilePermissions(path, NOFOLLOW_LINKS) != privateDirectory</ID>
+    <ID>ComplexCondition:InstalledUpstreamDirectory.kt:InstalledUpstreamDirectories$directory.identity.owner != physicalDirectory.identity.owner || !Files.isRegularFile(receipt, NOFOLLOW_LINKS) || Files.size(receipt) > MAXIMUM_RECEIPT_BYTES || Files.getPosixFilePermissions(receipt, NOFOLLOW_LINKS) != privateFile || InstalledEndpointAliases.identity(receipt)?.owner != physicalDirectory.identity.owner</ID>
+    <ID>ComplexCondition:InstalledUpstreamDirectory.kt:InstalledUpstreamDirectories$document.schemaVersion != UpstreamDirectoryDocumentVersion.CURRENT || document.directory != directory.record() || document.physicalDirectory != physicalDirectory.record() || document.directoryIdentity != directory.identity || document.physicalDirectoryIdentity != physicalDirectory.identity</ID>
+    <ID>ComplexCondition:InstalledUpstreamDirectory.kt:InstalledUpstreamDirectoryReceipt$!InstalledUpstreamDirectories.matches(directory, physicalDirectory) || !physicalDirectory.retained() || !directory.retained() || directory.identity.owner != physicalDirectory.identity.owner</ID>
+    <ID>ComplexCondition:PrivateNetworkDirectory.kt:!path.isAbsolute || path.normalize() != path || !Files.isDirectory(parent) || parent.toRealPath() != parent || Files.isSymbolicLink(path)</ID>
+    <ID>ComplexCondition:RuntimeStore.kt:platform == RuntimePlatform.MACOS &amp;&amp; architecture == RuntimeArchitecture.AARCH64 &amp;&amp; System.getProperty("os.name").lowercase().contains("mac") &amp;&amp; System.getProperty("os.arch").lowercase() in setOf("aarch64", "arm64")</ID>
+    <ID>ComplexCondition:SafeRuntimeArchive.kt:SafeRuntimeArchive$name.isBlank() || !seen.add(name) || name.startsWith('/') || name.substringBefore('/').removeSuffix("/") !in allowedRoots</ID>
+    <ID>CyclomaticComplexMethod:DerivedTrustStoreMaterializer.kt:DerivedTrustStoreMaterializer$private fun materializeExclusively: DerivedTrustStoreMaterialization</ID>
+    <ID>CyclomaticComplexMethod:InstalledEndpointAlias.kt:InstalledEndpointAliases$fun observe: Validation&lt;InstalledEndpointAliasReceipt, InstalledEndpointAliasFailure></ID>
+    <ID>CyclomaticComplexMethod:InstalledNetworkBootstrap.kt:InstalledNetworkBootstrap$fun prepare: NetworkBootstrapResult</ID>
+    <ID>CyclomaticComplexMethod:InstalledUpstreamDirectory.kt:InstalledUpstreamDirectories$private fun observe: Validation&lt;InstalledUpstreamDirectoryReceipt, InstalledUpstreamDirectoryFailure></ID>
+    <ID>CyclomaticComplexMethod:NetworkPolicyReceipt.kt:NetworkPolicyReceipt$fun observe: NetworkPolicyObservation</ID>
+    <ID>CyclomaticComplexMethod:SafeRuntimeArchive.kt:SafeRuntimeArchive$fun extract: RuntimeArchiveExtraction</ID>
+    <ID>LongMethod:DerivedTrustStoreMaterializer.kt:DerivedTrustStoreMaterializer$private fun materializeExclusively: DerivedTrustStoreMaterialization</ID>
+    <ID>LongMethod:InstalledNetworkBootstrap.kt:InstalledNetworkBootstrap$fun prepare: NetworkBootstrapResult</ID>
+    <ID>LongMethod:InstalledUpstreamDirectory.kt:InstalledUpstreamDirectories$fun prepare: Validation&lt;InstalledUpstreamDirectoryReceipt, InstalledUpstreamDirectoryFailure></ID>
+    <ID>LongMethod:NetworkPolicyReceipt.kt:NetworkPolicyReceipt$fun observe: NetworkPolicyObservation</ID>
+    <ID>LongMethod:RuntimeStore.kt:ManagedSemanticRuntimeProvider$fun resolve: SemanticRuntimeResolution</ID>
+    <ID>LongMethod:SafeRuntimeArchive.kt:SafeRuntimeArchive$fun extract: RuntimeArchiveExtraction</ID>
+    <ID>MagicNumber:GradleNetworkConfiguration.kt:GradleNetworkConfiguration$1_048_576</ID>
+    <ID>MagicNumber:InstalledEndpointAlias.kt:InstalledEndpointAliases$104</ID>
+    <ID>MagicNumber:InstalledEndpointAlias.kt:InstalledEndpointAliases$32</ID>
+    <ID>MagicNumber:InstalledEndpointAlias.kt:InstalledEndpointAliases$4096</ID>
+    <ID>MagicNumber:InstalledNetworkBootstrap.kt:InstalledNetworkBootstrap$65_536</ID>
+    <ID>MagicNumber:InstalledUpstreamDirectory.kt:InstalledUpstreamDirectories$32</ID>
+    <ID>MagicNumber:NetworkPolicyReceipt.kt:NetworkPolicyReceipt$4096</ID>
+    <ID>MagicNumber:RuntimeArtifactIO.kt:JdkRuntimeArtifactDownloader$120_000</ID>
+    <ID>MagicNumber:RuntimeArtifactIO.kt:JdkRuntimeArtifactDownloader$200</ID>
+    <ID>MagicNumber:RuntimeArtifactIO.kt:JdkRuntimeArtifactDownloader$299</ID>
+    <ID>MagicNumber:RuntimeArtifactIO.kt:JdkRuntimeArtifactDownloader$30_000</ID>
+    <ID>NestedBlockDepth:GradleNetworkConfiguration.kt:GradleNetworkConfiguration$fun read: Refinement&lt;NetworkConfiguration, NetworkConfigurationFailure></ID>
+    <ID>NestedBlockDepth:InstalledNetworkBootstrap.kt:InstalledNetworkBootstrap$fun prepare: NetworkBootstrapResult</ID>
+    <ID>NestedBlockDepth:NetworkPolicyReceipt.kt:NetworkPolicyReceipt$fun observe: NetworkPolicyObservation</ID>
+    <ID>NestedBlockDepth:RuntimeStore.kt:ManagedSemanticRuntimeProvider$fun resolve: SemanticRuntimeResolution</ID>
+    <ID>NestedBlockDepth:SafeRuntimeArchive.kt:SafeRuntimeArchive$fun extract: RuntimeArchiveExtraction</ID>
+    <ID>ThrowsCount:PrivateNetworkDirectory.kt:internal fun privateNetworkDirectory</ID>
+    <ID>WildcardImport:EnterpriseNetworkPolicyTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

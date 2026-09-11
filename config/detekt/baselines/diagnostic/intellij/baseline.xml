@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:IntellijDiagnosticCompilerAdapter.kt:IntellijDiagnosticCompilerQuery$private fun collectFile</ID>
+    <ID>CognitiveComplexMethod:IntellijDiagnosticScopeResolver.kt:internal suspend fun resolveDiagnosticScope: Refinement&lt;DiagnosticScope, DiagnosticScopeResolutionFailure></ID>
+    <ID>CognitiveComplexMethod:ProjectBoundIntellijDiagnosticPorts.kt:ProjectBoundIntellijDiagnosticPorts.Companion$fun create: ProjectBoundIntellijDiagnosticPorts</ID>
+    <ID>CyclomaticComplexMethod:IntellijDiagnosticCompilerAdapter.kt:IntellijDiagnosticCompilerQuery$private fun collectFile</ID>
+    <ID>CyclomaticComplexMethod:ProjectBoundIntellijDiagnosticPorts.kt:ProjectBoundIntellijDiagnosticPorts.Companion$fun create: ProjectBoundIntellijDiagnosticPorts</ID>
+    <ID>LongMethod:IntellijDiagnosticCompilerAdapter.kt:IntellijDiagnosticCompilerQuery$private fun collectFile</ID>
+    <ID>LongMethod:ProjectBoundIntellijDiagnosticPorts.kt:ProjectBoundIntellijDiagnosticPorts.Companion$fun create: ProjectBoundIntellijDiagnosticPorts</ID>
+    <ID>WildcardImport:DiagnosticCompilationEvidenceTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

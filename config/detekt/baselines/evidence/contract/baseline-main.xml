@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>MagicNumber:MutationRecoveryRecord.kt:MutationRecoveryRecord.Companion$64</ID>
+    <ID>NamedArguments:MutationRecoveryRecord.kt:MutationRecoveryRecord.Companion$AppliedWritesDurable( prior.digest, prior.preparation, appliedWrites, digest( prior.preparation, MutationRecoveryStage.APPLIED_WRITES_DURABLE, appliedWrites.sources, prior.digest, ), )</ID>
+    <ID>NamedArguments:MutationRecoveryRecord.kt:MutationRecoveryRecord.Companion$RecoveryRequired( prior.digest, prior.preparation, prior.appliedWrites, requirement, digest( prior.preparation, MutationRecoveryStage.RECOVERY_REQUIRED, prior.appliedWrites.sources, prior.digest, RecoveryDigestRequirement.Present(requirement), ), )</ID>
+    <ID>NamedArguments:MutationRecoveryRecord.kt:MutationRecoveryRecord.Companion$RolledBack( prior.digest, prior.preparation, prior.appliedWrites, digest( prior.preparation, MutationRecoveryStage.ROLLED_BACK, prior.appliedWrites.sources, prior.digest, ), )</ID>
+  </CurrentIssues>
+</SmellBaseline>
