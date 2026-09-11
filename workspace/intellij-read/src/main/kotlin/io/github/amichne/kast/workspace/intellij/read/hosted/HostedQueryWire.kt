@@ -1,5 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read.hosted
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.google.gson.Gson
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
@@ -9,7 +11,7 @@ import io.github.amichne.kast.workspace.intellij.read.ExistingProjectAdmissionFa
 
 /** Detached transport projection. Encoding may only run after the service has released its reads. */
 object HostedQueryWire {
-    fun encode(result: HostedIndexResult): String = when (result) {
+    fun encode(result: HostedIndexResult, limits: ReadLimits = ReadLimits.Default): String = when (result) {
         is HostedIndexResult.Rejected -> encode(HostedQueryResult.Rejected(result.failure, result.stage))
         is HostedIndexResult.Published -> Gson().toJson(mapOf(
             "schemaVersion" to 1, "outcome" to "published", "stage" to HostedQueryStage.RESULT_DETACHED.name,
@@ -21,7 +23,7 @@ object HostedQueryWire {
             "indexAuthority" to "existing_ide_kotlin_stub_index",
             "declarations" to result.publication.classes.declarations.map { it.document() },
         )).let { document ->
-            if (document.toByteArray(Charsets.UTF_8).size <= 65_536) document
+            if (document.toByteArray(Charsets.UTF_8).size <= limits[ReadLimitParameter.HOST_RESPONSE_BYTES].value) document
             else encode(HostedQueryResult.Rejected(HostedQueryFailure.RESULT_LIMIT_EXCEEDED, HostedQueryStage.RESULT_DETACHED))
         }
     }
@@ -73,6 +75,7 @@ private fun HostedCompilerDeclaration.document(): Map<String, Any> {
 }
 
 internal fun HostedQueryFailure.code(): String = when (this) {
+    is HostedQueryFailure.Configuration -> "CONFIGURATION_REJECTED"
     HostedQueryFailure.RETIRED -> "RETIRED"
     HostedQueryFailure.WRONG_ENDPOINT -> "WRONG_ENDPOINT"
     HostedQueryFailure.WRONG_PROJECT -> "WRONG_PROJECT"
@@ -110,7 +113,12 @@ internal fun HostedQueryFailure.code(): String = when (this) {
 }
 
 /** Closed, bounded diagnostic data; never exception text or compiler/source objects. */
-private fun HostedQueryFailure.detail(): Any = when (this) {
+internal fun HostedQueryFailure.detail(): Any = when (this) {
+    is HostedQueryFailure.Configuration -> when (val failure = cause) {
+        io.github.amichne.kast.kernel.ReadLimitFailure.UnknownParameter -> mapOf("cause" to "UNKNOWN_PARAMETER")
+        is io.github.amichne.kast.kernel.ReadLimitFailure.InvalidValue -> mapOf("cause" to failure.kind.name, "parameter" to failure.parameter.environmentKey)
+        is io.github.amichne.kast.kernel.ReadLimitFailure.InconsistentBounds -> mapOf("cause" to "INCONSISTENT_BOUNDS", "inner" to failure.inner.environmentKey, "outer" to failure.outer.environmentKey)
+    }
     is HostedQueryFailure.Platform -> mapOf("cause" to cause.name)
     is HostedQueryFailure.ModelCapture -> cause.failures.map { it.name }
     is HostedQueryFailure.ProjectAdmission -> when (val failure = cause) {

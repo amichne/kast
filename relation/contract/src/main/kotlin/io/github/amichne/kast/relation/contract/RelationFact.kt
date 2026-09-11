@@ -295,8 +295,7 @@ data class RelationFact private constructor(
             if (source.lease != request.subject.lease || target.lease != request.subject.lease) {
                 return Refinement.Rejected(RelationFactFailure.ENDPOINT_LEASE_MISMATCH)
             }
-            if (source.scope != request.subject.scope || target.scope != request.subject.scope ||
-                source.constraints != request.subject.constraints || target.constraints != request.subject.constraints) {
+            if (!request.admitsEndpoint(source) || !request.admitsEndpoint(target)) {
                 return Refinement.Rejected(RelationFactFailure.ENDPOINT_SCOPE_MISMATCH)
             }
             val oriented = when (request.meaning) {

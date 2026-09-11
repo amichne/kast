@@ -1,5 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.AdmittedIdeHostCompatibility
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
@@ -28,14 +30,15 @@ internal class RefinedDetachedModules private constructor(
         internal fun refine(
             root: Path,
             boundaries: List<DetachedModuleBoundary>,
+            limits: ReadLimits = ReadLimits.Default,
         ): Refinement<RefinedDetachedModules, DetachedModelCaptureFailure> {
             if (boundaries.isEmpty()) return rejected(DetachedModelCaptureFailure.NO_MODULES)
-            if (boundaries.size > DetachedModelLimits.MAX_MODULES) {
+            if (boundaries.size > limits[ReadLimitParameter.MODEL_MODULES].value) {
                 return rejected(DetachedModelCaptureFailure.TOO_MANY_MODULES)
             }
             val modules = ArrayList<DetachedIdeModule>(boundaries.size)
             for (boundary in boundaries) {
-                when (val refined = refineModule(root, boundary)) {
+                when (val refined = refineModule(root, boundary, limits = limits)) {
                     is Refinement.Refined -> modules += refined.value
                     is Refinement.Rejected -> return refined
                 }
@@ -71,7 +74,8 @@ internal fun refineDetachedModel(
     expectedRoot: CanonicalWorkspaceRoot,
     compatibility: AdmittedIdeHostCompatibility,
     boundary: DetachedModelBoundary,
-): DetachedModelCapture {
+    limits: ReadLimits = ReadLimits.Default,
+    ): DetachedModelCapture {
     if (boundary.disposed) return rejectedCapture(DetachedModelCaptureFailure.PROJECT_DISPOSED)
     if (!boundary.smart) return rejectedCapture(DetachedModelCaptureFailure.PROJECT_DUMB)
     if (!boundary.gradleModelComplete) {
@@ -80,14 +84,14 @@ internal fun refineDetachedModel(
     val exactRoot = when (
         val rootMatch = ExactObservedWorkspaceRoot.refineObservedRoot(
             boundary.projectRoot,
-            expectedRoot,
+            expectedRoot, limits = limits,
         )
     ) {
         is Refinement.Refined -> rootMatch.value
         is Refinement.Rejected -> return rejectedCapture(rootMatch.failure)
     }
     val root = Path.of(exactRoot.canonicalRoot.value)
-    val modules = when (val refined = RefinedDetachedModules.refine(root, boundary.modules)) {
+    val modules = when (val refined = RefinedDetachedModules.refine(root, boundary.modules, limits = limits)) {
         is Refinement.Refined -> refined.value
         is Refinement.Rejected -> return rejectedCapture(refined.failure)
     }
@@ -109,10 +113,11 @@ internal fun refineDetachedModel(
 private fun refineModule(
     root: Path,
     raw: DetachedModuleBoundary,
-): Refinement<DetachedIdeModule, DetachedModelCaptureFailure> {
+    limits: ReadLimits = ReadLimits.Default,
+    ): Refinement<DetachedIdeModule, DetachedModelCaptureFailure> {
     if (raw.disposed) return rejected(DetachedModelCaptureFailure.MODULE_DISPOSED)
     if (!raw.gradleOwned) return rejected(DetachedModelCaptureFailure.NOT_GRADLE_OWNED)
-    val name = when (val value = refineIdentity(raw.name)) {
+    val name = when (val value = refineIdentity(raw.name, limits = limits)) {
         is Refinement.Refined -> DetachedModuleName(value.value.value)
         is Refinement.Rejected -> return rejected(value.failure.identityFailure())
     }
@@ -121,7 +126,7 @@ private fun refineModule(
             raw.gradleBuildRoot,
             root,
             DetachedModelCaptureFailure.INVALID_GRADLE_BUILD_ROOT,
-            DetachedModelCaptureFailure.GRADLE_BUILD_ROOT_OUTSIDE_WORKSPACE,
+            DetachedModelCaptureFailure.GRADLE_BUILD_ROOT_OUTSIDE_WORKSPACE, limits = limits,
         )
     ) {
         is Refinement.Refined -> value.value
@@ -132,13 +137,13 @@ private fun refineModule(
             raw.gradleProjectRoot,
             root,
             DetachedModelCaptureFailure.INVALID_GRADLE_PROJECT_ROOT,
-            DetachedModelCaptureFailure.GRADLE_PROJECT_ROOT_OUTSIDE_WORKSPACE,
+            DetachedModelCaptureFailure.GRADLE_PROJECT_ROOT_OUTSIDE_WORKSPACE, limits = limits,
         )
     ) {
         is Refinement.Refined -> value.value
         is Refinement.Rejected -> return value
     }
-    val projectIdentity = when (val value = refineIdentity(raw.gradleProjectIdentity.orEmpty())) {
+    val projectIdentity = when (val value = refineIdentity(raw.gradleProjectIdentity.orEmpty(), limits = limits)) {
         is Refinement.Refined -> DetachedGradleProjectIdentity(value.value.value)
         is Refinement.Rejected -> return rejected(
             if (value.failure == TextFailure.TOO_LONG) {
@@ -148,15 +153,15 @@ private fun refineModule(
             },
         )
     }
-    val sourceRoots = when (val value = refineSourceRoots(root, raw.sourceRoots)) {
+    val sourceRoots = when (val value = refineSourceRoots(root, raw.sourceRoots, limits = limits)) {
         is Refinement.Refined -> value.value
         is Refinement.Rejected -> return value
     }
-    val sdk = when (val value = refineSdk(raw.sdk)) {
+    val sdk = when (val value = refineSdk(raw.sdk, limits = limits)) {
         is Refinement.Refined -> value.value
         is Refinement.Rejected -> return value
     }
-    val classpath = when (val value = refineClasspath(raw.classpath)) {
+    val classpath = when (val value = refineClasspath(raw.classpath, limits = limits)) {
         is Refinement.Refined -> value.value
         is Refinement.Rejected -> return value
     }
@@ -181,9 +186,10 @@ private fun refineModule(
 private fun refineSourceRoots(
     root: Path,
     rawRoots: List<DetachedSourceRootBoundary>,
-): Refinement<List<DetachedIdeSourceRoot>, DetachedModelCaptureFailure> {
+    limits: ReadLimits = ReadLimits.Default,
+    ): Refinement<List<DetachedIdeSourceRoot>, DetachedModelCaptureFailure> {
     if (rawRoots.isEmpty()) return rejected(DetachedModelCaptureFailure.NO_SOURCE_ROOTS)
-    if (rawRoots.size > DetachedModelLimits.MAX_SOURCE_ROOTS_PER_MODULE) {
+    if (rawRoots.size > limits[ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE].value) {
         return rejected(DetachedModelCaptureFailure.TOO_MANY_SOURCE_ROOTS)
     }
     val roots = ArrayList<DetachedIdeSourceRoot>(rawRoots.size)
@@ -193,7 +199,7 @@ private fun refineSourceRoots(
                 raw.path,
                 root,
                 DetachedModelCaptureFailure.INVALID_SOURCE_ROOT,
-                DetachedModelCaptureFailure.SOURCE_ROOT_OUTSIDE_WORKSPACE,
+                DetachedModelCaptureFailure.SOURCE_ROOT_OUTSIDE_WORKSPACE, limits = limits,
             )
         ) {
             is Refinement.Refined -> value.value
@@ -225,17 +231,18 @@ private fun refineSourceRoots(
  */
 private fun refineSdk(
     raw: DetachedSdkBoundary?,
-): Refinement<DetachedIdeSdkIdentity, DetachedModelCaptureFailure> {
+    limits: ReadLimits = ReadLimits.Default,
+    ): Refinement<DetachedIdeSdkIdentity, DetachedModelCaptureFailure> {
     raw ?: return rejected(DetachedModelCaptureFailure.SDK_UNAVAILABLE)
-    val name = when (val value = refineIdentity(raw.name)) {
+    val name = when (val value = refineIdentity(raw.name, limits = limits)) {
         is Refinement.Refined -> DetachedSdkName(value.value.value)
         is Refinement.Rejected -> return rejected(value.failure.sdkFailure())
     }
-    val type = when (val value = refineIdentity(raw.type)) {
+    val type = when (val value = refineIdentity(raw.type, limits = limits)) {
         is Refinement.Refined -> DetachedSdkType(value.value.value)
         is Refinement.Rejected -> return rejected(value.failure.sdkFailure())
     }
-    val version = when (val value = refineIdentity(raw.version.orEmpty())) {
+    val version = when (val value = refineIdentity(raw.version.orEmpty(), limits = limits)) {
         is Refinement.Refined -> DetachedSdkVersion(value.value.value)
         is Refinement.Rejected -> return rejected(value.failure.sdkFailure())
     }
@@ -251,14 +258,15 @@ private fun refineSdk(
  */
 private fun refineClasspath(
     rawEntries: List<DetachedClasspathBoundary>,
-): Refinement<List<DetachedIdeClasspathEntry>, DetachedModelCaptureFailure> {
+    limits: ReadLimits = ReadLimits.Default,
+    ): Refinement<List<DetachedIdeClasspathEntry>, DetachedModelCaptureFailure> {
     if (rawEntries.isEmpty()) return rejected(DetachedModelCaptureFailure.NO_CLASSPATH)
-    if (rawEntries.size > DetachedModelLimits.MAX_CLASSPATH_ENTRIES_PER_MODULE) {
+    if (rawEntries.size > limits[ReadLimitParameter.MODEL_CLASSPATH_ENTRIES_PER_MODULE].value) {
         return rejected(DetachedModelCaptureFailure.TOO_MANY_CLASSPATH_ENTRIES)
     }
     val entries = ArrayList<DetachedIdeClasspathEntry>(rawEntries.size)
     for (raw in rawEntries) {
-        when (val value = refineClasspathUrl(raw.url)) {
+        when (val value = refineClasspathUrl(raw.url, limits = limits)) {
             is Refinement.Refined -> entries += DetachedIdeClasspathEntry(value.value)
             is Refinement.Rejected -> return value
         }

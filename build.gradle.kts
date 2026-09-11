@@ -176,12 +176,21 @@ val localJavaHome = providers.systemProperty("java.home").map { configuredHome -
 }
 val localJavaExecutable = localJavaHome.map { home -> home.resolve("bin/java") }
 
+val localHostedIdeaBuild = providers.gradleProperty("hostedIdeaHome").map { home ->
+    val metadata = providers.fileContents(layout.projectDirectory.file("$home/Resources/product-info.json")).asText.get()
+    (groovy.json.JsonSlurper().parseText(metadata) as Map<*, *>)["buildNumber"] as String
+}.orElse(libs.versions.ide.host.build)
+val localHostedPluginArchive = localHostedIdeaBuild.map { build ->
+    layout.projectDirectory.file("runtime/hosted/build/distributions/kast-ide-hosted-v${project.version}-idea-$build.zip")
+}
+
 tasks.register<Exec>("installLocal") {
     group = "distribution"
     description = "Installs a version-owned Kast product (-Pversion=x.y.z) under ~/.local or -PkastLocalPrefix."
     doNotTrackState("The installed prefix contains live service sockets and is mutated by the versioned installer.")
-    dependsOn(stageKastControlProduct, semanticRuntimeArchive)
+    dependsOn(stageKastControlProduct, semanticRuntimeArchive, ":runtime:hosted:hostedPlugin")
     inputs.dir(controlProductDirectory)
+    inputs.file(localHostedPluginArchive)
     inputs.file(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
     inputs.files("packaging/install-local.sh", "install.sh")
     inputs.property("localInstallPrefix", localInstallPrefix.map { it.absolutePath })
@@ -193,6 +202,8 @@ tasks.register<Exec>("installLocal") {
         "KAST_LOCAL_RUNTIME_ARCHIVE",
         semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
     )
+    environment("KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE", localHostedPluginArchive.get().asFile.absolutePath)
+    providers.gradleProperty("hostedIdeaHome").orNull?.let { environment("KAST_INSTALL_IDEA_HOME", it) }
     environment("KAST_LOCAL_JAVA_HOME", localJavaHome.get().absolutePath)
     environment("KAST_LOCAL_JAVA_EXECUTABLE", localJavaExecutable.get().absolutePath)
     commandLine("bash", layout.projectDirectory.file("packaging/install-local.sh"))

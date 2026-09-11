@@ -1,5 +1,13 @@
 package io.github.amichne.kast.symbol.intellij
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
+
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
+
 import com.intellij.navigation.ChooseByNameContributor
 import com.intellij.navigation.ChooseByNameContributorEx
 import com.intellij.navigation.NavigationItem
@@ -76,6 +84,8 @@ internal class IntellijNativeDiscoveryQuery(
     private val environmentState: () -> IntellijDiscoveryEnvironmentState,
     private val cancellationCheck: () -> Unit,
     private val clock: IntellijDiscoveryNanoClock = SystemIntellijDiscoveryNanoClock,
+    private val observation: IntellijReadObservation = IntellijReadObservation.None,
+    private val limits: ReadLimits = ReadLimits.Default,
 ) {
     /**
      * Proof transition:
@@ -125,6 +135,7 @@ internal class IntellijNativeDiscoveryQuery(
             environmentState = environmentState,
             cancellationCheck = cancellationCheck,
             clock = clock,
+            observation = observation,
         )
         if (compiledScope.population == IntellijScopePopulation.KNOWN_EMPTY) return collector.finish()
         if (contributors.isEmpty()) {
@@ -147,6 +158,7 @@ internal class IntellijNativeDiscoveryQuery(
             if (collector.halted) {
                 return@forEach
             }
+            collector.contributor = contributor.javaClass.name.observedContributor()
             if (contributor !is ChooseByNameContributorEx) {
                 collector.qualify(SymbolDiscoveryQualification.UNSCOPED_PROVIDER)
                 return@forEach
@@ -155,6 +167,7 @@ internal class IntellijNativeDiscoveryQuery(
                 val matchingNames = linkedSetOf<String>()
                 contributor.processNames(
                     Processor { name ->
+                        observation.count(IntellijReadCounter.NAMES_VISITED, collector.contributor)
                         if (!collector.observe()) {
                             return@Processor false
                         }
@@ -168,11 +181,12 @@ internal class IntellijNativeDiscoveryQuery(
                         if (!matches) {
                             return@Processor true
                         }
-                        if (name !in matchingNames && matchingNames.size >= MAX_NATIVE_DISCOVERY_NAMES) {
+                        if (name !in matchingNames && matchingNames.size >= limits[ReadLimitParameter.DISCOVERY_NAMES].value) {
+                            observation.terminated(IntellijReadTermination.NAME_CAP, collector.contributor)
                             collector.qualify(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
                             return@Processor false
                         }
-                        matchingNames += name
+                        if (matchingNames.add(name)) observation.count(IntellijReadCounter.NAMES_MATCHED, collector.contributor)
                         !collector.halted
                     },
                     compiledScope.nativeScope,
@@ -186,12 +200,14 @@ internal class IntellijNativeDiscoveryQuery(
                         name,
                         Processor { item ->
                             if (!collector.observe()) return@Processor false
-                            if (pending.size >= MAX_NATIVE_DISCOVERY_CANDIDATES) {
+                            if (pending.size >= limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value) {
                                 reachedCandidateLimit = true
+                                observation.terminated(IntellijReadTermination.CANDIDATE_CAP, collector.contributor)
                                 collector.qualify(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
                                 return@Processor false
                             }
                             pending += item
+                            observation.count(IntellijReadCounter.CANDIDATES_COLLECTED, collector.contributor)
                             true
                         },
                         FindSymbolParameters.wrap(name, compiledScope.nativeScope),
@@ -208,31 +224,43 @@ internal class IntellijNativeDiscoveryQuery(
             } catch (_: IndexNotReadyException) {
                 collector.qualifyAndHalt(SymbolDiscoveryQualification.DUMB_MODE_TRANSITION)
             } catch (failure: RuntimeException) {
-                LOG.warn(
-                    "Native symbol discovery provider failed: ${contributor.javaClass.name}",
-                    failure,
-                )
+                observation.unexpected(io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure.capture(io.github.amichne.kast.workspace.intellij.read.IntellijReadStage.DISCOVERY, failure, limits))
                 collector.qualify(SymbolDiscoveryQualification.PROVIDER_FAILURE)
             }
         }
         return collector.finish()
     }
 
-    /** Direct-key candidates are fully collected before projection or compiler refinement. */
+    /** Index callbacks finish before PSI projection; ALL enumerates scoped declarations directly. */
+    fun discoverAll(
+        compiledScope: CompiledIntellijSearchScope,
+        request: SymbolDiscoveryRequest,
+        process: ((NavigationItem) -> Boolean) -> Boolean,
+    ): IntellijNativeDiscoveryExecution {
+        if (request.target !is SymbolDiscoveryTarget.All) return IntellijNativeDiscoveryExecution.Rejected(
+            IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT,
+        )
+        return discoverIndexed(compiledScope, request, process)
+    }
+
     fun discoverExactName(
         compiledScope: CompiledIntellijSearchScope,
         request: SymbolDiscoveryRequest,
         process: (String, (NavigationItem) -> Boolean) -> Boolean,
     ): IntellijNativeDiscoveryExecution {
         val target = request.target as? SymbolDiscoveryTarget.Name
-            ?: return IntellijNativeDiscoveryExecution.Rejected(
-                IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT,
-            )
-        if (target.match != SymbolDiscoveryMatch.EXACT_NAME) {
-            return IntellijNativeDiscoveryExecution.Rejected(
-                IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT,
-            )
-        }
+            ?: return IntellijNativeDiscoveryExecution.Rejected(IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT)
+        if (target.match != SymbolDiscoveryMatch.EXACT_NAME) return IntellijNativeDiscoveryExecution.Rejected(
+            IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT,
+        )
+        return discoverIndexed(compiledScope, request) { accept -> process(target.pattern.value, accept) }
+    }
+
+    private fun discoverIndexed(
+        compiledScope: CompiledIntellijSearchScope,
+        request: SymbolDiscoveryRequest,
+        process: ((NavigationItem) -> Boolean) -> Boolean,
+    ): IntellijNativeDiscoveryExecution {
         when (environmentState()) {
             IntellijDiscoveryEnvironmentState.DUMB -> return IntellijNativeDiscoveryExecution.Rejected(
                 IntellijNativeDiscoveryRejection.DUMB_MODE,
@@ -244,27 +272,33 @@ internal class IntellijNativeDiscoveryQuery(
         }
         val collector = BoundedNativeDiscoveryCollector(
             compiledScope, request, itemFile, projector, itemAdmission, itemCompilerKind, itemPackage,
-            environmentState, cancellationCheck, clock,
+            environmentState, cancellationCheck, clock, observation,
         )
+        collector.contributor = IntellijReadContributor.EXACT_INDEX
         if (compiledScope.population == IntellijScopePopulation.KNOWN_EMPTY) return collector.finish()
         val pending = ArrayList<NavigationItem>()
         try {
             var reachedLimit = false
-            val complete = process(target.pattern.value) { item ->
+            val complete = process { item ->
                 if (!collector.observe()) return@process false
-                if (pending.size.toLong() >= request.budget.resources.workUnitLimit.value) {
+                if (pending.size.toLong() >= minOf(request.budget.resources.workUnitLimit.value, limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value.toLong())) {
                     reachedLimit = true
                     return@process false
                 }
                 pending += item
+                observation.count(IntellijReadCounter.CANDIDATES_COLLECTED, collector.contributor)
                 true
             }
-            if (reachedLimit) collector.qualify(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
+            if (reachedLimit) {
+                observation.terminated(if (pending.size == limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value) IntellijReadTermination.CANDIDATE_CAP else IntellijReadTermination.WORK_LIMIT, collector.contributor)
+                collector.qualify(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
+            }
             else if (!complete && !collector.halted) {
                 collector.qualify(SymbolDiscoveryQualification.PROVIDER_FAILURE)
             }
+            val target = request.target
             for (item in pending) {
-                if (item.name != target.pattern.value) {
+                if (target is SymbolDiscoveryTarget.Name && item.name != target.pattern.value) {
                     collector.qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
                     continue
                 }
@@ -276,7 +310,8 @@ internal class IntellijNativeDiscoveryQuery(
             throw cancelled
         } catch (_: IndexNotReadyException) {
             collector.qualifyAndHalt(SymbolDiscoveryQualification.DUMB_MODE_TRANSITION)
-        } catch (_: RuntimeException) {
+        } catch (failure: RuntimeException) {
+            observation.unexpected(io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure.capture(io.github.amichne.kast.workspace.intellij.read.IntellijReadStage.DISCOVERY, failure, limits))
             collector.qualifyAndHalt(SymbolDiscoveryQualification.PROVIDER_FAILURE)
         }
         return collector.finish()
@@ -298,10 +333,12 @@ private class BoundedNativeDiscoveryCollector(
     private val environmentState: () -> IntellijDiscoveryEnvironmentState,
     private val cancellationCheck: () -> Unit,
     private val clock: IntellijDiscoveryNanoClock,
+    private val observation: IntellijReadObservation,
 ) {
     private val startedAt = clock.now()
     private val candidates = linkedSetOf<SymbolDiscoveryCandidate>()
     private val qualifications = linkedSetOf<SymbolDiscoveryQualification>()
+    var contributor: IntellijReadContributor = IntellijReadContributor.NONE
     private var encodedBytes = 0L
     private var workUnits = 0L
     private var projectionNanoseconds = 0L
@@ -331,6 +368,7 @@ private class BoundedNativeDiscoveryCollector(
     private fun admitWork(): Boolean {
         if (!observe()) return false
         if (workUnits >= request.budget.resources.workUnitLimit.value) {
+            observation.terminated(IntellijReadTermination.WORK_LIMIT, contributor)
             qualifyAndHalt(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
             return false
         }
@@ -350,6 +388,7 @@ private class BoundedNativeDiscoveryCollector(
             }
         }
         if (!compiledScope.nativeScope.contains(file)) {
+            observation.count(IntellijReadCounter.SCOPE_FILTERED, contributor)
             return true
         }
         when (
@@ -363,7 +402,10 @@ private class BoundedNativeDiscoveryCollector(
             )
         ) {
             IntellijDiscoveryItemAdmission.ADMITTED -> Unit
-            IntellijDiscoveryItemAdmission.FILTERED -> return true
+            IntellijDiscoveryItemAdmission.FILTERED -> {
+                observation.count(IntellijReadCounter.SCOPE_FILTERED, contributor)
+                return true
+            }
             IntellijDiscoveryItemAdmission.UNSUPPORTED -> {
                 qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
                 return true
@@ -371,7 +413,10 @@ private class BoundedNativeDiscoveryCollector(
         }
         when (itemAdmission.admit(item)) {
             IntellijDiscoveryItemAdmission.ADMITTED -> Unit
-            IntellijDiscoveryItemAdmission.FILTERED -> return true
+            IntellijDiscoveryItemAdmission.FILTERED -> {
+                observation.count(IntellijReadCounter.SCOPE_FILTERED, contributor)
+                return true
+            }
             IntellijDiscoveryItemAdmission.UNSUPPORTED -> {
                 qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
                 return true
@@ -406,12 +451,16 @@ private class BoundedNativeDiscoveryCollector(
             return false
         }
         candidates += candidate
+        observation.count(IntellijReadCounter.CANDIDATES_PROJECTED, contributor)
         encodedBytes += candidateBytes.value
         return true
     }
 
     fun qualify(qualification: SymbolDiscoveryQualification) {
         qualifications += qualification
+        if (qualification != SymbolDiscoveryQualification.WORK_LIMIT_REACHED) {
+            observation.terminated(qualification.observedTermination(), contributor)
+        }
     }
 
     fun qualifyAndHalt(qualification: SymbolDiscoveryQualification) {
@@ -447,6 +496,7 @@ private class BoundedNativeDiscoveryCollector(
                 )
         }
         val outcome = if (qualifications.isEmpty()) {
+            observation.terminated(IntellijReadTermination.COMPLETE, contributor)
             SymbolDiscoveryOutcome.Complete(batch)
         } else {
             val typedQualifications = when (
@@ -548,3 +598,24 @@ private fun saturatedAdd(
 
 internal const val MAX_NATIVE_DISCOVERY_NAMES = 10_000
 internal const val MAX_NATIVE_DISCOVERY_CANDIDATES = 10_000
+
+private fun String.observedContributor(): IntellijReadContributor = when (this) {
+    "org.jetbrains.kotlin.idea.goto.KotlinGotoClassContributor" -> IntellijReadContributor.KOTLIN_CLASS
+    "org.jetbrains.kotlin.idea.goto.KotlinGotoClassSymbolContributor" -> IntellijReadContributor.KOTLIN_CLASS_SYMBOL
+    "org.jetbrains.kotlin.idea.goto.KotlinGotoFunctionSymbolContributor" -> IntellijReadContributor.KOTLIN_FUNCTION_SYMBOL
+    "org.jetbrains.kotlin.idea.goto.KotlinGotoPropertySymbolContributor" -> IntellijReadContributor.KOTLIN_PROPERTY_SYMBOL
+    "org.jetbrains.kotlin.idea.goto.KotlinGotoTypeAliasContributor" -> IntellijReadContributor.KOTLIN_TYPE_ALIAS
+    else -> IntellijReadContributor.OTHER
+}
+
+private fun SymbolDiscoveryQualification.observedTermination(): IntellijReadTermination = when (this) {
+    SymbolDiscoveryQualification.WORK_LIMIT_REACHED -> IntellijReadTermination.WORK_LIMIT
+    SymbolDiscoveryQualification.TIME_LIMIT_REACHED -> IntellijReadTermination.TIME_LIMIT
+    SymbolDiscoveryQualification.RESULT_LIMIT_REACHED -> IntellijReadTermination.RESULT_LIMIT
+    SymbolDiscoveryQualification.BYTE_LIMIT_REACHED -> IntellijReadTermination.BYTE_LIMIT
+    SymbolDiscoveryQualification.UNSUPPORTED_ITEM -> IntellijReadTermination.UNSUPPORTED_ITEM
+    SymbolDiscoveryQualification.UNSCOPED_PROVIDER -> IntellijReadTermination.UNSCOPED_PROVIDER
+    SymbolDiscoveryQualification.PROVIDER_FAILURE -> IntellijReadTermination.PROVIDER_FAILURE
+    SymbolDiscoveryQualification.DUMB_MODE_TRANSITION -> IntellijReadTermination.INDEXING
+    SymbolDiscoveryQualification.EXACT_DEFINITION_UNAVAILABLE -> IntellijReadTermination.EXACT_REFINEMENT_UNAVAILABLE
+}

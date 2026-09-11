@@ -17,9 +17,10 @@ checkout=$(pwd -P)
 
 # Admit the sole public checkout option before invoking Gradle or creating state.
 options=()
+idea_home="${KAST_INSTALL_IDEA_HOME:-}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --idea-home) ;;
+    --idea-home) idea_home="${2:-}" ;;
     *) fail "unsupported checkout installation option: $1" ;;
   esac
   [[ $# -ge 2 && -n $2 ]] || fail "$1 requires a value"
@@ -27,6 +28,15 @@ while [[ $# -gt 0 ]]; do
   shift 2
 done
 
+[[ -n "$idea_home" && -f "$idea_home/Resources/product-info.json" ]] || fail 'an admitted IDEA home is required'
+idea_build=$(python3 - "$idea_home/Resources/product-info.json" <<'PYTHON'
+import json, re, sys
+value = json.load(open(sys.argv[1])).get("buildNumber")
+if not isinstance(value, str) or re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", value) is None:
+    raise SystemExit("kast-install: invalid IDEA build identity")
+print(value)
+PYTHON
+)
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/kast-checkout.XXXXXX")
 session_root=""
 cleanup() {
@@ -46,11 +56,14 @@ version="0.$(date -u +%Y%m%d).$(date -u +%H%M%S | sed 's/^0*//;s/^$/0/')"
 base_url="https://github.com/amichne/kast/releases/download"
 printf 'kast-install: building checkout %s (%s)\n' "$checkout" "$version" >&2
 KAST_RUNTIME_BASE_URL="$base_url/v$version" "$checkout/gradlew" --console=plain \
-  "-Pversion=$version" assembleKastControlDist assembleKastSemanticRuntimeDist >&2
+  "-Pversion=$version" "-PhostedIdeaHome=$idea_home" assembleKastControlDist assembleKastSemanticRuntimeDist :runtime:hosted:hostedPlugin >&2
 for name in "kast-control-v$version-macos-aarch64.tar.gz" "kast-semantic-runtime-$version-macos-aarch64.zip"; do
   cp "$checkout/build/distributions/$name" "$scratch/$name"
   (cd "$scratch" && shasum -a 256 "$name" > "$name.sha256")
 done
+plugin_name="kast-ide-hosted-v$version-idea-$idea_build.zip"
+cp "$checkout/runtime/hosted/build/distributions/$plugin_name" "$scratch/$plugin_name"
+(cd "$scratch" && shasum -a 256 "$plugin_name" > "$plugin_name.sha256")
 
 if [[ $mode == session ]]; then
   session_root=$(mktemp -d "${TMPDIR:-/tmp}/kast-session.XXXXXX")

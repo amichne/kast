@@ -5,6 +5,9 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.symbol.contract.fingerprintFields
 import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.symbol.contract.SymbolSearchScope
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
+import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
@@ -216,9 +219,9 @@ value class RelationScopeFingerprint private constructor(val value: String) {
                 Refinement.Rejected(RelationScopeFingerprintFailure.INVALID_SHA256)
             }
 
-        fun from(subject: RelationEndpoint): RelationScopeFingerprint =
+        fun from(subject: RelationEndpoint, boundary: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT): RelationScopeFingerprint =
             RelationScopeFingerprint(
-                subject.selectorScopeCanonical().toByteArray(StandardCharsets.UTF_8).sha256(),
+                (subject.selectorScopeCanonical() + "\u0000" + boundary.name).toByteArray(StandardCharsets.UTF_8).sha256(),
             )
     }
 }
@@ -281,7 +284,7 @@ class RelationContinuation private constructor(
             nextProviderCursor: RelationProviderCursor,
         ): RelationContinuation {
             check(nextProviderCursor.provider == RelationProviderKind.forMeaning(request.meaning))
-            val scope = RelationScopeFingerprint.from(request.subject)
+            val scope = request.scopeFingerprint
             return RelationContinuation(
                 subject = request.subject.fingerprint,
                 meaning = request.meaning,
@@ -348,14 +351,32 @@ enum class RelationResumeFailure {
     PROVIDER_MISMATCH,
 }
 
+/** Discovery restrictions select a subject; workspace expansion retains that proof separately. */
+enum class RelationSearchBoundary { RETAINED_SUBJECT, WORKSPACE_EXPANSION }
+
 /** Exact one-hop request; construction admits either the first page or a bound continuation. */
 class RelationRequest private constructor(
     val subject: RelationEndpoint,
     val meaning: RelationMeaning,
     val budget: RelationBudget,
     val position: RelationReadPosition,
+    val boundary: RelationSearchBoundary,
 ) {
-    val scopeFingerprint: RelationScopeFingerprint = RelationScopeFingerprint.from(subject)
+    val scopeFingerprint: RelationScopeFingerprint = RelationScopeFingerprint.from(subject, boundary)
+    val searchScope: SymbolSearchScope = when (boundary) {
+        RelationSearchBoundary.RETAINED_SUBJECT -> subject.scope
+        RelationSearchBoundary.WORKSPACE_EXPANSION -> SymbolSearchScope.Workspace(
+            subject.scope.sourceKinds, subject.scope.generatedSources,
+            (subject.scope as? SymbolSearchScope.Workspace)?.libraries ?: SymbolLibraryPolicy.EXCLUDE,
+        )
+    }
+    val searchConstraints: SymbolDiscoveryConstraints = when (boundary) {
+        RelationSearchBoundary.RETAINED_SUBJECT -> subject.constraints
+        RelationSearchBoundary.WORKSPACE_EXPANSION -> SymbolDiscoveryConstraints.None
+    }
+
+    fun admitsEndpoint(endpoint: RelationEndpoint): Boolean = endpoint === subject ||
+        (endpoint.lease == subject.lease && endpoint.scope == searchScope && endpoint.constraints == searchConstraints)
 
     val providerCursor: RelationProviderCursor = when (position) {
         RelationReadPosition.Start -> RelationProviderCursor.start(
@@ -376,11 +397,13 @@ class RelationRequest private constructor(
             selector: SymbolSelector,
             meaning: RelationMeaning,
             budget: RelationBudget,
+            boundary: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT,
         ): RelationRequest = RelationRequest(
             RelationEndpoint.subject(selector),
             meaning,
             budget,
             RelationReadPosition.Start,
+            boundary,
         )
 
         /**
@@ -395,11 +418,13 @@ class RelationRequest private constructor(
             subject: RelationEndpoint.Resolved,
             meaning: RelationMeaning,
             budget: RelationBudget,
+            boundary: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT,
         ): RelationRequest = RelationRequest(
             subject,
             meaning,
             budget,
             RelationReadPosition.Start,
+            boundary,
         )
 
         /**
@@ -415,11 +440,13 @@ class RelationRequest private constructor(
             meaning: RelationMeaning,
             budget: RelationBudget,
             continuation: RelationContinuation,
+            boundary: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT,
         ): Refinement<RelationRequest, RelationResumeFailure> = admitResume(
             RelationEndpoint.subject(selector),
             meaning,
             budget,
             continuation,
+            boundary,
         )
 
         /**
@@ -435,11 +462,13 @@ class RelationRequest private constructor(
             meaning: RelationMeaning,
             budget: RelationBudget,
             continuation: RelationContinuation,
+            boundary: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT,
         ): Refinement<RelationRequest, RelationResumeFailure> = admitResume(
             subject,
             meaning,
             budget,
             continuation,
+            boundary,
         )
 
         /**
@@ -455,8 +484,9 @@ class RelationRequest private constructor(
             meaning: RelationMeaning,
             budget: RelationBudget,
             continuation: RelationContinuation,
+            boundary: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT,
         ): Refinement<RelationRequest, RelationResumeFailure> = when {
-            continuation.scope != RelationScopeFingerprint.from(subject) ->
+            continuation.scope != RelationScopeFingerprint.from(subject, boundary) ->
                 Refinement.Rejected(RelationResumeFailure.SCOPE_MISMATCH)
             continuation.meaning != meaning ->
                 Refinement.Rejected(RelationResumeFailure.MEANING_MISMATCH)
@@ -472,6 +502,7 @@ class RelationRequest private constructor(
                     meaning,
                     budget,
                     RelationReadPosition.Resume(continuation),
+                    boundary,
                 ),
             )
         }

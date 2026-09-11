@@ -35,6 +35,53 @@ private const val MAXIMUM_CONTROL_FILES = 4_096
 private const val MAXIMUM_CONTROL_BYTES = 1024L * 1024L * 1024L
 private const val MAXIMUM_MANIFEST_BYTES = 1024L * 1024L
 
+internal enum class InstallationChildStage {
+    PRIOR_ADMISSION, PRIOR_RETIREMENT, CONFIGURATION_VALIDATION, COMMAND_QUALIFICATION, APP_SERVER_ENABLE,
+}
+
+internal enum class InstallationChildOutcome { COMPLETED, EXIT_REJECTED, DEADLINE_EXCEEDED, IO_REJECTED, INTERRUPTED }
+
+internal data class InstallationChildObservation(
+    val stage: InstallationChildStage,
+    val outcome: InstallationChildOutcome,
+) {
+    fun toJson(): String = """{"event":"kast_installation","stage":"${stage.name}","outcome":"${outcome.name}"}"""
+}
+
+/** The child retains admission authority; the parent records only its bounded process outcome. */
+internal fun executeInstallationChild(
+    stage: InstallationChildStage,
+    command: List<String>,
+    environment: Map<String, String>,
+    observe: (InstallationChildObservation) -> Unit = { System.err.println(it.toJson()) },
+): InstallationChildOutcome {
+    var child: Process? = null
+    val outcome = try {
+        val process = ProcessBuilder(command).redirectInput(ProcessBuilder.Redirect.INHERIT)
+            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+            .redirectError(ProcessBuilder.Redirect.INHERIT)
+            .apply {
+                environment().clear()
+                environment().putAll(environment)
+            }.start()
+        child = process
+        if (!process.waitFor(Duration.ofMillis(InstallationOperationalLimits.retirementChildTimeoutMillis))) {
+            process.destroyForcibly()
+            process.waitFor()
+            InstallationChildOutcome.DEADLINE_EXCEEDED
+        } else if (process.exitValue() == 0) InstallationChildOutcome.COMPLETED
+        else InstallationChildOutcome.EXIT_REJECTED
+    } catch (_: IOException) {
+        InstallationChildOutcome.IO_REJECTED
+    } catch (_: InterruptedException) {
+        child?.destroyForcibly()
+        Thread.currentThread().interrupt()
+        InstallationChildOutcome.INTERRUPTED
+    }
+    observe(InstallationChildObservation(stage, outcome))
+    return outcome
+}
+
 /** Reconstruct the only supported transient enabled owner of an opt-out installation. */
 internal fun priorServiceRetirementEnvironment(
     prior: Path,
@@ -504,7 +551,8 @@ internal object InstallationWorkflow {
             userHome = request.home.value,
             codexHome = request.codexHome.value,
         )
-        return run(
+        return executeInstallationChild(
+            InstallationChildStage.PRIOR_RETIREMENT,
             listOf(executable.toString(), "app-server", "disable"),
             recorded?.values ?: priorServiceRetirementEnvironment(
                 prior = prior,
@@ -512,23 +560,25 @@ internal object InstallationWorkflow {
                 codexHome = request.codexHome.value,
                 path = System.getenv("PATH") ?: "/usr/bin:/bin",
             ),
-        ) == 0
+        ) == InstallationChildOutcome.COMPLETED
     }
 
     private fun admitPrior(prior: Path, request: InstallationRequest): Boolean {
         val executable = prior.resolve("bin/kast-complete")
         if (!regularExecutable(executable)) return false
-        return run(
+        return executeInstallationChild(
+            InstallationChildStage.PRIOR_ADMISSION,
             listOf(executable.toString(), "installation", "inspect", "--json"),
             mapOf(
                 "HOME" to request.home.value.toString(),
                 "PATH" to (System.getenv("PATH") ?: "/usr/bin:/bin"),
                 "CODEX_HOME" to request.codexHome.value.toString(),
             ),
-        ) == 0
+        ) == InstallationChildOutcome.COMPLETED
     }
 
-    private fun validateConfiguration(plan: VerifiedInstallationPlan): Boolean = run(
+    private fun validateConfiguration(plan: VerifiedInstallationPlan): Boolean = executeInstallationChild(
+        InstallationChildStage.CONFIGURATION_VALIDATION,
         listOf(
             plan.targetRoot.resolve("bin/kast-complete").toString(),
             "config",
@@ -541,7 +591,7 @@ internal object InstallationWorkflow {
             "HOME" to plan.request.home.value.toString(),
             "PATH" to (System.getenv("PATH") ?: "/usr/bin:/bin"),
         ),
-    ) == 0
+    ) == InstallationChildOutcome.COMPLETED
 
     private fun activate(plan: VerifiedInstallationPlan): ActivationResult {
         val priorCurrent = linkTarget(plan.currentLink)
@@ -559,13 +609,14 @@ internal object InstallationWorkflow {
                 Files.deleteIfExists(plan.codexCommandLink)
             }
             if (
-                run(
+                executeInstallationChild(
+                    InstallationChildStage.COMMAND_QUALIFICATION,
                     listOf(plan.commandLink.toString(), "--version"),
                     mapOf(
                         "HOME" to plan.request.home.value.toString(),
                         "PATH" to (System.getenv("PATH") ?: "/usr/bin:/bin"),
                     ),
-                ) != 0
+                ) != InstallationChildOutcome.COMPLETED
             ) throw IOException("installed command qualification rejected")
             ActivationResult.Complete
         } catch (_: IOException) {
@@ -576,34 +627,15 @@ internal object InstallationWorkflow {
         }
     }
 
-    private fun enableAppServer(plan: VerifiedInstallationPlan): Boolean = run(
+    private fun enableAppServer(plan: VerifiedInstallationPlan): Boolean = executeInstallationChild(
+        InstallationChildStage.APP_SERVER_ENABLE,
         listOf(plan.commandLink.toString(), "app-server", "enable"),
         mapOf(
             "HOME" to plan.request.home.value.toString(),
             "PATH" to (System.getenv("PATH") ?: "/usr/bin:/bin"),
             "CODEX_HOME" to plan.request.codexHome.value.toString(),
         ),
-    ) == 0
-
-    private fun run(command: List<String>, environment: Map<String, String>): Int = try {
-        val process = ProcessBuilder(command).redirectInput(ProcessBuilder.Redirect.INHERIT)
-            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-            .redirectError(ProcessBuilder.Redirect.INHERIT)
-            .apply {
-                environment().clear()
-                environment().putAll(environment)
-            }
-            .start()
-        if (!process.waitFor(Duration.ofMillis(InstallationOperationalLimits.retirementChildTimeoutMillis))) {
-            process.destroyForcibly()
-            process.waitFor()
-            -1
-        } else {
-            process.exitValue()
-        }
-    } catch (_: IOException) {
-        -1
-    }
+    ) == InstallationChildOutcome.COMPLETED
 
     private fun acquire(channel: FileChannel): java.nio.channels.FileLock? {
         val deadline = System.nanoTime() + Duration.ofMillis(InstallationOperationalLimits.activationLockTimeoutMillis).toNanos()

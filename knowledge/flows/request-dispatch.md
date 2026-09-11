@@ -56,9 +56,9 @@ rejection can be returned before read authority exists; it does not become a
 successful canonical payload.
 
 App Server provider qualification requires projection version 9 and its exact
-operation schemas and budgets. Invocation continues through the configured CLI
-process. `selectCliRuntimePath` now selects the seven existing-IDE reads before
-installed bootstrap in `KastCliMain`; a missing host rejects. The
+operation schemas and declared default budgets. Invocation continues through the configured CLI
+process with admitted output and elapsed-time settings. `selectCliRuntimePath` now selects the seven existing-IDE reads before
+installed bootstrap in `KastCliMain`; saved read settings are admitted before the socket is opened. Invalid settings and missing hosts remain distinct rejections. The
 [native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
 records the final distribution's complete/qualified native matrix and a successful
 production provider invocation with direct CLI evidence equality. The provider

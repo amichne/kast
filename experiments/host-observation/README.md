@@ -1,5 +1,7 @@
 # Manual IntelliJ host observation
 
+For the opt-in synthetic semantic-query matrix, use [SEMANTIC_REPRODUCTION.md](SEMANTIC_REPRODUCTION.md).
+
 This experiment implements the observer-first slice through safe replacement. It runs the checked-in carrier in IDEA's bundled Kotlin scripting engine and observes one explicitly admitted open project. It does not participate in Kast readiness, workspace publication, VFS refresh scheduling, or index retention decisions.
 
 The implementation starts from remote `main` at `74e47f4efe348036ddb8db5927eff1b6ed9e6382`. It preserves the existing worker recovery, coroutine test dispatcher injection, and exclusion of `.kotlin` from Gradle model inputs. Kast's platform dependency remains unchanged.

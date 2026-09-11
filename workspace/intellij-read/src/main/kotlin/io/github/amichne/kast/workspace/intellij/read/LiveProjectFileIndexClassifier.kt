@@ -1,5 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
@@ -20,6 +22,7 @@ object IntellijProjectFileIndexClassifier {
     fun classify(
         project: Project,
         file: VirtualFile,
+        limits: ReadLimits = ReadLimits.Default,
     ): IntellijProjectFileClassification {
         if (project.isDisposed) {
             return IntellijProjectFileClassification.Rejected(
@@ -52,7 +55,7 @@ object IntellijProjectFileIndexClassifier {
             } else {
                 ProjectFileIndexSourceObservation.NotSource(file.url)
             }
-            classifyProjectFileIndexObservation(observation)
+            classifyProjectFileIndexObservation(observation, limits)
         } catch (cancelled: ProcessCanceledException) {
             throw cancelled
         } catch (_: RuntimeException) {

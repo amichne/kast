@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "authority": "Authored from the synthetic source, before Kast replay; paths and declarations are the oracle, never discovered output.",
+  "declarations": {
+    "logger": [
+      "logging/src/main/kotlin/repro/logging/FixtureLogger.kt",
+      "repro.logging.FixtureLogger",
+      "class FixtureLogger"
+    ],
+    "helper": [
+      "logging/src/main/kotlin/repro/logging/FixtureLogger.kt",
+      "repro.logging.FixtureLogger.loggerFunction",
+      "private fun loggerFunction() = Unit"
+    ],
+    "boolean": [
+      "logging/src/main/kotlin/repro/logging/FixtureLogger.kt",
+      "repro.logging.FixtureLogger.isEnabled",
+      "val isEnabled: Boolean = true"
+    ],
+    "alias": [
+      "core/src/main/kotlin/repro/core/Types.kt",
+      "repro.core.TraceLabel",
+      "typealias TraceLabel = String"
+    ],
+    "manager": [
+      "logging/src/main/kotlin/repro/logging/FixtureLogger.kt",
+      "repro.logging.FixtureLoggerManager",
+      "class FixtureLoggerManager"
+    ],
+    "unused": [
+      "core/src/main/kotlin/repro/core/Types.kt",
+      "repro.core.UnusedMarker",
+      "class UnusedMarker"
+    ],
+    "trace": [
+      "logging/src/main/kotlin/repro/logging/FixtureLogger.kt",
+      "repro.logging.FixtureLogger.trace",
+      "fun trace()"
+    ],
+    "test": [
+      "logging/src/test/kotlin/repro/logging/TestOnlyLogger.kt",
+      "repro.logging.TestOnlyLogger",
+      "class TestOnlyLogger"
+    ],
+    "child": [
+      "logging/src/main/kotlin/repro/logging/child/ChildMarker.kt",
+      "repro.logging.child.ChildMarker",
+      "class ChildMarker"
+    ],
+    "base": [
+      "core/src/main/kotlin/repro/hierarchy/Hierarchy.kt",
+      "repro.hierarchy.FixtureSink",
+      "interface FixtureSink"
+    ],
+    "baseMethod": [
+      "core/src/main/kotlin/repro/hierarchy/Hierarchy.kt",
+      "repro.hierarchy.FixtureSink.transmit",
+      "fun transmit() = Unit"
+    ]
+  },
+  "sameName": [
+    "repro.logging.IdentityOne.sharedOperation",
+    "repro.logging.IdentityTwo.sharedOperation",
+    "repro.logging.IdentityThree.sharedOperation",
+    "repro.logging.IdentityFour.sharedOperation",
+    "repro.logging.IdentityFive.sharedOperation"
+  ],
+  "helperCallers": [
+    "repro.logging.FixtureLogger.trace",
+    "repro.logging.FixtureLogger.debug",
+    "repro.logging.FixtureLogger.info",
+    "repro.logging.FixtureLogger.warn",
+    "repro.logging.FixtureLogger.error"
+  ],
+  "helperOccurrences": {
+    "file": "logging/src/main/kotlin/repro/logging/FixtureLogger.kt",
+    "lines": [
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "text": "loggerFunction"
+  },
+  "aliasUses": [
+    "repro.core.CarrierOne.<init>",
+    "repro.core.CarrierTwo.<init>",
+    "repro.core.CarrierThree.<init>",
+    "repro.core.CarrierFour.<init>",
+    "repro.core.LabelBuilder.buildLabel",
+    "repro.core.defaultLabel"
+  ],
+  "aliasOccurrences": {
+    "file": "core/src/main/kotlin/repro/core/Types.kt",
+    "lines": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "text": "TraceLabel"
+  },
+  "descendants": [
+    "repro.hierarchy.AlphaSink",
+    "repro.hierarchy.BetaSink",
+    "repro.hierarchy.GammaSink",
+    "repro.hierarchy.DeltaSink"
+  ],
+  "overrides": [
+    "repro.hierarchy.AlphaSink.transmit",
+    "repro.hierarchy.BetaSink.transmit",
+    "repro.hierarchy.GammaSink.transmit"
+  ],
+  "coreDirect": [
+    "repro.core.TraceLabel",
+    "repro.core.CarrierOne",
+    "repro.core.CarrierOne.label",
+    "repro.core.CarrierTwo",
+    "repro.core.CarrierTwo.label",
+    "repro.core.CarrierThree",
+    "repro.core.CarrierThree.label",
+    "repro.core.CarrierFour",
+    "repro.core.CarrierFour.label",
+    "repro.core.LabelBuilder",
+    "repro.core.LabelBuilder.buildLabel",
+    "repro.core.defaultLabel",
+    "repro.core.UnusedMarker"
+  ],
+  "loggingRecursive": [
+    "repro.logging.FixtureLogger",
+    "repro.logging.FixtureLogger.isEnabled",
+    "repro.logging.FixtureLogger.loggerFunction",
+    "repro.logging.FixtureLogger.trace",
+    "repro.logging.FixtureLogger.debug",
+    "repro.logging.FixtureLogger.info",
+    "repro.logging.FixtureLogger.warn",
+    "repro.logging.FixtureLogger.error",
+    "repro.logging.FixtureLoggerManager",
+    "repro.logging.IdentityOne",
+    "repro.logging.IdentityOne.sharedOperation",
+    "repro.logging.IdentityTwo",
+    "repro.logging.IdentityTwo.sharedOperation",
+    "repro.logging.IdentityThree",
+    "repro.logging.IdentityThree.sharedOperation",
+    "repro.logging.IdentityFour",
+    "repro.logging.IdentityFour.sharedOperation",
+    "repro.logging.IdentityFive",
+    "repro.logging.IdentityFive.sharedOperation",
+    "repro.logging.child.ChildMarker",
+    "repro.logging.TestOnlyLogger"
+  ],
+  "managerJavaOccurrences": {
+    "file": "logging/src/main/java/repro/logging/JavaManagerUse.java",
+    "positions": [
+      [
+        3,
+        1
+      ],
+      [
+        3,
+        2
+      ]
+    ],
+    "text": "FixtureLoggerManager",
+    "target": "manager"
+  }
+}

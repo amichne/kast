@@ -1,0 +1,107 @@
+// Read-only evidence from the original process. No query, import, refresh, or cache mutation.
+run {
+    val inputPath = java.nio.file.Path.of(String(java.util.Base64.getDecoder().decode("@INPUT_BASE64@"), Charsets.UTF_8))
+    val input = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(inputPath)).asJsonObject
+    check(ProcessHandle.current().pid() == input.get("hostPid").asLong)
+    val plugin = com.intellij.ide.plugins.PluginManagerCore.getPlugin(com.intellij.openapi.extensions.PluginId.getId("io.github.amichne.kast.ide-hosted"))!!
+    val loader = plugin.pluginClassLoader!!
+    val project = com.intellij.openapi.project.ProjectManager.getInstance().openProjects.single { it.basePath == input.get("project").asString }
+    fun constant(owner: String, name: String): Any {
+        val field = loader.loadClass(owner).getDeclaredField(name)
+        field.isAccessible = true
+        return field.get(null)
+    }
+    fun getter(value: Any, name: String): Any = value.javaClass.methods.single {
+        it.name.startsWith(name) && it.parameterCount == 0
+    }.invoke(value)
+    val serviceClass = loader.loadClass("io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService")
+    val configurationGetter = serviceClass.methods.singleOrNull { it.name == "getReadConfiguration" && it.parameterCount == 0 }
+    val policy = if (configurationGetter == null) null else {
+        val admission = configurationGetter.invoke(project.getService(serviceClass))
+        check(admission.javaClass.simpleName == "Refined") { "Host read configuration rejected" }
+        getter(admission, "getValue")
+    }
+    val effective = if (policy == null) emptyMap<String, Any>() else
+        (getter(policy, "getValues") as List<*>).associate { value ->
+            getter(value!!, "getParameter").toString() to getter(value, "getValue")
+        }
+    val settings = if (policy == null) emptyList<Map<String, Any>>() else
+        (getter(policy, "getValues") as List<*>).map { value ->
+            mapOf("parameter" to getter(value!!, "getParameter").toString(), "value" to getter(value, "getValue"), "source" to getter(value, "getSource").toString())
+        }
+    val modelLimits = if (policy == null) loader.loadClass("io.github.amichne.kast.workspace.intellij.read.DetachedModelLimits").declaredFields
+        .filter { it.name.startsWith("MAX_") }.associate { it.isAccessible = true; it.name to it.get(null) }
+        else mapOf("MAX_MODULES" to effective.getValue("MODEL_MODULES"), "MAX_SOURCE_ROOTS_PER_MODULE" to effective.getValue("MODEL_SOURCE_ROOTS_PER_MODULE"))
+    val queryBudget = if (policy == null) constant("io.github.amichne.kast.runtime.hosted.HostedCanonicalQueryKt", "hostedQueryBudget")
+        else loader.loadClass("io.github.amichne.kast.runtime.hosted.HostedSemanticBudgets").declaredConstructors.single().let { constructor ->
+            constructor.isAccessible = true
+            val budgets = constructor.newInstance(policy)
+            val method = budgets.javaClass.declaredMethods.single { it.name == "getHostedQueryBudget" }
+            method.isAccessible = true
+            method.invoke(budgets)
+        }
+    val resources = getter(queryBudget, "getResources")
+    val classes = listOf(
+        "io.github.amichne.kast.workspace.intellij.read.DetachedModelLimits",
+        "io.github.amichne.kast.workspace.intellij.read.LiveNamedGradleSourceScopeCapture",
+        "io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryExecutorKt",
+        "io.github.amichne.kast.runtime.hosted.HostedCanonicalQueryKt",
+        "io.github.amichne.kast.symbol.intellij.IntellijNativeDiscoveryQueryKt",
+        "io.github.amichne.kast.relation.intellij.IntellijK2RelationSearch"
+    ).associateWith { name ->
+        val resource = loader.getResource(name.replace('.', '/') + ".class")!!
+        mapOf("url" to resource.toString(), "sha256" to java.security.MessageDigest.getInstance("SHA-256")
+            .digest(resource.openStream().use { it.readBytes() }).joinToString("") { "%02x".format(it) })
+    }
+    val native = com.intellij.openapi.application.ReadAction.compute<Map<String, Any>, RuntimeException> {
+        val modules = com.intellij.openapi.module.ModuleManager.getInstance(project).modules
+        check(modules.size <= 5000) // Diagnostic bound, never an admission override.
+        val roots = modules.map { module ->
+            val entries = com.intellij.openapi.roots.ModuleRootManager.getInstance(module).contentEntries
+            mapOf("module" to module.name, "sourceRoots" to entries.flatMap { it.sourceFolders.toList() }.map {
+                mapOf("url" to it.url, "kind" to it.rootType.javaClass.name)
+            }, "contentRoots" to entries.map { it.url })
+        }
+        val gradlePlugin = com.intellij.ide.plugins.PluginManagerCore.getPlugin(com.intellij.openapi.extensions.PluginId.getId("org.jetbrains.plugins.gradle"))!!
+        val cacheClass = gradlePlugin.pluginClassLoader!!.loadClass("org.jetbrains.plugins.gradle.service.project.data.ExternalProjectDataCache")
+        val cache = cacheClass.getMethod("getInstance", com.intellij.openapi.project.Project::class.java).invoke(null, project)
+        val imported = cacheClass.getMethod("getRootExternalProject", String::class.java).invoke(cache, project.basePath)
+        val projects = mutableListOf<Map<String, Any>>()
+        val pending = java.util.ArrayDeque<Any>()
+        if (imported != null) pending.add(imported)
+        while (pending.isNotEmpty()) {
+            check(projects.size < 5000)
+            val current = pending.removeFirst()
+            val sourceSets = getter(current, "getSourceSets") as Map<*, *>
+            projects.add(mapOf("path" to getter(current, "getPath"), "directory" to getter(current, "getProjectDir").toString(),
+                "sourceSets" to sourceSets.values.map { set ->
+                    mapOf("name" to getter(set!!, "getName"), "roots" to (getter(set, "getSources") as Map<*, *>).map { (kind, value) ->
+                        mapOf("kind" to kind.toString(), "directories" to (getter(value!!, "getSrcDirs") as Collection<*>).map { it.toString() })
+                    })
+                }))
+            pending.addAll((getter(current, "getChildProjects") as Map<*, *>).values.filterNotNull())
+        }
+        mapOf("root" to project.basePath!!, "smart" to !com.intellij.openapi.project.DumbService.isDumb(project),
+            "intellijModuleCount" to modules.size, "gradleModelState" to if (imported == null) "unavailable" else "captured", "gradleProjectCount" to projects.size,
+            "sourceRootCount" to roots.sumOf { (it["sourceRoots"] as List<*>).size },
+            "modules" to roots, "importedGradleProjects" to projects,
+            "savedDocuments" to com.intellij.openapi.fileEditor.FileDocumentManager.getInstance().unsavedDocuments.isEmpty(),
+            "committedPsi" to !com.intellij.psi.PsiDocumentManager.getInstance(project).hasUncommitedDocuments())
+    }
+    val result = mapOf("schemaVersion" to 1, "pid" to ProcessHandle.current().pid(),
+        "processStart" to ProcessHandle.current().info().startInstant().get().toString(),
+        "ideaBuild" to com.intellij.openapi.application.ApplicationInfo.getInstance().build.asString(),
+        "jbr" to System.getProperty("java.runtime.version"), "javaHome" to System.getProperty("java.home"),
+        "kotlinPlugin" to com.intellij.ide.plugins.PluginManagerCore.getPlugin(com.intellij.openapi.extensions.PluginId.getId("org.jetbrains.kotlin"))!!.version,
+        "plugin" to mapOf("version" to plugin.version, "path" to plugin.pluginPath.toString(), "classResources" to classes),
+        "limits" to mapOf("model" to modelLimits,
+            "effectiveSettings" to settings, "outerDeadlineMillis" to (effective["HOST_QUERY_MILLIS"] ?: constant("io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryExecutorKt", "HOSTED_QUERY_BUDGET_MILLIS")),
+            "innerElapsedMillis" to getter(resources, "getElapsedTimeLimit"), "workUnits" to getter(resources, "getWorkUnitLimit"),
+            "results" to getter(resources, "getResultLimit"), "queryBytes" to getter(queryBudget, "getReturnedBytes"),
+            "nativeNames" to (effective["DISCOVERY_NAMES"] ?: constant("io.github.amichne.kast.symbol.intellij.IntellijNativeDiscoveryQueryKt", "MAX_NATIVE_DISCOVERY_NAMES")),
+            "nativeCandidates" to (effective["DISCOVERY_CANDIDATES"] ?: constant("io.github.amichne.kast.symbol.intellij.IntellijNativeDiscoveryQueryKt", "MAX_NATIVE_DISCOVERY_CANDIDATES"))),
+        "model" to native,
+        "diagnosticAvailability" to mapOf("instrumented" to (loader.getResource("io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.class") != null),
+            "enabled" to (policy != null || java.lang.Boolean.getBoolean("kast.hosted.read.diagnostics"))))
+    java.nio.file.Files.writeString(inputPath.parent.resolve("host.json"), com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(result))
+}

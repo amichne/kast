@@ -9,6 +9,8 @@ class HostedSemanticReadContext internal constructor(
     val authority: LiveSemanticReadAuthority,
     val model: WorkspaceSearchScopeModel,
     val sourceFiles: IntellijSemanticSourceFileAdmission,
+    val observation: io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation = io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation.None,
+    val limits: io.github.amichne.kast.kernel.ReadLimits = io.github.amichne.kast.kernel.ReadLimits.Default,
     private val validateCurrent: suspend () -> Refinement<Unit, HostedQueryFailure>,
 ) {
     private enum class Lifetime { ACTIVE, ENDED }

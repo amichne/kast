@@ -17,6 +17,8 @@ class LocalInstallationTest(unittest.TestCase):
             record = root / 'installer-contract'
             (root / 'install.sh').write_text(
                 '#!/bin/sh\n'
+                'test -f "$KAST_INSTALL_ASSETS_DIRECTORY/kast-ide-hosted-v1.2.3-idea-262.1.zip" || exit 32\n'
+                'test -f "$KAST_INSTALL_ASSETS_DIRECTORY/kast-ide-hosted-v1.2.3-idea-262.1.zip.sha256" || exit 33\n'
                 'printf "argument=%s\\n" "$@" > "' + str(record) + '"\n'
                 'for key in KAST_VERSION KAST_RELEASE_BASE_URL KAST_INSTALL_ASSETS_DIRECTORY '
                 'KAST_INSTALL_ROOT KAST_BIN_DIR KAST_ENABLE_LAUNCHD KAST_ENABLE_APP_SERVER; do\n'
@@ -33,6 +35,8 @@ class LocalInstallationTest(unittest.TestCase):
             (product / 'share/kast/semantic-runtime.json').write_text(json.dumps({'productVersion': '1.2.3'}))
             runtime = root / 'kast-semantic-runtime-1.2.3-macos-aarch64.zip'
             runtime.write_text('fixture archive')
+            plugin = root / 'kast-ide-hosted-v1.2.3-idea-262.1.zip'
+            plugin.write_text('fixture plugin')
             prefix = root / 'prefix'
             markers = []
             for name in ('local', 'control', 'runtime'):
@@ -42,7 +46,7 @@ class LocalInstallationTest(unittest.TestCase):
                 markers.append(marker)
             env = {'PATH': '/usr/bin:/bin', 'HOME': str(root), 'TMPDIR': str(root),
                    'KAST_LOCAL_PREFIX': str(prefix), 'KAST_LOCAL_CONTROL_PRODUCT': str(product),
-                   'KAST_LOCAL_RUNTIME_ARCHIVE': str(runtime), 'KAST_LOCAL_JAVA_EXECUTABLE': '/usr/bin/true',
+                   'KAST_LOCAL_RUNTIME_ARCHIVE': str(runtime), 'KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE': str(plugin), 'KAST_LOCAL_JAVA_EXECUTABLE': '/usr/bin/true',
                    'KAST_LOCAL_JAVA_HOME': str(root)}
             result = subprocess.run(['bash', str(script)], env=env, text=True, capture_output=True)
             self.assertEqual(0, result.returncode, result.stderr)

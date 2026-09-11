@@ -56,6 +56,7 @@ internal class HostedQueryLifetime {
 
 /** Bounded outcomes contain no exception messages or source payloads. */
 sealed interface HostedQueryFailure {
+    data class Configuration(val cause: io.github.amichne.kast.kernel.ReadLimitFailure) : HostedQueryFailure
     data object RETIRED : HostedQueryFailure
     data object WRONG_ENDPOINT : HostedQueryFailure
     data object WRONG_PROJECT : HostedQueryFailure

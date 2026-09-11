@@ -58,6 +58,31 @@ import java.nio.file.Path
 
 class RelationReadTest {
     @Test
+    fun `diagnostics distinguish complete coverage from unsupported items and candidate caps`() {
+        val reasons = mutableListOf<io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination>()
+        val observation = object : io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation {
+            override fun count(counter: io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter,
+                contributor: io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor, amount: Int) = Unit
+            override fun terminated(reason: io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination,
+                contributor: io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor) { reasons += reason }
+        }
+        val request = request(RelationMeaning.Callees)
+        val complete = IntellijRelationCollector(request, { 1L }, observation)
+        assertInstanceOf(RelationCompilation.Complete::class.java, complete.finish(IntellijRelationTermination.Terminal))
+        assertEquals(listOf(io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination.COMPLETE), reasons)
+        reasons.clear()
+        val incomplete = IntellijRelationCollector(request, { 1L }, observation)
+        incomplete.beginProviderItem(providerItem("unsupported"))
+        incomplete.examineIncomplete(RelationLimitation.UNSUPPORTED_ITEM)
+        assertInstanceOf(RelationCompilation.Qualified::class.java, incomplete.finish(IntellijRelationTermination.Terminal))
+        assertEquals(listOf(io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination.RELATION_UNSUPPORTED_ITEM), reasons)
+        reasons.clear()
+        val capped = IntellijRelationCollector(request, { 1L }, observation)
+        repeat(MAX_NATIVE_RELATION_CANDIDATES + 1) { capped.admitProviderCandidate() }
+        assertEquals(listOf(io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination.CANDIDATE_CAP), reasons)
+    }
+
+    @Test
     fun `relation package admission uses detached post-collection evidence`() {
         val restriction = SymbolDiscoveryPackageConstraint(
             SymbolDiscoveryPackage.parse("sample.allowed").refined(), SymbolDiscoveryContainment.DIRECT,

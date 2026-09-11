@@ -8,6 +8,7 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.kernel.Refinement
 
 enum class ExistingIdeFailure {
+    CONFIGURATION_REJECTED,
     INVALID_NAME, HOST_UNAVAILABLE, DESCRIPTOR_REJECTED, RESPONSE_REJECTED,
     REQUEST_TOO_LARGE, DEADLINE_EXCEEDED, TRANSPORT_REJECTED, SCHEMA_UNAVAILABLE,
     OPERATION_UNSUPPORTED,

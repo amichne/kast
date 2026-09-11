@@ -309,10 +309,10 @@ internal object EpochSignalClassContract {
     )
 
     private val PRODUCTION_FINGERPRINTS = mapOf(
-        PRODUCTION_FACTORY_RESOURCE to "c4864914022a4559818dda0e73da8071c8d15cd9697d314732a91ac054a01afa",
-        PRODUCTION_WORKSPACE_LISTENER_RESOURCE to "ea7bd0dd3a64327a684c8db443f93be1b2d115a6fce315d8dd2a5eef39645f12",
-        PRODUCTION_VFS_LISTENER_RESOURCE to "6ea25e676f77ddd65cfb7e6830ba67e8c8d926c9d7c2589dad148e58aa995ebb",
-        PRODUCTION_REFINEMENT_RESOURCE to "0b3160c708bf5e77eb51e09747ac58f355c2f4a53f09605f166dee45f6549d4f",
+        PRODUCTION_FACTORY_RESOURCE to "42e1eea33e9b673edec1a16630d6e0952e8cbb0fd9414d325f02372ad603496b",
+        PRODUCTION_WORKSPACE_LISTENER_RESOURCE to "f3ed3bdaca0829208c374c0c3c96a84807072912cff6b68f4342b5055416d082",
+        PRODUCTION_VFS_LISTENER_RESOURCE to "24b50e9b8d2f1ec37cbb96f00cda84b8c2a194fb14cbc5c416a600e5ad4b52c5",
+        PRODUCTION_REFINEMENT_RESOURCE to "13f0222ac7d90611a2c7840269c7efb732ccbf1459969216936f18a3ea7ec564",
     )
 
     private val PRODUCTION_LISTENER_MEMBERS: Map<String, Set<EpochMemberReference>> = mapOf(
@@ -322,6 +322,14 @@ internal object EpochSignalClassContract {
             member("com/intellij/platform/backend/workspace/WorkspaceModelChangeListener", "beforeChanged"),
         ),
         PRODUCTION_VFS_LISTENER_RESOURCE to setOf(
+            // Retained immutable configuration only; the exact IntelliJ listener surface is unchanged.
+            member(LOCAL + "RootFilteredProjectEpochVfsListener", "limits"),
+            member(LOCAL + "RootFilteredProjectEpochVfsListener", "<init>"),
+            member("io/github/amichne/kast/kernel/ReadLimits", "Companion"),
+            member("io/github/amichne/kast/kernel/ReadLimits\$Companion", "getDefault"),
+            member("io/github/amichne/kast/kernel/ReadLimitParameter", "EPOCH_VFS_EVENTS"),
+            member("io/github/amichne/kast/kernel/ReadLimits", "get"),
+            member("io/github/amichne/kast/kernel/ReadLimitValue", "getValue"),
             member(INTRINSICS, "checkNotNullParameter"), member("java/lang/Object", "<init>"),
             member(LOCAL + "RootFilteredProjectEpochVfsListener", "root"), member(LOCAL + "RootFilteredProjectEpochVfsListener", "counter"),
             member("java/util/List", "size"), member("io/github/amichne/kast/workspace/contract/ProjectReadEpochObservationFailure\$VfsBatchLimitExceeded", "INSTANCE"),

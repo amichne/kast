@@ -147,6 +147,9 @@ or a request rejects, follow [Troubleshoot Kast](https://kast.michne.com/trouble
 Bare `kast`, run from the repository root, is a passive support command that
 reports local runtime and bootstrap state without starting or repairing it.
 
+Hosted semantic reads log bounded diagnostic records to the IDE log by default.
+See [read limits and diagnostics](docs/hosted-read-configuration.md) for the 45 tunable settings and activation instructions.
+
 ## Develop Kast
 
 Development requires Java 25 or newer and the Python version in

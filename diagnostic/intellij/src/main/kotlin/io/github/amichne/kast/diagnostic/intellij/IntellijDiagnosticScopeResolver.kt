@@ -1,5 +1,7 @@
 package io.github.amichne.kast.diagnostic.intellij
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScope
@@ -26,7 +28,7 @@ internal suspend fun resolveDiagnosticScope(
         return@readAction Refinement.Rejected(DiagnosticScopeResolutionFailure.WORKSPACE_NOT_READY)
     }
     val paths = when (val result = IntellijProjectSourceFiles.collect(
-        project, query.lease.workspaceRoot, query.path, diagnosticScopeBudget,
+        project, query.lease.workspaceRoot, query.path, diagnosticScopeBudget(ReadLimits.Default),
     )) {
         is Refinement.Refined -> result.value
         is Refinement.Rejected -> return@readAction Refinement.Rejected(when (result.failure) {
@@ -42,10 +44,10 @@ internal suspend fun resolveDiagnosticScope(
     }
 }
 
-internal val diagnosticScopeBudget = ResourceBudget(
-    resultLimit = ResultLimit.parse(256).constant(),
-    workUnitLimit = WorkUnitLimit.parse(20_000).constant(),
-    elapsedTimeLimit = ElapsedTimeLimitMillis.parse(2_000).constant(),
+internal fun diagnosticScopeBudget(limits: ReadLimits) = ResourceBudget(
+    resultLimit = ResultLimit.parse(limits[ReadLimitParameter.DIAGNOSTIC_SCOPE_FILES].value).constant(),
+    workUnitLimit = WorkUnitLimit.parse(limits[ReadLimitParameter.DIAGNOSTIC_SCOPE_WORK].value.toLong()).constant(),
+    elapsedTimeLimit = ElapsedTimeLimitMillis.parse(limits[ReadLimitParameter.DIAGNOSTIC_SCOPE_MILLIS].value.toLong()).constant(),
 )
 
 private fun <Value, Failure> Refinement<Value, Failure>.constant(): Value = when (this) {

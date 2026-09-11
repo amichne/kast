@@ -1,5 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
@@ -10,9 +12,10 @@ import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFail
 internal class RootFilteredProjectEpochVfsListener(
     private val root: ProjectReadEpochVfsRoot,
     private val counter: ProjectReadEpochMetadataCounter,
+    private val limits: ReadLimits = ReadLimits.Default,
 ) : BulkFileListener {
     override fun after(events: List<VFileEvent>) {
-        if (events.size > PROJECT_READ_EPOCH_MAX_VFS_EVENTS_PER_BATCH) {
+        if (events.size > limits[ReadLimitParameter.EPOCH_VFS_EVENTS].value) {
             counter.reject(ProjectReadEpochObservationFailure.VfsBatchLimitExceeded)
             return
         }
@@ -28,7 +31,7 @@ internal class RootFilteredProjectEpochVfsListener(
                 else -> ProjectReadEpochVfsEvent.Change(event.path)
             }
         }
-        when (val result = observeProjectReadEpochVfsBatch(root, observed)) {
+        when (val result = observeProjectReadEpochVfsBatch(root, observed, limits)) {
             ProjectReadEpochVfsBatchObservation.OutsideRoot -> Unit
             ProjectReadEpochVfsBatchObservation.TouchesRoot -> counter.advance()
             is ProjectReadEpochVfsBatchObservation.Rejected -> counter.reject(result.failure)

@@ -28,8 +28,8 @@ internal suspend fun AdmittedIdeProject.prepareHostedQuery(
 ): HostedReadPreparation<HostedInheritorEvidence> = prepareHostedRead(
     selection.root, progress, checkpoint,
     { project, model -> when (selection) {
-        is HostedKotlinSelection -> readHostedKotlin(project, selection, model)
-        is HostedQualifiedClassSelection -> readHostedIndexedSupertype(project, selection, model)
+        is HostedKotlinSelection -> readHostedKotlin(project, selection, model, progress.limits)
+        is HostedQualifiedClassSelection -> readHostedIndexedSupertype(project, selection, model, progress.limits)
     } }, ::verifyHostedContent,
 )
 
@@ -48,7 +48,7 @@ internal suspend fun <Evidence : Any> AdmittedIdeProject.prepareHostedRead(
         is ProjectReadEpochObservation.Rejected -> return rejected(HostedQueryFailure.ReadEpoch(observation.failure))
     }
     progress.advance(HostedQueryStage.MODEL_CAPTURE)
-    val model = when (val captured = captureDetachedModelAsync()) {
+    val model = when (val captured = captureDetachedModelAsync(progress.limits)) {
         is DetachedModelCapture.Captured -> captured.model
         is DetachedModelCapture.Rejected -> return rejected(HostedQueryFailure.ModelCapture(captured))
     }

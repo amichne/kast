@@ -1,9 +1,17 @@
 package io.github.amichne.kast.relation.intellij
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
+
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiNamedElement
+import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.PsiReference
 import com.intellij.psi.search.PsiElementProcessor
 import com.intellij.psi.search.searches.DefinitionsScopedSearch
@@ -33,6 +41,8 @@ internal class IntellijK2RelationSearch(
     private val scope: CompiledRelationScope,
     private val projection: IntellijK2RelationProjection,
     private val cancellationCheck: () -> Unit = ProgressManager::checkCanceled,
+    private val observation: IntellijReadObservation = IntellijReadObservation.None,
+    private val limits: ReadLimits = ReadLimits.Default,
 ) {
     /**
      * Proof transition: `(RelationRequest, exact K2 subject, IntellijRelationCollector) ->
@@ -61,7 +71,7 @@ internal class IntellijK2RelationSearch(
 
     private inner class SearchState(
         private val request: RelationRequest,
-        private val subject: KtNamedDeclaration,
+        private val subject: PsiNamedElement,
         private val collector: IntellijRelationCollector,
     ) {
         private val limitations = linkedSetOf<RelationLimitation>()
@@ -101,8 +111,28 @@ internal class IntellijK2RelationSearch(
                 }
                 val kotlinReference = reference as? KtReference
                 if (kotlinReference == null) {
-                    if (!incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)) {
-                        return termination(ProviderTermination.HALTED)
+                    if (reference.element.containingFile !is PsiJavaFile) {
+                        observation.terminated(IntellijReadTermination.NON_KOTLIN_REFERENCE)
+                        if (!incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)) return termination(ProviderTermination.HALTED)
+                        continue
+                    }
+                    if (!plan.admitsJava(reference)) {
+                        if (!collector.dismissProviderItem()) return termination(ProviderTermination.HALTED)
+                        continue
+                    }
+                    when (projection.confirmJavaTarget(reference, request.subject)) {
+                        IntellijK2TargetConfirmation.EXACT_SUBJECT -> {
+                            val related = reference.element.nearestSupportedDeclaration(projection)
+                            val continued = when (related) {
+                                is SupportedContainingDeclaration.Found -> emit(related.projection, reference.element, reference.rangeInElement)
+                                SupportedContainingDeclaration.Unsupported -> incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
+                            }
+                            if (!continued) return termination(ProviderTermination.HALTED)
+                        }
+                        IntellijK2TargetConfirmation.DIFFERENT_SYMBOL ->
+                            if (!collector.dismissProviderItem()) return termination(ProviderTermination.HALTED)
+                        IntellijK2TargetConfirmation.UNRESOLVED ->
+                            if (!incompleteItem(RelationLimitation.UNRESOLVED_TARGET)) return termination(ProviderTermination.HALTED)
                     }
                     continue
                 }
@@ -185,7 +215,7 @@ internal class IntellijK2RelationSearch(
                     ProviderItemDisposition.SKIPPED -> continue
                     ProviderItemDisposition.HALTED -> return termination(ProviderTermination.HALTED)
                 }
-                val candidate = definition as? KtNamedDeclaration
+                val candidate = definition as? PsiNamedElement
                 if (candidate == null) {
                     if (!incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)) {
                         return termination(ProviderTermination.HALTED)
@@ -210,6 +240,9 @@ internal class IntellijK2RelationSearch(
         }
 
         fun callees(): IntellijRelationTermination {
+            if (subject !is KtNamedDeclaration) return IntellijRelationTermination.TerminalIncomplete(
+                setOf(RelationLimitation.UNSUPPORTED_ITEM),
+            )
             val calls = mutableListOf<KtCallElement>()
             val callsExhausted = PsiTreeUtil.processElements(subject, PsiElementProcessor<PsiElement> { element ->
                 cancellationCheck()
@@ -271,7 +304,14 @@ internal class IntellijK2RelationSearch(
                             }
                         is IntellijK2ResolvedDeclaration.Found -> {
                             val file = resolved.declaration.containingFile?.virtualFile
-                            if (file == null || !scope.nativeScope.contains(file)) {
+                            if (file != null && request.searchScope is io.github.amichne.kast.symbol.contract.SymbolSearchScope.Workspace &&
+                                (request.searchScope as io.github.amichne.kast.symbol.contract.SymbolSearchScope.Workspace).libraries == io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy.EXCLUDE &&
+                                IntellijProjectFileIndexClassifier.classify(project, file, limits) is IntellijProjectFileClassification.Library
+                            ) {
+                                observation.terminated(IntellijReadTermination.LIBRARY_POLICY_EXCLUSION)
+                                if (!collector.dismissProviderItem()) return termination(ProviderTermination.HALTED)
+                            } else if (file == null || !scope.nativeScope.contains(file)) {
+                                observation.terminated(IntellijReadTermination.CALLEE_OUTSIDE_NATIVE_SCOPE)
                                 if (!incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)) {
                                     return termination(ProviderTermination.HALTED)
                                 }
@@ -298,10 +338,12 @@ internal class IntellijK2RelationSearch(
         }
 
         private fun packageDisposition(element: PsiElement): ProviderItemDisposition =
-            when (request.subject.constraints.packageName.admitPackage { element.relationPackageEvidence() }) {
+            when (request.searchConstraints.packageName.admitPackage { element.relationPackageEvidence() }) {
                 IntellijRelationPackageAdmission.ADMITTED -> ProviderItemDisposition.READY
-                IntellijRelationPackageAdmission.OUTSIDE_SCOPE ->
+                IntellijRelationPackageAdmission.OUTSIDE_SCOPE -> {
+                    observation.terminated(IntellijReadTermination.TARGET_OUTSIDE_PACKAGE)
                     if (collector.dismissProviderItem()) ProviderItemDisposition.SKIPPED else ProviderItemDisposition.HALTED
+                }
                 IntellijRelationPackageAdmission.UNSUPPORTED ->
                     if (incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)) {
                         ProviderItemDisposition.SKIPPED
@@ -334,7 +376,7 @@ internal class IntellijK2RelationSearch(
         }
 
         private fun emit(
-            related: KtNamedDeclaration,
+            related: PsiNamedElement,
             occurrenceElement: PsiElement,
             relativeRange: com.intellij.openapi.util.TextRange,
         ): Boolean = when (val result = projection.project(related)) {
@@ -352,9 +394,9 @@ internal class IntellijK2RelationSearch(
             val endpoint = when (
                 val resolved = RelationEndpoint.resolve(
                     request.subject.lease,
-                    request.subject.scope,
+                    request.searchScope,
                     related.evidence,
-                    request.subject.constraints,
+                    request.searchConstraints,
                 )
             ) {
                 is Refinement.Refined -> resolved.value
@@ -424,7 +466,7 @@ internal class IntellijK2RelationSearch(
     }
 
     private fun com.intellij.openapi.vfs.VirtualFile.provenance(): OccurrenceProvenance =
-        when (val classification = IntellijProjectFileIndexClassifier.classify(project, this)) {
+        when (val classification = IntellijProjectFileIndexClassifier.classify(project, this, limits)) {
             is IntellijProjectFileClassification.Source -> when (classification.generated) {
                 IntellijGeneratedSourceState.AUTHORED ->
                     OccurrenceProvenance.Found(RelationProvenance.K2_AUTHORED_SOURCE)
@@ -440,7 +482,7 @@ internal class IntellijK2RelationSearch(
 }
 
 private sealed interface ContainingDeclaration {
-    data class Found(val declaration: KtNamedDeclaration) : ContainingDeclaration
+    data class Found(val declaration: PsiNamedElement) : ContainingDeclaration
     data object Unsupported : ContainingDeclaration
 }
 
@@ -508,7 +550,8 @@ private fun providerItemDescriptor(
 
 private fun PsiElement.nearestDeclaration(): ContainingDeclaration =
     generateSequence(this as PsiElement?) { it.parent }
-        .filterIsInstance<KtNamedDeclaration>()
+        .filterIsInstance<PsiNamedElement>()
+    .filter { it is KtNamedDeclaration || it is com.intellij.psi.PsiMember }
         .firstOrNull()
         ?.let(ContainingDeclaration::Found)
     ?: ContainingDeclaration.Unsupported
@@ -524,7 +567,11 @@ private fun PsiElement.nearestDeclaration(): ContainingDeclaration =
 private fun PsiElement.nearestSupportedDeclaration(
     projection: IntellijK2RelationProjection,
 ): SupportedContainingDeclaration = generateSequence(this as PsiElement?) { it.parent }
-    .filterIsInstance<KtNamedDeclaration>()
+    .filterIsInstance<PsiNamedElement>()
+    .filter { it is KtNamedDeclaration || it is com.intellij.psi.PsiMember }
+    // A constructor parameter's type occurrence belongs to its constructor, even when
+    // K2 also exposes the generated property as an independently discoverable declaration.
+    .filterNot { it is org.jetbrains.kotlin.psi.KtParameter }
     .map(projection::project)
     .filterIsInstance<IntellijRelationDeclarationProjection.Projected>()
     .firstOrNull()

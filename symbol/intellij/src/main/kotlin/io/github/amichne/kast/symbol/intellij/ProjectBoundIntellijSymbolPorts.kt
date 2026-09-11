@@ -1,5 +1,13 @@
 package io.github.amichne.kast.symbol.intellij
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
+
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
+
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
 import io.github.amichne.kast.symbol.contract.SymbolCompilation
@@ -30,6 +38,8 @@ class ProjectBoundIntellijSymbolPorts private constructor(
             authority: SemanticReadAuthority,
             model: WorkspaceSearchScopeModel,
             fileAdmission: IntellijSemanticSourceFileAdmission,
+            observation: IntellijReadObservation = IntellijReadObservation.None,
+            limits: ReadLimits = ReadLimits.Default,
         ): ProjectBoundIntellijSymbolPorts {
             val compiledModel = WorkspaceSearchScopeModelCompilation.Compiled(model)
             return ProjectBoundIntellijSymbolPorts(
@@ -41,14 +51,14 @@ class ProjectBoundIntellijSymbolPorts private constructor(
                     } else IntellijSymbolCompilerAdapter(IntellijNativeDiscoveryAdapter(
                         IntellijSearchScopeQueryAdapter(IntellijSearchScopeCompiler(request.constraints) { path ->
                             fileAdmission.admits(path, request.constraints.sourceSets)
-                        }),
+                        }), observation, limits,
                     )).compile(project, request, compiledModel)
                 },
                 object : SymbolExactCompilerPort {
                     private fun exact(constraints: SymbolDiscoveryConstraints) = IntellijSymbolExactCompilerAdapter(
                         IntellijSymbolSelectorResolver(IntellijSearchScopeQueryAdapter(
                             IntellijSearchScopeCompiler(constraints) { path -> fileAdmission.admits(path, constraints.sourceSets) },
-                        )),
+                        ), observation, limits),
                     )
 
                     override suspend fun resolve(request: SymbolResolutionRequest): SymbolResolutionCompilation =

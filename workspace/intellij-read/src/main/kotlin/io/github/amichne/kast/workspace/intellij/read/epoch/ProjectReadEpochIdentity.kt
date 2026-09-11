@@ -1,5 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure
 import java.nio.file.InvalidPathException
@@ -33,12 +35,13 @@ internal class ProjectEpochRootIdentity private constructor(
          */
         fun admit(
             raw: String?,
+            limits: ReadLimits = ReadLimits.Default,
         ): Refinement<ProjectEpochRootIdentity, ProjectReadEpochObservationFailure> =
             EpochRootComparisonKey.refine(
                 raw,
                 ProjectReadEpochObservationFailure.ProjectRootUnavailable,
                 ProjectReadEpochObservationFailure.ProjectRootMalformed,
-                ::ProjectEpochRootIdentity,
+                ::ProjectEpochRootIdentity, limits = limits,
             )
     }
 }
@@ -68,12 +71,13 @@ internal class GradleEpochRootIdentity private constructor(
          */
         fun admit(
             raw: String?,
+            limits: ReadLimits = ReadLimits.Default,
         ): Refinement<GradleEpochRootIdentity, ProjectReadEpochObservationFailure> =
             EpochRootComparisonKey.refine(
                 raw,
                 ProjectReadEpochObservationFailure.GradleRootUnavailable,
                 ProjectReadEpochObservationFailure.GradleRootMalformed,
-                ::GradleEpochRootIdentity,
+                ::GradleEpochRootIdentity, limits = limits,
             )
     }
 }
@@ -104,10 +108,11 @@ internal class EpochRootComparisonKey private constructor(private val value: Str
             unavailable: ProjectReadEpochObservationFailure,
             malformed: ProjectReadEpochObservationFailure,
             construct: (EpochRootComparisonKey) -> Root,
+            limits: ReadLimits = ReadLimits.Default,
         ): Refinement<Root, ProjectReadEpochObservationFailure> {
             if (raw.isNullOrEmpty()) return Refinement.Rejected(unavailable)
-            if (raw.length > MAX_ROOT_CHARACTERS ||
-                raw.toByteArray(Charsets.UTF_8).size > MAX_ROOT_UTF8_BYTES
+            if (raw.length > limits[ReadLimitParameter.EPOCH_PATH_CHARACTERS].value ||
+                raw.toByteArray(Charsets.UTF_8).size > limits[ReadLimitParameter.EPOCH_PATH_BYTES].value
             ) return Refinement.Rejected(malformed)
             val path = try {
                 Path.of(raw)

@@ -90,3 +90,7 @@ complete/qualified distinctions. Earlier class/supertype qualification remains
 separate evidence.
 
 See [query protocol](../modules/query-protocol.md), [semantic read domains](../modules/semantic-reads.md), and [compiler identity](../glossary/compiler-identity.md).
+
+The [opt-in synthetic reproduction](../../docs/reviews/hosted-semantic-reproduction.md) independently verifies public identities, occurrences and coverage through both CLI and production provider. Qualified exact positives remain useful; zero items with relation incompleteness do not prove absence. The corrected expansion request preserves the selected subject and uses an explicit workspace search boundary for destinations; continuation fingerprints bind that boundary. Earlier exclusion receipts remain baseline evidence.
+
+The corrected scoped `ALL` path enumerates Kotlin declarations through the admitted file-type index without workspace name enumeration. Generated primary-constructor properties retain K2 property identity. Java reference endpoints retain compiler identity, and workspace expansion preserves original subject restrictions separately from destination admission. [Read-limit settings](../../docs/hosted-read-configuration.md) tune operational bounds while default logs preserve stages, outcomes and their effective values.

@@ -219,6 +219,7 @@ private fun RelationCompilation.Qualified.admitFor(
         val continuation = admittedCoverage.continuation
         if (
             continuation.subject != request.subject.fingerprint ||
+            continuation.scope != request.scopeFingerprint ||
             continuation.meaning != request.meaning ||
             continuation.authority != request.subject.lease.identity ||
             continuation.nextProviderCursor.provider != request.providerCursor.provider ||
@@ -241,10 +242,8 @@ private fun List<io.github.amichne.kast.relation.contract.RelationFact>.admitFor
         fact.authority == subject.lease.identity &&
         fact.source.lease == subject.lease &&
         fact.target.lease == subject.lease &&
-        fact.source.scope == subject.scope &&
-        fact.target.scope == subject.scope &&
-        fact.source.constraints == subject.constraints &&
-        fact.target.constraints == subject.constraints
+        request.admitsEndpoint(fact.source) &&
+        request.admitsEndpoint(fact.target)
     }
 ) {
     RelationCompilerOutputAdmission.Admitted

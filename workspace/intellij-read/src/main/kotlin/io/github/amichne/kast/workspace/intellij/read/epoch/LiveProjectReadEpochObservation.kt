@@ -1,5 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ReadAction
@@ -46,6 +48,7 @@ internal object LiveProjectReadEpochSourceFactory : ExistingProjectReadEpochSour
         project: Project,
         root: CanonicalWorkspaceRoot,
         owner: Disposable,
+        limits: ReadLimits = ReadLimits.Default,
     ): Refinement<ProjectReadEpoch.Source<*>, ExistingProjectReadEpochSourceInstallationFailure> {
         if (project.isDisposed) {
             return Refinement.Rejected(
@@ -67,7 +70,7 @@ internal object LiveProjectReadEpochSourceFactory : ExistingProjectReadEpochSour
             )
             connection.subscribe(
                 VirtualFileManager.VFS_CHANGES,
-                RootFilteredProjectEpochVfsListener(rootIdentity, vfsCounter),
+                RootFilteredProjectEpochVfsListener(rootIdentity, vfsCounter, limits),
             )
             if (project.isDisposed) {
                 Refinement.Rejected(
@@ -75,9 +78,10 @@ internal object LiveProjectReadEpochSourceFactory : ExistingProjectReadEpochSour
                 )
             } else {
                 Refinement.Refined(LiveProjectReadEpochSource(
-                    LiveProjectReadEpochPlatformPort(project),
+                    LiveProjectReadEpochPlatformPort(project, limits),
                     projectModelCounter,
                     vfsCounter,
+                    limits = limits,
                 ).source)
             }
         } catch (cancelled: ProcessCanceledException) {
@@ -100,6 +104,7 @@ internal class LiveProjectReadEpochSource(
     private val projectModelCounter: ProjectReadEpochMetadataCounter,
     private val vfsCounter: ProjectReadEpochMetadataCounter,
     private val execution: ProjectReadEpochExecution = IdeaProjectReadEpochExecution,
+    private val limits: ReadLimits = ReadLimits.Default,
 ) {
     internal val source = ProjectReadEpoch.Source.create(::observeState)
 
@@ -192,7 +197,7 @@ internal class LiveProjectReadEpochSource(
             is EpochPlatformObservation.Observed -> observed.value
             is EpochPlatformObservation.Failed -> return observed.rejection()
         }
-        val projectRoot = when (val refined = ProjectEpochRootIdentity.admit(rawProjectRoot)) {
+        val projectRoot = when (val refined = ProjectEpochRootIdentity.admit(rawProjectRoot, limits)) {
             is Refinement.Refined -> refined.value
             is Refinement.Rejected -> return refined
         }
@@ -281,6 +286,7 @@ internal interface ProjectReadEpochPlatformPort {
 
 private class LiveProjectReadEpochPlatformPort(
     private val project: Project,
+    private val limits: ReadLimits,
 ) : ProjectReadEpochPlatformPort {
     override fun checkCanceled() = ProgressManager.checkCanceled()
     override fun isDisposed(): Boolean = project.isDisposed
@@ -305,12 +311,12 @@ private class LiveProjectReadEpochPlatformPort(
         if (infos.isEmpty()) {
             return Refinement.Rejected(ProjectReadEpochObservationFailure.GradleModelUnavailable)
         }
-        if (infos.size > MAX_CACHED_GRADLE_MODELS) {
+        if (infos.size > limits[ReadLimitParameter.EPOCH_CACHED_GRADLE_MODELS].value) {
             return Refinement.Rejected(ProjectReadEpochObservationFailure.GradleModelAmbiguous)
         }
         val admitted = ArrayList<Pair<ExternalProjectInfo, ObservedEpochGradleModel>>(infos.size)
         for (info in infos) {
-            val root = when (val refined = GradleEpochRootIdentity.admit(info.externalProjectPath)) {
+            val root = when (val refined = GradleEpochRootIdentity.admit(info.externalProjectPath, limits)) {
                 is Refinement.Refined -> refined.value
                 is Refinement.Rejected -> return refined
             }

@@ -5,10 +5,21 @@
 
 package io.github.amichne.kast.relation.intellij
 
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
+
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiNamedElement
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiMember
+import com.intellij.psi.PsiReference
+import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.javaInterop.namedClassSymbol
+import org.jetbrains.kotlin.analysis.api.javaInterop.callableSymbol
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
@@ -16,6 +27,7 @@ import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.analysis.api.projectStructure.kaModule
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
@@ -34,7 +46,7 @@ internal enum class IntellijRelationSubjectFailure {
 
 internal sealed interface IntellijRelationSubjectLookup {
     data class Found(
-        val declaration: KtNamedDeclaration,
+        val declaration: PsiNamedElement,
         val evidence: CompilerGroundedSymbolEvidence,
     ) : IntellijRelationSubjectLookup
 
@@ -45,7 +57,7 @@ internal sealed interface IntellijRelationSubjectLookup {
 
 internal sealed interface IntellijRelationDeclarationProjection {
     data class Projected(
-        val declaration: KtNamedDeclaration,
+        val declaration: PsiNamedElement,
         val evidence: CompilerGroundedSymbolEvidence,
     ) : IntellijRelationDeclarationProjection
 
@@ -65,7 +77,7 @@ internal enum class IntellijK2DefinitionConfirmation {
 }
 
 internal sealed interface IntellijK2ResolvedDeclaration {
-    data class Found(val declaration: KtNamedDeclaration) : IntellijK2ResolvedDeclaration
+    data class Found(val declaration: PsiNamedElement) : IntellijK2ResolvedDeclaration
     data object Unresolved : IntellijK2ResolvedDeclaration
 }
 
@@ -78,6 +90,7 @@ internal sealed interface IntellijDetachedRelationFile {
 internal class IntellijK2RelationProjection(
     private val project: com.intellij.openapi.project.Project,
     private val workspaceRoot: CanonicalWorkspaceRoot,
+    private val observation: IntellijReadObservation = IntellijReadObservation.None,
 ) {
     /**
      * Proof transition: `(CompiledRelationScope, RelationEndpoint) ->
@@ -112,10 +125,11 @@ internal class IntellijK2RelationProjection(
         val candidates = generateSequence(psiFile.findElementAt(subject.range.startInclusive)) {
             it.parent
         }
-            .filterIsInstance<KtNamedDeclaration>()
+            .filterIsInstance<PsiNamedElement>()
+            .filter { it is KtNamedDeclaration || it is PsiMember }
             .filter { declaration ->
-                declaration.textRange.startOffset == subject.range.startInclusive &&
-                declaration.textRange.endOffset == subject.range.endExclusive &&
+                declaration.textRange?.startOffset == subject.range.startInclusive &&
+                declaration.textRange?.endOffset == subject.range.endExclusive &&
                 declaration.name == subject.name.value
             }
             .toList()
@@ -142,7 +156,7 @@ internal class IntellijK2RelationProjection(
      * identity. Unsupported files, declarations, or local/unavailable compiler identities remain
      * closed as [IntellijRelationDeclarationProjection.Unsupported]. Live values remain local.
      */
-    fun project(declaration: KtNamedDeclaration): IntellijRelationDeclarationProjection {
+    fun project(declaration: PsiNamedElement): IntellijRelationDeclarationProjection {
         val file = declaration.containingFile?.virtualFile
                    ?: return IntellijRelationDeclarationProjection.Unsupported
         val detached = when (val result = file.detachNative()) {
@@ -150,18 +164,19 @@ internal class IntellijK2RelationProjection(
             IntellijDetachedRelationFile.Unsupported ->
                 return IntellijRelationDeclarationProjection.Unsupported
         }
-        val projection = when (val result = analyze(declaration) {
-            declaration.symbol.compilerProjection()
+        val projection = when (val result = analyze(declaration.kaModule(null)) {
+            nativeSymbol(declaration)?.compilerProjection() ?: IntellijCompilerProjectionResult.Unsupported
         }) {
             is IntellijCompilerProjectionResult.Projected -> result.projection
             IntellijCompilerProjectionResult.Unsupported ->
                 return IntellijRelationDeclarationProjection.Unsupported
         }
+        val range = declaration.textRange ?: return IntellijRelationDeclarationProjection.Unsupported
         val evidence = when (
             val refined = CompilerGroundedSymbolEvidence.fromBoundary(
                 detached,
-                declaration.textRange.startOffset,
-                declaration.textRange.endOffset,
+                range.startOffset,
+                range.endOffset,
                 declaration.name.orEmpty(),
                 projection.qualifiedIdentity,
                 projection.kind,
@@ -215,7 +230,7 @@ internal class IntellijK2RelationProjection(
     private fun confirmClassConstruction(
         admitted: IntellijRelationReferenceAdmission.Admitted.ClassConstruction,
     ): IntellijK2TargetConfirmation = analyze(admitted.reference.element) {
-        val selectedClass = admitted.selectedClass.symbol as? KaClassSymbol
+        val selectedClass = nativeSymbol(admitted.selectedClass) as? KaClassSymbol
                             ?: return@analyze IntellijK2TargetConfirmation.UNRESOLVED
         val selectedClassId = selectedClass.classId
                               ?: return@analyze IntellijK2TargetConfirmation.UNRESOLVED
@@ -235,12 +250,12 @@ internal class IntellijK2RelationProjection(
      * APIs; index enumeration alone never admits a definition edge.
      */
     fun confirmDefinition(
-        subject: KtNamedDeclaration,
-        candidate: KtNamedDeclaration,
+        subject: PsiNamedElement,
+        candidate: PsiNamedElement,
         relation: IntellijDefinitionRelation,
-    ): IntellijK2DefinitionConfirmation = analyze(candidate) {
-        val subjectSymbol = subject.symbol
-        val candidateSymbol = candidate.symbol
+    ): IntellijK2DefinitionConfirmation = analyze(candidate.kaModule(null)) {
+        val subjectSymbol = nativeSymbol(subject)
+        val candidateSymbol = nativeSymbol(candidate)
         when (relation) {
             IntellijDefinitionRelation.INHERITORS -> {
                 val parent = subjectSymbol as? KaClassSymbol
@@ -285,11 +300,35 @@ internal class IntellijK2RelationProjection(
 
     /** Resolves one Kotlin call/reference target to a source declaration through K2. */
     fun resolve(reference: KtReference): IntellijK2ResolvedDeclaration = analyze(reference.element) {
-        val declaration = reference.resolveToSymbol()?.psi as? KtNamedDeclaration
-        if (declaration == null) {
-            IntellijK2ResolvedDeclaration.Unresolved
-        } else {
-            IntellijK2ResolvedDeclaration.Found(declaration)
+        val symbol = reference.resolveToSymbol()
+        val psi = symbol?.psi
+        val declaration = psi as? PsiNamedElement
+        when {
+            symbol == null -> {
+                observation.terminated(IntellijReadTermination.K2_UNRESOLVED_SYMBOL)
+                IntellijK2ResolvedDeclaration.Unresolved
+            }
+            psi == null -> {
+                observation.terminated(IntellijReadTermination.K2_SYMBOL_WITHOUT_PSI)
+                IntellijK2ResolvedDeclaration.Unresolved
+            }
+            declaration == null -> {
+                observation.terminated(IntellijReadTermination.K2_NON_KOTLIN_PSI)
+                IntellijK2ResolvedDeclaration.Unresolved
+            }
+            else -> IntellijK2ResolvedDeclaration.Found(declaration)
+        }
+    }
+
+    /** Java resolution finds the declaration; K2 then proves its exact retained compiler identity. */
+    fun confirmJavaTarget(reference: PsiReference, subject: RelationEndpoint): IntellijK2TargetConfirmation {
+        val declaration = reference.resolve()?.navigationElement as? PsiNamedElement
+            ?: return IntellijK2TargetConfirmation.UNRESOLVED
+        return when (val result = project(declaration)) {
+            IntellijRelationDeclarationProjection.Unsupported -> IntellijK2TargetConfirmation.UNRESOLVED
+            is IntellijRelationDeclarationProjection.Projected ->
+                if (result.evidence.compilerIdentity == subject.compilerIdentity) IntellijK2TargetConfirmation.EXACT_SUBJECT
+                else IntellijK2TargetConfirmation.DIFFERENT_SYMBOL
         }
     }
 
@@ -321,3 +360,11 @@ private fun different() = IntellijK2DefinitionConfirmation.DIFFERENT_RELATION
 
 private fun rejected(reason: IntellijRelationSubjectFailure) =
     IntellijRelationSubjectLookup.Rejected(reason)
+
+/** Nullable Java interop results are consumed inside the K2 session and never become evidence. */
+private fun KaSession.nativeSymbol(declaration: PsiNamedElement): org.jetbrains.kotlin.analysis.api.symbols.KaSymbol? = when (declaration) {
+    is KtNamedDeclaration -> declaration.symbol
+    is PsiClass -> declaration.namedClassSymbol
+    is PsiMember -> declaration.callableSymbol
+    else -> null
+}

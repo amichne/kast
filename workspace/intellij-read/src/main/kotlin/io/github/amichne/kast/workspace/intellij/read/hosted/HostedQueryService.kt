@@ -15,6 +15,9 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.*
 import io.github.amichne.kast.workspace.intellij.read.IntellijSemanticSourceFileAdmission
 import java.util.UUID
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimitFailure
+import io.github.amichne.kast.workspace.intellij.read.readHostedConfiguration
 
 /** Explicit in-process endpoint. Construction never discovers, opens, repairs, or imports a project. */
 @Service(Service.Level.PROJECT)
@@ -29,9 +32,13 @@ class HostedQueryService private constructor(
         fun observed(project: Project, scope: CoroutineScope, checkpoint: HostedReadCheckpoint) =
             HostedQueryService(project, scope, checkpoint)
     }
-    private val executor = HostedQueryExecutor(serviceScope)
+    private val executor = HostedQueryExecutor(serviceScope, ::hostedReadDiagnostics)
     private val owner = Disposer.newDisposable("Kast hosted query epoch")
-    private val session = AdmittedIdeProjectSession(owner)
+    val readConfiguration: Refinement<ReadLimits, ReadLimitFailure> = readHostedConfiguration()
+    private val configuredSession = when (val settings = readConfiguration) {
+        is Refinement.Refined -> ConfiguredHostedSession.Ready(settings.value, AdmittedIdeProjectSession(owner, settings.value))
+        is Refinement.Rejected -> ConfiguredHostedSession.Rejected(HostedQueryFailure.Configuration(settings.failure))
+    }
     val hostLifetime = IdeReadHostLifetime.fromBoundary(UUID.randomUUID())
     private val liveAuthorities = HostedLiveReadAuthoritySession(hostLifetime)
     // A policy is retained admission authority, not just equal metadata. Reuse its
@@ -46,9 +53,19 @@ class HostedQueryService private constructor(
         evaluate: suspend (HostedSemanticReadContext) -> Value,
     ): HostedSemanticReadResult<Value> {
         if (ApplicationManager.getApplication().isReadAccessAllowed || ApplicationManager.getApplication().isDispatchThread) {
+            hostedReadDiagnostics().finish(HostedDiagnosticOutcome.Rejected(HostedQueryFailure.WRONG_THREAD))
             return HostedSemanticReadResult.Rejected(HostedQueryFailure.WRONG_THREAD, HostedQueryStage.REQUEST_ADMISSION)
         }
-        return when (val execution = executor.execute(endpoint) { progress ->
+        val configured = when (val state = configuredSession) {
+            is ConfiguredHostedSession.Ready -> state
+            is ConfiguredHostedSession.Rejected -> {
+                hostedReadDiagnostics().finish(HostedDiagnosticOutcome.Rejected(state.failure))
+                return HostedSemanticReadResult.Rejected(state.failure, HostedQueryStage.REQUEST_ADMISSION)
+            }
+        }
+        val session = configured.session
+        return when (val execution = executor.execute(endpoint, configured.limits) { progress ->
+            progress.diagnostics?.bindHost(hostLifetime)
             val compatibility = when (val admitted = packagedCompatibility) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return@execute HostedSemanticRead.Rejected(admitted.failure)
@@ -64,7 +81,7 @@ class HostedQueryService private constructor(
                 is ProjectReadEpochObservation.Rejected -> return@execute HostedSemanticRead.Rejected(HostedQueryFailure.ReadEpoch(observed.failure))
             }
             progress.advance(HostedQueryStage.MODEL_CAPTURE)
-            val sourceScope = when (val captured = admitted.captureNamedGradleSourceScope()) {
+            val sourceScope = when (val captured = admitted.captureNamedGradleSourceScope(progress.observation, progress.limits)) {
                 is Refinement.Refined -> captured.value
                 is Refinement.Rejected -> return@execute HostedSemanticRead.Rejected(HostedQueryFailure.NamedSourceScope(captured.failure))
             }
@@ -76,8 +93,9 @@ class HostedQueryService private constructor(
                 is Refinement.Refined -> current.value
                 is Refinement.Rejected -> return@execute HostedSemanticRead.Rejected(HostedQueryFailure.LiveAuthority(current.failure))
             }
+            progress.diagnostics?.bind(authority.reference)
             val context = HostedSemanticReadContext(authority, sourceScope.model,
-                IntellijSemanticSourceFileAdmission(sourceScope::contains),
+                IntellijSemanticSourceFileAdmission(sourceScope::contains), progress.observation, progress.limits,
             ) {
                 readAction {
                     when (val saved = checkSavedDocuments(project)) {
@@ -120,14 +138,23 @@ class HostedQueryService private constructor(
         policy: IdeHostCompatibilityPolicy,
     ): HostedIndexResult {
         if (ApplicationManager.getApplication().isReadAccessAllowed || ApplicationManager.getApplication().isDispatchThread) {
+            hostedReadDiagnostics().finish(HostedDiagnosticOutcome.Rejected(HostedQueryFailure.WRONG_THREAD))
             return HostedIndexResult.Rejected(HostedQueryFailure.WRONG_THREAD)
         }
-        return when (val execution = executor.execute(endpoint) { progress ->
+        val configured = when (val state = configuredSession) {
+            is ConfiguredHostedSession.Ready -> state
+            is ConfiguredHostedSession.Rejected -> {
+                hostedReadDiagnostics().finish(HostedDiagnosticOutcome.Rejected(state.failure))
+                return HostedIndexResult.Rejected(state.failure)
+            }
+        }
+        val session = configured.session
+        return when (val execution = executor.execute(endpoint, configured.limits) { progress ->
             progress.advance(HostedQueryStage.PROJECT_ADMISSION)
             when (val admission = session.admit(project, lookup.root, candidate, policy)) {
                 is ExistingProjectAdmission.Admitted -> admission.project.prepareHostedRead(
                     lookup.root, progress, checkpoint,
-                    { retained, model -> readHostedClassIndex(retained, lookup, model) },
+                    { retained, model -> readHostedClassIndex(retained, lookup, model, progress.limits) },
                     { retained, evidence -> verifyHostedDeclarations(retained, evidence.declarations) },
                 )
                 is ExistingProjectAdmission.Rejected -> HostedReadPreparation.Rejected(HostedQueryFailure.ProjectAdmission(admission.failure))
@@ -153,7 +180,15 @@ class HostedQueryService private constructor(
         if (ApplicationManager.getApplication().isReadAccessAllowed ||
             ApplicationManager.getApplication().isDispatchThread
         ) return HostedQueryResult.Rejected(HostedQueryFailure.WRONG_THREAD)
-        return when (val execution = executor.execute(endpoint) { progress ->
+        val configured = when (val state = configuredSession) {
+            is ConfiguredHostedSession.Ready -> state
+            is ConfiguredHostedSession.Rejected -> {
+                hostedReadDiagnostics().finish(HostedDiagnosticOutcome.Rejected(state.failure))
+                return HostedQueryResult.Rejected(state.failure)
+            }
+        }
+        val session = configured.session
+        return when (val execution = executor.execute(endpoint, configured.limits) { progress ->
             progress.advance(HostedQueryStage.PROJECT_ADMISSION)
             when (val admission = session.admit(project, selection.root, candidate, policy)) {
                 is ExistingProjectAdmission.Admitted -> admission.project.prepareHostedQuery(selection, progress, checkpoint)
@@ -189,3 +224,8 @@ class HostedQueryService private constructor(
 }
 
 enum class HostedQueryRetirement { RETIRED }
+
+private sealed interface ConfiguredHostedSession {
+    data class Ready(val limits: ReadLimits, val session: AdmittedIdeProjectSession) : ConfiguredHostedSession
+    data class Rejected(val failure: HostedQueryFailure.Configuration) : ConfiguredHostedSession
+}
