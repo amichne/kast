@@ -40,7 +40,7 @@ internal fun protocolObservation(raw: String): JsonObject = buildJsonObject {
     val reason = (payload?.get("reason") as? JsonPrimitive)?.content
     val knownReason =
         (ChangePlanRejection.entries + ChangeApplyRejection.entries + ChangeRecoverRejection.entries).firstOrNull {
-            it.name.lowercase().replace('_', '-') == reason
+            it.name.lowercase() == reason
         }
     put("canonicalRejection", knownReason?.name ?: if (reason == null) "NONE" else "UNCLASSIFIED")
 }

@@ -132,7 +132,7 @@ internal class NativeFixtureControls(private val ioDispatcher: CoroutineDispatch
         )
     }
 
-    private suspend fun controlProbe(command: String, preimage: String, postimage: String? = null): JsonObject {
+    internal suspend fun controlProbe(command: String, preimage: String, postimage: String? = null): JsonObject {
         val request = buildJsonObject {
             put("event", "control")
             put("action", "probe")
@@ -142,6 +142,19 @@ internal class NativeFixtureControls(private val ioDispatcher: CoroutineDispatch
         }
         return Json.parseToJsonElement(exchange(request.toString())) as? JsonObject
             ?: throw NativeRejected(NativeFailure.CONTROL_REJECTED)
+    }
+
+    suspend fun amendGeneratedProvenance(sourceSha256: String): JsonObject {
+        val request = buildJsonObject {
+            put("event", "control")
+            put("action", "amend-generated-provenance")
+            put("sourceSha256", sourceSha256)
+        }
+        val response =
+            Json.parseToJsonElement(exchange(request.toString())) as? JsonObject
+                ?: throw NativeRejected(NativeFailure.CONTROL_REJECTED)
+        demand(response.textAt("outcome") == "MODEL_REIMPORTED", NativeFailure.CONTROL_REJECTED)
+        return response.objectAt("evidence")
     }
 
     suspend fun replaceBroker(planIdentity: String, sourceSha256: String): JsonObject {
@@ -180,6 +193,10 @@ internal class NativeFixtureControls(private val ioDispatcher: CoroutineDispatch
                         .matches(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")),
                 NativeFailure.CONTROL_REJECTED,
             )
+            return decodeEvidence(response)
+        }
+
+        internal fun decodeEvidence(response: JsonObject): NativeProbeEvidence {
             val evidence = Json.decodeFromJsonElement(NativeProbeEvidence.serializer(), response.objectAt("evidence"))
             demand(
                 evidence.savedSha256.matches(DIGEST) &&

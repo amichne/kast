@@ -141,6 +141,10 @@ def admit_event(value: object) -> dict:
                 and isinstance(value['preimageSha256'], str) and DIGEST.fullmatch(value['preimageSha256'])
                 and isinstance(value['postimageSha256'], str) and DIGEST.fullmatch(value['postimageSha256'])):
             return value
+    if event == 'control' and value.get('action') == 'amend-generated-provenance':
+        if (set(value) == {'event', 'action', 'sourceSha256'}
+                and isinstance(value['sourceSha256'], str) and DIGEST.fullmatch(value['sourceSha256'])):
+            return value
     if event == 'control' and value.get('action') == 'replace-broker':
         if (set(value) == {'event', 'action', 'planIdentity', 'sourceSha256'}
                 and isinstance(value['planIdentity'], str) and re.fullmatch(r'plan:[0-9a-f]{64}', value['planIdentity'])
@@ -186,6 +190,10 @@ def bounded_native_report(path: Path, workspace: Path) -> dict:
                      or (field == 'syntax' and item in ('CLEAN', 'ERRORS', 'UNCOMMITTED'))
                      or (field == 'undo' and item in ('PRODUCTION_CHANGE', 'OTHER', 'UNAVAILABLE'))
                      or (field == 'referencePassedUnchanged' and item is True)
+                     or (field in ('indexingState', 'afterIndexingState') and item in ('DUMB', 'SMART'))
+                     or (field in ('expectedRejection', 'observedRejection') and item in (
+                         'BROKER_INVALID_ARGUMENTS', 'EXACT_SYMBOL_REQUIRED', 'WORKSPACE_NOT_READY',
+                         'CONTENT_CHANGED', 'OTHER_REJECTION', 'NOT_REJECTED', 'RESPONSE_LOST'))
                      or (field == 'postPlanAdmission' and item == 'SAVED_PSI_COMMITTED')
                      or (field == 'retrievedState' and item in ('verified', 'applied_unverified', 'recovery_required')))
             if field in ('before', 'after'):

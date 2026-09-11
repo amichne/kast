@@ -6,7 +6,6 @@ import io.github.amichne.kast.protocol.contract.ProtocolText
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
@@ -15,9 +14,9 @@ internal class NativeNegativeWorkflow(
     private val source: Path,
     private val evidence: NativeChangeEvidence,
     private val foreignRoot: NativeForeignRootBoundary,
-    private val trace: NativeProcessTrace,
 ) {
     suspend fun run(peer: NativeChangePeer, reference: String) {
+        evidence.record("foreign-root-refusal", NativeCaseOutcome.UNQUALIFIED)
         val original = Files.readAllBytes(source)
         foreignRoot.reject(nativePlanArguments(reference, "fun foreignRefusal() = value"))
         demand(Files.readAllBytes(source).contentEquals(original), NativeFailure.SOURCE_CHANGED)
@@ -27,6 +26,7 @@ internal class NativeNegativeWorkflow(
     }
 
     private suspend fun unsupportedIntents(peer: NativeChangePeer, reference: String) {
+        evidence.record("unsupported-intents", NativeCaseOutcome.UNQUALIFIED)
         val before = Files.readAllBytes(source)
         val target = ProtocolText.parse(reference).nativeValue()
         val intents =
@@ -39,11 +39,7 @@ internal class NativeNegativeWorkflow(
             val arguments =
                 Json.encodeToJsonElement(ChangePlanRequest.serializer(), ChangePlanRequest(intent)).jsonObject
             val rejected = peer.call("change_plan", arguments)
-            demand(
-                rejected.rejected() &&
-                    trace.boundaryRejections.last() == NativeBoundaryRejection.IDE_OPERATION_UNSUPPORTED,
-                NativeFailure.EXPECTED_REJECTION_MISSING,
-            )
+            evidence.expectRejection("unsupported-intents", NativeExpectedRejection.BROKER_INVALID_ARGUMENTS, rejected)
             demand(
                 Files.readAllBytes(source).contentEquals(before) &&
                     !Files.exists(source.parent.resolve("Unsupported.kt")),
@@ -58,12 +54,14 @@ internal class NativeNegativeWorkflow(
     }
 
     private suspend fun ambiguousName(peer: NativeChangePeer) {
+        evidence.record("ambiguous-name-is-not-authority", NativeCaseOutcome.UNQUALIFIED)
         val before = Files.readAllBytes(source)
         NativeChangeRead(peer).searchFunction("sharedOperation", 5)
         val rejected = peer.call("change_plan", nativePlanArguments("sharedOperation", "fun shouldNotExist() = Unit"))
-        demand(
-            rejected.rejected() && rejected.document()["reason"] == JsonPrimitive("exact-symbol-required"),
-            NativeFailure.EXPECTED_REJECTION_MISSING,
+        evidence.expectRejection(
+            "ambiguous-name-is-not-authority",
+            NativeExpectedRejection.EXACT_SYMBOL_REQUIRED,
+            rejected,
         )
         demand(Files.readAllBytes(source).contentEquals(before), NativeFailure.SOURCE_CHANGED)
         evidence.record(

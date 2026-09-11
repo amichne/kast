@@ -26,6 +26,7 @@ internal class NativeChangeWorkflow(
     private lateinit var lostPlanIdentity: String
 
     suspend fun run() {
+        evidence.record("provider-routing", NativeCaseOutcome.UNQUALIFIED)
         peer = session.connect()
         val first = searchClass()
         initialLive = first.objectAt("live")
@@ -34,14 +35,17 @@ internal class NativeChangeWorkflow(
                 source = source,
                 evidence = evidence,
                 foreignRoot = session.foreignRoot,
-                trace = session.trace,
             )
             .run(peer, returnedReference)
+        evidence.record("invalid-reference", NativeCaseOutcome.UNQUALIFIED)
         val invalid = peer.call("change_plan", nativePlanArguments(returnedReference + "invalid", DECLARATION))
         demand(invalid.rejected(), NativeFailure.EXPECTED_REJECTION_MISSING)
         unchanged(original)
         evidence.record("invalid-reference", NativeCaseOutcome.PASSED)
-        probes.dirtyAdmission(peer, nativePlanArguments(returnedReference, DECLARATION), original)
+        NativeIndexingWorkflow(controls, source, evidence)
+            .run(peer, nativePlanArguments(returnedReference, DECLARATION))
+        NativeModelMovementWorkflow(controls, source, evidence).run(peer)
+        probes.dirtyAdmission(peer, nativePlanArguments(reference(searchClass()), DECLARATION), original)
         prepare(reference(searchClass()))
         controllerRefusals()
         editedPreimage()
@@ -49,35 +53,15 @@ internal class NativeChangeWorkflow(
         recoverAfterOwnerRestart()
         NativeLifecycleWorkflow(session, source, evidence, controls).run(peer, original, postimage)
         lostResponse()
-        undoProductionChange()
+        probes.undoProductionChange(peer)
         session.close()
         val replay = controls.replaceBroker(lostPlanIdentity, sha256(Files.readAllBytes(source)))
         evidence.record("broker-process-restart-no-replay", NativeCaseOutcome.PASSED, replay)
     }
 
-    private suspend fun undoProductionChange() {
-        val before = Files.readAllBytes(source)
-        val found = searchClass()
-        val created = peer.call("change_plan", nativePlanArguments(reference(found), "fun acceptanceUndo() = value"))
-        demand(!created.rejected(), NativeFailure.PROVIDER_REJECTED)
-        val arguments = buildJsonObject { put("planIdentity", created.document().textAt("planIdentity")) }
-        verified(peer.call("change_apply", arguments))
-        val after = Files.readAllBytes(source)
-        probes.verifyStructure("acceptanceUndo", after)
-        val undone = controls.probe(NativeProbeCommand.UNDO_PRODUCTION_CHANGE, sha256(before), sha256(after))
-        unchanged(before)
-        demand(
-            undone.documentState == NativeDocumentState.SAVED_COMMITTED &&
-                undone.syntax == NativeSyntax.CLEAN &&
-                undone.functionCount("acceptanceUndo", "NativeChangeTarget") == 0,
-            NativeFailure.UNDO_REJECTED,
-        )
-        searchFunction("acceptanceUndo", 0)
-        evidence.record("production-undo", NativeCaseOutcome.PASSED, undone.summary())
-    }
-
     private suspend fun controllerRefusals() {
         for (decision in listOf(NativeDecision.DECLINE, NativeDecision.CANCEL, NativeDecision.MALFORMED)) {
+            evidence.record("approval-${decision.name.lowercase()}", NativeCaseOutcome.UNQUALIFIED)
             val result =
                 peer.call(
                     tool = "change_apply",
@@ -92,6 +76,7 @@ internal class NativeChangeWorkflow(
     }
 
     private suspend fun editedPreimage() {
+        evidence.record("edited-preimage", NativeCaseOutcome.UNQUALIFIED)
         val raceImage = original + "\n// acceptance-owned external edit\n".toByteArray()
         val race =
             peer.call(
@@ -112,6 +97,7 @@ internal class NativeChangeWorkflow(
     }
 
     private suspend fun applyAndVerify() {
+        evidence.record("complete-workflow", NativeCaseOutcome.UNQUALIFIED)
         val applied =
             peer.call(
                 "change_apply",
@@ -175,6 +161,7 @@ internal class NativeChangeWorkflow(
     }
 
     private suspend fun prepare(reference: String) {
+        evidence.record("plan-has-no-source-effect", NativeCaseOutcome.UNQUALIFIED)
         val planned = peer.call("change_plan", nativePlanArguments(reference, DECLARATION))
         demand(
             !planned.rejected() && planned.document()["status"] == JsonPrimitive("complete"),
@@ -261,6 +248,7 @@ internal class NativeChangeWorkflow(
             /* old completed subprocesses are not this attempt */
         }
         peer.call("change_apply", arguments, aftermath = NativeApprovalAftermath.DropResponse)
+        evidence.record("provider-routing", NativeCaseOutcome.UNQUALIFIED)
         peer = session.connect()
         val recovered = peer.call("change_apply", arguments)
         demand(!recovered.rejected(), NativeFailure.PROVIDER_REJECTED)

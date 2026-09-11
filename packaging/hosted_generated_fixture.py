@@ -18,7 +18,7 @@ MOVEMENT_DIRECTORY = SOURCE_DIRECTORY + '/movement'
 GENERATED_DIRECTORY = SOURCE_DIRECTORY + '/generated'
 MOVEMENT_FILE = MOVEMENT_DIRECTORY + '/NativeModelMovementTarget.kt'
 GENERATED_FILE = GENERATED_DIRECTORY + '/NativeGeneratedTarget.kt'
-MOVEMENT_SOURCE = 'package fixture\n\nclass NativeModelMovementTarget\n'
+MOVEMENT_SOURCE = 'package fixture\n\nclass NativeModelMovementTarget { val value: Int = 1 }\n'
 GENERATED_SOURCE = 'package fixture\n\nclass NativeGeneratedTarget\n'
 GENERATE_TASK = 'generateNativeAcceptanceSource'
 

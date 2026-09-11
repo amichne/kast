@@ -101,6 +101,13 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
         self.assertNotIn('planIdentity', observed)
         self.assertEqual(hashlib.sha256(token.encode()).hexdigest(), observed['planIdentitySha256'])
 
+    def test_model_amendment_control_requires_only_exact_source_image(self):
+        event = {'event': 'control', 'action': 'amend-generated-provenance', 'sourceSha256': 'a' * 64}
+        self.assertEqual(event, admit_event(event))
+        for invalid in (dict(event, path='/arbitrary'), dict(event, sourceSha256='private-source')):
+            with self.assertRaises(AcceptanceRejected):
+                admit_event(invalid)
+
     def test_probe_control_accepts_only_named_commands_and_image_digests(self):
         event = {'event': 'control', 'action': 'probe', 'command': 'OBSERVE', 'preimageSha256': 'a' * 64}
         self.assertEqual(event, admit_event(event))
@@ -114,7 +121,9 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
         report = {'schemaVersion': 1, 'metadata': {'upstream': 'scripted-native-protocol-controller',
             'provider': 'staged-production-broker-cli-plugin', 'stockCodexUi': 'unqualified',
             'workspaceRoot': str(workspace), 'status': 'observed', 'failure': None},
-            'cases': {'complete-workflow': {'outcome': 'passed', 'evidence': {'referenceSha256': 'a' * 64}}}}
+            'cases': {'complete-workflow': {'outcome': 'passed', 'evidence': {'referenceSha256': 'a' * 64}},
+                      'unsupported-intents': {'outcome': 'rejected', 'evidence': {
+                          'expectedRejection': 'BROKER_INVALID_ARGUMENTS', 'observedRejection': 'OTHER_REJECTION'}}}}
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'report.json'
             path.write_text(json.dumps(report))

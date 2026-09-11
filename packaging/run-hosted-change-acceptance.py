@@ -17,6 +17,7 @@ from hosted_runtime_observation import OwnedRuntimeObserver
 from hosted_change_probe import stage_native_probe
 from native_fixture_probe import NativeFixtureProbeError
 from hosted_read_fixture import prepare_read_fixture
+from hosted_generated_fixture import prepare_generated_fixture, finalize_generated_fixture
 from hosted_read_regression import run_read_regression
 
 
@@ -84,6 +85,20 @@ def main():
             runtime_observer = OwnedRuntimeObserver(isolation.root, product, fixture.workspace, isolation.tools['ps'])
             native_report = private / 'report.private.json'
             try:
+                record({'event': 'stage', 'stage': 'generated-fixture-setup', 'outcome': 'started'})
+                generated_setup = prepare_generated_fixture(read_fixture)
+                with private_file(private / 'generated-setup.private.log') as output:
+                    generated_task = subprocess.run(
+                        [str(isolation.tools['bash']), str(fixture.workspace / 'gradlew'), '--no-daemon',
+                         *generated_setup.gradle_tasks], cwd=fixture.workspace, env=fixture.environment,
+                        stdout=output, stderr=subprocess.STDOUT, timeout=180)
+                if generated_task.returncode != 0:
+                    raise AcceptanceRejected(AcceptanceFailure.INPUT)
+                generated_fixture = finalize_generated_fixture(generated_setup)
+                read_fixture = generated_fixture.read_fixture
+                processes.generated_fixture = generated_fixture
+                evidence['generatedSetup'] = generated_fixture.evidence()
+                record({'event': 'stage', 'stage': 'generated-fixture-setup', 'outcome': 'completed'})
                 enrollment = subprocess.run([str(product / 'bin/kast'), 'ide', 'trust-broker'],
                     cwd=fixture.workspace, env=fixture.environment, capture_output=True, timeout=30)
                 with private_file(private / 'enrollment.private.log') as output:

@@ -27,23 +27,28 @@ internal data class NativeApprovalPreview(val changes: JsonArray)
 internal sealed interface NativeToolResult {
     data class Document(val payload: JsonObject, val success: NativeToolSuccess) : NativeToolResult
 
-    data object BrokerRejected : NativeToolResult
+    data class BrokerRejected(val failure: NativeBrokerRejection) : NativeToolResult
 
     data object ResponseLost : NativeToolResult
 
     fun document(): JsonObject =
         when (this) {
             is Document -> payload
-            BrokerRejected,
+            is BrokerRejected,
             ResponseLost -> throw NativeRejected(NativeFailure.RESULT_SHAPE_REJECTED)
         }
 
     fun rejected(): Boolean =
         when (this) {
             is Document -> success == NativeToolSuccess.FAILED || payload["status"] == JsonPrimitive("rejected")
-            BrokerRejected,
+            is BrokerRejected,
             ResponseLost -> true
         }
+}
+
+internal enum class NativeBrokerRejection {
+    INVALID_ARGUMENTS,
+    OTHER,
 }
 
 internal enum class NativeToolSuccess {
@@ -217,8 +222,17 @@ internal class NativeChangePeer(
         session.output.onReceive { NativeControllerFrame.Notification(it) }
     }
 
+    private fun rejectedBroker(document: JsonObject): NativeToolResult.BrokerRejected {
+        val observation = protocolObservation(document.toString())
+        val failure =
+            if (observation["failure"] == JsonPrimitive("INVALID_ARGUMENTS")) {
+                NativeBrokerRejection.INVALID_ARGUMENTS
+            } else NativeBrokerRejection.OTHER
+        return NativeToolResult.BrokerRejected(failure)
+    }
+
     private fun decode(document: JsonObject): NativeToolResult {
-        val result = document["result"] as? JsonObject ?: return NativeToolResult.BrokerRejected
+        val result = document["result"] as? JsonObject ?: return rejectedBroker(document)
         val texts =
             (result["contentItems"] as? JsonArray).orEmpty().mapNotNull { item ->
                 (item as? JsonObject)?.get("text") as? JsonPrimitive
@@ -229,7 +243,7 @@ internal class NativeChangePeer(
                     runCatching { Json.parseToJsonElement(text.content) as? JsonObject }.getOrNull()
                 }
                 .singleOrNull { it.containsKey("document") }
-                ?.get("document") as? JsonObject ?: return NativeToolResult.BrokerRejected
+                ?.get("document") as? JsonObject ?: return rejectedBroker(document)
         val success =
             if (result["success"] == JsonPrimitive(true)) NativeToolSuccess.SUCCEEDED else NativeToolSuccess.FAILED
         return NativeToolResult.Document(payload, success)

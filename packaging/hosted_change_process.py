@@ -10,6 +10,7 @@ import subprocess
 import time
 
 from acceptance_environment import GradleRetirement
+from hosted_generated_fixture import amend_generated_provenance
 from native_fixture_probe import NativeFixtureProbe, NativeFixtureProbeError
 from hosted_change_acceptance import (AcceptanceFailure, AcceptanceRejected, admitted_live,
                                       admit_event, event_observation, pending_readiness)
@@ -44,6 +45,7 @@ class NativeProcesses:
         self.native = None
         self.readiness_observations = []
         self.ide_log_start = 0
+        self.generated_fixture = None
 
     def start_ide(self):
         self.generation += 1
@@ -226,6 +228,23 @@ class NativeProcesses:
                                     self.await_retirement(retirement_log, retirement_offset)
                                     record({'event': 'stage', 'stage': 'plugin-owner-retired', 'outcome': 'completed'})
                                 self.native.stdin.write((json.dumps(response, separators=(',', ':')) + '\n').encode())
+                                self.native.stdin.flush()
+                            if event.get('action') == 'amend-generated-provenance':
+                                if self.generated_fixture is None:
+                                    raise AcceptanceRejected(AcceptanceFailure.INPUT)
+                                source_digest = hashlib.sha256(self.fixture.source.read_bytes()).hexdigest()
+                                if source_digest != event['sourceSha256']:
+                                    raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
+                                amendment = amend_generated_provenance(self.generated_fixture)
+                                response = NativeFixtureProbe(self.isolation.root, self.fixture.workspace).request(
+                                    'REIMPORT_GRADLE', source_digest, timeout=180,
+                                    expected_build_sha256=amendment['afterSha256'])
+                                if response['outcome'] != 'SETUP_READY':
+                                    raise AcceptanceRejected(AcceptanceFailure.READINESS)
+                                record({'event': 'stage', 'stage': 'gradle-model-reimported', 'outcome': 'completed'})
+                                result = {'outcome': 'MODEL_REIMPORTED', 'evidence': {
+                                    'buildSha256': amendment['afterSha256'], 'readiness': response['readiness']}}
+                                self.native.stdin.write((json.dumps(result, separators=(',', ':')) + '\n').encode())
                                 self.native.stdin.flush()
                             if event.get('action') == 'wait-save-barrier-restart':
                                 NativeFixtureProbe(self.isolation.root, self.fixture.workspace).await_save_barrier(
