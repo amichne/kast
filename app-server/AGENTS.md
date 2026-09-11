@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-11 | hash: 0e6e29e41257 -->
+<!-- generated: 2026-09-11 | hash: 497b5011026c -->
 
 # app-server
 
@@ -26,7 +26,7 @@ Owns the persistent broker/coordinator, host attachment, workspace runtime super
 - `src/main/kotlin/io/github/amichne/kast/appserver/protocol` - Codex and Copilot projections plus thread catalog state.
 - `src/main/kotlin/io/github/amichne/kast/appserver/provider` - process, Gradle, invocation, and observer boundaries.
 - `src/main/kotlin/io/github/amichne/kast/appserver/runtime` - workspace registration, worker lifecycle, and execution control.
-- `src/test` and `acceptance` - focused behavior and integration evidence.
+- `src/test` - focused behavior tests; [native acceptance](src/test/kotlin/io/github/amichne/kast/appserver/acceptance) contains integration harnesses.
 
 ## Entry Points
 

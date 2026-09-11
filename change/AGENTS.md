@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-11 | hash: 9aeb01233d44 -->
+<!-- generated: 2026-09-11 | hash: 8fe5e439c71c -->
 
 # change
 
@@ -22,9 +22,11 @@ Implements proof-carrying source mutation as explicit planning, application, ver
 - `plan` - pure planners for supported mutations.
 - `protocol` - canonical planning admission, lowering, and bounded preview projection through narrow host ports.
 - `apply` - admitted write effects and observations.
-- `verify` - obligation discharge and resulting-generation publication.
+- `verify` - verification contracts and published-path obligation discharge and successor publication; live verification is composed in `runtime/hosted`.
 - `recovery` - durable recovery preparation and execution.
 - `intellij` - document/write adapters and rollback effects.
+- [intellij/src/nativeFixture](intellij/src/nativeFixture) - isolated native IDE acceptance probe; packaged separately from the product plugin.
+- [intellij/src/nativeFixtureTest](intellij/src/nativeFixtureTest) - probe request, response, and readiness contract tests.
 
 ## Entry Points
 
@@ -36,3 +38,4 @@ Implements proof-carrying source mutation as explicit planning, application, ver
 
 - Trace a mutation in phase order: contract -> plan -> apply -> verify -> recovery.
 - For IDE write behavior, inspect `intellij` only after the admitted plan and proof types are clear.
+- For native fixture readiness or document probes, start in `intellij/src/nativeFixture`, then follow the [native acceptance runner](../packaging/run-hosted-change-acceptance.py) and [probe client](../packaging/native_fixture_probe.py).

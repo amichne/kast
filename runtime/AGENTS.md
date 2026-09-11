@@ -23,7 +23,7 @@ Composes domain services and platform ports, dispatches typed protocol operation
 
 - `composition` - installed assembly, platform adapters, protocol handlers, and semantic bootstrap.
 - `server` - typed operation binding and dispatch.
-- `hosted` - existing-IDE plugin and saved-content read endpoint; see [hosted queries](../knowledge/flows/hosted-query.md).
+- `hosted` - existing-IDE endpoint for saved-content reads, controlled changes, and recovery; see [hosted queries](../knowledge/flows/hosted-query.md).
 - `telemetry` - OpenTelemetry projection and forwarding.
 
 ## Entry Points
