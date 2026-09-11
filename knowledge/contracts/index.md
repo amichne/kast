@@ -6,3 +6,4 @@
 - [Source identity](source-identity.md) — retained scope, published/live authority, coordinates, and source snapshots.
 
 - [Public intent tools](public-tools.md) — schema-bound search/diagnostic presentations and canonical lowering.
+- [API knowledge disclosure](api-knowledge-disclosure.md) — draft, tested separation of navigation summaries, declaration contracts, and optional detail.
