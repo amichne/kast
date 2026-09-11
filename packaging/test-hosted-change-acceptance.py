@@ -13,7 +13,7 @@ import zipfile
 from hosted_change_process import NativeProcesses
 from native_fixture_probe import NativeFixtureProbeError
 from hosted_change_acceptance import (AcceptanceRejected, admit_event, admit_harness, admitted_live,
-    CASE_NAMES, admit_contract_failure, bounded_native_report, event_observation, native_workflow_qualified, pending_readiness, receipt_scope_observation, remaining_matrix_gates, tree_identity)
+    CASE_NAMES, admit_contract_failure, bounded_native_report, event_observation, native_workflow_qualified, pending_readiness, StartupDiscoveryState, receipt_scope_observation, remaining_matrix_gates, tree_identity)
 
 
 class HostedChangeAcceptanceTest(unittest.TestCase):
@@ -77,6 +77,27 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
         for failure in ('DIRTY_DOCUMENTS', 'SEMANTIC_BACKEND_UNAVAILABLE', 'UNKNOWN'):
             self.assertFalse(pending_readiness({'failure': failure}))
 
+    def test_startup_preemption_is_the_only_new_pending_epoch_pair(self):
+        self.assertTrue(pending_readiness({'failure': 'READ_EPOCH_REJECTED', 'detail': 'READ_PREEMPTED'}))
+        for failure, detail in (('READ_EPOCH_REJECTED', 'DUMB_MODE'),
+                                ('READ_EPOCH_REJECTED', 'UNCOMMITTED_DOCUMENTS'),
+                                ('READ_EPOCH_REJECTED', 'UNKNOWN'),
+                                ('PROJECT_ADMISSION_REJECTED', 'READ_PREEMPTED')):
+            self.assertFalse(pending_readiness({'failure': failure, 'detail': detail}))
+
+    def test_startup_discovery_observations_are_bounded_and_counted_by_finite_condition(self):
+        processes = NativeProcesses(SimpleNamespace(), SimpleNamespace(), Path('/unused'), 60)
+        processes.generation = 2
+        processes.observe_discovery(StartupDiscoveryState.READ_PREEMPTED_PENDING)
+        processes.observe_discovery(StartupDiscoveryState.READ_PREEMPTED_PENDING)
+        processes.observe_discovery(StartupDiscoveryState.OBSERVED)
+        self.assertEqual([
+            {'generation': 2, 'stage': 'STARTUP_DISCOVERY', 'outcome': 'PENDING',
+             'condition': 'READ_PREEMPTED_PENDING', 'count': 2},
+            {'generation': 2, 'stage': 'STARTUP_DISCOVERY', 'outcome': 'OBSERVED',
+             'condition': 'OBSERVED', 'count': 1},
+        ], processes.readiness_observations)
+
     def test_live_proof_requires_exact_root_owner_epoch_and_saved_committed_view(self):
         workspace = Path('/private/fixture/workspace')
         valid = {'root': str(workspace), 'host': '11111111-1111-1111-1111-111111111111',
@@ -115,6 +136,28 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
                         dict(event, preimageSha256='private-source')):
             with self.assertRaises(AcceptanceRejected):
                 admit_event(invalid)
+
+    def test_interrupted_controller_snapshot_retains_cases_without_terminal_success(self):
+        workspace = Path('/private/fixture/workspace')
+        report = {'schemaVersion': 1, 'metadata': {'upstream': 'scripted-native-protocol-controller',
+            'provider': 'staged-production-broker-cli-plugin', 'stockCodexUi': 'unqualified',
+            'workspaceRoot': str(workspace)},
+            'cases': {'edited-preimage': {'outcome': 'passed', 'evidence': {}}}}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'report.json'
+            path.write_text(json.dumps(report))
+            observed = bounded_native_report(path, workspace)
+            self.assertEqual('incomplete', observed['metadata']['status'])
+            self.assertIsNone(observed['metadata']['failure'])
+            self.assertEqual(report['cases'], observed['cases'])
+            self.assertEqual(report, json.loads(path.read_text()))
+            self.assertFalse(native_workflow_qualified({'status': 'observed', 'source': {'clean': True},
+                'native': observed}))
+            for metadata in (dict(report['metadata'], status='observed'),
+                             dict(report['metadata'], private='source')):
+                path.write_text(json.dumps(dict(report, metadata=metadata)))
+                with self.assertRaises(AcceptanceRejected):
+                    bounded_native_report(path, workspace)
 
     def test_contract_failure_accepts_only_bounded_stage_and_known_contract_schema(self):
         valid = {'stage': 'CONTRACT_DEFINITION', 'observations': [

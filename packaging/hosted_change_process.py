@@ -13,7 +13,7 @@ from acceptance_environment import GradleRetirement
 from hosted_generated_fixture import amend_generated_provenance
 from native_fixture_probe import NativeFixtureProbe, NativeFixtureProbeError
 from hosted_change_acceptance import (AcceptanceFailure, AcceptanceRejected, admitted_live,
-                                      admit_event, event_observation, pending_readiness)
+                                      admit_event, event_observation, startup_discovery_state, StartupDiscoveryState)
 
 
 def private_file(path: Path):
@@ -44,6 +44,7 @@ class NativeProcesses:
         self.generation = 0
         self.native = None
         self.readiness_observations = []
+        self.discovery_observations = {}
         self.ide_log_start = 0
         self.generated_fixture = None
 
@@ -82,6 +83,7 @@ class NativeProcesses:
                 value = json.loads(result.stdout)
                 if result.returncode == 0 and value.get('status') == 'complete' and len(value.get('items', [])) == 1:
                     live = admitted_live(value.get('live'), self.fixture.workspace)
+                    self.observe_discovery(StartupDiscoveryState.OBSERVED)
                     if setup_phase is NativeSetupPhase.AWAITING_NATIVE_OBSERVATION:
                         self.observe_setup()
                         setup_phase = NativeSetupPhase.NATIVE_OBSERVATION_COMPLETE
@@ -90,10 +92,23 @@ class NativeProcesses:
                         output.write(json.dumps({'live': live, 'resultCount': 1,
                             'responseSha256': hashlib.sha256(result.stdout.encode()).hexdigest()}).encode())
                     return live
-                if not pending_readiness(value):
+                discovery = startup_discovery_state(value)
+                self.observe_discovery(discovery)
+                if not discovery.pending:
                     raise AcceptanceRejected(AcceptanceFailure.READINESS)
             time.sleep(0.5)
         raise AcceptanceRejected(AcceptanceFailure.READINESS_TIMEOUT)
+
+    def observe_discovery(self, state: StartupDiscoveryState):
+        key = (self.generation, state)
+        if key not in self.discovery_observations:
+            observation = {'generation': self.generation, 'stage': 'STARTUP_DISCOVERY',
+                'outcome': ('OBSERVED' if state is StartupDiscoveryState.OBSERVED else
+                            'PENDING' if state.pending else 'REJECTED'),
+                'condition': state.name, 'count': 0}
+            self.discovery_observations[key] = observation
+            self.readiness_observations.append(observation)
+        self.discovery_observations[key]['count'] += 1
 
     def observe_setup(self):
         command = 'AWAIT_SETUP_READY' if self.generation == 1 else 'AWAIT_REOPEN_READY'

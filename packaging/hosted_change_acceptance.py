@@ -87,10 +87,36 @@ def admit_harness(jar: Path, commit: str) -> str:
     return digest(jar)
 
 
+class StartupDiscoveryState(Enum):
+    MODEL_PENDING = 'MODEL_PENDING'
+    DUMB_PENDING = 'DUMB_PENDING'
+    INDEXING_PENDING = 'INDEXING_PENDING'
+    READ_PREEMPTED_PENDING = 'READ_PREEMPTED_PENDING'
+    READ_EPOCH_REJECTED = 'READ_EPOCH_REJECTED'
+    OTHER_REJECTION = 'OTHER_REJECTION'
+    OBSERVED = 'OBSERVED'
+
+    @property
+    def pending(self):
+        return self in (self.MODEL_PENDING, self.DUMB_PENDING, self.INDEXING_PENDING, self.READ_PREEMPTED_PENDING)
+
+
+def startup_discovery_state(document: dict) -> StartupDiscoveryState:
+    failure, detail = document.get('failure'), document.get('detail')
+    if failure == 'PROJECT_ADMISSION_REJECTED' and detail == 'GRADLE_MODEL_UNAVAILABLE':
+        return StartupDiscoveryState.MODEL_PENDING
+    if failure == 'PROJECT_ADMISSION_REJECTED' and detail == 'DUMB_MODE':
+        return StartupDiscoveryState.DUMB_PENDING
+    if failure == 'INDEXING':
+        return StartupDiscoveryState.INDEXING_PENDING
+    if failure == 'READ_EPOCH_REJECTED':
+        return (StartupDiscoveryState.READ_PREEMPTED_PENDING if detail == 'READ_PREEMPTED'
+                else StartupDiscoveryState.READ_EPOCH_REJECTED)
+    return StartupDiscoveryState.OTHER_REJECTION
+
+
 def pending_readiness(document: dict) -> bool:
-    return ((document.get('failure') == 'PROJECT_ADMISSION_REJECTED'
-             and document.get('detail') in ('GRADLE_MODEL_UNAVAILABLE', 'DUMB_MODE'))
-            or document.get('failure') == 'INDEXING')
+    return startup_discovery_state(document).pending
 
 
 def admitted_live(value: object, workspace: Path) -> dict:
@@ -230,9 +256,14 @@ def bounded_native_report(path: Path, workspace: Path) -> dict:
     if set(value) != {'schemaVersion', 'metadata', 'cases'} or value['schemaVersion'] != 1:
         raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
     metadata = value['metadata']
+    if set(metadata) == {'upstream', 'provider', 'stockCodexUi', 'workspaceRoot'}:
+        metadata = dict(metadata, status='incomplete', failure=None)
+        value = dict(value, metadata=metadata)
     if set(metadata) - {'contractFailure'} != {'upstream', 'provider', 'stockCodexUi', 'workspaceRoot', 'status', 'failure'}:
         raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
-    if metadata['workspaceRoot'] != str(workspace) or metadata['status'] not in ('observed', 'rejected'):
+    if metadata['workspaceRoot'] != str(workspace) or metadata['status'] not in ('observed', 'rejected', 'incomplete'):
+        raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
+    if metadata['status'] == 'incomplete' and metadata['failure'] is not None:
         raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
     if metadata['failure'] is not None and not re.fullmatch('[A-Z_]{1,80}', metadata['failure']):
         raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
