@@ -58,6 +58,13 @@ internal enum class ProbeFailure {
     PLUGIN_UNAVAILABLE,
     PLUGIN_UNLOAD_UNSUPPORTED,
     PLUGIN_UNLOAD_REJECTED,
+    SETUP_MOVING,
+    SETUP_IMPORT_PENDING,
+    SETUP_IMPORT_NOT_OBSERVED,
+    SETUP_IMPORT_FAILED,
+    SETUP_TIMEOUT,
+    SETUP_REFRESH_TIMEOUT,
+    SETUP_CANCELLED,
 }
 
 internal enum class ProbeCommand {
@@ -68,6 +75,8 @@ internal enum class ProbeCommand {
     UNDO_PRODUCTION_CHANGE,
     ARM_POST_SAVE_BARRIER,
     UNLOAD_PRODUCTION_PLUGIN,
+    AWAIT_SETUP_READY,
+    AWAIT_REOPEN_READY,
 }
 
 @JvmInline
@@ -233,6 +242,8 @@ internal data class ProbeEvidence(
 
 internal sealed interface ProbeExecution {
     data class Completed(val evidence: ProbeEvidence) : ProbeExecution
+
+    data class SetupReady(val evidence: ProbeEvidence, val readiness: ProbeSetupObservation) : ProbeExecution
 
     data class BarrierArmed(val evidence: ProbeEvidence, val barrierId: UUID) : ProbeExecution
 

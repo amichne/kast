@@ -51,7 +51,11 @@ internal class NativeFixtureProbeExecution(
             is ProbeResult.Accepted -> Unit
             is ProbeResult.Rejected -> return ProbeExecution.Rejected(admission.failure)
         }
-        if (request.command == ProbeCommand.OBSERVE)
+        if (
+            request.command == ProbeCommand.OBSERVE ||
+                request.command == ProbeCommand.AWAIT_SETUP_READY ||
+                request.command == ProbeCommand.AWAIT_REOPEN_READY
+        )
             return when (val observed = evidence(target)) {
                 is ProbeResult.Accepted -> ProbeExecution.Completed(observed.value)
                 is ProbeResult.Rejected -> ProbeExecution.Rejected(observed.failure)
@@ -86,6 +90,8 @@ internal class NativeFixtureProbeExecution(
 
     private fun mutate(target: ProbeTarget, request: ProbeRequest): ProbeResult<Unit> {
         when (request.command) {
+            ProbeCommand.AWAIT_SETUP_READY,
+            ProbeCommand.AWAIT_REOPEN_READY,
             ProbeCommand.OBSERVE,
             ProbeCommand.ARM_POST_SAVE_BARRIER,
             ProbeCommand.UNLOAD_PRODUCTION_PLUGIN -> return ProbeResult.Rejected(ProbeFailure.UNKNOWN_COMMAND)
@@ -136,6 +142,8 @@ internal class NativeFixtureProbeExecution(
                 ProbeCommand.COMMIT_DOCUMENT -> ProbeDocumentState.DIRTY_COMMITTED
                 ProbeCommand.RESTORE_SAVED,
                 ProbeCommand.UNDO_PRODUCTION_CHANGE,
+                ProbeCommand.AWAIT_SETUP_READY,
+                ProbeCommand.AWAIT_REOPEN_READY,
                 ProbeCommand.OBSERVE,
                 ProbeCommand.ARM_POST_SAVE_BARRIER,
                 ProbeCommand.UNLOAD_PRODUCTION_PLUGIN -> ProbeDocumentState.SAVED_COMMITTED
@@ -186,7 +194,9 @@ internal class NativeFixtureProbeExecution(
     private fun validate(target: ProbeTarget, request: ProbeRequest): ProbeResult<Unit> {
         val state = documentState(target.document)
         return when (request.command) {
-            ProbeCommand.OBSERVE -> ProbeResult.Accepted(Unit)
+            ProbeCommand.OBSERVE,
+            ProbeCommand.AWAIT_SETUP_READY,
+            ProbeCommand.AWAIT_REOPEN_READY -> ProbeResult.Accepted(Unit)
             ProbeCommand.DIRTY_UNCOMMITTED,
             ProbeCommand.UNDO_PRODUCTION_CHANGE,
             ProbeCommand.ARM_POST_SAVE_BARRIER,

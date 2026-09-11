@@ -64,6 +64,22 @@ class ProbeClientTest(unittest.TestCase):
             with self.assertRaises(probe.NativeFixtureProbeError):
                 probe.validate_barrier({**result, key: value}, "id", "a" * 64, "b" * 64)
 
+    def test_setup_and_reopen_distinguish_observed_import_from_persisted_model(self):
+        readiness = {"smartMode": "SMART", "externalTasks": "IDLE", "gradleModule": "OBSERVED",
+                     "import": "FINAL_TASKS_OBSERVED", "vfsRefresh": "COMPLETED", "quietWindowMillis": 2000,
+                     "scope": "OBSERVED_SETUP_ONLY"}
+        first = {**self.response(command="AWAIT_SETUP_READY"), "outcome": "SETUP_READY", "readiness": readiness}
+        self.assertEqual(first, probe.validate_response(first, "id", "AWAIT_SETUP_READY"))
+        persisted = {**readiness, "import": "NOT_OBSERVED_PERSISTED_MODEL"}
+        with self.assertRaises(probe.NativeFixtureProbeError):
+            probe.validate_response({**first, "readiness": persisted}, "id", "AWAIT_SETUP_READY")
+        reopened = {**first, "command": "AWAIT_REOPEN_READY", "readiness": persisted}
+        self.assertEqual(reopened, probe.validate_response(reopened, "id", "AWAIT_REOPEN_READY"))
+        for key, value in (("smartMode", "DUMB"), ("externalTasks", "ACTIVE"), ("vfsRefresh", "PENDING"),
+                           ("quietWindowMillis", 1), ("scope", "FUTURE_STABILITY")):
+            with self.assertRaises(probe.NativeFixtureProbeError):
+                probe.validate_response({**first, "readiness": {**readiness, key: value}}, "id", "AWAIT_SETUP_READY")
+
     def test_atomic_private_request_roundtrip(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()

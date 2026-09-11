@@ -17,7 +17,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
-class NativeFixtureProbeStartup : ProjectActivity {
+class NativeFixtureProbeStartup : ProjectActivity, com.intellij.openapi.project.DumbAware {
     override suspend fun execute(project: Project) {
         val sandbox =
             when (val admission = ProbeSandbox.admit(project)) {
@@ -83,6 +83,7 @@ private class ProbeWorker(private val project: Project, private val sandbox: Pro
     private val spool = sandbox.root.resolve("native-probe")
     private val requests = spool.resolve("requests")
     private val responses = spool.resolve("responses")
+    private val readiness = ProbeSetupReadiness(project, sandbox)
     private val controls = NativeFixtureProbeControls(project, sandbox)
     private val watcher = sandbox.root.fileSystem.newWatchService()
     @Volatile private var stopped = false
@@ -171,6 +172,7 @@ private class ProbeWorker(private val project: Project, private val sandbox: Pro
 
     override fun dispose() {
         stopped = true
+        readiness.dispose()
         controls.dispose()
         watcher.close()
     }
@@ -188,6 +190,22 @@ private fun response(id: UUID, command: String, result: ProbeExecution): String 
         is ProbeExecution.EffectUncertain -> {
             put("outcome", "EFFECT_UNCERTAIN")
             put("failure", result.failure.name)
+        }
+        is ProbeExecution.SetupReady -> {
+            put("outcome", "SETUP_READY")
+            put("evidence", evidenceDocument(result.evidence))
+            put(
+                "readiness",
+                buildJsonObject {
+                    put("smartMode", "SMART")
+                    put("externalTasks", "IDLE")
+                    put("gradleModule", "OBSERVED")
+                    put("import", result.readiness.import.name)
+                    put("vfsRefresh", "COMPLETED")
+                    put("quietWindowMillis", SETUP_QUIET_WINDOW_MILLIS)
+                    put("scope", "OBSERVED_SETUP_ONLY")
+                },
+            )
         }
         is ProbeExecution.Completed -> {
             put("outcome", "COMPLETED")
