@@ -7,9 +7,7 @@ import io.github.amichne.kast.change.contract.AddDeclarationObligation
 import io.github.amichne.kast.change.contract.ChangePlan
 import io.github.amichne.kast.change.contract.ChangeVerificationObligation
 import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
-import io.github.amichne.kast.change.contract.matches
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
-import io.github.amichne.kast.diagnostic.contract.DiagnosticSeverity
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
@@ -232,82 +230,21 @@ private constructor(
             if (evidence.content != applied.postimage) {
                 failures += AddDeclarationProofFailure.RESULT_SOURCE_CONTENT_MISMATCH
             }
-            val completeRelations = evidence.relations.mapNotNull { it as? RelationReadResult.Complete }
-            when {
-                evidence.relations.isEmpty() -> failures += AddDeclarationProofFailure.RELATION_EVIDENCE_REQUIRED
-                completeRelations.size != evidence.relations.size ->
-                    failures += AddDeclarationProofFailure.RELATION_EVIDENCE_INCOMPLETE
-                else -> {
-                    if (
-                        completeRelations.any {
-                            it.batch.request.subject.lease != resulting.workspace.readLease
-                        }
-                    ) {
-                        failures += AddDeclarationProofFailure.RELATION_LEASE_MISMATCH
-                    }
-                    if (
-                        completeRelations.any { result ->
-                            val subject = result.batch.request.subject
-                            subject.file != plan.target.selector.file ||
-                                subject.name != plan.target.selector.name ||
-                                subject.qualifiedIdentity != plan.target.selector.qualifiedIdentity ||
-                                subject.kind != plan.target.selector.kind ||
-                                subject.scope != plan.target.selector.scope
-                        }
-                    ) {
-                        failures += AddDeclarationProofFailure.RELATION_TARGET_MISMATCH
-                    }
-                    val planned = plan.evidence.relations
-                    if (
-                        planned.size != completeRelations.size ||
-                            planned.any { expected ->
-                                completeRelations.count { observed ->
-                                    plan.evidence.matches(expected, observed)
-                                } != 1
-                            } ||
-                            completeRelations.any { observed ->
-                                planned.count { expected ->
-                                    plan.evidence.matches(expected, observed)
-                                } != 1
-                            }
-                    ) {
-                        failures += AddDeclarationProofFailure.RELATION_DELTA_REJECTED
-                    }
-                }
-            }
-            val completeDiagnostics =
-                evidence.diagnostics.mapNotNull {
-                    it as? DiagnosticCheckResult.Complete
-                }
-            when {
-                evidence.diagnostics.isEmpty() -> failures += AddDeclarationProofFailure.DIAGNOSTIC_EVIDENCE_REQUIRED
-                completeDiagnostics.size != evidence.diagnostics.size ->
-                    failures += AddDeclarationProofFailure.DIAGNOSTIC_EVIDENCE_INCOMPLETE
-                else -> {
-                    if (
-                        completeDiagnostics.any {
-                            it.batch.scope.lease != resulting.workspace.readLease
-                        }
-                    ) {
-                        failures += AddDeclarationProofFailure.DIAGNOSTIC_LEASE_MISMATCH
-                    }
-                    if (
-                        completeDiagnostics.any { result ->
-                            result.batch.scope.files.mapTo(linkedSetOf()) { it.value } !=
-                                setOf(applied.source.path.value)
-                        }
-                    ) {
-                        failures += AddDeclarationProofFailure.DIAGNOSTIC_SCOPE_MISMATCH
-                    }
-                    if (
-                        completeDiagnostics.any { result ->
-                            result.batch.facts.any { it.severity == DiagnosticSeverity.ERROR }
-                        }
-                    ) {
-                        failures += AddDeclarationProofFailure.COMPILER_DIAGNOSTICS_REJECTED
-                    }
-                }
-            }
+            failures +=
+                addDeclarationSemanticEvidenceFailures(
+                    ExpectedAddDeclarationSemanticEvidence(
+                        prior =
+                            io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence.fromSelector(
+                                plan.target.selector
+                            ),
+                        scope = plan.target.selector.scope,
+                        authority = resulting.workspace.readLease,
+                        planned = plan.evidence,
+                        diagnosticScopes = evidence.diagnostics.map { setOf(applied.source.path.value) },
+                    ),
+                    evidence.relations,
+                    evidence.diagnostics,
+                )
             val semanticDelta =
                 AcceptedAddDeclarationSemanticDelta.compare(
                     plan.expectedSemanticDelta,

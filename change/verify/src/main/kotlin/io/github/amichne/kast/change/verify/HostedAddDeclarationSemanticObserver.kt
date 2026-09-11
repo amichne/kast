@@ -32,7 +32,12 @@ class CompilerReobservedMutationAnchor private constructor(val evidence: Compile
         ): Refinement<
             CompilerReobservedMutationAnchor,
             CompilerReobservedMutationAnchorFailure,
-        > {
+        > = admit(CompilerGroundedSymbolEvidence.fromSelector(prior), current)
+
+        fun admit(
+            prior: CompilerGroundedSymbolEvidence,
+            current: CompilerGroundedSymbolEvidence,
+        ): Refinement<CompilerReobservedMutationAnchor, CompilerReobservedMutationAnchorFailure> {
             if (current.file != prior.file) {
                 return Refinement.Rejected(CompilerReobservedMutationAnchorFailure.FILE_MISMATCH)
             }

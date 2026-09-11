@@ -20,11 +20,8 @@ import io.github.amichne.kast.change.apply.AppliedSourceWrite
 import io.github.amichne.kast.change.apply.MutationAuthority
 import io.github.amichne.kast.change.apply.MutationDurabilityBarrier
 import io.github.amichne.kast.change.apply.MutationPreconditionAtIntellijBoundary
-import io.github.amichne.kast.change.apply.MutationSourceCaptureFailure
-import io.github.amichne.kast.change.apply.ObservedMutationSource
 import io.github.amichne.kast.change.apply.SourceObservationFailure
 import io.github.amichne.kast.change.apply.SourceObservationResult
-import io.github.amichne.kast.change.apply.SourceWriteAccess
 import io.github.amichne.kast.change.apply.SourceWriteFailure
 import io.github.amichne.kast.change.apply.SourceWriteResult
 import io.github.amichne.kast.change.contract.ChangeIntent
@@ -32,9 +29,9 @@ import io.github.amichne.kast.change.contract.SourceTextMutation
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackFailure
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackResult
 import io.github.amichne.kast.evidence.contract.MutationRecoveryRecord
+import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
-import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
@@ -56,20 +53,10 @@ class IntellijChangeSourceAdapter(private val project: Project) :
      * inside this adapter call.
      */
     override fun observe(source: SymbolDiscoveryFileIdentity.Workspace): SourceObservationResult =
-        try {
-            ProgressManager.checkCanceled()
-            if (DumbService.getInstance(project).isDumb) {
-                rejectedObservation(SourceObservationFailure.DUMB_MODE)
-            } else {
-                ReadAction.computeBlocking<SourceObservationResult, RuntimeException> {
-                    observeReady(source)
-                }
-            }
-        } catch (cancellation: ProcessCanceledException) {
-            throw cancellation
-        } catch (_: Exception) {
-            rejectedObservation(SourceObservationFailure.SOURCE_BYTES_UNAVAILABLE)
-        }
+        observe(source, ReadLimits.Default)
+
+    fun observe(source: SymbolDiscoveryFileIdentity.Workspace, limits: ReadLimits): SourceObservationResult =
+        IntellijMutationSourceObserver(project).observe(source, limits)
 
     /**
      * Proof transition: `(MutationAuthority, MutationDurabilityBarrier) -> SourceWriteResult`.
@@ -209,44 +196,6 @@ class IntellijChangeSourceAdapter(private val project: Project) :
      * [SourceObservationFailure] closes every expected platform rejection. Raw platform objects and bytes remain inside
      * this observation boundary.
      */
-    private fun observeReady(source: SymbolDiscoveryFileIdentity.Workspace): SourceObservationResult {
-        when (val absence = addFile.observeIfAbsent(source)) {
-            IntellijAddFileAbsenceObservation.TargetPresent -> Unit
-            is IntellijAddFileAbsenceObservation.Observed -> return absence.result
-            is IntellijAddFileAbsenceObservation.Rejected -> return rejectedObservation(absence.failure)
-        }
-        val path = Path.of(source.path.value)
-        val file =
-            LocalFileSystem.getInstance().findFileByNioFile(path)
-                ?: return rejectedObservation(SourceObservationFailure.TARGET_NOT_FOUND)
-        if (!file.isValid) return rejectedObservation(SourceObservationFailure.TARGET_INVALIDATED)
-        val target =
-            PsiManager.getInstance(project).findFile(file) as? KtFile
-                ?: return rejectedObservation(SourceObservationFailure.TARGET_NOT_KOTLIN)
-        if (!target.isValid) return rejectedObservation(SourceObservationFailure.TARGET_INVALIDATED)
-        if (FileDocumentManager.getInstance().getDocument(file) == null) {
-            return rejectedObservation(SourceObservationFailure.DOCUMENT_UNAVAILABLE)
-        }
-        val bytes =
-            try {
-                Files.readAllBytes(path)
-            } catch (_: Exception) {
-                return rejectedObservation(SourceObservationFailure.SOURCE_BYTES_UNAVAILABLE)
-            }
-        val access = if (file.isWritable) SourceWriteAccess.Writable else SourceWriteAccess.ReadOnly
-        return when (val captured = ObservedMutationSource.capture(source, bytes, access)) {
-            is Refinement.Refined -> SourceObservationResult.Observed(captured.value)
-            is Refinement.Rejected ->
-                rejectedObservation(
-                    when (captured.failure) {
-                        MutationSourceCaptureFailure.INVALID_UTF8,
-                        MutationSourceCaptureFailure.SOURCE_HASH_UNREPRESENTABLE ->
-                            SourceObservationFailure.INVALID_SOURCE_CONTENT
-                    }
-                )
-        }
-    }
-
     /**
      * Proof transition: `MutationAuthority -> IntellijSourcePreparation`.
      *
@@ -377,8 +326,6 @@ class IntellijChangeSourceAdapter(private val project: Project) :
             "firstMismatch=$firstMismatch, expectedDigest=${expected.sha256()}, " +
             "actualDigest=${actual.sha256()}"
     }
-
-    private fun rejectedObservation(failure: SourceObservationFailure) = SourceObservationResult.Rejected(failure)
 
     private fun rejectedRollback(failure: AddDeclarationRollbackFailure) =
         AddDeclarationRollbackResult.Rejected(failure)
