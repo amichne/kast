@@ -4,6 +4,10 @@ import io.github.amichne.kast.cli.CanonicalRootDiscoverer
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -15,6 +19,24 @@ class BrokerTrustEnrollmentTest {
     @TempDir lateinit var temporary: Path
 
     private fun home() = temporary.toRealPath()
+
+    @Test
+    fun `enrollment response encodes the exact required shape for every status`() {
+        for (status in BrokerTrustStatus.entries) {
+            val expectedStatus =
+                when (status) {
+                    BrokerTrustStatus.ENROLLED -> "ENROLLED"
+                    BrokerTrustStatus.PRESERVED -> "PRESERVED"
+                }
+            val result = executeBrokerTrustEnrollment { BrokerTrustResult.Complete(status) }
+            val document = Json.parseToJsonElement(result.document.value).jsonObject
+            assertEquals(setOf("outcome", "operation", "status"), document.keys)
+            assertTrue(document.values.all { it is JsonPrimitive && it.isString })
+            assertEquals("complete", document.getValue("outcome").jsonPrimitive.content)
+            assertEquals("ide-trust-broker", document.getValue("operation").jsonPrimitive.content)
+            assertEquals(expectedStatus, document.getValue("status").jsonPrimitive.content)
+        }
+    }
 
     @Test
     fun `plugin created parent with mode755 is preserved while approval remains private`() {

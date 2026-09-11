@@ -16,9 +16,9 @@ import java.security.KeyPairGenerator
 import java.security.Signature
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.Serializable
 
 internal enum class BrokerTrustFailure {
     UNAVAILABLE,
@@ -29,6 +29,7 @@ internal enum class BrokerTrustFailure {
     IO_FAILED,
 }
 
+@Serializable
 internal enum class BrokerTrustStatus {
     ENROLLED,
     PRESERVED,
@@ -209,18 +210,19 @@ internal class FilesystemBrokerTrustRegistrar(private val home: Path) : BrokerTr
     private fun rejected(failure: BrokerTrustFailure) = BrokerTrustResult.Rejected(failure)
 }
 
+@Serializable
+@OptIn(ExperimentalSerializationApi::class)
+private data class BrokerTrustEnrollmentDocument(val status: BrokerTrustStatus) {
+    @EncodeDefault val outcome: String = "complete"
+    @EncodeDefault val operation: String = "ide-trust-broker"
+}
+
 internal fun executeBrokerTrustEnrollment(registrar: BrokerTrustRegistrar): CliExit =
     when (val result = registrar.enroll()) {
         is BrokerTrustResult.Complete ->
             CliExit.Complete(
-                CliJsonDocument.generated(JsonObject.serializer())
-                    .create(
-                        buildJsonObject {
-                            put("outcome", "complete")
-                            put("operation", "ide-trust-broker")
-                            put("status", result.status.name)
-                        }
-                    )
+                CliJsonDocument.generated(BrokerTrustEnrollmentDocument.serializer())
+                    .create(BrokerTrustEnrollmentDocument(result.status))
             )
         is BrokerTrustResult.Rejected ->
             boundaryExit(
