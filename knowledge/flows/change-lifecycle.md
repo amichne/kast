@@ -27,6 +27,8 @@ code_sources:
   - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/LiveChangeBasis.kt
   - path: change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangePlanning.kt
+  - path: change/intellij/src/main/kotlin/io/github/amichne/kast/change/intellij/LiveWriteObservation.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApprovals.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeVerification.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeRecovery.kt
@@ -64,13 +66,17 @@ approval request correlate the current controller with the exact plan, root,
 host and operation. Only that controller's accepted decision reaches the signing
 gateway. The plugin verifies the Ed25519 assertion against the explicitly
 enrolled key and consumes the challenge once. Catalog metadata and plan identity
-do not grant write authority.
+do not grant write authority. Concurrent requests retain distinct challenges for
+the same plan; only the cryptographically matched challenge is consumed.
 
 Apply compares the plan with a fresh live root, host, epoch, content view and
 model, then observes the exact saved preimage. `LiveMutationAuthority` retains
 that proof and the approved write set. A pre-write observation guards the
 IntelliJ write command; the adapter receives only the admitted single-file effect.
 Durable pre-write and applied records retain recovery evidence across effects.
+
+The physical postimage refinement emits a typed success or finite rejection
+cause without source content, paths, or approval payloads.
 
 A successful source write is not completion. Apply reacquires a live read,
 re-observes compiler identity, diagnostics, relation/traversal obligations and

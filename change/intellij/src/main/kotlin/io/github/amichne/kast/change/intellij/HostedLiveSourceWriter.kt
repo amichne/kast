@@ -98,7 +98,13 @@ class HostedLiveSourceWriter(private val project: Project) {
                         )
             ) {
                 is IntellijWriteProtocolResult.Applied ->
-                    when (val observed = LiveAppliedSourceWrite.observe(authority, result.bytes, result.changedPaths)) {
+                    when (
+                        val observed =
+                            observeLiveWriteResult(
+                                LiveAppliedSourceWrite.observe(authority, result.bytes, result.changedPaths),
+                                ::logLiveWriteObservation,
+                            )
+                    ) {
                         is Refinement.Refined -> LiveSourceWriteResult.Applied(observed.value)
                         is Refinement.Rejected ->
                             LiveSourceWriteResult.RecoveryRequired(SourceWriteFailure.OBSERVATION_FAILED)

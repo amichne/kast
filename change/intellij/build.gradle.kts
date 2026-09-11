@@ -72,6 +72,8 @@ dependencies {
     changeIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
         isTransitive = false
     }
+    compileOnly(catalog.findLibrary("serialization-json").get())
+    testImplementation(catalog.findLibrary("serialization-json").get())
     compileOnly(ideaLibs)
     compileOnly(kotlinPluginLibs)
     compileOnly(javaPluginLibs)
