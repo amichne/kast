@@ -41,49 +41,33 @@ enum class SourceEntityNameFailure {
 sealed interface SourceEntityName {
     data object Unavailable : SourceEntityName
 
-    @JvmInline
-    value class Present internal constructor(
-        val value: String,
-    ) : SourceEntityName
+    @JvmInline value class Present internal constructor(val value: String) : SourceEntityName
 
     companion object {
-        /**
-         * Proof transition: `String -> Refinement<SourceEntityName.Present,
-         * SourceEntityNameFailure>`.
-         */
-        fun present(
-            raw: String,
-        ): Refinement<Present, SourceEntityNameFailure> = when {
-            raw.isBlank() -> Refinement.Rejected(SourceEntityNameFailure.BLANK)
-            raw.length > MAX_SOURCE_ENTITY_NAME_LENGTH ->
-                Refinement.Rejected(SourceEntityNameFailure.TOO_LONG)
-            raw.any(Char::isISOControl) ->
-                Refinement.Rejected(SourceEntityNameFailure.CONTROL_CHARACTER)
-            else -> Refinement.Refined(Present(raw))
-        }
+        /** Proof transition: `String -> Refinement<SourceEntityName.Present, SourceEntityNameFailure>`. */
+        fun present(raw: String): Refinement<Present, SourceEntityNameFailure> =
+            when {
+                raw.isBlank() -> Refinement.Rejected(SourceEntityNameFailure.BLANK)
+                raw.length > MAX_SOURCE_ENTITY_NAME_LENGTH -> Refinement.Rejected(SourceEntityNameFailure.TOO_LONG)
+                raw.any(Char::isISOControl) -> Refinement.Rejected(SourceEntityNameFailure.CONTROL_CHARACTER)
+                else -> Refinement.Refined(Present(raw))
+            }
     }
 }
 
 enum class SourceSelectorFingerprintFailure {
-    INVALID_FORMAT,
+    INVALID_FORMAT
 }
 
 /** Canonical lowercase SHA-256 identity of one complete source selection. */
 @JvmInline
-value class SourceSelectorFingerprint private constructor(
-    val value: String,
-) {
+value class SourceSelectorFingerprint private constructor(val value: String) {
     companion object {
-        /**
-         * Proof transition: `String -> Refinement<SourceSelectorFingerprint,
-         * SourceSelectorFingerprintFailure>`.
-         */
-        fun parse(
-            raw: String,
-        ): Refinement<SourceSelectorFingerprint, SourceSelectorFingerprintFailure> =
+        /** Proof transition: `String -> Refinement<SourceSelectorFingerprint, SourceSelectorFingerprintFailure>`. */
+        fun parse(raw: String): Refinement<SourceSelectorFingerprint, SourceSelectorFingerprintFailure> =
             if (
                 raw.length == SOURCE_SELECTOR_FINGERPRINT_HEX_LENGTH &&
-                raw.all { character -> character in '0'..'9' || character in 'a'..'f' }
+                    raw.all { character -> character in '0'..'9' || character in 'a'..'f' }
             ) {
                 Refinement.Refined(SourceSelectorFingerprint(raw))
             } else {
@@ -104,7 +88,8 @@ sealed interface SourceSelector {
     val range: SourceRange
     val fingerprint: SourceSelectorFingerprint
 
-    class RootRegion internal constructor(
+    class RootRegion
+    internal constructor(
         override val range: SourceRange,
         val kind: SourceRegionKind,
         override val fingerprint: SourceSelectorFingerprint,
@@ -113,7 +98,8 @@ sealed interface SourceSelector {
             get() = range.snapshot
     }
 
-    class NestedRegion internal constructor(
+    class NestedRegion
+    internal constructor(
         override val range: SourceRange,
         val kind: SourceRegionKind,
         val parent: SourceSelector,
@@ -123,7 +109,8 @@ sealed interface SourceSelector {
             get() = range.snapshot
     }
 
-    class Entity internal constructor(
+    class Entity
+    internal constructor(
         override val range: SourceRange,
         val kind: SourceEntityKind,
         val name: SourceEntityName,
@@ -139,17 +126,19 @@ sealed interface SourceSelector {
         fun issueRoot(
             range: SourceRange,
             kind: SourceRegionKind,
-        ): RootRegion = RootRegion(
-            range = range,
-            kind = kind,
-            fingerprint = sourceSelectorFingerprint(
+        ): RootRegion =
+            RootRegion(
                 range = range,
-                variant = "root-region",
-                structuralKind = kind.name,
-                parent = null,
-                name = SourceEntityName.Unavailable,
-            ),
-        )
+                kind = kind,
+                fingerprint =
+                    sourceSelectorFingerprint(
+                        range = range,
+                        variant = "root-region",
+                        structuralKind = kind.name,
+                        parent = null,
+                        name = SourceEntityName.Unavailable,
+                    ),
+            )
 
         /**
          * Proof transition: `(SourceSelector parent, SourceRange, SourceRegionKind) ->
@@ -167,19 +156,20 @@ sealed interface SourceSelector {
                     range = range,
                     kind = kind,
                     parent = parent,
-                    fingerprint = sourceSelectorFingerprint(
-                        range = range,
-                        variant = "nested-region",
-                        structuralKind = kind.name,
-                        parent = parent,
-                        name = SourceEntityName.Unavailable,
-                    ),
+                    fingerprint =
+                        sourceSelectorFingerprint(
+                            range = range,
+                            variant = "nested-region",
+                            structuralKind = kind.name,
+                            parent = parent,
+                            name = SourceEntityName.Unavailable,
+                        ),
                 )
             }
 
         /**
-         * Proof transition: `(SourceSelector parent, NonEmptySourceRange, SourceEntityKind,
-         * SourceEntityName) -> Refinement<SourceSelector.Entity, SourceSelectorIssueFailure>`.
+         * Proof transition: `(SourceSelector parent, NonEmptySourceRange, SourceEntityKind, SourceEntityName) ->
+         * Refinement<SourceSelector.Entity, SourceSelectorIssueFailure>`.
          */
         fun issueEntity(
             parent: SourceSelector,
@@ -193,13 +183,14 @@ sealed interface SourceSelector {
                     kind = kind,
                     name = name,
                     parent = parent,
-                    fingerprint = sourceSelectorFingerprint(
-                        range = range.range,
-                        variant = "entity",
-                        structuralKind = kind.name,
-                        parent = parent,
-                        name = name,
-                    ),
+                    fingerprint =
+                        sourceSelectorFingerprint(
+                            range = range.range,
+                            variant = "entity",
+                            structuralKind = kind.name,
+                            parent = parent,
+                            name = name,
+                        ),
                 )
             }
 
@@ -223,16 +214,16 @@ sealed interface SourceSelector {
             range: SourceRange,
             kind: SourceRegionKind,
             fingerprint: SourceSelectorFingerprint,
-        ): Refinement<NestedRegion, SourceSelectorIssueFailure> = when (
-            val issued = issueNested(parent, range, kind)
-        ) {
-            is Refinement.Rejected -> issued
-            is Refinement.Refined -> if (issued.value.fingerprint == fingerprint) {
-                issued
-            } else {
-                Refinement.Rejected(SourceSelectorIssueFailure.FINGERPRINT_MISMATCH)
+        ): Refinement<NestedRegion, SourceSelectorIssueFailure> =
+            when (val issued = issueNested(parent, range, kind)) {
+                is Refinement.Rejected -> issued
+                is Refinement.Refined ->
+                    if (issued.value.fingerprint == fingerprint) {
+                        issued
+                    } else {
+                        Refinement.Rejected(SourceSelectorIssueFailure.FINGERPRINT_MISMATCH)
+                    }
             }
-        }
 
         /** Restores entity authority only under the exact encoded parent and entity identity. */
         fun restoreEntity(
@@ -241,29 +232,28 @@ sealed interface SourceSelector {
             kind: SourceEntityKind,
             name: SourceEntityName,
             fingerprint: SourceSelectorFingerprint,
-        ): Refinement<Entity, SourceSelectorIssueFailure> = when (
-            val issued = issueEntity(parent, range, kind, name)
-        ) {
-            is Refinement.Rejected -> issued
-            is Refinement.Refined -> if (issued.value.fingerprint == fingerprint) {
-                issued
-            } else {
-                Refinement.Rejected(SourceSelectorIssueFailure.FINGERPRINT_MISMATCH)
+        ): Refinement<Entity, SourceSelectorIssueFailure> =
+            when (val issued = issueEntity(parent, range, kind, name)) {
+                is Refinement.Rejected -> issued
+                is Refinement.Refined ->
+                    if (issued.value.fingerprint == fingerprint) {
+                        issued
+                    } else {
+                        Refinement.Rejected(SourceSelectorIssueFailure.FINGERPRINT_MISMATCH)
+                    }
             }
-        }
 
         private inline fun <Selection : SourceSelector> admitChild(
             parent: SourceSelector,
             range: SourceRange,
             issue: () -> Selection,
-        ): Refinement<Selection, SourceSelectorIssueFailure> = when {
-            range.snapshot != parent.snapshot ->
-                Refinement.Rejected(SourceSelectorIssueFailure.SNAPSHOT_MISMATCH)
-            range.startInclusive < parent.range.startInclusive ||
-                range.endExclusive > parent.range.endExclusive ->
-                Refinement.Rejected(SourceSelectorIssueFailure.OUTSIDE_PARENT)
-            else -> Refinement.Refined(issue())
-        }
+        ): Refinement<Selection, SourceSelectorIssueFailure> =
+            when {
+                range.snapshot != parent.snapshot -> Refinement.Rejected(SourceSelectorIssueFailure.SNAPSHOT_MISMATCH)
+                range.startInclusive < parent.range.startInclusive || range.endExclusive > parent.range.endExclusive ->
+                    Refinement.Rejected(SourceSelectorIssueFailure.OUTSIDE_PARENT)
+                else -> Refinement.Refined(issue())
+            }
     }
 }
 
@@ -278,39 +268,33 @@ enum class SourceSelectorRevalidationFailure {
 }
 
 /** Proof that one issued source selector still addresses the identical current snapshot. */
-class RevalidatedSourceSelector private constructor(
-    val selector: SourceSelector,
-) {
+class RevalidatedSourceSelector private constructor(val selector: SourceSelector) {
     companion object {
         /**
-         * Proof transition: `(SourceSelector, SourceSnapshot) -> Refinement<
-         * RevalidatedSourceSelector, SourceSelectorRevalidationFailure>`.
+         * Proof transition: `(SourceSelector, SourceSnapshot) -> Refinement< RevalidatedSourceSelector,
+         * SourceSelectorRevalidationFailure>`.
          *
-         * Compares every independently moving snapshot identity and fails closed without shifting
-         * a range or recovering nearby text.
+         * Compares every independently moving snapshot identity and fails closed without shifting a range or recovering
+         * nearby text.
          */
         fun validate(
             selector: SourceSelector,
             current: SourceSnapshot,
         ): Refinement<RevalidatedSourceSelector, SourceSelectorRevalidationFailure> {
             val issued = selector.snapshot
-            val failure = when {
-                issued.lease.workspaceRoot != current.lease.workspaceRoot ->
-                    SourceSelectorRevalidationFailure.WORKSPACE_ROOT_MISMATCH
-                issued.lease != current.lease ->
-                    SourceSelectorRevalidationFailure.STALE_GENERATION
-                issued.context != current.context ->
-                    SourceSelectorRevalidationFailure.SOURCE_STATE_MISMATCH
-                issued.readScope != current.readScope ->
-                    SourceSelectorRevalidationFailure.SOURCE_SCOPE_MISMATCH
-                issued.file != current.file ->
-                    SourceSelectorRevalidationFailure.SOURCE_FILE_MISMATCH
-                issued.textIdentity != current.textIdentity ->
-                    SourceSelectorRevalidationFailure.DOCUMENT_IDENTITY_MISMATCH
-                issued.length != current.length ->
-                    SourceSelectorRevalidationFailure.DOCUMENT_LENGTH_MISMATCH
-                else -> null
-            }
+            val failure =
+                when {
+                    issued.lease.workspaceRoot != current.lease.workspaceRoot ->
+                        SourceSelectorRevalidationFailure.WORKSPACE_ROOT_MISMATCH
+                    issued.lease != current.lease -> SourceSelectorRevalidationFailure.STALE_GENERATION
+                    issued.context != current.context -> SourceSelectorRevalidationFailure.SOURCE_STATE_MISMATCH
+                    issued.readScope != current.readScope -> SourceSelectorRevalidationFailure.SOURCE_SCOPE_MISMATCH
+                    issued.file != current.file -> SourceSelectorRevalidationFailure.SOURCE_FILE_MISMATCH
+                    issued.textIdentity != current.textIdentity ->
+                        SourceSelectorRevalidationFailure.DOCUMENT_IDENTITY_MISMATCH
+                    issued.length != current.length -> SourceSelectorRevalidationFailure.DOCUMENT_LENGTH_MISMATCH
+                    else -> null
+                }
             return if (failure == null) {
                 Refinement.Refined(RevalidatedSourceSelector(selector))
             } else {
@@ -331,10 +315,12 @@ private fun sourceSelectorFingerprint(
     val canonical = buildString {
         appendSelectorField(snapshot.lease.workspaceRoot.value)
         appendSelectorField(snapshot.lease.identity.revisionKey.value)
-        appendSelectorField(when (val context = snapshot.context) {
-            is SourceReadContext.Published -> context.sourceState.value
-            is SourceReadContext.Live -> context.lease.reference.contentView.name
-        })
+        appendSelectorField(
+            when (val context = snapshot.context) {
+                is SourceReadContext.Published -> context.sourceState.value
+                is SourceReadContext.Live -> context.lease.reference.contentView.name
+            }
+        )
         snapshot.readScope.fingerprintFields().forEach(::appendSelectorField)
         appendSelectorField(snapshot.file.path.value)
         appendSelectorField(snapshot.textIdentity.value)
@@ -348,12 +334,13 @@ private fun sourceSelectorFingerprint(
             when (name) {
                 SourceEntityName.Unavailable -> "unavailable"
                 is SourceEntityName.Present -> "present:${name.value}"
-            },
+            }
         )
     }
-    val raw = MessageDigest.getInstance("SHA-256")
-        .digest(canonical.toByteArray(StandardCharsets.UTF_8))
-        .joinToString(separator = "") { byte ->
+    val raw =
+        MessageDigest.getInstance("SHA-256").digest(canonical.toByteArray(StandardCharsets.UTF_8)).joinToString(
+            separator = ""
+        ) { byte ->
             (byte.toInt() and 0xff).toString(SOURCE_SELECTOR_HEX_RADIX).padStart(2, '0')
         }
     return when (val parsed = SourceSelectorFingerprint.parse(raw)) {

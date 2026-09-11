@@ -25,17 +25,14 @@ enum class SymbolDiscoveryCandidateFailure {
 }
 
 @JvmInline
-value class SymbolDiscoveryCandidateName private constructor(
-    val value: String,
-) {
+value class SymbolDiscoveryCandidateName private constructor(val value: String) {
     companion object {
         /**
-         * Proof transition:
-         * String to Refinement<SymbolDiscoveryCandidateName, SymbolDiscoveryCandidateFailure>.
+         * Proof transition: String to Refinement<SymbolDiscoveryCandidateName, SymbolDiscoveryCandidateFailure>.
          *
          * Establishes a non-blank, bounded detached display name without control characters.
-         * [SymbolDiscoveryCandidateFailure] is the closed expected failure. Raw names may be
-         * extracted only at native projection or transport boundaries.
+         * [SymbolDiscoveryCandidateFailure] is the closed expected failure. Raw names may be extracted only at native
+         * projection or transport boundaries.
          */
         fun parse(raw: String): Refinement<SymbolDiscoveryCandidateName, SymbolDiscoveryCandidateFailure> =
             when {
@@ -50,17 +47,14 @@ value class SymbolDiscoveryCandidateName private constructor(
 }
 
 @JvmInline
-value class DetachedVirtualFileUrl private constructor(
-    val value: String,
-) {
+value class DetachedVirtualFileUrl private constructor(val value: String) {
     companion object {
         /**
-         * Proof transition:
-         * String to Refinement<DetachedVirtualFileUrl, SymbolDiscoveryCandidateFailure>.
+         * Proof transition: String to Refinement<DetachedVirtualFileUrl, SymbolDiscoveryCandidateFailure>.
          *
          * Establishes a non-blank, bounded, scheme-qualified detached virtual-file location.
-         * [SymbolDiscoveryCandidateFailure] is the closed expected failure. Raw URLs may be
-         * extracted only at native projection or transport boundaries.
+         * [SymbolDiscoveryCandidateFailure] is the closed expected failure. Raw URLs may be extracted only at native
+         * projection or transport boundaries.
          */
         fun parse(raw: String): Refinement<DetachedVirtualFileUrl, SymbolDiscoveryCandidateFailure> =
             when {
@@ -74,17 +68,14 @@ value class DetachedVirtualFileUrl private constructor(
 }
 
 @JvmInline
-value class SymbolDiscoverySourceOffset private constructor(
-    val value: Int,
-) {
+value class SymbolDiscoverySourceOffset private constructor(val value: Int) {
     companion object {
         /**
-         * Proof transition:
-         * Int to Refinement<SymbolDiscoverySourceOffset, SymbolDiscoveryCandidateFailure>.
+         * Proof transition: Int to Refinement<SymbolDiscoverySourceOffset, SymbolDiscoveryCandidateFailure>.
          *
          * Establishes a non-negative source offset for a generation-bound discovery candidate.
-         * [SymbolDiscoveryCandidateFailure] is the closed expected failure. Raw offsets may be
-         * extracted only at native projection, exact-selector resolution, or transport boundaries.
+         * [SymbolDiscoveryCandidateFailure] is the closed expected failure. Raw offsets may be extracted only at native
+         * projection, exact-selector resolution, or transport boundaries.
          */
         fun parse(raw: Int): Refinement<SymbolDiscoverySourceOffset, SymbolDiscoveryCandidateFailure> =
             if (raw >= 0) {
@@ -98,28 +89,22 @@ value class SymbolDiscoverySourceOffset private constructor(
 sealed interface SymbolDiscoveryFileIdentity {
     val stableValue: String
 
-    data class Workspace(
-        val path: CanonicalWorkspaceFilePath,
-    ) : SymbolDiscoveryFileIdentity {
+    data class Workspace(val path: CanonicalWorkspaceFilePath) : SymbolDiscoveryFileIdentity {
         override val stableValue: String = path.value
     }
 
-    data class External(
-        val url: DetachedVirtualFileUrl,
-    ) : SymbolDiscoveryFileIdentity {
+    data class External(val url: DetachedVirtualFileUrl) : SymbolDiscoveryFileIdentity {
         override val stableValue: String = url.value
     }
 
     companion object {
         /**
-         * Proof transition:
-         * CanonicalWorkspaceRoot + Path? + String to
-         * Refinement<SymbolDiscoveryFileIdentity, SymbolDiscoveryCandidateFailure>.
+         * Proof transition: CanonicalWorkspaceRoot + Path? + String to Refinement<SymbolDiscoveryFileIdentity,
+         * SymbolDiscoveryCandidateFailure>.
          *
-         * Establishes either an exact canonical in-workspace path or a bounded detached external
-         * virtual-file URL. [SymbolDiscoveryCandidateFailure] is the closed expected failure.
-         * Raw paths and URLs may be extracted only at the native projection and transport
-         * boundaries.
+         * Establishes either an exact canonical in-workspace path or a bounded detached external virtual-file URL.
+         * [SymbolDiscoveryCandidateFailure] is the closed expected failure. Raw paths and URLs may be extracted only at
+         * the native projection and transport boundaries.
          */
         fun fromBoundary(
             workspaceRoot: CanonicalWorkspaceRoot,
@@ -127,18 +112,11 @@ sealed interface SymbolDiscoveryFileIdentity {
             virtualFileUrl: String,
         ): Refinement<SymbolDiscoveryFileIdentity, SymbolDiscoveryCandidateFailure> {
             if (nativePath != null) {
-                when (val workspacePath =
-                    CanonicalWorkspaceFilePath.fromCanonicalPath(workspaceRoot, nativePath)
-                ) {
+                when (val workspacePath = CanonicalWorkspaceFilePath.fromCanonicalPath(workspaceRoot, nativePath)) {
                     is Refinement.Refined -> return Refinement.Refined(Workspace(workspacePath.value))
                     is Refinement.Rejected -> {
-                        if (
-                            workspacePath.failure !=
-                            CanonicalWorkspaceFilePathFailure.FILE_OUTSIDE_WORKSPACE
-                        ) {
-                            return Refinement.Rejected(
-                                SymbolDiscoveryCandidateFailure.INVALID_FILE_LOCATION,
-                            )
+                        if (workspacePath.failure != CanonicalWorkspaceFilePathFailure.FILE_OUTSIDE_WORKSPACE) {
+                            return Refinement.Rejected(SymbolDiscoveryCandidateFailure.INVALID_FILE_LOCATION)
                         }
                     }
                 }
@@ -152,31 +130,33 @@ sealed interface SymbolDiscoveryFileIdentity {
 }
 
 @ConsistentCopyVisibility
-data class SymbolDiscoverySourceRange private constructor(
+data class SymbolDiscoverySourceRange
+private constructor(
     val startInclusive: SymbolDiscoverySourceOffset,
     val endExclusive: SymbolDiscoverySourceOffset,
 ) {
     companion object {
         /**
-         * Proof transition: `(Int, Int) -> Refinement<SymbolDiscoverySourceRange,
-         * SymbolDiscoveryCandidateFailure>`.
+         * Proof transition: `(Int, Int) -> Refinement<SymbolDiscoverySourceRange, SymbolDiscoveryCandidateFailure>`.
          *
          * Establishes one non-empty half-open text match range. The closed expected failure is
-         * [SymbolDiscoveryCandidateFailure]. Raw offsets may be extracted only by indexed text
-         * projection or transport boundaries.
+         * [SymbolDiscoveryCandidateFailure]. Raw offsets may be extracted only by indexed text projection or transport
+         * boundaries.
          */
         fun parse(
             rawStartInclusive: Int,
             rawEndExclusive: Int,
         ): Refinement<SymbolDiscoverySourceRange, SymbolDiscoveryCandidateFailure> {
-            val start = when (val parsed = SymbolDiscoverySourceOffset.parse(rawStartInclusive)) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected -> return parsed
-            }
-            val end = when (val parsed = SymbolDiscoverySourceOffset.parse(rawEndExclusive)) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected -> return parsed
-            }
+            val start =
+                when (val parsed = SymbolDiscoverySourceOffset.parse(rawStartInclusive)) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected -> return parsed
+                }
+            val end =
+                when (val parsed = SymbolDiscoverySourceOffset.parse(rawEndExclusive)) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected -> return parsed
+                }
             return if (end.value <= start.value) {
                 Refinement.Rejected(SymbolDiscoveryCandidateFailure.INVALID_TEXT_RANGE)
             } else {
@@ -189,9 +169,7 @@ data class SymbolDiscoverySourceRange private constructor(
 sealed interface SymbolDiscoveryCandidateLocation {
     val file: SymbolDiscoveryFileIdentity
 
-    data class File(
-        override val file: SymbolDiscoveryFileIdentity,
-    ) : SymbolDiscoveryCandidateLocation
+    data class File(override val file: SymbolDiscoveryFileIdentity) : SymbolDiscoveryCandidateLocation
 
     data class Declaration(
         override val file: SymbolDiscoveryFileIdentity,
@@ -205,26 +183,25 @@ sealed interface SymbolDiscoveryCandidateLocation {
 }
 
 @ConsistentCopyVisibility
-data class SymbolDiscoveryCandidate private constructor(
+data class SymbolDiscoveryCandidate
+private constructor(
     val lease: SemanticReadAuthority,
     val kind: SymbolDiscoveryKind,
     val name: SymbolDiscoveryCandidateName,
     val location: SymbolDiscoveryCandidateLocation,
 ) : Comparable<SymbolDiscoveryCandidate> {
-    override fun compareTo(other: SymbolDiscoveryCandidate): Int =
-        DISCOVERY_CANDIDATE_ORDER.compare(this, other)
+    override fun compareTo(other: SymbolDiscoveryCandidate): Int = DISCOVERY_CANDIDATE_ORDER.compare(this, other)
 
     /**
      * Proof transition: SymbolDiscoveryCandidate to SymbolDiscoveryByteCount.
      *
-     * Establishes the exact non-negative UTF-8 size of this candidate's canonical detached
-     * projection. Raw bytes may be extracted only by bounded collectors and transport encoders.
+     * Establishes the exact non-negative UTF-8 size of this candidate's canonical detached projection. Raw bytes may be
+     * extracted only by bounded collectors and transport encoders.
      */
     fun projectedUtf8Size(): SymbolDiscoveryByteCount =
         when (
-            val size = SymbolDiscoveryByteCount.parse(
-                canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong(),
-            )
+            val size =
+                SymbolDiscoveryByteCount.parse(canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong())
         ) {
             is Refinement.Refined -> size.value
             is Refinement.Rejected -> error("UTF-8 byte size cannot be negative")
@@ -257,15 +234,13 @@ data class SymbolDiscoveryCandidate private constructor(
 
     companion object {
         /**
-         * Proof transition:
-         * SymbolDiscoveryKind + String + SemanticReadAuthority + Path? + String + Int? to
+         * Proof transition: SymbolDiscoveryKind + String + SemanticReadAuthority + Path? + String + Int? to
          * Refinement<SymbolDiscoveryCandidate, SymbolDiscoveryCandidateFailure>.
          *
-         * Establishes a generation-bound detached candidate with a bounded name, exact file
-         * identity, and a non-negative declaration offset exactly when class or symbol discovery
-         * requires one.
-         * [SymbolDiscoveryCandidateFailure] is the closed expected failure. Raw IntelliJ values
-         * may be extracted only by the request-local native projection adapter.
+         * Establishes a generation-bound detached candidate with a bounded name, exact file identity, and a
+         * non-negative declaration offset exactly when class or symbol discovery requires one.
+         * [SymbolDiscoveryCandidateFailure] is the closed expected failure. Raw IntelliJ values may be extracted only
+         * by the request-local native projection adapter.
          */
         fun fromBoundary(
             kind: SymbolDiscoveryKind,
@@ -276,56 +251,62 @@ data class SymbolDiscoveryCandidate private constructor(
             rawOffset: Int?,
             rawEndOffset: Int? = null,
         ): Refinement<SymbolDiscoveryCandidate, SymbolDiscoveryCandidateFailure> {
-            val name = when (val parsed = SymbolDiscoveryCandidateName.parse(rawName)) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected -> return parsed
-            }
-            val file = when (
-                val parsed =
-                    SymbolDiscoveryFileIdentity.fromBoundary(
-                        lease.workspaceRoot,
-                        nativePath,
-                        virtualFileUrl,
-                    )
-            ) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected -> return parsed
-            }
-            val location = when (kind) {
-                SymbolDiscoveryKind.FILE -> {
-                    if (rawOffset != null) {
-                        return Refinement.Rejected(
-                            SymbolDiscoveryCandidateFailure.FILE_CANDIDATE_HAS_DECLARATION_OFFSET,
+            val name =
+                when (val parsed = SymbolDiscoveryCandidateName.parse(rawName)) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected -> return parsed
+                }
+            val file =
+                when (
+                    val parsed =
+                        SymbolDiscoveryFileIdentity.fromBoundary(
+                            lease.workspaceRoot,
+                            nativePath,
+                            virtualFileUrl,
                         )
-                    }
-                    SymbolDiscoveryCandidateLocation.File(file)
+                ) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected -> return parsed
                 }
-                SymbolDiscoveryKind.CLASS,
-                SymbolDiscoveryKind.SYMBOL,
-                    -> {
-                    val offset = rawOffset ?: return Refinement.Rejected(
-                        SymbolDiscoveryCandidateFailure.DECLARATION_CANDIDATE_MISSING_OFFSET,
-                    )
-                    when (val parsed = SymbolDiscoverySourceOffset.parse(offset)) {
-                        is Refinement.Refined ->
-                            SymbolDiscoveryCandidateLocation.Declaration(file, parsed.value)
-                        is Refinement.Rejected -> return parsed
+            val location =
+                when (kind) {
+                    SymbolDiscoveryKind.FILE -> {
+                        if (rawOffset != null) {
+                            return Refinement.Rejected(
+                                SymbolDiscoveryCandidateFailure.FILE_CANDIDATE_HAS_DECLARATION_OFFSET
+                            )
+                        }
+                        SymbolDiscoveryCandidateLocation.File(file)
+                    }
+                    SymbolDiscoveryKind.CLASS,
+                    SymbolDiscoveryKind.SYMBOL -> {
+                        val offset =
+                            rawOffset
+                                ?: return Refinement.Rejected(
+                                    SymbolDiscoveryCandidateFailure.DECLARATION_CANDIDATE_MISSING_OFFSET
+                                )
+                        when (val parsed = SymbolDiscoverySourceOffset.parse(offset)) {
+                            is Refinement.Refined -> SymbolDiscoveryCandidateLocation.Declaration(file, parsed.value)
+                            is Refinement.Rejected -> return parsed
+                        }
+                    }
+                    SymbolDiscoveryKind.TEXT -> {
+                        val start =
+                            rawOffset
+                                ?: return Refinement.Rejected(
+                                    SymbolDiscoveryCandidateFailure.TEXT_CANDIDATE_MISSING_RANGE
+                                )
+                        val end =
+                            rawEndOffset
+                                ?: return Refinement.Rejected(
+                                    SymbolDiscoveryCandidateFailure.TEXT_CANDIDATE_MISSING_RANGE
+                                )
+                        when (val parsed = SymbolDiscoverySourceRange.parse(start, end)) {
+                            is Refinement.Refined -> SymbolDiscoveryCandidateLocation.Text(file, parsed.value)
+                            is Refinement.Rejected -> return parsed
+                        }
                     }
                 }
-                SymbolDiscoveryKind.TEXT -> {
-                    val start = rawOffset ?: return Refinement.Rejected(
-                        SymbolDiscoveryCandidateFailure.TEXT_CANDIDATE_MISSING_RANGE,
-                    )
-                    val end = rawEndOffset ?: return Refinement.Rejected(
-                        SymbolDiscoveryCandidateFailure.TEXT_CANDIDATE_MISSING_RANGE,
-                    )
-                    when (val parsed = SymbolDiscoverySourceRange.parse(start, end)) {
-                        is Refinement.Refined ->
-                            SymbolDiscoveryCandidateLocation.Text(file, parsed.value)
-                        is Refinement.Rejected -> return parsed
-                    }
-                }
-            }
             return Refinement.Refined(SymbolDiscoveryCandidate(lease, kind, name, location))
         }
 
@@ -340,8 +321,7 @@ data class SymbolDiscoveryCandidate private constructor(
                     when (val location = it.location) {
                         is SymbolDiscoveryCandidateLocation.File -> -1
                         is SymbolDiscoveryCandidateLocation.Declaration -> location.offset.value
-                        is SymbolDiscoveryCandidateLocation.Text ->
-                            location.range.startInclusive.value
+                        is SymbolDiscoveryCandidateLocation.Text -> location.range.startInclusive.value
                     }
                 },
             )

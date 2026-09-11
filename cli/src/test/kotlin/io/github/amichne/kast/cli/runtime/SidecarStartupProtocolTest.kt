@@ -9,12 +9,12 @@ import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import io.github.amichne.kast.distribution.contract.bootstrap.SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapAttemptId
 import io.github.amichne.kast.kernel.Refinement
+import java.nio.file.Files
+import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
 
 class SidecarStartupProtocolTest {
     @Test
@@ -22,15 +22,17 @@ class SidecarStartupProtocolTest {
         val ideaHome = Files.createDirectory(temporary.resolve("idea")).toRealPath()
         val sourceSystem = Files.createDirectory(temporary.resolve("source")).toRealPath()
 
-        val parsed = commandGraph().parse(
-            listOf(
-                "start",
-                "--idea-home=$ideaHome",
-                "--cache=seed",
-                "--source-idea-system=$sourceSystem",
-                "--accept-global-index-copy",
-            ),
-        )
+        val parsed =
+            commandGraph()
+                .parse(
+                    listOf(
+                        "start",
+                        "--idea-home=$ideaHome",
+                        "--cache=seed",
+                        "--source-idea-system=$sourceSystem",
+                        "--accept-global-index-copy",
+                    )
+                )
 
         assertTrue(parsed is CliCommandParsing.Parsed)
         val action = (parsed as CliCommandParsing.Parsed).action as CliAction.Lifecycle.Start
@@ -46,9 +48,7 @@ class SidecarStartupProtocolTest {
 
     @Test
     fun `seed without noninteractive acceptance requests interactive disclosure`() {
-        val parsed = commandGraph().parse(
-            listOf("start", "--cache=seed"),
-        ) as CliCommandParsing.Parsed
+        val parsed = commandGraph().parse(listOf("start", "--cache=seed")) as CliCommandParsing.Parsed
         val action = parsed.action as CliAction.Lifecycle.Start
 
         assertEquals(
@@ -67,37 +67,37 @@ class SidecarStartupProtocolTest {
 
         assertEquals(RuntimeStartupRequest.Default, action.startup)
         assertTrue(
-            commandGraph().parse(listOf("start", "--source-idea-system=/tmp/idea")) is
-                CliCommandParsing.Rejected,
+            commandGraph().parse(listOf("start", "--source-idea-system=/tmp/idea")) is CliCommandParsing.Rejected
         )
     }
 
     @Test
-    fun `launch command retains every installed runtime and private cache proof`(
-        @TempDir temporary: Path,
-    ) {
+    fun `launch command retains every installed runtime and private cache proof`(@TempDir temporary: Path) {
         val project = Files.createDirectory(temporary.resolve("project")).toRealPath()
         Files.writeString(project.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
-        val root = FilesystemCanonicalRootDiscovery.discover(project).let {
-            (it as CanonicalRootDiscovery.Discovered).root
-        }
+        val root =
+            FilesystemCanonicalRootDiscovery.discover(project).let {
+                (it as CanonicalRootDiscovery.Discovered).root
+            }
         val executablePath = Files.writeString(temporary.resolve("kast-indexer"), "#!/bin/sh\n")
         assertTrue(executablePath.toFile().setExecutable(true))
-        val executable = when (val admitted = IndexerExecutable.admit(executablePath)) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> error(admitted.failure.toString())
-        }
-        val runtimeId = when (
-            val admitted = SemanticRuntimeId.parse("sha256:${"b".repeat(64)}")
-        ) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> error(admitted.failure.toString())
-        }
-        val endpoint = RuntimeEndpoint.at(
-            root,
-            runtimeId,
-            temporary.resolve("runtime.sock"),
-        ).let { (it as RuntimeEndpointResolution.Resolved).endpoint }
+        val executable =
+            when (val admitted = IndexerExecutable.admit(executablePath)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> error(admitted.failure.toString())
+            }
+        val runtimeId =
+            when (val admitted = SemanticRuntimeId.parse("sha256:${"b".repeat(64)}")) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> error(admitted.failure.toString())
+            }
+        val endpoint =
+            RuntimeEndpoint.at(
+                    root,
+                    runtimeId,
+                    temporary.resolve("runtime.sock"),
+                )
+                .let { (it as RuntimeEndpointResolution.Resolved).endpoint }
         val ideaHome = Files.createDirectory(temporary.resolve("idea-home")).toRealPath()
         val java = Files.createFile(ideaHome.resolve("java")).toRealPath()
         assertTrue(java.toFile().setExecutable(true))
@@ -107,21 +107,25 @@ class SidecarStartupProtocolTest {
         val config = Files.createDirectory(cacheRoot.resolve("config")).toRealPath()
         val log = Files.createDirectory(cacheRoot.resolve("log")).toRealPath()
         val privatePlugins = Files.createDirectory(temporary.resolve("private-plugins")).toRealPath()
-        val context = SidecarLaunchContext.admit(
-            installed,
-            cacheRoot,
-            system,
-            config,
-            log,
-            privatePlugins,
-        ).let { (it as SidecarLaunchContextAdmission.Admitted).context }
+        val context =
+            SidecarLaunchContext.admit(
+                    installed,
+                    cacheRoot,
+                    system,
+                    config,
+                    log,
+                    privatePlugins,
+                )
+                .let { (it as SidecarLaunchContextAdmission.Admitted).context }
 
-        val attempt = SemanticRuntimeBootstrapAttemptId.admit(
-            "123e4567-e89b-42d3-a456-426614174000",
-        ).let { (it as Refinement.Refined).value }
-        val command = IndexerLaunchCommand.create(executable, root, endpoint, context, attempt).let {
-            (it as IndexerLaunchCommandConstruction.Created).command
-        }
+        val attempt =
+            SemanticRuntimeBootstrapAttemptId.admit("123e4567-e89b-42d3-a456-426614174000").let {
+                (it as Refinement.Refined).value
+            }
+        val command =
+            IndexerLaunchCommand.create(executable, root, endpoint, context, attempt).let {
+                (it as IndexerLaunchCommandConstruction.Created).command
+            }
 
         assertEquals(
             listOf(
@@ -142,33 +146,51 @@ class SidecarStartupProtocolTest {
             ),
             command.arguments,
         )
-        val larger = SidecarLaunchContext.admit(installed, cacheRoot, system, config, log, privatePlugins,
-            maxHeap = (io.github.amichne.kast.distribution.contract.IndexerHeapSize.parse("8g") as Refinement.Refined).value,
-        ).let { (it as SidecarLaunchContextAdmission.Admitted).context }
-        val largerCommand = (IndexerLaunchCommand.create(executable, root, endpoint, larger, attempt) as IndexerLaunchCommandConstruction.Created).command
-        assertEquals(command.arguments.map { if (it == "--max-heap-mib=1536") "--max-heap-mib=8192" else it }, largerCommand.arguments)
+        val larger =
+            SidecarLaunchContext.admit(
+                    installed,
+                    cacheRoot,
+                    system,
+                    config,
+                    log,
+                    privatePlugins,
+                    maxHeap =
+                        (io.github.amichne.kast.distribution.contract.IndexerHeapSize.parse("8g") as Refinement.Refined)
+                            .value,
+                )
+                .let { (it as SidecarLaunchContextAdmission.Admitted).context }
+        val largerCommand =
+            (IndexerLaunchCommand.create(executable, root, endpoint, larger, attempt)
+                    as IndexerLaunchCommandConstruction.Created)
+                .command
+        assertEquals(
+            command.arguments.map { if (it == "--max-heap-mib=1536") "--max-heap-mib=8192" else it },
+            largerCommand.arguments,
+        )
     }
 
-    private fun commandGraph(): CliCommandGraphFactory = when (
-        val result = CliCommandGraphFactory.create(canonicalCliRequestPreparers())
-    ) {
-        is CliCommandGraphConstruction.Created -> result.factory
-        is CliCommandGraphConstruction.Rejected -> error(result.failures.toString())
-    }
+    private fun commandGraph(): CliCommandGraphFactory =
+        when (val result = CliCommandGraphFactory.create(canonicalCliRequestPreparers())) {
+            is CliCommandGraphConstruction.Created -> result.factory
+            is CliCommandGraphConstruction.Rejected -> error(result.failures.toString())
+        }
 
     private fun runtimeIdentity(): IdeRuntimeIdentity {
-        val pair = SupportedIdeRuntimePair.admit(
-            "262.9437.185",
-            "262.9437.185-IJ",
-        ).let { (it as SupportedIdeRuntimePairAdmission.Admitted).pair }
+        val pair =
+            SupportedIdeRuntimePair.admit(
+                    "262.9437.185",
+                    "262.9437.185-IJ",
+                )
+                .let { (it as SupportedIdeRuntimePairAdmission.Admitted).pair }
         return IdeRuntimeIdentity.admit(
-            pair,
-            IdeRuntimeIdentityCandidate(
-                pair.ideaBuild,
-                pair.kotlinPluginBuild,
-                "jbr-25.0.3+9-b508.16-aarch64",
-                "sha256:${"a".repeat(64)}",
-            ),
-        ).let { (it as IdeRuntimeIdentityAdmission.Admitted).identity }
+                pair,
+                IdeRuntimeIdentityCandidate(
+                    pair.ideaBuild,
+                    pair.kotlinPluginBuild,
+                    "jbr-25.0.3+9-b508.16-aarch64",
+                    "sha256:${"a".repeat(64)}",
+                ),
+            )
+            .let { (it as IdeRuntimeIdentityAdmission.Admitted).identity }
     }
 }

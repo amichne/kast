@@ -6,9 +6,13 @@ import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 /** Strong operation-specific requests admitted from the closed public change intent. */
 sealed interface ChangePlanAdmission {
     data class AddFile(val request: AddFilePlanRequest) : ChangePlanAdmission
+
     data class AddDeclaration(val request: AddDeclarationPlanRequest) : ChangePlanAdmission
+
     data class ReplaceDeclaration(val request: ReplaceDeclarationPlanRequest) : ChangePlanAdmission
+
     data class RenameSymbol(val request: RenameSymbolPlanRequest) : ChangePlanAdmission
+
     data class Rejected(val failure: ChangePlanAdmissionFailure) : ChangePlanAdmission
 }
 

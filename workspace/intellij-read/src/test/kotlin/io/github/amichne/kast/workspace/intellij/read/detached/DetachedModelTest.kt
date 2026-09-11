@@ -1,10 +1,5 @@
 package io.github.amichne.kast.workspace.intellij.read
 
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertInstanceOf
-import org.junit.jupiter.api.Assertions.assertThrows
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
 import java.lang.reflect.GenericArrayType
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
@@ -13,52 +8,60 @@ import java.lang.reflect.Type
 import java.lang.reflect.TypeVariable
 import java.lang.reflect.WildcardType
 import java.util.ArrayDeque
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
 
 class DetachedModelTest {
     @Test
     fun `capture retains exact facts in deterministic order under permutation`() {
-        val alphaRoots = arrayListOf(
-            detachedSourceRootBoundary("alpha/src/test/resources", DetachedSourceRootKind.TEST_RESOURCE),
-            detachedSourceRootBoundary("alpha/src/main/kotlin"),
-        )
-        val alphaClasspath = arrayListOf(
-            detachedClasspathBoundary(3, "file:///workspace/kast/.fixture/zeta.jar"),
-            detachedClasspathBoundary(2, "file:///workspace/kast/.fixture/alpha.jar"),
-        )
-        val alpha = detachedModuleBoundary(
-            name = "alpha",
-            gradleProjectRoot = "${FIXTURE_ROOT.value}/alpha",
-            gradleProjectIdentity = ":alpha",
-            sourceRoots = alphaRoots,
-            sdk = detachedSdkBoundary("Fixture JDK 21", "JavaSDK", "21.0.7"),
-            classpath = alphaClasspath,
-        )
-        val zeta = detachedModuleBoundary(
-            name = "zeta",
-            gradleProjectRoot = "${FIXTURE_ROOT.value}/zeta",
-            gradleProjectIdentity = ":zeta",
-            sourceRoots = listOf(
-                detachedSourceRootBoundary("zeta/src/main/resources", DetachedSourceRootKind.RESOURCE),
-            ),
-            sdk = detachedSdkBoundary("Fixture JDK 17", "JavaSDK", "17.0.12"),
-            classpath = listOf(
-                detachedClasspathBoundary(1, "file:///workspace/kast/.fixture/zeta-runtime.jar"),
-            ),
-        )
+        val alphaRoots =
+            arrayListOf(
+                detachedSourceRootBoundary("alpha/src/test/resources", DetachedSourceRootKind.TEST_RESOURCE),
+                detachedSourceRootBoundary("alpha/src/main/kotlin"),
+            )
+        val alphaClasspath =
+            arrayListOf(
+                detachedClasspathBoundary(3, "file:///workspace/kast/.fixture/zeta.jar"),
+                detachedClasspathBoundary(2, "file:///workspace/kast/.fixture/alpha.jar"),
+            )
+        val alpha =
+            detachedModuleBoundary(
+                name = "alpha",
+                gradleProjectRoot = "${FIXTURE_ROOT.value}/alpha",
+                gradleProjectIdentity = ":alpha",
+                sourceRoots = alphaRoots,
+                sdk = detachedSdkBoundary("Fixture JDK 21", "JavaSDK", "21.0.7"),
+                classpath = alphaClasspath,
+            )
+        val zeta =
+            detachedModuleBoundary(
+                name = "zeta",
+                gradleProjectRoot = "${FIXTURE_ROOT.value}/zeta",
+                gradleProjectIdentity = ":zeta",
+                sourceRoots =
+                    listOf(detachedSourceRootBoundary("zeta/src/main/resources", DetachedSourceRootKind.RESOURCE)),
+                sdk = detachedSdkBoundary("Fixture JDK 17", "JavaSDK", "17.0.12"),
+                classpath = listOf(detachedClasspathBoundary(1, "file:///workspace/kast/.fixture/zeta-runtime.jar")),
+            )
         val rawModules = arrayListOf(zeta, alpha)
 
         val captured = capturedModel(detachedModelBoundary(modules = rawModules))
-        val permuted = capturedModel(
-            detachedModelBoundary(
-                modules = listOf(
-                    alpha.copy(
-                        sourceRoots = alphaRoots.reversed(),
-                        classpath = alphaClasspath.reversed(),
-                    ),
-                    zeta,
-                ),
-            ),
-        )
+        val permuted =
+            capturedModel(
+                detachedModelBoundary(
+                    modules =
+                        listOf(
+                            alpha.copy(
+                                sourceRoots = alphaRoots.reversed(),
+                                classpath = alphaClasspath.reversed(),
+                            ),
+                            zeta,
+                        )
+                )
+            )
 
         rawModules.clear()
         alphaRoots.clear()
@@ -102,41 +105,48 @@ class DetachedModelTest {
 
     private fun capturedModel(boundary: DetachedModelBoundary): DetachedIdeWorkspaceModel =
         assertInstanceOf(
-            DetachedModelCapture.Captured::class.java,
-            captureDetachedFixture(DetachedModelObservation.Observed(boundary)),
-        ).model
-
-    private fun DetachedIdeWorkspaceModel.snapshot(): WorkspaceSnapshot = WorkspaceSnapshot(
-        root = canonicalRoot.value,
-        compatibility = CompatibilitySnapshot(
-            ideBuild = compatibility.ideBuild.value,
-            kotlinPluginBuild = compatibility.kotlinPluginBuild.value,
-            kastPluginVersion = compatibility.kastPluginVersion.value,
-            runtimeProtocolIdentity = compatibility.runtimeProtocolIdentity.value,
-            operationRegistryDigest = compatibility.operationRegistryDigest.value,
-            wireSchemaDigest = compatibility.wireSchemaDigest.value,
-            capabilities = compatibility.capabilities.capabilities.map { capability ->
-                capability.operation.id.value
-            },
-        ),
-        modules = modules.map { module ->
-            ModuleSnapshot(
-                name = module.name.value,
-                buildRoot = module.owner.buildRoot.value,
-                projectRoot = module.owner.projectRoot.value,
-                projectIdentity = module.owner.projectIdentity.value,
-                sourceRoots = module.sourceRoots.map { root ->
-                    SourceRootSnapshot(root.location.value, root.kind)
-                },
-                sdk = SdkSnapshot(
-                    module.sdk.name.value,
-                    module.sdk.type.value,
-                    module.sdk.version.value,
-                ),
-                classpath = module.classpath.map { entry -> entry.url.value },
+                DetachedModelCapture.Captured::class.java,
+                captureDetachedFixture(DetachedModelObservation.Observed(boundary)),
             )
-        },
-    )
+            .model
+
+    private fun DetachedIdeWorkspaceModel.snapshot(): WorkspaceSnapshot =
+        WorkspaceSnapshot(
+            root = canonicalRoot.value,
+            compatibility =
+                CompatibilitySnapshot(
+                    ideBuild = compatibility.ideBuild.value,
+                    kotlinPluginBuild = compatibility.kotlinPluginBuild.value,
+                    kastPluginVersion = compatibility.kastPluginVersion.value,
+                    runtimeProtocolIdentity = compatibility.runtimeProtocolIdentity.value,
+                    operationRegistryDigest = compatibility.operationRegistryDigest.value,
+                    wireSchemaDigest = compatibility.wireSchemaDigest.value,
+                    capabilities =
+                        compatibility.capabilities.capabilities.map { capability ->
+                            capability.operation.id.value
+                        },
+                ),
+            modules =
+                modules.map { module ->
+                    ModuleSnapshot(
+                        name = module.name.value,
+                        buildRoot = module.owner.buildRoot.value,
+                        projectRoot = module.owner.projectRoot.value,
+                        projectIdentity = module.owner.projectIdentity.value,
+                        sourceRoots =
+                            module.sourceRoots.map { root ->
+                                SourceRootSnapshot(root.location.value, root.kind)
+                            },
+                        sdk =
+                            SdkSnapshot(
+                                module.sdk.name.value,
+                                module.sdk.type.value,
+                                module.sdk.version.value,
+                            ),
+                        classpath = module.classpath.map { entry -> entry.url.value },
+                    )
+                },
+        )
 
     @Suppress("UNCHECKED_CAST", "PLATFORM_CLASS_MAPPED_TO_KOTLIN")
     private fun <Value> assertJavaUnmodifiable(values: List<Value>, existing: Value) {
@@ -155,43 +165,55 @@ class DetachedModelTest {
             if (!inspected.add(owner.name)) continue
             observed += owner.name
             check(owner.typeParameters.isEmpty()) { "open generic authority ${owner.name}" }
-            owner.genericSuperclass?.takeUnless { type -> type == Any::class.java }?.let { type ->
-                observeType(type, "${owner.name} superclass", observed, pending)
-            }
+            owner.genericSuperclass
+                ?.takeUnless { type -> type == Any::class.java }
+                ?.let { type ->
+                    observeType(type, "${owner.name} superclass", observed, pending)
+                }
             owner.genericInterfaces.forEach { type -> observeType(type, "${owner.name} interface", observed, pending) }
-            owner.declaredFields.filter { field ->
-                Modifier.isPublic(field.modifiers) && !field.isSynthetic &&
-                    !(field.name == "Companion" && field.type.name.endsWith("\$Companion"))
-            }.forEach { field ->
-                observeType(field.genericType, field.toGenericString(), observed, pending)
-            }
-            owner.declaredConstructors.filter { constructor ->
-                Modifier.isPublic(constructor.modifiers) && !constructor.isSynthetic
-            }.forEach { constructor ->
-                constructor.genericParameterTypes.forEach { type ->
-                    observeType(type, constructor.toGenericString(), observed, pending)
+            owner.declaredFields
+                .filter { field ->
+                    Modifier.isPublic(field.modifiers) &&
+                        !field.isSynthetic &&
+                        !(field.name == "Companion" && field.type.name.endsWith("\$Companion"))
                 }
-            }
-            owner.declaredMethods.filter { method ->
-                Modifier.isPublic(method.modifiers) && !method.isSynthetic && !method.isBridge &&
-                    !method.isObjectProtocol()
-            }.forEach { method ->
-                observeType(method.genericReturnType, method.toGenericString(), observed, pending)
-                method.genericParameterTypes.forEach { type ->
-                    observeType(type, method.toGenericString(), observed, pending)
+                .forEach { field ->
+                    observeType(field.genericType, field.toGenericString(), observed, pending)
                 }
-            }
+            owner.declaredConstructors
+                .filter { constructor ->
+                    Modifier.isPublic(constructor.modifiers) && !constructor.isSynthetic
+                }
+                .forEach { constructor ->
+                    constructor.genericParameterTypes.forEach { type ->
+                        observeType(type, constructor.toGenericString(), observed, pending)
+                    }
+                }
+            owner.declaredMethods
+                .filter { method ->
+                    Modifier.isPublic(method.modifiers) &&
+                        !method.isSynthetic &&
+                        !method.isBridge &&
+                        !method.isObjectProtocol()
+                }
+                .forEach { method ->
+                    observeType(method.genericReturnType, method.toGenericString(), observed, pending)
+                    method.genericParameterTypes.forEach { type ->
+                        observeType(type, method.toGenericString(), observed, pending)
+                    }
+                }
         }
         return observed
     }
 
-    private fun Method.isObjectProtocol(): Boolean = when (name) {
-        "equals" -> returnType == Boolean::class.javaPrimitiveType &&
-            parameterTypes.contentEquals(arrayOf(Any::class.java))
-        "hashCode" -> returnType == Int::class.javaPrimitiveType && parameterCount == 0
-        "toString" -> returnType == String::class.java && parameterCount == 0
-        else -> false
-    }
+    private fun Method.isObjectProtocol(): Boolean =
+        when (name) {
+            "equals" ->
+                returnType == Boolean::class.javaPrimitiveType && parameterTypes.contentEquals(arrayOf(Any::class.java))
+            "hashCode" -> returnType == Int::class.javaPrimitiveType && parameterCount == 0
+            "toString" -> returnType == String::class.java && parameterCount == 0
+            else -> false
+        }
 
     private fun observeType(
         type: Type,
@@ -210,9 +232,11 @@ class DetachedModelTest {
             is GenericArrayType -> observeType(type.genericComponentType, context, observed, pending)
             is WildcardType -> {
                 type.lowerBounds.forEach { bound -> observeType(bound, context, observed, pending) }
-                type.upperBounds.filterNot { bound -> bound == Any::class.java }.forEach { bound ->
-                    observeType(bound, context, observed, pending)
-                }
+                type.upperBounds
+                    .filterNot { bound -> bound == Any::class.java }
+                    .forEach { bound ->
+                        observeType(bound, context, observed, pending)
+                    }
             }
             is TypeVariable<*> -> error("open generic authority $type at $context")
             else -> error("unsupported public type $type at $context")
@@ -277,76 +301,82 @@ class DetachedModelTest {
 
     private companion object {
         const val REPORT_PROPERTY = "kast.ide.detached.model.report"
-        val FORBIDDEN_PREFIXES = listOf(
-            "com.intellij.",
-            "org.jetbrains.plugins.gradle.",
-            "org.jetbrains.kotlin.",
-        )
-        val FORBIDDEN_CALLBACKS = setOf(
-            "java.lang.Runnable",
-            "java.util.concurrent.Callable",
-        )
+        val FORBIDDEN_PREFIXES =
+            listOf(
+                "com.intellij.",
+                "org.jetbrains.plugins.gradle.",
+                "org.jetbrains.kotlin.",
+            )
+        val FORBIDDEN_CALLBACKS =
+            setOf(
+                "java.lang.Runnable",
+                "java.util.concurrent.Callable",
+            )
 
-        val EXPECTED_MODEL = WorkspaceSnapshot(
-            root = "/workspace/kast",
-            compatibility = CompatibilitySnapshot(
-                ideBuild = "262.9437.185",
-                kotlinPluginBuild = "262.9437.185-IJ",
-                kastPluginVersion = "1.2.3",
-                runtimeProtocolIdentity = "kast.ide-hosted.runtime.v1",
-                operationRegistryDigest = "sha256:" + "1".repeat(64),
-                wireSchemaDigest = "sha256:" + "2".repeat(64),
-                capabilities = listOf(
-                    "index.sync",
-                    "topology.build",
-                    "symbol.discover",
-                    "symbol.inspect",
-                    "source.read",
-                    "relation.read",
-                    "traversal.run",
-                    "diagnostic.check",
-                    "change.plan",
-                    "change.apply",
-                    "change.recover",
-                ),
-            ),
-            modules = listOf(
-                ModuleSnapshot(
-                    name = "alpha",
-                    buildRoot = ".",
-                    projectRoot = "alpha",
-                    projectIdentity = ":alpha",
-                    sourceRoots = listOf(
-                        SourceRootSnapshot("alpha/src/main/kotlin", DetachedSourceRootKind.PRODUCTION),
-                        SourceRootSnapshot(
-                            "alpha/src/test/resources",
-                            DetachedSourceRootKind.TEST_RESOURCE,
+        val EXPECTED_MODEL =
+            WorkspaceSnapshot(
+                root = "/workspace/kast",
+                compatibility =
+                    CompatibilitySnapshot(
+                        ideBuild = "262.9437.185",
+                        kotlinPluginBuild = "262.9437.185-IJ",
+                        kastPluginVersion = "1.2.3",
+                        runtimeProtocolIdentity = "kast.ide-hosted.runtime.v1",
+                        operationRegistryDigest = "sha256:" + "1".repeat(64),
+                        wireSchemaDigest = "sha256:" + "2".repeat(64),
+                        capabilities =
+                            listOf(
+                                "index.sync",
+                                "topology.build",
+                                "symbol.discover",
+                                "symbol.inspect",
+                                "source.read",
+                                "relation.read",
+                                "traversal.run",
+                                "diagnostic.check",
+                                "change.plan",
+                                "change.apply",
+                                "change.recover",
+                            ),
+                    ),
+                modules =
+                    listOf(
+                        ModuleSnapshot(
+                            name = "alpha",
+                            buildRoot = ".",
+                            projectRoot = "alpha",
+                            projectIdentity = ":alpha",
+                            sourceRoots =
+                                listOf(
+                                    SourceRootSnapshot("alpha/src/main/kotlin", DetachedSourceRootKind.PRODUCTION),
+                                    SourceRootSnapshot(
+                                        "alpha/src/test/resources",
+                                        DetachedSourceRootKind.TEST_RESOURCE,
+                                    ),
+                                ),
+                            sdk = SdkSnapshot("Fixture JDK 21", "JavaSDK", "21.0.7"),
+                            classpath =
+                                listOf(
+                                    "file:///workspace/kast/.fixture/alpha.jar",
+                                    "file:///workspace/kast/.fixture/zeta.jar",
+                                ),
+                        ),
+                        ModuleSnapshot(
+                            name = "zeta",
+                            buildRoot = ".",
+                            projectRoot = "zeta",
+                            projectIdentity = ":zeta",
+                            sourceRoots =
+                                listOf(
+                                    SourceRootSnapshot(
+                                        "zeta/src/main/resources",
+                                        DetachedSourceRootKind.RESOURCE,
+                                    )
+                                ),
+                            sdk = SdkSnapshot("Fixture JDK 17", "JavaSDK", "17.0.12"),
+                            classpath = listOf("file:///workspace/kast/.fixture/zeta-runtime.jar"),
                         ),
                     ),
-                    sdk = SdkSnapshot("Fixture JDK 21", "JavaSDK", "21.0.7"),
-                    classpath = listOf(
-                        "file:///workspace/kast/.fixture/alpha.jar",
-                        "file:///workspace/kast/.fixture/zeta.jar",
-                    ),
-                ),
-                ModuleSnapshot(
-                    name = "zeta",
-                    buildRoot = ".",
-                    projectRoot = "zeta",
-                    projectIdentity = ":zeta",
-                    sourceRoots = listOf(
-                        SourceRootSnapshot(
-                            "zeta/src/main/resources",
-                            DetachedSourceRootKind.RESOURCE,
-                        ),
-                    ),
-                    sdk = SdkSnapshot("Fixture JDK 17", "JavaSDK", "17.0.12"),
-                    classpath = listOf(
-                        "file:///workspace/kast/.fixture/zeta-runtime.jar",
-                    ),
-                ),
-            ),
-        )
-
+            )
     }
 }

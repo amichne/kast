@@ -14,54 +14,41 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 
 @Serializable
 enum class QueryDeclarationKindDocument {
-    @SerialName("class")
-    CLASS,
-    @SerialName("constructor")
-    CONSTRUCTOR,
-    @SerialName("function")
-    FUNCTION,
-    @SerialName("property")
-    PROPERTY,
-    @SerialName("type-alias")
-    TYPE_ALIAS,
+    @SerialName("class") CLASS,
+    @SerialName("constructor") CONSTRUCTOR,
+    @SerialName("function") FUNCTION,
+    @SerialName("property") PROPERTY,
+    @SerialName("type-alias") TYPE_ALIAS,
 }
 
 @Serializable
 enum class QueryContainmentDocument {
-    @SerialName("direct")
-    DIRECT,
-    @SerialName("descendants")
-    DESCENDANTS,
+    @SerialName("direct") DIRECT,
+    @SerialName("descendants") DESCENDANTS,
 }
 
 @Serializable
 sealed interface QueryMatchDocument {
-    @Serializable
-    @SerialName("all")
-    data object All : QueryMatchDocument
+    @Serializable @SerialName("all") data object All : QueryMatchDocument
 
     @Serializable
     @SerialName("name")
     data class Name(
-        @ProtocolStringConstraint(maximumLength = 256)
-        val text: ProtocolText,
+        @ProtocolStringConstraint(maximumLength = 256) val text: ProtocolText,
         val matching: SymbolDiscoveryMatchDocument,
     ) : QueryMatchDocument
 }
 
 @Serializable
 data class QueryDirectoryScopeDocument(
-    @ProtocolStringConstraint(
-        pattern = "^(?:\\.|(?!/)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))(?!.*//)[^\\x00-\\x1F\\x7F]+)$",
-    )
+    @ProtocolStringConstraint(pattern = "^(?:\\.|(?!/)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))(?!.*//)[^\\x00-\\x1F\\x7F]+)$")
     val path: ProtocolText,
     val containment: QueryContainmentDocument,
 )
 
 @Serializable
 data class QueryPackageScopeDocument(
-    @ProtocolStringConstraint(pattern = "^(?!.*\\.(?:[0-9.]|$))[A-Za-z_][A-Za-z0-9_.]*$")
-    val name: ProtocolText,
+    @ProtocolStringConstraint(pattern = "^(?!.*\\.(?:[0-9.]|$))[A-Za-z_][A-Za-z0-9_.]*$") val name: ProtocolText,
     val containment: QueryContainmentDocument,
 )
 
@@ -90,15 +77,11 @@ sealed interface QueryReferenceDocument {
 
     @Serializable
     @SerialName("declaration-candidate")
-    data class DeclarationCandidate(
-        override val token: ProtocolText,
-    ) : QueryReferenceDocument
+    data class DeclarationCandidate(override val token: ProtocolText) : QueryReferenceDocument
 
     @Serializable
     @SerialName("exact-symbol")
-    data class ExactSymbol(
-        override val token: ProtocolText,
-    ) : QueryReferenceDocument
+    data class ExactSymbol(override val token: ProtocolText) : QueryReferenceDocument
 }
 
 @Serializable
@@ -112,7 +95,9 @@ sealed interface QueryFromDocument {
         @ProtocolAllowedValues("class", "function", "property", "type-alias")
         val declarationKinds: BoundedProtocolList<QueryDeclarationKindDocument>,
     ) : QueryFromDocument {
-        constructor(discovery: QueryDiscoveryDocument) : this(
+        constructor(
+            discovery: QueryDiscoveryDocument
+        ) : this(
             discovery.match,
             discovery.scope,
             discovery.declarationKinds,
@@ -131,7 +116,9 @@ sealed interface QueryFromDocument {
         @ProtocolAllowedValues("class", "function", "property", "type-alias")
         val declarationKinds: BoundedProtocolList<QueryDeclarationKindDocument>,
     ) : QueryFromDocument {
-        constructor(discovery: QueryDiscoveryDocument) : this(
+        constructor(
+            discovery: QueryDiscoveryDocument
+        ) : this(
             discovery.match,
             discovery.scope,
             discovery.declarationKinds,
@@ -146,22 +133,17 @@ sealed interface QueryFromDocument {
     data class References(
         @ProtocolCollectionConstraint(minimumItems = 1)
         @ProtocolHomogeneousCollection
-        val values: BoundedProtocolList<QueryReferenceDocument>,
+        val values: BoundedProtocolList<QueryReferenceDocument>
     ) : QueryFromDocument
 }
 
 @Serializable
 enum class QueryVisibilityDocument {
-    @SerialName("public")
-    PUBLIC,
-    @SerialName("protected")
-    PROTECTED,
-    @SerialName("internal")
-    INTERNAL,
-    @SerialName("private")
-    PRIVATE,
-    @SerialName("local")
-    LOCAL,
+    @SerialName("public") PUBLIC,
+    @SerialName("protected") PROTECTED,
+    @SerialName("internal") INTERNAL,
+    @SerialName("private") PRIVATE,
+    @SerialName("local") LOCAL,
 }
 
 @Serializable
@@ -170,42 +152,32 @@ sealed interface QueryPredicateDocument {
     @SerialName("visibility")
     data class Visibility(
         @ProtocolCollectionConstraint(minimumItems = 1, uniqueItems = true)
-        val values: BoundedProtocolList<QueryVisibilityDocument>,
+        val values: BoundedProtocolList<QueryVisibilityDocument>
     ) : QueryPredicateDocument
 }
 
 @Serializable
 sealed interface QueryStepDocument {
-    @Serializable
-    @SerialName("inspect")
-    data object Inspect : QueryStepDocument
-    @Serializable
-    @SerialName("where")
-    data class Where(val predicate: QueryPredicateDocument) : QueryStepDocument
-    @Serializable
-    @SerialName("related")
-    data class Related(val relation: RelationKindDocument) : QueryStepDocument
-    @Serializable
-    @SerialName("distinct")
-    data object Distinct : QueryStepDocument
+    @Serializable @SerialName("inspect") data object Inspect : QueryStepDocument
+
+    @Serializable @SerialName("where") data class Where(val predicate: QueryPredicateDocument) : QueryStepDocument
+
+    @Serializable @SerialName("related") data class Related(val relation: RelationKindDocument) : QueryStepDocument
+
+    @Serializable @SerialName("distinct") data object Distinct : QueryStepDocument
 }
 
 @Serializable
 enum class QueryCandidateFieldDocument {
-    @SerialName("name")
-    NAME,
-    @SerialName("location")
-    LOCATION,
+    @SerialName("name") NAME,
+    @SerialName("location") LOCATION,
 }
 
 @Serializable
 enum class QuerySymbolFieldDocument {
-    @SerialName("name")
-    NAME,
-    @SerialName("location")
-    LOCATION,
-    @SerialName("signature")
-    SIGNATURE,
+    @SerialName("name") NAME,
+    @SerialName("location") LOCATION,
+    @SerialName("signature") SIGNATURE,
 }
 
 @Serializable
@@ -213,28 +185,24 @@ sealed interface QueryOutputDocument {
     @Serializable
     @SerialName("candidates")
     data class Candidates(
-        @ProtocolCollectionConstraint(uniqueItems = true)
-        val fields: BoundedProtocolList<QueryCandidateFieldDocument>,
+        @ProtocolCollectionConstraint(uniqueItems = true) val fields: BoundedProtocolList<QueryCandidateFieldDocument>
     ) : QueryOutputDocument
 
     @Serializable
     @SerialName("symbols")
     data class Symbols(
-        @ProtocolCollectionConstraint(uniqueItems = true)
-        val fields: BoundedProtocolList<QuerySymbolFieldDocument>,
+        @ProtocolCollectionConstraint(uniqueItems = true) val fields: BoundedProtocolList<QuerySymbolFieldDocument>
     ) : QueryOutputDocument
 }
 
 @Serializable
 enum class QueryExecutionKindDocument {
-    @SerialName("exhaustive")
-    EXHAUSTIVE,
+    @SerialName("exhaustive") EXHAUSTIVE
 }
 
 @Serializable
 enum class QueryExecutionBudgetDocument {
-    @SerialName("interactive")
-    INTERACTIVE,
+    @SerialName("interactive") INTERACTIVE
 }
 
 @Serializable
@@ -262,8 +230,7 @@ internal object QueryRunRequestSerializer : KSerializer<QueryRunRequest> {
         delegate.serialize(encoder, value.requireCanonicalSyntax())
     }
 
-    override fun deserialize(decoder: Decoder): QueryRunRequest =
-        delegate.deserialize(decoder).requireCanonicalSyntax()
+    override fun deserialize(decoder: Decoder): QueryRunRequest = delegate.deserialize(decoder).requireCanonicalSyntax()
 }
 
 private fun QueryRunRequest.requireCanonicalSyntax(): QueryRunRequest =
@@ -271,12 +238,13 @@ private fun QueryRunRequest.requireCanonicalSyntax(): QueryRunRequest =
     else throw SerializationException("QueryRunRequest rejected non-canonical query syntax")
 
 private fun QueryRunRequest.hasCanonicalRequestSyntax(): Boolean {
-    val sourceIsCanonical = when (val source = from) {
-        is QueryFromDocument.Candidates -> source.discovery.isCanonical()
-        is QueryFromDocument.Symbols -> source.discovery.isCanonical()
-        is QueryFromDocument.References -> source.values.values.isNotEmpty() &&
-            source.values.values.map { it::class }.distinct().size == 1
-    }
+    val sourceIsCanonical =
+        when (val source = from) {
+            is QueryFromDocument.Candidates -> source.discovery.isCanonical()
+            is QueryFromDocument.Symbols -> source.discovery.isCanonical()
+            is QueryFromDocument.References ->
+                source.values.values.isNotEmpty() && source.values.values.map { it::class }.distinct().size == 1
+        }
     if (!sourceIsCanonical) return false
     if (steps.values.any { !it.hasCanonicalSyntax() }) return false
     return when (val projection = output) {
@@ -286,42 +254,41 @@ private fun QueryRunRequest.hasCanonicalRequestSyntax(): Boolean {
 }
 
 private fun QueryDiscoveryDocument.isCanonical(): Boolean {
-    if (!scope.sourceSets.values.isUniqueNonEmpty() ||
-        !declarationKinds.values.isUniqueNonEmpty()
-    ) return false
+    if (!scope.sourceSets.values.isUniqueNonEmpty() || !declarationKinds.values.isUniqueNonEmpty()) return false
     if (QueryDeclarationKindDocument.CONSTRUCTOR in declarationKinds.values) return false
     val name = match as? QueryMatchDocument.Name
     if (name != null && name.text.value.length > 256) return false
     val packageName = scope.packageName?.name?.value
     if (packageName != null && !QUERY_PACKAGE_NAME.matches(packageName)) return false
     val directory = scope.directory?.path?.value
-    if (directory != null && directory != "." &&
-        (directory.startsWith('/') || directory.any(Char::isISOControl) ||
-            directory.split('/').any { it.isBlank() || it == "." || it == ".." })
+    if (
+        directory != null &&
+            directory != "." &&
+            (directory.startsWith('/') ||
+                directory.any(Char::isISOControl) ||
+                directory.split('/').any { it.isBlank() || it == "." || it == ".." })
     ) {
         return false
     }
     return true
 }
 
-private fun QueryStepDocument.hasCanonicalSyntax(): Boolean = when (this) {
-    QueryStepDocument.Inspect,
-    is QueryStepDocument.Related,
-    QueryStepDocument.Distinct,
-        -> true
-    is QueryStepDocument.Where -> when (val value = predicate) {
-        is QueryPredicateDocument.Visibility -> value.values.values.isUniqueNonEmpty()
+private fun QueryStepDocument.hasCanonicalSyntax(): Boolean =
+    when (this) {
+        QueryStepDocument.Inspect,
+        is QueryStepDocument.Related,
+        QueryStepDocument.Distinct -> true
+        is QueryStepDocument.Where ->
+            when (val value = predicate) {
+                is QueryPredicateDocument.Visibility -> value.values.values.isUniqueNonEmpty()
+            }
     }
-}
 
-private fun <Value> List<Value>.isUniqueNonEmpty(): Boolean =
-    isNotEmpty() && isUnique()
+private fun <Value> List<Value>.isUniqueNonEmpty(): Boolean = isNotEmpty() && isUnique()
 
 private fun <Value> List<Value>.isUnique(): Boolean = size == distinct().size
 
-private val QUERY_PACKAGE_NAME = Regex(
-    "(?!.*\\.(?:[0-9.]|$))[A-Za-z_][A-Za-z0-9_.]*",
-)
+private val QUERY_PACKAGE_NAME = Regex("(?!.*\\.(?:[0-9.]|$))[A-Za-z_][A-Za-z0-9_.]*")
 
 data class QueryCandidateLocationDocument(
     val file: ProtocolText,
@@ -443,7 +410,9 @@ enum class QueryLimitationDocument {
     RELATION_INCOMPLETE,
 }
 
-enum class QueryKnownMinimumFailure { NEGATIVE }
+enum class QueryKnownMinimumFailure {
+    NEGATIVE
+}
 
 @JvmInline
 value class QueryKnownMinimum private constructor(val value: Int) {
@@ -454,9 +423,13 @@ value class QueryKnownMinimum private constructor(val value: Int) {
     }
 }
 
-enum class QueryRunQualificationFailure { EMPTY_LIMITATIONS, NON_CANONICAL_LIMITATIONS }
+enum class QueryRunQualificationFailure {
+    EMPTY_LIMITATIONS,
+    NON_CANONICAL_LIMITATIONS,
+}
 
-class QueryRunQualification private constructor(
+class QueryRunQualification
+private constructor(
     val knownMinimum: QueryKnownMinimum,
     val limitations: List<QueryLimitationDocument>,
 ) : OperationQualification {
@@ -464,24 +437,25 @@ class QueryRunQualification private constructor(
         fun create(
             knownMinimum: QueryKnownMinimum,
             limitations: List<QueryLimitationDocument>,
-        ): Refinement<QueryRunQualification, QueryRunQualificationFailure> = when {
-            limitations.isEmpty() ->
-                Refinement.Rejected(QueryRunQualificationFailure.EMPTY_LIMITATIONS)
-            limitations != limitations.distinct().sortedBy { it.ordinal } ->
-                Refinement.Rejected(QueryRunQualificationFailure.NON_CANONICAL_LIMITATIONS)
-            else -> Refinement.Refined(QueryRunQualification(knownMinimum, limitations.toList()))
-        }
+        ): Refinement<QueryRunQualification, QueryRunQualificationFailure> =
+            when {
+                limitations.isEmpty() -> Refinement.Rejected(QueryRunQualificationFailure.EMPTY_LIMITATIONS)
+                limitations != limitations.distinct().sortedBy { it.ordinal } ->
+                    Refinement.Rejected(QueryRunQualificationFailure.NON_CANONICAL_LIMITATIONS)
+                else -> Refinement.Refined(QueryRunQualification(knownMinimum, limitations.toList()))
+            }
     }
 
     override fun equals(other: Any?): Boolean =
-        other is QueryRunQualification &&
-            knownMinimum == other.knownMinimum &&
-            limitations == other.limitations
+        other is QueryRunQualification && knownMinimum == other.knownMinimum && limitations == other.limitations
 
     override fun hashCode(): Int = 31 * knownMinimum.hashCode() + limitations.hashCode()
 }
 
-enum class QueryElementTypeDocument { DECLARATION_CANDIDATE, EXACT_SYMBOL }
+enum class QueryElementTypeDocument {
+    DECLARATION_CANDIDATE,
+    EXACT_SYMBOL,
+}
 
 enum class QueryAdmissionCorrectionDocument {
     INSERT_INSPECT,
@@ -489,7 +463,9 @@ enum class QueryAdmissionCorrectionDocument {
     SELECT_SYMBOL_OUTPUT,
 }
 
-enum class QuerySourceRejectionReason { UNSUPPORTED_DECLARATION_KIND }
+enum class QuerySourceRejectionReason {
+    UNSUPPORTED_DECLARATION_KIND
+}
 
 enum class QueryReferenceRejectionReason {
     WRONG_KIND,

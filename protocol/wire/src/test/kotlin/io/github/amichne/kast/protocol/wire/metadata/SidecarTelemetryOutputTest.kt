@@ -9,10 +9,11 @@ class SidecarTelemetryOutputTest {
     fun `output is deterministic and owned by the exact socket state directory`() {
         val refinement = SidecarTelemetryOutput.fromSocketPath("/tmp/kast-runtime/kast-root.sock")
 
-        val output = when (refinement) {
-            is Refinement.Refined -> refinement.value
-            is Refinement.Rejected -> error(refinement.failure)
-        }
+        val output =
+            when (refinement) {
+                is Refinement.Refined -> refinement.value
+                is Refinement.Rejected -> error(refinement.failure)
+            }
         assertEquals(
             "/tmp/kast-runtime/kast-root.sock.state/otel",
             output.directoryPath.value,
@@ -28,10 +29,11 @@ class SidecarTelemetryOutputTest {
     fun `relative socket path is rejected`() {
         val refinement = SidecarTelemetryOutput.fromSocketPath("kast-root.sock")
 
-        val failure = when (refinement) {
-            is Refinement.Refined -> error(refinement.value)
-            is Refinement.Rejected -> refinement.failure
-        }
+        val failure =
+            when (refinement) {
+                is Refinement.Refined -> error(refinement.value)
+                is Refinement.Rejected -> refinement.failure
+            }
         assertEquals(SidecarTelemetryOutputFailure.NOT_ABSOLUTE, failure)
     }
 }

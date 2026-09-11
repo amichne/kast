@@ -12,9 +12,7 @@ class RenameSymbolVerificationTest {
 
     @Test
     fun `exact resulting rename proof is required for verified receipt`() {
-        val result = service(fixture.renameEvidence(applied)).verify(
-            fixture.request(plan, applied),
-        )
+        val result = service(fixture.renameEvidence(applied)).verify(fixture.request(plan, applied))
 
         val verified = assertInstanceOf(VerifiedMutationResult.Verified::class.java, result)
         assertEquals(plan.planId, verified.receipt.planId)
@@ -24,23 +22,24 @@ class RenameSymbolVerificationTest {
     @Test
     fun `old declaration remaining rejects resulting rename proof`() {
         val complete = fixture.renameEvidence(applied)
-        val rejectedDelta = ObservedRenameSymbolDelta.fromCompilerBoundary(
-            complete.observedDelta.oldName,
-            complete.observedDelta.newName,
-            1,
-            1,
-            0,
-            1,
-        ).refined()
+        val rejectedDelta =
+            ObservedRenameSymbolDelta.fromCompilerBoundary(
+                    complete.observedDelta.oldName,
+                    complete.observedDelta.newName,
+                    1,
+                    1,
+                    0,
+                    1,
+                )
+                .refined()
 
-        val result = service(complete.copy(observedDelta = rejectedDelta)).verify(
-            fixture.request(plan, applied),
-        )
+        val result = service(complete.copy(observedDelta = rejectedDelta)).verify(fixture.request(plan, applied))
 
-        val rejected = assertInstanceOf(
-            VerifiedMutationResult.RejectedAfterObservation::class.java,
-            result,
-        )
+        val rejected =
+            assertInstanceOf(
+                VerifiedMutationResult.RejectedAfterObservation::class.java,
+                result,
+            )
         assertEquals(setOf(RenameSymbolProofFailure.OLD_DECLARATION_REMAINS), rejected.failures)
     }
 

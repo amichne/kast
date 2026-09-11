@@ -10,36 +10,30 @@ import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 
 sealed interface IntellijNativeRelationResult {
-    data class Read(
-        val outcome: NativeRelationOutcome,
-    ) : IntellijNativeRelationResult
+    data class Read(val outcome: NativeRelationOutcome) : IntellijNativeRelationResult
 
-    data class Rejected(
-        val reason: IntellijNativeRelationRejection,
-    ) : IntellijNativeRelationResult
+    data class Rejected(val reason: IntellijNativeRelationRejection) : IntellijNativeRelationResult
 
-    data class ScopeRejected(
-        val failures: Set<IntellijSearchScopeFailure>,
-    ) : IntellijNativeRelationResult
+    data class ScopeRejected(val failures: Set<IntellijSearchScopeFailure>) : IntellijNativeRelationResult
 }
 
-class IntellijNativeRelationAdapter private constructor(
+class IntellijNativeRelationAdapter
+private constructor(
     private val scopeQuery: IntellijSearchScopeQueryAdapter = IntellijSearchScopeQueryAdapter(),
     private val semanticPolicy: IntellijRelationSemanticPolicy,
 ) {
-    constructor(semanticPolicy: IntellijRelationSemanticPolicy) :
-        this(IntellijSearchScopeQueryAdapter(), semanticPolicy)
+    constructor(
+        semanticPolicy: IntellijRelationSemanticPolicy
+    ) : this(IntellijSearchScopeQueryAdapter(), semanticPolicy)
 
     /**
-     * Proof transition:
-     * Project + current SemanticReadAuthority + NativeRelationRequest +
+     * Proof transition: Project + current SemanticReadAuthority + NativeRelationRequest +
      * WorkspaceSearchScopeModelCompilation to IntellijNativeRelationResult.
      *
-     * Establishes current exact root/authority admission, recompiles the selector's retained scope,
-     * and executes one bounded relation family inside a restartable write-priority IntelliJ read.
-     * Root/generation, scope, subject identity, environment, and bounded coverage failures are
-     * closed by [IntellijNativeRelationResult]. Platform cancellation propagates through
-     * [readAction]. No live IntelliJ value survives the request.
+     * Establishes current exact root/authority admission, recompiles the selector's retained scope, and executes one
+     * bounded relation family inside a restartable write-priority IntelliJ read. Root/generation, scope, subject
+     * identity, environment, and bounded coverage failures are closed by [IntellijNativeRelationResult]. Platform
+     * cancellation propagates through [readAction]. No live IntelliJ value survives the request.
      */
     suspend fun read(
         project: Project,
@@ -48,10 +42,11 @@ class IntellijNativeRelationAdapter private constructor(
         modelCompilation: WorkspaceSearchScopeModelCompilation,
     ): IntellijNativeRelationResult {
         when (
-            val admission = admitExactSelectorLease(
-                request.selector.lease,
-                currentLease,
-            )
+            val admission =
+                admitExactSelectorLease(
+                    request.selector.lease,
+                    currentLease,
+                )
         ) {
             IntellijExactSelectorLeaseAdmission.Admitted -> Unit
             is IntellijExactSelectorLeaseAdmission.Rejected ->
@@ -62,35 +57,38 @@ class IntellijNativeRelationAdapter private constructor(
                         IntellijExactSelectorRejection.GENERATION_MOVED ->
                             IntellijNativeRelationRejection.GENERATION_MOVED
                         else -> IntellijNativeRelationRejection.INTERNAL_INVARIANT
-                    },
+                    }
                 )
         }
         return readAction {
             when (
-                val scoped = scopeQuery.execute(
-                    project = project,
-                    request = SymbolSearchScopeRequest(
-                        request.selector.lease,
-                        request.selector.scope,
-                    ),
-                    modelCompilation = modelCompilation,
-                ) { compiledScope ->
-                    IntellijNativeRelationQuery(
-                        search = IntellijPsiNativeRelationSearch(project, semanticPolicy),
-                        projector = IntellijPsiRelationFactProjector,
-                        environmentState = { project.discoveryEnvironmentState() },
-                        cancellationCheck = ProgressManager::checkCanceled,
-                    ).read(compiledScope, request)
-                }
+                val scoped =
+                    scopeQuery.execute(
+                        project = project,
+                        request =
+                            SymbolSearchScopeRequest(
+                                request.selector.lease,
+                                request.selector.scope,
+                            ),
+                        modelCompilation = modelCompilation,
+                    ) { compiledScope ->
+                        IntellijNativeRelationQuery(
+                                search = IntellijPsiNativeRelationSearch(project, semanticPolicy),
+                                projector = IntellijPsiRelationFactProjector,
+                                environmentState = { project.discoveryEnvironmentState() },
+                                cancellationCheck = ProgressManager::checkCanceled,
+                            )
+                            .read(compiledScope, request)
+                    }
             ) {
-                is IntellijScopedQueryResult.Completed -> when (val execution = scoped.value) {
-                    is IntellijNativeRelationExecution.Produced ->
-                        IntellijNativeRelationResult.Read(execution.outcome)
-                    is IntellijNativeRelationExecution.Rejected ->
-                        IntellijNativeRelationResult.Rejected(execution.reason)
-                }
-                is IntellijScopedQueryResult.Rejected ->
-                    IntellijNativeRelationResult.ScopeRejected(scoped.failures)
+                is IntellijScopedQueryResult.Completed ->
+                    when (val execution = scoped.value) {
+                        is IntellijNativeRelationExecution.Produced ->
+                            IntellijNativeRelationResult.Read(execution.outcome)
+                        is IntellijNativeRelationExecution.Rejected ->
+                            IntellijNativeRelationResult.Rejected(execution.reason)
+                    }
+                is IntellijScopedQueryResult.Rejected -> IntellijNativeRelationResult.ScopeRejected(scoped.failures)
             }
         }
     }

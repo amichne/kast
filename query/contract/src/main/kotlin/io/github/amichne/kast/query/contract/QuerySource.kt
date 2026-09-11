@@ -26,13 +26,9 @@ enum class QueryCollectionFailure {
 }
 
 /** Non-empty declaration kinds requested from one discovery domain. */
-class QueryDeclarationKinds private constructor(
-    val values: List<CompilerSymbolKind>,
-) {
+class QueryDeclarationKinds private constructor(val values: List<CompilerSymbolKind>) {
     companion object {
-        fun from(
-            raw: Set<CompilerSymbolKind>,
-        ): Refinement<QueryDeclarationKinds, QueryCollectionFailure> =
+        fun from(raw: Set<CompilerSymbolKind>): Refinement<QueryDeclarationKinds, QueryCollectionFailure> =
             if (raw.isEmpty()) {
                 Refinement.Rejected(QueryCollectionFailure.EMPTY)
             } else {
@@ -40,8 +36,7 @@ class QueryDeclarationKinds private constructor(
             }
     }
 
-    override fun equals(other: Any?): Boolean =
-        other is QueryDeclarationKinds && values == other.values
+    override fun equals(other: Any?): Boolean = other is QueryDeclarationKinds && values == other.values
 
     override fun hashCode(): Int = values.hashCode()
 }
@@ -64,13 +59,9 @@ data class QueryDiscoverySyntax(
 )
 
 /** Non-empty declaration candidates from one semantic generation. */
-class QueryCandidateReferences private constructor(
-    val values: List<SymbolDiscoverySelection>,
-) {
+class QueryCandidateReferences private constructor(val values: List<SymbolDiscoverySelection>) {
     companion object {
-        fun from(
-            raw: List<SymbolDiscoverySelection>,
-        ): Refinement<QueryCandidateReferences, QueryCollectionFailure> {
+        fun from(raw: List<SymbolDiscoverySelection>): Refinement<QueryCandidateReferences, QueryCollectionFailure> {
             if (raw.isEmpty()) return Refinement.Rejected(QueryCollectionFailure.EMPTY)
             val lease = raw.first().lease
             return if (raw.any { it.lease != lease }) {
@@ -81,20 +72,15 @@ class QueryCandidateReferences private constructor(
         }
     }
 
-    override fun equals(other: Any?): Boolean =
-        other is QueryCandidateReferences && values == other.values
+    override fun equals(other: Any?): Boolean = other is QueryCandidateReferences && values == other.values
 
     override fun hashCode(): Int = values.hashCode()
 }
 
 /** Non-empty exact references whose generation authority cannot be reconstructed from text. */
-class QueryExactReferences private constructor(
-    val values: List<SymbolSelector>,
-) {
+class QueryExactReferences private constructor(val values: List<SymbolSelector>) {
     companion object {
-        fun from(
-            raw: List<SymbolSelector>,
-        ): Refinement<QueryExactReferences, QueryCollectionFailure> {
+        fun from(raw: List<SymbolSelector>): Refinement<QueryExactReferences, QueryCollectionFailure> {
             if (raw.isEmpty()) return Refinement.Rejected(QueryCollectionFailure.EMPTY)
             val lease = raw.first().lease
             return if (raw.any { it.lease != lease }) {
@@ -105,15 +91,17 @@ class QueryExactReferences private constructor(
         }
     }
 
-    override fun equals(other: Any?): Boolean =
-        other is QueryExactReferences && values == other.values
+    override fun equals(other: Any?): Boolean = other is QueryExactReferences && values == other.values
 
     override fun hashCode(): Int = values.hashCode()
 }
 
 sealed interface QuerySourceSyntax {
     data class Candidates(val discovery: QueryDiscoverySyntax) : QuerySourceSyntax
+
     data class Symbols(val discovery: QueryDiscoverySyntax) : QuerySourceSyntax
+
     data class CandidateReferences(val references: QueryCandidateReferences) : QuerySourceSyntax
+
     data class ExactReferences(val references: QueryExactReferences) : QuerySourceSyntax
 }

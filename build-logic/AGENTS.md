@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-11 | hash: 46374a803fb9 -->
+<!-- generated: 2026-09-11 | hash: 12942fb54d16 -->
 
 # build-logic
 
@@ -15,6 +15,9 @@ Defines reusable Gradle conventions, module roles, publication behavior, generat
 - [src/main/kotlin/kast.runtime-app.gradle.kts](src/main/kotlin/kast.runtime-app.gradle.kts) - runtime application convention.
 - [src/main/kotlin/support/architecture/ArchitectureModel.kt](src/main/kotlin/support/architecture/ArchitectureModel.kt) - architecture model.
 - [src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt](src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt) - admitted module topology.
+
+- [src/main/kotlin/kast.kotlin-quality.gradle.kts](src/main/kotlin/kast.kotlin-quality.gradle.kts) - shared formatting, Detekt, and structural gates.
+- [src/main/kotlin/conventions/KotlinFileLengthTask.kt](src/main/kotlin/conventions/KotlinFileLengthTask.kt) - production/test file-length enforcement.
 
 ## Subdirectories
 
@@ -32,5 +35,6 @@ Defines reusable Gradle conventions, module roles, publication behavior, generat
 
 - Start with the [repository knowledge](../knowledge/modules/architecture.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
+- For formatting or lint failures, start with `kast.kotlin-quality.gradle.kts`, then the reported rule or file-length task. Schema-generated Kotlin remains owned by its generator.
 - For a dependency-direction failure, start with the applied `kast/role` convention, then the policy validator.
 - For generated artifacts or publication, start in `src/main/kotlin/support/tasks` or `src/main/kotlin/support/publishing`.

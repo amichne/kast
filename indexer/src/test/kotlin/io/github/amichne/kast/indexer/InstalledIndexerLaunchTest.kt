@@ -1,14 +1,6 @@
 package io.github.amichne.kast.indexer
 
 import io.github.amichne.kast.runtime.composition.KastRuntimeDispatch
-import kotlinx.serialization.json.Json
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertInstanceOf
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.condition.EnabledOnOs
-import org.junit.jupiter.api.condition.OS
-import org.junit.jupiter.api.io.TempDir
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.channels.SocketChannel
@@ -18,21 +10,33 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlinx.serialization.json.Json
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.EnabledOnOs
+import org.junit.jupiter.api.condition.OS
+import org.junit.jupiter.api.io.TempDir
 
 class InstalledIndexerLaunchTest {
     private val runtimeId = "sha256:${"a".repeat(64)}"
 
-    @TempDir
-    lateinit var temporaryDirectory: Path
+    @TempDir lateinit var temporaryDirectory: Path
 
     @Test
     fun `alias replacement after preparation cannot bind or mutate foreign target`() {
         val physical = Files.createDirectories(temporaryDirectory.resolve("installation/state/run")).toRealPath()
         Files.setPosixFilePermissions(physical, PosixFilePermissions.fromString("rwx------"))
-        val aliasPreparation = io.github.amichne.kast.distribution.managed.endpoint.InstalledEndpointAliases.prepare(physical)
-        val receipt = assertInstanceOf(io.github.amichne.kast.kernel.Validation.Validated::class.java,
-            aliasPreparation, aliasPreparation.toString()).value as
-            io.github.amichne.kast.distribution.managed.endpoint.InstalledEndpointAliasReceipt
+        val aliasPreparation =
+            io.github.amichne.kast.distribution.managed.endpoint.InstalledEndpointAliases.prepare(physical)
+        val receipt =
+            assertInstanceOf(
+                    io.github.amichne.kast.kernel.Validation.Validated::class.java,
+                    aliasPreparation,
+                    aliasPreparation.toString(),
+                )
+                .value as io.github.amichne.kast.distribution.managed.endpoint.InstalledEndpointAliasReceipt
         val workspace = Files.createDirectory(temporaryDirectory.resolve("workspace")).toRealPath()
         val socket = receipt.alias.resolve("kast-${"a".repeat(24)}.sock")
         val endpoint = preparedEndpoint(admittedOptions(workspace, socket))
@@ -40,8 +44,12 @@ class InstalledIndexerLaunchTest {
         try {
             Files.delete(receipt.alias)
             Files.createSymbolicLink(receipt.alias, foreign)
-            val activation = InstalledIndexerTransport.activate(endpoint,
-                KastIndexerHost { error("No semantic request expected") }, authority = IndexerWireAuthority.Fixture)
+            val activation =
+                InstalledIndexerTransport.activate(
+                    endpoint,
+                    KastIndexerHost { error("No semantic request expected") },
+                    authority = IndexerWireAuthority.Fixture,
+                )
             if (activation is IndexerTransportActivation.Activated) activation.transport.close()
             assertInstanceOf(IndexerTransportActivation.Rejected::class.java, activation)
             assertTrue(Files.list(foreign).use { it.findAny().isEmpty })
@@ -56,15 +64,26 @@ class InstalledIndexerLaunchTest {
         val socket = temporaryDirectory.resolve("runtime/kast.sock").toAbsolutePath()
         val endpoint = preparedEndpoint(admittedOptions(workspace, socket))
         val observations = mutableListOf<IndexerRequestActivity>()
-        val transport = (InstalledIndexerTransport.activate(endpoint,
-            KastIndexerHost { error("No semantic request expected") },
-            activity = IndexerRequestActivitySink { observations.add(it) }, authority = IndexerWireAuthority.Fixture) as IndexerTransportActivation.Activated).transport
+        val transport =
+            (InstalledIndexerTransport.activate(
+                    endpoint,
+                    KastIndexerHost { error("No semantic request expected") },
+                    activity = IndexerRequestActivitySink { observations.add(it) },
+                    authority = IndexerWireAuthority.Fixture,
+                ) as IndexerTransportActivation.Activated)
+                .transport
         Files.delete(socket)
         Files.writeString(socket, "foreign marker")
         transport.close()
         assertEquals("foreign marker", Files.readString(socket))
-        assertTrue(observations.contains(IndexerRequestActivity(
-            IndexerRequestStage.TRANSPORT_CLOSE, IndexerRequestOutcome.RECOVERY_REQUIRED)))
+        assertTrue(
+            observations.contains(
+                IndexerRequestActivity(
+                    IndexerRequestStage.TRANSPORT_CLOSE,
+                    IndexerRequestOutcome.RECOVERY_REQUIRED,
+                )
+            )
+        )
     }
 
     @Test
@@ -72,14 +91,15 @@ class InstalledIndexerLaunchTest {
         val workspace = Files.createDirectory(temporaryDirectory.resolve("workspace")).toRealPath()
         val socket = temporaryDirectory.resolve("runtime/kast.sock").toAbsolutePath()
 
-        val admission = IndexerLaunchOptions.admit(
-            listOf(
-                KAST_INDEXER_COMMAND_NAME,
-                "--workspace-root=$workspace",
-                "--socket-path=$socket",
-                "--runtime-id=$runtimeId",
-            ),
-        )
+        val admission =
+            IndexerLaunchOptions.admit(
+                listOf(
+                    KAST_INDEXER_COMMAND_NAME,
+                    "--workspace-root=$workspace",
+                    "--socket-path=$socket",
+                    "--runtime-id=$runtimeId",
+                )
+            )
 
         val admitted = assertInstanceOf(IndexerLaunchAdmission.Admitted::class.java, admission)
         assertEquals(workspace, admitted.options.workspaceRoot)
@@ -92,16 +112,17 @@ class InstalledIndexerLaunchTest {
         val workspace = Files.createDirectory(temporaryDirectory.resolve("workspace")).toRealPath()
         val socket = temporaryDirectory.resolve("runtime/kast.sock").toAbsolutePath()
 
-        val admission = IndexerLaunchOptions.admit(
-            listOf(
-                KAST_INDEXER_COMMAND_NAME,
-                "--workspace-root=$workspace",
-                "--workspace-root=$workspace",
-                "--socket-path=$socket",
-                "--runtime-id=$runtimeId",
-                "--compatibility-mode=true",
-            ),
-        )
+        val admission =
+            IndexerLaunchOptions.admit(
+                listOf(
+                    KAST_INDEXER_COMMAND_NAME,
+                    "--workspace-root=$workspace",
+                    "--workspace-root=$workspace",
+                    "--socket-path=$socket",
+                    "--runtime-id=$runtimeId",
+                    "--compatibility-mode=true",
+                )
+            )
 
         val rejected = assertInstanceOf(IndexerLaunchAdmission.Rejected::class.java, admission)
         assertEquals(
@@ -120,28 +141,29 @@ class InstalledIndexerLaunchTest {
         val socketRoot = Files.createTempDirectory(Path.of("/tmp"), "kast-uds-")
         try {
             val socketFileName = "kast.sock"
-            val paddingBytes = MACOS_JDK_UNIX_SOCKET_PATH_MAX_BYTES -
-                               socketRoot.utf8ByteCount() -
-                               socketFileName.toByteArray(StandardCharsets.UTF_8).size -
-                               2
+            val paddingBytes =
+                MACOS_JDK_UNIX_SOCKET_PATH_MAX_BYTES -
+                    socketRoot.utf8ByteCount() -
+                    socketFileName.toByteArray(StandardCharsets.UTF_8).size -
+                    2
             assertTrue(paddingBytes > 0, "temporary socket root is too long")
 
-            val lexicalParent = Files.createDirectory(
-                socketRoot.resolve("x".repeat(paddingBytes)),
-            )
+            val lexicalParent = Files.createDirectory(socketRoot.resolve("x".repeat(paddingBytes)))
             val socket = lexicalParent.resolve(socketFileName)
             val canonicalSocket = lexicalParent.toRealPath().resolve(socketFileName)
             assertEquals(MACOS_JDK_UNIX_SOCKET_PATH_MAX_BYTES, socket.utf8ByteCount())
             assertTrue(canonicalSocket.utf8ByteCount() > MACOS_JDK_UNIX_SOCKET_PATH_MAX_BYTES)
 
-            val options = (IndexerLaunchOptions.admit(
-                listOf(
-                    KAST_INDEXER_COMMAND_NAME,
-                    "--workspace-root=$workspace",
-                    "--socket-path=$socket",
-                    "--runtime-id=$runtimeId",
-                ),
-            ) as IndexerLaunchAdmission.Admitted).options
+            val options =
+                (IndexerLaunchOptions.admit(
+                        listOf(
+                            KAST_INDEXER_COMMAND_NAME,
+                            "--workspace-root=$workspace",
+                            "--socket-path=$socket",
+                            "--runtime-id=$runtimeId",
+                        )
+                    ) as IndexerLaunchAdmission.Admitted)
+                    .options
             val endpoint = preparedEndpoint(options)
             assertEquals(
                 lexicalParent.toRealPath().resolve("$socketFileName.state"),
@@ -227,9 +249,10 @@ class InstalledIndexerLaunchTest {
         activatedTransport(endpoint).use { transport ->
             val executor = Executors.newSingleThreadExecutor()
             try {
-                val served = executor.submit<IndexerConnectionHandling> {
-                    transport.serveNext()
-                }
+                val served =
+                    executor.submit<IndexerConnectionHandling> {
+                        transport.serveNext()
+                    }
                 SocketChannel.open(StandardProtocolFamily.UNIX).use { client ->
                     client.connect(UnixDomainSocketAddress.of(socket))
                     assertEquals(
@@ -260,28 +283,32 @@ class InstalledIndexerLaunchTest {
     fun `prepared transport owns exact socket state and one canonical exchange`() {
         val workspace = Files.createDirectory(temporaryDirectory.resolve("workspace")).toRealPath()
         val socket = temporaryDirectory.resolve("runtime/kast.sock").toAbsolutePath()
-        val options = (IndexerLaunchOptions.admit(
-            listOf(
-                KAST_INDEXER_COMMAND_NAME,
-                "--workspace-root=$workspace",
-                "--socket-path=$socket",
-                "--runtime-id=$runtimeId",
-            ),
-        ) as IndexerLaunchAdmission.Admitted).options
+        val options =
+            (IndexerLaunchOptions.admit(
+                    listOf(
+                        KAST_INDEXER_COMMAND_NAME,
+                        "--workspace-root=$workspace",
+                        "--socket-path=$socket",
+                        "--runtime-id=$runtimeId",
+                    )
+                ) as IndexerLaunchAdmission.Admitted)
+                .options
         val endpoint = preparedEndpoint(options)
 
         assertTrue(Files.isDirectory(endpoint.stateDirectory))
         activatedTransport(endpoint).use { transport ->
             val executor = Executors.newSingleThreadExecutor()
             try {
-                val served = executor.submit<IndexerConnectionHandling> {
-                    transport.serveNext()
-                }
-                val response = SocketChannel.open(StandardProtocolFamily.UNIX).use { client ->
-                    client.connect(UnixDomainSocketAddress.of(socket))
-                    assertEquals(IndexerFrameWrite.Written, IndexerWireFrameCodec.write(client, "request"))
-                    IndexerWireFrameCodec.read(client)
-                }
+                val served =
+                    executor.submit<IndexerConnectionHandling> {
+                        transport.serveNext()
+                    }
+                val response =
+                    SocketChannel.open(StandardProtocolFamily.UNIX).use { client ->
+                        client.connect(UnixDomainSocketAddress.of(socket))
+                        assertEquals(IndexerFrameWrite.Written, IndexerWireFrameCodec.write(client, "request"))
+                        IndexerWireFrameCodec.read(client)
+                    }
 
                 assertEquals(IndexerFrameRead.Received("response:request"), response)
                 assertEquals(IndexerConnectionHandling.Admitted, served.get(5, TimeUnit.SECONDS))
@@ -295,34 +322,36 @@ class InstalledIndexerLaunchTest {
     private fun admittedOptions(
         workspace: Path,
         socket: Path,
-    ): IndexerLaunchOptions = (IndexerLaunchOptions.admit(
-        listOf(
-            KAST_INDEXER_COMMAND_NAME,
-            "--workspace-root=$workspace",
-            "--socket-path=$socket",
-            "--runtime-id=$runtimeId",
-        ),
-    ) as IndexerLaunchAdmission.Admitted).options
+    ): IndexerLaunchOptions =
+        (IndexerLaunchOptions.admit(
+                listOf(
+                    KAST_INDEXER_COMMAND_NAME,
+                    "--workspace-root=$workspace",
+                    "--socket-path=$socket",
+                    "--runtime-id=$runtimeId",
+                )
+            ) as IndexerLaunchAdmission.Admitted)
+            .options
 
     private fun preparedEndpoint(options: IndexerLaunchOptions): PreparedIndexerEndpoint =
         assertInstanceOf(
-            IndexerEndpointPreparation.Prepared::class.java,
-            PreparedIndexerEndpoint.prepare(options),
-        ).endpoint
+                IndexerEndpointPreparation.Prepared::class.java,
+                PreparedIndexerEndpoint.prepare(options),
+            )
+            .endpoint
 
-    private fun activatedTransport(
-        endpoint: PreparedIndexerEndpoint,
-    ): InstalledIndexerTransport = assertInstanceOf(
-        IndexerTransportActivation.Activated::class.java,
-        InstalledIndexerTransport.activate(
-            endpoint,
-            KastIndexerHost { request -> KastRuntimeDispatch.Responded("response:$request") },
-            authority = IndexerWireAuthority.Fixture,
-        ),
-    ).transport
+    private fun activatedTransport(endpoint: PreparedIndexerEndpoint): InstalledIndexerTransport =
+        assertInstanceOf(
+                IndexerTransportActivation.Activated::class.java,
+                InstalledIndexerTransport.activate(
+                    endpoint,
+                    KastIndexerHost { request -> KastRuntimeDispatch.Responded("response:$request") },
+                    authority = IndexerWireAuthority.Fixture,
+                ),
+            )
+            .transport
 }
 
 private const val MACOS_JDK_UNIX_SOCKET_PATH_MAX_BYTES = 102
 
-private fun Path.utf8ByteCount(): Int =
-    toString().toByteArray(StandardCharsets.UTF_8).size
+private fun Path.utf8ByteCount(): Int = toString().toByteArray(StandardCharsets.UTF_8).size

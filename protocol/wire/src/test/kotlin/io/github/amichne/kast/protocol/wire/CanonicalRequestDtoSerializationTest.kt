@@ -5,18 +5,20 @@ import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.IndexSyncRequest
-import io.github.amichne.kast.protocol.contract.QueryRunRequest
-import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint
 import io.github.amichne.kast.protocol.contract.ProtocolStringConstraint
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
+import java.security.MessageDigest
+import java.util.Base64
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -25,8 +27,6 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import java.security.MessageDigest
-import java.util.Base64
 
 class CanonicalRequestDtoSerializationTest {
     @Test
@@ -68,46 +68,48 @@ class CanonicalRequestDtoSerializationTest {
                       "textByteLimit":1,
                       "page":{"type":"first"}
                     }
-                """.trimIndent(),
+                """
+                    .trimIndent(),
             )
         }
         assertThrows(SerializationException::class.java) {
             strictJson.decodeFromString(
                 QueryRunRequest.serializer(),
                 """
-                    {
-                      "from":{
-                        "type":"symbols",
-                        "match":{"type":"all"},
-                        "scope":{
-                          "sourceSets":["main","main"],
-                          "directory":null,
-                          "packageName":null
-                        },
-                        "declarationKinds":["class"]
-                      },
-                      "steps":[],
-                      "output":{"type":"symbols","fields":["name"]},
-                      "execution":{"kind":"exhaustive","budget":"interactive"}
-                    }
-                """.trimIndent(),
+                {
+                  "from":{
+                    "type":"symbols",
+                    "match":{"type":"all"},
+                    "scope":{
+                      "sourceSets":["main","main"],
+                      "directory":null,
+                      "packageName":null
+                    },
+                    "declarationKinds":["class"]
+                  },
+                  "steps":[],
+                  "output":{"type":"symbols","fields":["name"]},
+                  "execution":{"kind":"exhaustive","budget":"interactive"}
+                }
+                """
+                    .trimIndent(),
             )
         }
     }
 
     @Test
     fun `serializer descriptors retain the constraints enforced during parsing`() {
-        val textConstraint = ProtocolText.serializer().descriptor.annotations
-            .filterIsInstance<ProtocolStringConstraint>()
-            .single()
-        val countConstraint = ProtocolCount.serializer().descriptor.annotations
-            .filterIsInstance<ProtocolIntegerConstraint>()
-            .single()
-        val collectionConstraint = QueryRunRequest.serializer().descriptor
-            .getElementDescriptor(1)
-            .annotations
-            .filterIsInstance<ProtocolCollectionConstraint>()
-            .single()
+        val textConstraint =
+            ProtocolText.serializer().descriptor.annotations.filterIsInstance<ProtocolStringConstraint>().single()
+        val countConstraint =
+            ProtocolCount.serializer().descriptor.annotations.filterIsInstance<ProtocolIntegerConstraint>().single()
+        val collectionConstraint =
+            QueryRunRequest.serializer()
+                .descriptor
+                .getElementDescriptor(1)
+                .annotations
+                .filterIsInstance<ProtocolCollectionConstraint>()
+                .single()
 
         assertEquals(1, textConstraint.minimumLength)
         assertEquals(1_048_576, textConstraint.maximumLength)
@@ -117,27 +119,29 @@ class CanonicalRequestDtoSerializationTest {
         assertEquals(1_000, collectionConstraint.maximumItems)
     }
 
-    private fun canonicalRequestSerializers(): List<KSerializer<*>> = listOf(
-        IndexSyncRequest.serializer(),
-        TopologyBuildRequest.serializer(),
-        SymbolDiscoverRequest.serializer(),
-        SymbolInspectRequest.serializer(),
-        SourceReadRequest.serializer(),
-        RelationReadRequest.serializer(),
-        TraversalRunRequest.serializer(),
-        QueryRunRequest.serializer(),
-        DiagnosticCheckRequest.serializer(),
-        ChangePlanRequest.serializer(),
-        ChangeApplyRequest.serializer(),
-        ChangeRecoverRequest.serializer(),
-    )
+    private fun canonicalRequestSerializers(): List<KSerializer<*>> =
+        listOf(
+            IndexSyncRequest.serializer(),
+            TopologyBuildRequest.serializer(),
+            SymbolDiscoverRequest.serializer(),
+            SymbolInspectRequest.serializer(),
+            SourceReadRequest.serializer(),
+            RelationReadRequest.serializer(),
+            TraversalRunRequest.serializer(),
+            QueryRunRequest.serializer(),
+            DiagnosticCheckRequest.serializer(),
+            ChangePlanRequest.serializer(),
+            ChangeApplyRequest.serializer(),
+            ChangeRecoverRequest.serializer(),
+        )
 
     private fun selector(family: String): String {
         val payload = "{}".encodeToByteArray()
         val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
-        val digest = MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { byte ->
-            (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-        }
+        val digest =
+            MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { byte ->
+                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+            }
         return "$family:v2:$encoded:$digest"
     }
 

@@ -18,39 +18,38 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 internal object CanonicalSourceReadCliDocuments {
-    fun project(
-        outcome: OperationOutcome<SourceReadResult, SourceReadQualification, SourceReadRejection>,
-    ) = projectClosedOutcome(
-        outcome,
-        complete = { result ->
-            completeFactory.create(
-                SourceReadCompleteCliDocument(
-                    operation = CanonicalOperation.SOURCE_READ.id.value,
-                    status = "complete",
-                    snapshot = result.snapshot.toCliDocument(),
-                    region = result.region.toCliDocument(),
-                    entities = result.entities.values.map(SourceEntityDocument::toCliDocument),
-                    text = result.text.toCliDocument(),
-                ),
-            )
-        },
-        qualified = { result, qualification ->
-            qualifiedFactory.create(
-                SourceReadQualifiedCliDocument(
-                    operation = CanonicalOperation.SOURCE_READ.id.value,
-                    status = "qualified",
-                    snapshot = result.snapshot.toCliDocument(),
-                    region = result.region.toCliDocument(),
-                    entities = result.entities.values.map(SourceEntityDocument::toCliDocument),
-                    text = result.text.toCliDocument(),
-                    qualification = qualification.toCliDocument(),
-                ),
-            )
-        },
-        rejected = { rejection ->
-            canonicalRejectedDocument(CanonicalOperation.SOURCE_READ, rejection.cliName())
-        },
-    )
+    fun project(outcome: OperationOutcome<SourceReadResult, SourceReadQualification, SourceReadRejection>) =
+        projectClosedOutcome(
+            outcome,
+            complete = { result ->
+                completeFactory.create(
+                    SourceReadCompleteCliDocument(
+                        operation = CanonicalOperation.SOURCE_READ.id.value,
+                        status = "complete",
+                        snapshot = result.snapshot.toCliDocument(),
+                        region = result.region.toCliDocument(),
+                        entities = result.entities.values.map(SourceEntityDocument::toCliDocument),
+                        text = result.text.toCliDocument(),
+                    )
+                )
+            },
+            qualified = { result, qualification ->
+                qualifiedFactory.create(
+                    SourceReadQualifiedCliDocument(
+                        operation = CanonicalOperation.SOURCE_READ.id.value,
+                        status = "qualified",
+                        snapshot = result.snapshot.toCliDocument(),
+                        region = result.region.toCliDocument(),
+                        entities = result.entities.values.map(SourceEntityDocument::toCliDocument),
+                        text = result.text.toCliDocument(),
+                        qualification = qualification.toCliDocument(),
+                    )
+                )
+            },
+            rejected = { rejection ->
+                canonicalRejectedDocument(CanonicalOperation.SOURCE_READ, rejection.cliName())
+            },
+        )
 }
 
 @Serializable
@@ -76,27 +75,42 @@ private data class SourceReadQualifiedCliDocument(
 
 @Serializable
 @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
-private data class SourceSnapshotCliDocument private constructor(
+private data class SourceSnapshotCliDocument
+private constructor(
     val canonicalRoot: String,
     val file: String,
     val textIdentity: String,
     val coordinateUnit: String,
     val length: Int,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER) val generation: Long? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER) val sourceState: String? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER) val live: LiveReadCliEvidence? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val sourceState: String? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val live: LiveReadCliEvidence? = null,
 ) {
     companion object {
-        fun from(snapshot: SourceSnapshotDocument): SourceSnapshotCliDocument = when (val context = snapshot.context) {
-            is io.github.amichne.kast.protocol.contract.SourceSnapshotContextDocument.Published -> SourceSnapshotCliDocument(
-                snapshot.canonicalRoot.value, snapshot.file.value, snapshot.textIdentity.value, snapshot.coordinateUnit.cliName(), snapshot.length.value,
-                generation = context.generation.value, sourceState = context.sourceState.value,
-            )
-            is io.github.amichne.kast.protocol.contract.SourceSnapshotContextDocument.Live -> SourceSnapshotCliDocument(
-                snapshot.canonicalRoot.value, snapshot.file.value, snapshot.textIdentity.value, snapshot.coordinateUnit.cliName(), snapshot.length.value,
-                live = LiveReadCliEvidence.from(context.evidence),
-            )
-        }
+        fun from(snapshot: SourceSnapshotDocument): SourceSnapshotCliDocument =
+            when (val context = snapshot.context) {
+                is io.github.amichne.kast.protocol.contract.SourceSnapshotContextDocument.Published ->
+                    SourceSnapshotCliDocument(
+                        snapshot.canonicalRoot.value,
+                        snapshot.file.value,
+                        snapshot.textIdentity.value,
+                        snapshot.coordinateUnit.cliName(),
+                        snapshot.length.value,
+                        generation = context.generation.value,
+                        sourceState = context.sourceState.value,
+                    )
+                is io.github.amichne.kast.protocol.contract.SourceSnapshotContextDocument.Live ->
+                    SourceSnapshotCliDocument(
+                        snapshot.canonicalRoot.value,
+                        snapshot.file.value,
+                        snapshot.textIdentity.value,
+                        snapshot.coordinateUnit.cliName(),
+                        snapshot.length.value,
+                        live = LiveReadCliEvidence.from(context.evidence),
+                    )
+            }
     }
 }
 
@@ -127,17 +141,11 @@ private sealed interface SourceDeclarationSemanticIdentityCliDocument {
 
 @Serializable
 private sealed interface SourceEntityTargetCliDocument {
-    @Serializable
-    @SerialName("candidate")
-    data class Candidate(val selector: String) : SourceEntityTargetCliDocument
+    @Serializable @SerialName("candidate") data class Candidate(val selector: String) : SourceEntityTargetCliDocument
 
-    @Serializable
-    @SerialName("local")
-    data class Local(val selector: String) : SourceEntityTargetCliDocument
+    @Serializable @SerialName("local") data class Local(val selector: String) : SourceEntityTargetCliDocument
 
-    @Serializable
-    @SerialName("unresolved")
-    data class Unresolved(val reason: String) : SourceEntityTargetCliDocument
+    @Serializable @SerialName("unresolved") data class Unresolved(val reason: String) : SourceEntityTargetCliDocument
 }
 
 @Serializable
@@ -186,9 +194,7 @@ private sealed interface SourceEntityCliDocument {
 
 @Serializable
 private sealed interface SourceTextProjectionCliDocument {
-    @Serializable
-    @SerialName("not-requested")
-    data object NotRequested : SourceTextProjectionCliDocument
+    @Serializable @SerialName("not-requested") data object NotRequested : SourceTextProjectionCliDocument
 
     @Serializable
     @SerialName("returned")
@@ -198,9 +204,7 @@ private sealed interface SourceTextProjectionCliDocument {
         val lines: SourceLineRangeCliDocument,
     ) : SourceTextProjectionCliDocument
 
-    @Serializable
-    @SerialName("withheld")
-    data class Withheld(val reason: String) : SourceTextProjectionCliDocument
+    @Serializable @SerialName("withheld") data class Withheld(val reason: String) : SourceTextProjectionCliDocument
 }
 
 @Serializable
@@ -212,9 +216,7 @@ private data class SourceReadQualificationCliDocument(
 
 @Serializable
 private sealed interface SourceReadContinuationCliDocument {
-    @Serializable
-    @SerialName("unavailable")
-    data object Unavailable : SourceReadContinuationCliDocument
+    @Serializable @SerialName("unavailable") data object Unavailable : SourceReadContinuationCliDocument
 
     @Serializable
     @SerialName("available")
@@ -223,87 +225,92 @@ private sealed interface SourceReadContinuationCliDocument {
 
 private fun SourceSnapshotDocument.toCliDocument() = SourceSnapshotCliDocument.from(this)
 
-private fun SourceRegionDocument.toCliDocument() = SourceRegionCliDocument(
-    kind.cliName(),
-    selection.toCliDocument(),
-)
-
-private fun SourceSelectionDocument.toCliDocument() = SourceSelectionCliDocument(
-    selector.value,
-    SourceSelectionRangeCliDocument(range.startInclusive.value, range.endExclusive.value),
-)
-
-private fun SourceEntityDocument.toCliDocument(): SourceEntityCliDocument = when (this) {
-    is SourceEntityDocument.Declaration -> SourceEntityCliDocument.Declaration(
+private fun SourceRegionDocument.toCliDocument() =
+    SourceRegionCliDocument(
         kind.cliName(),
-        name.value,
-        visibility.cliName(),
-        nestingDepth.value,
-        parentSelector.value,
-        selection.toCliDocument(),
-        semanticIdentity.toCliDocument(),
-    )
-    is SourceEntityDocument.ValueParameter -> SourceEntityCliDocument.ValueParameter(
-        name.value,
-        nestingDepth.value,
-        parentSelector.value,
         selection.toCliDocument(),
     )
-    is SourceEntityDocument.Call -> SourceEntityCliDocument.Call(
-        nestingDepth.value,
-        parentSelector.value,
-        selection.toCliDocument(),
-        callee.toCliDocument(),
-        target.toCliDocument(),
-    )
-    is SourceEntityDocument.Reference -> SourceEntityCliDocument.Reference(
-        name.value,
-        nestingDepth.value,
-        parentSelector.value,
-        selection.toCliDocument(),
-        target.toCliDocument(),
-    )
-}
 
-private fun SourceDeclarationSemanticIdentityDocument.toCliDocument():
-    SourceDeclarationSemanticIdentityCliDocument = when (this) {
-    is SourceDeclarationSemanticIdentityDocument.Candidate ->
-        SourceDeclarationSemanticIdentityCliDocument.Candidate(selector.value)
-}
+private fun SourceSelectionDocument.toCliDocument() =
+    SourceSelectionCliDocument(
+        selector.value,
+        SourceSelectionRangeCliDocument(range.startInclusive.value, range.endExclusive.value),
+    )
 
-private fun SourceEntityTargetDocument.toCliDocument(): SourceEntityTargetCliDocument = when (this) {
-    is SourceEntityTargetDocument.Candidate ->
-        SourceEntityTargetCliDocument.Candidate(selector.value)
-    is SourceEntityTargetDocument.Local -> SourceEntityTargetCliDocument.Local(selector.value)
-    is SourceEntityTargetDocument.Unresolved ->
-        SourceEntityTargetCliDocument.Unresolved(reason.cliName())
-}
+private fun SourceEntityDocument.toCliDocument(): SourceEntityCliDocument =
+    when (this) {
+        is SourceEntityDocument.Declaration ->
+            SourceEntityCliDocument.Declaration(
+                kind.cliName(),
+                name.value,
+                visibility.cliName(),
+                nestingDepth.value,
+                parentSelector.value,
+                selection.toCliDocument(),
+                semanticIdentity.toCliDocument(),
+            )
+        is SourceEntityDocument.ValueParameter ->
+            SourceEntityCliDocument.ValueParameter(
+                name.value,
+                nestingDepth.value,
+                parentSelector.value,
+                selection.toCliDocument(),
+            )
+        is SourceEntityDocument.Call ->
+            SourceEntityCliDocument.Call(
+                nestingDepth.value,
+                parentSelector.value,
+                selection.toCliDocument(),
+                callee.toCliDocument(),
+                target.toCliDocument(),
+            )
+        is SourceEntityDocument.Reference ->
+            SourceEntityCliDocument.Reference(
+                name.value,
+                nestingDepth.value,
+                parentSelector.value,
+                selection.toCliDocument(),
+                target.toCliDocument(),
+            )
+    }
+
+private fun SourceDeclarationSemanticIdentityDocument.toCliDocument(): SourceDeclarationSemanticIdentityCliDocument =
+    when (this) {
+        is SourceDeclarationSemanticIdentityDocument.Candidate ->
+            SourceDeclarationSemanticIdentityCliDocument.Candidate(selector.value)
+    }
+
+private fun SourceEntityTargetDocument.toCliDocument(): SourceEntityTargetCliDocument =
+    when (this) {
+        is SourceEntityTargetDocument.Candidate -> SourceEntityTargetCliDocument.Candidate(selector.value)
+        is SourceEntityTargetDocument.Local -> SourceEntityTargetCliDocument.Local(selector.value)
+        is SourceEntityTargetDocument.Unresolved -> SourceEntityTargetCliDocument.Unresolved(reason.cliName())
+    }
 
 private fun SourceTextProjectionDocument.toCliDocument(): SourceTextProjectionCliDocument =
     when (this) {
         SourceTextProjectionDocument.NotRequested -> SourceTextProjectionCliDocument.NotRequested
-        is SourceTextProjectionDocument.Returned -> SourceTextProjectionCliDocument.Returned(
-            selection.toCliDocument(),
-            text.value,
-            SourceLineRangeCliDocument(lines.startInclusive.value, lines.endInclusive.value),
-        )
-        is SourceTextProjectionDocument.Withheld ->
-            SourceTextProjectionCliDocument.Withheld(reason.cliName())
+        is SourceTextProjectionDocument.Returned ->
+            SourceTextProjectionCliDocument.Returned(
+                selection.toCliDocument(),
+                text.value,
+                SourceLineRangeCliDocument(lines.startInclusive.value, lines.endInclusive.value),
+            )
+        is SourceTextProjectionDocument.Withheld -> SourceTextProjectionCliDocument.Withheld(reason.cliName())
     }
 
-private fun SourceReadQualification.toCliDocument() = SourceReadQualificationCliDocument(
-    knownMinimumEntityCount.value,
-    limitations.map { it.cliName() },
-    when (val state = continuation) {
-        SourceReadContinuationStateDocument.Unavailable ->
-            SourceReadContinuationCliDocument.Unavailable
-        is SourceReadContinuationStateDocument.Available ->
-            SourceReadContinuationCliDocument.Available(state.continuation.value)
-    },
-)
+private fun SourceReadQualification.toCliDocument() =
+    SourceReadQualificationCliDocument(
+        knownMinimumEntityCount.value,
+        limitations.map { it.cliName() },
+        when (val state = continuation) {
+            SourceReadContinuationStateDocument.Unavailable -> SourceReadContinuationCliDocument.Unavailable
+            is SourceReadContinuationStateDocument.Available ->
+                SourceReadContinuationCliDocument.Available(state.continuation.value)
+        },
+    )
 
 private val completeFactory = CliJsonDocument.generated(SourceReadCompleteCliDocument.serializer())
 private val qualifiedFactory = CliJsonDocument.generated(SourceReadQualifiedCliDocument.serializer())
 
-@Serializable
-private data class SourceLineRangeCliDocument(val startInclusive: Long, val endInclusive: Long)
+@Serializable private data class SourceLineRangeCliDocument(val startInclusive: Long, val endInclusive: Long)

@@ -16,10 +16,12 @@ class CliMixedExposureTest {
     @Test
     fun `mixed family omits internal and unavailable leaves from parser and help registration`() {
         listOf(HostedExposure.INTERNAL_ONLY, HostedExposure.UNAVAILABLE).forEach { exposure ->
-            val definitions = CanonicalOperationDefinitions.all.map { definition ->
-                if (definition.operation == CanonicalOperation.SYMBOL_INSPECT) definition.copy(hostedExposure = exposure)
-                else definition
-            }
+            val definitions =
+                CanonicalOperationDefinitions.all.map { definition ->
+                    if (definition.operation == CanonicalOperation.SYMBOL_INSPECT)
+                        definition.copy(hostedExposure = exposure)
+                    else definition
+                }
             val family = symbolCommandGroup(canonicalCliRequestPreparers()).projectPublicDefinitions(definitions)
             assertEquals(listOf("discover"), family.root.registeredSubcommandNames())
             assertEquals(listOf(CanonicalOperation.SYMBOL_DISCOVER), family.semanticCommands.map { it.operation })

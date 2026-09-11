@@ -22,17 +22,17 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
-import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRejection
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryResult
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
+import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
@@ -45,13 +45,13 @@ import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertInstanceOf
-import org.junit.jupiter.api.Test
 import java.nio.file.Path
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Test
 
 class SymbolDiscoveryServiceTest {
     @Test
@@ -60,11 +60,12 @@ class SymbolDiscoveryServiceTest {
         val request = request(workspace.readLease)
         val compiler = RecordingCompiler(compilation(request))
         val trace = RecordingSymbolObservability()
-        val service = SymbolDiscoveryService(
-            WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
-            compiler,
-            trace,
-        )
+        val service =
+            SymbolDiscoveryService(
+                WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
+                compiler,
+                trace,
+            )
 
         val result = runSuspend { service.discover(request) }
 
@@ -79,7 +80,7 @@ class SymbolDiscoveryServiceTest {
                         KastSpanMeasurement.RecordCount(KastSpanCount.parse(0L).refined()),
                         KastSpanMeasurement.WorkUnitCount(KastSpanCount.parse(0L).refined()),
                     ),
-                ),
+                )
             ),
             trace.observations,
         )
@@ -94,17 +95,19 @@ class SymbolDiscoveryServiceTest {
 
         val stale = runSuspend {
             SymbolDiscoveryService(
-                WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
-                compiler,
-                trace,
-            ).discover(staleRequest)
+                    WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
+                    compiler,
+                    trace,
+                )
+                .discover(staleRequest)
         }
         val unavailable = runSuspend {
             SymbolDiscoveryService(
-                WorkspaceInspectionOperations { WorkspaceRuntimeState.Reconciling },
-                compiler,
-                trace,
-            ).discover(request(workspace.readLease))
+                    WorkspaceInspectionOperations { WorkspaceRuntimeState.Reconciling },
+                    compiler,
+                    trace,
+                )
+                .discover(request(workspace.readLease))
         }
 
         assertEquals(
@@ -131,16 +134,15 @@ class SymbolDiscoveryServiceTest {
         val request = request(workspace.readLease)
         val otherRequest = request(lease(generation = 8L))
         val trace = RecordingSymbolObservability()
-        val service = SymbolDiscoveryService(
-            WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
-            RecordingCompiler(compilation(otherRequest)),
-            trace,
-        )
+        val service =
+            SymbolDiscoveryService(
+                WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
+                RecordingCompiler(compilation(otherRequest)),
+                trace,
+            )
 
         assertEquals(
-            SymbolDiscoveryResult.Rejected(
-                SymbolDiscoveryRejection.COMPILER_CONTRACT_VIOLATION,
-            ),
+            SymbolDiscoveryResult.Rejected(SymbolDiscoveryRejection.COMPILER_CONTRACT_VIOLATION),
             runSuspend { service.discover(request) },
         )
         assertEquals(
@@ -153,16 +155,18 @@ class SymbolDiscoveryServiceTest {
     fun `workspace invalidation during compilation rejects the detached result`() {
         val workspace = published(generation = 7L)
         val request = request(workspace.readLease)
-        val states = ArrayDeque<WorkspaceRuntimeState>(
-            listOf(
-                WorkspaceRuntimeState.Ready(workspace),
-                WorkspaceRuntimeState.Reconciling,
-            ),
-        )
-        val service = SymbolDiscoveryService(
-            WorkspaceInspectionOperations { states.removeFirst() },
-            RecordingCompiler(compilation(request)),
-        )
+        val states =
+            ArrayDeque<WorkspaceRuntimeState>(
+                listOf(
+                    WorkspaceRuntimeState.Ready(workspace),
+                    WorkspaceRuntimeState.Reconciling,
+                )
+            )
+        val service =
+            SymbolDiscoveryService(
+                WorkspaceInspectionOperations { states.removeFirst() },
+                RecordingCompiler(compilation(request)),
+            )
 
         assertEquals(
             SymbolDiscoveryResult.Rejected(SymbolDiscoveryRejection.STALE_GENERATION),
@@ -174,70 +178,80 @@ class SymbolDiscoveryServiceTest {
         SymbolCompilation.Compiled(
             SymbolDiscoveryOutcome.Complete(
                 SymbolDiscoveryBatch.create(
-                    request = request,
-                    candidates = emptyList(),
-                    encodedBytes = SymbolDiscoveryByteCount.parse(0L).refined(),
-                    examinedWorkUnits = SymbolDiscoveryWorkCount.parse(0L).refined(),
-                    timings = SymbolDiscoveryTimings(
-                        nativeQuery = SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
-                        projection = SymbolDiscoveryElapsedNanoseconds.parse(0L).refined(),
-                    ),
-                ).refined(),
-            ),
+                        request = request,
+                        candidates = emptyList(),
+                        encodedBytes = SymbolDiscoveryByteCount.parse(0L).refined(),
+                        examinedWorkUnits = SymbolDiscoveryWorkCount.parse(0L).refined(),
+                        timings =
+                            SymbolDiscoveryTimings(
+                                nativeQuery = SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
+                                projection = SymbolDiscoveryElapsedNanoseconds.parse(0L).refined(),
+                            ),
+                    )
+                    .refined()
+            )
         )
 
-    private fun request(lease: SemanticReadLease): SymbolDiscoveryRequest = SymbolDiscoveryRequest(
-        scope = SymbolSearchScopeRequest(
-            lease = lease,
-            scope = SymbolSearchScope.Workspace(
-                sourceKinds = SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-                generatedSources = SymbolGeneratedSourcePolicy.INCLUDE,
-                libraries = SymbolLibraryPolicy.EXCLUDE,
-            ),
-        ),
-        target = SymbolDiscoveryTarget.Name(
-            kind = SymbolNameDiscoveryKind.SYMBOL,
-            pattern = SymbolDiscoveryPattern.parse("Service").refined(),
-            match = SymbolDiscoveryMatch.FUZZY,
-        ),
-        budget = SymbolDiscoveryBudget(
-            resources = ResourceBudget(
-                resultLimit = ResultLimit.parse(10).refined(),
-                workUnitLimit = WorkUnitLimit.parse(100L).refined(),
-                elapsedTimeLimit = ElapsedTimeLimitMillis.parse(1_000L).refined(),
-            ),
-            returnedBytes = SymbolDiscoveryByteLimit.parse(10_000L).refined(),
-        ),
-    )
+    private fun request(lease: SemanticReadLease): SymbolDiscoveryRequest =
+        SymbolDiscoveryRequest(
+            scope =
+                SymbolSearchScopeRequest(
+                    lease = lease,
+                    scope =
+                        SymbolSearchScope.Workspace(
+                            sourceKinds = SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                            generatedSources = SymbolGeneratedSourcePolicy.INCLUDE,
+                            libraries = SymbolLibraryPolicy.EXCLUDE,
+                        ),
+                ),
+            target =
+                SymbolDiscoveryTarget.Name(
+                    kind = SymbolNameDiscoveryKind.SYMBOL,
+                    pattern = SymbolDiscoveryPattern.parse("Service").refined(),
+                    match = SymbolDiscoveryMatch.FUZZY,
+                ),
+            budget =
+                SymbolDiscoveryBudget(
+                    resources =
+                        ResourceBudget(
+                            resultLimit = ResultLimit.parse(10).refined(),
+                            workUnitLimit = WorkUnitLimit.parse(100L).refined(),
+                            elapsedTimeLimit = ElapsedTimeLimitMillis.parse(1_000L).refined(),
+                        ),
+                    returnedBytes = SymbolDiscoveryByteLimit.parse(10_000L).refined(),
+                ),
+        )
 
     private fun published(generation: Long): PublishedWorkspace {
-        val candidate = WorkspaceCandidate(
-            root = root(),
-            sourceState = WorkspaceStateIdentity("source-state"),
-        )
-        val reconciled = ReconciledWorkspace.admit(
-            candidate,
-            WorkspaceEvidenceKind.entries.toSet(),
-        ).refined()
+        val candidate =
+            WorkspaceCandidate(
+                root = root(),
+                sourceState = WorkspaceStateIdentity("source-state"),
+            )
+        val reconciled =
+            ReconciledWorkspace.admit(
+                    candidate,
+                    WorkspaceEvidenceKind.entries.toSet(),
+                )
+                .refined()
         return PublishedWorkspace.publish(reconciled, evidenceGeneration(generation))
     }
 
-    private fun lease(generation: Long): SemanticReadLease =
-        SemanticReadLease(root(), evidenceGeneration(generation))
+    private fun lease(generation: Long): SemanticReadLease = SemanticReadLease(root(), evidenceGeneration(generation))
 
     private fun root(): CanonicalWorkspaceRoot =
         CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
 
-    private fun evidenceGeneration(value: Long): EvidenceGeneration =
-        EvidenceGeneration.parse(value).refined()
+    private fun evidenceGeneration(value: Long): EvidenceGeneration = EvidenceGeneration.parse(value).refined()
 
     private fun rejectedObservation(failure: KastSpanFailure): KastSpanObservation =
         KastSpanObservation(KastSpanCompletion.Rejected(failure))
 
-    private fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error(failure.toString())
-    }
+    private fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
 
     private fun <Value> runSuspend(block: suspend () -> Value): Value {
         var completion: Result<Value>? = null
@@ -248,7 +262,7 @@ class SymbolDiscoveryServiceTest {
                 override fun resumeWith(result: Result<Value>) {
                     completion = result
                 }
-            },
+            }
         )
         return checkNotNull(completion).getOrThrow()
     }
@@ -276,9 +290,7 @@ private class RecordingSymbolObservability : KastObservability, KastTraceSpan {
     }
 }
 
-private class RecordingCompiler(
-    private val result: SymbolCompilation,
-) : SymbolCompilerPort {
+private class RecordingCompiler(private val result: SymbolCompilation) : SymbolCompilerPort {
     val requests = mutableListOf<SymbolDiscoveryRequest>()
 
     override suspend fun compile(request: SymbolDiscoveryRequest): SymbolCompilation {

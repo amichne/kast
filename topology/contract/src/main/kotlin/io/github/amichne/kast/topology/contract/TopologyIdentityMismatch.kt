@@ -3,10 +3,16 @@ package io.github.amichne.kast.topology.contract
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 
 /** Active compiler operation whose target requires independent declaration binding. */
-enum class TopologyIdentityStage { REFERENCE_TARGET, DIRECT_OVERRIDE }
+enum class TopologyIdentityStage {
+    REFERENCE_TARGET,
+    DIRECT_OVERRIDE,
+}
 
 /** Whether extraction ran in this read epoch or reused detached evidence. */
-enum class TopologyCacheDisposition { COMPUTED, REUSED }
+enum class TopologyCacheDisposition {
+    COMPUTED,
+    REUSED,
+}
 
 /** Native binding failures are independent of compiler type presentation. */
 enum class TopologyBindingFailure {

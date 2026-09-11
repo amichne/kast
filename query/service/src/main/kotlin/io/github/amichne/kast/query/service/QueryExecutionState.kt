@@ -53,8 +53,8 @@ internal class QueryExecutionState(
     }
 
     /**
-     * Result authority is shared by sibling child calls in one stage. A stage may transform an
-     * existing stream without spending the previous stage's cardinality again.
+     * Result authority is shared by sibling child calls in one stage. A stage may transform an existing stream without
+     * spending the previous stage's cardinality again.
      */
     fun remainingResultCapacity(alreadyProduced: Int): Int? {
         val remaining = request.budget.resources.resultLimit.value - alreadyProduced
@@ -80,19 +80,15 @@ internal class QueryExecutionState(
         limit(QueryLimitation.DISCOVERY_INCOMPLETE)
         qualifications.forEach { qualification ->
             when (qualification) {
-                SymbolDiscoveryQualification.BYTE_LIMIT_REACHED ->
-                    limit(QueryLimitation.BYTE_LIMIT_REACHED)
-                SymbolDiscoveryQualification.WORK_LIMIT_REACHED ->
-                    limit(QueryLimitation.WORK_LIMIT_REACHED)
-                SymbolDiscoveryQualification.TIME_LIMIT_REACHED ->
-                    limit(QueryLimitation.TIME_LIMIT_REACHED)
+                SymbolDiscoveryQualification.BYTE_LIMIT_REACHED -> limit(QueryLimitation.BYTE_LIMIT_REACHED)
+                SymbolDiscoveryQualification.WORK_LIMIT_REACHED -> limit(QueryLimitation.WORK_LIMIT_REACHED)
+                SymbolDiscoveryQualification.TIME_LIMIT_REACHED -> limit(QueryLimitation.TIME_LIMIT_REACHED)
                 SymbolDiscoveryQualification.RESULT_LIMIT_REACHED,
                 SymbolDiscoveryQualification.DUMB_MODE_TRANSITION,
                 SymbolDiscoveryQualification.PROVIDER_FAILURE,
                 SymbolDiscoveryQualification.UNSCOPED_PROVIDER,
                 SymbolDiscoveryQualification.UNSUPPORTED_ITEM,
-                SymbolDiscoveryQualification.EXACT_DEFINITION_UNAVAILABLE,
-                    -> Unit
+                SymbolDiscoveryQualification.EXACT_DEFINITION_UNAVAILABLE -> Unit
             }
         }
     }
@@ -116,8 +112,7 @@ internal class QueryExecutionState(
                 RelationLimitation.UNRESOLVED_TARGET,
                 RelationLimitation.UNSUPPORTED_ITEM,
                 RelationLimitation.PROVIDER_FAILURE,
-                RelationLimitation.PROVIDER_INCOMPLETE,
-                    -> Unit
+                RelationLimitation.PROVIDER_INCOMPLETE -> Unit
             }
         }
     }
@@ -128,8 +123,7 @@ internal class QueryExecutionState(
         return values.take(limit)
     }
 
-    fun boundConnections(values: List<RelationFact>): List<RelationFact> =
-        boundResults(values.distinct().sorted())
+    fun boundConnections(values: List<RelationFact>): List<RelationFact> = boundResults(values.distinct().sorted())
 
     fun <Value> boundOutput(
         values: List<Value>,
@@ -142,8 +136,7 @@ internal class QueryExecutionState(
         }
     }
 
-    fun boundedFailures(): List<QueryItemFailure> =
-        boundOutput(failures.toList(), QueryItemFailure::projectedUtf8Size)
+    fun boundedFailures(): List<QueryItemFailure> = boundOutput(failures.toList(), QueryItemFailure::projectedUtf8Size)
 
     fun failure(failure: QueryItemFailure) {
         if (failures.size >= request.budget.resources.resultLimit.value) {
@@ -185,8 +178,7 @@ internal class QueryExecutionState(
         )
     }
 
-    private fun remainingWork(): Long =
-        (request.budget.resources.workUnitLimit.value - usedWork).coerceAtLeast(0L)
+    private fun remainingWork(): Long = (request.budget.resources.workUnitLimit.value - usedWork).coerceAtLeast(0L)
 
     private fun remainingBytes(): Long? {
         val remaining = (request.budget.returnedBytes.value - usedBytes).coerceAtLeast(0L)
@@ -220,19 +212,21 @@ internal class QueryExecutionState(
     }
 
     private companion object {
-        val recoverableRelationPageLimits = setOf(
-            RelationLimitation.RESULT_LIMIT_REACHED,
-            RelationLimitation.BYTE_LIMIT_REACHED,
-            RelationLimitation.WORK_LIMIT_REACHED,
-            RelationLimitation.TIME_LIMIT_REACHED,
-        )
+        val recoverableRelationPageLimits =
+            setOf(
+                RelationLimitation.RESULT_LIMIT_REACHED,
+                RelationLimitation.BYTE_LIMIT_REACHED,
+                RelationLimitation.WORK_LIMIT_REACHED,
+                RelationLimitation.TIME_LIMIT_REACHED,
+            )
     }
 }
 
-private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-    is Refinement.Refined -> value
-    is Refinement.Rejected -> error("Internally derived query value violated its invariant: $failure")
-}
+private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error("Internally derived query value violated its invariant: $failure")
+    }
 
 internal fun saturatedAdd(left: Long, right: Long): Long =
     if (right > Long.MAX_VALUE - left) Long.MAX_VALUE else left + right

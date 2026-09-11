@@ -37,12 +37,15 @@ enum class DurableChangeAuthorityFailure {
 
 sealed interface ChangePlanIssuance {
     data class Issued(val identity: ChangePlanIdentity) : ChangePlanIssuance
+
     data class Rejected(val failure: DurableChangeAuthorityFailure) : ChangePlanIssuance
 }
 
 sealed interface ChangePlanLookup {
     data class Found(val plan: ChangePlan) : ChangePlanLookup
+
     data object Missing : ChangePlanLookup
+
     data class Rejected(val failure: DurableChangeAuthorityFailure) : ChangePlanLookup
 }
 
@@ -53,17 +56,21 @@ data class PendingChangeVerification(
 
 sealed interface ChangeApplicationIssuance {
     data class Issued(val identity: ChangeApplicationIdentity) : ChangeApplicationIssuance
+
     data class Rejected(val failure: DurableChangeAuthorityFailure) : ChangeApplicationIssuance
 }
 
 sealed interface ChangeApplicationLookup {
     data class Found(val application: PendingChangeVerification) : ChangeApplicationLookup
+
     data object Missing : ChangeApplicationLookup
+
     data class Rejected(val failure: DurableChangeAuthorityFailure) : ChangeApplicationLookup
 }
 
 sealed interface ChangeReceiptIssuance {
     data class Issued(val identity: ChangeReceiptIdentity) : ChangeReceiptIssuance
+
     data class Rejected(val failure: DurableChangeAuthorityFailure) : ChangeReceiptIssuance
 }
 

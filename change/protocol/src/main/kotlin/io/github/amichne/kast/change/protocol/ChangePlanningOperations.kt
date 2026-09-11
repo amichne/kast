@@ -9,4 +9,3 @@ class ChangePlanningOperations(
     val replaceDeclaration: ReplaceDeclarationPlanOperations,
     val renameSymbol: RenameSymbolPlanOperations,
 )
-

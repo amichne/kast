@@ -1,24 +1,24 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.appserver.host.CliRemoteClientHost
 import io.github.amichne.kast.appserver.host.CodexIntegrationHost
 import io.github.amichne.kast.appserver.host.DesktopStdioHost
-import io.github.amichne.kast.appserver.host.admission.CodexServiceInvocation
 import io.github.amichne.kast.appserver.host.admission.CodexHostInvocation
-import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
+import io.github.amichne.kast.appserver.host.admission.CodexServiceInvocation
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnector
 import io.github.amichne.kast.appserver.runtime.connectCodexUnixWebSocket
 import io.github.amichne.kast.kernel.Refinement
-import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import java.io.IOException
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
-import kotlin.system.exitProcess
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 
 sealed interface CodexIntegrationRun {
     data class Completed(val exitCode: Int) : CodexIntegrationRun
+
     data class Rejected(val failure: CodexIntegrationFailure) : CodexIntegrationRun
 }
 
@@ -37,56 +37,67 @@ enum class CodexIntegrationFailure {
 }
 
 suspend fun runInstalledCodex(arguments: List<String>, kast: Path): CodexIntegrationRun {
-    val requested = when (val admitted = CodexHostInvocation.admit(arguments)) {
-        is Refinement.Refined -> admitted.value
-        is Refinement.Rejected -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.ARGUMENTS_REJECTED)
-    }
-    val invocation = when (val admitted = CodexServiceInvocation.admit(requested)) {
-        is Refinement.Refined -> admitted.value
-        is Refinement.Rejected -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.ARGUMENTS_REJECTED)
-    }
+    val requested =
+        when (val admitted = CodexHostInvocation.admit(arguments)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.ARGUMENTS_REJECTED)
+        }
+    val invocation =
+        when (val admitted = CodexServiceInvocation.admit(requested)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.ARGUMENTS_REJECTED)
+        }
     if (System.getenv().containsKey("KAST_SAVED_CONFIGURATION_FAILURE")) {
         return CodexIntegrationRun.Rejected(CodexIntegrationFailure.CONFIGURATION_REJECTED)
     }
-    val launch = when (val admitted = BrokerServiceLaunchCommand.resolve(kast, Path.of(System.getProperty("user.home")), System.getenv())) {
-        is BrokerServiceLaunchCommandResolution.Resolved -> admitted.command
-        is BrokerServiceLaunchCommandResolution.Rejected -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.CONFIGURATION_REJECTED)
-    }
-    val codex = when (val host = launch.host) {
-        is BrokerHostSelection.Selected -> host.executable
-        BrokerHostSelection.Disabled, BrokerHostSelection.NotConfigured -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.CLIENT_UNAVAILABLE)
-    }
+    val launch =
+        when (
+            val admitted =
+                BrokerServiceLaunchCommand.resolve(kast, Path.of(System.getProperty("user.home")), System.getenv())
+        ) {
+            is BrokerServiceLaunchCommandResolution.Resolved -> admitted.command
+            is BrokerServiceLaunchCommandResolution.Rejected ->
+                return CodexIntegrationRun.Rejected(CodexIntegrationFailure.CONFIGURATION_REJECTED)
+        }
+    val codex =
+        when (val host = launch.host) {
+            is BrokerHostSelection.Selected -> host.executable
+            BrokerHostSelection.Disabled,
+            BrokerHostSelection.NotConfigured ->
+                return CodexIntegrationRun.Rejected(CodexIntegrationFailure.CLIENT_UNAVAILABLE)
+        }
     when (MacOsPersistentBrokerServiceHost().ensure(launch)) {
         PersistentBrokerServiceAdmission.Ready -> Unit
-        is PersistentBrokerServiceAdmission.Rejected -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.BROKER_REJECTED)
+        is PersistentBrokerServiceAdmission.Rejected ->
+            return CodexIntegrationRun.Rejected(CodexIntegrationFailure.BROKER_REJECTED)
     }
-    val host: CodexIntegrationHost = when (invocation) {
-        is CodexServiceInvocation.Cli -> {
-            val workingDirectory = CanonicalBrokerDirectory.admit(
-                Path.of(System.getProperty("user.dir")),
-            ) ?: return CodexIntegrationRun.Rejected(
-                CodexIntegrationFailure.WORKING_DIRECTORY_REJECTED,
-            )
-            CliRemoteClientHost(
-                codex,
-                launch.publicSocket,
-                invocation.arguments,
-                workingDirectory,
-            )
-        }
-        CodexServiceInvocation.Stdio -> DesktopStdioHost(
-            System.`in`,
-            System.out,
-            BrokerUpstreamConnector {
-                connectCodexUnixWebSocket(
+    val host: CodexIntegrationHost =
+        when (invocation) {
+            is CodexServiceInvocation.Cli -> {
+                val workingDirectory =
+                    CanonicalBrokerDirectory.admit(Path.of(System.getProperty("user.dir")))
+                        ?: return CodexIntegrationRun.Rejected(CodexIntegrationFailure.WORKING_DIRECTORY_REJECTED)
+                CliRemoteClientHost(
+                    codex,
                     launch.publicSocket,
-                    BrokerOperationalLimits.maximumClientMessageBytes,
-                    CONNECTION_TIMEOUT_MILLIS,
+                    invocation.arguments,
+                    workingDirectory,
                 )
-            },
-            BrokerOperationalLimits.maximumClientMessageBytes,
-        )
-    }
+            }
+            CodexServiceInvocation.Stdio ->
+                DesktopStdioHost(
+                    System.`in`,
+                    System.out,
+                    BrokerUpstreamConnector {
+                        connectCodexUnixWebSocket(
+                            launch.publicSocket,
+                            BrokerOperationalLimits.maximumClientMessageBytes,
+                            CONNECTION_TIMEOUT_MILLIS,
+                        )
+                    },
+                    BrokerOperationalLimits.maximumClientMessageBytes,
+                )
+        }
     return host.run { /* The service outlives this attachment. */ }
 }
 
@@ -94,12 +105,18 @@ private val CONNECTION_TIMEOUT_MILLIS = BrokerOperationalLimits.clientConnect.va
 
 internal interface CodexIntegrationShutdownHooks {
     fun register(hook: Thread)
+
     fun remove(hook: Thread)
 }
 
 internal object JvmCodexIntegrationShutdownHooks : CodexIntegrationShutdownHooks {
-    override fun register(hook: Thread) { Runtime.getRuntime().addShutdownHook(hook) }
-    override fun remove(hook: Thread) { Runtime.getRuntime().removeShutdownHook(hook) }
+    override fun register(hook: Thread) {
+        Runtime.getRuntime().addShutdownHook(hook)
+    }
+
+    override fun remove(hook: Thread) {
+        Runtime.getRuntime().removeShutdownHook(hook)
+    }
 }
 
 internal suspend fun runOwnedCodexClient(
@@ -110,62 +127,79 @@ internal suspend fun runOwnedCodexClient(
     val lifetime = OwnedCodexIntegration(closeServer)
     val hook = Thread({ lifetime.close() }, "kast-codex-shutdown")
     return try {
-        val result = try {
-            shutdownHooks.register(hook)
-            when (val started = lifetime.startClient(startClient)) {
-                is CodexClientStart.Started -> CodexIntegrationRun.Completed(started.client.waitFor())
-                CodexClientStart.Shutdown -> CodexIntegrationRun.Rejected(CodexIntegrationFailure.INTERRUPTED)
+        val result =
+            try {
+                shutdownHooks.register(hook)
+                when (val started = lifetime.startClient(startClient)) {
+                    is CodexClientStart.Started -> CodexIntegrationRun.Completed(started.client.waitFor())
+                    CodexClientStart.Shutdown -> CodexIntegrationRun.Rejected(CodexIntegrationFailure.INTERRUPTED)
+                }
+            } catch (_: IOException) {
+                CodexIntegrationRun.Rejected(CodexIntegrationFailure.CLIENT_UNAVAILABLE)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                CodexIntegrationRun.Rejected(CodexIntegrationFailure.INTERRUPTED)
+            } catch (_: IllegalStateException) {
+                // Shutdown-hook registration rejects when JVM shutdown has already begun.
+                CodexIntegrationRun.Rejected(CodexIntegrationFailure.INTERRUPTED)
             }
-        } catch (_: IOException) {
-            CodexIntegrationRun.Rejected(CodexIntegrationFailure.CLIENT_UNAVAILABLE)
-        } catch (_: InterruptedException) {
-            Thread.currentThread().interrupt()
-            CodexIntegrationRun.Rejected(CodexIntegrationFailure.INTERRUPTED)
-        } catch (_: IllegalStateException) {
-            // Shutdown-hook registration rejects when JVM shutdown has already begun.
-            CodexIntegrationRun.Rejected(CodexIntegrationFailure.INTERRUPTED)
-        }
         when (lifetime.close()) {
             CodexIntegrationShutdown.COMPLETED -> result
             CodexIntegrationShutdown.CLIENT_UNREAPED,
             CodexIntegrationShutdown.SERVER_TIMED_OUT,
             CodexIntegrationShutdown.SERVER_INTERRUPTED,
-            CodexIntegrationShutdown.FAILED,
-                -> CodexIntegrationRun.Rejected(CodexIntegrationFailure.SHUTDOWN_REJECTED)
+            CodexIntegrationShutdown.FAILED -> CodexIntegrationRun.Rejected(CodexIntegrationFailure.SHUTDOWN_REJECTED)
         }
     } finally {
         try {
             lifetime.close()
         } finally {
-            try { shutdownHooks.remove(hook) } catch (_: IllegalStateException) { /* Shutdown still owns its registered hook. */ }
+            try {
+                shutdownHooks.remove(hook)
+            } catch (_: IllegalStateException) {
+                /* Shutdown still owns its registered hook. */
+            }
         }
     }
 }
 
 private sealed interface CodexClientStart {
     class Started(val client: Process) : CodexClientStart
+
     data object Shutdown : CodexClientStart
 }
 
-private enum class CodexIntegrationShutdown { COMPLETED, CLIENT_UNREAPED, SERVER_TIMED_OUT, SERVER_INTERRUPTED, FAILED }
+private enum class CodexIntegrationShutdown {
+    COMPLETED,
+    CLIENT_UNREAPED,
+    SERVER_TIMED_OUT,
+    SERVER_INTERRUPTED,
+    FAILED,
+}
 
 /** The lock spans cleanup so concurrent hook and normal completion join the same owned transition. */
 private class OwnedCodexIntegration(private val closeServer: suspend () -> Unit) {
     private sealed interface State {
         data object AwaitingClient : State
+
         class Running(val client: Process) : State
+
         class Released(val result: CodexIntegrationShutdown) : State
     }
+
     private var state: State = State.AwaitingClient
 
     @Synchronized
-    fun startClient(start: () -> Process): CodexClientStart = when (state) {
-        State.AwaitingClient -> start().let { client ->
-            state = State.Running(client)
-            CodexClientStart.Started(client)
+    fun startClient(start: () -> Process): CodexClientStart =
+        when (state) {
+            State.AwaitingClient ->
+                start().let { client ->
+                    state = State.Running(client)
+                    CodexClientStart.Started(client)
+                }
+            is State.Running,
+            is State.Released -> CodexClientStart.Shutdown
         }
-        is State.Running, is State.Released -> CodexClientStart.Shutdown
-    }
 
     @Synchronized
     fun close(): CodexIntegrationShutdown {
@@ -180,15 +214,32 @@ private class OwnedCodexIntegration(private val closeServer: suspend () -> Unit)
                     val client = owned.client
                     client.destroy()
                     try {
-                        if (!client.waitFor(BrokerOperationalLimits.clientProcessRetirementWait.value, TimeUnit.MILLISECONDS)) {
+                        if (
+                            !client.waitFor(
+                                BrokerOperationalLimits.clientProcessRetirementWait.value,
+                                TimeUnit.MILLISECONDS,
+                            )
+                        ) {
                             client.destroyForcibly()
-                            if (!client.waitFor(BrokerOperationalLimits.clientProcessRetirementWait.value, TimeUnit.MILLISECONDS)) result = CodexIntegrationShutdown.CLIENT_UNREAPED
+                            if (
+                                !client.waitFor(
+                                    BrokerOperationalLimits.clientProcessRetirementWait.value,
+                                    TimeUnit.MILLISECONDS,
+                                )
+                            )
+                                result = CodexIntegrationShutdown.CLIENT_UNREAPED
                         }
                     } catch (_: InterruptedException) {
                         interrupted = true
                         client.destroyForcibly()
                         try {
-                            if (!client.waitFor(BrokerOperationalLimits.clientProcessRetirementWait.value, TimeUnit.MILLISECONDS)) result = CodexIntegrationShutdown.CLIENT_UNREAPED
+                            if (
+                                !client.waitFor(
+                                    BrokerOperationalLimits.clientProcessRetirementWait.value,
+                                    TimeUnit.MILLISECONDS,
+                                )
+                            )
+                                result = CodexIntegrationShutdown.CLIENT_UNREAPED
                         } catch (_: InterruptedException) {
                             interrupted = true
                             result = CodexIntegrationShutdown.CLIENT_UNREAPED

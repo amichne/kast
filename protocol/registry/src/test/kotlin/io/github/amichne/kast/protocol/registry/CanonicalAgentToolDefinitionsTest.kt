@@ -84,8 +84,10 @@ class CanonicalAgentToolDefinitionsTest {
         )
         assertEquals(HostedApprovalPolicy.NONE, CanonicalAgentToolDefinitions.symbolLookup.approval)
         assertEquals(HostedToolLoading.DEFERRED, CanonicalAgentToolDefinitions.query.loading)
-        assertEquals(listOf("search_classes", "search_functions", "search_declarations", "check_diagnostics"),
-            CanonicalAgentToolDefinitions.all.filter { it.loading == HostedToolLoading.EAGER }.map { it.name.value })
+        assertEquals(
+            listOf("search_classes", "search_functions", "search_declarations", "check_diagnostics"),
+            CanonicalAgentToolDefinitions.all.filter { it.loading == HostedToolLoading.EAGER }.map { it.name.value },
+        )
         assertEquals(HostedApprovalPolicy.EXPLICIT, CanonicalAgentToolDefinitions.changeApply.approval)
         assertTrue("exact selector" in CanonicalAgentToolDefinitions.semanticQuery.description.value)
         assertTrue("automatically" in CanonicalAgentToolDefinitions.impactAnalyze.description.value)

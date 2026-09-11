@@ -18,8 +18,8 @@ import io.github.amichne.kast.protocol.contract.OperationRequest
 import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.OperationTypeBinding
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
-import io.github.amichne.kast.protocol.registry.CompletenessPolicy
 import io.github.amichne.kast.protocol.registry.CanonicalOperationDefinitions
+import io.github.amichne.kast.protocol.registry.CompletenessPolicy
 import io.github.amichne.kast.protocol.registry.HostedExposure
 import io.github.amichne.kast.protocol.registry.HostedOperationProjection
 import io.github.amichne.kast.protocol.registry.OperationCost
@@ -44,21 +44,13 @@ class RuntimeServerContractTest {
         RuntimeServer.create(bindings).createdServer()
         assertEquals(
             RuntimeServerConstruction.Rejected(
-                setOf(
-                    RuntimeServerConstructionFailure.MissingBinding(
-                        CanonicalOperation.CHANGE_RECOVER,
-                    ),
-                ),
+                setOf(RuntimeServerConstructionFailure.MissingBinding(CanonicalOperation.CHANGE_RECOVER))
             ),
             RuntimeServer.create(bindings.dropLast(1)),
         )
         assertEquals(
             RuntimeServerConstruction.Rejected(
-                setOf(
-                    RuntimeServerConstructionFailure.DuplicateBinding(
-                        CanonicalOperation.INDEX_SYNC,
-                    ),
-                ),
+                setOf(RuntimeServerConstructionFailure.DuplicateBinding(CanonicalOperation.INDEX_SYNC))
             ),
             RuntimeServer.create(bindings + bindings.first()),
         )
@@ -69,18 +61,20 @@ class RuntimeServerContractTest {
         val bindings = canonicalBindings()
         val server = RuntimeServer.create(bindings).createdServer()
 
-        bindings.filter { binding ->
-            HostedOperationProjection.publicDefinitions.any { it.operation == binding.operation }
-        }.forEach { binding ->
-            TestOutcomeKind.entries.forEach { outcomeKind ->
-                val request = TestRequest(outcomeKind)
-                val requestDocument = binding.wireBinding.encodeRequest(request).encodedDocument()
-                val responseDocument = server.dispatch(requestDocument).responseDocument()
-                val observed = binding.wireBinding.decodeOutcome(responseDocument).decodedValue()
-
-                assertEquals(expectedOutcome(binding.operation, outcomeKind), observed)
+        bindings
+            .filter { binding ->
+                HostedOperationProjection.publicDefinitions.any { it.operation == binding.operation }
             }
-        }
+            .forEach { binding ->
+                TestOutcomeKind.entries.forEach { outcomeKind ->
+                    val request = TestRequest(outcomeKind)
+                    val requestDocument = binding.wireBinding.encodeRequest(request).encodedDocument()
+                    val responseDocument = server.dispatch(requestDocument).responseDocument()
+                    val observed = binding.wireBinding.decodeOutcome(responseDocument).decodedValue()
+
+                    assertEquals(expectedOutcome(binding.operation, outcomeKind), observed)
+                }
+            }
     }
 
     @Test
@@ -88,19 +82,18 @@ class RuntimeServerContractTest {
         val bindings = canonicalBindings()
         val binding = bindings.single { it.operation == HostedOperationProjection.publicDefinitions.first().operation }
         val server = RuntimeServer.create(bindings).createdServer()
-        val encoded = binding.wireBinding
-            .encodeRequest(TestRequest(TestOutcomeKind.COMPLETE))
-            .encodedDocument()
+        val encoded = binding.wireBinding.encodeRequest(TestRequest(TestOutcomeKind.COMPLETE)).encodedDocument()
         val unknownOperation = "symbol.missing"
-        val unknownOperationDocument = encoded.replace(
-            "\"operation\":\"${binding.operation.id.value}\"",
-            "\"operation\":\"$unknownOperation\"",
-        )
+        val unknownOperationDocument =
+            encoded.replace(
+                "\"operation\":\"${binding.operation.id.value}\"",
+                "\"operation\":\"$unknownOperation\"",
+            )
         assertEquals(
             ServerDispatch.Rejected(
                 ServerDispatchFailure.RequestAdmissionFailed(
-                    WireFailure.UnknownOperation(operationId(unknownOperation)),
-                ),
+                    WireFailure.UnknownOperation(operationId(unknownOperation))
+                )
             ),
             server.dispatch(unknownOperationDocument),
         )
@@ -112,7 +105,7 @@ class RuntimeServerContractTest {
                 ServerDispatchFailure.RequestDecodingFailed(
                     operation = binding.operation,
                     failure = WireFailure.UnknownSchema(unknownSchema),
-                ),
+                )
             ),
             server.dispatch(unknownSchemaDocument),
         )
@@ -137,72 +130,92 @@ class RuntimeServerContractTest {
     @Test
     fun `unavailable definitions reject supplied bindings and cannot dispatch`() = runTest {
         val unavailable = CanonicalOperation.SOURCE_READ
-        val definitions = CanonicalOperationDefinitions.all.map { definition ->
-            if (definition.operation == unavailable) definition.copy(hostedExposure = HostedExposure.UNAVAILABLE)
-            else definition
-        }
+        val definitions =
+            CanonicalOperationDefinitions.all.map { definition ->
+                if (definition.operation == unavailable) definition.copy(hostedExposure = HostedExposure.UNAVAILABLE)
+                else definition
+            }
         val calls = mutableListOf<CanonicalOperation>()
         val bindings = canonicalBindings(calls::add)
         assertEquals(
             RuntimeServerConstruction.Rejected(setOf(RuntimeServerConstructionFailure.UnexpectedBinding(unavailable))),
             RuntimeServer.createFromDefinitions(bindings, definitions),
         )
-        val server = RuntimeServer.createFromDefinitions(
-            bindings.filterNot { it.operation == unavailable }, definitions,
-        ).createdServer()
-        val raw = bindings.single { it.operation == unavailable }.wireBinding
-            .encodeRequest(TestRequest(TestOutcomeKind.COMPLETE)).encodedDocument()
-        assertEquals(ServerDispatch.Rejected(ServerDispatchFailure.UnsupportedOperation(unavailable)), server.dispatch(raw))
+        val server =
+            RuntimeServer.createFromDefinitions(
+                    bindings.filterNot { it.operation == unavailable },
+                    definitions,
+                )
+                .createdServer()
+        val raw =
+            bindings
+                .single { it.operation == unavailable }
+                .wireBinding
+                .encodeRequest(TestRequest(TestOutcomeKind.COMPLETE))
+                .encodedDocument()
+        assertEquals(
+            ServerDispatch.Rejected(ServerDispatchFailure.UnsupportedOperation(unavailable)),
+            server.dispatch(raw),
+        )
         assertEquals(emptyList<CanonicalOperation>(), calls)
     }
 
     @Test
     fun `each available definition requires one implementation including internal services`() {
         val bindings = canonicalBindings()
-        (HostedOperationProjection.publicDefinitions + HostedOperationProjection.internalDefinitions).forEach { definition ->
+        (HostedOperationProjection.publicDefinitions + HostedOperationProjection.internalDefinitions).forEach {
+            definition ->
             val binding = bindings.single { it.operation == definition.operation }
             assertEquals(
-                RuntimeServerConstruction.Rejected(setOf(RuntimeServerConstructionFailure.MissingBinding(definition.operation))),
+                RuntimeServerConstruction.Rejected(
+                    setOf(RuntimeServerConstructionFailure.MissingBinding(definition.operation))
+                ),
                 RuntimeServer.create(bindings.filterNot { it.operation == definition.operation }),
             )
             assertEquals(
-                RuntimeServerConstruction.Rejected(setOf(RuntimeServerConstructionFailure.DuplicateBinding(definition.operation))),
+                RuntimeServerConstruction.Rejected(
+                    setOf(RuntimeServerConstructionFailure.DuplicateBinding(definition.operation))
+                ),
                 RuntimeServer.create(bindings + binding),
             )
         }
     }
 
-    private fun canonicalBindings(observe: (CanonicalOperation) -> Unit = {}): List<
-        TypedOperationBinding<TestRequest, TestResult, TestQualification, TestRejection>,
-        > = CanonicalOperation.entries.map { operation ->
-        val wireBinding = GeneratedOperationWireBindingFactory.create(
-            definition = definition(operation),
-            request = TestRequest.serializer(),
-            result = TestResult.serializer(),
-            qualification = TestQualification.serializer(),
-            rejection = TestRejection.serializer(),
-        )
-        TypedOperationBinding(
-            wireBinding = wireBinding,
-            handler = OperationHandler { request ->
-                observe(operation)
-                expectedOutcome(operation, request.outcome)
-            },
-        )
-    }
+    private fun canonicalBindings(
+        observe: (CanonicalOperation) -> Unit = {}
+    ): List<TypedOperationBinding<TestRequest, TestResult, TestQualification, TestRejection>> =
+        CanonicalOperation.entries.map { operation ->
+            val wireBinding =
+                GeneratedOperationWireBindingFactory.create(
+                    definition = definition(operation),
+                    request = TestRequest.serializer(),
+                    result = TestResult.serializer(),
+                    qualification = TestQualification.serializer(),
+                    rejection = TestRejection.serializer(),
+                )
+            TypedOperationBinding(
+                wireBinding = wireBinding,
+                handler =
+                    OperationHandler { request ->
+                        observe(operation)
+                        expectedOutcome(operation, request.outcome)
+                    },
+            )
+        }
 
     private fun definition(
-        operation: CanonicalOperation,
+        operation: CanonicalOperation
     ): OperationDefinition<TestRequest, TestResult, TestCapability, TestQualification, TestRejection> =
         OperationDefinition(
             operation = operation,
-            types = OperationTypeBinding(
-                requestType = TestRequest::class,
-                resultType = TestResult::class,
-                qualificationType = TestQualification::class,
-                rejectionType = TestRejection::class,
-                schema = schemaIdentity("kast.${operation.id.value}.v1"),
-            ),
+            types =
+                OperationTypeBinding(
+                    requestType = TestRequest::class,
+                    resultType = TestResult::class,
+                    qualificationType = TestQualification::class,
+                    rejectionType = TestRejection::class,
+                    schema = schemaIdentity("kast.${operation.id.value}.v1"),
+                ),
             requiredCapability = capabilityId("semantic.read"),
             capabilityType = TestCapability::class,
             lane = OperationLane.INDEX_LOOKUP,
@@ -218,24 +231,25 @@ class RuntimeServerContractTest {
         operation: CanonicalOperation,
         outcomeKind: TestOutcomeKind,
     ): OperationOutcome<TestResult, TestQualification, TestRejection> {
-        val evidence = EvidenceEnvelope(
-            operation = operation.id,
-            generation = EvidenceGeneration.parse(17).refinedValue(),
-            payload = TestResult("result:${operation.id.value}"),
-        )
+        val evidence =
+            EvidenceEnvelope(
+                operation = operation.id,
+                generation = EvidenceGeneration.parse(17).refinedValue(),
+                payload = TestResult("result:${operation.id.value}"),
+            )
         return when (outcomeKind) {
             TestOutcomeKind.COMPLETE -> OperationOutcome.Complete(evidence)
-            TestOutcomeKind.QUALIFIED ->
-                OperationOutcome.Qualified(evidence, TestQualification.TRUNCATED)
+            TestOutcomeKind.QUALIFIED -> OperationOutcome.Qualified(evidence, TestQualification.TRUNCATED)
             TestOutcomeKind.REJECTED -> OperationOutcome.Rejected(TestRejection.BLOCKED)
         }
     }
 
-    private fun resourceBudget(): ResourceBudget = ResourceBudget(
-        resultLimit = ResultLimit.parse(250).refinedValue(),
-        workUnitLimit = WorkUnitLimit.parse(10_000).refinedValue(),
-        elapsedTimeLimit = ElapsedTimeLimitMillis.parse(5_000).refinedValue(),
-    )
+    private fun resourceBudget(): ResourceBudget =
+        ResourceBudget(
+            resultLimit = ResultLimit.parse(250).refinedValue(),
+            workUnitLimit = WorkUnitLimit.parse(10_000).refinedValue(),
+            elapsedTimeLimit = ElapsedTimeLimitMillis.parse(5_000).refinedValue(),
+        )
 
     private fun capabilityId(raw: String): CapabilityId = CapabilityId.parse(raw).refinedValue()
 
@@ -243,44 +257,41 @@ class RuntimeServerContractTest {
 
     private fun schemaIdentity(raw: String): SchemaIdentity = SchemaIdentity.parse(raw).refinedValue()
 
-    private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error("Expected refined value, got $failure")
-    }
+    private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error("Expected refined value, got $failure")
+        }
 
-    private fun WireEncoding.encodedDocument(): String = when (this) {
-        is WireEncoding.Encoded -> document
-        is WireEncoding.Rejected -> error("Expected encoded document, got $failure")
-    }
+    private fun WireEncoding.encodedDocument(): String =
+        when (this) {
+            is WireEncoding.Encoded -> document
+            is WireEncoding.Rejected -> error("Expected encoded document, got $failure")
+        }
 
-    private fun ServerDispatch.responseDocument(): String = when (this) {
-        is ServerDispatch.Responded -> document
-        is ServerDispatch.Rejected -> error("Expected response, got $failure")
-    }
+    private fun ServerDispatch.responseDocument(): String =
+        when (this) {
+            is ServerDispatch.Responded -> document
+            is ServerDispatch.Rejected -> error("Expected response, got $failure")
+        }
 
-    private fun <Value> WireDecoding<Value>.decodedValue(): Value = when (this) {
-        is WireDecoding.Decoded -> value
-        is WireDecoding.Rejected -> error("Expected decoded value, got $failure")
-    }
+    private fun <Value> WireDecoding<Value>.decodedValue(): Value =
+        when (this) {
+            is WireDecoding.Decoded -> value
+            is WireDecoding.Rejected -> error("Expected decoded value, got $failure")
+        }
 
-    private fun RuntimeServerConstruction.createdServer(): RuntimeServer = when (this) {
-        is RuntimeServerConstruction.Created -> server
-        is RuntimeServerConstruction.Rejected -> error("Expected server, got $failures")
-    }
+    private fun RuntimeServerConstruction.createdServer(): RuntimeServer =
+        when (this) {
+            is RuntimeServerConstruction.Created -> server
+            is RuntimeServerConstruction.Rejected -> error("Expected server, got $failures")
+        }
 
-    @Serializable
-    private data class TestRequest(
-        val outcome: TestOutcomeKind,
-    ) : OperationRequest
+    @Serializable private data class TestRequest(val outcome: TestOutcomeKind) : OperationRequest
 
-    @Serializable
-    private data class TestResult(
-        val value: String,
-    ) : OperationResult
+    @Serializable private data class TestResult(val value: String) : OperationResult
 
-    private data class TestCapability(
-        override val id: CapabilityId,
-    ) : CapabilityMarker
+    private data class TestCapability(override val id: CapabilityId) : CapabilityMarker
 
     @Serializable
     private enum class TestOutcomeKind {
@@ -291,11 +302,11 @@ class RuntimeServerContractTest {
 
     @Serializable
     private enum class TestQualification : OperationQualification {
-        TRUNCATED,
+        TRUNCATED
     }
 
     @Serializable
     private enum class TestRejection : OperationRejection {
-        BLOCKED,
+        BLOCKED
     }
 }

@@ -13,12 +13,10 @@ data class TopologyWorkspaceIdentity(
         /**
          * Proof transition: `PublishedWorkspace -> TopologyWorkspaceIdentity`.
          *
-         * Preserves the workspace's canonical root, evidence generation, and semantic source
-         * identity as one detached topology identity. Raw identity extraction is permitted only
-         * by the topology persistence adapter.
+         * Preserves the workspace's canonical root, evidence generation, and semantic source identity as one detached
+         * topology identity. Raw identity extraction is permitted only by the topology persistence adapter.
          */
         fun from(workspace: PublishedWorkspace): TopologyWorkspaceIdentity =
             TopologyWorkspaceIdentity(workspace.readLease, workspace.sourceState)
     }
-
 }

@@ -1,16 +1,14 @@
 package io.github.amichne.kast.symbol.intellij
 
 import com.intellij.navigation.ChooseByNameContributor
-import io.github.amichne.kast.workspace.intellij.read.*
 import com.intellij.navigation.ChooseByNameContributorEx
 import com.intellij.navigation.ItemPresentation
 import com.intellij.navigation.NavigationItem
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.PsiElement
-import java.lang.reflect.Proxy
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.util.Processor
 import com.intellij.util.indexing.FindSymbolParameters
@@ -21,45 +19,48 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
-import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDeclarationKinds
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectory
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectoryConstraint
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackage
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackageConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
-import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackage
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackageConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
+import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
-import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
-import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.*
+import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.intellij.read.*
+import java.lang.reflect.Proxy
+import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import java.nio.file.Path
 
 class SymbolDiscoveryTest {
     @Test
     fun `name capacity is observable separately from scoped candidates and semantic work`() {
         val observation = RecordingNativeRead()
-        val scenario = fixture(all = true, leadingMatchingNames = MAX_NATIVE_DISCOVERY_NAMES + 1, observation = observation)
+        val scenario =
+            fixture(all = true, leadingMatchingNames = MAX_NATIVE_DISCOVERY_NAMES + 1, observation = observation)
         val outcome = scenario.execute().outcome()
         assertTrue(outcome is SymbolDiscoveryOutcome.Qualified)
         assertTrue(IntellijReadTermination.NAME_CAP in observation.reasons)
@@ -81,21 +82,32 @@ class SymbolDiscoveryTest {
     private class RecordingNativeRead : IntellijReadObservation {
         val counts = mutableMapOf<IntellijReadCounter, Int>()
         val reasons = mutableSetOf<IntellijReadTermination>()
+
         override fun count(counter: IntellijReadCounter, contributor: IntellijReadContributor, amount: Int) {
             counts[counter] = (counts[counter] ?: 0) + amount
         }
-        override fun terminated(reason: IntellijReadTermination, contributor: IntellijReadContributor) { reasons += reason }
+
+        override fun terminated(reason: IntellijReadTermination, contributor: IntellijReadContributor) {
+            reasons += reason
+        }
     }
 
     @Test
     fun `broad name scan uses supplied project id filter before name capacity`() {
         val scenario = fixture(all = true, leadingMatchingNames = MAX_NATIVE_DISCOVERY_NAMES + 1)
-        val projectContent = object : IdFilter() {
-            override fun containsFileId(id: Int): Boolean = id == 1
-        }
-        val outcome = scenario.query.discover(
-            scenario.compiledScope, scenario.request, listOf(scenario.contributor), nameFilter = projectContent,
-        ).outcome()
+        val projectContent =
+            object : IdFilter() {
+                override fun containsFileId(id: Int): Boolean = id == 1
+            }
+        val outcome =
+            scenario.query
+                .discover(
+                    scenario.compiledScope,
+                    scenario.request,
+                    listOf(scenario.contributor),
+                    nameFilter = projectContent,
+                )
+                .outcome()
         assertSame(projectContent, scenario.contributor.nameFilter)
         assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
         assertEquals(listOf("AItem", "NoMatch", "ZItem"), outcome.batch().candidates.map { it.name.value })
@@ -110,9 +122,13 @@ class SymbolDiscoveryTest {
 
     @Test
     fun `text occurrence collection ends before projection and overflow remains qualified`() {
-        val element = Proxy.newProxyInstance(PsiElement::class.java.classLoader,
-            arrayOf(PsiElement::class.java),
-        ) { _, _, _ -> error("Native collection must not inspect PSI") } as PsiElement
+        val element =
+            Proxy.newProxyInstance(
+                PsiElement::class.java.classLoader,
+                arrayOf(PsiElement::class.java),
+            ) { _, _, _ ->
+                error("Native collection must not inspect PSI")
+            } as PsiElement
         for (workLimit in listOf(1L, MAX_NATIVE_DISCOVERY_CANDIDATES.toLong() + 1L)) {
             var processing = false
             var observed = 0
@@ -121,13 +137,17 @@ class SymbolDiscoveryTest {
             val acceptedCount = minOf(workLimit, MAX_NATIVE_DISCOVERY_CANDIDATES.toLong()).toInt()
             collectTextDiscoveryOccurrences(
                 workLimit = WorkUnitLimit.parse(workLimit).refined(),
-                observe = { true }, qualify = qualifications::add,
+                observe = { true },
+                qualify = qualifications::add,
                 process = { accept ->
                     processing = true
                     var exhausted = true
                     for (offset in 0..acceptedCount) {
                         observed += 1
-                        if (!accept(element, offset)) { exhausted = false; break }
+                        if (!accept(element, offset)) {
+                            exhausted = false
+                            break
+                        }
                     }
                     processing = false
                     exhausted
@@ -148,16 +168,29 @@ class SymbolDiscoveryTest {
     @Test
     fun `text provider failure qualifies returned candidates and halted observation prevents projection`() {
         val qualifications = mutableSetOf<SymbolDiscoveryQualification>()
-        collectTextDiscoveryOccurrences(WorkUnitLimit.parse(1).refined(), { true }, qualifications::add,
-            process = { false }, project = { _, _ -> error("No native candidate was collected") },
+        collectTextDiscoveryOccurrences(
+            WorkUnitLimit.parse(1).refined(),
+            { true },
+            qualifications::add,
+            process = { false },
+            project = { _, _ -> error("No native candidate was collected") },
         )
         assertEquals(setOf(SymbolDiscoveryQualification.PROVIDER_FAILURE), qualifications)
-        val element = Proxy.newProxyInstance(PsiElement::class.java.classLoader,
-            arrayOf(PsiElement::class.java),
-        ) { _, _, _ -> error("Stopped collection must not inspect PSI") } as PsiElement
+        val element =
+            Proxy.newProxyInstance(
+                PsiElement::class.java.classLoader,
+                arrayOf(PsiElement::class.java),
+            ) { _, _, _ ->
+                error("Stopped collection must not inspect PSI")
+            } as PsiElement
         var checks = 0
-        collectTextDiscoveryOccurrences(WorkUnitLimit.parse(1).refined(),
-            observe = { checks += 1; false }, qualify = { error("Observation owner supplies its qualification") },
+        collectTextDiscoveryOccurrences(
+            WorkUnitLimit.parse(1).refined(),
+            observe = {
+                checks += 1
+                false
+            },
+            qualify = { error("Observation owner supplies its qualification") },
             process = { accept -> accept(element, 0) },
             project = { _, _ -> error("Stopped observation must not project") },
         )
@@ -167,18 +200,33 @@ class SymbolDiscoveryTest {
     @Test
     fun `known empty scope completes discovery without a native provider`() {
         val scenario = fixture()
-        val emptyScope = CompiledIntellijSearchScope(
-            scenario.request.scope.lease, scenario.request.scope.scope,
-            emptyList(), GlobalSearchScope.EMPTY_SCOPE,
-            population = IntellijScopePopulation.KNOWN_EMPTY,
-        )
-        val outcomes = listOf(
-            scenario.query.discover(emptyScope, scenario.request, emptyList()),
-            scenario.query.discoverExactName(emptyScope, SymbolDiscoveryRequest(scope = scenario.request.scope, budget = scenario.request.budget,
-                target = SymbolDiscoveryTarget.Name(SymbolNameDiscoveryKind.SYMBOL,
-                    SymbolDiscoveryPattern.parse("Absent").refined(), SymbolDiscoveryMatch.EXACT_NAME),
-            )) { _, _ -> error("Known-empty scope must not enumerate the index") },
-        )
+        val emptyScope =
+            CompiledIntellijSearchScope(
+                scenario.request.scope.lease,
+                scenario.request.scope.scope,
+                emptyList(),
+                GlobalSearchScope.EMPTY_SCOPE,
+                population = IntellijScopePopulation.KNOWN_EMPTY,
+            )
+        val outcomes =
+            listOf(
+                scenario.query.discover(emptyScope, scenario.request, emptyList()),
+                scenario.query.discoverExactName(
+                    emptyScope,
+                    SymbolDiscoveryRequest(
+                        scope = scenario.request.scope,
+                        budget = scenario.request.budget,
+                        target =
+                            SymbolDiscoveryTarget.Name(
+                                SymbolNameDiscoveryKind.SYMBOL,
+                                SymbolDiscoveryPattern.parse("Absent").refined(),
+                                SymbolDiscoveryMatch.EXACT_NAME,
+                            ),
+                    ),
+                ) { _, _ ->
+                    error("Known-empty scope must not enumerate the index")
+                },
+            )
         for (execution in outcomes) {
             val outcome = execution.outcome()
             assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
@@ -189,13 +237,15 @@ class SymbolDiscoveryTest {
 
     @Test
     fun `package admission runs after native callbacks and before the result cap`() {
-        val scenario = fixture(
-            all = true,
-            resultLimit = 1,
-            workLimit = 1,
-            packageName = "sample.allowed",
-            itemPackages = mapOf("ZItem" to "sample.other", "NoMatch" to "sample.allowed", "AItem" to "sample.other"),
-        )
+        val scenario =
+            fixture(
+                all = true,
+                resultLimit = 1,
+                workLimit = 1,
+                packageName = "sample.allowed",
+                itemPackages =
+                    mapOf("ZItem" to "sample.other", "NoMatch" to "sample.allowed", "AItem" to "sample.other"),
+            )
         val outcome = scenario.execute().outcome()
 
         assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
@@ -210,8 +260,8 @@ class SymbolDiscoveryTest {
             val fixture = fixture(kind = kind)
             val execution = fixture.execute()
 
-            val complete = (execution as IntellijNativeDiscoveryExecution.Produced)
-                .outcome as SymbolDiscoveryOutcome.Complete
+            val complete =
+                (execution as IntellijNativeDiscoveryExecution.Produced).outcome as SymbolDiscoveryOutcome.Complete
             assertEquals(listOf("AItem", "ZItem"), complete.batch.candidates.map { it.name.value })
             assertEquals(fixture.request.scope.lease, complete.batch.lease)
             assertTrue(complete.batch.candidates.all { it.lease == fixture.request.scope.lease })
@@ -229,10 +279,13 @@ class SymbolDiscoveryTest {
 
     @Test
     fun `unrelated indexed names do not consume the matched work budget`() {
-        val outcome = fixture(
-            workLimit = 10L,
-            leadingUnrelatedNames = 1_000,
-        ).execute().outcome()
+        val outcome =
+            fixture(
+                    workLimit = 10L,
+                    leadingUnrelatedNames = 1_000,
+                )
+                .execute()
+                .outcome()
 
         assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
         assertEquals(listOf("AItem", "ZItem"), outcome.batch().candidates.map { it.name.value })
@@ -250,38 +303,47 @@ class SymbolDiscoveryTest {
     @Test
     fun `workspace-relative root honors direct and recursive containment`() {
         listOf(
-            SymbolDiscoveryContainment.DIRECT to listOf("ZItem"),
-            SymbolDiscoveryContainment.DESCENDANTS to listOf("AItem", "NoMatch", "ZItem"),
-        ).forEach { (containment, expected) ->
-            val outcome = fixture(
-                all = true,
-                workLimit = expected.size.toLong(),
-                directory = ".",
-                containment = containment,
-                itemPaths = mapOf(
-                    "ZItem" to "/workspace/ZItem.kt",
-                    "AItem" to "/workspace/nested/AItem.kt",
-                    "NoMatch" to "/workspace/nested/NoMatch.kt",
-                ),
-            ).execute().outcome()
-            assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
-            assertEquals(expected, outcome.batch().candidates.map { it.name.value })
-            assertEquals(expected.size.toLong(), outcome.batch().examinedWorkUnits.value)
-        }
+                SymbolDiscoveryContainment.DIRECT to listOf("ZItem"),
+                SymbolDiscoveryContainment.DESCENDANTS to listOf("AItem", "NoMatch", "ZItem"),
+            )
+            .forEach { (containment, expected) ->
+                val outcome =
+                    fixture(
+                            all = true,
+                            workLimit = expected.size.toLong(),
+                            directory = ".",
+                            containment = containment,
+                            itemPaths =
+                                mapOf(
+                                    "ZItem" to "/workspace/ZItem.kt",
+                                    "AItem" to "/workspace/nested/AItem.kt",
+                                    "NoMatch" to "/workspace/nested/NoMatch.kt",
+                                ),
+                        )
+                        .execute()
+                        .outcome()
+                assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
+                assertEquals(expected, outcome.batch().candidates.map { it.name.value })
+                assertEquals(expected.size.toLong(), outcome.batch().examinedWorkUnits.value)
+            }
     }
 
     @Test
     fun `explicit all applies directory scope before consuming work budget`() {
-        val outcome = fixture(
-            all = true,
-            workLimit = 2L,
-            directory = "services/payments",
-            itemPaths = mapOf(
-                "ZItem" to "/workspace/services/payments/ZItem.kt",
-                "NoMatch" to "/workspace/services/other/NoMatch.kt",
-                "AItem" to "/workspace/services/payments/AItem.kt",
-            ),
-        ).execute().outcome()
+        val outcome =
+            fixture(
+                    all = true,
+                    workLimit = 2L,
+                    directory = "services/payments",
+                    itemPaths =
+                        mapOf(
+                            "ZItem" to "/workspace/services/payments/ZItem.kt",
+                            "NoMatch" to "/workspace/services/other/NoMatch.kt",
+                            "AItem" to "/workspace/services/payments/AItem.kt",
+                        ),
+                )
+                .execute()
+                .outcome()
 
         assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
         assertEquals(listOf("AItem", "ZItem"), outcome.batch().candidates.map { it.name.value })
@@ -292,42 +354,45 @@ class SymbolDiscoveryTest {
     fun `exact source-set names use deepest model ownership before projection and work`() {
         val roots = namedRoots()
         mapOf(
-            "main" to listOf("ZItem"),
-            "integrationTest" to listOf("NoMatch"),
-            "commonMain" to listOf("AItem"),
-            "jvmMain" to listOf("AItem"),
-            "missing" to emptyList(),
-        ).forEach { (name, expected) ->
-            val fixture = fixture(
-                all = true,
-                workLimit = 1L,
-                sourceSets = SymbolDiscoverySourceSets.Exact.from(
-                    setOf(WorkspaceSourceSetName.parse(name).refined()),
-                ).refined(),
-                sourceRoots = roots,
-                itemPaths = namedPaths,
+                "main" to listOf("ZItem"),
+                "integrationTest" to listOf("NoMatch"),
+                "commonMain" to listOf("AItem"),
+                "jvmMain" to listOf("AItem"),
+                "missing" to emptyList(),
             )
-            val outcome = fixture.execute().outcome()
-            assertTrue(outcome is SymbolDiscoveryOutcome.Complete, name)
-            assertEquals(expected, outcome.batch().candidates.map { it.name.value }, name)
-            assertEquals(expected, fixture.projectedNames, name)
-            assertEquals(expected.size.toLong(), outcome.batch().examinedWorkUnits.value, name)
-        }
+            .forEach { (name, expected) ->
+                val fixture =
+                    fixture(
+                        all = true,
+                        workLimit = 1L,
+                        sourceSets =
+                            SymbolDiscoverySourceSets.Exact.from(setOf(WorkspaceSourceSetName.parse(name).refined()))
+                                .refined(),
+                        sourceRoots = roots,
+                        itemPaths = namedPaths,
+                    )
+                val outcome = fixture.execute().outcome()
+                assertTrue(outcome is SymbolDiscoveryOutcome.Complete, name)
+                assertEquals(expected, outcome.batch().candidates.map { it.name.value }, name)
+                assertEquals(expected, fixture.projectedNames, name)
+                assertEquals(expected.size.toLong(), outcome.batch().examinedWorkUnits.value, name)
+            }
     }
 
     @Test
     fun `excluded nested ownership cannot fall back to selected ancestor`() {
         val roots = namedRoots()
-        val fixture = fixture(
-            all = true,
-            workLimit = 1L,
-            sourceSets = SymbolDiscoverySourceSets.Exact.from(
-                setOf(WorkspaceSourceSetName.parse("main").refined()),
-            ).refined(),
-            sourceRoots = roots.filter { it.sourceSet.value != "integrationTest" },
-            ownershipRoots = roots,
-            itemPaths = namedPaths,
-        )
+        val fixture =
+            fixture(
+                all = true,
+                workLimit = 1L,
+                sourceSets =
+                    SymbolDiscoverySourceSets.Exact.from(setOf(WorkspaceSourceSetName.parse("main").refined()))
+                        .refined(),
+                sourceRoots = roots.filter { it.sourceSet.value != "integrationTest" },
+                ownershipRoots = roots,
+                itemPaths = namedPaths,
+            )
         val outcome = fixture.execute().outcome()
         assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
         assertEquals(listOf("ZItem"), fixture.projectedNames)
@@ -338,16 +403,17 @@ class SymbolDiscoveryTest {
     fun `shared roots retain the selected readable owner without requiring every owner`() {
         val roots = namedRoots()
         listOf("commonMain" to listOf("AItem"), "jvmMain" to emptyList()).forEach { (name, expected) ->
-            val fixture = fixture(
-                all = true,
-                workLimit = 1L,
-                sourceSets = SymbolDiscoverySourceSets.Exact.from(
-                    setOf(WorkspaceSourceSetName.parse(name).refined()),
-                ).refined(),
-                sourceRoots = roots.filter { it.sourceSet.value == "commonMain" },
-                ownershipRoots = roots,
-                itemPaths = namedPaths,
-            )
+            val fixture =
+                fixture(
+                    all = true,
+                    workLimit = 1L,
+                    sourceSets =
+                        SymbolDiscoverySourceSets.Exact.from(setOf(WorkspaceSourceSetName.parse(name).refined()))
+                            .refined(),
+                    sourceRoots = roots.filter { it.sourceSet.value == "commonMain" },
+                    ownershipRoots = roots,
+                    itemPaths = namedPaths,
+                )
             val outcome = fixture.execute().outcome()
             assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
             assertEquals(expected, fixture.projectedNames)
@@ -357,42 +423,52 @@ class SymbolDiscoveryTest {
 
     @Test
     fun `unproven source ownership qualifies result instead of claiming complete`() {
-        val outcome = fixture(
-            sourceSets = SymbolDiscoverySourceSets.Exact.from(
-                setOf(WorkspaceSourceSetName.parse("main").refined()),
-            ).refined(),
-        ).execute().outcome()
+        val outcome =
+            fixture(
+                    sourceSets =
+                        SymbolDiscoverySourceSets.Exact.from(setOf(WorkspaceSourceSetName.parse("main").refined()))
+                            .refined()
+                )
+                .execute()
+                .outcome()
         assertTrue(outcome is SymbolDiscoveryOutcome.Qualified)
-        assertTrue(SymbolDiscoveryQualification.UNSUPPORTED_ITEM in
-            (outcome as SymbolDiscoveryOutcome.Qualified).qualifications.values)
+        assertTrue(
+            SymbolDiscoveryQualification.UNSUPPORTED_ITEM in
+                (outcome as SymbolDiscoveryOutcome.Qualified).qualifications.values
+        )
         assertEquals(0L, outcome.batch().examinedWorkUnits.value)
     }
 
-    private val namedPaths = mapOf(
-        "ZItem" to "/workspace/code/ZItem.kt",
-        "NoMatch" to "/workspace/code/integration/NoMatch.kt",
-        "AItem" to "/workspace/shared/AItem.kt",
-    )
+    private val namedPaths =
+        mapOf(
+            "ZItem" to "/workspace/code/ZItem.kt",
+            "NoMatch" to "/workspace/code/integration/NoMatch.kt",
+            "AItem" to "/workspace/shared/AItem.kt",
+        )
 
     private fun namedRoots(): List<ModelOwnedSourceRoot> {
         val root = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
-        val boundaries = listOf(
-            "main" to "/workspace/code",
-            "integrationTest" to "/workspace/code/integration",
-            "commonMain" to "/workspace/shared",
-            "jvmMain" to "/workspace/shared",
-        ).map { (name, path) ->
-            WorkspaceSourceRootBoundary(
-                ideaModuleName = "app.$name",
-                linkedBuildRoot = Path.of("/workspace"),
-                gradleProjectPath = ":app",
-                sourceSetName = name,
-                sourceRoot = Path.of(path),
-                sourceKind = WorkspaceSourceRootKind.PRODUCTION,
-                provenance = WorkspaceSourceRootProvenance.AUTHORED,
-            )
-        }
-        return when (val model = WorkspaceSearchScopeModel.compile(root, ImportedWorkspaceModelState.COMPLETE, boundaries)) {
+        val boundaries =
+            listOf(
+                    "main" to "/workspace/code",
+                    "integrationTest" to "/workspace/code/integration",
+                    "commonMain" to "/workspace/shared",
+                    "jvmMain" to "/workspace/shared",
+                )
+                .map { (name, path) ->
+                    WorkspaceSourceRootBoundary(
+                        ideaModuleName = "app.$name",
+                        linkedBuildRoot = Path.of("/workspace"),
+                        gradleProjectPath = ":app",
+                        sourceSetName = name,
+                        sourceRoot = Path.of(path),
+                        sourceKind = WorkspaceSourceRootKind.PRODUCTION,
+                        provenance = WorkspaceSourceRootProvenance.AUTHORED,
+                    )
+                }
+        return when (
+            val model = WorkspaceSearchScopeModel.compile(root, ImportedWorkspaceModelState.COMPLETE, boundaries)
+        ) {
             is WorkspaceSearchScopeModelCompilation.Compiled -> model.model.sourceRoots
             is WorkspaceSearchScopeModelCompilation.Rejected -> error(model.failures)
         }
@@ -400,16 +476,20 @@ class SymbolDiscoveryTest {
 
     @Test
     fun `explicit all applies declaration kind before consuming work budget`() {
-        val outcome = fixture(
-            all = true,
-            workLimit = 1L,
-            declarationKinds = setOf(CompilerSymbolKind.FUNCTION),
-            itemKinds = mapOf(
-                "ZItem" to CompilerSymbolKind.PROPERTY,
-                "NoMatch" to CompilerSymbolKind.PROPERTY,
-                "AItem" to CompilerSymbolKind.FUNCTION,
-            ),
-        ).execute().outcome()
+        val outcome =
+            fixture(
+                    all = true,
+                    workLimit = 1L,
+                    declarationKinds = setOf(CompilerSymbolKind.FUNCTION),
+                    itemKinds =
+                        mapOf(
+                            "ZItem" to CompilerSymbolKind.PROPERTY,
+                            "NoMatch" to CompilerSymbolKind.PROPERTY,
+                            "AItem" to CompilerSymbolKind.FUNCTION,
+                        ),
+                )
+                .execute()
+                .outcome()
 
         assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
         assertEquals(listOf("AItem"), outcome.batch().candidates.map { it.name.value })
@@ -430,10 +510,13 @@ class SymbolDiscoveryTest {
         assertEquals(listOf(SymbolDiscoveryQualification.WORK_LIMIT_REACHED), workOutcome.qualifications())
         assertEquals(1, workOutcome.batch().candidates.size)
 
-        val timeOutcome = fixture(
-            elapsedMillis = 1L,
-            clock = StepClock(step = 1_000_000L),
-        ).execute().outcome()
+        val timeOutcome =
+            fixture(
+                    elapsedMillis = 1L,
+                    clock = StepClock(step = 1_000_000L),
+                )
+                .execute()
+                .outcome()
         assertEquals(listOf(SymbolDiscoveryQualification.TIME_LIMIT_REACHED), timeOutcome.qualifications())
         assertTrue(timeOutcome.batch().candidates.isEmpty())
     }
@@ -455,25 +538,26 @@ class SymbolDiscoveryTest {
 
     @Test
     fun `dumb transitions provider failures and unscoped providers remain explicit`() {
-        val initialDumb = fixture(
-            environmentState = { IntellijDiscoveryEnvironmentState.DUMB },
-        ).execute()
+        val initialDumb = fixture(environmentState = { IntellijDiscoveryEnvironmentState.DUMB }).execute()
         assertEquals(
             IntellijNativeDiscoveryRejection.DUMB_MODE,
             (initialDumb as IntellijNativeDiscoveryExecution.Rejected).reason,
         )
 
         var stateChecks = 0
-        val transition = fixture(
-            environmentState = {
-                stateChecks += 1
-                if (stateChecks == 1) {
-                    IntellijDiscoveryEnvironmentState.READY
-                } else {
-                    IntellijDiscoveryEnvironmentState.DUMB
-                }
-            },
-        ).execute().outcome()
+        val transition =
+            fixture(
+                    environmentState = {
+                        stateChecks += 1
+                        if (stateChecks == 1) {
+                            IntellijDiscoveryEnvironmentState.READY
+                        } else {
+                            IntellijDiscoveryEnvironmentState.DUMB
+                        }
+                    }
+                )
+                .execute()
+                .outcome()
         assertEquals(
             listOf(SymbolDiscoveryQualification.DUMB_MODE_TRANSITION),
             transition.qualifications(),
@@ -495,9 +579,7 @@ class SymbolDiscoveryTest {
 
     @Test
     fun `platform cancellation is propagated and never converted to complete output`() {
-        val fixture = fixture(
-            cancellationCheck = { throw ProcessCanceledException() },
-        )
+        val fixture = fixture(cancellationCheck = { throw ProcessCanceledException() })
 
         assertThrows<ProcessCanceledException> {
             fixture.execute()
@@ -507,24 +589,34 @@ class SymbolDiscoveryTest {
     @Test
     fun `exact key collection finishes before projecting distinct same-name declarations`() {
         val fixture = fixture(collidingNames = true)
-        val request = SymbolDiscoveryRequest(
-            scope = fixture.request.scope,
-            budget = fixture.request.budget,
-            constraints = fixture.request.constraints,
-            target = SymbolDiscoveryTarget.Name(
-            SymbolNameDiscoveryKind.SYMBOL,
-            SymbolDiscoveryPattern.parse("CollisionItem").refined(),
-            SymbolDiscoveryMatch.EXACT_NAME,
-        ))
-        val outcome = fixture.query.discoverExactName(fixture.compiledScope, request) { key, accept ->
-            assertEquals("CollisionItem", key)
-            fixture.contributor.processElementsWithName(key, Processor { item ->
-                assertTrue(fixture.projectedNames.isEmpty())
-                accept(item)
-            }, FindSymbolParameters.wrap(key, fixture.scope))
-            assertTrue(fixture.projectedNames.isEmpty())
-            true
-        }.outcome()
+        val request =
+            SymbolDiscoveryRequest(
+                scope = fixture.request.scope,
+                budget = fixture.request.budget,
+                constraints = fixture.request.constraints,
+                target =
+                    SymbolDiscoveryTarget.Name(
+                        SymbolNameDiscoveryKind.SYMBOL,
+                        SymbolDiscoveryPattern.parse("CollisionItem").refined(),
+                        SymbolDiscoveryMatch.EXACT_NAME,
+                    ),
+            )
+        val outcome =
+            fixture.query
+                .discoverExactName(fixture.compiledScope, request) { key, accept ->
+                    assertEquals("CollisionItem", key)
+                    fixture.contributor.processElementsWithName(
+                        key,
+                        Processor { item ->
+                            assertTrue(fixture.projectedNames.isEmpty())
+                            accept(item)
+                        },
+                        FindSymbolParameters.wrap(key, fixture.scope),
+                    )
+                    assertTrue(fixture.projectedNames.isEmpty())
+                    true
+                }
+                .outcome()
 
         assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
         assertEquals(2, outcome.batch().candidates.size)
@@ -535,20 +627,29 @@ class SymbolDiscoveryTest {
     @Test
     fun `exact key collection overflow remains qualified with bounded detached output`() {
         val fixture = fixture(collidingNames = true, workLimit = 1)
-        val request = SymbolDiscoveryRequest(
-            scope = fixture.request.scope,
-            budget = fixture.request.budget,
-            constraints = fixture.request.constraints,
-            target = SymbolDiscoveryTarget.Name(
-            SymbolNameDiscoveryKind.SYMBOL,
-            SymbolDiscoveryPattern.parse("CollisionItem").refined(),
-            SymbolDiscoveryMatch.EXACT_NAME,
-        ))
-        val outcome = fixture.query.discoverExactName(fixture.compiledScope, request) { key, accept ->
-            fixture.contributor.processElementsWithName(key, Processor { item -> accept(item) },
-                FindSymbolParameters.wrap(key, fixture.scope))
-            false
-        }.outcome()
+        val request =
+            SymbolDiscoveryRequest(
+                scope = fixture.request.scope,
+                budget = fixture.request.budget,
+                constraints = fixture.request.constraints,
+                target =
+                    SymbolDiscoveryTarget.Name(
+                        SymbolNameDiscoveryKind.SYMBOL,
+                        SymbolDiscoveryPattern.parse("CollisionItem").refined(),
+                        SymbolDiscoveryMatch.EXACT_NAME,
+                    ),
+            )
+        val outcome =
+            fixture.query
+                .discoverExactName(fixture.compiledScope, request) { key, accept ->
+                    fixture.contributor.processElementsWithName(
+                        key,
+                        Processor { item -> accept(item) },
+                        FindSymbolParameters.wrap(key, fixture.scope),
+                    )
+                    false
+                }
+                .outcome()
 
         assertEquals(1, outcome.batch().candidates.size)
         assertEquals(listOf(SymbolDiscoveryQualification.WORK_LIMIT_REACHED), outcome.qualifications())
@@ -557,15 +658,18 @@ class SymbolDiscoveryTest {
     @Test
     fun `an interrupted exact index callback never reports complete empty discovery`() {
         val fixture = fixture()
-        val request = SymbolDiscoveryRequest(
-            scope = fixture.request.scope,
-            budget = fixture.request.budget,
-            constraints = fixture.request.constraints,
-            target = SymbolDiscoveryTarget.Name(
-            SymbolNameDiscoveryKind.SYMBOL,
-            SymbolDiscoveryPattern.parse("Absent").refined(),
-            SymbolDiscoveryMatch.EXACT_NAME,
-        ))
+        val request =
+            SymbolDiscoveryRequest(
+                scope = fixture.request.scope,
+                budget = fixture.request.budget,
+                constraints = fixture.request.constraints,
+                target =
+                    SymbolDiscoveryTarget.Name(
+                        SymbolNameDiscoveryKind.SYMBOL,
+                        SymbolDiscoveryPattern.parse("Absent").refined(),
+                        SymbolDiscoveryMatch.EXACT_NAME,
+                    ),
+            )
         val outcome = fixture.query.discoverExactName(fixture.compiledScope, request) { _, _ -> false }.outcome()
         assertTrue(outcome.batch().candidates.isEmpty())
         assertEquals(listOf(SymbolDiscoveryQualification.PROVIDER_FAILURE), outcome.qualifications())
@@ -574,9 +678,12 @@ class SymbolDiscoveryTest {
     @Test
     fun `broader discovery ends provider enumeration before projecting candidates`() {
         lateinit var scenario: Fixture
-        scenario = fixture(beforeProjection = {
-            assertEquals(false, scenario.contributor.processingElements)
-        })
+        scenario =
+            fixture(
+                beforeProjection = {
+                    assertEquals(false, scenario.contributor.processingElements)
+                }
+            )
         val result = scenario.execute().outcome()
         assertTrue(result is SymbolDiscoveryOutcome.Complete)
         assertTrue(scenario.projectedNames.isNotEmpty())
@@ -622,104 +729,115 @@ class SymbolDiscoveryTest {
         repeatedItems: Int = 1,
         observation: IntellijReadObservation = IntellijReadObservation.None,
     ): Fixture {
-        val request = request(
-            kind = kind,
-            resultLimit = resultLimit,
-            returnedBytes = returnedBytes,
-            workLimit = workLimit,
-            elapsedMillis = elapsedMillis,
-            all = all,
-            directory = directory,
-            packageName = packageName,
-            containment = containment,
-            declarationKinds = declarationKinds,
-            sourceSets = sourceSets,
-        )
+        val request =
+            request(
+                kind = kind,
+                resultLimit = resultLimit,
+                returnedBytes = returnedBytes,
+                workLimit = workLimit,
+                elapsedMillis = elapsedMillis,
+                all = all,
+                directory = directory,
+                packageName = packageName,
+                containment = containment,
+                declarationKinds = declarationKinds,
+                sourceSets = sourceSets,
+            )
         val zed = FakeItem("ZItem")
         val noMatch = FakeItem("NoMatch")
         val alpha = FakeItem("AItem")
         val outside = FakeItem("OutsideItem")
-        val items = if (collidingNames) {
-            listOf(
-                FakeItem("CollisionItem", "first"),
-                FakeItem("CollisionItem", "second"),
-            )
-        } else {
-            listOf(zed, noMatch, alpha, outside)
-        }
+        val items =
+            if (collidingNames) {
+                listOf(
+                    FakeItem("CollisionItem", "first"),
+                    FakeItem("CollisionItem", "second"),
+                )
+            } else {
+                listOf(zed, noMatch, alpha, outside)
+            }
         val files = items.associateWith {
             LightVirtualFile(itemPaths[it.candidateName] ?: "/workspace/src/${it.identity}.kt")
         }
         val inScopeItems = if (collidingNames) items.toSet() else setOf(zed, noMatch, alpha)
         val inScopeFiles = inScopeItems.mapTo(linkedSetOf(), files::getValue)
-        val scope = object : GlobalSearchScope() {
-            override fun contains(file: VirtualFile): Boolean = file in inScopeFiles
+        val scope =
+            object : GlobalSearchScope() {
+                override fun contains(file: VirtualFile): Boolean = file in inScopeFiles
 
-            override fun isSearchInModuleContent(aModule: Module): Boolean = true
+                override fun isSearchInModuleContent(aModule: Module): Boolean = true
 
-            override fun isSearchInLibraries(): Boolean = false
-        }
-        val compiledScope = CompiledIntellijSearchScope(
-            lease = request.scope.lease,
-            scope = request.scope.scope,
-            sourceRoots = sourceRoots,
-            ownershipRoots = ownershipRoots,
-            nativeScope = scope,
-        )
-        val contributor = FakeContributor(
-            names = List(leadingUnrelatedNames) { index -> "Unrelated$index" } +
-                List(leadingMatchingNames) { index -> "IndexedItem$index" } +
-                items.map(FakeItem::candidateName),
-            items = items.flatMap { item -> List(repeatedItems) { item } }.groupBy(FakeItem::candidateName),
-            fail = providerFails,
-        )
+                override fun isSearchInLibraries(): Boolean = false
+            }
+        val compiledScope =
+            CompiledIntellijSearchScope(
+                lease = request.scope.lease,
+                scope = request.scope.scope,
+                sourceRoots = sourceRoots,
+                ownershipRoots = ownershipRoots,
+                nativeScope = scope,
+            )
+        val contributor =
+            FakeContributor(
+                names =
+                    List(leadingUnrelatedNames) { index -> "Unrelated$index" } +
+                        List(leadingMatchingNames) { index -> "IndexedItem$index" } +
+                        items.map(FakeItem::candidateName),
+                items = items.flatMap { item -> List(repeatedItems) { item } }.groupBy(FakeItem::candidateName),
+                fail = providerFails,
+            )
         val projectedNames = mutableListOf<String>()
-        val query = IntellijNativeDiscoveryQuery(
-            observation = observation,
-            itemFile = { item ->
-                files[item as FakeItem]
-                    ?.let(IntellijDiscoveryItemFileResult::Found)
-                ?: IntellijDiscoveryItemFileResult.Unsupported
-            },
-            projector = { discoveryRequest, item, file ->
-                beforeProjection()
-                val fake = item as FakeItem
-                val resultKind = when (val target = discoveryRequest.target) {
-                    is SymbolDiscoveryTarget.Name -> target.resultKind
-                    is SymbolDiscoveryTarget.All -> target.resultKind
-                    else -> error("native name discovery received ${target::class.simpleName}")
-                }
-                projectedNames += fake.candidateName
-                SymbolDiscoveryCandidate.fromBoundary(
-                    kind = resultKind,
-                    rawName = fake.candidateName,
-                    lease = discoveryRequest.scope.lease,
-                    nativePath = Path.of(file.path),
-                    virtualFileUrl = file.url,
-                    rawOffset = if (resultKind == SymbolDiscoveryKind.FILE) {
-                        null
+        val query =
+            IntellijNativeDiscoveryQuery(
+                observation = observation,
+                itemFile = { item ->
+                    files[item as FakeItem]?.let(IntellijDiscoveryItemFileResult::Found)
+                        ?: IntellijDiscoveryItemFileResult.Unsupported
+                },
+                projector = { discoveryRequest, item, file ->
+                    beforeProjection()
+                    val fake = item as FakeItem
+                    val resultKind =
+                        when (val target = discoveryRequest.target) {
+                            is SymbolDiscoveryTarget.Name -> target.resultKind
+                            is SymbolDiscoveryTarget.All -> target.resultKind
+                            else -> error("native name discovery received ${target::class.simpleName}")
+                        }
+                    projectedNames += fake.candidateName
+                    SymbolDiscoveryCandidate.fromBoundary(
+                        kind = resultKind,
+                        rawName = fake.candidateName,
+                        lease = discoveryRequest.scope.lease,
+                        nativePath = Path.of(file.path),
+                        virtualFileUrl = file.url,
+                        rawOffset =
+                            if (resultKind == SymbolDiscoveryKind.FILE) {
+                                null
+                            } else {
+                                fake.candidateName.length
+                            },
+                    )
+                },
+                itemCompilerKind = { item ->
+                    val kind = itemKinds[(item as FakeItem).candidateName]
+                    if (kind == null) {
+                        IntellijDiscoveryItemCompilerKindResult.Unsupported
                     } else {
-                        fake.candidateName.length
-                    },
-                )
-            },
-            itemCompilerKind = { item ->
-                val kind = itemKinds[(item as FakeItem).candidateName]
-                if (kind == null) {
-                    IntellijDiscoveryItemCompilerKindResult.Unsupported
-                } else {
-                    IntellijDiscoveryItemCompilerKindResult.Found(kind)
-                }
-            },
-            itemPackage = { item ->
-                assertTrue(!contributor.processingElements, "package PSI must not run inside native index collection")
-                itemPackages[(item as FakeItem).candidateName]?.let(IntellijPackageEvidence::Known)
-                    ?: IntellijPackageEvidence.Unavailable
-            },
-            environmentState = environmentState,
-            cancellationCheck = cancellationCheck,
-            clock = clock,
-        )
+                        IntellijDiscoveryItemCompilerKindResult.Found(kind)
+                    }
+                },
+                itemPackage = { item ->
+                    assertTrue(
+                        !contributor.processingElements,
+                        "package PSI must not run inside native index collection",
+                    )
+                    itemPackages[(item as FakeItem).candidateName]?.let(IntellijPackageEvidence::Known)
+                        ?: IntellijPackageEvidence.Unavailable
+                },
+                environmentState = environmentState,
+                cancellationCheck = cancellationCheck,
+                clock = clock,
+            )
         return Fixture(
             request = request,
             scope = scope,
@@ -743,55 +861,65 @@ class SymbolDiscoveryTest {
         declarationKinds: Set<CompilerSymbolKind>?,
         sourceSets: SymbolDiscoverySourceSets,
     ): SymbolDiscoveryRequest {
-        val workspaceRoot =
-            CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
-        val lease = SemanticReadLease(
-            workspaceRoot = workspaceRoot,
-            generation = EvidenceGeneration.parse(19L).refined(),
-        )
+        val workspaceRoot = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
+        val lease =
+            SemanticReadLease(
+                workspaceRoot = workspaceRoot,
+                generation = EvidenceGeneration.parse(19L).refined(),
+            )
         return SymbolDiscoveryRequest(
-            scope = SymbolSearchScopeRequest(
-                lease = lease,
-                scope = SymbolSearchScope.Workspace(
-                    sourceKinds = SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-                    generatedSources = SymbolGeneratedSourcePolicy.INCLUDE,
-                    libraries = SymbolLibraryPolicy.EXCLUDE,
+            scope =
+                SymbolSearchScopeRequest(
+                    lease = lease,
+                    scope =
+                        SymbolSearchScope.Workspace(
+                            sourceKinds = SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                            generatedSources = SymbolGeneratedSourcePolicy.INCLUDE,
+                            libraries = SymbolLibraryPolicy.EXCLUDE,
+                        ),
                 ),
-            ),
-            target = if (all) {
-                SymbolDiscoveryTarget.All(kind)
-            } else {
-                SymbolDiscoveryTarget.Name(
-                    kind = kind,
-                    pattern = SymbolDiscoveryPattern.parse("Item").refined(),
-                    match = SymbolDiscoveryMatch.FUZZY,
-                )
-            },
-            budget = SymbolDiscoveryBudget(
-                resources = ResourceBudget(
-                    resultLimit = ResultLimit.parse(resultLimit).refined(),
-                    workUnitLimit = WorkUnitLimit.parse(workLimit).refined(),
-                    elapsedTimeLimit = ElapsedTimeLimitMillis.parse(elapsedMillis).refined(),
-                ),
-                returnedBytes = SymbolDiscoveryByteLimit.parse(returnedBytes).refined(),
-            ),
-            constraints = SymbolDiscoveryConstraints(
-                sourceSets = sourceSets,
-                directory = directory?.let {
-                    SymbolDiscoveryDirectoryConstraint(
-                        SymbolDiscoveryDirectory.parse(it).refined(),
-                        containment,
+            target =
+                if (all) {
+                    SymbolDiscoveryTarget.All(kind)
+                } else {
+                    SymbolDiscoveryTarget.Name(
+                        kind = kind,
+                        pattern = SymbolDiscoveryPattern.parse("Item").refined(),
+                        match = SymbolDiscoveryMatch.FUZZY,
                     )
                 },
-                packageName = packageName?.let {
-                    SymbolDiscoveryPackageConstraint(SymbolDiscoveryPackage.parse(it).refined(), containment)
-                },
-                declarationKinds = declarationKinds?.let {
-                    SymbolDiscoveryDeclarationKinds.from(it).refined()
-                },
-            ),
+            budget =
+                SymbolDiscoveryBudget(
+                    resources =
+                        ResourceBudget(
+                            resultLimit = ResultLimit.parse(resultLimit).refined(),
+                            workUnitLimit = WorkUnitLimit.parse(workLimit).refined(),
+                            elapsedTimeLimit = ElapsedTimeLimitMillis.parse(elapsedMillis).refined(),
+                        ),
+                    returnedBytes = SymbolDiscoveryByteLimit.parse(returnedBytes).refined(),
+                ),
+            constraints =
+                SymbolDiscoveryConstraints(
+                    sourceSets = sourceSets,
+                    directory =
+                        directory?.let {
+                            SymbolDiscoveryDirectoryConstraint(
+                                SymbolDiscoveryDirectory.parse(it).refined(),
+                                containment,
+                            )
+                        },
+                    packageName =
+                        packageName?.let {
+                            SymbolDiscoveryPackageConstraint(SymbolDiscoveryPackage.parse(it).refined(), containment)
+                        },
+                    declarationKinds =
+                        declarationKinds?.let {
+                            SymbolDiscoveryDeclarationKinds.from(it).refined()
+                        },
+                ),
         )
     }
+
     private data class Fixture(
         val request: SymbolDiscoveryRequest,
         val scope: GlobalSearchScope,
@@ -801,9 +929,8 @@ class SymbolDiscoveryTest {
         val query: IntellijNativeDiscoveryQuery,
     ) {
         fun execute(
-            contributors: List<ChooseByNameContributor> = listOf(contributor),
-        ): IntellijNativeDiscoveryExecution =
-            query.discover(compiledScope, request, contributors)
+            contributors: List<ChooseByNameContributor> = listOf(contributor)
+        ): IntellijNativeDiscoveryExecution = query.discover(compiledScope, request, contributors)
     }
 
     private class FakeContributor(
@@ -817,6 +944,7 @@ class SymbolDiscoveryTest {
         val requestedNames = mutableListOf<String>()
         var processingElements = false
             private set
+
         var processedItems = 0
             private set
 
@@ -881,9 +1009,7 @@ class SymbolDiscoveryTest {
         override fun getPresentation(): ItemPresentation? = null
     }
 
-    private class StepClock(
-        private val step: Long = 100L,
-    ) : IntellijDiscoveryNanoClock {
+    private class StepClock(private val step: Long = 100L) : IntellijDiscoveryNanoClock {
         private var current = 0L
 
         override fun now(): Long = current.also { current += step }
@@ -892,10 +1018,11 @@ class SymbolDiscoveryTest {
     private fun IntellijNativeDiscoveryExecution.outcome(): SymbolDiscoveryOutcome =
         (this as IntellijNativeDiscoveryExecution.Produced).outcome
 
-    private fun SymbolDiscoveryOutcome.batch() = when (this) {
-        is SymbolDiscoveryOutcome.Complete -> batch
-        is SymbolDiscoveryOutcome.Qualified -> batch
-    }
+    private fun SymbolDiscoveryOutcome.batch() =
+        when (this) {
+            is SymbolDiscoveryOutcome.Complete -> batch
+            is SymbolDiscoveryOutcome.Qualified -> batch
+        }
 
     private fun SymbolDiscoveryOutcome.qualifications(): List<SymbolDiscoveryQualification> =
         when (this) {
@@ -903,8 +1030,9 @@ class SymbolDiscoveryTest {
             is SymbolDiscoveryOutcome.Qualified -> qualifications.values.toList()
         }
 
-    private fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error(failure.toString())
-    }
+    private fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
 }

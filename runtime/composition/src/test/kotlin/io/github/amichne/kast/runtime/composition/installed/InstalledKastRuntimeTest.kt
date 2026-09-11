@@ -2,11 +2,13 @@ package io.github.amichne.kast.runtime.composition
 
 import io.github.amichne.kast.change.apply.AddDeclarationApplyFailure
 import io.github.amichne.kast.change.apply.AddDeclarationApplyResult
+import io.github.amichne.kast.change.apply.ChangeApplyRequest as DomainChangeApplyRequest
 import io.github.amichne.kast.change.apply.MutationAdmissionFailure
 import io.github.amichne.kast.change.plan.PureAddDeclarationPlanningService
 import io.github.amichne.kast.change.plan.PureAddFilePlanningService
 import io.github.amichne.kast.change.plan.PureRenameSymbolPlanningService
 import io.github.amichne.kast.change.plan.PureReplaceDeclarationPlanningService
+import io.github.amichne.kast.change.protocol.ChangePlanAdmission
 import io.github.amichne.kast.kernel.KastObservability
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
@@ -20,12 +22,12 @@ import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
-import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
-import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
 import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
@@ -36,44 +38,41 @@ import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangePlanHa
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeRecoverHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalDiagnosticCheckHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalProtocolAuthority
-import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolInspectHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDiscoverHandler
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolInspectHandler
+import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionOperations
 import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalRelationReadHandler
 import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalTraversalRunHandler
-import io.github.amichne.kast.change.protocol.ChangePlanAdmission
-import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionOperations
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlin.coroutines.startCoroutine
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
-import kotlin.coroutines.startCoroutine
-import io.github.amichne.kast.change.apply.ChangeApplyRequest as DomainChangeApplyRequest
 
 class InstalledKastRuntimeTest {
     @Test
-    fun `installed paths refine before the production graph receives authority`(
-        @TempDir temporary: Path,
-    ) {
+    fun `installed paths refine before the production graph receives authority`(@TempDir temporary: Path) {
         val root = Files.createDirectories(temporary.resolve("repo"))
         Files.writeString(root.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
         val state = Files.createDirectories(temporary.resolve("state"))
         var observed: InstalledKastRuntimeRequest? = null
         val dispatch = KastRuntimeDispatchOperations { KastRuntimeDispatch.Responded(it) }
 
-        val construction = InstalledKastRuntime.create(
-            root,
-            state,
-            InstalledRuntimeAssembler { request ->
-                observed = request
-                InstalledRuntimeAssembly.Assembled(dispatch)
-            },
-        )
+        val construction =
+            InstalledKastRuntime.create(
+                root,
+                state,
+                InstalledRuntimeAssembler { request ->
+                    observed = request
+                    InstalledRuntimeAssembly.Assembled(dispatch)
+                },
+            )
 
         val created = construction as InstalledKastRuntimeConstruction.Created
         assertSame(dispatch, created.dispatch)
@@ -82,26 +81,23 @@ class InstalledKastRuntimeTest {
     }
 
     @Test
-    fun `admitted runtime carries the explicit bootstrap observer into assembly`(
-        @TempDir temporary: Path,
-    ) {
+    fun `admitted runtime carries the explicit bootstrap observer into assembly`(@TempDir temporary: Path) {
         val root = Files.createDirectories(temporary.resolve("repo"))
         Files.writeString(root.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
         val state = Files.createDirectories(temporary.resolve("state"))
         val observed = mutableListOf<InstalledRuntimeBootstrapPhase>()
         val dispatch = KastRuntimeDispatchOperations { KastRuntimeDispatch.Responded(it) }
 
-        val construction = InstalledKastRuntime.create(
-            root,
-            state,
-            InstalledRuntimeAssembler { request ->
-                InstalledRuntimeBootstrapPhase.entries.forEach(
-                    request.bootstrapObserver::observe,
-                )
-                InstalledRuntimeAssembly.Assembled(dispatch)
-            },
-            InstalledRuntimeBootstrapObserver(observed::add),
-        )
+        val construction =
+            InstalledKastRuntime.create(
+                root,
+                state,
+                InstalledRuntimeAssembler { request ->
+                    InstalledRuntimeBootstrapPhase.entries.forEach(request.bootstrapObserver::observe)
+                    InstalledRuntimeAssembly.Assembled(dispatch)
+                },
+                InstalledRuntimeBootstrapObserver(observed::add),
+            )
 
         assertSame(dispatch, (construction as InstalledKastRuntimeConstruction.Created).dispatch)
         assertEquals(InstalledRuntimeBootstrapPhase.entries, observed)
@@ -116,16 +112,17 @@ class InstalledKastRuntimeTest {
         var observabilityEnabled = false
         val dispatch = KastRuntimeDispatchOperations { KastRuntimeDispatch.Responded(it) }
 
-        val construction = InstalledKastRuntime.create(
-            root,
-            state,
-            InstalledRuntimeAssembler { request ->
-                observabilityEnabled = request.observability !== KastObservability.Disabled
-                InstalledRuntimeAssembly.Assembled(dispatch)
-            },
-            InstalledRuntimeBootstrapObserver {},
-            InstalledRuntimeObservabilityRequest.Sidecar(socket),
-        )
+        val construction =
+            InstalledKastRuntime.create(
+                root,
+                state,
+                InstalledRuntimeAssembler { request ->
+                    observabilityEnabled = request.observability !== KastObservability.Disabled
+                    InstalledRuntimeAssembly.Assembled(dispatch)
+                },
+                InstalledRuntimeBootstrapObserver {},
+                InstalledRuntimeObservabilityRequest.Sidecar(socket),
+            )
 
         assertSame(dispatch, (construction as InstalledKastRuntimeConstruction.Created).dispatch)
         assertTrue(observabilityEnabled)
@@ -139,53 +136,50 @@ class InstalledKastRuntimeTest {
         val missingState = temporary.resolve("missing-state")
         var invoked = false
 
-        val construction = InstalledKastRuntime.create(
-            rootWithoutSettings,
-            missingState,
-            InstalledRuntimeAssembler {
-                invoked = true
-                error("invalid paths must not reach assembly")
-            },
-        )
+        val construction =
+            InstalledKastRuntime.create(
+                rootWithoutSettings,
+                missingState,
+                InstalledRuntimeAssembler {
+                    invoked = true
+                    error("invalid paths must not reach assembly")
+                },
+            )
 
         assertFalse(invoked)
         assertEquals(
             InstalledKastRuntimeConstruction.Rejected(
                 setOf(
                     InstalledKastRuntimeFailure.WorkspaceRoot(
-                        InstalledWorkspaceRootFailure.SETTINGS_MARKER_UNAVAILABLE,
+                        InstalledWorkspaceRootFailure.SETTINGS_MARKER_UNAVAILABLE
                     ),
-                    InstalledKastRuntimeFailure.StateDirectory(
-                        InstalledRuntimeStateDirectoryFailure.UNAVAILABLE,
-                    ),
-                ),
+                    InstalledKastRuntimeFailure.StateDirectory(InstalledRuntimeStateDirectoryFailure.UNAVAILABLE),
+                )
             ),
             construction,
         )
     }
 
     @Test
-    fun `symbol handlers preserve discovery selection and exact selector authority`(
-        @TempDir temporary: Path,
-    ) {
+    fun `symbol handlers preserve discovery selection and exact selector authority`(@TempDir temporary: Path) {
         val root = Files.createDirectories(temporary.resolve("repo")).toRealPath()
         val fixture = InstalledSymbolProtocolFixture.create(root)
         val authority = CanonicalProtocolAuthority()
         val discover = CanonicalSymbolDiscoverHandler(fixture.workspace, fixture.discovery, authority)
         val inspect = CanonicalSymbolInspectHandler(fixture.exact, authority)
 
-        val discovered = runImmediate {
-            discover.execute(
-                symbolDiscoverRequest("sample", 4),
-            )
-        } as OperationOutcome.Complete
-        val candidate = (
-            discovered.evidence.payload.items.values.single() as
-                SymbolDiscoveryDocument.Declaration
-            ).candidateSelector
-        val inspected = runImmediate {
-            inspect.execute(SymbolInspectRequest(SymbolInspectTarget.Candidate(candidate)))
-        } as OperationOutcome.Complete
+        val discovered =
+            runImmediate {
+                discover.execute(symbolDiscoverRequest("sample", 4))
+            }
+                as OperationOutcome.Complete
+        val candidate =
+            (discovered.evidence.payload.items.values.single() as SymbolDiscoveryDocument.Declaration).candidateSelector
+        val inspected =
+            runImmediate {
+                inspect.execute(SymbolInspectRequest(SymbolInspectTarget.Candidate(candidate)))
+            }
+                as OperationOutcome.Complete
 
         assertEquals(
             "sample",
@@ -195,15 +189,19 @@ class InstalledKastRuntimeTest {
             fixture.resolutionRequest?.selection?.candidate?.name,
             fixture.descriptionRequest?.selector?.name,
         )
-        assertEquals(11, (inspected.evidence.basis as io.github.amichne.kast.kernel.EvidenceBasis.Published).generation.value)
+        assertEquals(
+            11,
+            (inspected.evidence.basis as io.github.amichne.kast.kernel.EvidenceBasis.Published).generation.value,
+        )
         assertEquals(
             "sample.Sample.sample",
-            (inspected.evidence.payload.symbol.qualifiedIdentity as
-                SymbolQualifiedIdentityDocument.Available).value.value,
+            (inspected.evidence.payload.symbol.qualifiedIdentity as SymbolQualifiedIdentityDocument.Available)
+                .value
+                .value,
         )
         val compilerEvidence = inspected.evidence.payload.symbol.compilerEvidence
-        val signature = compilerEvidence.signature as
-            io.github.amichne.kast.protocol.contract.CompilerSignatureDocument.Function
+        val signature =
+            compilerEvidence.signature as io.github.amichne.kast.protocol.contract.CompilerSignatureDocument.Function
         assertEquals("sample.Sample.sample", signature.qualifiedIdentity.value)
         assertEquals(
             true,
@@ -212,9 +210,7 @@ class InstalledKastRuntimeTest {
     }
 
     @Test
-    fun `relation and traversal retain compiler grounded endpoint authority`(
-        @TempDir temporary: Path,
-    ) {
+    fun `relation and traversal retain compiler grounded endpoint authority`(@TempDir temporary: Path) {
         val root = Files.createDirectories(temporary.resolve("repo")).toRealPath()
         val fixture = InstalledSymbolProtocolFixture.create(root)
         val authority = CanonicalProtocolAuthority()
@@ -222,41 +218,52 @@ class InstalledKastRuntimeTest {
         val inspect = CanonicalSymbolInspectHandler(fixture.exact, authority)
         val relation = CanonicalRelationReadHandler(fixture.relation, authority)
         val traversal = CanonicalTraversalRunHandler(fixture.traversal, authority)
-        val candidate = (
-            runImmediate {
-                discover.execute(
-                    symbolDiscoverRequest("sample", 4),
-                )
-            } as OperationOutcome.Complete
-                        ).evidence.payload.items.values.single().let { item ->
-                            (item as SymbolDiscoveryDocument.Declaration).candidateSelector
-                        }
-        val exact = (
-            runImmediate {
-                inspect.execute(SymbolInspectRequest(SymbolInspectTarget.Candidate(candidate)))
-            } as
-                OperationOutcome.Complete
-                    ).evidence.payload.symbol.selector
+        val candidate =
+            (runImmediate {
+                    discover.execute(symbolDiscoverRequest("sample", 4))
+                }
+                    as OperationOutcome.Complete)
+                .evidence
+                .payload
+                .items
+                .values
+                .single()
+                .let { item ->
+                    (item as SymbolDiscoveryDocument.Declaration).candidateSelector
+                }
+        val exact =
+            (runImmediate {
+                    inspect.execute(SymbolInspectRequest(SymbolInspectTarget.Candidate(candidate)))
+                }
+                    as OperationOutcome.Complete)
+                .evidence
+                .payload
+                .symbol
+                .selector
 
-        val related = runImmediate {
-            relation.execute(
-                RelationReadRequest(
-                    exact,
-                    RelationKindDocument.REFERENCES,
-                    io.github.amichne.kast.protocol.contract.ProtocolCount.parse(4).refined(),
-                ),
-            )
-        } as OperationOutcome.Complete
-        val traversed = runImmediate {
-            traversal.execute(
-                TraversalRunRequest(
-                    exact,
-                    RelationKindDocument.REFERENCES,
-                    io.github.amichne.kast.protocol.contract.ProtocolCount.parse(1).refined(),
-                    io.github.amichne.kast.protocol.contract.ProtocolCount.parse(4).refined(),
-                ),
-            )
-        } as OperationOutcome.Qualified
+        val related =
+            runImmediate {
+                relation.execute(
+                    RelationReadRequest(
+                        exact,
+                        RelationKindDocument.REFERENCES,
+                        io.github.amichne.kast.protocol.contract.ProtocolCount.parse(4).refined(),
+                    )
+                )
+            }
+                as OperationOutcome.Complete
+        val traversed =
+            runImmediate {
+                traversal.execute(
+                    TraversalRunRequest(
+                        exact,
+                        RelationKindDocument.REFERENCES,
+                        io.github.amichne.kast.protocol.contract.ProtocolCount.parse(1).refined(),
+                        io.github.amichne.kast.protocol.contract.ProtocolCount.parse(4).refined(),
+                    )
+                )
+            }
+                as OperationOutcome.Qualified
 
         val relationFact = related.evidence.payload.relations.values.single()
         assertEquals(
@@ -280,23 +287,29 @@ class InstalledKastRuntimeTest {
     fun `diagnostic handler binds exact file scope to current generation`(@TempDir temporary: Path) {
         val root = Files.createDirectories(temporary.resolve("repo")).toRealPath()
         val fixture = InstalledSymbolProtocolFixture.create(root)
-        val handler = CanonicalDiagnosticCheckHandler(
-            fixture.workspace,
-            fixture.diagnostic,
-            CanonicalProtocolAuthority(),
-            io.github.amichne.kast.runtime.composition.protocol.singleFileDiagnosticScopes,
-        )
-
-        val outcome = runImmediate {
-            handler.execute(
-                DiagnosticCheckRequest(
-                    ProtocolText.parse("src/main/kotlin/Sample.kt").refined(),
-                    io.github.amichne.kast.protocol.contract.ProtocolCount.parse(4).refined(),
-                ),
+        val handler =
+            CanonicalDiagnosticCheckHandler(
+                fixture.workspace,
+                fixture.diagnostic,
+                CanonicalProtocolAuthority(),
+                io.github.amichne.kast.runtime.composition.protocol.singleFileDiagnosticScopes,
             )
-        } as OperationOutcome.Complete
 
-        assertEquals(11, (outcome.evidence.basis as io.github.amichne.kast.kernel.EvidenceBasis.Published).generation.value)
+        val outcome =
+            runImmediate {
+                handler.execute(
+                    DiagnosticCheckRequest(
+                        ProtocolText.parse("src/main/kotlin/Sample.kt").refined(),
+                        io.github.amichne.kast.protocol.contract.ProtocolCount.parse(4).refined(),
+                    )
+                )
+            }
+                as OperationOutcome.Complete
+
+        assertEquals(
+            11,
+            (outcome.evidence.basis as io.github.amichne.kast.kernel.EvidenceBasis.Published).generation.value,
+        )
         val diagnostic = outcome.evidence.payload.diagnostics.values.single()
         assertEquals("KAST001", diagnostic.code.value)
         assertEquals(
@@ -310,19 +323,21 @@ class InstalledKastRuntimeTest {
     fun `change execution rejects identities that were never issued`() {
         val authority = CanonicalChangeAuthority()
         val missing = ProtocolText.parse("missing").refined()
-        val apply = CanonicalChangeApplyHandler(
-            WorkspaceInspectionOperations { error("missing plans must not inspect workspace") },
-            VerifiedChangeApplyOperations(
-                transitions = io.github.amichne.kast.workspace.service.WorkspaceTransitionOwner(),
-                apply = { error("missing plans must not reach apply") },
-                verify = { error("missing plans must not reach verification") },
-            ),
-            authority,
-        )
-        val recover = CanonicalChangeRecoverHandler(
-            { error("missing plans must not reach recovery") },
-            authority,
-        )
+        val apply =
+            CanonicalChangeApplyHandler(
+                WorkspaceInspectionOperations { error("missing plans must not inspect workspace") },
+                VerifiedChangeApplyOperations(
+                    transitions = io.github.amichne.kast.workspace.service.WorkspaceTransitionOwner(),
+                    apply = { error("missing plans must not reach apply") },
+                    verify = { error("missing plans must not reach verification") },
+                ),
+                authority,
+            )
+        val recover =
+            CanonicalChangeRecoverHandler(
+                { error("missing plans must not reach recovery") },
+                authority,
+            )
 
         assertEquals(
             OperationOutcome.Rejected(ChangeApplyRejection.PLAN_NOT_FOUND),
@@ -339,43 +354,48 @@ class InstalledKastRuntimeTest {
         val root = Files.createDirectories(temporary.resolve("repo")).toRealPath()
         val fixture = InstalledChangeProtocolFixture.create(root)
         val authority = CanonicalChangeAuthority()
-        val planning = ChangePlanningOperations(
-            PureAddFilePlanningService(),
-            PureAddDeclarationPlanningService(),
-            PureReplaceDeclarationPlanningService(),
-            PureRenameSymbolPlanningService(),
-        )
-        val plan = CanonicalChangePlanHandler(
-            planning,
-            ChangePlanAdmissionOperations { ChangePlanAdmission.AddFile(fixture.addFile) },
-            CanonicalProtocolAuthority(),
-            authority,
-        )
-        var observed: DomainChangeApplyRequest? = null
-        val apply = CanonicalChangeApplyHandler(
-            fixture.workspace,
-            VerifiedChangeApplyOperations(
-                transitions = io.github.amichne.kast.workspace.service.WorkspaceTransitionOwner(),
-                apply = { request ->
-                    observed = request
-                    AddDeclarationApplyResult.Rejected(
-                        AddDeclarationApplyFailure.Admission(MutationAdmissionFailure.WRONG_ROOT),
-                    )
-                },
-                verify = { error("rejected application must not reach verification") },
-            ),
-            authority,
-        )
-        val planned = runImmediate {
-            plan.execute(
-                ChangePlanRequest(
-                    ChangeIntentDocument.AddFile(
-                        ProtocolText.parse("src/main/kotlin/sample/Added.kt").refined(),
-                        ProtocolText.parse("package sample\n\nclass Added\n").refined(),
-                    ),
-                ),
+        val planning =
+            ChangePlanningOperations(
+                PureAddFilePlanningService(),
+                PureAddDeclarationPlanningService(),
+                PureReplaceDeclarationPlanningService(),
+                PureRenameSymbolPlanningService(),
             )
-        } as OperationOutcome.Complete
+        val plan =
+            CanonicalChangePlanHandler(
+                planning,
+                ChangePlanAdmissionOperations { ChangePlanAdmission.AddFile(fixture.addFile) },
+                CanonicalProtocolAuthority(),
+                authority,
+            )
+        var observed: DomainChangeApplyRequest? = null
+        val apply =
+            CanonicalChangeApplyHandler(
+                fixture.workspace,
+                VerifiedChangeApplyOperations(
+                    transitions = io.github.amichne.kast.workspace.service.WorkspaceTransitionOwner(),
+                    apply = { request ->
+                        observed = request
+                        AddDeclarationApplyResult.Rejected(
+                            AddDeclarationApplyFailure.Admission(MutationAdmissionFailure.WRONG_ROOT)
+                        )
+                    },
+                    verify = { error("rejected application must not reach verification") },
+                ),
+                authority,
+            )
+        val planned =
+            runImmediate {
+                plan.execute(
+                    ChangePlanRequest(
+                        ChangeIntentDocument.AddFile(
+                            ProtocolText.parse("src/main/kotlin/sample/Added.kt").refined(),
+                            ProtocolText.parse("package sample\n\nclass Added\n").refined(),
+                        )
+                    )
+                )
+            }
+                as OperationOutcome.Complete
 
         assertEquals(
             OperationOutcome.Rejected(ChangeApplyRejection.ROOT_MISMATCH),
@@ -398,10 +418,11 @@ private fun symbolDiscoverRequest(raw: String, limit: Int): SymbolDiscoverReques
         io.github.amichne.kast.protocol.contract.ProtocolCount.parse(limit).refined(),
     )
 
-private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-    is Refinement.Refined -> value
-    is Refinement.Rejected -> error("unexpected rejection: $failure")
-}
+private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error("unexpected rejection: $failure")
+    }
 
 private fun <Value> runImmediate(block: suspend () -> Value): Value {
     var completed: Result<Value>? = null
@@ -412,7 +433,7 @@ private fun <Value> runImmediate(block: suspend () -> Value): Value {
             override fun resumeWith(result: Result<Value>) {
                 completed = result
             }
-        },
+        }
     )
     return checkNotNull(completed) { "operation suspended unexpectedly" }.getOrThrow()
 }

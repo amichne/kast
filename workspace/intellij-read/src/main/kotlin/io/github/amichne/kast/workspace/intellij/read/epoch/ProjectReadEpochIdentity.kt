@@ -1,37 +1,35 @@
 package io.github.amichne.kast.workspace.intellij.read
 
-import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.ReadLimitParameter
+import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 
 /** Closed exact relation between the admitted Project root and one selected Gradle root. */
-internal enum class ProjectGradleRootRelation { SAME, MOVED }
+internal enum class ProjectGradleRootRelation {
+    SAME,
+    MOVED,
+}
 
 /** Exact normalized project-root identity admitted before cached Gradle-model lookup. */
-internal class ProjectEpochRootIdentity private constructor(
-    private val key: EpochRootComparisonKey,
-) {
+internal class ProjectEpochRootIdentity private constructor(private val key: EpochRootComparisonKey) {
     /**
-     * Proof transition: `(ProjectEpochRootIdentity, GradleEpochRootIdentity) ->
-     * ProjectGradleRootRelation`. Compares only canonical strong identities; raw text never exits.
+     * Proof transition: `(ProjectEpochRootIdentity, GradleEpochRootIdentity) -> ProjectGradleRootRelation`. Compares
+     * only canonical strong identities; raw text never exits.
      */
-    fun relationTo(candidate: GradleEpochRootIdentity): ProjectGradleRootRelation =
-        candidate.relationTo(key)
+    fun relationTo(candidate: GradleEpochRootIdentity): ProjectGradleRootRelation = candidate.relationTo(key)
 
-    override fun equals(other: Any?): Boolean =
-        other is ProjectEpochRootIdentity && key == other.key
+    override fun equals(other: Any?): Boolean = other is ProjectEpochRootIdentity && key == other.key
 
     override fun hashCode(): Int = key.hashCode()
 
     companion object {
         /**
-         * Proof transition: `String? -> Refinement<ProjectEpochRootIdentity,
-         * ProjectReadEpochObservationFailure>`.
-         * Establishes a present, bounded, absolute, normalized project root before it enters
-         * Gradle-model selection. Raw root text may enter only from the live Project adapter.
+         * Proof transition: `String? -> Refinement<ProjectEpochRootIdentity, ProjectReadEpochObservationFailure>`.
+         * Establishes a present, bounded, absolute, normalized project root before it enters Gradle-model selection.
+         * Raw root text may enter only from the live Project adapter.
          */
         fun admit(
             raw: String?,
@@ -41,33 +39,30 @@ internal class ProjectEpochRootIdentity private constructor(
                 raw,
                 ProjectReadEpochObservationFailure.ProjectRootUnavailable,
                 ProjectReadEpochObservationFailure.ProjectRootMalformed,
-                ::ProjectEpochRootIdentity, limits = limits,
+                ::ProjectEpochRootIdentity,
+                limits = limits,
             )
     }
 }
 
 /** Exact normalized root identity returned by the selected cached Gradle model. */
-internal class GradleEpochRootIdentity private constructor(
-    private val key: EpochRootComparisonKey,
-) {
+internal class GradleEpochRootIdentity private constructor(private val key: EpochRootComparisonKey) {
     /**
-     * Proof transition: `(GradleEpochRootIdentity, EpochRootComparisonKey) ->
-     * ProjectGradleRootRelation`. Establishes equality or movement from canonical strong keys.
+     * Proof transition: `(GradleEpochRootIdentity, EpochRootComparisonKey) -> ProjectGradleRootRelation`. Establishes
+     * equality or movement from canonical strong keys.
      */
     internal fun relationTo(projectRoot: EpochRootComparisonKey): ProjectGradleRootRelation =
         if (key == projectRoot) ProjectGradleRootRelation.SAME else ProjectGradleRootRelation.MOVED
 
-    override fun equals(other: Any?): Boolean =
-        other is GradleEpochRootIdentity && key == other.key
+    override fun equals(other: Any?): Boolean = other is GradleEpochRootIdentity && key == other.key
 
     override fun hashCode(): Int = key.hashCode()
 
     companion object {
         /**
-         * Proof transition: `String? -> Refinement<GradleEpochRootIdentity,
-         * ProjectReadEpochObservationFailure>`.
-         * Establishes a present, bounded, absolute, normalized selected Gradle root. Raw root
-         * text may enter only from the selected cached Gradle-model adapter.
+         * Proof transition: `String? -> Refinement<GradleEpochRootIdentity, ProjectReadEpochObservationFailure>`.
+         * Establishes a present, bounded, absolute, normalized selected Gradle root. Raw root text may enter only from
+         * the selected cached Gradle-model adapter.
          */
         fun admit(
             raw: String?,
@@ -77,7 +72,8 @@ internal class GradleEpochRootIdentity private constructor(
                 raw,
                 ProjectReadEpochObservationFailure.GradleRootUnavailable,
                 ProjectReadEpochObservationFailure.GradleRootMalformed,
-                ::GradleEpochRootIdentity, limits = limits,
+                ::GradleEpochRootIdentity,
+                limits = limits,
             )
     }
 }
@@ -91,17 +87,15 @@ internal data class ObservedEpochGradleModel(
 
 /** Canonical root value shared only for closed cross-authority comparison. */
 internal class EpochRootComparisonKey private constructor(private val value: String) {
-    override fun equals(other: Any?): Boolean =
-        other is EpochRootComparisonKey && value == other.value
+    override fun equals(other: Any?): Boolean = other is EpochRootComparisonKey && value == other.value
 
     override fun hashCode(): Int = value.hashCode()
 
     companion object {
         /**
-         * Proof transition: `String? -> Refinement<Root,
-         * ProjectReadEpochObservationFailure>`.
-         * Establishes the bounded absolute-normalized root invariant before the supplied private
-         * constructor wraps its canonical comparison key. Raw Path use is confined here.
+         * Proof transition: `String? -> Refinement<Root, ProjectReadEpochObservationFailure>`. Establishes the bounded
+         * absolute-normalized root invariant before the supplied private constructor wraps its canonical comparison
+         * key. Raw Path use is confined here.
          */
         internal fun <Root : Any> refine(
             raw: String?,
@@ -111,14 +105,17 @@ internal class EpochRootComparisonKey private constructor(private val value: Str
             limits: ReadLimits = ReadLimits.Default,
         ): Refinement<Root, ProjectReadEpochObservationFailure> {
             if (raw.isNullOrEmpty()) return Refinement.Rejected(unavailable)
-            if (raw.length > limits[ReadLimitParameter.EPOCH_PATH_CHARACTERS].value ||
-                raw.toByteArray(Charsets.UTF_8).size > limits[ReadLimitParameter.EPOCH_PATH_BYTES].value
-            ) return Refinement.Rejected(malformed)
-            val path = try {
-                Path.of(raw)
-            } catch (_: InvalidPathException) {
+            if (
+                raw.length > limits[ReadLimitParameter.EPOCH_PATH_CHARACTERS].value ||
+                    raw.toByteArray(Charsets.UTF_8).size > limits[ReadLimitParameter.EPOCH_PATH_BYTES].value
+            )
                 return Refinement.Rejected(malformed)
-            }
+            val path =
+                try {
+                    Path.of(raw)
+                } catch (_: InvalidPathException) {
+                    return Refinement.Rejected(malformed)
+                }
             if (!path.isAbsolute || path.normalize() != path) {
                 return Refinement.Rejected(malformed)
             }

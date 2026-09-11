@@ -31,11 +31,12 @@ internal value class ObserverFileChangePath private constructor(val value: Strin
             if (raw.any(Char::isISOControl)) {
                 return Refinement.Rejected(ObserverFileChangeFailure.PATH_CONTROL_CHARACTER)
             }
-            val path = try {
-                Path.of(raw)
-            } catch (_: InvalidPathException) {
-                return Refinement.Rejected(ObserverFileChangeFailure.PATH_INVALID)
-            }
+            val path =
+                try {
+                    Path.of(raw)
+                } catch (_: InvalidPathException) {
+                    return Refinement.Rejected(ObserverFileChangeFailure.PATH_INVALID)
+                }
             if (path.isAbsolute) return Refinement.Rejected(ObserverFileChangeFailure.PATH_ABSOLUTE)
             if (path.any { it.toString() == ".." }) {
                 return Refinement.Rejected(ObserverFileChangeFailure.PATH_ESCAPES_WORKSPACE)
@@ -67,7 +68,8 @@ internal value class ObserverFileDiff private constructor(val value: String) {
     }
 }
 
-internal data class ObserverFileChange private constructor(
+internal data class ObserverFileChange
+private constructor(
     val path: ObserverFileChangePath,
     val kind: ObserverFileChangeKind,
     val diff: ObserverFileDiff,
@@ -80,12 +82,12 @@ internal data class ObserverFileChange private constructor(
         ): Refinement<ObserverFileChange, ObserverFileChangeFailure> =
             when (val admittedPath = ObserverFileChangePath.admit(path)) {
                 is Refinement.Rejected -> admittedPath
-                is Refinement.Refined -> when (val admittedDiff = ObserverFileDiff.admit(diff)) {
-                    is Refinement.Rejected -> admittedDiff
-                    is Refinement.Refined -> Refinement.Refined(
-                        ObserverFileChange(admittedPath.value, kind, admittedDiff.value),
-                    )
-                }
+                is Refinement.Refined ->
+                    when (val admittedDiff = ObserverFileDiff.admit(diff)) {
+                        is Refinement.Rejected -> admittedDiff
+                        is Refinement.Refined ->
+                            Refinement.Refined(ObserverFileChange(admittedPath.value, kind, admittedDiff.value))
+                    }
             }
     }
 }
@@ -103,14 +105,14 @@ internal class ObserverFileChangeSet private constructor(entries: List<ObserverF
         private const val MAXIMUM_FILES = BrokerOperationalLimits.maximumObserverChangeFiles
 
         internal fun admit(
-            entries: List<ObserverFileChange>,
-        ): Refinement<ObserverFileChangeSet, ObserverFileChangeSetFailure> = when {
-            entries.isEmpty() -> Refinement.Rejected(ObserverFileChangeSetFailure.EMPTY)
-            entries.size > MAXIMUM_FILES ->
-                Refinement.Rejected(ObserverFileChangeSetFailure.TOO_MANY_FILES)
-            entries.map { it.path }.distinct().size != entries.size ->
-                Refinement.Rejected(ObserverFileChangeSetFailure.DUPLICATE_PATH)
-            else -> Refinement.Refined(ObserverFileChangeSet(entries))
-        }
+            entries: List<ObserverFileChange>
+        ): Refinement<ObserverFileChangeSet, ObserverFileChangeSetFailure> =
+            when {
+                entries.isEmpty() -> Refinement.Rejected(ObserverFileChangeSetFailure.EMPTY)
+                entries.size > MAXIMUM_FILES -> Refinement.Rejected(ObserverFileChangeSetFailure.TOO_MANY_FILES)
+                entries.map { it.path }.distinct().size != entries.size ->
+                    Refinement.Rejected(ObserverFileChangeSetFailure.DUPLICATE_PATH)
+                else -> Refinement.Refined(ObserverFileChangeSet(entries))
+            }
     }
 }

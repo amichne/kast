@@ -15,10 +15,10 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaTypeAliasSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 
 internal data class IntellijCompilerProjection(
     val kind: CompilerSymbolKind,
@@ -28,9 +28,7 @@ internal data class IntellijCompilerProjection(
 )
 
 internal sealed interface IntellijCompilerProjectionResult {
-    data class Projected(
-        val projection: IntellijCompilerProjection,
-    ) : IntellijCompilerProjectionResult
+    data class Projected(val projection: IntellijCompilerProjection) : IntellijCompilerProjectionResult
 
     data object Unsupported : IntellijCompilerProjectionResult
 }
@@ -44,79 +42,78 @@ internal enum class IntellijSymbolIdentityComparison {
 /**
  * Proof transition: `KaSymbol -> IntellijCompilerProjectionResult`.
  *
- * A projected result establishes one closed symbol kind plus versioned, fixed-size,
- * canonical-signature compiler identity. Unsupported is the closed local/unavailable identity
- * state. Raw K2 values remain inside the analysis-session receiver.
+ * A projected result establishes one closed symbol kind plus versioned, fixed-size, canonical-signature compiler
+ * identity. Unsupported is the closed local/unavailable identity state. Raw K2 values remain inside the
+ * analysis-session receiver.
  */
-internal fun KaSymbol.compilerProjection(): IntellijCompilerProjectionResult = when (this) {
-    is KaValueParameterSymbol -> generatedPrimaryConstructorProperty?.compilerProjection()
-        ?: IntellijCompilerProjectionResult.Unsupported
-    is KaConstructorSymbol -> {
-        val owner = containingClassId?.asSingleFqName()?.asString()
-                    ?: return IntellijCompilerProjectionResult.Unsupported
-        projected(
-            CompilerSymbolKind.CONSTRUCTOR,
-            "$owner.<init>",
-            functionSignature("$owner.<init>"),
-        )
+internal fun KaSymbol.compilerProjection(): IntellijCompilerProjectionResult =
+    when (this) {
+        is KaValueParameterSymbol ->
+            generatedPrimaryConstructorProperty?.compilerProjection() ?: IntellijCompilerProjectionResult.Unsupported
+        is KaConstructorSymbol -> {
+            val owner =
+                containingClassId?.asSingleFqName()?.asString() ?: return IntellijCompilerProjectionResult.Unsupported
+            projected(
+                CompilerSymbolKind.CONSTRUCTOR,
+                "$owner.<init>",
+                functionSignature("$owner.<init>"),
+            )
+        }
+        is KaFunctionSymbol -> {
+            val callable =
+                callableId?.asSingleFqName()?.asString() ?: return IntellijCompilerProjectionResult.Unsupported
+            projected(CompilerSymbolKind.FUNCTION, callable, functionSignature(callable))
+        }
+        is KaKotlinPropertySymbol -> {
+            val callable =
+                callableId?.asSingleFqName()?.asString() ?: return IntellijCompilerProjectionResult.Unsupported
+            projected(
+                CompilerSymbolKind.PROPERTY,
+                callable,
+                CanonicalCompilerSignature.property(
+                    rawQualifiedIdentity = callable,
+                    rawReceiverType = receiverParameter?.returnType?.toString(),
+                    rawContextReceiverTypes = contextReceivers.map { it.type.toString() },
+                    rawReturnType = returnType.toString(),
+                ),
+            )
+        }
+        is KaTypeAliasSymbol -> {
+            val className = classId?.asSingleFqName()?.asString() ?: return IntellijCompilerProjectionResult.Unsupported
+            projected(
+                CompilerSymbolKind.TYPE_ALIAS,
+                className,
+                CanonicalCompilerSignature.typeAlias(className),
+            )
+        }
+        is KaClassLikeSymbol -> {
+            val className = classId?.asSingleFqName()?.asString() ?: return IntellijCompilerProjectionResult.Unsupported
+            projected(
+                CompilerSymbolKind.CLASSLIKE,
+                className,
+                CanonicalCompilerSignature.classLike(className),
+            )
+        }
+        else -> IntellijCompilerProjectionResult.Unsupported
     }
-    is KaFunctionSymbol -> {
-        val callable = callableId?.asSingleFqName()?.asString()
-                       ?: return IntellijCompilerProjectionResult.Unsupported
-        projected(CompilerSymbolKind.FUNCTION, callable, functionSignature(callable))
-    }
-    is KaKotlinPropertySymbol -> {
-        val callable = callableId?.asSingleFqName()?.asString()
-                       ?: return IntellijCompilerProjectionResult.Unsupported
-        projected(
-            CompilerSymbolKind.PROPERTY,
-            callable,
-            CanonicalCompilerSignature.property(
-                rawQualifiedIdentity = callable,
-                rawReceiverType = receiverParameter?.returnType?.toString(),
-                rawContextReceiverTypes = contextReceivers.map { it.type.toString() },
-                rawReturnType = returnType.toString(),
-            ),
-        )
-    }
-    is KaTypeAliasSymbol -> {
-        val className = classId?.asSingleFqName()?.asString()
-                        ?: return IntellijCompilerProjectionResult.Unsupported
-        projected(
-            CompilerSymbolKind.TYPE_ALIAS,
-            className,
-            CanonicalCompilerSignature.typeAlias(className),
-        )
-    }
-    is KaClassLikeSymbol -> {
-        val className = classId?.asSingleFqName()?.asString()
-                        ?: return IntellijCompilerProjectionResult.Unsupported
-        projected(
-            CompilerSymbolKind.CLASSLIKE,
-            className,
-            CanonicalCompilerSignature.classLike(className),
-        )
-    }
-    else -> IntellijCompilerProjectionResult.Unsupported
-}
 
 /**
  * Proof transition: `(KaSymbol, KaSymbol) -> IntellijSymbolIdentityComparison`.
  *
- * SAME establishes identical detached compiler identities. DIFFERENT and UNSUPPORTED are closed
- * non-admission states; no PSI name, offset, or display text substitutes for K2 identity.
+ * SAME establishes identical detached compiler identities. DIFFERENT and UNSUPPORTED are closed non-admission states;
+ * no PSI name, offset, or display text substitutes for K2 identity.
  */
 internal fun KaSymbol.compareIdentity(other: KaSymbol): IntellijSymbolIdentityComparison {
-    val left = when (val result = compilerProjection()) {
-        is IntellijCompilerProjectionResult.Projected -> result.projection.identity
-        IntellijCompilerProjectionResult.Unsupported ->
-            return IntellijSymbolIdentityComparison.UNSUPPORTED
-    }
-    val right = when (val result = other.compilerProjection()) {
-        is IntellijCompilerProjectionResult.Projected -> result.projection.identity
-        IntellijCompilerProjectionResult.Unsupported ->
-            return IntellijSymbolIdentityComparison.UNSUPPORTED
-    }
+    val left =
+        when (val result = compilerProjection()) {
+            is IntellijCompilerProjectionResult.Projected -> result.projection.identity
+            IntellijCompilerProjectionResult.Unsupported -> return IntellijSymbolIdentityComparison.UNSUPPORTED
+        }
+    val right =
+        when (val result = other.compilerProjection()) {
+            is IntellijCompilerProjectionResult.Projected -> result.projection.identity
+            IntellijCompilerProjectionResult.Unsupported -> return IntellijSymbolIdentityComparison.UNSUPPORTED
+        }
     return if (left == right) {
         IntellijSymbolIdentityComparison.SAME
     } else {
@@ -125,7 +122,7 @@ internal fun KaSymbol.compareIdentity(other: KaSymbol): IntellijSymbolIdentityCo
 }
 
 private fun KaFunctionSymbol.functionSignature(
-    callable: String,
+    callable: String
 ): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> =
     CanonicalCompilerSignature.function(
         rawQualifiedIdentity = callable,
@@ -139,14 +136,16 @@ private fun projected(
     kind: CompilerSymbolKind,
     qualifiedIdentity: String,
     signature: Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure>,
-): IntellijCompilerProjectionResult = when (signature) {
-    is Refinement.Refined -> IntellijCompilerProjectionResult.Projected(
-        IntellijCompilerProjection(
-            kind,
-            qualifiedIdentity,
-            signature.value,
-            CompilerSymbolIdentity.fromCanonicalSignature(signature.value),
-        ),
-    )
-    is Refinement.Rejected -> IntellijCompilerProjectionResult.Unsupported
-}
+): IntellijCompilerProjectionResult =
+    when (signature) {
+        is Refinement.Refined ->
+            IntellijCompilerProjectionResult.Projected(
+                IntellijCompilerProjection(
+                    kind,
+                    qualifiedIdentity,
+                    signature.value,
+                    CompilerSymbolIdentity.fromCanonicalSignature(signature.value),
+                )
+            )
+        is Refinement.Rejected -> IntellijCompilerProjectionResult.Unsupported
+    }

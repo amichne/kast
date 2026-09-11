@@ -3,6 +3,7 @@ package io.github.amichne.kast.source.service
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.source.contract.EntitySelection
+import io.github.amichne.kast.source.contract.RegionSelection
 import io.github.amichne.kast.source.contract.SourceEntityLimit
 import io.github.amichne.kast.source.contract.SourceRange
 import io.github.amichne.kast.source.contract.SourceReadAnchor
@@ -22,13 +23,11 @@ import io.github.amichne.kast.source.contract.SourceTextProjection
 import io.github.amichne.kast.source.contract.TextProjection
 import io.github.amichne.kast.source.contract.Utf16CodeUnitCount
 import io.github.amichne.kast.source.contract.Utf16CodeUnitOffset
-import io.github.amichne.kast.source.contract.RegionSelection
 import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidate
 import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
@@ -48,10 +47,11 @@ class SourceReadServiceTest {
         val request = request(workspace, "fun subject() = 1\n")
         val expected = complete(request)
         val port = RecordingSourceReadPort { _, _ -> expected }
-        val service = SourceReadService(
-            WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
-            port,
-        )
+        val service =
+            SourceReadService(
+                WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
+                port,
+            )
 
         val result = runSuspend { service.read(request) }
 
@@ -66,10 +66,11 @@ class SourceReadServiceTest {
         val current = published(8, "source-state")
         val stale = request(published(7, "source-state"), "fun subject() = 1\n")
         val port = RecordingSourceReadPort { _, _ -> error("must not execute") }
-        val service = SourceReadService(
-            WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(current) },
-            port,
-        )
+        val service =
+            SourceReadService(
+                WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(current) },
+                port,
+            )
 
         assertEquals(
             SourceReadResult.Rejected(SourceReadRejection.SOURCE_SELECTOR_STALE),
@@ -90,13 +91,14 @@ class SourceReadServiceTest {
         val moved = published(8, "source-state")
         val request = request(first, "fun subject() = 1\n")
         var inspections = 0
-        val service = SourceReadService(
-            WorkspaceInspectionOperations {
-                inspections += 1
-                WorkspaceRuntimeState.Ready(if (inspections == 1) first else moved)
-            },
-            RecordingSourceReadPort { _, _ -> complete(request) },
-        )
+        val service =
+            SourceReadService(
+                WorkspaceInspectionOperations {
+                    inspections += 1
+                    WorkspaceRuntimeState.Ready(if (inspections == 1) first else moved)
+                },
+                RecordingSourceReadPort { _, _ -> complete(request) },
+            )
 
         assertEquals(
             SourceReadResult.Rejected(SourceReadRejection.STALE_GENERATION),
@@ -109,10 +111,11 @@ class SourceReadServiceTest {
         val workspace = published(7, "source-state")
         val request = request(workspace, "fun subject() = 1\n")
         val wrongRequest = request(workspace, "fun subject() = 2\n")
-        val service = SourceReadService(
-            WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
-            RecordingSourceReadPort { _, _ -> complete(wrongRequest) },
-        )
+        val service =
+            SourceReadService(
+                WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
+                RecordingSourceReadPort { _, _ -> complete(wrongRequest) },
+            )
 
         assertEquals(
             SourceReadResult.Rejected(SourceReadRejection.CONTRACT_VIOLATION),
@@ -125,15 +128,20 @@ class SourceReadServiceTest {
         val workspace = published(7, "source-state")
         val request = request(workspace, "fun subject() = 1\n")
         var admissions = 0
-        val contexts = io.github.amichne.kast.source.contract.SourceReadContextPort { authority ->
-            assertEquals(workspace.readLease, authority)
-            admissions += 1
-            if (admissions == 1) Refinement.Refined(SourceReadContext.Published(workspace.readLease, workspace.sourceState))
-            else Refinement.Rejected(SourceReadRejection.STALE_GENERATION)
-        }
+        val contexts =
+            io.github.amichne.kast.source.contract.SourceReadContextPort { authority ->
+                assertEquals(workspace.readLease, authority)
+                admissions += 1
+                if (admissions == 1)
+                    Refinement.Refined(SourceReadContext.Published(workspace.readLease, workspace.sourceState))
+                else Refinement.Rejected(SourceReadRejection.STALE_GENERATION)
+            }
         val port = RecordingSourceReadPort { _, _ -> complete(request) }
         val service = SourceReadService(contexts, port)
-        assertEquals(SourceReadResult.Rejected(SourceReadRejection.STALE_GENERATION), runSuspend { service.read(request) })
+        assertEquals(
+            SourceReadResult.Rejected(SourceReadRejection.STALE_GENERATION),
+            runSuspend { service.read(request) },
+        )
         assertEquals(2, admissions)
         assertEquals(1, port.requests.size)
     }
@@ -153,69 +161,79 @@ class SourceReadServiceTest {
 
     private fun complete(request: SourceReadRequest): SourceReadResult.Complete {
         val selector = (request.anchor as SourceReadAnchor.Source).selector
-        val text = "fun subject() = ${if (selector.snapshot.textIdentity ==
+        val text =
+            "fun subject() = ${if (selector.snapshot.textIdentity ==
             SourceTextIdentity.fromNormalizedCommittedText("fun subject() = 1\n")) "1" else "2"}\n"
         return SourceReadResult.Complete.create(
-            selector.snapshot,
-            SourceRegion.create(SourceRegionKind.DECLARATION, selector).refined(),
-            emptyList(),
-            SourceTextProjection.returned(selector, text).refined(),
-        ).refined()
+                selector.snapshot,
+                SourceRegion.create(SourceRegionKind.DECLARATION, selector).refined(),
+                emptyList(),
+                SourceTextProjection.returned(selector, text).refined(),
+            )
+            .refined()
     }
 
     private fun rootSelector(workspace: PublishedWorkspace, text: String): SourceSelector {
-        val path = CanonicalWorkspaceFilePath.fromCanonicalPath(
-            workspace.root,
-            Path.of("${workspace.root.value}/src/Subject.kt"),
-        ).refined()
-        val snapshot = SourceSnapshot.create(
-            workspace.readLease,
-            workspace.sourceState,
-            SymbolDiscoveryFileIdentity.Workspace(path),
-            SourceTextIdentity.fromNormalizedCommittedText(text),
-            Utf16CodeUnitCount.parse(text.length).refined(),
-        )
-        val range = SourceRange.create(
-            snapshot,
-            Utf16CodeUnitOffset.parse(0).refined(),
-            Utf16CodeUnitOffset.parse(text.length).refined(),
-        ).refined()
+        val path =
+            CanonicalWorkspaceFilePath.fromCanonicalPath(
+                    workspace.root,
+                    Path.of("${workspace.root.value}/src/Subject.kt"),
+                )
+                .refined()
+        val snapshot =
+            SourceSnapshot.create(
+                workspace.readLease,
+                workspace.sourceState,
+                SymbolDiscoveryFileIdentity.Workspace(path),
+                SourceTextIdentity.fromNormalizedCommittedText(text),
+                Utf16CodeUnitCount.parse(text.length).refined(),
+            )
+        val range =
+            SourceRange.create(
+                    snapshot,
+                    Utf16CodeUnitOffset.parse(0).refined(),
+                    Utf16CodeUnitOffset.parse(text.length).refined(),
+                )
+                .refined()
         return SourceSelector.issueRoot(range, SourceRegionKind.DECLARATION)
     }
 
     private fun published(generation: Long, sourceState: String): PublishedWorkspace =
         PublishedWorkspace.publish(
             ReconciledWorkspace.admit(
-                WorkspaceCandidate(root(), WorkspaceStateIdentity.parse(sourceState).refined()),
-                WorkspaceEvidenceKind.entries.toSet(),
-            ).refined(),
+                    WorkspaceCandidate(root(), WorkspaceStateIdentity.parse(sourceState).refined()),
+                    WorkspaceEvidenceKind.entries.toSet(),
+                )
+                .refined(),
             EvidenceGeneration.parse(generation).refined(),
         )
 
     private fun root(): CanonicalWorkspaceRoot =
         CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
 
-    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error("Expected refined value, got $failure")
-    }
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error("Expected refined value, got $failure")
+        }
 
     private fun <Value> runSuspend(block: suspend () -> Value): Value {
         var completion: Result<Value>? = null
         block.startCoroutine(
             object : Continuation<Value> {
                 override val context = EmptyCoroutineContext
+
                 override fun resumeWith(result: Result<Value>) {
                     completion = result
                 }
-            },
+            }
         )
         return checkNotNull(completion).getOrThrow()
     }
 }
 
 private class RecordingSourceReadPort(
-    private val result: suspend (SourceReadContext, SourceReadRequest) -> SourceReadResult,
+    private val result: suspend (SourceReadContext, SourceReadRequest) -> SourceReadResult
 ) : SourceReadPort {
     val contexts = mutableListOf<SourceReadContext>()
     val requests = mutableListOf<SourceReadRequest>()

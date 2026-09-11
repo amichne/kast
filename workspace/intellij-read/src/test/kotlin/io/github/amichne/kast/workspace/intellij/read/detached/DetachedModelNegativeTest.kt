@@ -45,9 +45,7 @@ class DetachedModelNegativeTest {
     fun `module ownership source root SDK and classpath failures remain finite data`() {
         moduleCases().forEach { case ->
             assertFailures(
-                DetachedModelObservation.Observed(
-                    detachedModelBoundary(modules = case.modules),
-                ),
+                DetachedModelObservation.Observed(detachedModelBoundary(modules = case.modules)),
                 case.failure,
                 case.name,
             )
@@ -57,31 +55,24 @@ class DetachedModelNegativeTest {
     @Test
     fun `oversized observations reject instead of truncating into authority`() {
         assertFailures(
-            DetachedModelObservation.Observed(
-                detachedModelBoundary(
-                    modules = (0..256).map(::detachedModuleBoundary),
-                ),
-            ),
+            DetachedModelObservation.Observed(detachedModelBoundary(modules = (0..256).map(::detachedModuleBoundary))),
             DetachedModelCaptureFailure.TOO_MANY_MODULES,
             "module limit",
         )
         assertFailures(
             observationWithModule(
                 detachedModuleBoundary(
-                    sourceRoots = (0..256).map { index ->
-                        detachedSourceRootBoundary("roots/root-$index")
-                    },
-                ),
+                    sourceRoots =
+                        (0..256).map { index ->
+                            detachedSourceRootBoundary("roots/root-$index")
+                        }
+                )
             ),
             DetachedModelCaptureFailure.TOO_MANY_SOURCE_ROOTS,
             "source-root limit",
         )
         assertFailures(
-            observationWithModule(
-                detachedModuleBoundary(
-                    classpath = (0..2_048).map(::detachedClasspathBoundary),
-                ),
-            ),
+            observationWithModule(detachedModuleBoundary(classpath = (0..2_048).map(::detachedClasspathBoundary))),
             DetachedModelCaptureFailure.TOO_MANY_CLASSPATH_ENTRIES,
             "classpath limit",
         )
@@ -91,30 +82,30 @@ class DetachedModelNegativeTest {
     fun `duplicate roots and cross module ownership ambiguity reject`() {
         val shared = detachedSourceRootBoundary("shared/src/main/kotlin")
         assertRejected(
-            observationWithModule(
-                detachedModuleBoundary(sourceRoots = listOf(shared, shared)),
-            ),
+            observationWithModule(detachedModuleBoundary(sourceRoots = listOf(shared, shared))),
             "duplicate source-root observation",
         )
         assertRejected(
             DetachedModelObservation.Observed(
                 detachedModelBoundary(
-                    modules = listOf(
-                        detachedModuleBoundary(index = 0, sourceRoots = listOf(shared)),
-                        detachedModuleBoundary(index = 1, sourceRoots = listOf(shared)),
-                    ),
-                ),
+                    modules =
+                        listOf(
+                            detachedModuleBoundary(index = 0, sourceRoots = listOf(shared)),
+                            detachedModuleBoundary(index = 1, sourceRoots = listOf(shared)),
+                        )
+                )
             ),
             "one source root with two Gradle owners",
         )
         assertFailures(
             observationWithModule(
                 detachedModuleBoundary(
-                    sourceRoots = listOf(
-                        shared,
-                        shared.copy(kind = DetachedSourceRootKind.TEST),
-                    ),
-                ),
+                    sourceRoots =
+                        listOf(
+                            shared,
+                            shared.copy(kind = DetachedSourceRootKind.TEST),
+                        )
+                )
             ),
             DetachedModelCaptureFailure.CONFLICTING_SOURCE_ROOT_KIND,
         )
@@ -123,9 +114,7 @@ class DetachedModelNegativeTest {
     @Test
     fun `text bounds and rejection collections fail closed`() {
         assertFailures(
-            DetachedModelObservation.Observed(
-                detachedModelBoundary(projectRoot = "/" + "r".repeat(4_097)),
-            ),
+            DetachedModelObservation.Observed(detachedModelBoundary(projectRoot = "/" + "r".repeat(4_097))),
             DetachedModelCaptureFailure.PATH_IDENTITY_TOO_LONG,
         )
         assertFailures(
@@ -134,19 +123,16 @@ class DetachedModelNegativeTest {
         )
         assertFailures(
             observationWithModule(
-                detachedModuleBoundary(
-                    classpath = listOf(
-                        DetachedClasspathBoundary("file:///" + "c".repeat(8_193)),
-                    ),
-                ),
+                detachedModuleBoundary(classpath = listOf(DetachedClasspathBoundary("file:///" + "c".repeat(8_193))))
             ),
             DetachedModelCaptureFailure.CLASSPATH_IDENTITY_TOO_LONG,
         )
         val additionalFailures = linkedSetOf(DetachedModelCaptureFailure.READ_PREEMPTED)
-        val rejected = DetachedModelCapture.Rejected(
-            DetachedModelCaptureFailure.OBSERVATION_FAILED,
-            additionalFailures,
-        )
+        val rejected =
+            DetachedModelCapture.Rejected(
+                DetachedModelCaptureFailure.OBSERVATION_FAILED,
+                additionalFailures,
+            )
         additionalFailures.clear()
         assertEquals(
             setOf(
@@ -175,48 +161,49 @@ class DetachedModelNegativeTest {
         )
     }
 
-    private fun projectCases(): List<ProjectCase> = listOf(
-        ProjectCase(
-            "disposed Project",
-            DetachedModelCaptureFailure.PROJECT_DISPOSED,
-            detachedModelBoundary(disposed = true),
-        ),
-        ProjectCase(
-            "dumb Project",
-            DetachedModelCaptureFailure.PROJECT_DUMB,
-            detachedModelBoundary(smart = false),
-        ),
-        ProjectCase(
-            "missing root",
-            DetachedModelCaptureFailure.ROOT_UNAVAILABLE,
-            detachedModelBoundary(projectRoot = null),
-        ),
-        ProjectCase(
-            "relative root",
-            DetachedModelCaptureFailure.ROOT_UNAVAILABLE,
-            detachedModelBoundary(projectRoot = "workspace/kast"),
-        ),
-        ProjectCase(
-            "non-normalized root",
-            DetachedModelCaptureFailure.ROOT_UNAVAILABLE,
-            detachedModelBoundary(projectRoot = "/workspace/./kast"),
-        ),
-        ProjectCase(
-            "other root",
-            DetachedModelCaptureFailure.ROOT_MISMATCH,
-            detachedModelBoundary(projectRoot = "/workspace/other"),
-        ),
-        ProjectCase(
-            "incomplete cached model",
-            DetachedModelCaptureFailure.GRADLE_MODEL_INCOMPLETE,
-            detachedModelBoundary(gradleModelComplete = false),
-        ),
-        ProjectCase(
-            "missing modules",
-            DetachedModelCaptureFailure.NO_MODULES,
-            detachedModelBoundary(modules = emptyList()),
-        ),
-    )
+    private fun projectCases(): List<ProjectCase> =
+        listOf(
+            ProjectCase(
+                "disposed Project",
+                DetachedModelCaptureFailure.PROJECT_DISPOSED,
+                detachedModelBoundary(disposed = true),
+            ),
+            ProjectCase(
+                "dumb Project",
+                DetachedModelCaptureFailure.PROJECT_DUMB,
+                detachedModelBoundary(smart = false),
+            ),
+            ProjectCase(
+                "missing root",
+                DetachedModelCaptureFailure.ROOT_UNAVAILABLE,
+                detachedModelBoundary(projectRoot = null),
+            ),
+            ProjectCase(
+                "relative root",
+                DetachedModelCaptureFailure.ROOT_UNAVAILABLE,
+                detachedModelBoundary(projectRoot = "workspace/kast"),
+            ),
+            ProjectCase(
+                "non-normalized root",
+                DetachedModelCaptureFailure.ROOT_UNAVAILABLE,
+                detachedModelBoundary(projectRoot = "/workspace/./kast"),
+            ),
+            ProjectCase(
+                "other root",
+                DetachedModelCaptureFailure.ROOT_MISMATCH,
+                detachedModelBoundary(projectRoot = "/workspace/other"),
+            ),
+            ProjectCase(
+                "incomplete cached model",
+                DetachedModelCaptureFailure.GRADLE_MODEL_INCOMPLETE,
+                detachedModelBoundary(gradleModelComplete = false),
+            ),
+            ProjectCase(
+                "missing modules",
+                DetachedModelCaptureFailure.NO_MODULES,
+                detachedModelBoundary(modules = emptyList()),
+            ),
+        )
 
     private fun moduleCases(): List<ModuleCase> {
         val valid = detachedModuleBoundary()
@@ -277,14 +264,15 @@ class DetachedModelNegativeTest {
                 DetachedModelCaptureFailure.INVALID_SOURCE_ROOT,
                 listOf(
                     valid.copy(
-                        sourceRoots = listOf(
-                            DetachedSourceRootBoundary(
-                                "src/main/kotlin",
-                                DetachedSourceRootKind.PRODUCTION,
-                                DetachedSourceRootProvenance.AUTHORED,
-                            ),
-                        ),
-                    ),
+                        sourceRoots =
+                            listOf(
+                                DetachedSourceRootBoundary(
+                                    "src/main/kotlin",
+                                    DetachedSourceRootKind.PRODUCTION,
+                                    DetachedSourceRootProvenance.AUTHORED,
+                                )
+                            )
+                    )
                 ),
             ),
             ModuleCase(
@@ -292,14 +280,15 @@ class DetachedModelNegativeTest {
                 DetachedModelCaptureFailure.SOURCE_ROOT_OUTSIDE_WORKSPACE,
                 listOf(
                     valid.copy(
-                        sourceRoots = listOf(
-                            DetachedSourceRootBoundary(
-                                "/workspace/other/src",
-                                DetachedSourceRootKind.PRODUCTION,
-                                DetachedSourceRootProvenance.AUTHORED,
-                            ),
-                        ),
-                    ),
+                        sourceRoots =
+                            listOf(
+                                DetachedSourceRootBoundary(
+                                    "/workspace/other/src",
+                                    DetachedSourceRootKind.PRODUCTION,
+                                    DetachedSourceRootProvenance.AUTHORED,
+                                )
+                            )
+                    )
                 ),
             ),
             ModuleCase(
@@ -307,14 +296,15 @@ class DetachedModelNegativeTest {
                 DetachedModelCaptureFailure.INVALID_SOURCE_ROOT_KIND,
                 listOf(
                     valid.copy(
-                        sourceRoots = listOf(
-                            DetachedSourceRootBoundary(
-                                "${FIXTURE_ROOT.value}/src",
-                                null,
-                                DetachedSourceRootProvenance.AUTHORED,
-                            ),
-                        ),
-                    ),
+                        sourceRoots =
+                            listOf(
+                                DetachedSourceRootBoundary(
+                                    "${FIXTURE_ROOT.value}/src",
+                                    null,
+                                    DetachedSourceRootProvenance.AUTHORED,
+                                )
+                            )
+                    )
                 ),
             ),
             ModuleCase(
@@ -322,14 +312,15 @@ class DetachedModelNegativeTest {
                 DetachedModelCaptureFailure.INVALID_SOURCE_ROOT_PROVENANCE,
                 listOf(
                     valid.copy(
-                        sourceRoots = listOf(
-                            DetachedSourceRootBoundary(
-                                "${FIXTURE_ROOT.value}/src",
-                                DetachedSourceRootKind.PRODUCTION,
-                                null,
-                            ),
-                        ),
-                    ),
+                        sourceRoots =
+                            listOf(
+                                DetachedSourceRootBoundary(
+                                    "${FIXTURE_ROOT.value}/src",
+                                    DetachedSourceRootKind.PRODUCTION,
+                                    null,
+                                )
+                            )
+                    )
                 ),
             ),
             ModuleCase(
@@ -368,11 +359,12 @@ class DetachedModelNegativeTest {
         failure: DetachedModelCaptureFailure,
         message: String = failure.name,
     ) {
-        val rejected = assertInstanceOf(
-            DetachedModelCapture.Rejected::class.java,
-            captureDetachedFixture(observation),
-            message,
-        )
+        val rejected =
+            assertInstanceOf(
+                DetachedModelCapture.Rejected::class.java,
+                captureDetachedFixture(observation),
+                message,
+            )
         assertEquals(setOf(failure), rejected.failures, message)
     }
 

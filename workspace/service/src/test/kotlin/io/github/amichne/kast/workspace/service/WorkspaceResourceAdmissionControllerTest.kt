@@ -17,16 +17,16 @@ import io.github.amichne.kast.workspace.contract.WorkspaceResourceInitiationResu
 import io.github.amichne.kast.workspace.contract.WorkspaceResourceObservation
 import io.github.amichne.kast.workspace.contract.WorkspaceResourceObservationAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceResourcePolicy
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
 
 class WorkspaceResourceAdmissionControllerTest {
     @Test
@@ -38,19 +38,20 @@ class WorkspaceResourceAdmissionControllerTest {
         val gradleResolutions = AtomicInteger()
         val executor = Executors.newFixedThreadPool(8)
         try {
-            val futures = List(8) {
-                executor.submit<WorkspaceResourceInitiationResult> {
-                    controller.coordinate(
-                        root,
-                        WorkspaceExpensiveWork.PROJECT_IMPORT,
-                        WorkspaceResourceInitiation {
-                            gradleResolutions.incrementAndGet()
-                            begin.countDown()
-                            assertTrue(release.await(2, TimeUnit.SECONDS))
-                        },
-                    )
+            val futures =
+                List(8) {
+                    executor.submit<WorkspaceResourceInitiationResult> {
+                        controller.coordinate(
+                            root,
+                            WorkspaceExpensiveWork.PROJECT_IMPORT,
+                            WorkspaceResourceInitiation {
+                                gradleResolutions.incrementAndGet()
+                                begin.countDown()
+                                assertTrue(release.await(2, TimeUnit.SECONDS))
+                            },
+                        )
+                    }
                 }
-            }
             assertTrue(begin.await(2, TimeUnit.SECONDS))
             assertTrue(awaitLoad(controller, queuedWaiters = 7))
             release.countDown()
@@ -60,8 +61,9 @@ class WorkspaceResourceAdmissionControllerTest {
             assertEquals(7, results.count { it is WorkspaceResourceInitiationResult.ReusedExactRoot })
             assertEquals(1, gradleResolutions.get())
             assertTrue(
-                results.filterIsInstance<WorkspaceResourceInitiationResult.ReusedExactRoot>()
-                    .all { it.timing.queue.nanoseconds > 0L },
+                results.filterIsInstance<WorkspaceResourceInitiationResult.ReusedExactRoot>().all {
+                    it.timing.queue.nanoseconds > 0L
+                }
             )
             assertEquals(controller.snapshot(), WorkspaceResourceControllerSnapshot.empty())
         } finally {
@@ -80,29 +82,32 @@ class WorkspaceResourceAdmissionControllerTest {
         val maximumImports = AtomicInteger()
         val executor = Executors.newFixedThreadPool(2)
         try {
-            val first = executor.submit<WorkspaceResourceInitiationResult> {
-                controller.coordinate(
-                    root("/one"),
-                    WorkspaceExpensiveWork.PROJECT_IMPORT,
-                    initiation(activeImports, maximumImports, firstStarted, releaseFirst),
-                )
-            }
+            val first =
+                executor.submit<WorkspaceResourceInitiationResult> {
+                    controller.coordinate(
+                        root("/one"),
+                        WorkspaceExpensiveWork.PROJECT_IMPORT,
+                        initiation(activeImports, maximumImports, firstStarted, releaseFirst),
+                    )
+                }
             assertTrue(firstStarted.await(2, TimeUnit.SECONDS))
 
-            val indexing = controller.coordinate(
-                root("/indexing"),
-                WorkspaceExpensiveWork.INDEXING,
-                WorkspaceResourceInitiation {},
-            )
+            val indexing =
+                controller.coordinate(
+                    root("/indexing"),
+                    WorkspaceExpensiveWork.INDEXING,
+                    WorkspaceResourceInitiation {},
+                )
             assertTrue(indexing is WorkspaceResourceInitiationResult.Initiated)
 
-            val second = executor.submit<WorkspaceResourceInitiationResult> {
-                controller.coordinate(
-                    root("/two"),
-                    WorkspaceExpensiveWork.PROJECT_IMPORT,
-                    initiation(activeImports, maximumImports, secondStarted, CountDownLatch(0)),
-                )
-            }
+            val second =
+                executor.submit<WorkspaceResourceInitiationResult> {
+                    controller.coordinate(
+                        root("/two"),
+                        WorkspaceExpensiveWork.PROJECT_IMPORT,
+                        initiation(activeImports, maximumImports, secondStarted, CountDownLatch(0)),
+                    )
+                }
             assertTrue(awaitLoad(controller, queuedWaiters = 1))
             assertEquals(1L, secondStarted.count)
             releaseFirst.countDown()
@@ -139,8 +144,7 @@ class WorkspaceResourceAdmissionControllerTest {
 
         WorkspaceExpensiveWork.entries.forEach { kind ->
             observation.set(healthyObservation(activity = activity(kind)))
-            val rejected = controller.coordinate(root, kind) {} as
-                WorkspaceResourceInitiationResult.Rejected
+            val rejected = controller.coordinate(root, kind) {} as WorkspaceResourceInitiationResult.Rejected
             assertEquals(WorkspaceResourceBlocker.Capacity(kind, limit(1)), rejected.blocker)
             assertEquals(WorkspaceResourceAdmissionAction.RETRY_AFTER_RELEASE, rejected.action)
         }
@@ -153,27 +157,29 @@ class WorkspaceResourceAdmissionControllerTest {
         val release = CountDownLatch(1)
         val executor = Executors.newFixedThreadPool(2)
         try {
-            val owner = executor.submit<WorkspaceResourceInitiationResult> {
-                controller.coordinate(root("/workspace"), WorkspaceExpensiveWork.PROJECT_IMPORT) {
-                    started.countDown()
-                    assertTrue(release.await(2, TimeUnit.SECONDS))
+            val owner =
+                executor.submit<WorkspaceResourceInitiationResult> {
+                    controller.coordinate(root("/workspace"), WorkspaceExpensiveWork.PROJECT_IMPORT) {
+                        started.countDown()
+                        assertTrue(release.await(2, TimeUnit.SECONDS))
+                    }
                 }
-            }
             assertTrue(started.await(2, TimeUnit.SECONDS))
-            val waiter = executor.submit<WorkspaceResourceInitiationResult> {
-                controller.coordinate(root("/workspace"), WorkspaceExpensiveWork.PROJECT_IMPORT) {}
-            }
+            val waiter =
+                executor.submit<WorkspaceResourceInitiationResult> {
+                    controller.coordinate(root("/workspace"), WorkspaceExpensiveWork.PROJECT_IMPORT) {}
+                }
             assertTrue(awaitLoad(controller, queuedWaiters = 1))
 
-            val full = controller.coordinate(
-                root("/workspace"),
-                WorkspaceExpensiveWork.PROJECT_IMPORT,
-            ) {} as WorkspaceResourceInitiationResult.Rejected
+            val full =
+                controller.coordinate(
+                    root("/workspace"),
+                    WorkspaceExpensiveWork.PROJECT_IMPORT,
+                ) {} as WorkspaceResourceInitiationResult.Rejected
             assertTrue(full.blocker is WorkspaceResourceBlocker.QueueFull)
             assertEquals(WorkspaceResourceAdmissionAction.RETRY_AFTER_RELEASE, full.action)
 
-            val timedOut = waiter.get(2, TimeUnit.SECONDS) as
-                WorkspaceResourceInitiationResult.Rejected
+            val timedOut = waiter.get(2, TimeUnit.SECONDS) as WorkspaceResourceInitiationResult.Rejected
             assertTrue(timedOut.blocker is WorkspaceResourceBlocker.WaitTimedOut)
             assertTrue(timedOut.timing.queue.nanoseconds > 0L)
             assertTrue(timedOut.timing.admission.nanoseconds >= 0L)
@@ -199,38 +205,40 @@ class WorkspaceResourceAdmissionControllerTest {
             controller.coordinate(
                 root("/workspace"),
                 WorkspaceExpensiveWork.PROJECT_IMPORT,
-            ) {} is WorkspaceResourceInitiationResult.Initiated,
+            ) {} is WorkspaceResourceInitiationResult.Initiated
         )
     }
 
     private fun controller(
         queueLimit: Int = 16,
         waitMillis: Long = 2_000L,
-        observation: AtomicReference<WorkspaceResourceObservation> =
-            AtomicReference(healthyObservation()),
-    ): WorkspaceResourceAdmissionController = WorkspaceResourceAdmissionController(
-        policy = WorkspaceResourcePolicy(
-            runtimeStarts = limit(1),
-            imports = limit(1),
-            transitions = limit(1),
-            indexing = limit(1),
-            longOperations = limit(1),
-            queuedWaiters = WorkspaceQueueLimit.parse(queueLimit).refined(),
-            waitTimeout = WorkspaceAdmissionWaitMillis.parse(waitMillis).refined(),
-            criticalHeap = WorkspaceCriticalHeapPercent.parse(90).refined(),
-        ),
-        observationAuthority = WorkspaceResourceObservationAuthority(observation::get),
-    )
+        observation: AtomicReference<WorkspaceResourceObservation> = AtomicReference(healthyObservation()),
+    ): WorkspaceResourceAdmissionController =
+        WorkspaceResourceAdmissionController(
+            policy =
+                WorkspaceResourcePolicy(
+                    runtimeStarts = limit(1),
+                    imports = limit(1),
+                    transitions = limit(1),
+                    indexing = limit(1),
+                    longOperations = limit(1),
+                    queuedWaiters = WorkspaceQueueLimit.parse(queueLimit).refined(),
+                    waitTimeout = WorkspaceAdmissionWaitMillis.parse(waitMillis).refined(),
+                    criticalHeap = WorkspaceCriticalHeapPercent.parse(90).refined(),
+                ),
+            observationAuthority = WorkspaceResourceObservationAuthority(observation::get),
+        )
 
     private fun healthyObservation(
         heap: Int = 20,
         edt: WorkspaceEdtLiveness = WorkspaceEdtLiveness.Live,
         activity: WorkspaceResourceActivity = WorkspaceResourceActivity.none(),
-    ): WorkspaceResourceObservation = WorkspaceResourceObservation(
-        heap = WorkspaceHeapUtilizationPercent.parse(heap).refined(),
-        edt = edt,
-        activity = activity,
-    )
+    ): WorkspaceResourceObservation =
+        WorkspaceResourceObservation(
+            heap = WorkspaceHeapUtilizationPercent.parse(heap).refined(),
+            edt = edt,
+            activity = activity,
+        )
 
     private fun activity(kind: WorkspaceExpensiveWork): WorkspaceResourceActivity =
         WorkspaceResourceActivity.none().withActive(kind, count(1))
@@ -276,14 +284,13 @@ class WorkspaceResourceAdmissionControllerTest {
     private fun root(value: String): CanonicalWorkspaceRoot =
         CanonicalWorkspaceRoot.fromCanonicalPath(Path.of(value)).refined()
 
-    private fun limit(value: Int): WorkspaceConcurrencyLimit =
-        WorkspaceConcurrencyLimit.parse(value).refined()
+    private fun limit(value: Int): WorkspaceConcurrencyLimit = WorkspaceConcurrencyLimit.parse(value).refined()
 
-    private fun count(value: Int): WorkspaceResourceCount =
-        WorkspaceResourceCount.parse(value).refined()
+    private fun count(value: Int): WorkspaceResourceCount = WorkspaceResourceCount.parse(value).refined()
 
-    private fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error(failure.toString())
-    }
+    private fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
 }

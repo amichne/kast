@@ -1,8 +1,5 @@
 package io.github.amichne.kast.workspace.intellij
 
-import io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionReport
-import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
-import io.github.amichne.kast.kernel.Refinement
 import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.Logger
@@ -14,20 +11,22 @@ import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ex.ProjectManagerEx
 import com.intellij.openapi.startup.StartupManager
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
+import io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionReport
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalSemanticProjectRoot
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefresh
 import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefreshFailure
 import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefreshOperations
-import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
-import org.jetbrains.plugins.gradle.settings.GradleSettings
-import org.jetbrains.plugins.gradle.settings.GradleSystemSettings
-import org.jetbrains.plugins.gradle.util.GradleConstants
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import org.jetbrains.plugins.gradle.settings.GradleSettings
+import org.jetbrains.plugins.gradle.settings.GradleSystemSettings
+import org.jetbrains.plugins.gradle.util.GradleConstants
 
 private const val GRADLE_IMPORT_TIMEOUT_MINUTES = 5L
 private const val STARTUP_POLL_MILLIS = 100L
@@ -62,7 +61,6 @@ enum class InstalledIntellijWorkspaceFailure {
     NETWORK_TRUST_DONOR_UNREADABLE,
     NETWORK_TRUST_EMPTY_CERTIFICATES,
     NETWORK_TRUST_PUBLICATION_REJECTED,
-
     GRADLE_TOOLING_PAYLOAD_INCOMPATIBLE,
     GRADLE_INIT_SCRIPT_UNAVAILABLE,
     GRADLE_PROJECT_POLICY_INVALID,
@@ -94,121 +92,126 @@ enum class InstalledIntellijWorkspaceBootstrapPhase {
 /** Explicit effect boundary for observing installed workspace bootstrap progress. */
 fun interface InstalledIntellijWorkspaceBootstrapObserver {
     fun observe(phase: InstalledIntellijWorkspaceBootstrapPhase)
+
     fun observeGradleJvm(report: GradleJvmSelectionReport) {}
 }
 
 /** Detached complete model proof from one exact IntelliJ-opened Gradle workspace. */
-class InstalledIntellijWorkspaceModel internal constructor(
+class InstalledIntellijWorkspaceModel
+internal constructor(
     val capture: InstalledGradleModelCapture,
     val semanticProjectRoot: CanonicalSemanticProjectRoot,
     private val project: Project,
     private val moduleRematerializer: InstalledModuleRematerializer,
     private val modelInputs: InstalledGradleModelInputs,
-    private val importEnvironmentIdentity: io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentIdentity,
+    private val importEnvironmentIdentity:
+        io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentIdentity,
 ) {
     /** Observes current live model facts without a Gradle import, VFS refresh, or indexing wait. */
-    fun observeCurrentSemanticIdentity(): io.github.amichne.kast.kernel.Refinement<
-        io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity,
-        InstalledGradleModelCaptureFailure,
-        > = when (val current = observeCurrentModel()) {
-        is io.github.amichne.kast.kernel.Refinement.Refined ->
-            io.github.amichne.kast.kernel.Refinement.Refined(current.value.identity)
-        is io.github.amichne.kast.kernel.Refinement.Rejected -> current
-    }
+    fun observeCurrentSemanticIdentity():
+        io.github.amichne.kast.kernel.Refinement<
+            io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity,
+            InstalledGradleModelCaptureFailure,
+        > =
+        when (val current = observeCurrentModel()) {
+            is io.github.amichne.kast.kernel.Refinement.Refined ->
+                io.github.amichne.kast.kernel.Refinement.Refined(current.value.identity)
+            is io.github.amichne.kast.kernel.Refinement.Rejected -> current
+        }
 
     /**
-     * Refines this workspace capability into a newly captured complete model after indexing.
-     * A changed physical Gradle input rejects the old import instead of attributing new source
-     * bytes to its stale roots, modules, SDK, or classpath. Raw platform facts stay in capture.
+     * Refines this workspace capability into a newly captured complete model after indexing. A changed physical Gradle
+     * input rejects the old import instead of attributing new source bytes to its stale roots, modules, SDK, or
+     * classpath. Raw platform facts stay in capture.
      */
-    fun captureCurrentModel(): io.github.amichne.kast.kernel.Refinement<
-        InstalledGradleModelCapture,
-        InstalledGradleModelCaptureFailure,
-        > = when (awaitInstalledIndexingQuiescence(project, moduleRematerializer)) {
-        InstalledIndexingReadiness.Ready -> observeCurrentModel()
-        is InstalledIndexingReadiness.Rejected -> io.github.amichne.kast.kernel.Refinement.Rejected(
-            InstalledGradleModelCaptureFailure.INDEXING_UNAVAILABLE,
-        )
-    }
+    fun captureCurrentModel():
+        io.github.amichne.kast.kernel.Refinement<
+            InstalledGradleModelCapture,
+            InstalledGradleModelCaptureFailure,
+        > =
+        when (awaitInstalledIndexingQuiescence(project, moduleRematerializer)) {
+            InstalledIndexingReadiness.Ready -> observeCurrentModel()
+            is InstalledIndexingReadiness.Rejected ->
+                io.github.amichne.kast.kernel.Refinement.Rejected(
+                    InstalledGradleModelCaptureFailure.INDEXING_UNAVAILABLE
+                )
+        }
 
-    private fun observeCurrentModel() = captureInstalledGradleModel(
-        project,
-        Path.of(capture.root.value),
-        importEnvironmentIdentity,
-        modelInputs,
-    )
+    private fun observeCurrentModel() =
+        captureInstalledGradleModel(
+            project,
+            Path.of(capture.root.value),
+            importEnvironmentIdentity,
+            modelInputs,
+        )
 
     /** Refreshes the exact admitted roots, then proves installed indexing has become quiescent. */
-    fun awaitIndexReadinessAfter(
-        refresh: WorkspaceIndexRefreshOperations,
-    ): WorkspaceIndexRefreshOperations = WorkspaceIndexRefreshOperations { workspace ->
-        when (val physical = refresh.refresh(workspace)) {
-            is WorkspaceIndexRefresh.Rejected -> physical
-            WorkspaceIndexRefresh.Refreshed -> when (
-                val readiness =
-                    awaitInstalledIndexingQuiescence(project, moduleRematerializer)
-            ) {
-                InstalledIndexingReadiness.Ready -> WorkspaceIndexRefresh.Refreshed
-                is InstalledIndexingReadiness.Rejected -> WorkspaceIndexRefresh.Rejected(
-                    when (readiness.failure) {
-                        InstalledIndexingReadinessFailure.Interrupted ->
-                            WorkspaceIndexRefreshFailure.INDEXING_INTERRUPTED
-                        InstalledIndexingReadinessFailure.IndexingTimedOut ->
-                            WorkspaceIndexRefreshFailure.INDEXING_TIMED_OUT
-                        InstalledIndexingReadinessFailure.ModuleMaterializationUnavailable,
-                        InstalledIndexingReadinessFailure.PlatformLinkageInvalid,
-                        InstalledIndexingReadinessFailure.PlatformObservationUnavailable,
-                        InstalledIndexingReadinessFailure.ProjectDisposed,
-                            -> WorkspaceIndexRefreshFailure.INDEXING_FAILED
-                    },
-                )
+    fun awaitIndexReadinessAfter(refresh: WorkspaceIndexRefreshOperations): WorkspaceIndexRefreshOperations =
+        WorkspaceIndexRefreshOperations { workspace ->
+            when (val physical = refresh.refresh(workspace)) {
+                is WorkspaceIndexRefresh.Rejected -> physical
+                WorkspaceIndexRefresh.Refreshed ->
+                    when (val readiness = awaitInstalledIndexingQuiescence(project, moduleRematerializer)) {
+                        InstalledIndexingReadiness.Ready -> WorkspaceIndexRefresh.Refreshed
+                        is InstalledIndexingReadiness.Rejected ->
+                            WorkspaceIndexRefresh.Rejected(
+                                when (readiness.failure) {
+                                    InstalledIndexingReadinessFailure.Interrupted ->
+                                        WorkspaceIndexRefreshFailure.INDEXING_INTERRUPTED
+                                    InstalledIndexingReadinessFailure.IndexingTimedOut ->
+                                        WorkspaceIndexRefreshFailure.INDEXING_TIMED_OUT
+                                    InstalledIndexingReadinessFailure.ModuleMaterializationUnavailable,
+                                    InstalledIndexingReadinessFailure.PlatformLinkageInvalid,
+                                    InstalledIndexingReadinessFailure.PlatformObservationUnavailable,
+                                    InstalledIndexingReadinessFailure.ProjectDisposed ->
+                                        WorkspaceIndexRefreshFailure.INDEXING_FAILED
+                                }
+                            )
+                    }
             }
         }
-    }
 }
 
 sealed interface InstalledIntellijWorkspaceOpening {
-    data class ModelInputRejected(val failure: io.github.amichne.kast.distribution.contract.bootstrap.ModelInputFailure) : InstalledIntellijWorkspaceOpening
-    data class Opened(
-        val model: InstalledIntellijWorkspaceModel,
+    data class ModelInputRejected(
+        val failure: io.github.amichne.kast.distribution.contract.bootstrap.ModelInputFailure
     ) : InstalledIntellijWorkspaceOpening
 
-    data class Rejected(
-        val failure: InstalledIntellijWorkspaceFailure,
-    ) : InstalledIntellijWorkspaceOpening
+    data class Opened(val model: InstalledIntellijWorkspaceModel) : InstalledIntellijWorkspaceOpening
+
+    data class Rejected(val failure: InstalledIntellijWorkspaceFailure) : InstalledIntellijWorkspaceOpening
 }
 
 /** Closed projection from the indexing wait into the installed workspace-opening boundary. */
 internal sealed interface InstalledWorkspaceIndexingAdmission {
     data object Ready : InstalledWorkspaceIndexingAdmission
 
-    data class Rejected(
-        val failure: InstalledIntellijWorkspaceFailure,
-    ) : InstalledWorkspaceIndexingAdmission
+    data class Rejected(val failure: InstalledIntellijWorkspaceFailure) : InstalledWorkspaceIndexingAdmission
 }
 
 /**
  * Proof transition: `InstalledIndexingReadiness -> InstalledWorkspaceIndexingAdmission`.
  *
- * Retains the finite indexing cause at the workspace-opening boundary instead of using nullable
- * or exceptional control flow.
+ * Retains the finite indexing cause at the workspace-opening boundary instead of using nullable or exceptional control
+ * flow.
  */
-internal fun InstalledIndexingReadiness.workspaceOpeningAdmission():
-    InstalledWorkspaceIndexingAdmission = when (this) {
+internal fun InstalledIndexingReadiness.workspaceOpeningAdmission(): InstalledWorkspaceIndexingAdmission =
+    when (this) {
         InstalledIndexingReadiness.Ready -> InstalledWorkspaceIndexingAdmission.Ready
-        is InstalledIndexingReadiness.Rejected -> InstalledWorkspaceIndexingAdmission.Rejected(
-            when (failure) {
-                InstalledIndexingReadinessFailure.Interrupted ->
-                    InstalledIntellijWorkspaceFailure.INDEXING_INTERRUPTED
-                InstalledIndexingReadinessFailure.PlatformLinkageInvalid ->
-                    InstalledIntellijWorkspaceFailure.PLATFORM_LINKAGE_INVALID
-                InstalledIndexingReadinessFailure.IndexingTimedOut,
-                InstalledIndexingReadinessFailure.ModuleMaterializationUnavailable,
-                InstalledIndexingReadinessFailure.PlatformObservationUnavailable,
-                InstalledIndexingReadinessFailure.ProjectDisposed,
-                    -> InstalledIntellijWorkspaceFailure.STARTUP_FAILED
-            },
-        )
+        is InstalledIndexingReadiness.Rejected ->
+            InstalledWorkspaceIndexingAdmission.Rejected(
+                when (failure) {
+                    InstalledIndexingReadinessFailure.Interrupted ->
+                        InstalledIntellijWorkspaceFailure.INDEXING_INTERRUPTED
+                    InstalledIndexingReadinessFailure.PlatformLinkageInvalid ->
+                        InstalledIntellijWorkspaceFailure.PLATFORM_LINKAGE_INVALID
+                    InstalledIndexingReadinessFailure.IndexingTimedOut,
+                    InstalledIndexingReadinessFailure.ModuleMaterializationUnavailable,
+                    InstalledIndexingReadinessFailure.PlatformObservationUnavailable,
+                    InstalledIndexingReadinessFailure.ProjectDisposed ->
+                        InstalledIntellijWorkspaceFailure.STARTUP_FAILED
+                }
+            )
     }
 
 /** Sole installed IntelliJ project-open, Gradle-import, and model-capture boundary. */
@@ -216,64 +219,74 @@ object InstalledIntellijWorkspace {
     /**
      * Proof transition: `(CanonicalWorkspaceRoot, Path) -> InstalledIntellijWorkspaceOpening`.
      *
-     * [InstalledIntellijWorkspaceOpening.Opened] establishes that IntelliJ opened a fresh project
-     * store beneath [runtimeStateDirectory], disjoint from [workspaceRoot], applied the installed
-     * Gradle policy, completed one explicit Gradle link, reached smart mode, and detached one
-     * complete Gradle model. Workspace `.idea` state is neither opened nor reused.
-     * [InstalledIntellijWorkspaceFailure] closes every expected bootstrap failure. The live project
-     * and Gradle objects remain inside this adapter and the IntelliJ project lifecycle.
+     * [InstalledIntellijWorkspaceOpening.Opened] establishes that IntelliJ opened a fresh project store beneath
+     * [runtimeStateDirectory], disjoint from [workspaceRoot], applied the installed Gradle policy, completed one
+     * explicit Gradle link, reached smart mode, and detached one complete Gradle model. Workspace `.idea` state is
+     * neither opened nor reused. [InstalledIntellijWorkspaceFailure] closes every expected bootstrap failure. The live
+     * project and Gradle objects remain inside this adapter and the IntelliJ project lifecycle.
      */
     fun open(
         workspaceRoot: CanonicalWorkspaceRoot,
         runtimeStateDirectory: Path,
-        observer: InstalledIntellijWorkspaceBootstrapObserver =
-            InstalledIntellijWorkspaceBootstrapObserver {},
+        observer: InstalledIntellijWorkspaceBootstrapObserver = InstalledIntellijWorkspaceBootstrapObserver {},
     ): InstalledIntellijWorkspaceOpening {
         val workspacePath = Path.of(workspaceRoot.value)
-        val importEnvironment = when (val admission = GradleImportEnvironment.admit(
-            System.getenv(GradleImportEnvironment.VARIABLES_SETTING).orEmpty(),
-            System.getenv(GradleImportEnvironment.PATH_SETTING).orEmpty(),
-            System.getenv(),
-        )) {
-            is Refinement.Refined -> admission.value
-            is Refinement.Rejected -> return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID)
-        }
-        observer.observe(InstalledIntellijWorkspaceBootstrapPhase.GRADLE_JVM_SELECTION)
-        val projectJvmAuthority = when (val admitted = projectGradleJvmAuthority(workspacePath)) {
-            is ProjectGradleJvmAuthority.Admitted -> admitted
-            is ProjectGradleJvmAuthority.InputRejected -> return admitted.failure.workspaceOpening()
-            ProjectGradleJvmAuthority.Rejected -> {
-                observer.observeGradleJvm(InstalledGradleJvmSelection.Rejected(
-                    InstalledGradleJvmSelectionFailure.REPOSITORY_JAVA_HOME_INVALID,
-                ).report)
-                return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID)
+        val importEnvironment =
+            when (
+                val admission =
+                    GradleImportEnvironment.admit(
+                        System.getenv(GradleImportEnvironment.VARIABLES_SETTING).orEmpty(),
+                        System.getenv(GradleImportEnvironment.PATH_SETTING).orEmpty(),
+                        System.getenv(),
+                    )
+            ) {
+                is Refinement.Refined -> admission.value
+                is Refinement.Rejected ->
+                    return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID)
             }
-        }
-        val ambientJvmAuthority = ambientGradleJvmAuthority(
-            System.getenv(GradleImportEnvironment.INHERITED_JAVA_HOME_SETTING),
-        )
-        val projectStore = when (
-            val prepared = InstalledSemanticProjectStore.prepare(
-                workspaceRoot,
-                runtimeStateDirectory,
-            )
-        ) {
-            is InstalledSemanticProjectStorePreparation.Prepared -> prepared.store
-            is InstalledSemanticProjectStorePreparation.Rejected -> return rejected(
-                prepared.failure.workspaceFailure(),
-            )
-        }
+        observer.observe(InstalledIntellijWorkspaceBootstrapPhase.GRADLE_JVM_SELECTION)
+        val projectJvmAuthority =
+            when (val admitted = projectGradleJvmAuthority(workspacePath)) {
+                is ProjectGradleJvmAuthority.Admitted -> admitted
+                is ProjectGradleJvmAuthority.InputRejected -> return admitted.failure.workspaceOpening()
+                ProjectGradleJvmAuthority.Rejected -> {
+                    observer.observeGradleJvm(
+                        InstalledGradleJvmSelection.Rejected(
+                                InstalledGradleJvmSelectionFailure.REPOSITORY_JAVA_HOME_INVALID
+                            )
+                            .report
+                    )
+                    return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID)
+                }
+            }
+        val ambientJvmAuthority =
+            ambientGradleJvmAuthority(System.getenv(GradleImportEnvironment.INHERITED_JAVA_HOME_SETTING))
+        val projectStore =
+            when (
+                val prepared =
+                    InstalledSemanticProjectStore.prepare(
+                        workspaceRoot,
+                        runtimeStateDirectory,
+                    )
+            ) {
+                is InstalledSemanticProjectStorePreparation.Prepared -> prepared.store
+                is InstalledSemanticProjectStorePreparation.Rejected ->
+                    return rejected(prepared.failure.workspaceFailure())
+            }
         GradleSystemSettings.getInstance().isDownloadSources = false
-        val sidecarJvm = when (val admission = InstalledSidecarJvm.admit(
-            System.getProperty("java.home")
-            ?: return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE),
-            System.getenv("JAVA_HOME"),
-        )) {
-            is InstalledSidecarJvmAdmission.Admitted -> admission.jvm
-            is InstalledSidecarJvmAdmission.Rejected -> return rejected(
-                InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE,
-            )
-        }
+        val sidecarJvm =
+            when (
+                val admission =
+                    InstalledSidecarJvm.admit(
+                        System.getProperty("java.home")
+                            ?: return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE),
+                        System.getenv("JAVA_HOME"),
+                    )
+            ) {
+                is InstalledSidecarJvmAdmission.Admitted -> admission.jvm
+                is InstalledSidecarJvmAdmission.Rejected ->
+                    return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE)
+            }
         return openObserved(
             workspacePath,
             projectStore,
@@ -295,224 +308,225 @@ object InstalledIntellijWorkspace {
         observer: InstalledIntellijWorkspaceBootstrapObserver,
     ): InstalledIntellijWorkspaceOpening {
         val preparation = InstalledProjectOpenPreparation(BootstrapProjectJvm.from(sidecarJvm))
-        val project = try {
-            ProjectManagerEx.getInstanceEx().openProject(
-                projectStore.path,
-                installedProjectOpenTask(preparation, projectStore.indexBootstrap),
-            )
-        } catch (_: RuntimeException) {
-            null
-        } ?: return when (val state = preparation.observe()) {
-            is InstalledProjectOpenPreparationState.Rejected -> rejected(
-                state.failure.workspaceFailure(),
-            )
-            InstalledProjectOpenPreparationState.Pending,
-            is InstalledProjectOpenPreparationState.Prepared,
-                -> rejected(InstalledIntellijWorkspaceFailure.PROJECT_OPEN_FAILED)
-        }
-        val prepared = when (val state = preparation.observe()) {
-            is InstalledProjectOpenPreparationState.Prepared -> state
-            is InstalledProjectOpenPreparationState.Rejected -> return rejected(
-                state.failure.workspaceFailure(),
-            )
-            InstalledProjectOpenPreparationState.Pending -> return rejected(
-                InstalledIntellijWorkspaceFailure.PROJECT_OPEN_FAILED,
-            )
-        }
+        val project =
+            try {
+                ProjectManagerEx.getInstanceEx()
+                    .openProject(
+                        projectStore.path,
+                        installedProjectOpenTask(preparation, projectStore.indexBootstrap),
+                    )
+            } catch (_: RuntimeException) {
+                null
+            }
+                ?: return when (val state = preparation.observe()) {
+                    is InstalledProjectOpenPreparationState.Rejected -> rejected(state.failure.workspaceFailure())
+                    InstalledProjectOpenPreparationState.Pending,
+                    is InstalledProjectOpenPreparationState.Prepared ->
+                        rejected(InstalledIntellijWorkspaceFailure.PROJECT_OPEN_FAILED)
+                }
+        val prepared =
+            when (val state = preparation.observe()) {
+                is InstalledProjectOpenPreparationState.Prepared -> state
+                is InstalledProjectOpenPreparationState.Rejected -> return rejected(state.failure.workspaceFailure())
+                InstalledProjectOpenPreparationState.Pending ->
+                    return rejected(InstalledIntellijWorkspaceFailure.PROJECT_OPEN_FAILED)
+            }
 
-        val activeIndexBootstrap = when (
-            val activation = projectStore.indexBootstrap.activate(project)
-        ) {
-            is InstalledIndexBootstrapActivation.Active -> activation.bootstrap
-            is InstalledIndexBootstrapActivation.Rejected -> return rejected(
-                activation.failure.workspaceFailure(),
-            )
-        }
+        val activeIndexBootstrap =
+            when (val activation = projectStore.indexBootstrap.activate(project)) {
+                is InstalledIndexBootstrapActivation.Active -> activation.bootstrap
+                is InstalledIndexBootstrapActivation.Rejected -> return rejected(activation.failure.workspaceFailure())
+            }
         INDEX_BOOTSTRAP_LOG.info(
-            "event=activated excludedDirectoryCount=" +
-                projectStore.indexBootstrap.excludedDirectoryCount,
+            "event=activated excludedDirectoryCount=" + projectStore.indexBootstrap.excludedDirectoryCount
         )
 
         when (awaitStartup(project)) {
             FutureCompletion.COMPLETED -> Unit
-            FutureCompletion.INTERRUPTED -> return rejected(
-                InstalledIntellijWorkspaceFailure.INDEXING_INTERRUPTED,
-            )
+            FutureCompletion.INTERRUPTED -> return rejected(InstalledIntellijWorkspaceFailure.INDEXING_INTERRUPTED)
             FutureCompletion.TIMED_OUT,
-            FutureCompletion.FAILED,
-                -> return rejected(InstalledIntellijWorkspaceFailure.STARTUP_FAILED)
+            FutureCompletion.FAILED -> return rejected(InstalledIntellijWorkspaceFailure.STARTUP_FAILED)
         }
-        val gradleSettings = when (val policy = applyInstalledGradleProjectPolicy(project)) {
-            is InstalledGradleProjectPolicyApplication.Applied -> policy.settings
-            InstalledGradleProjectPolicyApplication.Rejected -> return rejected(
-                InstalledIntellijWorkspaceFailure.GRADLE_PROJECT_POLICY_INVALID,
-            )
-        }
-        val linkPresence = when (val resolution = try {
-            linkedGradleProject(gradleSettings, workspaceRoot)
-        } catch (_: RuntimeException) {
-            InstalledGradleLinkPresenceResolution.Rejected
-        }) {
-            is InstalledGradleLinkPresenceResolution.Resolved -> resolution.presence
-            InstalledGradleLinkPresenceResolution.Rejected -> return rejected(
-                InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED,
-            )
-        }
-        val linkedProjectSettings = when (linkPresence) {
-            is InstalledGradleLinkPresence.Linked -> linkPresence.settings
-            is InstalledGradleLinkPresence.Unlinked -> linkPresence.settings
-        }
+        val gradleSettings =
+            when (val policy = applyInstalledGradleProjectPolicy(project)) {
+                is InstalledGradleProjectPolicyApplication.Applied -> policy.settings
+                InstalledGradleProjectPolicyApplication.Rejected ->
+                    return rejected(InstalledIntellijWorkspaceFailure.GRADLE_PROJECT_POLICY_INVALID)
+            }
+        val linkPresence =
+            when (
+                val resolution =
+                    try {
+                        linkedGradleProject(gradleSettings, workspaceRoot)
+                    } catch (_: RuntimeException) {
+                        InstalledGradleLinkPresenceResolution.Rejected
+                    }
+            ) {
+                is InstalledGradleLinkPresenceResolution.Resolved -> resolution.presence
+                InstalledGradleLinkPresenceResolution.Rejected ->
+                    return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED)
+            }
+        val linkedProjectSettings =
+            when (linkPresence) {
+                is InstalledGradleLinkPresence.Linked -> linkPresence.settings
+                is InstalledGradleLinkPresence.Unlinked -> linkPresence.settings
+            }
         observer.observe(InstalledIntellijWorkspaceBootstrapPhase.GRADLE_JVM_SELECTION)
-        val selection = selectInstalledGradleJvm(
-            project,
-            linkedProjectSettings,
-            sidecarJvm,
-            projectJvmAuthority,
-            ambientJvmAuthority,
-        )
-        observer.observeGradleJvm(selection.report)
-        val selectedGradleJvm = when (selection) {
-            is InstalledGradleJvmSelection.Selected -> selection.jvm
-            is InstalledGradleJvmSelection.Rejected -> return rejected(
-                InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE,
+        val selection =
+            selectInstalledGradleJvm(
+                project,
+                linkedProjectSettings,
+                sidecarJvm,
+                projectJvmAuthority,
+                ambientJvmAuthority,
             )
-        }
-        val networkCache = System.getProperty("kast.network.cache.root")
-            ?: return rejected(InstalledIntellijWorkspaceFailure.NETWORK_BOUNDARY_UNAVAILABLE)
-        when (val network = io.github.amichne.kast.distribution.managed.network.InstalledNetworkBootstrap.prepare(
-            workspaceRoot, Path.of(networkCache), selectedGradleJvm.home, System.getenv(),
-            io.github.amichne.kast.distribution.contract.network.NetworkConsumer.GRADLE_DAEMON,
-        )) {
-            is io.github.amichne.kast.distribution.managed.network.NetworkBootstrapResult.Prepared -> network.installDaemon()
+        observer.observeGradleJvm(selection.report)
+        val selectedGradleJvm =
+            when (selection) {
+                is InstalledGradleJvmSelection.Selected -> selection.jvm
+                is InstalledGradleJvmSelection.Rejected ->
+                    return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE)
+            }
+        val networkCache =
+            System.getProperty("kast.network.cache.root")
+                ?: return rejected(InstalledIntellijWorkspaceFailure.NETWORK_BOUNDARY_UNAVAILABLE)
+        when (
+            val network =
+                io.github.amichne.kast.distribution.managed.network.InstalledNetworkBootstrap.prepare(
+                    workspaceRoot,
+                    Path.of(networkCache),
+                    selectedGradleJvm.home,
+                    System.getenv(),
+                    io.github.amichne.kast.distribution.contract.network.NetworkConsumer.GRADLE_DAEMON,
+                )
+        ) {
+            is io.github.amichne.kast.distribution.managed.network.NetworkBootstrapResult.Prepared ->
+                network.installDaemon()
             is io.github.amichne.kast.distribution.managed.network.NetworkBootstrapResult.Rejected -> {
                 System.err.println("kast-network: consumer=gradle-daemon outcome=rejected failure=${network.failure}")
                 return rejected(network.failure.workspaceFailure())
             }
         }
-        val importOperation = when (
-            val application = linkPresence.applyImportJvm(selectedGradleJvm)
-        ) {
-            is InstalledGradleImportApplication.Applied -> application.operation
-            InstalledGradleImportApplication.Rejected -> return rejected(
-                InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED,
-            )
-        }
+        val importOperation =
+            when (val application = linkPresence.applyImportJvm(selectedGradleJvm)) {
+                is InstalledGradleImportApplication.Applied -> application.operation
+                InstalledGradleImportApplication.Rejected ->
+                    return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED)
+            }
 
         observer.observe(InstalledIntellijWorkspaceBootstrapPhase.MODEL_INPUT_CAPTURE)
-        val modelInputs = when (val captured = InstalledGradleModelInputs.capture(workspaceRoot)) {
-            is io.github.amichne.kast.kernel.Refinement.Refined -> captured.value
-            is io.github.amichne.kast.kernel.Refinement.Rejected -> return captured.failure.workspaceOpening()
-        }
+        val modelInputs =
+            when (val captured = InstalledGradleModelInputs.capture(workspaceRoot)) {
+                is io.github.amichne.kast.kernel.Refinement.Refined -> captured.value
+                is io.github.amichne.kast.kernel.Refinement.Rejected -> return captured.failure.workspaceOpening()
+            }
 
         observer.observe(InstalledIntellijWorkspaceBootstrapPhase.PROJECT_IMPORT)
         val imported = CompletableFuture<Void>()
-        val closedImported = imported.closedImportOutcome(installedGradleImportDiagnosticObserver(sidecarJvm, selectedGradleJvm))
-        val specification = ImportSpecBuilder(project, GradleConstants.SYSTEM_ID)
-            .withCallback(imported)
-        val importCompletion = try {
-            when (importOperation) {
-                InstalledGradleImportOperation.RefreshLinked -> {
-                    ExternalSystemUtil.refreshProject(workspaceRoot.toString(), specification)
-                    closedImported
+        val closedImported =
+            imported.closedImportOutcome(installedGradleImportDiagnosticObserver(sidecarJvm, selectedGradleJvm))
+        val specification = ImportSpecBuilder(project, GradleConstants.SYSTEM_ID).withCallback(imported)
+        val importCompletion =
+            try {
+                when (importOperation) {
+                    InstalledGradleImportOperation.RefreshLinked -> {
+                        ExternalSystemUtil.refreshProject(workspaceRoot.toString(), specification)
+                        closedImported
+                    }
+                    InstalledGradleImportOperation.LinkUnlinked -> {
+                        val settings = (linkPresence as InstalledGradleLinkPresence.Unlinked).settings
+                        ExternalSystemUtil.linkExternalProject(settings, specification)
+                        closedImported
+                    }
                 }
-                InstalledGradleImportOperation.LinkUnlinked -> {
-                    val settings = (linkPresence as InstalledGradleLinkPresence.Unlinked).settings
-                    ExternalSystemUtil.linkExternalProject(settings, specification)
-                    closedImported
-                }
+            } catch (_: RuntimeException) {
+                return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED)
             }
-        } catch (_: RuntimeException) {
-            return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED)
-        }
         when (awaitImport(importCompletion)) {
             InstalledGradleImportWait.COMPLETED -> Unit
-            InstalledGradleImportWait.INTERRUPTED -> return rejected(
-                InstalledIntellijWorkspaceFailure.INDEXING_INTERRUPTED,
-            )
-            InstalledGradleImportWait.TIMED_OUT -> return rejected(
-                InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_TIMED_OUT,
-            )
-            InstalledGradleImportWait.INVALID_JVM_CONFIGURATION -> return rejected(
-                InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID,
-            )
-            InstalledGradleImportWait.INCOMPATIBLE_PAYLOAD -> return rejected(
-                InstalledIntellijWorkspaceFailure.GRADLE_TOOLING_PAYLOAD_INCOMPATIBLE,
-            )
-            InstalledGradleImportWait.INITIALIZATION_SCRIPT_UNAVAILABLE -> return rejected(
-                InstalledIntellijWorkspaceFailure.GRADLE_INIT_SCRIPT_UNAVAILABLE,
-            )
+            InstalledGradleImportWait.INTERRUPTED ->
+                return rejected(InstalledIntellijWorkspaceFailure.INDEXING_INTERRUPTED)
+            InstalledGradleImportWait.TIMED_OUT ->
+                return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_TIMED_OUT)
+            InstalledGradleImportWait.INVALID_JVM_CONFIGURATION ->
+                return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_CONFIGURATION_INVALID)
+            InstalledGradleImportWait.INCOMPATIBLE_PAYLOAD ->
+                return rejected(InstalledIntellijWorkspaceFailure.GRADLE_TOOLING_PAYLOAD_INCOMPATIBLE)
+            InstalledGradleImportWait.INITIALIZATION_SCRIPT_UNAVAILABLE ->
+                return rejected(InstalledIntellijWorkspaceFailure.GRADLE_INIT_SCRIPT_UNAVAILABLE)
             InstalledGradleImportWait.CANCELLED,
-            InstalledGradleImportWait.FAILED,
-                -> return rejected(
-                InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED,
-                )
+            InstalledGradleImportWait.FAILED -> return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED)
         }
         when (val retirement = activeIndexBootstrap.retire(project)) {
-            is InstalledIndexBootstrapRetirement.Retired -> INDEX_BOOTSTRAP_LOG.info(
-                "event=retired authority=${retirement.authority.name.lowercase()}",
-            )
-            is InstalledIndexBootstrapRetirement.Rejected -> return rejected(
-                when (retirement.failure) {
-                    InstalledIndexBootstrapRetirementFailure.MODULE_IDENTITY_LOST ->
-                        InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_RETIREMENT_IDENTITY_LOST
-                    InstalledIndexBootstrapRetirementFailure.PLATFORM_MUTATION_FAILED ->
-                        InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_RETIREMENT_FAILED
-                },
-            )
+            is InstalledIndexBootstrapRetirement.Retired ->
+                INDEX_BOOTSTRAP_LOG.info("event=retired authority=${retirement.authority.name.lowercase()}")
+            is InstalledIndexBootstrapRetirement.Rejected ->
+                return rejected(
+                    when (retirement.failure) {
+                        InstalledIndexBootstrapRetirementFailure.MODULE_IDENTITY_LOST ->
+                            InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_RETIREMENT_IDENTITY_LOST
+                        InstalledIndexBootstrapRetirementFailure.PLATFORM_MUTATION_FAILED ->
+                            InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_RETIREMENT_FAILED
+                    }
+                )
         }
         when (applyInstalledGradleProjectPolicy(project)) {
             is InstalledGradleProjectPolicyApplication.Applied -> Unit
-            InstalledGradleProjectPolicyApplication.Rejected -> return rejected(
-                InstalledIntellijWorkspaceFailure.GRADLE_PROJECT_POLICY_INVALID,
-            )
+            InstalledGradleProjectPolicyApplication.Rejected ->
+                return rejected(InstalledIntellijWorkspaceFailure.GRADLE_PROJECT_POLICY_INVALID)
         }
         when (materializeImportedModules(project, workspaceRoot)) {
             InstalledModuleMaterialization.AVAILABLE,
-            InstalledModuleMaterialization.IMPORTED,
-                -> Unit
+            InstalledModuleMaterialization.IMPORTED -> Unit
             InstalledModuleMaterialization.UNAVAILABLE,
-            InstalledModuleMaterialization.FAILED,
-                -> return rejected(InstalledIntellijWorkspaceFailure.MODEL_UNAVAILABLE)
+            InstalledModuleMaterialization.FAILED ->
+                return rejected(InstalledIntellijWorkspaceFailure.MODEL_UNAVAILABLE)
         }
         when (val verification = activeIndexBootstrap.verifyImportedModel(project)) {
-            is InstalledIndexExclusionVerification.Verified -> INDEX_BOOTSTRAP_LOG.info(
-                "event=verified generatedSourceRootCount=${verification.generatedSourceRootCount}",
-            )
-            is InstalledIndexExclusionVerification.Rejected -> return rejected(
-                when (verification.failure) {
-                    InstalledIndexExclusionVerificationFailure.IMPORTED_MODULES_UNAVAILABLE ->
-                        InstalledIntellijWorkspaceFailure
-                            .INDEX_BOOTSTRAP_IMPORTED_MODULES_UNAVAILABLE
-                    InstalledIndexExclusionVerificationFailure.EXCLUSION_ROOT_UNAVAILABLE ->
-                        InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_EXCLUSION_ROOT_UNAVAILABLE
-                    InstalledIndexExclusionVerificationFailure.EXCLUSION_NOT_PRESERVED ->
-                        InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_EXCLUSION_NOT_PRESERVED
-                    InstalledIndexExclusionVerificationFailure.SOURCE_ROOT_NOT_ADMITTED ->
-                        InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_SOURCE_ROOT_NOT_ADMITTED
-                    InstalledIndexExclusionVerificationFailure.PLATFORM_OBSERVATION_FAILED ->
-                        InstalledIntellijWorkspaceFailure
-                            .INDEX_BOOTSTRAP_PLATFORM_OBSERVATION_FAILED
-                },
-            )
+            is InstalledIndexExclusionVerification.Verified ->
+                INDEX_BOOTSTRAP_LOG.info(
+                    "event=verified generatedSourceRootCount=${verification.generatedSourceRootCount}"
+                )
+            is InstalledIndexExclusionVerification.Rejected ->
+                return rejected(
+                    when (verification.failure) {
+                        InstalledIndexExclusionVerificationFailure.IMPORTED_MODULES_UNAVAILABLE ->
+                            InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_IMPORTED_MODULES_UNAVAILABLE
+                        InstalledIndexExclusionVerificationFailure.EXCLUSION_ROOT_UNAVAILABLE ->
+                            InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_EXCLUSION_ROOT_UNAVAILABLE
+                        InstalledIndexExclusionVerificationFailure.EXCLUSION_NOT_PRESERVED ->
+                            InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_EXCLUSION_NOT_PRESERVED
+                        InstalledIndexExclusionVerificationFailure.SOURCE_ROOT_NOT_ADMITTED ->
+                            InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_SOURCE_ROOT_NOT_ADMITTED
+                        InstalledIndexExclusionVerificationFailure.PLATFORM_OBSERVATION_FAILED ->
+                            InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_PLATFORM_OBSERVATION_FAILED
+                    }
+                )
         }
         val moduleRematerializer = InstalledModuleRematerializer {
             materializeImportedModules(project, workspaceRoot)
         }
         observer.observe(InstalledIntellijWorkspaceBootstrapPhase.INDEXING)
         when (
-            val admission = awaitInstalledIndexingQuiescence(
-                project,
-                moduleRematerializer,
-            ).workspaceOpeningAdmission()
+            val admission =
+                awaitInstalledIndexingQuiescence(
+                        project,
+                        moduleRematerializer,
+                    )
+                    .workspaceOpeningAdmission()
         ) {
             InstalledWorkspaceIndexingAdmission.Ready -> Unit
             is InstalledWorkspaceIndexingAdmission.Rejected -> return rejected(admission.failure)
         }
         observer.observe(InstalledIntellijWorkspaceBootstrapPhase.MODEL_CAPTURE)
-        val capture = when (val captured = captureInstalledGradleModel(project, workspaceRoot, importEnvironment.identity, modelInputs)) {
-            is io.github.amichne.kast.kernel.Refinement.Refined -> captured.value
-            is io.github.amichne.kast.kernel.Refinement.Rejected -> return captured.failure.workspaceOpening()
-        }
+        val capture =
+            when (
+                val captured =
+                    captureInstalledGradleModel(project, workspaceRoot, importEnvironment.identity, modelInputs)
+            ) {
+                is io.github.amichne.kast.kernel.Refinement.Refined -> captured.value
+                is io.github.amichne.kast.kernel.Refinement.Rejected -> return captured.failure.workspaceOpening()
+            }
         return InstalledIntellijWorkspaceOpening.Opened(
             InstalledIntellijWorkspaceModel(
                 capture,
@@ -521,13 +535,11 @@ object InstalledIntellijWorkspace {
                 moduleRematerializer,
                 modelInputs,
                 importEnvironment.identity,
-            ),
+            )
         )
     }
 
-    private fun awaitStartup(
-        project: com.intellij.openapi.project.Project,
-    ): FutureCompletion {
+    private fun awaitStartup(project: com.intellij.openapi.project.Project): FutureCompletion {
         val startup = StartupManager.getInstance(project)
         val deadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(GRADLE_IMPORT_TIMEOUT_MINUTES)
         while (!startup.postStartupActivityPassed()) {
@@ -544,67 +556,66 @@ object InstalledIntellijWorkspace {
     }
 
     /**
-     * Proof transition: `CompletableFuture<InstalledGradleImportOutcome> ->
-     * InstalledGradleImportWait`.
+     * Proof transition: `CompletableFuture<InstalledGradleImportOutcome> -> InstalledGradleImportWait`.
      *
-     * Establishes one closed terminal import observation within the installed timeout.
-     * [InstalledGradleImportWait] closes cancellation, timeout, interruption, invalid JVM
-     * configuration, and unexpected future failure. The future remains inside the installed import
-     * boundary.
+     * Establishes one closed terminal import observation within the installed timeout. [InstalledGradleImportWait]
+     * closes cancellation, timeout, interruption, invalid JVM configuration, and unexpected future failure. The future
+     * remains inside the installed import boundary.
      */
-    private fun awaitImport(
-        future: CompletableFuture<InstalledGradleImportOutcome>,
-    ): InstalledGradleImportWait = try {
-        when (future.get(GRADLE_IMPORT_TIMEOUT_MINUTES, TimeUnit.MINUTES)) {
-            InstalledGradleImportOutcome.Completed -> InstalledGradleImportWait.COMPLETED
-            InstalledGradleImportOutcome.Failed -> InstalledGradleImportWait.FAILED
-            is InstalledGradleImportOutcome.IncompatiblePayload -> InstalledGradleImportWait.INCOMPATIBLE_PAYLOAD
-            InstalledGradleImportOutcome.InitializationScriptUnavailable -> InstalledGradleImportWait.INITIALIZATION_SCRIPT_UNAVAILABLE
-            InstalledGradleImportOutcome.Cancelled -> InstalledGradleImportWait.CANCELLED
-            InstalledGradleImportOutcome.InvalidJvmConfiguration ->
-                InstalledGradleImportWait.INVALID_JVM_CONFIGURATION
+    private fun awaitImport(future: CompletableFuture<InstalledGradleImportOutcome>): InstalledGradleImportWait =
+        try {
+            when (future.get(GRADLE_IMPORT_TIMEOUT_MINUTES, TimeUnit.MINUTES)) {
+                InstalledGradleImportOutcome.Completed -> InstalledGradleImportWait.COMPLETED
+                InstalledGradleImportOutcome.Failed -> InstalledGradleImportWait.FAILED
+                is InstalledGradleImportOutcome.IncompatiblePayload -> InstalledGradleImportWait.INCOMPATIBLE_PAYLOAD
+                InstalledGradleImportOutcome.InitializationScriptUnavailable ->
+                    InstalledGradleImportWait.INITIALIZATION_SCRIPT_UNAVAILABLE
+                InstalledGradleImportOutcome.Cancelled -> InstalledGradleImportWait.CANCELLED
+                InstalledGradleImportOutcome.InvalidJvmConfiguration ->
+                    InstalledGradleImportWait.INVALID_JVM_CONFIGURATION
+            }
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+            InstalledGradleImportWait.INTERRUPTED
+        } catch (_: TimeoutException) {
+            InstalledGradleImportWait.TIMED_OUT
+        } catch (_: ExecutionException) {
+            InstalledGradleImportWait.FAILED
+        } catch (_: java.util.concurrent.CancellationException) {
+            InstalledGradleImportWait.CANCELLED
         }
-    } catch (_: InterruptedException) {
-        Thread.currentThread().interrupt()
-        InstalledGradleImportWait.INTERRUPTED
-    } catch (_: TimeoutException) {
-        InstalledGradleImportWait.TIMED_OUT
-    } catch (_: ExecutionException) {
-        InstalledGradleImportWait.FAILED
-    } catch (_: java.util.concurrent.CancellationException) {
-        InstalledGradleImportWait.CANCELLED
-    }
 
     /**
      * Proof transition: `Project + Path -> InstalledModuleMaterialization`.
      *
-     * Available or imported establishes at least one live IntelliJ module for the exact complete
-     * Gradle project data. Other variants close absent cached data and platform import failure.
-     * Live project data remains inside this installed bootstrap boundary.
+     * Available or imported establishes at least one live IntelliJ module for the exact complete Gradle project data.
+     * Other variants close absent cached data and platform import failure. Live project data remains inside this
+     * installed bootstrap boundary.
      */
     private fun materializeImportedModules(
         project: com.intellij.openapi.project.Project,
         workspaceRoot: Path,
     ): InstalledModuleMaterialization {
-        val moduleAvailability = try {
-            if (
-                ReadAction.nonBlocking<Boolean> {
-                    ModuleManager.getInstance(project).modules.any { module -> !module.isDisposed }
-                }.executeSynchronously()
-            ) {
-                InstalledModuleAvailability.AVAILABLE
-            } else {
-                InstalledModuleAvailability.UNAVAILABLE
+        val moduleAvailability =
+            try {
+                if (
+                    ReadAction.nonBlocking<Boolean> {
+                            ModuleManager.getInstance(project).modules.any { module -> !module.isDisposed }
+                        }
+                        .executeSynchronously()
+                ) {
+                    InstalledModuleAvailability.AVAILABLE
+                } else {
+                    InstalledModuleAvailability.UNAVAILABLE
+                }
+            } catch (_: RuntimeException) {
+                InstalledModuleAvailability.FAILED
             }
-        } catch (_: RuntimeException) {
-            InstalledModuleAvailability.FAILED
-        }
         return materializeImportedModules(
             moduleAvailability,
             workspaceRoot,
             InstalledExternalProjectsReader {
-                ProjectDataManager.getInstance()
-                    .getExternalProjectsData(project, GradleConstants.SYSTEM_ID)
+                ProjectDataManager.getInstance().getExternalProjectsData(project, GradleConstants.SYSTEM_ID)
             },
             InstalledExternalProjectImporter { structure ->
                 try {
@@ -624,28 +635,28 @@ object InstalledIntellijWorkspace {
 internal fun installedProjectOpenTask(
     preparation: InstalledProjectOpenPreparation,
     indexBootstrap: InstalledIndexBootstrapBinder,
-): OpenProjectTask = OpenProjectTask.build().copy(
-    isNewProject = false,
-    useDefaultProjectAsTemplate = false,
-    isRefreshVfsNeeded = true,
-    runConfigurators = false,
-    runConversionBeforeOpen = false,
-    preloadServices = true,
-    preventIprLookup = true,
-    createModule = false,
-    beforeOpen = { project ->
-        val synchronized = synchronizeInstalledGlobalSdkModel().also { it.observe() }
-        synchronized == InstalledGlobalSdkSynchronization.SYNCHRONIZED &&
-            indexBootstrap.bind(project) &&
-            preparation.prepare(project) is InstalledProjectOpenPreparationState.Prepared
-    },
-)
+): OpenProjectTask =
+    OpenProjectTask.build()
+        .copy(
+            isNewProject = false,
+            useDefaultProjectAsTemplate = false,
+            isRefreshVfsNeeded = true,
+            runConfigurators = false,
+            runConversionBeforeOpen = false,
+            preloadServices = true,
+            preventIprLookup = true,
+            createModule = false,
+            beforeOpen = { project ->
+                val synchronized = synchronizeInstalledGlobalSdkModel().also { it.observe() }
+                synchronized == InstalledGlobalSdkSynchronization.SYNCHRONIZED &&
+                    indexBootstrap.bind(project) &&
+                    preparation.prepare(project) is InstalledProjectOpenPreparationState.Prepared
+            },
+        )
 
 /** Closed result of replacing every persisted project-level Gradle policy with runtime policy. */
 internal sealed interface InstalledGradleProjectPolicyApplication {
-    data class Applied(
-        val settings: GradleSettings,
-    ) : InstalledGradleProjectPolicyApplication
+    data class Applied(val settings: GradleSettings) : InstalledGradleProjectPolicyApplication
 
     data object Rejected : InstalledGradleProjectPolicyApplication
 }
@@ -653,39 +664,37 @@ internal sealed interface InstalledGradleProjectPolicyApplication {
 /**
  * Proof transition: `Project -> InstalledGradleProjectPolicyApplication`.
  *
- * Applied establishes online Gradle operation, project-file storage beneath the isolated project
- * store, and automatic reload for every external build change. The boundary applies and reads back
- * this policy both before and after the exact Gradle root import. Rejected closes platform
- * persistence failure.
+ * Applied establishes online Gradle operation, project-file storage beneath the isolated project store, and automatic
+ * reload for every external build change. The boundary applies and reads back this policy both before and after the
+ * exact Gradle root import. Rejected closes platform persistence failure.
  */
-private fun applyInstalledGradleProjectPolicy(
-    project: Project,
-): InstalledGradleProjectPolicyApplication = try {
-    val settings = GradleSettings.getInstance(project)
-    val systemSettings = GradleSystemSettings.getInstance()
-    settings.isOfflineWork = false
-    settings.storeProjectFilesExternally = false
-    systemSettings.isDownloadSources = false
-    val tracker = ExternalSystemProjectTrackerSettings.getInstance(project)
-    tracker.autoReloadType =
-        ExternalSystemProjectTrackerSettings.AutoReloadType.ALL
-    if (
-        settings.isOfflineWork ||
-        settings.storeProjectFilesExternally ||
-        systemSettings.isDownloadSources ||
-        tracker.autoReloadType != ExternalSystemProjectTrackerSettings.AutoReloadType.ALL
-    ) {
+private fun applyInstalledGradleProjectPolicy(project: Project): InstalledGradleProjectPolicyApplication =
+    try {
+        val settings = GradleSettings.getInstance(project)
+        val systemSettings = GradleSystemSettings.getInstance()
+        settings.isOfflineWork = false
+        settings.storeProjectFilesExternally = false
+        systemSettings.isDownloadSources = false
+        val tracker = ExternalSystemProjectTrackerSettings.getInstance(project)
+        tracker.autoReloadType = ExternalSystemProjectTrackerSettings.AutoReloadType.ALL
+        if (
+            settings.isOfflineWork ||
+                settings.storeProjectFilesExternally ||
+                systemSettings.isDownloadSources ||
+                tracker.autoReloadType != ExternalSystemProjectTrackerSettings.AutoReloadType.ALL
+        ) {
+            InstalledGradleProjectPolicyApplication.Rejected
+        } else {
+            InstalledGradleProjectPolicyApplication.Applied(settings)
+        }
+    } catch (_: RuntimeException) {
         InstalledGradleProjectPolicyApplication.Rejected
-    } else {
-        InstalledGradleProjectPolicyApplication.Applied(settings)
     }
-} catch (_: RuntimeException) {
-    InstalledGradleProjectPolicyApplication.Rejected
-}
 
 internal fun InstalledGradleModelCaptureFailure.workspaceOpening(): InstalledIntellijWorkspaceOpening =
     when (this) {
-        is InstalledGradleModelCaptureFailure.ModelInputRejected -> InstalledIntellijWorkspaceOpening.ModelInputRejected(failure)
+        is InstalledGradleModelCaptureFailure.ModelInputRejected ->
+            InstalledIntellijWorkspaceOpening.ModelInputRejected(failure)
         InstalledGradleModelCaptureFailure.MODEL_INPUTS_CHANGED,
         InstalledGradleModelCaptureFailure.MODEL_INPUTS_UNAVAILABLE ->
             rejected(InstalledIntellijWorkspaceFailure.MODEL_UNAVAILABLE)
@@ -731,14 +740,14 @@ private enum class InstalledGradleImportWait {
     INVALID_JVM_CONFIGURATION,
 }
 
-private fun InstalledProjectOpenPreparationFailure.workspaceFailure():
-    InstalledIntellijWorkspaceFailure = when (this) {
+private fun InstalledProjectOpenPreparationFailure.workspaceFailure(): InstalledIntellijWorkspaceFailure =
+    when (this) {
         InstalledProjectOpenPreparationFailure.PROJECT_JVM_REJECTED ->
             InstalledIntellijWorkspaceFailure.PROJECT_JVM_UNAVAILABLE
     }
 
-private fun InstalledSemanticProjectStoreFailure.workspaceFailure():
-    InstalledIntellijWorkspaceFailure = when (this) {
+private fun InstalledSemanticProjectStoreFailure.workspaceFailure(): InstalledIntellijWorkspaceFailure =
+    when (this) {
         InstalledSemanticProjectStoreFailure.OVERLAPS_WORKSPACE ->
             InstalledIntellijWorkspaceFailure.PROJECT_STORE_OVERLAPS_WORKSPACE
         InstalledSemanticProjectStoreFailure.CREATION_FAILED ->
@@ -751,8 +760,8 @@ private fun InstalledSemanticProjectStoreFailure.workspaceFailure():
             InstalledIntellijWorkspaceFailure.PROJECT_STORE_CONFIGURATION_WRITE_FAILED
     }
 
-private fun InstalledIndexBootstrapActivationFailure.workspaceFailure():
-    InstalledIntellijWorkspaceFailure = when (this) {
+private fun InstalledIndexBootstrapActivationFailure.workspaceFailure(): InstalledIntellijWorkspaceFailure =
+    when (this) {
         InstalledIndexBootstrapActivationFailure.MODULE_UNAVAILABLE ->
             InstalledIntellijWorkspaceFailure.INDEX_BOOTSTRAP_MODULE_UNAVAILABLE
         InstalledIndexBootstrapActivationFailure.EXCLUSION_POLICY_MISMATCH ->
@@ -767,6 +776,5 @@ private fun InstalledIndexBootstrapActivationFailure.workspaceFailure():
 
 private val INDEX_BOOTSTRAP_LOG = Logger.getInstance("io.github.amichne.kast.indexBootstrap")
 
-private fun rejected(
-    failure: InstalledIntellijWorkspaceFailure,
-): InstalledIntellijWorkspaceOpening.Rejected = InstalledIntellijWorkspaceOpening.Rejected(failure)
+private fun rejected(failure: InstalledIntellijWorkspaceFailure): InstalledIntellijWorkspaceOpening.Rejected =
+    InstalledIntellijWorkspaceOpening.Rejected(failure)

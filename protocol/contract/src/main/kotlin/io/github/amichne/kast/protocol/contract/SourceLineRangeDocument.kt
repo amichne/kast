@@ -2,11 +2,15 @@ package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
 
-enum class SourceLineRangeDocumentFailure { INVALID_LINE, REVERSED }
+enum class SourceLineRangeDocumentFailure {
+    INVALID_LINE,
+    REVERSED,
+}
 
 /** Inclusive one-based source lines, distinct from zero-based UTF-16 offsets. */
 @ConsistentCopyVisibility
-data class SourceLineRangeDocument private constructor(
+data class SourceLineRangeDocument
+private constructor(
     val startInclusive: SourceLineNumberDocument,
     val endInclusive: SourceLineNumberDocument,
 ) {
@@ -16,21 +20,25 @@ data class SourceLineRangeDocument private constructor(
             startInclusive: Long,
             endInclusive: Long,
         ): Refinement<SourceLineRangeDocument, SourceLineRangeDocumentFailure> {
-            val start = when (val admitted = SourceLineNumberDocument.parse(startInclusive)) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return Refinement.Rejected(admitted.failure)
-            }
-            val end = when (val admitted = SourceLineNumberDocument.parse(endInclusive)) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return Refinement.Rejected(admitted.failure)
-            }
+            val start =
+                when (val admitted = SourceLineNumberDocument.parse(startInclusive)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return Refinement.Rejected(admitted.failure)
+                }
+            val end =
+                when (val admitted = SourceLineNumberDocument.parse(endInclusive)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return Refinement.Rejected(admitted.failure)
+                }
             if (endInclusive < startInclusive) {
                 return Refinement.Rejected(SourceLineRangeDocumentFailure.REVERSED)
             }
-            return Refinement.Refined(SourceLineRangeDocument(
-                start,
-                end,
-            ))
+            return Refinement.Refined(
+                SourceLineRangeDocument(
+                    start,
+                    end,
+                )
+            )
         }
     }
 }

@@ -17,7 +17,7 @@ internal fun initializeTopologySchema(connection: Connection) {
                 symbol_count INTEGER NOT NULL CHECK(symbol_count >= 0),
                 edge_count INTEGER NOT NULL CHECK(edge_count >= 0),
                 UNIQUE(workspace_root, generation, source_state)
-            )""",
+            )"""
         )
         statement.execute(
             """CREATE TABLE IF NOT EXISTS topology_file_v3 (
@@ -34,7 +34,7 @@ internal fun initializeTopologySchema(connection: Connection) {
                     provenance IN ('AUTHORED', 'GENERATED', 'UNKNOWN_EXCLUDED')
                 ),
                 PRIMARY KEY(snapshot_id, path)
-            )""",
+            )"""
         )
         statement.execute(
             """CREATE TABLE IF NOT EXISTS topology_symbol_v3 (
@@ -53,7 +53,7 @@ internal fun initializeTopologySchema(connection: Connection) {
                 FOREIGN KEY(snapshot_id, file_path)
                     REFERENCES topology_file_v3(snapshot_id, path),
                 UNIQUE(snapshot_id, symbol_id)
-            )""",
+            )"""
         )
         statement.execute(
             """CREATE TABLE IF NOT EXISTS topology_edge_v3 (
@@ -75,19 +75,19 @@ internal fun initializeTopologySchema(connection: Connection) {
                     REFERENCES topology_symbol_v3(snapshot_id, symbol_id),
                 FOREIGN KEY(snapshot_id, occurrence_file_path)
                     REFERENCES topology_file_v3(snapshot_id, path)
-            )""",
+            )"""
         )
         statement.execute(
             "CREATE INDEX IF NOT EXISTS topology_snapshot_v3_root_order " +
-                "ON topology_snapshot_v3(workspace_root, snapshot_id DESC)",
+                "ON topology_snapshot_v3(workspace_root, snapshot_id DESC)"
         )
         statement.execute(
             "CREATE INDEX IF NOT EXISTS topology_edge_v3_source " +
-                "ON topology_edge_v3(snapshot_id, source_symbol_id, edge_kind)",
+                "ON topology_edge_v3(snapshot_id, source_symbol_id, edge_kind)"
         )
         statement.execute(
             "CREATE INDEX IF NOT EXISTS topology_edge_v3_target " +
-                "ON topology_edge_v3(snapshot_id, target_symbol_id, edge_kind)",
+                "ON topology_edge_v3(snapshot_id, target_symbol_id, edge_kind)"
         )
     }
 }

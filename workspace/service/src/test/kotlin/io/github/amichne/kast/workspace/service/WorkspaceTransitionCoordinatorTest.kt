@@ -25,16 +25,16 @@ import io.github.amichne.kast.workspace.contract.WorkspaceTransitionFailureClass
 import io.github.amichne.kast.workspace.contract.WorkspaceTransitionFailureDisposition
 import io.github.amichne.kast.workspace.contract.WorkspaceTransitionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
 import kotlin.properties.Delegates
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
 
 class WorkspaceTransitionCoordinatorTest {
     @Test
@@ -69,12 +69,13 @@ class WorkspaceTransitionCoordinatorTest {
         val request = sourceRequest()
         val refreshStarted = CountDownLatch(1)
         val releaseRefresh = CountDownLatch(1)
-        val recording = RecordingTransition(
-            onRefresh = {
-                refreshStarted.countDown()
-                releaseRefresh.await()
-            },
-        )
+        val recording =
+            RecordingTransition(
+                onRefresh = {
+                    refreshStarted.countDown()
+                    releaseRefresh.await()
+                }
+            )
         val coordinator = coordinator(recording)
         coordinator.observe(request)
         val transition = thread { coordinator.reconcilePending() }
@@ -96,13 +97,14 @@ class WorkspaceTransitionCoordinatorTest {
     fun `checkout signals conflate and publish one final cycle`() {
         val recording = RecordingTransition()
         val coordinator = coordinator(recording)
-        val signals = listOf(
-            WorkspaceSignal.Source,
-            WorkspaceSignal.BuildSemantic,
-            WorkspaceSignal.Configuration,
-            WorkspaceSignal.Scope,
-            WorkspaceSignal.GitWorktree,
-        )
+        val signals =
+            listOf(
+                WorkspaceSignal.Source,
+                WorkspaceSignal.BuildSemantic,
+                WorkspaceSignal.Configuration,
+                WorkspaceSignal.Scope,
+                WorkspaceSignal.GitWorktree,
+            )
 
         repeat(1_000) { index -> coordinator.observe(signals[index % signals.size]) }
 
@@ -115,9 +117,7 @@ class WorkspaceTransitionCoordinatorTest {
     @Test
     fun `event during reconciliation discards candidate and schedules another cycle`() {
         var coordinator: WorkspaceTransitionCoordinator by Delegates.notNull()
-        val recording = RecordingTransition(
-            reconcile = { coordinator.observe(WorkspaceSignal.GitWorktree) },
-        )
+        val recording = RecordingTransition(reconcile = { coordinator.observe(WorkspaceSignal.GitWorktree) })
         coordinator = coordinator(recording)
         coordinator.observe(WorkspaceSignal.Source)
 
@@ -128,9 +128,7 @@ class WorkspaceTransitionCoordinatorTest {
 
     @Test
     fun `identity movement without an event discards candidate`() {
-        val recording = RecordingTransition(
-            identities = ArrayDeque(listOf(identity("before"), identity("after"))),
-        )
+        val recording = RecordingTransition(identities = ArrayDeque(listOf(identity("before"), identity("after"))))
         val coordinator = coordinator(recording)
         coordinator.observe(WorkspaceSignal.RecoveryAudit)
 
@@ -146,17 +144,18 @@ class WorkspaceTransitionCoordinatorTest {
         val preparationStarted = CountDownLatch(1)
         val releasePreparation = CountDownLatch(1)
         val commitCalls = AtomicInteger()
-        val recording = RecordingTransition(
-            identities = identities,
-            onPrepare = {
-                preparationStarted.countDown()
-                releasePreparation.await()
-            },
-            onCommit = { publication ->
-                commitCalls.incrementAndGet()
-                GenerationPublication.Published(RecordingCommit(publication))
-            },
-        )
+        val recording =
+            RecordingTransition(
+                identities = identities,
+                onPrepare = {
+                    preparationStarted.countDown()
+                    releasePreparation.await()
+                },
+                onCommit = { publication ->
+                    commitCalls.incrementAndGet()
+                    GenerationPublication.Published(RecordingCommit(publication))
+                },
+            )
         val coordinator = coordinator(recording)
         coordinator.observe(WorkspaceSignal.Source)
         val outcome = AtomicReference<TransitionRun>()
@@ -180,10 +179,11 @@ class WorkspaceTransitionCoordinatorTest {
     @Test
     fun `refresh failure blocks and preserves published generation`() {
         val previous = publication(7, "previous")
-        val recording = RecordingTransition(
-            initial = PublishedWorkspaceGenerationState.Published(previous),
-            refreshFailure = IllegalStateException("Gradle model unavailable"),
-        )
+        val recording =
+            RecordingTransition(
+                initial = PublishedWorkspaceGenerationState.Published(previous),
+                refreshFailure = IllegalStateException("Gradle model unavailable"),
+            )
         val coordinator = coordinator(recording)
         coordinator.observe(WorkspaceSignal.BuildSemantic)
 
@@ -199,16 +199,17 @@ class WorkspaceTransitionCoordinatorTest {
         val releasePreparation = CountDownLatch(1)
         val observationCompleted = CountDownLatch(1)
         val commitCalls = AtomicInteger()
-        val recording = RecordingTransition(
-            onPrepare = {
-                preparationStarted.countDown()
-                releasePreparation.await()
-            },
-            onCommit = { publication ->
-                commitCalls.incrementAndGet()
-                GenerationPublication.Published(RecordingCommit(publication))
-            },
-        )
+        val recording =
+            RecordingTransition(
+                onPrepare = {
+                    preparationStarted.countDown()
+                    releasePreparation.await()
+                },
+                onCommit = { publication ->
+                    commitCalls.incrementAndGet()
+                    GenerationPublication.Published(RecordingCommit(publication))
+                },
+            )
         val coordinator = coordinator(recording)
         coordinator.observe(WorkspaceSignal.Source)
         val outcome = AtomicReference<TransitionRun>()
@@ -237,14 +238,15 @@ class WorkspaceTransitionCoordinatorTest {
         val commitStarted = CountDownLatch(1)
         val releaseCommit = CountDownLatch(1)
         val observationCompleted = CountDownLatch(1)
-        val recording = RecordingTransition(
-            initial = PublishedWorkspaceGenerationState.Published(previous),
-            onCommit = { next ->
-                commitStarted.countDown()
-                releaseCommit.await()
-                GenerationPublication.Published(RecordingCommit(next))
-            },
-        )
+        val recording =
+            RecordingTransition(
+                initial = PublishedWorkspaceGenerationState.Published(previous),
+                onCommit = { next ->
+                    commitStarted.countDown()
+                    releaseCommit.await()
+                    GenerationPublication.Published(RecordingCommit(next))
+                },
+            )
         val coordinator = coordinator(recording)
         coordinator.observe(WorkspaceSignal.Source)
         val outcome = AtomicReference<TransitionRun>()
@@ -291,8 +293,7 @@ private class RecordingTransition(
         refreshFailure?.let { throw it }
     }
 
-    override fun captureIdentity(): WorkspaceStateIdentity =
-        identities.removeFirstOrNull() ?: identity("state-1")
+    override fun captureIdentity(): WorkspaceStateIdentity = identities.removeFirstOrNull() ?: identity("state-1")
 
     override fun reconcile(candidate: WorkspaceStateIdentity): WorkspaceStateIdentity {
         reconciliations.incrementAndGet()
@@ -316,10 +317,9 @@ private class RecordingTransition(
 
     override fun commit(prepared: PreparedWorkspacePublication): GenerationPublication {
         val identity = (prepared as RecordingPrepared).identity
-        return onCommit(publication(nextGeneration.incrementAndGet().toLong(), identity.value))
-            .also { outcome ->
-                if (outcome is GenerationPublication.Published) published += identity
-            }
+        return onCommit(publication(nextGeneration.incrementAndGet().toLong(), identity.value)).also { outcome ->
+            if (outcome is GenerationPublication.Published) published += identity
+        }
     }
 
     override fun discard(open: OpenWorkspacePublication) {
@@ -333,41 +333,38 @@ private class RecordingTransition(
 
 private data object RecordingOpen : OpenWorkspacePublication
 
-private data class RecordingPrepared(
-    val identity: WorkspaceStateIdentity,
-) : PreparedWorkspacePublication
+private data class RecordingPrepared(val identity: WorkspaceStateIdentity) : PreparedWorkspacePublication
 
-private data class RecordingCommit(
-    override val publication: PublishedWorkspaceGeneration,
-) : WorkspacePublicationCommit
+private data class RecordingCommit(override val publication: PublishedWorkspaceGeneration) : WorkspacePublicationCommit
 
 private fun coordinator(recording: RecordingTransition): WorkspaceTransitionCoordinator =
     WorkspaceTransitionCoordinator(
         operations = recording,
         publication = recording,
         graphPublication = { WorkspaceGraphPublication.Ready },
-        failureClassifier = WorkspaceTransitionFailureClassifier { failure ->
-            WorkspaceTransitionFailureDisposition.Blocked(
-                kind = TransitionBlockerKind.AdapterFailure,
-                detail = failure.message?.takeIf(String::isNotBlank) ?: failure::class.qualifiedName.orEmpty(),
-            )
-        },
+        failureClassifier =
+            WorkspaceTransitionFailureClassifier { failure ->
+                WorkspaceTransitionFailureDisposition.Blocked(
+                    kind = TransitionBlockerKind.AdapterFailure,
+                    detail = failure.message?.takeIf(String::isNotBlank) ?: failure::class.qualifiedName.orEmpty(),
+                )
+            },
         initialPublished = recording.current(),
     )
 
 private fun sourceRequest(): WorkspaceTransitionRequest.SourceFiles {
     val path = (WorkspaceSourcePath.parse("src/Sample.kt") as Refinement.Refined).value
     val hash = (WorkspaceSourceContentHash.parse("a".repeat(64)) as Refinement.Refined).value
-    val claims = (
-        WorkspaceSourceFreshnessClaims.refine(
-            listOf(
-                WorkspaceSourceFreshnessClaim(
-                    path,
-                    WorkspaceSourceContentIdentity.Present(hash),
-                ),
-            ),
-        ) as Refinement.Refined
-                 ).value
+    val claims =
+        (WorkspaceSourceFreshnessClaims.refine(
+                listOf(
+                    WorkspaceSourceFreshnessClaim(
+                        path,
+                        WorkspaceSourceContentIdentity.Present(hash),
+                    )
+                )
+            ) as Refinement.Refined)
+            .value
     return WorkspaceTransitionRequest.SourceFiles(claims)
 }
 
@@ -377,11 +374,9 @@ private fun PublishedWorkspaceGenerationState.publication(): PublishedWorkspaceG
 private fun identity(value: String): WorkspaceStateIdentity =
     (WorkspaceStateIdentity.parse(value) as Refinement.Refined).value
 
-private fun generation(value: Long): EvidenceGeneration =
-    (EvidenceGeneration.parse(value) as Refinement.Refined).value
+private fun generation(value: Long): EvidenceGeneration = (EvidenceGeneration.parse(value) as Refinement.Refined).value
 
 private fun publication(
     generation: Long,
     identity: String,
-): PublishedWorkspaceGeneration =
-    PublishedWorkspaceGeneration(generation(generation), identity(identity))
+): PublishedWorkspaceGeneration = PublishedWorkspaceGeneration(generation(generation), identity(identity))

@@ -23,16 +23,19 @@ internal fun <T> runTransitionEffect(operation: () -> T): Result<T> = runCatchin
 internal fun WorkspaceTransitionFailureDisposition.toBlocker(
     phase: TransitionPhase,
     failure: Throwable,
-): TransitionBlocker = when (this) {
-    WorkspaceTransitionFailureDisposition.Cancellation -> throw failure
-    is WorkspaceTransitionFailureDisposition.Retry -> TransitionBlocker(
-        phase = phase,
-        kind = TransitionBlockerKind.RetryableTransition,
-        detail = detail,
-    )
-    is WorkspaceTransitionFailureDisposition.Blocked -> TransitionBlocker(
-        phase = phase,
-        kind = kind,
-        detail = detail,
-    )
-}
+): TransitionBlocker =
+    when (this) {
+        WorkspaceTransitionFailureDisposition.Cancellation -> throw failure
+        is WorkspaceTransitionFailureDisposition.Retry ->
+            TransitionBlocker(
+                phase = phase,
+                kind = TransitionBlockerKind.RetryableTransition,
+                detail = detail,
+            )
+        is WorkspaceTransitionFailureDisposition.Blocked ->
+            TransitionBlocker(
+                phase = phase,
+                kind = kind,
+                detail = detail,
+            )
+    }

@@ -1,15 +1,15 @@
 package io.github.amichne.kast.distribution.managed.network
 
 import io.github.amichne.kast.distribution.contract.network.TrustSelection
+import java.nio.file.Files
+import java.nio.file.Path
+import java.security.KeyStore
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
-import java.security.KeyStore
 
 class JvmTrustStoreLayoutTest {
     @Test
@@ -71,25 +71,28 @@ class JvmTrustStoreLayoutTest {
         )
     }
 
-    private fun prepare(root: Path): NetworkBootstrapResult = InstalledNetworkBootstrap.prepare(
-        root = Files.createDirectories(root.resolve("workspace")),
-        cache = Files.createDirectories(root.resolve("cache")),
-        targetJavaHome = root.resolve("target"),
-        environment = mapOf(
-            "GRADLE_USER_HOME" to root.resolve("gradle-user-home").toString(),
-            "KAST_TRUST_DONOR_JAVA_HOME" to root.resolve("donor").toString(),
-        ),
-    )
+    private fun prepare(root: Path): NetworkBootstrapResult =
+        InstalledNetworkBootstrap.prepare(
+            root = Files.createDirectories(root.resolve("workspace")),
+            cache = Files.createDirectories(root.resolve("cache")),
+            targetJavaHome = root.resolve("target"),
+            environment =
+                mapOf(
+                    "GRADLE_USER_HOME" to root.resolve("gradle-user-home").toString(),
+                    "KAST_TRUST_DONOR_JAVA_HOME" to root.resolve("donor").toString(),
+                ),
+        )
 
     private fun writeStore(path: Path): Path {
         val defaults = KeyStore.getInstance("JKS")
         Files.newInputStream(Path.of(System.getProperty("java.home"), "lib/security/cacerts")).use {
             defaults.load(it, "changeit".toCharArray())
         }
-        val donor = KeyStore.getInstance("JKS").apply {
-            load(null, "changeit".toCharArray())
-            setCertificateEntry("fixture", defaults.getCertificate(defaults.aliases().nextElement()))
-        }
+        val donor =
+            KeyStore.getInstance("JKS").apply {
+                load(null, "changeit".toCharArray())
+                setCertificateEntry("fixture", defaults.getCertificate(defaults.aliases().nextElement()))
+            }
         Files.createDirectories(path.parent)
         Files.newOutputStream(path).use { donor.store(it, "changeit".toCharArray()) }
         return path

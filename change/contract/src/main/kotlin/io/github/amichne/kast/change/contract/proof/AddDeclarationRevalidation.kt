@@ -17,12 +17,13 @@ enum class AddDeclarationTargetWritability {
 }
 
 enum class AddDeclarationRevalidationObservationFailure {
-    TARGET_CONTENT_IDENTITY_MISMATCH,
+    TARGET_CONTENT_IDENTITY_MISMATCH
 }
 
 @Serializable
 @ConsistentCopyVisibility
-data class AddDeclarationRevalidationObservation private constructor(
+data class AddDeclarationRevalidationObservation
+private constructor(
     val generation: AddDeclarationGeneration,
     val target: AddDeclarationTargetCapability,
     val currentFile: ExactFileContentProof,
@@ -31,14 +32,12 @@ data class AddDeclarationRevalidationObservation private constructor(
 ) {
     companion object {
         /**
-         * Proof transition:
-         * current target facts to Refinement of AddDeclarationRevalidationObservation or
+         * Proof transition: current target facts to Refinement of AddDeclarationRevalidationObservation or
          * AddDeclarationRevalidationObservationFailure.
          *
-         * Establishes one coherent detached observation whose target content identity equals its
-         * exact current bytes. The closed expected failure is
-         * AddDeclarationRevalidationObservationFailure; raw file, project-model, and writability
-         * facts may be extracted only by the physical revalidation adapter.
+         * Establishes one coherent detached observation whose target content identity equals its exact current bytes.
+         * The closed expected failure is AddDeclarationRevalidationObservationFailure; raw file, project-model, and
+         * writability facts may be extracted only by the physical revalidation adapter.
          */
         fun observe(
             generation: EvidenceGeneration,
@@ -49,10 +48,10 @@ data class AddDeclarationRevalidationObservation private constructor(
         ): Refinement<
             AddDeclarationRevalidationObservation,
             AddDeclarationRevalidationObservationFailure,
-            > {
+        > {
             if (target.expectedCurrentSha256 != currentFile.sha256) {
                 return Refinement.Rejected(
-                    AddDeclarationRevalidationObservationFailure.TARGET_CONTENT_IDENTITY_MISMATCH,
+                    AddDeclarationRevalidationObservationFailure.TARGET_CONTENT_IDENTITY_MISMATCH
                 )
             }
             return Refinement.Refined(
@@ -62,7 +61,7 @@ data class AddDeclarationRevalidationObservation private constructor(
                     currentFile = currentFile,
                     provenance = provenance,
                     writability = writability,
-                ),
+                )
             )
         }
     }
@@ -87,7 +86,8 @@ enum class AddDeclarationRevalidationFailure {
 
 @Serializable
 @ConsistentCopyVisibility
-data class AddDeclarationRevalidationRejection private constructor(
+data class AddDeclarationRevalidationRejection
+private constructor(
     val failure: AddDeclarationRevalidationFailure,
     val mutationProgress: AddDeclarationMutationProgress,
 ) {
@@ -96,9 +96,7 @@ data class AddDeclarationRevalidationRejection private constructor(
     }
 
     companion object {
-        internal fun beforeMutation(
-            failure: AddDeclarationRevalidationFailure,
-        ): AddDeclarationRevalidationRejection =
+        internal fun beforeMutation(failure: AddDeclarationRevalidationFailure): AddDeclarationRevalidationRejection =
             AddDeclarationRevalidationRejection(
                 failure = failure,
                 mutationProgress = AddDeclarationMutationProgress.NOT_BEGUN,
@@ -108,7 +106,8 @@ data class AddDeclarationRevalidationRejection private constructor(
 
 @Serializable
 @ConsistentCopyVisibility
-data class AddDeclarationRecoveryMaterial private constructor(
+data class AddDeclarationRecoveryMaterial
+private constructor(
     val planId: AddDeclarationPlanId,
     val targetPath: AddDeclarationTargetPath,
     val beforeImage: ExactFileContentProof,
@@ -125,14 +124,12 @@ data class AddDeclarationRecoveryMaterial private constructor(
             )
 
         /**
-         * Proof transition:
-         * stored PlanId, target path, and exact before image to
+         * Proof transition: stored PlanId, target path, and exact before image to
          * `Refinement<AddDeclarationRecoveryMaterial, AddDeclarationRecoveryMaterialFailure>`.
          *
-         * Establishes that durable recovery material belongs to the exact plan, target, and
-         * preimage proved during planning. The closed expected failure is
-         * `AddDeclarationRecoveryMaterialFailure`; raw stored fields may be extracted only by the
-         * durable journal decoder.
+         * Establishes that durable recovery material belongs to the exact plan, target, and preimage proved during
+         * planning. The closed expected failure is `AddDeclarationRecoveryMaterialFailure`; raw stored fields may be
+         * extracted only by the durable journal decoder.
          */
         fun restore(
             plan: PlannedAddDeclaration,
@@ -141,8 +138,7 @@ data class AddDeclarationRecoveryMaterial private constructor(
             beforeImage: ExactFileContentProof,
         ): Refinement<AddDeclarationRecoveryMaterial, AddDeclarationRecoveryMaterialFailure> =
             when {
-                planId != plan.planId ->
-                    Refinement.Rejected(AddDeclarationRecoveryMaterialFailure.PLAN_ID_MISMATCH)
+                planId != plan.planId -> Refinement.Rejected(AddDeclarationRecoveryMaterialFailure.PLAN_ID_MISMATCH)
                 targetPath != plan.target.targetPath ->
                     Refinement.Rejected(AddDeclarationRecoveryMaterialFailure.TARGET_PATH_MISMATCH)
                 beforeImage != plan.expectedFile.preimage ->
@@ -159,7 +155,8 @@ enum class AddDeclarationRecoveryMaterialFailure {
 }
 
 @ConsistentCopyVisibility
-data class RevalidatedAddDeclaration private constructor(
+data class RevalidatedAddDeclaration
+private constructor(
     val plan: PlannedAddDeclaration,
     val generation: AddDeclarationGeneration,
     val target: AddDeclarationTargetCapability,
@@ -167,52 +164,49 @@ data class RevalidatedAddDeclaration private constructor(
 ) {
     companion object {
         /**
-         * Proof transition:
-         * PlannedAddDeclaration and AddDeclarationRevalidationObservation to Refinement of
+         * Proof transition: PlannedAddDeclaration and AddDeclarationRevalidationObservation to Refinement of
          * RevalidatedAddDeclaration or AddDeclarationRevalidationRejection.
          *
-         * Establishes that current generation, target identity, owner and scope, exact content,
-         * authored provenance, and writability equal the detached planning proof. The output
-         * carries exact recovery material but no write capability. The closed expected failure is
-         * AddDeclarationRevalidationRejection, which proves mutation did not begin. Raw image bytes
-         * may be extracted only by the later durable recovery adapter.
+         * Establishes that current generation, target identity, owner and scope, exact content, authored provenance,
+         * and writability equal the detached planning proof. The output carries exact recovery material but no write
+         * capability. The closed expected failure is AddDeclarationRevalidationRejection, which proves mutation did not
+         * begin. Raw image bytes may be extracted only by the later durable recovery adapter.
          */
         fun admit(
             plan: PlannedAddDeclaration,
             observation: AddDeclarationRevalidationObservation,
         ): Refinement<RevalidatedAddDeclaration, AddDeclarationRevalidationRejection> {
-            val mismatch = when {
-                observation.generation != plan.generation ->
-                    AddDeclarationRevalidationFailure.GENERATION_CHANGED
-                observation.target.workspaceRoot != plan.target.workspaceRoot ||
-                observation.target.targetPath != plan.target.targetPath ->
-                    AddDeclarationRevalidationFailure.TARGET_IDENTITY_CHANGED
-                observation.target.owner != plan.target.owner ->
-                    AddDeclarationRevalidationFailure.OWNER_OR_SCOPE_CHANGED
-                observation.target.expectedCurrentSha256 != plan.target.expectedCurrentSha256 ||
-                observation.currentFile != plan.expectedFile.preimage ->
-                    AddDeclarationRevalidationFailure.TARGET_CONTENT_CHANGED
-                observation.provenance != AddDeclarationSourceProvenance.AUTHORED ->
-                    AddDeclarationRevalidationFailure.PROVENANCE_CHANGED
-                observation.writability != AddDeclarationTargetWritability.WRITABLE ->
-                    AddDeclarationRevalidationFailure.TARGET_READ_ONLY
-                else -> null
-            }
+            val mismatch =
+                when {
+                    observation.generation != plan.generation -> AddDeclarationRevalidationFailure.GENERATION_CHANGED
+                    observation.target.workspaceRoot != plan.target.workspaceRoot ||
+                        observation.target.targetPath != plan.target.targetPath ->
+                        AddDeclarationRevalidationFailure.TARGET_IDENTITY_CHANGED
+                    observation.target.owner != plan.target.owner ->
+                        AddDeclarationRevalidationFailure.OWNER_OR_SCOPE_CHANGED
+                    observation.target.expectedCurrentSha256 != plan.target.expectedCurrentSha256 ||
+                        observation.currentFile != plan.expectedFile.preimage ->
+                        AddDeclarationRevalidationFailure.TARGET_CONTENT_CHANGED
+                    observation.provenance != AddDeclarationSourceProvenance.AUTHORED ->
+                        AddDeclarationRevalidationFailure.PROVENANCE_CHANGED
+                    observation.writability != AddDeclarationTargetWritability.WRITABLE ->
+                        AddDeclarationRevalidationFailure.TARGET_READ_ONLY
+                    else -> null
+                }
             if (mismatch != null) {
-                return Refinement.Rejected(
-                    AddDeclarationRevalidationRejection.beforeMutation(mismatch),
-                )
+                return Refinement.Rejected(AddDeclarationRevalidationRejection.beforeMutation(mismatch))
             }
             return Refinement.Refined(
                 RevalidatedAddDeclaration(
                     plan = plan,
                     generation = observation.generation,
                     target = observation.target,
-                    recovery = AddDeclarationRecoveryMaterial.exact(
-                        plan = plan,
-                        beforeImage = observation.currentFile,
-                    ),
-                ),
+                    recovery =
+                        AddDeclarationRecoveryMaterial.exact(
+                            plan = plan,
+                            beforeImage = observation.currentFile,
+                        ),
+                )
             )
         }
     }

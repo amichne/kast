@@ -1,11 +1,5 @@
 package io.github.amichne.kast.appserver
 
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Timeout
-import org.junit.jupiter.api.io.TempDir
 import io.github.amichne.kast.appserver.runtime.BrokerSocketPath
 import io.github.amichne.kast.appserver.runtime.BrokerSocketRoute
 import io.github.amichne.kast.appserver.runtime.OwnedUnixSocket
@@ -20,9 +14,15 @@ import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.LinkOption
+import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Timeout
+import org.junit.jupiter.api.io.TempDir
 
 class BrokerEndpointAliasTest {
     @Test
@@ -34,16 +34,26 @@ class BrokerEndpointAliasTest {
         val socket = (BrokerSocketPath.prepareInstalled(run.resolve("u.sock")) as Validation.Validated).value
         val receipt = (socket.route as BrokerSocketRoute.PrivateUpstream).receipt
         try {
-            assertTrue(layout.publicSocket.toString().toByteArray(StandardCharsets.UTF_8).size < 104,
-                "selected public Unix transport must fit while physical state stays under the version root")
-            assertTrue(socket.path.toString().toByteArray(StandardCharsets.UTF_8).size < 104,
-                "selected private Unix transport must fit")
-            assertTrue(Files.isDirectory(socket.path.parent, LinkOption.NOFOLLOW_LINKS),
-                "Codex requires the private socket parent to be a real directory")
-            assertFalse(Files.isSymbolicLink(socket.path.parent),
-                "Codex rejects a private socket whose parent is an alias")
-            assertEquals(PosixFilePermissions.fromString("rwx------"),
-                Files.getPosixFilePermissions(socket.path.parent, LinkOption.NOFOLLOW_LINKS))
+            assertTrue(
+                layout.publicSocket.toString().toByteArray(StandardCharsets.UTF_8).size < 104,
+                "selected public Unix transport must fit while physical state stays under the version root",
+            )
+            assertTrue(
+                socket.path.toString().toByteArray(StandardCharsets.UTF_8).size < 104,
+                "selected private Unix transport must fit",
+            )
+            assertTrue(
+                Files.isDirectory(socket.path.parent, LinkOption.NOFOLLOW_LINKS),
+                "Codex requires the private socket parent to be a real directory",
+            )
+            assertFalse(
+                Files.isSymbolicLink(socket.path.parent),
+                "Codex rejects a private socket whose parent is an alias",
+            )
+            assertEquals(
+                PosixFilePermissions.fromString("rwx------"),
+                Files.getPosixFilePermissions(socket.path.parent, LinkOption.NOFOLLOW_LINKS),
+            )
             assertEquals(layout.upstreamSocket, socket.path)
             assertTrue(layout.run.startsWith(root))
             val observed = BrokerUpstreamDirectories.prepare(run)
@@ -71,9 +81,14 @@ class BrokerEndpointAliasTest {
                     server.bind(UnixDomainSocketAddress.of(socket.path))
                     val owned = requireNotNull(OwnedUnixSocket.capture(socket))
                     try {
-                        assertEquals(BrokerSocketPathObservation.Socket, JdkBrokerSocketPathObserver.observe(socket.path))
-                        assertEquals(Files.getAttribute(run.resolve("c.sock"), "unix:ino", LinkOption.NOFOLLOW_LINKS),
-                            Files.getAttribute(socket.path, "unix:ino", LinkOption.NOFOLLOW_LINKS))
+                        assertEquals(
+                            BrokerSocketPathObservation.Socket,
+                            JdkBrokerSocketPathObserver.observe(socket.path),
+                        )
+                        assertEquals(
+                            Files.getAttribute(run.resolve("c.sock"), "unix:ino", LinkOption.NOFOLLOW_LINKS),
+                            Files.getAttribute(socket.path, "unix:ino", LinkOption.NOFOLLOW_LINKS),
+                        )
                         SocketChannel.open(StandardProtocolFamily.UNIX).use { client ->
                             client.connect(UnixDomainSocketAddress.of(socket.path))
                             server.accept().use { peer ->
@@ -140,7 +155,7 @@ class BrokerEndpointAliasTest {
 
     @Test
     fun `replaced private upstream directory rejects the retained proof without touching foreign state`(
-        @TempDir temporary: Path,
+        @TempDir temporary: Path
     ) {
         val run = privateRun(temporary)
         val socket = (BrokerSocketPath.prepareInstalled(run.resolve("u.sock")) as Validation.Validated).value
@@ -172,7 +187,8 @@ class BrokerEndpointAliasTest {
     }
 
     private fun privateRun(temporary: Path): Path {
-        val run = Files.createDirectories(temporary.resolve("version-" + "v".repeat(100)).resolve("state/run")).toRealPath()
+        val run =
+            Files.createDirectories(temporary.resolve("version-" + "v".repeat(100)).resolve("state/run")).toRealPath()
         Files.setPosixFilePermissions(run, PosixFilePermissions.fromString("rwx------"))
         return run
     }

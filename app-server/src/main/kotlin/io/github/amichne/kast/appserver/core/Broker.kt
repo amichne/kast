@@ -1,12 +1,15 @@
 package io.github.amichne.kast.appserver.core
 
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
-import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
-import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import io.github.amichne.kast.appserver.schema.CompiledJsonSchema
 import io.github.amichne.kast.appserver.schema.JsonDomainDefinition
 import io.github.amichne.kast.appserver.schema.canonicalJson
+import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Validation
+import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+import java.util.HexFormat
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.sync.Mutex
@@ -16,38 +19,31 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
-import java.util.HexFormat
 
-internal enum class ToolLoading { EAGER, DEFERRED }
+internal enum class ToolLoading {
+    EAGER,
+    DEFERRED,
+}
 
-internal data class ToolContent(
-    val text: String,
-)
+internal data class ToolContent(val text: String)
 
 internal sealed interface ObserverPresentation {
     data object None : ObserverPresentation
 
     sealed interface Available : ObserverPresentation
 
-    data class Markdown(
-        val source: ObserverMarkdown,
-    ) : Available
+    data class Markdown(val source: ObserverMarkdown) : Available
 
-    data class FileChanges(
-        val files: ObserverFileChangeSet,
-    ) : Available
+    data class FileChanges(val files: ObserverFileChangeSet) : Available
 }
 
-@JvmInline
-internal value class ObserverMarkdown(val value: String)
+@JvmInline internal value class ObserverMarkdown(val value: String)
 
-internal data class ToolPresentation private constructor(
+internal data class ToolPresentation
+private constructor(
     val content: List<ToolContent>,
     val success: Boolean,
     val observer: ObserverPresentation,
@@ -75,19 +71,21 @@ internal enum class ProviderFailureCode {
     KAST_CONTRACT_CHANGED,
     KAST_ARGUMENT_NOT_SCALAR,
     MALFORMED_KAST_OUTPUT,
-    GRADLE_WRAPPER_UNAVAILABLE,
-    ;
+    GRADLE_WRAPPER_UNAVAILABLE;
 
-    val value: String get() = name
+    val value: String
+        get() = name
 }
 
 internal sealed interface ProviderCall<out Output> {
     data class Completed<Output>(val value: Output) : ProviderCall<Output>
+
     data class Rejected(val code: ProviderFailureCode) : ProviderCall<Nothing>
 }
 
 internal sealed interface ProviderStartup<out Runtime> {
     data class Started<Runtime>(val runtime: Runtime) : ProviderStartup<Runtime>
+
     data class Rejected(val code: ProviderFailureCode) : ProviderStartup<Nothing>
 }
 
@@ -101,11 +99,16 @@ internal class BrokerTool<Runtime, Input, Output, InputFailure>(
     internal val encode: (Output) -> JsonElement,
     internal val present: (Output) -> ToolPresentation,
     internal val invocationBudget: ElapsedTimeLimitMillis = OperationExecutionBudget.SEMANTIC_READ.operation,
-    internal val inputGuidance: (io.github.amichne.kast.appserver.schema.JsonDomainAdmissionFailure<InputFailure>) -> List<ToolDescription> = { emptyList() },
+    internal val inputGuidance:
+        (io.github.amichne.kast.appserver.schema.JsonDomainAdmissionFailure<InputFailure>) -> List<ToolDescription> =
+        {
+            emptyList()
+        },
 )
 
 internal sealed interface ProviderDefinitionFailure {
     data object EmptyToolSet : ProviderDefinitionFailure
+
     data class DuplicateTool(val tool: ToolName) : ProviderDefinitionFailure
 }
 
@@ -117,7 +120,8 @@ internal sealed interface ProviderDefinition {
     fun route(limits: BrokerLimits): ProviderRoute
 }
 
-internal class ProviderRegistration<Runtime> private constructor(
+internal class ProviderRegistration<Runtime>
+private constructor(
     override val namespace: ProviderNamespace,
     override val version: ProviderVersion,
     internal val tools: List<BrokerTool<Runtime, *, *, *>>,
@@ -143,9 +147,12 @@ internal class ProviderRegistration<Runtime> private constructor(
             start: suspend () -> ProviderStartup<Runtime>,
         ): Validation<ProviderRegistration<Runtime>, ProviderDefinitionFailure> {
             if (tools.isEmpty()) return Validation.rejected(ProviderDefinitionFailure.EmptyToolSet)
-            val duplicate = tools.groupBy(BrokerTool<Runtime, *, *, *>::name)
-                .entries.firstOrNull { (_, definitions) -> definitions.size > 1 }
-                ?.key
+            val duplicate =
+                tools
+                    .groupBy(BrokerTool<Runtime, *, *, *>::name)
+                    .entries
+                    .firstOrNull { (_, definitions) -> definitions.size > 1 }
+                    ?.key
             if (duplicate != null) {
                 return Validation.rejected(ProviderDefinitionFailure.DuplicateTool(duplicate))
             }
@@ -178,15 +185,17 @@ internal data class CatalogNamespace(
 @JvmInline
 internal value class CatalogDigest private constructor(val value: String) {
     companion object {
-        internal fun derive(canonicalDocument: String): CatalogDigest = CatalogDigest(
-            "sha256:" + HexFormat.of().formatHex(
-                MessageDigest.getInstance("SHA-256")
-                    .digest(canonicalDocument.toByteArray(StandardCharsets.UTF_8)),
-            ),
-        )
+        internal fun derive(canonicalDocument: String): CatalogDigest =
+            CatalogDigest(
+                "sha256:" +
+                    HexFormat.of()
+                        .formatHex(
+                            MessageDigest.getInstance("SHA-256")
+                                .digest(canonicalDocument.toByteArray(StandardCharsets.UTF_8))
+                        )
+            )
 
-        internal fun admit(raw: String): CatalogDigest? =
-            raw.takeIf { DIGEST.matches(it) }?.let(::CatalogDigest)
+        internal fun admit(raw: String): CatalogDigest? = raw.takeIf { DIGEST.matches(it) }?.let(::CatalogDigest)
 
         private val DIGEST = Regex("sha256:[0-9a-f]{64}")
     }
@@ -198,7 +207,8 @@ internal data class BrokerCatalog(
     internal val identityDocument: JsonArray,
 )
 
-internal data class BrokerLimits private constructor(
+internal data class BrokerLimits
+private constructor(
     val inFlightCallsPerConnection: Int,
     val inFlightCallsPerProvider: Int,
     val maximumDescriptorCount: Int,
@@ -208,15 +218,16 @@ internal data class BrokerLimits private constructor(
     val providerStartupTimeoutMillis: Long,
 ) {
     companion object {
-        internal fun defaults(): BrokerLimits = BrokerLimits(
-            inFlightCallsPerConnection = BrokerOperationalLimits.inFlightCallsPerConnection,
-            inFlightCallsPerProvider = BrokerOperationalLimits.inFlightCallsPerProvider,
-            maximumDescriptorCount = BrokerOperationalLimits.maximumDescriptorCount,
-            maximumCatalogBytes = BrokerOperationalLimits.maximumCatalogBytes,
-            maximumToolArgumentBytes = BrokerOperationalLimits.maximumToolArgumentBytes,
-            maximumToolResultBytes = BrokerOperationalLimits.maximumToolResultBytes,
-            providerStartupTimeoutMillis = BrokerOperationalLimits.providerStartup.value,
-        )
+        internal fun defaults(): BrokerLimits =
+            BrokerLimits(
+                inFlightCallsPerConnection = BrokerOperationalLimits.inFlightCallsPerConnection,
+                inFlightCallsPerProvider = BrokerOperationalLimits.inFlightCallsPerProvider,
+                maximumDescriptorCount = BrokerOperationalLimits.maximumDescriptorCount,
+                maximumCatalogBytes = BrokerOperationalLimits.maximumCatalogBytes,
+                maximumToolArgumentBytes = BrokerOperationalLimits.maximumToolArgumentBytes,
+                maximumToolResultBytes = BrokerOperationalLimits.maximumToolResultBytes,
+                providerStartupTimeoutMillis = BrokerOperationalLimits.providerStartup.value,
+            )
     }
 }
 
@@ -229,7 +240,9 @@ internal enum class BrokerLimit {
 
 internal sealed interface CatalogFailure {
     data class DuplicateNamespace(val namespace: ProviderNamespace) : CatalogFailure
+
     data object DescriptorLimitExceeded : CatalogFailure
+
     data object CatalogSizeExceeded : CatalogFailure
 }
 
@@ -241,44 +254,52 @@ internal data class BrokerDispatchRequest(
 
 internal sealed interface BrokerFailure {
     data class UnknownNamespace(val namespace: ProviderNamespace) : BrokerFailure
+
     data class UnknownTool(val address: ToolAddress) : BrokerFailure
-    data class InvalidArguments(val address: ToolAddress, val failureCount: Int, val guidance: List<ToolDescription> = emptyList()) : BrokerFailure
+
+    data class InvalidArguments(
+        val address: ToolAddress,
+        val failureCount: Int,
+        val guidance: List<ToolDescription> = emptyList(),
+    ) : BrokerFailure
+
     data class ProviderStartupRejected(
         val namespace: ProviderNamespace,
         val code: ProviderFailureCode,
     ) : BrokerFailure
+
     data class ProviderInvocationRejected(
         val address: ToolAddress,
         val code: ProviderFailureCode,
     ) : BrokerFailure
+
     data class OutputContractRejected(val address: ToolAddress, val failureCount: Int) : BrokerFailure
+
     data class InvocationCancelled(val address: ToolAddress) : BrokerFailure
+
     data class Overloaded(val limit: BrokerLimit) : BrokerFailure
 }
 
 internal sealed interface BrokerDispatch {
     data class Completed(val presentation: ToolPresentation) : BrokerDispatch
+
     data class Rejected(val failure: BrokerFailure) : BrokerDispatch
 }
 
-internal class Broker private constructor(
+internal class Broker
+private constructor(
     val catalog: BrokerCatalog,
     val limits: BrokerLimits,
     private val routes: Map<ProviderNamespace, ProviderRoute>,
 ) {
     internal suspend fun dispatch(request: BrokerDispatchRequest): BrokerDispatch {
         if (
-            canonicalJson(request.arguments).toByteArray(StandardCharsets.UTF_8).size >
-            limits.maximumToolArgumentBytes
+            canonicalJson(request.arguments).toByteArray(StandardCharsets.UTF_8).size > limits.maximumToolArgumentBytes
         ) {
-            return BrokerDispatch.Rejected(
-                BrokerFailure.Overloaded(BrokerLimit.MAXIMUM_TOOL_ARGUMENT_BYTES),
-            )
+            return BrokerDispatch.Rejected(BrokerFailure.Overloaded(BrokerLimit.MAXIMUM_TOOL_ARGUMENT_BYTES))
         }
         return routes[request.address.namespace]?.dispatch(request)
-            ?: BrokerDispatch.Rejected(
-                BrokerFailure.UnknownNamespace(request.address.namespace),
-            )
+            ?: BrokerDispatch.Rejected(BrokerFailure.UnknownNamespace(request.address.namespace))
     }
 
     companion object {
@@ -289,9 +310,12 @@ internal class Broker private constructor(
             if (definitions.size > limits.maximumDescriptorCount) {
                 return Validation.rejected(CatalogFailure.DescriptorLimitExceeded)
             }
-            val duplicate = definitions.groupBy(ProviderDefinition::namespace)
-                .entries.firstOrNull { (_, providers) -> providers.size > 1 }
-                ?.key
+            val duplicate =
+                definitions
+                    .groupBy(ProviderDefinition::namespace)
+                    .entries
+                    .firstOrNull { (_, providers) -> providers.size > 1 }
+                    ?.key
             if (duplicate != null) {
                 return Validation.rejected(CatalogFailure.DuplicateNamespace(duplicate))
             }
@@ -312,7 +336,7 @@ internal class Broker private constructor(
                     BrokerCatalog(CatalogDigest.derive(canonical), namespaces, identity),
                     limits,
                     routes,
-                ),
+                )
             )
         }
     }
@@ -320,6 +344,7 @@ internal class Broker private constructor(
 
 internal interface ProviderRoute {
     val namespace: ProviderNamespace
+
     suspend fun dispatch(request: BrokerDispatchRequest): BrokerDispatch
 }
 
@@ -331,9 +356,10 @@ private class TypedProviderRoute<Runtime>(
     private val startupLock = Mutex()
     private val invocationCapacity = Semaphore(limits.inFlightCallsPerProvider)
     private var startup: ProviderStartup<Runtime>? = null
-    private val tools: Map<ToolName, TypedToolRoute<Runtime>> = registration.tools.associate { tool ->
-        tool.name to typedToolRoute(tool)
-    }
+    private val tools: Map<ToolName, TypedToolRoute<Runtime>> =
+        registration.tools.associate { tool ->
+            tool.name to typedToolRoute(tool)
+        }
 
     override suspend fun dispatch(request: BrokerDispatchRequest): BrokerDispatch =
         tools[request.address.tool]?.dispatch(request, ::acquire)
@@ -343,112 +369,119 @@ private class TypedProviderRoute<Runtime>(
         startup ?: startBounded().also { result -> startup = result }
     }
 
-    private suspend fun startBounded(): ProviderStartup<Runtime> = try {
-        withTimeout(limits.providerStartupTimeoutMillis) { registration.start() }
-    } catch (_: TimeoutCancellationException) {
-        ProviderStartup.Rejected(ProviderFailureCode.TIMED_OUT)
-    } catch (cancelled: CancellationException) {
-        throw cancelled
-    } catch (_: RuntimeException) {
-        ProviderStartup.Rejected(ProviderFailureCode.UNEXPECTED_FAILURE)
-    }
+    private suspend fun startBounded(): ProviderStartup<Runtime> =
+        try {
+            withTimeout(limits.providerStartupTimeoutMillis) { registration.start() }
+        } catch (_: TimeoutCancellationException) {
+            ProviderStartup.Rejected(ProviderFailureCode.TIMED_OUT)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: RuntimeException) {
+            ProviderStartup.Rejected(ProviderFailureCode.UNEXPECTED_FAILURE)
+        }
 
     private fun <Input, Output, InputFailure> typedToolRoute(
-        tool: BrokerTool<Runtime, Input, Output, InputFailure>,
-    ): TypedToolRoute<Runtime> = object : TypedToolRoute<Runtime> {
-        override suspend fun dispatch(
-            request: BrokerDispatchRequest,
-            acquire: suspend () -> ProviderStartup<Runtime>,
-        ): BrokerDispatch {
-            val admitted = tool.input.admit(request.arguments)
-            val input = when (admitted) {
-                is Validation.Validated -> admitted.value
-                is Validation.Rejected -> return BrokerDispatch.Rejected(
-                    BrokerFailure.InvalidArguments(request.address, admitted.failures.size,
-                        admitted.failures.take(3).flatMap(tool.inputGuidance).distinct().take(3)) ,
-                )
-            }
-            if (!invocationCapacity.tryAcquire()) {
-                return BrokerDispatch.Rejected(
-                    BrokerFailure.Overloaded(BrokerLimit.IN_FLIGHT_CALLS_PER_PROVIDER),
-                )
-            }
-            val invocation = try {
-                val runtime = when (val started = acquire()) {
-                    is ProviderStartup.Started -> started.runtime
-                    is ProviderStartup.Rejected -> return BrokerDispatch.Rejected(
-                        BrokerFailure.ProviderStartupRejected(namespace, started.code),
-                    )
-                }
-                try {
-                    withTimeout(tool.invocationBudget.value) {
-                        tool.invoke(runtime, input, request.context)
+        tool: BrokerTool<Runtime, Input, Output, InputFailure>
+    ): TypedToolRoute<Runtime> =
+        object : TypedToolRoute<Runtime> {
+            override suspend fun dispatch(
+                request: BrokerDispatchRequest,
+                acquire: suspend () -> ProviderStartup<Runtime>,
+            ): BrokerDispatch {
+                val admitted = tool.input.admit(request.arguments)
+                val input =
+                    when (admitted) {
+                        is Validation.Validated -> admitted.value
+                        is Validation.Rejected ->
+                            return BrokerDispatch.Rejected(
+                                BrokerFailure.InvalidArguments(
+                                    request.address,
+                                    admitted.failures.size,
+                                    admitted.failures.take(3).flatMap(tool.inputGuidance).distinct().take(3),
+                                )
+                            )
                     }
-                } catch (_: TimeoutCancellationException) {
-                    return BrokerDispatch.Rejected(
-                        BrokerFailure.ProviderInvocationRejected(
-                            request.address,
-                            ProviderFailureCode.TIMED_OUT,
-                        ),
-                    )
-                } catch (_: CancellationException) {
-                    return BrokerDispatch.Rejected(BrokerFailure.InvocationCancelled(request.address))
+                if (!invocationCapacity.tryAcquire()) {
+                    return BrokerDispatch.Rejected(BrokerFailure.Overloaded(BrokerLimit.IN_FLIGHT_CALLS_PER_PROVIDER))
+                }
+                val invocation =
+                    try {
+                        val runtime =
+                            when (val started = acquire()) {
+                                is ProviderStartup.Started -> started.runtime
+                                is ProviderStartup.Rejected ->
+                                    return BrokerDispatch.Rejected(
+                                        BrokerFailure.ProviderStartupRejected(namespace, started.code)
+                                    )
+                            }
+                        try {
+                            withTimeout(tool.invocationBudget.value) {
+                                tool.invoke(runtime, input, request.context)
+                            }
+                        } catch (_: TimeoutCancellationException) {
+                            return BrokerDispatch.Rejected(
+                                BrokerFailure.ProviderInvocationRejected(
+                                    request.address,
+                                    ProviderFailureCode.TIMED_OUT,
+                                )
+                            )
+                        } catch (_: CancellationException) {
+                            return BrokerDispatch.Rejected(BrokerFailure.InvocationCancelled(request.address))
+                        } catch (_: RuntimeException) {
+                            return BrokerDispatch.Rejected(
+                                BrokerFailure.ProviderInvocationRejected(
+                                    request.address,
+                                    ProviderFailureCode.UNEXPECTED_FAILURE,
+                                )
+                            )
+                        }
+                    } finally {
+                        invocationCapacity.release()
+                    }
+                val output =
+                    when (invocation) {
+                        is ProviderCall.Completed -> invocation.value
+                        is ProviderCall.Rejected ->
+                            return BrokerDispatch.Rejected(
+                                BrokerFailure.ProviderInvocationRejected(request.address, invocation.code)
+                            )
+                    }
+                val encoded =
+                    try {
+                        tool.encode(output)
+                    } catch (_: RuntimeException) {
+                        return BrokerDispatch.Rejected(
+                            BrokerFailure.ProviderInvocationRejected(
+                                request.address,
+                                ProviderFailureCode.UNEXPECTED_FAILURE,
+                            )
+                        )
+                    }
+                if (canonicalJson(encoded).toByteArray(StandardCharsets.UTF_8).size > limits.maximumToolResultBytes) {
+                    return BrokerDispatch.Rejected(BrokerFailure.Overloaded(BrokerLimit.MAXIMUM_TOOL_RESULT_BYTES))
+                }
+                when (val outputAdmission = tool.outputSchema.admit(encoded)) {
+                    is Validation.Validated -> Unit
+                    is Validation.Rejected ->
+                        return BrokerDispatch.Rejected(
+                            BrokerFailure.OutputContractRejected(
+                                request.address,
+                                outputAdmission.failures.size,
+                            )
+                        )
+                }
+                return try {
+                    BrokerDispatch.Completed(tool.present(output))
                 } catch (_: RuntimeException) {
-                    return BrokerDispatch.Rejected(
+                    BrokerDispatch.Rejected(
                         BrokerFailure.ProviderInvocationRejected(
                             request.address,
                             ProviderFailureCode.UNEXPECTED_FAILURE,
-                        ),
+                        )
                     )
                 }
-            } finally {
-                invocationCapacity.release()
-            }
-            val output = when (invocation) {
-                is ProviderCall.Completed -> invocation.value
-                is ProviderCall.Rejected -> return BrokerDispatch.Rejected(
-                    BrokerFailure.ProviderInvocationRejected(request.address, invocation.code),
-                )
-            }
-            val encoded = try {
-                tool.encode(output)
-            } catch (_: RuntimeException) {
-                return BrokerDispatch.Rejected(
-                    BrokerFailure.ProviderInvocationRejected(
-                        request.address,
-                        ProviderFailureCode.UNEXPECTED_FAILURE,
-                    ),
-                )
-            }
-            if (
-                canonicalJson(encoded).toByteArray(StandardCharsets.UTF_8).size >
-                limits.maximumToolResultBytes
-            ) {
-                return BrokerDispatch.Rejected(
-                    BrokerFailure.Overloaded(BrokerLimit.MAXIMUM_TOOL_RESULT_BYTES),
-                )
-            }
-            when (val outputAdmission = tool.outputSchema.admit(encoded)) {
-                is Validation.Validated -> Unit
-                is Validation.Rejected -> return BrokerDispatch.Rejected(
-                    BrokerFailure.OutputContractRejected(
-                        request.address,
-                        outputAdmission.failures.size,
-                    ),
-                )
-            }
-            return try {
-                BrokerDispatch.Completed(tool.present(output))
-            } catch (_: RuntimeException) {
-                BrokerDispatch.Rejected(
-                    BrokerFailure.ProviderInvocationRejected(
-                        request.address,
-                        ProviderFailureCode.UNEXPECTED_FAILURE,
-                    ),
-                )
             }
         }
-    }
 }
 
 private fun interface TypedToolRoute<Runtime> {
@@ -461,35 +494,42 @@ private fun interface TypedToolRoute<Runtime> {
 private fun ProviderDefinition.identityDocument(): JsonObject = buildJsonObject {
     put("namespace", namespace.value)
     put("providerVersion", version.value)
-    put("tools", buildJsonArray {
-        toolDocuments.sortedBy(ProviderToolDocument::name).forEach { tool ->
-            add(buildJsonObject {
-                put("name", tool.name.value)
-                put("description", tool.description.value)
-                put("loading", tool.loading.name.lowercase())
-                put("inputSchema", tool.inputSchema.document)
-                put("outputSchema", tool.outputSchema.document)
-            })
-        }
-    })
-}
-
-private fun ProviderDefinition.catalogNamespace(): CatalogNamespace = CatalogNamespace(
-    name = namespace,
-    description = ToolDescription.admit("Typed read-only tools provided by ${namespace.value}.")
-        .let { refinement ->
-            when (refinement) {
-                is io.github.amichne.kast.kernel.Refinement.Refined -> refinement.value
-                is io.github.amichne.kast.kernel.Refinement.Rejected ->
-                    error("Static catalog description violated its construction proof")
+    put(
+        "tools",
+        buildJsonArray {
+            toolDocuments.sortedBy(ProviderToolDocument::name).forEach { tool ->
+                add(
+                    buildJsonObject {
+                        put("name", tool.name.value)
+                        put("description", tool.description.value)
+                        put("loading", tool.loading.name.lowercase())
+                        put("inputSchema", tool.inputSchema.document)
+                        put("outputSchema", tool.outputSchema.document)
+                    }
+                )
             }
         },
-    tools = toolDocuments.sortedBy(ProviderToolDocument::name).map { tool ->
-        CatalogTool(
-            tool.name,
-            tool.description,
-            tool.loading,
-            tool.inputSchema.document,
-        )
-    },
-)
+    )
+}
+
+private fun ProviderDefinition.catalogNamespace(): CatalogNamespace =
+    CatalogNamespace(
+        name = namespace,
+        description =
+            ToolDescription.admit("Typed read-only tools provided by ${namespace.value}.").let { refinement ->
+                when (refinement) {
+                    is io.github.amichne.kast.kernel.Refinement.Refined -> refinement.value
+                    is io.github.amichne.kast.kernel.Refinement.Rejected ->
+                        error("Static catalog description violated its construction proof")
+                }
+            },
+        tools =
+            toolDocuments.sortedBy(ProviderToolDocument::name).map { tool ->
+                CatalogTool(
+                    tool.name,
+                    tool.description,
+                    tool.loading,
+                    tool.inputSchema.document,
+                )
+            },
+    )

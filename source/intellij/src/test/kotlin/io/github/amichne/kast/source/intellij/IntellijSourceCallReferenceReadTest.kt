@@ -16,7 +16,6 @@ import io.github.amichne.kast.source.contract.SourceEntityTarget
 import io.github.amichne.kast.source.contract.SourceNestingDepth
 import io.github.amichne.kast.source.contract.SourceRange
 import io.github.amichne.kast.source.contract.SourceReadAnchor
-import io.github.amichne.kast.source.contract.SourceReadContext
 import io.github.amichne.kast.source.contract.SourceReadContinuationState
 import io.github.amichne.kast.source.contract.SourceReadLimitation
 import io.github.amichne.kast.source.contract.SourceReadPage
@@ -55,11 +54,13 @@ class IntellijSourceCallReferenceReadTest {
     @Test
     fun `calls own exact callees and references retain closed targets without callee duplication`() {
         val fixture = fixture()
-        val result = read(
-            port(fixture),
-            fixture,
-            matching(Containment.DESCENDANTS, EntityFilter.Calls, EntityFilter.References),
-        ) as SourceReadResult.Complete
+        val result =
+            read(
+                port(fixture),
+                fixture,
+                matching(Containment.DESCENDANTS, EntityFilter.Calls, EntityFilter.References),
+            )
+                as SourceReadResult.Complete
 
         assertEquals(
             listOf("globalTarget", "consume", "local", "missing", "globalTarget"),
@@ -79,12 +80,12 @@ class IntellijSourceCallReferenceReadTest {
         )
         assertEquals(
             CompilerUnresolvedReason.NAME_NOT_FOUND,
-            ((result.entities[3] as SourceEntity.Reference).target as SourceEntityTarget.Unresolved)
-                .reason,
+            ((result.entities[3] as SourceEntity.Reference).target as SourceEntityTarget.Unresolved).reason,
         )
         assertTrue(
-            result.entities.filterIsInstance<SourceEntity.Reference>()
-                .none { it.selector.nameValue() == "consume" || it.selector.nameValue() == "globalTarget" },
+            result.entities.filterIsInstance<SourceEntity.Reference>().none {
+                it.selector.nameValue() == "consume" || it.selector.nameValue() == "globalTarget"
+            }
         )
     }
 
@@ -92,11 +93,13 @@ class IntellijSourceCallReferenceReadTest {
     fun `direct and descendant calls preserve structural depth and exact prefix continuation`() {
         val fixture = fixture()
         val port = port(fixture)
-        val direct = read(
-            port,
-            fixture,
-            matching(Containment.DIRECT, EntityFilter.Calls),
-        ) as SourceReadResult.Complete
+        val direct =
+            read(
+                port,
+                fixture,
+                matching(Containment.DIRECT, EntityFilter.Calls),
+            )
+                as SourceReadResult.Complete
         assertEquals(listOf("globalTarget", "consume"), direct.entities.names())
         assertEquals(listOf(0, 0), direct.entities.map { it.nestingDepth.value })
 
@@ -104,16 +107,17 @@ class IntellijSourceCallReferenceReadTest {
         val first = read(port, fixture, selection, limit = 2) as SourceReadResult.Qualified
         assertEquals(listOf("globalTarget", "consume"), first.entities.names())
         assertEquals(listOf(SourceReadLimitation.ENTITY_LIMIT_REACHED), first.qualification.limitations)
-        val continuation =
-            (first.qualification.continuation as SourceReadContinuationState.Available).continuation
+        val continuation = (first.qualification.continuation as SourceReadContinuationState.Available).continuation
 
-        val final = read(
-            port,
-            fixture,
-            selection,
-            limit = 2,
-            page = SourceReadPage.Continue(continuation),
-        ) as SourceReadResult.Complete
+        val final =
+            read(
+                port,
+                fixture,
+                selection,
+                limit = 2,
+                page = SourceReadPage.Continue(continuation),
+            )
+                as SourceReadResult.Complete
         assertEquals(listOf("globalTarget"), final.entities.names())
         assertEquals(1, final.entities.single().nestingDepth.value)
     }
@@ -121,34 +125,39 @@ class IntellijSourceCallReferenceReadTest {
     @Test
     fun `provider-incomplete target analysis stays explicitly qualified`() {
         val fixture = fixture()
-        val port = IntellijSourceReadPort(
-            IntellijSourceRegionAccess { _, request, cursor ->
-                val selected = IntellijSourceEntityPage.select(
-                    fixture.entities.asSequence(),
-                    request.entities,
-                    cursor,
-                    request.entityLimit,
-                ) as IntellijSourceEntityPage.Complete
-                IntellijSourceRegionAccessResult.Selected(
-                    IntellijSelectedSourceCapture.create(
-                        fixture.snapshot,
-                        fixture.region,
-                        fixture.region,
-                        fixture.text,
-                        selected.copy(
-                            limitations = selected.limitations +
-                                SourceReadLimitation.SEMANTIC_RESOLUTION_INCOMPLETE,
-                        ),
-                    ).refined(),
-                )
-            },
-        )
+        val port =
+            IntellijSourceReadPort(
+                IntellijSourceRegionAccess { _, request, cursor ->
+                    val selected =
+                        IntellijSourceEntityPage.select(
+                            fixture.entities.asSequence(),
+                            request.entities,
+                            cursor,
+                            request.entityLimit,
+                        ) as IntellijSourceEntityPage.Complete
+                    IntellijSourceRegionAccessResult.Selected(
+                        IntellijSelectedSourceCapture.create(
+                                fixture.snapshot,
+                                fixture.region,
+                                fixture.region,
+                                fixture.text,
+                                selected.copy(
+                                    limitations =
+                                        selected.limitations + SourceReadLimitation.SEMANTIC_RESOLUTION_INCOMPLETE
+                                ),
+                            )
+                            .refined()
+                    )
+                }
+            )
 
-        val result = read(
-            port,
-            fixture,
-            matching(Containment.DESCENDANTS, EntityFilter.References),
-        ) as SourceReadResult.Qualified
+        val result =
+            read(
+                port,
+                fixture,
+                matching(Containment.DESCENDANTS, EntityFilter.References),
+            )
+                as SourceReadResult.Qualified
 
         assertEquals(
             listOf(SourceReadLimitation.SEMANTIC_RESOLUTION_INCOMPLETE),
@@ -158,25 +167,28 @@ class IntellijSourceCallReferenceReadTest {
         assertEquals(listOf("local", "missing"), result.entities.names())
     }
 
-    private fun port(fixture: Fixture): IntellijSourceReadPort = IntellijSourceReadPort(
-        IntellijSourceRegionAccess { _, request, cursor ->
-            val page = IntellijSourceEntityPage.select(
-                fixture.entities.asSequence(),
-                request.entities,
-                cursor,
-                request.entityLimit,
-            )
-            IntellijSourceRegionAccessResult.Selected(
-                IntellijSelectedSourceCapture.create(
-                    fixture.snapshot,
-                    fixture.region,
-                    fixture.region,
-                    fixture.text,
-                    page,
-                ).refined(),
-            )
-        },
-    )
+    private fun port(fixture: Fixture): IntellijSourceReadPort =
+        IntellijSourceReadPort(
+            IntellijSourceRegionAccess { _, request, cursor ->
+                val page =
+                    IntellijSourceEntityPage.select(
+                        fixture.entities.asSequence(),
+                        request.entities,
+                        cursor,
+                        request.entityLimit,
+                    )
+                IntellijSourceRegionAccessResult.Selected(
+                    IntellijSelectedSourceCapture.create(
+                            fixture.snapshot,
+                            fixture.region,
+                            fixture.region,
+                            fixture.text,
+                            page,
+                        )
+                        .refined()
+                )
+            }
+        )
 
     private fun read(
         port: IntellijSourceReadPort,
@@ -200,7 +212,8 @@ class IntellijSourceCallReferenceReadTest {
     }
 
     private fun fixture(): Fixture {
-        val text = """
+        val text =
+            """
             fun globalTarget() = Unit
             fun subject() {
                 globalTarget()
@@ -211,37 +224,49 @@ class IntellijSourceCallReferenceReadTest {
                     globalTarget()
                 }
             }
-        """.trimIndent() + "\n"
+            """
+                .trimIndent() + "\n"
         val snapshot = snapshot(text)
         val region = SourceSelector.issueRoot(range(snapshot, 0, text.length), SourceRegionKind.FILE)
         val globalSelector = globalSelector(snapshot)
         val localStart = text.indexOf("val local")
-        val localDeclaration = entitySelector(
-            snapshot,
-            region,
-            localStart,
-            text.indexOf('\n', localStart),
-            SourceEntityKind.DECLARATION_PROPERTY,
-            "local",
-        )
+        val localDeclaration =
+            entitySelector(
+                snapshot,
+                region,
+                localStart,
+                text.indexOf('\n', localStart),
+                SourceEntityKind.DECLARATION_PROPERTY,
+                "local",
+            )
         val directGlobalStart = text.indexOf("globalTarget()", text.indexOf("fun subject"))
         val consumeStart = text.indexOf("consume(local)")
         val localReferenceStart = text.indexOf("local", consumeStart)
         val missingStart = text.indexOf("missing")
         val lambdaStart = text.indexOf('{', text.indexOf("run"))
         val lambdaEnd = text.indexOf("\n    }", lambdaStart) + "\n    }".length
-        val lambda = SourceSelector.issueNested(
-            region,
-            range(snapshot, lambdaStart, lambdaEnd),
-            SourceRegionKind.CALLABLE_BODY,
-        ).refined()
+        val lambda =
+            SourceSelector.issueNested(
+                    region,
+                    range(snapshot, lambdaStart, lambdaEnd),
+                    SourceRegionKind.CALLABLE_BODY,
+                )
+                .refined()
         val nestedGlobalStart = text.indexOf("globalTarget()", directGlobalStart + 1)
         return Fixture(
             text,
             snapshot,
             region,
             listOf(
-                call(snapshot, region, text, directGlobalStart, "globalTarget", 0, SourceEntityTarget.Candidate(globalSelector)),
+                call(
+                    snapshot,
+                    region,
+                    text,
+                    directGlobalStart,
+                    "globalTarget",
+                    0,
+                    SourceEntityTarget.Candidate(globalSelector),
+                ),
                 call(
                     snapshot,
                     region,
@@ -267,7 +292,15 @@ class IntellijSourceCallReferenceReadTest {
                     0,
                     SourceEntityTarget.Unresolved(CompilerUnresolvedReason.NAME_NOT_FOUND),
                 ),
-                call(snapshot, lambda, text, nestedGlobalStart, "globalTarget", 1, SourceEntityTarget.Candidate(globalSelector)),
+                call(
+                    snapshot,
+                    lambda,
+                    text,
+                    nestedGlobalStart,
+                    "globalTarget",
+                    1,
+                    SourceEntityTarget.Candidate(globalSelector),
+                ),
             ),
         )
     }
@@ -281,28 +314,31 @@ class IntellijSourceCallReferenceReadTest {
         depth: Int,
         target: SourceEntityTarget,
     ): SourceEntity.Call {
-        val callSelector = entitySelector(
-            snapshot,
-            parent,
-            start,
-            text.indexOf(')', start) + 1,
-            SourceEntityKind.CALL,
-            name,
-        )
-        val calleeSelector = entitySelector(
-            snapshot,
-            callSelector,
-            start,
-            start + name.length,
-            SourceEntityKind.CALLEE,
-            name,
-        )
+        val callSelector =
+            entitySelector(
+                snapshot,
+                parent,
+                start,
+                text.indexOf(')', start) + 1,
+                SourceEntityKind.CALL,
+                name,
+            )
+        val calleeSelector =
+            entitySelector(
+                snapshot,
+                callSelector,
+                start,
+                start + name.length,
+                SourceEntityKind.CALLEE,
+                name,
+            )
         return SourceEntity.Call.create(
-            callSelector,
-            SourceNestingDepth.parse(depth).refined(),
-            calleeSelector,
-            target,
-        ).refined()
+                callSelector,
+                SourceNestingDepth.parse(depth).refined(),
+                calleeSelector,
+                target,
+            )
+            .refined()
     }
 
     private fun reference(
@@ -312,18 +348,20 @@ class IntellijSourceCallReferenceReadTest {
         name: String,
         depth: Int,
         target: SourceEntityTarget,
-    ): SourceEntity.Reference = SourceEntity.Reference.create(
-        entitySelector(
-            snapshot,
-            parent,
-            start,
-            start + name.length,
-            SourceEntityKind.REFERENCE,
-            name,
-        ),
-        SourceNestingDepth.parse(depth).refined(),
-        target,
-    ).refined()
+    ): SourceEntity.Reference =
+        SourceEntity.Reference.create(
+                entitySelector(
+                    snapshot,
+                    parent,
+                    start,
+                    start + name.length,
+                    SourceEntityKind.REFERENCE,
+                    name,
+                ),
+                SourceNestingDepth.parse(depth).refined(),
+                target,
+            )
+            .refined()
 
     private fun entitySelector(
         snapshot: SourceSnapshot,
@@ -332,40 +370,48 @@ class IntellijSourceCallReferenceReadTest {
         end: Int,
         kind: SourceEntityKind,
         name: String,
-    ): SourceSelector.Entity = SourceSelector.issueEntity(
-        parent,
-        NonEmptySourceRange.create(range(snapshot, start, end)).refined(),
-        kind,
-        SourceEntityName.present(name).refined(),
-    ).refined()
+    ): SourceSelector.Entity =
+        SourceSelector.issueEntity(
+                parent,
+                NonEmptySourceRange.create(range(snapshot, start, end)).refined(),
+                kind,
+                SourceEntityName.present(name).refined(),
+            )
+            .refined()
 
     private fun globalSelector(snapshot: SourceSnapshot): CandidateSelector.Declaration {
-        val candidate = SymbolDiscoveryCandidate.fromBoundary(
-            SymbolDiscoveryKind.SYMBOL,
-            "globalTarget",
-            snapshot.lease,
-            Path.of(snapshot.file.path.value),
-            "file://${snapshot.file.path.value}",
-            0,
-        ).refined()
-        val selection = SymbolDiscoverySelection.restore(
-            snapshot.lease,
-            SymbolSearchScope.ExactFile(
-                snapshot.file.path,
-                SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-                SymbolGeneratedSourcePolicy.INCLUDE,
-            ),
-            candidate,
-        ).refined()
+        val candidate =
+            SymbolDiscoveryCandidate.fromBoundary(
+                    SymbolDiscoveryKind.SYMBOL,
+                    "globalTarget",
+                    snapshot.lease,
+                    Path.of(snapshot.file.path.value),
+                    "file://${snapshot.file.path.value}",
+                    0,
+                )
+                .refined()
+        val selection =
+            SymbolDiscoverySelection.restore(
+                    snapshot.lease,
+                    SymbolSearchScope.ExactFile(
+                        snapshot.file.path,
+                        SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                        SymbolGeneratedSourcePolicy.INCLUDE,
+                    ),
+                    candidate,
+                )
+                .refined()
         return CandidateSelector.declaration(selection).refined()
     }
 
     private fun snapshot(text: String): SourceSnapshot {
         val root = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
-        val path = CanonicalWorkspaceFilePath.fromCanonicalPath(
-            root,
-            Path.of("/workspace/src/Subject.kt"),
-        ).refined()
+        val path =
+            CanonicalWorkspaceFilePath.fromCanonicalPath(
+                    root,
+                    Path.of("/workspace/src/Subject.kt"),
+                )
+                .refined()
         return SourceSnapshot.create(
             SemanticReadLease(root, EvidenceGeneration.parse(42).refined()),
             WorkspaceStateIdentity.parse("workspace-state-v1|source").refined(),
@@ -377,10 +423,11 @@ class IntellijSourceCallReferenceReadTest {
 
     private fun range(snapshot: SourceSnapshot, start: Int, end: Int): SourceRange =
         SourceRange.create(
-            snapshot,
-            Utf16CodeUnitOffset.parse(start).refined(),
-            Utf16CodeUnitOffset.parse(end).refined(),
-        ).refined()
+                snapshot,
+                Utf16CodeUnitOffset.parse(start).refined(),
+                Utf16CodeUnitOffset.parse(end).refined(),
+            )
+            .refined()
 
     private fun matching(
         containment: Containment,
@@ -392,20 +439,22 @@ class IntellijSourceCallReferenceReadTest {
     private fun SourceSelector.nameValue(): String =
         ((this as SourceSelector.Entity).name as SourceEntityName.Present).value
 
-    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error("Expected refined value, got $failure")
-    }
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error("Expected refined value, got $failure")
+        }
 
     private fun <Value> runSuspend(block: suspend () -> Value): Value {
         var completion: Result<Value>? = null
         block.startCoroutine(
             object : Continuation<Value> {
                 override val context = EmptyCoroutineContext
+
                 override fun resumeWith(result: Result<Value>) {
                     completion = result
                 }
-            },
+            }
         )
         return checkNotNull(completion).getOrThrow()
     }

@@ -12,13 +12,16 @@ class ReplaceDeclarationApplyTest {
 
     @Test
     fun `exact declaration replacement preserves unrelated source`() {
-        val admitted = assertInstanceOf(
-            Refinement.Refined::class.java,
-            MutationAdmissionService().admit(
-                fixture.request(plan = plan),
-                fixture.observed(),
-            ),
-        ).value as AdmittedMutation
+        val admitted =
+            assertInstanceOf(
+                    Refinement.Refined::class.java,
+                    MutationAdmissionService()
+                        .admit(
+                            fixture.request(plan = plan),
+                            fixture.observed(),
+                        ),
+                )
+                .value as AdmittedMutation
 
         assertEquals(
             "package sample\n\nfun service(): Int = 1\n",
@@ -30,39 +33,45 @@ class ReplaceDeclarationApplyTest {
 
     @Test
     fun `stale generation cannot acquire declaration replacement authority`() {
-        val result = MutationAdmissionService().admit(
-            fixture.request(
-                plan = plan,
-                current = fixture.workspace(generationValue = 12L, sourceState = "state-12"),
-            ),
-            fixture.observed(),
-        ) as Refinement.Rejected
+        val result =
+            MutationAdmissionService()
+                .admit(
+                    fixture.request(
+                        plan = plan,
+                        current = fixture.workspace(generationValue = 12L, sourceState = "state-12"),
+                    ),
+                    fixture.observed(),
+                ) as Refinement.Rejected
 
         assertEquals(MutationAdmissionFailure.STALE_GENERATION, result.failure)
     }
 
     @Test
     fun `changed declaration preimage rejects exact replacement derivation`() {
-        val result = DerivedMutationPostimage.derive(
-            fixture.existing(plan, "package sample\n\nfun service(): Int = 9\n"),
-            plan.writes.entries.single().mutations,
-        ) as Refinement.Rejected
+        val result =
+            DerivedMutationPostimage.derive(
+                fixture.existing(plan, "package sample\n\nfun service(): Int = 9\n"),
+                plan.writes.entries.single().mutations,
+            ) as Refinement.Rejected
 
         assertEquals(MutationAdmissionFailure.MUTATION_PREIMAGE_MISMATCH, result.failure)
     }
 
     @Test
     fun `unrelated source cannot enter declaration replacement authority`() {
-        val result = MutationAdmissionService().admit(
-            fixture.request(
-                plan = plan,
-                scope = RequestedMutationWriteScope(
-                    fixture.workspace.root,
-                    setOf(plan.writes.entries.single().source, fixture.otherFile()),
-                ),
-            ),
-            fixture.observed(),
-        ) as Refinement.Rejected
+        val result =
+            MutationAdmissionService()
+                .admit(
+                    fixture.request(
+                        plan = plan,
+                        scope =
+                            RequestedMutationWriteScope(
+                                fixture.workspace.root,
+                                setOf(plan.writes.entries.single().source, fixture.otherFile()),
+                            ),
+                    ),
+                    fixture.observed(),
+                ) as Refinement.Rejected
 
         assertEquals(MutationAdmissionFailure.UNPLANNED_WRITE_SET, result.failure)
     }

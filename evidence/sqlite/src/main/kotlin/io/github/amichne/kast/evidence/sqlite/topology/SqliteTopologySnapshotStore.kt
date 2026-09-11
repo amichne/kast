@@ -28,17 +28,13 @@ enum class SqliteTopologySnapshotStoreFailure {
 }
 
 sealed interface SqliteTopologySnapshotStoreOpening {
-    data class Opened(
-        val store: SqliteTopologySnapshotStore,
-    ) : SqliteTopologySnapshotStoreOpening
+    data class Opened(val store: SqliteTopologySnapshotStore) : SqliteTopologySnapshotStoreOpening
 
-    data class Rejected(
-        val failure: SqliteTopologySnapshotStoreFailure,
-    ) : SqliteTopologySnapshotStoreOpening
+    data class Rejected(val failure: SqliteTopologySnapshotStoreFailure) : SqliteTopologySnapshotStoreOpening
 }
 
 internal enum class SqliteTopologyFaultPoint {
-    BEFORE_COMMIT,
+    BEFORE_COMMIT
 }
 
 internal fun interface SqliteTopologyFaultInjector {
@@ -50,73 +46,70 @@ internal fun interface SqliteTopologyFaultInjector {
 }
 
 /** Direct SQLite reader and sole production publisher for durable topology snapshots. */
-class SqliteTopologySnapshotStore private constructor(
+class SqliteTopologySnapshotStore
+private constructor(
     private val path: Path,
     private val faultInjector: SqliteTopologyFaultInjector,
 ) : TopologySnapshotStore {
-    override fun eligible(identity: TopologyWorkspaceIdentity): TopologySnapshotEligibility = try {
-        connect().use { connection ->
-            when (val exact = connection.findExactTopologySnapshot(identity)) {
-                is SqliteTopologySnapshotLookup.Found -> when (
-                    connection.readTopologyContent(exact.record.snapshot)
-                ) {
-                    is TopologySnapshotContentRead.Loaded ->
-                        TopologySnapshotEligibility.Eligible(exact.record.snapshot)
-                    is TopologySnapshotContentRead.Rejected ->
-                        TopologySnapshotEligibility.Rejected(
-                            TopologySnapshotReadFailure.CORRUPT_SNAPSHOT,
-                        )
-                }
-                SqliteTopologySnapshotLookup.Absent -> when (
-                    val latest = connection.findLatestTopologySnapshot(identity.lease.workspaceRoot)
-                ) {
-                    is SqliteTopologySnapshotLookup.Found -> when (
-                        connection.readTopologyContent(latest.record.snapshot)
-                    ) {
-                        is TopologySnapshotContentRead.Loaded ->
-                            TopologySnapshotEligibility.Stale(latest.record.snapshot)
-                        is TopologySnapshotContentRead.Rejected ->
-                            TopologySnapshotEligibility.Rejected(
-                                TopologySnapshotReadFailure.CORRUPT_SNAPSHOT,
-                            )
-                    }
-                    SqliteTopologySnapshotLookup.Absent -> TopologySnapshotEligibility.Unavailable
+    override fun eligible(identity: TopologyWorkspaceIdentity): TopologySnapshotEligibility =
+        try {
+            connect().use { connection ->
+                when (val exact = connection.findExactTopologySnapshot(identity)) {
+                    is SqliteTopologySnapshotLookup.Found ->
+                        when (connection.readTopologyContent(exact.record.snapshot)) {
+                            is TopologySnapshotContentRead.Loaded ->
+                                TopologySnapshotEligibility.Eligible(exact.record.snapshot)
+                            is TopologySnapshotContentRead.Rejected ->
+                                TopologySnapshotEligibility.Rejected(TopologySnapshotReadFailure.CORRUPT_SNAPSHOT)
+                        }
+                    SqliteTopologySnapshotLookup.Absent ->
+                        when (val latest = connection.findLatestTopologySnapshot(identity.lease.workspaceRoot)) {
+                            is SqliteTopologySnapshotLookup.Found ->
+                                when (connection.readTopologyContent(latest.record.snapshot)) {
+                                    is TopologySnapshotContentRead.Loaded ->
+                                        TopologySnapshotEligibility.Stale(latest.record.snapshot)
+                                    is TopologySnapshotContentRead.Rejected ->
+                                        TopologySnapshotEligibility.Rejected(
+                                            TopologySnapshotReadFailure.CORRUPT_SNAPSHOT
+                                        )
+                                }
+                            SqliteTopologySnapshotLookup.Absent -> TopologySnapshotEligibility.Unavailable
+                        }
                 }
             }
-        }
-    } catch (failure: Exception) {
-        failure.rethrowCancellation()
-        TopologySnapshotEligibility.Rejected(
-            if (failure is SqliteTopologyCorruption) {
-                TopologySnapshotReadFailure.CORRUPT_SNAPSHOT
-            } else {
-                TopologySnapshotReadFailure.STORAGE_UNAVAILABLE
-            },
-        )
-    }
-
-    override fun read(snapshot: PublishedTopologySnapshot): TopologySnapshotContentRead = try {
-        connect().use { connection -> connection.readTopologyContent(snapshot) }
-    } catch (failure: Exception) {
-        failure.rethrowCancellation()
-        TopologySnapshotContentRead.Rejected(
-            if (failure is SqliteTopologyCorruption) {
-                TopologySnapshotReadFailure.CORRUPT_SNAPSHOT
-            } else {
-                TopologySnapshotReadFailure.STORAGE_UNAVAILABLE
-            },
-        )
-    }
-
-    override fun publish(
-        generation: CompleteTopologyGeneration,
-    ): TopologyPublicationResult {
-        val connection = try {
-            connect().also { it.autoCommit = false }
         } catch (failure: Exception) {
             failure.rethrowCancellation()
-            return rejectedPublication(TopologyPublicationFailure.STORAGE_UNAVAILABLE)
+            TopologySnapshotEligibility.Rejected(
+                if (failure is SqliteTopologyCorruption) {
+                    TopologySnapshotReadFailure.CORRUPT_SNAPSHOT
+                } else {
+                    TopologySnapshotReadFailure.STORAGE_UNAVAILABLE
+                }
+            )
         }
+
+    override fun read(snapshot: PublishedTopologySnapshot): TopologySnapshotContentRead =
+        try {
+            connect().use { connection -> connection.readTopologyContent(snapshot) }
+        } catch (failure: Exception) {
+            failure.rethrowCancellation()
+            TopologySnapshotContentRead.Rejected(
+                if (failure is SqliteTopologyCorruption) {
+                    TopologySnapshotReadFailure.CORRUPT_SNAPSHOT
+                } else {
+                    TopologySnapshotReadFailure.STORAGE_UNAVAILABLE
+                }
+            )
+        }
+
+    override fun publish(generation: CompleteTopologyGeneration): TopologyPublicationResult {
+        val connection =
+            try {
+                connect().also { it.autoCommit = false }
+            } catch (failure: Exception) {
+                failure.rethrowCancellation()
+                return rejectedPublication(TopologyPublicationFailure.STORAGE_UNAVAILABLE)
+            }
         return try {
             when (val existing = connection.findExactTopologySnapshot(generation.identity)) {
                 is SqliteTopologySnapshotLookup.Found -> {
@@ -154,7 +147,7 @@ class SqliteTopologySnapshotStore private constructor(
                     TopologyPublicationFailure.CORRUPT_SNAPSHOT
                 } else {
                     TopologyPublicationFailure.STORAGE_UNAVAILABLE
-                },
+                }
             )
         } finally {
             runCatching { connection.close() }
@@ -175,40 +168,39 @@ class SqliteTopologySnapshotStore private constructor(
     companion object {
         /** Opens one exact-root durable location without exposing a raw path to composition. */
         fun open(location: TopologyDatabaseLocation): SqliteTopologySnapshotStoreOpening {
-            val path = prepareHostedDatabasePath(location.valueAtSqliteBoundary())
-                ?: return SqliteTopologySnapshotStoreOpening.Rejected(
-                    SqliteTopologySnapshotStoreFailure.STORAGE_UNAVAILABLE,
-                )
+            val path =
+                prepareHostedDatabasePath(location.valueAtSqliteBoundary())
+                    ?: return SqliteTopologySnapshotStoreOpening.Rejected(
+                        SqliteTopologySnapshotStoreFailure.STORAGE_UNAVAILABLE
+                    )
             return open(path)
         }
 
         /**
          * Proof transition: `Path -> SqliteTopologySnapshotStoreOpening`.
          *
-         * Establishes a normalized absolute, non-symlink database target below an existing
-         * directory, an existing regular file when present, and a ready topology schema.
-         * [SqliteTopologySnapshotStoreFailure] is the closed expected failure. Raw path extraction
-         * is permitted only at the JDBC connection boundary in this module.
+         * Establishes a normalized absolute, non-symlink database target below an existing directory, an existing
+         * regular file when present, and a ready topology schema. [SqliteTopologySnapshotStoreFailure] is the closed
+         * expected failure. Raw path extraction is permitted only at the JDBC connection boundary in this module.
          */
-        fun open(raw: Path): SqliteTopologySnapshotStoreOpening =
-            open(raw, SqliteTopologyFaultInjector.Disabled)
+        fun open(raw: Path): SqliteTopologySnapshotStoreOpening = open(raw, SqliteTopologyFaultInjector.Disabled)
 
         internal fun open(
             raw: Path,
             faultInjector: SqliteTopologyFaultInjector,
         ): SqliteTopologySnapshotStoreOpening {
-            val rejected = when {
-                !raw.isAbsolute || raw.normalize() != raw ->
-                    SqliteTopologySnapshotStoreFailure.NOT_CANONICAL_ABSOLUTE
-                raw.parent == null || !Files.isDirectory(raw.parent, LinkOption.NOFOLLOW_LINKS) ->
-                    SqliteTopologySnapshotStoreFailure.PARENT_NOT_DIRECTORY
-                Files.isSymbolicLink(raw) ->
-                    SqliteTopologySnapshotStoreFailure.SYMLINK_NOT_ALLOWED
-                Files.exists(raw, LinkOption.NOFOLLOW_LINKS) &&
-                    !Files.isRegularFile(raw, LinkOption.NOFOLLOW_LINKS) ->
-                    SqliteTopologySnapshotStoreFailure.EXISTING_PATH_NOT_REGULAR_FILE
-                else -> null
-            }
+            val rejected =
+                when {
+                    !raw.isAbsolute || raw.normalize() != raw ->
+                        SqliteTopologySnapshotStoreFailure.NOT_CANONICAL_ABSOLUTE
+                    raw.parent == null || !Files.isDirectory(raw.parent, LinkOption.NOFOLLOW_LINKS) ->
+                        SqliteTopologySnapshotStoreFailure.PARENT_NOT_DIRECTORY
+                    Files.isSymbolicLink(raw) -> SqliteTopologySnapshotStoreFailure.SYMLINK_NOT_ALLOWED
+                    Files.exists(raw, LinkOption.NOFOLLOW_LINKS) &&
+                        !Files.isRegularFile(raw, LinkOption.NOFOLLOW_LINKS) ->
+                        SqliteTopologySnapshotStoreFailure.EXISTING_PATH_NOT_REGULAR_FILE
+                    else -> null
+                }
             if (rejected != null) return SqliteTopologySnapshotStoreOpening.Rejected(rejected)
             return try {
                 val store = SqliteTopologySnapshotStore(raw, faultInjector)
@@ -216,9 +208,7 @@ class SqliteTopologySnapshotStore private constructor(
                 SqliteTopologySnapshotStoreOpening.Opened(store)
             } catch (failure: Exception) {
                 failure.rethrowCancellation()
-                SqliteTopologySnapshotStoreOpening.Rejected(
-                    SqliteTopologySnapshotStoreFailure.STORAGE_UNAVAILABLE,
-                )
+                SqliteTopologySnapshotStoreOpening.Rejected(SqliteTopologySnapshotStoreFailure.STORAGE_UNAVAILABLE)
             }
         }
     }
@@ -227,8 +217,7 @@ class SqliteTopologySnapshotStore private constructor(
 private fun CompleteTopologyGeneration.manifest() =
     io.github.amichne.kast.topology.contract.TopologySnapshotManifest.from(this)
 
-private fun rejectedPublication(failure: TopologyPublicationFailure) =
-    TopologyPublicationResult.Rejected(failure)
+private fun rejectedPublication(failure: TopologyPublicationFailure) = TopologyPublicationResult.Rejected(failure)
 
 private fun Exception.rethrowCancellation() {
     if (this is CancellationException) throw this
@@ -236,17 +225,20 @@ private fun Exception.rethrowCancellation() {
 
 private fun ensureTopologySqliteDriver() {
     if (Collections.list(DriverManager.getDrivers()).any(::acceptsTopologySqlite)) return
-    val driverClass = Class.forName(
-        "org.sqlite.JDBC",
-        true,
-        SqliteTopologySnapshotStore::class.java.classLoader,
-    )
+    val driverClass =
+        Class.forName(
+            "org.sqlite.JDBC",
+            true,
+            SqliteTopologySnapshotStore::class.java.classLoader,
+        )
     if (!Collections.list(DriverManager.getDrivers()).any(::acceptsTopologySqlite)) {
         DriverManager.registerDriver(driverClass.getDeclaredConstructor().newInstance() as Driver)
     }
 }
 
-private fun acceptsTopologySqlite(driver: Driver): Boolean =
-    runCatching { driver.acceptsURL("jdbc:sqlite::memory:") }.getOrDefault(false)
+private fun acceptsTopologySqlite(driver: Driver): Boolean = runCatching {
+    driver.acceptsURL("jdbc:sqlite::memory:")
+}
+    .getOrDefault(false)
 
 internal class SqliteTopologyCorruption(message: String) : IllegalStateException(message)

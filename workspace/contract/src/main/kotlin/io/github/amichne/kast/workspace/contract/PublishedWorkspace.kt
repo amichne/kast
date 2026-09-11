@@ -12,11 +12,8 @@ enum class WorkspaceEvidenceKind {
 }
 
 /** Closed failure proving which required evidence families were not reconciled. */
-class WorkspaceEvidenceCoverageFailure internal constructor(
-    val missing: Set<WorkspaceEvidenceKind>,
-) {
-    override fun equals(other: Any?): Boolean =
-        other is WorkspaceEvidenceCoverageFailure && missing == other.missing
+class WorkspaceEvidenceCoverageFailure internal constructor(val missing: Set<WorkspaceEvidenceKind>) {
+    override fun equals(other: Any?): Boolean = other is WorkspaceEvidenceCoverageFailure && missing == other.missing
 
     override fun hashCode(): Int = missing.hashCode()
 
@@ -24,23 +21,20 @@ class WorkspaceEvidenceCoverageFailure internal constructor(
 }
 
 /** Proof that every KCS-007 workspace evidence family was reconciled together. */
-class CompleteWorkspaceEvidenceCoverage private constructor(
-    evidence: Set<WorkspaceEvidenceKind>,
-) {
+class CompleteWorkspaceEvidenceCoverage private constructor(evidence: Set<WorkspaceEvidenceKind>) {
     val evidence: Set<WorkspaceEvidenceKind> = evidence.toSet()
 
     companion object {
         /**
-         * Proof transition: `Set<WorkspaceEvidenceKind> ->
-         * Refinement<CompleteWorkspaceEvidenceCoverage, WorkspaceEvidenceCoverageFailure>`.
+         * Proof transition: `Set<WorkspaceEvidenceKind> -> Refinement<CompleteWorkspaceEvidenceCoverage,
+         * WorkspaceEvidenceCoverageFailure>`.
          *
-         * Establishes exact coverage of admitted source state, Gradle ownership, compiler
-         * configuration, and dependency/classpath identity. The closed expected failure retains
-         * every missing family. Raw evidence-family sets may enter only at the reconciliation
-         * adapter boundary.
+         * Establishes exact coverage of admitted source state, Gradle ownership, compiler configuration, and
+         * dependency/classpath identity. The closed expected failure retains every missing family. Raw evidence-family
+         * sets may enter only at the reconciliation adapter boundary.
          */
         fun admit(
-            observed: Set<WorkspaceEvidenceKind>,
+            observed: Set<WorkspaceEvidenceKind>
         ): Refinement<CompleteWorkspaceEvidenceCoverage, WorkspaceEvidenceCoverageFailure> {
             val missing = WorkspaceEvidenceKind.entries.toSet() - observed
             return if (missing.isEmpty()) {
@@ -59,7 +53,8 @@ data class WorkspaceCandidate(
 )
 
 /** Candidate whose required evidence families were reconciled as one complete unit. */
-class ReconciledWorkspace private constructor(
+class ReconciledWorkspace
+private constructor(
     val candidate: WorkspaceCandidate,
     val coverage: CompleteWorkspaceEvidenceCoverage,
     sourceRoots: Iterable<SourceRoot>,
@@ -68,38 +63,33 @@ class ReconciledWorkspace private constructor(
 
     companion object {
         /**
-         * Proof transition: `(WorkspaceCandidate, Set<WorkspaceEvidenceKind>,
-         * Iterable<SourceRoot>) -> Refinement<ReconciledWorkspace,
-         * WorkspaceEvidenceCoverageFailure>`.
+         * Proof transition: `(WorkspaceCandidate, Set<WorkspaceEvidenceKind>, Iterable<SourceRoot>) ->
+         * Refinement<ReconciledWorkspace, WorkspaceEvidenceCoverageFailure>`.
          *
-         * Establishes complete evidence coverage for the exact captured candidate. The closed
-         * expected failure retains every missing family. Admitted source-root ownership and
-         * provenance remain attached to the reconciled candidate. Raw evidence-family sets may
-         * enter only from the workspace reconciliation adapter.
+         * Establishes complete evidence coverage for the exact captured candidate. The closed expected failure retains
+         * every missing family. Admitted source-root ownership and provenance remain attached to the reconciled
+         * candidate. Raw evidence-family sets may enter only from the workspace reconciliation adapter.
          */
         fun admit(
             candidate: WorkspaceCandidate,
             observed: Set<WorkspaceEvidenceKind>,
             sourceRoots: Iterable<SourceRoot> = emptyList(),
-        ): Refinement<ReconciledWorkspace, WorkspaceEvidenceCoverageFailure> = when (
-            val coverage = CompleteWorkspaceEvidenceCoverage.admit(observed)
-        ) {
-            is Refinement.Refined -> Refinement.Refined(
-                ReconciledWorkspace(candidate, coverage.value, sourceRoots),
-            )
-            is Refinement.Rejected -> coverage
-        }
+        ): Refinement<ReconciledWorkspace, WorkspaceEvidenceCoverageFailure> =
+            when (val coverage = CompleteWorkspaceEvidenceCoverage.admit(observed)) {
+                is Refinement.Refined -> Refinement.Refined(ReconciledWorkspace(candidate, coverage.value, sourceRoots))
+                is Refinement.Rejected -> coverage
+            }
     }
 }
 
 /**
  * The sole immutable semantic state admitted for workspace-scoped reads.
  *
- * The retained [readLease] binds the exact canonical root and evidence generation once. All
- * remaining fields derive from the same reconciled candidate, so mixed candidate/generation
- * assembly is unavailable outside [publish].
+ * The retained [readLease] binds the exact canonical root and evidence generation once. All remaining fields derive
+ * from the same reconciled candidate, so mixed candidate/generation assembly is unavailable outside [publish].
  */
-class PublishedWorkspace private constructor(
+class PublishedWorkspace
+private constructor(
     private val reconciled: ReconciledWorkspace,
     val readLease: SemanticReadLease,
 ) {
@@ -122,18 +112,19 @@ class PublishedWorkspace private constructor(
         /**
          * Proof transition: `(ReconciledWorkspace, EvidenceGeneration) -> PublishedWorkspace`.
          *
-         * Establishes one immutable publication whose canonical root, admitted source state,
-         * complete evidence coverage, typed source roots, semantic generation, and
-         * generation-bound read lease cannot vary independently. Raw root and generation
-         * extraction is permitted only at physical workspace and evidence-persistence boundaries.
+         * Establishes one immutable publication whose canonical root, admitted source state, complete evidence
+         * coverage, typed source roots, semantic generation, and generation-bound read lease cannot vary independently.
+         * Raw root and generation extraction is permitted only at physical workspace and evidence-persistence
+         * boundaries.
          */
         fun publish(
             reconciled: ReconciledWorkspace,
             generation: EvidenceGeneration,
-        ): PublishedWorkspace = PublishedWorkspace(
-            reconciled = reconciled,
-            readLease = SemanticReadLease(reconciled.candidate.root, generation),
-        )
+        ): PublishedWorkspace =
+            PublishedWorkspace(
+                reconciled = reconciled,
+                readLease = SemanticReadLease(reconciled.candidate.root, generation),
+            )
     }
 }
 
@@ -145,13 +136,9 @@ sealed interface WorkspaceRuntimeState {
 
     data object Reconciling : WorkspaceRuntimeState
 
-    data class Ready(
-        val workspace: PublishedWorkspace,
-    ) : WorkspaceRuntimeState
+    data class Ready(val workspace: PublishedWorkspace) : WorkspaceRuntimeState
 
-    data class Blocked(
-        val blocker: WorkspacePublicationBlocker,
-    ) : WorkspaceRuntimeState
+    data class Blocked(val blocker: WorkspacePublicationBlocker) : WorkspaceRuntimeState
 
     data object Stopping : WorkspaceRuntimeState
 }
@@ -176,33 +163,23 @@ sealed interface WorkspacePublicationBlocker {
 
     data object ReconciliationUnavailable : WorkspacePublicationBlocker
 
-    data class IncompleteEvidence(
-        val failure: WorkspaceEvidenceCoverageFailure,
-    ) : WorkspacePublicationBlocker
+    data class IncompleteEvidence(val failure: WorkspaceEvidenceCoverageFailure) : WorkspacePublicationBlocker
 
     data object PublicationUnavailable : WorkspacePublicationBlocker
 }
 
 /** Closed result of capturing the current canonical workspace candidate. */
 sealed interface WorkspaceCandidateCapture {
-    data class Captured(
-        val candidate: WorkspaceCandidate,
-    ) : WorkspaceCandidateCapture
+    data class Captured(val candidate: WorkspaceCandidate) : WorkspaceCandidateCapture
 
-    data class Rejected(
-        val blocker: WorkspacePublicationBlocker,
-    ) : WorkspaceCandidateCapture
+    data class Rejected(val blocker: WorkspacePublicationBlocker) : WorkspaceCandidateCapture
 }
 
 /** Closed result of reconciling all required evidence for one exact candidate. */
 sealed interface WorkspaceCandidateReconciliation {
-    data class Reconciled(
-        val workspace: ReconciledWorkspace,
-    ) : WorkspaceCandidateReconciliation
+    data class Reconciled(val workspace: ReconciledWorkspace) : WorkspaceCandidateReconciliation
 
-    data class Rejected(
-        val blocker: WorkspacePublicationBlocker,
-    ) : WorkspaceCandidateReconciliation
+    data class Rejected(val blocker: WorkspacePublicationBlocker) : WorkspaceCandidateReconciliation
 }
 
 /** Physical candidate-capture and reconciliation boundary. */
@@ -210,16 +187,16 @@ interface WorkspaceReconciliationPort {
     /**
      * Proof transition: `Set<WorkspaceSignal> -> WorkspaceCandidateCapture`.
      *
-     * Establishes a detached canonical root and admitted source-state identity, or a finite
-     * blocker. Raw platform state may be observed only by the implementation adapter.
+     * Establishes a detached canonical root and admitted source-state identity, or a finite blocker. Raw platform state
+     * may be observed only by the implementation adapter.
      */
     fun capture(signals: Set<WorkspaceSignal>): WorkspaceCandidateCapture
 
     /**
      * Proof transition: `WorkspaceCandidate -> WorkspaceCandidateReconciliation`.
      *
-     * Establishes complete evidence for the exact candidate, or a finite blocker. Live Gradle,
-     * compiler, and indexing state may be used only inside the implementation adapter.
+     * Establishes complete evidence for the exact candidate, or a finite blocker. Live Gradle, compiler, and indexing
+     * state may be used only inside the implementation adapter.
      */
     fun reconcile(candidate: WorkspaceCandidate): WorkspaceCandidateReconciliation
 }
@@ -228,17 +205,11 @@ interface WorkspaceReconciliationPort {
 sealed interface WorkspacePublicationRun {
     data object NoWork : WorkspacePublicationRun
 
-    data class Published(
-        val workspace: PublishedWorkspace,
-    ) : WorkspacePublicationRun
+    data class Published(val workspace: PublishedWorkspace) : WorkspacePublicationRun
 
-    data class Unchanged(
-        val workspace: PublishedWorkspace,
-    ) : WorkspacePublicationRun
+    data class Unchanged(val workspace: PublishedWorkspace) : WorkspacePublicationRun
 
     data object Invalidated : WorkspacePublicationRun
 
-    data class Blocked(
-        val blocker: WorkspacePublicationBlocker,
-    ) : WorkspacePublicationRun
+    data class Blocked(val blocker: WorkspacePublicationBlocker) : WorkspacePublicationRun
 }

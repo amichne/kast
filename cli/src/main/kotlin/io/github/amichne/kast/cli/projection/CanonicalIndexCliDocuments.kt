@@ -9,33 +9,32 @@ import io.github.amichne.kast.protocol.contract.IndexSyncResult
 import kotlinx.serialization.Serializable
 
 internal object CanonicalIndexCliDocuments {
-    fun project(
-        outcome: OperationOutcome<IndexSyncResult, IndexSyncQualification, IndexSyncRejection>,
-    ) = projectClosedOutcome(
-        outcome,
-        complete = { result ->
-            completeFactory.create(
-                IndexSyncCompleteCliDocument(
-                    CanonicalOperation.INDEX_SYNC.id.value,
-                    "complete",
-                    result.state.cliName(),
-                ),
-            )
-        },
-        qualified = { result, qualification ->
-            qualifiedFactory.create(
-                IndexSyncQualifiedCliDocument(
-                    CanonicalOperation.INDEX_SYNC.id.value,
-                    "qualified",
-                    result.state.cliName(),
-                    qualification.cliName(),
-                ),
-            )
-        },
-        rejected = { rejection ->
-            canonicalRejectedDocument(CanonicalOperation.INDEX_SYNC, rejection.cliName())
-        },
-    )
+    fun project(outcome: OperationOutcome<IndexSyncResult, IndexSyncQualification, IndexSyncRejection>) =
+        projectClosedOutcome(
+            outcome,
+            complete = { result ->
+                completeFactory.create(
+                    IndexSyncCompleteCliDocument(
+                        CanonicalOperation.INDEX_SYNC.id.value,
+                        "complete",
+                        result.state.cliName(),
+                    )
+                )
+            },
+            qualified = { result, qualification ->
+                qualifiedFactory.create(
+                    IndexSyncQualifiedCliDocument(
+                        CanonicalOperation.INDEX_SYNC.id.value,
+                        "qualified",
+                        result.state.cliName(),
+                        qualification.cliName(),
+                    )
+                )
+            },
+            rejected = { rejection ->
+                canonicalRejectedDocument(CanonicalOperation.INDEX_SYNC, rejection.cliName())
+            },
+        )
 }
 
 @Serializable
@@ -53,7 +52,5 @@ private data class IndexSyncQualifiedCliDocument(
     val qualification: String,
 )
 
-private val completeFactory =
-    CliJsonDocument.generated(IndexSyncCompleteCliDocument.serializer())
-private val qualifiedFactory =
-    CliJsonDocument.generated(IndexSyncQualifiedCliDocument.serializer())
+private val completeFactory = CliJsonDocument.generated(IndexSyncCompleteCliDocument.serializer())
+private val qualifiedFactory = CliJsonDocument.generated(IndexSyncQualifiedCliDocument.serializer())

@@ -14,15 +14,11 @@ enum class DiagnosticScopeFailure {
 }
 
 /** Detached identity of one canonical Kotlin file in an exact diagnostic scope. */
-@JvmInline
-value class DiagnosticSourceFile internal constructor(
-    val value: String,
-)
+@JvmInline value class DiagnosticSourceFile internal constructor(val value: String)
 
-/**
- * Non-empty deterministic Kotlin-file scope permanently bound to one semantic read lease.
- */
-class DiagnosticScope private constructor(
+/** Non-empty deterministic Kotlin-file scope permanently bound to one semantic read lease. */
+class DiagnosticScope
+private constructor(
     val lease: SemanticReadAuthority,
     files: List<DiagnosticSourceFile>,
 ) {
@@ -30,14 +26,13 @@ class DiagnosticScope private constructor(
 
     companion object {
         /**
-         * Proof transition: `(SemanticReadAuthority, Iterable<Path>) ->
-         * Refinement<DiagnosticScope, Set<DiagnosticScopeFailure>>`.
+         * Proof transition: `(SemanticReadAuthority, Iterable<Path>) -> Refinement<DiagnosticScope,
+         * Set<DiagnosticScopeFailure>>`.
          *
-         * Establishes a non-empty, duplicate-free, canonical, deterministically ordered set of
-         * Kotlin files strictly below the lease's exact workspace root. The returned scope
-         * preserves the root and semantic generation proof. [DiagnosticScopeFailure] is the
-         * closed expected failure. Raw [Path] extraction is permitted only at the request-local
-         * IntelliJ VFS lookup boundary.
+         * Establishes a non-empty, duplicate-free, canonical, deterministically ordered set of Kotlin files strictly
+         * below the lease's exact workspace root. The returned scope preserves the root and semantic generation proof.
+         * [DiagnosticScopeFailure] is the closed expected failure. Raw [Path] extraction is permitted only at the
+         * request-local IntelliJ VFS lookup boundary.
          */
         fun fromCanonicalPaths(
             lease: SemanticReadAuthority,
@@ -59,10 +54,8 @@ class DiagnosticScope private constructor(
                         failures += DiagnosticScopeFailure.OUTSIDE_WORKSPACE
                     path.fileName?.toString()?.let { name ->
                         name.endsWith(".kt") || name.endsWith(".kts")
-                    } != true ->
-                        failures += DiagnosticScopeFailure.UNSUPPORTED_FILE_KIND
-                    !identities.add(path.toString()) ->
-                        failures += DiagnosticScopeFailure.DUPLICATE_FILE
+                    } != true -> failures += DiagnosticScopeFailure.UNSUPPORTED_FILE_KIND
+                    !identities.add(path.toString()) -> failures += DiagnosticScopeFailure.DUPLICATE_FILE
                     else -> admitted += DiagnosticSourceFile(path.toString())
                 }
             }
@@ -71,7 +64,7 @@ class DiagnosticScope private constructor(
                     DiagnosticScope(
                         lease,
                         admitted.sortedBy(DiagnosticSourceFile::value),
-                    ),
+                    )
                 )
             } else {
                 Refinement.Rejected(failures)

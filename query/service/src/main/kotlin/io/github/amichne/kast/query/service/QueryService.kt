@@ -24,7 +24,6 @@ import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.source.contract.SourceDeclarationVisibility
-import io.github.amichne.kast.source.contract.SourceEntity
 import io.github.amichne.kast.source.contract.SourceReadOperations
 import io.github.amichne.kast.source.contract.SourceReadResult
 import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
@@ -41,8 +40,8 @@ import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
 import io.github.amichne.kast.symbol.contract.SymbolResolutionResult
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
-import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
+import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 
 /** Monotonic clock isolated at the evaluator effect boundary. */
 fun interface QueryNanoClock {
@@ -65,21 +64,22 @@ class QueryService(
         val state = QueryExecutionState(request, clock)
         return when (val plan = request.plan) {
             is AdmittedQueryPlan.Candidates -> {
-                val candidates = when (val discovered = discover(plan.source, state)) {
-                    is DiscoveryExecution.Discovered -> discovered.values
-                    is DiscoveryExecution.Rejected -> return discovered.result
-                }
+                val candidates =
+                    when (val discovered = discover(plan.source, state)) {
+                        is DiscoveryExecution.Discovered -> discovered.values
+                        is DiscoveryExecution.Rejected -> return discovered.result
+                    }
                 executeCandidate(candidates, plan.stage, state, plan.source)
             }
             is AdmittedQueryPlan.Symbols -> {
-                val candidates = when (val discovered = discover(plan.source, state)) {
-                    is DiscoveryExecution.Discovered -> discovered.values
-                    is DiscoveryExecution.Rejected -> return discovered.result
-                }
+                val candidates =
+                    when (val discovered = discover(plan.source, state)) {
+                        is DiscoveryExecution.Discovered -> discovered.values
+                        is DiscoveryExecution.Rejected -> return discovered.result
+                    }
                 executeExact(distinct(refine(candidates, plan.source, state), state), plan.stage, state)
             }
-            is AdmittedQueryPlan.CandidateReferences ->
-                executeCandidate(plan.source.values, plan.stage, state, null)
+            is AdmittedQueryPlan.CandidateReferences -> executeCandidate(plan.source.values, plan.stage, state, null)
             is AdmittedQueryPlan.ExactReferences ->
                 executeExact(revalidate(plan.source.values, state), plan.stage, state)
         }
@@ -89,44 +89,53 @@ class QueryService(
         syntax: QueryDiscoverySyntax,
         state: QueryExecutionState,
     ): DiscoveryExecution {
-        val selections = linkedMapOf<
-            io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate,
-            SymbolDiscoverySelection,
-        >()
+        val selections =
+            linkedMapOf<
+                io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate,
+                SymbolDiscoverySelection,
+            >()
         for (kind in discoveryKinds(syntax)) {
-            val remainingResults = state.remainingResultCapacity(selections.size)
-                ?: return DiscoveryExecution.Discovered(selections.values.toList())
-            val childBudget = state.discoveryBudget(remainingResults)
-                ?: return DiscoveryExecution.Discovered(selections.values.toList())
-            val request = SymbolDiscoveryRequest(
-                scope = SymbolSearchScopeRequest(
-                    state.request.lease,
-                    SymbolSearchScope.Workspace(
-                        SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-                        SymbolGeneratedSourcePolicy.EXCLUDE,
-                        SymbolLibraryPolicy.EXCLUDE,
-                    ),
-                ),
-                target = when (val match = syntax.match) {
-                    QueryMatch.All -> SymbolDiscoveryTarget.All(kind)
-                    is QueryMatch.Name -> SymbolDiscoveryTarget.Name(
-                        kind,
-                        match.pattern,
-                        match.policy,
-                    )
-                },
-                budget = childBudget,
-                constraints = constraints(syntax, kind),
-            )
-            val outcome = when (val result = discovery.discover(request)) {
-                is SymbolDiscoveryResult.Discovered -> result.outcome
-                is SymbolDiscoveryResult.Rejected -> return DiscoveryExecution.Rejected(
-                    QueryExecutionResult.Rejected(
-                        QueryExecutionRejection.DISCOVERY_REJECTED,
-                        result.reason,
-                    ),
+            val remainingResults =
+                state.remainingResultCapacity(selections.size)
+                    ?: return DiscoveryExecution.Discovered(selections.values.toList())
+            val childBudget =
+                state.discoveryBudget(remainingResults)
+                    ?: return DiscoveryExecution.Discovered(selections.values.toList())
+            val request =
+                SymbolDiscoveryRequest(
+                    scope =
+                        SymbolSearchScopeRequest(
+                            state.request.lease,
+                            SymbolSearchScope.Workspace(
+                                SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                                SymbolGeneratedSourcePolicy.EXCLUDE,
+                                SymbolLibraryPolicy.EXCLUDE,
+                            ),
+                        ),
+                    target =
+                        when (val match = syntax.match) {
+                            QueryMatch.All -> SymbolDiscoveryTarget.All(kind)
+                            is QueryMatch.Name ->
+                                SymbolDiscoveryTarget.Name(
+                                    kind,
+                                    match.pattern,
+                                    match.policy,
+                                )
+                        },
+                    budget = childBudget,
+                    constraints = constraints(syntax, kind),
                 )
-            }
+            val outcome =
+                when (val result = discovery.discover(request)) {
+                    is SymbolDiscoveryResult.Discovered -> result.outcome
+                    is SymbolDiscoveryResult.Rejected ->
+                        return DiscoveryExecution.Rejected(
+                            QueryExecutionResult.Rejected(
+                                QueryExecutionRejection.DISCOVERY_REJECTED,
+                                result.reason,
+                            )
+                        )
+                }
             state.observeTime()
             val batch = outcome.batch()
             state.consume(batch.examinedWorkUnits.value, batch.encodedBytes.value)
@@ -135,10 +144,11 @@ class QueryService(
             }
             batch.candidates.indices.forEach { ordinal ->
                 when (val selected = SymbolDiscoverySelection.select(batch, ordinal)) {
-                    is Refinement.Refined -> selections.putIfAbsent(
-                        selected.value.candidate,
-                        selected.value,
-                    )
+                    is Refinement.Refined ->
+                        selections.putIfAbsent(
+                            selected.value.candidate,
+                            selected.value,
+                        )
                     is Refinement.Rejected -> state.contractViolation = true
                 }
             }
@@ -151,49 +161,57 @@ class QueryService(
         stage: CandidateQueryStage,
         state: QueryExecutionState,
         discovery: QueryDiscoverySyntax?,
-    ): QueryExecutionResult = when (stage) {
-        is CandidateQueryStage.Distinct -> executeCandidate(
-            input.distinctBy { it.candidate },
-            stage.next,
-            state,
-            discovery,
-        )
-        is CandidateQueryStage.Inspect -> executeExact(
-            refine(input, discovery, state),
-            stage.next,
-            state,
-        )
-        is CandidateQueryStage.Emit -> finish(
-            QueryResultSet.Candidates(state.boundResults(input).map(::QueryCandidate)),
-            state,
-        )
-    }
+    ): QueryExecutionResult =
+        when (stage) {
+            is CandidateQueryStage.Distinct ->
+                executeCandidate(
+                    input.distinctBy { it.candidate },
+                    stage.next,
+                    state,
+                    discovery,
+                )
+            is CandidateQueryStage.Inspect ->
+                executeExact(
+                    refine(input, discovery, state),
+                    stage.next,
+                    state,
+                )
+            is CandidateQueryStage.Emit ->
+                finish(
+                    QueryResultSet.Candidates(state.boundResults(input).map(::QueryCandidate)),
+                    state,
+                )
+        }
 
     private suspend fun executeExact(
         input: List<QuerySymbol>,
         stage: ExactQueryStage,
         state: QueryExecutionState,
-    ): QueryExecutionResult = when (stage) {
-        is ExactQueryStage.Distinct -> executeExact(distinct(input, state), stage.next, state)
-        is ExactQueryStage.Where -> executeExact(
-            where(input, stage.predicate, state),
-            stage.next,
-            state,
-        )
-        is ExactQueryStage.Related -> executeExact(
-            related(input, stage.meaning, state),
-            stage.next,
-            state,
-        )
-        is ExactQueryStage.Emit -> finish(
-            QueryResultSet.Symbols(
-                state.boundResults(input).map { symbol ->
-                    symbol.copy(connections = state.boundConnections(symbol.connections))
-                },
-            ),
-            state,
-        )
-    }
+    ): QueryExecutionResult =
+        when (stage) {
+            is ExactQueryStage.Distinct -> executeExact(distinct(input, state), stage.next, state)
+            is ExactQueryStage.Where ->
+                executeExact(
+                    where(input, stage.predicate, state),
+                    stage.next,
+                    state,
+                )
+            is ExactQueryStage.Related ->
+                executeExact(
+                    related(input, stage.meaning, state),
+                    stage.next,
+                    state,
+                )
+            is ExactQueryStage.Emit ->
+                finish(
+                    QueryResultSet.Symbols(
+                        state.boundResults(input).map { symbol ->
+                            symbol.copy(connections = state.boundConnections(symbol.connections))
+                        }
+                    ),
+                    state,
+                )
+        }
 
     private suspend fun refine(
         candidates: List<SymbolDiscoverySelection>,
@@ -229,8 +247,9 @@ class QueryService(
                 is SymbolDescriptionResult.Rejected -> {
                     state.failure(QueryItemFailure.ExactReference(selector, result.reason))
                     state.limit(QueryLimitation.REFINEMENT_INCOMPLETE)
-                    if (result.reason ==
-                        io.github.amichne.kast.symbol.contract.SymbolExactRejection.COMPILER_CONTRACT_VIOLATION
+                    if (
+                        result.reason ==
+                            io.github.amichne.kast.symbol.contract.SymbolExactRejection.COMPILER_CONTRACT_VIOLATION
                     ) {
                         state.contractViolation = true
                     }
@@ -244,31 +263,35 @@ class QueryService(
         input: List<QuerySymbol>,
         predicate: QueryPredicate,
         state: QueryExecutionState,
-    ): List<QuerySymbol> = when (predicate) {
-        is QueryPredicate.Visibility -> buildList {
-            for (symbol in input) {
-                if (!state.consumeUnit()) break
-                when (val result = source.read(visibilityRequest(symbol.selector, state))) {
-                    is SourceReadResult.Complete -> when (val evidence = SourceDeclarationVisibility.admit(symbol.selector, result)) {
-                        is Refinement.Refined -> if (evidence.value.visibility in predicate.values.values) add(symbol)
-                        is Refinement.Rejected -> {
-                            state.failure(QueryItemFailure.PredicateUnproven(symbol.selector))
-                            state.limit(QueryLimitation.VISIBILITY_INCOMPLETE)
+    ): List<QuerySymbol> =
+        when (predicate) {
+            is QueryPredicate.Visibility ->
+                buildList {
+                    for (symbol in input) {
+                        if (!state.consumeUnit()) break
+                        when (val result = source.read(visibilityRequest(symbol.selector, state))) {
+                            is SourceReadResult.Complete ->
+                                when (val evidence = SourceDeclarationVisibility.admit(symbol.selector, result)) {
+                                    is Refinement.Refined ->
+                                        if (evidence.value.visibility in predicate.values.values) add(symbol)
+                                    is Refinement.Rejected -> {
+                                        state.failure(QueryItemFailure.PredicateUnproven(symbol.selector))
+                                        state.limit(QueryLimitation.VISIBILITY_INCOMPLETE)
+                                    }
+                                }
+                            is SourceReadResult.Qualified -> {
+                                state.failure(QueryItemFailure.PredicateUnproven(symbol.selector))
+                                state.limit(QueryLimitation.VISIBILITY_INCOMPLETE)
+                            }
+                            is SourceReadResult.Rejected -> {
+                                state.failure(QueryItemFailure.Visibility(symbol.selector, result.reason))
+                                state.limit(QueryLimitation.VISIBILITY_INCOMPLETE)
+                            }
                         }
-                    }
-                    is SourceReadResult.Qualified -> {
-                        state.failure(QueryItemFailure.PredicateUnproven(symbol.selector))
-                        state.limit(QueryLimitation.VISIBILITY_INCOMPLETE)
-                    }
-                    is SourceReadResult.Rejected -> {
-                        state.failure(QueryItemFailure.Visibility(symbol.selector, result.reason))
-                        state.limit(QueryLimitation.VISIBILITY_INCOMPLETE)
+                        state.observeTime()
                     }
                 }
-                state.observeTime()
-            }
         }
-    }
 
     private suspend fun related(
         input: List<QuerySymbol>,
@@ -289,39 +312,48 @@ class QueryService(
                     state.limit(QueryLimitation.RELATION_INCOMPLETE)
                     break@symbolLoop
                 }
-                val relationRequest = if (continuation == null) {
-                    RelationRequest.start(symbol.selector, meaning, budget, io.github.amichne.kast.relation.contract.RelationSearchBoundary.WORKSPACE_EXPANSION)
-                } else {
-                    when (
-                        val resumed = RelationRequest.resume(
+                val relationRequest =
+                    if (continuation == null) {
+                        RelationRequest.start(
                             symbol.selector,
                             meaning,
                             budget,
-                            continuation,
                             io.github.amichne.kast.relation.contract.RelationSearchBoundary.WORKSPACE_EXPANSION,
                         )
-                    ) {
-                        is Refinement.Refined -> resumed.value
-                        is Refinement.Rejected -> {
-                            state.contractViolation = true
-                            break@symbolLoop
+                    } else {
+                        when (
+                            val resumed =
+                                RelationRequest.resume(
+                                    symbol.selector,
+                                    meaning,
+                                    budget,
+                                    continuation,
+                                    io.github.amichne.kast.relation.contract.RelationSearchBoundary.WORKSPACE_EXPANSION,
+                                )
+                        ) {
+                            is Refinement.Refined -> resumed.value
+                            is Refinement.Rejected -> {
+                                state.contractViolation = true
+                                break@symbolLoop
+                            }
                         }
                     }
-                }
                 when (val result = relations.read(relationRequest)) {
                     is RelationReadResult.Complete -> {
                         state.consume(result.batch.examinedWorkUnits.value, result.batch.encodedBytes.value)
-                        output += result.batch.facts.map { fact ->
-                            fact.toQuerySymbol(state.boundConnections(symbol.connections), state)
-                        }
+                        output +=
+                            result.batch.facts.map { fact ->
+                                fact.toQuerySymbol(state.boundConnections(symbol.connections), state)
+                            }
                         state.observeTime()
                         break
                     }
                     is RelationReadResult.Qualified -> {
                         state.consume(result.batch.examinedWorkUnits.value, result.batch.encodedBytes.value)
-                        output += result.batch.facts.map { fact ->
-                            fact.toQuerySymbol(state.boundConnections(symbol.connections), state)
-                        }
+                        output +=
+                            result.batch.facts.map { fact ->
+                                fact.toQuerySymbol(state.boundConnections(symbol.connections), state)
+                            }
                         state.observeTime()
                         when (val coverage = result.coverage) {
                             is RelationIncompleteCoverage.Resumable -> {
@@ -355,30 +387,28 @@ class QueryService(
             return QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
         }
         val failures = state.boundedFailures()
-        val boundedItems = when (items) {
-            is QueryResultSet.Candidates -> QueryResultSet.Candidates(
-                state.boundOutput(items.values, QueryCandidate::projectedUtf8Size),
-            )
-            is QueryResultSet.Symbols -> QueryResultSet.Symbols(
-                state.boundOutput(items.values, QuerySymbol::projectedUtf8Size),
-            )
-        }
+        val boundedItems =
+            when (items) {
+                is QueryResultSet.Candidates ->
+                    QueryResultSet.Candidates(state.boundOutput(items.values, QueryCandidate::projectedUtf8Size))
+                is QueryResultSet.Symbols ->
+                    QueryResultSet.Symbols(state.boundOutput(items.values, QuerySymbol::projectedUtf8Size))
+            }
         val result = QueryResult(boundedItems, failures)
-        val count = when (boundedItems) {
-            is QueryResultSet.Candidates -> boundedItems.values.size
-            is QueryResultSet.Symbols -> boundedItems.values.size
-        }.queryCount()
+        val count =
+            when (boundedItems) {
+                is QueryResultSet.Candidates -> boundedItems.values.size
+                is QueryResultSet.Symbols -> boundedItems.values.size
+            }.queryCount()
         return if (state.limitations.isEmpty()) {
             QueryExecutionResult.Complete(result, QueryCoverage.Complete(count))
         } else {
-            val coverage = when (
-                val created = QueryCoverage.Qualified.create(count, state.limitations)
-            ) {
-                is Refinement.Refined -> created.value
-                is Refinement.Rejected -> return QueryExecutionResult.Rejected(
-                    QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION,
-                )
-            }
+            val coverage =
+                when (val created = QueryCoverage.Qualified.create(count, state.limitations)) {
+                    is Refinement.Refined -> created.value
+                    is Refinement.Rejected ->
+                        return QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
+                }
             QueryExecutionResult.Qualified(result, coverage)
         }
     }
@@ -386,5 +416,6 @@ class QueryService(
 
 private sealed interface DiscoveryExecution {
     data class Discovered(val values: List<SymbolDiscoverySelection>) : DiscoveryExecution
+
     data class Rejected(val result: QueryExecutionResult.Rejected) : DiscoveryExecution
 }

@@ -9,7 +9,8 @@ enum class SourceRegionFailure {
 }
 
 /** One selected structural region retaining its exact reusable source authority. */
-class SourceRegion private constructor(
+class SourceRegion
+private constructor(
     val kind: SourceRegionKind,
     val selector: SourceSelector,
 ) {
@@ -18,12 +19,12 @@ class SourceRegion private constructor(
             kind: SourceRegionKind,
             selector: SourceSelector,
         ): Refinement<SourceRegion, SourceRegionFailure> {
-            val selectorKind = when (selector) {
-                is SourceSelector.RootRegion -> selector.kind
-                is SourceSelector.NestedRegion -> selector.kind
-                is SourceSelector.Entity ->
-                    return Refinement.Rejected(SourceRegionFailure.SELECTOR_IS_ENTITY)
-            }
+            val selectorKind =
+                when (selector) {
+                    is SourceSelector.RootRegion -> selector.kind
+                    is SourceSelector.NestedRegion -> selector.kind
+                    is SourceSelector.Entity -> return Refinement.Rejected(SourceRegionFailure.SELECTOR_IS_ENTITY)
+                }
             return if (selectorKind != kind) {
                 Refinement.Rejected(SourceRegionFailure.KIND_MISMATCH)
             } else {
@@ -39,7 +40,7 @@ class SourceRegion private constructor(
 }
 
 enum class SourceNestingDepthFailure {
-    NEGATIVE,
+    NEGATIVE
 }
 
 @JvmInline
@@ -55,9 +56,7 @@ value class SourceNestingDepth private constructor(val value: Int) {
 }
 
 sealed interface DeclarationSemanticIdentity {
-    data class Candidate(
-        val selector: CandidateSelector.Declaration,
-    ) : DeclarationSemanticIdentity
+    data class Candidate(val selector: CandidateSelector.Declaration) : DeclarationSemanticIdentity
 }
 
 enum class CompilerUnresolvedReason {
@@ -69,7 +68,9 @@ enum class CompilerUnresolvedReason {
 
 sealed interface SourceEntityTarget {
     data class Candidate(val selector: CandidateSelector.Declaration) : SourceEntityTarget
+
     data class Local(val selector: SourceSelector) : SourceEntityTarget
+
     data class Unresolved(val reason: CompilerUnresolvedReason) : SourceEntityTarget
 }
 
@@ -84,7 +85,8 @@ sealed interface SourceEntity {
     val parentSelector: SourceSelector
     val nestingDepth: SourceNestingDepth
 
-    class Declaration private constructor(
+    class Declaration
+    private constructor(
         override val selector: SourceSelector.Entity,
         override val nestingDepth: SourceNestingDepth,
         val kind: DeclarationKind,
@@ -104,14 +106,13 @@ sealed interface SourceEntity {
                 if (selector.kind != kind.sourceEntityKind()) {
                     Refinement.Rejected(SourceEntityFailure.KIND_MISMATCH)
                 } else {
-                    Refinement.Refined(
-                        Declaration(selector, nestingDepth, kind, visibility, semanticIdentity),
-                    )
+                    Refinement.Refined(Declaration(selector, nestingDepth, kind, visibility, semanticIdentity))
                 }
         }
     }
 
-    class ValueParameter private constructor(
+    class ValueParameter
+    private constructor(
         override val selector: SourceSelector.Entity,
         override val nestingDepth: SourceNestingDepth,
     ) : SourceEntity {
@@ -130,7 +131,8 @@ sealed interface SourceEntity {
         }
     }
 
-    class Call private constructor(
+    class Call
+    private constructor(
         override val selector: SourceSelector.Entity,
         override val nestingDepth: SourceNestingDepth,
         val calleeSelector: SourceSelector.Entity,
@@ -144,18 +146,19 @@ sealed interface SourceEntity {
                 nestingDepth: SourceNestingDepth,
                 calleeSelector: SourceSelector.Entity,
                 target: SourceEntityTarget,
-            ): Refinement<Call, SourceEntityFailure> = when {
-                selector.kind != SourceEntityKind.CALL ||
-                    calleeSelector.kind != SourceEntityKind.CALLEE ->
-                    Refinement.Rejected(SourceEntityFailure.KIND_MISMATCH)
-                calleeSelector.parent.fingerprint != selector.fingerprint ->
-                    Refinement.Rejected(SourceEntityFailure.CALLEE_PARENT_MISMATCH)
-                else -> Refinement.Refined(Call(selector, nestingDepth, calleeSelector, target))
-            }
+            ): Refinement<Call, SourceEntityFailure> =
+                when {
+                    selector.kind != SourceEntityKind.CALL || calleeSelector.kind != SourceEntityKind.CALLEE ->
+                        Refinement.Rejected(SourceEntityFailure.KIND_MISMATCH)
+                    calleeSelector.parent.fingerprint != selector.fingerprint ->
+                        Refinement.Rejected(SourceEntityFailure.CALLEE_PARENT_MISMATCH)
+                    else -> Refinement.Refined(Call(selector, nestingDepth, calleeSelector, target))
+                }
         }
     }
 
-    class Reference private constructor(
+    class Reference
+    private constructor(
         override val selector: SourceSelector.Entity,
         override val nestingDepth: SourceNestingDepth,
         val target: SourceEntityTarget,
@@ -177,10 +180,11 @@ sealed interface SourceEntity {
     }
 }
 
-private fun DeclarationKind.sourceEntityKind(): SourceEntityKind = when (this) {
-    DeclarationKind.CLASSLIKE -> SourceEntityKind.DECLARATION_CLASSLIKE
-    DeclarationKind.CONSTRUCTOR -> SourceEntityKind.DECLARATION_CONSTRUCTOR
-    DeclarationKind.FUNCTION -> SourceEntityKind.DECLARATION_FUNCTION
-    DeclarationKind.PROPERTY -> SourceEntityKind.DECLARATION_PROPERTY
-    DeclarationKind.TYPE_ALIAS -> SourceEntityKind.DECLARATION_TYPE_ALIAS
-}
+private fun DeclarationKind.sourceEntityKind(): SourceEntityKind =
+    when (this) {
+        DeclarationKind.CLASSLIKE -> SourceEntityKind.DECLARATION_CLASSLIKE
+        DeclarationKind.CONSTRUCTOR -> SourceEntityKind.DECLARATION_CONSTRUCTOR
+        DeclarationKind.FUNCTION -> SourceEntityKind.DECLARATION_FUNCTION
+        DeclarationKind.PROPERTY -> SourceEntityKind.DECLARATION_PROPERTY
+        DeclarationKind.TYPE_ALIAS -> SourceEntityKind.DECLARATION_TYPE_ALIAS
+    }

@@ -1,9 +1,7 @@
 package io.github.amichne.kast.distribution.managed.endpoint
 
+import com.sun.security.auth.module.UnixSystem
 import io.github.amichne.kast.kernel.Validation
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.FileAlreadyExistsException
@@ -14,7 +12,9 @@ import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 import java.util.HexFormat
-import com.sun.security.auth.module.UnixSystem
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 enum class InstalledUpstreamDirectoryFailure {
     PHYSICAL_DIRECTORY_REJECTED,
@@ -25,9 +25,7 @@ enum class InstalledUpstreamDirectoryFailure {
 
 @Serializable
 @JvmInline
-internal value class UpstreamDirectoryDocumentVersion private constructor(
-    val value: Int,
-) {
+internal value class UpstreamDirectoryDocumentVersion private constructor(val value: Int) {
     companion object {
         val CURRENT = UpstreamDirectoryDocumentVersion(1)
     }
@@ -35,9 +33,7 @@ internal value class UpstreamDirectoryDocumentVersion private constructor(
 
 @Serializable
 @JvmInline
-internal value class RecordedInstalledUpstreamDirectory private constructor(
-    val value: String,
-) {
+internal value class RecordedInstalledUpstreamDirectory private constructor(val value: String) {
     companion object {
         fun from(directory: InstalledPrivateUpstreamDirectory) =
             RecordedInstalledUpstreamDirectory(directory.path.toString())
@@ -46,9 +42,7 @@ internal value class RecordedInstalledUpstreamDirectory private constructor(
 
 @Serializable
 @JvmInline
-internal value class RecordedInstalledPhysicalRunDirectory private constructor(
-    val value: String,
-) {
+internal value class RecordedInstalledPhysicalRunDirectory private constructor(val value: String) {
     companion object {
         fun from(directory: InstalledPhysicalRunDirectory) =
             RecordedInstalledPhysicalRunDirectory(directory.path.toString())
@@ -65,7 +59,8 @@ internal data class UpstreamDirectoryDocument(
 )
 
 /** An absolute, canonical, owner-private directory in Kast's deterministic `/tmp` namespace. */
-class InstalledPrivateUpstreamDirectory private constructor(
+class InstalledPrivateUpstreamDirectory
+private constructor(
     val path: Path,
     internal val identity: EndpointFileIdentity,
 ) {
@@ -75,7 +70,7 @@ class InstalledPrivateUpstreamDirectory private constructor(
 
     companion object {
         internal fun capture(
-            path: Path,
+            path: Path
         ): Validation<InstalledPrivateUpstreamDirectory, InstalledUpstreamDirectoryFailure> =
             when (val identity = InstalledUpstreamDirectories.directoryIdentity(path)) {
                 null -> Validation.rejected(InstalledUpstreamDirectoryFailure.UPSTREAM_DIRECTORY_REJECTED)
@@ -85,20 +80,17 @@ class InstalledPrivateUpstreamDirectory private constructor(
 }
 
 /** An absolute, canonical, owner-private installed `state/run` directory. */
-class InstalledPhysicalRunDirectory private constructor(
+class InstalledPhysicalRunDirectory
+private constructor(
     val path: Path,
     internal val identity: EndpointFileIdentity,
 ) {
-    internal fun retained(): Boolean =
-        InstalledEndpointAliases.physicalDirectoryIdentity(path) == identity
+    internal fun retained(): Boolean = InstalledEndpointAliases.physicalDirectoryIdentity(path) == identity
 
-    internal fun record(): RecordedInstalledPhysicalRunDirectory =
-        RecordedInstalledPhysicalRunDirectory.from(this)
+    internal fun record(): RecordedInstalledPhysicalRunDirectory = RecordedInstalledPhysicalRunDirectory.from(this)
 
     companion object {
-        internal fun capture(
-            path: Path,
-        ): Validation<InstalledPhysicalRunDirectory, InstalledUpstreamDirectoryFailure> =
+        internal fun capture(path: Path): Validation<InstalledPhysicalRunDirectory, InstalledUpstreamDirectoryFailure> =
             if (path.fileName?.toString() != "run" || path.parent?.fileName?.toString() != "state") {
                 Validation.rejected(InstalledUpstreamDirectoryFailure.PHYSICAL_DIRECTORY_REJECTED)
             } else {
@@ -111,36 +103,39 @@ class InstalledPhysicalRunDirectory private constructor(
 }
 
 /** Exact ownership proof for the real short directory required by Codex's Unix listener. */
-class InstalledUpstreamDirectoryReceipt private constructor(
+class InstalledUpstreamDirectoryReceipt
+private constructor(
     val directory: InstalledPrivateUpstreamDirectory,
     val physicalDirectory: InstalledPhysicalRunDirectory,
 ) {
-    fun validate(): Validation<InstalledUpstreamDirectoryReceipt, InstalledUpstreamDirectoryFailure> = try {
-        if (
-            !InstalledUpstreamDirectories.matches(directory, physicalDirectory) ||
-            !physicalDirectory.retained() ||
-            !directory.retained() ||
-            directory.identity.owner != physicalDirectory.identity.owner
-        ) {
-            Validation.rejected(InstalledUpstreamDirectoryFailure.UPSTREAM_DIRECTORY_REJECTED)
-        } else {
-            Validation.validated(this)
+    fun validate(): Validation<InstalledUpstreamDirectoryReceipt, InstalledUpstreamDirectoryFailure> =
+        try {
+            if (
+                !InstalledUpstreamDirectories.matches(directory, physicalDirectory) ||
+                    !physicalDirectory.retained() ||
+                    !directory.retained() ||
+                    directory.identity.owner != physicalDirectory.identity.owner
+            ) {
+                Validation.rejected(InstalledUpstreamDirectoryFailure.UPSTREAM_DIRECTORY_REJECTED)
+            } else {
+                Validation.validated(this)
+            }
+        } catch (_: IOException) {
+            Validation.rejected(InstalledUpstreamDirectoryFailure.FILESYSTEM_REJECTED)
+        } catch (_: SecurityException) {
+            Validation.rejected(InstalledUpstreamDirectoryFailure.FILESYSTEM_REJECTED)
         }
-    } catch (_: IOException) {
-        Validation.rejected(InstalledUpstreamDirectoryFailure.FILESYSTEM_REJECTED)
-    } catch (_: SecurityException) {
-        Validation.rejected(InstalledUpstreamDirectoryFailure.FILESYSTEM_REJECTED)
-    }
 
-    internal fun document(): String = Json.encodeToString(
-        UpstreamDirectoryDocument(
-            schemaVersion = UpstreamDirectoryDocumentVersion.CURRENT,
-            directory = directory.record(),
-            physicalDirectory = physicalDirectory.record(),
-            directoryIdentity = directory.identity,
-            physicalDirectoryIdentity = physicalDirectory.identity,
-        ),
-    )
+    internal fun document(): String =
+        Json.encodeToString(
+            UpstreamDirectoryDocument(
+                schemaVersion = UpstreamDirectoryDocumentVersion.CURRENT,
+                directory = directory.record(),
+                physicalDirectory = physicalDirectory.record(),
+                directoryIdentity = directory.identity,
+                physicalDirectoryIdentity = physicalDirectory.identity,
+            )
+        )
 
     companion object {
         internal fun capture(
@@ -148,9 +143,10 @@ class InstalledUpstreamDirectoryReceipt private constructor(
             physicalDirectory: InstalledPhysicalRunDirectory,
         ): Validation<InstalledUpstreamDirectoryReceipt, InstalledUpstreamDirectoryFailure> {
             return InstalledUpstreamDirectoryReceipt(
-                directory,
-                physicalDirectory,
-            ).validate()
+                    directory,
+                    physicalDirectory,
+                )
+                .validate()
         }
     }
 }
@@ -172,54 +168,59 @@ object InstalledUpstreamDirectories {
         }
 
     fun prepare(
-        physicalDirectory: Path,
-    ): Validation<InstalledUpstreamDirectoryReceipt, InstalledUpstreamDirectoryFailure> = try {
-        val physical = when (val captured = InstalledPhysicalRunDirectory.capture(physicalDirectory)) {
-            is Validation.Validated -> captured.value
-            is Validation.Rejected -> return captured
-        }
-        val directory = directoryFor(physical.path)
-        val receipt = physical.path.resolve(RECEIPT)
-        if (Files.exists(directory, NOFOLLOW_LINKS)) return observe(physical)
-        if (Files.exists(receipt, NOFOLLOW_LINKS)) {
-            return Validation.rejected(InstalledUpstreamDirectoryFailure.RECEIPT_REJECTED)
-        }
-        val createdIdentity: EndpointFileIdentity
+        physicalDirectory: Path
+    ): Validation<InstalledUpstreamDirectoryReceipt, InstalledUpstreamDirectoryFailure> =
         try {
-            Files.createDirectory(directory, PosixFilePermissions.asFileAttribute(privateDirectory))
-            Files.setPosixFilePermissions(directory, privateDirectory)
-            createdIdentity = InstalledEndpointAliases.identity(directory)
-                ?: return Validation.rejected(InstalledUpstreamDirectoryFailure.UPSTREAM_DIRECTORY_REJECTED)
-        } catch (_: FileAlreadyExistsException) {
-            return observe(physical)
-        }
-        val upstream = when (val captured = InstalledPrivateUpstreamDirectory.capture(directory)) {
-            is Validation.Validated -> captured.value
-            is Validation.Rejected -> {
-                retireCreatedDirectory(directory, createdIdentity)
-                return captured
+            val physical =
+                when (val captured = InstalledPhysicalRunDirectory.capture(physicalDirectory)) {
+                    is Validation.Validated -> captured.value
+                    is Validation.Rejected -> return captured
+                }
+            val directory = directoryFor(physical.path)
+            val receipt = physical.path.resolve(RECEIPT)
+            if (Files.exists(directory, NOFOLLOW_LINKS)) return observe(physical)
+            if (Files.exists(receipt, NOFOLLOW_LINKS)) {
+                return Validation.rejected(InstalledUpstreamDirectoryFailure.RECEIPT_REJECTED)
             }
-        }
-        val admitted = when (val captured = InstalledUpstreamDirectoryReceipt.capture(upstream, physical)) {
-            is Validation.Validated -> captured.value
-            is Validation.Rejected -> {
-                retireCreatedDirectory(directory, createdIdentity)
-                return captured
+            val createdIdentity: EndpointFileIdentity
+            try {
+                Files.createDirectory(directory, PosixFilePermissions.asFileAttribute(privateDirectory))
+                Files.setPosixFilePermissions(directory, privateDirectory)
+                createdIdentity =
+                    InstalledEndpointAliases.identity(directory)
+                        ?: return Validation.rejected(InstalledUpstreamDirectoryFailure.UPSTREAM_DIRECTORY_REJECTED)
+            } catch (_: FileAlreadyExistsException) {
+                return observe(physical)
             }
+            val upstream =
+                when (val captured = InstalledPrivateUpstreamDirectory.capture(directory)) {
+                    is Validation.Validated -> captured.value
+                    is Validation.Rejected -> {
+                        retireCreatedDirectory(directory, createdIdentity)
+                        return captured
+                    }
+                }
+            val admitted =
+                when (val captured = InstalledUpstreamDirectoryReceipt.capture(upstream, physical)) {
+                    is Validation.Validated -> captured.value
+                    is Validation.Rejected -> {
+                        retireCreatedDirectory(directory, createdIdentity)
+                        return captured
+                    }
+                }
+            try {
+                Files.writeString(receipt, admitted.document(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
+                Files.setPosixFilePermissions(receipt, privateFile)
+            } catch (_: Exception) {
+                retireCreatedDirectory(directory, createdIdentity)
+                return Validation.rejected(InstalledUpstreamDirectoryFailure.RECEIPT_REJECTED)
+            }
+            Validation.validated(admitted)
+        } catch (_: IOException) {
+            Validation.rejected(InstalledUpstreamDirectoryFailure.FILESYSTEM_REJECTED)
+        } catch (_: SecurityException) {
+            Validation.rejected(InstalledUpstreamDirectoryFailure.FILESYSTEM_REJECTED)
         }
-        try {
-            Files.writeString(receipt, admitted.document(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
-            Files.setPosixFilePermissions(receipt, privateFile)
-        } catch (_: Exception) {
-            retireCreatedDirectory(directory, createdIdentity)
-            return Validation.rejected(InstalledUpstreamDirectoryFailure.RECEIPT_REJECTED)
-        }
-        Validation.validated(admitted)
-    } catch (_: IOException) {
-        Validation.rejected(InstalledUpstreamDirectoryFailure.FILESYSTEM_REJECTED)
-    } catch (_: SecurityException) {
-        Validation.rejected(InstalledUpstreamDirectoryFailure.FILESYSTEM_REJECTED)
-    }
 
     internal fun matches(
         directory: InstalledPrivateUpstreamDirectory,
@@ -228,10 +229,13 @@ object InstalledUpstreamDirectories {
 
     internal fun directoryIdentity(path: Path): EndpointFileIdentity? =
         if (
-            !path.isAbsolute || path.normalize() != path || path.toRealPath() != path ||
-            path.parent != root || !directoryName.matches(path.fileName.toString()) ||
-            !Files.isDirectory(path, NOFOLLOW_LINKS) ||
-            Files.getPosixFilePermissions(path, NOFOLLOW_LINKS) != privateDirectory
+            !path.isAbsolute ||
+                path.normalize() != path ||
+                path.toRealPath() != path ||
+                path.parent != root ||
+                !directoryName.matches(path.fileName.toString()) ||
+                !Files.isDirectory(path, NOFOLLOW_LINKS) ||
+                Files.getPosixFilePermissions(path, NOFOLLOW_LINKS) != privateDirectory
         ) {
             null
         } else {
@@ -239,59 +243,64 @@ object InstalledUpstreamDirectories {
         }
 
     private fun observe(
-        physicalDirectory: InstalledPhysicalRunDirectory,
-    ): Validation<InstalledUpstreamDirectoryReceipt, InstalledUpstreamDirectoryFailure> = try {
-        val directoryPath = directoryFor(physicalDirectory.path)
-        val directory = when (val captured = InstalledPrivateUpstreamDirectory.capture(directoryPath)) {
-            is Validation.Validated -> captured.value
-            is Validation.Rejected -> return captured
+        physicalDirectory: InstalledPhysicalRunDirectory
+    ): Validation<InstalledUpstreamDirectoryReceipt, InstalledUpstreamDirectoryFailure> =
+        try {
+            val directoryPath = directoryFor(physicalDirectory.path)
+            val directory =
+                when (val captured = InstalledPrivateUpstreamDirectory.capture(directoryPath)) {
+                    is Validation.Validated -> captured.value
+                    is Validation.Rejected -> return captured
+                }
+            val receipt = physicalDirectory.path.resolve(RECEIPT)
+            if (
+                directory.identity.owner != physicalDirectory.identity.owner ||
+                    !Files.isRegularFile(receipt, NOFOLLOW_LINKS) ||
+                    Files.size(receipt) > MAXIMUM_RECEIPT_BYTES ||
+                    Files.getPosixFilePermissions(receipt, NOFOLLOW_LINKS) != privateFile ||
+                    InstalledEndpointAliases.identity(receipt)?.owner != physicalDirectory.identity.owner
+            ) {
+                return Validation.rejected(InstalledUpstreamDirectoryFailure.RECEIPT_REJECTED)
+            }
+            val bytes =
+                Files.newInputStream(receipt, NOFOLLOW_LINKS).use {
+                    it.readNBytes(MAXIMUM_RECEIPT_BYTES + 1)
+                }
+            if (bytes.size > MAXIMUM_RECEIPT_BYTES) {
+                return Validation.rejected(InstalledUpstreamDirectoryFailure.RECEIPT_REJECTED)
+            }
+            val document = Json.decodeFromString<UpstreamDirectoryDocument>(bytes.toString(StandardCharsets.UTF_8))
+            if (
+                document.schemaVersion != UpstreamDirectoryDocumentVersion.CURRENT ||
+                    document.directory != directory.record() ||
+                    document.physicalDirectory != physicalDirectory.record() ||
+                    document.directoryIdentity != directory.identity ||
+                    document.physicalDirectoryIdentity != physicalDirectory.identity
+            ) {
+                return Validation.rejected(InstalledUpstreamDirectoryFailure.RECEIPT_REJECTED)
+            }
+            InstalledUpstreamDirectoryReceipt.capture(directory, physicalDirectory)
+        } catch (_: Exception) {
+            Validation.rejected(InstalledUpstreamDirectoryFailure.RECEIPT_REJECTED)
         }
-        val receipt = physicalDirectory.path.resolve(RECEIPT)
-        if (
-            directory.identity.owner != physicalDirectory.identity.owner ||
-            !Files.isRegularFile(receipt, NOFOLLOW_LINKS) ||
-            Files.size(receipt) > MAXIMUM_RECEIPT_BYTES ||
-            Files.getPosixFilePermissions(receipt, NOFOLLOW_LINKS) != privateFile ||
-            InstalledEndpointAliases.identity(receipt)?.owner != physicalDirectory.identity.owner
-        ) {
-            return Validation.rejected(InstalledUpstreamDirectoryFailure.RECEIPT_REJECTED)
-        }
-        val bytes = Files.newInputStream(receipt, NOFOLLOW_LINKS).use {
-            it.readNBytes(MAXIMUM_RECEIPT_BYTES + 1)
-        }
-        if (bytes.size > MAXIMUM_RECEIPT_BYTES) {
-            return Validation.rejected(InstalledUpstreamDirectoryFailure.RECEIPT_REJECTED)
-        }
-        val document = Json.decodeFromString<UpstreamDirectoryDocument>(
-            bytes.toString(StandardCharsets.UTF_8),
-        )
-        if (
-            document.schemaVersion != UpstreamDirectoryDocumentVersion.CURRENT ||
-            document.directory != directory.record() ||
-            document.physicalDirectory != physicalDirectory.record() ||
-            document.directoryIdentity != directory.identity ||
-            document.physicalDirectoryIdentity != physicalDirectory.identity
-        ) {
-            return Validation.rejected(InstalledUpstreamDirectoryFailure.RECEIPT_REJECTED)
-        }
-        InstalledUpstreamDirectoryReceipt.capture(directory, physicalDirectory)
-    } catch (_: Exception) {
-        Validation.rejected(InstalledUpstreamDirectoryFailure.RECEIPT_REJECTED)
-    }
 
-    private fun directoryFor(physicalDirectory: Path): Path = root.resolve(
-        PREFIX + HexFormat.of().formatHex(
-            MessageDigest.getInstance("SHA-256").digest(
-                physicalDirectory.toString().toByteArray(StandardCharsets.UTF_8),
-            ),
-        ).take(32),
-    )
+    private fun directoryFor(physicalDirectory: Path): Path =
+        root.resolve(
+            PREFIX +
+                HexFormat.of()
+                    .formatHex(
+                        MessageDigest.getInstance("SHA-256")
+                            .digest(physicalDirectory.toString().toByteArray(StandardCharsets.UTF_8))
+                    )
+                    .take(32)
+        )
 
     private fun retireCreatedDirectory(directory: Path, identity: EndpointFileIdentity) {
         try {
-            if (InstalledEndpointAliases.identity(directory) == identity &&
-                Files.isDirectory(directory, NOFOLLOW_LINKS) &&
-                Files.newDirectoryStream(directory).use { entries -> !entries.iterator().hasNext() }
+            if (
+                InstalledEndpointAliases.identity(directory) == identity &&
+                    Files.isDirectory(directory, NOFOLLOW_LINKS) &&
+                    Files.newDirectoryStream(directory).use { entries -> !entries.iterator().hasNext() }
             ) {
                 Files.delete(directory)
             }

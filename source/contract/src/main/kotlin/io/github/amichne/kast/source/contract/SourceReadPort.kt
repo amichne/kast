@@ -30,6 +30,6 @@ fun interface SourceReadPort {
 /** Original-owner admission supplies a current content context for one exact authority. */
 fun interface SourceReadContextPort {
     suspend fun admit(
-        expected: SemanticReadAuthority,
+        expected: SemanticReadAuthority
     ): io.github.amichne.kast.kernel.Refinement<SourceReadContext, SourceReadRejection>
 }

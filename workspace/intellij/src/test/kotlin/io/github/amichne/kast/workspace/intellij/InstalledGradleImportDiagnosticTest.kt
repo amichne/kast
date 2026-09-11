@@ -2,30 +2,36 @@ package io.github.amichne.kast.workspace.intellij
 
 import io.github.amichne.kast.distribution.contract.gradle.GradleDistributionVersion
 import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentIdentity
+import java.util.concurrent.CompletableFuture
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import java.util.concurrent.CompletableFuture
 
 class InstalledGradleImportDiagnosticTest {
     @Test
     fun `missing initialization script retains a finite cause without its path`() {
         val future = CompletableFuture<Void>()
         val result = future.closedImportOutcome()
-        future.completeExceptionally(IllegalArgumentException(
-            "The specified initialization script '/private/sensitive/init.gradle' does not exist.",
-        ))
+        future.completeExceptionally(
+            IllegalArgumentException(
+                "The specified initialization script '/private/sensitive/init.gradle' does not exist."
+            )
+        )
         val fields = identity().logFields(result.join())
         assertEquals("\"initialization-script-unavailable\"", fields["outcome"].toString())
         assertFalse(fields.toString().contains("sensitive"))
         assertFalse(fields.toString().contains("init.gradle"))
-        assertEquals(GradleInitializationScriptObservation.UNCLASSIFIED,
-            observeGradleInitializationScript(RuntimeException(
-                "The specified initialization script '/private/sensitive/init.gradle' does not exist.",
-            )))
-        assertEquals(GradleInitializationScriptObservation.UNCLASSIFIED,
-            observeGradleInitializationScript(IllegalArgumentException("x".repeat(4097))))
+        assertEquals(
+            GradleInitializationScriptObservation.UNCLASSIFIED,
+            observeGradleInitializationScript(
+                RuntimeException("The specified initialization script '/private/sensitive/init.gradle' does not exist.")
+            ),
+        )
+        assertEquals(
+            GradleInitializationScriptObservation.UNCLASSIFIED,
+            observeGradleInitializationScript(IllegalArgumentException("x".repeat(4097))),
+        )
     }
 
     @Test
@@ -54,18 +60,24 @@ class InstalledGradleImportDiagnosticTest {
         assertEquals(InstalledGradleImportOutcome.Completed, result.join())
         assertEquals(listOf(InstalledGradleImportOutcome.Completed), observed)
         for (message in listOf("private token", "Unsupported class file major version 999", "x".repeat(4097))) {
-            assertEquals(GradlePayloadCompatibility.Unclassified,
-                GradlePayloadClassFileMajor.observe(IllegalArgumentException(message)))
+            assertEquals(
+                GradlePayloadCompatibility.Unclassified,
+                GradlePayloadClassFileMajor.observe(IllegalArgumentException(message)),
+            )
         }
-        val unsupported = GradlePayloadClassFileMajor.observe(
-            UnsupportedClassVersionError("type (class file version 69.0), runtime supports 61.0"),
-        ) as GradlePayloadCompatibility.Unsupported
+        val unsupported =
+            GradlePayloadClassFileMajor.observe(
+                UnsupportedClassVersionError("type (class file version 69.0), runtime supports 61.0")
+            ) as GradlePayloadCompatibility.Unsupported
         assertEquals(69, unsupported.major.value)
     }
 
-    private fun identity() = InstalledGradleImportExecutionIdentity(
-        GradleDistributionVersion.observed("7.6.4"), JavaFeature.of(25),
-        GradleImportEnvironmentIdentity.digest("/private/client"), JavaFeature.of(17),
-        GradleImportEnvironmentIdentity.digest("/private/project"),
-    )
+    private fun identity() =
+        InstalledGradleImportExecutionIdentity(
+            GradleDistributionVersion.observed("7.6.4"),
+            JavaFeature.of(25),
+            GradleImportEnvironmentIdentity.digest("/private/client"),
+            JavaFeature.of(17),
+            GradleImportEnvironmentIdentity.digest("/private/project"),
+        )
 }

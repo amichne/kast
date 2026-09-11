@@ -7,6 +7,7 @@ import io.github.amichne.kast.change.plan.PureAddDeclarationPlanningService
 import io.github.amichne.kast.change.plan.PureAddFilePlanningService
 import io.github.amichne.kast.change.plan.PureRenameSymbolPlanningService
 import io.github.amichne.kast.change.plan.PureReplaceDeclarationPlanningService
+import io.github.amichne.kast.change.protocol.ChangePlanAdmission
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
@@ -16,14 +17,13 @@ import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalKastOperationHandlerFactory
-import io.github.amichne.kast.change.protocol.ChangePlanAdmission
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionOperations
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.coroutines.startCoroutine
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 
 class CanonicalKastOperationHandlerFactoryTest {
     @Test
@@ -31,38 +31,43 @@ class CanonicalKastOperationHandlerFactoryTest {
         val root = Files.createDirectories(temporary.resolve("repo")).toRealPath()
         Files.writeString(root.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
         val fixture = InstalledChangeProtocolFixture.create(root)
-        val factory = CanonicalKastOperationHandlerFactory.create(
-            fixture.workspace,
-            ChangePlanAdmissionOperations { ChangePlanAdmission.AddFile(fixture.addFile) },
-        )
-        val planning = ChangePlanningOperations(
-            PureAddFilePlanningService(),
-            PureAddDeclarationPlanningService(),
-            PureReplaceDeclarationPlanningService(),
-            PureRenameSymbolPlanningService(),
-        )
-        val plan = factory.changePlan(planning)
-        val apply = factory.changeApply(
-            VerifiedChangeApplyOperations(
-                transitions = io.github.amichne.kast.workspace.service.WorkspaceTransitionOwner(),
-                apply = {
-                    AddDeclarationApplyResult.Rejected(
-                        AddDeclarationApplyFailure.Admission(MutationAdmissionFailure.WRONG_ROOT),
-                    )
-                },
-                verify = { error("verification must not run after rejected application") },
-            ),
-        )
-        val planned = immediate {
-            plan.execute(
-                ChangePlanRequest(
-                    ChangeIntentDocument.AddFile(
-                        ProtocolText.parse("src/main/kotlin/sample/Added.kt").required(),
-                        ProtocolText.parse("package sample\n\nclass Added\n").required(),
-                    ),
-                ),
+        val factory =
+            CanonicalKastOperationHandlerFactory.create(
+                fixture.workspace,
+                ChangePlanAdmissionOperations { ChangePlanAdmission.AddFile(fixture.addFile) },
             )
-        } as OperationOutcome.Complete
+        val planning =
+            ChangePlanningOperations(
+                PureAddFilePlanningService(),
+                PureAddDeclarationPlanningService(),
+                PureReplaceDeclarationPlanningService(),
+                PureRenameSymbolPlanningService(),
+            )
+        val plan = factory.changePlan(planning)
+        val apply =
+            factory.changeApply(
+                VerifiedChangeApplyOperations(
+                    transitions = io.github.amichne.kast.workspace.service.WorkspaceTransitionOwner(),
+                    apply = {
+                        AddDeclarationApplyResult.Rejected(
+                            AddDeclarationApplyFailure.Admission(MutationAdmissionFailure.WRONG_ROOT)
+                        )
+                    },
+                    verify = { error("verification must not run after rejected application") },
+                )
+            )
+        val planned =
+            immediate {
+                plan.execute(
+                    ChangePlanRequest(
+                        ChangeIntentDocument.AddFile(
+                            ProtocolText.parse("src/main/kotlin/sample/Added.kt").required(),
+                            ProtocolText.parse("package sample\n\nclass Added\n").required(),
+                        )
+                    )
+                )
+            }
+                as OperationOutcome.Complete
 
         val preview = planned.evidence.payload.changes.entries.single()
         assertEquals("src/main/kotlin/sample/Added.kt", preview.path.value)
@@ -78,10 +83,11 @@ class CanonicalKastOperationHandlerFactoryTest {
     }
 }
 
-private fun <Value, Failure> Refinement<Value, Failure>.required(): Value = when (this) {
-    is Refinement.Refined -> value
-    is Refinement.Rejected -> error("unexpected factory rejection: $failure")
-}
+private fun <Value, Failure> Refinement<Value, Failure>.required(): Value =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error("unexpected factory rejection: $failure")
+    }
 
 private fun <Value> immediate(block: suspend () -> Value): Value {
     var completed: Result<Value>? = null
@@ -92,7 +98,7 @@ private fun <Value> immediate(block: suspend () -> Value): Value {
             override fun resumeWith(result: Result<Value>) {
                 completed = result
             }
-        },
+        }
     )
     return checkNotNull(completed).getOrThrow()
 }

@@ -36,33 +36,34 @@ class RuntimeStore private constructor(val path: Path) {
          * Proof transition: `Path -> RuntimeStoreAdmission`.
          *
          * Establishes an absolute physically canonical, non-symlinked store path without creating it.
-         * [RuntimeStoreFailure.STORE_INVALID] is the closed expected failure. The path may leave
-         * only at the managed filesystem boundary.
+         * [RuntimeStoreFailure.STORE_INVALID] is the closed expected failure. The path may leave only at the managed
+         * filesystem boundary.
          */
         fun admit(path: Path): RuntimeStoreAdmission {
             val absolute = path.normalize()
             if (!absolute.isAbsolute || Files.isSymbolicLink(absolute)) {
                 return RuntimeStoreAdmission.Rejected(RuntimeStoreFailure.STORE_INVALID)
             }
-            val canonical = try {
-                if (Files.exists(absolute, LinkOption.NOFOLLOW_LINKS)) {
-                    absolute.toRealPath()
-                } else {
-                    val missing = ArrayDeque<Path>()
-                    var ancestor = absolute
-                    while (!Files.exists(ancestor, LinkOption.NOFOLLOW_LINKS)) {
-                        missing.addFirst(ancestor.fileName)
-                        ancestor = ancestor.parent ?: return RuntimeStoreAdmission.Rejected(
-                            RuntimeStoreFailure.STORE_INVALID,
-                        )
+            val canonical =
+                try {
+                    if (Files.exists(absolute, LinkOption.NOFOLLOW_LINKS)) {
+                        absolute.toRealPath()
+                    } else {
+                        val missing = ArrayDeque<Path>()
+                        var ancestor = absolute
+                        while (!Files.exists(ancestor, LinkOption.NOFOLLOW_LINKS)) {
+                            missing.addFirst(ancestor.fileName)
+                            ancestor =
+                                ancestor.parent
+                                    ?: return RuntimeStoreAdmission.Rejected(RuntimeStoreFailure.STORE_INVALID)
+                        }
+                        missing.fold(ancestor.toRealPath(), Path::resolve)
                     }
-                    missing.fold(ancestor.toRealPath(), Path::resolve)
+                } catch (_: IOException) {
+                    return RuntimeStoreAdmission.Rejected(RuntimeStoreFailure.STORE_INVALID)
+                } catch (_: SecurityException) {
+                    return RuntimeStoreAdmission.Rejected(RuntimeStoreFailure.STORE_INVALID)
                 }
-            } catch (_: IOException) {
-                return RuntimeStoreAdmission.Rejected(RuntimeStoreFailure.STORE_INVALID)
-            } catch (_: SecurityException) {
-                return RuntimeStoreAdmission.Rejected(RuntimeStoreFailure.STORE_INVALID)
-            }
             return if (!Files.isSymbolicLink(canonical)) {
                 RuntimeStoreAdmission.Admitted(RuntimeStore(canonical))
             } else {
@@ -74,11 +75,13 @@ class RuntimeStore private constructor(val path: Path) {
 
 sealed interface RuntimeStoreAdmission {
     data class Admitted(val store: RuntimeStore) : RuntimeStoreAdmission
+
     data class Rejected(val failure: RuntimeStoreFailure) : RuntimeStoreAdmission
 }
 
 /** A verified executable and layout installed under its exact runtime identity. */
-class InstalledSemanticRuntime internal constructor(
+class InstalledSemanticRuntime
+internal constructor(
     val runtimeId: SemanticRuntimeId,
     val directory: Path,
     val executable: Path,
@@ -86,6 +89,7 @@ class InstalledSemanticRuntime internal constructor(
 
 sealed interface SemanticRuntimeResolution {
     data class Installed(val runtime: InstalledSemanticRuntime) : SemanticRuntimeResolution
+
     data class Rejected(val failure: RuntimeStoreFailure) : SemanticRuntimeResolution
 }
 
@@ -99,12 +103,11 @@ class ManagedSemanticRuntimeProvider(
     }
 
     /**
-     * Proof transition: `SemanticRuntimeManifest + SemanticRuntimeSource ->
-     * SemanticRuntimeResolution`.
+     * Proof transition: `SemanticRuntimeManifest + SemanticRuntimeSource -> SemanticRuntimeResolution`.
      *
-     * Establishes an exact digest-verified archive, safe extracted layout, atomic installation,
-     * and re-admitted executable. [RuntimeStoreFailure] is the closed expected failure. Raw paths
-     * and network streams are permitted only inside this managed adapter.
+     * Establishes an exact digest-verified archive, safe extracted layout, atomic installation, and re-admitted
+     * executable. [RuntimeStoreFailure] is the closed expected failure. Raw paths and network streams are permitted
+     * only inside this managed adapter.
      */
     fun resolve(
         manifest: SemanticRuntimeManifest,
@@ -112,9 +115,8 @@ class ManagedSemanticRuntimeProvider(
     ): SemanticRuntimeResolution {
         when (admitHost(manifest.platform, manifest.architecture)) {
             HostAdmission.Compatible -> Unit
-            HostAdmission.Incompatible -> return SemanticRuntimeResolution.Rejected(
-                RuntimeStoreFailure.RUNTIME_INCOMPATIBLE,
-            )
+            HostAdmission.Incompatible ->
+                return SemanticRuntimeResolution.Rejected(RuntimeStoreFailure.RUNTIME_INCOMPATIBLE)
         }
         val preparation = prepareStore(store.path)
         if (preparation is StorePreparation.Rejected) {
@@ -133,25 +135,25 @@ class ManagedSemanticRuntimeProvider(
         return try {
             try {
                 FileChannel.open(
-                    lockPath,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.WRITE,
-                ).use { channel ->
-                    channel.lock().use {
-                        when (val installed = admitInstalled(manifest, runtimeDirectory)) {
-                            is InstalledRuntimeAdmission.Admitted -> installed.resolution
-                            InstalledRuntimeAdmission.Missing -> install(
-                                manifest,
-                                source,
-                                runtimeDirectory,
-                            )
-                            InstalledRuntimeAdmission.Rejected ->
-                                SemanticRuntimeResolution.Rejected(
-                                    RuntimeStoreFailure.LAYOUT_INVALID,
-                                )
+                        lockPath,
+                        StandardOpenOption.CREATE,
+                        StandardOpenOption.WRITE,
+                    )
+                    .use { channel ->
+                        channel.lock().use {
+                            when (val installed = admitInstalled(manifest, runtimeDirectory)) {
+                                is InstalledRuntimeAdmission.Admitted -> installed.resolution
+                                InstalledRuntimeAdmission.Missing ->
+                                    install(
+                                        manifest,
+                                        source,
+                                        runtimeDirectory,
+                                    )
+                                InstalledRuntimeAdmission.Rejected ->
+                                    SemanticRuntimeResolution.Rejected(RuntimeStoreFailure.LAYOUT_INVALID)
+                            }
                         }
                     }
-                }
             } catch (_: FileLockInterruptionException) {
                 Thread.currentThread().interrupt()
                 SemanticRuntimeResolution.Rejected(RuntimeStoreFailure.INTERRUPTED)
@@ -175,20 +177,18 @@ class ManagedSemanticRuntimeProvider(
         }
         val storeKey = manifest.runtimeId.storeKey()
         val download = store.path.resolve("$storeKey.download.partial")
-        val partial = store.path.resolve(
-            "$storeKey.install.partial.${UUID.randomUUID()}",
-        )
+        val partial = store.path.resolve("$storeKey.install.partial.${UUID.randomUUID()}")
         return try {
-            val acquisition = when (source) {
-                SemanticRuntimeSource.Managed -> downloader.download(manifest.archive.url, download)
-                is SemanticRuntimeSource.PreseededArchive -> copyPreseeded(source.archive, download)
-            }
+            val acquisition =
+                when (source) {
+                    SemanticRuntimeSource.Managed -> downloader.download(manifest.archive.url, download)
+                    is SemanticRuntimeSource.PreseededArchive -> copyPreseeded(source.archive, download)
+                }
             if (acquisition is RuntimeArtifactAcquisition.Rejected) {
                 return SemanticRuntimeResolution.Rejected(acquisition.failure)
             }
             if (
-                Files.size(download) != manifest.archive.size.bytes ||
-                sha256(download) != manifest.archive.digest.value
+                Files.size(download) != manifest.archive.size.bytes || sha256(download) != manifest.archive.digest.value
             ) {
                 return SemanticRuntimeResolution.Rejected(RuntimeStoreFailure.DIGEST_MISMATCH)
             }
@@ -200,17 +200,16 @@ class ManagedSemanticRuntimeProvider(
             }
             when (admitRuntimeLayout(partial, manifest)) {
                 RuntimeLayoutAdmission.Complete -> Unit
-                RuntimeLayoutAdmission.Rejected -> return SemanticRuntimeResolution.Rejected(
-                    RuntimeStoreFailure.LAYOUT_INVALID,
-                )
+                RuntimeLayoutAdmission.Rejected ->
+                    return SemanticRuntimeResolution.Rejected(RuntimeStoreFailure.LAYOUT_INVALID)
             }
             writeReceipt(partial)
             Files.move(partial, runtimeDirectory, StandardCopyOption.ATOMIC_MOVE)
             when (val installed = admitInstalled(manifest, runtimeDirectory)) {
                 is InstalledRuntimeAdmission.Admitted -> installed.resolution
                 InstalledRuntimeAdmission.Missing,
-                InstalledRuntimeAdmission.Rejected,
-                    -> SemanticRuntimeResolution.Rejected(RuntimeStoreFailure.LAYOUT_INVALID)
+                InstalledRuntimeAdmission.Rejected ->
+                    SemanticRuntimeResolution.Rejected(RuntimeStoreFailure.LAYOUT_INVALID)
             }
         } catch (_: IOException) {
             SemanticRuntimeResolution.Rejected(RuntimeStoreFailure.ARTIFACT_UNAVAILABLE)
@@ -227,36 +226,38 @@ private fun SemanticRuntimeId.storeKey(): String = value.replace(':', '-')
 
 private sealed interface StorePreparation {
     data object Prepared : StorePreparation
+
     data class Rejected(val failure: RuntimeStoreFailure) : StorePreparation
 }
 
 /**
  * Proof transition: `Path -> StorePreparation`.
  *
- * Establishes one physically canonical, non-symlinked store directory. The closed expected failure
- * is [RuntimeStoreFailure.STORE_INVALID]. Raw filesystem access remains in this adapter.
+ * Establishes one physically canonical, non-symlinked store directory. The closed expected failure is
+ * [RuntimeStoreFailure.STORE_INVALID]. Raw filesystem access remains in this adapter.
  */
-private fun prepareStore(path: Path): StorePreparation = try {
-    if (Files.isSymbolicLink(path)) return StorePreparation.Rejected(RuntimeStoreFailure.STORE_INVALID)
-    Files.createDirectories(path)
-    if (path.toRealPath() == path && Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
-        StorePreparation.Prepared
-    } else {
+private fun prepareStore(path: Path): StorePreparation =
+    try {
+        if (Files.isSymbolicLink(path)) return StorePreparation.Rejected(RuntimeStoreFailure.STORE_INVALID)
+        Files.createDirectories(path)
+        if (path.toRealPath() == path && Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
+            StorePreparation.Prepared
+        } else {
+            StorePreparation.Rejected(RuntimeStoreFailure.STORE_INVALID)
+        }
+    } catch (_: IOException) {
+        StorePreparation.Rejected(RuntimeStoreFailure.STORE_INVALID)
+    } catch (_: SecurityException) {
         StorePreparation.Rejected(RuntimeStoreFailure.STORE_INVALID)
     }
-} catch (_: IOException) {
-    StorePreparation.Rejected(RuntimeStoreFailure.STORE_INVALID)
-} catch (_: SecurityException) {
-    StorePreparation.Rejected(RuntimeStoreFailure.STORE_INVALID)
-}
 
 /**
  * Proof transition: `SemanticRuntimeManifest + Path -> InstalledRuntimeAdmission`.
  *
- * Establishes that an already-visible store entry has the exact receipt, content, layout, runtime
- * identity, and executable state. [InstalledRuntimeAdmission.Missing] permits cold acquisition and
- * [InstalledRuntimeAdmission.Rejected] closes corrupt visible state. Raw paths are retained only for
- * the process-launch boundary.
+ * Establishes that an already-visible store entry has the exact receipt, content, layout, runtime identity, and
+ * executable state. [InstalledRuntimeAdmission.Missing] permits cold acquisition and
+ * [InstalledRuntimeAdmission.Rejected] closes corrupt visible state. Raw paths are retained only for the process-launch
+ * boundary.
  */
 private fun admitInstalled(
     manifest: SemanticRuntimeManifest,
@@ -279,65 +280,61 @@ private fun admitInstalled(
         return InstalledRuntimeAdmission.Rejected
     }
     return InstalledRuntimeAdmission.Admitted(
-        SemanticRuntimeResolution.Installed(
-            InstalledSemanticRuntime(manifest.runtimeId, directory, executable),
-        ),
+        SemanticRuntimeResolution.Installed(InstalledSemanticRuntime(manifest.runtimeId, directory, executable))
     )
 }
 
 private sealed interface InstalledRuntimeAdmission {
     data object Missing : InstalledRuntimeAdmission
-    data class Admitted(
-        val resolution: SemanticRuntimeResolution.Installed,
-    ) : InstalledRuntimeAdmission
+
+    data class Admitted(val resolution: SemanticRuntimeResolution.Installed) : InstalledRuntimeAdmission
 
     data object Rejected : InstalledRuntimeAdmission
 }
 
 private sealed interface HostAdmission {
     data object Compatible : HostAdmission
+
     data object Incompatible : HostAdmission
 }
 
 /**
  * Proof transition: `RuntimePlatform + RuntimeArchitecture + host properties -> HostAdmission`.
  *
- * [HostAdmission.Compatible] proves the exact macOS/AArch64 host required by the manifest;
- * [HostAdmission.Incompatible] is the closed expected failure. Raw system properties are extracted
- * only at this host-admission boundary.
+ * [HostAdmission.Compatible] proves the exact macOS/AArch64 host required by the manifest; [HostAdmission.Incompatible]
+ * is the closed expected failure. Raw system properties are extracted only at this host-admission boundary.
  */
 private fun admitHost(
     platform: RuntimePlatform,
     architecture: RuntimeArchitecture,
-): HostAdmission = if (
-    platform == RuntimePlatform.MACOS &&
-    architecture == RuntimeArchitecture.AARCH64 &&
-    System.getProperty("os.name").lowercase().contains("mac") &&
-    System.getProperty("os.arch").lowercase() in setOf("aarch64", "arm64")
-) {
-    HostAdmission.Compatible
-} else {
-    HostAdmission.Incompatible
-}
+): HostAdmission =
+    if (
+        platform == RuntimePlatform.MACOS &&
+            architecture == RuntimeArchitecture.AARCH64 &&
+            System.getProperty("os.name").lowercase().contains("mac") &&
+            System.getProperty("os.arch").lowercase() in setOf("aarch64", "arm64")
+    ) {
+        HostAdmission.Compatible
+    } else {
+        HostAdmission.Incompatible
+    }
 
 private fun copyPreseeded(
     source: Path,
     target: Path,
-): RuntimeArtifactAcquisition = try {
-    if (
-        Files.isSymbolicLink(source) ||
-        !Files.isRegularFile(source, LinkOption.NOFOLLOW_LINKS)
-    ) {
+): RuntimeArtifactAcquisition =
+    try {
+        if (Files.isSymbolicLink(source) || !Files.isRegularFile(source, LinkOption.NOFOLLOW_LINKS)) {
+            RuntimeArtifactAcquisition.Rejected(RuntimeStoreFailure.ARTIFACT_UNAVAILABLE)
+        } else {
+            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING)
+            RuntimeArtifactAcquisition.Acquired
+        }
+    } catch (_: IOException) {
         RuntimeArtifactAcquisition.Rejected(RuntimeStoreFailure.ARTIFACT_UNAVAILABLE)
-    } else {
-        Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING)
-        RuntimeArtifactAcquisition.Acquired
+    } catch (_: SecurityException) {
+        RuntimeArtifactAcquisition.Rejected(RuntimeStoreFailure.ARTIFACT_UNAVAILABLE)
     }
-} catch (_: IOException) {
-    RuntimeArtifactAcquisition.Rejected(RuntimeStoreFailure.ARTIFACT_UNAVAILABLE)
-} catch (_: SecurityException) {
-    RuntimeArtifactAcquisition.Rejected(RuntimeStoreFailure.ARTIFACT_UNAVAILABLE)
-}
 
 private fun deletePartialTree(path: Path) {
     if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(path)) return

@@ -27,7 +27,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 enum class HostedAddDeclarationPlanDecodeFailure {
-    MALFORMED_OR_TAMPERED,
+    MALFORMED_OR_TAMPERED
 }
 
 @Serializable
@@ -77,104 +77,116 @@ object HostedAddDeclarationPlanCodec {
         prettyPrint = false
     }
 
-    fun encode(plan: AddDeclarationChangePlan): String = json.encodeToString(
-        HostedAddDeclarationPlanDocument.serializer(),
-        plan.document(),
-    )
+    fun encode(plan: AddDeclarationChangePlan): String =
+        json.encodeToString(
+            HostedAddDeclarationPlanDocument.serializer(),
+            plan.document(),
+        )
 
-    fun decode(
-        encoded: String,
-    ): Refinement<AddDeclarationChangePlan, HostedAddDeclarationPlanDecodeFailure> {
-        val document = runCatching {
-            json.decodeFromString(HostedAddDeclarationPlanDocument.serializer(), encoded)
-        }.getOrNull() ?: return rejected()
+    fun decode(encoded: String): Refinement<AddDeclarationChangePlan, HostedAddDeclarationPlanDecodeFailure> {
+        val document =
+            runCatching {
+                json.decodeFromString(HostedAddDeclarationPlanDocument.serializer(), encoded)
+            }
+                .getOrNull() ?: return rejected()
         if (
             document.schemaVersion != SCHEMA_VERSION ||
-            json.encodeToString(HostedAddDeclarationPlanDocument.serializer(), document) != encoded
+                json.encodeToString(HostedAddDeclarationPlanDocument.serializer(), document) != encoded
         ) {
             return rejected()
         }
-        val root = CanonicalWorkspaceRoot.fromCanonicalPath(document.workspaceRoot.pathOrNull() ?: return rejected())
-            .valueOrNull() ?: return rejected()
+        val root =
+            CanonicalWorkspaceRoot.fromCanonicalPath(document.workspaceRoot.pathOrNull() ?: return rejected())
+                .valueOrNull() ?: return rejected()
         val generation = EvidenceGeneration.parse(document.generation).valueOrNull() ?: return rejected()
-        val workspaceState = WorkspaceStateIdentity.parse(document.workspaceState).valueOrNull()
-            ?: return rejected()
-        val content = WorkspaceSourceContentHash.parse(document.sourceContent).valueOrNull()
-            ?: return rejected()
-        val sourceRoot = SourceRoot.admit(
-            GradleSourceRootEvidence(
-                document.sourceRootModule,
-                document.sourceRootBuildRoot,
-                document.sourceRootProjectPath,
-                document.sourceRootSourceSet,
-                document.sourceRootLocation,
-                SourceRootProvenance.Authored,
-            ),
-        ).valueOrNull() ?: return rejected()
+        val workspaceState = WorkspaceStateIdentity.parse(document.workspaceState).valueOrNull() ?: return rejected()
+        val content = WorkspaceSourceContentHash.parse(document.sourceContent).valueOrNull() ?: return rejected()
+        val sourceRoot =
+            SourceRoot.admit(
+                    GradleSourceRootEvidence(
+                        document.sourceRootModule,
+                        document.sourceRootBuildRoot,
+                        document.sourceRootProjectPath,
+                        document.sourceRootSourceSet,
+                        document.sourceRootLocation,
+                        SourceRootProvenance.Authored,
+                    )
+                )
+                .valueOrNull() ?: return rejected()
         val sourcePath = document.sourcePath.pathOrNull() ?: return rejected()
-        val file = when (val admitted = SymbolDiscoveryFileIdentity.fromBoundary(
-            root,
-            sourcePath,
-            sourcePath.toUri().toString(),
-        )) {
-            is Refinement.Refined -> admitted.value as? SymbolDiscoveryFileIdentity.Workspace
+        val file =
+            when (
+                val admitted =
+                    SymbolDiscoveryFileIdentity.fromBoundary(
+                        root,
+                        sourcePath,
+                        sourcePath.toUri().toString(),
+                    )
+            ) {
+                is Refinement.Refined -> admitted.value as? SymbolDiscoveryFileIdentity.Workspace ?: return rejected()
+                is Refinement.Rejected -> return rejected()
+            }
+        val scopeSnapshot =
+            SymbolSearchScopeSnapshot(
+                document.scopeKind.enumOrNull<SymbolSearchScopeKind>() ?: return rejected(),
+                document.scopePrimary,
+                document.scopeSecondary,
+                document.scopeSourceKinds.enumOrNull<SymbolSourceKindPolicy>() ?: return rejected(),
+                document.scopeGeneratedSources.enumOrNull<SymbolGeneratedSourcePolicy>() ?: return rejected(),
+                document.scopeLibraries?.enumOrNull<SymbolLibraryPolicy>(),
+            )
+        val scope = SymbolSearchScope.restore(root, sourceRoot, scopeSnapshot).valueOrNull() ?: return rejected()
+        val compilerIdentity =
+            CompilerSymbolIdentity.parse(document.selectorCompilerIdentity).valueOrNull() ?: return rejected()
+        val compilerSignature =
+            CanonicalCompilerSignature.restoreCanonicalEncoding(document.selectorCompilerSignature).valueOrNull()
                 ?: return rejected()
-            is Refinement.Rejected -> return rejected()
-        }
-        val scopeSnapshot = SymbolSearchScopeSnapshot(
-            document.scopeKind.enumOrNull<SymbolSearchScopeKind>() ?: return rejected(),
-            document.scopePrimary,
-            document.scopeSecondary,
-            document.scopeSourceKinds.enumOrNull<SymbolSourceKindPolicy>() ?: return rejected(),
-            document.scopeGeneratedSources.enumOrNull<SymbolGeneratedSourcePolicy>()
-                ?: return rejected(),
-            document.scopeLibraries?.enumOrNull<SymbolLibraryPolicy>(),
-        )
-        val scope = SymbolSearchScope.restore(root, sourceRoot, scopeSnapshot).valueOrNull()
-            ?: return rejected()
-        val compilerIdentity = CompilerSymbolIdentity.parse(document.selectorCompilerIdentity)
-            .valueOrNull() ?: return rejected()
-        val compilerSignature = CanonicalCompilerSignature.restoreCanonicalEncoding(
-            document.selectorCompilerSignature,
-        ).valueOrNull() ?: return rejected()
-        val selectorEvidence = CompilerGroundedSymbolEvidence.restoreBoundary(
-            file,
-            document.selectorStart,
-            document.selectorEnd,
-            document.selectorName,
-            document.selectorQualifiedIdentity,
-            document.selectorKind.enumOrNull<CompilerSymbolKind>() ?: return rejected(),
-            compilerSignature,
-            compilerIdentity,
-        ).valueOrNull() ?: return rejected()
-        val selectorFingerprint = SymbolSelectorFingerprint.parse(document.selectorFingerprint)
-            .valueOrNull() ?: return rejected()
+        val selectorEvidence =
+            CompilerGroundedSymbolEvidence.restoreBoundary(
+                    file,
+                    document.selectorStart,
+                    document.selectorEnd,
+                    document.selectorName,
+                    document.selectorQualifiedIdentity,
+                    document.selectorKind.enumOrNull<CompilerSymbolKind>() ?: return rejected(),
+                    compilerSignature,
+                    compilerIdentity,
+                )
+                .valueOrNull() ?: return rejected()
+        val selectorFingerprint =
+            SymbolSelectorFingerprint.parse(document.selectorFingerprint).valueOrNull() ?: return rejected()
         val lease = SemanticReadLease(root, generation)
-        val selector = SymbolSelector.restore(lease, scope, selectorEvidence, selectorFingerprint)
-            .valueOrNull() ?: return rejected()
-        val target = EditableMutationTarget.restore(
-            lease,
-            workspaceState,
-            file,
-            content,
-            sourceRoot,
-            selector,
-        ).valueOrNull() ?: return rejected()
-        val declaration = AddDeclarationSourceText.parse(document.declaration).valueOrNull()
-            ?: return rejected()
-        val expectedDelta = ExpectedAddDeclarationDelta.admit(
-            document.expectedPackage,
-            document.expectedName,
-            document.expectedKind.enumOrNull<AddDeclarationKind>() ?: return rejected(),
-        ).valueOrNull() ?: return rejected()
-        val evidence = DurableAddDeclarationPlanningEvidence.restore(
-            document.evidence.relations,
-            document.evidence.traversals,
-            document.evidence.diagnostics,
-            document.evidence.fingerprint,
-            document.relationEvidenceSemantics.enumOrNull<StableRelationEvidenceSemantics>()
-                ?: return rejected(),
-        ).valueOrNull() ?: return rejected()
+        val selector =
+            SymbolSelector.restore(lease, scope, selectorEvidence, selectorFingerprint).valueOrNull()
+                ?: return rejected()
+        val target =
+            EditableMutationTarget.restore(
+                    lease,
+                    workspaceState,
+                    file,
+                    content,
+                    sourceRoot,
+                    selector,
+                )
+                .valueOrNull() ?: return rejected()
+        val declaration = AddDeclarationSourceText.parse(document.declaration).valueOrNull() ?: return rejected()
+        val expectedDelta =
+            ExpectedAddDeclarationDelta.admit(
+                    document.expectedPackage,
+                    document.expectedName,
+                    document.expectedKind.enumOrNull<AddDeclarationKind>() ?: return rejected(),
+                )
+                .valueOrNull() ?: return rejected()
+        val evidence =
+            DurableAddDeclarationPlanningEvidence.restore(
+                    document.evidence.relations,
+                    document.evidence.traversals,
+                    document.evidence.diagnostics,
+                    document.evidence.fingerprint,
+                    document.relationEvidenceSemantics.enumOrNull<StableRelationEvidenceSemantics>()
+                        ?: return rejected(),
+                )
+                .valueOrNull() ?: return rejected()
         val planId = ChangePlanId.parse(document.planId).valueOrNull() ?: return rejected()
         return AddDeclarationChangePlan.restore(
             planId,
@@ -187,15 +199,16 @@ object HostedAddDeclarationPlanCodec {
 
     private fun AddDeclarationChangePlan.document(): HostedAddDeclarationPlanDocument {
         val scope = SymbolSearchScope.snapshot(target.selector.scope)
-        val declaration = when (val edit = plannedEdits.single()) {
-            is AddDeclarationPlannedEdit.InsertAfterDeclaration -> edit.declaration
-            is AddDeclarationPlannedEdit.InsertIntoClassBody -> edit.declaration
-        }
-        val qualified = when (val identity = target.selector.qualifiedIdentity) {
-            is io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity.Available ->
-                identity.value
-            io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity.Unavailable -> null
-        }
+        val declaration =
+            when (val edit = plannedEdits.single()) {
+                is AddDeclarationPlannedEdit.InsertAfterDeclaration -> edit.declaration
+                is AddDeclarationPlannedEdit.InsertIntoClassBody -> edit.declaration
+            }
+        val qualified =
+            when (val identity = target.selector.qualifiedIdentity) {
+                is io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity.Available -> identity.value
+                io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity.Unavailable -> null
+            }
         return HostedAddDeclarationPlanDocument(
             SCHEMA_VERSION,
             planId.value,
@@ -241,7 +254,8 @@ private fun String.pathOrNull(): Path? = runCatching { Path.of(this) }.getOrNull
 private inline fun <reified Value : Enum<Value>> String.enumOrNull(): Value? =
     enumValues<Value>().singleOrNull { it.name == this }
 
-private fun <Value, Failure> Refinement<Value, Failure>.valueOrNull(): Value? = when (this) {
-    is Refinement.Refined -> value
-    is Refinement.Rejected -> null
-}
+private fun <Value, Failure> Refinement<Value, Failure>.valueOrNull(): Value? =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> null
+    }

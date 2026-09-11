@@ -12,10 +12,10 @@ import io.github.amichne.kast.traversal.contract.TraversalResult
 /**
  * Composition-owned traversal prerequisite.
  *
- * Topology remains an explicit internal capability, but callers no longer schedule it. A traversal
- * can proceed only after [TopologyBuildOperations] proves an exact eligible snapshot for the current
- * workspace generation. [TopologyBuildResult.WorkspaceMoved] is distinct from an unavailable
- * build: it preserves the stronger fact that the request's generation moved while preparing.
+ * Topology remains an explicit internal capability, but callers no longer schedule it. A traversal can proceed only
+ * after [TopologyBuildOperations] proves an exact eligible snapshot for the current workspace generation.
+ * [TopologyBuildResult.WorkspaceMoved] is distinct from an unavailable build: it preserves the stronger fact that the
+ * request's generation moved while preparing.
  */
 internal class TopologyPreparingTraversalOperations(
     private val topology: TopologyBuildOperations,
@@ -24,22 +24,16 @@ internal class TopologyPreparingTraversalOperations(
     override suspend fun run(plan: TraversalPlan): TraversalResult {
         when (plan.start.lease.requirePublished()) {
             is Refinement.Refined -> Unit
-            is Refinement.Rejected -> return TraversalResult.Rejected(
-                TraversalRejection.OneHopRejected(RelationReadRejection.SCOPE_REJECTED),
-            )
+            is Refinement.Rejected ->
+                return TraversalResult.Rejected(TraversalRejection.OneHopRejected(RelationReadRejection.SCOPE_REJECTED))
         }
         return when (val preparation = topology.build()) {
             is TopologyBuildResult.Published,
-            is TopologyBuildResult.Reused,
-                -> traversal.run(plan)
+            is TopologyBuildResult.Reused -> traversal.run(plan)
 
-            TopologyBuildResult.WorkspaceMoved -> TraversalResult.Rejected(
-                TraversalRejection.RequiredEvidenceStale,
-            )
+            TopologyBuildResult.WorkspaceMoved -> TraversalResult.Rejected(TraversalRejection.RequiredEvidenceStale)
 
-            is TopologyBuildResult.Rejected -> TraversalResult.Rejected(
-                TraversalRejection.RequiredEvidenceUnavailable,
-            )
+            is TopologyBuildResult.Rejected -> TraversalResult.Rejected(TraversalRejection.RequiredEvidenceUnavailable)
         }
     }
 }

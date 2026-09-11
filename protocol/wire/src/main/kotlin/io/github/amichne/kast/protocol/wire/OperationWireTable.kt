@@ -4,24 +4,19 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
 
 /** Internal generated serializer table; public operation authority remains in OperationRegistry. */
-internal class OperationWireTable private constructor(
-    bindingsByOperation: Map<CanonicalOperation, OperationWireBinding<*, *, *, *>>,
-) {
-    val bindings: List<OperationWireBinding<*, *, *, *>> =
-        CanonicalOperation.entries.map(bindingsByOperation::getValue)
+internal class OperationWireTable
+private constructor(bindingsByOperation: Map<CanonicalOperation, OperationWireBinding<*, *, *, *>>) {
+    val bindings: List<OperationWireBinding<*, *, *, *>> = CanonicalOperation.entries.map(bindingsByOperation::getValue)
 
     companion object {
         /**
-         * Proof transition: `Iterable<OperationWireBinding<*, *, *, *>> ->
-         * OperationWireTableConstruction`.
+         * Proof transition: `Iterable<OperationWireBinding<*, *, *, *>> -> OperationWireTableConstruction`.
          *
-         * Establishes exactly one generated serializer binding per canonical operation and unique
-         * schema identity. [OperationWireTableFailure] is the closed expected failure. The raw
-         * iterable is permitted only at runtime composition.
+         * Establishes exactly one generated serializer binding per canonical operation and unique schema identity.
+         * [OperationWireTableFailure] is the closed expected failure. The raw iterable is permitted only at runtime
+         * composition.
          */
-        fun create(
-            bindings: Iterable<OperationWireBinding<*, *, *, *>>,
-        ): OperationWireTableConstruction {
+        fun create(bindings: Iterable<OperationWireBinding<*, *, *, *>>): OperationWireTableConstruction {
             val materialized = bindings.toList()
             val failures = buildSet {
                 materialized
@@ -42,14 +37,12 @@ internal class OperationWireTable private constructor(
                     .forEach { add(OperationWireTableFailure.DuplicateSchemaBinding(it)) }
 
                 val present = materialized.mapTo(mutableSetOf()) { it.operation }
-                CanonicalOperation.entries
-                    .filterNot(present::contains)
-                    .forEach { add(OperationWireTableFailure.MissingSerializerBinding(it)) }
+                CanonicalOperation.entries.filterNot(present::contains).forEach {
+                    add(OperationWireTableFailure.MissingSerializerBinding(it))
+                }
             }
             return if (failures.isEmpty()) {
-                OperationWireTableConstruction.Created(
-                    OperationWireTable(materialized.associateBy { it.operation }),
-                )
+                OperationWireTableConstruction.Created(OperationWireTable(materialized.associateBy { it.operation }))
             } else {
                 OperationWireTableConstruction.Rejected(failures)
             }
@@ -58,25 +51,15 @@ internal class OperationWireTable private constructor(
 }
 
 internal sealed interface OperationWireTableConstruction {
-    data class Created(
-        val table: OperationWireTable,
-    ) : OperationWireTableConstruction
+    data class Created(val table: OperationWireTable) : OperationWireTableConstruction
 
-    data class Rejected(
-        val failures: Set<OperationWireTableFailure>,
-    ) : OperationWireTableConstruction
+    data class Rejected(val failures: Set<OperationWireTableFailure>) : OperationWireTableConstruction
 }
 
 internal sealed interface OperationWireTableFailure {
-    data class DuplicateSerializerBinding(
-        val operation: CanonicalOperation,
-    ) : OperationWireTableFailure
+    data class DuplicateSerializerBinding(val operation: CanonicalOperation) : OperationWireTableFailure
 
-    data class DuplicateSchemaBinding(
-        val schema: SchemaIdentity,
-    ) : OperationWireTableFailure
+    data class DuplicateSchemaBinding(val schema: SchemaIdentity) : OperationWireTableFailure
 
-    data class MissingSerializerBinding(
-        val operation: CanonicalOperation,
-    ) : OperationWireTableFailure
+    data class MissingSerializerBinding(val operation: CanonicalOperation) : OperationWireTableFailure
 }

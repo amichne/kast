@@ -12,18 +12,14 @@ class PureReplaceDeclarationPlanningService : ReplaceDeclarationPlanOperations {
     /**
      * Proof transition: `ReplaceDeclarationPlanRequest -> ReplaceDeclarationPlanResult`.
      *
-     * Refines a changed exact declaration and complete target-bound evidence before issuing one
-     * deterministic plan. Expected failure is closed by `ReplaceDeclarationPlanningFailure`. Raw
-     * source and compiler values remain outside this pure service.
+     * Refines a changed exact declaration and complete target-bound evidence before issuing one deterministic plan.
+     * Expected failure is closed by `ReplaceDeclarationPlanningFailure`. Raw source and compiler values remain outside
+     * this pure service.
      */
-    override fun plan(
-        request: ReplaceDeclarationPlanRequest,
-    ): ReplaceDeclarationPlanResult = when (
-        val admitted = AdmittedReplaceDeclarationPlanInput.admit(request)
-    ) {
-        is Refinement.Refined -> ReplaceDeclarationPlanResult.Planned(
-            ReplaceDeclarationChangePlan.issue(admitted.value),
-        )
-        is Refinement.Rejected -> ReplaceDeclarationPlanResult.Rejected(admitted.failure)
-    }
+    override fun plan(request: ReplaceDeclarationPlanRequest): ReplaceDeclarationPlanResult =
+        when (val admitted = AdmittedReplaceDeclarationPlanInput.admit(request)) {
+            is Refinement.Refined ->
+                ReplaceDeclarationPlanResult.Planned(ReplaceDeclarationChangePlan.issue(admitted.value))
+            is Refinement.Rejected -> ReplaceDeclarationPlanResult.Rejected(admitted.failure)
+        }
 }

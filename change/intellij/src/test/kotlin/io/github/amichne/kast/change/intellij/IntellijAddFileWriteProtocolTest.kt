@@ -8,24 +8,27 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
 class IntellijAddFileWriteProtocolTest {
-    private val input = IntellijAddFileInput(
-        "/workspace/app/src/main/kotlin/sample/Added.kt",
-        "package sample\n\nclass Added\n",
-    )
+    private val input =
+        IntellijAddFileInput(
+            "/workspace/app/src/main/kotlin/sample/Added.kt",
+            "package sample\n\nclass Added\n",
+        )
 
     @Test
     fun `absent file is staged before durability and created only during save`() {
         val session = FakeAddFileSession()
 
-        val result = IntellijAddFileWriteProtocol().execute(
-            input,
-            MutationDurabilityBarrier {
-                session.events += "durable"
-                assertEquals(IntellijAddFilePhysicalState.Absent, session.physicalState())
-                MutationDurabilityResult.Durable
-            },
-            session,
-        )
+        val result =
+            IntellijAddFileWriteProtocol()
+                .execute(
+                    input,
+                    MutationDurabilityBarrier {
+                        session.events += "durable"
+                        assertEquals(IntellijAddFilePhysicalState.Absent, session.physicalState())
+                        MutationDurabilityResult.Durable
+                    },
+                    session,
+                )
 
         assertInstanceOf(IntellijWriteProtocolResult.Applied::class.java, result)
         assertEquals(listOf("stage", "durable", "save", "observe"), session.events)
@@ -36,15 +39,15 @@ class IntellijAddFileWriteProtocolTest {
     fun `durability rejection clears staged file without creating a physical target`() {
         val session = FakeAddFileSession()
 
-        val result = IntellijAddFileWriteProtocol().execute(
-            input,
-            MutationDurabilityBarrier {
-                MutationDurabilityResult.Rejected(
-                    MutationDurabilityFailure.RECOVERY_EVIDENCE_REJECTED,
+        val result =
+            IntellijAddFileWriteProtocol()
+                .execute(
+                    input,
+                    MutationDurabilityBarrier {
+                        MutationDurabilityResult.Rejected(MutationDurabilityFailure.RECOVERY_EVIDENCE_REJECTED)
+                    },
+                    session,
                 )
-            },
-            session,
-        )
 
         assertInstanceOf(IntellijWriteProtocolResult.RejectedAfterRollback::class.java, result)
         assertEquals(listOf("stage", "clear"), session.events)
@@ -55,25 +58,24 @@ class IntellijAddFileWriteProtocolTest {
     fun `file appearing before staging is rejected as stale`() {
         val session = FakeAddFileSession(physical = "package sample\nclass Other\n")
 
-        val result = IntellijAddFileWriteProtocol().execute(
-            input,
-            MutationDurabilityBarrier { MutationDurabilityResult.Durable },
-            session,
-        )
+        val result =
+            IntellijAddFileWriteProtocol()
+                .execute(
+                    input,
+                    MutationDurabilityBarrier { MutationDurabilityResult.Durable },
+                    session,
+                )
 
         assertInstanceOf(IntellijWriteProtocolResult.RejectedBeforeMutation::class.java, result)
         assertEquals(emptyList<String>(), session.events)
     }
 }
 
-private class FakeAddFileSession(
-    private var physical: String? = null,
-) : IntellijAddFileStagingSession {
+private class FakeAddFileSession(private var physical: String? = null) : IntellijAddFileStagingSession {
     val events = mutableListOf<String>()
 
-    override fun physicalState(): IntellijAddFilePhysicalState = physical?.let(
-        IntellijAddFilePhysicalState::Present,
-    ) ?: IntellijAddFilePhysicalState.Absent
+    override fun physicalState(): IntellijAddFilePhysicalState =
+        physical?.let(IntellijAddFilePhysicalState::Present) ?: IntellijAddFilePhysicalState.Absent
 
     override fun stage(postimageText: String): IntellijAddFileStageResult {
         events += "stage"

@@ -21,8 +21,8 @@ import kotlinx.serialization.json.Json
 /**
  * Compile-only contract for the exact public IDEA 262 signal APIs characterized by epoch-signal policy.
  *
- * The bytecode characterization task does not invoke this adapter. It reads the class resource and
- * verifies the exact constant-pool owners and members without manufacturing a live IDE project.
+ * The bytecode characterization task does not invoke this adapter. It reads the class resource and verifies the exact
+ * constant-pool owners and members without manufacturing a live IDE project.
  */
 @Suppress("unused")
 internal object EpochSignalApiContract {
@@ -32,14 +32,18 @@ internal object EpochSignalApiContract {
         workspaceListener: WorkspaceModelChangeListener,
         vfsCounter: EpochVfsMetadataCounter,
     ) {
-        project.messageBus.connect(lifetime).subscribe(
-            WorkspaceModelTopics.CHANGED,
-            workspaceListener,
-        )
-        project.messageBus.connect(lifetime).subscribe(
-            VirtualFileManager.VFS_CHANGES,
-            RootFilteredVfsSignal(vfsCounter),
-        )
+        project.messageBus
+            .connect(lifetime)
+            .subscribe(
+                WorkspaceModelTopics.CHANGED,
+                workspaceListener,
+            )
+        project.messageBus
+            .connect(lifetime)
+            .subscribe(
+                VirtualFileManager.VFS_CHANGES,
+                RootFilteredVfsSignal(vfsCounter),
+            )
     }
 
     fun sample(
@@ -57,28 +61,29 @@ internal object EpochSignalApiContract {
         )
     }
 
-    private class RootFilteredVfsSignal(
-        private val counter: EpochVfsMetadataCounter,
-    ) : BulkFileListener {
+    private class RootFilteredVfsSignal(private val counter: EpochVfsMetadataCounter) : BulkFileListener {
         override fun after(events: List<VFileEvent>) {
             counter.recordEvents(events.map(::observeEvent))
         }
 
-        private fun observeEvent(event: VFileEvent): EpochVfsObservedEvent = when (event) {
-            is VFileMoveEvent -> EpochVfsObservedEvent.Move(
-                java.nio.file.Path.of(event.oldPath),
-                java.nio.file.Path.of(event.newPath),
-            )
-            is VFilePropertyChangeEvent -> if (event.isRename) {
-                EpochVfsObservedEvent.Rename(
-                    java.nio.file.Path.of(event.oldPath),
-                    java.nio.file.Path.of(event.newPath),
-                )
-            } else {
-                EpochVfsObservedEvent.Change(java.nio.file.Path.of(event.path))
+        private fun observeEvent(event: VFileEvent): EpochVfsObservedEvent =
+            when (event) {
+                is VFileMoveEvent ->
+                    EpochVfsObservedEvent.Move(
+                        java.nio.file.Path.of(event.oldPath),
+                        java.nio.file.Path.of(event.newPath),
+                    )
+                is VFilePropertyChangeEvent ->
+                    if (event.isRename) {
+                        EpochVfsObservedEvent.Rename(
+                            java.nio.file.Path.of(event.oldPath),
+                            java.nio.file.Path.of(event.newPath),
+                        )
+                    } else {
+                        EpochVfsObservedEvent.Change(java.nio.file.Path.of(event.path))
+                    }
+                else -> EpochVfsObservedEvent.Change(java.nio.file.Path.of(event.path))
             }
-            else -> EpochVfsObservedEvent.Change(java.nio.file.Path.of(event.path))
-        }
     }
 }
 
@@ -121,10 +126,18 @@ internal data class EpochCaseDocument(
 )
 
 @Serializable
-internal enum class EpochReportAuthority { READ_EPOCH }
+internal enum class EpochReportAuthority {
+    READ_EPOCH
+}
 
 @Serializable
-internal enum class EpochSignalCategory { PROJECT_MODEL, PSI, VFS, ROOT_MODEL, DUMB_MODE }
+internal enum class EpochSignalCategory {
+    PROJECT_MODEL,
+    PSI,
+    VFS,
+    ROOT_MODEL,
+    DUMB_MODE,
+}
 
 @Serializable
 internal enum class EpochCaseId {
@@ -150,13 +163,22 @@ internal enum class EpochProjectModelTransition {
 }
 
 @Serializable
-internal enum class EpochDumbModeState { SMART, DUMB }
+internal enum class EpochDumbModeState {
+    SMART,
+    DUMB,
+}
 
 @Serializable
-internal enum class EpochDumbModeTransition { SMART_TO_DUMB, DUMB_TO_SMART }
+internal enum class EpochDumbModeTransition {
+    SMART_TO_DUMB,
+    DUMB_TO_SMART,
+}
 
 @Serializable
-internal enum class EpochSampleRelation { UNCHANGED, CHANGED }
+internal enum class EpochSampleRelation {
+    UNCHANGED,
+    CHANGED,
+}
 
 internal enum class EpochLedgerFailure {
     MALFORMED_DOCUMENT,
@@ -177,64 +199,73 @@ internal sealed interface EpochLedgerAdmission {
 }
 
 internal object EpochSignalLedgerContract {
-    val document: IdeEpochSignalLedgerDocument = IdeEpochSignalLedgerDocument(
-        schemaVersion = 1,
-        authority = EpochReportAuthority.READ_EPOCH,
-        ideBuild = "262.9437.185",
-        signals = canonicalEpochSignals(),
-        rejectedConstantZeroAuthorities = listOf(
-            "VirtualFileManager.modificationCount",
-            "VirtualFileManager.structureModificationCount",
-        ),
-        cases = canonicalEpochCases(),
-        vfsRefreshCount = 0,
-        gradleImportCount = 0,
-        repositoryWalkCount = 0,
-        sourceHashCount = 0,
-        semanticJobCount = 0,
-        edtWorkCount = 0,
-        blockingWaitCount = 0,
-    )
+    val document: IdeEpochSignalLedgerDocument =
+        IdeEpochSignalLedgerDocument(
+            schemaVersion = 1,
+            authority = EpochReportAuthority.READ_EPOCH,
+            ideBuild = "262.9437.185",
+            signals = canonicalEpochSignals(),
+            rejectedConstantZeroAuthorities =
+                listOf(
+                    "VirtualFileManager.modificationCount",
+                    "VirtualFileManager.structureModificationCount",
+                ),
+            cases = canonicalEpochCases(),
+            vfsRefreshCount = 0,
+            gradleImportCount = 0,
+            repositoryWalkCount = 0,
+            sourceHashCount = 0,
+            semanticJobCount = 0,
+            edtWorkCount = 0,
+            blockingWaitCount = 0,
+        )
 
-    val canonicalBytes: String = EPOCH_JSON.encodeToString(
-        IdeEpochSignalLedgerDocument.serializer(),
-        document,
-    ) + "\n"
+    val canonicalBytes: String =
+        EPOCH_JSON.encodeToString(
+            IdeEpochSignalLedgerDocument.serializer(),
+            document,
+        ) + "\n"
 
-    fun encode(document: IdeEpochSignalLedgerDocument): String = EPOCH_JSON.encodeToString(
-        IdeEpochSignalLedgerDocument.serializer(),
-        document,
-    ) + "\n"
+    fun encode(document: IdeEpochSignalLedgerDocument): String =
+        EPOCH_JSON.encodeToString(
+            IdeEpochSignalLedgerDocument.serializer(),
+            document,
+        ) + "\n"
 
     /**
      * Proof transition: `String -> EpochLedgerAdmission`.
      *
-     * Establishes the exact generated epoch-signal policy READ_EPOCH document, ordered signals and cases,
-     * 22 total samples, rejected constant-zero authorities, and zero forbidden work. Raw JSON is
-     * permitted only at the generated report boundary; [EpochLedgerFailure] closes rejection.
+     * Establishes the exact generated epoch-signal policy READ_EPOCH document, ordered signals and cases, 22 total
+     * samples, rejected constant-zero authorities, and zero forbidden work. Raw JSON is permitted only at the generated
+     * report boundary; [EpochLedgerFailure] closes rejection.
      */
     fun admit(raw: String): EpochLedgerAdmission {
-        val decoded = try {
-            EPOCH_JSON.decodeFromString(IdeEpochSignalLedgerDocument.serializer(), raw)
-        } catch (_: SerializationException) {
-            return EpochLedgerAdmission.Rejected(EpochLedgerFailure.MALFORMED_DOCUMENT)
-        } catch (_: IllegalArgumentException) {
-            return EpochLedgerAdmission.Rejected(EpochLedgerFailure.MALFORMED_DOCUMENT)
-        }
-        val failure = when {
-            decoded.signals != document.signals -> EpochLedgerFailure.SIGNAL_SET_MISMATCH
-            decoded.rejectedConstantZeroAuthorities != document.rejectedConstantZeroAuthorities ->
-                EpochLedgerFailure.CONSTANT_ZERO_AUTHORITY_NOT_REJECTED
-            decoded.copy(signals = document.signals, rejectedConstantZeroAuthorities =
-                document.rejectedConstantZeroAuthorities, cases = document.cases) != document ->
-                EpochLedgerFailure.FORBIDDEN_EFFECT_OBSERVED
-            decoded.cases != document.cases -> EpochLedgerFailure.CASE_SET_MISMATCH
-            raw != EPOCH_JSON.encodeToString(
-                IdeEpochSignalLedgerDocument.serializer(),
-                decoded,
-            ) + "\n" -> EpochLedgerFailure.NON_CANONICAL_DOCUMENT
-            else -> null
-        }
+        val decoded =
+            try {
+                EPOCH_JSON.decodeFromString(IdeEpochSignalLedgerDocument.serializer(), raw)
+            } catch (_: SerializationException) {
+                return EpochLedgerAdmission.Rejected(EpochLedgerFailure.MALFORMED_DOCUMENT)
+            } catch (_: IllegalArgumentException) {
+                return EpochLedgerAdmission.Rejected(EpochLedgerFailure.MALFORMED_DOCUMENT)
+            }
+        val failure =
+            when {
+                decoded.signals != document.signals -> EpochLedgerFailure.SIGNAL_SET_MISMATCH
+                decoded.rejectedConstantZeroAuthorities != document.rejectedConstantZeroAuthorities ->
+                    EpochLedgerFailure.CONSTANT_ZERO_AUTHORITY_NOT_REJECTED
+                decoded.copy(
+                    signals = document.signals,
+                    rejectedConstantZeroAuthorities = document.rejectedConstantZeroAuthorities,
+                    cases = document.cases,
+                ) != document -> EpochLedgerFailure.FORBIDDEN_EFFECT_OBSERVED
+                decoded.cases != document.cases -> EpochLedgerFailure.CASE_SET_MISMATCH
+                raw !=
+                    EPOCH_JSON.encodeToString(
+                        IdeEpochSignalLedgerDocument.serializer(),
+                        decoded,
+                    ) + "\n" -> EpochLedgerFailure.NON_CANONICAL_DOCUMENT
+                else -> null
+            }
         return if (failure == null) {
             EpochLedgerAdmission.Admitted(decoded, decoded.cases.sumOf(EpochCaseDocument::sampleCount))
         } else {

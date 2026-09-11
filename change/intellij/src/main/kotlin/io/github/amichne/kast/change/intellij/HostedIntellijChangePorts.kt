@@ -12,7 +12,8 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.ExistingProjectValidation
 import io.github.amichne.kast.workspace.intellij.read.HostedProjectAdmissionFailure
 
-class HostedChangePorts private constructor(
+class HostedChangePorts
+private constructor(
     val sourceObserver: AddDeclarationSourceObserver,
     val sourceWriter: AddDeclarationSourceWriter,
     val sourceRollback: AddDeclarationSourceRollback,
@@ -26,18 +27,20 @@ class HostedChangePorts private constructor(
             sourceRollback: AddDeclarationSourceRollback,
             intentCompiler: InstalledAddDeclarationIntentCompiler,
             semanticObserver: HostedAddDeclarationSemanticObserver,
-        ): HostedChangePorts = HostedChangePorts(
-            sourceObserver,
-            sourceWriter,
-            sourceRollback,
-            intentCompiler,
-            semanticObserver,
-        )
+        ): HostedChangePorts =
+            HostedChangePorts(
+                sourceObserver,
+                sourceWriter,
+                sourceRollback,
+                intentCompiler,
+                semanticObserver,
+            )
     }
 }
 
 sealed interface HostedChangeAdmission {
     data class Admitted(val ports: HostedChangePorts) : HostedChangeAdmission
+
     data class Rejected(val failure: HostedProjectAdmissionFailure) : HostedChangeAdmission
 }
 
@@ -48,22 +51,25 @@ fun admitHostedIntellijChangePorts(
     compatibilityCandidate: IdeHostCompatibilityCandidate,
     compatibilityPolicy: IdeHostCompatibilityPolicy,
 ): HostedChangeAdmission {
-    when (val validation = ExistingProjectValidation.validate(
-        project,
-        root,
-        compatibilityCandidate,
-        compatibilityPolicy,
-    )) {
+    when (
+        val validation =
+            ExistingProjectValidation.validate(
+                project,
+                root,
+                compatibilityCandidate,
+                compatibilityPolicy,
+            )
+    ) {
         ExistingProjectValidation.Validated -> Unit
-        is ExistingProjectValidation.Rejected -> return HostedChangeAdmission.Rejected(
-            HostedProjectAdmissionFailure.ProjectRejected(validation.failure),
-        )
+        is ExistingProjectValidation.Rejected ->
+            return HostedChangeAdmission.Rejected(HostedProjectAdmissionFailure.ProjectRejected(validation.failure))
     }
-    fun adapter(): IntellijChangeSourceAdapter? = if (project.isDisposed) {
-        null
-    } else {
-        IntellijChangeSourceAdapter(project)
-    }
+    fun adapter(): IntellijChangeSourceAdapter? =
+        if (project.isDisposed) {
+            null
+        } else {
+            IntellijChangeSourceAdapter(project)
+        }
     return HostedChangeAdmission.Admitted(
         HostedChangePorts.retained(
             sourceObserver = { source ->
@@ -81,6 +87,6 @@ fun admitHostedIntellijChangePorts(
             semanticObserver = { workspace, plan ->
                 observeHostedAddDeclaration(project, root, workspace, plan)
             },
-        ),
+        )
     )
 }

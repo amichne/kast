@@ -33,7 +33,6 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
-import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
@@ -43,15 +42,16 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
+import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import java.nio.file.Path
 
 class NativeSymbolDedupReviewRegressionTest {
     @Test
@@ -60,31 +60,31 @@ class NativeSymbolDedupReviewRegressionTest {
         val file = LightVirtualFile("ReviewItem.kt")
         val item = FakeItem("ReviewItem")
         val scope = acceptingScope()
-        val query = IntellijNativeDiscoveryQuery(
-            itemFile = { IntellijDiscoveryItemFileResult.Found(file) },
-            projector = { candidateRequest, _, _ ->
-                val resultKind = (
-                    candidateRequest.target as SymbolDiscoveryTarget.Name
-                ).resultKind
-                SymbolDiscoveryCandidate.fromBoundary(
-                    kind = resultKind,
-                    rawName = item.candidateName,
-                    lease = candidateRequest.scope.lease,
-                    nativePath = Path.of("/workspace/src/ReviewItem.kt"),
-                    virtualFileUrl = file.url,
-                    rawOffset = 7,
-                )
-            },
-            environmentState = { IntellijDiscoveryEnvironmentState.READY },
-            cancellationCheck = {},
-            clock = FixedDiscoveryClock,
-        )
+        val query =
+            IntellijNativeDiscoveryQuery(
+                itemFile = { IntellijDiscoveryItemFileResult.Found(file) },
+                projector = { candidateRequest, _, _ ->
+                    val resultKind = (candidateRequest.target as SymbolDiscoveryTarget.Name).resultKind
+                    SymbolDiscoveryCandidate.fromBoundary(
+                        kind = resultKind,
+                        rawName = item.candidateName,
+                        lease = candidateRequest.scope.lease,
+                        nativePath = Path.of("/workspace/src/ReviewItem.kt"),
+                        virtualFileUrl = file.url,
+                        rawOffset = 7,
+                    )
+                },
+                environmentState = { IntellijDiscoveryEnvironmentState.READY },
+                cancellationCheck = {},
+                clock = FixedDiscoveryClock,
+            )
 
-        val execution = query.discover(
-            compiledScope = compiledScope(request, scope),
-            request = request,
-            contributors = listOf(DuplicateContributor(item)),
-        ) as IntellijNativeDiscoveryExecution.Produced
+        val execution =
+            query.discover(
+                compiledScope = compiledScope(request, scope),
+                request = request,
+                contributors = listOf(DuplicateContributor(item)),
+            ) as IntellijNativeDiscoveryExecution.Produced
 
         val complete = execution.outcome as SymbolDiscoveryOutcome.Complete
         assertEquals(1, complete.batch.candidates.size)
@@ -94,100 +94,120 @@ class NativeSymbolDedupReviewRegressionTest {
     fun `duplicate relation event at the record limit preserves exact cardinality`() {
         val request = relationRequest()
         val scope = acceptingScope()
-        val compiledScope = CompiledIntellijSearchScope(
-            lease = request.selector.lease,
-            scope = request.selector.scope,
-            sourceRoots = emptyList(),
-            nativeScope = scope,
-        )
+        val compiledScope =
+            CompiledIntellijSearchScope(
+                lease = request.selector.lease,
+                scope = request.selector.scope,
+                sourceRoots = emptyList(),
+                nativeScope = scope,
+            )
         val event = FakeRelationEvent
-        val query = IntellijNativeRelationQuery(
-            search = IntellijNativeRelationSearch { _, _, consumer ->
-                assertTrue(consumer(event))
-                assertTrue(consumer(event))
-                IntellijNativeRelationSearchResult.Terminal()
-            },
-            projector = IntellijRelationFactProjector { relationRequest, _ ->
-                Refinement.Refined(relationFact(relationRequest))
-            },
-            environmentState = { IntellijDiscoveryEnvironmentState.READY },
-            cancellationCheck = {},
-            clock = FixedRelationClock,
-        )
+        val query =
+            IntellijNativeRelationQuery(
+                search =
+                    IntellijNativeRelationSearch { _, _, consumer ->
+                        assertTrue(consumer(event))
+                        assertTrue(consumer(event))
+                        IntellijNativeRelationSearchResult.Terminal()
+                    },
+                projector =
+                    IntellijRelationFactProjector { relationRequest, _ ->
+                        Refinement.Refined(relationFact(relationRequest))
+                    },
+                environmentState = { IntellijDiscoveryEnvironmentState.READY },
+                cancellationCheck = {},
+                clock = FixedRelationClock,
+            )
 
         val execution = query.read(compiledScope, request) as IntellijNativeRelationExecution.Produced
         val complete = execution.outcome as NativeRelationOutcome.Complete
         assertEquals(1, complete.exactCount.value)
     }
 
-    private fun discoveryRequest(): SymbolDiscoveryRequest = SymbolDiscoveryRequest(
-        scope = SymbolSearchScopeRequest(lease(), workspaceScope()),
-        target = SymbolDiscoveryTarget.Name(
-            kind = SymbolNameDiscoveryKind.SYMBOL,
-            pattern = SymbolDiscoveryPattern.parse("ReviewItem").refined(),
-            match = SymbolDiscoveryMatch.FUZZY,
-        ),
-        budget = SymbolDiscoveryBudget(
-            resources = ResourceBudget(
-                resultLimit = ResultLimit.parse(1).refined(),
-                workUnitLimit = WorkUnitLimit.parse(20L).refined(),
-                elapsedTimeLimit = ElapsedTimeLimitMillis.parse(1_000L).refined(),
-            ),
-            returnedBytes = SymbolDiscoveryByteLimit.parse(10_000L).refined(),
-        ),
-    )
+    private fun discoveryRequest(): SymbolDiscoveryRequest =
+        SymbolDiscoveryRequest(
+            scope = SymbolSearchScopeRequest(lease(), workspaceScope()),
+            target =
+                SymbolDiscoveryTarget.Name(
+                    kind = SymbolNameDiscoveryKind.SYMBOL,
+                    pattern = SymbolDiscoveryPattern.parse("ReviewItem").refined(),
+                    match = SymbolDiscoveryMatch.FUZZY,
+                ),
+            budget =
+                SymbolDiscoveryBudget(
+                    resources =
+                        ResourceBudget(
+                            resultLimit = ResultLimit.parse(1).refined(),
+                            workUnitLimit = WorkUnitLimit.parse(20L).refined(),
+                            elapsedTimeLimit = ElapsedTimeLimitMillis.parse(1_000L).refined(),
+                        ),
+                    returnedBytes = SymbolDiscoveryByteLimit.parse(10_000L).refined(),
+                ),
+        )
 
-    private fun relationRequest(): NativeRelationRequest = NativeRelationRequest(
-        selector = selector(),
-        family = NativeRelationFamily.REFERENCES,
-        budget = NativeRelationBudget(
-            resources = ResourceBudget(
-                resultLimit = ResultLimit.parse(1).refined(),
-                workUnitLimit = WorkUnitLimit.parse(20L).refined(),
-                elapsedTimeLimit = ElapsedTimeLimitMillis.parse(1_000L).refined(),
-            ),
-            returnedBytes = NativeRelationByteLimit.parse(10_000L).refined(),
-        ),
-    )
+    private fun relationRequest(): NativeRelationRequest =
+        NativeRelationRequest(
+            selector = selector(),
+            family = NativeRelationFamily.REFERENCES,
+            budget =
+                NativeRelationBudget(
+                    resources =
+                        ResourceBudget(
+                            resultLimit = ResultLimit.parse(1).refined(),
+                            workUnitLimit = WorkUnitLimit.parse(20L).refined(),
+                            elapsedTimeLimit = ElapsedTimeLimitMillis.parse(1_000L).refined(),
+                        ),
+                    returnedBytes = NativeRelationByteLimit.parse(10_000L).refined(),
+                ),
+        )
 
     private fun selector(): ExactDeclarationSelector {
         val request = discoveryRequest()
-        val candidate = SymbolDiscoveryCandidate.fromBoundary(
-            kind = SymbolDiscoveryKind.SYMBOL,
-            rawName = "subject",
-            lease = request.scope.lease,
-            nativePath = Path.of("/workspace/src/Subject.kt"),
-            virtualFileUrl = "file:///workspace/src/Subject.kt",
-            rawOffset = 5,
-        ).refined()
-        val batch = SymbolDiscoveryBatch.create(
-            request = request,
-            candidates = listOf(candidate),
-            encodedBytes = candidate.projectedUtf8Size(),
-            examinedWorkUnits = SymbolDiscoveryWorkCount.parse(1L).refined(),
-            timings = SymbolDiscoveryTimings(
-                nativeQuery = SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
-                projection = SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
-            ),
-        ).refined()
+        val candidate =
+            SymbolDiscoveryCandidate.fromBoundary(
+                    kind = SymbolDiscoveryKind.SYMBOL,
+                    rawName = "subject",
+                    lease = request.scope.lease,
+                    nativePath = Path.of("/workspace/src/Subject.kt"),
+                    virtualFileUrl = "file:///workspace/src/Subject.kt",
+                    rawOffset = 5,
+                )
+                .refined()
+        val batch =
+            SymbolDiscoveryBatch.create(
+                    request = request,
+                    candidates = listOf(candidate),
+                    encodedBytes = candidate.projectedUtf8Size(),
+                    examinedWorkUnits = SymbolDiscoveryWorkCount.parse(1L).refined(),
+                    timings =
+                        SymbolDiscoveryTimings(
+                            nativeQuery = SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
+                            projection = SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
+                        ),
+                )
+                .refined()
         return ExactDeclarationSelector.issue(
-            SymbolDiscoverySelection.select(batch, 0).refined(),
-            evidence("/workspace/src/Subject.kt", "subject", 5),
-        ).refined()
+                SymbolDiscoverySelection.select(batch, 0).refined(),
+                evidence("/workspace/src/Subject.kt", "subject", 5),
+            )
+            .refined()
     }
 
     private fun relationFact(request: NativeRelationRequest): NativeRelationFact {
         val related = evidence("/workspace/src/Related.kt", "related", 11)
         return NativeRelationFact.create(
-            subject = request.selector,
-            family = request.family,
-            related = ExactRelationEndpoint.bind(request.selector, related),
-            occurrence = NativeRelationOccurrence.fromBoundary(
-                file = fileIdentity("/workspace/src/Usage.kt"),
-                rawStartInclusive = 20,
-                rawEndExclusive = 27,
-            ).refined(),
-        ).refined()
+                subject = request.selector,
+                family = request.family,
+                related = ExactRelationEndpoint.bind(request.selector, related),
+                occurrence =
+                    NativeRelationOccurrence.fromBoundary(
+                            file = fileIdentity("/workspace/src/Usage.kt"),
+                            rawStartInclusive = 20,
+                            rawEndExclusive = 27,
+                        )
+                        .refined(),
+            )
+            .refined()
     }
 
     private fun evidence(
@@ -196,56 +216,59 @@ class NativeSymbolDedupReviewRegressionTest {
         start: Int,
     ): ExactDeclarationEvidence =
         ExactDeclarationEvidence.fromBoundary(
-            file = fileIdentity(path),
-            rawStartInclusive = start,
-            rawEndExclusive = start + name.length,
-            rawName = name,
-            rawQualifiedIdentity = "review.$name",
-            rawRuntimeType = "review.Declaration",
-        ).refined()
+                file = fileIdentity(path),
+                rawStartInclusive = start,
+                rawEndExclusive = start + name.length,
+                rawName = name,
+                rawQualifiedIdentity = "review.$name",
+                rawRuntimeType = "review.Declaration",
+            )
+            .refined()
 
     private fun fileIdentity(path: String) =
         io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity.fromBoundary(
-            workspaceRoot(),
-            Path.of(path),
-            "file://$path",
-        ).refined()
+                workspaceRoot(),
+                Path.of(path),
+                "file://$path",
+            )
+            .refined()
 
     private fun compiledScope(
         request: SymbolDiscoveryRequest,
         scope: GlobalSearchScope,
-    ) = CompiledIntellijSearchScope(
-        lease = request.scope.lease,
-        scope = request.scope.scope,
-        sourceRoots = emptyList(),
-        nativeScope = scope,
-    )
+    ) =
+        CompiledIntellijSearchScope(
+            lease = request.scope.lease,
+            scope = request.scope.scope,
+            sourceRoots = emptyList(),
+            nativeScope = scope,
+        )
 
-    private fun acceptingScope(): GlobalSearchScope = object : GlobalSearchScope() {
-        override fun contains(file: VirtualFile): Boolean = true
+    private fun acceptingScope(): GlobalSearchScope =
+        object : GlobalSearchScope() {
+            override fun contains(file: VirtualFile): Boolean = true
 
-        override fun isSearchInModuleContent(aModule: Module): Boolean = true
+            override fun isSearchInModuleContent(aModule: Module): Boolean = true
 
-        override fun isSearchInLibraries(): Boolean = false
-    }
+            override fun isSearchInLibraries(): Boolean = false
+        }
 
-    private fun workspaceScope() = SymbolSearchScope.Workspace(
-        sourceKinds = SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-        generatedSources = SymbolGeneratedSourcePolicy.INCLUDE,
-        libraries = SymbolLibraryPolicy.EXCLUDE,
-    )
+    private fun workspaceScope() =
+        SymbolSearchScope.Workspace(
+            sourceKinds = SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+            generatedSources = SymbolGeneratedSourcePolicy.INCLUDE,
+            libraries = SymbolLibraryPolicy.EXCLUDE,
+        )
 
-    private fun lease() = SemanticReadLease(
-        workspaceRoot = workspaceRoot(),
-        generation = EvidenceGeneration.parse(31L).refined(),
-    )
+    private fun lease() =
+        SemanticReadLease(
+            workspaceRoot = workspaceRoot(),
+            generation = EvidenceGeneration.parse(31L).refined(),
+        )
 
-    private fun workspaceRoot() =
-        CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
+    private fun workspaceRoot() = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
 
-    private class DuplicateContributor(
-        private val item: FakeItem,
-    ) : ChooseByNameContributorEx {
+    private class DuplicateContributor(private val item: FakeItem) : ChooseByNameContributorEx {
         override fun processNames(
             processor: Processor<in String>,
             scope: GlobalSearchScope,

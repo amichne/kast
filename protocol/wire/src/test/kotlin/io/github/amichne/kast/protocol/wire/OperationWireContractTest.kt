@@ -37,21 +37,13 @@ class OperationWireContractTest {
         assertEquals(CanonicalOperation.entries, table.bindings.map { it.operation })
         assertEquals(
             OperationWireTableConstruction.Rejected(
-                setOf(
-                    OperationWireTableFailure.MissingSerializerBinding(
-                        CanonicalOperation.CHANGE_RECOVER,
-                    ),
-                ),
+                setOf(OperationWireTableFailure.MissingSerializerBinding(CanonicalOperation.CHANGE_RECOVER))
             ),
             OperationWireTable.create(bindings.dropLast(1)),
         )
         assertEquals(
             OperationWireTableConstruction.Rejected(
-                setOf(
-                    OperationWireTableFailure.DuplicateSerializerBinding(
-                        CanonicalOperation.INDEX_SYNC,
-                    ),
-                ),
+                setOf(OperationWireTableFailure.DuplicateSerializerBinding(CanonicalOperation.INDEX_SYNC))
             ),
             OperationWireTable.create(bindings + bindings.first()),
         )
@@ -67,16 +59,18 @@ class OperationWireContractTest {
             assertEquals(binding.operation, admittedRequest.operation)
             assertEquals(WireDecoding.Decoded(request), binding.decodeRequest(admittedRequest))
 
-            val evidence = EvidenceEnvelope(
-                operation = binding.operation.id,
-                generation = EvidenceGeneration.parse(17).refinedValue(),
-                payload = TestResult("result:${binding.operation.id.value}"),
-            )
-            val outcomes = listOf(
-                OperationOutcome.Complete(evidence),
-                OperationOutcome.Qualified(evidence, TestQualification.TRUNCATED),
-                OperationOutcome.Rejected(TestRejection.BLOCKED),
-            )
+            val evidence =
+                EvidenceEnvelope(
+                    operation = binding.operation.id,
+                    generation = EvidenceGeneration.parse(17).refinedValue(),
+                    payload = TestResult("result:${binding.operation.id.value}"),
+                )
+            val outcomes =
+                listOf(
+                    OperationOutcome.Complete(evidence),
+                    OperationOutcome.Qualified(evidence, TestQualification.TRUNCATED),
+                    OperationOutcome.Rejected(TestRejection.BLOCKED),
+                )
             outcomes.forEach { outcome ->
                 val encodedOutcome = binding.encodeOutcome(outcome).encodedDocument()
                 assertEquals(WireDecoding.Decoded(outcome), binding.decodeOutcome(encodedOutcome))
@@ -90,22 +84,20 @@ class OperationWireContractTest {
         val encoded = binding.encodeRequest(TestRequest("request")).encodedDocument()
         val unknownSchema = schemaIdentity("kast.unknown.v1")
         val withUnknownSchema = encoded.replace(binding.schema.value, unknownSchema.value)
-        val admittedUnknownSchema =
-            WireRequestEnvelope.admit(withUnknownSchema).admittedRequest()
+        val admittedUnknownSchema = WireRequestEnvelope.admit(withUnknownSchema).admittedRequest()
         assertEquals(
             WireDecoding.Rejected(WireFailure.UnknownSchema(unknownSchema)),
             binding.decodeRequest(admittedUnknownSchema),
         )
 
         val unknownOperation = "symbol.missing"
-        val withUnknownOperation = encoded.replace(
-            "\"operation\":\"${binding.operation.id.value}\"",
-            "\"operation\":\"$unknownOperation\"",
-        )
+        val withUnknownOperation =
+            encoded.replace(
+                "\"operation\":\"${binding.operation.id.value}\"",
+                "\"operation\":\"$unknownOperation\"",
+            )
         assertEquals(
-            WireRequestAdmission.Rejected(
-                WireFailure.UnknownOperation(operationId = operationId(unknownOperation)),
-            ),
+            WireRequestAdmission.Rejected(WireFailure.UnknownOperation(operationId = operationId(unknownOperation))),
             WireRequestEnvelope.admit(withUnknownOperation),
         )
     }
@@ -113,11 +105,12 @@ class OperationWireContractTest {
     @Test
     fun `request admission rejects outcome bodies before dispatch`() {
         val binding = canonicalBindings().first()
-        val evidence = EvidenceEnvelope(
-            operation = binding.operation.id,
-            generation = EvidenceGeneration.parse(17).refinedValue(),
-            payload = TestResult("result"),
-        )
+        val evidence =
+            EvidenceEnvelope(
+                operation = binding.operation.id,
+                generation = EvidenceGeneration.parse(17).refinedValue(),
+                payload = TestResult("result"),
+            )
         val outcome = binding.encodeOutcome(OperationOutcome.Complete(evidence)).encodedDocument()
 
         assertEquals(
@@ -125,7 +118,7 @@ class OperationWireContractTest {
                 WireFailure.UnexpectedBody(
                     expected = setOf(WireBodyKind.REQUEST),
                     observed = WireBodyKind.COMPLETE,
-                ),
+                )
             ),
             WireRequestEnvelope.admit(outcome),
         )
@@ -143,96 +136,94 @@ class OperationWireContractTest {
         )
     }
 
-    private fun canonicalBindings(): List<
-        OperationWireBinding<TestRequest, TestResult, TestQualification, TestRejection>,
-        > {
+    private fun canonicalBindings():
+        List<OperationWireBinding<TestRequest, TestResult, TestQualification, TestRejection>> {
         val factory = GeneratedWireCodecFactory(wireJson)
         return CanonicalOperation.entries.map { operation ->
-            val definition = OperationDefinition(
-                operation = operation,
-                types = OperationTypeBinding(
-                    requestType = TestRequest::class,
-                    resultType = TestResult::class,
-                    qualificationType = TestQualification::class,
-                    rejectionType = TestRejection::class,
-                    schema = schemaIdentity("kast.${operation.id.value}.v1"),
-                ),
-                requiredCapability = capabilityId("semantic.read"),
-                capabilityType = TestCapability::class,
-                lane = OperationLane.INDEX_LOOKUP,
-                effect = OperationEffect.INTELLIJ_READ,
-                cost = OperationCost.BOUNDED_READ,
-                scope = OperationScope.SYMBOL,
-                budget = resourceBudget(),
-                completeness = CompletenessPolicy.QUALIFIED_ALLOWED,
-                hostedExposure = HostedExposure.UNAVAILABLE,
-            )
+            val definition =
+                OperationDefinition(
+                    operation = operation,
+                    types =
+                        OperationTypeBinding(
+                            requestType = TestRequest::class,
+                            resultType = TestResult::class,
+                            qualificationType = TestQualification::class,
+                            rejectionType = TestRejection::class,
+                            schema = schemaIdentity("kast.${operation.id.value}.v1"),
+                        ),
+                    requiredCapability = capabilityId("semantic.read"),
+                    capabilityType = TestCapability::class,
+                    lane = OperationLane.INDEX_LOOKUP,
+                    effect = OperationEffect.INTELLIJ_READ,
+                    cost = OperationCost.BOUNDED_READ,
+                    scope = OperationScope.SYMBOL,
+                    budget = resourceBudget(),
+                    completeness = CompletenessPolicy.QUALIFIED_ALLOWED,
+                    hostedExposure = HostedExposure.UNAVAILABLE,
+                )
             OperationWireBinding(
                 definition = definition,
-                serializers = GeneratedOperationSerializers(
-                    request = factory.create(TestRequest.serializer()),
-                    result = factory.create(TestResult.serializer()),
-                    qualification = factory.create(TestQualification.serializer()),
-                    rejection = factory.create(TestRejection.serializer()),
-                ),
+                serializers =
+                    GeneratedOperationSerializers(
+                        request = factory.create(TestRequest.serializer()),
+                        result = factory.create(TestResult.serializer()),
+                        qualification = factory.create(TestQualification.serializer()),
+                        rejection = factory.create(TestRejection.serializer()),
+                    ),
             )
         }
     }
 
-    private fun resourceBudget(): ResourceBudget = ResourceBudget(
-        resultLimit = ResultLimit.parse(250).refinedValue(),
-        workUnitLimit = WorkUnitLimit.parse(10_000).refinedValue(),
-        elapsedTimeLimit = ElapsedTimeLimitMillis.parse(5_000).refinedValue(),
-    )
+    private fun resourceBudget(): ResourceBudget =
+        ResourceBudget(
+            resultLimit = ResultLimit.parse(250).refinedValue(),
+            workUnitLimit = WorkUnitLimit.parse(10_000).refinedValue(),
+            elapsedTimeLimit = ElapsedTimeLimitMillis.parse(5_000).refinedValue(),
+        )
 
     private fun capabilityId(raw: String): CapabilityId = CapabilityId.parse(raw).refinedValue()
 
-    private fun operationId(raw: String) =
-        io.github.amichne.kast.kernel.OperationId.parse(raw).refinedValue()
+    private fun operationId(raw: String) = io.github.amichne.kast.kernel.OperationId.parse(raw).refinedValue()
 
     private fun schemaIdentity(raw: String): SchemaIdentity = SchemaIdentity.parse(raw).refinedValue()
 
-    private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error("Expected refined value, got $failure")
-    }
+    private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error("Expected refined value, got $failure")
+        }
 
-    private fun WireEncoding.encodedDocument(): String = when (this) {
-        is WireEncoding.Encoded -> document
-        is WireEncoding.Rejected -> error("Expected encoded document, got $failure")
-    }
+    private fun WireEncoding.encodedDocument(): String =
+        when (this) {
+            is WireEncoding.Encoded -> document
+            is WireEncoding.Rejected -> error("Expected encoded document, got $failure")
+        }
 
-    private fun WireRequestAdmission.admittedRequest(): AdmittedWireRequest = when (this) {
-        is WireRequestAdmission.Admitted -> request
-        is WireRequestAdmission.Rejected -> error("Expected admitted request, got $failure")
-    }
+    private fun WireRequestAdmission.admittedRequest(): AdmittedWireRequest =
+        when (this) {
+            is WireRequestAdmission.Admitted -> request
+            is WireRequestAdmission.Rejected -> error("Expected admitted request, got $failure")
+        }
 
-    @Serializable
-    private data class TestRequest(
-        val query: String,
-    ) : OperationRequest
+    @Serializable private data class TestRequest(val query: String) : OperationRequest
 
-    @Serializable
-    private data class TestResult(
-        val value: String,
-    ) : OperationResult
+    @Serializable private data class TestResult(val value: String) : OperationResult
 
-    private data class TestCapability(
-        override val id: CapabilityId,
-    ) : CapabilityMarker
+    private data class TestCapability(override val id: CapabilityId) : CapabilityMarker
 
     @Serializable
     private enum class TestQualification : OperationQualification {
-        TRUNCATED,
+        TRUNCATED
     }
 
     @Serializable
     private enum class TestRejection : OperationRejection {
-        BLOCKED,
+        BLOCKED
     }
 
-    private fun OperationWireTableConstruction.createdTable(): OperationWireTable = when (this) {
-        is OperationWireTableConstruction.Created -> table
-        is OperationWireTableConstruction.Rejected -> error("Expected table, got $failures")
-    }
+    private fun OperationWireTableConstruction.createdTable(): OperationWireTable =
+        when (this) {
+            is OperationWireTableConstruction.Created -> table
+            is OperationWireTableConstruction.Rejected -> error("Expected table, got $failures")
+        }
 }

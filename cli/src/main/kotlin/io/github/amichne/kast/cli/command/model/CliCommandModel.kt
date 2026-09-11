@@ -13,9 +13,15 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
-enum class CliLocalMetadataCommand { VERSION, SCHEMA }
+enum class CliLocalMetadataCommand {
+    VERSION,
+    SCHEMA,
+}
 
-enum class CliLocalExposure { PUBLIC, INTERNAL }
+enum class CliLocalExposure {
+    PUBLIC,
+    INTERNAL,
+}
 
 enum class CliProductCommand(
     val usage: String,
@@ -56,9 +62,7 @@ enum class CliLifecycleCommand(
 /** One fully refined action selected by the public command graph. */
 sealed interface CliAction {
     sealed interface Local : CliAction {
-        data class Metadata(
-            val command: CliLocalMetadataCommand,
-        ) : Local
+        data class Metadata(val command: CliLocalMetadataCommand) : Local
 
         data object Inspect : Local
 
@@ -78,16 +82,12 @@ sealed interface CliAction {
         ) : Local
     }
 
-    data class Semantic(
-        val request: PreparedCliRequest,
-    ) : CliAction
+    data class Semantic(val request: PreparedCliRequest) : CliAction
 
     sealed interface Lifecycle : CliAction {
         val command: CliLifecycleCommand
 
-        data class Start(
-            val startup: RuntimeStartupRequest,
-        ) : Lifecycle {
+        data class Start(val startup: RuntimeStartupRequest) : Lifecycle {
             override val command: CliLifecycleCommand = CliLifecycleCommand.START
         }
 
@@ -98,15 +98,15 @@ sealed interface CliAction {
         data object Status : Lifecycle {
             override val command: CliLifecycleCommand = CliLifecycleCommand.STATUS
         }
-
     }
 }
 
 /** Closed domain failures produced after Clikt has refined individual option values. */
 sealed interface CliUsageFailure {
     data class PublicTool(val failure: io.github.amichne.kast.appserver.query.PublicToolInputFailure) : CliUsageFailure
+
     enum class Start : CliUsageFailure {
-        OPTIONS_REQUIRE_SEED,
+        OPTIONS_REQUIRE_SEED
     }
 
     enum class RequestDocument : CliUsageFailure {
@@ -115,23 +115,25 @@ sealed interface CliUsageFailure {
     }
 }
 
-internal fun CliUsageFailure.message(): String = when (this) {
-    is CliUsageFailure.PublicTool -> failure.explanation()
-    CliUsageFailure.Start.OPTIONS_REQUIRE_SEED ->
-        "--source-idea-system and --accept-global-index-copy require --cache seed"
-    CliUsageFailure.RequestDocument.REQUIRED ->
-        "semantic commands read one canonical JSON request document from standard input"
-    CliUsageFailure.RequestDocument.REJECTED ->
-        "standard input must be one canonical, bounded request document for this operation"
-}
+internal fun CliUsageFailure.message(): String =
+    when (this) {
+        is CliUsageFailure.PublicTool -> failure.explanation()
+        CliUsageFailure.Start.OPTIONS_REQUIRE_SEED ->
+            "--source-idea-system and --accept-global-index-copy require --cache seed"
+        CliUsageFailure.RequestDocument.REQUIRED ->
+            "semantic commands read one canonical JSON request document from standard input"
+        CliUsageFailure.RequestDocument.REJECTED ->
+            "standard input must be one canonical, bounded request document for this operation"
+    }
 
 internal sealed interface CliRequestDocumentInput {
     data object Absent : CliRequestDocumentInput
+
     data object Rejected : CliRequestDocumentInput
+
     data class Provided(val document: String) : CliRequestDocumentInput
-    data class Deferred(
-        val read: () -> CliRequestDocumentInput,
-    ) : CliRequestDocumentInput
+
+    data class Deferred(val read: () -> CliRequestDocumentInput) : CliRequestDocumentInput
 }
 
 internal sealed interface CliNodeResolution {
@@ -139,23 +141,15 @@ internal sealed interface CliNodeResolution {
 }
 
 internal sealed interface CliActionResolution : CliNodeResolution {
-    data class Selected(
-        val action: CliAction,
-    ) : CliActionResolution
+    data class Selected(val action: CliAction) : CliActionResolution
 
-    data class UsageRejected(
-        val failure: CliUsageFailure,
-    ) : CliActionResolution
+    data class UsageRejected(val failure: CliUsageFailure) : CliActionResolution
 
-    data class ProjectionRejected(
-        val failure: CliProjectionFailure,
-    ) : CliActionResolution
+    data class ProjectionRejected(val failure: CliProjectionFailure) : CliActionResolution
 }
 
 /** One Clikt node whose only result is a typed CLI action resolution. */
-internal abstract class KastCommand(
-    name: String,
-) : BaseCliktCommand<KastCommand>(name) {
+internal abstract class KastCommand(name: String) : BaseCliktCommand<KastCommand>(name) {
     final override val autoCompleteEnvvar: String? = null
 
     abstract fun resolveAction(): CliNodeResolution
@@ -181,56 +175,51 @@ internal class SemanticKastCommand<Request : OperationRequest>(
 ) : KastCommand(name) {
     override fun help(context: com.github.ajalt.clikt.core.Context): String = description
 
-    override fun resolveAction(): CliActionResolution = when (requestInput) {
-        CliRequestDocumentInput.Absent -> CliActionResolution.UsageRejected(
-            CliUsageFailure.RequestDocument.REQUIRED,
-        )
-        CliRequestDocumentInput.Rejected -> CliActionResolution.UsageRejected(
-            CliUsageFailure.RequestDocument.REJECTED,
-        )
-        is CliRequestDocumentInput.Provided -> decode(requestInput.document)
-        is CliRequestDocumentInput.Deferred -> when (val supplied = requestInput.read()) {
-            is CliRequestDocumentInput.Deferred -> CliActionResolution.UsageRejected(
-                CliUsageFailure.RequestDocument.REJECTED,
-            )
-            else -> resolve(supplied)
+    override fun resolveAction(): CliActionResolution =
+        when (requestInput) {
+            CliRequestDocumentInput.Absent ->
+                CliActionResolution.UsageRejected(CliUsageFailure.RequestDocument.REQUIRED)
+            CliRequestDocumentInput.Rejected ->
+                CliActionResolution.UsageRejected(CliUsageFailure.RequestDocument.REJECTED)
+            is CliRequestDocumentInput.Provided -> decode(requestInput.document)
+            is CliRequestDocumentInput.Deferred ->
+                when (val supplied = requestInput.read()) {
+                    is CliRequestDocumentInput.Deferred ->
+                        CliActionResolution.UsageRejected(CliUsageFailure.RequestDocument.REJECTED)
+                    else -> resolve(supplied)
+                }
         }
-    }
 
-    private fun resolve(input: CliRequestDocumentInput): CliActionResolution = when (input) {
-        CliRequestDocumentInput.Absent -> CliActionResolution.UsageRejected(
-            CliUsageFailure.RequestDocument.REQUIRED,
-        )
-        CliRequestDocumentInput.Rejected -> CliActionResolution.UsageRejected(
-            CliUsageFailure.RequestDocument.REJECTED,
-        )
-        is CliRequestDocumentInput.Provided -> decode(input.document)
-        is CliRequestDocumentInput.Deferred -> CliActionResolution.UsageRejected(
-            CliUsageFailure.RequestDocument.REJECTED,
-        )
-    }
+    private fun resolve(input: CliRequestDocumentInput): CliActionResolution =
+        when (input) {
+            CliRequestDocumentInput.Absent ->
+                CliActionResolution.UsageRejected(CliUsageFailure.RequestDocument.REQUIRED)
+            CliRequestDocumentInput.Rejected ->
+                CliActionResolution.UsageRejected(CliUsageFailure.RequestDocument.REJECTED)
+            is CliRequestDocumentInput.Provided -> decode(input.document)
+            is CliRequestDocumentInput.Deferred ->
+                CliActionResolution.UsageRejected(CliUsageFailure.RequestDocument.REJECTED)
+        }
 
     private fun decode(document: String): CliActionResolution {
-        val request = try {
-            requestJson.decodeFromString(serializer, document)
-        } catch (failure: io.github.amichne.kast.appserver.query.PublicToolSerializationException) {
-            return CliActionResolution.UsageRejected(CliUsageFailure.PublicTool(failure.failure))
-        } catch (_: SerializationException) {
-            return CliActionResolution.UsageRejected(CliUsageFailure.RequestDocument.REJECTED)
-        } catch (_: IllegalArgumentException) {
-            return CliActionResolution.UsageRejected(CliUsageFailure.RequestDocument.REJECTED)
-        }
+        val request =
+            try {
+                requestJson.decodeFromString(serializer, document)
+            } catch (failure: io.github.amichne.kast.appserver.query.PublicToolSerializationException) {
+                return CliActionResolution.UsageRejected(CliUsageFailure.PublicTool(failure.failure))
+            } catch (_: SerializationException) {
+                return CliActionResolution.UsageRejected(CliUsageFailure.RequestDocument.REJECTED)
+            } catch (_: IllegalArgumentException) {
+                return CliActionResolution.UsageRejected(CliUsageFailure.RequestDocument.REJECTED)
+            }
         return prepare(request)
     }
 
     private fun prepare(request: Request): CliActionResolution =
         when (val preparation = preparer.prepare(request)) {
-            is CliProjectionPreparation.Prepared -> CliActionResolution.Selected(
-                CliAction.Semantic(preparation.request),
-            )
-            is CliProjectionPreparation.Rejected -> CliActionResolution.ProjectionRejected(
-                preparation.failure,
-            )
+            is CliProjectionPreparation.Prepared ->
+                CliActionResolution.Selected(CliAction.Semantic(preparation.request))
+            is CliProjectionPreparation.Rejected -> CliActionResolution.ProjectionRejected(preparation.failure)
         }
 }
 
