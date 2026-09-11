@@ -25,11 +25,11 @@ enum class BrokerServerFailure {
     INTERRUPTED,
 }
 
-fun BrokerServerFailure.outputReason(): String =
-    "broker-${name.lowercase().replace('_', '-')}"
+fun BrokerServerFailure.outputReason(): String = "broker-${name.lowercase().replace('_', '-')}"
 
 sealed interface BrokerServerRun {
     data object Stopped : BrokerServerRun
+
     data class Rejected(val failure: BrokerServerFailure) : BrokerServerRun
 }
 

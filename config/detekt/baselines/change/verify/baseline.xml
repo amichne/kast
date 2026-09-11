@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:AddFileVerification.kt:CompleteAddFileVerification.Companion$fun admit: Refinement&lt;CompleteAddFileVerification, Set&lt;AddFileProofFailure>></ID>
+    <ID>CognitiveComplexMethod:RenameSymbolVerification.kt:CompleteRenameSymbolVerification.Companion$fun admit: Refinement&lt;CompleteRenameSymbolVerification, Set&lt;RenameSymbolProofFailure>></ID>
+    <ID>CognitiveComplexMethod:ReplaceDeclarationVerification.kt:CompleteReplaceDeclarationVerification.Companion$fun admit: Refinement&lt; CompleteReplaceDeclarationVerification, Set&lt;ReplaceDeclarationProofFailure>, ></ID>
+    <ID>CognitiveComplexMethod:VerificationEvidence.kt:CompleteAddDeclarationVerification.Companion$fun admit: Refinement&lt;CompleteAddDeclarationVerification, Set&lt;AddDeclarationProofFailure>></ID>
+    <ID>CognitiveComplexMethod:VerifiedMutationService.kt:VerifiedMutationService$private fun complete: Refinement&lt;CompleteChangeVerification, Set&lt;ChangeProofFailure>></ID>
+    <ID>ComplexCondition:HostedAddDeclarationSemanticObserver.kt:CompilerReobservedMutationAnchor.Companion$current.qualifiedIdentity != prior.qualifiedIdentity || current.kind != prior.kind || current.signature != prior.signature || current.compilerIdentity != prior.compilerIdentity</ID>
+    <ID>ComplexCondition:VerificationEvidence.kt:CompleteAddDeclarationVerification.Companion$completeRelations.any { result -> val subject = result.batch.request.subject subject.file != plan.target.selector.file || subject.name != plan.target.selector.name || subject.qualifiedIdentity != plan.target.selector.qualifiedIdentity || subject.kind != plan.target.selector.kind || subject.scope != plan.target.selector.scope }</ID>
+    <ID>CyclomaticComplexMethod:RenameSymbolVerification.kt:CompleteRenameSymbolVerification.Companion$fun admit: Refinement&lt;CompleteRenameSymbolVerification, Set&lt;RenameSymbolProofFailure>></ID>
+    <ID>CyclomaticComplexMethod:ReplaceDeclarationVerification.kt:CompleteReplaceDeclarationVerification.Companion$fun admit: Refinement&lt; CompleteReplaceDeclarationVerification, Set&lt;ReplaceDeclarationProofFailure>, ></ID>
+    <ID>CyclomaticComplexMethod:VerificationEvidence.kt:CompleteAddDeclarationVerification.Companion$fun admit: Refinement&lt;CompleteAddDeclarationVerification, Set&lt;AddDeclarationProofFailure>></ID>
+    <ID>LargeClass:VerifiedMutationFixture.kt:VerifiedMutationFixture</ID>
+    <ID>LongMethod:AddFileVerification.kt:CompleteAddFileVerification.Companion$fun admit: Refinement&lt;CompleteAddFileVerification, Set&lt;AddFileProofFailure>></ID>
+    <ID>LongMethod:RenameSymbolVerification.kt:CompleteRenameSymbolVerification.Companion$fun admit: Refinement&lt;CompleteRenameSymbolVerification, Set&lt;RenameSymbolProofFailure>></ID>
+    <ID>LongMethod:ReplaceDeclarationVerification.kt:CompleteReplaceDeclarationVerification.Companion$fun admit: Refinement&lt; CompleteReplaceDeclarationVerification, Set&lt;ReplaceDeclarationProofFailure>, ></ID>
+    <ID>LongMethod:VerificationEvidence.kt:CompleteAddDeclarationVerification.Companion$fun admit: Refinement&lt;CompleteAddDeclarationVerification, Set&lt;AddDeclarationProofFailure>></ID>
+    <ID>LongMethod:VerifiedMutationFixture.kt:VerifiedMutationFixture$private fun selector: SymbolSelector</ID>
+    <ID>LongMethod:VerifiedMutationService.kt:VerifiedMutationService$private fun complete: Refinement&lt;CompleteChangeVerification, Set&lt;ChangeProofFailure>></ID>
+    <ID>LongMethod:VerifiedMutationService.kt:VerifiedMutationService$private fun verifyObserved: VerifiedMutationResult</ID>
+    <ID>LongMethod:VerifiedMutationTest.kt:VerifiedMutationTest$@Test fun `verification records exact finite terminal stage while preserving result`</ID>
+  </CurrentIssues>
+</SmellBaseline>

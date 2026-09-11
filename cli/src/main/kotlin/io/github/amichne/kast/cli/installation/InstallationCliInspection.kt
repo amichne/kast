@@ -8,6 +8,7 @@ import kotlinx.serialization.Serializable
 
 internal sealed interface InstallationHandling {
     data object Unrelated : InstallationHandling
+
     data class Handled(val exit: CliExit) : InstallationHandling
 }
 
@@ -18,24 +19,25 @@ internal object InstallationCliInspection {
         if (arguments != listOf("installation", "install")) {
             return rejected(InstallationFailure.REQUEST_REJECTED, CliBoundaryExitStatus.USAGE)
         }
-        val request = when (val parsed = InstallationRequest.parse(environment)) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> return requestRejected(parsed.failure)
-        }
+        val request =
+            when (val parsed = InstallationRequest.parse(environment)) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return requestRejected(parsed.failure)
+            }
         return when (val outcome = InstallationWorkflow.execute(request)) {
-            is InstallationOutcome.Complete -> InstallationHandling.Handled(
-                CliExit.Complete(reportFactory.create(outcome.report)),
-            )
+            is InstallationOutcome.Complete ->
+                InstallationHandling.Handled(CliExit.Complete(reportFactory.create(outcome.report)))
             is InstallationOutcome.Rejected -> rejected(outcome.failure, CliBoundaryExitStatus.BOOTSTRAP)
         }
     }
 
     private fun requestRejected(failure: InstallationRequestFailure): InstallationHandling {
-        val field = when (failure) {
-            is InstallationRequestFailure.Missing -> failure.environment.key
-            is InstallationRequestFailure.InvalidPath -> failure.environment.key
-            is InstallationRequestFailure.InvalidValue -> failure.environment.key
-        }
+        val field =
+            when (failure) {
+                is InstallationRequestFailure.Missing -> failure.environment.key
+                is InstallationRequestFailure.InvalidPath -> failure.environment.key
+                is InstallationRequestFailure.InvalidValue -> failure.environment.key
+            }
         return InstallationHandling.Handled(
             CliExit.BoundaryRejected(
                 CliBoundaryExitStatus.USAGE,
@@ -43,21 +45,22 @@ internal object InstallationCliInspection {
                     InstallationRejectionDocument(
                         reason = InstallationFailure.REQUEST_REJECTED.reason(),
                         field = field,
-                    ),
+                    )
                 ),
-            ),
+            )
         )
     }
 
     private fun rejected(
         failure: InstallationFailure,
         status: CliBoundaryExitStatus,
-    ): InstallationHandling = InstallationHandling.Handled(
-        CliExit.BoundaryRejected(
-            status,
-            rejectionFactory.create(InstallationRejectionDocument(reason = failure.reason())),
-        ),
-    )
+    ): InstallationHandling =
+        InstallationHandling.Handled(
+            CliExit.BoundaryRejected(
+                status,
+                rejectionFactory.create(InstallationRejectionDocument(reason = failure.reason())),
+            )
+        )
 }
 
 @Serializable

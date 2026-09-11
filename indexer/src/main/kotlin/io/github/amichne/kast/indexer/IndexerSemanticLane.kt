@@ -18,14 +18,22 @@ import kotlinx.coroutines.runBlocking
 
 internal sealed interface IndexerSemanticExecution {
     class Completed(val dispatch: KastRuntimeDispatch) : IndexerSemanticExecution
+
     data object Busy : IndexerSemanticExecution
+
     data object DeadlineExceeded : IndexerSemanticExecution
+
     data object Cancelled : IndexerSemanticExecution
+
     data object Rejected : IndexerSemanticExecution
+
     data object RecoveryRequired : IndexerSemanticExecution
 }
 
-internal enum class IndexerSemanticRetirement { PROVEN, RECOVERY_REQUIRED }
+internal enum class IndexerSemanticRetirement {
+    PROVEN,
+    RECOVERY_REQUIRED,
+}
 
 /** One workspace owns one semantic job. Cancellation alone is never proof that the lane is free. */
 internal class IndexerSemanticLane(
@@ -33,16 +41,25 @@ internal class IndexerSemanticLane(
     private val policy: IndexerRequestPolicy,
     private val activity: IndexerRequestActivitySink,
 ) {
-    private val dispatcher = Executors.newSingleThreadExecutor(
-        Thread.ofPlatform().name("kast-indexer-semantic").daemon(true).inheritInheritableThreadLocals(false).factory(),
-    ).asCoroutineDispatcher()
+    private val dispatcher =
+        Executors.newSingleThreadExecutor(
+                Thread.ofPlatform()
+                    .name("kast-indexer-semantic")
+                    .daemon(true)
+                    .inheritInheritableThreadLocals(false)
+                    .factory()
+            )
+            .asCoroutineDispatcher()
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val state = AtomicReference<State>(State.Ready)
 
     private sealed interface State {
         data object Ready : State
+
         class Active(val job: Deferred<KastRuntimeDispatch>, val completion: CountDownLatch) : State
+
         class RecoveryRequired(val active: Active) : State
+
         data object Closed : State
     }
 
@@ -58,7 +75,8 @@ internal class IndexerSemanticLane(
                     IndexerSemanticExecution.RecoveryRequired
                 }
                 State.Closed -> IndexerSemanticExecution.Cancelled
-                is State.Active, State.Ready -> {
+                is State.Active,
+                State.Ready -> {
                     observe(IndexerRequestStage.SEMANTIC_ADMISSION, IndexerRequestOutcome.CAPACITY_EXCEEDED)
                     IndexerSemanticExecution.Busy
                 }
@@ -69,11 +87,12 @@ internal class IndexerSemanticLane(
         job.start()
         val completion = await(active.completion, policy.dispatch, peer)
         if (completion != Completion.PROVEN) {
-            val outcome = when (completion) {
-                Completion.EXPIRED -> IndexerRequestOutcome.DEADLINE_EXCEEDED
-                Completion.INTERRUPTED -> IndexerRequestOutcome.CANCELLED
-                Completion.PROVEN -> error("Unreachable completed request")
-            }
+            val outcome =
+                when (completion) {
+                    Completion.EXPIRED -> IndexerRequestOutcome.DEADLINE_EXCEEDED
+                    Completion.INTERRUPTED -> IndexerRequestOutcome.CANCELLED
+                    Completion.PROVEN -> error("Unreachable completed request")
+                }
             observe(IndexerRequestStage.DISPATCH, outcome)
             job.cancel(CancellationException("indexer request lifetime ended"))
             val retired = retire(active)
@@ -88,10 +107,13 @@ internal class IndexerSemanticLane(
         return try {
             // The completion callback proves this await cannot wait for unfinished semantic work.
             val result = runBlocking { job.await() }
-            observe(IndexerRequestStage.DISPATCH, when (result) {
-                is KastRuntimeDispatch.Responded -> IndexerRequestOutcome.COMPLETED
-                is KastRuntimeDispatch.Rejected -> IndexerRequestOutcome.REJECTED
-            })
+            observe(
+                IndexerRequestStage.DISPATCH,
+                when (result) {
+                    is KastRuntimeDispatch.Responded -> IndexerRequestOutcome.COMPLETED
+                    is KastRuntimeDispatch.Rejected -> IndexerRequestOutcome.REJECTED
+                },
+            )
             IndexerSemanticExecution.Completed(result)
         } catch (_: CancellationException) {
             observe(IndexerRequestStage.DISPATCH, IndexerRequestOutcome.CANCELLED)
@@ -106,15 +128,17 @@ internal class IndexerSemanticLane(
 
     fun close(): IndexerSemanticRetirement {
         val previous = state.getAndSet(State.Closed)
-        val active = when (previous) {
-            State.Ready, State.Closed -> {
-                scope.cancel()
-                dispatcher.close()
-                return IndexerSemanticRetirement.PROVEN
+        val active =
+            when (previous) {
+                State.Ready,
+                State.Closed -> {
+                    scope.cancel()
+                    dispatcher.close()
+                    return IndexerSemanticRetirement.PROVEN
+                }
+                is State.Active -> previous
+                is State.RecoveryRequired -> previous.active
             }
-            is State.Active -> previous
-            is State.RecoveryRequired -> previous.active
-        }
         active.job.cancel(CancellationException("indexer transport closed"))
         val retirement = retire(active)
         scope.cancel()
@@ -126,35 +150,53 @@ internal class IndexerSemanticLane(
     private fun retire(active: State.Active): IndexerSemanticRetirement {
         observe(IndexerRequestStage.RETIREMENT, IndexerRequestOutcome.STARTED)
         val interrupted = Thread.interrupted()
-        val retired = try { await(active.completion, policy.retirement) == Completion.PROVEN }
-            finally { if (interrupted) Thread.currentThread().interrupt() }
+        val retired =
+            try {
+                await(active.completion, policy.retirement) == Completion.PROVEN
+            } finally {
+                if (interrupted) Thread.currentThread().interrupt()
+            }
         if (retired) {
             observe(IndexerRequestStage.RETIREMENT, IndexerRequestOutcome.COMPLETED)
             return IndexerSemanticRetirement.PROVEN
         }
-        state.updateAndGet { previous -> when (previous) {
-            active, State.Closed -> State.RecoveryRequired(active)
-            else -> previous
-        } }
+        state.updateAndGet { previous ->
+            when (previous) {
+                active,
+                State.Closed -> State.RecoveryRequired(active)
+                else -> previous
+            }
+        }
         observe(IndexerRequestStage.RETIREMENT, IndexerRequestOutcome.RECOVERY_REQUIRED)
         return IndexerSemanticRetirement.RECOVERY_REQUIRED
     }
 
-    private fun observe(stage: IndexerRequestStage, outcome: IndexerRequestOutcome) = activity.observe(IndexerRequestActivity(stage, outcome))
+    private fun observe(stage: IndexerRequestStage, outcome: IndexerRequestOutcome) =
+        activity.observe(IndexerRequestActivity(stage, outcome))
 }
 
-private enum class Completion { PROVEN, EXPIRED, INTERRUPTED }
-private fun await(completion: CountDownLatch, limit: ElapsedTimeLimitMillis,
-    peer: IndexerRequestPeer = IndexerRequestPeer.Unobserved): Completion { return try {
-    val started = System.nanoTime()
-    while (completion.count != 0L) {
-        if (peer.observe() != IndexerPeerState.CONNECTED) return Completion.INTERRUPTED
-        val remaining = limit.value - TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)
-        if (remaining <= 0) return Completion.EXPIRED
-        completion.await(minOf(remaining, 25L), TimeUnit.MILLISECONDS)
+private enum class Completion {
+    PROVEN,
+    EXPIRED,
+    INTERRUPTED,
+}
+
+private fun await(
+    completion: CountDownLatch,
+    limit: ElapsedTimeLimitMillis,
+    peer: IndexerRequestPeer = IndexerRequestPeer.Unobserved,
+): Completion {
+    return try {
+        val started = System.nanoTime()
+        while (completion.count != 0L) {
+            if (peer.observe() != IndexerPeerState.CONNECTED) return Completion.INTERRUPTED
+            val remaining = limit.value - TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)
+            if (remaining <= 0) return Completion.EXPIRED
+            completion.await(minOf(remaining, 25L), TimeUnit.MILLISECONDS)
+        }
+        Completion.PROVEN
+    } catch (_: InterruptedException) {
+        Thread.currentThread().interrupt()
+        Completion.INTERRUPTED
     }
-    Completion.PROVEN
-} catch (_: InterruptedException) {
-    Thread.currentThread().interrupt()
-    Completion.INTERRUPTED
-} }
+}

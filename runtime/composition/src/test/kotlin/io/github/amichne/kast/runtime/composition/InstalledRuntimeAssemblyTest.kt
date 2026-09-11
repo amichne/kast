@@ -7,15 +7,15 @@ import io.github.amichne.kast.change.recovery.AddDeclarationRollbackPort
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilerPort
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
+import io.github.amichne.kast.protocol.contract.ProtocolCount
+import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
-import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
-import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.ProtocolCount
+import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireEncoding
@@ -23,73 +23,77 @@ import io.github.amichne.kast.relation.contract.RelationCompilerPort
 import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelBoundary
 import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelRead
 import io.github.amichne.kast.runtime.composition.platform.projectInstalledGradleModel
+import io.github.amichne.kast.source.contract.SourceReadPort
 import io.github.amichne.kast.symbol.contract.SymbolCompilation
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
+import io.github.amichne.kast.symbol.contract.SymbolCompilerPort
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
-import io.github.amichne.kast.symbol.contract.SymbolCompilerPort
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
 import io.github.amichne.kast.symbol.contract.SymbolExactCompilerPort
-import io.github.amichne.kast.source.contract.SourceReadPort
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
 import io.github.amichne.kast.topology.contract.TopologyFileExtractionFailure
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlin.coroutines.startCoroutine
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
-import kotlin.coroutines.startCoroutine
 
 class InstalledRuntimeAssemblyTest {
     @Test
-    fun `production assembly owns persistence publication handlers and dispatch`(
-        @TempDir temporary: Path,
-    ) {
+    fun `production assembly owns persistence publication handlers and dispatch`(@TempDir temporary: Path) {
         val root = Files.createDirectories(temporary.resolve("repo")).toRealPath()
         Files.writeString(root.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
         val state = Files.createDirectories(temporary.resolve("state")).toRealPath()
         val fixture = InstalledChangeProtocolFixture.create(root)
         val published = fixture.published
         val sourceRoot = published.sourceRoots.single()
-        val sourceRootBoundary = WorkspaceSourceRootBoundary(
-            sourceRoot.owner.module.value,
-            root.resolve(sourceRoot.owner.project.buildRoot.value).normalize(),
-            sourceRoot.owner.project.projectPath.value,
-            sourceRoot.owner.sourceSet.value,
-            root.resolve(sourceRoot.location.value).normalize(),
-            WorkspaceSourceRootKind.PRODUCTION,
-            WorkspaceSourceRootProvenance.AUTHORED,
-        )
-        val read = projectInstalledGradleModel(
-            InstalledGradleModelBoundary(
-                published.root,
-                true,
-                listOf(sourceRootBoundary),
-                published.sourceState,
-            ),
-        ) as InstalledGradleModelRead.Captured
-        val assembler = productionInstalledRuntimeAssembler(
-            InstalledRuntimeAssemblyInputs(
-                workspaceModel = { read },
-                semantic = unusedSemanticPorts(),
-                topologyExtractor = { request ->
-                    TopologyFileExtraction.Failed(
-                        request.file,
-                        TopologyFileExtractionFailure.COMPILER_UNAVAILABLE,
-                    )
-                },
-                indexRefresh = { io.github.amichne.kast.workspace.contract.WorkspaceIndexRefresh.Refreshed },
-                sourceObservation = { prior -> io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.Observed(prior.sourceState) },
-                change = unusedChangePhysicalPorts(),
-            ),
-        )
+        val sourceRootBoundary =
+            WorkspaceSourceRootBoundary(
+                sourceRoot.owner.module.value,
+                root.resolve(sourceRoot.owner.project.buildRoot.value).normalize(),
+                sourceRoot.owner.project.projectPath.value,
+                sourceRoot.owner.sourceSet.value,
+                root.resolve(sourceRoot.location.value).normalize(),
+                WorkspaceSourceRootKind.PRODUCTION,
+                WorkspaceSourceRootProvenance.AUTHORED,
+            )
+        val read =
+            projectInstalledGradleModel(
+                InstalledGradleModelBoundary(
+                    published.root,
+                    true,
+                    listOf(sourceRootBoundary),
+                    published.sourceState,
+                )
+            )
+                as InstalledGradleModelRead.Captured
+        val assembler =
+            productionInstalledRuntimeAssembler(
+                InstalledRuntimeAssemblyInputs(
+                    workspaceModel = { read },
+                    semantic = unusedSemanticPorts(),
+                    topologyExtractor = { request ->
+                        TopologyFileExtraction.Failed(
+                            request.file,
+                            TopologyFileExtractionFailure.COMPILER_UNAVAILABLE,
+                        )
+                    },
+                    indexRefresh = { io.github.amichne.kast.workspace.contract.WorkspaceIndexRefresh.Refreshed },
+                    sourceObservation = { prior ->
+                        io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.Observed(prior.sourceState)
+                    },
+                    change = unusedChangePhysicalPorts(),
+                )
+            )
 
         val construction = InstalledKastRuntime.create(root, state, assembler)
 
@@ -99,94 +103,123 @@ class InstalledRuntimeAssemblyTest {
         val first = discoverSymbols(created)
         assertEquals(1L, (first.basis as io.github.amichne.kast.kernel.EvidenceBasis.Published).generation.value)
 
-        val restarted = InstalledKastRuntime.create(root, state, assembler) as
-            InstalledKastRuntimeConstruction.Created
+        val restarted = InstalledKastRuntime.create(root, state, assembler) as InstalledKastRuntimeConstruction.Created
         val retained = discoverSymbols(restarted)
-        assertEquals((first.basis as io.github.amichne.kast.kernel.EvidenceBasis.Published).generation, (retained.basis as io.github.amichne.kast.kernel.EvidenceBasis.Published).generation)
-
-        val changedRead = projectInstalledGradleModel(
-            InstalledGradleModelBoundary(
-                published.root,
-                true,
-                listOf(sourceRootBoundary),
-                WorkspaceStateIdentity("changed-semantic-state"),
-            ),
-        ) as InstalledGradleModelRead.Captured
-        val changedAssembler = productionInstalledRuntimeAssembler(
-            InstalledRuntimeAssemblyInputs(
-                workspaceModel = { changedRead },
-                semantic = unusedSemanticPorts(),
-                topologyExtractor = { request ->
-                    TopologyFileExtraction.Failed(
-                        request.file,
-                        TopologyFileExtractionFailure.COMPILER_UNAVAILABLE,
-                    )
-                },
-                indexRefresh = { io.github.amichne.kast.workspace.contract.WorkspaceIndexRefresh.Refreshed },
-                sourceObservation = { prior -> io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.Observed(prior.sourceState) },
-                change = unusedChangePhysicalPorts(),
-            ),
+        assertEquals(
+            (first.basis as io.github.amichne.kast.kernel.EvidenceBasis.Published).generation,
+            (retained.basis as io.github.amichne.kast.kernel.EvidenceBasis.Published).generation,
         )
-        val changed = InstalledKastRuntime.create(root, state, changedAssembler) as
-            InstalledKastRuntimeConstruction.Created
 
-        assertEquals(2L, (discoverSymbols(changed).basis as io.github.amichne.kast.kernel.EvidenceBasis.Published).generation.value)
+        val changedRead =
+            projectInstalledGradleModel(
+                InstalledGradleModelBoundary(
+                    published.root,
+                    true,
+                    listOf(sourceRootBoundary),
+                    WorkspaceStateIdentity("changed-semantic-state"),
+                )
+            )
+                as InstalledGradleModelRead.Captured
+        val changedAssembler =
+            productionInstalledRuntimeAssembler(
+                InstalledRuntimeAssemblyInputs(
+                    workspaceModel = { changedRead },
+                    semantic = unusedSemanticPorts(),
+                    topologyExtractor = { request ->
+                        TopologyFileExtraction.Failed(
+                            request.file,
+                            TopologyFileExtractionFailure.COMPILER_UNAVAILABLE,
+                        )
+                    },
+                    indexRefresh = { io.github.amichne.kast.workspace.contract.WorkspaceIndexRefresh.Refreshed },
+                    sourceObservation = { prior ->
+                        io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.Observed(prior.sourceState)
+                    },
+                    change = unusedChangePhysicalPorts(),
+                )
+            )
+        val changed =
+            InstalledKastRuntime.create(root, state, changedAssembler) as InstalledKastRuntimeConstruction.Created
+
+        assertEquals(
+            2L,
+            (discoverSymbols(changed).basis as io.github.amichne.kast.kernel.EvidenceBasis.Published).generation.value,
+        )
     }
 
     private fun discoverSymbols(
-        runtime: InstalledKastRuntimeConstruction.Created,
+        runtime: InstalledKastRuntimeConstruction.Created
     ): EvidenceEnvelope<SymbolDiscoverResult> {
-        val request = CanonicalOperationWireBindings.symbolDiscover
-            .encodeRequest(SymbolDiscoverRequest(
-                SymbolDiscoverTargetDocument.Name(refined(ProtocolText.parse("Example")), SymbolNameKindDocument.SYMBOL, SymbolDiscoveryMatchDocument.FUZZY),
-                refined(ProtocolCount.parse(10)),
-            ))
-            .encoded()
-        val response = runAssemblyImmediate { runtime.dispatch.dispatch(request) } as
-            KastRuntimeDispatch.Responded
-        val outcome: OperationOutcome<
-            SymbolDiscoverResult,
-            SymbolDiscoverQualification,
-            SymbolDiscoverRejection,
-            > = CanonicalOperationWireBindings.symbolDiscover
-            .decodeOutcome(response.document)
-            .decoded()
+        val request =
+            CanonicalOperationWireBindings.symbolDiscover
+                .encodeRequest(
+                    SymbolDiscoverRequest(
+                        SymbolDiscoverTargetDocument.Name(
+                            refined(ProtocolText.parse("Example")),
+                            SymbolNameKindDocument.SYMBOL,
+                            SymbolDiscoveryMatchDocument.FUZZY,
+                        ),
+                        refined(ProtocolCount.parse(10)),
+                    )
+                )
+                .encoded()
+        val response = runAssemblyImmediate { runtime.dispatch.dispatch(request) } as KastRuntimeDispatch.Responded
+        val outcome:
+            OperationOutcome<
+                SymbolDiscoverResult,
+                SymbolDiscoverQualification,
+                SymbolDiscoverRejection,
+            > =
+            CanonicalOperationWireBindings.symbolDiscover.decodeOutcome(response.document).decoded()
         return when (outcome) {
             is OperationOutcome.Complete -> outcome.evidence
             else -> error("unexpected index outcome: $outcome")
         }
     }
 
-    private fun <T, F> refined(value: io.github.amichne.kast.kernel.Refinement<T, F>): T = when (value) {
-        is io.github.amichne.kast.kernel.Refinement.Refined -> value.value
-        is io.github.amichne.kast.kernel.Refinement.Rejected -> error(value.failure.toString())
-    }
+    private fun <T, F> refined(value: io.github.amichne.kast.kernel.Refinement<T, F>): T =
+        when (value) {
+            is io.github.amichne.kast.kernel.Refinement.Refined -> value.value
+            is io.github.amichne.kast.kernel.Refinement.Rejected -> error(value.failure.toString())
+        }
 
-    private fun unusedSemanticPorts(): SemanticRuntimePorts = SemanticRuntimePorts(
-        symbolDiscovery = SymbolCompilerPort { request ->
-            SymbolCompilation.Compiled(SymbolDiscoveryOutcome.Complete(refined(SymbolDiscoveryBatch.create(
-                request, emptyList(), refined(SymbolDiscoveryByteCount.parse(0)),
-                refined(SymbolDiscoveryWorkCount.parse(0)), SymbolDiscoveryTimings(
-                    refined(SymbolDiscoveryElapsedNanoseconds.parse(0)), refined(SymbolDiscoveryElapsedNanoseconds.parse(0)),
-                ),
-            ))))
-        },
-        symbolExact = object : SymbolExactCompilerPort {
-            override suspend fun resolve(
-                request: io.github.amichne.kast.symbol.contract.SymbolResolutionRequest,
-            ): io.github.amichne.kast.symbol.contract.SymbolResolutionCompilation =
-                error("not executed")
+    private fun unusedSemanticPorts(): SemanticRuntimePorts =
+        SemanticRuntimePorts(
+            symbolDiscovery =
+                SymbolCompilerPort { request ->
+                    SymbolCompilation.Compiled(
+                        SymbolDiscoveryOutcome.Complete(
+                            refined(
+                                SymbolDiscoveryBatch.create(
+                                    request,
+                                    emptyList(),
+                                    refined(SymbolDiscoveryByteCount.parse(0)),
+                                    refined(SymbolDiscoveryWorkCount.parse(0)),
+                                    SymbolDiscoveryTimings(
+                                        refined(SymbolDiscoveryElapsedNanoseconds.parse(0)),
+                                        refined(SymbolDiscoveryElapsedNanoseconds.parse(0)),
+                                    ),
+                                )
+                            )
+                        )
+                    )
+                },
+            symbolExact =
+                object : SymbolExactCompilerPort {
+                    override suspend fun resolve(
+                        request: io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
+                    ): io.github.amichne.kast.symbol.contract.SymbolResolutionCompilation = error("not executed")
 
-            override suspend fun describe(
-                request: io.github.amichne.kast.symbol.contract.ExactSymbolRequest,
-            ): io.github.amichne.kast.symbol.contract.SymbolDescriptionCompilation =
-                error("not executed")
-        },
-        sourceRead = SourceReadPort { _, _ -> error("not executed") },
-        relation = RelationCompilerPort { error("not executed") },
-        diagnostic = DiagnosticCompilerPort { error("not executed") },
-            diagnosticScopes = io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolver { error("not executed") },
-    )
+                    override suspend fun describe(
+                        request: io.github.amichne.kast.symbol.contract.ExactSymbolRequest
+                    ): io.github.amichne.kast.symbol.contract.SymbolDescriptionCompilation = error("not executed")
+                },
+            sourceRead = SourceReadPort { _, _ -> error("not executed") },
+            relation = RelationCompilerPort { error("not executed") },
+            diagnostic = DiagnosticCompilerPort { error("not executed") },
+            diagnosticScopes =
+                io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolver { error("not executed") },
+        )
 
     private fun unusedChangePhysicalPorts(): InstalledChangePhysicalPorts =
         InstalledChangePhysicalPorts(
@@ -198,15 +231,17 @@ class InstalledRuntimeAssemblyTest {
         )
 }
 
-private fun WireEncoding.encoded(): String = when (this) {
-    is WireEncoding.Encoded -> document
-    is WireEncoding.Rejected -> error("unexpected encoding rejection: $failure")
-}
+private fun WireEncoding.encoded(): String =
+    when (this) {
+        is WireEncoding.Encoded -> document
+        is WireEncoding.Rejected -> error("unexpected encoding rejection: $failure")
+    }
 
-private fun <Value> WireDecoding<Value>.decoded(): Value = when (this) {
-    is WireDecoding.Decoded -> value
-    is WireDecoding.Rejected -> error("unexpected decoding rejection: $failure")
-}
+private fun <Value> WireDecoding<Value>.decoded(): Value =
+    when (this) {
+        is WireDecoding.Decoded -> value
+        is WireDecoding.Rejected -> error("unexpected decoding rejection: $failure")
+    }
 
 private fun <Value> runAssemblyImmediate(block: suspend () -> Value): Value {
     var completed: Result<Value>? = null
@@ -217,7 +252,7 @@ private fun <Value> runAssemblyImmediate(block: suspend () -> Value): Value {
             override fun resumeWith(result: Result<Value>) {
                 completed = result
             }
-        },
+        }
     )
     return checkNotNull(completed) { "operation suspended unexpectedly" }.getOrThrow()
 }

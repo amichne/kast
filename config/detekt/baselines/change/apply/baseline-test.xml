@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ImplicitDefaultLocale:ApplyTestFixture.kt:ApplyTestFixture$"%02x".format(byte)</ID>
+    <ID>LargeClass:ApplyTestFixture.kt:ApplyTestFixture</ID>
+    <ID>LongMethod:ApplyTestFixture.kt:ApplyTestFixture$private fun selector: SymbolSelector</ID>
+    <ID>NamedArguments:AddDeclarationApplyServiceTest.kt:AddDeclarationApplyServiceTest$AddDeclarationApplyService( AddDeclarationRecoveryService(store), adapter, adapter, adapter, )</ID>
+    <ID>NamedArguments:ApplyTestFixture.kt:ApplyTestFixture$GradleSourceRootEvidence( "app", ".", projectPath, "main", "app/src/main/kotlin", provenance, )</ID>
+    <ID>NamedArguments:ApplyTestFixture.kt:ApplyTestFixture$MutationTargetObservation( workspace, selector, sourceRoot.owner, ObservedMutationTargetState( workspace.readLease, selector.file, WorkspaceSourceContentHash.parse(sha256(sourceText.toByteArray())).refined(), ), )</ID>
+    <ID>NamedArguments:ApplyTestFixture.kt:ApplyTestFixture$RenameSymbolPlanRequest( request.target, KotlinIdentifier.parse("renamedService").refined(), RenameSymbolOccurrenceSet.admit(request.target, listOf(occurrence)).refined(), request.evidence, )</ID>
+    <ID>NamedArguments:ApplyTestFixture.kt:ApplyTestFixture$TraversalBudget( ResultLimit.parse(8).refined(), TraversalByteLimit.parse(10_000L).refined(), WorkUnitLimit.parse(8L).refined(), ElapsedTimeLimitMillis.parse(1_000L).refined(), TraversalDepthLimit.parse(2).refined(), TraversalFrontierLimit.parse(8).refined(), relationBudget(), )</ID>
+    <ID>NamedArguments:ApplyTestFixture.kt:ApplyTestFixture$admit( request.target.file, ExactDeclarationTextRange.parse(start, start + "service".length).refined(), KotlinIdentifier.parse("service").refined(), RenameSymbolOccurrenceRole.DECLARATION, )</ID>
+    <ID>NamedArguments:ApplyTestFixture.kt:ApplyTestFixture$create( request, emptyList(), RelationByteCount.parse(0L).refined(), RelationWorkCount.parse(0L).refined(), RelationResultCount.parse(0).refined(), )</ID>
+    <ID>NamedArguments:ApplyTestFixture.kt:ApplyTestFixture$create( request, listOf(candidate), candidate.projectedUtf8Size(), SymbolDiscoveryWorkCount.parse(1L).refined(), SymbolDiscoveryTimings( SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), ), )</ID>
+    <ID>NamedArguments:ApplyTestFixture.kt:ApplyTestFixture$fromBoundary( SymbolDiscoveryKind.SYMBOL, "other", workspace.readLease, Path.of("/workspace/app/src/main/kotlin/sample/Other.kt"), "file:///workspace/app/src/main/kotlin/sample/Other.kt", 0, )</ID>
+    <ID>NamedArguments:ApplyTestFixture.kt:ApplyTestFixture$fromBoundary( SymbolDiscoveryKind.SYMBOL, "service", workspace.readLease, targetPath, "file://$targetPath", anchorStart, )</ID>
+    <ID>NamedArguments:ApplyTestFixture.kt:ApplyTestFixture$fromBoundary( location.file, anchorStart, anchorEnd, "service", "sample.service", if (classLike) CompilerSymbolKind.CLASSLIKE else CompilerSymbolKind.FUNCTION, if (classLike) { CanonicalCompilerSignature.classLike("sample.service").refined() } else { CanonicalCompilerSignature.function( "sample.service", null, emptyList(), emptyList(), 0, ) .refined() }, )</ID>
+    <ID>NamedArguments:ApplyTestFixture.kt:ApplyTestFixture$fromBoundary(plan, emptyList(), 0L, 0L, 0L, 0)</ID>
+    <ID>UnusedPrivateProperty:ApplyTestFixture.kt:ApplyTestFixture$private val generation = EvidenceGeneration.parse(11L).refined()</ID>
+    <ID>UnusedPrivateProperty:ApplyTestFixture.kt:ApplyTestFixture$private val root = canonicalRoot("/workspace")</ID>
+  </CurrentIssues>
+</SmellBaseline>

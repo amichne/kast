@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-11 | hash: 1cb33de6ffce -->
+<!-- generated: 2026-09-11 | hash: ef655ed056ab -->
 
 # indexer
 

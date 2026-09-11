@@ -25,10 +25,11 @@ internal data class Fixture(
     val complete: CompleteTopologyFile,
     val generation: CompleteTopologyGeneration,
 ) {
-    fun snapshot(): PublishedTopologySnapshot = TestSnapshot(
-        generation.identity,
-        TopologySnapshotManifest.from(generation),
-    )
+    fun snapshot(): PublishedTopologySnapshot =
+        TestSnapshot(
+            generation.identity,
+            TopologySnapshotManifest.from(generation),
+        )
 }
 
 internal data class TestSnapshot(
@@ -41,31 +42,27 @@ internal class FixedSnapshots(
     private val publicationCalls: AtomicInteger,
     private val snapshot: PublishedTopologySnapshot,
 ) : TopologySnapshotStore {
-    override fun eligible(identity: TopologyWorkspaceIdentity): TopologySnapshotEligibility =
-        eligibility
+    override fun eligible(identity: TopologyWorkspaceIdentity): TopologySnapshotEligibility = eligibility
 
     override fun read(snapshot: PublishedTopologySnapshot): TopologySnapshotContentRead =
         TopologySnapshotContentRead.Rejected(TopologySnapshotReadFailure.STORAGE_UNAVAILABLE)
 
-    override fun publish(
-        generation: CompleteTopologyGeneration,
-    ): TopologyPublicationResult {
+    override fun publish(generation: CompleteTopologyGeneration): TopologyPublicationResult {
         publicationCalls.incrementAndGet()
         return TopologyPublicationResult.Published(snapshot)
     }
 }
 
-internal class CurrentGuard(
-    private val current: SemanticReadLease,
-) : SemanticReadLeaseGuard {
+internal class CurrentGuard(private val current: SemanticReadLease) : SemanticReadLeaseGuard {
     override fun <Value> whileCurrent(
         expected: SemanticReadLease,
         operation: () -> Value,
-    ): SemanticReadLeaseUse<Value> = if (expected == current) {
-        SemanticReadLeaseUse.Completed(operation())
-    } else {
-        SemanticReadLeaseUse.Moved
-    }
+    ): SemanticReadLeaseUse<Value> =
+        if (expected == current) {
+            SemanticReadLeaseUse.Completed(operation())
+        } else {
+            SemanticReadLeaseUse.Moved
+        }
 }
 
 internal data object MovedGuard : SemanticReadLeaseGuard {
@@ -75,5 +72,6 @@ internal data object MovedGuard : SemanticReadLeaseGuard {
     ): SemanticReadLeaseUse<Value> = SemanticReadLeaseUse.Moved
 }
 
-internal fun ready(workspace: PublishedWorkspace): WorkspaceInspectionOperations =
-    WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) }
+internal fun ready(workspace: PublishedWorkspace): WorkspaceInspectionOperations = WorkspaceInspectionOperations {
+    WorkspaceRuntimeState.Ready(workspace)
+}

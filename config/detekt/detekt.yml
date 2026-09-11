@@ -1,0 +1,48 @@
+complexity:
+  CognitiveComplexMethod:
+    active: true
+    allowedComplexity: 12
+  ComplexCondition:
+    active: true
+    allowedConditions: 3
+  CyclomaticComplexMethod:
+    active: true
+    allowedComplexity: 12
+    ignoreSimpleWhenEntries: true
+  LargeClass:
+    active: true
+    allowedLines: 300
+  LongMethod:
+    active: true
+    allowedLines: 50
+  LongParameterList:
+    active: true
+    allowedFunctionParameters: 5
+    allowedConstructorParameters: 6
+    ignoreDataClasses: true
+  NamedArguments:
+    active: true
+    allowedArguments: 3
+    ignoreArgumentsMatchingNames: true
+  NestedBlockDepth:
+    active: true
+    allowedDepth: 3
+  NestedScopeFunctions:
+    active: true
+    allowedDepth: 1
+  TooManyFunctions:
+    active: false
+
+style:
+  DataClassContainsFunctions:
+    active: false
+  MultilineLambdaItParameter:
+    active: true
+  ReturnCount:
+    active: false
+  UnnecessaryApply:
+    active: true
+  UnnecessaryLet:
+    active: true
+  UseDataClass:
+    active: false

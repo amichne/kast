@@ -24,8 +24,7 @@ class MintlifyCallableReferenceTest {
         val installed = installedServerProjection(surface)
         val reference = Json.parseToJsonElement(mintlifyCallableReference(surface).value).jsonObject
         val paths = reference.getValue("paths").jsonObject
-        val components = reference.getValue("components")
-            .jsonObject.getValue("schemas").jsonObject
+        val components = reference.getValue("components").jsonObject.getValue("schemas").jsonObject
         val invocationByTool = installed.cliInvocations.operations.associateBy { it.toolName }
         val publicOperationIds = HostedOperationProjection.publicDefinitions.map { it.operation.id.value }
         val internalOperationIds = HostedOperationProjection.internalDefinitions.map { it.operation.id.value }
@@ -40,38 +39,52 @@ class MintlifyCallableReferenceTest {
         assertFalse(installed.hostedBootstrap.tools.any { it.operationId in internalOperationIds })
         assertEquals(installed.hostedBootstrap.tools.size * 2, components.size)
 
-        components.values.flatMap { schema -> schema.localReferences() }.forEach { schemaReference ->
-            assertTrue(schemaReference.startsWith("#/components/schemas/"))
-            assertTrue(schemaReference.substringAfter("#/components/schemas/").substringBefore('/') in components)
-            schemaReference.removePrefix("#/").split('/').fold(reference as JsonElement) { value, key ->
-                checkNotNull((value as? JsonObject)?.get(key)) { "Dangling callable schema reference: $schemaReference" }
+        components.values
+            .flatMap { schema -> schema.localReferences() }
+            .forEach { schemaReference ->
+                assertTrue(schemaReference.startsWith("#/components/schemas/"))
+                assertTrue(schemaReference.substringAfter("#/components/schemas/").substringBefore('/') in components)
+                schemaReference.removePrefix("#/").split('/').fold(reference as JsonElement) { value, key ->
+                    checkNotNull((value as? JsonObject)?.get(key)) {
+                        "Dangling callable schema reference: $schemaReference"
+                    }
+                }
             }
-        }
 
         installed.hostedBootstrap.tools.forEach { tool ->
-            val operation = paths.getValue("/callables/${tool.name}")
-                .jsonObject.getValue("post").jsonObject
-            val mintMetadata = operation.getValue("x-mint")
-                .jsonObject.getValue("metadata").jsonObject
+            val operation = paths.getValue("/callables/${tool.name}").jsonObject.getValue("post").jsonObject
+            val mintMetadata = operation.getValue("x-mint").jsonObject.getValue("metadata").jsonObject
             val kastMetadata = operation.getValue("x-kast").jsonObject
-            val requestReference = operation.getValue("requestBody")
-                .jsonObject.getValue("content").jsonObject
-                .getValue("application/json").jsonObject
-                .getValue("schema").jsonObject.reference()
-            val responseReference = operation.getValue("responses")
-                .jsonObject.getValue("200").jsonObject
-                .getValue("content").jsonObject
-                .getValue("application/json").jsonObject
-                .getValue("schema").jsonObject.reference()
+            val requestReference =
+                operation
+                    .getValue("requestBody")
+                    .jsonObject
+                    .getValue("content")
+                    .jsonObject
+                    .getValue("application/json")
+                    .jsonObject
+                    .getValue("schema")
+                    .jsonObject
+                    .reference()
+            val responseReference =
+                operation
+                    .getValue("responses")
+                    .jsonObject
+                    .getValue("200")
+                    .jsonObject
+                    .getValue("content")
+                    .jsonObject
+                    .getValue("application/json")
+                    .jsonObject
+                    .getValue("schema")
+                    .jsonObject
+                    .reference()
             val invocation = invocationByTool.getValue(tool.name)
             val sample = operation.getValue("x-codeSamples").jsonArray.single().jsonObject
 
             assertEquals(tool.name, operation.getValue("operationId").jsonPrimitive.content)
             assertEquals("none", mintMetadata.getValue("playground").jsonPrimitive.content)
-            assertTrue(
-                operation.getValue("description").jsonPrimitive.content
-                    .contains("not an HTTP endpoint"),
-            )
+            assertTrue(operation.getValue("description").jsonPrimitive.content.contains("not an HTTP endpoint"))
             assertEquals(tool.effect, kastMetadata.getValue("effect").jsonPrimitive.content)
             assertEquals(
                 tool.approvalPolicy,
@@ -93,33 +106,39 @@ class MintlifyCallableReferenceTest {
         }
     }
 
-    private fun JsonObject.reference(): String =
-        getValue("\$ref").jsonPrimitive.content.substringAfterLast('/')
+    private fun JsonObject.reference(): String = getValue("\$ref").jsonPrimitive.content.substringAfterLast('/')
 
-    private fun JsonElement.localReferences(): List<String> = when (this) {
-        is JsonArray -> flatMap { element -> element.localReferences() }
-        is JsonObject -> entries.flatMap { (name, value) ->
-            if (name == "\$ref") listOf(value.jsonPrimitive.content) else value.localReferences()
+    private fun JsonElement.localReferences(): List<String> =
+        when (this) {
+            is JsonArray -> flatMap { element -> element.localReferences() }
+            is JsonObject ->
+                entries.flatMap { (name, value) ->
+                    if (name == "\$ref") listOf(value.jsonPrimitive.content) else value.localReferences()
+                }
+            else -> emptyList()
         }
-        else -> emptyList()
-    }
 
-    private fun JsonElement.rebaseLocalDefinitions(componentName: String): JsonElement = when (this) {
-        is JsonArray -> JsonArray(map { element -> element.rebaseLocalDefinitions(componentName) })
-        is JsonObject -> JsonObject(mapValues { (name, value) ->
-            if (name == "\$ref" && value.jsonPrimitive.content.startsWith("#/\$defs/")) {
-                JsonPrimitive("#/components/schemas/$componentName/${value.jsonPrimitive.content.removePrefix("#/")}")
-            } else {
-                value.rebaseLocalDefinitions(componentName)
-            }
-        })
-        else -> this
-    }
+    private fun JsonElement.rebaseLocalDefinitions(componentName: String): JsonElement =
+        when (this) {
+            is JsonArray -> JsonArray(map { element -> element.rebaseLocalDefinitions(componentName) })
+            is JsonObject ->
+                JsonObject(
+                    mapValues { (name, value) ->
+                        if (name == "\$ref" && value.jsonPrimitive.content.startsWith("#/\$defs/")) {
+                            JsonPrimitive(
+                                "#/components/schemas/$componentName/${value.jsonPrimitive.content.removePrefix("#/")}"
+                            )
+                        } else {
+                            value.rebaseLocalDefinitions(componentName)
+                        }
+                    }
+                )
+            else -> this
+        }
 
-    private fun commandGraphFactory(): CliCommandGraphFactory = when (
-        val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())
-    ) {
-        is CliCommandGraphConstruction.Created -> construction.factory
-        is CliCommandGraphConstruction.Rejected -> error(construction.failures)
-    }
+    private fun commandGraphFactory(): CliCommandGraphFactory =
+        when (val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())) {
+            is CliCommandGraphConstruction.Created -> construction.factory
+            is CliCommandGraphConstruction.Rejected -> error(construction.failures)
+        }
 }

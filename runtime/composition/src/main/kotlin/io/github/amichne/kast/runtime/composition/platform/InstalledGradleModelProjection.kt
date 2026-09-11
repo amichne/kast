@@ -24,15 +24,12 @@ internal data class InstalledGradleModelBoundary(
 )
 
 sealed interface InstalledGradleModelFailure {
-    data class SemanticIdentityUnavailable(
-        val failure: InstalledGradleModelCaptureFailure,
-    ) : InstalledGradleModelFailure
+    data class SemanticIdentityUnavailable(val failure: InstalledGradleModelCaptureFailure) :
+        InstalledGradleModelFailure
 
     data object IncompleteBoundary : InstalledGradleModelFailure
 
-    data class ScopeRejected(
-        val failures: Set<WorkspaceSearchScopeModelFailure>,
-    ) : InstalledGradleModelFailure
+    data class ScopeRejected(val failures: Set<WorkspaceSearchScopeModelFailure>) : InstalledGradleModelFailure
 
     data object SourceRootOutsideWorkspace : InstalledGradleModelFailure
 
@@ -44,59 +41,61 @@ sealed interface InstalledGradleModelFailure {
 /**
  * Proof transition: `InstalledGradleModelBoundary -> InstalledGradleModelRead`.
  *
- * Captured establishes a complete coherent semantic scope, identical typed publication roots,
- * and the semantic identity already refined by the physical Gradle-model capture boundary.
- * [InstalledGradleModelRead.Unavailable] closes every incomplete or inconsistent boundary state.
- * Raw Gradle strings and paths may enter only through [InstalledGradleModelBoundary].
+ * Captured establishes a complete coherent semantic scope, identical typed publication roots, and the semantic identity
+ * already refined by the physical Gradle-model capture boundary. [InstalledGradleModelRead.Unavailable] closes every
+ * incomplete or inconsistent boundary state. Raw Gradle strings and paths may enter only through
+ * [InstalledGradleModelBoundary].
  */
-internal fun projectInstalledGradleModel(
-    boundary: InstalledGradleModelBoundary,
-): InstalledGradleModelRead {
+internal fun projectInstalledGradleModel(boundary: InstalledGradleModelBoundary): InstalledGradleModelRead {
     if (!boundary.importedModelComplete) {
-        return InstalledGradleModelRead.Unavailable(
-            InstalledGradleModelFailure.IncompleteBoundary,
-        )
+        return InstalledGradleModelRead.Unavailable(InstalledGradleModelFailure.IncompleteBoundary)
     }
-    val scope = when (val compiled = WorkspaceSearchScopeModel.compile(
-        boundary.root,
-        ImportedWorkspaceModelState.COMPLETE,
-        boundary.sourceRoots,
-    )) {
-        is WorkspaceSearchScopeModelCompilation.Compiled -> compiled
-        is WorkspaceSearchScopeModelCompilation.Rejected ->
-            return InstalledGradleModelRead.Unavailable(
-                InstalledGradleModelFailure.ScopeRejected(compiled.failures),
-            )
-    }
-    val roots = boundary.sourceRoots.map { sourceRoot ->
-        val evidence = sourceRoot.publicationEvidence(boundary.root)
-                       ?: return InstalledGradleModelRead.Unavailable(
-                           InstalledGradleModelFailure.SourceRootOutsideWorkspace,
-                       )
-        when (val admitted = SourceRoot.admit(evidence)) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> return InstalledGradleModelRead.Unavailable(
-                InstalledGradleModelFailure.SourceRootRejected,
-            )
+    val scope =
+        when (
+            val compiled =
+                WorkspaceSearchScopeModel.compile(
+                    boundary.root,
+                    ImportedWorkspaceModelState.COMPLETE,
+                    boundary.sourceRoots,
+                )
+        ) {
+            is WorkspaceSearchScopeModelCompilation.Compiled -> compiled
+            is WorkspaceSearchScopeModelCompilation.Rejected ->
+                return InstalledGradleModelRead.Unavailable(
+                    InstalledGradleModelFailure.ScopeRejected(compiled.failures)
+                )
         }
-    }.distinct()
+    val roots =
+        boundary.sourceRoots
+            .map { sourceRoot ->
+                val evidence =
+                    sourceRoot.publicationEvidence(boundary.root)
+                        ?: return InstalledGradleModelRead.Unavailable(
+                            InstalledGradleModelFailure.SourceRootOutsideWorkspace
+                        )
+                when (val admitted = SourceRoot.admit(evidence)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected ->
+                        return InstalledGradleModelRead.Unavailable(InstalledGradleModelFailure.SourceRootRejected)
+                }
+            }
+            .distinct()
     val state = boundary.identity
-    return when (val model = InstalledGradleWorkspaceModel.admit(
-        boundary.root,
-        state,
-        roots,
-        scope,
-    )) {
+    return when (
+        val model =
+            InstalledGradleWorkspaceModel.admit(
+                boundary.root,
+                state,
+                roots,
+                scope,
+            )
+    ) {
         is Refinement.Refined -> InstalledGradleModelRead.Captured(model.value)
-        is Refinement.Rejected -> InstalledGradleModelRead.Unavailable(
-            InstalledGradleModelFailure.ModelRejected,
-        )
+        is Refinement.Rejected -> InstalledGradleModelRead.Unavailable(InstalledGradleModelFailure.ModelRejected)
     }
 }
 
-private fun WorkspaceSourceRootBoundary.publicationEvidence(
-    root: CanonicalWorkspaceRoot,
-): GradleSourceRootEvidence? {
+private fun WorkspaceSourceRootBoundary.publicationEvidence(root: CanonicalWorkspaceRoot): GradleSourceRootEvidence? {
     val rootPath = Path.of(root.value)
     if (!linkedBuildRoot.startsWith(rootPath) || !sourceRoot.startsWith(rootPath)) return null
     val buildRoot = rootPath.relativize(linkedBuildRoot).portableRelative()
@@ -115,5 +114,4 @@ private fun WorkspaceSourceRootBoundary.publicationEvidence(
     )
 }
 
-private fun Path.portableRelative(): String =
-    joinToString("/") { it.toString() }.ifEmpty { "." }
+private fun Path.portableRelative(): String = joinToString("/") { it.toString() }.ifEmpty { "." }

@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:SourceReadOutcome.kt:private fun admitEvidence: Refinement&lt;List&lt;SourceEntity>, SourceReadEvidenceFailure></ID>
+    <ID>CognitiveComplexMethod:SourceSelectorToken.kt:SourceSelectorTokenCodec$fun encode: SourceSelectorToken</ID>
+    <ID>CognitiveComplexMethod:SourceSelectorToken.kt:SourceSelectorTokenCodec$private fun decodePayload: Refinement&lt;SourceSelector, SourceSelectorTokenFailure></ID>
+    <ID>CognitiveComplexMethod:SourceSelectorToken.kt:private fun admitSnapshot: SourceSnapshot?</ID>
+    <ID>CognitiveComplexMethod:SourceSelectorToken.kt:private fun decodeConstraints: SymbolDiscoveryConstraints?</ID>
+    <ID>CognitiveComplexMethod:SourceSelectorToken.kt:private fun decodeReadScope: SourceReadScope?</ID>
+    <ID>ComplexCondition:SourceDeclarationVisibility.kt:SourceDeclarationVisibility.Companion$result.snapshot.lease != selector.lease || result.snapshot.file != selector.file || result.snapshot.readScope != SourceReadScope.Constrained(selector.scope, selector.constraints) || result.region.kind != SourceRegionKind.DECLARATION || range != result.region.selector.range || range.startInclusive.value != selector.range.startInclusive || range.endExclusive.value != selector.range.endExclusive || entity.nestingDepth.value != 0 || entity.kind.compilerKind() != selector.kind || selection.lease != selector.lease || selection.scope != selector.scope || selection.constraints.copy(declarationKinds = null) != selector.constraints.copy(declarationKinds = null) || selection.candidate.name.value != selector.name.value || location.file != selector.file || location.offset.value != selector.range.startInclusive</ID>
+    <ID>ComplexCondition:SourceReadRequest.kt:SourceReadContinuation.Companion$raw.length == PREFIX.length + DIGEST_LENGTH &amp;&amp; digest.length == DIGEST_LENGTH &amp;&amp; digest.all { it in '0'..'9' || it in 'a'..'f' }</ID>
+    <ID>ComplexCondition:SourceSelectorToken.kt:SourceSelectorToken.Companion$parts.size != SOURCE_SELECTOR_TOKEN_PARTS || parts[0] !in setOf(SOURCE_SELECTOR_TOKEN_PREFIX, LIVE_SOURCE_SELECTOR_TOKEN_PREFIX) || parts[1].isEmpty() || parts[2].length != SOURCE_SELECTOR_TOKEN_DIGEST_LENGTH || parts[2].any { it !in '0'..'9' &amp;&amp; it !in 'a'..'f' }</ID>
+    <ID>ComplexCondition:SourceSelectorToken.kt:SourceSelectorTokenCodec$(prefix == SOURCE_SELECTOR_TOKEN_PREFIX &amp;&amp; version != SOURCE_SELECTOR_PAYLOAD_VERSION) || (prefix == LIVE_SOURCE_SELECTOR_TOKEN_PREFIX &amp;&amp; version != LIVE_SOURCE_SELECTOR_PAYLOAD_VERSION)</ID>
+    <ID>ComplexCondition:SourceSelectorToken.kt:SourceSelectorTokenCodec$index != 0 || current != null || nameState != "unavailable" || nameValue.isNotEmpty()</ID>
+    <ID>ComplexCondition:SourceSelectorToken.kt:isEmpty() || (length > 1 &amp;&amp; first() == '0') || any { !it.isDigit() }</ID>
+    <ID>ComplexCondition:SourceTextIdentity.kt:SourceTextIdentity.Companion$raw.length == SOURCE_TEXT_IDENTITY_PREFIX.length + SHA256_HEX_LENGTH &amp;&amp; digest.length == SHA256_HEX_LENGTH &amp;&amp; digest.all { character -> character in '0'..'9' || character in 'a'..'f' }</ID>
+    <ID>CyclomaticComplexMethod:SourceDeclarationVisibility.kt:SourceDeclarationVisibility.Companion$fun admit: Refinement&lt;SourceDeclarationVisibility, SourceDeclarationVisibilityFailure></ID>
+    <ID>CyclomaticComplexMethod:SourceSelectorToken.kt:SourceSelectorTokenCodec$fun encode: SourceSelectorToken</ID>
+    <ID>CyclomaticComplexMethod:SourceSelectorToken.kt:SourceSelectorTokenCodec$private fun decodePayload: Refinement&lt;SourceSelector, SourceSelectorTokenFailure></ID>
+    <ID>CyclomaticComplexMethod:SourceSelectorToken.kt:private fun admitSnapshot: SourceSnapshot?</ID>
+    <ID>CyclomaticComplexMethod:SourceSelectorToken.kt:private fun decodeConstraints: SymbolDiscoveryConstraints?</ID>
+    <ID>CyclomaticComplexMethod:SourceSelectorToken.kt:private fun decodeReadScope: SourceReadScope?</ID>
+    <ID>LongMethod:SourceSelectorToken.kt:SourceSelectorTokenCodec$fun encode: SourceSelectorToken</ID>
+    <ID>LongMethod:SourceSelectorToken.kt:SourceSelectorTokenCodec$private fun decodePayload: Refinement&lt;SourceSelector, SourceSelectorTokenFailure></ID>
+    <ID>LongMethod:SourceSelectorToken.kt:private fun admitSnapshot: SourceSnapshot?</ID>
+    <ID>LongMethod:SourceSelectorToken.kt:private fun decodeConstraints: SymbolDiscoveryConstraints?</ID>
+    <ID>LongMethod:SourceSelectorToken.kt:private fun decodeReadScope: SourceReadScope?</ID>
+    <ID>LongParameterList:SourceSelectorToken.kt:private fun admitSnapshot: SourceSnapshot?</ID>
+    <ID>MagicNumber:SourceReadRequest.kt:3</ID>
+    <ID>MagicNumber:SourceSelectorToken.kt:0xff</ID>
+    <ID>MagicNumber:SourceSelectorToken.kt:16</ID>
+    <ID>NamedArguments:SourceReadOutcome.kt:SourceReadResult.Complete.Companion$Complete(snapshot, region, admitted.value, text)</ID>
+    <ID>NamedArguments:SourceReadOutcome.kt:SourceReadResult.Qualified.Companion$Qualified(snapshot, region, admitted.value, text, qualification)</ID>
+    <ID>NamedArguments:SourceSelectorToken.kt:SourceSelectorTokenCodec$admitSnapshot( rootText, generationText, sourceStateText, fileText, textIdentityText, lengthText, if (authorityKind == "live") live else LiveSourceRestoration.Unavailable, authorityKind == "live", readScope, )</ID>
+    <ID>NamedArguments:SourceSelectorToken.kt:SourceSelectorTokenCodec$decodePayload(payload, parts[0], live, scopes)</ID>
+    <ID>NamedArguments:SourceSelectorToken.kt:SourceSelectorTokenCodec$restoreEntity( parent, nonEmpty, entityKind, name, fingerprint, )</ID>
+    <ID>NamedArguments:SourceSelectorToken.kt:SourceSelectorTokenCodec$restoreNested( parent, range, regionKind, fingerprint, )</ID>
+    <ID>NamedArguments:SourceSelectorToken.kt:SymbolSearchScopeSnapshot( kind, primary.ifEmpty { null }, secondary.ifEmpty { null }, sourceKinds, generated, libraryPolicy, )</ID>
+    <ID>NamedArguments:SourceSnapshot.kt:SourceSnapshot.Companion$create( SourceReadContext.Published(lease, sourceState), file, textIdentity, length, SourceReadScope.ExactFile, )</ID>
+    <ID>NoNameShadowing:SourceSelectorToken.kt:{ enumValueOrNull&lt;CompilerSymbolKind>(it) }</ID>
+    <ID>UseOrEmpty:SourceReadScope.kt:captured.libraries?.name ?: ""</ID>
+    <ID>UseOrEmpty:SourceReadScope.kt:captured.primary ?: ""</ID>
+    <ID>UseOrEmpty:SourceReadScope.kt:captured.secondary ?: ""</ID>
+    <ID>UseOrEmpty:SourceSelectorToken.kt:captured.libraries?.name ?: ""</ID>
+    <ID>UseOrEmpty:SourceSelectorToken.kt:captured.primary ?: ""</ID>
+    <ID>UseOrEmpty:SourceSelectorToken.kt:captured.secondary ?: ""</ID>
+  </CurrentIssues>
+</SmellBaseline>

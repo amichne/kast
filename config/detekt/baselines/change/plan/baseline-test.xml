@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ImplicitDefaultLocale:AddDeclarationPlanFixture.kt:"%02x".format(byte)</ID>
+    <ID>ImplicitDefaultLocale:HostedChangeAuthorityRestartTest.kt:HostedChangeAuthorityRestartTest$"%02x".format(byte)</ID>
+    <ID>LongMethod:AddDeclarationPlanFixture.kt:AddDeclarationPlanFixture$private fun selector: SymbolSelector</ID>
+    <ID>LongMethod:HostedChangeAuthorityRestartTest.kt:HostedChangeAuthorityRestartTest$@Test fun `legacy exact application rows are refined without changing public identity`</ID>
+    <ID>LongMethod:HostedChangeAuthorityRestartTest.kt:HostedChangeAuthorityRestartTest$@Test fun `plan and application identities survive authority reopen`</ID>
+    <ID>LongMethod:MutationTargetAdmissionTest.kt:MutationTargetAdmissionTest$private fun selector: SymbolSelector</ID>
+    <ID>LongParameterList:HostedChangeAuthorityRestartTest.kt:HostedChangeAuthorityRestartTest$private fun replaceApplicationTableWithLegacyRow</ID>
+    <ID>NamedArguments:AddDeclarationPlanFixture.kt:AddDeclarationPlanFixture$MutationTargetObservation( workspace, selector, sourceRoot.owner, ObservedMutationTargetState( lease, selector.file, WorkspaceSourceContentHash.parse(sha256(sourcePreimage)).refined(), ), )</ID>
+    <ID>NamedArguments:AddDeclarationPlanFixture.kt:AddDeclarationPlanFixture$TraversalBudget( ResultLimit.parse(8).refined(), TraversalByteLimit.parse(10_000L).refined(), WorkUnitLimit.parse(8L).refined(), ElapsedTimeLimitMillis.parse(1_000L).refined(), TraversalDepthLimit.parse(2).refined(), TraversalFrontierLimit.parse(8).refined(), relationBudget(), )</ID>
+    <ID>NamedArguments:AddDeclarationPlanFixture.kt:AddDeclarationPlanFixture$create( request, emptyList(), RelationByteCount.parse(0L).refined(), RelationWorkCount.parse(0L).refined(), RelationResultCount.parse(0).refined(), )</ID>
+    <ID>NamedArguments:AddDeclarationPlanFixture.kt:AddDeclarationPlanFixture$create( request, listOf(candidate), candidate.projectedUtf8Size(), SymbolDiscoveryWorkCount.parse(1L).refined(), SymbolDiscoveryTimings( SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), ), )</ID>
+    <ID>NamedArguments:AddDeclarationPlanFixture.kt:AddDeclarationPlanFixture$fromBoundary( SymbolDiscoveryKind.SYMBOL, "service", lease, targetPath, "file://$targetPath", 10, )</ID>
+    <ID>NamedArguments:AddDeclarationPlanFixture.kt:AddDeclarationPlanFixture$fromBoundary( location.file, location.offset.value, declarationEndExclusive, "service", if (symbolKind == CompilerSymbolKind.CLASSLIKE) "sample.Service" else "sample.Service.service", symbolKind, signature(symbolKind), )</ID>
+    <ID>NamedArguments:AddDeclarationPlanFixture.kt:AddDeclarationPlanFixture$fromBoundary( plan, emptyList(), encodedBytes = 0L, examinedWorkUnits = 0L, elapsedMillis = 0L, expandedFrontier = 0, )</ID>
+    <ID>NamedArguments:AddDeclarationPlanFixture.kt:AddDeclarationPlanFixture$function( "sample.Service.&lt;init>", null, emptyList(), emptyList(), 0, )</ID>
+    <ID>NamedArguments:AddDeclarationPlanFixture.kt:AddDeclarationPlanFixture$function( "sample.Service.service", null, emptyList(), emptyList(), 0, )</ID>
+    <ID>NamedArguments:AddDeclarationPlanFixture.kt:AddDeclarationPlanFixture$property( "sample.Service.service", null, emptyList(), "kotlin.Unit", )</ID>
+    <ID>NamedArguments:HostedChangeAuthorityRestartTest.kt:HostedChangeAuthorityRestartTest$replaceApplicationTableWithLegacyRow( state, planIdentity.value, plan.planId.value, postimage.value, appliedRecovery.record.binding.value, applicationIdentity.value, )</ID>
+    <ID>NamedArguments:HostedChangeAuthorityRestartTest.kt:HostedChangeAuthorityRestartTest$restore( plan, applicationLease, applicationState, postimage, appliedRecovery.record.binding, )</ID>
+    <ID>NamedArguments:HostedChangeAuthorityRestartTest.kt:HostedChangeAuthorityRestartTest$restore( plan, plan.priorLease, plan.workspaceState, postimage, appliedRecovery.record.binding, )</ID>
+    <ID>NamedArguments:MutationTargetAdmissionTest.kt:MutationTargetAdmissionTest$create( request, listOf(candidate), candidate.projectedUtf8Size(), SymbolDiscoveryWorkCount.parse(1L).refined(), SymbolDiscoveryTimings( SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), ), )</ID>
+    <ID>NamedArguments:MutationTargetAdmissionTest.kt:MutationTargetAdmissionTest$fromBoundary( SymbolDiscoveryKind.SYMBOL, "service", lease, path, "file://${path}", 10, )</ID>
+    <ID>NamedArguments:MutationTargetAdmissionTest.kt:MutationTargetAdmissionTest$fromBoundary( location.file, location.offset.value, location.offset.value + 7, "service", "sample.Service.service", CompilerSymbolKind.FUNCTION, CanonicalCompilerSignature.function( "sample.Service.service", null, emptyList(), emptyList(), 0, ) .refined(), )</ID>
+    <ID>NamedArguments:RenameSymbolPlanTest.kt:RenameSymbolPlanTest$RenameSymbolPlanRequest( base.target, KotlinIdentifier.parse("renamedService").refined(), RenameSymbolOccurrenceSet.admit( base.target, listOf(declaration, inventedReference), ) .refined(), base.evidence, )</ID>
+    <ID>NamedArguments:RenameSymbolPlanTest.kt:RenameSymbolPlanTest$RenameSymbolPlanRequest( base.target, KotlinIdentifier.parse("renamedService").refined(), RenameSymbolOccurrenceSet.admit(base.target, listOf(occurrence)).refined(), base.evidence, )</ID>
+    <ID>NamedArguments:RenameSymbolPlanTest.kt:RenameSymbolPlanTest$admit( base.target.file, base.target.range, KotlinIdentifier.parse("service").refined(), RenameSymbolOccurrenceRole.DECLARATION, )</ID>
+    <ID>NamedArguments:RenameSymbolPlanTest.kt:RenameSymbolPlanTest$admit( base.target.file, base.target.range, name, RenameSymbolOccurrenceRole.DECLARATION, )</ID>
+    <ID>NamedArguments:RenameSymbolPlanTest.kt:RenameSymbolPlanTest$admit( base.target.file, io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange.parse(20, 27).refined(), name, RenameSymbolOccurrenceRole.REFERENCE, )</ID>
+  </CurrentIssues>
+</SmellBaseline>

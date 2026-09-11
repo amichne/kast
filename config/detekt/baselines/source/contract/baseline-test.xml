@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ImplicitDefaultLocale:SourceSelectorTokenContractTest.kt:SourceSelectorTokenContractTest$"%02x".format(byte.toInt() and 0xff)</ID>
+    <ID>LongMethod:SourceSelectorContractTest.kt:SourceSelectorContractTest$@Test fun `nested selectors are snapshot bounded and bind their exact parent`</ID>
+    <ID>LongMethod:SourceSelectorTokenContractTest.kt:SourceSelectorTokenContractTest$@Test fun `modeled source references restore only against matching current owner evidence`</ID>
+    <ID>NamedArguments:SourceSelectorContractTest.kt:SourceSelectorContractTest$restoreFile(snapshot.lease, snapshot.file, scope, constraints)</ID>
+    <ID>NamedArguments:SourceSelectorContractTest.kt:SourceSelectorContractTest$restoreRange(snapshot.lease, snapshot.file, 0, 3, scope, constraints)</ID>
+    <ID>NamedArguments:SourceSelectorTokenContractTest.kt:SourceSelectorTokenContractTest$SourceSet( owner.project, owner.sourceSet, SymbolSourceKindPolicy.PRODUCTION_ONLY, SymbolGeneratedSourcePolicy.EXCLUDE, )</ID>
+    <ID>NamedArguments:SourceSelectorTokenContractTest.kt:SourceSelectorTokenContractTest$WorkspaceSourceRootBoundary( owner, Path.of(root), ":$owner", owner, Path.of(root, "src/main/kotlin"), WorkspaceSourceRootKind.PRODUCTION, WorkspaceSourceRootProvenance.AUTHORED, )</ID>
+    <ID>NamedArguments:SourceSelectorTokenContractTest.kt:SourceSelectorTokenContractTest$create( SemanticReadLease(root, EvidenceGeneration.parse(42).refined()), WorkspaceStateIdentity.parse("workspace-state-v1|source").refined(), SymbolDiscoveryFileIdentity.Workspace(path), SourceTextIdentity.fromNormalizedCommittedText(text), Utf16CodeUnitCount.parse(text.length).refined(), )</ID>
+    <ID>NamedArguments:SourceSelectorTokenContractTest.kt:SourceSelectorTokenContractTest$create( previous.context, previous.file, previous.textIdentity, previous.length, constrained, )</ID>
+    <ID>NamedArguments:SourceSelectorTokenContractTest.kt:SourceSelectorTokenContractTest$create(previous.context, previous.file, previous.textIdentity, previous.length, scope)</ID>
+    <ID>NamedArguments:SourceSelectorTokenContractTest.kt:SourceSelectorTokenContractTest$issueEntity( body, NonEmptySourceRange.create(referenceRange).refined(), SourceEntityKind.REFERENCE, SourceEntityName.present("dependency").refined(), )</ID>
+  </CurrentIssues>
+</SmellBaseline>

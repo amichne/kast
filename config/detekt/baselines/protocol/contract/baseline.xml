@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:CanonicalQueryOperationModels.kt:directory != null &amp;&amp; directory != "." &amp;&amp; (directory.startsWith('/') || directory.any(Char::isISOControl) || directory.split('/').any { it.isBlank() || it == "." || it == ".." })</ID>
+    <ID>CyclomaticComplexMethod:CanonicalQueryOperationModels.kt:private fun QueryDiscoveryDocument.isCanonical: Boolean</ID>
+    <ID>CyclomaticComplexMethod:CanonicalSourceReadOperationModels.kt:SourceReadAnchorDocument.Companion$fun admit: Refinement&lt;SourceReadAnchorDocument, SourceReadAnchorDocumentFailure></ID>
+    <ID>CyclomaticComplexMethod:SymbolProtocolModels.kt:private fun CompilerSignatureDocument.matchesCanonical: Boolean</ID>
+    <ID>InvalidPackageDeclaration:IdeHostCapability.kt:package io.github.amichne.kast.protocol.contract</ID>
+    <ID>InvalidPackageDeclaration:IdeHostCompatibility.kt:package io.github.amichne.kast.protocol.contract</ID>
+    <ID>LongMethod:QualificationProofContractTest.kt:QualificationProofContractTest$@Test fun `traversal request and qualification distinguish resumable from terminal state`</ID>
+    <ID>MagicNumber:CanonicalQueryOperationModels.kt:256</ID>
+    <ID>MagicNumber:CanonicalReadOperationModels.kt:0xff</ID>
+    <ID>MagicNumber:CanonicalReadOperationModels.kt:16</ID>
+    <ID>MagicNumber:CanonicalReadOperationModels.kt:RelationContinuationDocument.Companion$3</ID>
+    <ID>MagicNumber:CanonicalReadOperationModels.kt:TraversalContinuationDocument.Companion$3</ID>
+    <ID>MagicNumber:CanonicalSourceReadOperationModels.kt:0xff</ID>
+    <ID>MagicNumber:CanonicalSourceReadOperationModels.kt:16</ID>
+    <ID>MagicNumber:CanonicalTopologyOperationModels.kt:TopologyBuildDigest.Companion$64</ID>
+    <ID>MagicNumber:TopologyCoverageModels.kt:TopologyCoverageSourceHash.Companion$64</ID>
+  </CurrentIssues>
+</SmellBaseline>

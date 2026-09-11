@@ -6,8 +6,8 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
-import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
@@ -19,7 +19,6 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
-import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
@@ -28,34 +27,69 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
+import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
-import org.junit.jupiter.api.Assertions.assertSame
-import org.junit.jupiter.api.Assertions.assertNotEquals
+import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
-import java.nio.file.Path
 
 class RelationContractTest {
     @Test
     fun `workspace expansion retains subject proof while admitting a different file endpoint`() {
         val selector = selector(exactFile = true)
-        val request = RelationRequest.start(selector, RelationMeaning.Callees, request(RelationMeaning.Callees).budget, RelationSearchBoundary.WORKSPACE_EXPANSION)
+        val request =
+            RelationRequest.start(
+                selector,
+                RelationMeaning.Callees,
+                request(RelationMeaning.Callees).budget,
+                RelationSearchBoundary.WORKSPACE_EXPANSION,
+            )
         assertSame(selector, (request.subject as RelationEndpoint.Subject).selector)
         assertSame(selector.scope, request.subject.scope)
         assertInstanceOf(SymbolSearchScope.Workspace::class.java, request.searchScope)
-        val otherFile = (SymbolDiscoveryCandidate.fromBoundary(SymbolDiscoveryKind.SYMBOL, "other", selector.lease,
-            Path.of("/workspace/other/Other.kt"), "file:///workspace/other/Other.kt", 0).refined().location as SymbolDiscoveryCandidateLocation.Declaration).file
-        val evidence = CompilerGroundedSymbolEvidence.fromBoundary(otherFile, 0, 10, "other", "other.Other.other",
-            CompilerSymbolKind.FUNCTION, CanonicalCompilerSignature.function("other.Other.other", null, emptyList(), emptyList(), 0).refined()).refined()
-        val endpoint = RelationEndpoint.resolve(selector.lease, request.searchScope, evidence, request.searchConstraints).refined()
-        val fact = RelationFact.create(request, request.subject, endpoint,
-            RelationOccurrence.fromBoundary(selector.file, 41, 42).refined(), RelationProvenance.K2_AUTHORED_SOURCE).refined()
+        val otherFile =
+            (SymbolDiscoveryCandidate.fromBoundary(
+                        SymbolDiscoveryKind.SYMBOL,
+                        "other",
+                        selector.lease,
+                        Path.of("/workspace/other/Other.kt"),
+                        "file:///workspace/other/Other.kt",
+                        0,
+                    )
+                    .refined()
+                    .location as SymbolDiscoveryCandidateLocation.Declaration)
+                .file
+        val evidence =
+            CompilerGroundedSymbolEvidence.fromBoundary(
+                    otherFile,
+                    0,
+                    10,
+                    "other",
+                    "other.Other.other",
+                    CompilerSymbolKind.FUNCTION,
+                    CanonicalCompilerSignature.function("other.Other.other", null, emptyList(), emptyList(), 0)
+                        .refined(),
+                )
+                .refined()
+        val endpoint =
+            RelationEndpoint.resolve(selector.lease, request.searchScope, evidence, request.searchConstraints).refined()
+        val fact =
+            RelationFact.create(
+                    request,
+                    request.subject,
+                    endpoint,
+                    RelationOccurrence.fromBoundary(selector.file, 41, 42).refined(),
+                    RelationProvenance.K2_AUTHORED_SOURCE,
+                )
+                .refined()
         assertSame(request.subject, fact.source)
         assertSame(endpoint, fact.target)
     }
@@ -63,12 +97,29 @@ class RelationContractTest {
     @Test
     fun `a continuation cannot change its search boundary even with the same subject`() {
         val selector = selector(exactFile = true)
-        val retained = RelationRequest.start(selector, RelationMeaning.References, request(RelationMeaning.References).budget)
-        val expanded = RelationRequest.start(selector, retained.meaning, retained.budget, RelationSearchBoundary.WORKSPACE_EXPANSION)
+        val retained =
+            RelationRequest.start(selector, RelationMeaning.References, request(RelationMeaning.References).budget)
+        val expanded =
+            RelationRequest.start(
+                selector,
+                retained.meaning,
+                retained.budget,
+                RelationSearchBoundary.WORKSPACE_EXPANSION,
+            )
         assertNotEquals(retained.scopeFingerprint, expanded.scopeFingerprint)
-        val batch = RelationBatch.create(expanded, emptyList(), RelationByteCount.parse(0).refined(), RelationWorkCount.parse(0).refined(), RelationResultCount.parse(0).refined()).refined()
+        val batch =
+            RelationBatch.create(
+                    expanded,
+                    emptyList(),
+                    RelationByteCount.parse(0).refined(),
+                    RelationWorkCount.parse(0).refined(),
+                    RelationResultCount.parse(0).refined(),
+                )
+                .refined()
         val cursor = expanded.providerCursor.advance(RelationProviderItemDescriptor.parse("first").refined())
-        val compiled = RelationCompilation.qualifiedResumable(batch, setOf(RelationLimitation.RESULT_LIMIT_REACHED), cursor).refined()
+        val compiled =
+            RelationCompilation.qualifiedResumable(batch, setOf(RelationLimitation.RESULT_LIMIT_REACHED), cursor)
+                .refined()
         val continuation = (compiled.coverage as RelationIncompleteCoverage.Resumable).continuation
         val resumed = RelationRequest.resume(selector, expanded.meaning, expanded.budget, continuation)
         assertEquals(RelationResumeFailure.SCOPE_MISMATCH, (resumed as Refinement.Rejected).failure)
@@ -78,21 +129,25 @@ class RelationContractTest {
     fun `related endpoint preserves the exact compiler identity fingerprint`() {
         val selector = selector()
         val description = SymbolDescription.from(selector)
-        val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
-            selector.file,
-            selector.range.startInclusive,
-            selector.range.endExclusive,
-            selector.name.value,
-            "sample.Subject.run",
-            selector.kind,
-            description.signature,
-        ).refined()
+        val evidence =
+            CompilerGroundedSymbolEvidence.fromBoundary(
+                    selector.file,
+                    selector.range.startInclusive,
+                    selector.range.endExclusive,
+                    selector.name.value,
+                    "sample.Subject.run",
+                    selector.kind,
+                    description.signature,
+                )
+                .refined()
 
-        val endpoint = RelationEndpoint.resolve(
-            selector.lease,
-            selector.scope,
-            evidence,
-        ).refined()
+        val endpoint =
+            RelationEndpoint.resolve(
+                    selector.lease,
+                    selector.scope,
+                    evidence,
+                )
+                .refined()
 
         assertEquals(selector.fingerprint.value, endpoint.fingerprint.value)
     }
@@ -102,21 +157,24 @@ class RelationContractTest {
         val selector = selector()
         val subject = RelationEndpoint.subject(selector)
         val endpoint = related(subject)
-        val changed = CompilerGroundedSymbolEvidence.fromBoundary(
-            endpoint.file,
-            endpoint.range.startInclusive,
-            endpoint.range.endExclusive,
-            endpoint.name.value,
-            "sample.Related.run",
-            endpoint.kind,
-            CanonicalCompilerSignature.function(
-                "sample.Related.run",
-                null,
-                emptyList(),
-                emptyList(),
-                1,
-            ).refined(),
-        ).refined()
+        val changed =
+            CompilerGroundedSymbolEvidence.fromBoundary(
+                    endpoint.file,
+                    endpoint.range.startInclusive,
+                    endpoint.range.endExclusive,
+                    endpoint.name.value,
+                    "sample.Related.run",
+                    endpoint.kind,
+                    CanonicalCompilerSignature.function(
+                            "sample.Related.run",
+                            null,
+                            emptyList(),
+                            emptyList(),
+                            1,
+                        )
+                        .refined(),
+                )
+                .refined()
 
         val result = RevalidatedRelationEndpoint.validate(endpoint, changed)
 
@@ -132,13 +190,14 @@ class RelationContractTest {
         val subject = request.subject
         val occurrence = RelationOccurrence.fromBoundary(request.subject.file, 41, 44).refined()
 
-        val rejected = RelationFact.create(
-            request,
-            source = related(request.subject),
-            target = subject,
-            occurrence = occurrence,
-            provenance = RelationProvenance.K2_AUTHORED_SOURCE,
-        )
+        val rejected =
+            RelationFact.create(
+                request,
+                source = related(request.subject),
+                target = subject,
+                occurrence = occurrence,
+                provenance = RelationProvenance.K2_AUTHORED_SOURCE,
+            )
 
         assertEquals(
             RelationFactFailure.SUBJECT_ORIENTATION_MISMATCH,
@@ -149,61 +208,69 @@ class RelationContractTest {
     @Test
     fun `terminal incomplete page has no continuation while resumable page stays bound`() {
         val request = request(RelationMeaning.References)
-        val batch = RelationBatch.create(
-            request,
-            emptyList(),
-            RelationByteCount.parse(0L).refined(),
-            RelationWorkCount.parse(0L).refined(),
-            RelationResultCount.parse(0).refined(),
-        ).refined()
-        val terminal = RelationCompilation.qualifiedTerminal(
-            batch,
-            setOf(RelationLimitation.UNRESOLVED_TARGET),
-        ).refined()
-        val cursor = request.providerCursor
-            .advance(RelationProviderItemDescriptor.parse("first").refined())
-        val resumable = RelationCompilation.qualifiedResumable(
-            batch,
-            setOf(RelationLimitation.RESULT_LIMIT_REACHED),
-            cursor,
-        ).refined()
+        val batch =
+            RelationBatch.create(
+                    request,
+                    emptyList(),
+                    RelationByteCount.parse(0L).refined(),
+                    RelationWorkCount.parse(0L).refined(),
+                    RelationResultCount.parse(0).refined(),
+                )
+                .refined()
+        val terminal =
+            RelationCompilation.qualifiedTerminal(
+                    batch,
+                    setOf(RelationLimitation.UNRESOLVED_TARGET),
+                )
+                .refined()
+        val cursor = request.providerCursor.advance(RelationProviderItemDescriptor.parse("first").refined())
+        val resumable =
+            RelationCompilation.qualifiedResumable(
+                    batch,
+                    setOf(RelationLimitation.RESULT_LIMIT_REACHED),
+                    cursor,
+                )
+                .refined()
 
         assertInstanceOf(RelationIncompleteCoverage.TerminalIncomplete::class.java, terminal.coverage)
-        val resumableCoverage = assertInstanceOf(
-            RelationIncompleteCoverage.Resumable::class.java,
-            resumable.coverage,
-        )
+        val resumableCoverage =
+            assertInstanceOf(
+                RelationIncompleteCoverage.Resumable::class.java,
+                resumable.coverage,
+            )
         assertEquals(0, terminal.coverage.knownMinimum.value)
         assertEquals(0, batch.resultCount.value)
         assertEquals(
             RelationResumeFailure.MEANING_MISMATCH,
-            (
-                RelationRequest.resume(
+            (RelationRequest.resume(
                     (request.subject as RelationEndpoint.Subject).selector,
                     RelationMeaning.Callers,
                     request.budget,
                     resumableCoverage.continuation,
-                ) as Refinement.Rejected
-            ).failure,
+                ) as Refinement.Rejected)
+                .failure,
         )
     }
 
     @Test
     fun `resumable page rejects a cursor that cannot make forward progress`() {
         val request = request(RelationMeaning.References)
-        val batch = RelationBatch.create(
-            request,
-            emptyList(),
-            RelationByteCount.parse(0L).refined(),
-            RelationWorkCount.parse(0L).refined(),
-            RelationResultCount.parse(0).refined(),
-        ).refined()
+        val batch =
+            RelationBatch.create(
+                    request,
+                    emptyList(),
+                    RelationByteCount.parse(0L).refined(),
+                    RelationWorkCount.parse(0L).refined(),
+                    RelationResultCount.parse(0).refined(),
+                )
+                .refined()
 
-        val result = RelationCompilation.qualifiedResumable(
-            batch,
-            setOf(RelationLimitation.TIME_LIMIT_REACHED),
-            request.providerCursor,
-        )
+        val result =
+            RelationCompilation.qualifiedResumable(
+                batch,
+                setOf(RelationLimitation.TIME_LIMIT_REACHED),
+                request.providerCursor,
+            )
 
         assertEquals(
             RelationIncompleteCoverageFailure.CURSOR_NOT_ADVANCED,
@@ -216,12 +283,10 @@ class RelationContractTest {
         val first = RelationProviderItemDescriptor.parse("first").refined()
         val second = RelationProviderItemDescriptor.parse("second").refined()
 
-        val forward = RelationProviderCursor.start(RelationProviderKind.INTELLIJ_REFERENCES_V1)
-            .advance(first)
-            .advance(second)
-        val moved = RelationProviderCursor.start(RelationProviderKind.INTELLIJ_REFERENCES_V1)
-            .advance(second)
-            .advance(first)
+        val forward =
+            RelationProviderCursor.start(RelationProviderKind.INTELLIJ_REFERENCES_V1).advance(first).advance(second)
+        val moved =
+            RelationProviderCursor.start(RelationProviderKind.INTELLIJ_REFERENCES_V1).advance(second).advance(first)
 
         assertEquals(2L, forward.nextPosition.value)
         org.junit.jupiter.api.Assertions.assertNotEquals(
@@ -232,110 +297,131 @@ class RelationContractTest {
 
     private fun related(subject: RelationEndpoint): RelationEndpoint.Resolved =
         RelationEndpoint.resolve(
-            subject.lease,
-            subject.scope,
-            CompilerGroundedSymbolEvidence.fromBoundary(
-                subject.file,
-                71,
-                82,
-                "related",
-                "sample.Related.run",
-                CompilerSymbolKind.FUNCTION,
-                CanonicalCompilerSignature.function(
-                    "sample.Related.run",
-                    null,
-                    emptyList(),
-                    emptyList(),
-                    0,
-                ).refined(),
-            ).refined(),
-        ).refined()
+                subject.lease,
+                subject.scope,
+                CompilerGroundedSymbolEvidence.fromBoundary(
+                        subject.file,
+                        71,
+                        82,
+                        "related",
+                        "sample.Related.run",
+                        CompilerSymbolKind.FUNCTION,
+                        CanonicalCompilerSignature.function(
+                                "sample.Related.run",
+                                null,
+                                emptyList(),
+                                emptyList(),
+                                0,
+                            )
+                            .refined(),
+                    )
+                    .refined(),
+            )
+            .refined()
 
-    private fun request(meaning: RelationMeaning): RelationRequest = RelationRequest.start(
-        selector(),
-        meaning,
-        RelationBudget(
-            ResourceBudget(
-                ResultLimit.parse(8).refined(),
-                WorkUnitLimit.parse(32L).refined(),
-                ElapsedTimeLimitMillis.parse(1_000L).refined(),
-            ),
-            RelationByteLimit.parse(100_000L).refined(),
-        ),
-    )
-
-    private fun selector(exactFile: Boolean = false): SymbolSelector {
-        val lease = SemanticReadLease(
-            CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
-            EvidenceGeneration.parse(19L).refined(),
-        )
-        val request = SymbolDiscoveryRequest(
-            SymbolSearchScopeRequest(
-                lease,
-                if (exactFile) SymbolSearchScope.ExactFile(
-                    io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath.fromCanonicalPath(lease.workspaceRoot, Path.of("/workspace/src/Subject.kt")).refined(),
-                    SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-                    SymbolGeneratedSourcePolicy.INCLUDE,
-                ) else SymbolSearchScope.Workspace(
-                    SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-                    SymbolGeneratedSourcePolicy.INCLUDE,
-                    SymbolLibraryPolicy.EXCLUDE,
-                ),
-            ),
-            SymbolDiscoveryTarget.Name(
-                SymbolNameDiscoveryKind.SYMBOL,
-                SymbolDiscoveryPattern.parse("run").refined(),
-                SymbolDiscoveryMatch.FUZZY,
-            ),
-            SymbolDiscoveryBudget(
+    private fun request(meaning: RelationMeaning): RelationRequest =
+        RelationRequest.start(
+            selector(),
+            meaning,
+            RelationBudget(
                 ResourceBudget(
-                    ResultLimit.parse(1).refined(),
-                    WorkUnitLimit.parse(8L).refined(),
+                    ResultLimit.parse(8).refined(),
+                    WorkUnitLimit.parse(32L).refined(),
                     ElapsedTimeLimitMillis.parse(1_000L).refined(),
                 ),
-                SymbolDiscoveryByteLimit.parse(10_000L).refined(),
+                RelationByteLimit.parse(100_000L).refined(),
             ),
         )
-        val candidate = SymbolDiscoveryCandidate.fromBoundary(
-            SymbolDiscoveryKind.SYMBOL,
-            "run",
-            lease,
-            Path.of("/workspace/src/Subject.kt"),
-            "file:///workspace/src/Subject.kt",
-            41,
-        ).refined()
-        val batch = SymbolDiscoveryBatch.create(
-            request,
-            listOf(candidate),
-            SymbolDiscoveryByteCount.parse(candidate.projectedUtf8Size().value).refined(),
-            SymbolDiscoveryWorkCount.parse(1L).refined(),
-            SymbolDiscoveryTimings(
-                SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
-                SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
-            ),
-        ).refined()
+
+    private fun selector(exactFile: Boolean = false): SymbolSelector {
+        val lease =
+            SemanticReadLease(
+                CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
+                EvidenceGeneration.parse(19L).refined(),
+            )
+        val request =
+            SymbolDiscoveryRequest(
+                SymbolSearchScopeRequest(
+                    lease,
+                    if (exactFile)
+                        SymbolSearchScope.ExactFile(
+                            io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath.fromCanonicalPath(
+                                    lease.workspaceRoot,
+                                    Path.of("/workspace/src/Subject.kt"),
+                                )
+                                .refined(),
+                            SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                            SymbolGeneratedSourcePolicy.INCLUDE,
+                        )
+                    else
+                        SymbolSearchScope.Workspace(
+                            SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                            SymbolGeneratedSourcePolicy.INCLUDE,
+                            SymbolLibraryPolicy.EXCLUDE,
+                        ),
+                ),
+                SymbolDiscoveryTarget.Name(
+                    SymbolNameDiscoveryKind.SYMBOL,
+                    SymbolDiscoveryPattern.parse("run").refined(),
+                    SymbolDiscoveryMatch.FUZZY,
+                ),
+                SymbolDiscoveryBudget(
+                    ResourceBudget(
+                        ResultLimit.parse(1).refined(),
+                        WorkUnitLimit.parse(8L).refined(),
+                        ElapsedTimeLimitMillis.parse(1_000L).refined(),
+                    ),
+                    SymbolDiscoveryByteLimit.parse(10_000L).refined(),
+                ),
+            )
+        val candidate =
+            SymbolDiscoveryCandidate.fromBoundary(
+                    SymbolDiscoveryKind.SYMBOL,
+                    "run",
+                    lease,
+                    Path.of("/workspace/src/Subject.kt"),
+                    "file:///workspace/src/Subject.kt",
+                    41,
+                )
+                .refined()
+        val batch =
+            SymbolDiscoveryBatch.create(
+                    request,
+                    listOf(candidate),
+                    SymbolDiscoveryByteCount.parse(candidate.projectedUtf8Size().value).refined(),
+                    SymbolDiscoveryWorkCount.parse(1L).refined(),
+                    SymbolDiscoveryTimings(
+                        SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
+                        SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
+                    ),
+                )
+                .refined()
         val selection = SymbolDiscoverySelection.select(batch, 0).refined()
         val location = selection.candidate.location as SymbolDiscoveryCandidateLocation.Declaration
-        val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
-            location.file,
-            location.offset.value,
-            location.offset.value + 10,
-            selection.candidate.name.value,
-            "sample.Subject.run",
-            CompilerSymbolKind.FUNCTION,
-            CanonicalCompilerSignature.function(
-                "sample.Subject.run",
-                null,
-                emptyList(),
-                emptyList(),
-                0,
-            ).refined(),
-        ).refined()
+        val evidence =
+            CompilerGroundedSymbolEvidence.fromBoundary(
+                    location.file,
+                    location.offset.value,
+                    location.offset.value + 10,
+                    selection.candidate.name.value,
+                    "sample.Subject.run",
+                    CompilerSymbolKind.FUNCTION,
+                    CanonicalCompilerSignature.function(
+                            "sample.Subject.run",
+                            null,
+                            emptyList(),
+                            emptyList(),
+                            0,
+                        )
+                        .refined(),
+                )
+                .refined()
         return SymbolSelector.issue(selection, evidence).refined()
     }
 
-    private fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error(failure.toString())
-    }
+    private fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
 }

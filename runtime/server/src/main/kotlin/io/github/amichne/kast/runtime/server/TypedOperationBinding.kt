@@ -17,22 +17,17 @@ fun interface OperationHandler<
     Result : OperationResult,
     Qualification : OperationQualification,
     Rejection : OperationRejection,
-    > {
-    suspend fun execute(
-        request: Request,
-    ): OperationOutcome<Result, Qualification, Rejection>
+> {
+    suspend fun execute(request: Request): OperationOutcome<Result, Qualification, Rejection>
 }
 
-/**
- * One generated wire binding paired with a handler whose generic request and outcome types match
- * by construction.
- */
+/** One generated wire binding paired with a handler whose generic request and outcome types match by construction. */
 class TypedOperationBinding<
     Request : OperationRequest,
     Result : OperationResult,
     Qualification : OperationQualification,
     Rejection : OperationRejection,
-    >(
+>(
     val wireBinding: OperationWireBinding<Request, Result, Qualification, Rejection>,
     private val handler: OperationHandler<Request, Result, Qualification, Rejection>,
 ) {
@@ -40,35 +35,35 @@ class TypedOperationBinding<
         get() = wireBinding.operation
 
     /**
-     * Proof transition: `TypedOperationBinding<Request, Result, Qualification, Rejection> ->
-     * RuntimeDispatchBinding`.
+     * Proof transition: `TypedOperationBinding<Request, Result, Qualification, Rejection> -> RuntimeDispatchBinding`.
      *
-     * Preserves the exact generated decoder, handler request, canonical outcome, and encoder
-     * association inside a closed dispatch capability without exposing `Any` or unchecked casts.
-     * [ServerDispatchFailure] is the closed expected failure. The operation-specific request may
-     * leave this capability only through [OperationHandler.execute].
+     * Preserves the exact generated decoder, handler request, canonical outcome, and encoder association inside a
+     * closed dispatch capability without exposing `Any` or unchecked casts. [ServerDispatchFailure] is the closed
+     * expected failure. The operation-specific request may leave this capability only through
+     * [OperationHandler.execute].
      */
-    internal fun dispatchBinding(): RuntimeDispatchBinding = object : RuntimeDispatchBinding {
-        override val operation: CanonicalOperation = this@TypedOperationBinding.operation
+    internal fun dispatchBinding(): RuntimeDispatchBinding =
+        object : RuntimeDispatchBinding {
+            override val operation: CanonicalOperation = this@TypedOperationBinding.operation
 
-        override suspend fun dispatch(request: AdmittedWireRequest): ServerDispatch = when (
-            val decoding = wireBinding.decodeRequest(request)
-        ) {
-            is WireDecoding.Rejected -> ServerDispatch.Rejected(
-                ServerDispatchFailure.RequestDecodingFailed(operation, decoding.failure),
-            )
-            is WireDecoding.Decoded -> encode(handler.execute(decoding.value))
-        }
+            override suspend fun dispatch(request: AdmittedWireRequest): ServerDispatch =
+                when (val decoding = wireBinding.decodeRequest(request)) {
+                    is WireDecoding.Rejected ->
+                        ServerDispatch.Rejected(
+                            ServerDispatchFailure.RequestDecodingFailed(operation, decoding.failure)
+                        )
+                    is WireDecoding.Decoded -> encode(handler.execute(decoding.value))
+                }
 
-        private fun encode(
-            outcome: OperationOutcome<Result, Qualification, Rejection>,
-        ): ServerDispatch = when (val encoding = wireBinding.encodeOutcome(outcome)) {
-            is WireEncoding.Encoded -> ServerDispatch.Responded(encoding.document)
-            is WireEncoding.Rejected -> ServerDispatch.Rejected(
-                ServerDispatchFailure.ResponseEncodingFailed(operation, encoding.failure),
-            )
+            private fun encode(outcome: OperationOutcome<Result, Qualification, Rejection>): ServerDispatch =
+                when (val encoding = wireBinding.encodeOutcome(outcome)) {
+                    is WireEncoding.Encoded -> ServerDispatch.Responded(encoding.document)
+                    is WireEncoding.Rejected ->
+                        ServerDispatch.Rejected(
+                            ServerDispatchFailure.ResponseEncodingFailed(operation, encoding.failure)
+                        )
+                }
         }
-    }
 }
 
 /** Captured generic dispatch association used only by the exact internal binding table. */

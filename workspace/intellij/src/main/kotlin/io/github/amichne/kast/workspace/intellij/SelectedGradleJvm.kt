@@ -1,9 +1,10 @@
 package io.github.amichne.kast.workspace.intellij
 
-import org.gradle.util.GradleVersion
 import java.nio.file.Path
+import org.gradle.util.GradleVersion
 
-internal typealias GradleJvmSelectionSource = io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionAuthority
+internal typealias GradleJvmSelectionSource =
+    io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionAuthority
 
 /** Detached observation of one physically admitted local Java installation. */
 internal data class GradleJvmCandidate(
@@ -19,7 +20,9 @@ internal data class GradleJvmCandidate(
     }
 }
 
-internal enum class GradleJvmCandidateSelectionFailure { NO_COMPATIBLE_RUNTIME }
+internal enum class GradleJvmCandidateSelectionFailure {
+    NO_COMPATIBLE_RUNTIME
+}
 
 internal sealed interface GradleJvmCandidateSelection {
     data class Selected(
@@ -27,9 +30,7 @@ internal sealed interface GradleJvmCandidateSelection {
         val candidate: GradleJvmCandidate,
     ) : GradleJvmCandidateSelection
 
-    data class Rejected(
-        val failure: GradleJvmCandidateSelectionFailure,
-    ) : GradleJvmCandidateSelection
+    data class Rejected(val failure: GradleJvmCandidateSelectionFailure) : GradleJvmCandidateSelection
 }
 
 /** Pure deterministic selection over already detached local-runtime observations. */
@@ -38,61 +39,62 @@ internal object GradleJvmCandidateSelector {
         distribution: GradleVersion,
         candidates: List<GradleJvmCandidate>,
     ): GradleJvmCandidateSelection {
-        val distinctCandidates = candidates
-            .groupBy(GradleJvmCandidate::home)
-            .values
-            .map { sameHome ->
+        val distinctCandidates =
+            candidates.groupBy(GradleJvmCandidate::home).values.map { sameHome ->
                 sameHome.minWith(
                     compareBy<GradleJvmCandidate>(
                         { candidate -> candidate.source.precedence() },
                         GradleJvmCandidate::runtimeVersion,
-                    ),
+                    )
                 )
             }
-        val authoritativeCandidates = when {
-            distinctCandidates.any {
-                candidate -> candidate.source == GradleJvmSelectionSource.DAEMON_JVM_CRITERIA
-            } -> distinctCandidates.filter {
-                candidate -> candidate.source == GradleJvmSelectionSource.DAEMON_JVM_CRITERIA
+        val authoritativeCandidates =
+            when {
+                distinctCandidates.any { candidate ->
+                    candidate.source == GradleJvmSelectionSource.DAEMON_JVM_CRITERIA
+                } ->
+                    distinctCandidates.filter { candidate ->
+                        candidate.source == GradleJvmSelectionSource.DAEMON_JVM_CRITERIA
+                    }
+                distinctCandidates.any { candidate ->
+                    candidate.source == GradleJvmSelectionSource.REPOSITORY_GRADLE_PROPERTY
+                } ->
+                    distinctCandidates.filter { candidate ->
+                        candidate.source == GradleJvmSelectionSource.REPOSITORY_GRADLE_PROPERTY
+                    }
+                else -> distinctCandidates
             }
-            distinctCandidates.any {
-                candidate ->
-                candidate.source == GradleJvmSelectionSource.REPOSITORY_GRADLE_PROPERTY
-            } -> distinctCandidates.filter {
-                candidate ->
-                candidate.source == GradleJvmSelectionSource.REPOSITORY_GRADLE_PROPERTY
-            }
-            else -> distinctCandidates
-        }
-        val selected = authoritativeCandidates
-            .filter { candidate ->
-                GradleRuntimeCompatibilityPolicy.classify(
-                    distribution,
-                    candidate.feature,
-                ) is GradleRuntimeCompatibility.Compatible
-            }
-            .minWithOrNull(
-                compareBy<GradleJvmCandidate> { candidate -> candidate.source.precedence() }
-                    .thenByDescending { candidate -> candidate.feature.value }
-                    .thenBy(GradleJvmCandidate::runtimeVersion)
-                    .thenBy { candidate -> candidate.home.toString() },
-            ) ?: return GradleJvmCandidateSelection.Rejected(
-            GradleJvmCandidateSelectionFailure.NO_COMPATIBLE_RUNTIME,
-        )
+        val selected =
+            authoritativeCandidates
+                .filter { candidate ->
+                    GradleRuntimeCompatibilityPolicy.classify(
+                        distribution,
+                        candidate.feature,
+                    ) is GradleRuntimeCompatibility.Compatible
+                }
+                .minWithOrNull(
+                    compareBy<GradleJvmCandidate> { candidate -> candidate.source.precedence() }
+                        .thenByDescending { candidate -> candidate.feature.value }
+                        .thenBy(GradleJvmCandidate::runtimeVersion)
+                        .thenBy { candidate -> candidate.home.toString() }
+                )
+                ?: return GradleJvmCandidateSelection.Rejected(GradleJvmCandidateSelectionFailure.NO_COMPATIBLE_RUNTIME)
         return GradleJvmCandidateSelection.Selected(distribution, selected)
     }
 
-    private fun GradleJvmSelectionSource.precedence(): Int = when (this) {
-        GradleJvmSelectionSource.DAEMON_JVM_CRITERIA -> 0
-        GradleJvmSelectionSource.REPOSITORY_GRADLE_PROPERTY -> 1
-        GradleJvmSelectionSource.AMBIENT_JAVA_HOME -> 2
-        GradleJvmSelectionSource.SIDECAR_COMPATIBLE -> 3
-        GradleJvmSelectionSource.PLATFORM_RESOLVER -> 4
-    }
+    private fun GradleJvmSelectionSource.precedence(): Int =
+        when (this) {
+            GradleJvmSelectionSource.DAEMON_JVM_CRITERIA -> 0
+            GradleJvmSelectionSource.REPOSITORY_GRADLE_PROPERTY -> 1
+            GradleJvmSelectionSource.AMBIENT_JAVA_HOME -> 2
+            GradleJvmSelectionSource.SIDECAR_COMPATIBLE -> 3
+            GradleJvmSelectionSource.PLATFORM_RESOLVER -> 4
+        }
 }
 
 /** Gradle JVM authority established only from a compatible candidate-selection proof. */
-class SelectedGradleJvm private constructor(
+class SelectedGradleJvm
+private constructor(
     internal val home: Path,
     internal val feature: JavaFeature,
     internal val runtimeVersion: String,

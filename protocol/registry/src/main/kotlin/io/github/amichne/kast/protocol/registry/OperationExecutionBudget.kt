@@ -7,8 +7,7 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 /** Process deadlines, distinct from semantic work-unit budgets and release performance gates. */
 enum class OperationExecutionBudget(operationMillis: Long) {
     SEMANTIC_READ(60_000),
-    GRAPH_BUILD(240_000),
-    ;
+    GRAPH_BUILD(240_000);
 
     val operation: ElapsedTimeLimitMillis = limit(operationMillis)
     val invocation: ElapsedTimeLimitMillis
@@ -20,27 +19,26 @@ enum class OperationExecutionBudget(operationMillis: Long) {
         val PROVIDER_QUALIFICATION: ElapsedTimeLimitMillis = limit(2 * LOCAL_QUALIFICATION.value)
 
         /** Every public operation has one exhaustive process budget authority. */
-        fun forOperation(operation: CanonicalOperation): OperationExecutionBudget = when (operation) {
-            CanonicalOperation.TOPOLOGY_BUILD,
-            CanonicalOperation.TRAVERSAL_RUN -> GRAPH_BUILD
-            CanonicalOperation.INDEX_SYNC,
-            CanonicalOperation.SYMBOL_DISCOVER,
-            CanonicalOperation.SYMBOL_INSPECT,
-            CanonicalOperation.SOURCE_READ,
-            CanonicalOperation.RELATION_READ,
-            CanonicalOperation.QUERY_RUN,
-            CanonicalOperation.DIAGNOSTIC_CHECK,
-            CanonicalOperation.CHANGE_PLAN,
-            CanonicalOperation.CHANGE_APPLY,
-            CanonicalOperation.CHANGE_RECOVER,
-                -> SEMANTIC_READ
-        }
+        fun forOperation(operation: CanonicalOperation): OperationExecutionBudget =
+            when (operation) {
+                CanonicalOperation.TOPOLOGY_BUILD,
+                CanonicalOperation.TRAVERSAL_RUN -> GRAPH_BUILD
+                CanonicalOperation.INDEX_SYNC,
+                CanonicalOperation.SYMBOL_DISCOVER,
+                CanonicalOperation.SYMBOL_INSPECT,
+                CanonicalOperation.SOURCE_READ,
+                CanonicalOperation.RELATION_READ,
+                CanonicalOperation.QUERY_RUN,
+                CanonicalOperation.DIAGNOSTIC_CHECK,
+                CanonicalOperation.CHANGE_PLAN,
+                CanonicalOperation.CHANGE_APPLY,
+                CanonicalOperation.CHANGE_RECOVER -> SEMANTIC_READ
+            }
     }
 }
 
-private fun limit(milliseconds: Long): ElapsedTimeLimitMillis = when (
-    val admission = ElapsedTimeLimitMillis.parse(milliseconds)
-) {
-    is Refinement.Refined -> admission.value
-    is Refinement.Rejected -> error("Invalid canonical operation deadline")
-}
+private fun limit(milliseconds: Long): ElapsedTimeLimitMillis =
+    when (val admission = ElapsedTimeLimitMillis.parse(milliseconds)) {
+        is Refinement.Refined -> admission.value
+        is Refinement.Rejected -> error("Invalid canonical operation deadline")
+    }

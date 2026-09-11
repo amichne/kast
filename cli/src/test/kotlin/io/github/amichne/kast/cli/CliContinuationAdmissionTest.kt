@@ -19,6 +19,8 @@ import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
 import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
+import java.security.MessageDigest
+import java.util.Base64
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -26,8 +28,6 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import java.security.MessageDigest
-import java.util.Base64
 
 class CliContinuationAdmissionTest {
     @Test
@@ -64,12 +64,13 @@ class CliContinuationAdmissionTest {
     @Test
     fun `long corrupted continuations preserve the finite family rejection diagnostic`() {
         val token = emittedTraversalContinuation()
-        for ((command, supplied) in listOf(
-            traversalArguments() to "x".repeat(4_097),
-            traversalArguments() to (token.dropLast(1) + "z"),
-            listOf("relation", "read") to token,
-            traversalArguments() to continuationEnvelope("traversal", 800_000),
-        )) {
+        for ((command, supplied) in
+            listOf(
+                traversalArguments() to "x".repeat(4_097),
+                traversalArguments() to (token.dropLast(1) + "z"),
+                listOf("relation", "read") to token,
+                traversalArguments() to continuationEnvelope("traversal", 800_000),
+            )) {
             val rejection = rejected(command, requestDocument(command, supplied))
             assertEquals(CliCommandFailure.ARGUMENTS_REJECTED, rejection.failure)
             assertTrue(rejection.diagnostic.value.contains("canonical, bounded request document"))
@@ -77,13 +78,15 @@ class CliContinuationAdmissionTest {
     }
 
     private fun assertResumed(command: List<String>, token: String) {
-        val parsed = assertInstanceOf(
-            CliCommandParsing.Parsed::class.java,
-            factory().parse(
-                command,
-                CliRequestDocumentInput.Provided(requestDocument(command, token)),
-            ),
-        )
+        val parsed =
+            assertInstanceOf(
+                CliCommandParsing.Parsed::class.java,
+                factory()
+                    .parse(
+                        command,
+                        CliRequestDocumentInput.Provided(requestDocument(command, token)),
+                    ),
+            )
         val action = assertInstanceOf(CliAction.Semantic::class.java, parsed.action)
         assertTrue(action.request.document.contains(token))
     }
@@ -104,41 +107,52 @@ class CliContinuationAdmissionTest {
             """{"exactSelector":"exact:fixture","relation":"callees","maximumDepth":3,"maximumResults":1,"position":{"type":"resume","continuation":"$continuation"}}"""
         }
 
-    private fun factory(): CliCommandGraphFactory = when (
-        val result = CliCommandGraphFactory.create(canonicalCliRequestPreparers())
-    ) {
-        is CliCommandGraphConstruction.Created -> result.factory
-        is CliCommandGraphConstruction.Rejected -> error("command graph rejected")
-    }
+    private fun factory(): CliCommandGraphFactory =
+        when (val result = CliCommandGraphFactory.create(canonicalCliRequestPreparers())) {
+            is CliCommandGraphConstruction.Created -> result.factory
+            is CliCommandGraphConstruction.Rejected -> error("command graph rejected")
+        }
 }
 
-internal fun traversalArguments(): List<String> = listOf(
-    "traversal", "run",
-)
+internal fun traversalArguments(): List<String> =
+    listOf(
+        "traversal",
+        "run",
+    )
 
 /** A public projection emits the complete envelope; no repository source or machine paths enter it. */
 internal fun emittedTraversalContinuation(): String {
     val continuation = TraversalContinuationDocument.parse(continuationEnvelope("traversal", 4_200)).refined()
-    val projected = traversalRunCliProjector.project(
-        OperationOutcome.Qualified(
-            EvidenceEnvelope(
-                CanonicalOperation.TRAVERSAL_RUN.id,
-                EvidenceGeneration.parse(1).refined(),
-                TraversalRunResult(
-                    ProtocolText.parse("/fixture").refined(),
-                    BoundedProtocolList.create(emptyList<io.github.amichne.kast.protocol.contract.TraversalRecordDocument>()).refined(),
+    val projected =
+        traversalRunCliProjector.project(
+            OperationOutcome.Qualified(
+                EvidenceEnvelope(
+                    CanonicalOperation.TRAVERSAL_RUN.id,
+                    EvidenceGeneration.parse(1).refined(),
+                    TraversalRunResult(
+                        ProtocolText.parse("/fixture").refined(),
+                        BoundedProtocolList.create(
+                                emptyList<io.github.amichne.kast.protocol.contract.TraversalRecordDocument>()
+                            )
+                            .refined(),
+                    ),
                 ),
-            ),
-            TraversalRunQualification.resumable(
-                listOf(TraversalLimitationDocument.RECORD_LIMIT_REACHED),
-                emptyList(),
-                continuation,
-            ).refined(),
-        ),
-    )
+                TraversalRunQualification.resumable(
+                        listOf(TraversalLimitationDocument.RECORD_LIMIT_REACHED),
+                        emptyList(),
+                        continuation,
+                    )
+                    .refined(),
+            )
+        )
     val qualified = assertInstanceOf(ProjectedCliOutcome.Qualified::class.java, projected)
-    return Json.parseToJsonElement(qualified.document.value).jsonObject
-        .getValue("qualification").jsonObject.getValue("continuation").jsonPrimitive.content
+    return Json.parseToJsonElement(qualified.document.value)
+        .jsonObject
+        .getValue("qualification")
+        .jsonObject
+        .getValue("continuation")
+        .jsonPrimitive
+        .content
 }
 
 private fun continuationEnvelope(family: String, payloadSize: Int): String {
@@ -148,7 +162,8 @@ private fun continuationEnvelope(family: String, payloadSize: Int): String {
     return "$family-continuation:v1:$encoded:$digest"
 }
 
-private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-    is Refinement.Refined -> value
-    is Refinement.Rejected -> error("fixture refinement rejected: $failure")
-}
+private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error("fixture refinement rejected: $failure")
+    }

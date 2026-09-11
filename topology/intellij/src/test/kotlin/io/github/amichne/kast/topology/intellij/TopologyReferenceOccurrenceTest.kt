@@ -8,13 +8,14 @@ import org.junit.jupiter.api.Test
 class TopologyReferenceOccurrenceTest {
     @Test
     fun `zero width synthetic reference uses its enclosing super type call`() {
-        val occurrence = assertInstanceOf(
-            TopologyReferenceOccurrence.Admitted::class.java,
-            TopologyReferenceOccurrence.refine(
-                TextRange(781, 781),
-                EnclosingSuperTypeCallRange.Observed(TextRange(781, 792)),
-            ),
-        )
+        val occurrence =
+            assertInstanceOf(
+                TopologyReferenceOccurrence.Admitted::class.java,
+                TopologyReferenceOccurrence.refine(
+                    TextRange(781, 781),
+                    EnclosingSuperTypeCallRange.Observed(TextRange(781, 792)),
+                ),
+            )
 
         assertEquals(781, occurrence.range.startInclusive)
         assertEquals(792, occurrence.range.endExclusive)
@@ -22,13 +23,14 @@ class TopologyReferenceOccurrenceTest {
 
     @Test
     fun `non-empty direct reference remains the authoritative occurrence`() {
-        val occurrence = assertInstanceOf(
-            TopologyReferenceOccurrence.Admitted::class.java,
-            TopologyReferenceOccurrence.refine(
-                TextRange(10, 16),
-                EnclosingSuperTypeCallRange.Observed(TextRange(10, 24)),
-            ),
-        )
+        val occurrence =
+            assertInstanceOf(
+                TopologyReferenceOccurrence.Admitted::class.java,
+                TopologyReferenceOccurrence.refine(
+                    TextRange(10, 16),
+                    EnclosingSuperTypeCallRange.Observed(TextRange(10, 24)),
+                ),
+            )
 
         assertEquals(10, occurrence.range.startInclusive)
         assertEquals(16, occurrence.range.endExclusive)

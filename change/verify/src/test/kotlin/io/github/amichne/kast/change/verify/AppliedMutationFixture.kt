@@ -29,31 +29,32 @@ internal fun applyExactMutation(
     plan: io.github.amichne.kast.change.contract.ChangePlan = fixture.plan,
 ): AppliedUnverified {
     val adapter = ExactWriteAdapter(fixture.observedPrecondition(plan))
-    val service = AddDeclarationApplyService(
-        AddDeclarationRecoveryService(InMemoryVerificationRecoveryStore()),
-        adapter,
-        adapter,
-        adapter,
-    )
+    val service =
+        AddDeclarationApplyService(
+            AddDeclarationRecoveryService(InMemoryVerificationRecoveryStore()),
+            adapter,
+            adapter,
+            adapter,
+        )
     return service.apply(fixture.applyRequest(plan)) as AppliedUnverified
 }
 
-private class ExactWriteAdapter(
-    private val observation: ObservedMutationPrecondition,
-) : AddDeclarationSourceObserver, AddDeclarationSourceWriter, AddDeclarationSourceRollback {
-    override fun observe(
-        source: SymbolDiscoveryFileIdentity.Workspace,
-    ): SourceObservationResult = SourceObservationResult.Observed(observation)
+private class ExactWriteAdapter(private val observation: ObservedMutationPrecondition) :
+    AddDeclarationSourceObserver, AddDeclarationSourceWriter, AddDeclarationSourceRollback {
+    override fun observe(source: SymbolDiscoveryFileIdentity.Workspace): SourceObservationResult =
+        SourceObservationResult.Observed(observation)
 
     override fun write(
         authority: MutationAuthority,
         durability: MutationDurabilityBarrier,
     ): SourceWriteResult {
-        val applied = AppliedSourceWrite.observe(
-            authority,
-            authority.postimageBytesAtIntellijBoundary(),
-            setOf(authority.source.path.value),
-        ).refined()
+        val applied =
+            AppliedSourceWrite.observe(
+                    authority,
+                    authority.postimageBytesAtIntellijBoundary(),
+                    setOf(authority.source.path.value),
+                )
+                .refined()
         return when (durability.recordApplied()) {
             MutationDurabilityResult.Durable -> SourceWriteResult.Applied(applied)
             is MutationDurabilityResult.Rejected ->
@@ -71,14 +72,13 @@ private class InMemoryVerificationRecoveryStore : MutationRecoveryEvidenceStore 
     private val records = linkedMapOf<String, MutationRecoveryRecord>()
 
     override fun prepare(
-        record: MutationRecoveryRecord.PreWriteDurable,
+        record: MutationRecoveryRecord.PreWriteDurable
     ): MutationRecoveryPersistResult<MutationRecoveryRecord.PreWriteDurable> = persist(record)
 
     override fun recordApplied(
         prior: MutationRecoveryRecord.PreWriteDurable,
         record: MutationRecoveryRecord.AppliedWritesDurable,
-    ): MutationRecoveryPersistResult<MutationRecoveryRecord.AppliedWritesDurable> =
-        transition(prior, record)
+    ): MutationRecoveryPersistResult<MutationRecoveryRecord.AppliedWritesDurable> = transition(prior, record)
 
     override fun <Record : MutationRecoveryRecord.Terminal> recordTerminal(
         prior: MutationRecoveryRecord.AppliedWritesDurable,
@@ -86,12 +86,9 @@ private class InMemoryVerificationRecoveryStore : MutationRecoveryEvidenceStore 
     ): MutationRecoveryPersistResult<Record> = transition(prior, record)
 
     override fun load(binding: MutationPlanBinding): MutationRecoveryLoadResult =
-        records[binding.value]?.let(MutationRecoveryLoadResult::Found)
-        ?: MutationRecoveryLoadResult.Absent(binding)
+        records[binding.value]?.let(MutationRecoveryLoadResult::Found) ?: MutationRecoveryLoadResult.Absent(binding)
 
-    private fun <Record : MutationRecoveryRecord> persist(
-        record: Record,
-    ): MutationRecoveryPersistResult<Record> {
+    private fun <Record : MutationRecoveryRecord> persist(record: Record): MutationRecoveryPersistResult<Record> {
         records[record.binding.value] = record
         return MutationRecoveryPersistResult.Durable(record)
     }
@@ -103,13 +100,12 @@ private class InMemoryVerificationRecoveryStore : MutationRecoveryEvidenceStore 
         if (records[prior.binding.value]?.digest == prior.digest) {
             persist(record)
         } else {
-            MutationRecoveryPersistResult.Rejected(
-                MutationRecoveryEvidenceFailure.PRIOR_STATE_MISMATCH,
-            )
+            MutationRecoveryPersistResult.Rejected(MutationRecoveryEvidenceFailure.PRIOR_STATE_MISMATCH)
         }
 }
 
-internal fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong = when (this) {
-    is Refinement.Refined -> value
-    is Refinement.Rejected -> error(failure.toString())
-}
+internal fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error(failure.toString())
+    }

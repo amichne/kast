@@ -1,7 +1,13 @@
 package io.github.amichne.kast.kernel
 
 /** Operational capacities, separate from compiler identities and protocol grammar. */
-enum class ReadLimitUnit { COUNT, CHARACTERS, BYTES, MILLISECONDS }
+enum class ReadLimitUnit {
+    COUNT,
+    CHARACTERS,
+    BYTES,
+    MILLISECONDS,
+}
+
 enum class ReadLimitParameter(val defaultValue: Int, val unit: ReadLimitUnit, val minimum: Int = 1) {
     MODEL_CACHED_GRADLE_MODELS(8, ReadLimitUnit.COUNT),
     MODEL_MODULES(256, ReadLimitUnit.COUNT),
@@ -47,33 +53,58 @@ enum class ReadLimitParameter(val defaultValue: Int, val unit: ReadLimitUnit, va
     PROVIDER_GRAPH_INVOCATION_MILLIS(1_260_000, ReadLimitUnit.MILLISECONDS),
     PROCESS_INPUT_BYTES(4 * 1_024 * 1_024, ReadLimitUnit.BYTES, 256),
     PROCESS_OUTPUT_BYTES(64 * 1_024 * 1_024, ReadLimitUnit.BYTES, 256),
-    PROCESS_TIMEOUT_MILLIS(1_260_000, ReadLimitUnit.MILLISECONDS),
-    ;
+    PROCESS_TIMEOUT_MILLIS(1_260_000, ReadLimitUnit.MILLISECONDS);
 
-    val environmentKey: String get() = "KAST_READ_$name"
-    val propertyKey: String get() = "kast.read.${name.lowercase().replace('_', '.')}"
+    val environmentKey: String
+        get() = "KAST_READ_$name"
+
+    val propertyKey: String
+        get() = "kast.read.${name.lowercase().replace('_', '.')}"
+
     // Consumers use signed JVM array/count APIs, including a one-unit overflow probe.
-    val maximum: Int get() = Int.MAX_VALUE - 1
+    val maximum: Int
+        get() = Int.MAX_VALUE - 1
 }
 
-enum class ReadLimitSource { DEFAULT, ENVIRONMENT, JVM_PROPERTY, COMMAND_LINE, SAVED_WORKSPACE, SAVED_INSTALLATION }
-enum class ReadLimitValueFailure { INVALID_NUMBER, OUT_OF_RANGE }
+enum class ReadLimitSource {
+    DEFAULT,
+    ENVIRONMENT,
+    JVM_PROPERTY,
+    COMMAND_LINE,
+    SAVED_WORKSPACE,
+    SAVED_INSTALLATION,
+}
+
+enum class ReadLimitValueFailure {
+    INVALID_NUMBER,
+    OUT_OF_RANGE,
+}
+
 sealed interface ReadLimitFailure {
     data object UnknownParameter : ReadLimitFailure
+
     data class InvalidValue(val parameter: ReadLimitParameter, val kind: ReadLimitValueFailure) : ReadLimitFailure
+
     data class InconsistentBounds(val inner: ReadLimitParameter, val outer: ReadLimitParameter) : ReadLimitFailure
 }
 
 /** Every value retains its identity, admitted range, and selected source. */
-class ReadLimitValue private constructor(
+class ReadLimitValue
+private constructor(
     val parameter: ReadLimitParameter,
     val value: Int,
     val source: ReadLimitSource,
 ) {
     companion object {
-        fun admit(parameter: ReadLimitParameter, raw: String, source: ReadLimitSource): Refinement<ReadLimitValue, ReadLimitFailure> {
+        fun admit(
+            parameter: ReadLimitParameter,
+            raw: String,
+            source: ReadLimitSource,
+        ): Refinement<ReadLimitValue, ReadLimitFailure> {
             if (raw.isEmpty() || raw.any { it !in '0'..'9' }) {
-                return Refinement.Rejected(ReadLimitFailure.InvalidValue(parameter, ReadLimitValueFailure.INVALID_NUMBER))
+                return Refinement.Rejected(
+                    ReadLimitFailure.InvalidValue(parameter, ReadLimitValueFailure.INVALID_NUMBER)
+                )
             }
             val value = raw.toIntOrNull()
             if (value == null || value !in parameter.minimum..parameter.maximum) {
@@ -86,13 +117,20 @@ class ReadLimitValue private constructor(
 
 /** Immutable request/lifetime policy. No environment, file, time, or global mutable state. */
 class ReadLimits private constructor(private val limits: Map<ReadLimitParameter, ReadLimitValue>) {
-    val values: List<ReadLimitValue> get() = ReadLimitParameter.entries.map(limits::getValue)
+    val values: List<ReadLimitValue>
+        get() = ReadLimitParameter.entries.map(limits::getValue)
+
     operator fun get(parameter: ReadLimitParameter): ReadLimitValue = limits.getValue(parameter)
 
     companion object {
-        val Default: ReadLimits = ReadLimits(ReadLimitParameter.entries.associateWith {
-            (ReadLimitValue.admit(it, it.defaultValue.toString(), ReadLimitSource.DEFAULT) as Refinement.Refined).value
-        })
+        val Default: ReadLimits =
+            ReadLimits(
+                ReadLimitParameter.entries.associateWith {
+                    (ReadLimitValue.admit(it, it.defaultValue.toString(), ReadLimitSource.DEFAULT)
+                            as Refinement.Refined)
+                        .value
+                }
+            )
 
         /** All supplied values are checked, including shadowed inputs; raw values never enter failure data. */
         fun resolve(
@@ -100,13 +138,15 @@ class ReadLimits private constructor(private val limits: Map<ReadLimitParameter,
             properties: Map<String, String> = emptyMap(),
         ): Refinement<ReadLimits, ReadLimitFailure> {
             val selected = Default.limits.toMutableMap()
-            for ((inputs, source) in listOf(environment to ReadLimitSource.ENVIRONMENT, properties to ReadLimitSource.JVM_PROPERTY)) {
+            for ((inputs, source) in
+                listOf(environment to ReadLimitSource.ENVIRONMENT, properties to ReadLimitSource.JVM_PROPERTY)) {
                 val prefix = if (source == ReadLimitSource.ENVIRONMENT) "KAST_READ_" else "kast.read."
                 for ((key, raw) in inputs) {
                     if (!key.startsWith(prefix)) continue
-                    val parameter = ReadLimitParameter.entries.singleOrNull {
-                        key == if (source == ReadLimitSource.ENVIRONMENT) it.environmentKey else it.propertyKey
-                    } ?: return Refinement.Rejected(ReadLimitFailure.UnknownParameter)
+                    val parameter =
+                        ReadLimitParameter.entries.singleOrNull {
+                            key == if (source == ReadLimitSource.ENVIRONMENT) it.environmentKey else it.propertyKey
+                        } ?: return Refinement.Rejected(ReadLimitFailure.UnknownParameter)
                     when (val admitted = ReadLimitValue.admit(parameter, raw, source)) {
                         is Refinement.Refined -> selected[parameter] = admitted.value
                         is Refinement.Rejected -> return admitted
@@ -122,21 +162,22 @@ class ReadLimits private constructor(private val limits: Map<ReadLimitParameter,
                 return Refinement.Rejected(ReadLimitFailure.UnknownParameter)
             }
             val selected = Default.limits + values.associateBy { it.parameter }
-            for ((inner, outer) in listOf(
-                ReadLimitParameter.SEMANTIC_MILLIS to ReadLimitParameter.HOST_QUERY_MILLIS,
-                ReadLimitParameter.DIAGNOSTIC_SCOPE_MILLIS to ReadLimitParameter.HOST_QUERY_MILLIS,
-                ReadLimitParameter.HOST_QUERY_MILLIS to ReadLimitParameter.HOST_CONNECTION_MILLIS,
-                ReadLimitParameter.HOST_CONNECTION_MILLIS to ReadLimitParameter.CLIENT_EXCHANGE_MILLIS,
-                ReadLimitParameter.CLIENT_EXCHANGE_MILLIS to ReadLimitParameter.PROVIDER_INVOCATION_MILLIS,
-                ReadLimitParameter.SEMANTIC_RETURNED_BYTES to ReadLimitParameter.HOST_RESPONSE_BYTES,
-                ReadLimitParameter.SOURCE_RETURNED_BYTES to ReadLimitParameter.HOST_RESPONSE_BYTES,
-                ReadLimitParameter.HOST_RESPONSE_BYTES to ReadLimitParameter.PROVIDER_OUTPUT_BYTES,
-                ReadLimitParameter.CLIENT_EXCHANGE_MILLIS to ReadLimitParameter.PROVIDER_GRAPH_INVOCATION_MILLIS,
-                ReadLimitParameter.PROVIDER_OUTPUT_BYTES to ReadLimitParameter.PROCESS_OUTPUT_BYTES,
-                ReadLimitParameter.HOST_REQUEST_BYTES to ReadLimitParameter.PROCESS_INPUT_BYTES,
-                ReadLimitParameter.PROVIDER_INVOCATION_MILLIS to ReadLimitParameter.PROCESS_TIMEOUT_MILLIS,
-                ReadLimitParameter.PROVIDER_GRAPH_INVOCATION_MILLIS to ReadLimitParameter.PROCESS_TIMEOUT_MILLIS,
-            )) {
+            for ((inner, outer) in
+                listOf(
+                    ReadLimitParameter.SEMANTIC_MILLIS to ReadLimitParameter.HOST_QUERY_MILLIS,
+                    ReadLimitParameter.DIAGNOSTIC_SCOPE_MILLIS to ReadLimitParameter.HOST_QUERY_MILLIS,
+                    ReadLimitParameter.HOST_QUERY_MILLIS to ReadLimitParameter.HOST_CONNECTION_MILLIS,
+                    ReadLimitParameter.HOST_CONNECTION_MILLIS to ReadLimitParameter.CLIENT_EXCHANGE_MILLIS,
+                    ReadLimitParameter.CLIENT_EXCHANGE_MILLIS to ReadLimitParameter.PROVIDER_INVOCATION_MILLIS,
+                    ReadLimitParameter.SEMANTIC_RETURNED_BYTES to ReadLimitParameter.HOST_RESPONSE_BYTES,
+                    ReadLimitParameter.SOURCE_RETURNED_BYTES to ReadLimitParameter.HOST_RESPONSE_BYTES,
+                    ReadLimitParameter.HOST_RESPONSE_BYTES to ReadLimitParameter.PROVIDER_OUTPUT_BYTES,
+                    ReadLimitParameter.CLIENT_EXCHANGE_MILLIS to ReadLimitParameter.PROVIDER_GRAPH_INVOCATION_MILLIS,
+                    ReadLimitParameter.PROVIDER_OUTPUT_BYTES to ReadLimitParameter.PROCESS_OUTPUT_BYTES,
+                    ReadLimitParameter.HOST_REQUEST_BYTES to ReadLimitParameter.PROCESS_INPUT_BYTES,
+                    ReadLimitParameter.PROVIDER_INVOCATION_MILLIS to ReadLimitParameter.PROCESS_TIMEOUT_MILLIS,
+                    ReadLimitParameter.PROVIDER_GRAPH_INVOCATION_MILLIS to ReadLimitParameter.PROCESS_TIMEOUT_MILLIS,
+                )) {
                 if (selected.getValue(inner).value > selected.getValue(outer).value) {
                     return Refinement.Rejected(ReadLimitFailure.InconsistentBounds(inner, outer))
                 }

@@ -15,20 +15,22 @@ class ValidationTest {
 
     @Test
     fun `definitions accumulate independent proofs for one weak value`() {
-        val nonBlank = RefinementDefinition<String, String, Failure> { candidate ->
-            if (candidate.isNotBlank()) {
-                Validation.validated(candidate)
-            } else {
-                Validation.rejected(Failure.Blank)
+        val nonBlank =
+            RefinementDefinition<String, String, Failure> { candidate ->
+                if (candidate.isNotBlank()) {
+                    Validation.validated(candidate)
+                } else {
+                    Validation.rejected(Failure.Blank)
+                }
             }
-        }
-        val kastPrefixed = RefinementDefinition<String, String, Failure> { candidate ->
-            if (candidate.startsWith("kast-")) {
-                Validation.validated(candidate)
-            } else {
-                Validation.rejected(Failure.MissingKastPrefix)
+        val kastPrefixed =
+            RefinementDefinition<String, String, Failure> { candidate ->
+                if (candidate.startsWith("kast-")) {
+                    Validation.validated(candidate)
+                } else {
+                    Validation.rejected(Failure.MissingKastPrefix)
+                }
             }
-        }
 
         val definition = nonBlank.zipAccumulating(kastPrefixed) { admitted, _ -> admitted }
         val result = definition.refine("")

@@ -7,24 +7,24 @@ import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnection
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnectionAdmission
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamFrame
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamSend
-import kotlinx.coroutines.channels.Channel
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.PipedInputStream
+import java.io.PipedOutputStream
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.io.PipedInputStream
-import java.io.PipedOutputStream
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
 
 class DesktopStdioHostTest {
     @Test
@@ -34,13 +34,14 @@ class DesktopStdioHostTest {
         val downstreamOutput = ByteArrayOutputStream()
         val connection = EchoThenCloseConnection()
         val serverClosed = AtomicInteger()
-        val host = DesktopStdioHost(
-            input = downstreamInput,
-            output = downstreamOutput,
-            connector = { BrokerUpstreamConnectionAdmission.Connected(connection) },
-            maximumMessageBytes = 1_024,
-            shutdownHooks = CapturedShutdownHooks(),
-        )
+        val host =
+            DesktopStdioHost(
+                input = downstreamInput,
+                output = downstreamOutput,
+                connector = { BrokerUpstreamConnectionAdmission.Connected(connection) },
+                maximumMessageBytes = 1_024,
+                shutdownHooks = CapturedShutdownHooks(),
+            )
         val request = "{\"method\":\"initialize\",\"id\":1,\"params\":{}}"
         val response = "{\"id\":1,\"result\":{\"userAgent\":\"codex\"}}"
         connection.response = response
@@ -66,26 +67,30 @@ class DesktopStdioHostTest {
     fun `closed parent stdio completes and oversized input fails closed`() = runBlocking {
         val closedServer = AtomicInteger()
         val unusedConnection = RecordingConnection()
-        val completed = DesktopStdioHost(
-            input = ByteArrayInputStream(byteArrayOf()),
-            output = ByteArrayOutputStream(),
-            connector = { BrokerUpstreamConnectionAdmission.Connected(unusedConnection) },
-            maximumMessageBytes = 32,
-            shutdownHooks = CapturedShutdownHooks(),
-        ).run(closeIntegration = { closedServer.incrementAndGet() })
+        val completed =
+            DesktopStdioHost(
+                    input = ByteArrayInputStream(byteArrayOf()),
+                    output = ByteArrayOutputStream(),
+                    connector = { BrokerUpstreamConnectionAdmission.Connected(unusedConnection) },
+                    maximumMessageBytes = 32,
+                    shutdownHooks = CapturedShutdownHooks(),
+                )
+                .run(closeIntegration = { closedServer.incrementAndGet() })
 
         assertEquals(CodexIntegrationRun.Completed(0), completed)
         assertEquals(1, closedServer.get())
         assertTrue(unusedConnection.closed)
 
         val rejectedConnection = RecordingConnection()
-        val rejected = DesktopStdioHost(
-            input = ByteArrayInputStream("{\"value\":\"${"x".repeat(64)}\"}\n".toByteArray()),
-            output = ByteArrayOutputStream(),
-            connector = { BrokerUpstreamConnectionAdmission.Connected(rejectedConnection) },
-            maximumMessageBytes = 32,
-            shutdownHooks = CapturedShutdownHooks(),
-        ).run(closeIntegration = {})
+        val rejected =
+            DesktopStdioHost(
+                    input = ByteArrayInputStream("{\"value\":\"${"x".repeat(64)}\"}\n".toByteArray()),
+                    output = ByteArrayOutputStream(),
+                    connector = { BrokerUpstreamConnectionAdmission.Connected(rejectedConnection) },
+                    maximumMessageBytes = 32,
+                    shutdownHooks = CapturedShutdownHooks(),
+                )
+                .run(closeIntegration = {})
 
         assertEquals(
             CodexIntegrationRun.Rejected(CodexIntegrationFailure.STDIO_REJECTED),
@@ -97,20 +102,23 @@ class DesktopStdioHostTest {
     @Test
     fun `cleanup failure replaces an otherwise successful stdio completion`() = runBlocking {
         val closedServer = AtomicInteger()
-        val connection = object : RecordingConnection() {
-            override suspend fun close() {
-                super.close()
-                error("synthetic connection cleanup rejection")
+        val connection =
+            object : RecordingConnection() {
+                override suspend fun close() {
+                    super.close()
+                    error("synthetic connection cleanup rejection")
+                }
             }
-        }
 
-        val completed = DesktopStdioHost(
-            input = ByteArrayInputStream(byteArrayOf()),
-            output = ByteArrayOutputStream(),
-            connector = { BrokerUpstreamConnectionAdmission.Connected(connection) },
-            maximumMessageBytes = 32,
-            shutdownHooks = CapturedShutdownHooks(),
-        ).run(closeIntegration = { closedServer.incrementAndGet() })
+        val completed =
+            DesktopStdioHost(
+                    input = ByteArrayInputStream(byteArrayOf()),
+                    output = ByteArrayOutputStream(),
+                    connector = { BrokerUpstreamConnectionAdmission.Connected(connection) },
+                    maximumMessageBytes = 32,
+                    shutdownHooks = CapturedShutdownHooks(),
+                )
+                .run(closeIntegration = { closedServer.incrementAndGet() })
 
         assertEquals(
             CodexIntegrationRun.Rejected(CodexIntegrationFailure.SHUTDOWN_REJECTED),
@@ -121,13 +129,15 @@ class DesktopStdioHostTest {
 
     @Test
     fun `transport rejection retains cleanup failure as a closed host outcome`() = runBlocking {
-        val result = DesktopStdioHost(
-            input = ByteArrayInputStream(byteArrayOf()),
-            output = ByteArrayOutputStream(),
-            connector = { BrokerUpstreamConnectionAdmission.Rejected },
-            maximumMessageBytes = 32,
-            shutdownHooks = CapturedShutdownHooks(),
-        ).run(closeIntegration = { error("synthetic server cleanup rejection") })
+        val result =
+            DesktopStdioHost(
+                    input = ByteArrayInputStream(byteArrayOf()),
+                    output = ByteArrayOutputStream(),
+                    connector = { BrokerUpstreamConnectionAdmission.Rejected },
+                    maximumMessageBytes = 32,
+                    shutdownHooks = CapturedShutdownHooks(),
+                )
+                .run(closeIntegration = { error("synthetic server cleanup rejection") })
 
         assertEquals(
             CodexIntegrationRun.Rejected(CodexIntegrationFailure.SHUTDOWN_REJECTED),
@@ -137,17 +147,20 @@ class DesktopStdioHostTest {
 
     @Test
     fun `suspending connection cleanup is bounded as a closed shutdown rejection`() = runBlocking {
-        val connection = object : RecordingConnection() {
-            override suspend fun close() = awaitCancellation()
-        }
-        val result = DesktopStdioHost(
-            input = ByteArrayInputStream(byteArrayOf()),
-            output = ByteArrayOutputStream(),
-            connector = { BrokerUpstreamConnectionAdmission.Connected(connection) },
-            maximumMessageBytes = 32,
-            shutdownHooks = CapturedShutdownHooks(),
-            shutdownTimeoutMillis = 25,
-        ).run(closeIntegration = {})
+        val connection =
+            object : RecordingConnection() {
+                override suspend fun close() = awaitCancellation()
+            }
+        val result =
+            DesktopStdioHost(
+                    input = ByteArrayInputStream(byteArrayOf()),
+                    output = ByteArrayOutputStream(),
+                    connector = { BrokerUpstreamConnectionAdmission.Connected(connection) },
+                    maximumMessageBytes = 32,
+                    shutdownHooks = CapturedShutdownHooks(),
+                    shutdownTimeoutMillis = 25,
+                )
+                .run(closeIntegration = {})
 
         assertEquals(
             CodexIntegrationRun.Rejected(CodexIntegrationFailure.SHUTDOWN_REJECTED),
@@ -159,31 +172,34 @@ class DesktopStdioHostTest {
     fun `normal completion joins shutdown hook cleanup and retains its failure`() {
         val downstreamInput = PipedInputStream()
         val desktop = PipedOutputStream(downstreamInput)
-        val connection = object : RecordingConnection() {
-            override suspend fun close() {
-                super.close()
-                error("synthetic connection cleanup rejection")
+        val connection =
+            object : RecordingConnection() {
+                override suspend fun close() {
+                    super.close()
+                    error("synthetic connection cleanup rejection")
+                }
             }
-        }
         val hooks = CapturedShutdownHooks()
         val closing = CountDownLatch(1)
         val release = CountDownLatch(1)
         val pool = Executors.newFixedThreadPool(2)
-        val host = DesktopStdioHost(
-            input = downstreamInput,
-            output = ByteArrayOutputStream(),
-            connector = { BrokerUpstreamConnectionAdmission.Connected(connection) },
-            maximumMessageBytes = 32,
-            shutdownHooks = hooks,
-        )
-        val running = pool.submit<CodexIntegrationRun> {
-            runBlocking {
-                host.run {
-                    closing.countDown()
-                    check(release.await(5, TimeUnit.SECONDS))
+        val host =
+            DesktopStdioHost(
+                input = downstreamInput,
+                output = ByteArrayOutputStream(),
+                connector = { BrokerUpstreamConnectionAdmission.Connected(connection) },
+                maximumMessageBytes = 32,
+                shutdownHooks = hooks,
+            )
+        val running =
+            pool.submit<CodexIntegrationRun> {
+                runBlocking {
+                    host.run {
+                        closing.countDown()
+                        check(release.await(5, TimeUnit.SECONDS))
+                    }
                 }
             }
-        }
         try {
             val hook = hooks.registered.get(5, TimeUnit.SECONDS)
             val shutdown = pool.submit { hook.run() }
@@ -208,19 +224,22 @@ class DesktopStdioHostTest {
 
     @Test
     fun `shutdown hook registration rejection remains finite data`() = runBlocking {
-        val result = DesktopStdioHost(
-            input = ByteArrayInputStream(byteArrayOf()),
-            output = ByteArrayOutputStream(),
-            connector = { BrokerUpstreamConnectionAdmission.Connected(RecordingConnection()) },
-            maximumMessageBytes = 32,
-            shutdownHooks = object : CodexIntegrationShutdownHooks {
-                override fun register(hook: Thread) {
-                    throw SecurityException("synthetic hook policy")
-                }
+        val result =
+            DesktopStdioHost(
+                    input = ByteArrayInputStream(byteArrayOf()),
+                    output = ByteArrayOutputStream(),
+                    connector = { BrokerUpstreamConnectionAdmission.Connected(RecordingConnection()) },
+                    maximumMessageBytes = 32,
+                    shutdownHooks =
+                        object : CodexIntegrationShutdownHooks {
+                            override fun register(hook: Thread) {
+                                throw SecurityException("synthetic hook policy")
+                            }
 
-                override fun remove(hook: Thread) = Unit
-            },
-        ).run(closeIntegration = {})
+                            override fun remove(hook: Thread) = Unit
+                        },
+                )
+                .run(closeIntegration = {})
 
         assertEquals(
             CodexIntegrationRun.Rejected(CodexIntegrationFailure.SHUTDOWN_REJECTED),

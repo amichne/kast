@@ -8,9 +8,9 @@ import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilerRejection
 import io.github.amichne.kast.diagnostic.contract.DiagnosticReadRejection
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScope
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
-import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.SemanticReadValidation
 import io.github.amichne.kast.workspace.contract.SemanticReadValidationPort
+import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.semanticReadValidation
 
 /** Current-generation admission owner for public `diagnostic.check`. */
@@ -18,74 +18,77 @@ class DiagnosticService(
     private val authorities: SemanticReadValidationPort,
     private val compiler: DiagnosticCompilerPort,
 ) : io.github.amichne.kast.diagnostic.contract.DiagnosticOperations {
-    constructor(workspaces: WorkspaceInspectionOperations, compiler: DiagnosticCompilerPort) :
-        this(workspaces.semanticReadValidation(), compiler)
+    constructor(
+        workspaces: WorkspaceInspectionOperations,
+        compiler: DiagnosticCompilerPort,
+    ) : this(workspaces.semanticReadValidation(), compiler)
 
     /**
-     * Proof transition: `(WorkspaceRuntimeState, DiagnosticCheckRequest,
-     * DiagnosticCompilation) -> DiagnosticCheckResult`.
+     * Proof transition: `(WorkspaceRuntimeState, DiagnosticCheckRequest, DiagnosticCompilation) ->
+     * DiagnosticCheckResult`.
      *
-     * A complete or qualified result establishes that the exact scope lease remained current
-     * before and after compiler work and that compiler output retained identical scope ownership
-     * and coverage. [DiagnosticReadRejection] is the closed expected failure. Workspace
-     * observation and compiler execution are the only effects.
+     * A complete or qualified result establishes that the exact scope lease remained current before and after compiler
+     * work and that compiler output retained identical scope ownership and coverage. [DiagnosticReadRejection] is the
+     * closed expected failure. Workspace observation and compiler execution are the only effects.
      */
     override suspend fun check(request: DiagnosticCheckRequest): DiagnosticCheckResult {
         when (val admission = admitCurrentLease(request.scope.lease, DiagnosticAdmissionPhase.INITIAL)) {
             DiagnosticLeaseAdmission.Admitted -> Unit
-            is DiagnosticLeaseAdmission.Rejected ->
-                return DiagnosticCheckResult.Rejected(admission.reason)
+            is DiagnosticLeaseAdmission.Rejected -> return DiagnosticCheckResult.Rejected(admission.reason)
         }
         val compilation = compiler.check(request.scope)
         when (
-            val admission = admitCurrentLease(
-                request.scope.lease,
-                DiagnosticAdmissionPhase.REVALIDATION,
-            )
+            val admission =
+                admitCurrentLease(
+                    request.scope.lease,
+                    DiagnosticAdmissionPhase.REVALIDATION,
+                )
         ) {
             DiagnosticLeaseAdmission.Admitted -> Unit
-            is DiagnosticLeaseAdmission.Rejected ->
-                return DiagnosticCheckResult.Rejected(admission.reason)
+            is DiagnosticLeaseAdmission.Rejected -> return DiagnosticCheckResult.Rejected(admission.reason)
         }
         return when (compilation) {
-            is DiagnosticCompilation.Complete -> when (compilation.admitFor(request.scope)) {
-                DiagnosticCompilerOutputAdmission.Admitted ->
-                    DiagnosticCheckResult.Complete(compilation.batch, compilation.coverage)
-                DiagnosticCompilerOutputAdmission.Rejected -> contractRejected()
-            }
-            is DiagnosticCompilation.Qualified -> when (compilation.admitFor(request.scope)) {
-                DiagnosticCompilerOutputAdmission.Admitted ->
-                    DiagnosticCheckResult.Qualified(compilation.batch, compilation.coverage)
-                DiagnosticCompilerOutputAdmission.Rejected -> contractRejected()
-            }
-            is DiagnosticCompilation.Rejected ->
-                DiagnosticCheckResult.Rejected(compilation.reason.toPublicRejection())
+            is DiagnosticCompilation.Complete ->
+                when (compilation.admitFor(request.scope)) {
+                    DiagnosticCompilerOutputAdmission.Admitted ->
+                        DiagnosticCheckResult.Complete(compilation.batch, compilation.coverage)
+                    DiagnosticCompilerOutputAdmission.Rejected -> contractRejected()
+                }
+            is DiagnosticCompilation.Qualified ->
+                when (compilation.admitFor(request.scope)) {
+                    DiagnosticCompilerOutputAdmission.Admitted ->
+                        DiagnosticCheckResult.Qualified(compilation.batch, compilation.coverage)
+                    DiagnosticCompilerOutputAdmission.Rejected -> contractRejected()
+                }
+            is DiagnosticCompilation.Rejected -> DiagnosticCheckResult.Rejected(compilation.reason.toPublicRejection())
         }
     }
 
     /**
-     * Proof transition: `(WorkspaceRuntimeState, SemanticReadLease,
-     * DiagnosticAdmissionPhase) -> DiagnosticLeaseAdmission`.
+     * Proof transition: `(WorkspaceRuntimeState, SemanticReadLease, DiagnosticAdmissionPhase) ->
+     * DiagnosticLeaseAdmission`.
      *
      * [DiagnosticLeaseAdmission.Admitted] proves the exact ready root and generation.
-     * [DiagnosticLeaseAdmission.Rejected] preserves unavailable, root-mismatch, and stale states
-     * as [DiagnosticReadRejection]. Raw runtime state remains at workspace publication.
+     * [DiagnosticLeaseAdmission.Rejected] preserves unavailable, root-mismatch, and stale states as
+     * [DiagnosticReadRejection]. Raw runtime state remains at workspace publication.
      */
     private suspend fun admitCurrentLease(
         expected: SemanticReadAuthority,
         phase: DiagnosticAdmissionPhase,
-    ): DiagnosticLeaseAdmission = when (authorities.validate(expected)) {
-        SemanticReadValidation.CURRENT -> DiagnosticLeaseAdmission.Admitted
-        SemanticReadValidation.UNAVAILABLE -> DiagnosticLeaseAdmission.Rejected(when (phase) {
-                    DiagnosticAdmissionPhase.INITIAL -> DiagnosticReadRejection.WORKSPACE_NOT_READY
-                    DiagnosticAdmissionPhase.REVALIDATION -> DiagnosticReadRejection.STALE_GENERATION
-                })
-        SemanticReadValidation.ROOT_MISMATCH ->
-            DiagnosticLeaseAdmission.Rejected(DiagnosticReadRejection.WORKSPACE_ROOT_MISMATCH)
-        SemanticReadValidation.MOVED ->
-            DiagnosticLeaseAdmission.Rejected(DiagnosticReadRejection.STALE_GENERATION)
-    }
-
+    ): DiagnosticLeaseAdmission =
+        when (authorities.validate(expected)) {
+            SemanticReadValidation.CURRENT -> DiagnosticLeaseAdmission.Admitted
+            SemanticReadValidation.UNAVAILABLE ->
+                DiagnosticLeaseAdmission.Rejected(
+                    when (phase) {
+                        DiagnosticAdmissionPhase.INITIAL -> DiagnosticReadRejection.WORKSPACE_NOT_READY
+                        DiagnosticAdmissionPhase.REVALIDATION -> DiagnosticReadRejection.STALE_GENERATION
+                    }
+                )
+            SemanticReadValidation.ROOT_MISMATCH ->
+                DiagnosticLeaseAdmission.Rejected(DiagnosticReadRejection.WORKSPACE_ROOT_MISMATCH)
+            SemanticReadValidation.MOVED -> DiagnosticLeaseAdmission.Rejected(DiagnosticReadRejection.STALE_GENERATION)
+        }
 }
 
 private enum class DiagnosticAdmissionPhase {
@@ -96,9 +99,7 @@ private enum class DiagnosticAdmissionPhase {
 private sealed interface DiagnosticLeaseAdmission {
     data object Admitted : DiagnosticLeaseAdmission
 
-    data class Rejected(
-        val reason: DiagnosticReadRejection,
-    ) : DiagnosticLeaseAdmission
+    data class Rejected(val reason: DiagnosticReadRejection) : DiagnosticLeaseAdmission
 }
 
 private enum class DiagnosticCompilerOutputAdmission {
@@ -107,50 +108,41 @@ private enum class DiagnosticCompilerOutputAdmission {
 }
 
 /**
- * Proof transition: `(DiagnosticCompilation.Complete, DiagnosticScope) ->
- * DiagnosticCompilerOutputAdmission`.
+ * Proof transition: `(DiagnosticCompilation.Complete, DiagnosticScope) -> DiagnosticCompilerOutputAdmission`.
  *
- * Admitted proves identical scope ownership, exact file coverage, and generation-bound facts.
- * Rejected is the closed compiler-contract failure consumed at the public service boundary.
+ * Admitted proves identical scope ownership, exact file coverage, and generation-bound facts. Rejected is the closed
+ * compiler-contract failure consumed at the public service boundary.
  */
-private fun DiagnosticCompilation.Complete.admitFor(
-    scope: DiagnosticScope,
-): DiagnosticCompilerOutputAdmission = if (
-    batch.scope === scope &&
-    coverage.analyzedFiles == scope.files &&
-    batch.facts.all { fact ->
-        fact.scope === scope &&
-        fact.authority == scope.lease.identity &&
-        fact.location.file in scope.files
+private fun DiagnosticCompilation.Complete.admitFor(scope: DiagnosticScope): DiagnosticCompilerOutputAdmission =
+    if (
+        batch.scope === scope &&
+            coverage.analyzedFiles == scope.files &&
+            batch.facts.all { fact ->
+                fact.scope === scope && fact.authority == scope.lease.identity && fact.location.file in scope.files
+            }
+    ) {
+        DiagnosticCompilerOutputAdmission.Admitted
+    } else {
+        DiagnosticCompilerOutputAdmission.Rejected
     }
-) {
-    DiagnosticCompilerOutputAdmission.Admitted
-} else {
-    DiagnosticCompilerOutputAdmission.Rejected
-}
 
 /**
- * Proof transition: `(DiagnosticCompilation.Qualified, DiagnosticScope) ->
- * DiagnosticCompilerOutputAdmission`.
+ * Proof transition: `(DiagnosticCompilation.Qualified, DiagnosticScope) -> DiagnosticCompilerOutputAdmission`.
  *
- * Admitted proves identical scope ownership, explicit non-empty limitations, total file
- * accounting, and generation-bound facts. Rejected is the closed compiler-contract failure.
+ * Admitted proves identical scope ownership, explicit non-empty limitations, total file accounting, and
+ * generation-bound facts. Rejected is the closed compiler-contract failure.
  */
-private fun DiagnosticCompilation.Qualified.admitFor(
-    scope: DiagnosticScope,
-): DiagnosticCompilerOutputAdmission {
+private fun DiagnosticCompilation.Qualified.admitFor(scope: DiagnosticScope): DiagnosticCompilerOutputAdmission {
     val analyzed = coverage.analyzedFiles.toSet()
     val limited = coverage.limitations.map { limitation -> limitation.file }.toSet()
     return if (
         batch.scope === scope &&
-        coverage.limitations.isNotEmpty() &&
-        analyzed.intersect(limited).isEmpty() &&
-        analyzed + limited == scope.files.toSet() &&
-        batch.facts.all { fact ->
-            fact.scope === scope &&
-            fact.authority == scope.lease.identity &&
-            fact.location.file in scope.files
-        }
+            coverage.limitations.isNotEmpty() &&
+            analyzed.intersect(limited).isEmpty() &&
+            analyzed + limited == scope.files.toSet() &&
+            batch.facts.all { fact ->
+                fact.scope === scope && fact.authority == scope.lease.identity && fact.location.file in scope.files
+            }
     ) {
         DiagnosticCompilerOutputAdmission.Admitted
     } else {
@@ -158,17 +150,14 @@ private fun DiagnosticCompilation.Qualified.admitFor(
     }
 }
 
-private fun contractRejected(): DiagnosticCheckResult.Rejected = DiagnosticCheckResult.Rejected(
-    DiagnosticReadRejection.COMPILER_CONTRACT_VIOLATION,
-)
+private fun contractRejected(): DiagnosticCheckResult.Rejected =
+    DiagnosticCheckResult.Rejected(DiagnosticReadRejection.COMPILER_CONTRACT_VIOLATION)
 
-private fun DiagnosticCompilerRejection.toPublicRejection(): DiagnosticReadRejection = when (this) {
-    DiagnosticCompilerRejection.WORKSPACE_ROOT_MISMATCH ->
-        DiagnosticReadRejection.WORKSPACE_ROOT_MISMATCH
-    DiagnosticCompilerRejection.GENERATION_MOVED -> DiagnosticReadRejection.STALE_GENERATION
-    DiagnosticCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE ->
-        DiagnosticReadRejection.WORKSPACE_INDEX_UNAVAILABLE
-    DiagnosticCompilerRejection.SCOPE_REJECTED -> DiagnosticReadRejection.SCOPE_REJECTED
-    DiagnosticCompilerRejection.COMPILER_CONTRACT_VIOLATION ->
-        DiagnosticReadRejection.COMPILER_CONTRACT_VIOLATION
-}
+private fun DiagnosticCompilerRejection.toPublicRejection(): DiagnosticReadRejection =
+    when (this) {
+        DiagnosticCompilerRejection.WORKSPACE_ROOT_MISMATCH -> DiagnosticReadRejection.WORKSPACE_ROOT_MISMATCH
+        DiagnosticCompilerRejection.GENERATION_MOVED -> DiagnosticReadRejection.STALE_GENERATION
+        DiagnosticCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE -> DiagnosticReadRejection.WORKSPACE_INDEX_UNAVAILABLE
+        DiagnosticCompilerRejection.SCOPE_REJECTED -> DiagnosticReadRejection.SCOPE_REJECTED
+        DiagnosticCompilerRejection.COMPILER_CONTRACT_VIOLATION -> DiagnosticReadRejection.COMPILER_CONTRACT_VIOLATION
+    }

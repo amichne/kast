@@ -8,22 +8,19 @@ private const val SHA_256_HEX_LENGTH = 64
 private const val HEX_RADIX = 16
 
 @JvmInline
-value class ExactDeclarationFingerprint internal constructor(
-    val value: String,
-) {
+value class ExactDeclarationFingerprint internal constructor(val value: String) {
     init {
         require(value.length == SHA_256_HEX_LENGTH && value.all(Char::isLowerCaseHexDigit))
     }
 }
 
 /**
- * Proof transition:
- * SemanticReadAuthority + SymbolSearchScope + ExactDeclarationEvidence to
+ * Proof transition: SemanticReadAuthority + SymbolSearchScope + ExactDeclarationEvidence to
  * ExactDeclarationFingerprint.
  *
- * Establishes a deterministic SHA-256 identity over an unambiguous, length-prefixed encoding of
- * the root, generation, complete scope policy, and detached native declaration evidence. Raw bytes
- * and digest text are created only inside this contract-owned sealing boundary.
+ * Establishes a deterministic SHA-256 identity over an unambiguous, length-prefixed encoding of the root, generation,
+ * complete scope policy, and detached native declaration evidence. Raw bytes and digest text are created only inside
+ * this contract-owned sealing boundary.
  */
 internal fun exactDeclarationFingerprint(
     lease: SemanticReadAuthority,
@@ -54,17 +51,15 @@ internal fun exactDeclarationFingerprint(
                 appendFingerprintField("qualified")
                 appendFingerprintField(identity.value)
             }
-            ExactDeclarationQualifiedIdentity.Unavailable ->
-                appendFingerprintField("qualified-unavailable")
+            ExactDeclarationQualifiedIdentity.Unavailable -> appendFingerprintField("qualified-unavailable")
         }
         appendFingerprintField(evidence.runtimeType.value)
     }
-    val digest = MessageDigest.getInstance("SHA-256")
-        .digest(canonical.toByteArray(StandardCharsets.UTF_8))
+    val digest = MessageDigest.getInstance("SHA-256").digest(canonical.toByteArray(StandardCharsets.UTF_8))
     return ExactDeclarationFingerprint(
         digest.joinToString(separator = "") { byte ->
             (byte.toInt() and 0xff).toString(HEX_RADIX).padStart(2, '0')
-        },
+        }
     )
 }
 

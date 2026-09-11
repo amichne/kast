@@ -1,24 +1,24 @@
 package io.github.amichne.kast.protocol.wire
 
-import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.EvidenceEnvelope
+import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.ProtocolOffset
-import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
 import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
+import io.github.amichne.kast.protocol.contract.ProtocolOffset
+import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.TopologyBuildDigest
 import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
 import io.github.amichne.kast.protocol.contract.TopologyBuildResult
 import io.github.amichne.kast.protocol.contract.TopologyBuildStatus
-import io.github.amichne.kast.protocol.contract.TopologyCoverageFailure
 import io.github.amichne.kast.protocol.contract.TopologyCoverageCandidateEvidenceMismatch
+import io.github.amichne.kast.protocol.contract.TopologyCoverageFailure
 import io.github.amichne.kast.protocol.contract.TopologyCoverageFileEvidence
 import io.github.amichne.kast.protocol.contract.TopologyCoverageNode
-import io.github.amichne.kast.protocol.contract.TopologyCoverageQualifiedIdentity
 import io.github.amichne.kast.protocol.contract.TopologyCoverageProjectionRejection
+import io.github.amichne.kast.protocol.contract.TopologyCoverageQualifiedIdentity
 import io.github.amichne.kast.protocol.contract.TopologyCoverageSourceHash
 import io.github.amichne.kast.protocol.contract.TopologyCoverageSourceRootEvidence
 import io.github.amichne.kast.protocol.contract.TopologyCoverageSourceRootProvenance
@@ -34,17 +34,19 @@ class CanonicalTopologyRejectionWireTest {
     @Test
     fun `generated topology result rejects malformed digest refinement`() {
         val digest = "a".repeat(64)
-        val result = TopologyBuildResult(
-            status = TopologyBuildStatus.PUBLISHED,
-            generation = EvidenceGeneration.parse(17).refinedValue(),
-            digest = TopologyBuildDigest.parse(digest).refinedValue(),
-        )
+        val result =
+            TopologyBuildResult(
+                status = TopologyBuildStatus.PUBLISHED,
+                generation = EvidenceGeneration.parse(17).refinedValue(),
+                digest = TopologyBuildDigest.parse(digest).refinedValue(),
+            )
         val binding = CanonicalOperationWireBindings.topologyBuild
-        val evidence = EvidenceEnvelope(
-            operation = binding.operation.id,
-            generation = EvidenceGeneration.parse(17).refinedValue(),
-            payload = result,
-        )
+        val evidence =
+            EvidenceEnvelope(
+                operation = binding.operation.id,
+                generation = EvidenceGeneration.parse(17).refinedValue(),
+                payload = result,
+            )
         val encoded = binding.encodeOutcome(OperationOutcome.Complete(evidence)).encodedDocument()
 
         assertEquals(
@@ -63,20 +65,18 @@ class CanonicalTopologyRejectionWireTest {
     fun `generated topology rejection preserves every specific extraction failure and path`() {
         val file = "topology/intellij/src/main/kotlin/TopologyK2Projection.kt"
         val binding = CanonicalOperationWireBindings.topologyBuild
-        val failures = linkedMapOf(
-            TopologyExtractionRejection.DOCUMENT_DIRTY to "document-dirty",
-            TopologyExtractionRejection.PSI_DOCUMENT_UNCOMMITTED to
-                "psi-document-uncommitted",
-            TopologyExtractionRejection.VFS_CONTENT_MISMATCH to "vfs-content-mismatch",
-            TopologyExtractionRejection.SOURCE_CONTENT_CHANGED_DURING_BUILD to
-                "source-content-changed-during-build",
-        )
+        val failures =
+            linkedMapOf(
+                TopologyExtractionRejection.DOCUMENT_DIRTY to "document-dirty",
+                TopologyExtractionRejection.PSI_DOCUMENT_UNCOMMITTED to "psi-document-uncommitted",
+                TopologyExtractionRejection.VFS_CONTENT_MISMATCH to "vfs-content-mismatch",
+                TopologyExtractionRejection.SOURCE_CONTENT_CHANGED_DURING_BUILD to
+                    "source-content-changed-during-build",
+            )
 
         failures.forEach { (failure, wireName) ->
             val rejection = TopologyBuildRejection.ExtractionFailed(text(file), failure)
-            val encoded = binding.encodeOutcome(
-                OperationOutcome.Rejected(rejection),
-            ).encodedDocument()
+            val encoded = binding.encodeOutcome(OperationOutcome.Rejected(rejection)).encodedDocument()
 
             assertEquals(
                 WireDecoding.Decoded(OperationOutcome.Rejected(rejection)),
@@ -86,26 +86,30 @@ class CanonicalTopologyRejectionWireTest {
             assertTrue(encoded.contains("\"failure\":\"$wireName\""), encoded)
         }
 
-        val encoded = binding.encodeOutcome(
-            OperationOutcome.Rejected(
-                TopologyBuildRejection.ExtractionFailed(
-                    text(file),
-                    TopologyExtractionRejection.VFS_CONTENT_MISMATCH,
+        val encoded =
+            binding
+                .encodeOutcome(
+                    OperationOutcome.Rejected(
+                        TopologyBuildRejection.ExtractionFailed(
+                            text(file),
+                            TopologyExtractionRejection.VFS_CONTENT_MISMATCH,
+                        )
+                    )
+                )
+                .encodedDocument()
+        val malformed =
+            listOf(
+                encoded.replace(
+                    "\"file\":\"$file\",",
+                    "",
                 ),
-            ),
-        ).encodedDocument()
-        val malformed = listOf(
-            encoded.replace(
-                "\"file\":\"$file\",",
-                "",
-            ),
-            encoded.replace("vfs-content-mismatch", "unknown-failure"),
-            encoded.replace("extraction-failed", "unknown-rejection"),
-            encoded.replace(
-                "\"failure\":\"vfs-content-mismatch\"",
-                "\"failure\":\"vfs-content-mismatch\",\"unexpected\":true",
-            ),
-        )
+                encoded.replace("vfs-content-mismatch", "unknown-failure"),
+                encoded.replace("extraction-failed", "unknown-rejection"),
+                encoded.replace(
+                    "\"failure\":\"vfs-content-mismatch\"",
+                    "\"failure\":\"vfs-content-mismatch\",\"unexpected\":true",
+                ),
+            )
         malformed.forEach { document ->
             assertEquals(
                 WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.REJECTION)),
@@ -116,9 +120,10 @@ class CanonicalTopologyRejectionWireTest {
 
     @Test
     fun `generated topology rejection preserves typed coverage projection failure`() {
-        val rejection = TopologyBuildRejection.CoverageProjectionFailed(
-            TopologyCoverageProjectionRejection.UNREPRESENTABLE_CONTENT_HASH,
-        )
+        val rejection =
+            TopologyBuildRejection.CoverageProjectionFailed(
+                TopologyCoverageProjectionRejection.UNREPRESENTABLE_CONTENT_HASH
+            )
         val binding = CanonicalOperationWireBindings.topologyBuild
         val encoded = binding.encodeOutcome(OperationOutcome.Rejected(rejection)).encodedDocument()
 
@@ -132,38 +137,44 @@ class CanonicalTopologyRejectionWireTest {
 
     @Test
     fun `generated coverage rejection preserves every exact mismatch`() {
-        val compilerEvidence = CompilerSymbolEvidenceDocument.fromSignature(
-            CompilerSignatureDocument.ClassLike(text("sample.alpha")),
-        ).refinedValue()
-        val node = TopologyCoverageNode(
-            compilerIdentity = compilerEvidence.identity,
-            file = text("src/main/kotlin/Alpha.kt"),
-            range = range(10, 15),
-        )
-        val symbol = TopologyCoverageSymbol.create(
-            node = node,
-            fileEvidence = fileEvidence("src/main/kotlin/Alpha.kt", 'b'),
-            name = text("alpha"),
-            qualifiedIdentity = TopologyCoverageQualifiedIdentity.Available(text("sample.alpha")),
-            kind = TopologyCoverageSymbolKind.CLASSLIKE,
-            compilerEvidence = compilerEvidence,
-        ).refinedValue()
-        val failure = TopologyCoverageFailure.admit(
-            missing = setOf(text("src/main/kotlin/Missing.kt")),
-            unexpected = setOf(text("src/main/kotlin/Unexpected.kt")),
-            duplicateCandidates = setOf(text("src/main/kotlin/Duplicate.kt")),
-            duplicateCompletions = setOf(text("src/main/kotlin/CompletedTwice.kt")),
-            workspaceMismatches = setOf(text("src/main/kotlin/Moved.kt")),
-            candidateEvidenceMismatches = setOf(
-                TopologyCoverageCandidateEvidenceMismatch(
-                    candidate = fileEvidence("src/main/kotlin/Alpha.kt", 'a'),
-                    completed = fileEvidence("src/main/kotlin/Alpha.kt", 'b'),
-                ),
-            ),
-            duplicateSymbols = setOf(node),
-            missingEdgeTargets = setOf(node),
-            mismatchedEdgeEndpoints = setOf(symbol),
-        ).refinedValue()
+        val compilerEvidence =
+            CompilerSymbolEvidenceDocument.fromSignature(CompilerSignatureDocument.ClassLike(text("sample.alpha")))
+                .refinedValue()
+        val node =
+            TopologyCoverageNode(
+                compilerIdentity = compilerEvidence.identity,
+                file = text("src/main/kotlin/Alpha.kt"),
+                range = range(10, 15),
+            )
+        val symbol =
+            TopologyCoverageSymbol.create(
+                    node = node,
+                    fileEvidence = fileEvidence("src/main/kotlin/Alpha.kt", 'b'),
+                    name = text("alpha"),
+                    qualifiedIdentity = TopologyCoverageQualifiedIdentity.Available(text("sample.alpha")),
+                    kind = TopologyCoverageSymbolKind.CLASSLIKE,
+                    compilerEvidence = compilerEvidence,
+                )
+                .refinedValue()
+        val failure =
+            TopologyCoverageFailure.admit(
+                    missing = setOf(text("src/main/kotlin/Missing.kt")),
+                    unexpected = setOf(text("src/main/kotlin/Unexpected.kt")),
+                    duplicateCandidates = setOf(text("src/main/kotlin/Duplicate.kt")),
+                    duplicateCompletions = setOf(text("src/main/kotlin/CompletedTwice.kt")),
+                    workspaceMismatches = setOf(text("src/main/kotlin/Moved.kt")),
+                    candidateEvidenceMismatches =
+                        setOf(
+                            TopologyCoverageCandidateEvidenceMismatch(
+                                candidate = fileEvidence("src/main/kotlin/Alpha.kt", 'a'),
+                                completed = fileEvidence("src/main/kotlin/Alpha.kt", 'b'),
+                            )
+                        ),
+                    duplicateSymbols = setOf(node),
+                    missingEdgeTargets = setOf(node),
+                    mismatchedEdgeEndpoints = setOf(symbol),
+                )
+                .refinedValue()
         val rejection = TopologyBuildRejection.CoverageIncomplete(failure)
         val binding = CanonicalOperationWireBindings.topologyBuild
 
@@ -176,17 +187,21 @@ class CanonicalTopologyRejectionWireTest {
         assertTrue(encoded.contains("\"candidateEvidenceMismatches\":[{\"candidate\":{\"workspace\":"), encoded)
         assertTrue(encoded.contains("\"sourceRoot\":{\"module\":\"fixture\""), encoded)
         assertTrue(encoded.contains("\"contentHash\":\"${"a".repeat(64)}\""), encoded)
-        assertTrue(encoded.contains("\"compilerEvidence\":{\"identity\":\"${compilerEvidence.identity.value}\""), encoded)
-        assertTrue(encoded.contains("\"type\":\"class-like\",\"qualifiedIdentity\":\"sample.alpha\""), encoded)
-        val malformed = listOf(
-            encoded.replace("\"startInclusive\":10", "\"startInclusive\":-1"),
-            encoded.replace("src/main/kotlin/Missing.kt", ""),
-            encoded.replace("\"contentHash\":\"${"a".repeat(64)}\"", "\"contentHash\":\"bad\""),
-            encoded.replace(
-                compilerEvidence.identity.value,
-                "compiler-symbol-v1:${"f".repeat(64)}",
-            ),
+        assertTrue(
+            encoded.contains("\"compilerEvidence\":{\"identity\":\"${compilerEvidence.identity.value}\""),
+            encoded,
         )
+        assertTrue(encoded.contains("\"type\":\"class-like\",\"qualifiedIdentity\":\"sample.alpha\""), encoded)
+        val malformed =
+            listOf(
+                encoded.replace("\"startInclusive\":10", "\"startInclusive\":-1"),
+                encoded.replace("src/main/kotlin/Missing.kt", ""),
+                encoded.replace("\"contentHash\":\"${"a".repeat(64)}\"", "\"contentHash\":\"bad\""),
+                encoded.replace(
+                    compilerEvidence.identity.value,
+                    "compiler-symbol-v1:${"f".repeat(64)}",
+                ),
+            )
         malformed.forEach { document ->
             assertEquals(
                 WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.REJECTION)),
@@ -197,27 +212,31 @@ class CanonicalTopologyRejectionWireTest {
 
     @Test
     fun `coverage nodes use structural ordering when delimiter-shaped text collides`() {
-        val structurallyFirst = TopologyCoverageNode(
-            compilerIdentity = text("a"),
-            file = text("b\u0000c"),
-            range = range(1, 2),
-        )
-        val structurallySecond = TopologyCoverageNode(
-            compilerIdentity = text("a\u0000b"),
-            file = text("c"),
-            range = range(1, 2),
-        )
-        val failure = TopologyCoverageFailure.admit(
-            missing = emptySet(),
-            unexpected = emptySet(),
-            duplicateCandidates = emptySet(),
-            duplicateCompletions = emptySet(),
-            workspaceMismatches = emptySet(),
-            candidateEvidenceMismatches = emptySet(),
-            duplicateSymbols = linkedSetOf(structurallySecond, structurallyFirst),
-            missingEdgeTargets = emptySet(),
-            mismatchedEdgeEndpoints = emptySet(),
-        ).refinedValue()
+        val structurallyFirst =
+            TopologyCoverageNode(
+                compilerIdentity = text("a"),
+                file = text("b\u0000c"),
+                range = range(1, 2),
+            )
+        val structurallySecond =
+            TopologyCoverageNode(
+                compilerIdentity = text("a\u0000b"),
+                file = text("c"),
+                range = range(1, 2),
+            )
+        val failure =
+            TopologyCoverageFailure.admit(
+                    missing = emptySet(),
+                    unexpected = emptySet(),
+                    duplicateCandidates = emptySet(),
+                    duplicateCompletions = emptySet(),
+                    workspaceMismatches = emptySet(),
+                    candidateEvidenceMismatches = emptySet(),
+                    duplicateSymbols = linkedSetOf(structurallySecond, structurallyFirst),
+                    missingEdgeTargets = emptySet(),
+                    mismatchedEdgeEndpoints = emptySet(),
+                )
+                .refinedValue()
         val rejection = TopologyBuildRejection.CoverageIncomplete(failure)
         val binding = CanonicalOperationWireBindings.topologyBuild
 
@@ -234,38 +253,43 @@ class CanonicalTopologyRejectionWireTest {
 
     private fun text(raw: String): ProtocolText = ProtocolText.parse(raw).refinedValue()
 
-    private fun range(start: Int, end: Int): SourceRangeDocument = SourceRangeDocument.create(
-        ProtocolOffset.parse(start).refinedValue(),
-        ProtocolOffset.parse(end).refinedValue(),
-    ).refinedValue()
+    private fun range(start: Int, end: Int): SourceRangeDocument =
+        SourceRangeDocument.create(
+                ProtocolOffset.parse(start).refinedValue(),
+                ProtocolOffset.parse(end).refinedValue(),
+            )
+            .refinedValue()
 
     private fun fileEvidence(path: String, hashCharacter: Char): TopologyCoverageFileEvidence =
         TopologyCoverageFileEvidence(
-            workspace = TopologyCoverageWorkspaceEvidence(
-                root = text("/workspace"),
-                generation = EvidenceGeneration.parse(17).refinedValue(),
-                sourceState = text("published"),
-            ),
-            sourceRoot = TopologyCoverageSourceRootEvidence(
-                module = text("fixture"),
-                buildRoot = text("/workspace"),
-                projectPath = text(":"),
-                sourceSet = text("main"),
-                location = text("src/main/kotlin"),
-                provenance = TopologyCoverageSourceRootProvenance.AUTHORED,
-            ),
+            workspace =
+                TopologyCoverageWorkspaceEvidence(
+                    root = text("/workspace"),
+                    generation = EvidenceGeneration.parse(17).refinedValue(),
+                    sourceState = text("published"),
+                ),
+            sourceRoot =
+                TopologyCoverageSourceRootEvidence(
+                    module = text("fixture"),
+                    buildRoot = text("/workspace"),
+                    projectPath = text(":"),
+                    sourceSet = text("main"),
+                    location = text("src/main/kotlin"),
+                    provenance = TopologyCoverageSourceRootProvenance.AUTHORED,
+                ),
             path = text(path),
-            contentHash = TopologyCoverageSourceHash.parse(hashCharacter.toString().repeat(64))
-                .refinedValue(),
+            contentHash = TopologyCoverageSourceHash.parse(hashCharacter.toString().repeat(64)).refinedValue(),
         )
 
-    private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error("Expected refined value, got $failure")
-    }
+    private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error("Expected refined value, got $failure")
+        }
 
-    private fun WireEncoding.encodedDocument(): String = when (this) {
-        is WireEncoding.Encoded -> document
-        is WireEncoding.Rejected -> error("Expected encoded document, got $failure")
-    }
+    private fun WireEncoding.encodedDocument(): String =
+        when (this) {
+            is WireEncoding.Encoded -> document
+            is WireEncoding.Rejected -> error("Expected encoded document, got $failure")
+        }
 }

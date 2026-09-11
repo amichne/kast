@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>NamedArguments:SymbolExactServiceTest.kt:SymbolExactServiceTest$function( "sample.Service.call", null, emptyList(), listOf("kotlin.Int"), 0, )</ID>
+  </CurrentIssues>
+</SmellBaseline>

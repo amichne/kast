@@ -18,39 +18,47 @@ class ProjectReadEpochNegativeTest {
     @Test
     fun `malformed epochs cannot be constructed copied parsed or unpacked`() {
         assertTrue(
-            ProjectReadEpoch::class.java.declaredConstructors
+            ProjectReadEpoch::class
+                .java
+                .declaredConstructors
                 .filterNot { constructor -> constructor.isSynthetic }
-                .all { constructor -> Modifier.isPrivate(constructor.modifiers) },
+                .all { constructor -> Modifier.isPrivate(constructor.modifiers) }
         )
         assertEquals(
             setOf("relationTo"),
-            ProjectReadEpoch::class.java.declaredMethods
+            ProjectReadEpoch::class
+                .java
+                .declaredMethods
                 .filter { method -> Modifier.isPublic(method.modifiers) && !method.isSynthetic }
                 .mapTo(linkedSetOf()) { method -> method.name },
         )
         assertTrue(
             ProjectReadEpoch::class.java.declaredFields.all { field ->
                 Modifier.isPrivate(field.modifiers)
-            },
+            }
         )
         assertFalse(
             ProjectReadEpoch::class.java.declaredMethods.any { method ->
-                method.name == "copy" || method.name.startsWith("component") ||
-                    method.name == "parse" || method.name == "isValid"
-            },
+                method.name == "copy" ||
+                    method.name.startsWith("component") ||
+                    method.name == "parse" ||
+                    method.name == "isValid"
+            }
         )
     }
 
     @Test
     fun `rejected state cannot manufacture an observed epoch`() {
-        val source = FixtureEpochSource(FixtureEpochState.stable()).apply {
-            result = Refinement.Rejected(ProjectReadEpochObservationFailure.GradleRootMalformed)
-        }
+        val source =
+            FixtureEpochSource(FixtureEpochState.stable()).apply {
+                result = Refinement.Rejected(ProjectReadEpochObservationFailure.GradleRootMalformed)
+            }
 
-        val rejected = assertInstanceOf(
-            ProjectReadEpochObservation.Rejected::class.java,
-            source.observe(),
-        )
+        val rejected =
+            assertInstanceOf(
+                ProjectReadEpochObservation.Rejected::class.java,
+                source.observe(),
+            )
 
         assertEquals(ProjectReadEpochObservationFailure.GradleRootMalformed, rejected.failure)
     }
@@ -79,7 +87,9 @@ class ProjectReadEpochNegativeTest {
 
     @Test
     fun `public epoch contract exposes no primitive counter or source authority`() {
-        ProjectReadEpoch::class.java.declaredMethods
+        ProjectReadEpoch::class
+            .java
+            .declaredMethods
             .filter { method -> Modifier.isPublic(method.modifiers) }
             .forEach { method ->
                 assertFalse(method.returnType.isPrimitive, method.toGenericString())
@@ -90,35 +100,50 @@ class ProjectReadEpochNegativeTest {
                 )
             }
         assertTrue(
-            ProjectReadEpoch.Source::class.java.declaredConstructors
+            ProjectReadEpoch.Source::class
+                .java
+                .declaredConstructors
                 .filterNot { constructor -> constructor.isSynthetic }
-                .all { constructor -> Modifier.isPrivate(constructor.modifiers) },
+                .all { constructor -> Modifier.isPrivate(constructor.modifiers) }
         )
         assertTrue(
-            ProjectReadEpoch.Source::class.java.declaredMethods
+            ProjectReadEpoch.Source::class
+                .java
+                .declaredMethods
                 .filter { method -> Modifier.isPublic(method.modifiers) }
-                .all { method -> method.isSynthetic },
+                .all { method -> method.isSynthetic }
         )
     }
 
     @Test
     fun `detached epochs retain no source callback`() {
         val epoch = FixtureEpochSource(FixtureEpochState.stable()).observeEpoch()
-        val domainField = ProjectReadEpoch::class.java.declaredFields.single { field ->
-            field.name == "comparisonDomain"
-        }.apply { isAccessible = true }
+        val domainField =
+            ProjectReadEpoch::class
+                .java
+                .declaredFields
+                .single { field ->
+                    field.name == "comparisonDomain"
+                }
+                .apply { isAccessible = true }
 
         assertTrue(domainField.get(epoch).javaClass.declaredFields.isEmpty())
-        assertTrue(ProjectReadEpoch::class.java.declaredFields.none { field ->
-            Function::class.java.isAssignableFrom(field.type) ||
-                ProjectReadEpoch.Source::class.java.isAssignableFrom(field.type)
-        })
+        assertTrue(
+            ProjectReadEpoch::class.java.declaredFields.none { field ->
+                Function::class.java.isAssignableFrom(field.type) ||
+                    ProjectReadEpoch.Source::class.java.isAssignableFrom(field.type)
+            }
+        )
     }
 
     @Test
-    fun `non-friend callers cannot mint live authority or pass it to publication consumers`(@TempDir directory: java.nio.file.Path) {
+    fun `non-friend callers cannot mint live authority or pass it to publication consumers`(
+        @TempDir directory: java.nio.file.Path
+    ) {
         val source = directory.resolve("ForgeEpoch.kt")
-        Files.writeString(source, """
+        Files.writeString(
+            source,
+            """
             import io.github.amichne.kast.workspace.contract.*
             fun forge() = ProjectReadEpoch.Source.create<Any> { error("forged") }
             fun mint(ref: LiveSemanticReadReference, epoch: ProjectReadEpoch<*>) =
@@ -127,16 +152,22 @@ class ProjectReadEpochNegativeTest {
             fun weaken(live: LiveSemanticReadAuthority) = publishedOnly(live)
             fun detached(ref: LiveSemanticReadReference): SemanticReadAuthority = ref
             fun erased(authority: SemanticReadAuthority) = authority.generation
-        """.trimIndent())
+            """
+                .trimIndent(),
+        )
         val output = ByteArrayOutputStream()
-        val exit = PrintStream(output).use { stream ->
-            K2JVMCompiler().exec(
-                stream,
-                "-classpath", System.getProperty("java.class.path"),
-                "-d", directory.resolve("classes").toString(),
-                source.toString(),
-            )
-        }
+        val exit =
+            PrintStream(output).use { stream ->
+                K2JVMCompiler()
+                    .exec(
+                        stream,
+                        "-classpath",
+                        System.getProperty("java.class.path"),
+                        "-d",
+                        directory.resolve("classes").toString(),
+                        source.toString(),
+                    )
+            }
         val diagnostics = output.toString(Charsets.UTF_8)
 
         assertEquals(ExitCode.COMPILATION_ERROR, exit, diagnostics)

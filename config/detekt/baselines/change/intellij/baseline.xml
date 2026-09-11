@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:IntellijAddDeclarationSourceAdapter.kt:IntellijChangeSourceAdapter$private fun prepareRead: IntellijSourcePreparation</ID>
+    <ID>CognitiveComplexMethod:IntellijExistingSourceRollback.kt:IntellijExistingSourceRollback$fun rollback: AddDeclarationRollbackResult</ID>
+    <ID>CyclomaticComplexMethod:HostedAddDeclarationSemanticObservation.kt:private fun observeRead: HostedAddDeclarationSemanticObservation</ID>
+    <ID>CyclomaticComplexMethod:IntellijAddDeclarationSourceAdapter.kt:IntellijChangeSourceAdapter$private fun prepareRead: IntellijSourcePreparation</ID>
+    <ID>CyclomaticComplexMethod:IntellijExistingSourceRollback.kt:IntellijExistingSourceRollback$fun rollback: AddDeclarationRollbackResult</ID>
+    <ID>FunctionOnlyReturningConstant:IntellijSourceWriteProtocolTest.kt:FakeDocumentSession$private fun inputPath: String</ID>
+    <ID>LongMethod:HostedAddDeclarationSemanticObservation.kt:private fun observeRead: HostedAddDeclarationSemanticObservation</ID>
+    <ID>LongMethod:IntellijAddDeclarationSourceAdapter.kt:IntellijChangeSourceAdapter$private fun prepareRead: IntellijSourcePreparation</ID>
+    <ID>LongMethod:IntellijAddDeclarationSourceAdapter.kt:IntellijChangeSourceAdapter$private fun writeExisting: SourceWriteResult</ID>
+    <ID>LongMethod:IntellijExistingSourceRollback.kt:IntellijExistingSourceRollback$fun rollback: AddDeclarationRollbackResult</ID>
+    <ID>MatchingDeclarationName:IntellijAddDeclarationSourceAdapter.kt:IntellijChangeSourceAdapter : AddDeclarationSourceObserverAddDeclarationSourceWriterAddDeclarationSourceRollback</ID>
+    <ID>TooGenericExceptionCaught:IntellijExistingSourceRollback.kt:IntellijExistingSourceRollback$failure: Exception</ID>
+  </CurrentIssues>
+</SmellBaseline>

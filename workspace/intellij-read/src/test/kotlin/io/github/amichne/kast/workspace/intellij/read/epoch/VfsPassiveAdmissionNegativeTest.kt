@@ -20,16 +20,15 @@ import org.junit.jupiter.api.Test
 class VfsPassiveAdmissionNegativeTest {
     @Test
     fun `admitted project owns the typed freshness transition`() {
-        val transitions = AdmittedIdeProject::class.java.declaredMethods.filter { method ->
-            Modifier.isPublic(method.modifiers) &&
-                !method.isSynthetic &&
-                method.name == "admitVfsPassiveRead"
-        }
+        val transitions =
+            AdmittedIdeProject::class.java.declaredMethods.filter { method ->
+                Modifier.isPublic(method.modifiers) && !method.isSynthetic && method.name == "admitVfsPassiveRead"
+            }
         val transition = transitions.singleOrNull()
-        if (transition == null ||
-            !transition.parameterTypes.contentEquals(arrayOf(ProjectReadEpoch::class.java)) ||
-            transition.returnType.name !=
-            "io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmission"
+        if (
+            transition == null ||
+                !transition.parameterTypes.contentEquals(arrayOf(ProjectReadEpoch::class.java)) ||
+                transition.returnType.name != "io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmission"
         ) {
             fail<Unit>("Missing VfsPassiveReadCapability admission transition")
         }
@@ -73,41 +72,38 @@ class VfsPassiveAdmissionNegativeTest {
 
     @Test
     fun `all remaining observation failures remain exact unavailable data`() {
-        val failures = listOf(
-            ProjectReadEpochObservationFailure.WrongThread to
-                VfsPassiveReadUnavailableCause.WrongThread,
-            ProjectReadEpochObservationFailure.ProjectNotOpen to
-                VfsPassiveReadUnavailableCause.ProjectNotOpen,
-            ProjectReadEpochObservationFailure.ProjectNotInitialized to
-                VfsPassiveReadUnavailableCause.ProjectNotInitialized,
-            ProjectReadEpochObservationFailure.ProjectRootUnavailable to
-                VfsPassiveReadUnavailableCause.ProjectRootUnavailable,
-            ProjectReadEpochObservationFailure.ProjectRootMalformed to
-                VfsPassiveReadUnavailableCause.ProjectRootMalformed,
-            ProjectReadEpochObservationFailure.GradleModelUnavailable to
-                VfsPassiveReadUnavailableCause.GradleModelUnavailable,
-            ProjectReadEpochObservationFailure.GradleModelIncomplete to
-                VfsPassiveReadUnavailableCause.GradleModelIncomplete,
-            ProjectReadEpochObservationFailure.GradleModelAmbiguous to
-                VfsPassiveReadUnavailableCause.GradleModelAmbiguous,
-            ProjectReadEpochObservationFailure.GradleRootUnavailable to
-                VfsPassiveReadUnavailableCause.GradleRootUnavailable,
-            ProjectReadEpochObservationFailure.GradleRootMalformed to
-                VfsPassiveReadUnavailableCause.GradleRootMalformed,
-            ProjectReadEpochObservationFailure.ImportTimestampsIncoherent to
-                VfsPassiveReadUnavailableCause.ImportTimestampsIncoherent,
-            ProjectReadEpochObservationFailure.VfsBatchLimitExceeded to
-                VfsPassiveReadUnavailableCause.VfsBatchLimitExceeded,
-            ProjectReadEpochObservationFailure.VfsPathMalformed to
-                VfsPassiveReadUnavailableCause.VfsPathMalformed,
-            ProjectReadEpochObservationFailure.SignalExhausted to
-                VfsPassiveReadUnavailableCause.SignalExhausted,
-            ProjectReadEpochObservationFailure.ReadPreempted to
-                VfsPassiveReadUnavailableCause.ReadPreempted,
-        ) + ProjectReadEpochObservationStage.entries.map { stage ->
-            ProjectReadEpochObservationFailure.ObservationFailed(stage) to
-                VfsPassiveReadUnavailableCause.ObservationFailed(stage)
-        }
+        val failures =
+            listOf(
+                ProjectReadEpochObservationFailure.WrongThread to VfsPassiveReadUnavailableCause.WrongThread,
+                ProjectReadEpochObservationFailure.ProjectNotOpen to VfsPassiveReadUnavailableCause.ProjectNotOpen,
+                ProjectReadEpochObservationFailure.ProjectNotInitialized to
+                    VfsPassiveReadUnavailableCause.ProjectNotInitialized,
+                ProjectReadEpochObservationFailure.ProjectRootUnavailable to
+                    VfsPassiveReadUnavailableCause.ProjectRootUnavailable,
+                ProjectReadEpochObservationFailure.ProjectRootMalformed to
+                    VfsPassiveReadUnavailableCause.ProjectRootMalformed,
+                ProjectReadEpochObservationFailure.GradleModelUnavailable to
+                    VfsPassiveReadUnavailableCause.GradleModelUnavailable,
+                ProjectReadEpochObservationFailure.GradleModelIncomplete to
+                    VfsPassiveReadUnavailableCause.GradleModelIncomplete,
+                ProjectReadEpochObservationFailure.GradleModelAmbiguous to
+                    VfsPassiveReadUnavailableCause.GradleModelAmbiguous,
+                ProjectReadEpochObservationFailure.GradleRootUnavailable to
+                    VfsPassiveReadUnavailableCause.GradleRootUnavailable,
+                ProjectReadEpochObservationFailure.GradleRootMalformed to
+                    VfsPassiveReadUnavailableCause.GradleRootMalformed,
+                ProjectReadEpochObservationFailure.ImportTimestampsIncoherent to
+                    VfsPassiveReadUnavailableCause.ImportTimestampsIncoherent,
+                ProjectReadEpochObservationFailure.VfsBatchLimitExceeded to
+                    VfsPassiveReadUnavailableCause.VfsBatchLimitExceeded,
+                ProjectReadEpochObservationFailure.VfsPathMalformed to VfsPassiveReadUnavailableCause.VfsPathMalformed,
+                ProjectReadEpochObservationFailure.SignalExhausted to VfsPassiveReadUnavailableCause.SignalExhausted,
+                ProjectReadEpochObservationFailure.ReadPreempted to VfsPassiveReadUnavailableCause.ReadPreempted,
+            ) +
+                ProjectReadEpochObservationStage.entries.map { stage ->
+                    ProjectReadEpochObservationFailure.ObservationFailed(stage) to
+                        VfsPassiveReadUnavailableCause.ObservationFailed(stage)
+                }
 
         failures.forEach { (failure, unavailableCause) ->
             assertMappedFailure(
@@ -132,29 +128,40 @@ class VfsPassiveAdmissionNegativeTest {
 
     @Test
     fun `capability construction and retained authority stay closed`() {
-        assertTrue(VfsPassiveReadCapability::class.java.declaredConstructors.all { constructor ->
-            Modifier.isPrivate(constructor.modifiers) || constructor.isSynthetic
-        })
-        assertFalse(VfsPassiveReadCapability::class.java.declaredMethods.any { method ->
-            !method.isSynthetic &&
-                (method.name == "copy" || method.name.startsWith("component"))
-        })
-        val publicMethods = VfsPassiveReadCapability::class.java.declaredMethods
-            .filter { method -> Modifier.isPublic(method.modifiers) && !method.isSynthetic }
-            .map { method -> method.name }
+        assertTrue(
+            VfsPassiveReadCapability::class.java.declaredConstructors.all { constructor ->
+                Modifier.isPrivate(constructor.modifiers) || constructor.isSynthetic
+            }
+        )
+        assertFalse(
+            VfsPassiveReadCapability::class.java.declaredMethods.any { method ->
+                !method.isSynthetic && (method.name == "copy" || method.name.startsWith("component"))
+            }
+        )
+        val publicMethods =
+            VfsPassiveReadCapability::class
+                .java
+                .declaredMethods
+                .filter { method -> Modifier.isPublic(method.modifiers) && !method.isSynthetic }
+                .map { method -> method.name }
         assertEquals(2, publicMethods.size)
         assertTrue(publicMethods.any { method -> method.startsWith("getCanonicalRoot-") })
         assertTrue(publicMethods.contains("getAdmittedEpoch"))
-        val retainedTypes = VfsPassiveReadCapability::class.java.declaredFields
-            .filterNot { field -> Modifier.isStatic(field.modifiers) }
-            .map { field -> field.type }
-            .toSet()
+        val retainedTypes =
+            VfsPassiveReadCapability::class
+                .java
+                .declaredFields
+                .filterNot { field -> Modifier.isStatic(field.modifiers) }
+                .map { field -> field.type }
+                .toSet()
         assertEquals(setOf(String::class.java, ProjectReadEpoch::class.java), retainedTypes)
-        assertFalse(retainedTypes.any { type ->
-            Project::class.java.isAssignableFrom(type) ||
-                Function::class.java.isAssignableFrom(type) ||
-                type.name.contains("ProjectReadEpoch\$Source")
-        })
+        assertFalse(
+            retainedTypes.any { type ->
+                Project::class.java.isAssignableFrom(type) ||
+                    Function::class.java.isAssignableFrom(type) ||
+                    type.name.contains("ProjectReadEpoch\$Source")
+            }
+        )
     }
 
     private fun assertMappedFailure(

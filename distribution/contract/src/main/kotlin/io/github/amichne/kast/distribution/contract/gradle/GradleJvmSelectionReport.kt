@@ -6,7 +6,10 @@ import kotlinx.serialization.Serializable
 @Serializable
 @JvmInline
 value class GradleJavaFeature private constructor(val value: Int) {
-    init { require(value > 0) }
+    init {
+        require(value > 0)
+    }
+
     companion object {
         fun of(value: Int): GradleJavaFeature {
             require(value > 0)
@@ -18,7 +21,10 @@ value class GradleJavaFeature private constructor(val value: Int) {
 @Serializable
 @JvmInline
 value class GradleDistributionVersion private constructor(val value: String) {
-    init { require(Regex("[A-Za-z0-9._+-]{1,80}").matches(value)) }
+    init {
+        require(Regex("[A-Za-z0-9._+-]{1,80}").matches(value))
+    }
+
     companion object {
         /** Extracts an already observed Gradle version into its bounded transport identity. */
         fun observed(value: String): GradleDistributionVersion {
@@ -31,6 +37,7 @@ value class GradleDistributionVersion private constructor(val value: String) {
 @Serializable
 sealed interface GradleDistributionEvidence {
     @Serializable data object Unavailable : GradleDistributionEvidence
+
     @Serializable data class Observed(val version: GradleDistributionVersion) : GradleDistributionEvidence
 }
 
@@ -62,18 +69,28 @@ data class GradleJvmCandidateEvidence(
 @Serializable
 enum class GradleJvmSelectionFailure(val correctiveAction: String) {
     GRADLE_DISTRIBUTION_UNAVAILABLE("Restore a supported Gradle wrapper in gradle/wrapper/gradle-wrapper.properties."),
-    DAEMON_JVM_CRITERIA_UNSUPPORTED("Use version-only gradle/gradle-daemon-jvm.properties criteria and install that Java feature."),
-    REPOSITORY_JAVA_HOME_INVALID("Set repository org.gradle.java.home to a canonical absolute JDK directory containing executable bin/java."),
+    DAEMON_JVM_CRITERIA_UNSUPPORTED(
+        "Use version-only gradle/gradle-daemon-jvm.properties criteria and install that Java feature."
+    ),
+    REPOSITORY_JAVA_HOME_INVALID(
+        "Set repository org.gradle.java.home to a canonical absolute JDK directory containing executable bin/java."
+    ),
     LOCAL_JVM_DISCOVERY_FAILED("Install a local JDK admitted for the wrapper version, then restart Kast."),
-    NO_COMPATIBLE_RUNTIME("Install a JDK in requiredJava and set repository org.gradle.java.home to its canonical absolute home."),
+    NO_COMPATIBLE_RUNTIME(
+        "Install a JDK in requiredJava and set repository org.gradle.java.home to its canonical absolute home."
+    ),
     SDK_REGISTRATION_FAILED("Ensure the selected local JDK is readable and restart Kast to register it."),
 }
 
 @Serializable
 sealed interface GradleJvmSelectionOutcome {
-    @Serializable data class Selected(val candidate: GradleJvmCandidateEvidence) : GradleJvmSelectionOutcome {
-        init { require(candidate.decision == GradleJvmCandidateDecision.SELECTED) }
+    @Serializable
+    data class Selected(val candidate: GradleJvmCandidateEvidence) : GradleJvmSelectionOutcome {
+        init {
+            require(candidate.decision == GradleJvmCandidateDecision.SELECTED)
+        }
     }
+
     @Serializable data class Rejected(val failure: GradleJvmSelectionFailure) : GradleJvmSelectionOutcome
 }
 
@@ -92,9 +109,13 @@ data class GradleJvmSelectionReport(
             is GradleJvmSelectionOutcome.Selected -> {
                 require(distribution is GradleDistributionEvidence.Observed)
                 require(outcome.candidate.java in requiredJava)
-                require(candidates.filter { it.decision == GradleJvmCandidateDecision.SELECTED } == listOf(outcome.candidate))
+                require(
+                    candidates.filter { it.decision == GradleJvmCandidateDecision.SELECTED } ==
+                        listOf(outcome.candidate)
+                )
             }
-            is GradleJvmSelectionOutcome.Rejected -> require(candidates.none { it.decision == GradleJvmCandidateDecision.SELECTED })
+            is GradleJvmSelectionOutcome.Rejected ->
+                require(candidates.none { it.decision == GradleJvmCandidateDecision.SELECTED })
         }
     }
 }
@@ -102,5 +123,6 @@ data class GradleJvmSelectionReport(
 @Serializable
 sealed interface GradleJvmSelectionObservation {
     @Serializable data object Unobserved : GradleJvmSelectionObservation
+
     @Serializable data class Observed(val report: GradleJvmSelectionReport) : GradleJvmSelectionObservation
 }

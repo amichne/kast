@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:QueryService.kt:QueryService$private suspend fun refine: List&lt;QuerySymbol></ID>
+    <ID>CognitiveComplexMethod:QueryService.kt:QueryService$private suspend fun related: List&lt;QuerySymbol></ID>
+    <ID>CognitiveComplexMethod:QueryService.kt:QueryService$private suspend fun where: List&lt;QuerySymbol></ID>
+    <ID>CyclomaticComplexMethod:QueryService.kt:QueryService$private suspend fun related: List&lt;QuerySymbol></ID>
+    <ID>LargeClass:QueryService.kt:QueryService : QueryOperations</ID>
+    <ID>LongMethod:QueryService.kt:QueryService$private suspend fun discover: DiscoveryExecution</ID>
+    <ID>LongMethod:QueryService.kt:QueryService$private suspend fun related: List&lt;QuerySymbol></ID>
+    <ID>LoopWithTooManyJumpStatements:QueryService.kt:QueryService$while</ID>
+    <ID>NamedArguments:QueryService.kt:QueryService$executeCandidate( input.distinctBy { it.candidate }, stage.next, state, discovery, )</ID>
+    <ID>NamedArguments:QueryService.kt:QueryService$executeCandidate(candidates, plan.stage, state, plan.source)</ID>
+    <ID>NamedArguments:QueryService.kt:QueryService$executeCandidate(plan.source.values, plan.stage, state, null)</ID>
+    <ID>NamedArguments:QueryService.kt:QueryService$resume( symbol.selector, meaning, budget, continuation, io.github.amichne.kast.relation.contract.RelationSearchBoundary.WORKSPACE_EXPANSION, )</ID>
+    <ID>NamedArguments:QueryService.kt:QueryService$start( symbol.selector, meaning, budget, io.github.amichne.kast.relation.contract.RelationSearchBoundary.WORKSPACE_EXPANSION, )</ID>
+    <ID>NamedArguments:QueryServiceSupport.kt:issue( expanded.lease, expanded.scope, expanded.evidence, expanded.constraints, )</ID>
+    <ID>NestedBlockDepth:QueryService.kt:QueryService$private suspend fun related: List&lt;QuerySymbol></ID>
+  </CurrentIssues>
+</SmellBaseline>

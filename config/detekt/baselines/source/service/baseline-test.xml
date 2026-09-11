@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>NamedArguments:SourceReadServiceTest.kt:SourceReadServiceTest$SourceReadRequest( SourceReadAnchor.Source(selector), RegionSelection.Anchor, EntitySelection.None, TextProjection.Complete, SourceEntityLimit.parse(250).refined(), SourceTextByteLimit.parse(65_536).refined(), SourceReadPage.First, )</ID>
+    <ID>NamedArguments:SourceReadServiceTest.kt:SourceReadServiceTest$create( selector.snapshot, SourceRegion.create(SourceRegionKind.DECLARATION, selector).refined(), emptyList(), SourceTextProjection.returned(selector, text).refined(), )</ID>
+    <ID>NamedArguments:SourceReadServiceTest.kt:SourceReadServiceTest$create( workspace.readLease, workspace.sourceState, SymbolDiscoveryFileIdentity.Workspace(path), SourceTextIdentity.fromNormalizedCommittedText(text), Utf16CodeUnitCount.parse(text.length).refined(), )</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -6,17 +6,17 @@ import io.github.amichne.kast.appserver.provider.BrokerProcessExecution
 import io.github.amichne.kast.appserver.provider.BrokerProcessExecutor
 import io.github.amichne.kast.appserver.provider.BrokerProcessRequest
 import io.github.amichne.kast.kernel.Refinement
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermissions
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.attribute.PosixFilePermissions
 
 class CodexProtocolQualifierTest {
     @Test
@@ -24,10 +24,11 @@ class CodexProtocolQualifierTest {
     fun `installed schemas admit raw display in every lifecycle and history carrier`() {
         val root = Path.of(System.getenv("KAST_CODEX_SCHEMA_DIRECTORY"))
         val files = Files.walk(root).use { paths -> paths.filter { Files.isRegularFile(it) }.toList() }
-        val documents = CodexOwnedSchema.entries.associateWith { schema ->
-            val path = files.single { it.fileName.toString() == schema.fileName }
-            Json.parseToJsonElement(Files.readString(path)).jsonObject
-        }
+        val documents =
+            CodexOwnedSchema.entries.associateWith { schema ->
+                val path = files.single { it.fileName.toString() == schema.fileName }
+                Json.parseToJsonElement(Files.readString(path)).jsonObject
+            }
         assertInstanceOf(
             io.github.amichne.kast.kernel.Validation.Validated::class.java,
             CodexProtocolContracts.define(documents),
@@ -37,25 +38,29 @@ class CodexProtocolQualifierTest {
     @Test
     fun `contracts reject an initialize schema incompatible with broker refinement`() {
         val objectSchema = Json.parseToJsonElement("""{"type":"object"}""").jsonObject
-        val closedInitialize = Json.parseToJsonElement(
-            """
-            {
-              "type":"object",
-              "required":["clientInfo","capabilities"],
-              "additionalProperties":false,
-              "properties":{
-                "clientInfo":{"type":"object"},
-                "capabilities":{"type":"object","additionalProperties":false,"properties":{}}
-              }
-            }
-            """.trimIndent(),
-        ).jsonObject
+        val closedInitialize =
+            Json.parseToJsonElement(
+                    """
+                    {
+                      "type":"object",
+                      "required":["clientInfo","capabilities"],
+                      "additionalProperties":false,
+                      "properties":{
+                        "clientInfo":{"type":"object"},
+                        "capabilities":{"type":"object","additionalProperties":false,"properties":{}}
+                      }
+                    }
+                    """
+                        .trimIndent()
+                )
+                .jsonObject
 
-        val definition = CodexProtocolContracts.define(
-            CodexOwnedSchema.entries.associateWith { schema ->
-                if (schema == CodexOwnedSchema.INITIALIZE_PARAMS) closedInitialize else objectSchema
-            },
-        )
+        val definition =
+            CodexProtocolContracts.define(
+                CodexOwnedSchema.entries.associateWith { schema ->
+                    if (schema == CodexOwnedSchema.INITIALIZE_PARAMS) closedInitialize else objectSchema
+                }
+            )
 
         assertInstanceOf(
             io.github.amichne.kast.kernel.Validation.Rejected::class.java,
@@ -66,32 +71,35 @@ class CodexProtocolQualifierTest {
     @Test
     fun `contracts reject lifecycle schemas without the expandable display`() {
         val objectSchema = Json.parseToJsonElement("""{"type":"object"}""").jsonObject
-        val dynamicOnlyNotification = Json.parseToJsonElement(
-            """
-            {
-              "type":"object",
-              "required":["item"],
-              "properties":{
-                "item":{
-                  "type":"object",
-                  "required":["type"],
-                  "properties":{"type":{"const":"dynamicToolCall"}}
-                }
-              }
-            }
-            """.trimIndent(),
-        ).jsonObject
+        val dynamicOnlyNotification =
+            Json.parseToJsonElement(
+                    """
+                    {
+                      "type":"object",
+                      "required":["item"],
+                      "properties":{
+                        "item":{
+                          "type":"object",
+                          "required":["type"],
+                          "properties":{"type":{"const":"dynamicToolCall"}}
+                        }
+                      }
+                    }
+                    """
+                        .trimIndent()
+                )
+                .jsonObject
 
-        val definition = CodexProtocolContracts.define(
-            CodexOwnedSchema.entries.associateWith { schema ->
-                when (schema) {
-                    CodexOwnedSchema.ITEM_STARTED_NOTIFICATION,
-                    CodexOwnedSchema.ITEM_COMPLETED_NOTIFICATION,
-                    -> dynamicOnlyNotification
-                    else -> objectSchema
+        val definition =
+            CodexProtocolContracts.define(
+                CodexOwnedSchema.entries.associateWith { schema ->
+                    when (schema) {
+                        CodexOwnedSchema.ITEM_STARTED_NOTIFICATION,
+                        CodexOwnedSchema.ITEM_COMPLETED_NOTIFICATION -> dynamicOnlyNotification
+                        else -> objectSchema
+                    }
                 }
-            },
-        )
+            )
 
         assertInstanceOf(
             io.github.amichne.kast.kernel.Validation.Rejected::class.java,
@@ -102,19 +110,22 @@ class CodexProtocolQualifierTest {
     @Test
     fun `contracts reject history schemas without the expandable display`() {
         val objectSchema = Json.parseToJsonElement("""{"type":"object"}""").jsonObject
-        val dynamicOnlyTurnsResponse = Json.parseToJsonElement(
-            """{"type":"object","required":["data"],"properties":{"data":{"type":"array","items":{"type":"object","required":["items"],"properties":{"items":{"type":"array","items":{"type":"object","required":["type"],"properties":{"type":{"const":"dynamicToolCall"}}}}}}}}}""",
-        ).jsonObject
+        val dynamicOnlyTurnsResponse =
+            Json.parseToJsonElement(
+                    """{"type":"object","required":["data"],"properties":{"data":{"type":"array","items":{"type":"object","required":["items"],"properties":{"items":{"type":"array","items":{"type":"object","required":["type"],"properties":{"type":{"const":"dynamicToolCall"}}}}}}}}}"""
+                )
+                .jsonObject
 
-        val definition = CodexProtocolContracts.define(
-            CodexOwnedSchema.entries.associateWith { schema ->
-                if (schema == CodexOwnedSchema.THREAD_TURNS_LIST_RESPONSE) {
-                    dynamicOnlyTurnsResponse
-                } else {
-                    objectSchema
+        val definition =
+            CodexProtocolContracts.define(
+                CodexOwnedSchema.entries.associateWith { schema ->
+                    if (schema == CodexOwnedSchema.THREAD_TURNS_LIST_RESPONSE) {
+                        dynamicOnlyTurnsResponse
+                    } else {
+                        objectSchema
+                    }
                 }
-            },
-        )
+            )
 
         assertInstanceOf(
             io.github.amichne.kast.kernel.Validation.Rejected::class.java,
@@ -125,46 +136,50 @@ class CodexProtocolQualifierTest {
     @Test
     fun `contracts reject schemas that exclude failed native lifecycles`() {
         val objectSchema = Json.parseToJsonElement("""{"type":"object"}""").jsonObject
-        val noFailedMcpNotification = Json.parseToJsonElement(
-            """
-            {
-              "type":"object",
-              "required":["item"],
-              "properties":{
-                "item":{
-                  "oneOf":[
+        val noFailedMcpNotification =
+            Json.parseToJsonElement(
+                    """
                     {
                       "type":"object",
-                      "required":["type","status"],
+                      "required":["item"],
                       "properties":{
-                        "type":{"const":"dynamicToolCall"},
-                        "status":{"enum":["inProgress","completed"]}
-                      }
-                    },
-                    {
-                      "type":"object",
-                      "required":["type","status"],
-                      "properties":{
-                        "type":{"const":"mcpToolCall"},
-                        "status":{"enum":["inProgress","completed"]}
+                        "item":{
+                          "oneOf":[
+                            {
+                              "type":"object",
+                              "required":["type","status"],
+                              "properties":{
+                                "type":{"const":"dynamicToolCall"},
+                                "status":{"enum":["inProgress","completed"]}
+                              }
+                            },
+                            {
+                              "type":"object",
+                              "required":["type","status"],
+                              "properties":{
+                                "type":{"const":"mcpToolCall"},
+                                "status":{"enum":["inProgress","completed"]}
+                              }
+                            }
+                          ]
+                        }
                       }
                     }
-                  ]
-                }
-              }
-            }
-            """.trimIndent(),
-        ).jsonObject
+                    """
+                        .trimIndent()
+                )
+                .jsonObject
 
-        val definition = CodexProtocolContracts.define(
-            CodexOwnedSchema.entries.associateWith { schema ->
-                if (schema == CodexOwnedSchema.ITEM_COMPLETED_NOTIFICATION) {
-                    noFailedMcpNotification
-                } else {
-                    objectSchema
+        val definition =
+            CodexProtocolContracts.define(
+                CodexOwnedSchema.entries.associateWith { schema ->
+                    if (schema == CodexOwnedSchema.ITEM_COMPLETED_NOTIFICATION) {
+                        noFailedMcpNotification
+                    } else {
+                        objectSchema
+                    }
                 }
-            },
-        )
+            )
 
         assertInstanceOf(
             io.github.amichne.kast.kernel.Validation.Rejected::class.java,
@@ -173,27 +188,29 @@ class CodexProtocolQualifierTest {
     }
 
     @Test
-    fun `qualification compiles the exact installed experimental schemas`(
-        @TempDir temporary: Path,
-    ) = runBlocking {
+    fun `qualification compiles the exact installed experimental schemas`(@TempDir temporary: Path) = runBlocking {
         val codex = executable(temporary.resolve("codex"))
         val codexHome = Files.createDirectory(temporary.resolve("codex-home")).toRealPath()
         val tempRoot = Files.createDirectory(temporary.resolve("temp")).toRealPath()
         val executor = SchemaGeneratingExecutor()
-        val options = CodexProtocolQualificationOptions.admit(
-            UpstreamCodexExecutable.admit(
-                codex,
-                DesktopFacadeExecutables.none(),
-            ).refinedValue(),
-            codexHome,
-            tempRoot,
-            executor,
-        ).refinedValue()
+        val options =
+            CodexProtocolQualificationOptions.admit(
+                    UpstreamCodexExecutable.admit(
+                            codex,
+                            DesktopFacadeExecutables.none(),
+                        )
+                        .refinedValue(),
+                    codexHome,
+                    tempRoot,
+                    executor,
+                )
+                .refinedValue()
 
-        val qualification = assertInstanceOf(
-            CodexProtocolQualification.Qualified::class.java,
-            CodexProtocolQualifier.qualify(options),
-        )
+        val qualification =
+            assertInstanceOf(
+                CodexProtocolQualification.Qualified::class.java,
+                CodexProtocolQualifier.qualify(options),
+            )
 
         assertEquals("codex-cli 9.9.9", qualification.version.value)
         assertEquals(CodexOwnedSchema.entries.size, qualification.schemaFileCount)
@@ -212,27 +229,29 @@ class CodexProtocolQualifierTest {
     }
 
     @Test
-    fun `duplicate required basename fails closed`(
-        @TempDir temporary: Path,
-    ) = runBlocking {
+    fun `duplicate required basename fails closed`(@TempDir temporary: Path) = runBlocking {
         val codex = executable(temporary.resolve("codex"))
         val codexHome = Files.createDirectory(temporary.resolve("codex-home")).toRealPath()
         val tempRoot = Files.createDirectory(temporary.resolve("temp")).toRealPath()
         val executor = SchemaGeneratingExecutor(duplicate = CodexOwnedSchema.INITIALIZE_PARAMS)
-        val options = CodexProtocolQualificationOptions.admit(
-            UpstreamCodexExecutable.admit(
-                codex,
-                DesktopFacadeExecutables.none(),
-            ).refinedValue(),
-            codexHome,
-            tempRoot,
-            executor,
-        ).refinedValue()
+        val options =
+            CodexProtocolQualificationOptions.admit(
+                    UpstreamCodexExecutable.admit(
+                            codex,
+                            DesktopFacadeExecutables.none(),
+                        )
+                        .refinedValue(),
+                    codexHome,
+                    tempRoot,
+                    executor,
+                )
+                .refinedValue()
 
-        val rejection = assertInstanceOf(
-            CodexProtocolQualification.Rejected::class.java,
-            CodexProtocolQualifier.qualify(options),
-        )
+        val rejection =
+            assertInstanceOf(
+                CodexProtocolQualification.Rejected::class.java,
+                CodexProtocolQualifier.qualify(options),
+            )
 
         assertEquals(
             CodexProtocolQualificationFailure.AMBIGUOUS_REQUIRED_SCHEMA,
@@ -241,9 +260,7 @@ class CodexProtocolQualifierTest {
         assertEquals(emptyList<Path>(), Files.list(tempRoot).use { paths -> paths.toList() })
     }
 
-    private class SchemaGeneratingExecutor(
-        private val duplicate: CodexOwnedSchema? = null,
-    ) : BrokerProcessExecutor {
+    private class SchemaGeneratingExecutor(private val duplicate: CodexOwnedSchema? = null) : BrokerProcessExecutor {
         val requests = mutableListOf<BrokerProcessRequest>()
 
         override suspend fun execute(request: BrokerProcessRequest): BrokerProcessExecution {
@@ -269,8 +286,9 @@ class CodexProtocolQualifierTest {
         return path.toRealPath()
     }
 
-    private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> throw AssertionError("Expected refinement, received $failure")
-    }
+    private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> throw AssertionError("Expected refinement, received $failure")
+        }
 }

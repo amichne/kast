@@ -29,12 +29,13 @@ class IntellijSourceWriteProtocolTest {
         )
     }
 
-    private val input = IntellijMutationInput(
-        sourcePath = "/workspace/app/src/main/kotlin/sample/Service.kt",
-        preimageText = "fun service() = 0\n",
-        postimageText = "fun service() = 0\n\nfun added() = 1\n",
-        mutations = listOf(IntellijTextMutation(17, 17, "\nfun added() = 1")),
-    )
+    private val input =
+        IntellijMutationInput(
+            sourcePath = "/workspace/app/src/main/kotlin/sample/Service.kt",
+            preimageText = "fun service() = 0\n",
+            postimageText = "fun service() = 0\n\nfun added() = 1\n",
+            mutations = listOf(IntellijTextMutation(17, 17, "\nfun added() = 1")),
+        )
 
     @Test
     fun `document mutation becomes durable before physical save`() {
@@ -58,17 +59,16 @@ class IntellijSourceWriteProtocolTest {
         val session = FakeDocumentSession(input.preimageText, events)
         val barrier = MutationDurabilityBarrier {
             events += "durable"
-            MutationDurabilityResult.Rejected(
-                MutationDurabilityFailure.RECOVERY_EVIDENCE_REJECTED,
-            )
+            MutationDurabilityResult.Rejected(MutationDurabilityFailure.RECOVERY_EVIDENCE_REJECTED)
         }
 
         val result = IntellijSourceWriteProtocol().execute(input, barrier, session)
 
-        val rejected = assertInstanceOf(
-            IntellijWriteProtocolResult.RejectedAfterRollback::class.java,
-            result,
-        )
+        val rejected =
+            assertInstanceOf(
+                IntellijWriteProtocolResult.RejectedAfterRollback::class.java,
+                result,
+            )
         assertEquals(SourceWriteFailure.DURABILITY_REJECTED, rejected.failure)
         assertEquals(listOf("insert", "durable", "rollback"), events)
         assertEquals(input.preimageText, session.text)
@@ -85,10 +85,11 @@ class IntellijSourceWriteProtocolTest {
 
         val result = IntellijSourceWriteProtocol().execute(input, barrier, session)
 
-        val required = assertInstanceOf(
-            IntellijWriteProtocolResult.RecoveryRequired::class.java,
-            result,
-        )
+        val required =
+            assertInstanceOf(
+                IntellijWriteProtocolResult.RecoveryRequired::class.java,
+                result,
+            )
         assertEquals(SourceWriteFailure.SAVE_FAILED, required.failure)
         assertEquals(listOf("insert", "durable", "save"), events)
         assertTrue(result !is IntellijWriteProtocolResult.Applied)
@@ -96,23 +97,24 @@ class IntellijSourceWriteProtocolTest {
 
     @Test
     fun `rename durability rejection restores unrelated code and exact preimage`() {
-        val rename = IntellijMutationInput(
-            sourcePath = "/workspace/app/src/main/kotlin/sample/Service.kt",
-            preimageText = "val unrelated = 1\nfun service() = unrelated\n",
-            postimageText = "val unrelated = 1\nfun renamedService() = unrelated\n",
-            mutations = listOf(IntellijTextMutation(22, 29, "renamedService")),
-        )
+        val rename =
+            IntellijMutationInput(
+                sourcePath = "/workspace/app/src/main/kotlin/sample/Service.kt",
+                preimageText = "val unrelated = 1\nfun service() = unrelated\n",
+                postimageText = "val unrelated = 1\nfun renamedService() = unrelated\n",
+                mutations = listOf(IntellijTextMutation(22, 29, "renamedService")),
+            )
         val session = FakeDocumentSession(rename.preimageText, mutableListOf())
 
-        val result = IntellijSourceWriteProtocol().execute(
-            rename,
-            MutationDurabilityBarrier {
-                MutationDurabilityResult.Rejected(
-                    MutationDurabilityFailure.RECOVERY_EVIDENCE_REJECTED,
+        val result =
+            IntellijSourceWriteProtocol()
+                .execute(
+                    rename,
+                    MutationDurabilityBarrier {
+                        MutationDurabilityResult.Rejected(MutationDurabilityFailure.RECOVERY_EVIDENCE_REJECTED)
+                    },
+                    session,
                 )
-            },
-            session,
-        )
 
         assertInstanceOf(IntellijWriteProtocolResult.RejectedAfterRollback::class.java, result)
         assertEquals(rename.preimageText, session.text)
@@ -120,23 +122,24 @@ class IntellijSourceWriteProtocolTest {
 
     @Test
     fun `declaration replacement durability rejection restores the exact preimage`() {
-        val replacement = IntellijMutationInput(
-            sourcePath = "/workspace/app/src/main/kotlin/sample/Service.kt",
-            preimageText = "val unrelated = 1\nfun service() = 0\n",
-            postimageText = "val unrelated = 1\nfun service() = 1\n",
-            mutations = listOf(IntellijTextMutation(18, 35, "fun service() = 1")),
-        )
+        val replacement =
+            IntellijMutationInput(
+                sourcePath = "/workspace/app/src/main/kotlin/sample/Service.kt",
+                preimageText = "val unrelated = 1\nfun service() = 0\n",
+                postimageText = "val unrelated = 1\nfun service() = 1\n",
+                mutations = listOf(IntellijTextMutation(18, 35, "fun service() = 1")),
+            )
         val session = FakeDocumentSession(replacement.preimageText, mutableListOf())
 
-        val result = IntellijSourceWriteProtocol().execute(
-            replacement,
-            MutationDurabilityBarrier {
-                MutationDurabilityResult.Rejected(
-                    MutationDurabilityFailure.RECOVERY_EVIDENCE_REJECTED,
+        val result =
+            IntellijSourceWriteProtocol()
+                .execute(
+                    replacement,
+                    MutationDurabilityBarrier {
+                        MutationDurabilityResult.Rejected(MutationDurabilityFailure.RECOVERY_EVIDENCE_REJECTED)
+                    },
+                    session,
                 )
-            },
-            session,
-        )
 
         assertInstanceOf(IntellijWriteProtocolResult.RejectedAfterRollback::class.java, result)
         assertEquals(replacement.preimageText, session.text)

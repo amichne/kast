@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:IntellijK2RelationProjection.kt:IntellijK2RelationProjection$fun confirmDefinition: IntellijK2DefinitionConfirmation</ID>
+    <ID>CognitiveComplexMethod:IntellijK2RelationSearch.kt:IntellijK2RelationSearch.SearchState$fun callees: IntellijRelationTermination</ID>
+    <ID>CognitiveComplexMethod:IntellijK2RelationSearch.kt:IntellijK2RelationSearch.SearchState$fun definitions: IntellijRelationTermination</ID>
+    <ID>CognitiveComplexMethod:IntellijK2RelationSearch.kt:IntellijK2RelationSearch.SearchState$fun references: IntellijRelationTermination</ID>
+    <ID>CognitiveComplexMethod:IntellijRelationCollector.kt:IntellijRelationCollector$fun finish: RelationCompilation</ID>
+    <ID>CognitiveComplexMethod:IntellijRelationCompilerAdapter.kt:IntellijRelationCompilerQuery$suspend fun read: RelationCompilation</ID>
+    <ID>CognitiveComplexMethod:IntellijRelationScopeCompiler.kt:IntellijRelationScopeCompiler$fun compile: IntellijRelationScopeCompilation</ID>
+    <ID>ComplexCondition:IntellijK2RelationSearch.kt:IntellijK2RelationSearch.SearchState$file != null &amp;&amp; request.searchScope is io.github.amichne.kast.symbol.contract.SymbolSearchScope.Workspace &amp;&amp; (request.searchScope as io.github.amichne.kast.symbol.contract.SymbolSearchScope.Workspace) .libraries == io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy.EXCLUDE &amp;&amp; IntellijProjectFileIndexClassifier.classify(project, file, limits) is IntellijProjectFileClassification.Library</ID>
+    <ID>CyclomaticComplexMethod:IntellijK2RelationProjection.kt:IntellijK2RelationProjection$fun confirmDefinition: IntellijK2DefinitionConfirmation</ID>
+    <ID>CyclomaticComplexMethod:IntellijK2RelationSearch.kt:IntellijK2RelationSearch.SearchState$fun callees: IntellijRelationTermination</ID>
+    <ID>CyclomaticComplexMethod:IntellijK2RelationSearch.kt:IntellijK2RelationSearch.SearchState$fun definitions: IntellijRelationTermination</ID>
+    <ID>CyclomaticComplexMethod:IntellijK2RelationSearch.kt:IntellijK2RelationSearch.SearchState$fun references: IntellijRelationTermination</ID>
+    <ID>CyclomaticComplexMethod:IntellijRelationCollector.kt:IntellijRelationCollector$fun finish: RelationCompilation</ID>
+    <ID>CyclomaticComplexMethod:IntellijRelationScopeCompiler.kt:IntellijRelationScopeCompiler$fun compile: IntellijRelationScopeCompilation</ID>
+    <ID>LargeClass:IntellijK2RelationSearch.kt:IntellijK2RelationSearch$SearchState</ID>
+    <ID>LongMethod:IntellijK2RelationSearch.kt:IntellijK2RelationSearch.SearchState$fun callees: IntellijRelationTermination</ID>
+    <ID>LongMethod:IntellijK2RelationSearch.kt:IntellijK2RelationSearch.SearchState$fun definitions: IntellijRelationTermination</ID>
+    <ID>LongMethod:IntellijK2RelationSearch.kt:IntellijK2RelationSearch.SearchState$fun references: IntellijRelationTermination</ID>
+    <ID>LongMethod:IntellijK2RelationSearch.kt:IntellijK2RelationSearch.SearchState$private fun emit: Boolean</ID>
+    <ID>LongMethod:IntellijRelationCollector.kt:IntellijRelationCollector$fun finish: RelationCompilation</ID>
+    <ID>LongMethod:IntellijRelationCompilerAdapter.kt:IntellijRelationCompilerQuery$suspend fun read: RelationCompilation</ID>
+    <ID>LongMethod:IntellijRelationScopeCompiler.kt:IntellijRelationScopeCompiler$fun compile: IntellijRelationScopeCompilation</ID>
+    <ID>LongParameterList:HostedIntellijRelationPorts.kt:fun admitHostedIntellijRelationPorts: HostedRelationAdmission</ID>
+    <ID>LongParameterList:ProjectBoundIntellijRelationPort.kt:ProjectBoundIntellijRelationPort$fun create: RelationCompilerPort</ID>
+    <ID>LoopWithTooManyJumpStatements:IntellijK2RelationSearch.kt:IntellijK2RelationSearch.SearchState$for</ID>
+    <ID>MatchingDeclarationName:InstalledIntellijRelationPort.kt:InstalledRelationScopeOperations</ID>
+    <ID>MatchingDeclarationName:IntellijRelationProviderOrder.kt:IntellijCanonicalRelationProviderItem&lt;out Value></ID>
+    <ID>NamedArguments:HostedIntellijRelationPorts.kt:read(project, lease, request, scopes.compile(lease))</ID>
+    <ID>NamedArguments:HostedIntellijRelationPorts.kt:validate( project, root, compatibilityCandidate, compatibilityPolicy, )</ID>
+    <ID>NamedArguments:InstalledIntellijRelationPort.kt:read(project, current, request, scopes.compile(current))</ID>
+    <ID>NamedArguments:IntellijK2RelationProjection.kt:IntellijK2RelationProjection$fromBoundary( detached, range.startOffset, range.endOffset, declaration.name.orEmpty(), projection.qualifiedIdentity, projection.kind, projection.signature, )</ID>
+    <ID>NamedArguments:IntellijK2RelationSearch.kt:IntellijK2RelationSearch.SearchState$resolve( request.subject.lease, request.searchScope, related.evidence, request.searchConstraints, )</ID>
+    <ID>NamedArguments:IntellijK2SymbolIdentity.kt:IntellijCompilerProjection( kind, qualifiedIdentity, signature.value, CompilerSymbolIdentity.fromCanonicalSignature(signature.value), )</ID>
+    <ID>NamedArguments:IntellijRelationCollector.kt:IntellijRelationCollector$create(request, orderedFacts, bytes, work, results)</ID>
+    <ID>NamedArguments:IntellijRelationCompilerAdapter.kt:IntellijRelationCompilerQuery$compile( project, request, modelCompilation, request.subject.scope, request.subject.constraints, )</ID>
+    <ID>NamedArguments:IntellijRelationScopeCompiler.kt:IntellijRelationScopeCompiler$RelationModelScope( GlobalSearchScope.allScope(project), pathPolicy, libraryPolicy, libraryMembership = libraryScope::contains, sourceMembership = { file -> IntellijProjectSourceMembership.contains(project, file) }, fileAdmission = { path -> fileAdmission(path) &amp;&amp; matchesDirectory(path, request.subject.lease.workspaceRoot.value, constraints) }, )</ID>
+    <ID>NamedArguments:ProjectBoundIntellijRelationPort.kt:ProjectBoundIntellijRelationPort$read(project, authority, request, compiledModel)</ID>
+    <ID>NestedBlockDepth:IntellijK2RelationSearch.kt:IntellijK2RelationSearch.SearchState$fun callees: IntellijRelationTermination</ID>
+    <ID>NestedBlockDepth:IntellijK2RelationSearch.kt:IntellijK2RelationSearch.SearchState$fun references: IntellijRelationTermination</ID>
+    <ID>TooGenericExceptionCaught:IntellijRelationCompilerAdapter.kt:IntellijRelationCompilerQuery$failure: RuntimeException</ID>
+    <ID>UnnecessaryFilter:IntellijK2RelationSearch.kt:filter { it is KtNamedDeclaration || it is com.intellij.psi.PsiMember }</ID>
+  </CurrentIssues>
+</SmellBaseline>

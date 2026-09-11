@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:WorkspaceIndexSynchronizationService.kt:WorkspaceIndexSynchronizationService$override fun ready: IndexSynchronizationResult</ID>
+    <ID>CognitiveComplexMethod:WorkspaceIndexSynchronizationService.kt:WorkspaceIndexSynchronizationService$private fun synchronizeExclusively: IndexSynchronizationResult</ID>
+    <ID>CognitiveComplexMethod:WorkspacePublicationCoordinator.kt:WorkspacePublicationCoordinator$fun reconcileAfterIndexRefresh: WorkspacePublicationRun</ID>
+    <ID>CognitiveComplexMethod:WorkspaceResourceAdmissionController.kt:WorkspaceResourceAdmissionController$private fun claim: WorkspaceInitiationClaim</ID>
+    <ID>CognitiveComplexMethod:WorkspaceTransitionCoordinator.kt:WorkspaceTransitionCoordinator$private fun publish: TransitionRun</ID>
+    <ID>CyclomaticComplexMethod:WorkspaceTransitionCoordinator.kt:WorkspaceTransitionCoordinator$private fun publish: TransitionRun</ID>
+    <ID>LargeClass:WorkspacePublicationCoordinator.kt:WorkspacePublicationCoordinator : WorkspaceInspectionOperationsWorkspaceInvalidationSinkSemanticReadLeaseGuardWorkspaceRefreshBasisOperations</ID>
+    <ID>LargeClass:WorkspacePublicationTest.kt:WorkspacePublicationTest</ID>
+    <ID>LargeClass:WorkspaceTransitionCoordinator.kt:WorkspaceTransitionCoordinator</ID>
+    <ID>LongMethod:WorkspaceIndexSynchronizationService.kt:WorkspaceIndexSynchronizationService$override fun ready: IndexSynchronizationResult</ID>
+    <ID>LongMethod:WorkspaceIndexSynchronizationService.kt:WorkspaceIndexSynchronizationService$private fun synchronizeExclusively: IndexSynchronizationResult</ID>
+    <ID>LongMethod:WorkspacePublicationCoordinator.kt:WorkspacePublicationCoordinator$private fun reconcileExclusively: WorkspacePublicationRun</ID>
+    <ID>LongMethod:WorkspaceResourceAdmissionController.kt:WorkspaceResourceAdmissionController$private fun await: WorkspaceEntryWait</ID>
+    <ID>LongMethod:WorkspaceTransitionCoordinator.kt:WorkspaceTransitionCoordinator$fun reconcilePending: TransitionRun</ID>
+    <ID>LongMethod:WorkspaceTransitionCoordinator.kt:WorkspaceTransitionCoordinator$private fun publish: TransitionRun</ID>
+    <ID>MatchingDeclarationName:WorkspaceTransitionExecution.kt:TransitionCycle</ID>
+    <ID>ThrowsCount:WorkspacePublicationTest.kt:WorkspacePublicationTest$private fun assertCancellationCleanup</ID>
+    <ID>TooGenericExceptionCaught:WorkspacePublicationCoordinator.kt:WorkspacePublicationCoordinator$cleanupFailure: Throwable</ID>
+    <ID>TooGenericExceptionCaught:WorkspaceResourceAdmissionController.kt:WorkspaceResourceAdmissionController$failure: Throwable</ID>
+    <ID>TooGenericExceptionCaught:WorkspaceTransitionCoordinator.kt:WorkspaceTransitionCoordinator$failure: Throwable</ID>
+    <ID>UnusedParameter:WorkspacePublicationTest.kt:workspaceRoot: CanonicalWorkspaceRoot</ID>
+  </CurrentIssues>
+</SmellBaseline>

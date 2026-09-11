@@ -5,25 +5,21 @@ import org.gradle.api.tasks.testing.Test
 import org.gradle.process.CommandLineArgumentProvider
 
 abstract class KastObserverSnapshotArguments : CommandLineArgumentProvider {
-    @get:OutputFile
-    abstract val manifestFile: RegularFileProperty
+    @get:OutputFile abstract val manifestFile: RegularFileProperty
 
-    override fun asArguments(): Iterable<String> = listOf(
-        manifestFile.get().asFile.absolutePath,
-    )
+    override fun asArguments(): Iterable<String> = listOf(manifestFile.get().asFile.absolutePath)
 }
 
 abstract class CodexHostManifestArguments : CommandLineArgumentProvider {
-    @get:OutputFile
-    abstract val manifestFile: RegularFileProperty
+    @get:OutputFile abstract val manifestFile: RegularFileProperty
 
-    @get:InputFile
-    abstract val installedAcceptanceFile: RegularFileProperty
+    @get:InputFile abstract val installedAcceptanceFile: RegularFileProperty
 
-    override fun asArguments(): Iterable<String> = listOf(
-        manifestFile.get().asFile.absolutePath,
-        installedAcceptanceFile.get().asFile.absolutePath,
-    )
+    override fun asArguments(): Iterable<String> =
+        listOf(
+            manifestFile.get().asFile.absolutePath,
+            installedAcceptanceFile.get().asFile.absolutePath,
+        )
 }
 
 plugins {
@@ -52,30 +48,25 @@ tasks.named<Test>("test") {
     inputs.dir(installedSchemas).optional().withPropertyName("installedCodexSchemas")
 }
 
-val kastObserverSnapshotManifest = layout.buildDirectory.file(
-    "observer-snapshots/kast-observer-presentations.json",
-)
+val kastObserverSnapshotManifest = layout.buildDirectory.file("observer-snapshots/kast-observer-presentations.json")
 
-val generateKastObserverSnapshotManifest by tasks.registering(JavaExec::class) {
-    description = "Projects deterministic Kast observer fixtures without starting Codex."
-    group = "documentation"
-    classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "io.github.amichne.kast.appserver.provider.KastObserverSnapshotMain"
-    workingDir = rootProject.projectDir
-    dependsOn(tasks.named("testClasses"))
-    argumentProviders.add(
-        objects.newInstance<KastObserverSnapshotArguments>().apply {
-            manifestFile.set(kastObserverSnapshotManifest)
-        },
-    )
-}
+val generateKastObserverSnapshotManifest by
+    tasks.registering(JavaExec::class) {
+        description = "Projects deterministic Kast observer fixtures without starting Codex."
+        group = "documentation"
+        classpath = sourceSets.test.get().runtimeClasspath
+        mainClass = "io.github.amichne.kast.appserver.provider.KastObserverSnapshotMain"
+        workingDir = rootProject.projectDir
+        dependsOn(tasks.named("testClasses"))
+        argumentProviders.add(
+            objects.newInstance<KastObserverSnapshotArguments>().apply {
+                manifestFile.set(kastObserverSnapshotManifest)
+            }
+        )
+    }
 
-val codexHostIntegrationManifest = layout.buildDirectory.file(
-    "reports/codex-host/codex-host-integration.json",
-)
-val installedCodexHostReceipt = rootProject.layout.buildDirectory.file(
-    "reports/installed-product/codex-host.json",
-)
+val codexHostIntegrationManifest = layout.buildDirectory.file("reports/codex-host/codex-host-integration.json")
+val installedCodexHostReceipt = rootProject.layout.buildDirectory.file("reports/installed-product/codex-host.json")
 
 tasks.register<JavaExec>("generateCodexHostIntegrationManifest") {
     description = "Binds Codex host modes, catalog projection, installed proof, and source state."
@@ -94,16 +85,12 @@ tasks.register<JavaExec>("generateCodexHostIntegrationManifest") {
         objects.newInstance<CodexHostManifestArguments>().apply {
             manifestFile.set(codexHostIntegrationManifest)
             installedAcceptanceFile.set(installedCodexHostReceipt)
-        },
+        }
     )
 }
 
-val kastObserverSnapshotScript = rootProject.layout.projectDirectory.file(
-    "docs/render_kast_observer_snapshots.py",
-)
-val kastObserverSnapshotStyles = rootProject.layout.projectDirectory.file(
-    "docs/kast-observer-snapshots.css",
-)
+val kastObserverSnapshotScript = rootProject.layout.projectDirectory.file("docs/render_kast_observer_snapshots.py")
+val kastObserverSnapshotStyles = rootProject.layout.projectDirectory.file("docs/kast-observer-snapshots.css")
 val kastObserverSnapshotOutput = rootProject.layout.projectDirectory.dir("docs/public/images")
 
 tasks.register<Exec>("renderKastObserverScreenshots") {
@@ -131,6 +118,7 @@ tasks.register<Exec>("renderKastObserverScreenshots") {
 }
 
 val installedWorkspaceHarnessClasspath = layout.buildDirectory.file("acceptance/installed-workspace-harness.classpath")
+
 tasks.register("writeInstalledWorkspaceHarnessClasspath") {
     group = "verification"
     description = "Projects the test-only installed routing harness classpath; never ships it in the product."

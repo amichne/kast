@@ -2,6 +2,8 @@
 
 ## 2026-09-11
 
+- Bound shared Kotlin formatting and structural checks to the [architecture concept](modules/architecture.md), preserving generator ownership and distinguishing quality gates from module-dependency evidence.
+
 - Removed the shell installer's retired tool-name defaults. Typed installation admission now selects the canonical catalog on absence and rejects retired, unknown, empty, or duplicate explicit selections before writing configuration.
 
 - Restored raw tool-result display through the standard expandable App Server MCP

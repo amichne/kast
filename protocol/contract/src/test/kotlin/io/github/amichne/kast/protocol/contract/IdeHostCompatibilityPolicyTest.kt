@@ -7,28 +7,31 @@ import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
 
 class IdeHostCompatibilityPolicyTest {
-    private val baseline = IdeHostCompatibilityCandidate(
-        ideBuild = "262.10315.125",
-        kotlinPluginBuild = "262.10315.125-IJ",
-        kastPluginVersion = "1.2.3",
-        runtimeProtocolIdentity = "kast.ide-hosted.runtime.v1",
-        operationRegistryDigest = "sha256:" + "1".repeat(64),
-        wireSchemaDigest = "sha256:" + "2".repeat(64),
-        capabilities = emptyList(),
-    )
-    private val policy = when (val result = IdeHostCompatibilityPolicy.define(baseline)) {
-        is Refinement.Refined -> result.value
-        is Refinement.Rejected -> fail("baseline rejected: ${result.failure}")
-    }
+    private val baseline =
+        IdeHostCompatibilityCandidate(
+            ideBuild = "262.10315.125",
+            kotlinPluginBuild = "262.10315.125-IJ",
+            kastPluginVersion = "1.2.3",
+            runtimeProtocolIdentity = "kast.ide-hosted.runtime.v1",
+            operationRegistryDigest = "sha256:" + "1".repeat(64),
+            wireSchemaDigest = "sha256:" + "2".repeat(64),
+            capabilities = emptyList(),
+        )
+    private val policy =
+        when (val result = IdeHostCompatibilityPolicy.define(baseline)) {
+            is Refinement.Refined -> result.value
+            is Refinement.Rejected -> fail("baseline rejected: ${result.failure}")
+        }
 
     @Test
     fun `262 builds are admitted with their observed identities retained`() {
         for (build in listOf("262.1.1", "262.9437.185", "262.10315.125", "262.20000.200")) {
             val candidate = baseline.copy(ideBuild = build, kotlinPluginBuild = "262.20001.201-IJ")
-            val admitted = when (val result = policy.admit(candidate)) {
-                is IdeHostCompatibilityAdmission.Admitted -> result.compatibility
-                is IdeHostCompatibilityAdmission.Rejected -> fail("$build rejected: ${result.failure}")
-            }
+            val admitted =
+                when (val result = policy.admit(candidate)) {
+                    is IdeHostCompatibilityAdmission.Admitted -> result.compatibility
+                    is IdeHostCompatibilityAdmission.Rejected -> fail("$build rejected: ${result.failure}")
+                }
             assertEquals(candidate.ideBuild, admitted.ideBuild.value)
             assertEquals(candidate.kotlinPluginBuild, admitted.kotlinPluginBuild.value)
             assertEquals(baseline.wireSchemaDigest, admitted.wireSchemaDigest.value)
@@ -71,10 +74,11 @@ class IdeHostCompatibilityPolicyTest {
     @Test
     fun `a release line prefix cannot admit malformed build identities`() {
         for (build in listOf("262", "262.*", "262.bad.1", "2620.1.1")) {
-            val rejected = assertInstanceOf(
-                IdeHostCompatibilityAdmission.Rejected::class.java,
-                policy.admit(baseline.copy(ideBuild = build)),
-            )
+            val rejected =
+                assertInstanceOf(
+                    IdeHostCompatibilityAdmission.Rejected::class.java,
+                    policy.admit(baseline.copy(ideBuild = build)),
+                )
             assertInstanceOf(IdeHostCompatibilityFailure.Malformed::class.java, rejected.failure)
         }
     }

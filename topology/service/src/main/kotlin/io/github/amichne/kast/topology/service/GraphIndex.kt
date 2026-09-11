@@ -11,10 +11,11 @@ import java.util.PriorityQueue
 internal class GraphIndex(content: TopologySnapshotContent) {
     private val symbols = content.symbols.sortedBy { identity(it).value }
     private val symbolByIdentity = symbols.associateBy(::identity)
-    private val edges = content.edges.sortedWith(
-        compareBy<TopologyEdge>({ identity(it.source).value }, { identity(it.target).value })
-            .thenBy(TopologyEdge::canonicalProjection),
-    )
+    private val edges =
+        content.edges.sortedWith(
+            compareBy<TopologyEdge>({ identity(it.source).value }, { identity(it.target).value })
+                .thenBy(TopologyEdge::canonicalProjection)
+        )
     private val outgoing = edges.groupBy { identity(it.source) }
     private val ordinal = symbols.mapIndexed { index, symbol -> identity(symbol) to index }.toMap()
 
@@ -29,10 +30,11 @@ internal class GraphIndex(content: TopologySnapshotContent) {
             visits += GraphVisit(symbol, depth)
             for (edge in outgoing.getOrElse(identity(symbol), ::emptyList)) {
                 if (visited.add(identity(edge.target))) {
-                    val next = when (val advanced = depth.next()) {
-                        is Refinement.Refined -> advanced.value
-                        is Refinement.Rejected -> return TopologyGraphTraversal.DepthOverflow
-                    }
+                    val next =
+                        when (val advanced = depth.next()) {
+                            is Refinement.Refined -> advanced.value
+                            is Refinement.Rejected -> return TopologyGraphTraversal.DepthOverflow
+                        }
                     frontier += edge.target to next
                 }
             }
@@ -44,13 +46,9 @@ internal class GraphIndex(content: TopologySnapshotContent) {
         source: CompilerSymbolIdentity,
         target: CompilerSymbolIdentity,
     ): TopologyReachability {
-        val sourceSymbol = symbolByIdentity[source]
-            ?: return TopologyReachability.UnknownEndpoint
-        val targetSymbol = symbolByIdentity[target]
-            ?: return TopologyReachability.UnknownEndpoint
-        if (source == target) return TopologyReachability.Reachable(
-            GraphPath(listOf(sourceSymbol), emptyList()),
-        )
+        val sourceSymbol = symbolByIdentity[source] ?: return TopologyReachability.UnknownEndpoint
+        val targetSymbol = symbolByIdentity[target] ?: return TopologyReachability.UnknownEndpoint
+        if (source == target) return TopologyReachability.Reachable(GraphPath(listOf(sourceSymbol), emptyList()))
         val frontier = ArrayDeque<TopologySymbol>()
         val predecessor = linkedMapOf<CompilerSymbolIdentity, TopologyEdge>()
         val visited = linkedSetOf(identity(sourceSymbol))
@@ -62,9 +60,7 @@ internal class GraphIndex(content: TopologySnapshotContent) {
                 if (visited.add(next)) {
                     predecessor[next] = edge
                     if (edge.target == targetSymbol) {
-                        return TopologyReachability.Reachable(
-                            shortestPath(sourceSymbol, targetSymbol, predecessor),
-                        )
+                        return TopologyReachability.Reachable(shortestPath(sourceSymbol, targetSymbol, predecessor))
                     }
                     frontier += edge.target
                 }
@@ -105,9 +101,7 @@ internal class GraphIndex(content: TopologySnapshotContent) {
             if (edge.target == start) {
                 val cycleEdges = pathEdges + edge
                 cycles.putIfAbsent(cycleEdges, GraphCycle(pathSymbols.toList(), cycleEdges))
-            } else if (
-                ordinal.getValue(nextIdentity) >= startOrdinal && visited.add(nextIdentity)
-            ) {
+            } else if (ordinal.getValue(nextIdentity) >= startOrdinal && visited.add(nextIdentity)) {
                 pathSymbols += edge.target
                 pathEdges += edge
                 enumerateCycles(
@@ -130,15 +124,21 @@ internal class GraphIndex(content: TopologySnapshotContent) {
 
     fun condensation(): TopologyCondensation {
         val components = components()
-        val componentByIdentity = components.flatMap { component ->
-            component.symbols.map { identity(it) to component }
-        }.toMap()
-        val condensationEdges = edges.mapNotNull { edge ->
-            val source = componentByIdentity.getValue(identity(edge.source))
-            val target = componentByIdentity.getValue(identity(edge.target))
-            if (source === target) null else source to target
-        }.distinctBy { (source, target) -> source.key to target.key }
-            .sortedWith(compareBy({ it.first.key.value }, { it.second.key.value }))
+        val componentByIdentity =
+            components
+                .flatMap { component ->
+                    component.symbols.map { identity(it) to component }
+                }
+                .toMap()
+        val condensationEdges =
+            edges
+                .mapNotNull { edge ->
+                    val source = componentByIdentity.getValue(identity(edge.source))
+                    val target = componentByIdentity.getValue(identity(edge.target))
+                    if (source === target) null else source to target
+                }
+                .distinctBy { (source, target) -> source.key to target.key }
+                .sortedWith(compareBy({ it.first.key.value }, { it.second.key.value }))
         val indegree = components.associateWith { 0 }.toMutableMap()
         condensationEdges.forEach { (_, target) -> indegree[target] = indegree.getValue(target) + 1 }
         val ready = PriorityQueue(compareBy<GraphStrongComponent> { it.key.value })
@@ -147,10 +147,12 @@ internal class GraphIndex(content: TopologySnapshotContent) {
         while (ready.isNotEmpty()) {
             val current = ready.remove()
             order += current
-            condensationEdges.filter { it.first === current }.forEach { (_, target) ->
-                indegree[target] = indegree.getValue(target) - 1
-                if (indegree.getValue(target) == 0) ready += target
-            }
+            condensationEdges
+                .filter { it.first === current }
+                .forEach { (_, target) ->
+                    indegree[target] = indegree.getValue(target) - 1
+                    if (indegree.getValue(target) == 0) ready += target
+                }
         }
         return GraphCondensation(
             order,
@@ -161,17 +163,23 @@ internal class GraphIndex(content: TopologySnapshotContent) {
     fun quotient(level: TopologyQuotientLevel): TopologyQuotientGraph {
         val nodeBySymbol = symbols.associate { symbol -> identity(symbol) to quotientNode(symbol, level) }
         val nodes = nodeBySymbol.values.distinct().sortedWith(QUOTIENT_NODE_ORDER)
-        val grouped = edges.mapNotNull { edge ->
-            val source = nodeBySymbol.getValue(identity(edge.source))
-            val target = nodeBySymbol.getValue(identity(edge.target))
-            if (source == target) null else (source to target) to edge.kind
-        }.groupBy({ it.first }, { it.second })
-        val quotientEdges = grouped.map { (pair, kinds) ->
-            GraphQuotientEdge(pair.first, pair.second, kinds.toSortedSet())
-        }.sortedWith(
-            compareBy(QUOTIENT_NODE_ORDER, GraphQuotientEdge::source)
-                .thenBy(QUOTIENT_NODE_ORDER, GraphQuotientEdge::target),
-        )
+        val grouped =
+            edges
+                .mapNotNull { edge ->
+                    val source = nodeBySymbol.getValue(identity(edge.source))
+                    val target = nodeBySymbol.getValue(identity(edge.target))
+                    if (source == target) null else (source to target) to edge.kind
+                }
+                .groupBy({ it.first }, { it.second })
+        val quotientEdges =
+            grouped
+                .map { (pair, kinds) ->
+                    GraphQuotientEdge(pair.first, pair.second, kinds.toSortedSet())
+                }
+                .sortedWith(
+                    compareBy(QUOTIENT_NODE_ORDER, GraphQuotientEdge::source)
+                        .thenBy(QUOTIENT_NODE_ORDER, GraphQuotientEdge::target)
+                )
         return GraphQuotient(level, nodes, quotientEdges)
     }
 
@@ -216,9 +224,7 @@ private data class GraphCycle(
     override val edges: List<TopologyEdge>,
 ) : TopologyCycle
 
-internal data class GraphStrongComponent(
-    override val symbols: List<TopologySymbol>,
-) : TopologyStrongComponent {
+internal data class GraphStrongComponent(override val symbols: List<TopologySymbol>) : TopologyStrongComponent {
     val key: CompilerSymbolIdentity = symbols.minBy { identity(it).value }.let(::identity)
 }
 
@@ -248,43 +254,43 @@ private fun quotientNode(symbol: TopologySymbol, level: TopologyQuotientLevel): 
     when (level) {
         TopologyQuotientLevel.FILE -> TopologyQuotientNode.File(symbol.file.path)
         TopologyQuotientLevel.PROJECT -> TopologyQuotientNode.Project(symbol.file.sourceRoot.owner.project)
-        TopologyQuotientLevel.SOURCE_SET -> TopologyQuotientNode.SourceSet(
-            symbol.file.sourceRoot.owner.project,
-            symbol.file.sourceRoot.owner.sourceSet,
-        )
+        TopologyQuotientLevel.SOURCE_SET ->
+            TopologyQuotientNode.SourceSet(
+                symbol.file.sourceRoot.owner.project,
+                symbol.file.sourceRoot.owner.sourceSet,
+            )
     }
 
-private val QUOTIENT_NODE_ORDER = compareBy<TopologyQuotientNode>(
-    { node ->
-        when (node) {
-            is TopologyQuotientNode.File -> 0
-            is TopologyQuotientNode.Project -> 1
-            is TopologyQuotientNode.SourceSet -> 2
-        }
-    },
-    { node ->
-        when (node) {
-            is TopologyQuotientNode.File -> node.path.value
-            is TopologyQuotientNode.Project -> node.project.buildRoot.value
-            is TopologyQuotientNode.SourceSet -> node.project.buildRoot.value
-        }
-    },
-    { node ->
-        when (node) {
-            is TopologyQuotientNode.File -> ""
-            is TopologyQuotientNode.Project -> node.project.projectPath.value
-            is TopologyQuotientNode.SourceSet -> node.project.projectPath.value
-        }
-    },
-    { node ->
-        when (node) {
-            is TopologyQuotientNode.SourceSet -> node.sourceSet.value
-            is TopologyQuotientNode.File,
-            is TopologyQuotientNode.Project,
-                -> ""
-        }
-    },
-)
+private val QUOTIENT_NODE_ORDER =
+    compareBy<TopologyQuotientNode>(
+        { node ->
+            when (node) {
+                is TopologyQuotientNode.File -> 0
+                is TopologyQuotientNode.Project -> 1
+                is TopologyQuotientNode.SourceSet -> 2
+            }
+        },
+        { node ->
+            when (node) {
+                is TopologyQuotientNode.File -> node.path.value
+                is TopologyQuotientNode.Project -> node.project.buildRoot.value
+                is TopologyQuotientNode.SourceSet -> node.project.buildRoot.value
+            }
+        },
+        { node ->
+            when (node) {
+                is TopologyQuotientNode.File -> ""
+                is TopologyQuotientNode.Project -> node.project.projectPath.value
+                is TopologyQuotientNode.SourceSet -> node.project.projectPath.value
+            }
+        },
+        { node ->
+            when (node) {
+                is TopologyQuotientNode.SourceSet -> node.sourceSet.value
+                is TopologyQuotientNode.File,
+                is TopologyQuotientNode.Project -> ""
+            }
+        },
+    )
 
-internal fun identity(symbol: TopologySymbol): CompilerSymbolIdentity =
-    symbol.evidence.compilerIdentity
+internal fun identity(symbol: TopologySymbol): CompilerSymbolIdentity = symbol.evidence.compilerIdentity

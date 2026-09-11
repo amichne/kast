@@ -4,6 +4,7 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 plugins {
     kotlin("jvm")
     `java-library`
+    id("kast.kotlin-quality")
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")

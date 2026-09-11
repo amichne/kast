@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>LargeClass:TraversalServiceTest.kt:TraversalServiceTest</ID>
+    <ID>LongMethod:TraversalServiceTest.kt:TraversalServiceTest$@Test fun `every resumable aggregate bound qualifies with a continuation`</ID>
+    <ID>LongMethod:TraversalServiceTest.kt:TraversalServiceTest$@Test fun `terminal incomplete evidence survives an aggregate continuation`</ID>
+    <ID>LongMethod:TraversalTestFixture.kt:TraversalTestFixture$fun selector: SymbolSelector</ID>
+    <ID>LongParameterList:TraversalTestFixture.kt:TraversalTestFixture$fun plan: TraversalPlan</ID>
+    <ID>NamedArguments:SqliteTopologyTraversalTest.kt:SqliteTopologyTraversalTest$GradleSourceRootEvidence( "root.main", ".", ":", "main", "src", SourceRootProvenance.Authored, )</ID>
+    <ID>NamedArguments:SqliteTopologyTraversalTest.kt:SqliteTopologyTraversalTest$admit( workspace, root, WorkspaceSourcePath.parse(path).refined(), WorkspaceSourceContentHash.parse(selector.name.value.first().toString().repeat(64)).refined(), )</ID>
+    <ID>NamedArguments:SqliteTopologyTraversalTest.kt:SqliteTopologyTraversalTest$fromBoundary( TopologyEdgeKind.CALL, symbols.getValue(source), symbols.getValue(target), source.range.startInclusive, source.range.startInclusive + 1, )</ID>
+    <ID>NamedArguments:SqliteTopologyTraversalTest.kt:SqliteTopologyTraversalTest$fromBoundary( selector.file, selector.range.startInclusive, selector.range.endExclusive, selector.name.value, qualified, selector.kind, SymbolDescription.from(selector).signature, )</ID>
+    <ID>NamedArguments:SqliteTopologyTraversalTest.kt:SqliteTopologyTraversalTest$function( "sample.shared", null, emptyList(), emptyList(), 0, )</ID>
+    <ID>NamedArguments:SqliteTopologyTraversalTest.kt:SqliteTopologyTraversalTest$issue( a.lease, a.scope, generation.symbols.first { it.evidence.name == a.name }.evidence, io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints( null, null, sourceSets = io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets.Exact.from( setOf( io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName.parse("main") .refined() ) ) .refined(), ), )</ID>
+    <ID>NamedArguments:TraversalServiceTest.kt:TraversalServiceTest$resume( a, RelationMeaning.Callees, plan.budget, stoppedQualification.continuation, )</ID>
+    <ID>NamedArguments:TraversalServiceTest.kt:TraversalServiceTest$resume( a, RelationMeaning.Callees, wider.budget, resumable.continuation, )</ID>
+    <ID>NamedArguments:TraversalTestFixture.kt:TraversalTestFixture$TraversalBudget( ResultLimit.parse(aggregateRecords).refined(), TraversalByteLimit.parse(aggregateBytes).refined(), WorkUnitLimit.parse(aggregateWork).refined(), ElapsedTimeLimitMillis.parse(aggregateTime).refined(), TraversalDepthLimit.parse(depth).refined(), TraversalFrontierLimit.parse(frontier).refined(), oneHop, )</ID>
+    <ID>NamedArguments:TraversalTestFixture.kt:TraversalTestFixture$create( request, facts, RelationByteCount.parse(bytes).refined(), RelationWorkCount.parse(facts.size.toLong()).refined(), RelationResultCount.parse(facts.size).refined(), )</ID>
+    <ID>NamedArguments:TraversalTestFixture.kt:TraversalTestFixture$create( request, listOf(candidate), SymbolDiscoveryByteCount.parse(candidate.projectedUtf8Size().value).refined(), SymbolDiscoveryWorkCount.parse(1L).refined(), SymbolDiscoveryTimings( SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), ), )</ID>
+    <ID>NamedArguments:TraversalTestFixture.kt:TraversalTestFixture$create( request, source, target, occurrence, RelationProvenance.K2_AUTHORED_SOURCE, )</ID>
+    <ID>NamedArguments:TraversalTestFixture.kt:TraversalTestFixture$fromBoundary( SymbolDiscoveryKind.SYMBOL, name, lease, Path.of("/workspace/src/$name.kt"), "file:///workspace/src/$name.kt", offset, )</ID>
+    <ID>NamedArguments:TraversalTestFixture.kt:TraversalTestFixture$fromBoundary( location.file, location.offset.value, location.offset.value + name.length + 1, name, signature.qualifiedIdentity(), CompilerSymbolKind.FUNCTION, signature, )</ID>
+    <ID>NamedArguments:TraversalTestFixture.kt:TraversalTestFixture$fromBoundary( target.file, target.range.startInclusive, target.range.endExclusive, target.name.value, qualifiedIdentity, target.kind, description.signature, )</ID>
+    <ID>NamedArguments:TraversalTestFixture.kt:TraversalTestFixture$function( qualifiedIdentity, null, emptyList(), emptyList(), 0, )</ID>
+    <ID>NamedArguments:TraversalTestFixture.kt:TraversalTestFixture$resume( subject, meaning, budget, oneHopPosition.continuation, )</ID>
+    <ID>NamedArguments:TraversalTestFixture.kt:TraversalTestFixture$resume( subject.selector, meaning, budget, oneHopPosition.continuation, )</ID>
+  </CurrentIssues>
+</SmellBaseline>

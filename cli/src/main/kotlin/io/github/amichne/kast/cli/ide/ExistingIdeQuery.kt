@@ -4,21 +4,30 @@ import io.github.amichne.kast.cli.CanonicalRoot
 import io.github.amichne.kast.cli.CliJsonDocument
 import io.github.amichne.kast.cli.PreparedCliRequest
 import io.github.amichne.kast.cli.ProjectedCliOutcome
-import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
 
 enum class ExistingIdeFailure {
     CONFIGURATION_REJECTED,
-    INVALID_NAME, HOST_UNAVAILABLE, DESCRIPTOR_REJECTED, RESPONSE_REJECTED,
-    REQUEST_TOO_LARGE, DEADLINE_EXCEEDED, TRANSPORT_REJECTED, SCHEMA_UNAVAILABLE,
+    INVALID_NAME,
+    HOST_UNAVAILABLE,
+    DESCRIPTOR_REJECTED,
+    RESPONSE_REJECTED,
+    REQUEST_TOO_LARGE,
+    DEADLINE_EXCEEDED,
+    TRANSPORT_REJECTED,
+    SCHEMA_UNAVAILABLE,
     OPERATION_UNSUPPORTED,
 }
 
 class ExistingIdeClassName private constructor(val value: String) {
     companion object {
         fun parse(raw: String): Refinement<ExistingIdeClassName, ExistingIdeFailure> =
-            if (raw.toByteArray(Charsets.UTF_8).size in 1..512 &&
-                (raw.first().isLetter() || raw.first() == '_') && raw.all { it.isLetterOrDigit() || it == '_' }) {
+            if (
+                raw.toByteArray(Charsets.UTF_8).size in 1..512 &&
+                    (raw.first().isLetter() || raw.first() == '_') &&
+                    raw.all { it.isLetterOrDigit() || it == '_' }
+            ) {
                 Refinement.Refined(ExistingIdeClassName(raw))
             } else Refinement.Rejected(ExistingIdeFailure.INVALID_NAME)
     }
@@ -26,9 +35,13 @@ class ExistingIdeClassName private constructor(val value: String) {
 
 sealed interface ExistingIdeOperation {
     data object Status : ExistingIdeOperation
+
     data class Classes(val name: ExistingIdeClassName) : ExistingIdeOperation
+
     data class Supertype(val name: ExistingIdeQualifiedClassName) : ExistingIdeOperation
-    class Read private constructor(
+
+    class Read
+    private constructor(
         val request: PreparedCliRequest,
         val kind: ExistingIdeReadOperation,
     ) : ExistingIdeOperation {
@@ -62,8 +75,10 @@ enum class ExistingIdeReadOperation(val canonical: CanonicalOperation) {
 class ExistingIdeQualifiedClassName private constructor(val value: String) {
     companion object {
         fun parse(raw: String): Refinement<ExistingIdeQualifiedClassName, ExistingIdeFailure> =
-            if (raw.toByteArray(Charsets.UTF_8).size in 1..4096 &&
-                raw.split('.').all { ExistingIdeClassName.parse(it) is Refinement.Refined }) {
+            if (
+                raw.toByteArray(Charsets.UTF_8).size in 1..4096 &&
+                    raw.split('.').all { ExistingIdeClassName.parse(it) is Refinement.Refined }
+            ) {
                 Refinement.Refined(ExistingIdeQualifiedClassName(raw))
             } else Refinement.Rejected(ExistingIdeFailure.INVALID_NAME)
     }
@@ -76,7 +91,10 @@ fun interface ExistingIdeClient {
 
 sealed interface ExistingIdeExchange {
     class Received internal constructor(val document: CliJsonDocument) : ExistingIdeExchange
+
     class Semantic internal constructor(val outcome: ProjectedCliOutcome) : ExistingIdeExchange
+
     class HostRejected internal constructor(val document: CliJsonDocument) : ExistingIdeExchange
+
     data class Rejected(val failure: ExistingIdeFailure) : ExistingIdeExchange
 }

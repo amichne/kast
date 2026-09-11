@@ -5,8 +5,8 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.topology.contract.CompleteTopologyFile
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumeration
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumerator
-import io.github.amichne.kast.topology.contract.TopologyFileExtractionFailure
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
+import io.github.amichne.kast.topology.contract.TopologyFileExtractionFailure
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.GradleSourceRootEvidence
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
@@ -16,6 +16,13 @@ import io.github.amichne.kast.workspace.contract.SourceRootProvenance
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidate
 import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import java.nio.file.Files
+import java.nio.file.Path
+import java.time.Duration
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -23,17 +30,9 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.time.Duration
-import java.nio.file.Files
-import java.nio.file.Path
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
 
 class TopologyVfsSynchronizationTest {
-    @TempDir
-    lateinit var tempDir: Path
+    @TempDir lateinit var tempDir: Path
 
     @Test
     fun `asynchronous VFS refresh is awaited without a cancellable platform wait`() {
@@ -41,16 +40,18 @@ class TopologyVfsSynchronizationTest {
         lateinit var finish: Runnable
         val executor = Executors.newSingleThreadExecutor()
         try {
-            val result = executor.submit<TopologyVfsRefresh> {
-                AwaitedTopologyVfsRefresh.execute(
-                    starter = TopologyVfsRefreshStarter { completion ->
-                        finish = completion
-                        started.countDown()
-                        TopologyVfsRefreshStart.STARTED
-                    },
-                    timeout = Duration.ofSeconds(5),
-                )
-            }
+            val result =
+                executor.submit<TopologyVfsRefresh> {
+                    AwaitedTopologyVfsRefresh.execute(
+                        starter =
+                            TopologyVfsRefreshStarter { completion ->
+                                finish = completion
+                                started.countDown()
+                                TopologyVfsRefreshStart.STARTED
+                            },
+                        timeout = Duration.ofSeconds(5),
+                    )
+                }
 
             assertTrue(started.await(5, TimeUnit.SECONDS))
             assertFalse(result.isDone)
@@ -68,16 +69,18 @@ class TopologyVfsSynchronizationTest {
     fun `all admitted roots synchronize before authored and generated candidates are hashed`() {
         write("src/main/kotlin/Authored.kt", "class Authored")
         write("build/generated/kotlin/Generated.kt", "class Generated")
-        val authored = sourceRoot(
-            "root.main",
-            "src/main/kotlin",
-            SourceRootProvenance.Authored,
-        )
-        val generated = sourceRoot(
-            "root.generated",
-            "build/generated/kotlin",
-            SourceRootProvenance.Generated,
-        )
+        val authored =
+            sourceRoot(
+                "root.main",
+                "src/main/kotlin",
+                SourceRootProvenance.Authored,
+            )
+        val generated =
+            sourceRoot(
+                "root.generated",
+                "build/generated/kotlin",
+                SourceRootProvenance.Generated,
+            )
         val workspace = workspace(authored, generated)
         val events = mutableListOf<String>()
         val synchronizedRoots = mutableListOf<SourceRoot>()
@@ -92,13 +95,15 @@ class TopologyVfsSynchronizationTest {
             AdmittedSourceRootEnumerator().enumerate(observed)
         }
 
-        val result = assertInstanceOf(
-            TopologyCandidateEnumeration.Complete::class.java,
-            SourceRootSynchronizedTopologyCandidateEnumerator(
-                synchronizer,
-                delegate,
-            ).enumerate(workspace),
-        )
+        val result =
+            assertInstanceOf(
+                TopologyCandidateEnumeration.Complete::class.java,
+                SourceRootSynchronizedTopologyCandidateEnumerator(
+                        synchronizer,
+                        delegate,
+                    )
+                    .enumerate(workspace),
+            )
 
         assertEquals(listOf("synchronize", "enumerate"), events)
         assertEquals(workspace.sourceRoots, synchronizedRoots)
@@ -119,14 +124,15 @@ class TopologyVfsSynchronizationTest {
     fun `VFS mismatch refreshes the failing source root and retries once`() = runTest {
         write("src/main/kotlin/Authored.kt", "class Authored")
         write("build/generated/kotlin/Generated.kt", "class Generated")
-        val workspace = workspace(
-            sourceRoot("root.main", "src/main/kotlin", SourceRootProvenance.Authored),
-            sourceRoot(
-                "root.generated",
-                "build/generated/kotlin",
-                SourceRootProvenance.Generated,
-            ),
-        )
+        val workspace =
+            workspace(
+                sourceRoot("root.main", "src/main/kotlin", SourceRootProvenance.Authored),
+                sourceRoot(
+                    "root.generated",
+                    "build/generated/kotlin",
+                    SourceRootProvenance.Generated,
+                ),
+            )
         val candidates = AdmittedSourceRootEnumerator().enumerate(workspace).complete()
         val requested = candidates.files.first { it.path.value.endsWith("Authored.kt") }
         val failing = candidates.files.first { it.path.value.endsWith("Generated.kt") }
@@ -134,24 +140,26 @@ class TopologyVfsSynchronizationTest {
         val complete = CompleteTopologyFile.admit(requested, emptyList(), emptyList()).refined()
         val attempts = AtomicInteger()
         val synchronizedRoots = mutableListOf<List<SourceRoot>>()
-        val retrier = TopologyVfsMismatchRetrier(
-            TopologySourceRootVfsSynchronizer { observed, roots ->
-                assertEquals(workspace, observed)
-                synchronizedRoots += roots
-                TopologySourceRootVfsSynchronization.Synchronized
-            },
-        )
+        val retrier =
+            TopologyVfsMismatchRetrier(
+                TopologySourceRootVfsSynchronizer { observed, roots ->
+                    assertEquals(workspace, observed)
+                    synchronizedRoots += roots
+                    TopologySourceRootVfsSynchronization.Synchronized
+                }
+            )
 
-        val result = retrier.extract(workspace, request) {
-            if (attempts.incrementAndGet() == 1) {
-                TopologyFileExtraction.Failed(
-                    failing,
-                    TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH,
-                )
-            } else {
-                TopologyFileExtraction.Complete(complete)
+        val result =
+            retrier.extract(workspace, request) {
+                if (attempts.incrementAndGet() == 1) {
+                    TopologyFileExtraction.Failed(
+                        failing,
+                        TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH,
+                    )
+                } else {
+                    TopologyFileExtraction.Complete(complete)
+                }
             }
-        }
 
         assertEquals(TopologyFileExtraction.Complete(complete), result)
         assertEquals(2, attempts.get())
@@ -161,62 +169,64 @@ class TopologyVfsSynchronizationTest {
     @Test
     fun `dirty and uncommitted documents remain terminal without refresh`() = runTest {
         write("src/main/kotlin/Authored.kt", "class Authored")
-        val workspace = workspace(
-            sourceRoot("root.main", "src/main/kotlin", SourceRootProvenance.Authored),
-        )
+        val workspace = workspace(sourceRoot("root.main", "src/main/kotlin", SourceRootProvenance.Authored))
         val candidates = AdmittedSourceRootEnumerator().enumerate(workspace).complete()
         val request = candidates.extractionRequest(candidates.files.single()).refined()
 
         listOf(
-            TopologyFileExtractionFailure.DOCUMENT_DIRTY,
-            TopologyFileExtractionFailure.PSI_DOCUMENT_UNCOMMITTED,
-        ).forEach { failure ->
-            val attempts = AtomicInteger()
-            val synchronizations = AtomicInteger()
-            val expected = TopologyFileExtraction.Failed(request.file, failure)
-            val retrier = TopologyVfsMismatchRetrier(
-                TopologySourceRootVfsSynchronizer { _, _ ->
-                    synchronizations.incrementAndGet()
-                    TopologySourceRootVfsSynchronization.Synchronized
-                },
+                TopologyFileExtractionFailure.DOCUMENT_DIRTY,
+                TopologyFileExtractionFailure.PSI_DOCUMENT_UNCOMMITTED,
             )
+            .forEach { failure ->
+                val attempts = AtomicInteger()
+                val synchronizations = AtomicInteger()
+                val expected = TopologyFileExtraction.Failed(request.file, failure)
+                val retrier =
+                    TopologyVfsMismatchRetrier(
+                        TopologySourceRootVfsSynchronizer { _, _ ->
+                            synchronizations.incrementAndGet()
+                            TopologySourceRootVfsSynchronization.Synchronized
+                        }
+                    )
 
-            val result = retrier.extract(workspace, request) {
-                attempts.incrementAndGet()
-                expected
+                val result =
+                    retrier.extract(workspace, request) {
+                        attempts.incrementAndGet()
+                        expected
+                    }
+
+                assertEquals(expected, result)
+                assertEquals(1, attempts.get())
+                assertEquals(0, synchronizations.get())
             }
-
-            assertEquals(expected, result)
-            assertEquals(1, attempts.get())
-            assertEquals(0, synchronizations.get())
-        }
     }
 
     @Test
     fun `repeated VFS mismatch is bounded to one refresh and two attempts`() = runTest {
         write("src/main/kotlin/Authored.kt", "class Authored")
-        val workspace = workspace(
-            sourceRoot("root.main", "src/main/kotlin", SourceRootProvenance.Authored),
-        )
+        val workspace = workspace(sourceRoot("root.main", "src/main/kotlin", SourceRootProvenance.Authored))
         val candidates = AdmittedSourceRootEnumerator().enumerate(workspace).complete()
         val request = candidates.extractionRequest(candidates.files.single()).refined()
         val attempts = AtomicInteger()
         val synchronizations = AtomicInteger()
-        val mismatch = TopologyFileExtraction.Failed(
-            request.file,
-            TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH,
-        )
-        val retrier = TopologyVfsMismatchRetrier(
-            TopologySourceRootVfsSynchronizer { _, _ ->
-                synchronizations.incrementAndGet()
-                TopologySourceRootVfsSynchronization.Synchronized
-            },
-        )
+        val mismatch =
+            TopologyFileExtraction.Failed(
+                request.file,
+                TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH,
+            )
+        val retrier =
+            TopologyVfsMismatchRetrier(
+                TopologySourceRootVfsSynchronizer { _, _ ->
+                    synchronizations.incrementAndGet()
+                    TopologySourceRootVfsSynchronization.Synchronized
+                }
+            )
 
-        val result = retrier.extract(workspace, request) {
-            attempts.incrementAndGet()
-            mismatch
-        }
+        val result =
+            retrier.extract(workspace, request) {
+                attempts.incrementAndGet()
+                mismatch
+            }
 
         assertEquals(mismatch, result)
         assertEquals(2, attempts.get())
@@ -230,16 +240,18 @@ class TopologyVfsSynchronizationTest {
     }
 
     private fun workspace(vararg roots: SourceRoot): PublishedWorkspace {
-        val candidate = WorkspaceCandidate(
-            CanonicalWorkspaceRoot.fromCanonicalPath(tempDir.toRealPath()).refined(),
-            WorkspaceStateIdentity.parse("vfs-synchronization-state").refined(),
-        )
+        val candidate =
+            WorkspaceCandidate(
+                CanonicalWorkspaceRoot.fromCanonicalPath(tempDir.toRealPath()).refined(),
+                WorkspaceStateIdentity.parse("vfs-synchronization-state").refined(),
+            )
         return PublishedWorkspace.publish(
             ReconciledWorkspace.admit(
-                candidate,
-                WorkspaceEvidenceKind.entries.toSet(),
-                roots.toList(),
-            ).refined(),
+                    candidate,
+                    WorkspaceEvidenceKind.entries.toSet(),
+                    roots.toList(),
+                )
+                .refined(),
             EvidenceGeneration.parse(11).refined(),
         )
     }
@@ -248,17 +260,18 @@ class TopologyVfsSynchronizationTest {
         module: String,
         location: String,
         provenance: SourceRootProvenance,
-    ): SourceRoot = SourceRoot.admit(
-        GradleSourceRootEvidence(module, ".", ":", "main", location, provenance),
-    ).refined()
+    ): SourceRoot = SourceRoot.admit(GradleSourceRootEvidence(module, ".", ":", "main", location, provenance)).refined()
 
-    private fun TopologyCandidateEnumeration.complete() = assertInstanceOf(
-        TopologyCandidateEnumeration.Complete::class.java,
-        this,
-    ).candidates
+    private fun TopologyCandidateEnumeration.complete() =
+        assertInstanceOf(
+                TopologyCandidateEnumeration.Complete::class.java,
+                this,
+            )
+            .candidates
 
-    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error(failure.toString())
-    }
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
 }

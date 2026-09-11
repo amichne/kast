@@ -9,9 +9,7 @@ data class OperationRegistryArtifactEntry(
 )
 
 /** Typed generated-resource projection of one already proven canonical operation registry. */
-class OperationRegistryArtifact private constructor(
-    val entries: List<OperationRegistryArtifactEntry>,
-) {
+class OperationRegistryArtifact private constructor(val entries: List<OperationRegistryArtifactEntry>) {
     val operationIds: List<OperationId>
         get() = entries.map { it.operationId }
 
@@ -19,8 +17,8 @@ class OperationRegistryArtifact private constructor(
         /**
          * Proof transition: `OperationRegistry -> OperationRegistryArtifact`.
          *
-         * Preserves the registry's exact, unique canonical ordering as typed operation identities.
-         * Raw transport encoding is permitted only in `:protocol:wire`.
+         * Preserves the registry's exact, unique canonical ordering as typed operation identities. Raw transport
+         * encoding is permitted only in `:protocol:wire`.
          */
         fun from(registry: OperationRegistry): OperationRegistryArtifact =
             OperationRegistryArtifact(
@@ -28,14 +26,16 @@ class OperationRegistryArtifact private constructor(
                     OperationRegistryArtifactEntry(
                         operationId = definition.id,
                         hostedExposure = definition.hostedExposure,
-                        hostedIntentIds = when (val variants = definition.hostedVariants) {
-                            is HostedVariants.Intents -> variants.intents
-                                .sortedBy(HostedChangeIntent::ordinal)
-                                .map(HostedChangeIntent::identity)
-                            HostedVariants.None -> emptyList()
-                        },
+                        hostedIntentIds =
+                            when (val variants = definition.hostedVariants) {
+                                is HostedVariants.Intents ->
+                                    variants.intents
+                                        .sortedBy(HostedChangeIntent::ordinal)
+                                        .map(HostedChangeIntent::identity)
+                                HostedVariants.None -> emptyList()
+                            },
                     )
-                },
+                }
             )
     }
 }

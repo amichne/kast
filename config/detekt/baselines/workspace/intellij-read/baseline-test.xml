@@ -1,0 +1,102 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:DetachedModelClassContract.kt:DetachedModelClassContract$private fun isForbidden: Boolean</ID>
+    <ID>CognitiveComplexMethod:EpochSignalClassContract.kt:EpochSignalClassContract$internal fun rejectsProductionMember: Boolean</ID>
+    <ID>ComplexCondition:EpochSignalFixtures.kt:EpochFixtureSample$projectCounter != before.projectCounter || gradleRoot != before.gradleRoot || lastImportTimestamp != before.lastImportTimestamp || lastSuccessfulImportTimestamp != before.lastSuccessfulImportTimestamp</ID>
+    <ID>CyclomaticComplexMethod:DetachedModelClassContract.kt:DetachedModelClassContract$private fun isForbidden: Boolean</ID>
+    <ID>CyclomaticComplexMethod:DetachedModelTest.kt:DetachedModelTest$private fun recursivelyObservedSurface: Set&lt;String></ID>
+    <ID>CyclomaticComplexMethod:EpochSignalClassContract.kt:EpochSignalClassContract$internal fun rejectsProductionMember: Boolean</ID>
+    <ID>ImplicitDefaultLocale:EpochSignalClassContract.kt:EpochSignalClassContract$"%02x".format(byte.toInt() and 0xff)</ID>
+    <ID>InvalidPackageDeclaration:ConfiguredModelLimitsTest.kt:package io.github.amichne.kast.workspace.intellij.read</ID>
+    <ID>InvalidPackageDeclaration:DetachedClasspathUrlRefinementTest.kt:package io.github.amichne.kast.workspace.intellij.read</ID>
+    <ID>InvalidPackageDeclaration:DetachedModelClassContract.kt:package io.github.amichne.kast.workspace.intellij.read</ID>
+    <ID>InvalidPackageDeclaration:DetachedModelFixtures.kt:package io.github.amichne.kast.workspace.intellij.read</ID>
+    <ID>InvalidPackageDeclaration:DetachedModelNegativeTest.kt:package io.github.amichne.kast.workspace.intellij.read</ID>
+    <ID>InvalidPackageDeclaration:DetachedModelTest.kt:package io.github.amichne.kast.workspace.intellij.read</ID>
+    <ID>InvalidPackageDeclaration:DetachedSourceRootUrlObservationTest.kt:package io.github.amichne.kast.workspace.intellij.read</ID>
+    <ID>InvalidPackageDeclaration:EpochSignalClassContract.kt:package io.github.amichne.kast.workspace.intellij.read</ID>
+    <ID>InvalidPackageDeclaration:EpochSignalProductionResources.kt:package io.github.amichne.kast.workspace.intellij.read</ID>
+    <ID>InvalidPackageDeclaration:ProjectReadEpochDetachmentTest.kt:package io.github.amichne.kast.workspace.intellij.read</ID>
+    <ID>InvalidPackageDeclaration:ProjectReadEpochIdentityTest.kt:package io.github.amichne.kast.workspace.intellij.read</ID>
+    <ID>InvalidPackageDeclaration:VfsPassiveAdmissionFixtures.kt:package io.github.amichne.kast.workspace.intellij.read</ID>
+    <ID>InvalidPackageDeclaration:VfsPassiveAdmissionNegativeTest.kt:package io.github.amichne.kast.workspace.intellij.read</ID>
+    <ID>InvalidPackageDeclaration:VfsPassiveAdmissionTest.kt:package io.github.amichne.kast.workspace.intellij.read</ID>
+    <ID>LargeClass:DetachedModelClassContract.kt:DetachedModelClassContract</ID>
+    <ID>LargeClass:DetachedModelNegativeTest.kt:DetachedModelNegativeTest</ID>
+    <ID>LargeClass:EpochSignalClassContract.kt:EpochSignalClassContract</ID>
+    <ID>LongMethod:DetachedModelClassContract.kt:DetachedModelClassContract$fun verify: List&lt;DetachedModelClassContractFailure></ID>
+    <ID>LongMethod:DetachedModelClassContract.kt:DetachedModelClassContract$private fun parseClass: DetachedModelClassView?</ID>
+    <ID>LongMethod:DetachedModelNegativeTest.kt:DetachedModelNegativeTest$private fun moduleCases: List&lt;ModuleCase></ID>
+    <ID>LongMethod:DetachedModelTest.kt:DetachedModelTest$@Test fun `capture retains exact facts in deterministic order under permutation`</ID>
+    <ID>LongMethod:EpochSignalCharacterizationNegativeTest.kt:EpochSignalCharacterizationNegativeTest$@Test fun `every missing or weakened two-sample characterization case is rejected`</ID>
+    <ID>LongMethod:EpochSignalCharacterizationTest.kt:EpochSignalCharacterizationTest$@Test fun `root-filtered VFS events detect exact inbound outbound and storm movement`</ID>
+    <ID>LongMethod:EpochSignalCharacterizationTest.kt:IdeProjectReadEpochTest$@Test fun `live source maps lifecycle dumb root Gradle stage and preemption failures`</ID>
+    <ID>LongMethod:EpochSignalClassContract.kt:EpochSignalClassContract$private fun parseConstantPool: ConstantPoolView?</ID>
+    <ID>LongMethod:EpochSignalProductionResources.kt:private fun adapterEpochResources: List&lt;String></ID>
+    <ID>LongMethod:ExistingProjectAdmissionNegativeTest.kt:ExistingProjectAdmissionNegativeTest$private fun rejectionCases: List&lt;RejectionCase></ID>
+    <ID>LongMethod:ExistingProjectAdmissionTest.kt:ExistingProjectAdmissionTest$@Test fun `project service session retains one epoch authority across repeated admission`</ID>
+    <ID>LongParameterList:DetachedModelFixtures.kt:internal fun detachedModuleBoundary: DetachedModuleBoundary</ID>
+    <ID>LongParameterList:EpochSignalFixtures.kt:private fun epochCase</ID>
+    <ID>LongParameterList:ExistingProjectAdmissionFixtures.kt:RecordingProjectObservation</ID>
+    <ID>MatchingDeclarationName:VfsPassiveAdmissionFixtures.kt:RecordingFreshnessEpochSource</ID>
+    <ID>MaxLineLength:EpochSignalClassContract.kt:EpochSignalClassContract$"io/github/amichne/kast/workspace/contract/ProjectReadEpochObservationFailure\$VfsBatchLimitExceeded"</ID>
+    <ID>NamedArguments:ConfiguredModelLimitsTest.kt:ConfiguredModelLimitsTest$admit(FIXTURE_ROOT, DETACHED_FIXTURE_COMPATIBILITY, observation, limits)</ID>
+    <ID>NamedArguments:DetachedModelClassContract.kt:DetachedModelClassContract$DetachedModelClassView(majorVersion, classNames, members, "")</ID>
+    <ID>NamedArguments:DetachedModelTest.kt:DetachedModelTest$observeType(argument, context, observed, pending)</ID>
+    <ID>NamedArguments:DetachedModelTest.kt:DetachedModelTest$observeType(bound, context, observed, pending)</ID>
+    <ID>NamedArguments:DetachedModelTest.kt:DetachedModelTest$observeType(field.genericType, field.toGenericString(), observed, pending)</ID>
+    <ID>NamedArguments:DetachedModelTest.kt:DetachedModelTest$observeType(method.genericReturnType, method.toGenericString(), observed, pending)</ID>
+    <ID>NamedArguments:DetachedModelTest.kt:DetachedModelTest$observeType(type, "${owner.name} interface", observed, pending)</ID>
+    <ID>NamedArguments:DetachedModelTest.kt:DetachedModelTest$observeType(type, "${owner.name} superclass", observed, pending)</ID>
+    <ID>NamedArguments:DetachedModelTest.kt:DetachedModelTest$observeType(type, constructor.toGenericString(), observed, pending)</ID>
+    <ID>NamedArguments:DetachedModelTest.kt:DetachedModelTest$observeType(type, method.toGenericString(), observed, pending)</ID>
+    <ID>NamedArguments:DetachedModelTest.kt:DetachedModelTest$observeType(type.genericComponentType, context, observed, pending)</ID>
+    <ID>NamedArguments:DetachedModelTest.kt:DetachedModelTest$observeType(type.rawType, context, observed, pending)</ID>
+    <ID>NamedArguments:EpochSignalCharacterizationTest.kt:IdeProjectReadEpochTest$LiveProjectReadEpochSource( platform, ProjectReadEpochMetadataCounter(), ProjectReadEpochMetadataCounter(), execution, )</ID>
+    <ID>NamedArguments:EpochSignalFixtures.kt:EpochCaseDocument( caseId, 2, movedSignals, projectTransitions, listOf(EpochDumbModeState.SMART, EpochDumbModeState.SMART), dumbTransitions, vfsEventCount, relation, relation, )</ID>
+    <ID>NamedArguments:EpochSignalFixtures.kt:EpochFixtureCase( before, after, timeline, if (caseId == EpochCaseId.VFS_EVENT_STORM) 1_000 else 0, )</ID>
+    <ID>NamedArguments:EpochSignalFixtures.kt:EpochSignalDocument( EpochSignalCategory.DUMB_MODE, listOf("DumbService.modificationTracker", "DumbService.isDumb"), "modificationCount+isDumb", "modificationCountOrDumbStateChanged", )</ID>
+    <ID>NamedArguments:EpochSignalFixtures.kt:EpochSignalDocument( EpochSignalCategory.PROJECT_MODEL, listOf( "WorkspaceModelTopics.CHANGED", "ExternalProjectInfo.lastImportTimestamp+lastSuccessfulImportTimestamp", ), "projectCounter+exactRootImportTimestamps", "projectCounterOrExactRootImportTimestampChanged", )</ID>
+    <ID>NamedArguments:EpochSignalFixtures.kt:EpochSignalDocument( EpochSignalCategory.PSI, listOf("PsiModificationTracker.modificationCount"), "modificationCount", "modificationCountChanged", )</ID>
+    <ID>NamedArguments:EpochSignalFixtures.kt:EpochSignalDocument( EpochSignalCategory.ROOT_MODEL, listOf("ProjectRootModificationTracker.modificationCount"), "modificationCount", "modificationCountChanged", )</ID>
+    <ID>NamedArguments:EpochSignalFixtures.kt:EpochSignalDocument( EpochSignalCategory.VFS, listOf("VirtualFileManager.VFS_CHANGES"), "rootFilteredChangeCounter", "rootFilteredChangeCounterChanged", )</ID>
+    <ID>NamedArguments:EpochSignalFixtures.kt:epochCase( EpochCaseId.COMBINED_MOVEMENT, EpochSignalCategory.entries, projectTransitions = listOf(EpochProjectModelTransition.WORKSPACE_MODEL_CHANGED), dumbTransitions = dumbRoundTrip(), )</ID>
+    <ID>NamedArguments:ExistingProjectAdmissionFixtures.kt:ProjectReadEpochBoundary( ProjectReadEpochSignalSample.Value(1), fixtureProjectEpochRoot(FIXTURE_ROOT.value), fixtureGradleEpochRoot(FIXTURE_ROOT.value), 1, 1, ProjectReadEpochSignalSample.Value(1), ProjectReadEpochSignalSample.Value(1), ProjectReadEpochSignalSample.Value(1), ProjectReadEpochSignalSample.Value(1), false, )</ID>
+    <ID>NamedArguments:ExistingProjectAdmissionNegativeTest.kt:ExistingProjectAdmissionNegativeTest$admitObserved( opaqueProject(), FIXTURE_ROOT, FIXTURE_COMPATIBILITY, FIXTURE_COMPATIBILITY_POLICY, observation, FIXTURE_EPOCH_SOURCE_FACTORY, )</ID>
+    <ID>NamedArguments:ExistingProjectAdmissionNegativeTest.kt:ExistingProjectAdmissionNegativeTest$validateObserved( opaqueProject(), FIXTURE_ROOT, FIXTURE_COMPATIBILITY, FIXTURE_COMPATIBILITY_POLICY, observation, )</ID>
+    <ID>NamedArguments:ExistingProjectAdmissionTest.kt:ExistingProjectAdmissionTest$admitObserved( candidateProject, expectedRoot, compatibilityCandidate, compatibilityPolicy, RecordingProjectObservation(), ExistingProjectReadEpochSourceFactory { sourceProject, sourceRoot -> epochSourceInstallations += 1 FIXTURE_EPOCH_SOURCE_FACTORY.create(sourceProject, sourceRoot) }, )</ID>
+    <ID>NamedArguments:ExistingProjectAdmissionTest.kt:ExistingProjectAdmissionTest$admitObserved( opaqueProject(), FIXTURE_ROOT, FIXTURE_COMPATIBILITY, FIXTURE_COMPATIBILITY_POLICY, observation, FIXTURE_EPOCH_SOURCE_FACTORY, )</ID>
+    <ID>NamedArguments:ExistingProjectAdmissionTest.kt:ExistingProjectAdmissionTest$admitObserved( opaqueProject(), FIXTURE_ROOT, FIXTURE_COMPATIBILITY, FIXTURE_COMPATIBILITY_POLICY, observation, epochSourceFactory, )</ID>
+    <ID>NamedArguments:ExistingProjectAdmissionTest.kt:ExistingProjectAdmissionTest$admitUsing( project, FIXTURE_ROOT, FIXTURE_COMPATIBILITY, FIXTURE_COMPATIBILITY_POLICY, admissions, )</ID>
+    <ID>NamedArguments:ExistingProjectAdmissionTest.kt:ExistingProjectAdmissionTest$admitUsing( project, OTHER_FIXTURE_ROOT, FIXTURE_COMPATIBILITY, FIXTURE_COMPATIBILITY_POLICY, admissions, )</ID>
+    <ID>NamedArguments:ExistingProjectAdmissionTest.kt:ExistingProjectAdmissionTest$validateObserved( opaqueProject(), FIXTURE_ROOT, FIXTURE_COMPATIBILITY, FIXTURE_COMPATIBILITY_POLICY, observation, )</ID>
+    <ID>NamedArguments:HostedQueryContractTest.kt:HostedQueryContractTest$HostedCompilerDeclaration(evidence, content, scope.module, scope.root)</ID>
+    <ID>NamedArguments:HostedQueryContractTest.kt:HostedQueryContractTest$HostedQueryPublication( HostedQueryEndpoint(), RecordingFreshnessEpochSource().observeEpoch(), model, relation, )</ID>
+    <ID>NamedArguments:HostedQueryContractTest.kt:HostedQueryContractTest$fromBoundary( selection.file, 0, 50, name, qualified, CompilerSymbolKind.CLASSLIKE, signature, )</ID>
+    <ID>NamedArguments:NamedGradleSourceScopeTest.kt:NamedGradleSourceScopeTest$WorkspaceSourceRootBoundary( "module", Path.of("/workspace"), ":", name, Path.of("/workspace/$path"), kind, provenance, )</ID>
+    <ID>NamedArguments:ProjectReadEpochDetachmentTest.kt:ProjectReadEpochDetachmentTest$LiveProjectReadEpochSource( RecordingProjectReadEpochPlatform(), ProjectReadEpochMetadataCounter(), ProjectReadEpochMetadataCounter(), RecordingProjectReadEpochExecution(), )</ID>
+    <ID>NamedArguments:VfsPassiveAdmissionFixtures.kt:admitObserved( opaqueProject(), FIXTURE_ROOT, FIXTURE_COMPATIBILITY, FIXTURE_COMPATIBILITY_POLICY, RecordingProjectObservation(), ExistingProjectReadEpochSourceFactory { _, _ -> Refinement.Refined(source.source) }, )</ID>
+    <ID>UnnecessaryFilter:VfsPassiveAdmissionNegativeTest.kt:VfsPassiveAdmissionNegativeTest$filter { method -> Modifier.isPublic(method.modifiers) &amp;&amp; !method.isSynthetic &amp;&amp; method.name == "admitVfsPassiveRead" }</ID>
+    <ID>UnreachableCode:EpochSignalApiContract.kt:EpochSignalLedgerContract$return if (failure == null) { EpochLedgerAdmission.Admitted(decoded, decoded.cases.sumOf(EpochCaseDocument::sampleCount)) } else { EpochLedgerAdmission.Rejected(failure) }</ID>
+    <ID>UnreachableCode:EpochSignalApiContract.kt:EpochSignalLedgerContract$val decoded = try { EPOCH_JSON.decodeFromString(IdeEpochSignalLedgerDocument.serializer(), raw) } catch (_: SerializationException) { return EpochLedgerAdmission.Rejected(EpochLedgerFailure.MALFORMED_DOCUMENT) } catch (_: IllegalArgumentException) { return EpochLedgerAdmission.Rejected(EpochLedgerFailure.MALFORMED_DOCUMENT) }</ID>
+    <ID>UnreachableCode:EpochSignalApiContract.kt:EpochSignalLedgerContract$val failure = when { decoded.signals != document.signals -> EpochLedgerFailure.SIGNAL_SET_MISMATCH decoded.rejectedConstantZeroAuthorities != document.rejectedConstantZeroAuthorities -> EpochLedgerFailure.CONSTANT_ZERO_AUTHORITY_NOT_REJECTED decoded.copy( signals = document.signals, rejectedConstantZeroAuthorities = document.rejectedConstantZeroAuthorities, cases = document.cases, ) != document -> EpochLedgerFailure.FORBIDDEN_EFFECT_OBSERVED decoded.cases != document.cases -> EpochLedgerFailure.CASE_SET_MISMATCH raw != EPOCH_JSON.encodeToString( IdeEpochSignalLedgerDocument.serializer(), decoded, ) + "\n" -> EpochLedgerFailure.NON_CANONICAL_DOCUMENT else -> null }</ID>
+    <ID>UnusedPrivateProperty:EpochSignalClassContract.kt:EpochSignalClassContract$private const val PRODUCTION_EXECUTION_RESOURCE = LOCAL + "IdeaProjectReadEpochExecution.class"</ID>
+    <ID>UnusedPrivateProperty:EpochSignalClassContract.kt:EpochSignalClassContract$private const val PRODUCTION_PLATFORM_RESOURCE = LOCAL + "LiveProjectReadEpochPlatformPort.class"</ID>
+    <ID>UnusedPrivateProperty:EpochSignalClassContract.kt:EpochSignalClassContract$private const val PRODUCTION_SOURCE_RESOURCE = LOCAL + "LiveProjectReadEpochSource.class"</ID>
+    <ID>UseCheckOrError:HostedQueryExecutorTest.kt:HostedQueryExecutorTest$throw IllegalStateException("Must not escape into result evidence")</ID>
+    <ID>WildcardImport:ConfiguredModelLimitsTest.kt:import io.github.amichne.kast.kernel.*</ID>
+    <ID>WildcardImport:ConfiguredModelLimitsTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:HostedClassLookupTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:HostedQualifiedClassSelectionTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:HostedQueryContractTest.kt:import io.github.amichne.kast.workspace.intellij.read.*</ID>
+    <ID>WildcardImport:HostedQueryContractTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:HostedQueryExecutorTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:HostedQueryLifetimeTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:HostedReadDiagnosticsTest.kt:import io.github.amichne.kast.workspace.intellij.read.*</ID>
+    <ID>WildcardImport:HostedReadDiagnosticsTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:HostedReadTransactionTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:NamedGradleSourceScopeTest.kt:import io.github.amichne.kast.workspace.contract.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

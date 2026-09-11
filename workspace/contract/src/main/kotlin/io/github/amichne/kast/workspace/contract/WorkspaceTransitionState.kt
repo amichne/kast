@@ -26,9 +26,7 @@ enum class TransitionBlockerKind {
     AdapterFailure,
 }
 
-/**
- * Finite phase and detached diagnostic for one blocked transition.
- */
+/** Finite phase and detached diagnostic for one blocked transition. */
 data class TransitionBlocker(
     val phase: TransitionPhase,
     val kind: TransitionBlockerKind,
@@ -39,9 +37,7 @@ data class TransitionBlocker(
     }
 }
 
-/**
- * Detached proof of one atomically published workspace identity and evidence generation.
- */
+/** Detached proof of one atomically published workspace identity and evidence generation. */
 data class PublishedWorkspaceGeneration(
     val generation: EvidenceGeneration,
     val identity: WorkspaceStateIdentity,
@@ -50,16 +46,14 @@ data class PublishedWorkspaceGeneration(
 sealed interface PublishedWorkspaceGenerationState {
     data object Unpublished : PublishedWorkspaceGenerationState
 
-    data class Published(
-        val publication: PublishedWorkspaceGeneration,
-    ) : PublishedWorkspaceGenerationState
+    data class Published(val publication: PublishedWorkspaceGeneration) : PublishedWorkspaceGenerationState
 }
 
 /**
  * Detached observation of the single workspace transition owner.
  *
- * [activeSourceFreshness] is exact only during refresh, reconciliation, or verification; every
- * inactive lifecycle carries [WorkspaceSourceFreshness.Absent].
+ * [activeSourceFreshness] is exact only during refresh, reconciliation, or verification; every inactive lifecycle
+ * carries [WorkspaceSourceFreshness.Absent].
  */
 data class WorkspaceTransitionSnapshot(
     val lifecycle: WorkspaceLifecycle,
@@ -70,8 +64,7 @@ data class WorkspaceTransitionSnapshot(
     val activeSourceFreshness: WorkspaceSourceFreshness,
 ) {
     val isReady: Boolean
-        get() = lifecycle == WorkspaceLifecycle.Ready &&
-                published is PublishedWorkspaceGenerationState.Published
+        get() = lifecycle == WorkspaceLifecycle.Ready && published is PublishedWorkspaceGenerationState.Published
 }
 
 enum class TransitionRun {

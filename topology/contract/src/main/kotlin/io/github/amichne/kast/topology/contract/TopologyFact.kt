@@ -8,12 +8,13 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import java.nio.file.Path
 
 enum class TopologySymbolFailure {
-    FILE_MISMATCH,
+    FILE_MISMATCH
 }
 
 /** Stable topology-local node identity for one compiler declaration at one exact location. */
 @ConsistentCopyVisibility
-data class TopologyNodeIdentity internal constructor(
+data class TopologyNodeIdentity
+internal constructor(
     val compilerIdentity: io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity,
     val file: WorkspaceSourcePath,
     val range: ExactDeclarationTextRange,
@@ -21,15 +22,17 @@ data class TopologyNodeIdentity internal constructor(
 
 /** One detached K2-grounded declaration owned by an admitted topology file. */
 @ConsistentCopyVisibility
-data class TopologySymbol private constructor(
+data class TopologySymbol
+private constructor(
     val file: TopologySourceFile,
     val evidence: CompilerGroundedSymbolEvidence,
 ) : Comparable<TopologySymbol> {
-    val nodeIdentity: TopologyNodeIdentity = TopologyNodeIdentity(
-        evidence.compilerIdentity,
-        file.path,
-        evidence.range,
-    )
+    val nodeIdentity: TopologyNodeIdentity =
+        TopologyNodeIdentity(
+            evidence.compilerIdentity,
+            file.path,
+            evidence.range,
+        )
 
     override fun compareTo(other: TopologySymbol): Int = SYMBOL_ORDER.compare(this, other)
 
@@ -45,21 +48,18 @@ data class TopologySymbol private constructor(
 
     companion object {
         /**
-         * Proof transition: `(TopologySourceFile, CompilerGroundedSymbolEvidence) ->
-         * Refinement<TopologySymbol, TopologySymbolFailure>`.
+         * Proof transition: `(TopologySourceFile, CompilerGroundedSymbolEvidence) -> Refinement<TopologySymbol,
+         * TopologySymbolFailure>`.
          *
-         * Establishes that detached K2 evidence names the exact admitted workspace file.
-         * [TopologySymbolFailure] is the closed expected failure. Compiler evidence may enter only
-         * from the topology K2 extraction adapter.
+         * Establishes that detached K2 evidence names the exact admitted workspace file. [TopologySymbolFailure] is the
+         * closed expected failure. Compiler evidence may enter only from the topology K2 extraction adapter.
          */
         fun admit(
             file: TopologySourceFile,
             evidence: CompilerGroundedSymbolEvidence,
         ): Refinement<TopologySymbol, TopologySymbolFailure> {
-            val expected = Path.of(file.workspace.lease.workspaceRoot.value)
-                .resolve(file.path.value)
-                .normalize()
-                .toString()
+            val expected =
+                Path.of(file.workspace.lease.workspaceRoot.value).resolve(file.path.value).normalize().toString()
             val observed = (evidence.file as? SymbolDiscoveryFileIdentity.Workspace)?.path?.value
             return if (observed == expected) {
                 Refinement.Refined(TopologySymbol(file, evidence))
@@ -68,20 +68,21 @@ data class TopologySymbol private constructor(
             }
         }
 
-        private val SYMBOL_ORDER = compareBy<TopologySymbol>(
-            { it.nodeIdentity.compilerIdentity.value },
-            { it.nodeIdentity.file.value },
-            { it.nodeIdentity.range.startInclusive },
-            { it.nodeIdentity.range.endExclusive },
-            { it.file.workspace.lease.workspaceRoot.value },
-            { it.file.workspace.lease.generation.value },
-            { it.file.workspace.sourceState.value },
-            { it.file.canonicalProjection() },
-            { it.evidence.file.stableValue },
-            { it.evidence.name.value },
-            { it.evidence.qualifiedIdentity.canonicalName() },
-            { it.evidence.kind.name },
-        )
+        private val SYMBOL_ORDER =
+            compareBy<TopologySymbol>(
+                { it.nodeIdentity.compilerIdentity.value },
+                { it.nodeIdentity.file.value },
+                { it.nodeIdentity.range.startInclusive },
+                { it.nodeIdentity.range.endExclusive },
+                { it.file.workspace.lease.workspaceRoot.value },
+                { it.file.workspace.lease.generation.value },
+                { it.file.workspace.sourceState.value },
+                { it.file.canonicalProjection() },
+                { it.evidence.file.stableValue },
+                { it.evidence.name.value },
+                { it.evidence.qualifiedIdentity.canonicalName() },
+                { it.evidence.kind.name },
+            )
     }
 }
 
@@ -102,7 +103,8 @@ enum class TopologyEdgeFailure {
 
 /** One compiler-confirmed directed edge whose occurrence belongs to its source declaration file. */
 @ConsistentCopyVisibility
-data class TopologyEdge private constructor(
+data class TopologyEdge
+private constructor(
     val kind: TopologyEdgeKind,
     val source: TopologySymbol,
     val target: TopologySymbol,
@@ -121,12 +123,12 @@ data class TopologyEdge private constructor(
 
     companion object {
         /**
-         * Proof transition: `(TopologyEdgeKind, TopologySymbol, TopologySymbol, Int, Int) ->
-         * Refinement<TopologyEdge, TopologyEdgeFailure>`.
+         * Proof transition: `(TopologyEdgeKind, TopologySymbol, TopologySymbol, Int, Int) -> Refinement<TopologyEdge,
+         * TopologyEdgeFailure>`.
          *
-         * Establishes common workspace identity, a source occurrence in the source symbol's
-         * admitted file, and one non-empty source range. [TopologyEdgeFailure] is the closed
-         * expected failure. Raw occurrence offsets may enter only from the topology K2 adapter.
+         * Establishes common workspace identity, a source occurrence in the source symbol's admitted file, and one
+         * non-empty source range. [TopologyEdgeFailure] is the closed expected failure. Raw occurrence offsets may
+         * enter only from the topology K2 adapter.
          */
         fun fromBoundary(
             kind: TopologyEdgeKind,
@@ -134,23 +136,23 @@ data class TopologyEdge private constructor(
             target: TopologySymbol,
             rawStartInclusive: Int,
             rawEndExclusive: Int,
-        ): Refinement<TopologyEdge, TopologyEdgeFailure> = restore(
-            kind,
-            source,
-            target,
-            source.file.path,
-            rawStartInclusive,
-            rawEndExclusive,
-        )
+        ): Refinement<TopologyEdge, TopologyEdgeFailure> =
+            restore(
+                kind,
+                source,
+                target,
+                source.file.path,
+                rawStartInclusive,
+                rawEndExclusive,
+            )
 
         /**
-         * Proof transition: `(TopologyEdgeKind, TopologySymbol, TopologySymbol,
-         * WorkspaceSourcePath, Int, Int) -> Refinement<TopologyEdge, TopologyEdgeFailure>`.
+         * Proof transition: `(TopologyEdgeKind, TopologySymbol, TopologySymbol, WorkspaceSourcePath, Int, Int) ->
+         * Refinement<TopologyEdge, TopologyEdgeFailure>`.
          *
-         * Re-establishes common workspace identity, persisted occurrence-file equality with the
-         * source symbol, source-evidence ownership, and one non-empty source range.
-         * [TopologyEdgeFailure] is the closed expected failure. Persisted path and offsets may
-         * enter only from the topology SQLite adapter.
+         * Re-establishes common workspace identity, persisted occurrence-file equality with the source symbol,
+         * source-evidence ownership, and one non-empty source range. [TopologyEdgeFailure] is the closed expected
+         * failure. Persisted path and offsets may enter only from the topology SQLite adapter.
          */
         fun restore(
             kind: TopologyEdgeKind,
@@ -167,24 +169,25 @@ data class TopologyEdge private constructor(
                 return Refinement.Rejected(TopologyEdgeFailure.OCCURRENCE_FILE_MISMATCH)
             }
             val sourceEvidenceFile = source.evidence.file.stableValue
-            val expectedFile = Path.of(source.file.workspace.lease.workspaceRoot.value)
-                .resolve(source.file.path.value)
-                .normalize()
-                .toString()
+            val expectedFile =
+                Path.of(source.file.workspace.lease.workspaceRoot.value)
+                    .resolve(source.file.path.value)
+                    .normalize()
+                    .toString()
             if (sourceEvidenceFile != expectedFile) {
                 return Refinement.Rejected(TopologyEdgeFailure.SOURCE_FILE_MISMATCH)
             }
-            val range = when (
-                val admitted = ExactDeclarationTextRange.parse(
-                    rawStartInclusive,
-                    rawEndExclusive,
-                )
-            ) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return Refinement.Rejected(
-                    TopologyEdgeFailure.INVALID_OCCURRENCE,
-                )
-            }
+            val range =
+                when (
+                    val admitted =
+                        ExactDeclarationTextRange.parse(
+                            rawStartInclusive,
+                            rawEndExclusive,
+                        )
+                ) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return Refinement.Rejected(TopologyEdgeFailure.INVALID_OCCURRENCE)
+                }
             return Refinement.Refined(TopologyEdge(kind, source, target, range))
         }
 
@@ -192,8 +195,8 @@ data class TopologyEdge private constructor(
     }
 }
 
-private fun io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity.canonicalName():
-    String = when (this) {
-    is io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity.Available -> value
-    io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity.Unavailable -> ""
-}
+private fun io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity.canonicalName(): String =
+    when (this) {
+        is io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity.Available -> value
+        io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity.Unavailable -> ""
+    }

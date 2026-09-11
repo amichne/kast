@@ -60,25 +60,29 @@ class IntellijSourceEntityReadTest {
         val fixture = fixture()
         val port = port(fixture)
 
-        val direct = read(
-            port,
-            fixture,
-            matching(
-                Containment.DIRECT,
-                declarations(setOf(DeclarationKind.FUNCTION), setOf(DeclarationVisibility.PUBLIC)),
-            ),
-        ) as SourceReadResult.Complete
+        val direct =
+            read(
+                port,
+                fixture,
+                matching(
+                    Containment.DIRECT,
+                    declarations(setOf(DeclarationKind.FUNCTION), setOf(DeclarationVisibility.PUBLIC)),
+                ),
+            )
+                as SourceReadResult.Complete
         assertEquals(listOf("direct"), direct.entities.names())
         assertEquals(listOf(0), direct.entities.map { it.nestingDepth.value })
 
-        val descendants = read(
-            port,
-            fixture,
-            matching(
-                Containment.DESCENDANTS,
-                declarations(setOf(DeclarationKind.FUNCTION), setOf(DeclarationVisibility.PUBLIC)),
-            ),
-        ) as SourceReadResult.Complete
+        val descendants =
+            read(
+                port,
+                fixture,
+                matching(
+                    Containment.DESCENDANTS,
+                    declarations(setOf(DeclarationKind.FUNCTION), setOf(DeclarationVisibility.PUBLIC)),
+                ),
+            )
+                as SourceReadResult.Complete
         assertEquals(listOf("direct", "nested"), descendants.entities.names())
         assertEquals(listOf(0, 1), descendants.entities.map { it.nestingDepth.value })
         assertEquals(
@@ -90,46 +94,49 @@ class IntellijSourceEntityReadTest {
     @Test
     fun `value parameters retain declaration ownership and constructor properties stay distinct`() {
         val fixture = fixture()
-        val result = read(
-            port(fixture),
-            fixture,
-            matching(Containment.DESCENDANTS, EntityFilter.Parameters),
-        ) as SourceReadResult.Complete
+        val result =
+            read(
+                port(fixture),
+                fixture,
+                matching(Containment.DESCENDANTS, EntityFilter.Parameters),
+            )
+                as SourceReadResult.Complete
 
         assertEquals(listOf("p", "q", "item"), result.entities.names())
         assertEquals(listOf(1, 2, 2), result.entities.map { it.nestingDepth.value })
         result.entities.forEach { assertInstanceOf(SourceEntity.ValueParameter::class.java, it) }
 
-        val properties = read(
-            port(fixture),
-            fixture,
-            matching(
-                Containment.DESCENDANTS,
-                declarations(setOf(DeclarationKind.PROPERTY), setOf(DeclarationVisibility.PUBLIC)),
-            ),
-        ) as SourceReadResult.Complete
+        val properties =
+            read(
+                port(fixture),
+                fixture,
+                matching(
+                    Containment.DESCENDANTS,
+                    declarations(setOf(DeclarationKind.PROPERTY), setOf(DeclarationVisibility.PUBLIC)),
+                ),
+            )
+                as SourceReadResult.Complete
         assertEquals(listOf("item"), properties.entities.names())
         assertEquals(
             result.entities.last().selector.range,
             properties.entities.single().selector.range,
         )
-        assertTrue(
-            result.entities.last().selector.fingerprint !=
-                properties.entities.single().selector.fingerprint,
-        )
+        assertTrue(result.entities.last().selector.fingerprint != properties.entities.single().selector.fingerprint)
     }
 
     @Test
     fun `complete empty entities are a trustworthy structural negative`() {
         val fixture = fixture()
-        val result = read(
-            port(fixture),
-            fixture,
-            matching(
-                Containment.DESCENDANTS,
-                declarations(setOf(DeclarationKind.TYPE_ALIAS), null),
-            ),
-        ) as SourceReadResult.Complete
+        val result =
+            read(
+                port(fixture),
+                fixture,
+                matching(
+                    Containment.DESCENDANTS,
+                    declarations(setOf(DeclarationKind.TYPE_ALIAS), null),
+                ),
+            )
+                as SourceReadResult.Complete
 
         assertTrue(result.entities.isEmpty())
     }
@@ -138,10 +145,11 @@ class IntellijSourceEntityReadTest {
     fun `entity bound returns exact ordered prefix and continuation re-enters final page`() {
         val fixture = fixture()
         val port = port(fixture)
-        val selection = matching(
-            Containment.DESCENDANTS,
-            declarations(setOf(DeclarationKind.FUNCTION), setOf(DeclarationVisibility.PUBLIC)),
-        )
+        val selection =
+            matching(
+                Containment.DESCENDANTS,
+                declarations(setOf(DeclarationKind.FUNCTION), setOf(DeclarationVisibility.PUBLIC)),
+            )
         val first = read(port, fixture, selection, limit = 1) as SourceReadResult.Qualified
 
         assertEquals(listOf("direct"), first.entities.names())
@@ -150,22 +158,21 @@ class IntellijSourceEntityReadTest {
             first.qualification.limitations,
         )
         assertEquals(2, first.qualification.knownMinimumEntityCount.value)
-        val continuation =
-            (first.qualification.continuation as SourceReadContinuationState.Available).continuation
+        val continuation = (first.qualification.continuation as SourceReadContinuationState.Available).continuation
 
-        val final = read(
-            port,
-            fixture,
-            selection,
-            limit = 1,
-            page = SourceReadPage.Continue(continuation),
-        ) as SourceReadResult.Complete
+        val final =
+            read(
+                port,
+                fixture,
+                selection,
+                limit = 1,
+                page = SourceReadPage.Continue(continuation),
+            )
+                as SourceReadResult.Complete
         assertEquals(listOf("nested"), final.entities.names())
 
         assertEquals(
-            SourceReadResult.Rejected(
-                io.github.amichne.kast.source.contract.SourceReadRejection.CONTRACT_VIOLATION,
-            ),
+            SourceReadResult.Rejected(io.github.amichne.kast.source.contract.SourceReadRejection.CONTRACT_VIOLATION),
             read(
                 port,
                 fixture,
@@ -180,10 +187,11 @@ class IntellijSourceEntityReadTest {
     fun `project continuation owner survives rebinding and rejects changed context and retirement`() {
         val fixture = fixture()
         val continuations = IntellijSourceReadContinuations()
-        val selection = matching(
-            Containment.DESCENDANTS,
-            declarations(setOf(DeclarationKind.FUNCTION), setOf(DeclarationVisibility.PUBLIC)),
-        )
+        val selection =
+            matching(
+                Containment.DESCENDANTS,
+                declarations(setOf(DeclarationKind.FUNCTION), setOf(DeclarationVisibility.PUBLIC)),
+            )
         val first = read(port(fixture, continuations), fixture, selection, limit = 1) as SourceReadResult.Qualified
         val token = (first.qualification.continuation as SourceReadContinuationState.Available).continuation
         val page = SourceReadPage.Continue(token)
@@ -193,7 +201,10 @@ class IntellijSourceEntityReadTest {
 
         val original = fixture.snapshot.context as SourceReadContext.Published
         val changed = original.copy(sourceState = WorkspaceStateIdentity.parse("workspace-state-v1|changed").refined())
-        assertTrue(read(rebound, fixture, selection, limit = 1, page = page, readContext = changed) is SourceReadResult.Rejected)
+        assertTrue(
+            read(rebound, fixture, selection, limit = 1, page = page, readContext = changed)
+                is SourceReadResult.Rejected
+        )
         assertTrue(read(port(fixture), fixture, selection, limit = 1, page = page) is SourceReadResult.Rejected)
         continuations.retire()
         assertTrue(read(rebound, fixture, selection, limit = 1, page = page) is SourceReadResult.Rejected)
@@ -203,11 +214,13 @@ class IntellijSourceEntityReadTest {
     @Test
     fun `supported call filters return a complete empty structural negative`() {
         val fixture = fixture()
-        val result = read(
-            port(fixture),
-            fixture,
-            matching(Containment.DESCENDANTS, EntityFilter.Calls),
-        ) as SourceReadResult.Complete
+        val result =
+            read(
+                port(fixture),
+                fixture,
+                matching(Containment.DESCENDANTS, EntityFilter.Calls),
+            )
+                as SourceReadResult.Complete
 
         assertTrue(result.entities.isEmpty())
     }
@@ -215,26 +228,29 @@ class IntellijSourceEntityReadTest {
     private fun port(
         fixture: Fixture,
         continuations: IntellijSourceReadContinuations = IntellijSourceReadContinuations(),
-    ): IntellijSourceReadPort = IntellijSourceReadPort(
-        IntellijSourceRegionAccess { _, request, cursor ->
-            val page = IntellijSourceEntityPage.select(
-                fixture.entities.asSequence(),
-                request.entities,
-                cursor,
-                request.entityLimit,
-            )
-            IntellijSourceRegionAccessResult.Selected(
-                IntellijSelectedSourceCapture.create(
-                    fixture.snapshot,
-                    fixture.region,
-                    fixture.region,
-                    fixture.text,
-                    page,
-                ).refined(),
-            )
-        },
-        continuations,
-    )
+    ): IntellijSourceReadPort =
+        IntellijSourceReadPort(
+            IntellijSourceRegionAccess { _, request, cursor ->
+                val page =
+                    IntellijSourceEntityPage.select(
+                        fixture.entities.asSequence(),
+                        request.entities,
+                        cursor,
+                        request.entityLimit,
+                    )
+                IntellijSourceRegionAccessResult.Selected(
+                    IntellijSelectedSourceCapture.create(
+                            fixture.snapshot,
+                            fixture.region,
+                            fixture.region,
+                            fixture.text,
+                            page,
+                        )
+                        .refined()
+                )
+            },
+            continuations,
+        )
 
     private fun read(
         port: IntellijSourceReadPort,
@@ -266,100 +282,110 @@ class IntellijSourceEntityReadTest {
     private fun declarations(
         kinds: Set<DeclarationKind>,
         visibility: Set<DeclarationVisibility>?,
-    ): EntityFilter.Declarations = EntityFilter.Declarations(
-        DeclarationKindSelection.from(kinds).refined(),
-        visibility?.let { VisibilitySelection.exact(it).refined() } ?: VisibilitySelection.Any,
-    )
+    ): EntityFilter.Declarations =
+        EntityFilter.Declarations(
+            DeclarationKindSelection.from(kinds).refined(),
+            visibility?.let { VisibilitySelection.exact(it).refined() } ?: VisibilitySelection.Any,
+        )
 
     private fun fixture(): Fixture {
-        val text = """
+        val text =
+            """
             public fun direct(p: Int) {
                 fun nested(q: Int) = q
             }
             private val hidden = 1
             class Holder(val item: Int)
-        """.trimIndent() + "\n"
+            """
+                .trimIndent() + "\n"
         val snapshot = snapshot(text)
         val region = SourceSelector.issueRoot(range(snapshot, 0, text.length), SourceRegionKind.FILE)
         val directStart = text.indexOf("public fun direct")
         val directEnd = text.indexOf("\n}") + 2
-        val direct = declarationAt(
-            snapshot,
-            region,
-            directStart,
-            "direct",
-            DeclarationKind.FUNCTION,
-            DeclarationVisibility.PUBLIC,
-            0,
-            range(snapshot, directStart, directEnd),
-        )
+        val direct =
+            declarationAt(
+                snapshot,
+                region,
+                directStart,
+                "direct",
+                DeclarationKind.FUNCTION,
+                DeclarationVisibility.PUBLIC,
+                0,
+                range(snapshot, directStart, directEnd),
+            )
         val directParameter = parameter(snapshot, direct.selector, text, "p", 1)
         val nestedStart = text.indexOf("fun nested")
         val nestedEnd = text.indexOf('\n', nestedStart)
-        val nested = declarationAt(
-            snapshot,
-            direct.selector,
-            nestedStart,
-            "nested",
-            DeclarationKind.FUNCTION,
-            DeclarationVisibility.PUBLIC,
-            1,
-            range(snapshot, nestedStart, nestedEnd),
-        )
+        val nested =
+            declarationAt(
+                snapshot,
+                direct.selector,
+                nestedStart,
+                "nested",
+                DeclarationKind.FUNCTION,
+                DeclarationVisibility.PUBLIC,
+                1,
+                range(snapshot, nestedStart, nestedEnd),
+            )
         val nestedParameter = parameter(snapshot, nested.selector, text, "q", 2)
         val hiddenStart = text.indexOf("private val hidden")
-        val hidden = declarationAt(
-            snapshot,
-            region,
-            hiddenStart,
-            "hidden",
-            DeclarationKind.PROPERTY,
-            DeclarationVisibility.PRIVATE,
-            0,
-            range(snapshot, hiddenStart, text.indexOf('\n', hiddenStart)),
-        )
+        val hidden =
+            declarationAt(
+                snapshot,
+                region,
+                hiddenStart,
+                "hidden",
+                DeclarationKind.PROPERTY,
+                DeclarationVisibility.PRIVATE,
+                0,
+                range(snapshot, hiddenStart, text.indexOf('\n', hiddenStart)),
+            )
         val holderStart = text.indexOf("class Holder")
         val holderEnd = text.indexOf('\n', holderStart)
-        val holder = declarationAt(
-            snapshot,
-            region,
-            holderStart,
-            "Holder",
-            DeclarationKind.CLASSLIKE,
-            DeclarationVisibility.PUBLIC,
-            0,
-            range(snapshot, holderStart, holderEnd),
-        )
+        val holder =
+            declarationAt(
+                snapshot,
+                region,
+                holderStart,
+                "Holder",
+                DeclarationKind.CLASSLIKE,
+                DeclarationVisibility.PUBLIC,
+                0,
+                range(snapshot, holderStart, holderEnd),
+            )
         val constructorStart = text.indexOf('(', holderStart)
         val constructorEnd = text.indexOf(')', constructorStart) + 1
-        val constructor = declarationAt(
-            snapshot,
-            holder.selector,
-            constructorStart,
-            "Holder",
-            DeclarationKind.CONSTRUCTOR,
-            DeclarationVisibility.PUBLIC,
-            1,
-            range(snapshot, constructorStart, constructorEnd),
-        )
+        val constructor =
+            declarationAt(
+                snapshot,
+                holder.selector,
+                constructorStart,
+                "Holder",
+                DeclarationKind.CONSTRUCTOR,
+                DeclarationVisibility.PUBLIC,
+                1,
+                range(snapshot, constructorStart, constructorEnd),
+            )
         val itemStart = text.indexOf("item")
         val itemRange = range(snapshot, itemStart, itemStart + "item".length)
-        val itemProperty = declarationAt(
-            snapshot,
-            holder.selector,
-            itemStart,
-            "item",
-            DeclarationKind.PROPERTY,
-            DeclarationVisibility.PUBLIC,
-            1,
-            itemRange,
-        )
-        val itemParameter = parameterAt(
-            constructor.selector,
-            itemRange,
-            "item",
-            2,
-        )
+        val itemProperty =
+            declarationAt(
+                snapshot,
+                holder.selector,
+                itemStart,
+                "item",
+                DeclarationKind.PROPERTY,
+                DeclarationVisibility.PUBLIC,
+                1,
+                itemRange,
+            )
+        val itemParameter =
+            parameterAt(
+                constructor.selector,
+                itemRange,
+                "item",
+                2,
+            )
         return Fixture(
             text,
             snapshot,
@@ -388,20 +414,23 @@ class IntellijSourceEntityReadTest {
         depth: Int,
         entityRange: SourceRange = range(snapshot, start, start + name.length),
     ): SourceEntity.Declaration {
-        val selector = SourceSelector.issueEntity(
-            parent,
-            NonEmptySourceRange.create(entityRange).refined(),
-            kind.entityKind(),
-            SourceEntityName.present(name).refined(),
-        ).refined()
+        val selector =
+            SourceSelector.issueEntity(
+                    parent,
+                    NonEmptySourceRange.create(entityRange).refined(),
+                    kind.entityKind(),
+                    SourceEntityName.present(name).refined(),
+                )
+                .refined()
         val candidate = candidate(snapshot, name, start, kind)
         return SourceEntity.Declaration.create(
-            selector,
-            SourceNestingDepth.parse(depth).refined(),
-            kind,
-            visibility,
-            DeclarationSemanticIdentity.Candidate(candidate),
-        ).refined()
+                selector,
+                SourceNestingDepth.parse(depth).refined(),
+                kind,
+                visibility,
+                DeclarationSemanticIdentity.Candidate(candidate),
+            )
+            .refined()
     }
 
     private fun parameter(
@@ -421,16 +450,19 @@ class IntellijSourceEntityReadTest {
         name: String,
         depth: Int,
     ): SourceEntity.ValueParameter {
-        val selector = SourceSelector.issueEntity(
-            parent,
-            NonEmptySourceRange.create(entityRange).refined(),
-            SourceEntityKind.VALUE_PARAMETER,
-            SourceEntityName.present(name).refined(),
-        ).refined()
+        val selector =
+            SourceSelector.issueEntity(
+                    parent,
+                    NonEmptySourceRange.create(entityRange).refined(),
+                    SourceEntityKind.VALUE_PARAMETER,
+                    SourceEntityName.present(name).refined(),
+                )
+                .refined()
         return SourceEntity.ValueParameter.create(
-            selector,
-            SourceNestingDepth.parse(depth).refined(),
-        ).refined()
+                selector,
+                SourceNestingDepth.parse(depth).refined(),
+            )
+            .refined()
     }
 
     private fun candidate(
@@ -439,34 +471,40 @@ class IntellijSourceEntityReadTest {
         offset: Int,
         kind: DeclarationKind,
     ): CandidateSelector.Declaration {
-        val candidate = SymbolDiscoveryCandidate.fromBoundary(
-            if (kind == DeclarationKind.CLASSLIKE) {
-                SymbolDiscoveryKind.CLASS
-            } else {
-                SymbolDiscoveryKind.SYMBOL
-            },
-            name,
-            snapshot.lease,
-            Path.of(snapshot.file.path.value),
-            Path.of(snapshot.file.path.value).toUri().toString(),
-            offset,
-        ).refined()
-        val scope = SymbolSearchScope.ExactFile(
-            snapshot.file.path,
-            SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-            SymbolGeneratedSourcePolicy.INCLUDE,
-        )
+        val candidate =
+            SymbolDiscoveryCandidate.fromBoundary(
+                    if (kind == DeclarationKind.CLASSLIKE) {
+                        SymbolDiscoveryKind.CLASS
+                    } else {
+                        SymbolDiscoveryKind.SYMBOL
+                    },
+                    name,
+                    snapshot.lease,
+                    Path.of(snapshot.file.path.value),
+                    Path.of(snapshot.file.path.value).toUri().toString(),
+                    offset,
+                )
+                .refined()
+        val scope =
+            SymbolSearchScope.ExactFile(
+                snapshot.file.path,
+                SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                SymbolGeneratedSourcePolicy.INCLUDE,
+            )
         return CandidateSelector.declaration(
-            SymbolDiscoverySelection.restore(snapshot.lease, scope, candidate).refined(),
-        ).refined()
+                SymbolDiscoverySelection.restore(snapshot.lease, scope, candidate).refined()
+            )
+            .refined()
     }
 
     private fun snapshot(text: String): SourceSnapshot {
         val root = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
-        val path = CanonicalWorkspaceFilePath.fromCanonicalPath(
-            root,
-            Path.of("/workspace/src/Subject.kt"),
-        ).refined()
+        val path =
+            CanonicalWorkspaceFilePath.fromCanonicalPath(
+                    root,
+                    Path.of("/workspace/src/Subject.kt"),
+                )
+                .refined()
         return SourceSnapshot.create(
             SemanticReadLease(root, EvidenceGeneration.parse(42).refined()),
             WorkspaceStateIdentity.parse("workspace-state-v1|source").refined(),
@@ -478,40 +516,43 @@ class IntellijSourceEntityReadTest {
 
     private fun range(snapshot: SourceSnapshot, start: Int, end: Int): SourceRange =
         SourceRange.create(
-            snapshot,
-            Utf16CodeUnitOffset.parse(start).refined(),
-            Utf16CodeUnitOffset.parse(end).refined(),
-        ).refined()
+                snapshot,
+                Utf16CodeUnitOffset.parse(start).refined(),
+                Utf16CodeUnitOffset.parse(end).refined(),
+            )
+            .refined()
 
-    private fun context(snapshot: SourceSnapshot): SourceReadContext =
-        snapshot.context
+    private fun context(snapshot: SourceSnapshot): SourceReadContext = snapshot.context
 
     private fun List<SourceEntity>.names(): List<String> = map { entity ->
         (entity.selector.name as SourceEntityName.Present).value
     }
 
-    private fun DeclarationKind.entityKind(): SourceEntityKind = when (this) {
-        DeclarationKind.CLASSLIKE -> SourceEntityKind.DECLARATION_CLASSLIKE
-        DeclarationKind.CONSTRUCTOR -> SourceEntityKind.DECLARATION_CONSTRUCTOR
-        DeclarationKind.FUNCTION -> SourceEntityKind.DECLARATION_FUNCTION
-        DeclarationKind.PROPERTY -> SourceEntityKind.DECLARATION_PROPERTY
-        DeclarationKind.TYPE_ALIAS -> SourceEntityKind.DECLARATION_TYPE_ALIAS
-    }
+    private fun DeclarationKind.entityKind(): SourceEntityKind =
+        when (this) {
+            DeclarationKind.CLASSLIKE -> SourceEntityKind.DECLARATION_CLASSLIKE
+            DeclarationKind.CONSTRUCTOR -> SourceEntityKind.DECLARATION_CONSTRUCTOR
+            DeclarationKind.FUNCTION -> SourceEntityKind.DECLARATION_FUNCTION
+            DeclarationKind.PROPERTY -> SourceEntityKind.DECLARATION_PROPERTY
+            DeclarationKind.TYPE_ALIAS -> SourceEntityKind.DECLARATION_TYPE_ALIAS
+        }
 
-    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error("Expected refined value, got $failure")
-    }
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error("Expected refined value, got $failure")
+        }
 
     private fun <Value> runSuspend(block: suspend () -> Value): Value {
         var completion: Result<Value>? = null
         block.startCoroutine(
             object : Continuation<Value> {
                 override val context = EmptyCoroutineContext
+
                 override fun resumeWith(result: Result<Value>) {
                     completion = result
                 }
-            },
+            }
         )
         return checkNotNull(completion).getOrThrow()
     }

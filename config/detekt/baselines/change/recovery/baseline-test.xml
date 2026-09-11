@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ImplicitDefaultLocale:AddDeclarationRecoveryTest.kt:AddDeclarationRecoveryTest$"%02x".format(byte)</ID>
+    <ID>MultilineLambdaItParameter:AddDeclarationRecoveryTest.kt:AddDeclarationRecoveryTest${ assertEquals( "before", String( it.preparation.plannedWrites.single().preimage.decodeAtRecoveryBoundary(), StandardCharsets.UTF_8, ), ) AddDeclarationRollbackResult.RolledBack }</ID>
+    <ID>NamedArguments:AddDeclarationRecoveryTest.kt:AddDeclarationRecoveryTest$admit( exact.planId, exact.source, PlannedSourcePrecondition.Absent, RecoveryPreimage.fromBoundary("present".toByteArray()), )</ID>
+    <ID>NamedArguments:AddDeclarationRecoveryTest.kt:AddDeclarationRecoveryTest$admit( exact.planId, exact.source, PlannedSourcePrecondition.Absent, RecoveryPreimage.fromBoundary(ByteArray(0)), )</ID>
+    <ID>NamedArguments:AddDeclarationRecoveryTest.kt:AddDeclarationRecoveryTest$admit( exact.planId, exact.source, exact.precondition, RecoveryPreimage.fromBoundary("changed".toByteArray(StandardCharsets.UTF_8)), )</ID>
+  </CurrentIssues>
+</SmellBaseline>

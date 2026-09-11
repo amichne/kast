@@ -3,6 +3,7 @@
 !/topology/build/
 !/topology/build/**
 /topology/build/build/
+!/config/detekt/baselines/**/build/
 .gradle/
 /.kotlin/
 .intellijPlatform/

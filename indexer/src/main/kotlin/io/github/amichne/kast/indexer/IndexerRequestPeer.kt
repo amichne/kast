@@ -5,10 +5,15 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.SocketChannel
 
-internal enum class IndexerPeerState { CONNECTED, DISCONNECTED, REJECTED }
+internal enum class IndexerPeerState {
+    CONNECTED,
+    DISCONNECTED,
+    REJECTED,
+}
 
 internal fun interface IndexerRequestPeer {
     fun observe(): IndexerPeerState
+
     companion object {
         val Unobserved = IndexerRequestPeer { IndexerPeerState.CONNECTED }
     }
@@ -18,6 +23,7 @@ internal fun interface IndexerRequestPeer {
 internal class IndexerConnectionInput(private val channel: SocketChannel) : IndexerRequestPeer {
     private val pending = java.util.ArrayDeque<ByteBuffer>()
     private var pendingBytes = 0
+
     override fun observe(): IndexerPeerState {
         val buffer = ByteBuffer.allocate(4096)
         return try {
@@ -33,7 +39,9 @@ internal class IndexerConnectionInput(private val channel: SocketChannel) : Inde
                     IndexerPeerState.CONNECTED
                 }
             }
-        } catch (_: IOException) { IndexerPeerState.REJECTED }
+        } catch (_: IOException) {
+            IndexerPeerState.REJECTED
+        }
     }
 
     fun read(buffer: ByteBuffer): Int {

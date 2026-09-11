@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:RelationFact.kt:RevalidatedRelationEndpoint.Companion$endpoint.file == evidence.file &amp;&amp; endpoint.range == evidence.range &amp;&amp; endpoint.name == evidence.name &amp;&amp; endpoint.qualifiedIdentity == evidence.qualifiedIdentity &amp;&amp; endpoint.kind == evidence.kind &amp;&amp; endpoint.signature == evidence.signature &amp;&amp; endpoint.compilerIdentity == evidence.compilerIdentity</ID>
+    <ID>LongParameterList:RelationRequest.kt:RelationContinuation.Companion$fun restore: Refinement&lt;RelationContinuation, RelationContinuationRestorationFailure></ID>
+    <ID>MagicNumber:RelationFact.kt:0xff</ID>
+    <ID>MagicNumber:RelationFact.kt:16</ID>
+    <ID>MagicNumber:RelationFact.kt:3</ID>
+    <ID>MagicNumber:RelationFact.kt:4</ID>
+    <ID>MagicNumber:RelationFact.kt:5</ID>
+    <ID>MagicNumber:RelationFact.kt:6</ID>
+    <ID>MagicNumber:RelationRequest.kt:0xff</ID>
+    <ID>MagicNumber:RelationRequest.kt:16</ID>
+    <ID>NamedArguments:RelationFact.kt:RelationEndpoint.Resolved.Companion$Resolved( lease, scope, constraints, evidence, relationEndpointFingerprint(lease, scope, evidence, constraints), )</ID>
+    <ID>NamedArguments:RelationOperations.kt:RelationBatch.Companion$RelationBatch( request, facts.toList(), encodedBytes, examinedWorkUnits, resultCount, )</ID>
+    <ID>NamedArguments:RelationRequest.kt:RelationContinuation.Companion$relationContinuationFingerprint( request.subject.fingerprint, request.meaning, scope, request.subject.lease.identity, nextProviderCursor, )</ID>
+    <ID>NamedArguments:RelationRequest.kt:RelationContinuation.Companion$relationContinuationFingerprint( subject, meaning, scope, authority, nextProviderCursor, )</ID>
+    <ID>NamedArguments:RelationRequest.kt:RelationRequest.Companion$RelationRequest( RelationEndpoint.subject(selector), meaning, budget, RelationReadPosition.Start, boundary, )</ID>
+    <ID>NamedArguments:RelationRequest.kt:RelationRequest.Companion$RelationRequest( subject, meaning, budget, RelationReadPosition.Resume(continuation), boundary, )</ID>
+    <ID>NamedArguments:RelationRequest.kt:RelationRequest.Companion$RelationRequest( subject, meaning, budget, RelationReadPosition.Start, boundary, )</ID>
+    <ID>NamedArguments:RelationRequest.kt:RelationRequest.Companion$admitResume( RelationEndpoint.subject(selector), meaning, budget, continuation, boundary, )</ID>
+    <ID>UseOrEmpty:RelationRequest.kt:snapshot.libraries?.name ?: ""</ID>
+    <ID>UseOrEmpty:RelationRequest.kt:snapshot.primary ?: ""</ID>
+    <ID>UseOrEmpty:RelationRequest.kt:snapshot.secondary ?: ""</ID>
+  </CurrentIssues>
+</SmellBaseline>

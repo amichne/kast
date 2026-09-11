@@ -11,24 +11,24 @@ class CompilerEvidenceAdmissionTest {
         val admitted = BoundedProtocolList.create(listOf("context", "parameter")).refined()
 
         assertThrows(UnsupportedOperationException::class.java) {
-            @Suppress("UNCHECKED_CAST")
-            (admitted.values as MutableList<String>).clear()
+            @Suppress("UNCHECKED_CAST") (admitted.values as MutableList<String>).clear()
         }
         assertEquals(listOf("context", "parameter"), admitted.values)
     }
 
     @Test
     fun `compatibility capability proof cannot mutate after admission`() {
-        val admitted = IdeHostCapabilitySet.parse(
-            listOf(
-                CanonicalOperation.SYMBOL_INSPECT.id.value,
-                CanonicalOperation.RELATION_READ.id.value,
-            ),
-        ).refined()
+        val admitted =
+            IdeHostCapabilitySet.parse(
+                    listOf(
+                        CanonicalOperation.SYMBOL_INSPECT.id.value,
+                        CanonicalOperation.RELATION_READ.id.value,
+                    )
+                )
+                .refined()
 
         assertThrows(UnsupportedOperationException::class.java) {
-            @Suppress("UNCHECKED_CAST")
-            (admitted.capabilities as MutableList<IdeHostCapability>).clear()
+            @Suppress("UNCHECKED_CAST") (admitted.capabilities as MutableList<IdeHostCapability>).clear()
         }
         assertEquals(
             listOf(CanonicalOperation.SYMBOL_INSPECT, CanonicalOperation.RELATION_READ),
@@ -36,8 +36,9 @@ class CompilerEvidenceAdmissionTest {
         )
     }
 
-    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error(failure.toString())
-    }
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
 }

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:SymbolExactService.kt:selector.lease == selection.lease &amp;&amp; selector.scope == selection.scope &amp;&amp; selector.constraints == selection.constraints &amp;&amp; selector.file == location.file &amp;&amp; selector.name == selection.candidate.name &amp;&amp; selector.range.startInclusive == location.offset.value</ID>
+  </CurrentIssues>
+</SmellBaseline>

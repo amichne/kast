@@ -8,9 +8,7 @@ import java.util.Collections
 sealed interface SymbolDiscoverySourceSets {
     data object All : SymbolDiscoverySourceSets
 
-    class Exact private constructor(
-        val values: Set<WorkspaceSourceSetName>,
-    ) : SymbolDiscoverySourceSets {
+    class Exact private constructor(val values: Set<WorkspaceSourceSetName>) : SymbolDiscoverySourceSets {
         companion object {
             /** Refines a name set to a non-empty selection; raw names stay in model adapters. */
             fun from(raw: Set<WorkspaceSourceSetName>): Refinement<Exact, SymbolDiscoverySourceSetsFailure> =
@@ -22,8 +20,11 @@ sealed interface SymbolDiscoverySourceSets {
         }
 
         override fun equals(other: Any?): Boolean = other is Exact && values == other.values
+
         override fun hashCode(): Int = values.hashCode()
     }
 }
 
-enum class SymbolDiscoverySourceSetsFailure { EMPTY }
+enum class SymbolDiscoverySourceSetsFailure {
+    EMPTY
+}

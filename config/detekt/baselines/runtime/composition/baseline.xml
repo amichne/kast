@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:InstalledRuntimeAssembly.kt:internal fun productionInstalledRuntimeAssembler: InstalledRuntimeAssembler</ID>
+    <ID>CognitiveComplexMethod:KastRuntimeComposition.kt:private fun WorkspacePublicationCoordinator.resultingGenerationPublisher: ResultingGenerationPublisher</ID>
+    <ID>CognitiveComplexMethod:TopologyBackedTraversalOperations.kt:TopologyBackedTraversalOperations$private suspend fun runObserved: TraversalResult</ID>
+    <ID>ComplexCondition:InstalledChangeVerificationIdentity.kt:file == prior.file &amp;&amp; range.startInclusive == prior.range.startInclusive &amp;&amp; name == prior.name &amp;&amp; qualifiedIdentity == prior.qualifiedIdentity &amp;&amp; kind == prior.kind</ID>
+    <ID>CyclomaticComplexMethod:InstalledChangePlanningAdmission.kt:InstalledChangePlanningAdmission$private suspend fun admitAddDeclaration: ChangePlanAdmission</ID>
+    <ID>CyclomaticComplexMethod:InstalledChangeVerificationObserver.kt:InstalledChangeVerificationObserver$override fun observe: ChangeVerificationObservation</ID>
+    <ID>CyclomaticComplexMethod:TopologyBackedTraversalOperations.kt:TopologyBackedTraversalOperations$private suspend fun runObserved: TraversalResult</ID>
+    <ID>InvalidPackageDeclaration:CanonicalChangeAuthority.kt:package io.github.amichne.kast.runtime.composition.protocol</ID>
+    <ID>InvalidPackageDeclaration:CanonicalDiscoveryAdmission.kt:package io.github.amichne.kast.runtime.composition.protocol</ID>
+    <ID>InvalidPackageDeclaration:CanonicalKastOperationHandlerFactory.kt:package io.github.amichne.kast.runtime.composition.protocol</ID>
+    <ID>InvalidPackageDeclaration:CanonicalProtocolAuthority.kt:package io.github.amichne.kast.runtime.composition.protocol</ID>
+    <ID>InvalidPackageDeclaration:InstalledChangeProtocolFixture.kt:package io.github.amichne.kast.runtime.composition</ID>
+    <ID>InvalidPackageDeclaration:InstalledKastRuntime.kt:package io.github.amichne.kast.runtime.composition</ID>
+    <ID>InvalidPackageDeclaration:InstalledKastRuntimeTest.kt:package io.github.amichne.kast.runtime.composition</ID>
+    <ID>InvalidPackageDeclaration:InstalledRuntimeAssembly.kt:package io.github.amichne.kast.runtime.composition</ID>
+    <ID>InvalidPackageDeclaration:InstalledSymbolProtocolFixture.kt:package io.github.amichne.kast.runtime.composition</ID>
+    <ID>InvalidPackageDeclaration:KastRuntimeComposition.kt:package io.github.amichne.kast.runtime.composition</ID>
+    <ID>InvalidPackageDeclaration:TopologyPrerequisiteAcceptanceTest.kt:package io.github.amichne.kast.runtime.composition</ID>
+    <ID>LargeClass:InstalledKastRuntimeTest.kt:InstalledKastRuntimeTest</ID>
+    <ID>LongMethod:CanonicalCandidateSelectorCompositionTest.kt:CanonicalCandidateSelectorCompositionTest$private fun fixture: Fixture</ID>
+    <ID>LongMethod:CanonicalKastOperationHandlerFactoryTest.kt:CanonicalKastOperationHandlerFactoryTest$@Test fun `canonical factory shares retained change authority across handlers`</ID>
+    <ID>LongMethod:CanonicalLocationCandidateProjectionTest.kt:CanonicalLocationCandidateProjectionTest$@Test fun `relation traversal and diagnostics retain exact reusable range candidates`</ID>
+    <ID>LongMethod:CanonicalProtocolAuthorityDurabilityTest.kt:CanonicalProtocolAuthorityDurabilityTest$private fun fixture: Fixture</ID>
+    <ID>LongMethod:CanonicalSourceReadCallReferenceProjectionTest.kt:CanonicalSourceReadCallReferenceProjectionTest$private fun fixture: Fixture</ID>
+    <ID>LongMethod:CanonicalSourceReadEntityProjectionTest.kt:CanonicalSourceReadEntityProjectionTest$@Test fun `declaration entity projects reusable source parent and candidate selectors`</ID>
+    <ID>LongMethod:CanonicalSourceReadEntityProjectionTest.kt:CanonicalSourceReadEntityProjectionTest$private fun fixture: Fixture</ID>
+    <ID>LongMethod:InstalledChangePlanningAdmission.kt:InstalledChangePlanningAdmission$private suspend fun admitAddDeclaration: ChangePlanAdmission</ID>
+    <ID>LongMethod:InstalledChangeVerificationObserver.kt:InstalledChangeVerificationObserver$override fun observe: ChangeVerificationObservation</ID>
+    <ID>LongMethod:InstalledChangeVerificationObserver.kt:InstalledChangeVerificationObserver$private fun resolveUnique: SymbolSelector?</ID>
+    <ID>LongMethod:InstalledKastRuntime.kt:InstalledKastRuntime$internal fun create: InstalledKastRuntimeConstruction</ID>
+    <ID>LongMethod:InstalledKastRuntimeTest.kt:InstalledKastRuntimeTest$@Test fun `change plan identity retains the exact typed plan for apply`</ID>
+    <ID>LongMethod:InstalledKastRuntimeTest.kt:InstalledKastRuntimeTest$@Test fun `relation and traversal retain compiler grounded endpoint authority`</ID>
+    <ID>LongMethod:InstalledRuntimeAssembly.kt:internal fun productionInstalledRuntimeAssembler: InstalledRuntimeAssembler</ID>
+    <ID>LongMethod:InstalledRuntimeAssembly.kt:private fun assembleInstalledRuntime: InstalledRuntimeAssembly</ID>
+    <ID>LongMethod:InstalledRuntimeAssemblyTest.kt:InstalledRuntimeAssemblyTest$@Test fun `production assembly owns persistence publication handlers and dispatch`</ID>
+    <ID>LongMethod:InstalledSemanticRuntimeBootstrap.kt:private fun InstalledIntellijWorkspaceFailure.bootstrapFailure: SemanticRuntimeBootstrapFailure</ID>
+    <ID>LongMethod:InstalledSemanticRuntimeBootstrapTest.kt:InstalledSemanticRuntimeBootstrapTest$@Test fun `model input rejection retains selected JVM evidence logical path and precise cause`</ID>
+    <ID>LongMethod:KastRuntimeComposition.kt:KastRuntimeComposition.Companion$internal fun bind: KastRuntimeCompositionConstruction</ID>
+    <ID>LongMethod:KastRuntimeComposition.kt:KastRuntimeComposition.Companion$internal fun constructGraph: DirectKastRuntimeGraph</ID>
+    <ID>LongMethod:KastRuntimeComposition.kt:private fun WorkspacePublicationCoordinator.resultingGenerationPublisher: ResultingGenerationPublisher</ID>
+    <ID>LongMethod:RelationContinuationCodecTest.kt:RelationContinuationCodecTest$@Test fun `self contained continuation round trips and runtime admits resume`</ID>
+    <ID>LongMethod:SerializedMutationTransitionTest.kt:SerializedMutationTransitionTest$@Test fun `canonical application excludes competing readiness through compiler observation`</ID>
+    <ID>LongMethod:TopologyBackedTraversalOperations.kt:TopologyBackedTraversalOperations$private suspend fun runObserved: TraversalResult</ID>
+    <ID>LongMethod:TraversalContinuationCodecTest.kt:TraversalContinuationCodecTest$@Test fun `public continuation restores the exact frontier without repeating its start`</ID>
+    <ID>LongMethod:TraversalContinuationCodecTest.kt:TraversalContinuationCodecTest$@Test fun `self contained checkpoint round trips pending relation authority`</ID>
+    <ID>MagicNumber:CanonicalDiscoveryAdmission.kt:100_000</ID>
+    <ID>MagicNumber:CanonicalDiscoveryAdmission.kt:1_048_576</ID>
+    <ID>MagicNumber:CanonicalDiscoveryAdmission.kt:30_000</ID>
+    <ID>MatchingDeclarationName:CanonicalDiagnosticHandler.kt:CanonicalDiagnosticCheckHandler : OperationHandler</ID>
+    <ID>MatchingDeclarationName:CanonicalQueryHandler.kt:CanonicalQueryRunHandler : OperationHandler</ID>
+    <ID>MatchingDeclarationName:InstalledRuntimeAssembly.kt:InstalledRuntimeAssemblyInputs</ID>
+    <ID>MaxLineLength:InstalledRuntimeAssembly.kt:is io.github.amichne.kast.workspace.intellij.InstalledGradleModelCaptureFailure.ModelInputRejected</ID>
+    <ID>UnusedParameter:DirectKastOperations.kt:DirectKastOperations.Companion$workspace: WorkspaceInspectionOperations</ID>
+    <ID>WildcardImport:CanonicalCandidateSelectorCompositionTest.kt:import io.github.amichne.kast.query.protocol.*</ID>
+    <ID>WildcardImport:CanonicalChangePlanHandler.kt:import io.github.amichne.kast.query.protocol.*</ID>
+    <ID>WildcardImport:CanonicalDiagnosticHandler.kt:import io.github.amichne.kast.kernel.*</ID>
+    <ID>WildcardImport:CanonicalDiagnosticHandler.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:CanonicalDiagnosticHandler.kt:import io.github.amichne.kast.workspace.contract.*</ID>
+    <ID>WildcardImport:CanonicalDiscoveryAdmission.kt:import io.github.amichne.kast.kernel.*</ID>
+    <ID>WildcardImport:CanonicalDiscoveryAdmission.kt:import io.github.amichne.kast.symbol.contract.*</ID>
+    <ID>WildcardImport:CanonicalLocationCandidateProjectionTest.kt:import io.github.amichne.kast.query.protocol.*</ID>
+    <ID>WildcardImport:CanonicalProtocolAuthorityDurabilityTest.kt:import io.github.amichne.kast.query.protocol.*</ID>
+    <ID>WildcardImport:CanonicalQueryHandler.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:CanonicalQueryRunHandlerTest.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:CanonicalRelationTraversalHandlers.kt:import io.github.amichne.kast.kernel.*</ID>
+    <ID>WildcardImport:CanonicalRelationTraversalHandlers.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:CanonicalRelationTraversalHandlers.kt:import io.github.amichne.kast.query.protocol.*</ID>
+    <ID>WildcardImport:CanonicalRelationTraversalHandlers.kt:import io.github.amichne.kast.traversal.contract.*</ID>
+    <ID>WildcardImport:CanonicalSourceReadCallReferenceProjectionTest.kt:import io.github.amichne.kast.query.protocol.*</ID>
+    <ID>WildcardImport:CanonicalSourceReadEntityProjectionTest.kt:import io.github.amichne.kast.query.protocol.*</ID>
+    <ID>WildcardImport:CanonicalSourceReadHandler.kt:import io.github.amichne.kast.kernel.*</ID>
+    <ID>WildcardImport:CanonicalSourceReadHandler.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:CanonicalSourceReadHandler.kt:import io.github.amichne.kast.query.protocol.*</ID>
+    <ID>WildcardImport:CanonicalSymbolHandlers.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:CanonicalSymbolHandlers.kt:import io.github.amichne.kast.query.protocol.*</ID>
+    <ID>WildcardImport:CanonicalSymbolHandlers.kt:import io.github.amichne.kast.symbol.contract.*</ID>
+    <ID>WildcardImport:CanonicalSymbolHandlers.kt:import io.github.amichne.kast.workspace.contract.*</ID>
+    <ID>WildcardImport:InstalledSemanticRuntimeBootstrapTest.kt:import io.github.amichne.kast.distribution.contract.bootstrap.*</ID>
+    <ID>WildcardImport:InstalledSemanticRuntimeBootstrapTest.kt:import io.github.amichne.kast.distribution.contract.gradle.*</ID>
+    <ID>WildcardImport:RelationContinuationCodecTest.kt:import io.github.amichne.kast.query.protocol.*</ID>
+    <ID>WildcardImport:TopologyPrerequisiteAcceptanceTest.kt:import io.github.amichne.kast.query.protocol.*</ID>
+    <ID>WildcardImport:TraversalContinuationCodecTest.kt:import io.github.amichne.kast.query.protocol.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

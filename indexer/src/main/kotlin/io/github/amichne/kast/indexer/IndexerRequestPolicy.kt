@@ -14,7 +14,9 @@ value class IndexerConnectionLimit private constructor(val value: Int) {
     }
 }
 
-enum class IndexerRequestPolicyFailure { CONNECTION_LIMIT_INVALID }
+enum class IndexerRequestPolicyFailure {
+    CONNECTION_LIMIT_INVALID
+}
 
 /** Process ingress limits. Tests inject admitted values; production has no environment override. */
 class IndexerRequestPolicy(
@@ -25,21 +27,42 @@ class IndexerRequestPolicy(
     val retirement: ElapsedTimeLimitMillis,
 ) {
     companion object {
-        val Default = IndexerRequestPolicy(
-            connections = when (val value = IndexerConnectionLimit.admit(IndexerTransportLimits.defaultConnections)) {
-                is Refinement.Refined -> value.value
-                is Refinement.Rejected -> error("Invalid fixed connection policy")
-            },
-            frameRead = OperationExecutionBudget.LOCAL_QUALIFICATION,
-            frameWrite = OperationExecutionBudget.LOCAL_QUALIFICATION,
-            dispatch = OperationExecutionBudget.GRAPH_BUILD.operation,
-            retirement = OperationExecutionBudget.LOCAL_QUALIFICATION,
-        )
+        val Default =
+            IndexerRequestPolicy(
+                connections =
+                    when (val value = IndexerConnectionLimit.admit(IndexerTransportLimits.defaultConnections)) {
+                        is Refinement.Refined -> value.value
+                        is Refinement.Rejected -> error("Invalid fixed connection policy")
+                    },
+                frameRead = OperationExecutionBudget.LOCAL_QUALIFICATION,
+                frameWrite = OperationExecutionBudget.LOCAL_QUALIFICATION,
+                dispatch = OperationExecutionBudget.GRAPH_BUILD.operation,
+                retirement = OperationExecutionBudget.LOCAL_QUALIFICATION,
+            )
     }
 }
 
-enum class IndexerRequestStage { CONNECTION_ADMISSION, PEER_QUALIFICATION, FRAME_READ, SEMANTIC_ADMISSION, DISPATCH, FRAME_WRITE, RETIREMENT, TRANSPORT_CLOSE }
-enum class IndexerRequestOutcome { STARTED, COMPLETED, REJECTED, CAPACITY_EXCEEDED, DEADLINE_EXCEEDED, CANCELLED, RECOVERY_REQUIRED }
+enum class IndexerRequestStage {
+    CONNECTION_ADMISSION,
+    PEER_QUALIFICATION,
+    FRAME_READ,
+    SEMANTIC_ADMISSION,
+    DISPATCH,
+    FRAME_WRITE,
+    RETIREMENT,
+    TRANSPORT_CLOSE,
+}
+
+enum class IndexerRequestOutcome {
+    STARTED,
+    COMPLETED,
+    REJECTED,
+    CAPACITY_EXCEEDED,
+    DEADLINE_EXCEEDED,
+    CANCELLED,
+    RECOVERY_REQUIRED,
+}
+
 data class IndexerRequestActivity(val stage: IndexerRequestStage, val outcome: IndexerRequestOutcome)
 
 fun interface IndexerRequestActivitySink {

@@ -17,10 +17,11 @@ class InstalledSidecarJvmTest {
     fun `relative java home fails closed`() {
         val admission = InstalledSidecarJvm.admit("relative-java-home", null)
 
-        val rejected = assertInstanceOf(
-            InstalledSidecarJvmAdmission.Rejected::class.java,
-            admission,
-        )
+        val rejected =
+            assertInstanceOf(
+                InstalledSidecarJvmAdmission.Rejected::class.java,
+                admission,
+            )
         assertEquals(InstalledSidecarJvmFailure.NOT_ABSOLUTE, rejected.failure)
     }
 }

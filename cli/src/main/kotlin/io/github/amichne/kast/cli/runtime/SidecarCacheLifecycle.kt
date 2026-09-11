@@ -1,10 +1,10 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentIdentity
 import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapStateFile
 import io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapStateObservation
-import io.github.amichne.kast.distribution.contract.bootstrap.SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
+import io.github.amichne.kast.distribution.contract.bootstrap.SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentIdentity
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.nio.file.AtomicMoveNotSupportedException
@@ -22,11 +22,16 @@ private const val SIDECAR_CACHE_IDENTITY_LEGACY_FORMAT = "kast.sidecar-cache.ide
 
 sealed interface CacheStateObservation {
     data class Observed(val state: KastCacheState) : CacheStateObservation
+
     data object Absent : CacheStateObservation
+
     data object Rejected : CacheStateObservation
 }
 
-enum class CacheStateTransition { Recorded, Rejected }
+enum class CacheStateTransition {
+    Recorded,
+    Rejected,
+}
 
 /** Atomic state marker owned by one already-admitted cache directory. */
 internal object SidecarCacheStateFile {
@@ -36,30 +41,31 @@ internal object SidecarCacheStateFile {
         if (Files.isSymbolicLink(path) || !Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
             return CacheStateObservation.Rejected
         }
-        val value = try {
-            Files.readString(path).trim()
-        } catch (_: IOException) {
-            return CacheStateObservation.Rejected
-        } catch (_: SecurityException) {
-            return CacheStateObservation.Rejected
-        }
-        val state = KastCacheState.entries.singleOrNull { it.wireName == value }
-            ?: return CacheStateObservation.Rejected
+        val value =
+            try {
+                Files.readString(path).trim()
+            } catch (_: IOException) {
+                return CacheStateObservation.Rejected
+            } catch (_: SecurityException) {
+                return CacheStateObservation.Rejected
+            }
+        val state =
+            KastCacheState.entries.singleOrNull { it.wireName == value } ?: return CacheStateObservation.Rejected
         return CacheStateObservation.Observed(state)
     }
 
     fun record(cacheRoot: Path, state: KastCacheState): CacheStateTransition {
-        val canonical = canonicalSidecarDirectory(cacheRoot)
-            ?: return CacheStateTransition.Rejected
+        val canonical = canonicalSidecarDirectory(cacheRoot) ?: return CacheStateTransition.Rejected
         val target = canonical.resolve(SIDECAR_CACHE_STATE_FILE)
         if (Files.isSymbolicLink(target)) return CacheStateTransition.Rejected
-        val staging = try {
-            Files.createTempFile(canonical, ".cache-state-", ".partial")
-        } catch (_: IOException) {
-            return CacheStateTransition.Rejected
-        } catch (_: SecurityException) {
-            return CacheStateTransition.Rejected
-        }
+        val staging =
+            try {
+                Files.createTempFile(canonical, ".cache-state-", ".partial")
+            } catch (_: IOException) {
+                return CacheStateTransition.Rejected
+            } catch (_: SecurityException) {
+                return CacheStateTransition.Rejected
+            }
         return try {
             Files.writeString(staging, state.wireName + "\n")
             Files.move(
@@ -113,10 +119,12 @@ sealed interface RootSidecarCacheObservation {
     }
 
     data class Observed(override val status: RootSidecarCacheStatus) : Identified
+
     data class Stale(override val status: RootSidecarCacheStatus) : Identified
+
     data object Absent : RootSidecarCacheObservation
-    data class Rejected(val failure: SidecarCacheLifecycleFailure) :
-        RootSidecarCacheObservation
+
+    data class Rejected(val failure: SidecarCacheLifecycleFailure) : RootSidecarCacheObservation
 }
 
 sealed interface RootSidecarCacheQuarantine {
@@ -134,16 +142,21 @@ interface RootSidecarCacheLifecycle {
 
     fun inventory(root: Path): Refinement<RootSidecarCacheInventory, SidecarCacheLifecycleFailure> =
         when (val observed = observe(root)) {
-            RootSidecarCacheObservation.Absent ->
-                Refinement.Refined(RootSidecarCacheInventory(root, emptyList()))
-            is RootSidecarCacheObservation.Identified -> Refinement.Refined(
-                RootSidecarCacheInventory(root, listOf(RootSidecarCacheReference(
-                    observed.status.cacheIdentity,
-                    observed.status.semanticRuntimeId,
-                    observed.status.cacheRoot,
-                    observed.status.ideaHome,
-                ))),
-            )
+            RootSidecarCacheObservation.Absent -> Refinement.Refined(RootSidecarCacheInventory(root, emptyList()))
+            is RootSidecarCacheObservation.Identified ->
+                Refinement.Refined(
+                    RootSidecarCacheInventory(
+                        root,
+                        listOf(
+                            RootSidecarCacheReference(
+                                observed.status.cacheIdentity,
+                                observed.status.semanticRuntimeId,
+                                observed.status.cacheRoot,
+                                observed.status.ideaHome,
+                            )
+                        ),
+                    )
+                )
             is RootSidecarCacheObservation.Rejected -> Refinement.Rejected(observed.failure)
         }
 
@@ -154,8 +167,7 @@ interface RootSidecarCacheLifecycle {
 }
 
 data object NoRootSidecarCacheLifecycle : RootSidecarCacheLifecycle {
-    override fun observe(root: Path): RootSidecarCacheObservation =
-        RootSidecarCacheObservation.Absent
+    override fun observe(root: Path): RootSidecarCacheObservation = RootSidecarCacheObservation.Absent
 
     override fun quarantine(stopped: StoppedSidecarCaches): RootSidecarCacheQuarantine =
         if (stopped.inventory.caches.isEmpty()) RootSidecarCacheQuarantine.Quarantined(emptyList())
@@ -167,76 +179,94 @@ class FilesystemRootSidecarCacheLifecycle(
     private val cacheRoot: Path,
     private val releaseIdentity: SidecarCacheReleaseIdentity,
     private val installedRuntimeResolver: SidecarIdeRuntimeResolver,
-    private val importEnvironment: () -> Refinement<io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment,
-        io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentFailure> = { currentGradleImportEnvironment() },
+    private val importEnvironment:
+        () -> Refinement<
+                io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment,
+                io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentFailure,
+            > =
+        {
+            currentGradleImportEnvironment()
+        },
 ) : RootSidecarCacheLifecycle {
     override fun observe(root: Path): RootSidecarCacheObservation =
         when (val match = matching(root)) {
             CacheIdentityMatch.Absent -> RootSidecarCacheObservation.Absent
             is CacheIdentityMatch.Rejected -> RootSidecarCacheObservation.Rejected(match.failure)
-            is CacheIdentityMatch.Current -> observe(
-                match.record,
-                CacheIdentityFreshness.CURRENT,
-            )
-            is CacheIdentityMatch.Stale -> observe(
-                match.record,
-                CacheIdentityFreshness.STALE,
-            )
+            is CacheIdentityMatch.Current ->
+                observe(
+                    match.record,
+                    CacheIdentityFreshness.CURRENT,
+                )
+            is CacheIdentityMatch.Stale ->
+                observe(
+                    match.record,
+                    CacheIdentityFreshness.STALE,
+                )
         }
 
     override fun inventory(root: Path): Refinement<RootSidecarCacheInventory, SidecarCacheLifecycleFailure> =
         when (val records = records(root)) {
-            is Refinement.Refined -> Refinement.Refined(
-                RootSidecarCacheInventory(root, records.value.map(CacheIdentityRecord::reference)),
-            )
+            is Refinement.Refined ->
+                Refinement.Refined(RootSidecarCacheInventory(root, records.value.map(CacheIdentityRecord::reference)))
             is Refinement.Rejected -> records
         }
 
     override fun withStartupLock(root: Path, operation: () -> RuntimeAdmission): RuntimeAdmission {
-        val lockDirectory = try {
-            if (Files.isSymbolicLink(cacheRoot) || canonicalSidecarDirectory(root) != root) {
+        val lockDirectory =
+            try {
+                if (Files.isSymbolicLink(cacheRoot) || canonicalSidecarDirectory(root) != root) {
+                    return cacheRejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
+                }
+                Files.createDirectories(cacheRoot)
+                val physical =
+                    physicalSidecarDirectory(cacheRoot)
+                        ?: return cacheRejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
+                val locks = physical.resolve("root-locks")
+                if (Files.isSymbolicLink(locks)) {
+                    return cacheRejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
+                }
+                Files.createDirectories(locks)
+                val digest =
+                    java.util.HexFormat.of()
+                        .formatHex(
+                            java.security.MessageDigest.getInstance("SHA-256")
+                                .digest(root.toString().toByteArray(Charsets.UTF_8))
+                        )
+                val directory = locks.resolve(digest)
+                if (Files.isSymbolicLink(directory)) {
+                    return cacheRejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
+                }
+                Files.createDirectories(directory)
+                directory
+            } catch (_: IOException) {
+                return cacheRejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
+            } catch (_: SecurityException) {
                 return cacheRejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
             }
-            Files.createDirectories(cacheRoot)
-            val physical = physicalSidecarDirectory(cacheRoot)
-                ?: return cacheRejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
-            val locks = physical.resolve("root-locks")
-            if (Files.isSymbolicLink(locks)) {
-                return cacheRejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
-            }
-            Files.createDirectories(locks)
-            val digest = java.util.HexFormat.of().formatHex(
-                java.security.MessageDigest.getInstance("SHA-256")
-                    .digest(root.toString().toByteArray(Charsets.UTF_8)),
-            )
-            val directory = locks.resolve(digest)
-            if (Files.isSymbolicLink(directory)) {
-                return cacheRejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
-            }
-            Files.createDirectories(directory)
-            directory
-        } catch (_: IOException) {
-            return cacheRejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
-        } catch (_: SecurityException) {
-            return cacheRejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
-        }
-        return when (val execution = io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLock.withAcquired(
-            lockDirectory, java.time.Duration.ofMinutes(10), operation,
-        )) {
-            is io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLockExecution.Executed -> execution.value
+        return when (
+            val execution =
+                io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLock.withAcquired(
+                    lockDirectory,
+                    java.time.Duration.ofMinutes(10),
+                    operation,
+                )
+        ) {
+            is io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLockExecution.Executed ->
+                execution.value
             io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLockExecution.Interrupted ->
                 RuntimeAdmission.Rejected(RuntimeAdmissionFailure.Interrupted)
             io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLockExecution.Rejected,
-            io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLockExecution.TimedOut,
-                -> RuntimeAdmission.Rejected(RuntimeAdmissionFailure.BootstrapAttemptLockUnavailable)
+            io.github.amichne.kast.cli.runtime.bootstrap.SidecarBootstrapAttemptLockExecution.TimedOut ->
+                RuntimeAdmission.Rejected(RuntimeAdmissionFailure.BootstrapAttemptLockUnavailable)
         }
     }
 
     override fun quarantine(stopped: StoppedSidecarCaches): RootSidecarCacheQuarantine {
-        val current = when (val observed = records(stopped.inventory.root)) {
-            is Refinement.Refined -> observed.value.sortedBy { it.cacheRoot.toString() }
-            is Refinement.Rejected -> return RootSidecarCacheQuarantine.Rejected(observed.failure)
-        }
+        val current =
+            when (val observed = records(stopped.inventory.root)) {
+                is Refinement.Refined -> observed.value.sortedBy { it.cacheRoot.toString() }
+                is Refinement.Rejected -> return RootSidecarCacheQuarantine.Rejected(observed.failure)
+            }
         if (current.map(CacheIdentityRecord::reference) != stopped.inventory.caches) {
             return RootSidecarCacheQuarantine.Rejected(SidecarCacheLifecycleFailure.INVENTORY_CHANGED)
         }
@@ -251,104 +281,101 @@ class FilesystemRootSidecarCacheLifecycle(
     }
 
     private fun cacheRejected(failure: SidecarCacheLifecycleFailure): RuntimeAdmission =
-        RuntimeAdmission.Rejected(RuntimeAdmissionFailure.SidecarCacheRejected(
-            SidecarCacheFailure.ObservationRejected(failure),
-        ))
+        RuntimeAdmission.Rejected(
+            RuntimeAdmissionFailure.SidecarCacheRejected(SidecarCacheFailure.ObservationRejected(failure))
+        )
 
     private fun observe(
         record: CacheIdentityRecord,
         freshness: CacheIdentityFreshness,
-    ): RootSidecarCacheObservation = when (
-        val state = SidecarCacheStateFile.observe(record.cacheRoot)
-    ) {
-        CacheStateObservation.Absent -> RootSidecarCacheObservation.Rejected(
-            SidecarCacheLifecycleFailure.INVALID_STATE,
-        )
-        CacheStateObservation.Rejected -> RootSidecarCacheObservation.Rejected(
-            SidecarCacheLifecycleFailure.INVALID_STATE,
-        )
-        is CacheStateObservation.Observed -> when (freshness) {
-            CacheIdentityFreshness.CURRENT -> RootSidecarCacheObservation.Observed(
-                record.status(state.state).copy(bootstrap = observeBootstrap(record.cacheRoot)),
-            )
-            CacheIdentityFreshness.STALE -> RootSidecarCacheObservation.Stale(
-                record.status(state.state).copy(bootstrap = observeBootstrap(record.cacheRoot)),
-            )
+    ): RootSidecarCacheObservation =
+        when (val state = SidecarCacheStateFile.observe(record.cacheRoot)) {
+            CacheStateObservation.Absent ->
+                RootSidecarCacheObservation.Rejected(SidecarCacheLifecycleFailure.INVALID_STATE)
+            CacheStateObservation.Rejected ->
+                RootSidecarCacheObservation.Rejected(SidecarCacheLifecycleFailure.INVALID_STATE)
+            is CacheStateObservation.Observed ->
+                when (freshness) {
+                    CacheIdentityFreshness.CURRENT ->
+                        RootSidecarCacheObservation.Observed(
+                            record.status(state.state).copy(bootstrap = observeBootstrap(record.cacheRoot))
+                        )
+                    CacheIdentityFreshness.STALE ->
+                        RootSidecarCacheObservation.Stale(
+                            record.status(state.state).copy(bootstrap = observeBootstrap(record.cacheRoot))
+                        )
+                }
         }
-    }
 
     private fun records(root: Path): Refinement<List<CacheIdentityRecord>, SidecarCacheLifecycleFailure> {
         if (Files.notExists(cacheRoot, LinkOption.NOFOLLOW_LINKS)) {
             return Refinement.Refined(emptyList())
         }
-        val canonicalCacheRoot = physicalSidecarDirectory(cacheRoot)
-            ?: return Refinement.Rejected(
-                SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED,
-            )
-        val canonicalProject = canonicalSidecarDirectory(root)
-            ?: return Refinement.Rejected(
-                SidecarCacheLifecycleFailure.INVALID_IDENTITY,
-            )
+        val canonicalCacheRoot =
+            physicalSidecarDirectory(cacheRoot)
+                ?: return Refinement.Rejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
+        val canonicalProject =
+            canonicalSidecarDirectory(root) ?: return Refinement.Rejected(SidecarCacheLifecycleFailure.INVALID_IDENTITY)
         val records = mutableListOf<CacheIdentityRecord>()
         try {
-            val children = Files.list(canonicalCacheRoot).use { paths ->
-                paths.filter { child ->
-                    Files.isDirectory(child, LinkOption.NOFOLLOW_LINKS) &&
-                        child.fileName.toString() != "quarantine"
-                }.toList()
-            }
+            val children =
+                Files.list(canonicalCacheRoot).use { paths ->
+                    paths
+                        .filter { child ->
+                            Files.isDirectory(child, LinkOption.NOFOLLOW_LINKS) &&
+                                child.fileName.toString() != "quarantine"
+                        }
+                        .toList()
+                }
             for (child in children) {
                 when (val read = readIdentity(child, canonicalProject)) {
                     CacheIdentityRead.Unrelated -> Unit
                     is CacheIdentityRead.Read -> records += read.record
-                    CacheIdentityRead.Rejected -> return Refinement.Rejected(
-                        SidecarCacheLifecycleFailure.INVALID_IDENTITY,
-                    )
+                    CacheIdentityRead.Rejected ->
+                        return Refinement.Rejected(SidecarCacheLifecycleFailure.INVALID_IDENTITY)
                 }
             }
         } catch (_: IOException) {
-            return Refinement.Rejected(
-                SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED,
-            )
+            return Refinement.Rejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
         } catch (_: SecurityException) {
-            return Refinement.Rejected(
-                SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED,
-            )
+            return Refinement.Rejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
         }
         return Refinement.Refined(records)
     }
 
     private fun matching(root: Path): CacheIdentityMatch {
-        val records = when (val observed = records(root)) {
-            is Refinement.Refined -> observed.value
-            is Refinement.Rejected -> return CacheIdentityMatch.Rejected(observed.failure)
-        }
+        val records =
+            when (val observed = records(root)) {
+                is Refinement.Refined -> observed.value
+                is Refinement.Rejected -> return CacheIdentityMatch.Rejected(observed.failure)
+            }
         val releasedRecords = records.filter { record ->
             releaseIdentity.admits(record.identity)
         }
-        val currentImport = when (val admitted = importEnvironment()) {
-            is Refinement.Refined -> admitted.value.identity
-            is Refinement.Rejected -> return CacheIdentityMatch.Rejected(SidecarCacheLifecycleFailure.INVALID_IDENTITY)
-        }
+        val currentImport =
+            when (val admitted = importEnvironment()) {
+                is Refinement.Refined -> admitted.value.identity
+                is Refinement.Rejected ->
+                    return CacheIdentityMatch.Rejected(SidecarCacheLifecycleFailure.INVALID_IDENTITY)
+            }
         val currentRecords = releasedRecords.filter { record ->
             record.identity.importEnvironmentIdentity == currentImport &&
-            when (
-                val discovery = releaseIdentity.discoverCurrentRuntime(
-                    record.ideaHome,
-                    installedRuntimeResolver,
-                )
-            ) {
-                is InstalledIdeRuntimeDiscoveryResult.Discovered ->
-                    discovery.runtime.home == record.identity.ideaHome &&
-                        discovery.runtime.javaExecutable == record.identity.javaExecutable &&
-                        discovery.runtime.identity == record.identity.runtimeIdentity
-                is InstalledIdeRuntimeDiscoveryResult.Rejected -> false
-            }
+                when (
+                    val discovery =
+                        releaseIdentity.discoverCurrentRuntime(
+                            record.ideaHome,
+                            installedRuntimeResolver,
+                        )
+                ) {
+                    is InstalledIdeRuntimeDiscoveryResult.Discovered ->
+                        discovery.runtime.home == record.identity.ideaHome &&
+                            discovery.runtime.javaExecutable == record.identity.javaExecutable &&
+                            discovery.runtime.identity == record.identity.runtimeIdentity
+                    is InstalledIdeRuntimeDiscoveryResult.Rejected -> false
+                }
         }
         if (currentRecords.size > 1) {
-            return CacheIdentityMatch.Rejected(
-                SidecarCacheLifecycleFailure.AMBIGUOUS_IDENTITY,
-            )
+            return CacheIdentityMatch.Rejected(SidecarCacheLifecycleFailure.AMBIGUOUS_IDENTITY)
         }
         if (currentRecords.size == 1) {
             return CacheIdentityMatch.Current(currentRecords.single())
@@ -356,54 +383,43 @@ class FilesystemRootSidecarCacheLifecycle(
         return when (records.size) {
             0 -> CacheIdentityMatch.Absent
             1 -> CacheIdentityMatch.Stale(records.single())
-            else -> CacheIdentityMatch.Rejected(
-                SidecarCacheLifecycleFailure.AMBIGUOUS_IDENTITY,
-            )
+            else -> CacheIdentityMatch.Rejected(SidecarCacheLifecycleFailure.AMBIGUOUS_IDENTITY)
         }
     }
 
     private fun quarantine(record: CacheIdentityRecord): RootSidecarCacheQuarantine {
-        val canonicalCacheRoot = physicalSidecarDirectory(cacheRoot)
-            ?: return RootSidecarCacheQuarantine.Rejected(
-                SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED,
-            )
-        val quarantineRoot = try {
-            Files.createDirectories(canonicalCacheRoot.resolve("quarantine"))
-        } catch (_: IOException) {
-            return RootSidecarCacheQuarantine.Rejected(
-                SidecarCacheLifecycleFailure.QUARANTINE_FAILED,
-            )
-        } catch (_: SecurityException) {
-            return RootSidecarCacheQuarantine.Rejected(
-                SidecarCacheLifecycleFailure.QUARANTINE_FAILED,
-            )
-        }
+        val canonicalCacheRoot =
+            physicalSidecarDirectory(cacheRoot)
+                ?: return RootSidecarCacheQuarantine.Rejected(SidecarCacheLifecycleFailure.FILESYSTEM_REJECTED)
+        val quarantineRoot =
+            try {
+                Files.createDirectories(canonicalCacheRoot.resolve("quarantine"))
+            } catch (_: IOException) {
+                return RootSidecarCacheQuarantine.Rejected(SidecarCacheLifecycleFailure.QUARANTINE_FAILED)
+            } catch (_: SecurityException) {
+                return RootSidecarCacheQuarantine.Rejected(SidecarCacheLifecycleFailure.QUARANTINE_FAILED)
+            }
         if (Files.isSymbolicLink(quarantineRoot)) {
-            return RootSidecarCacheQuarantine.Rejected(
-                SidecarCacheLifecycleFailure.QUARANTINE_FAILED,
-            )
+            return RootSidecarCacheQuarantine.Rejected(SidecarCacheLifecycleFailure.QUARANTINE_FAILED)
         }
         val target = quarantineRoot.resolve("${record.identity.key}.${UUID.randomUUID()}")
         try {
             Files.move(record.cacheRoot, target, StandardCopyOption.ATOMIC_MOVE)
         } catch (_: AtomicMoveNotSupportedException) {
-            return RootSidecarCacheQuarantine.Rejected(
-                SidecarCacheLifecycleFailure.QUARANTINE_FAILED,
-            )
+            return RootSidecarCacheQuarantine.Rejected(SidecarCacheLifecycleFailure.QUARANTINE_FAILED)
         } catch (_: IOException) {
-            return RootSidecarCacheQuarantine.Rejected(
-                SidecarCacheLifecycleFailure.QUARANTINE_FAILED,
-            )
+            return RootSidecarCacheQuarantine.Rejected(SidecarCacheLifecycleFailure.QUARANTINE_FAILED)
         } catch (_: SecurityException) {
-            return RootSidecarCacheQuarantine.Rejected(
-                SidecarCacheLifecycleFailure.QUARANTINE_FAILED,
-            )
+            return RootSidecarCacheQuarantine.Rejected(SidecarCacheLifecycleFailure.QUARANTINE_FAILED)
         }
         return RootSidecarCacheQuarantine.Quarantined(listOf(target))
     }
 }
 
-internal enum class CacheIdentityTransition { Recorded, Rejected }
+internal enum class CacheIdentityTransition {
+    Recorded,
+    Rejected,
+}
 
 internal object SidecarCacheIdentityFile {
     fun record(
@@ -413,36 +429,37 @@ internal object SidecarCacheIdentityFile {
     ): CacheIdentityTransition {
         if (
             runtime.home != identity.ideaHome ||
-            runtime.javaExecutable != identity.javaExecutable ||
-            runtime.identity != identity.runtimeIdentity
+                runtime.javaExecutable != identity.javaExecutable ||
+                runtime.identity != identity.runtimeIdentity
         ) {
             return CacheIdentityTransition.Rejected
         }
-        val canonical = canonicalSidecarDirectory(cacheRoot)
-            ?: return CacheIdentityTransition.Rejected
-        val properties = Properties().apply {
-            setProperty("format", SIDECAR_CACHE_IDENTITY_FORMAT)
-            setProperty("cache.key", identity.key)
-            setProperty("gradle.import.identity", identity.importEnvironmentIdentity.value)
-            setProperty("semantic.runtime.id", identity.semanticRuntimeId.value)
-            setProperty("project.root", identity.canonicalProjectRoot.toString())
-            setProperty("idea.home", identity.ideaHome.toString())
-            setProperty("java.executable", identity.javaExecutable.toString())
-            setProperty("idea.build", identity.runtimeIdentity.supportedPair.ideaBuild)
-            setProperty(
-                "kotlin.plugin.build",
-                identity.runtimeIdentity.supportedPair.kotlinPluginBuild,
-            )
-            setProperty("jbr.identity", identity.runtimeIdentity.jbrIdentity)
-            setProperty("kast.payload.digest", identity.runtimeIdentity.kastPayloadDigest)
-        }
-        val staging = try {
-            Files.createTempFile(canonical, ".cache-identity-", ".partial")
-        } catch (_: IOException) {
-            return CacheIdentityTransition.Rejected
-        } catch (_: SecurityException) {
-            return CacheIdentityTransition.Rejected
-        }
+        val canonical = canonicalSidecarDirectory(cacheRoot) ?: return CacheIdentityTransition.Rejected
+        val properties =
+            Properties().apply {
+                setProperty("format", SIDECAR_CACHE_IDENTITY_FORMAT)
+                setProperty("cache.key", identity.key)
+                setProperty("gradle.import.identity", identity.importEnvironmentIdentity.value)
+                setProperty("semantic.runtime.id", identity.semanticRuntimeId.value)
+                setProperty("project.root", identity.canonicalProjectRoot.toString())
+                setProperty("idea.home", identity.ideaHome.toString())
+                setProperty("java.executable", identity.javaExecutable.toString())
+                setProperty("idea.build", identity.runtimeIdentity.supportedPair.ideaBuild)
+                setProperty(
+                    "kotlin.plugin.build",
+                    identity.runtimeIdentity.supportedPair.kotlinPluginBuild,
+                )
+                setProperty("jbr.identity", identity.runtimeIdentity.jbrIdentity)
+                setProperty("kast.payload.digest", identity.runtimeIdentity.kastPayloadDigest)
+            }
+        val staging =
+            try {
+                Files.createTempFile(canonical, ".cache-identity-", ".partial")
+            } catch (_: IOException) {
+                return CacheIdentityTransition.Rejected
+            } catch (_: SecurityException) {
+                return CacheIdentityTransition.Rejected
+            }
         return try {
             Files.newOutputStream(staging).use { output ->
                 properties.store(output, null)
@@ -475,33 +492,43 @@ private data class CacheIdentityRecord(
     val ideaHome: Path,
     val identity: KastCacheIdentity,
 ) {
-    fun reference(): RootSidecarCacheReference = RootSidecarCacheReference(
-        identity.key, identity.semanticRuntimeId, cacheRoot, ideaHome,
-    )
+    fun reference(): RootSidecarCacheReference =
+        RootSidecarCacheReference(
+            identity.key,
+            identity.semanticRuntimeId,
+            cacheRoot,
+            ideaHome,
+        )
 
-    fun status(state: KastCacheState): RootSidecarCacheStatus = RootSidecarCacheStatus(
-        identity.key,
-        identity.semanticRuntimeId,
-        cacheRoot,
-        state,
-        ideaHome,
-        identity.runtimeIdentity.supportedPair.ideaBuild,
-        identity.runtimeIdentity.supportedPair.kotlinPluginBuild,
-        identity.runtimeIdentity.jbrIdentity,
-        identity.runtimeIdentity.kastPayloadDigest,
-    )
+    fun status(state: KastCacheState): RootSidecarCacheStatus =
+        RootSidecarCacheStatus(
+            identity.key,
+            identity.semanticRuntimeId,
+            cacheRoot,
+            state,
+            ideaHome,
+            identity.runtimeIdentity.supportedPair.ideaBuild,
+            identity.runtimeIdentity.supportedPair.kotlinPluginBuild,
+            identity.runtimeIdentity.jbrIdentity,
+            identity.runtimeIdentity.kastPayloadDigest,
+        )
 }
 
 private sealed interface CacheIdentityRead {
     data class Read(val record: CacheIdentityRecord) : CacheIdentityRead
+
     data object Unrelated : CacheIdentityRead
+
     data object Rejected : CacheIdentityRead
 }
 
 private sealed interface CacheIdentityMatch {
     data class Current(val record: CacheIdentityRecord) : CacheIdentityMatch
+
     data class Stale(val record: CacheIdentityRecord) : CacheIdentityMatch
+
     data object Absent : CacheIdentityMatch
+
     data class Rejected(val failure: SidecarCacheLifecycleFailure) : CacheIdentityMatch
 }
 
@@ -519,98 +546,102 @@ private fun readIdentity(
     if (Files.isSymbolicLink(receipt) || !Files.isRegularFile(receipt, LinkOption.NOFOLLOW_LINKS)) {
         return CacheIdentityRead.Rejected
     }
-    val values = try {
-        Properties().apply { Files.newInputStream(receipt).use(::load) }
-    } catch (_: IOException) {
-        return CacheIdentityRead.Rejected
-    } catch (_: SecurityException) {
-        return CacheIdentityRead.Rejected
-    }
+    val values =
+        try {
+            Properties().apply { Files.newInputStream(receipt).use(::load) }
+        } catch (_: IOException) {
+            return CacheIdentityRead.Rejected
+        } catch (_: SecurityException) {
+            return CacheIdentityRead.Rejected
+        }
     when (values.getProperty("format")) {
         SIDECAR_CACHE_IDENTITY_FORMAT -> Unit
-        SIDECAR_CACHE_IDENTITY_LEGACY_FORMAT, "kast.sidecar-cache.identity.v2" -> return CacheIdentityRead.Unrelated
+        SIDECAR_CACHE_IDENTITY_LEGACY_FORMAT,
+        "kast.sidecar-cache.identity.v2" -> return CacheIdentityRead.Unrelated
         else -> return CacheIdentityRead.Rejected
     }
     val rawProject = values.getProperty("project.root") ?: return CacheIdentityRead.Rejected
-    val project = try {
-        Path.of(rawProject)
-    } catch (_: RuntimeException) {
-        return CacheIdentityRead.Rejected
-    }
+    val project =
+        try {
+            Path.of(rawProject)
+        } catch (_: RuntimeException) {
+            return CacheIdentityRead.Rejected
+        }
     if (project != canonicalProject) return CacheIdentityRead.Unrelated
-    val pair = when (
-        val admission = SupportedIdeRuntimePair.admit(
-            values.getProperty("idea.build").orEmpty(),
-            values.getProperty("kotlin.plugin.build").orEmpty(),
-        )
-    ) {
-        is SupportedIdeRuntimePairAdmission.Admitted -> admission.pair
-        is SupportedIdeRuntimePairAdmission.Rejected -> return CacheIdentityRead.Rejected
-    }
-    val runtime = when (
-        val admission = IdeRuntimeIdentity.admit(
-            pair,
-            IdeRuntimeIdentityCandidate(
-                pair.ideaBuild,
-                pair.kotlinPluginBuild,
-                values.getProperty("jbr.identity").orEmpty(),
-                values.getProperty("kast.payload.digest").orEmpty(),
-            ),
-        )
-    ) {
-        is IdeRuntimeIdentityAdmission.Admitted -> admission.identity
-        is IdeRuntimeIdentityAdmission.Rejected -> return CacheIdentityRead.Rejected
-    }
-    val semanticRuntimeId = when (
-        val admission = SemanticRuntimeId.parse(
-            values.getProperty("semantic.runtime.id").orEmpty(),
-        )
-    ) {
-        is Refinement.Refined -> admission.value
-        is Refinement.Rejected -> return CacheIdentityRead.Rejected
-    }
-    val ideaHome = try {
-        Path.of(values.getProperty("idea.home") ?: return CacheIdentityRead.Rejected)
-    } catch (_: RuntimeException) {
-        return CacheIdentityRead.Rejected
-    }
+    val pair =
+        when (
+            val admission =
+                SupportedIdeRuntimePair.admit(
+                    values.getProperty("idea.build").orEmpty(),
+                    values.getProperty("kotlin.plugin.build").orEmpty(),
+                )
+        ) {
+            is SupportedIdeRuntimePairAdmission.Admitted -> admission.pair
+            is SupportedIdeRuntimePairAdmission.Rejected -> return CacheIdentityRead.Rejected
+        }
+    val runtime =
+        when (
+            val admission =
+                IdeRuntimeIdentity.admit(
+                    pair,
+                    IdeRuntimeIdentityCandidate(
+                        pair.ideaBuild,
+                        pair.kotlinPluginBuild,
+                        values.getProperty("jbr.identity").orEmpty(),
+                        values.getProperty("kast.payload.digest").orEmpty(),
+                    ),
+                )
+        ) {
+            is IdeRuntimeIdentityAdmission.Admitted -> admission.identity
+            is IdeRuntimeIdentityAdmission.Rejected -> return CacheIdentityRead.Rejected
+        }
+    val semanticRuntimeId =
+        when (val admission = SemanticRuntimeId.parse(values.getProperty("semantic.runtime.id").orEmpty())) {
+            is Refinement.Refined -> admission.value
+            is Refinement.Rejected -> return CacheIdentityRead.Rejected
+        }
+    val ideaHome =
+        try {
+            Path.of(values.getProperty("idea.home") ?: return CacheIdentityRead.Rejected)
+        } catch (_: RuntimeException) {
+            return CacheIdentityRead.Rejected
+        }
     if (canonicalSidecarDirectory(ideaHome) != ideaHome) return CacheIdentityRead.Rejected
-    val javaExecutable = try {
-        val recorded = Path.of(
-            values.getProperty("java.executable") ?: return CacheIdentityRead.Rejected,
-        )
-        recorded.toRealPath().takeIf { it == recorded }
-            ?: return CacheIdentityRead.Rejected
-    } catch (_: IOException) {
-        return CacheIdentityRead.Rejected
-    } catch (_: SecurityException) {
-        return CacheIdentityRead.Rejected
-    } catch (_: RuntimeException) {
-        return CacheIdentityRead.Rejected
-    }
+    val javaExecutable =
+        try {
+            val recorded = Path.of(values.getProperty("java.executable") ?: return CacheIdentityRead.Rejected)
+            recorded.toRealPath().takeIf { it == recorded } ?: return CacheIdentityRead.Rejected
+        } catch (_: IOException) {
+            return CacheIdentityRead.Rejected
+        } catch (_: SecurityException) {
+            return CacheIdentityRead.Rejected
+        } catch (_: RuntimeException) {
+            return CacheIdentityRead.Rejected
+        }
     val installedRuntime = InstalledIdeRuntime(ideaHome, javaExecutable, runtime)
-    val identity = when (
-        val derivation = KastCacheIdentity.derive(
-            project,
-            installedRuntime,
-            semanticRuntimeId,
-            when (val parsed = GradleImportEnvironmentIdentity.parse(
-                values.getProperty("gradle.import.identity") ?: return CacheIdentityRead.Rejected,
-            )) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected -> return CacheIdentityRead.Rejected
-            },
-        )
-    ) {
-        is KastCacheIdentityDerivation.Derived -> derivation.identity
-        is KastCacheIdentityDerivation.Rejected -> return CacheIdentityRead.Rejected
-    }
-    val canonicalCache = canonicalSidecarDirectory(cacheDirectory)
-        ?: return CacheIdentityRead.Rejected
-    if (
-        canonicalCache.fileName.toString() != identity.key ||
-        values.getProperty("cache.key") != identity.key
-    ) {
+    val identity =
+        when (
+            val derivation =
+                KastCacheIdentity.derive(
+                    project,
+                    installedRuntime,
+                    semanticRuntimeId,
+                    when (
+                        val parsed =
+                            GradleImportEnvironmentIdentity.parse(
+                                values.getProperty("gradle.import.identity") ?: return CacheIdentityRead.Rejected
+                            )
+                    ) {
+                        is Refinement.Refined -> parsed.value
+                        is Refinement.Rejected -> return CacheIdentityRead.Rejected
+                    },
+                )
+        ) {
+            is KastCacheIdentityDerivation.Derived -> derivation.identity
+            is KastCacheIdentityDerivation.Rejected -> return CacheIdentityRead.Rejected
+        }
+    val canonicalCache = canonicalSidecarDirectory(cacheDirectory) ?: return CacheIdentityRead.Rejected
+    if (canonicalCache.fileName.toString() != identity.key || values.getProperty("cache.key") != identity.key) {
         return CacheIdentityRead.Rejected
     }
     return CacheIdentityRead.Read(CacheIdentityRecord(canonicalCache, ideaHome, identity))

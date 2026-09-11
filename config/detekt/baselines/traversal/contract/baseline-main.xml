@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:TraversalResult.kt:TraversalPage.Companion$encodedBytes &lt; 0L || examinedWorkUnits &lt; 0L || elapsedMillis &lt; 0L || expandedFrontier &lt; 0</ID>
+    <ID>CyclomaticComplexMethod:TraversalResult.kt:TraversalPage.Companion$fun fromBoundary: Refinement&lt;TraversalPage, TraversalPageFailure></ID>
+    <ID>LongParameterList:TraversalResult.kt:TraversalPage.Companion$fun fromBoundary: Refinement&lt;TraversalPage, TraversalPageFailure></ID>
+    <ID>MagicNumber:TraversalPlan.kt:0xff</ID>
+    <ID>MagicNumber:TraversalPlan.kt:16</ID>
+    <ID>MagicNumber:TraversalState.kt:TraversalContinuation.Companion$0xff</ID>
+    <ID>MagicNumber:TraversalState.kt:TraversalContinuation.Companion$16</ID>
+    <ID>NamedArguments:TraversalPlan.kt:TraversalPlan.Companion$TraversalPlan( selector, meaning, budget, position, traversalIdentity(selector, meaning), )</ID>
+    <ID>NamedArguments:TraversalPlan.kt:TraversalPlan.Companion$admit( selector, meaning, budget, TraversalPosition.Resume(continuation), )</ID>
+    <ID>NamedArguments:TraversalPlan.kt:TraversalPlan.Companion$admit( selector, meaning, budget, TraversalPosition.Start, )</ID>
+    <ID>NamedArguments:TraversalResult.kt:TraversalPage.Companion$TraversalPage( plan, records.toList(), TraversalByteCount(encodedBytes), TraversalWorkCount(examinedWorkUnits), TraversalElapsedMillis(elapsedMillis), TraversalFrontierCount(expandedFrontier), )</ID>
+    <ID>NamedArguments:TraversalState.kt:TraversalCheckpoint.Companion$TraversalCheckpoint( plan.identity, frontier.toList(), visited.toSet(), pending, terminalRelationLimitations.toSortedSet(compareBy { it.ordinal }).toSet(), )</ID>
+    <ID>NamedArguments:TraversalState.kt:TraversalContinuation.Companion$TraversalContinuation( plan.start, plan.meaning, plan.identity, checkpoint, TraversalContinuationFingerprint.established( digest.joinToString(separator = "") { byte -> (byte.toInt() and 0xff).toString(16).padStart(2, '0') } ), )</ID>
+  </CurrentIssues>
+</SmellBaseline>

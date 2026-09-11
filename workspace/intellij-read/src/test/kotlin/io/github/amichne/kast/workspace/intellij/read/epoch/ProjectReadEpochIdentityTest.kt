@@ -30,25 +30,24 @@ class ProjectReadEpochIdentityTest {
             GradleEpochRootIdentity.admit("relative"),
         )
         listOf(
-            "/workspace/../kast",
-            "/workspace/\u0000",
-            "/" + "a".repeat(4_096),
-            "/" + "€".repeat(2_731),
-        ).forEach { raw ->
-            assertEquals(
-                Refinement.Rejected(ProjectReadEpochObservationFailure.GradleRootMalformed),
-                GradleEpochRootIdentity.admit(raw),
+                "/workspace/../kast",
+                "/workspace/\u0000",
+                "/" + "a".repeat(4_096),
+                "/" + "€".repeat(2_731),
             )
-        }
+            .forEach { raw ->
+                assertEquals(
+                    Refinement.Rejected(ProjectReadEpochObservationFailure.GradleRootMalformed),
+                    GradleEpochRootIdentity.admit(raw),
+                )
+            }
     }
 
     @Test
     fun `canonicalized root spellings compare through strong identities`() {
         assertEquals(
             ProjectGradleRootRelation.SAME,
-            fixtureProjectEpochRoot("/workspace/kast").relationTo(
-                fixtureGradleEpochRoot("/workspace//kast/"),
-            ),
+            fixtureProjectEpochRoot("/workspace/kast").relationTo(fixtureGradleEpochRoot("/workspace//kast/")),
         )
     }
 }
@@ -82,7 +81,7 @@ class ReportedProjectReadEpochTest {
                         rootFilteredVfsBatchCount = reportSignal(2),
                         rootModelModificationCount = reportSignal(2),
                         dumbModeModificationCount = reportSignal(3),
-                    ),
+                    )
                 ),
                 moved(stable.copy(rootFilteredVfsBatchCount = reportSignal(1_001))),
                 before.relationTo(ReportEpochSource(stable).observeEpoch()),
@@ -105,27 +104,27 @@ class ReportedProjectReadEpochTest {
             ),
         )
     }
-
 }
 
 class ProjectReadEpochTraversalGuardTest {
     @Test
     fun `VFS child and recursive traversal member injections are forbidden`() {
-        val forbidden = listOf(
-            EpochMemberReference("com/intellij/openapi/vfs/VirtualFile", "getChildren"),
-            EpochMemberReference(
-                "com/intellij/openapi/vfs/VfsUtilCore",
-                "iterateChildrenRecursively",
-            ),
-            EpochMemberReference(
-                "com/intellij/openapi/vfs/VfsUtilCore",
-                "visitChildrenRecursively",
-            ),
-            EpochMemberReference(
-                "com/intellij/openapi/vfs/VfsUtil",
-                "processFilesRecursively",
-            ),
-        )
+        val forbidden =
+            listOf(
+                EpochMemberReference("com/intellij/openapi/vfs/VirtualFile", "getChildren"),
+                EpochMemberReference(
+                    "com/intellij/openapi/vfs/VfsUtilCore",
+                    "iterateChildrenRecursively",
+                ),
+                EpochMemberReference(
+                    "com/intellij/openapi/vfs/VfsUtilCore",
+                    "visitChildrenRecursively",
+                ),
+                EpochMemberReference(
+                    "com/intellij/openapi/vfs/VfsUtil",
+                    "processFilesRecursively",
+                ),
+            )
 
         assertEquals(
             List(forbidden.size) { true },
@@ -134,7 +133,7 @@ class ProjectReadEpochTraversalGuardTest {
         assertEquals(
             false,
             EpochSignalClassContract.rejectsProductionMember(
-                EpochMemberReference("com/intellij/openapi/vfs/VirtualFile", "getPath"),
+                EpochMemberReference("com/intellij/openapi/vfs/VirtualFile", "getPath")
             ),
         )
     }
@@ -143,24 +142,26 @@ class ProjectReadEpochTraversalGuardTest {
 private class ReportEpochSource(var boundary: ProjectReadEpochBoundary) {
     private val source = ProjectReadEpoch.Source.create { ProjectReadEpochState.admit(boundary) }
 
-    fun observeEpoch(): ProjectReadEpoch<*> = when (val observed = source.observe()) {
-        is ProjectReadEpochObservation.Observed -> observed.epoch
-        is ProjectReadEpochObservation.Rejected -> fail("unexpected ${observed.failure}")
-    }
+    fun observeEpoch(): ProjectReadEpoch<*> =
+        when (val observed = source.observe()) {
+            is ProjectReadEpochObservation.Observed -> observed.epoch
+            is ProjectReadEpochObservation.Rejected -> fail("unexpected ${observed.failure}")
+        }
 }
 
-private fun reportedEpochBoundary() = ProjectReadEpochBoundary(
-    projectModelRevision = reportSignal(1),
-    projectRoot = fixtureProjectEpochRoot("/workspace/kast"),
-    gradleRoot = fixtureGradleEpochRoot("/workspace/kast"),
-    lastImportTimestamp = 10,
-    lastSuccessfulImportTimestamp = 10,
-    psiModificationCount = reportSignal(1),
-    rootFilteredVfsBatchCount = reportSignal(1),
-    rootModelModificationCount = reportSignal(1),
-    dumbModeModificationCount = reportSignal(1),
-    dumb = false,
-)
+private fun reportedEpochBoundary() =
+    ProjectReadEpochBoundary(
+        projectModelRevision = reportSignal(1),
+        projectRoot = fixtureProjectEpochRoot("/workspace/kast"),
+        gradleRoot = fixtureGradleEpochRoot("/workspace/kast"),
+        lastImportTimestamp = 10,
+        lastSuccessfulImportTimestamp = 10,
+        psiModificationCount = reportSignal(1),
+        rootFilteredVfsBatchCount = reportSignal(1),
+        rootModelModificationCount = reportSignal(1),
+        dumbModeModificationCount = reportSignal(1),
+        dumb = false,
+    )
 
 private fun reportSignal(value: Long) = ProjectReadEpochSignalSample.Value(value)
 

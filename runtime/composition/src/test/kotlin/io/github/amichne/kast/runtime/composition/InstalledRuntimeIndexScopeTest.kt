@@ -9,9 +9,9 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import java.nio.file.Path
 
 class InstalledRuntimeIndexScopeTest {
     @Test
@@ -19,25 +19,29 @@ class InstalledRuntimeIndexScopeTest {
         val workspace = Path.of("/workspace")
         val root = (CanonicalWorkspaceRoot.fromCanonicalPath(workspace) as Refinement.Refined).value
         val identity = (WorkspaceStateIdentity.parse("state-7") as Refinement.Refined).value
-        val model = projectInstalledGradleModel(
-            InstalledGradleModelBoundary(
-                root = root,
-                importedModelComplete = true,
-                sourceRoots = listOf(
-                    sourceRoot(workspace.resolve("app/src/main/kotlin"), "main"),
-                    sourceRoot(workspace.resolve("app/src/test/kotlin"), "test"),
-                ),
-                identity = identity,
-            ),
-        ) as InstalledGradleModelRead.Captured
+        val model =
+            projectInstalledGradleModel(
+                InstalledGradleModelBoundary(
+                    root = root,
+                    importedModelComplete = true,
+                    sourceRoots =
+                        listOf(
+                            sourceRoot(workspace.resolve("app/src/main/kotlin"), "main"),
+                            sourceRoot(workspace.resolve("app/src/test/kotlin"), "test"),
+                        ),
+                    identity = identity,
+                )
+            )
+                as InstalledGradleModelRead.Captured
         val observations = mutableListOf<InstalledRuntimeIndexScope>()
-        val observer = object : InstalledRuntimeBootstrapObserver {
-            override fun observe(phase: InstalledRuntimeBootstrapPhase) = Unit
+        val observer =
+            object : InstalledRuntimeBootstrapObserver {
+                override fun observe(phase: InstalledRuntimeBootstrapPhase) = Unit
 
-            override fun observeIndexScope(scope: InstalledRuntimeIndexScope) {
-                observations += scope
+                override fun observeIndexScope(scope: InstalledRuntimeIndexScope) {
+                    observations += scope
+                }
             }
-        }
 
         publishInstalledRuntimeIndexScope(model.model, observer)
 
@@ -55,11 +59,12 @@ class InstalledRuntimeIndexScopeTest {
             gradleProjectPath = ":app",
             sourceSetName = sourceSet,
             sourceRoot = path,
-            sourceKind = if (sourceSet == "test") {
-                WorkspaceSourceRootKind.TEST
-            } else {
-                WorkspaceSourceRootKind.PRODUCTION
-            },
+            sourceKind =
+                if (sourceSet == "test") {
+                    WorkspaceSourceRootKind.TEST
+                } else {
+                    WorkspaceSourceRootKind.PRODUCTION
+                },
             provenance = WorkspaceSourceRootProvenance.AUTHORED,
         )
 }

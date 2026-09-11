@@ -5,6 +5,6 @@ internal fun interface HostedReadCheckpoint {
     suspend fun afterSemanticRead()
 
     companion object {
-        val Unobserved = HostedReadCheckpoint { }
+        val Unobserved = HostedReadCheckpoint {}
     }
 }

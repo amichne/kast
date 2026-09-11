@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>LargeClass:QueryServiceTest.kt:QueryServiceTest</ID>
+    <ID>LongMethod:QueryServiceTest.kt:QueryServiceTest$private fun selfRead: SourceReadResult.Complete</ID>
+    <ID>NamedArguments:QueryServiceTest.kt:QueryServiceTest$create( SourceReadContext.Published( selected.lease as SemanticReadLease, io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity.parse("a".repeat(64)).refined(), ), selected.file as io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity.Workspace, SourceTextIdentity.fromNormalizedCommittedText(" ".repeat(64)), Utf16CodeUnitCount.parse(64).refined(), SourceReadScope.Constrained(selected.scope, selected.constraints), )</ID>
+    <ID>NamedArguments:QueryServiceTest.kt:QueryServiceTest$create( entitySelector, SourceNestingDepth.parse(0).refined(), DeclarationKind.CLASSLIKE, visibility, DeclarationSemanticIdentity.Candidate(candidateSelector), )</ID>
+    <ID>NamedArguments:QueryServiceTest.kt:QueryServiceTest$create( request, candidates, SymbolDiscoveryByteCount.parse(candidates.sumOf { it.projectedUtf8Size().value }).refined(), SymbolDiscoveryWorkCount.parse(work).refined(), SymbolDiscoveryTimings( SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), ), )</ID>
+    <ID>NamedArguments:QueryServiceTest.kt:QueryServiceTest$create( snapshot, SourceRegion.create(SourceRegionKind.DECLARATION, parent).refined(), if (missing) emptyList() else listOf(entity), SourceTextProjection.NotRequested, )</ID>
+    <ID>NamedArguments:QueryServiceTest.kt:QueryServiceTest$fromBoundary( SymbolDiscoveryKind.CLASS, "PaymentService", request.scope.lease, Path.of("/workspace/services/payments/PaymentService.kt"), "file:///workspace/services/payments/PaymentService.kt", 7, )</ID>
+    <ID>NamedArguments:QueryServiceTest.kt:QueryServiceTest$fromBoundary( SymbolDiscoveryKind.CLASS, name, selected.lease, path, path.toUri().toString(), start, )</ID>
+    <ID>NamedArguments:QueryServiceTest.kt:QueryServiceTest$fromBoundary( location.file, location.offset.value, location.offset.value + 20, selection.candidate.name.value, "sample.PaymentService", CompilerSymbolKind.CLASSLIKE, signature, )</ID>
+    <ID>NamedArguments:QueryServiceTest.kt:QueryServiceTest$issueEntity( parent, NonEmptySourceRange.create(range(start, end)).refined(), SourceEntityKind.DECLARATION_CLASSLIKE, SourceEntityName.present(name).refined(), )</ID>
+    <ID>NamedArguments:QueryServiceTest.kt:QueryServiceTest$restore(selected.lease, selected.scope, candidate, selected.constraints)</ID>
+    <ID>WildcardImport:QueryServiceTest.kt:import io.github.amichne.kast.source.contract.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

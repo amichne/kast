@@ -3,10 +3,7 @@ package io.github.amichne.kast.protocol.wire
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-@Serializable
-internal data class IndexSyncResultDocument(
-    val state: IndexSyncStateWireDocument,
-)
+@Serializable internal data class IndexSyncResultDocument(val state: IndexSyncStateWireDocument)
 
 @Serializable
 internal enum class IndexSyncStateWireDocument {
@@ -16,7 +13,7 @@ internal enum class IndexSyncStateWireDocument {
 
 @Serializable
 internal enum class IndexSyncQualificationWireDocument {
-    @SerialName("indexing_in_progress") INDEXING_IN_PROGRESS,
+    @SerialName("indexing_in_progress") INDEXING_IN_PROGRESS
 }
 
 @Serializable

@@ -5,12 +5,10 @@ import io.github.amichne.kast.query.contract.QueryCandidate
 import io.github.amichne.kast.query.contract.QueryCount
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryItemFailure
-import io.github.amichne.kast.query.contract.QueryPredicate
 import io.github.amichne.kast.query.contract.QueryScope
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationFact
-import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.source.contract.Containment
 import io.github.amichne.kast.source.contract.DeclarationKind
 import io.github.amichne.kast.source.contract.DeclarationKindSelection
@@ -24,6 +22,7 @@ import io.github.amichne.kast.source.contract.SourceReadRequest
 import io.github.amichne.kast.source.contract.SourceTextByteLimit
 import io.github.amichne.kast.source.contract.TextProjection
 import io.github.amichne.kast.source.contract.VisibilitySelection
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
@@ -40,89 +39,96 @@ internal fun discoveryKinds(syntax: QueryDiscoverySyntax): List<SymbolNameDiscov
     if (syntax.declarationKinds.values.any { it != CompilerSymbolKind.CLASSLIKE }) {
         add(SymbolNameDiscoveryKind.SYMBOL)
     }
-}.sortedBy { it.ordinal }
+}
+    .sortedBy { it.ordinal }
 
 /**
- * A multi-family query must not spend class candidates once through the class index and again
- * through the broad symbol index. Each child request receives only the declaration families it
- * semantically owns.
+ * A multi-family query must not spend class candidates once through the class index and again through the broad symbol
+ * index. Each child request receives only the declaration families it semantically owns.
  */
 internal fun constraints(
     syntax: QueryDiscoverySyntax,
     discoveryKind: SymbolNameDiscoveryKind,
 ): SymbolDiscoveryConstraints {
-    val declarationKinds = when (discoveryKind) {
-        SymbolNameDiscoveryKind.CLASS ->
-            syntax.declarationKinds.values.filterTo(linkedSetOf()) {
-                it == CompilerSymbolKind.CLASSLIKE
-            }
-        SymbolNameDiscoveryKind.SYMBOL ->
-            syntax.declarationKinds.values.filterTo(linkedSetOf()) {
-                it != CompilerSymbolKind.CLASSLIKE
-            }
-        SymbolNameDiscoveryKind.FILE -> emptySet()
-    }
+    val declarationKinds =
+        when (discoveryKind) {
+            SymbolNameDiscoveryKind.CLASS ->
+                syntax.declarationKinds.values.filterTo(linkedSetOf()) {
+                    it == CompilerSymbolKind.CLASSLIKE
+                }
+            SymbolNameDiscoveryKind.SYMBOL ->
+                syntax.declarationKinds.values.filterTo(linkedSetOf()) {
+                    it != CompilerSymbolKind.CLASSLIKE
+                }
+            SymbolNameDiscoveryKind.FILE -> emptySet()
+        }
     val admittedKinds = SymbolDiscoveryDeclarationKinds.from(declarationKinds).refined()
     return when (val scope = syntax.scope) {
-        QueryScope.Unrestricted -> SymbolDiscoveryConstraints(
-            directory = null,
-            packageName = null,
-            declarationKinds = admittedKinds,
-        )
-        is QueryScope.Restricted -> SymbolDiscoveryConstraints(
-            sourceSets = scope.sourceSets,
-            directory = scope.directory,
-            packageName = scope.packageName,
-            declarationKinds = admittedKinds,
-        )
+        QueryScope.Unrestricted ->
+            SymbolDiscoveryConstraints(
+                directory = null,
+                packageName = null,
+                declarationKinds = admittedKinds,
+            )
+        is QueryScope.Restricted ->
+            SymbolDiscoveryConstraints(
+                sourceSets = scope.sourceSets,
+                directory = scope.directory,
+                packageName = scope.packageName,
+                declarationKinds = admittedKinds,
+            )
     }
 }
 
 internal fun visibilityRequest(
     symbol: SymbolSelector,
     state: QueryExecutionState,
-): SourceReadRequest = SourceReadRequest(
-    anchor = SourceReadAnchor.Symbol(symbol),
-    region = RegionSelection.Anchor,
-    entities = EntitySelection.matching(
-        Containment.SELF,
-        listOf(
-            EntityFilter.Declarations(
-                DeclarationKindSelection.from(setOf(symbol.kind.toDeclarationKind())).refined(),
-                VisibilitySelection.Any,
-            ),
-        ),
-    ).refined(),
-    text = TextProjection.None,
-    entityLimit = SourceEntityLimit.parse(1).refined(),
-    textByteLimit = SourceTextByteLimit.parse(
-        state.request.budget.returnedBytes.value.coerceAtLeast(1L),
-    ).refined(),
-    page = SourceReadPage.First,
-)
+): SourceReadRequest =
+    SourceReadRequest(
+        anchor = SourceReadAnchor.Symbol(symbol),
+        region = RegionSelection.Anchor,
+        entities =
+            EntitySelection.matching(
+                    Containment.SELF,
+                    listOf(
+                        EntityFilter.Declarations(
+                            DeclarationKindSelection.from(setOf(symbol.kind.toDeclarationKind())).refined(),
+                            VisibilitySelection.Any,
+                        )
+                    ),
+                )
+                .refined(),
+        text = TextProjection.None,
+        entityLimit = SourceEntityLimit.parse(1).refined(),
+        textByteLimit = SourceTextByteLimit.parse(state.request.budget.returnedBytes.value.coerceAtLeast(1L)).refined(),
+        page = SourceReadPage.First,
+    )
 
-private fun CompilerSymbolKind.toDeclarationKind(): DeclarationKind = when (this) {
-    CompilerSymbolKind.CLASSLIKE -> DeclarationKind.CLASSLIKE
-    CompilerSymbolKind.CONSTRUCTOR -> DeclarationKind.CONSTRUCTOR
-    CompilerSymbolKind.FUNCTION -> DeclarationKind.FUNCTION
-    CompilerSymbolKind.PROPERTY -> DeclarationKind.PROPERTY
-    CompilerSymbolKind.TYPE_ALIAS -> DeclarationKind.TYPE_ALIAS
-}
+private fun CompilerSymbolKind.toDeclarationKind(): DeclarationKind =
+    when (this) {
+        CompilerSymbolKind.CLASSLIKE -> DeclarationKind.CLASSLIKE
+        CompilerSymbolKind.CONSTRUCTOR -> DeclarationKind.CONSTRUCTOR
+        CompilerSymbolKind.FUNCTION -> DeclarationKind.FUNCTION
+        CompilerSymbolKind.PROPERTY -> DeclarationKind.PROPERTY
+        CompilerSymbolKind.TYPE_ALIAS -> DeclarationKind.TYPE_ALIAS
+    }
 
 internal fun RelationFact.toQuerySymbol(
     prior: List<RelationFact>,
     state: QueryExecutionState,
 ): QuerySymbol {
     val expanded = if (source.fingerprint == subject.fingerprint) target else source
-    val selector = when (expanded) {
-        is RelationEndpoint.Subject -> expanded.selector
-        is RelationEndpoint.Resolved -> SymbolSelector.issue(
-            expanded.lease,
-            expanded.scope,
-            expanded.evidence,
-            expanded.constraints,
-        )
-    }
+    val selector =
+        when (expanded) {
+            is RelationEndpoint.Subject -> expanded.selector
+            is RelationEndpoint.Resolved ->
+                SymbolSelector.issue(
+                    expanded.lease,
+                    expanded.scope,
+                    expanded.evidence,
+                    expanded.constraints,
+                )
+        }
     return QuerySymbol(
         SymbolDescription.from(selector),
         state.boundConnections(prior + this),
@@ -132,46 +138,49 @@ internal fun RelationFact.toQuerySymbol(
 internal fun distinct(
     values: List<QuerySymbol>,
     state: QueryExecutionState,
-): List<QuerySymbol> = values
-    .groupBy { it.selector.fingerprint }
-    .values
-    .map { group ->
-        group.first().copy(connections = state.boundConnections(group.flatMap { it.connections }))
+): List<QuerySymbol> =
+    values
+        .groupBy { it.selector.fingerprint }
+        .values
+        .map { group ->
+            group.first().copy(connections = state.boundConnections(group.flatMap { it.connections }))
+        }
+        .sortedWith(
+            compareBy(
+                { it.description.file.stableValue },
+                { it.description.range.startInclusive },
+                { it.description.compilerIdentity.value },
+            )
+        )
+
+internal fun QueryCandidate.projectedUtf8Size(): Long = selection.candidate.projectedUtf8Size().value
+
+internal fun QuerySymbol.projectedUtf8Size(): Long =
+    saturatedSum(
+        listOf(description.selector.projectedUtf8Size()) + connections.map { it.canonicalProjection().utf8Size() }
+    )
+
+internal fun QueryItemFailure.projectedUtf8Size(): Long =
+    when (this) {
+        is QueryItemFailure.Refinement ->
+            saturatedAdd(
+                candidate.candidate.projectedUtf8Size().value,
+                reason.name.utf8Size(),
+            )
+        is QueryItemFailure.ExactReference ->
+            saturatedAdd(
+                selector.projectedUtf8Size(),
+                reason.name.utf8Size(),
+            )
+        is QueryItemFailure.Visibility ->
+            saturatedAdd(
+                selector.projectedUtf8Size(),
+                reason.name.utf8Size(),
+            )
+        is QueryItemFailure.PredicateUnproven -> selector.projectedUtf8Size()
+        is QueryItemFailure.Relation ->
+            saturatedSum(listOf(selector.projectedUtf8Size(), meaning.toString().utf8Size(), reason.name.utf8Size()))
     }
-    .sortedWith(
-        compareBy(
-            { it.description.file.stableValue },
-            { it.description.range.startInclusive },
-            { it.description.compilerIdentity.value },
-        ),
-    )
-
-internal fun QueryCandidate.projectedUtf8Size(): Long =
-    selection.candidate.projectedUtf8Size().value
-
-internal fun QuerySymbol.projectedUtf8Size(): Long = saturatedSum(
-    listOf(description.selector.projectedUtf8Size()) +
-        connections.map { it.canonicalProjection().utf8Size() },
-)
-
-internal fun QueryItemFailure.projectedUtf8Size(): Long = when (this) {
-    is QueryItemFailure.Refinement -> saturatedAdd(
-        candidate.candidate.projectedUtf8Size().value,
-        reason.name.utf8Size(),
-    )
-    is QueryItemFailure.ExactReference -> saturatedAdd(
-        selector.projectedUtf8Size(),
-        reason.name.utf8Size(),
-    )
-    is QueryItemFailure.Visibility -> saturatedAdd(
-        selector.projectedUtf8Size(),
-        reason.name.utf8Size(),
-    )
-    is QueryItemFailure.PredicateUnproven -> selector.projectedUtf8Size()
-    is QueryItemFailure.Relation -> saturatedSum(
-        listOf(selector.projectedUtf8Size(), meaning.toString().utf8Size(), reason.name.utf8Size()),
-    )
-}
 
 private fun SymbolSelector.projectedUtf8Size(): Long = buildString {
     append(lease.workspaceRoot.value)
@@ -193,23 +202,27 @@ private fun SymbolSelector.projectedUtf8Size(): Long = buildString {
     append(compilerIdentity.value)
     append('\u0000')
     append(fingerprint.value)
-}.utf8Size()
+}
+    .utf8Size()
 
 private fun String.utf8Size(): Long = toByteArray(StandardCharsets.UTF_8).size.toLong()
 
 private fun saturatedSum(values: List<Long>): Long = values.fold(0L, ::saturatedAdd)
 
-internal fun SymbolDiscoveryOutcome.batch(): SymbolDiscoveryBatch = when (this) {
-    is SymbolDiscoveryOutcome.Complete -> batch
-    is SymbolDiscoveryOutcome.Qualified -> batch
-}
+internal fun SymbolDiscoveryOutcome.batch(): SymbolDiscoveryBatch =
+    when (this) {
+        is SymbolDiscoveryOutcome.Complete -> batch
+        is SymbolDiscoveryOutcome.Qualified -> batch
+    }
 
-internal fun Int.queryCount(): QueryCount = when (val parsed = QueryCount.parse(this)) {
-    is Refinement.Refined -> parsed.value
-    is Refinement.Rejected -> error("A collection size cannot be negative")
-}
+internal fun Int.queryCount(): QueryCount =
+    when (val parsed = QueryCount.parse(this)) {
+        is Refinement.Refined -> parsed.value
+        is Refinement.Rejected -> error("A collection size cannot be negative")
+    }
 
-private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-    is Refinement.Refined -> value
-    is Refinement.Rejected -> error("Internally derived query value violated its invariant: $failure")
-}
+private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error("Internally derived query value violated its invariant: $failure")
+    }

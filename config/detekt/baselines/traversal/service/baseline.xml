@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:TraversalService.kt:TraversalService$override suspend fun run: TraversalResult</ID>
+    <ID>CyclomaticComplexMethod:TraversalService.kt:TraversalService$override suspend fun run: TraversalResult</ID>
+    <ID>LargeClass:TraversalService.kt:TraversalService : TraversalOperations</ID>
+    <ID>LargeClass:TraversalServiceTest.kt:TraversalServiceTest</ID>
+    <ID>LongMethod:TraversalService.kt:TraversalService$override suspend fun run: TraversalResult</ID>
+    <ID>LongMethod:TraversalServiceTest.kt:TraversalServiceTest$@Test fun `every resumable aggregate bound qualifies with a continuation`</ID>
+    <ID>LongMethod:TraversalServiceTest.kt:TraversalServiceTest$@Test fun `terminal incomplete evidence survives an aggregate continuation`</ID>
+    <ID>LongMethod:TraversalTestFixture.kt:TraversalTestFixture$fun selector: SymbolSelector</ID>
+    <ID>NestedBlockDepth:TraversalService.kt:TraversalService$override suspend fun run: TraversalResult</ID>
+  </CurrentIssues>
+</SmellBaseline>

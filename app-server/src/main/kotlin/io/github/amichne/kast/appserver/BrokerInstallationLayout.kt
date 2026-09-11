@@ -1,12 +1,13 @@
 package io.github.amichne.kast.appserver
 
-import java.nio.file.Path
 import java.nio.charset.StandardCharsets
+import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.HexFormat
 
 /** Physical executable selection is retained; neither child launch nor routing follows `current`. */
-internal class BrokerInstallationLayout private constructor(
+internal class BrokerInstallationLayout
+private constructor(
     val root: Path,
     val hostProfile: String,
 ) {
@@ -18,11 +19,15 @@ internal class BrokerInstallationLayout private constructor(
 
     companion object {
         /** The caller has established the physical installed executable and selected host home. */
-        fun from(kast: Path, codexHome: Path): BrokerInstallationLayout = BrokerInstallationLayout(
-            kast.parent.parent,
-            HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(
-                codexHome.toString().toByteArray(StandardCharsets.UTF_8),
-            )).take(16),
-        )
+        fun from(kast: Path, codexHome: Path): BrokerInstallationLayout =
+            BrokerInstallationLayout(
+                kast.parent.parent,
+                HexFormat.of()
+                    .formatHex(
+                        MessageDigest.getInstance("SHA-256")
+                            .digest(codexHome.toString().toByteArray(StandardCharsets.UTF_8))
+                    )
+                    .take(16),
+            )
     }
 }

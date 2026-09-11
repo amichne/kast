@@ -13,15 +13,16 @@ internal fun sourceCommandGroup(
     preparers: CanonicalCliRequestPreparers,
     requestInput: CliRequestDocumentInput,
 ): CommandFamily {
-    val read = SemanticKastCommand(
-        name = "read",
-        operation = CanonicalOperation.SOURCE_READ,
-        schemaUsage = "source read < request.json",
-        description = "Read source from one canonical JSON request on standard input.",
-        serializer = SourceReadRequest.serializer(),
-        requestInput = requestInput,
-        preparer = preparers.sourceRead,
-    )
+    val read =
+        SemanticKastCommand(
+            name = "read",
+            operation = CanonicalOperation.SOURCE_READ,
+            schemaUsage = "source read < request.json",
+            description = "Read source from one canonical JSON request on standard input.",
+            serializer = SourceReadRequest.serializer(),
+            requestInput = requestInput,
+            preparer = preparers.sourceRead,
+        )
     return CommandFamily(
         KastCommandGroup("source", "Read exact structural source context.").subcommands(read),
         listOf(read),

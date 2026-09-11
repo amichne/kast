@@ -31,41 +31,55 @@ internal class ProvenTopologyBinding private constructor(val symbol: TopologySym
             source: TopologyIdentitySource,
             target: KaSymbol,
             lookup: TopologyRegisteredSourceLookup,
-        ): TopologyIdentityResolution = with(session) {
-            fun rejected(reason: TopologyBindingFailure) = TopologyIdentityResolution.Mismatched(
-                TopologyIdentityMismatchEvidence(
-                    source.stage, source.file, source.occurrence,
-                    candidate.symbol.file, candidate.symbol.evidence.range, reason,
-                ),
-            )
-            if (candidate.key != current || source.file !in current.files) {
-                return rejected(TopologyBindingFailure.EPOCH_CHANGED)
+        ): TopologyIdentityResolution =
+            with(session) {
+                fun rejected(reason: TopologyBindingFailure) =
+                    TopologyIdentityResolution.Mismatched(
+                        TopologyIdentityMismatchEvidence(
+                            source.stage,
+                            source.file,
+                            source.occurrence,
+                            candidate.symbol.file,
+                            candidate.symbol.evidence.range,
+                            reason,
+                        )
+                    )
+                if (candidate.key != current || source.file !in current.files) {
+                    return rejected(TopologyBindingFailure.EPOCH_CHANGED)
+                }
+                val declaration =
+                    when (val loaded = lookup.load(candidate)) {
+                        is TopologyRegisteredSource.Loaded -> loaded.declaration
+                        is TopologyRegisteredSource.LoadFailed ->
+                            return TopologyIdentityResolution.LoadFailed(
+                                candidate.symbol.file,
+                                loaded.failure,
+                            )
+                        TopologyRegisteredSource.DeclarationUnavailable ->
+                            return rejected(TopologyBindingFailure.DECLARATION_UNAVAILABLE)
+                    }
+                val registered = declaration.symbol
+                if (target.origin != KaSymbolOrigin.SOURCE || registered.origin != KaSymbolOrigin.SOURCE) {
+                    return rejected(TopologyBindingFailure.ORIGIN_NOT_ADMITTED)
+                }
+                when (
+                    val role =
+                        TopologyBindingRole.admit(
+                            candidate.symbol.evidence.kind,
+                            registered.sourceRole(),
+                            target.sourceRole(),
+                        )
+                ) {
+                    is Refinement.Rejected -> return rejected(role.failure)
+                    is Refinement.Refined -> Unit
+                }
+                when {
+                    target.containingModule != registered.containingModule ->
+                        rejected(TopologyBindingFailure.MODULE_MISMATCH)
+                    target != registered -> rejected(TopologyBindingFailure.DECLARATION_MISMATCH)
+                    else -> TopologyIdentityResolution.Matched(ProvenTopologyBinding(candidate.symbol))
+                }
             }
-            val declaration = when (val loaded = lookup.load(candidate)) {
-                is TopologyRegisteredSource.Loaded -> loaded.declaration
-                is TopologyRegisteredSource.LoadFailed -> return TopologyIdentityResolution.LoadFailed(
-                    candidate.symbol.file, loaded.failure,
-                )
-                TopologyRegisteredSource.DeclarationUnavailable ->
-                    return rejected(TopologyBindingFailure.DECLARATION_UNAVAILABLE)
-            }
-            val registered = declaration.symbol
-            if (target.origin != KaSymbolOrigin.SOURCE || registered.origin != KaSymbolOrigin.SOURCE) {
-                return rejected(TopologyBindingFailure.ORIGIN_NOT_ADMITTED)
-            }
-            when (val role = TopologyBindingRole.admit(
-                candidate.symbol.evidence.kind, registered.sourceRole(), target.sourceRole(),
-            )) {
-                is Refinement.Rejected -> return rejected(role.failure)
-                is Refinement.Refined -> Unit
-            }
-            when {
-                target.containingModule != registered.containingModule ->
-                    rejected(TopologyBindingFailure.MODULE_MISMATCH)
-                target != registered -> rejected(TopologyBindingFailure.DECLARATION_MISMATCH)
-                else -> TopologyIdentityResolution.Matched(ProvenTopologyBinding(candidate.symbol))
-            }
-        }
     }
 }
 
@@ -76,15 +90,18 @@ internal sealed interface TopologyRegisteredSourceLookup {
 
 internal sealed interface TopologyRegisteredSource {
     data class Loaded(val declaration: KtNamedDeclaration) : TopologyRegisteredSource
+
     data class LoadFailed(val failure: TopologyFileExtractionFailure) : TopologyRegisteredSource
+
     data object DeclarationUnavailable : TopologyRegisteredSource
 }
 
-private fun KaSymbol.sourceRole(): TopologySourceRole = when (this) {
-    is KaConstructorSymbol -> TopologySourceRole.CONSTRUCTOR
-    is KaFunctionSymbol -> TopologySourceRole.FUNCTION
-    is KaKotlinPropertySymbol -> TopologySourceRole.PROPERTY
-    is KaTypeAliasSymbol -> TopologySourceRole.TYPE_ALIAS
-    is KaClassLikeSymbol -> TopologySourceRole.CLASS_LIKE
-    else -> TopologySourceRole.UNSUPPORTED
-}
+private fun KaSymbol.sourceRole(): TopologySourceRole =
+    when (this) {
+        is KaConstructorSymbol -> TopologySourceRole.CONSTRUCTOR
+        is KaFunctionSymbol -> TopologySourceRole.FUNCTION
+        is KaKotlinPropertySymbol -> TopologySourceRole.PROPERTY
+        is KaTypeAliasSymbol -> TopologySourceRole.TYPE_ALIAS
+        is KaClassLikeSymbol -> TopologySourceRole.CLASS_LIKE
+        else -> TopologySourceRole.UNSUPPORTED
+    }

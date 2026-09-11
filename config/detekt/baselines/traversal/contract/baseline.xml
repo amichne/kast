@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:TraversalResult.kt:TraversalPage.Companion$encodedBytes &lt; 0L || examinedWorkUnits &lt; 0L || elapsedMillis &lt; 0L || expandedFrontier &lt; 0</ID>
+    <ID>CyclomaticComplexMethod:TraversalResult.kt:TraversalPage.Companion$fun fromBoundary: Refinement&lt;TraversalPage, TraversalPageFailure></ID>
+    <ID>MagicNumber:TraversalPlan.kt:0xff</ID>
+    <ID>MagicNumber:TraversalPlan.kt:16</ID>
+    <ID>MagicNumber:TraversalState.kt:TraversalContinuation.Companion$0xff</ID>
+    <ID>MagicNumber:TraversalState.kt:TraversalContinuation.Companion$16</ID>
+  </CurrentIssues>
+</SmellBaseline>

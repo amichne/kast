@@ -1,103 +1,113 @@
 package io.github.amichne.kast.query.protocol
 
-import io.github.amichne.kast.query.protocol.*
-
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
-import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
-import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
-import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
-import io.github.amichne.kast.protocol.contract.SymbolInspectResult
-import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
+import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
+import io.github.amichne.kast.query.protocol.*
 import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
+import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult as DomainDescriptionResult
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRejection as DomainDiscoveryRejection
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryResult as DomainDiscoveryResult
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactRejection
 import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
-import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
-import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult as DomainDescriptionResult
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRejection as DomainDiscoveryRejection
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest as DomainDiscoveryRequest
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryResult as DomainDiscoveryResult
 import io.github.amichne.kast.symbol.contract.SymbolResolutionResult as DomainResolutionResult
-
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 class CanonicalSymbolDiscoverProtocol(
     private val operations: SymbolDiscoveryOperations,
     private val authority: QueryReferenceAuthority,
 ) {
-    suspend fun execute(request: SymbolDiscoverRequest, current: SemanticReadAuthority, budget: SymbolDiscoveryBudget): OperationOutcome<
+    suspend fun execute(
+        request: SymbolDiscoverRequest,
+        current: SemanticReadAuthority,
+        budget: SymbolDiscoveryBudget,
+    ): OperationOutcome<
         SymbolDiscoverResult,
         SymbolDiscoverQualification,
         SymbolDiscoverRejection,
-        > {
-        val domainRequest = when (val admitted = admitDiscoveryRequest(current, request, budget)) {
-            is DiscoveryRequestAdmission.Admitted -> admitted.request
-            DiscoveryRequestAdmission.Rejected ->
-                return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
-        }
+    > {
+        val domainRequest =
+            when (val admitted = admitDiscoveryRequest(current, request, budget)) {
+                is DiscoveryRequestAdmission.Admitted -> admitted.request
+                DiscoveryRequestAdmission.Rejected ->
+                    return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
+            }
         return when (val result = operations.discover(domainRequest)) {
             is DomainDiscoveryResult.Rejected -> OperationOutcome.Rejected(result.reason.protocol())
             is DomainDiscoveryResult.Discovered -> projectDiscovery(result.outcome)
         }
     }
 
-    private fun projectDiscovery(outcome: SymbolDiscoveryOutcome): OperationOutcome<
+    private fun projectDiscovery(
+        outcome: SymbolDiscoveryOutcome
+    ): OperationOutcome<
         SymbolDiscoverResult,
         SymbolDiscoverQualification,
         SymbolDiscoverRejection,
-        > {
-        val batch = when (outcome) {
-            is SymbolDiscoveryOutcome.Complete -> outcome.batch
-            is SymbolDiscoveryOutcome.Qualified -> outcome.batch
-        }
-        val selectors = when (val issuance = authority.issueCandidates(batch)) {
-            is CandidateSelectorIssuance.Issued -> issuance.selectors
-            is CandidateSelectorIssuance.Rejected ->
-                return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
-        }
+    > {
+        val batch =
+            when (outcome) {
+                is SymbolDiscoveryOutcome.Complete -> outcome.batch
+                is SymbolDiscoveryOutcome.Qualified -> outcome.batch
+            }
+        val selectors =
+            when (val issuance = authority.issueCandidates(batch)) {
+                is CandidateSelectorIssuance.Issued -> issuance.selectors
+                is CandidateSelectorIssuance.Rejected ->
+                    return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
+            }
         if (selectors.size != batch.candidates.size) {
             return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
         }
-        val documents = batch.candidates.zip(selectors).map { (candidate, selector) ->
-            candidate.protocolDocument(selector)
-                ?: return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
-        }
-        val bounded = when (val admitted = BoundedProtocolList.create(documents)) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected ->
-                return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
-        }
-        val envelope = EvidenceEnvelope(
-            CanonicalOperation.SYMBOL_DISCOVER.id,
-            batch.lease.evidenceBasis(),
-            SymbolDiscoverResult(bounded),
-        )
+        val documents =
+            batch.candidates.zip(selectors).map { (candidate, selector) ->
+                candidate.protocolDocument(selector)
+                    ?: return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
+            }
+        val bounded =
+            when (val admitted = BoundedProtocolList.create(documents)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
+            }
+        val envelope =
+            EvidenceEnvelope(
+                CanonicalOperation.SYMBOL_DISCOVER.id,
+                batch.lease.evidenceBasis(),
+                SymbolDiscoverResult(bounded),
+            )
         return when (outcome) {
             is SymbolDiscoveryOutcome.Complete -> OperationOutcome.Complete(envelope)
             is SymbolDiscoveryOutcome.Qualified -> {
-                val qualification = when (
-                    val refined = SymbolDiscoverQualification.from(
-                        outcome.qualifications.values
-                            .map(SymbolDiscoveryQualification::protocolLimitation)
-                            .toSet(),
-                    )
-                ) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected ->
-                        return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
-                }
+                val qualification =
+                    when (
+                        val refined =
+                            SymbolDiscoverQualification.from(
+                                outcome.qualifications.values
+                                    .map(SymbolDiscoveryQualification::protocolLimitation)
+                                    .toSet()
+                            )
+                    ) {
+                        is Refinement.Refined -> refined.value
+                        is Refinement.Rejected ->
+                            return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
+                    }
                 OperationOutcome.Qualified(envelope, qualification)
             }
         }
@@ -107,9 +117,8 @@ class CanonicalSymbolDiscoverProtocol(
 /**
  * Proof transition: `SymbolDiscoveryQualification -> SymbolDiscoverLimitation`.
  *
- * Establishes the exhaustive one-to-one public limitation for every domain discovery qualification,
- * so no limitation is collapsed into a generic incomplete state. The mapping is exhaustive over the
- * closed domain enum.
+ * Establishes the exhaustive one-to-one public limitation for every domain discovery qualification, so no limitation is
+ * collapsed into a generic incomplete state. The mapping is exhaustive over the closed domain enum.
  */
 private fun SymbolDiscoveryQualification.protocolLimitation(): SymbolDiscoverLimitation =
     when (this) {
@@ -129,27 +138,29 @@ class CanonicalSymbolInspectProtocol(
     private val operations: SymbolExactOperations,
     private val authority: QueryReferenceAuthority,
 ) {
-    suspend fun execute(request: SymbolInspectRequest, current: SemanticReadAuthority): OperationOutcome<
+    suspend fun execute(
+        request: SymbolInspectRequest,
+        current: SemanticReadAuthority,
+    ): OperationOutcome<
         SymbolInspectResult,
         SymbolInspectQualification,
         SymbolInspectRejection,
-        > {
-        val exact = when (val target = request.target) {
-            is SymbolInspectTarget.Candidate -> when (
-                val refinement = refineCandidate(target.selector, current)
-            ) {
-                is CandidateInspectionRefinement.Refined -> refinement.exact
-                is CandidateInspectionRefinement.Rejected ->
-                    return OperationOutcome.Rejected(refinement.rejection)
+    > {
+        val exact =
+            when (val target = request.target) {
+                is SymbolInspectTarget.Candidate ->
+                    when (val refinement = refineCandidate(target.selector, current)) {
+                        is CandidateInspectionRefinement.Refined -> refinement.exact
+                        is CandidateInspectionRefinement.Rejected ->
+                            return OperationOutcome.Rejected(refinement.rejection)
+                    }
+                is SymbolInspectTarget.Exact ->
+                    when (val lookup = authority.exact(target.selector, current)) {
+                        is ExactSelectorLookup.Found -> ExactInspectionTarget(lookup.selector, target.selector)
+                        is ExactSelectorLookup.Rejected ->
+                            return OperationOutcome.Rejected(lookup.reason.inspectProtocol())
+                    }
             }
-            is SymbolInspectTarget.Exact -> when (val lookup = authority.exact(target.selector, current)) {
-                is ExactSelectorLookup.Found -> ExactInspectionTarget(lookup.selector, target.selector)
-                is ExactSelectorLookup.Rejected ->
-                    return OperationOutcome.Rejected(
-                        lookup.reason.inspectProtocol(),
-                    )
-            }
-        }
         return describe(exact)
     }
 
@@ -157,52 +168,53 @@ class CanonicalSymbolInspectProtocol(
         token: io.github.amichne.kast.protocol.contract.ProtocolText,
         current: SemanticReadAuthority,
     ): CandidateInspectionRefinement {
-        val selection = when (val lookup = authority.candidate(token, current)) {
-            is CandidateSelectorLookup.Found -> when (val selector = lookup.selector) {
-                is io.github.amichne.kast.symbol.contract.CandidateSelector.Declaration ->
-                    selector.selection
-                is io.github.amichne.kast.symbol.contract.CandidateSelector.File,
-                is io.github.amichne.kast.symbol.contract.CandidateSelector.Range,
-                    -> return CandidateInspectionRefinement.Rejected(
-                        SymbolInspectRejection.CANDIDATE_NOT_DECLARATION,
+        val selection =
+            when (val lookup = authority.candidate(token, current)) {
+                is CandidateSelectorLookup.Found ->
+                    when (val selector = lookup.selector) {
+                        is io.github.amichne.kast.symbol.contract.CandidateSelector.Declaration -> selector.selection
+                        is io.github.amichne.kast.symbol.contract.CandidateSelector.File,
+                        is io.github.amichne.kast.symbol.contract.CandidateSelector.Range ->
+                            return CandidateInspectionRefinement.Rejected(
+                                SymbolInspectRejection.CANDIDATE_NOT_DECLARATION
+                            )
+                    }
+                is CandidateSelectorLookup.Rejected ->
+                    return CandidateInspectionRefinement.Rejected(
+                        if (lookup.reason == SelectorLookupRejection.STALE) SymbolInspectRejection.CANDIDATE_STALE
+                        else lookup.reason.inspectProtocol()
                     )
             }
-            is CandidateSelectorLookup.Rejected -> return CandidateInspectionRefinement.Rejected(
-                if (lookup.reason == SelectorLookupRejection.STALE) SymbolInspectRejection.CANDIDATE_STALE
-                else lookup.reason.inspectProtocol(),
-            )
-        }
-        val resolved = when (val result = operations.resolve(SymbolResolutionRequest(selection))) {
-            is DomainResolutionResult.Rejected -> return CandidateInspectionRefinement.Rejected(
-                result.reason.inspectCandidateProtocol(),
-            )
-            is DomainResolutionResult.Resolved -> result.symbol.selector
-        }
-        val token = when (val issuance = authority.issueExact(resolved)) {
-            is ExactSelectorIssuance.Issued -> issuance.selector
-            is ExactSelectorIssuance.Rejected -> return CandidateInspectionRefinement.Rejected(
-                SymbolInspectRejection.AMBIGUOUS,
-            )
-        }
+        val resolved =
+            when (val result = operations.resolve(SymbolResolutionRequest(selection))) {
+                is DomainResolutionResult.Rejected ->
+                    return CandidateInspectionRefinement.Rejected(result.reason.inspectCandidateProtocol())
+                is DomainResolutionResult.Resolved -> result.symbol.selector
+            }
+        val token =
+            when (val issuance = authority.issueExact(resolved)) {
+                is ExactSelectorIssuance.Issued -> issuance.selector
+                is ExactSelectorIssuance.Rejected ->
+                    return CandidateInspectionRefinement.Rejected(SymbolInspectRejection.AMBIGUOUS)
+            }
         return CandidateInspectionRefinement.Refined(ExactInspectionTarget(resolved, token))
     }
 
     private suspend fun describe(
-        exact: ExactInspectionTarget,
+        exact: ExactInspectionTarget
     ): OperationOutcome<SymbolInspectResult, SymbolInspectQualification, SymbolInspectRejection> =
         when (val result = operations.describe(ExactSymbolRequest(exact.selector))) {
-            is DomainDescriptionResult.Rejected -> OperationOutcome.Rejected(
-                result.reason.inspectExactProtocol(),
-            )
+            is DomainDescriptionResult.Rejected -> OperationOutcome.Rejected(result.reason.inspectExactProtocol())
             is DomainDescriptionResult.Described -> {
-                val document = result.description.protocolDocument(exact.token)
-                    ?: return OperationOutcome.Rejected(SymbolInspectRejection.NOT_FOUND)
+                val document =
+                    result.description.protocolDocument(exact.token)
+                        ?: return OperationOutcome.Rejected(SymbolInspectRejection.NOT_FOUND)
                 OperationOutcome.Complete(
                     EvidenceEnvelope(
                         CanonicalOperation.SYMBOL_INSPECT.id,
                         result.description.selector.lease.evidenceBasis(),
                         SymbolInspectResult(document),
-                    ),
+                    )
                 )
             }
         }
@@ -214,65 +226,57 @@ private data class ExactInspectionTarget(
 )
 
 private sealed interface CandidateInspectionRefinement {
-    data class Refined(
-        val exact: ExactInspectionTarget,
-    ) : CandidateInspectionRefinement
+    data class Refined(val exact: ExactInspectionTarget) : CandidateInspectionRefinement
 
-    data class Rejected(
-        val rejection: SymbolInspectRejection,
-    ) : CandidateInspectionRefinement
+    data class Rejected(val rejection: SymbolInspectRejection) : CandidateInspectionRefinement
 }
 
-private fun DomainDiscoveryRejection.protocol(): SymbolDiscoverRejection = when (this) {
-    DomainDiscoveryRejection.WORKSPACE_NOT_READY,
-    DomainDiscoveryRejection.STALE_GENERATION,
-        -> SymbolDiscoverRejection.WORKSPACE_NOT_READY
-    DomainDiscoveryRejection.SCOPE_REJECTED,
-    DomainDiscoveryRejection.WORKSPACE_INDEX_UNAVAILABLE,
-    DomainDiscoveryRejection.PROVIDER_UNAVAILABLE,
-    DomainDiscoveryRejection.COMPILER_CONTRACT_VIOLATION,
-        -> SymbolDiscoverRejection.QUERY_REJECTED
-}
+private fun DomainDiscoveryRejection.protocol(): SymbolDiscoverRejection =
+    when (this) {
+        DomainDiscoveryRejection.WORKSPACE_NOT_READY,
+        DomainDiscoveryRejection.STALE_GENERATION -> SymbolDiscoverRejection.WORKSPACE_NOT_READY
+        DomainDiscoveryRejection.SCOPE_REJECTED,
+        DomainDiscoveryRejection.WORKSPACE_INDEX_UNAVAILABLE,
+        DomainDiscoveryRejection.PROVIDER_UNAVAILABLE,
+        DomainDiscoveryRejection.COMPILER_CONTRACT_VIOLATION -> SymbolDiscoverRejection.QUERY_REJECTED
+    }
 
-private fun SymbolExactRejection.inspectCandidateProtocol(): SymbolInspectRejection = when (this) {
-    SymbolExactRejection.WORKSPACE_NOT_READY -> SymbolInspectRejection.WORKSPACE_NOT_READY
-    SymbolExactRejection.WORKSPACE_ROOT_MISMATCH ->
-        SymbolInspectRejection.SELECTOR_WORKSPACE_MISMATCH
-    SymbolExactRejection.STALE_GENERATION,
-    SymbolExactRejection.STALE_LOCATION,
-    SymbolExactRejection.DECLARATION_MOVED_OR_CHANGED,
-        -> SymbolInspectRejection.CANDIDATE_STALE
-    SymbolExactRejection.AMBIGUOUS_DECLARATION -> SymbolInspectRejection.AMBIGUOUS
-    SymbolExactRejection.SCOPE_REJECTED,
-    SymbolExactRejection.WORKSPACE_INDEX_UNAVAILABLE,
-    SymbolExactRejection.OUTSIDE_SCOPE,
-    SymbolExactRejection.UNSUPPORTED_DECLARATION,
-    SymbolExactRejection.COMPILER_IDENTITY_UNAVAILABLE,
-    SymbolExactRejection.COMPILER_CONTRACT_VIOLATION,
-        -> SymbolInspectRejection.NOT_FOUND
-}
+private fun SymbolExactRejection.inspectCandidateProtocol(): SymbolInspectRejection =
+    when (this) {
+        SymbolExactRejection.WORKSPACE_NOT_READY -> SymbolInspectRejection.WORKSPACE_NOT_READY
+        SymbolExactRejection.WORKSPACE_ROOT_MISMATCH -> SymbolInspectRejection.SELECTOR_WORKSPACE_MISMATCH
+        SymbolExactRejection.STALE_GENERATION,
+        SymbolExactRejection.STALE_LOCATION,
+        SymbolExactRejection.DECLARATION_MOVED_OR_CHANGED -> SymbolInspectRejection.CANDIDATE_STALE
+        SymbolExactRejection.AMBIGUOUS_DECLARATION -> SymbolInspectRejection.AMBIGUOUS
+        SymbolExactRejection.SCOPE_REJECTED,
+        SymbolExactRejection.WORKSPACE_INDEX_UNAVAILABLE,
+        SymbolExactRejection.OUTSIDE_SCOPE,
+        SymbolExactRejection.UNSUPPORTED_DECLARATION,
+        SymbolExactRejection.COMPILER_IDENTITY_UNAVAILABLE,
+        SymbolExactRejection.COMPILER_CONTRACT_VIOLATION -> SymbolInspectRejection.NOT_FOUND
+    }
 
-private fun SymbolExactRejection.inspectExactProtocol(): SymbolInspectRejection = when (this) {
-    SymbolExactRejection.WORKSPACE_NOT_READY -> SymbolInspectRejection.WORKSPACE_NOT_READY
-    SymbolExactRejection.WORKSPACE_ROOT_MISMATCH ->
-        SymbolInspectRejection.SELECTOR_WORKSPACE_MISMATCH
-    SymbolExactRejection.STALE_GENERATION,
-    SymbolExactRejection.STALE_LOCATION,
-    SymbolExactRejection.DECLARATION_MOVED_OR_CHANGED,
-        -> SymbolInspectRejection.EXACT_SELECTOR_STALE
-    SymbolExactRejection.SCOPE_REJECTED,
-    SymbolExactRejection.WORKSPACE_INDEX_UNAVAILABLE,
-    SymbolExactRejection.OUTSIDE_SCOPE,
-    SymbolExactRejection.AMBIGUOUS_DECLARATION,
-    SymbolExactRejection.UNSUPPORTED_DECLARATION,
-    SymbolExactRejection.COMPILER_IDENTITY_UNAVAILABLE,
-    SymbolExactRejection.COMPILER_CONTRACT_VIOLATION,
-        -> SymbolInspectRejection.NOT_FOUND
-}
+private fun SymbolExactRejection.inspectExactProtocol(): SymbolInspectRejection =
+    when (this) {
+        SymbolExactRejection.WORKSPACE_NOT_READY -> SymbolInspectRejection.WORKSPACE_NOT_READY
+        SymbolExactRejection.WORKSPACE_ROOT_MISMATCH -> SymbolInspectRejection.SELECTOR_WORKSPACE_MISMATCH
+        SymbolExactRejection.STALE_GENERATION,
+        SymbolExactRejection.STALE_LOCATION,
+        SymbolExactRejection.DECLARATION_MOVED_OR_CHANGED -> SymbolInspectRejection.EXACT_SELECTOR_STALE
+        SymbolExactRejection.SCOPE_REJECTED,
+        SymbolExactRejection.WORKSPACE_INDEX_UNAVAILABLE,
+        SymbolExactRejection.OUTSIDE_SCOPE,
+        SymbolExactRejection.AMBIGUOUS_DECLARATION,
+        SymbolExactRejection.UNSUPPORTED_DECLARATION,
+        SymbolExactRejection.COMPILER_IDENTITY_UNAVAILABLE,
+        SymbolExactRejection.COMPILER_CONTRACT_VIOLATION -> SymbolInspectRejection.NOT_FOUND
+    }
 
-private fun SelectorLookupRejection.inspectProtocol(): SymbolInspectRejection = when (this) {
-    SelectorLookupRejection.WRONG_KIND -> SymbolInspectRejection.SELECTOR_WRONG_KIND
-    SelectorLookupRejection.MALFORMED -> SymbolInspectRejection.SELECTOR_MALFORMED
-    SelectorLookupRejection.STALE -> SymbolInspectRejection.EXACT_SELECTOR_STALE
-    SelectorLookupRejection.WORKSPACE_MISMATCH -> SymbolInspectRejection.SELECTOR_WORKSPACE_MISMATCH
-}
+private fun SelectorLookupRejection.inspectProtocol(): SymbolInspectRejection =
+    when (this) {
+        SelectorLookupRejection.WRONG_KIND -> SymbolInspectRejection.SELECTOR_WRONG_KIND
+        SelectorLookupRejection.MALFORMED -> SymbolInspectRejection.SELECTOR_MALFORMED
+        SelectorLookupRejection.STALE -> SymbolInspectRejection.EXACT_SELECTOR_STALE
+        SelectorLookupRejection.WORKSPACE_MISMATCH -> SymbolInspectRejection.SELECTOR_WORKSPACE_MISMATCH
+    }

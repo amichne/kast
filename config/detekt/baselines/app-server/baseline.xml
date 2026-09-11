@@ -1,0 +1,505 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:AppServerManagement.kt:InstalledAppServerManager$override fun execute: AppServerManagementResult</ID>
+    <ID>CognitiveComplexMethod:AppServerManagement.kt:InstalledAppServerManager$private fun passiveStatus: AppServerManagementResult</ID>
+    <ID>CognitiveComplexMethod:AppServerManagement.kt:InstalledAppServerManager$private fun rpc: JsonObject?</ID>
+    <ID>CognitiveComplexMethod:BrokerInstallationState.kt:BrokerInstallationState$private fun identity: Refinement&lt;String, InstallationStateFailure></ID>
+    <ID>CognitiveComplexMethod:BrokerProcess.kt:JdkBrokerProcessExecutor$override suspend fun execute: BrokerProcessExecution</ID>
+    <ID>CognitiveComplexMethod:BrokerSessionHub.kt:BrokerSessionHub$private fun control: String</ID>
+    <ID>CognitiveComplexMethod:BrokerSessionHub.kt:BrokerSessionHub.Session$private suspend fun acceptLocked</ID>
+    <ID>CognitiveComplexMethod:BrokerSessionHub.kt:BrokerSessionHub.Session$private suspend fun receiveLocked</ID>
+    <ID>CognitiveComplexMethod:BrokerSessionHub.kt:BrokerSessionHub.Session$suspend fun start</ID>
+    <ID>CognitiveComplexMethod:CodexHostInvocation.kt:CodexServiceInvocation.Companion$fun admit: Refinement&lt;CodexServiceInvocation, CodexServiceArgumentFailure></ID>
+    <ID>CognitiveComplexMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$internal suspend fun fromUpstream: ProtocolRouting</ID>
+    <ID>CognitiveComplexMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$private fun threadStart: ProtocolRouting</ID>
+    <ID>CognitiveComplexMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$private suspend fun recordThreadOperation: ProtocolRouting</ID>
+    <ID>CognitiveComplexMethod:CodexProtocolContracts.kt:CodexProtocolContracts.Companion$internal fun define: Validation&lt;CodexProtocolContracts, CodexProtocolContractFailure></ID>
+    <ID>CognitiveComplexMethod:CodexProtocolQualifier.kt:CodexProtocolQualifier$private fun collectSchemas: CodexSchemaCollection</ID>
+    <ID>CognitiveComplexMethod:ConfigurationAppliedInspection.kt:InstalledConfigurationAppliedInspection$suspend fun read: AppliedConfigurationInspection</ID>
+    <ID>CognitiveComplexMethod:DesktopAttachmentTest.kt:DesktopAttachmentTest$@Test fun `discovery and all command outcomes use the injected filesystem`</ID>
+    <ID>CognitiveComplexMethod:DesktopStdioHost.kt:DesktopStdioHost$override suspend fun run: CodexIntegrationRun</ID>
+    <ID>CognitiveComplexMethod:DesktopStdioHost.kt:private fun readBoundedLine: BoundedJsonLine</ID>
+    <ID>CognitiveComplexMethod:InstalledBrokerServer.kt:InstalledBrokerServerConfiguration.Companion$internal fun admit: InstalledBrokerServerConfiguration</ID>
+    <ID>CognitiveComplexMethod:InstalledBrokerServerTest.kt:InstalledBrokerServerTest.EchoCodexLauncher$override suspend fun launch: CodexAppServerProcessAdmission</ID>
+    <ID>CognitiveComplexMethod:InstalledCoordinator.kt:InstalledCoordinator.Companion$suspend fun start: InstalledCoordinatorStart</ID>
+    <ID>CognitiveComplexMethod:InstalledCoordinator.kt:InstalledCoordinatorConfiguration$fun admit: Refinement&lt;InstalledCoordinatorOptions, InstalledBrokerServerConfigurationFailure></ID>
+    <ID>CognitiveComplexMethod:InstalledKastCatalogFixture.kt:internal fun installedKastCatalogFixture: String</ID>
+    <ID>CognitiveComplexMethod:InstalledWorkerClient.kt:InstalledWorkerClient$internal suspend fun status: CoordinatorStatusRead</ID>
+    <ID>CognitiveComplexMethod:InstalledWorkerClient.kt:InstalledWorkerClient$private suspend fun &lt;T> exchange: T</ID>
+    <ID>CognitiveComplexMethod:InstalledWorkerClient.kt:InstalledWorkerClient$private suspend fun &lt;T> receiveResult: T</ID>
+    <ID>CognitiveComplexMethod:KastCodexMain.kt:OwnedCodexIntegration$@Synchronized fun close: CodexIntegrationShutdown</ID>
+    <ID>CognitiveComplexMethod:KastObserverProjector.kt:KastObserverProjector$private fun projectTraversal: String?</ID>
+    <ID>CognitiveComplexMethod:KastObserverProjector.kt:KastObserverProjector.ObserverEvidence.Companion$fun admit: ObserverEvidence?</ID>
+    <ID>CognitiveComplexMethod:KastProvider.kt:KastProviderQualifier$private fun QualifiedKastTool.asBrokerTool: BrokerTool&lt; KastRuntime, KastInvocationInput, KastInvocationOutput, KastToolInputFailure, ></ID>
+    <ID>CognitiveComplexMethod:KastProvider.kt:KastProviderQualifier$private fun admitTool: QualifiedKastTool?</ID>
+    <ID>CognitiveComplexMethod:KastQueryInput.kt:internal fun KastInvocationInput.encodeFor: Refinement&lt;JsonElement, KastToolInputFailure></ID>
+    <ID>CognitiveComplexMethod:KtorBrokerServer.kt:KtorBrokerServer.Companion$private suspend fun startTransport: KtorBrokerServerStart</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:BrokerServiceStartLock$fun withAcquired: BrokerServiceLockExecution</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:JdkBrokerSocketPathObserver$override fun observe: BrokerSocketPathObservation</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:JdkBrokerSocketPathObserver$private fun admitParent: BrokerSocketParentAdmission</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$internal fun destructiveReset: PersistentBrokerServiceAdmission</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$internal fun stop: PersistentBrokerServiceAdmission</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun awaitReadiness: PersistentBrokerServiceAdmission</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun awaitRetirement: BrokerLaunchdServiceRetirement</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun ensurePresent: PersistentBrokerServiceAdmission</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun observeReadiness: BrokerReadinessObservation</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun reconcileAbsent: PersistentBrokerServiceAdmission</ID>
+    <ID>CognitiveComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun recoverInvalidReadiness: PersistentBrokerServiceAdmission</ID>
+    <ID>CognitiveComplexMethod:ManagedCodexUpstream.kt:ManagedCodexUpstream.Companion$internal suspend fun start: ManagedCodexUpstreamStart</ID>
+    <ID>CognitiveComplexMethod:PersistentBrokerService.kt:BrokerServiceLaunchCommand.Companion$fun resolve: BrokerServiceLaunchCommandResolution</ID>
+    <ID>CognitiveComplexMethod:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$private fun readEnvironment: Map&lt;String, String>?</ID>
+    <ID>CognitiveComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore$private fun flush: Boolean</ID>
+    <ID>CognitiveComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$internal fun open: FileThreadCatalogStoreOpen</ID>
+    <ID>CognitiveComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$private fun readDocument: ThreadStoreDocumentRead</ID>
+    <ID>CognitiveComplexMethod:WorkerSeedConsentTest.kt:WorkerSeedConsentTest$@Test fun `original runtime connection grants measured seed consent and disconnect never grants`</ID>
+    <ID>CognitiveComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$fun enroll: Refinement&lt;WorkspaceRegistrationAcknowledgement, EnrollmentFailure></ID>
+    <ID>CognitiveComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun retainTo: WorkspaceRegistryRetention</ID>
+    <ID>CognitiveComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun snapshot: WorkspaceRegistryRead</ID>
+    <ID>CognitiveComplexMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$private suspend fun launch</ID>
+    <ID>CognitiveComplexMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun demand: InstalledWorkerStart</ID>
+    <ID>CognitiveComplexMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun handle</ID>
+    <ID>CognitiveComplexMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun stop: InstalledWorkerStop</ID>
+    <ID>CognitiveComplexMethod:WorkspaceWorkerAdmission.kt:WorkerAdmissionCoordinator$@Synchronized fun request: WorkerDemand</ID>
+    <ID>ComplexCondition:AgentSessionBootstrap.kt:HostedToolCatalog.Companion$definitions.groupBy(HostedToolDefinition::operation).values.any { presentations -> val owner = presentations.first() presentations.any { it.effect != owner.effect || it.approval != owner.approval || it.executionBudget != owner.executionBudget || it.outputSchema.digest != owner.outputSchema.digest } }</ID>
+    <ID>ComplexCondition:AppServerManagement.kt:InstalledAppServerManager$(action == AppServerAction.Enable || action == AppServerAction.Repair || action == AppServerAction.Bootstrap) &amp;&amp; InstallationLifecycleFence.observe(installationRoot) != InstallationLifecycleStartAdmission.AVAILABLE</ID>
+    <ID>ComplexCondition:BrokerDomain.kt:ProviderVersion.Companion$raw.isNotBlank() &amp;&amp; raw.length &lt;= 128 &amp;&amp; raw.none { character -> character == '\n' || character == '\r' || character == '\u0000' }</ID>
+    <ID>ComplexCondition:BrokerSessionHub.kt:BrokerSessionHub.Session$!attached &amp;&amp; calls.get() == 0 &amp;&amp; !tasks.hasWork(id) &amp;&amp; !ownsPendingRequest</ID>
+    <ID>ComplexCondition:BrokerSessionHub.kt:BrokerSessionHub.Session$routing is ProtocolRouting.ForwardUpstream &amp;&amp; thread != null &amp;&amp; tasks.contains(thread) &amp;&amp; method != null &amp;&amp; method !in READ_METHODS</ID>
+    <ID>ComplexCondition:BrokerSessionHub.kt:BrokerSessionHub.Session$thread != null &amp;&amp; tasks.contains(thread) &amp;&amp; method != null &amp;&amp; !doc.containsKey("id") &amp;&amp; routing is ProtocolRouting.ForwardDownstream</ID>
+    <ID>ComplexCondition:CodexHostInvocation.kt:CodexClientArguments.Companion$bounded.value.any { argument -> argument == "-C" || argument.startsWith("-C") || argument == "--cd" || argument.startsWith("--cd=") }</ID>
+    <ID>ComplexCondition:CodexProtocolAdapter.kt:CodexProtocolAdapter$threadId == null || turnId == null || callId == null || tool == null || arguments == null</ID>
+    <ID>ComplexCondition:DesktopAttachment.kt:DesktopBundle.Companion$path.nameCount &lt; 4 || path.parent.fileName.toString() != "MacOS" || path.parent.parent.fileName.toString() != "Contents" || !path.parent.parent.parent.fileName.toString().endsWith(".app")</ID>
+    <ID>ComplexCondition:InstalledBrokerServer.kt:OwnedBrokerServiceReadiness$!original.isRegularFile || original.isSymbolicLink || original.fileKey() != fileKey || readServiceState(managed.path) != state</ID>
+    <ID>ComplexCondition:InstalledWorkerClient.kt:InstalledWorkerClient$binding.installationId != published.installation || binding.stateEpoch.toString() != published.epoch || binding.serviceGeneration.toString() != published.generation || (request.action == WorkerControlAction.DEMAND &amp;&amp; binding.configurationIdentity != request.configurationIdentity)</ID>
+    <ID>ComplexCondition:InstalledWorkerClient.kt:InstalledWorkerClient$document["status"] != JsonPrimitive("READY") || document["serviceGeneration"] != JsonPrimitive(publication.generation) || document["installationId"] != JsonPrimitive(publication.installation) || document["stateEpoch"] != JsonPrimitive(publication.epoch)</ID>
+    <ID>ComplexCondition:InstalledWorkerClient.kt:InstalledWorkerClient$prompted || request.action != WorkerControlAction.DEMAND || request.startup != WorkerStartupAction.SEED || request.seedConsent != WorkerSeedConsentSelection.INTERACTIVE</ID>
+    <ID>ComplexCondition:InstalledWorkerClient.kt:InstalledWorkerClient$state !is BrokerServiceStateDocument.Ready || state.schemaVersion != BROKER_SERVICE_STATE_SCHEMA_VERSION || (requireDesired &amp;&amp; state.serviceIdentity != command.identity.value)</ID>
+    <ID>ComplexCondition:InstalledWorkerClient.kt:InstalledWorkerClient$status["status"] != JsonPrimitive("READY") || status["serviceGeneration"] != JsonPrimitive(published.generation) || status["installationId"] != JsonPrimitive(published.installation) || status["stateEpoch"] != JsonPrimitive(published.epoch) || (startService &amp;&amp; status["configurationIdentity"] != JsonPrimitive(published.configuration))</ID>
+    <ID>ComplexCondition:InstalledWorkerEffects.kt:InstalledWorkerEndpoint.Companion$root.isAbsolute &amp;&amp; root.normalize() == root &amp;&amp; socket.isAbsolute &amp;&amp; socket.normalize() == socket</ID>
+    <ID>ComplexCondition:InstalledWorkerEffects.kt:WorkerRouteBinding.Installation.Companion$!installationId.matches(Regex("[A-Za-z0-9._:-]{1,256}")) || epoch.toString() != stateEpoch || generation.toString() != serviceGeneration || !configurationIdentity.matches(Regex("[0-9a-f]{64}")) || workspaceRevision &lt; 1</ID>
+    <ID>ComplexCondition:KastObserverProjector.kt:KastObserverProjector$occurrence.strictString("candidateSelector") == null || occurrence.strictString("file") == null || occurrence["range"] !is JsonObject || edge.strictString("provenance") !in RELATION_PROVENANCE || edge.strictString("coverage") != "exact-compiler-confirmed"</ID>
+    <ID>ComplexCondition:KastObserverProjector.kt:KastObserverProjector$occurrence.strictString("candidateSelector") == null || occurrence.strictString("file") == null || occurrence["range"] !is JsonObject || relation.strictString("provenance") !in RELATION_PROVENANCE || relation.strictString("coverage") != "exact-compiler-confirmed"</ID>
+    <ID>ComplexCondition:KastObserverProjector.kt:KastObserverProjector$symbol.strictString("selector") == null || symbol.strictLabel("qualifiedIdentity") == null || symbol["range"] !is JsonObject || symbol["compilerEvidence"] !is JsonObject</ID>
+    <ID>ComplexCondition:KastObserverProjector.kt:KastObserverProjector.ObserverFilePath.Companion$raw.isBlank() || raw.length > MAXIMUM_FILE_LENGTH || canonicalRoot.isBlank() || canonicalRoot.length > MAXIMUM_FILE_LENGTH || raw.any(::isForbiddenPathCharacter) || canonicalRoot.any(::isForbiddenPathCharacter)</ID>
+    <ID>ComplexCondition:KastObserverProjector.kt:KastObserverProjector.ObserverFilePath.Companion$raw.isBlank() || raw.length > MAXIMUM_FILE_LENGTH || raw.any { character -> character == '\n' || character == '\r' || character == '\u0000' }</ID>
+    <ID>ComplexCondition:KastObserverProjector.kt:KastObserverProjector.ObserverFilePath.Companion$value.isBlank() || value == "." || value == ".." || value.startsWith("../")</ID>
+    <ID>ComplexCondition:KastQueryInput.kt:tool.inputBinding == AgentToolInputBinding.Canonical &amp;&amp; operation == tool.hostedDefinition.operation &amp;&amp; operation != CanonicalOperation.QUERY_RUN &amp;&amp; arguments.schemaDigest == tool.inputSchema.digest</ID>
+    <ID>ComplexCondition:ManagedCodexUpstream.kt:ManagedCodexUpstream.Companion$options.maximumMessageBytes &lt;= 0 || options.startupTimeoutMillis &lt;= 0 || !options.codexHome.isAbsolute || options.codexHome.normalize() != options.codexHome || !Files.isDirectory(options.codexHome)</ID>
+    <ID>ComplexCondition:PersistentBrokerService.kt:BrokerChildEnvironment.Companion$value.length > MAXIMUM_CHILD_ENVIRONMENT_VALUE_CHARACTERS || value.any { it == '\n' || it == '\r' || it == '\u0000' }</ID>
+    <ID>ComplexCondition:PersistentBrokerService.kt:BrokerExecutableSearchPath.Companion$directories.any { directory -> val raw = directory.toString() !directory.isAbsolute || directory.normalize() != directory || raw.isBlank() || raw.any(Char::isISOControl) || File.pathSeparatorChar in raw }</ID>
+    <ID>ComplexCondition:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$arguments.size !in 5..MAXIMUM_ARGUMENTS || arguments[0] != "/usr/bin/env" || arguments[1] != "-i" || arguments.takeLast(3) != listOf(observed.kast.toString(), "broker", "serve")</ID>
+    <ID>ComplexCondition:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$environment["HOME"] != userHome.toString() || environment["CODEX_HOME"] != codexHome.toString() || environment["KAST_CONFIGURATION_FILE"] != installationRoot.resolve("config/environment").toString() || environment["BROKER_READINESS_FILE"] != observed.readinessFile.toString()</ID>
+    <ID>ComplexCondition:SavedConfigurationIngress.kt:InstalledSavedConfigurationIngress$selector.isBlank() || selector.length > 4096 || !path.isAbsolute || path.normalize() != path</ID>
+    <ID>ComplexCondition:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$!destination.isAbsolute || destination.normalize() != destination || Files.isSymbolicLink(destination) || !Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(parent) || parent.toRealPath() != parent</ID>
+    <ID>ComplexCondition:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$existing != null &amp;&amp; startup is InstalledWorkerStartup.Reuse &amp;&amp; startup.ideHome != null &amp;&amp; startups[workspace.id]?.startup?.ideHome != startup.ideHome</ID>
+    <ID>ComplexCondition:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$selected is WorkerDemand.Awaiting &amp;&amp; !(startup is InstalledWorkerStartup.Reuse &amp;&amp; startup.ideHome == null) &amp;&amp; startups[workspace.id]?.startup != startup</ID>
+    <ID>ComplexCondition:WorkspaceWorkerAdmission.kt:WorkerAdmissionCoordinator$entry.reservation !== permit.reservation || phase !is Phase.Starting || phase.permit !== permit || admissionState == AdmissionState.DRAINING</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolAllSource$val declaration_kinds: BoundedProtocolList&lt;PublicToolDeclarationKinds>?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolCheckDiagnostics$val max_diagnostics: Int?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolCheckDiagnostics$val relative_path: ProtocolText</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolDirectoryScope$val include_subdirectories: Boolean</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolDirectoryScope$val relative_directory_path: ProtocolText</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolDirectoryScope$val source_set_names: BoundedProtocolList&lt;ProtocolText>?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolPackageScope$val include_subpackages: Boolean</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolPackageScope$val package_name: ProtocolText</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolPackageScope$val source_set_names: BoundedProtocolList&lt;ProtocolText>?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolQuerySymbols$val return_fields: BoundedProtocolList&lt;PublicToolReturnFields>?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolReferenceSource$val symbol_refs: BoundedProtocolList&lt;ProtocolText></ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchClasses$val class_name: ProtocolText</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchClasses$val name_match: PublicToolNameMatch?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchDeclarations$val declaration_kinds: BoundedProtocolList&lt;PublicToolDeclarationKinds>?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchDeclarations$val declaration_name: ProtocolText</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchDeclarations$val name_match: PublicToolNameMatch?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchFunctions$val function_name: ProtocolText</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchFunctions$val name_match: PublicToolNameMatch?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchSource$val declaration_kinds: BoundedProtocolList&lt;PublicToolDeclarationKinds>?</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchSource$val declaration_name: ProtocolText</ID>
+    <ID>ConstructorParameterNaming:PublicToolDocuments.kt:PublicToolSearchSource$val name_match: PublicToolNameMatch?</ID>
+    <ID>CyclomaticComplexMethod:AppServerManagement.kt:InstalledAppServerManager$override fun execute: AppServerManagementResult</ID>
+    <ID>CyclomaticComplexMethod:AppServerManagement.kt:InstalledAppServerManager$private fun passiveStatus: AppServerManagementResult</ID>
+    <ID>CyclomaticComplexMethod:BrokerInstallationState.kt:BrokerInstallationState$private fun identity: Refinement&lt;String, InstallationStateFailure></ID>
+    <ID>CyclomaticComplexMethod:BrokerInstallationState.kt:BrokerInstallationState$private fun readEpoch: Refinement&lt;ThreadBindingOwner.Installation, InstallationStateFailure></ID>
+    <ID>CyclomaticComplexMethod:BrokerProcess.kt:JdkBrokerProcessExecutor$override suspend fun execute: BrokerProcessExecution</ID>
+    <ID>CyclomaticComplexMethod:BrokerSessionHub.kt:BrokerSessionHub$private fun control: String</ID>
+    <ID>CyclomaticComplexMethod:BrokerSessionHub.kt:BrokerSessionHub.Session$private suspend fun acceptLocked</ID>
+    <ID>CyclomaticComplexMethod:BrokerSessionHub.kt:BrokerSessionHub.Session$private suspend fun receiveLocked</ID>
+    <ID>CyclomaticComplexMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$internal suspend fun fromUpstream: ProtocolRouting</ID>
+    <ID>CyclomaticComplexMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$private fun projectToolLifecycle: ProtocolRouting</ID>
+    <ID>CyclomaticComplexMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$private fun threadStart: ProtocolRouting</ID>
+    <ID>CyclomaticComplexMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$private suspend fun bindExistingThread: ProtocolRouting</ID>
+    <ID>CyclomaticComplexMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$private suspend fun recordThreadOperation: ProtocolRouting</ID>
+    <ID>CyclomaticComplexMethod:CodexProtocolContracts.kt:CodexProtocolContracts.Companion$internal fun define: Validation&lt;CodexProtocolContracts, CodexProtocolContractFailure></ID>
+    <ID>CyclomaticComplexMethod:ConfigurationAppliedInspection.kt:InstalledConfigurationAppliedInspection$suspend fun read: AppliedConfigurationInspection</ID>
+    <ID>CyclomaticComplexMethod:CoordinatorStatus.kt:CoordinatorStatusSnapshot.Companion$fun admit: Refinement&lt;CoordinatorStatusSnapshot, WorkerControlFailure></ID>
+    <ID>CyclomaticComplexMethod:DesktopStdioHost.kt:DesktopStdioHost$override suspend fun run: CodexIntegrationRun</ID>
+    <ID>CyclomaticComplexMethod:InstalledBrokerServer.kt:InstalledBrokerHost$suspend fun prepare: InstalledBrokerHostStart</ID>
+    <ID>CyclomaticComplexMethod:InstalledBrokerServer.kt:InstalledBrokerServerConfiguration.Companion$internal fun admit: InstalledBrokerServerConfiguration</ID>
+    <ID>CyclomaticComplexMethod:InstalledBrokerServer.kt:OwnedBrokerServiceReadiness$private fun transition: BrokerReadinessTransition</ID>
+    <ID>CyclomaticComplexMethod:InstalledCodexClientLauncher.kt:InstalledCodexClientLauncher$override fun launch: CodexClientLaunchRun</ID>
+    <ID>CyclomaticComplexMethod:InstalledCoordinator.kt:InstalledCoordinatorConfiguration$fun admit: Refinement&lt;InstalledCoordinatorOptions, InstalledBrokerServerConfigurationFailure></ID>
+    <ID>CyclomaticComplexMethod:InstalledWorkerClient.kt:InstalledWorkerClient$private suspend fun &lt;T> exchange: T</ID>
+    <ID>CyclomaticComplexMethod:InstalledWorkerClient.kt:InstalledWorkerClient$private suspend fun &lt;T> receiveResult: T</ID>
+    <ID>CyclomaticComplexMethod:InstalledWorkerClient.kt:WorkerControlReply.Companion$fun decode: InstalledWorkerStart</ID>
+    <ID>CyclomaticComplexMethod:KastObserverProjector.kt:KastObserverProjector$private fun projectSource: String?</ID>
+    <ID>CyclomaticComplexMethod:KastObserverProjector.kt:KastObserverProjector$private fun projectTraversal: String?</ID>
+    <ID>CyclomaticComplexMethod:KastObserverProjector.kt:KastObserverProjector.ObserverEvidence.Companion$fun admit: ObserverEvidence?</ID>
+    <ID>CyclomaticComplexMethod:KastProvider.kt:KastProviderQualifier$private fun admitProjection: QualifiedKastProjection?</ID>
+    <ID>CyclomaticComplexMethod:KastProvider.kt:KastProviderQualifier$private fun admitTool: QualifiedKastTool?</ID>
+    <ID>CyclomaticComplexMethod:KastProvider.kt:KastProviderQualifier$private suspend fun qualifyContract: KastContractQualification</ID>
+    <ID>CyclomaticComplexMethod:MacOsPersistentBrokerServiceHost.kt:JdkBrokerSocketPathObserver$override fun observe: BrokerSocketPathObservation</ID>
+    <ID>CyclomaticComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$internal fun destructiveReset: PersistentBrokerServiceAdmission</ID>
+    <ID>CyclomaticComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$internal fun stop: PersistentBrokerServiceAdmission</ID>
+    <ID>CyclomaticComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun observeReadiness: BrokerReadinessObservation</ID>
+    <ID>CyclomaticComplexMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun retireReadiness: BrokerReadinessRetirement</ID>
+    <ID>CyclomaticComplexMethod:ManagedCodexUpstream.kt:ManagedCodexUpstream.Companion$internal suspend fun start: ManagedCodexUpstreamStart</ID>
+    <ID>CyclomaticComplexMethod:PersistentBrokerService.kt:BrokerServiceLaunchCommand.Companion$fun resolve: BrokerServiceLaunchCommandResolution</ID>
+    <ID>CyclomaticComplexMethod:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$fun retirementEnvironment: PublishedBrokerServiceEnvironment?</ID>
+    <ID>CyclomaticComplexMethod:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$private fun readEnvironment: Map&lt;String, String>?</ID>
+    <ID>CyclomaticComplexMethod:SavedConfigurationIngress.kt:InstalledSavedConfigurationIngress$fun read: SavedConfigurationIngress</ID>
+    <ID>CyclomaticComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore$private fun flush: Boolean</ID>
+    <ID>CyclomaticComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$internal fun open: FileThreadCatalogStoreOpen</ID>
+    <ID>CyclomaticComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$private fun readDocument: ThreadStoreDocumentRead</ID>
+    <ID>CyclomaticComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$fun enroll: Refinement&lt;WorkspaceRegistrationAcknowledgement, EnrollmentFailure></ID>
+    <ID>CyclomaticComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun retainTo: WorkspaceRegistryRetention</ID>
+    <ID>CyclomaticComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun snapshot: WorkspaceRegistryRead</ID>
+    <ID>CyclomaticComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$private fun retain: WorkspaceRegistryRetention</ID>
+    <ID>CyclomaticComplexMethod:WorkspaceExecution.kt:WorkspaceExecution$@Synchronized private fun finish</ID>
+    <ID>CyclomaticComplexMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$private suspend fun launch</ID>
+    <ID>CyclomaticComplexMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun demand: InstalledWorkerStart</ID>
+    <ID>CyclomaticComplexMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun handle</ID>
+    <ID>CyclomaticComplexMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun stop: InstalledWorkerStop</ID>
+    <ID>LargeClass:AppServerManagement.kt:InstalledAppServerManager : AppServerManager</ID>
+    <ID>LargeClass:BrokerOperationalLimits.kt:BrokerOperationalLimits</ID>
+    <ID>LargeClass:BrokerSessionHub.kt:BrokerSessionHub$Session</ID>
+    <ID>LargeClass:BrokerSessionHubTest.kt:BrokerSessionHubTest</ID>
+    <ID>LargeClass:CodexProtocolAdapter.kt:CodexProtocolAdapter : AutoCloseable</ID>
+    <ID>LargeClass:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest</ID>
+    <ID>LargeClass:CodexProtocolContracts.kt:CodexProtocolContracts$Companion</ID>
+    <ID>LargeClass:CodexToolCallProjection.kt:CodexThreadHistoryProjector</ID>
+    <ID>LargeClass:InstalledBrokerServerTest.kt:InstalledBrokerServerTest</ID>
+    <ID>LargeClass:KastObserverFixtures.kt:KastObserverFixtures</ID>
+    <ID>LargeClass:KastObserverProjector.kt:KastObserverProjector</ID>
+    <ID>LargeClass:KastProvider.kt:KastProviderQualifier</ID>
+    <ID>LargeClass:KastProviderTest.kt:KastProviderTest</ID>
+    <ID>LargeClass:KtorBrokerServerTest.kt:KtorBrokerServerTest</ID>
+    <ID>LargeClass:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost : PersistentBrokerServiceHost</ID>
+    <ID>LargeClass:PersistentBrokerServiceTest.kt:PersistentBrokerServiceTest</ID>
+    <ID>LargeClass:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl</ID>
+    <ID>LargeClass:WorkspaceRuntimeControlTest.kt:WorkspaceRuntimeControlTest</ID>
+    <ID>LongMethod:AppServerManagement.kt:InstalledAppServerManager$override fun execute: AppServerManagementResult</ID>
+    <ID>LongMethod:AppServerManagement.kt:InstalledAppServerManager$private fun passiveStatus: AppServerManagementResult</ID>
+    <ID>LongMethod:AppServerStatusTest.kt:AppServerStatusTest$@Test fun `passive status observes coordinator and registry without attaching an upstream host`</ID>
+    <ID>LongMethod:Broker.kt:TypedProviderRoute.&lt;no name provided>$override suspend fun dispatch: BrokerDispatch</ID>
+    <ID>LongMethod:BrokerCatalogTest.kt:BrokerCatalogTest$private fun echoProvider: ProviderRegistration&lt;EchoRuntime></ID>
+    <ID>LongMethod:BrokerProcess.kt:JdkBrokerProcessExecutor$override suspend fun execute: BrokerProcessExecution</ID>
+    <ID>LongMethod:BrokerSessionHub.kt:BrokerSessionHub$private fun control: String</ID>
+    <ID>LongMethod:BrokerSessionHub.kt:BrokerSessionHub.Session$private suspend fun acceptLocked</ID>
+    <ID>LongMethod:BrokerSessionHub.kt:BrokerSessionHub.Session$private suspend fun receiveLocked</ID>
+    <ID>LongMethod:CodexHostIntegrationManifestMain.kt:CodexHostIntegrationManifestMain$@JvmStatic fun main</ID>
+    <ID>LongMethod:CodexObserverReplayTest.kt:CodexObserverReplayTest$@Test fun `applied Kast change retains raw evidence in the expandable tool display`</ID>
+    <ID>LongMethod:CodexObserverReplayTest.kt:CodexObserverReplayTest$@Test fun `thread reload derives the same expandable native result without pending state`</ID>
+    <ID>LongMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$internal suspend fun fromUpstream: ProtocolRouting</ID>
+    <ID>LongMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$private fun threadStart: ProtocolRouting</ID>
+    <ID>LongMethod:CodexProtocolAdapter.kt:CodexProtocolAdapter$private suspend fun recordThreadOperation: ProtocolRouting</ID>
+    <ID>LongMethod:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest$@Test fun `Kast changes use the same raw tool display without a fabricated file change`</ID>
+    <ID>LongMethod:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest$@Test fun `Kast observer projection occupies one expandable native tool item`</ID>
+    <ID>LongMethod:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest$@Test fun `all item-bearing Codex carriers project owned dynamic calls`</ID>
+    <ID>LongMethod:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest$@Test fun `live registry routes interleaved threads by bound root after registration`</ID>
+    <ID>LongMethod:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest$@Test fun `overlap requires explicit workspace and stale owner cannot resume or invoke`</ID>
+    <ID>LongMethod:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest$@Test fun `paginated history projects owned dynamic calls for downstream observers`</ID>
+    <ID>LongMethod:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest$@Test fun `resumed thread history projects owned dynamic calls for downstream observers`</ID>
+    <ID>LongMethod:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest$private fun observerBroker: Broker</ID>
+    <ID>LongMethod:CodexProtocolContracts.kt:CodexProtocolContracts.Companion$private fun responseWitness: JsonObject</ID>
+    <ID>LongMethod:CodexProtocolQualifier.kt:CodexProtocolQualifier$internal suspend fun qualify: CodexProtocolQualification</ID>
+    <ID>LongMethod:CodexProtocolQualifier.kt:CodexProtocolQualifier$private fun collectSchemas: CodexSchemaCollection</ID>
+    <ID>LongMethod:CodexToolCallProjection.kt:CodexToolCallProjector$private fun admitCompleted: CodexToolCallProjection</ID>
+    <ID>LongMethod:ConfigurationAppliedInspection.kt:InstalledConfigurationAppliedInspection$suspend fun read: AppliedConfigurationInspection</ID>
+    <ID>LongMethod:CoordinatorStatusCapacityTest.kt:CoordinatorStatusCapacityTest$@Test fun `passive transport admits the maximum valid worker status document`</ID>
+    <ID>LongMethod:DesktopAttachmentTest.kt:DesktopAttachmentTest$@Test fun `discovery and all command outcomes use the injected filesystem`</ID>
+    <ID>LongMethod:DesktopStdioHost.kt:DesktopStdioHost$override suspend fun run: CodexIntegrationRun</ID>
+    <ID>LongMethod:DesktopStdioProtocolIntegrationTest.kt:DesktopStdioProtocolIntegrationTest$@Test fun `desktop stdio injects one qualified catalog and reaches broker dispatch`</ID>
+    <ID>LongMethod:InstalledBrokerServer.kt:InstalledBrokerHost$suspend fun prepare: InstalledBrokerHostStart</ID>
+    <ID>LongMethod:InstalledBrokerServer.kt:InstalledBrokerServer.Companion$internal suspend fun start: InstalledBrokerServerStart</ID>
+    <ID>LongMethod:InstalledBrokerServer.kt:InstalledBrokerServerConfiguration.Companion$internal fun admit: InstalledBrokerServerConfiguration</ID>
+    <ID>LongMethod:InstalledBrokerServer.kt:OwnedBrokerServiceReadiness$private fun transition: BrokerReadinessTransition</ID>
+    <ID>LongMethod:InstalledBrokerServerTest.kt:InstalledBrokerServerTest$@Test fun `installed composition publishes readiness and transparently serves the Codex socket`</ID>
+    <ID>LongMethod:InstalledBrokerServerTest.kt:InstalledBrokerServerTest$@Test fun `tool selection defaults without symbols and admits one exact configured subset`</ID>
+    <ID>LongMethod:InstalledBrokerServerTest.kt:InstalledBrokerServerTest.EchoCodexLauncher$override suspend fun launch: CodexAppServerProcessAdmission</ID>
+    <ID>LongMethod:InstalledCodexClientLauncher.kt:InstalledCodexClientLauncher$override fun launch: CodexClientLaunchRun</ID>
+    <ID>LongMethod:InstalledCodexClientLauncherTest.kt:InstalledCodexClientLauncherTest$@Test fun `desktop selects the installed stdio facade and keeps the real upstream distinct`</ID>
+    <ID>LongMethod:InstalledCoordinator.kt:InstalledCoordinator.Companion$suspend fun start: InstalledCoordinatorStart</ID>
+    <ID>LongMethod:InstalledCoordinator.kt:InstalledCoordinatorConfiguration$fun admit: Refinement&lt;InstalledCoordinatorOptions, InstalledBrokerServerConfigurationFailure></ID>
+    <ID>LongMethod:InstalledCoordinatorTest.kt:InstalledCoordinatorTest$@Test fun `runtime socket serves qualified status before and after unavailable frontend without launching a host`</ID>
+    <ID>LongMethod:InstalledKastCatalogFixture.kt:internal fun installedKastCatalogFixture: String</ID>
+    <ID>LongMethod:InstalledWorkerClient.kt:InstalledWorkerClient$internal suspend fun status: CoordinatorStatusRead</ID>
+    <ID>LongMethod:InstalledWorkerClient.kt:InstalledWorkerClient$private suspend fun &lt;T> exchange: T</ID>
+    <ID>LongMethod:InstalledWorkerClient.kt:WorkerControlReply.Companion$fun decode: InstalledWorkerStart</ID>
+    <ID>LongMethod:InstalledWorkerClientOwnerTest.kt:InstalledWorkerClientOwnerTest$@Test fun `self consistent forged epoch and live status cannot replace physical installation authority`: Unit</ID>
+    <ID>LongMethod:InstalledWorkspaceRoutingAcceptanceMain.kt:InstalledWorkspaceRoutingAcceptanceMain$@JvmStatic fun main: Unit</ID>
+    <ID>LongMethod:JdkBrokerSocketProbeTest.kt:JdkBrokerSocketProbeTest$@Test fun `real JDK path observation distinguishes absent socket and rejected paths`</ID>
+    <ID>LongMethod:KastCodexMain.kt:OwnedCodexIntegration$@Synchronized fun close: CodexIntegrationShutdown</ID>
+    <ID>LongMethod:KastCodexMain.kt:suspend fun runInstalledCodex: CodexIntegrationRun</ID>
+    <ID>LongMethod:KastObserverProjector.kt:KastObserverProjector$private fun projectTraversal: String?</ID>
+    <ID>LongMethod:KastObserverProjector.kt:KastObserverProjector.ObserverEvidence.Companion$fun admit: ObserverEvidence?</ID>
+    <ID>LongMethod:KastObserverSnapshotMain.kt:KastObserverSnapshotMain$@JvmStatic fun main</ID>
+    <ID>LongMethod:KastProvider.kt:KastProviderQualifier$private fun QualifiedKastTool.asBrokerTool: BrokerTool&lt; KastRuntime, KastInvocationInput, KastInvocationOutput, KastToolInputFailure, ></ID>
+    <ID>LongMethod:KastProvider.kt:KastProviderQualifier$private fun admitTool: QualifiedKastTool?</ID>
+    <ID>LongMethod:KastProvider.kt:KastProviderQualifier$private suspend fun qualifyContract: KastContractQualification</ID>
+    <ID>LongMethod:KastProviderTest.kt:KastProviderTest$@Test fun `default bootstrap removes direct symbol routes and retains selected change routes`</ID>
+    <ID>LongMethod:KastProviderTest.kt:KastProviderTest$@Test fun `supported Kast operations produce selector-free observer Markdown`</ID>
+    <ID>LongMethod:KastProviderTest.kt:KastProviderTest$private fun capabilitySchema: String</ID>
+    <ID>LongMethod:KastPublicQueryProviderTest.kt:KastPublicQueryProviderTest$private fun capability: String</ID>
+    <ID>LongMethod:KtorBrokerServer.kt:KtorBrokerServer.Companion$private suspend fun startTransport: KtorBrokerServerStart</ID>
+    <ID>LongMethod:KtorBrokerServerTest.kt:KtorBrokerServerTest$@Test fun `one completed lifecycle preserves native identity and complete content`</ID>
+    <ID>LongMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$internal fun destructiveReset: PersistentBrokerServiceAdmission</ID>
+    <ID>LongMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun observeReadiness: BrokerReadinessObservation</ID>
+    <ID>LongMethod:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun submit: BrokerLaunchdServiceSubmission</ID>
+    <ID>LongMethod:ManagedCodexUpstream.kt:ManagedCodexUpstream.Companion$internal suspend fun start: ManagedCodexUpstreamStart</ID>
+    <ID>LongMethod:PersistentBrokerService.kt:BrokerServiceLaunchCommand.Companion$fun resolve: BrokerServiceLaunchCommandResolution</ID>
+    <ID>LongMethod:PersistentBrokerServiceTest.kt:PersistentBrokerServiceTest$@Test fun `concurrent first use submits exactly one service under the filesystem lock`</ID>
+    <ID>LongMethod:PersistentBrokerServiceTest.kt:PersistentBrokerServiceTest$@Test fun `launchd submission waits for matching child-published readiness`</ID>
+    <ID>LongMethod:PublicToolMapping.kt:internal fun PublicToolDocument.lower: Refinement&lt;PublicToolCanonical, PublicToolInputFailure></ID>
+    <ID>LongMethod:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$private fun readEnvironment: Map&lt;String, String>?</ID>
+    <ID>LongMethod:PublishedBrokerServiceCommandTest.kt:PublishedBrokerServiceCommandTest$@Test fun `owned launch receipt recovers only its exact published command`</ID>
+    <ID>LongMethod:SavedConfigurationIngress.kt:InstalledSavedConfigurationIngress$fun read: SavedConfigurationIngress</ID>
+    <ID>LongMethod:ThreadCatalogStore.kt:FileThreadCatalogStore$private fun flush: Boolean</ID>
+    <ID>LongMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$internal fun open: FileThreadCatalogStoreOpen</ID>
+    <ID>LongMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$private fun readDocument: ThreadStoreDocumentRead</ID>
+    <ID>LongMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$fun enroll: Refinement&lt;WorkspaceRegistrationAcknowledgement, EnrollmentFailure></ID>
+    <ID>LongMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun retainTo: WorkspaceRegistryRetention</ID>
+    <ID>LongMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$private fun retain: WorkspaceRegistryRetention</ID>
+    <ID>LongMethod:WorkspaceExecution.kt:WorkspaceExecution$@Synchronized fun snapshot: JsonObject</ID>
+    <ID>LongMethod:WorkspaceExecutionBudgetTest.kt:WorkspaceExecutionBudgetTest$@Test fun `selected operation allowance includes time already spent queued`: Unit</ID>
+    <ID>LongMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$private fun receipt: Boolean</ID>
+    <ID>LongMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun demand: InstalledWorkerStart</ID>
+    <ID>LongMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun handle</ID>
+    <ID>LongMethod:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun stop: InstalledWorkerStop</ID>
+    <ID>LoopWithTooManyJumpStatements:KtorBrokerServer.kt:KtorBrokerServer.Companion$for</ID>
+    <ID>MagicNumber:BrokerDomain.kt:512</ID>
+    <ID>MagicNumber:BrokerDomain.kt:ProviderVersion.Companion$128</ID>
+    <ID>MagicNumber:BrokerDomain.kt:ToolDescription.Companion$4_096</ID>
+    <ID>MagicNumber:BrokerInstallationLayout.kt:BrokerInstallationLayout.Companion$16</ID>
+    <ID>MagicNumber:BrokerSessionHub.kt:BrokerSessionHub$32040</ID>
+    <ID>MagicNumber:CodexProtocolAdapter.kt:CodexProtocolAdapter$32040</ID>
+    <ID>MagicNumber:CodexProtocolContracts.kt:CodexProtocolContracts.Companion$4</ID>
+    <ID>MagicNumber:CodexProtocolQualifier.kt:CodexVersion.Companion$512</ID>
+    <ID>MagicNumber:DesktopAttachment.kt:DesktopBundle.Companion$4</ID>
+    <ID>MagicNumber:KastProvider.kt:KastCliVersion.Companion$512</ID>
+    <ID>MagicNumber:KastProvider.kt:KastProviderQualifier$10</ID>
+    <ID>MagicNumber:KastProvider.kt:KastProviderQualifier$16</ID>
+    <ID>MagicNumber:KastProvider.kt:KastProviderQualifier$16_384</ID>
+    <ID>MagicNumber:KastProvider.kt:KastProviderQualifier$3</ID>
+    <ID>MagicNumber:KastProvider.kt:KastProviderQualifier$4_096</ID>
+    <ID>MagicNumber:KastProvider.kt:KastProviderQualifier$64</ID>
+    <ID>MagicNumber:ObserverWorkingDirectory.kt:ObserverWorkingDirectory.Companion$4_096</ID>
+    <ID>MagicNumber:PersistentBrokerService.kt:BrokerLaunchdServiceLabel.Companion$32</ID>
+    <ID>MagicNumber:PublicQueryPackageName.kt:PublicQueryPackageName.Companion$1_048_576</ID>
+    <ID>MagicNumber:PublicToolMapping.kt:DeclarationName.Companion$256</ID>
+    <ID>MagicNumber:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$3</ID>
+    <ID>MagicNumber:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$5</ID>
+    <ID>MagicNumber:SavedConfigurationIngress.kt:InstalledSavedConfigurationIngress$4096</ID>
+    <ID>MagicNumber:SharedTaskSessions.kt:ClientConnectionId.Companion$36</ID>
+    <ID>MagicNumber:WorkspaceRelativePath.kt:WorkspaceRelativePath.Companion$1_048_576</ID>
+    <ID>MatchingDeclarationName:KastQueryInput.kt:KastToolInputFailure</ID>
+    <ID>MaxLineLength:AppServerManagement.kt:InstalledAppServerManager$"""{"id":1,"method":"initialize","params":{"clientInfo":{"name":"kast-control","version":"1"}}}"""</ID>
+    <ID>MaxLineLength:BrokerProcessTest.kt:BrokerProcessTest$"#!/bin/sh\nif [ \"\$1\" = wait ]; then printf '%s' \"\$\$\" > '$pidFile'; exec /bin/sleep 30; fi\nprintf 'complete'\n"</ID>
+    <ID>MaxLineLength:BrokerSessionHubTest.kt:BrokerSessionHubTest$" { \"id\":2, \"method\":\"thread/resume\", \"params\":{\"threadId\":\"external\",\"path\":\"external.jsonl\"} } "</ID>
+    <ID>MaxLineLength:BrokerSessionHubTest.kt:BrokerSessionHubTest$"""{"id":42,"method":"item/commandExecution/requestApproval","params":{"threadId":"thread-1","turnId":"turn-1","itemId":"command-1"}}"""</ID>
+    <ID>MaxLineLength:BrokerSessionHubTest.kt:BrokerSessionHubTest$"""{"id":42,"method":"item/commandExecution/requestApproval","params":{"threadId":"thread-1"}}"""</ID>
+    <ID>MaxLineLength:BrokerSessionHubTest.kt:BrokerSessionHubTest$"""{"id":7,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"kast","tool":"query","arguments":{}}}"""</ID>
+    <ID>MaxLineLength:BrokerSessionHubTest.kt:BrokerSessionHubTest$"""{"id":7,"method":"item/tool/call","params":{"threadId":"thread-2","turnId":"turn-1","callId":"call-1","namespace":"kast","tool":"query","arguments":{"independent":true}}}"""</ID>
+    <ID>MaxLineLength:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest$"""{"id":1,"method":"initialize","params":{"clientInfo":{"name":"fixture"},"capabilities":{"requestAttestation":true}}}"""</ID>
+    <ID>MaxLineLength:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest$"""{"id":2,"method":"thread/start","params":{"cwd":"$cwd","developerInstructions":"Existing host policy.","dynamicTools":[]}}"""</ID>
+    <ID>MaxLineLength:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest$"""{"id":3,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"echo","tool":"say","arguments":{"value":"hello"}}}"""</ID>
+    <ID>MaxLineLength:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest$"""{"id":9,"method":"item/tool/call","params":{"threadId":"thread-$index","turnId":"turn-1","callId":"$callId","namespace":"echo","tool":"say","arguments":{"value":"hello"}}}"""</ID>
+    <ID>MaxLineLength:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest$"""{"id":9,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"echo","tool":"say","arguments":{"value":"hello"}}}"""</ID>
+    <ID>MaxLineLength:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest$"""{"id":9,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"kast","tool":"symbol_inspect","arguments":$arguments}}"""</ID>
+    <ID>MaxLineLength:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest$"""{"id":9,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"kast","tool":"symbol_inspect","arguments":{}}}"""</ID>
+    <ID>MaxLineLength:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest$"""{"type":"dynamicToolCall","id":"call-1","tool":"read","namespace":"echo","arguments":$arguments,"status":"completed","contentItems":[{"type":"inputText","text":"{\"entries\":[{\"name\":\"broker\",\"kind\":\"directory\"}]}"}],"success":true,"durationMs":12}"""</ID>
+    <ID>MaxLineLength:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest$"""{"type":"dynamicToolCall","id":"call-2","tool":"lookup","namespace":"external","arguments":{"query":"value"},"status":"completed","contentItems":[{"type":"inputText","text":"external result"}],"success":true,"durationMs":3}"""</ID>
+    <ID>MaxLineLength:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest$"""{"type":"object","additionalProperties":false,"required":["value"],"properties":{"value":{"type":"string","minLength":1}}}"""</ID>
+    <ID>MaxLineLength:CodexProtocolAdapterTest.kt:CodexProtocolAdapterTest$"""{"type":"object","additionalProperties":false,"required":["value"],"properties":{"value":{"type":"string"}}}"""</ID>
+    <ID>MaxLineLength:CodexProtocolQualifierTest.kt:CodexProtocolQualifierTest$"""{"type":"object","required":["data"],"properties":{"data":{"type":"array","items":{"type":"object","required":["items"],"properties":{"items":{"type":"array","items":{"type":"object","required":["type"],"properties":{"type":{"const":"dynamicToolCall"}}}}}}}}}"""</ID>
+    <ID>MaxLineLength:DesktopStdioProtocolIntegrationTest.kt:DesktopStdioProtocolIntegrationTest$"""{"id":9,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"kast","tool":"$toolName","arguments":{}}}"""</ID>
+    <ID>MaxLineLength:InstalledBrokerServerTest.kt:InstalledBrokerServerTest$"""{"component":"kast-broker","event":"broker-startup-stage","stage":"codex-qualification","outcome":"rejected","reason":"codex-schema-generation-rejected"}"""</ID>
+    <ID>MaxLineLength:InstalledBrokerServerTest.kt:InstalledBrokerServerTest$"search_classes,search_functions,search_declarations,query_symbols,source_read,semantic_query,impact_analyze,check_diagnostics,"</ID>
+    <ID>MaxLineLength:InstalledCodexClientLauncherTest.kt:InstalledCodexClientLauncherTest$"\"\${CODEX_APP_SERVER_USE_LOCAL_DAEMON:-}\" \"\${CODEX_HOME:-}\" \"\${CODEX_EXECUTABLE:-}\" \"\${CODEX_APP_SERVER_FORCE_CLI:-}\" > \"$capture\"\n"</ID>
+    <ID>MaxLineLength:KastObserverProjectorTest.kt:KastObserverProjectorTest$"""{"root":"/workspace","host":"00000000-0000-0000-0000-000000000001","epoch":7,"contentView":"SAVED_PSI_COMMITTED","version":1}"""</ID>
+    <ID>MaxLineLength:KastProviderTest.kt:KastProviderTest$"""{"schemaVersion":1,"outcome":"rejected","failure":"DIRTY_DOCUMENTS","detail":"saved content required","stage":"EPOCH_OBSERVATION"}"""</ID>
+    <ID>MaxLineLength:KastProviderTest.kt:KastProviderTest$"""{"status":"completed","document":{"operation":"source.read","status":"qualified","snapshot":{"canonicalRoot":"/workspace","generation":17,"sourceState":"state","file":"src/EventConsumer.kt","textIdentity":"identity","coordinateUnit":"utf16-code-unit","length":20},"region":{"kind":"declaration","selection":{"selector":"source-selector-v1:opaque","range":{"startInclusive":3,"endExclusive":20}}},"entities":[],"text":{"type":"withheld","reason":"byte-limit-reached"},"qualification":{"knownMinimumEntityCount":0,"limitations":["text-byte-limit-reached"],"continuation":{"type":"available","continuation":"continuation:opaque"}}}}"""</ID>
+    <ID>MaxLineLength:KastProviderTest.kt:KastProviderTest$"""{"status":"completed","document":{"operation":"symbol.discover","status":"complete","items":[{"type":"declaration","candidateSelector":"candidate:v2:opaque","kind":"symbol","name":"EventConsumer","file":"$file","offset":3}]}}"""</ID>
+    <ID>MaxLineLength:KastProviderTest.kt:KastProviderTest$"""{"status":"completed","document":{"operation":"symbol.discover","status":"qualified","items":[{"type":"declaration","candidateSelector":"candidate:v2:opaque","kind":"class","name":"EventConsumer","file":"src/EventConsumer.kt","offset":3}],"qualification":"[result-limit-reached]"}}"""</ID>
+    <ID>MaxLineLength:KastProviderTest.kt:KastProviderTest$"""{"status":"completed","document":{"operation":"symbol.inspect","status":"complete","symbol":{"name":"EventConsumer"}}}"""</ID>
+    <ID>MaxLineLength:KastProviderTest.kt:KastProviderTest$"""{"status":"completed","document":{"operation":"symbol.inspect","status":"qualified","symbol":{"selector":"exact:v2:opaque","kind":"classlike","name":"EventConsumer","qualifiedIdentity":"sample.EventConsumer","file":"src/EventConsumer.kt","range":{"startInclusive":3,"endExclusive":20},"compilerEvidence":{"identity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","signature":{"type":"class-like","qualifiedIdentity":"sample.EventConsumer"}}},"qualification":"compiler-evidence-incomplete"}}"""</ID>
+    <ID>MaxLineLength:KastProviderTest.kt:KastProviderTest$"\"status\": \"qualified\", \"qualification\": {\"type\": \"terminal_incomplete\", \"knownMinimum\": 2, \"limitations\": [\"result-limit-reached\"]},"</ID>
+    <ID>MaxLineLength:KastProviderTest.kt:KastProviderTest$"\"status\": \"qualified\", \"qualification\": {\"type\": \"terminal_incomplete\", \"limitations\": [\"depth-limit-reached\"], \"relationLimitations\": []},"</ID>
+    <ID>MaxLineLength:KastPublicQueryProviderTest.kt:KastPublicQueryProviderTest$"""{"class_name":"Order","name_match":null,"scope":{"relative_directory_path":"../src","include_subdirectories":true,"source_set_names":null}}"""</ID>
+    <ID>MaxLineLength:KastPublicQueryProviderTest.kt:KastPublicQueryProviderTest$"""{"class_name":"Order","name_match":null,"scope":{"relative_directory_path":"/PRIVATE_SECRET_PATH","include_subdirectories":true,"source_set_names":null}}"""</ID>
+    <ID>MaxLineLength:KastPublicQueryProviderTest.kt:KastPublicQueryProviderTest$"""{"type":"object","properties":{"status":{"enum":["completed"]},"document":{"type":"object"}},"required":["status","document"],"additionalProperties":false}"""</ID>
+    <ID>MaxLineLength:KtorBrokerServerTest.kt:KtorBrokerServerTest$"""{"id":9,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"kast","tool":"symbol_inspect","arguments":$arguments}}"""</ID>
+    <ID>MaxLineLength:KtorBrokerServerTest.kt:KtorBrokerServerTest$"""{"method":"item/completed","params":{"threadId":"thread-1","turnId":"turn-1","completedAtMs":20,"item":{"type":"dynamicToolCall","id":"call-1","namespace":"kast","tool":"symbol_inspect","arguments":$arguments,"status":"completed","contentItems":[{"type":"inputText","text":"exact model result"}],"success":true}}}"""</ID>
+    <ID>MaxLineLength:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$"$APP_SERVER_ENABLE_ENVIRONMENT=${if (command.host == BrokerHostSelection.Disabled) "0" else "1"}"</ID>
+    <ID>MaxLineLength:NativeToolIdentityTest.kt:NativeToolIdentityTest$"""{"type":"dynamicToolCall","id":"call-1","namespace":"kast","tool":"query","arguments":{"selector":"exact:v2:opaque"},"status":"inProgress","futureField":"retained"}"""</ID>
+    <ID>MaxLineLength:NativeToolIdentityTest.kt:NativeToolIdentityTest$"""{"type":"dynamicToolCall","id":"call-1","namespace":"kast","tool":"query","arguments":{},"status":"$status","success":$success,"durationMs":17,"contentItems":[{"type":"inputText","text":"query: qualified"},{"type":"inputText","text":"{\"status\":\"qualified\",\"items\":[],\"failures\":[\"budget\"]}"}]}"""</ID>
+    <ID>MaxLineLength:NativeToolIdentityTest.kt:NativeToolIdentityTest$"""{"type":"dynamicToolCall","id":"call-1","namespace":"kast","tool":"query","arguments":{},"status":"failed","success":true}"""</ID>
+    <ID>MaxLineLength:PersistentBrokerServiceTest.kt:PersistentBrokerServiceTest$"""{"state":"rejected","schemaVersion":$BROKER_SERVICE_STATE_SCHEMA_VERSION,"serviceIdentity":"${command.identity.value}","serviceInstanceId":"123e4567-e89b-42d3-a456-426614174000","brokerVersion":"$VENDORED_BROKER_VERSION","failure":"CODEX_QUALIFICATION_REJECTED"}"""</ID>
+    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"ALL","scope":{"type":"DIRECTORY","value":".","containment":"DIRECT"}}}"""</ID>
+    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"ALL","scope":{"type":"DIRECTORY","value":".","containment":"recursive"}}}"""</ID>
+    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"ALL","scope":{"type":"DIRECTORY","value":".","containment":null}}}"""</ID>
+    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"ALL","scope":{"type":"DIRECTORY","value":".","sourceSets":[" "]}}}"""</ID>
+    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"ALL","scope":{"type":"DIRECTORY","value":".","sourceSets":["integrationTest","integrationTest"]}}}"""</ID>
+    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"ALL","scope":{"type":"DIRECTORY","value":"services","containment":"DESCENDANTS"}}}"""</ID>
+    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"ALL","scope":{"type":"DIRECTORY","value":"services","package":"com.example"}}}"""</ID>
+    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"ALL","scope":{"type":"DIRECTORY","value":"services/orders","sourceSets":["main"]}}}"""</ID>
+    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"ALL","scope":{"type":"SCOPE","directory":{"type":"DIRECTORY","path":"services"},"package":{"type":"PACKAGE","name":"com.example"}}}}"""</ID>
+    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"SEARCH","query":"Order","kinds":["CLASS"]},"steps":[{"type":"EXPAND","relation":"TYPE_USES"}],"select":[]}"""</ID>
+    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"SEARCH","query":"submitOrder"},"steps":[{"type":"EXPAND","relation":"CALLERS"},{"type":"FILTER","visibility":["PUBLIC"]}]}"""</ID>
+    <ID>MaxLineLength:PublicQueryDocuments.kt:PublicQueryAll$val kinds: BoundedProtocolList&lt;PublicQueryDeclarationKind> = queryListOf(PublicQueryDeclarationKind.CLASS, PublicQueryDeclarationKind.FUNCTION, PublicQueryDeclarationKind.PROPERTY, PublicQueryDeclarationKind.TYPE_ALIAS)</ID>
+    <ID>MaxLineLength:PublicQueryDocuments.kt:PublicQueryScope.Directory$override val sourceSets: BoundedProtocolList&lt;ProtocolText> = queryListOf(queryValue(ProtocolText.parse("main")), queryValue(ProtocolText.parse("test")))</ID>
+    <ID>MaxLineLength:PublicQueryDocuments.kt:PublicQueryScope.Package$override val sourceSets: BoundedProtocolList&lt;ProtocolText> = queryListOf(queryValue(ProtocolText.parse("main")), queryValue(ProtocolText.parse("test")))</ID>
+    <ID>MaxLineLength:PublicQueryDocuments.kt:PublicQueryScopeEnvelope$val sourceSets: BoundedProtocolList&lt;ProtocolText> = queryListOf(queryValue(ProtocolText.parse("main")), queryValue(ProtocolText.parse("test")))</ID>
+    <ID>MaxLineLength:PublicQueryDocuments.kt:PublicQuerySearch$val kinds: BoundedProtocolList&lt;PublicQueryDeclarationKind> = queryListOf(PublicQueryDeclarationKind.CLASS, PublicQueryDeclarationKind.FUNCTION, PublicQueryDeclarationKind.PROPERTY, PublicQueryDeclarationKind.TYPE_ALIAS)</ID>
+    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"ALL\",\"scope\":{\"type\":\"SCOPE\",\"directory\":{\"type\":\"DIRECTORY\",\"path\":\"/tmp\"}}}}"</ID>
+    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"ALL\",\"scope\":{\"type\":\"SCOPE\",\"directory\":{\"type\":\"DIRECTORY\",\"path\":\"a/ /b\"}}}}"</ID>
+    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"ALL\",\"scope\":{\"type\":\"SCOPE\",\"directory\":{\"type\":\"DIRECTORY\",\"path\":\"a/../b\"}}}}"</ID>
+    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"ALL\",\"scope\":{\"type\":\"SCOPE\",\"directory\":{\"type\":\"DIRECTORY\",\"path\":\"a/./b\"}}}}"</ID>
+    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"ALL\",\"scope\":{\"type\":\"SCOPE\",\"directory\":{\"type\":\"DIRECTORY\",\"path\":\"a//b\"}}}}"</ID>
+    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"ALL\",\"scope\":{\"type\":\"SCOPE\",\"sourceSets\":[\"main\",\"main\"]}}}"</ID>
+    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"ALL\"},\"steps\":[{\"type\":\"EXPAND\",\"relation\":\"type_uses\"}]}"</ID>
+    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"ALL\"},\"steps\":[{\"type\":\"FILTER\",\"visibility\":[\"public\",\"public\"]}]}"</ID>
+    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"REFS\",\"refs\":[{\"kind\":\"exact-symbol\",\"token\":\"exact:v2:abc\"}]}}"</ID>
+    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"SEARCH\",\"query\":\"OrderService\"},\"execution\":{\"kind\":\"exhaustive\"}}"</ID>
+    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"SEARCH\",\"query\":\"OrderService\"},\"output\":{\"type\":\"candidates\",\"fields\":[]}}"</ID>
+    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"SEARCH\",\"query\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}}"</ID>
+    <ID>MaxLineLength:PublicToolContractTest.kt:PublicToolSchemaTest$"""{"class_name":"Order","name_match":null,"scope":{"relative_directory_path":".","include_subdirectories":true,"source_set_names":["main","main"]}}"""</ID>
+    <ID>MaxLineLength:PublicToolContractTest.kt:PublicToolSchemaTest$"""{"declaration_name":"Order","name_match":null,"scope":null,"declaration_kinds":["class","class"]}"""</ID>
+    <ID>MaxLineLength:PublicToolContractTest.kt:PublicToolSchemaTest$"""{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":[{"type":"filter_visibility","visibilities":["public","public"]}],"return_fields":null}"""</ID>
+    <ID>MaxLineLength:PublicToolContractTest.kt:PublicToolSchemaTest$"""{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":null,"return_fields":["name","name"]}"""</ID>
+    <ID>MaxLineLength:PublicToolDocuments.kt:PublicToolDefaults$val declarationKinds = toolDefault(BoundedProtocolList.create(listOf(PublicToolDeclarationKinds.CLASS, PublicToolDeclarationKinds.FUNCTION, PublicToolDeclarationKinds.PROPERTY, PublicToolDeclarationKinds.TYPE_ALIAS)))</ID>
+    <ID>MaxLineLength:PublicToolDocuments.kt:PublicToolDefaults$val returnFields = toolDefault(BoundedProtocolList.create(listOf(PublicToolReturnFields.NAME, PublicToolReturnFields.LOCATION)))</ID>
+    <ID>MaxLineLength:PublicToolDocuments.kt:PublicToolDefaults$val searchFields = toolDefault(BoundedProtocolList.create(listOf(PublicToolReturnFields.NAME, PublicToolReturnFields.LOCATION, PublicToolReturnFields.SIGNATURE)))</ID>
+    <ID>MaxLineLength:PublicToolDocuments.kt:PublicToolDefaults$val sourceSets = toolDefault(BoundedProtocolList.create(listOf(toolDefault(ProtocolText.parse("main")), toolDefault(ProtocolText.parse("test")))))</ID>
+    <ID>MaxLineLength:PublicToolDocuments.kt:PublicToolScopeSerializer$override</ID>
+    <ID>MaxLineLength:PublicToolDocuments.kt:internal</ID>
+    <ID>NestedBlockDepth:AppServerManagement.kt:InstalledAppServerManager$override fun execute: AppServerManagementResult</ID>
+    <ID>NestedBlockDepth:BrokerEndpointAliasTest.kt:BrokerEndpointAliasTest$@Test @Timeout(10) fun `native socket exchange through alias retains its inode under the physical version`</ID>
+    <ID>NestedBlockDepth:BrokerInstallationState.kt:BrokerInstallationState$fun admit: Refinement&lt;ThreadBindingOwner.Installation, InstallationStateFailure></ID>
+    <ID>NestedBlockDepth:BrokerInstallationState.kt:BrokerInstallationState$private fun identity: Refinement&lt;String, InstallationStateFailure></ID>
+    <ID>NestedBlockDepth:BrokerSessionHub.kt:BrokerSessionHub.Session$private suspend fun receiveLocked</ID>
+    <ID>NestedBlockDepth:CodexHostIntegrationManifestMain.kt:GitSourceSnapshot.Companion$fun capture: GitSourceSnapshot</ID>
+    <ID>NestedBlockDepth:CodexHostInvocation.kt:CodexServiceInvocation.Companion$fun admit: Refinement&lt;CodexServiceInvocation, CodexServiceArgumentFailure></ID>
+    <ID>NestedBlockDepth:CodexProtocolQualifier.kt:CodexProtocolQualifier$private fun collectSchemas: CodexSchemaCollection</ID>
+    <ID>NestedBlockDepth:DesktopStdioHost.kt:DesktopStdioHost$override suspend fun run: CodexIntegrationRun</ID>
+    <ID>NestedBlockDepth:DesktopStdioHost.kt:private fun readBoundedLine: BoundedJsonLine</ID>
+    <ID>NestedBlockDepth:InstalledWorkerClient.kt:InstalledWorkerClient$private suspend fun &lt;T> receiveResult: T</ID>
+    <ID>NestedBlockDepth:InstalledWorkerClient.kt:WorkerControlReply.Companion$fun decode: InstalledWorkerStart</ID>
+    <ID>NestedBlockDepth:InvocationFence.kt:InvocationFence$private fun flush: Boolean</ID>
+    <ID>NestedBlockDepth:KastCodexMain.kt:OwnedCodexIntegration$@Synchronized fun close: CodexIntegrationShutdown</ID>
+    <ID>NestedBlockDepth:MacOsPersistentBrokerServiceHost.kt:BrokerServiceStartLock$fun withAcquired: BrokerServiceLockExecution</ID>
+    <ID>NestedBlockDepth:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun awaitRetirement: BrokerLaunchdServiceRetirement</ID>
+    <ID>NestedBlockDepth:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun reconcileAbsent: PersistentBrokerServiceAdmission</ID>
+    <ID>NestedBlockDepth:ManagedCodexUpstream.kt:ManagedCodexUpstream.Companion$internal suspend fun start: ManagedCodexUpstreamStart</ID>
+    <ID>NestedBlockDepth:PersistentBrokerService.kt:BrokerServiceLaunchCommand.Companion$private fun sha256: String?</ID>
+    <ID>NestedBlockDepth:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$private fun readDocument: ThreadStoreDocumentRead</ID>
+    <ID>NestedBlockDepth:WorkerStopReply.kt:WorkerStopReply.Companion$fun decode: InstalledWorkerStop</ID>
+    <ID>NestedBlockDepth:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun snapshot: WorkspaceRegistryRead</ID>
+    <ID>NestedBlockDepth:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$private fun receipt: Boolean</ID>
+    <ID>NestedBlockDepth:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$suspend fun handle</ID>
+    <ID>TooGenericExceptionCaught:BrokerSessionHub.kt:BrokerSessionHub$failure: Exception</ID>
+    <ID>TooGenericExceptionCaught:BrokerSessionHub.kt:BrokerSessionHub.Session$failure: Exception</ID>
+    <ID>TooGenericExceptionCaught:MacOsPersistentBrokerServiceHost.kt:JdkBrokerSocketProbe$failure: Exception</ID>
+    <ID>UnusedParameter:CodexProtocolAdapter.kt:CodexProtocolAdapter$message: String</ID>
+    <ID>UnusedParameter:KtorBrokerServerTest.kt:KtorBrokerServerTest$@TempDir temporary: Path</ID>
+    <ID>WildcardImport:AppServerManagement.kt:import io.github.amichne.kast.appserver.runtime.*</ID>
+    <ID>WildcardImport:AppServerManagement.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:BrokerInstallationState.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:BrokerQualification.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:BrokerSessionActivity.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:BrokerSessionHub.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:BrokerSessionHub.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:BrokerSessionHubTest.kt:import io.github.amichne.kast.appserver.core.*</ID>
+    <ID>WildcardImport:BrokerSessionHubTest.kt:import io.github.amichne.kast.appserver.protocol.*</ID>
+    <ID>WildcardImport:BrokerSessionHubTest.kt:import io.github.amichne.kast.appserver.protocol.codex.*</ID>
+    <ID>WildcardImport:BrokerSessionHubTest.kt:import io.github.amichne.kast.appserver.schema.*</ID>
+    <ID>WildcardImport:BrokerSessionHubTest.kt:import io.github.amichne.kast.kernel.*</ID>
+    <ID>WildcardImport:BrokerSessionHubTest.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:BrokerSessionHubTest.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:BrokerSessionHubTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:CodexHostIntegrationManifestMain.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:CoordinatorStatusCapacityTest.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:InstalledCoordinator.kt:import io.github.amichne.kast.appserver.runtime.*</ID>
+    <ID>WildcardImport:InstalledCoordinatorTest.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:InstalledCoordinatorTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:InstalledWorkerClient.kt:import io.github.amichne.kast.appserver.runtime.*</ID>
+    <ID>WildcardImport:InstalledWorkerClient.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:InstalledWorkerClient.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:InstalledWorkerClientOwnerTest.kt:import io.github.amichne.kast.appserver.runtime.*</ID>
+    <ID>WildcardImport:InstalledWorkerClientOwnerTest.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:InstalledWorkerClientOwnerTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:InstalledWorkspaceRoutingAcceptanceMain.kt:import io.github.amichne.kast.appserver.*</ID>
+    <ID>WildcardImport:InstalledWorkspaceRoutingAcceptanceMain.kt:import io.github.amichne.kast.appserver.core.*</ID>
+    <ID>WildcardImport:InstalledWorkspaceRoutingAcceptanceMain.kt:import io.github.amichne.kast.appserver.protocol.*</ID>
+    <ID>WildcardImport:InstalledWorkspaceRoutingAcceptanceMain.kt:import io.github.amichne.kast.appserver.protocol.codex.*</ID>
+    <ID>WildcardImport:InstalledWorkspaceRoutingAcceptanceMain.kt:import io.github.amichne.kast.appserver.provider.*</ID>
+    <ID>WildcardImport:InstalledWorkspaceRoutingAcceptanceMain.kt:import io.ktor.client.plugins.websocket.*</ID>
+    <ID>WildcardImport:InstalledWorkspaceRoutingAcceptanceMain.kt:import io.ktor.websocket.*</ID>
+    <ID>WildcardImport:InstalledWorkspaceRoutingAcceptanceMain.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:InstalledWorkspaceRoutingAcceptanceMain.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:InvocationFence.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:InvocationFenceTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:KastPublicQueryProviderTest.kt:import io.github.amichne.kast.appserver.core.*</ID>
+    <ID>WildcardImport:KastPublicQueryProviderTest.kt:import io.github.amichne.kast.protocol.registry.*</ID>
+    <ID>WildcardImport:KastPublicQueryProviderTest.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:KastPublicQueryProviderTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:NativeToolIdentityTest.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:NativeToolIdentityTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:PublicQuerySchemaTest.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:PublicQuerySchemaTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:PublicToolContract.kt:import io.github.amichne.kast.appserver.schema.*</ID>
+    <ID>WildcardImport:PublicToolContract.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:PublicToolContract.kt:import kotlinx.serialization.*</ID>
+    <ID>WildcardImport:PublicToolContract.kt:import kotlinx.serialization.descriptors.*</ID>
+    <ID>WildcardImport:PublicToolContract.kt:import kotlinx.serialization.encoding.*</ID>
+    <ID>WildcardImport:PublicToolContract.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:PublicToolContractTest.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:PublicToolContractTest.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:PublicToolContractTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:PublicToolDocuments.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:PublicToolMapping.kt:import io.github.amichne.kast.protocol.contract.*</ID>
+    <ID>WildcardImport:SharedTaskSessionsTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:VersionedServiceLifecycleTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:WorkerControlBindingTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:WorkerSeedConsentExchange.kt:import io.github.amichne.kast.appserver.*</ID>
+    <ID>WildcardImport:WorkerSeedConsentExchange.kt:import io.ktor.websocket.*</ID>
+    <ID>WildcardImport:WorkerSeedConsentExchange.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:WorkerSeedConsentTest.kt:import io.github.amichne.kast.appserver.runtime.*</ID>
+    <ID>WildcardImport:WorkerSeedConsentTest.kt:import io.ktor.client.plugins.websocket.*</ID>
+    <ID>WildcardImport:WorkerSeedConsentTest.kt:import io.ktor.client.request.*</ID>
+    <ID>WildcardImport:WorkerSeedConsentTest.kt:import io.ktor.websocket.*</ID>
+    <ID>WildcardImport:WorkerSeedConsentTest.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:WorkerSeedConsentTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:WorkerStopReply.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:WorkspaceEnrollment.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:WorkspaceEnrollmentTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:WorkspaceExecution.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:WorkspaceExecution.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:WorkspaceExecutionBudgetTest.kt:import io.github.amichne.kast.appserver.core.*</ID>
+    <ID>WildcardImport:WorkspaceExecutionBudgetTest.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:WorkspaceExecutionBudgetTest.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:WorkspaceExecutionBudgetTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:WorkspaceRegistrationCommandTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:WorkspaceRuntimeControl.kt:import io.github.amichne.kast.appserver.*</ID>
+    <ID>WildcardImport:WorkspaceRuntimeControl.kt:import io.ktor.websocket.*</ID>
+    <ID>WildcardImport:WorkspaceRuntimeControl.kt:import java.nio.file.*</ID>
+    <ID>WildcardImport:WorkspaceRuntimeControl.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:WorkspaceRuntimeControl.kt:import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:WorkspaceRuntimeControlTest.kt:import io.github.amichne.kast.appserver.*</ID>
+    <ID>WildcardImport:WorkspaceRuntimeControlTest.kt:import io.github.amichne.kast.distribution.contract.configuration.*</ID>
+    <ID>WildcardImport:WorkspaceRuntimeControlTest.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:WorkspaceRuntimeControlTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:WorkspaceWorkerAdmissionTest.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:WorkspaceWorkerAdmissionTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

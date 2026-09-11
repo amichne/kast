@@ -7,14 +7,15 @@ import org.junit.jupiter.api.Test
 class SourceRootAdmissionTest {
     @Test
     fun `source-set names retain exact spelling and reject blank boundary data`() {
-        val raw = GradleSourceRootEvidence(
-            ideaModuleName = "root.custom",
-            workspaceRelativeBuildRoot = ".",
-            gradleProjectPath = ":",
-            sourceSetName = " customMain ",
-            workspaceRelativeSourceRoot = "unrelated/path",
-            provenance = SourceRootProvenance.Authored,
-        )
+        val raw =
+            GradleSourceRootEvidence(
+                ideaModuleName = "root.custom",
+                workspaceRelativeBuildRoot = ".",
+                gradleProjectPath = ":",
+                sourceSetName = " customMain ",
+                workspaceRelativeSourceRoot = "unrelated/path",
+                provenance = SourceRootProvenance.Authored,
+            )
         val admitted = SourceRoot.admit(raw) as Refinement.Refined
         assertEquals(raw.sourceSetName, admitted.value.owner.sourceSet.value)
         assertEquals(
@@ -25,14 +26,15 @@ class SourceRootAdmissionTest {
 
     @Test
     fun `platform-invalid source and build paths remain typed admission failures`() {
-        val valid = GradleSourceRootEvidence(
-            ideaModuleName = "root.main",
-            workspaceRelativeBuildRoot = ".",
-            gradleProjectPath = ":",
-            sourceSetName = "main",
-            workspaceRelativeSourceRoot = "src/main/kotlin",
-            provenance = SourceRootProvenance.Authored,
-        )
+        val valid =
+            GradleSourceRootEvidence(
+                ideaModuleName = "root.main",
+                workspaceRelativeBuildRoot = ".",
+                gradleProjectPath = ":",
+                sourceSetName = "main",
+                workspaceRelativeSourceRoot = "src/main/kotlin",
+                provenance = SourceRootProvenance.Authored,
+            )
         val invalid = "src" + 0.toChar() + "/main"
 
         assertEquals(

@@ -17,14 +17,19 @@ internal class CanonicalQueryRunHandler(
 ) : OperationHandler<QueryRunRequest, QueryRunResult, QueryRunQualification, QueryRunRejection> {
     private val protocol = CanonicalQueryProtocol(operations, authority)
 
-    override suspend fun execute(request: QueryRunRequest): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
-        val lease = when (val state = workspace.inspect()) {
-            is WorkspaceRuntimeState.Ready -> state.workspace.readLease
-            else -> return OperationOutcome.Rejected(QueryRunRejection.WorkspaceNotReady)
-        }
-        val budget = installedSemanticBudgets()?.query ?: return OperationOutcome.Rejected(
-            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.BUDGET_REJECTED),
-        )
+    override suspend fun execute(
+        request: QueryRunRequest
+    ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
+        val lease =
+            when (val state = workspace.inspect()) {
+                is WorkspaceRuntimeState.Ready -> state.workspace.readLease
+                else -> return OperationOutcome.Rejected(QueryRunRejection.WorkspaceNotReady)
+            }
+        val budget =
+            installedSemanticBudgets()?.query
+                ?: return OperationOutcome.Rejected(
+                    QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.BUDGET_REJECTED)
+                )
         return protocol.execute(request, lease, budget)
     }
 }

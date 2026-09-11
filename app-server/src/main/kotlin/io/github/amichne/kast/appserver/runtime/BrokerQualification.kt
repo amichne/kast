@@ -11,8 +11,14 @@ internal class BrokerQualification(
     private val catalog: String,
 ) {
     fun document(): JsonObject = buildJsonObject {
-        put("serviceIdentity", (service as? BrokerServiceReadiness.Managed)?.identity?.value?.let(::JsonPrimitive) ?: JsonNull)
-        put("generation", (service as? BrokerServiceReadiness.Managed)?.instanceId?.toString()?.let(::JsonPrimitive) ?: JsonNull)
+        put(
+            "serviceIdentity",
+            (service as? BrokerServiceReadiness.Managed)?.identity?.value?.let(::JsonPrimitive) ?: JsonNull,
+        )
+        put(
+            "generation",
+            (service as? BrokerServiceReadiness.Managed)?.instanceId?.toString()?.let(::JsonPrimitive) ?: JsonNull,
+        )
         put("codexVersion", protocol.version.value)
         put("schemaDigest", protocol.protocolDigest.value)
         put("catalogDigest", catalog)

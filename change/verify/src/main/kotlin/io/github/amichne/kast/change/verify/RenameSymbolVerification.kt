@@ -12,11 +12,12 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 
 enum class ObservedRenameSymbolDeltaFailure {
-    NEGATIVE_COUNT,
+    NEGATIVE_COUNT
 }
 
 /** Detached compiler counts for the old identity and exact renamed identity in G1. */
-class ObservedRenameSymbolDelta private constructor(
+class ObservedRenameSymbolDelta
+private constructor(
     val oldName: KotlinIdentifier,
     val newName: KotlinIdentifier,
     val oldDeclarationCount: Int,
@@ -29,9 +30,9 @@ class ObservedRenameSymbolDelta private constructor(
          * Proof transition: `(KotlinIdentifier, KotlinIdentifier, Int, Int, Int, Int) ->
          * Refinement<ObservedRenameSymbolDelta, ObservedRenameSymbolDeltaFailure>`.
          *
-         * Establishes non-negative compiler-observed declaration and reference counts for both
-         * identities. [ObservedRenameSymbolDeltaFailure] closes invalid counts. Raw counts may
-         * enter only at the result-generation compiler boundary.
+         * Establishes non-negative compiler-observed declaration and reference counts for both identities.
+         * [ObservedRenameSymbolDeltaFailure] closes invalid counts. Raw counts may enter only at the result-generation
+         * compiler boundary.
          */
         fun fromCompilerBoundary(
             oldName: KotlinIdentifier,
@@ -41,12 +42,13 @@ class ObservedRenameSymbolDelta private constructor(
             remainingOldReferenceCount: Int,
             renamedReferenceCount: Int,
         ): Refinement<ObservedRenameSymbolDelta, ObservedRenameSymbolDeltaFailure> {
-            val counts = listOf(
-                oldDeclarationCount,
-                newDeclarationCount,
-                remainingOldReferenceCount,
-                renamedReferenceCount,
-            )
+            val counts =
+                listOf(
+                    oldDeclarationCount,
+                    newDeclarationCount,
+                    remainingOldReferenceCount,
+                    renamedReferenceCount,
+                )
             return if (counts.any { it < 0 }) {
                 Refinement.Rejected(ObservedRenameSymbolDeltaFailure.NEGATIVE_COUNT)
             } else {
@@ -58,7 +60,7 @@ class ObservedRenameSymbolDelta private constructor(
                         newDeclarationCount,
                         remainingOldReferenceCount,
                         renamedReferenceCount,
-                    ),
+                    )
                 )
             }
         }
@@ -90,7 +92,8 @@ enum class RenameSymbolProofFailure : ChangeProofFailure {
 }
 
 /** Complete G0-to-G1 proof for one exact RenameSymbol plan. */
-class CompleteRenameSymbolVerification private constructor(
+class CompleteRenameSymbolVerification
+private constructor(
     override val plan: RenameSymbolChangePlan,
     override val applied: AppliedUnverified,
     override val resulting: DistinctResultingWorkspace,
@@ -100,14 +103,13 @@ class CompleteRenameSymbolVerification private constructor(
 
     companion object {
         /**
-         * Proof transition: `(RenameSymbolChangePlan, AppliedUnverified,
-         * DistinctResultingWorkspace, RenameSymbolVerificationEvidence) -> Refinement<
-         * CompleteRenameSymbolVerification, Set<RenameSymbolProofFailure>>`.
+         * Proof transition: `(RenameSymbolChangePlan, AppliedUnverified, DistinctResultingWorkspace,
+         * RenameSymbolVerificationEvidence) -> Refinement< CompleteRenameSymbolVerification,
+         * Set<RenameSymbolProofFailure>>`.
          *
-         * Establishes the exact authority-derived postimage, complete source-scoped clean
-         * diagnostics, absence of the old declaration and references, one new declaration, exact
-         * retargeted-reference count, and the exhaustive obligation set.
-         * [RenameSymbolProofFailure] is the closed expected failure. Raw compiler extraction is
+         * Establishes the exact authority-derived postimage, complete source-scoped clean diagnostics, absence of the
+         * old declaration and references, one new declaration, exact retargeted-reference count, and the exhaustive
+         * obligation set. [RenameSymbolProofFailure] is the closed expected failure. Raw compiler extraction is
          * confined to construction of [ObservedRenameSymbolDelta].
          */
         fun admit(
@@ -123,29 +125,32 @@ class CompleteRenameSymbolVerification private constructor(
             if (evidence.content != applied.postimage) {
                 failures += RenameSymbolProofFailure.RESULT_SOURCE_CONTENT_MISMATCH
             }
-            val completeDiagnostics = evidence.diagnostics.mapNotNull {
-                it as? DiagnosticCheckResult.Complete
-            }
+            val completeDiagnostics =
+                evidence.diagnostics.mapNotNull {
+                    it as? DiagnosticCheckResult.Complete
+                }
             when {
-                evidence.diagnostics.isEmpty() ->
-                    failures += RenameSymbolProofFailure.DIAGNOSTIC_EVIDENCE_REQUIRED
+                evidence.diagnostics.isEmpty() -> failures += RenameSymbolProofFailure.DIAGNOSTIC_EVIDENCE_REQUIRED
                 completeDiagnostics.size != evidence.diagnostics.size ->
                     failures += RenameSymbolProofFailure.DIAGNOSTIC_EVIDENCE_INCOMPLETE
                 else -> {
-                    if (completeDiagnostics.any {
+                    if (
+                        completeDiagnostics.any {
                             it.batch.scope.lease != resulting.workspace.readLease
                         }
                     ) {
                         failures += RenameSymbolProofFailure.DIAGNOSTIC_LEASE_MISMATCH
                     }
-                    if (completeDiagnostics.any { result ->
+                    if (
+                        completeDiagnostics.any { result ->
                             result.batch.scope.files.mapTo(linkedSetOf()) { it.value } !=
                                 setOf(applied.source.path.value)
                         }
                     ) {
                         failures += RenameSymbolProofFailure.DIAGNOSTIC_SCOPE_MISMATCH
                     }
-                    if (completeDiagnostics.any { result ->
+                    if (
+                        completeDiagnostics.any { result ->
                             result.batch.facts.any { it.severity == DiagnosticSeverity.ERROR }
                         }
                     ) {
@@ -169,9 +174,10 @@ class CompleteRenameSymbolVerification private constructor(
             if (delta.remainingOldReferenceCount != 0) {
                 failures += RenameSymbolProofFailure.OLD_REFERENCE_REMAINS
             }
-            val expectedReferences = plan.intent.occurrences.occurrences.count {
-                it.role == RenameSymbolOccurrenceRole.REFERENCE
-            }
+            val expectedReferences =
+                plan.intent.occurrences.occurrences.count {
+                    it.role == RenameSymbolOccurrenceRole.REFERENCE
+                }
             if (delta.renamedReferenceCount != expectedReferences) {
                 failures += RenameSymbolProofFailure.RENAMED_REFERENCE_COUNT_MISMATCH
             }
@@ -179,9 +185,7 @@ class CompleteRenameSymbolVerification private constructor(
                 failures += RenameSymbolProofFailure.OBLIGATION_SET_MISMATCH
             }
             return if (failures.isEmpty()) {
-                Refinement.Refined(
-                    CompleteRenameSymbolVerification(plan, applied, resulting, evidence),
-                )
+                Refinement.Refined(CompleteRenameSymbolVerification(plan, applied, resulting, evidence))
             } else {
                 Refinement.Rejected(failures)
             }

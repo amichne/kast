@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:IntellijAddDeclarationSourceAdapter.kt:IntellijChangeSourceAdapter$private fun prepareRead: IntellijSourcePreparation</ID>
+    <ID>CognitiveComplexMethod:IntellijExistingSourceRollback.kt:IntellijExistingSourceRollback$fun rollback: AddDeclarationRollbackResult</ID>
+    <ID>CyclomaticComplexMethod:HostedAddDeclarationSemanticObservation.kt:private fun observeRead: HostedAddDeclarationSemanticObservation</ID>
+    <ID>CyclomaticComplexMethod:IntellijAddDeclarationSourceAdapter.kt:IntellijChangeSourceAdapter$private fun prepareRead: IntellijSourcePreparation</ID>
+    <ID>CyclomaticComplexMethod:IntellijExistingSourceRollback.kt:IntellijExistingSourceRollback$fun rollback: AddDeclarationRollbackResult</ID>
+    <ID>ImplicitDefaultLocale:IntellijAddDeclarationSourceAdapter.kt:"%02x".format(byte)</ID>
+    <ID>LongMethod:HostedAddDeclarationSemanticObservation.kt:private fun observeRead: HostedAddDeclarationSemanticObservation</ID>
+    <ID>LongMethod:IntellijAddDeclarationSourceAdapter.kt:IntellijChangeSourceAdapter$private fun prepareRead: IntellijSourcePreparation</ID>
+    <ID>LongMethod:IntellijAddDeclarationSourceAdapter.kt:IntellijChangeSourceAdapter$private fun writeExisting: SourceWriteResult</ID>
+    <ID>LongMethod:IntellijExistingSourceRollback.kt:IntellijExistingSourceRollback$fun rollback: AddDeclarationRollbackResult</ID>
+    <ID>MatchingDeclarationName:IntellijAddDeclarationSourceAdapter.kt:IntellijChangeSourceAdapter : AddDeclarationSourceObserverAddDeclarationSourceWriterAddDeclarationSourceRollback</ID>
+    <ID>NamedArguments:HostedAddDeclarationSemanticObservation.kt:fromCompilerBoundary( file.packageFqName.asString(), checkNotNull(added.name), checkNotNull(added.addDeclarationKind()), 1, )</ID>
+    <ID>NamedArguments:HostedIntellijChangePorts.kt:compileIntent(project, root, selector, raw)</ID>
+    <ID>NamedArguments:HostedIntellijChangePorts.kt:validate( project, root, compatibilityCandidate, compatibilityPolicy, )</ID>
+    <ID>NamedArguments:InstalledIntellijChangePorts.kt:InstalledIntellijChangePorts.Companion$compileIntent(projectRoot, root, selector, raw)</ID>
+    <ID>NamedArguments:IntellijExistingSourceRollback.kt:IntellijExistingSourceRollback$synchronizeDocument( file, document, expected.text, ExistingRollbackDocumentStage.PREIMAGE, )</ID>
+    <ID>NamedArguments:IntellijExistingSourceRollback.kt:IntellijExistingSourceRollback$synchronizeDocument( file, document, expectedDocumentText, documentStage, )</ID>
+    <ID>NamedArguments:IntellijMutationInputProjection.kt:IntellijMutationInput( source.path.value, preimage, postimageTextAtIntellijBoundary(), mutations, )</ID>
+    <ID>TooGenericExceptionCaught:IntellijExistingSourceRollback.kt:IntellijExistingSourceRollback$failure: Exception</ID>
+    <ID>UnusedPrivateFunction:IntellijAddDeclarationSourceAdapter.kt:IntellijChangeSourceAdapter$private fun rejectedRollback</ID>
+    <ID>UnusedVariable:IntellijAddFileWriteProtocol.kt:IntellijAddFileWriteProtocol$val durable = durability.recordApplied()</ID>
+  </CurrentIssues>
+</SmellBaseline>

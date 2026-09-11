@@ -25,17 +25,18 @@ internal data class CopilotFixtureTool(
 internal fun AgentSessionBootstrap.toCopilotFixtureProjection(): CopilotFixtureProjection =
     CopilotFixtureProjection(
         policy = policy.text,
-        tools = tools.definitions.map { tool ->
-            CopilotFixtureTool(
-                operationId = tool.operation.id.value,
-                name = tool.name.value,
-                description = tool.description.value,
-                inputSchema = canonicalJson(tool.inputSchema.document),
-                outputSchema = canonicalJson(tool.outputSchema.document),
-                effect = tool.effect.name.lowercase(),
-                approval = tool.approval.name.lowercase(),
-                readinessMillis = OperationExecutionBudget.WORKSPACE_READINESS.value,
-                operationMillis = tool.executionBudget.operation.value,
-            )
-        },
+        tools =
+            tools.definitions.map { tool ->
+                CopilotFixtureTool(
+                    operationId = tool.operation.id.value,
+                    name = tool.name.value,
+                    description = tool.description.value,
+                    inputSchema = canonicalJson(tool.inputSchema.document),
+                    outputSchema = canonicalJson(tool.outputSchema.document),
+                    effect = tool.effect.name.lowercase(),
+                    approval = tool.approval.name.lowercase(),
+                    readinessMillis = OperationExecutionBudget.WORKSPACE_READINESS.value,
+                    operationMillis = tool.executionBudget.operation.value,
+                )
+            },
     )

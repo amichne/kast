@@ -1,9 +1,9 @@
 package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.protocol.codex.CodexProtocolQualificationFailure
+import java.io.PrintStream
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import java.io.PrintStream
 
 /** Ordered, bounded effect stages for one broker-service startup. */
 internal enum class BrokerStartupStage {
@@ -24,29 +24,24 @@ internal enum class BrokerStartupStage {
 /** Closed startup rejection evidence, retaining a Codex protocol's exact finite cause. */
 internal sealed interface BrokerStartupRejection {
     data class Coordinator(val failure: BrokerServerFailure) : BrokerStartupRejection
+
     data class HostAdmission(val failure: InstalledBrokerServerConfigurationFailure) : BrokerStartupRejection
-    data class Server(
-        val failure: InstalledBrokerServerFailure,
-    ) : BrokerStartupRejection
 
-    data class Upstream(val failure: io.github.amichne.kast.appserver.runtime.ManagedCodexUpstreamFailure) : BrokerStartupRejection
+    data class Server(val failure: InstalledBrokerServerFailure) : BrokerStartupRejection
 
-    data class CodexQualification(
-        val failure: CodexProtocolQualificationFailure,
-    ) : BrokerStartupRejection
+    data class Upstream(val failure: io.github.amichne.kast.appserver.runtime.ManagedCodexUpstreamFailure) :
+        BrokerStartupRejection
+
+    data class CodexQualification(val failure: CodexProtocolQualificationFailure) : BrokerStartupRejection
 }
 
 /** Payload-free lifecycle evidence emitted at the broker startup coordinator boundary. */
 internal sealed interface BrokerStartupActivity {
     val stage: BrokerStartupStage
 
-    data class Started(
-        override val stage: BrokerStartupStage,
-    ) : BrokerStartupActivity
+    data class Started(override val stage: BrokerStartupStage) : BrokerStartupActivity
 
-    data class Completed(
-        override val stage: BrokerStartupStage,
-    ) : BrokerStartupActivity
+    data class Completed(override val stage: BrokerStartupStage) : BrokerStartupActivity
 
     data class Rejected(
         override val stage: BrokerStartupStage,
@@ -70,9 +65,7 @@ internal fun interface BrokerStartupActivitySink {
 }
 
 /** Synchronized structured broker-startup progress for the launchd service log. */
-internal class JsonLineBrokerStartupActivitySink(
-    private val output: PrintStream,
-) : BrokerStartupActivitySink {
+internal class JsonLineBrokerStartupActivitySink(private val output: PrintStream) : BrokerStartupActivitySink {
     @Synchronized
     override fun publish(activity: BrokerStartupActivity): BrokerStartupActivityPublication {
         val document = buildJsonObject {
@@ -101,9 +94,7 @@ internal class JsonLineBrokerStartupActivitySink(
 }
 
 /** Best-effort effect adapter: telemetry cannot change broker startup semantics. */
-internal class BrokerStartupActivityPublisher(
-    private val sink: BrokerStartupActivitySink,
-) {
+internal class BrokerStartupActivityPublisher(private val sink: BrokerStartupActivitySink) {
     fun started(stage: BrokerStartupStage) = publish(BrokerStartupActivity.Started(stage))
 
     fun completed(stage: BrokerStartupStage) = publish(BrokerStartupActivity.Completed(stage))
@@ -124,11 +115,11 @@ internal class BrokerStartupActivityPublisher(
 
 private fun BrokerStartupStage.wireName(): String = name.lowercase().replace('_', '-')
 
-private fun BrokerStartupRejection.wireName(): String = when (this) {
-    is BrokerStartupRejection.Coordinator -> "coordinator-${failure.name.lowercase().replace('_', '-')}"
-    is BrokerStartupRejection.HostAdmission -> "host-admission-${failure.name.lowercase().replace('_', '-')}"
-    is BrokerStartupRejection.Upstream -> "upstream-${failure.name.lowercase().replace('_', '-')}"
-    is BrokerStartupRejection.Server -> failure.name.lowercase().replace('_', '-')
-    is BrokerStartupRejection.CodexQualification ->
-        "codex-${failure.name.lowercase().replace('_', '-')}"
-}
+private fun BrokerStartupRejection.wireName(): String =
+    when (this) {
+        is BrokerStartupRejection.Coordinator -> "coordinator-${failure.name.lowercase().replace('_', '-')}"
+        is BrokerStartupRejection.HostAdmission -> "host-admission-${failure.name.lowercase().replace('_', '-')}"
+        is BrokerStartupRejection.Upstream -> "upstream-${failure.name.lowercase().replace('_', '-')}"
+        is BrokerStartupRejection.Server -> failure.name.lowercase().replace('_', '-')
+        is BrokerStartupRejection.CodexQualification -> "codex-${failure.name.lowercase().replace('_', '-')}"
+    }

@@ -10,33 +10,45 @@ import java.util.Properties
 
 /** Reads Gradle's user-over-project property authority without changing either file. */
 object GradleNetworkConfiguration {
-    fun read(root: Path, gradleUserHome: Path, gradleHome: Path? = null): Refinement<NetworkConfiguration, NetworkConfigurationFailure> {
+    fun read(
+        root: Path,
+        gradleUserHome: Path,
+        gradleHome: Path? = null,
+    ): Refinement<NetworkConfiguration, NetworkConfigurationFailure> {
         return try {
-        val effective = Properties()
-        for (file in listOfNotNull(gradleHome?.resolve("gradle.properties"), root.resolve("gradle.properties"), gradleUserHome.resolve("gradle.properties"))) {
-            if (Files.exists(file)) {
-                if (!Files.isRegularFile(file) || Files.size(file) > 1_048_576) {
-                    return Refinement.Rejected(NetworkConfigurationFailure.CONFIGURATION_UNAVAILABLE)
+            val effective = Properties()
+            for (file in
+                listOfNotNull(
+                    gradleHome?.resolve("gradle.properties"),
+                    root.resolve("gradle.properties"),
+                    gradleUserHome.resolve("gradle.properties"),
+                )) {
+                if (Files.exists(file)) {
+                    if (!Files.isRegularFile(file) || Files.size(file) > 1_048_576) {
+                        return Refinement.Rejected(NetworkConfigurationFailure.CONFIGURATION_UNAVAILABLE)
+                    }
+                    Files.newInputStream(file).use(effective::load)
                 }
-                Files.newInputStream(file).use(effective::load)
             }
+            val arguments =
+                when (val parsed = jvmProperties(effective.getProperty("org.gradle.jvmargs", ""))) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected -> return parsed
+                }
+            val system =
+                NetworkProperty.entries
+                    .mapNotNull { property ->
+                        effective.getProperty("systemProp.${property.key}")?.let { property.key to it }
+                    }
+                    .toMap()
+            NetworkConfiguration.parse(arguments + system)
+        } catch (_: java.io.IOException) {
+            Refinement.Rejected(NetworkConfigurationFailure.CONFIGURATION_UNAVAILABLE)
+        } catch (_: IllegalArgumentException) {
+            Refinement.Rejected(NetworkConfigurationFailure.CONFIGURATION_UNAVAILABLE)
+        } catch (_: SecurityException) {
+            Refinement.Rejected(NetworkConfigurationFailure.CONFIGURATION_UNAVAILABLE)
         }
-        val arguments = when (val parsed = jvmProperties(effective.getProperty("org.gradle.jvmargs", ""))) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> return parsed
-        }
-        val system = NetworkProperty.entries.mapNotNull { property ->
-            effective.getProperty("systemProp.${property.key}")?.let { property.key to it }
-        }.toMap()
-        NetworkConfiguration.parse(arguments + system)
-    } catch (_: java.io.IOException) {
-        Refinement.Rejected(NetworkConfigurationFailure.CONFIGURATION_UNAVAILABLE)
-    } catch (_: IllegalArgumentException) {
-        Refinement.Rejected(NetworkConfigurationFailure.CONFIGURATION_UNAVAILABLE)
-    } catch (_: SecurityException) {
-        Refinement.Rejected(NetworkConfigurationFailure.CONFIGURATION_UNAVAILABLE)
-    }
-
     }
 
     /** Tokenizes the quoted JVM-argument boundary; only closed network properties leave it. */
@@ -47,12 +59,19 @@ object GradleNetworkConfiguration {
         var escaped = false
         for (character in raw) {
             when {
-                escaped -> { token.append(character); escaped = false }
+                escaped -> {
+                    token.append(character)
+                    escaped = false
+                }
                 character == '\\' -> escaped = true
                 quote != null && character == quote -> quote = null
                 quote != null -> token.append(character)
                 character == '\'' || character == '"' -> quote = character
-                character.isWhitespace() -> if (token.isNotEmpty()) { tokens += token.toString(); token.clear() }
+                character.isWhitespace() ->
+                    if (token.isNotEmpty()) {
+                        tokens += token.toString()
+                        token.clear()
+                    }
                 else -> token.append(character)
             }
         }
