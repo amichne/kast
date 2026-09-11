@@ -1,5 +1,6 @@
 """Owned native processes and strict event transport for hosted change acceptance."""
 import hashlib
+from enum import Enum
 import json
 import os
 from pathlib import Path
@@ -9,13 +10,29 @@ import subprocess
 import time
 
 from acceptance_environment import GradleRetirement
-from native_fixture_probe import NativeFixtureProbe
+from native_fixture_probe import NativeFixtureProbe, NativeFixtureProbeError
 from hosted_change_acceptance import (AcceptanceFailure, AcceptanceRejected, admitted_live,
                                       admit_event, event_observation, pending_readiness)
 
 
 def private_file(path: Path):
     return os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'wb')
+
+
+class NativeSetupPhase(Enum):
+    AWAITING_NATIVE_OBSERVATION = 'awaiting-native-observation'
+    NATIVE_OBSERVATION_COMPLETE = 'native-observation-complete'
+
+
+class SetupProbeFailure(Enum):
+    MALFORMED_RESPONSE = 'MALFORMED_RESPONSE'
+    RESPONSE_CORRELATION_REJECTED = 'RESPONSE_CORRELATION_REJECTED'
+    PROBE_TIMEOUT = 'PROBE_TIMEOUT'
+    TRANSPORT_REJECTED = 'TRANSPORT_REJECTED'
+
+    @classmethod
+    def classify(cls, error):
+        return next((failure for failure in cls if failure.value == str(error)), cls.TRANSPORT_REJECTED)
 
 
 class NativeProcesses:
@@ -40,6 +57,7 @@ class NativeProcesses:
 
     def ready(self):
         deadline = time.monotonic() + self.readiness_seconds
+        setup_phase = NativeSetupPhase.AWAITING_NATIVE_OBSERVATION
         root_digest = hashlib.sha256(str(self.fixture.workspace).encode()).hexdigest()[:32]
         endpoint = self.isolation.root / 'home/.kast/ide-hosted' / root_digest / 'endpoint.json'
         while time.monotonic() < deadline:
@@ -62,6 +80,10 @@ class NativeProcesses:
                 value = json.loads(result.stdout)
                 if result.returncode == 0 and value.get('status') == 'complete' and len(value.get('items', [])) == 1:
                     live = admitted_live(value.get('live'), self.fixture.workspace)
+                    if setup_phase is NativeSetupPhase.AWAITING_NATIVE_OBSERVATION:
+                        self.observe_setup()
+                        setup_phase = NativeSetupPhase.NATIVE_OBSERVATION_COMPLETE
+                        continue
                     with private_file(self.isolation.root / f'ready-{self.generation}.private.json') as output:
                         output.write(json.dumps({'live': live, 'resultCount': 1,
                             'responseSha256': hashlib.sha256(result.stdout.encode()).hexdigest()}).encode())
@@ -70,6 +92,23 @@ class NativeProcesses:
                     raise AcceptanceRejected(AcceptanceFailure.READINESS)
             time.sleep(0.5)
         raise AcceptanceRejected(AcceptanceFailure.READINESS_TIMEOUT)
+
+    def observe_setup(self):
+        command = 'AWAIT_SETUP_READY' if self.generation == 1 else 'AWAIT_REOPEN_READY'
+        current_digest = hashlib.sha256(self.fixture.source.read_bytes()).hexdigest()
+        try:
+            response = NativeFixtureProbe(self.isolation.root, self.fixture.workspace).request(command, current_digest, timeout=65)
+        except NativeFixtureProbeError as error:
+            self.readiness_observations.append({'generation': self.generation, 'stage': 'SETUP_READINESS',
+                'outcome': 'REJECTED', 'failure': SetupProbeFailure.classify(error).value})
+            raise AcceptanceRejected(AcceptanceFailure.READINESS) from None
+        if response['outcome'] != 'SETUP_READY':
+            self.readiness_observations.append({'generation': self.generation, 'stage': 'SETUP_READINESS',
+                'outcome': 'REJECTED', 'failure': response['failure']})
+            raise AcceptanceRejected(AcceptanceFailure.READINESS)
+        self.readiness_observations.append({'generation': self.generation, 'stage': 'SETUP_READINESS',
+            'outcome': 'OBSERVED', 'readiness': response['readiness'],
+            'sourceSavedSha256': response['evidence']['savedSha256']})
 
     def reject_failed_bind(self):
         log = self.isolation.root / 'ide/log/idea.log'

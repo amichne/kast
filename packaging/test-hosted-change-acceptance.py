@@ -7,14 +7,39 @@ from pathlib import Path
 import tempfile
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 import zipfile
 
 from hosted_change_process import NativeProcesses
+from native_fixture_probe import NativeFixtureProbeError
 from hosted_change_acceptance import (AcceptanceRejected, admit_event, admit_harness, admitted_live,
     bounded_native_report, event_observation, pending_readiness, receipt_scope_observation, remaining_matrix_gates, tree_identity)
 
 
 class HostedChangeAcceptanceTest(unittest.TestCase):
+    def test_setup_observation_retains_success_and_bounded_protocol_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'Source.kt'
+            source.write_text('class Source')
+            processes = NativeProcesses(SimpleNamespace(root=root),
+                SimpleNamespace(workspace=root, source=source), root, 60)
+            processes.generation = 1
+            response = {'outcome': 'SETUP_READY', 'readiness': {'scope': 'OBSERVED_SETUP_ONLY'},
+                        'evidence': {'savedSha256': hashlib.sha256(source.read_bytes()).hexdigest()}}
+            with patch('hosted_change_process.NativeFixtureProbe') as probe:
+                probe.return_value.request.return_value = response
+                processes.observe_setup()
+                self.assertEqual('OBSERVED', processes.readiness_observations[-1]['outcome'])
+                self.assertEqual(response['readiness'], processes.readiness_observations[-1]['readiness'])
+                for failure, expected in [('MALFORMED_RESPONSE', 'MALFORMED_RESPONSE'),
+                                          ('private arbitrary payload', 'TRANSPORT_REJECTED')]:
+                    probe.return_value.request.side_effect = NativeFixtureProbeError(failure)
+                    with self.assertRaises(AcceptanceRejected):
+                        processes.observe_setup()
+                    self.assertEqual(expected, processes.readiness_observations[-1]['failure'])
+                    self.assertNotIn('private arbitrary payload', json.dumps(processes.readiness_observations))
+
     def test_harness_contains_only_controller_classes_and_exact_commit(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'controller.jar'
