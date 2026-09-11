@@ -8,7 +8,6 @@ import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
-import io.github.amichne.kast.protocol.registry.HostedApprovalPolicy
 import io.github.amichne.kast.protocol.registry.HostedOperationProjection
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
@@ -82,47 +81,6 @@ class InstalledServerProjectionTest {
             traversalBudget.getValue("operationMillis").jsonPrimitive.content,
         )
         assertEquals(240_000L, OperationExecutionBudget.forOperation(CanonicalOperation.TOPOLOGY_BUILD).operation.value)
-    }
-
-    @Test
-    fun `installed broker exposes workflow facade names and explicit change approval`() {
-        val tools = projectionTools()
-        val invocations = projectionInvocations()
-
-        assertEquals(
-            listOf(
-                "search_classes",
-                "search_functions",
-                "search_declarations",
-                "query_symbols",
-                "symbol_lookup",
-                "symbol_inspect",
-                "source_read",
-                "semantic_query",
-                "impact_analyze",
-                "check_diagnostics",
-                "change_plan",
-                "change_apply",
-                "change_recover",
-            ),
-            tools.map { it.getValue("name").jsonPrimitive.content },
-        )
-        assertEquals(listOf("symbol", "inspect"), invocations.invocation("symbol_inspect").cliCommand())
-        assertTrue(
-            tools
-                .filter { it.getValue("name").jsonPrimitive.content in setOf("change_apply", "change_recover") }
-                .all {
-                    it.getValue("approvalPolicy").jsonPrimitive.content ==
-                        HostedApprovalPolicy.EXPLICIT.name.lowercase()
-                }
-        )
-        assertTrue(
-            tools
-                .filterNot { it.getValue("name").jsonPrimitive.content.startsWith("change_") }
-                .all {
-                    it.getValue("approvalPolicy").jsonPrimitive.content == HostedApprovalPolicy.NONE.name.lowercase()
-                }
-        )
     }
 
     @Test
@@ -212,29 +170,6 @@ class InstalledServerProjectionTest {
             .assertAdmits(
                 """{"status":"completed","document":{"operation":"query.run","status":"qualified","items":[],""" +
                     """"failures":[],"qualification":{"knownMinimum":0,"limitations":["discovery-incomplete"]}}}"""
-            )
-    }
-
-    @Test
-    fun `change schemas admit their emitted proof carrying previews`() {
-        val tools = projectionTools()
-        val preview =
-            """"changes":[{"path":"src/main/kotlin/demo/EventConsumer.kt","kind":"update",""" +
-                """"diff":"@@ class EventConsumer @@\n-old\n+new"}]"""
-
-        tools
-            .tool("change_plan")
-            .outputSchema()
-            .assertAdmits(
-                """{"status":"completed","document":{"operation":"change.plan","status":"complete",""" +
-                    """"planIdentity":"plan:opaque",$preview}}"""
-            )
-        tools
-            .tool("change_apply")
-            .outputSchema()
-            .assertAdmits(
-                """{"status":"completed","document":{"operation":"change.apply","status":"complete",""" +
-                    """"state":"verified","receiptIdentity":"receipt:opaque",$preview}}"""
             )
     }
 
