@@ -13,7 +13,7 @@ code_sources:
     symbols: [SemanticReadAuthority, LiveSemanticReadAuthority, SemanticReadValidationPort]
   - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/EditableMutationTarget.kt
   - path: change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/MutationAuthority.kt
-  - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/LiveChangeBasis.kt
+  - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/LiveChangeBasis.kt
   - path: change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt
 ---
 

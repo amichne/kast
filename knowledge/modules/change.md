@@ -25,7 +25,7 @@ code_sources:
     symbols: [ConfirmedRecoveryPreimage, RecoveryPreWriteObservationPort]
   - path: change/protocol/src/main/kotlin/io/github/amichne/kast/change/protocol/CanonicalChangePlanProtocol.kt
   - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/ChangePlanIssuance.kt
-  - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/LiveAddDeclarationChangePlan.kt
+  - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/LiveAddDeclarationChangePlan.kt
   - path: change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt
   - path: change/protocol/src/main/kotlin/io/github/amichne/kast/change/protocol/CanonicalLiveChangePlanProtocol.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeCoordinator.kt
