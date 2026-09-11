@@ -73,11 +73,7 @@ private fun InstalledServerBinding.operationDocument(): MintlifyCallableOperatio
     MintlifyCallableOperationDocument(
         operationId = tool.name,
         summary = tool.name.replace('_', ' '),
-        description =
-            "${tool.description}\n\nThis callable is not an HTTP endpoint. " +
-                "Invoke it with the Kast CLI command shown in the example.\n\n" +
-                "Read [response outcomes](/reference/responses) before using the payload. " +
-                "For compiler fields and reference reuse, see [symbol results](/reference/symbols).",
+        description = tool.description,
         requestBody =
             MintlifyCallableRequestBodyDocument(
                 required = true,
@@ -108,7 +104,21 @@ private fun InstalledServerBinding.operationDocument(): MintlifyCallableOperatio
             ),
         mint =
             MintlifyCallableMintDocument(
-                metadata = MintlifyCallablePageMetadataDocument(playground = MintlifyCallablePlayground.NONE)
+                metadata =
+                    MintlifyCallablePageMetadataDocument(
+                        playground = MintlifyCallablePlayground.NONE,
+                        mode = MintlifyCallablePageMode.WIDE,
+                        hideApiMarker = true,
+                        icon = "square-terminal",
+                        description = tool.description.substringBefore(". ").trimEnd('.') + ".",
+                        title = tool.name.replace('_', ' ').replaceFirstChar { it.uppercaseChar() },
+                    ),
+                content =
+                    "${tool.description}\n\nThis callable is not an HTTP endpoint. " +
+                        "Invoke it with the Kast CLI:\n\n" +
+                        "```bash\nkast ${invocation.invocation.command.joinToString(" ")} < request.json\n```\n\n" +
+                        "Read [response outcomes](/reference/responses) before using the payload. " +
+                        "For compiler fields and reference reuse, see [symbol results](/reference/symbols).",
             ),
         kast =
             MintlifyCallableKastMetadataDocument(
@@ -118,14 +128,6 @@ private fun InstalledServerBinding.operationDocument(): MintlifyCallableOperatio
                 deferLoading = tool.deferLoading,
                 executionBudget = tool.executionBudget,
                 cliUsage = invocation.cliUsage,
-            ),
-        codeSamples =
-            listOf(
-                MintlifyCallableCodeSampleDocument(
-                    lang = "bash",
-                    label = "Invoke with Kast",
-                    source = "kast ${invocation.invocation.command.joinToString(" ")} < request.json",
-                )
             ),
     )
 
@@ -158,12 +160,7 @@ private fun JsonElement.documentationSchema(
     when (this) {
         is JsonArray -> Json.encodeToJsonElement(map { it.documentationSchema(componentName) })
         is JsonObject -> {
-            val properties = this["properties"] as? JsonObject
-            val tag =
-                listOf("status", "type", "kind").firstNotNullOfOrNull { key ->
-                    ((properties?.get(key) as? JsonObject)?.get("const") as? JsonPrimitive)?.content
-                }
-            val label = title ?: tag
+            val label = title ?: documentationTitle()
             val keywords = filterKeys {
                 it != "\$defs"
             }
@@ -187,6 +184,17 @@ private fun JsonElement.documentationSchema(
         }
         else -> this
     }
+
+/** UI label derived from an existing discriminator and the schema's required live-evidence field. */
+private fun JsonObject.documentationTitle(): String? {
+    val properties = this["properties"] as? JsonObject
+    val tag =
+        listOf("status", "type", "kind").firstNotNullOfOrNull { key ->
+            ((properties?.get(key) as? JsonObject)?.get("const") as? JsonPrimitive)?.content
+        } ?: return null
+    val required = this["required"] as? JsonArray
+    return if (required?.contains(JsonPrimitive("live")) == true) "$tag · live" else tag
+}
 
 /** One OpenAPI component identity derived only from a canonical operation and schema role. */
 @JvmInline
@@ -226,7 +234,6 @@ private data class MintlifyCallableOperationDocument(
     val responses: Map<String, MintlifyCallableResponseDocument>,
     @SerialName("x-mint") val mint: MintlifyCallableMintDocument,
     @SerialName("x-kast") val kast: MintlifyCallableKastMetadataDocument,
-    @SerialName("x-codeSamples") val codeSamples: List<MintlifyCallableCodeSampleDocument>,
 )
 
 @Serializable
@@ -253,9 +260,23 @@ private data class MintlifyCallableSchemaReference private constructor(@SerialNa
 
 @Serializable private data class MintlifyCallableComponentsDocument(val schemas: Map<String, JsonElement>)
 
-@Serializable private data class MintlifyCallableMintDocument(val metadata: MintlifyCallablePageMetadataDocument)
+@Serializable
+private data class MintlifyCallableMintDocument(val metadata: MintlifyCallablePageMetadataDocument, val content: String)
 
-@Serializable private data class MintlifyCallablePageMetadataDocument(val playground: MintlifyCallablePlayground)
+@Serializable
+private data class MintlifyCallablePageMetadataDocument(
+    val playground: MintlifyCallablePlayground,
+    val mode: MintlifyCallablePageMode,
+    val hideApiMarker: Boolean,
+    val icon: String,
+    val description: String,
+    val title: String,
+)
+
+@Serializable
+private enum class MintlifyCallablePageMode {
+    @SerialName("wide") WIDE
+}
 
 @Serializable
 private enum class MintlifyCallablePlayground {
@@ -270,13 +291,6 @@ private data class MintlifyCallableKastMetadataDocument(
     val deferLoading: Boolean,
     val executionBudget: InstalledServerExecutionBudgetDocument,
     val cliUsage: String,
-)
-
-@Serializable
-private data class MintlifyCallableCodeSampleDocument(
-    val lang: String,
-    val label: String,
-    val source: String,
 )
 
 private val mintlifyCallableReferenceFactory = CliJsonDocument.generated(MintlifyCallableReferenceDocument.serializer())

@@ -51,9 +51,12 @@ projections, and compiler-rendered type-string boundary.
 
 `MintlifyCallableReference` derives the OpenAPI reference from installed bindings.
 It promotes document-local definitions into tool-qualified `components.schemas`
-addresses and labels variants from their existing discriminants. Schema-model
+addresses and labels variants from their existing discriminants, marking outcomes
+that require live evidence with a distinct label. Schema-model
 pages reference those generated components; authored prose does not replace the
 machine contract. The focused test compares resolved validation assertions with
 every installed input and output schema, ignoring only definition placement and
 display titles. Synthetic callable paths remain documentation routes, with no
-HTTP server or interactive playground advertised.
+HTTP server or interactive playground advertised. Full-width contract pages keep
+the generated fields visible without synthesized response examples; invocation
+commands render as Bash blocks in the page content.

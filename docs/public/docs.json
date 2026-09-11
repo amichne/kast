@@ -5,8 +5,8 @@
   "description": "Compiler-grounded Kotlin tools: find declarations, read evidence, and make approved changes.",
   "colors": {
     "primary": "#3154C7",
-    "light": "#27439F",
-    "dark": "#8FA7FF"
+    "light": "#8FA7FF",
+    "dark": "#27439F"
   },
   "fonts": {
     "family": "SUSE"
@@ -209,7 +209,7 @@
     }
   },
   "search": {
-    "prompt": "Search tasks, fields, and failure reasons"
+    "prompt": "Search docs"
   },
   "errors": {
     "404": {

@@ -53,7 +53,9 @@ class MintlifyCallableReferenceTest {
 
         installed.hostedBootstrap.tools.forEach { tool ->
             val operation = paths.getValue("/callables/${tool.name}").jsonObject.getValue("post").jsonObject
-            val mintMetadata = operation.getValue("x-mint").jsonObject.getValue("metadata").jsonObject
+            val mint = operation.getValue("x-mint").jsonObject
+            val mintMetadata = mint.getValue("metadata").jsonObject
+            val content = mint.getValue("content").jsonPrimitive.content
             val kastMetadata = operation.getValue("x-kast").jsonObject
             val requestReference =
                 operation
@@ -80,11 +82,10 @@ class MintlifyCallableReferenceTest {
                     .jsonObject
                     .reference()
             val invocation = invocationByTool.getValue(tool.name)
-            val sample = operation.getValue("x-codeSamples").jsonArray.single().jsonObject
 
             assertEquals(tool.name, operation.getValue("operationId").jsonPrimitive.content)
             assertEquals("none", mintMetadata.getValue("playground").jsonPrimitive.content)
-            assertTrue(operation.getValue("description").jsonPrimitive.content.contains("not an HTTP endpoint"))
+            assertTrue(content.contains("not an HTTP endpoint"))
             assertEquals(tool.effect, kastMetadata.getValue("effect").jsonPrimitive.content)
             assertEquals(
                 tool.approvalPolicy,
@@ -98,10 +99,11 @@ class MintlifyCallableReferenceTest {
                 tool.outputSchema.expandSchema(tool.outputSchema),
                 components.getValue(responseReference).expandSchema(reference),
             )
-            assertEquals("bash", sample.getValue("lang").jsonPrimitive.content)
-            assertEquals(
-                "kast ${invocation.invocation.command.joinToString(" ")} < request.json",
-                sample.getValue("source").jsonPrimitive.content,
+            assertEquals("wide", mintMetadata.getValue("mode").jsonPrimitive.content)
+            assertEquals("true", mintMetadata.getValue("hideApiMarker").jsonPrimitive.content)
+            assertFalse("x-codeSamples" in operation)
+            assertTrue(
+                content.contains("```bash\nkast ${invocation.invocation.command.joinToString(" ")} < request.json\n```")
             )
         }
     }
@@ -124,6 +126,31 @@ class MintlifyCallableReferenceTest {
             .forEach { ref ->
                 assertEquals(3, ref.removePrefix("#/").split('/').size, ref)
             }
+    }
+
+    @Test
+    fun `live outcomes carry distinct navigation labels`() {
+        val reference =
+            Json.parseToJsonElement(mintlifyCallableReference(commandGraphFactory().surface).value).jsonObject
+        val components = reference.getValue("components").jsonObject.getValue("schemas").jsonObject
+        val response = components.getValue("search_classesResponse").jsonObject
+        val document =
+            response
+                .getValue("anyOf")
+                .jsonArray
+                .first()
+                .jsonObject
+                .getValue("properties")
+                .jsonObject
+                .getValue("document")
+                .jsonObject
+        val outcomes = document.getValue("anyOf").jsonArray.first().jsonObject.getValue("anyOf").jsonArray.take(2)
+        assertEquals(
+            listOf("complete", "complete · live", "qualified", "qualified · live"),
+            outcomes
+                .flatMap { it.jsonObject.getValue("oneOf").jsonArray }
+                .map { it.jsonObject.getValue("title").jsonPrimitive.content },
+        )
     }
 
     private fun JsonObject.reference(): String = getValue("\$ref").jsonPrimitive.content.substringAfterLast('/')
