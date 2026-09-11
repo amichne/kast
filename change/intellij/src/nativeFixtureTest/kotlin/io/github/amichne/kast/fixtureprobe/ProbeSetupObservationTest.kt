@@ -13,6 +13,7 @@ class ProbeSetupObservationTest {
             import = ProbeImportState.FINAL_TASKS_FINISHED,
             provenance = ProbeSourceProvenance.AUTHORED,
             indexing = ProbeSetupIndexingState.IDLE,
+            refresh = ProbeSetupRefreshState(ProbeSetupQueueState.IDLE, ProbeSetupQueueState.IDLE),
         )
 
     @Test
@@ -24,13 +25,42 @@ class ProbeSetupObservationTest {
         val scheduled = completed.copy(indexing = ProbeSetupIndexingState.SCHEDULED)
         assertInstanceOf(
             ProbeResult.Rejected::class.java,
-            ProbeSetupObservation.admit(scheduled, scheduled, SETUP_QUIET_WINDOW_NANOS),
+            ProbeSetupObservation.admit(
+                before = scheduled,
+                after = scheduled,
+                elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
+                drain = ProbeSetupDrainState.COMPLETED,
+            ),
         )
         val unavailable = completed.copy(indexing = ProbeSetupIndexingState.UNAVAILABLE)
         assertInstanceOf(
             ProbeResult.Rejected::class.java,
-            ProbeSetupObservation.admit(unavailable, unavailable, SETUP_QUIET_WINDOW_NANOS),
+            ProbeSetupObservation.admit(
+                before = unavailable,
+                after = unavailable,
+                elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
+                drain = ProbeSetupDrainState.COMPLETED,
+            ),
         )
+    }
+
+    @Test
+    fun everyActiveOrUnavailableGlobalQueueRejectsReadiness() {
+        for (scanning in ProbeSetupQueueState.entries) {
+            for (processing in ProbeSetupQueueState.entries) {
+                if (scanning == ProbeSetupQueueState.IDLE && processing == ProbeSetupQueueState.IDLE) continue
+                val busy = completed.copy(refresh = ProbeSetupRefreshState(scanning, processing))
+                assertEquals(
+                    ProbeResult.Rejected(ProbeFailure.SETUP_MOVING),
+                    ProbeSetupObservation.admit(
+                        before = busy,
+                        after = busy,
+                        elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
+                        drain = ProbeSetupDrainState.COMPLETED,
+                    ),
+                )
+            }
+        }
     }
 
     @Test
@@ -38,14 +68,28 @@ class ProbeSetupObservationTest {
         val result =
             assertInstanceOf(
                 ProbeResult.Accepted::class.java,
-                ProbeSetupObservation.admit(completed, completed, SETUP_QUIET_WINDOW_NANOS),
+                ProbeSetupObservation.admit(
+                    before = completed,
+                    after = completed,
+                    elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
+                    drain = ProbeSetupDrainState.COMPLETED,
+                ),
             )
-        assertEquals(ProbeSetupImportEvidence.FINAL_TASKS_OBSERVED, (result.value as ProbeSetupObservation).import)
+        val observation = result.value as ProbeSetupObservation
+        assertEquals(ProbeSetupImportEvidence.FINAL_TASKS_OBSERVED, observation.import)
+        assertEquals(completed, observation.before)
+        assertEquals(completed, observation.after)
+        assertEquals(ProbeSetupDrainState.COMPLETED, observation.drain)
         val restored = completed.copy(import = ProbeImportState.NOT_OBSERVED)
         val reopened =
             assertInstanceOf(
                 ProbeResult.Accepted::class.java,
-                ProbeSetupObservation.admit(restored, restored, SETUP_QUIET_WINDOW_NANOS),
+                ProbeSetupObservation.admit(
+                    before = restored,
+                    after = restored,
+                    elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
+                    drain = ProbeSetupDrainState.COMPLETED,
+                ),
             )
         assertEquals(
             ProbeSetupImportEvidence.NOT_OBSERVED_PERSISTED_MODEL,
@@ -57,6 +101,7 @@ class ProbeSetupObservationTest {
     fun everyModelOrIndexMovementInvalidatesQuietObservation() {
         for (changed in
             listOf(
+                generation.copy(imports = 2),
                 generation.copy(roots = 2),
                 generation.copy(workspace = 2),
                 generation.copy(vfs = 3),
@@ -65,12 +110,32 @@ class ProbeSetupObservationTest {
             )) {
             assertInstanceOf(
                 ProbeResult.Rejected::class.java,
-                ProbeSetupObservation.admit(completed, completed.copy(generation = changed), SETUP_QUIET_WINDOW_NANOS),
+                ProbeSetupObservation.admit(
+                    before = completed,
+                    after = completed.copy(generation = changed),
+                    elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
+                    drain = ProbeSetupDrainState.COMPLETED,
+                ),
             )
         }
         assertInstanceOf(
             ProbeResult.Rejected::class.java,
-            ProbeSetupObservation.admit(completed, completed, SETUP_QUIET_WINDOW_NANOS - 1),
+            ProbeSetupObservation.admit(
+                before = completed,
+                after = completed,
+                elapsedNanos = SETUP_QUIET_WINDOW_NANOS - 1,
+                drain = ProbeSetupDrainState.COMPLETED,
+            ),
+        )
+        val negative = completed.copy(generation = generation.copy(vfs = -1))
+        assertEquals(
+            ProbeResult.Rejected(ProbeFailure.SETUP_MOVING),
+            ProbeSetupObservation.admit(
+                before = negative,
+                after = negative,
+                elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
+                drain = ProbeSetupDrainState.COMPLETED,
+            ),
         )
     }
 
@@ -80,7 +145,12 @@ class ProbeSetupObservationTest {
             val busy = completed.copy(status = status)
             assertInstanceOf(
                 ProbeResult.Rejected::class.java,
-                ProbeSetupObservation.admit(busy, busy, SETUP_QUIET_WINDOW_NANOS),
+                ProbeSetupObservation.admit(
+                    before = busy,
+                    after = busy,
+                    elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
+                    drain = ProbeSetupDrainState.COMPLETED,
+                ),
             )
         }
         for (state in
@@ -93,7 +163,12 @@ class ProbeSetupObservationTest {
             val incomplete = completed.copy(import = state)
             assertInstanceOf(
                 ProbeResult.Rejected::class.java,
-                ProbeSetupObservation.admit(incomplete, incomplete, SETUP_QUIET_WINDOW_NANOS),
+                ProbeSetupObservation.admit(
+                    before = incomplete,
+                    after = incomplete,
+                    elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
+                    drain = ProbeSetupDrainState.COMPLETED,
+                ),
             )
         }
     }

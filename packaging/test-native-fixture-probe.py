@@ -67,7 +67,10 @@ class ProbeClientTest(unittest.TestCase):
     def test_setup_and_reopen_distinguish_observed_import_from_persisted_model(self):
         readiness = {"smartMode": "SMART", "externalTasks": "IDLE", "gradleModule": "OBSERVED", "sourceProvenance": "AUTHORED",
                      "import": "FINAL_TASKS_OBSERVED", "vfsRefresh": "COMPLETED", "quietWindowMillis": 2000,
-                     "scope": "OBSERVED_SETUP_ONLY"}
+                     "scope": "OBSERVED_SETUP_ONLY", "pushedPropertiesDrain": "COMPLETED", "indexing": "IDLE",
+                     "refreshScanning": "IDLE", "refreshEventProcessing": "IDLE",
+                     "generationBefore": dict.fromkeys(("imports", "roots", "workspace", "vfs", "psi", "dumb"), 1),
+                     "generationAfter": dict.fromkeys(("imports", "roots", "workspace", "vfs", "psi", "dumb"), 1)}
         first = {**self.response(command="AWAIT_SETUP_READY"), "outcome": "SETUP_READY", "readiness": readiness}
         self.assertEqual(first, probe.validate_response(first, "id", "AWAIT_SETUP_READY"))
         persisted = {**readiness, "import": "NOT_OBSERVED_PERSISTED_MODEL"}
@@ -76,9 +79,23 @@ class ProbeClientTest(unittest.TestCase):
         reopened = {**first, "command": "AWAIT_REOPEN_READY", "readiness": persisted}
         self.assertEqual(reopened, probe.validate_response(reopened, "id", "AWAIT_REOPEN_READY"))
         for key, value in (("smartMode", "DUMB"), ("externalTasks", "ACTIVE"), ("vfsRefresh", "PENDING"),
-                           ("quietWindowMillis", 1), ("scope", "FUTURE_STABILITY")):
+                           ("quietWindowMillis", 1), ("scope", "FUTURE_STABILITY"),
+                           ("pushedPropertiesDrain", "PENDING"), ("indexing", "SCHEDULED"),
+                           ("refreshScanning", "ACTIVE"), ("refreshEventProcessing", "ACTIVE")):
             with self.assertRaises(probe.NativeFixtureProbeError):
                 probe.validate_response({**first, "readiness": {**readiness, key: value}}, "id", "AWAIT_SETUP_READY")
+        for counters in ({"imports": 1}, {**readiness["generationAfter"], "vfs": 2},
+                         {**readiness["generationAfter"], "vfs": True},
+                         {**readiness["generationAfter"], "vfs": -1},
+                         {**readiness["generationAfter"], "vfs": 2 ** 63}):
+            with self.assertRaises(probe.NativeFixtureProbeError):
+                probe.validate_response({**first, "readiness": {**readiness, "generationAfter": counters}},
+                                        "id", "AWAIT_SETUP_READY")
+        for key in ("pushedPropertiesDrain", "indexing", "refreshScanning", "refreshEventProcessing",
+                    "generationBefore", "generationAfter"):
+            with self.assertRaises(probe.NativeFixtureProbeError):
+                probe.validate_response({**first, "readiness": {k: v for k, v in readiness.items() if k != key}},
+                                        "id", "AWAIT_SETUP_READY")
 
     def test_indexing_variants_require_actual_named_state_and_exact_bound(self):
         for command, outcome, state in (

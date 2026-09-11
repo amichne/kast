@@ -56,17 +56,6 @@ private fun heldIndexingDocument() = buildJsonObject {
     put("maximumHoldMillis", MAXIMUM_INDEXING_HOLD_MILLIS)
 }
 
-private fun readinessDocument(readiness: ProbeSetupObservation) = buildJsonObject {
-    put("smartMode", "SMART")
-    put("externalTasks", "IDLE")
-    put("gradleModule", "OBSERVED")
-    put("sourceProvenance", readiness.provenance.name)
-    put("import", readiness.import.name)
-    put("vfsRefresh", "COMPLETED")
-    put("quietWindowMillis", SETUP_QUIET_WINDOW_MILLIS)
-    put("scope", "OBSERVED_SETUP_ONLY")
-}
-
 private fun evidenceDocument(evidence: ProbeEvidence) = buildJsonObject {
     put("savedSha256", evidence.saved.value)
     put("documentSha256", evidence.document.value)

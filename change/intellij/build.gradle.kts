@@ -2,6 +2,7 @@ import org.gradle.api.artifacts.VersionCatalogsExtension
 
 plugins {
     id("kast.kotlin-library")
+    kotlin("plugin.serialization")
     id("kast.role.intellij-write")
 }
 
@@ -44,6 +45,8 @@ private fun extractedIdeaFiles(configure: ConfigurableFileTree.() -> Unit) =
 private val ideaLibs: ConfigurableFileCollection = extractedIdeaFiles {
     include("**/lib/**/*.jar")
     exclude("**/plugins/**")
+    exclude("**/lib/intellij.libraries.kotlinx.serialization.*.jar")
+    exclude("**/lib/intellij.libraries.ktor.utils.jar")
 }
 
 private val kotlinPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
@@ -87,6 +90,7 @@ configurations[nativeFixtureTest.implementationConfigurationName].extendsFrom(co
 configurations[nativeFixtureTest.runtimeOnlyConfigurationName].extendsFrom(configurations.testRuntimeOnly.get())
 
 dependencies {
+    add(nativeFixture.compileOnlyConfigurationName, catalog.findLibrary("serialization-json").get())
     add(nativeFixture.compileOnlyConfigurationName, ideaLibs)
     add(nativeFixture.compileOnlyConfigurationName, kotlinPluginLibs)
     add(nativeFixture.compileOnlyConfigurationName, javaPluginLibs)

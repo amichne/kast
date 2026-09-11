@@ -116,12 +116,20 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
         observeSource: () -> ProbeExecution,
     ): ProbeExecution {
         return try {
+            // Opening the fixture editor is preparation and must precede the quiet observation.
+            when (val prepared = onEdt(deadline) { observeSource() }) {
+                is ProbeExecution.Completed ->
+                    if (prepared.evidence.documentState != ProbeDocumentState.SAVED_COMMITTED)
+                        return ProbeExecution.Rejected(ProbeFailure.DOCUMENT_STATE_REJECTED)
+                else -> return prepared
+            }
             when (val refresh = refresh(deadline)) {
                 is ProbeResult.Accepted ->
                     awaitQuiet(
                         request = request,
                         deadline = deadline,
                         requirement = requirement,
+                        drain = refresh.value,
                         observeSource = observeSource,
                     )
                 is ProbeResult.Rejected -> ProbeExecution.Rejected(refresh.failure)
@@ -140,6 +148,7 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
         request: ProbeRequest,
         deadline: Long,
         requirement: ProbeImportRequirement,
+        drain: ProbeSetupDrainState,
         observeSource: () -> ProbeExecution,
     ): ProbeExecution {
         var candidate = onEdt(deadline) { sample(request.command, requirement) }
@@ -153,7 +162,15 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
                 candidate = current
                 candidateSince = now
             }
-            when (val proof = ProbeSetupObservation.admit(candidate, current, now - candidateSince)) {
+            when (
+                val proof =
+                    ProbeSetupObservation.admit(
+                        before = candidate,
+                        after = current,
+                        elapsedNanos = now - candidateSince,
+                        drain = drain,
+                    )
+            ) {
                 is ProbeResult.Rejected -> Unit
                 is ProbeResult.Accepted ->
                     return onEdt(deadline) {
@@ -180,14 +197,16 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
         if (sample(request.command, requirement) != expected) return ProbeExecution.Rejected(ProbeFailure.SETUP_MOVING)
         return when (val source = observeSource()) {
             is ProbeExecution.Completed ->
-                if (source.evidence.documentState == ProbeDocumentState.SAVED_COMMITTED) {
+                if (sample(request.command, requirement) != expected) {
+                    ProbeExecution.Rejected(ProbeFailure.SETUP_MOVING)
+                } else if (source.evidence.documentState == ProbeDocumentState.SAVED_COMMITTED) {
                     ProbeExecution.SetupReady(source.evidence, proof)
                 } else ProbeExecution.Rejected(ProbeFailure.DOCUMENT_STATE_REJECTED)
             else -> source
         }
     }
 
-    private fun refresh(deadline: Long): ProbeResult<Unit> {
+    private fun refresh(deadline: Long): ProbeResult<ProbeSetupDrainState> {
         if (!sandbox.valid(project)) return ProbeResult.Rejected(ProbeFailure.SANDBOX_REJECTED)
         val root =
             LocalFileSystem.getInstance().findFileByNioFile(sandbox.project)
@@ -199,17 +218,20 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
             return ProbeResult.Rejected(ProbeFailure.SETUP_REFRESH_TIMEOUT)
         // The observation is posted after refresh completion, so earlier queued EDT work runs before it.
         onEdt(deadline) { Unit }
-        when (val drained = ProbeSetupNativeTasks.drain(project, deadline)) {
-            is ProbeResult.Accepted -> Unit
-            is ProbeResult.Rejected -> return drained
+        return when (val drained = ProbeSetupNativeTasks.drain(project, deadline)) {
+            is ProbeResult.Accepted -> {
+                onEdt(deadline) { Unit }
+                drained
+            }
+            is ProbeResult.Rejected -> drained
         }
-        onEdt(deadline) { Unit }
-        return ProbeResult.Accepted(Unit)
     }
 
     private fun sample(command: ProbeCommand, requirement: ProbeImportRequirement): ProbeSetupSample {
         val dumb = DumbService.getInstance(project)
         val indexing = ProbeSetupNativeTasks.indexingState(project)
+        val refresh = ProbeSetupNativeTasks.refreshState()
+        val nativeStatus = indexing.setupStatus(refresh)
         val progress = import.get()
         val state = progress.state
         val provenance = observeGradleSourceModule()
@@ -217,9 +239,7 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
             when {
                 !sandbox.valid(project) -> ProbeSetupStatus.GRADLE_MODULE_UNAVAILABLE
                 state == ProbeImportState.FAILED -> ProbeSetupStatus.IMPORT_FAILED
-                indexing == ProbeSetupIndexingState.RUNNING -> ProbeSetupStatus.INDEXING
-                indexing == ProbeSetupIndexingState.SCHEDULED -> ProbeSetupStatus.INDEXING_SCHEDULED
-                indexing == ProbeSetupIndexingState.UNAVAILABLE -> ProbeSetupStatus.INDEXING_UNAVAILABLE
+                nativeStatus != ProbeSetupStatus.CANDIDATE -> nativeStatus
                 ExternalSystemTaskType.entries.any {
                     ExternalSystemProcessingManager.getInstance().hasTaskOfTypeInProgress(it, project)
                 } -> ProbeSetupStatus.EXTERNAL_TASKS_ACTIVE
@@ -243,6 +263,7 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
             import = state,
             provenance = provenance,
             indexing = indexing,
+            refresh = refresh,
         )
     }
 

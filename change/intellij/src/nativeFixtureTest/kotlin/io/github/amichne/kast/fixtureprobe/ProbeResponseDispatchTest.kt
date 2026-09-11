@@ -33,6 +33,14 @@ class ProbeResponseDispatchTest {
             assertEquals("SETUP_READY", encoded.getValue("outcome").jsonPrimitive.content)
             assertEquals(command.name, encoded.getValue("command").jsonPrimitive.content)
             assertEquals(id.toString(), encoded.getValue("id").jsonPrimitive.content)
+            val readiness = encoded.getValue("readiness").jsonObject
+            assertEquals("COMPLETED", readiness.getValue("pushedPropertiesDrain").jsonPrimitive.content)
+            assertEquals("IDLE", readiness.getValue("indexing").jsonPrimitive.content)
+            assertEquals("IDLE", readiness.getValue("refreshScanning").jsonPrimitive.content)
+            assertEquals("IDLE", readiness.getValue("refreshEventProcessing").jsonPrimitive.content)
+            val before = readiness.getValue("generationBefore").jsonObject
+            assertEquals(setOf("imports", "roots", "workspace", "vfs", "psi", "dumb"), before.keys)
+            assertEquals(before, readiness.getValue("generationAfter"))
             assertEquals(
                 "FINAL_TASKS_OBSERVED",
                 encoded.getValue("readiness").jsonObject.getValue("import").jsonPrimitive.content,
@@ -90,11 +98,17 @@ class ProbeResponseDispatchTest {
                 import = ProbeImportState.FINAL_TASKS_FINISHED,
                 provenance = ProbeSourceProvenance.AUTHORED,
                 indexing = ProbeSetupIndexingState.IDLE,
+                refresh = ProbeSetupRefreshState(ProbeSetupQueueState.IDLE, ProbeSetupQueueState.IDLE),
             )
         val proof =
             assertInstanceOf(
                     ProbeResult.Accepted::class.java,
-                    ProbeSetupObservation.admit(sample, sample, SETUP_QUIET_WINDOW_NANOS),
+                    ProbeSetupObservation.admit(
+                        before = sample,
+                        after = sample,
+                        elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
+                        drain = ProbeSetupDrainState.COMPLETED,
+                    ),
                 )
                 .value as ProbeSetupObservation
         return ProbeExecution.SetupReady(evidence, proof)

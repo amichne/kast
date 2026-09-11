@@ -127,12 +127,22 @@ def validate_response(result: object, request_id: str, command: str) -> dict:
         fields.add("readiness")
         readiness = result.get("readiness")
         expected_imports = {"FINAL_TASKS_OBSERVED"} if command != "AWAIT_REOPEN_READY" else {"FINAL_TASKS_OBSERVED", "NOT_OBSERVED_PERSISTED_MODEL"}
-        if outcome != "SETUP_READY" or not isinstance(readiness, dict) or set(readiness) != {"smartMode", "externalTasks", "gradleModule", "sourceProvenance", "import", "vfsRefresh", "quietWindowMillis", "scope"}:
+        if outcome != "SETUP_READY" or not isinstance(readiness, dict) or set(readiness) != {"smartMode", "externalTasks", "gradleModule", "sourceProvenance", "import", "vfsRefresh", "quietWindowMillis", "scope", "pushedPropertiesDrain", "indexing", "refreshScanning", "refreshEventProcessing", "generationBefore", "generationAfter"}:
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")
         expected_provenance = {"AUTHORED", "GENERATED"} if command == "REIMPORT_GRADLE" else {"AUTHORED"}
         if readiness["sourceProvenance"] not in expected_provenance:
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")
         if readiness["smartMode"] != "SMART" or readiness["externalTasks"] != "IDLE" or readiness["gradleModule"] != "OBSERVED" or readiness["import"] not in expected_imports or readiness["vfsRefresh"] != "COMPLETED" or readiness["quietWindowMillis"] != 2000 or readiness["scope"] != "OBSERVED_SETUP_ONLY":
+            raise NativeFixtureProbeError("MALFORMED_RESPONSE")
+        if readiness["pushedPropertiesDrain"] != "COMPLETED" or any(readiness[key] != "IDLE" for key in ("indexing", "refreshScanning", "refreshEventProcessing")):
+            raise NativeFixtureProbeError("MALFORMED_RESPONSE")
+        for key in ("generationBefore", "generationAfter"):
+            counters = readiness[key]
+            if not isinstance(counters, dict) or set(counters) != {"imports", "roots", "workspace", "vfs", "psi", "dumb"}:
+                raise NativeFixtureProbeError("MALFORMED_RESPONSE")
+            if any(type(value) is not int or not 0 <= value < 2 ** 63 for value in counters.values()):
+                raise NativeFixtureProbeError("MALFORMED_RESPONSE")
+        if readiness["generationBefore"] != readiness["generationAfter"]:
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")
     elif outcome != "COMPLETED":
         raise NativeFixtureProbeError("MALFORMED_RESPONSE")
