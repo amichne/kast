@@ -25,16 +25,22 @@ code_sources:
     symbols: [ConfirmedRecoveryPreimage, RecoveryPreWriteObservationPort]
   - path: change/protocol/src/main/kotlin/io/github/amichne/kast/change/protocol/CanonicalChangePlanProtocol.kt
   - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/ChangePlanIssuance.kt
+  - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/LiveAddDeclarationChangePlan.kt
+  - path: change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt
+  - path: change/protocol/src/main/kotlin/io/github/amichne/kast/change/protocol/CanonicalLiveChangePlanProtocol.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeCoordinator.kt
 ---
 
 # Semantic change
 
-The change family excludes arbitrary text-edit intent. Each supported mutation retains an exact target, source precondition, workspace identity, published semantic lease, planned write set, and verification obligations.
+The change family excludes arbitrary text-edit intent. Each supported mutation retains an exact target, source precondition, workspace identity, explicit published or live planning basis, planned write set, and verification obligations.
 
-The read-authority migration does not authorize live writes. Native intent
-admission refines an exact selector to a published lease. `EditableMutationTarget`
-compares selector authority with the published workspace and retains
-`SemanticReadLease`; planning evidence must match that target authority.
+The installed published path retains `EditableMutationTarget` and its
+`SemanticReadLease`. The hosted `AddDeclaration` path has a separate
+`LiveAddDeclarationChangePlan` with historical original-owner epoch and project
+model evidence. `LiveMutationAuthority` requires fresh matching evidence, exact
+source preconditions and verified plan approval before admitting a write.
+Neither detached plan basis grants current authority.
 
 Planning is pure. Application first derives a deterministic postimage from the observed preimage and rejects stale roots, generations, content, provenance, overlaps, or mismatched expected text. Verification establishes the resulting semantic state before publication. Recovery consumes durable evidence rather than guessing what an interrupted write accomplished.
 
@@ -44,7 +50,10 @@ The shared `change/protocol` module owns pure planning-request lowering and
 preview projection. The host supplies request admission, preserving the original
 reference bytes until its authority boundary, and a narrow durable-plan issuance
 port. The existing installed handler retains published selector admission.
-This extraction does not implement live planning or grant source-write authority.
+`CanonicalLiveChangePlanProtocol` adds live request admission through explicit
+host ports. The hosted coordinator owns live plan and receipt persistence,
+exact-plan approval verification, source effects and recovery. Shared protocol
+code cannot acquire those capabilities.
 
 A missing recovery record cannot establish that no effect occurred. A surviving
 pre-write record also remains recovery-required unless a fresh observation proves

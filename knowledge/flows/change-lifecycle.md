@@ -24,40 +24,70 @@ code_sources:
     symbols: [HostedToolDefinition]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexSessionProjection.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt
+  - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/LiveChangeBasis.kt
+  - path: change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangePlanning.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeVerification.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeRecovery.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/HostedPlanApprovalGateway.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexPlanApprovalProjection.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/BrokerTrustEnrollment.kt
 ---
 
 # Semantic change lifecycle
 
 ```text
-intent -> pure plan -> observe exact preimage -> admit deterministic postimage
-       -> IDE write -> semantic verification -> publish generation
-                              \-> durable recovery evidence on interruption
+exact selector -> immutable plan + stored preview -> exact-plan approval
+               -> fresh preimage admission -> IDE write -> semantic verification
+                                                  -> durable verified receipt
+                                                  -> qualified recovery evidence
 ```
 
-The plan retains target identity, expected source state, and verification obligations. Apply admission rejects mismatched workspace roots, stale generations, changed content, invalid provenance, unplanned writes, bad ranges, overlap, and preimage mismatch. The IntelliJ adapter receives only admitted effects.
+The installed published path retains `SemanticReadLease`, generation admission
+and publication after verification. The hosted path supports `AddDeclaration`
+into one existing authored Kotlin source file. Its `ChangePlanningBasis.Live`
+retains the original live reference and complete project model as historical
+evidence. It does not convert an epoch into a published generation or current
+write authority.
 
-Verification, not a successful filesystem call, establishes completion. If the effect boundary becomes uncertain, recovery uses durable records to classify and converge the state.
+`change/protocol` owns pure request lowering and preview projection. The hosted
+owner restores the exact returned selector under its current read authority,
+collects complete planning evidence, constructs an immutable plan and persists
+it before returning its identity and preview. The CLI preserves reference bytes
+and routes the entire change family before isolated bootstrap. Unsupported
+intents and absent hosts reject without worker fallback.
 
-See [semantic change](../modules/change.md) and [evidence authority](../glossary/evidence-authority.md).
+`change_plan` needs no approval. Apply and recovery ask the broker to load the
+stored preview and a host challenge. A separate native `fileChange` item and
+approval request correlate the current controller with the exact plan, root,
+host and operation. Only that controller's accepted decision reaches the signing
+gateway. The plugin verifies the Ed25519 assertion against the explicitly
+enrolled key and consumes the challenge once. Catalog metadata and plan identity
+do not grant write authority.
 
-The shared `change/protocol` module owns pure planning-request lowering and
-preview projection. The host supplies request admission, preserving the original
-reference bytes until its authority boundary, and a narrow durable-plan issuance
-port. The existing installed handler retains published selector admission.
-This extraction does not implement live planning or grant source-write authority.
+Apply compares the plan with a fresh live root, host, epoch, content view and
+model, then observes the exact saved preimage. `LiveMutationAuthority` retains
+that proof and the approved write set. A pre-write observation guards the
+IntelliJ write command; the adapter receives only the admitted single-file effect.
+Durable pre-write and applied records retain recovery evidence across effects.
 
-A missing recovery record cannot establish that no effect occurred. A surviving
-pre-write record also remains recovery-required unless a fresh observation proves
-the exact saved preimage and, when loaded, the saved and committed document
-preimage for every recorded source. Dirty, unavailable, divergent, duplicate, or
-incomplete observations reject. Legacy empty preimages remain ambiguous because
-the record cannot distinguish an absent file from an existing empty file. The
-default observation port is unavailable, so unobserved records fail closed.
+A successful source write is not completion. Apply reacquires a live read,
+re-observes compiler identity, diagnostics, relation/traversal obligations and
+source content, then persists the verified receipt. `Verified` carries the
+receipt identity. `AppliedUnverified` retains a write whose verification or
+receipt persistence failed. `RecoveryRequired` retains an uncertain or previously
+attempted write. The latter two remain qualified results.
 
-The current broker retains `HostedApprovalPolicy.EXPLICIT` as catalog metadata.
-The Codex session projection does not turn that metadata into an approval request,
-and its dynamic-tool dispatch does not consume an exact-plan approval result.
-Controller correlation for upstream native approval requests is a separate
-mechanism. A hosted mutation path must establish approval tied to the immutable
-plan before issuing write authority; a plan identity or catalog entry is
-insufficient. This integration remains unimplemented.
+A repeated verified apply returns its stored receipt without another write,
+including when the current IDE owner differs from the historical receipt.
+An attempted plan without a verified receipt cannot be applied again. Recovery
+requires a new approval, durable records and fresh source observation. It can
+prove the exact prior state or roll back an exact matching postimage; divergence,
+missing records or incomplete observation cannot establish success. Legacy empty
+preimages remain ambiguous because they cannot distinguish absence from an
+existing empty file.
+
+Change tools remain opt-in while native installed acceptance is pending. See
+[semantic change](../modules/change.md), [evidence authority](../glossary/evidence-authority.md)
+and the [App Server compatibility record](../../app-server/docs/compatibility.md).

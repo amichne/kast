@@ -59,7 +59,10 @@ records the installed plugin and final default-route CLI/provider observations.
 It depends only on `kernel`, `protocol:contract`, and `change:contract`; the
 plan-storage interface is defined in `change:contract`. Its dependency closure
 cannot acquire workspace startup, import, IntelliJ, SQLite, or isolated-runtime
-capabilities. The retained installed adapter supplies published admission.
+capabilities. The retained installed adapter supplies published admission. The
+hosted coordinator composes the separate live plan, approval, guarded write,
+verification and recovery adapters. Their IntelliJ and SQLite effects remain
+explicit host dependencies; a live plan does not acquire worker-start authority.
 
 ## Formatting and structural checks
 

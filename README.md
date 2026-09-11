@@ -117,9 +117,12 @@ Kast qualifies the installed tool contract before a thread starts. The default
 catalog includes eager `search_classes`, `search_functions`,
 `search_declarations`, and `check_diagnostics`, plus deferred `query_symbols`,
 source, relation, and impact tools. Direct symbol lookup/inspection and the
-three change tools require explicit selection. Change tools retain explicit
-approval requirements and remain excluded from defaults until the installed
-provider → CLI → plugin change workflow passes acceptance.
+three change tools require explicit selection. `change_plan` prepares an
+immutable `AddDeclaration` plan without writing source. `change_apply` and
+`change_recover` require approval of that exact stored plan. Enroll the local
+broker with `kast ide trust-broker` before using either operation. Change tools
+remain excluded from defaults until the installed provider → CLI → plugin
+workflow passes native acceptance.
 
 Other harnesses should consume the exact installed `serverProjection`; they
 should not copy command names, schemas, or selection policy into another

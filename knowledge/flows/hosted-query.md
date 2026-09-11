@@ -70,6 +70,8 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
   - path: experiments/host-observation/kast_ide.py
   - path: experiments/host-observation/qualify_hosted_index.py
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedPreWriteObservation.kt
 ---
 
 # Existing-IDE semantic query
@@ -225,6 +227,17 @@ loads those resources directly from its dependency. Production packaging no
 longer reads protocol assets or host properties from the acceptance experiment.
 
 The opt-in [semantic reproduction runner](../../experiments/host-observation/SEMANTIC_REPRODUCTION.md) separates fixture creation/import, runtime pinning, and read-only public CLI/provider replay. The hosted service publishes one bounded native diagnostic receipt by default after a request drains, including effective configuration/provenance, stage durations, remaining outer deadline, contributor counts and precise termination reasons. Diagnostics carry only finite categories and bounded counts; they do not alter budgets or strengthen qualified coverage. An epoch change invalidates cross-request reference evidence.
+
+## Hosted change admission
+
+Endpoint protocol 3 retains the read routes and adds change planning, approval
+preparation, apply and recovery. The CLI rejects older endpoint descriptors.
+`AddDeclaration` planning consumes the exact live selector from these reads;
+apply obtains a fresh read and a pre-write observation before entering the
+IntelliJ write command. Dirty documents, changed epochs and unavailable authority
+reject without isolated-worker fallback. Plan and receipt observations remain
+historical evidence, separate from the read authority needed for a new effect.
+See [change lifecycle](change-lifecycle.md) for approval, verification and recovery.
 
 ## Corrected native discovery and relation expansion
 

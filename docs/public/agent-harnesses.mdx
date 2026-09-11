@@ -4,19 +4,19 @@ title: "Integrate an agent harness"
 description: "Expose the exact installed Kast tool contract without duplicating its CLI or schemas."
 resource: "file://docs/public/agent-harnesses.mdx"
 tags: ["agents", "harness", "server projection", "search"]
-timestamp: "2026-09-07T00:00:00-04:00"
+timestamp: "2026-09-11T00:00:00-04:00"
 code_sources:
   - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt"
     symbols: ["CanonicalAgentToolDefinitions"]
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt"
     symbols: ["InstalledServerProjectionDocument", "installedServerProjection"]
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/core/AgentSessionBootstrap.kt"
+  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/AgentSessionBootstrap.kt"
     symbols: ["AgentSessionBootstrap", "HostedToolCatalog"]
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/provider/KastProvider.kt"
+  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt"
     symbols: ["KastProviderQualifier", "KastRuntime"]
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/AppServerToolConfiguration.kt"
+  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerToolConfiguration.kt"
     symbols: ["AppServerToolingMode", "KastToolSelection"]
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/broker/PersistentBrokerService.kt"
+  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/PersistentBrokerService.kt"
     symbols: ["BrokerServiceLaunchCommand"]
 icon: "bot"
 keywords: ["agent harness", "serverProjection", "query", "tool schemas"]
@@ -54,8 +54,9 @@ A custom harness has one integration path:
     budgets. Do not infer any of them from a version string.
   </Step>
   <Step title="Join tools to invocation bindings">
-    Match `hostedBootstrap.tools` to `cliInvocations.operations` by canonical
-    operation ID. Require a unique, complete match before advertising a tool.
+    Match `hostedBootstrap.tools` to `cliInvocations.operations` by tool name,
+    then verify the canonical operation ID. Require a unique, complete match
+    before advertising a tool.
   </Step>
   <Step title="Invoke from the repository root">
     Execute the declared argument vector without a shell. Send one tool-input
@@ -75,8 +76,9 @@ are eager. Prefer the specific search when its declaration kind is known; use
 `query_symbols` for enumeration, returned references and ordered pipelines.
 
 The advanced query, source, semantic, impact and change tools are deferred.
-Direct `symbol_lookup` and `symbol_inspect` remain opt-in. Change tools retain
-explicit approval requirements. Several tool names bind to `query.run`; join
+Direct `symbol_lookup` and `symbol_inspect` remain opt-in. Change planning does
+not require approval; apply and recovery require approval of the exact stored
+plan. Several tool names bind to `query.run`; join
 installed CLI invocations by `toolName`, not just `operationId`. Projection 10
 and CLI invocation version 3 require the matched installed contract.
 
@@ -134,6 +136,51 @@ search_classes,search_functions,search_declarations,query_symbols,source_read,se
 Change tools stay excluded from the default selection until the installed
 provider → CLI → plugin workflow passes native acceptance. Explicit selection
 does not grant live mutation authority or bypass approval.
+
+## Use a stored change plan
+
+The existing-IDE change path currently supports `AddDeclaration` in one existing,
+authored Kotlin source file. Keep the saved project open in IntelliJ with the
+matched Kast plugin. Missing hosts, unsupported intents and stale references
+reject without starting an isolated workspace.
+
+Enroll the local broker explicitly before applying or recovering a plan:
+
+```console
+kast ide trust-broker
+```
+
+This creates an Ed25519 key pair in `~/.kast/approval`, or preserves an existing
+matching pair. The approval directory and keys are private to the local user.
+Unsafe paths, incomplete keys and mismatched keys reject. Apply does not create
+keys or enroll trust automatically.
+
+1. Use a Kast search and pass its returned `symbol_ref` unchanged to
+   `change_plan` as the exact target. Use the installed tool schema for the
+   `add-declaration` request.
+2. Keep the returned immutable plan identity and review its file preview.
+   Planning does not change source or grant write permission.
+3. Invoke `change_apply` with that identity. The included Codex integration loads
+   the stored preview, emits a separate native `fileChange` preview item, and
+   requests approval from the current controller. The original dynamic-tool item
+   keeps its identity and content. Decline, cancellation, lost control and expired
+   approval reject before writing.
+4. Preserve the complete semantic result. `Verified` includes a durable receipt;
+   `AppliedUnverified` means the write occurred but verification or receipt
+   persistence did not complete; `RecoveryRequired` retains an uncertain attempt.
+   The latter two are qualified outcomes, not verified success.
+
+Apply rechecks the plan's exact root, IDE owner, epoch, project model and saved
+preimage at the write boundary. Repeating an already verified plan returns its
+stored receipt without repeating the write. An interrupted attempt requires
+recovery. `change_recover` requests a new exact-plan approval and uses durable
+records plus a fresh source observation to establish the prior state or roll
+back an exact matching postimage. Divergent or unavailable evidence remains
+recovery-required.
+
+A custom harness must provide the approval integration required by the installed
+contract. A plan identity, catalog approval policy or ordinary CLI invocation
+cannot substitute for controller approval.
 
 For operational symptoms and safe status collection, see
 [Troubleshooting](/troubleshooting).

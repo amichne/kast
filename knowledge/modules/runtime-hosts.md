@@ -35,6 +35,8 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeQuery.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/ide/IdeCommands.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeCoordinator.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/BrokerTrustEnrollment.kt
 ---
 
 # Runtime and process hosts
@@ -45,7 +47,8 @@ The indexer runs the semantic runtime inside the admitted IntelliJ environment. 
 
 These hosts communicate through protocol and distribution contracts; reachability alone does not establish readiness or semantic authority.
 
-`runtime:hosted` is a separate IDEA plugin for existing-project reads.
+`runtime:hosted` is a separate IDEA plugin for existing-project reads and
+approved `AddDeclaration` changes.
 Its release archive carries the Kast release version and IDEA release line in
 its name. The descriptor permits `since-build="262"` through `until-build="262.*"`;
 the public installer validates that line before activation. Runtime admission
@@ -76,12 +79,19 @@ operation remains absent from the public command graph.
 `selectCliRuntimePath` now also routes `query`, `symbol`, `source`, `relation`,
 `traversal`, and `diagnostic` before installed bootstrap in `KastCliMain`. Their
 seven canonical reads use the admitted existing host and reject a missing host
-without fallback. The provider requires App Server projection version 9, whose
+without fallback. The provider requires App Server projection version 10, whose
 read schemas preserve published/live evidence and semantic qualification. It
 qualifies and invokes its configured real CLI; manual production provider dispatch
 through the final distribution completed an exact `Child` query with evidence
 matching direct CLI execution. This establishes provider/process invocation,
 while full Codex WebSocket and multi-client acceptance remain separate.
+
+The `change` command family also enters this existing-IDE route before isolated
+bootstrap. The hosted coordinator persists immutable live plans, verifies
+broker-signed exact-plan approvals and delegates guarded single-file source
+effects to the IntelliJ change adapter. Verification and receipt persistence
+remain distinct from the write. `kast ide trust-broker` is a separate explicit
+local key-enrollment effect; apply never enrolls it automatically.
 
 Read [request dispatch](../flows/request-dispatch.md) for the cross-host path.
 
