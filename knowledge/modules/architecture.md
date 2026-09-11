@@ -4,9 +4,13 @@ title: Verified module architecture
 description: Gradle verifies module roles, dependencies, exports, and scoped agent guidance before projecting module knowledge.
 resource: file://settings.gradle.kts
 tags: [kotlin, gradle, architecture]
-timestamp: 2026-09-10T00:00:00Z
+timestamp: 2026-09-11T00:00:00Z
 code_sources:
   - path: docs/reviews/live-semantic-read-acceptance.md
+  - path: build-logic/src/main/kotlin/kast.kotlin-library.gradle.kts
+  - path: build-logic/src/main/kotlin/kast.kotlin-quality.gradle.kts
+  - path: build-logic/src/main/kotlin/conventions/KotlinFileLengthTask.kt
+  - path: config/detekt/detekt.yml
   - path: settings.gradle.kts
   - path: build-logic/src/main/kotlin/kast.architecture.gradle.kts
   - path: build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt
@@ -47,6 +51,19 @@ remains the admitted project-epoch authority; transport adds no project-opening
 or import permission. These declarations establish capability boundaries;
 [native acceptance](../../docs/reviews/live-semantic-read-acceptance.md) separately
 records the installed plugin and final default-route CLI/provider observations.
+
+## Formatting and structural checks
+
+`kast.kotlin-library` applies the shared `kast.kotlin-quality` convention.
+Module `check` tasks depend on Spotless, type-resolved Detekt for production
+and test source sets, and file-length checks with 400-line production and
+600-line test limits. The Detekt configuration defines the structural rules.
+These gates are independent of accepted module-dependency evidence.
+
+Spotless uses ktfmt Kotlinlang style at 120 columns for authored Kotlin and
+module Gradle scripts. The public-query generator owns `PublicQueryDocuments.kt`,
+`PublicToolDocuments.kt`, and `PublicToolIdentity.kt`; Spotless excludes those
+files and `verifyPublicQueryGeneration` checks their exact generator parity.
 
 ## Verify
 
